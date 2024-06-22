@@ -1,6 +1,63 @@
-.venv
-config
+# Virtual environment
+.venv/
+
+# Configurations and sensitive data
+config/
 config/cookies.txt
-downloads
-db
+
+# Downloaded files or artifacts
+downloads/
+
+# Database files
+db/
 db/db.sqlite
+
+# Log files
+logs/
+
+# IDE and Editor-specific files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.DS_Store
+
+# Compiled files and temporary files
+*.pyc
+*.pyo
+*.mo
+*.so
+*.dylib
+.pycache/
+
+# Test related
+*.test
+coverage/
+.tox/
+.dist/
+.build/
+htmlcov/
+nosetests.xml
+coverage.xml
+
+# Docker and CI/CD artifacts
+docker-compose.override.yml
+.Dockerfile*
+.kubernetes/
+build/
+target/
+dist/
+*.egg-info/
+
+# Other common ignores
+*.log
+*.bak
+*.tmp
+*.zip
+*.tar.gz
+*.rar
+*.7z
+Thumbs.db

@@ -1,10 +1,13 @@
+import os
+
 from jinja2 import Environment, FileSystemLoader
 from contextlib import suppress
 from meta.video import Video
 
 
 class NfoGenerator:
-    TEMPLATE_DIR = 'templates'  # 假设模板存放路径
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    TEMPLATE_DIR = os.path.join(PROJECT_ROOT, 'templates')
     TEMPLATE_ENV = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
 
     @staticmethod

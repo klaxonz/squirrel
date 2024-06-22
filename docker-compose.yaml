@@ -1,0 +1,14 @@
+version: '3'
+services:
+  media-subscribe:
+    image: klaxonz/media-subscribe:latest
+    environment:
+      - REDIS_HOST=192.168.31.248
+      - REDIS_PORT=15001
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./db:/app/db
+      - ./downloads:/app/downloads
