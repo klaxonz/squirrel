@@ -3,7 +3,8 @@ from .config import GlobalConfig
 import json
 import uuid
 
-class RedisMessageQueue(RedisClient):
+
+class RedisMessageQueue:
     def __init__(self, queue_name):
         """
         初始化Redis消息队列客户端
@@ -11,7 +12,7 @@ class RedisMessageQueue(RedisClient):
         :param args: 传递给RedisClient的其他参数
         :param kwargs: 传递给RedisClient的其他关键字参数
         """
-        super().__init__(host=GlobalConfig.get_redis_host(), port=GlobalConfig.get_redis_port())
+        self.client = RedisClient.get_instance().client
         self.queue_name = queue_name
 
     def enqueue(self, message_obj):
@@ -30,7 +31,7 @@ class RedisMessageQueue(RedisClient):
         :param timeout: 阻塞等待的超时时间（秒）
         :return: Message对象实例，如果队列为空且非阻塞模式，则返回None
         """
-        raw_message = super().dequeue(block=block, timeout=timeout)
+        raw_message = self.client.dequeue(block=block, timeout=timeout)
         if raw_message:
             return Message(**json.loads(raw_message))
         return None
@@ -42,18 +43,17 @@ class RedisMessageQueue(RedisClient):
         :return: Message对象实例，如果超时则返回None
         """
         raw_message = self.client.blpop(self.queue_name, timeout=timeout)
-        print(raw_message)
         if raw_message:
             return Message.from_dict(json.loads(raw_message[1]))
         return None
-    
+
     def queue_length(self):
         """
         获取当前队列长度
         :return: 队列长度
         """
         return self.client.llen(self.queue_name)
-    
+
     def clear_queue(self):
         """
         清空队列
@@ -82,5 +82,3 @@ class Message:
         """
         return cls(content=data_dict['content'], message_id=data_dict['message_id'], type=data_dict['type'])
 
-    def __str__(self):
-        return f"Message ID: {self.message_id}, Content: {self.content}"
