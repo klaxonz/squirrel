@@ -1,14 +1,15 @@
-
 import requests
 from yt_dlp import YoutubeDL
-from ..common.config import GlobalConfig
-from ..common.cache import RedisClient
-from ..meta.video import VideoFactory, Video
-from ..nfo.nfo import NfoGenerator
+
+from common.cache import RedisClient
+from common.config import GlobalConfig
+from meta.video import VideoFactory, Video
+from nfo.nfo import NfoGenerator
 import logging
 
+
 class Downloader:
-    
+
     @staticmethod
     def on_progress_hook(d):
         """
@@ -33,9 +34,9 @@ class Downloader:
             }
 
             video_id = d['info_dict']['id']
+            redis_client = RedisClient.get_instance().client
             redis_client.hmset(f'download_stats:{video_id}', progress_info)
-          
-        
+
     @staticmethod
     def get_video_info(url):
         ydl_opts = {
@@ -47,8 +48,7 @@ class Downloader:
         with YoutubeDL(ydl_opts) as ydl:
             video_info = ydl.extract_info(url, download=False)
             return video_info
-        
-    
+
     @staticmethod
     def download_avatar(video: Video) -> bool:
         response = requests.get(video.get_uploader().get_avatar())
@@ -57,8 +57,7 @@ class Downloader:
         download_fullpath = f'{download_path}/poster.jpg'
         with open(download_fullpath, 'wb') as file:
             file.write(response.content)
-            
-    
+
     @staticmethod
     def download(url: str):
         base_info = Downloader.get_video_info(url)
@@ -66,7 +65,7 @@ class Downloader:
         if not video:
             logging.error(f"解析视频信息失败: {url}", )
             return
-        
+
         output_dir = video.get_download_full_path()
         filename = video.get_valid_filename()
         ydl_opts = {
@@ -74,13 +73,12 @@ class Downloader:
             'outtmpl': f'{output_dir}/{filename}.%(ext)s',
             'merge_output_format': 'mp4',
         }
-        
+
         cookie_file_path = GlobalConfig.get_cookies_file_path()
         if cookie_file_path:
             ydl_opts['cookiefile'] = cookie_file_path
-            
+
         with YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
             Downloader.download_avatar(video)
             NfoGenerator.generate_nfo(video)
-            

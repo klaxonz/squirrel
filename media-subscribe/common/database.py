@@ -1,5 +1,5 @@
-from peewee import *
 from peewee import SqliteDatabase
+import os
 
 class DatabaseManager:
 
@@ -16,7 +16,13 @@ class DbInstanceHolder:
     def __init__(self):
         if DbInstanceHolder._instance is not None:
             raise Exception("DbInstanceHolder is a singleton. Use get_instance() instead.")
-        self.db_instance = SqliteDatabase("db/db.sqlite")
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        db_file = os.path.join(base_dir, '..', 'db', 'db.sqlite')
+        if not os.path.exists(db_file):
+            with open(db_file, 'w'):
+                pass
+
+        self.db_instance = SqliteDatabase(db_file)
         self.db_instance.connect()
 
     @classmethod

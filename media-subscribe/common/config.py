@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
+
 class GlobalConfig:
-    
     DEFAULT_DOWNLOAD_ROOT_PATH = './downloads'
     DEFAULT_COOKIES_FILE_PATH = 'config/cookies.txt'
     DEFAULT_REDIS_HOST = 'localhost'
@@ -20,22 +20,18 @@ class GlobalConfig:
         '''
         获取cookie文件路径
         '''
-        cookie_path_from_env = os.getenv('COOKIE_FILE')
-        if cookie_path_from_env:
-            cookie_path = Path(cookie_path_from_env)
-        else:
-            cookie_path = Path(cls.DEFAULT_COOKIES_FILE_PATH)
-        
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies.txt'))
         if cookie_path.exists():
             return str(cookie_path)
         else:
             return None
-        
+
     @classmethod
     def get_redis_host(cls):
         return os.getenv('REDIS_HOST', cls.DEFAULT_REDIS_HOST)
-    
+
     @classmethod
     def get_redis_port(cls):
-        
+
         return os.getenv('REDIS_PORT', cls.DEFAULT_REDIS_PORT)

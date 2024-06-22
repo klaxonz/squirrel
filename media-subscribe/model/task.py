@@ -1,15 +1,19 @@
 import json
+import logging
 from datetime import datetime
 from peewee import *
-from ..common.database import DbInstanceHolder
-from ..common.message_queue import RedisMessageQueue, Message
+from common.database import DbInstanceHolder
+from common.message_queue import Message
+
+logger = logging.getLogger(__name__)
+
 
 class Task(Model):
     STATUS_NOT_STARTED = 0
     STATUS_IN_PROGRESS = 1
     STATUS_COMPLETED = 2
     STATUS_FAILED = 3
-    
+
     id = CharField(primary_key=True)
     task_type = CharField()
     message = CharField()
@@ -19,20 +23,19 @@ class Task(Model):
 
     class Meta:
         database = DbInstanceHolder.get_instance()
-        
-        
+
     @classmethod
-    def create_task(cls, task_id, message):
+    def create_task(cls, task):
         """创建新的下载任务，根据message类型处理存储逻辑"""
-        if isinstance(message, Message):
-            message_content = json.dumps(message.to_dict())
+        if isinstance(task, Message):
+            task_content = json.dumps(task)
         else:
-            message_content = message
-        
+            task_content = task
+
         return cls.create(
-            id=task_id,
-            type=message.type,
-            message=message_content,
+            id=task['task_id'],
+            task_type=task['task_type'],
+            message=task_content,
             updated_at=datetime.now())
 
     @classmethod
@@ -79,11 +82,11 @@ class Task(Model):
         :param order: 排序方式，默认为'asc'（升序），可选'desc'（降序）。
         """
         query = cls.select()
-        
+
         # 状态过滤
         if status is not None:
             query = query.where(cls.status == status)
-        
+
         # 添加排序
         if order_by == 'created_at':
             sort_field = cls.created_at
@@ -91,11 +94,10 @@ class Task(Model):
             sort_field = cls.updated_at
         else:
             raise ValueError("Invalid order_by field. Supported fields are 'created_at' and 'updated_at'.")
-        
+
         if order == 'desc':
             query = query.order_by(sort_field.desc())
         else:
             query = query.order_by(sort_field.asc())
-        
+
         return list(query.execute())
-    
