@@ -1,6 +1,8 @@
 # media-subscribe/main.py
 
 import logging.config
+import os
+
 import uvicorn
 from dotenv import load_dotenv
 from common.consumer import DownloadTaskConsumerThread
@@ -13,6 +15,11 @@ from schedule.schedule import Scheduler, RetryFailedTask
 load_dotenv(override=True)
 
 # 定义日志配置字典
+current_dir = os.path.dirname(os.getcwd())
+LOG_DIR = os.path.join(current_dir, 'logs')
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
 LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -29,7 +36,7 @@ LOGGING_CONFIG = {
         },
         'file': {
             'class': 'logging.FileHandler',  # 如果需要记录到文件
-            'filename': 'app.log',  # 日志文件名
+            'filename': os.path.join(LOG_DIR, 'app.log'),  # 日志文件名
             'formatter': 'default',
             'level': 'INFO',  # 文件日志级别
         },

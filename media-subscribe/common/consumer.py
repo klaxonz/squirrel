@@ -8,6 +8,7 @@ from model.task import Task
 
 logger = logging.getLogger(__name__)
 
+
 class DownloadTaskConsumerThread(threading.Thread):
     def __init__(self, queue_name):
         super().__init__()
@@ -34,7 +35,7 @@ class DownloadTaskConsumerThread(threading.Thread):
                 if message:
                     Task.mark_as_failed(message.message_id)
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)
-                    
+
     def stop(self):
         self.running = False
 
