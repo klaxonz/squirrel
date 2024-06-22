@@ -26,11 +26,7 @@ class Task(Model):
 
     @classmethod
     def create_task(cls, task):
-        """创建新的下载任务，根据message类型处理存储逻辑"""
-        if isinstance(task, Message):
-            task_content = json.dumps(task)
-        else:
-            task_content = task
+        task_content = json.dumps(task)
 
         return cls.create(
             id=task['task_id'],
