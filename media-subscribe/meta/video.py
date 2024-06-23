@@ -170,8 +170,7 @@ class YoutubeUploader(Uploader):
                 if 'videoSecondaryInfoRenderer' in content:
                     self.id = content.get('videoSecondaryInfoRenderer').get("subscribeButton").get(
                         "subscribeButtonRenderer").get("channelId")
-                    self.name = \
-                    content.get('videoSecondaryInfoRenderer').get("owner").get("videoOwnerRenderer").get("title").get(
+                    self.name = content.get('videoSecondaryInfoRenderer').get("owner").get("videoOwnerRenderer").get("title").get(
                         "runs")[0].get("text")
                     self.avatar = content.get('videoSecondaryInfoRenderer').get("owner").get("videoOwnerRenderer").get(
                         "thumbnail").get("thumbnails")[2].get("url")

@@ -103,7 +103,7 @@ class AutoUpdateChannelVideoTask:
             return
 
         try:
-            channels = Channel.select().where(Channel.if_enable == True)
+            channels = Channel.select().where(Channel.if_enable == 1)
             for channel in channels:
                 subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
                 video_list = subscribe_channel.get_channel_videos()

@@ -80,7 +80,7 @@ class Task(Model):
 
         # 状态过滤
         if status is not None:
-            query = query.where(cls.status == status)
+            query = query.where(cls.status == status).where(cls.task_type == 'download')
 
         # 添加排序
         if order_by == 'created_at':
