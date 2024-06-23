@@ -1,7 +1,7 @@
 import redis
 
 from common.config import GlobalConfig
-
+from redis.exceptions import LockError
 
 class _RedisClient:
     def __init__(self, host='localhost', port=6379, db=0, decode_responses=True):
@@ -31,3 +31,24 @@ class RedisClient:
     def get_client(self):
         """提供对内部Redis客户端的访问"""
         return self._instance.client
+
+
+class DistributedLock:
+    def __init__(self, lock_key):
+        self.redis_client = RedisClient.get_instance().client
+        self.lock_key = lock_key
+        self.lock = None
+
+    def acquire(self, timeout=10):
+        """尝试获取锁，超时则放弃"""
+        self.lock = self.redis_client.lock(self.lock_key, timeout=timeout)
+        try:
+            self.lock.acquire(blocking=True, blocking_timeout=timeout)
+            return True
+        except LockError:
+            return False
+
+    def release(self):
+        """释放锁"""
+        if self.lock is not None and self.lock.locked():
+            self.lock.release()

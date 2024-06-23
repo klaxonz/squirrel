@@ -4,6 +4,8 @@ import requests
 from common.config import GlobalConfig
 from pathvalidate import sanitize_filename
 
+from common.cookie import filter_cookies_to_query_string
+
 
 class Video:
 
@@ -115,10 +117,9 @@ class BilibiliUploader(Uploader):
         self.init()
 
     def init(self):
-
-        # 定义请求头以模拟浏览器
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/58.0.3029.110 Safari/537.3',
             'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
         }
 
@@ -148,14 +149,14 @@ class YoutubeUploader(Uploader):
         self.init()
 
     def init(self):
-        # 定义请求头以模拟浏览器
+        cookies = filter_cookies_to_query_string(self.url)
         headers = {
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Cookie': 'GPS=1; PREF=f7=4000; VISITOR_INFO1_LIVE=RKgzIIKG3CE; VISITOR_PRIVACY_METADATA=CgJISxIEGgAgLw%3D%3D; YSC=wd2dOzDKH8A'
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/124.0.0.0 Safari/537.36',
+            'Cookie': cookies
         }
 
-        # 发送带有请求头的HTTP GET请求
-        response = requests.get(self.url, headers=headers)
+        response = requests.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()  # 检查请求是否成功
 
         match = re.search(r'var ytInitialData = (\{.*?\});', response.text)

@@ -50,8 +50,8 @@ class Downloader:
             return video_info
 
     @staticmethod
-    def download_avatar(video: Video) -> bool:
-        response = requests.get(video.get_uploader().get_avatar())
+    def download_avatar(video: Video):
+        response = requests.get(video.get_uploader().get_avatar(), timeout=15)
         response.raise_for_status()
         download_path = video.get_tv_show_root_path()
         download_fullpath = f'{download_path}/poster.jpg'

@@ -7,6 +7,8 @@ base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 class GlobalConfig:
     DEFAULT_REDIS_HOST = 'localhost'
     DEFAULT_REDIS_PORT = 6379
+    CHANNEL_UPDATE_DEFAULT_SIZE = 10
+    CHANNEL_UPDATE_ALL = False
 
     @classmethod
     def get_download_root_path(cls):
