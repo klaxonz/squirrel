@@ -3,7 +3,6 @@ import logging
 from datetime import datetime
 from peewee import *
 from common.database import DbInstanceHolder
-from common.message_queue import Message
 
 logger = logging.getLogger(__name__)
 

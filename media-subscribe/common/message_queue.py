@@ -1,7 +1,7 @@
-from .cache import RedisClient
-from .config import GlobalConfig
 import json
 import uuid
+
+from .cache import RedisClient
 
 
 class RedisMessageQueue:

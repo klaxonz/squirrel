@@ -70,5 +70,5 @@ def subscribe_channel(req: SubscribeChannelRequest):
 
         return {"status": "success", "message": "订阅成功"}
     except Exception as e:
-        print(f"订阅失败: ", e)
+        logger.error("订阅失败", exc_info=True)
         raise HTTPException(status_code=500, detail="订阅失败")

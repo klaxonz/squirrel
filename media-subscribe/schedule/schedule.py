@@ -1,10 +1,17 @@
 import json
 import time
+
+from common.cache import DistributedLock
+from meta.channel import ChannelMeta
 from model.task import Task
+from model.channel import Channel
 from common.message_queue import RedisMessageQueue, Message
-from common.constants import QUEUE_DOWNLOAD_TASK
+from common.constants import QUEUE_DOWNLOAD_TASK, REDIS_KEY_UPDATE_CHANNEL_VIDEO_TASK
 from threading import Thread
 import logging
+
+from service.download_service import start_download
+from subscribe.subscribe import SubscribeChannelFactory
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +73,7 @@ class Scheduler:
 class RetryFailedTask:
 
     @classmethod
-    def retry_failed_task(cls):
+    def run(cls):
         try:
             # 查询 50 条失败的任务
             tasks = Task.list_tasks(Task.STATUS_FAILED)
@@ -79,7 +86,35 @@ class RetryFailedTask:
                 Task.mark_as_in_not_start(task.id)
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
-            logger.error(f"Error decoding JSON: {e}")
+            logger.error(f"Error decoding JSON: {e}", exc_info=True)
         except Exception as e:
             # 捕获其他所有异常
-            logger.error(f"An unexpected error occurred: {e}")
+            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+
+
+class AutoUpdateChannelVideoTask:
+
+    @classmethod
+    def run(cls):
+        # 尝试获取锁
+        lock = DistributedLock(REDIS_KEY_UPDATE_CHANNEL_VIDEO_TASK)
+        if not lock.acquire(2 * 60 * 60):
+            logger.warning("Another instance of the task is running, skipping.")
+            return
+
+        try:
+            channels = Channel.select().where(Channel.if_enable == True)
+            for channel in channels:
+                subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
+                video_list = subscribe_channel.get_channel_videos()
+                for video in video_list:
+                    start_download(video)
+        except json.JSONDecodeError as e:
+            # 特定地捕获JSON解码错误
+            logger.error(f"Error decoding JSON: {e}", exc_info=True)
+        except Exception as e:
+            # 捕获其他所有异常
+            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+        finally:
+            # 确保锁被释放
+            lock.release()

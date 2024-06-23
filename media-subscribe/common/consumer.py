@@ -1,10 +1,11 @@
-import json
 import logging
-
-from .message_queue import RedisMessageQueue
 import threading
+
 from downloader.downloader import Downloader
+from subscribe.subscribe import SubscribeChannelFactory
 from model.task import Task
+from model.channel import Channel
+from .message_queue import RedisMessageQueue
 
 logger = logging.getLogger(__name__)
 
@@ -59,15 +60,16 @@ class SubscribeChannelConsumerThread(threading.Thread):
 
                     Task.mark_as_in_progress(message.message_id)
                     url = message.content.get("url")
-                    # 获取视频信息
-                    video_info = Downloader.get_video_info(url)
+                    subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(url)
+                    channel_info = subscribe_channel.get_channel_info()
+                    Channel.subscribe(channel_info.id, channel_info.name, channel_info.url)
 
                     Task.mark_as_completed(message.message_id)
 
             except Exception as e:
                 if message:
                     Task.mark_as_failed(message.message_id)
-                print(f"处理消息时发生错误: {e}")
+                logger.error(f"处理消息时发生错误: {e}", exc_info=True)
 
     def stop(self):
         self.running = False
