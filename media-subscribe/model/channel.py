@@ -4,7 +4,7 @@ from common.database import DbInstanceHolder
 
 
 class Channel(Model):
-    id = IntegerField(primary_key=True)
+    id = AutoField()
     channel_id = CharField(max_length=255)
     name = CharField(max_length=255)
     url = CharField(max_length=1024)

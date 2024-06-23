@@ -6,6 +6,9 @@ from model.task import Task
 
 
 def start_download(url: str):
+    if 'youtube.com' in url:
+        url = "https://www.youtube.com/watch?" + url.split("?")[1]
+
     task_id = str(uuid.uuid4()).replace('-', '')
     task = {
         "url": url,

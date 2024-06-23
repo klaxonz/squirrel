@@ -15,6 +15,9 @@ db/db.sqlite
 # Log files
 logs/
 
+# Environment variables
+.env
+
 # IDE and Editor-specific files
 .vscode/
 .idea/

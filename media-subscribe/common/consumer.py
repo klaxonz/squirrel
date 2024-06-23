@@ -1,10 +1,14 @@
 import logging
 import threading
+import time
 
 from downloader.downloader import Downloader
+from downloader.id_extractor import extract_id_from_url
 from subscribe.subscribe import SubscribeChannelFactory
 from model.task import Task
 from model.channel import Channel
+from .cache import RedisClient
+from .cookie import extract_top_level_domain
 from .message_queue import RedisMessageQueue
 
 logger = logging.getLogger(__name__)
@@ -17,6 +21,8 @@ class DownloadTaskConsumerThread(threading.Thread):
         self.running = True
 
     def run(self):
+        key = ''
+        client = RedisClient.get_instance().client
         mq = RedisMessageQueue(queue_name=self.queue_name)
         while self.running:
             message = None
@@ -28,11 +34,29 @@ class DownloadTaskConsumerThread(threading.Thread):
                     if task and task.status is Task.STATUS_IN_PROGRESS:
                         continue
 
+                    # 设置 redis key
+                    domain = extract_top_level_domain(url)
+                    video_id = extract_id_from_url(url)
+                    key = f"task:{domain}:{video_id}"
+
+                    task_status = client.hgetall(key)
+                    if task_status and (
+                            'status' in task_status and task_status['status'] in ['downloading', 'success']):
+                        continue
+
+                    # 设置key
+                    client.hmset(key, {"status": "downloading", "start_at": time.time()})
+
                     Task.mark_as_in_progress(message.message_id)
                     Downloader.download(url)
                     Task.mark_as_completed(message.message_id)
 
+                    client.hmset(key, {"status": "success", "end_at": time.time()})
+
+                    key = ''
             except Exception as e:
+                if key:
+                    client.hmset(key, {"status": "failed", "end_at": time.time()})
                 if message:
                     Task.mark_as_failed(message.message_id)
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)

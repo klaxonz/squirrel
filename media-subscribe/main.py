@@ -1,9 +1,9 @@
-import logging.config
-import os
-
-import uvicorn
 from dotenv import load_dotenv
 
+load_dotenv(override=True)
+import logging.config
+import os
+import uvicorn
 from api.api import app
 from common.constants import QUEUE_DOWNLOAD_TASK, QUEUE_SUBSCRIBE_TASK
 from common.consumer import DownloadTaskConsumerThread, SubscribeChannelConsumerThread
@@ -11,8 +11,6 @@ from common.database import DatabaseManager
 from model.task import Task
 from model.channel import Channel
 from schedule.schedule import Scheduler, RetryFailedTask, AutoUpdateChannelVideoTask
-
-load_dotenv(override=True)
 
 # 定义日志配置字典
 current_dir = os.path.dirname(os.getcwd())
@@ -62,6 +60,6 @@ if __name__ == "__main__":
     # 启动定时任务
     scheduler = Scheduler()
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
-    scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=10, unit='minutes')
+    scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=2, unit='minutes')
     # 启动服务
     uvicorn.run(app, host="0.0.0.0", port=8000)

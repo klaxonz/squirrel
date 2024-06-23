@@ -3,6 +3,7 @@ import redis
 from common.config import GlobalConfig
 from redis.exceptions import LockError
 
+
 class _RedisClient:
     def __init__(self, host='localhost', port=6379, db=0, decode_responses=True):
         self.connection_pool = redis.ConnectionPool(host=host, port=port, db=db, decode_responses=decode_responses)
