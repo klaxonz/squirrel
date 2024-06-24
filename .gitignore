@@ -2,18 +2,11 @@
 .venv/
 
 # Configurations and sensitive data
-config/
-config/cookies.txt
-
-# Downloaded files or artifacts
-downloads/
-
-# Database files
-db/
-db/db.sqlite
-
-# Log files
-logs/
+config
+downloads
+mysql
+redis
+logs
 
 # Environment variables
 .env
