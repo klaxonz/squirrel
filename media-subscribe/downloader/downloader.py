@@ -72,6 +72,7 @@ class Downloader:
             'writethumbnail': f'{output_dir}/{filename}.jpg',
             'outtmpl': f'{output_dir}/{filename}.%(ext)s',
             'merge_output_format': 'mp4',
+            'progress_hooks': [Downloader.on_progress_hook],
         }
 
         cookie_file_path = GlobalConfig.get_cookies_file_path()

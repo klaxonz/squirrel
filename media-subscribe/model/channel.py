@@ -1,9 +1,9 @@
 from datetime import datetime
 from peewee import *
-from common.database import DbInstanceHolder
+from model.base import BaseModel
 
 
-class Channel(Model):
+class Channel(BaseModel):
     id = AutoField()
     channel_id = CharField(max_length=255)
     name = CharField(max_length=255)
@@ -11,9 +11,6 @@ class Channel(Model):
     if_enable = BooleanField(default=True)
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)
-
-    class Meta:
-        database = DbInstanceHolder.get_instance()
 
     @staticmethod
     def subscribe(channel_id, name, url):
