@@ -1,16 +1,17 @@
 # Media Subscribe
 
-Media Subscribe 是一个旨在管理媒体订阅、通知和自动化处理的后台服务
+Media Subscribe 是一个下载视频，并生成nfo文件，以供 Emby / Jellyfin 媒体服务器元数据识别的下载器。
 ## 功能特性
 
-- **媒体处理**：集成FFmpeg，支持视频转码、剪辑等多媒体处理任务。
-- **容器化部署**：Docker支持，简化部署流程。
+- 支持网站：YouTube、Bilibili
+- 订阅频道：支持订阅频道、并自动下载最新视频
+- 油猴脚本：提供油猴脚本、方便网页端操作
 
 ## 快速开始
 
 ### 环境要求
 
-- Python 3.9+
+- Python 3.11 +
 - Docker (可选，用于容器化部署)
 
 ### 安装步骤
@@ -44,6 +45,9 @@ pipenv run python media-subscribe/main.py
 ```bash
 docker compose up -d
 ```
+
+### 安装油猴脚本
+待补充
 
 ## 许可
 
