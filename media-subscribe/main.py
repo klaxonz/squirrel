@@ -52,14 +52,17 @@ if __name__ == "__main__":
     # 初始化数据库
     tables = [Task, Channel]
     DatabaseManager.initialize_database(tables)
+
     # 启动消费者
     download_consumer = DownloadTaskConsumerThread(queue_name=QUEUE_DOWNLOAD_TASK)
     subscribe_consumer = SubscribeChannelConsumerThread(queue_name=QUEUE_SUBSCRIBE_TASK)
     download_consumer.start()
     subscribe_consumer.start()
+
     # 启动定时任务
     scheduler = Scheduler()
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=2, unit='minutes')
+
     # 启动服务
     uvicorn.run(app, host="0.0.0.0", port=8000)
