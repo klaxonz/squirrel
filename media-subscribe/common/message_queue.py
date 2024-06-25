@@ -1,6 +1,5 @@
 import json
-import uuid
-
+from model.message import Message, json_to_message
 from .cache import RedisClient
 
 
@@ -15,13 +14,13 @@ class RedisMessageQueue:
         self.client = RedisClient.get_instance().client
         self.queue_name = queue_name
 
-    def enqueue(self, message_obj):
+    def enqueue(self, message):
         """
         序列化消息体并将其添加到队列尾部
-        :param message_obj: Message对象实例
+        :param message: Message对象实例
         :return: 新队列长度
         """
-        serialized_message = json.dumps(message_obj.__dict__)
+        serialized_message = json.dumps(message.__dict__)
         return self.client.rpush(self.queue_name, serialized_message)
 
     def dequeue(self, block=True, timeout=0):
@@ -36,7 +35,7 @@ class RedisMessageQueue:
             return Message(**json.loads(raw_message))
         return None
 
-    def wait_and_dequeue(self, timeout=None):
+    def wait_and_dequeue(self, timeout=None) -> Message:
         """
         阻塞等待并从队列头部取出一条消息
         :param timeout: 等待超时时间（秒），None表示无限等待
@@ -44,7 +43,7 @@ class RedisMessageQueue:
         """
         raw_message = self.client.blpop(self.queue_name, timeout=timeout)
         if raw_message:
-            return Message.from_dict(json.loads(raw_message[1]))
+            return json_to_message(raw_message)
         return None
 
     def queue_length(self):
@@ -60,25 +59,3 @@ class RedisMessageQueue:
         :return: 被移除的元素数量
         """
         return self.client.ltrim(self.queue_name, -1, 0)  # 保留队列中的第一个元素（实际上等于清空）
-
-
-class Message:
-    def __init__(self, content, message_id=None, type=None):
-        """
-        初始化消息体
-        :param content: 消息内容
-        :param message_id: 消息ID，如果不提供则自动生成
-        """
-        self.message_id = message_id or str(uuid.uuid4()).replace('-', '')
-        self.content = content
-        self.type = type
-
-    @classmethod
-    def from_dict(cls, data_dict):
-        """
-        从字典创建Message实例，用于反序列化
-        :param data_dict: 包含消息ID和内容的字典
-        :return: Message实例
-        """
-        return cls(content=data_dict['content'], message_id=data_dict['message_id'], type=data_dict['type'])
-
