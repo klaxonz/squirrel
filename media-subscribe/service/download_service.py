@@ -1,6 +1,6 @@
 import uuid
 
-from common.constants import QUEUE_DOWNLOAD_TASK
+from common.constants import QUEUE_EXTRACT_TASK
 from common.message_queue import RedisMessageQueue
 from common.url_helper import extract_top_level_domain
 from downloader.id_extractor import extract_id_from_url
@@ -30,5 +30,5 @@ def start_download(url: str):
         body=message_body
     )
     message.save()
-    RedisMessageQueue(queue_name=QUEUE_DOWNLOAD_TASK).enqueue(message)
+    RedisMessageQueue(queue_name=QUEUE_EXTRACT_TASK).enqueue(message)
     Message.update(send_status='SENDING').where(message_id=message_id, send_status='PENDING').execute()

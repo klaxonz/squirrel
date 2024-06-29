@@ -61,3 +61,12 @@ def subscribe_channel(req: SubscribeChannelRequest):
     except Exception as e:
         logger.error("订阅失败", exc_info=True)
         raise HTTPException(status_code=500, detail="订阅失败")
+
+
+@app.post("/api/task/list")
+def subscribe_channel():
+    try:
+        pass
+    except Exception as e:
+        logger.error("订阅失败", exc_info=True)
+        raise HTTPException(status_code=500, detail="订阅失败")

@@ -1,9 +1,9 @@
 import requests
 from yt_dlp import YoutubeDL
 
-from common.cache import RedisClient
 from common.config import GlobalConfig
 from meta.video import VideoFactory, Video
+from model.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
 import logging
 
@@ -11,31 +11,28 @@ import logging
 class Downloader:
 
     @staticmethod
-    def on_progress_hook(d):
+    def on_progress_hook(video_info):
         """
         回调函数，用于处理下载进度信息并更新到Redis。
         """
-        if d['status'] == 'downloading':
-            downloaded_bytes = d.get('downloaded_bytes', 0)
-            total_bytes = d.get('total_bytes', None)
-            speed = d.get('_speed_str', '')
-            eta = d.get('_eta_str', '')
+        if video_info['status'] == 'downloading':
+            downloaded_bytes = video_info.get('downloaded_bytes', 0)
+            total_bytes = video_info.get('total_bytes', None)
+            speed = video_info.get('_speed_str', '')
+            eta = video_info.get('_eta_str', '')
 
             # 处理可能的None值，避免错误
             total_bytes = total_bytes if total_bytes is not None else 'unknown'
             eta = eta if eta != '00:00' else 'unknown'  # 或者根据需要处理为具体文案，如'即将完成'
 
-            # 构建进度信息字典
-            progress_info = {
-                'downloaded_bytes': downloaded_bytes,
-                'total_bytes': total_bytes,
-                'speed': speed,
-                'eta': eta
-            }
-
-            video_id = d['info_dict']['id']
-            redis_client = RedisClient.get_instance().client
-            redis_client.hmset(f'download_stats:{video_id}', progress_info)
+            video_id = video_info['info_dict']['id']
+            download_task = DownloadTask.select().where(DownloadTask.video_id == video_id).get()
+            download_task.status = 'DOWNLOADING'
+            download_task.total_size = total_bytes
+            download_task.downloaded_size = downloaded_bytes
+            download_task.speed = speed
+            download_task.eta = eta
+            download_task.save()
 
     @staticmethod
     def get_video_info(url):

@@ -1,4 +1,5 @@
 QUEUE_DOWNLOAD_TASK = 'video:download:queue'
+QUEUE_EXTRACT_TASK = 'video:extract:queue'
 QUEUE_SUBSCRIBE_TASK = 'video:subscribe:queue'
 
 MESSAGE_TYPE_DOWNLOAD = 'download'
