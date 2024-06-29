@@ -2,6 +2,7 @@ import json
 
 from playhouse.shortcuts import model_to_dict
 
+from common.cache import RedisClient
 from common.constants import QUEUE_EXTRACT_TASK
 from common.message_queue import RedisMessageQueue
 from common.url_helper import extract_top_level_domain
@@ -17,6 +18,12 @@ def start_download(url: str):
 
     domain = extract_top_level_domain(url)
     video_id = extract_id_from_url(url)
+
+    client = RedisClient.get_instance().client
+    key = f"task:{domain}:{video_id}"
+
+    if client.exists(key):
+        return
 
     download_task = DownloadTask(
         url=url,

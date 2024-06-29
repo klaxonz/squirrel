@@ -24,6 +24,7 @@ class ExtractorInfoTaskConsumerThread(threading.Thread):
         self.running = True
 
     def run(self):
+        client = RedisClient.get_instance().client
         mq = RedisMessageQueue(queue_name=self.queue_name)
         while self.running:
             download_task = None
@@ -34,6 +35,10 @@ class ExtractorInfoTaskConsumerThread(threading.Thread):
                         Message.message_id == message.message_id, Message.send_status == 'SENDING').execute()
 
                     download_task = dict_to_model(DownloadTask, json.loads(message.body))
+                    key = f"task:{download_task.domain}:{download_task.video_id}"
+
+                    if client.exists(key):
+                        continue
 
                     video_info = Downloader.get_video_info(download_task.url)
                     DownloadTask.update(status='DOWNLOADING', title=video_info['title']).where(
@@ -78,10 +83,18 @@ class DownloadTaskConsumerThread(threading.Thread):
                         Message.message_id == message.message_id, Message.send_status == 'SENDING').execute()
 
                     download_task = dict_to_model(DownloadTask, json.loads(message.body))
+                    key = f"task:{download_task.domain}:{download_task.video_id}"
+
+                    if client.exists(key):
+                        continue
+
                     Downloader.download(download_task.url)
 
                     DownloadTask.update(status='COMPLETED').where(
                         DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'DOWNLOADING').execute()
+
+                    # 写入缓存
+                    client.set(key, download_task.video_id, 12 * 60 * 60)
 
                     download_task = None
             except Exception as e:
