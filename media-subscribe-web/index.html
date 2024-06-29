@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>下载任务列表</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .button {
+            background-color: #4CAF50; /* Green */
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .delete-button {
+            background-color: #f44336; /* Red */
+        }
+    </style>
+     <script>        // 页面加载完成后建立WebSocket连接
+        window.addEventListener('load', function() {
+            var socket = new WebSocket("ws://localhost:8000/ws/tasks");
+
+            socket.onopen = function(event) {
+                console.log("WebSocket连接已建立");
+            };
+
+            socket.onmessage = function(event) {
+                var tasksData = JSON.parse(event.data); // 假设服务器发送的是JSON格式的数据
+                updateTaskList(tasksData);
+            };
+
+            socket.onerror = function(error) {
+                console.error("WebSocket发生错误:", error);
+            };
+
+            socket.onclose = function(event) {
+                if (event.wasClean) {
+                    console.log(`[close] 连接关闭，代码=${event.code}，原因=${event.reason}`);
+                } else {
+                    console.error("[close] 连接异常关闭");
+                }
+            };
+
+            function formatBytes(bytes, decimals = 2) {
+                if (bytes === 0) return '0 Bytes';
+
+                const k = 1024;
+                const dm = decimals < 0 ? 0 : decimals;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+            }
+
+            function updateTaskList(tasks) {
+                var tbody = document.querySelector('table tbody');
+                tbody.innerHTML = ''; // 清空现有内容以准备更新
+
+                tasks.forEach(function(task) {
+                    var row = `<tr>
+                        <td>${task.id}</td>
+                        <td>${task.title}</td>
+                        <td>${task.status}</td>
+                        <td>${formatBytes(task.total_size)}</td>
+                        <td>${task.percent}</td>
+                        <td>${task.speed}</td>
+                        <td>${task.eta}</td>
+                        <td>${task.created_at}</td>
+                        <td class="action-buttons">
+                            <a href="#" class="button">详情</a>
+                            <a href="#" class="button delete-button">删除</a>
+                        </td>
+                    </tr>`;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        });
+    </script>
+</head>
+<body>
+
+<h1>下载任务列表</h1>
+<table>
+    <thead>
+        <tr>
+            <th>任务ID</th>
+            <th>任务名称</th>
+            <th>状态</th>
+            <th>文件大小</th>
+            <th>进度</th>
+            <th>下载速度</th>
+            <th>剩余时间</th>
+            <th>创建时间</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+
+    </tbody>
+</table>
+
+</body>
+</html>

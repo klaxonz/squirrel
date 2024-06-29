@@ -20,10 +20,11 @@ class Downloader:
             total_bytes = video_info.get('total_bytes', None)
             speed = video_info.get('_speed_str', '')
             eta = video_info.get('_eta_str', '')
+            percent = video_info.get('_percent_str', '')
 
             # 处理可能的None值，避免错误
             total_bytes = total_bytes if total_bytes is not None else 'unknown'
-            eta = eta if eta != '00:00' else 'unknown'  # 或者根据需要处理为具体文案，如'即将完成'
+            eta = eta if eta != '00:00' else 'unknown'
 
             video_id = video_info['info_dict']['id']
             download_task = DownloadTask.select().where(DownloadTask.video_id == video_id).get()
@@ -32,6 +33,7 @@ class Downloader:
             download_task.downloaded_size = downloaded_bytes
             download_task.speed = speed
             download_task.eta = eta
+            download_task.percent = percent
             download_task.save()
 
     @staticmethod

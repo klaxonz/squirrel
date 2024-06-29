@@ -1,7 +1,7 @@
 import json
 import logging
 import threading
-
+import uvicorn
 from playhouse.shortcuts import dict_to_model, model_to_dict
 
 from downloader.downloader import Downloader
@@ -41,7 +41,10 @@ class ExtractorInfoTaskConsumerThread(threading.Thread):
                         continue
 
                     video_info = Downloader.get_video_info(download_task.url)
-                    DownloadTask.update(status='DOWNLOADING', title=video_info['title']).where(
+                    if video_info is None:
+                        continue
+
+                    DownloadTask.update(status='WAITING', title=video_info['title']).where(
                         DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'PENDING').execute()
 
                     message_body = json.dumps(model_to_dict(download_task), default=json_serialize.more)
@@ -87,6 +90,9 @@ class DownloadTaskConsumerThread(threading.Thread):
 
                     if client.exists(key):
                         continue
+
+                    DownloadTask.update(status='DOWNLOADING').where(
+                        DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'WAITING').execute()
 
                     Downloader.download(download_task.url)
 

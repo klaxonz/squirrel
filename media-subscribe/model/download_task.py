@@ -20,12 +20,13 @@ class DownloadTask(BaseModel):
     domain = CharField(max_length=255, null=False, verbose_name='下载链接域名')
     video_id = CharField(max_length=64, null=False, verbose_name='视频ID')
     title = CharField(max_length=255, null=True, verbose_name='视频标题')
-    status = CharField(choices=['PENDING', 'DOWNLOADING', 'COMPLETED', 'FAILED', 'CANCELLED'], null=False,
+    status = CharField(choices=['PENDING', 'WAITING', 'DOWNLOADING', 'COMPLETED', 'FAILED', 'CANCELLED'], null=False,
                        default='PENDING', verbose_name='任务状态')
     downloaded_size = BigIntegerField(null=False, default=0, verbose_name='已下载大小（字节）')
     total_size = BigIntegerField(null=True, verbose_name='总大小（字节）')
-    speed = IntegerField(null=True, verbose_name='下载速度（字节/秒）')
+    speed = CharField(null=True, verbose_name='下载速度（字节/秒）')
     eta = CharField(max_length=32, null=True, verbose_name='预计剩余下载时间')
+    percent = CharField(max_length=32, null=True, verbose_name='下载进度')
     error_message = CharField(null=True, verbose_name='失败原因或错误信息')
     created_at = DateTimeField(null=False, default=datetime.now, verbose_name='创建时间')
     updated_at = DateTimeField(null=False, default=datetime.now, verbose_name='更新时间')
