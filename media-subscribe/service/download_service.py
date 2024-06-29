@@ -1,4 +1,6 @@
-import uuid
+import json
+
+from playhouse.shortcuts import model_to_dict
 
 from common.constants import QUEUE_EXTRACT_TASK
 from common.message_queue import RedisMessageQueue
@@ -6,6 +8,7 @@ from common.url_helper import extract_top_level_domain
 from downloader.id_extractor import extract_id_from_url
 from model.download_task import DownloadTask
 from model.message import Message
+from utils import json_serialize
 
 
 def start_download(url: str):
@@ -23,12 +26,11 @@ def start_download(url: str):
     )
     download_task.save()
 
-    message_id = str(uuid.uuid4()).replace('-', '')
-    message_body = download_task.to_json()
     message = Message(
-        message_id=message_id,
-        body=message_body
+        body=json.dumps(model_to_dict(download_task), default=json_serialize.more)
     )
     message.save()
+
     RedisMessageQueue(queue_name=QUEUE_EXTRACT_TASK).enqueue(message)
-    Message.update(send_status='SENDING').where(message_id=message_id, send_status='PENDING').execute()
+    Message.update(send_status='SENDING').where(Message.message_id == message.message_id,
+                                                Message.send_status == 'PENDING').execute()

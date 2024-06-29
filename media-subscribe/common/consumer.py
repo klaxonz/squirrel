@@ -1,15 +1,17 @@
+import json
 import logging
 import threading
-import uuid
+
+from playhouse.shortcuts import dict_to_model, model_to_dict
 
 from downloader.downloader import Downloader
-from model.download_task import json_to_downloadtask, DownloadTask
+from model.download_task import DownloadTask
 from model.message import Message
 from subscribe.subscribe import SubscribeChannelFactory
-from model.task import Task
 from model.channel import Channel
+from utils import json_serialize
 from .cache import RedisClient
-from .constants import QUEUE_DOWNLOAD_TASK, QUEUE_EXTRACT_TASK
+from .constants import QUEUE_DOWNLOAD_TASK
 from .message_queue import RedisMessageQueue
 
 logger = logging.getLogger(__name__)
@@ -28,37 +30,31 @@ class ExtractorInfoTaskConsumerThread(threading.Thread):
             try:
                 message = mq.wait_and_dequeue(timeout=None)
                 if message:
-                    message.send_status = 'SUCCESS'
-                    message.save()
+                    Message.update(send_status='SUCCESS').where(
+                        Message.message_id == message.message_id, Message.send_status == 'SENDING').execute()
 
-                    body = message.body
-                    download_task = json_to_downloadtask(body)
-                    download_task = DownloadTask.get_by_id(download_task.task_id)
-                    if download_task is None:
-                        return
+                    download_task = dict_to_model(DownloadTask, json.loads(message.body))
 
-                    url = download_task.url
-                    video_info = Downloader.get_video_info(url)
-                    download_task.title = video_info.title
-                    download_task.save()
+                    video_info = Downloader.get_video_info(download_task.url)
+                    DownloadTask.update(status='DOWNLOADING', title=video_info['title']).where(
+                        DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'PENDING').execute()
 
-                    message_id = str(uuid.uuid4()).replace('-', '')
-                    message_body = download_task.to_json()
+                    message_body = json.dumps(model_to_dict(download_task), default=json_serialize.more)
                     message = Message(
-                        message_id=message_id,
                         body=message_body
                     )
                     message.save()
+
                     RedisMessageQueue(queue_name=QUEUE_DOWNLOAD_TASK).enqueue(message)
-                    Message.update(send_status='SENDING').where(message_id=message_id, send_status='PENDING').execute()
+                    Message.update(send_status='SENDING').where(
+                        Message.message_id == message.message_id, Message.send_status == 'PENDING').execute()
 
                     download_task = None
             except Exception as e:
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)
                 if download_task:
-                    download_task.status = 'FAILED'
-                    download_task.error_message = str(e)
-                    download_task.save()
+                    DownloadTask.update(status='FAILED', error_message=str(e)).where(
+                        DownloadTask.task_id == download_task.task_id).execute()
 
     def stop(self):
         self.running = False
@@ -78,29 +74,21 @@ class DownloadTaskConsumerThread(threading.Thread):
             try:
                 message = mq.wait_and_dequeue(timeout=None)
                 if message:
-                    message.send_status = 'SUCCESS'
-                    message.save()
+                    Message.update(send_status='SUCCESS').where(
+                        Message.message_id == message.message_id, Message.send_status == 'SENDING').execute()
 
-                    body = message.body
-                    download_task = json_to_downloadtask(body)
-                    url = download_task.url
+                    download_task = dict_to_model(DownloadTask, json.loads(message.body))
+                    Downloader.download(download_task.url)
 
-                    video_info = Downloader.get_video_info(url)
-                    download_task.title = video_info.title
-                    download_task.status = 'DOWNLOADING'
-                    download_task.save()
+                    DownloadTask.update(status='COMPLETED').where(
+                        DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'DOWNLOADING').execute()
 
-                    Downloader.download(url)
-
-                    download_task.status = 'COMPLETED'
-                    download_task.save()
                     download_task = None
             except Exception as e:
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)
                 if download_task:
-                    download_task.status = 'FAILED'
-                    download_task.error_message = str(e)
-                    download_task.save()
+                    DownloadTask.update(status='FAILED', error_message=str(e)).where(
+                        DownloadTask.task_id == download_task.task_id).execute()
 
     def stop(self):
         self.running = False
@@ -119,21 +107,15 @@ class SubscribeChannelConsumerThread(threading.Thread):
             try:
                 message = mq.wait_and_dequeue(timeout=None)
                 if message:
-                    task = Task.get_task(message.message_id)
-                    if task and task.status is Task.STATUS_IN_PROGRESS:
-                        continue
+                    Message.update(send_status='SUCCESS').where(
+                        Message.message_id == message.message_id, Message.send_status == 'SENDING').execute()
 
-                    Task.mark_as_in_progress(message.message_id)
-                    url = message.content.get("url")
+                    url = json.loads(message.body)['url']
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(url)
                     channel_info = subscribe_channel.get_channel_info()
                     Channel.subscribe(channel_info.id, channel_info.name, channel_info.url)
 
-                    Task.mark_as_completed(message.message_id)
-
             except Exception as e:
-                if message:
-                    Task.mark_as_failed(message.message_id)
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)
 
     def stop(self):

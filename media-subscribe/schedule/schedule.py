@@ -1,17 +1,19 @@
 import json
 import time
 
+from playhouse.shortcuts import model_to_dict
+
 from common.cache import DistributedLock
-from meta.channel import ChannelMeta
-from model.task import Task
+from model.download_task import DownloadTask
 from model.channel import Channel
 from common.message_queue import RedisMessageQueue, Message
-from common.constants import QUEUE_DOWNLOAD_TASK, REDIS_KEY_UPDATE_CHANNEL_VIDEO_TASK
+from common.constants import REDIS_KEY_UPDATE_CHANNEL_VIDEO_TASK, QUEUE_EXTRACT_TASK
 from threading import Thread
 import logging
 
 from service.download_service import start_download
 from subscribe.subscribe import SubscribeChannelFactory
+from utils import json_serialize
 
 logger = logging.getLogger(__name__)
 
@@ -75,15 +77,15 @@ class RetryFailedTask:
     @classmethod
     def run(cls):
         try:
-            # 查询 50 条失败的任务
-            tasks = Task.list_tasks(Task.STATUS_FAILED)
+            tasks = DownloadTask.select().where(DownloadTask.status == 'FAILED').execute()
             # 把失败的任务放入redis队列,并修改状态
             for task in tasks:
-                # 注意：这里假设json.loads可能会因为task.message格式不正确而抛出异常
-                message_content = json.loads(task.message)
-                message = Message(content=message_content, message_id=task.id, type=task.task_type)
-                RedisMessageQueue(QUEUE_DOWNLOAD_TASK).enqueue(message)
-                Task.mark_as_in_not_start(task.id)
+                message = Message(body=json.dumps(model_to_dict(task), default=json_serialize.more))
+                message.save()
+                DownloadTask.update(status='PENDING').where(DownloadTask.task_id == task.task_id).execute()
+                RedisMessageQueue(QUEUE_EXTRACT_TASK).enqueue(message)
+                Message.update(send_status='SENDING').where(
+                    Message.message_id == message.message_id, Message.send_status == 'PENDING').execute()
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
             logger.error(f"Error decoding JSON: {e}", exc_info=True)

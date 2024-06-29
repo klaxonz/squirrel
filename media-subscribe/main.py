@@ -1,15 +1,16 @@
 from dotenv import load_dotenv
-
 load_dotenv(override=True)
+
+from model.message import Message
 import logging.config
 import os
 import uvicorn
 from api.api import app
-from common.constants import QUEUE_DOWNLOAD_TASK, QUEUE_SUBSCRIBE_TASK
-from common.consumer import DownloadTaskConsumerThread, SubscribeChannelConsumerThread
+from common.constants import QUEUE_DOWNLOAD_TASK, QUEUE_SUBSCRIBE_TASK, QUEUE_EXTRACT_TASK
+from common.consumer import DownloadTaskConsumerThread, SubscribeChannelConsumerThread, ExtractorInfoTaskConsumerThread
 from common.database import DatabaseManager
-from model.task import Task
 from model.channel import Channel
+from model.download_task import DownloadTask
 from schedule.schedule import Scheduler, RetryFailedTask, AutoUpdateChannelVideoTask
 
 # 定义日志配置字典
@@ -50,12 +51,14 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 if __name__ == "__main__":
     # 初始化数据库
-    tables = [Task, Channel]
+    tables = [DownloadTask, Channel, Message]
     DatabaseManager.initialize_database(tables)
 
     # 启动消费者
+    extract_info_consumer = ExtractorInfoTaskConsumerThread(queue_name=QUEUE_EXTRACT_TASK)
     download_consumer = DownloadTaskConsumerThread(queue_name=QUEUE_DOWNLOAD_TASK)
     subscribe_consumer = SubscribeChannelConsumerThread(queue_name=QUEUE_SUBSCRIBE_TASK)
+    extract_info_consumer.start()
     download_consumer.start()
     subscribe_consumer.start()
 

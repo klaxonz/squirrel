@@ -1,3 +1,4 @@
+import json
 import logging
 
 from fastapi import FastAPI, HTTPException
@@ -5,9 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from common.message_queue import RedisMessageQueue, Message
 from common.constants import *
-import uuid
 import service.download_service as download_service
-from model.task import Task
 
 logger = logging.getLogger(__name__)
 
@@ -46,15 +45,13 @@ def subscribe_channel(req: SubscribeChannelRequest):
     try:
         subscribe_queue = RedisMessageQueue(queue_name=QUEUE_SUBSCRIBE_TASK)
 
-        task_id = str(uuid.uuid4()).replace('-', '')
         task = {
             "url": req.url,
-            "task_id": task_id,
-            "task_type": MESSAGE_TYPE_SUBSCRIBE,
         }
 
-        Task.create_task(task)
-        message = Message(task, task_id, MESSAGE_TYPE_SUBSCRIBE)
+        message = Message(body=json.dumps(task))
+        message.save()
+
         subscribe_queue.enqueue(message)
 
         return {"status": "success", "message": "订阅成功"}

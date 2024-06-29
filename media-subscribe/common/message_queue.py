@@ -1,5 +1,9 @@
 import json
-from model.message import Message, json_to_message
+
+from playhouse.shortcuts import model_to_dict, dict_to_model
+
+from model.message import Message
+from utils import json_serialize
 from .cache import RedisClient
 
 
@@ -20,8 +24,7 @@ class RedisMessageQueue:
         :param message: Message对象实例
         :return: 新队列长度
         """
-        serialized_message = json.dumps(message.__dict__)
-        return self.client.rpush(self.queue_name, serialized_message)
+        return self.client.rpush(self.queue_name, json.dumps(model_to_dict(message), default=json_serialize.more))
 
     def dequeue(self, block=True, timeout=0):
         """
@@ -32,7 +35,7 @@ class RedisMessageQueue:
         """
         raw_message = self.client.dequeue(block=block, timeout=timeout)
         if raw_message:
-            return Message(**json.loads(raw_message))
+            return dict_to_model(Message, json.loads(raw_message[1]))
         return None
 
     def wait_and_dequeue(self, timeout=None) -> Message:
@@ -43,7 +46,7 @@ class RedisMessageQueue:
         """
         raw_message = self.client.blpop(self.queue_name, timeout=timeout)
         if raw_message:
-            return json_to_message(raw_message)
+            return dict_to_model(Message, json.loads(raw_message[1]))
         return None
 
     def queue_length(self):
