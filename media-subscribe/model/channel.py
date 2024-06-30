@@ -43,6 +43,7 @@ class ChannelVideo(BaseModel):
     video_id = CharField(max_length=64, null=False, verbose_name='视频ID')
     domain = CharField(max_length=255, null=False, verbose_name='视频链接域名')
     url = CharField(max_length=1024, null=False, verbose_name='视频链接')
+    thumbnail = CharField(max_length=2048, null=True, verbose_name='视频封面链接')
     if_read = BooleanField(default=False, verbose_name='是否已读')
     if_downloaded = BooleanField(default=False, verbose_name='是否已下载')
     uploaded_at = DateTimeField(null=True, verbose_name='上传时间')

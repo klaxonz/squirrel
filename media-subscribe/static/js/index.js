@@ -112,6 +112,7 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
     channelVideos.forEach(function(channelVideo) {
         var row = `<tr data-channel-id="${channelVideo.channel_id}" data-video-id="${channelVideo.video_id}">
             <td>${channelVideo.channel_name}</td>
+            <td class="img-box"><img src="${channelVideo.thumbnail}" referrerpolicy="no-referrer"></td>
             <td>${channelVideo.title}</td>
             <td>${channelVideo.url}</td>
             <td>${channelVideo.uploaded_at}</td>

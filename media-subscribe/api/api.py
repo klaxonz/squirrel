@@ -138,6 +138,7 @@ def subscribe_channel(
                 'title': chanel_video.title,
                 'domain': chanel_video.domain,
                 'url': chanel_video.url,
+                'thumbnail': chanel_video.thumbnail,
                 'if_downloaded': chanel_video.if_downloaded,
                 'uploaded_at': chanel_video.uploaded_at,
                 'created_at': chanel_video.created_at

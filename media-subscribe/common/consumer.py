@@ -107,8 +107,9 @@ class ExtractorChannelVideoConsumerThread(threading.Thread):
                         continue
 
                     uploaded_time = datetime.fromtimestamp(int(video_info['timestamp']))
+                    thumbnail = video_info['thumbnail']
 
-                    ChannelVideo.update(title=video_info['title'], uploaded_at=uploaded_time).where(
+                    ChannelVideo.update(title=video_info['title'], thumbnail=thumbnail, uploaded_at=uploaded_time).where(
                         ChannelVideo.channel_id == channel_video.channel_id,
                         ChannelVideo.video_id == channel_video.video_id).execute()
 
