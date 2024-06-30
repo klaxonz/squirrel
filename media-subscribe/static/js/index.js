@@ -1,6 +1,16 @@
 var currentPage = 1; // 当前页码
 var itemsPerPage = 10; // 每页显示的项目数
 
+const statusMap = {
+    'PENDING': '待处理',
+    'WAITING': '等待下载',
+    'UNSUPPORTED': '不支持',
+    'DOWNLOADING': '下载中',
+    'PAUSED': '暂停',
+    'COMPLETED': '已完成',
+    'FAILED': '失败'
+};
+
 function navigate(section) {
     // 隐藏所有内容区域
     document.querySelectorAll('#content > div').forEach(div => div.style.display = 'none');
@@ -41,10 +51,11 @@ function updateDownloadTaskList(taskInfo) {
     tbody.innerHTML = ''; // 清空现有内容以准备更新
     var tasks = taskInfo.data;
     tasks.forEach(function(task) {
+        var statusText = statusMap[task.status] || '未知状态';
         var row = `<tr>
             <td>${task.id}</td>
             <td>${task.title}</td>
-            <td>${task.status}</td>
+            <td>${statusText}</td>
             <td>${formatBytes(task.total_size)}</td>
             <td>${task.percent}</td>
             <td>${task.speed}</td>

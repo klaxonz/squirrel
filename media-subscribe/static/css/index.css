@@ -81,4 +81,5 @@ tr:nth-child(even) {
 }
 .pagination button {
     margin: 0 5px;
+    cursor: pointer;
 }

@@ -3,6 +3,9 @@ import logging
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from starlette.requests import Request
+from starlette.staticfiles import StaticFiles
+from starlette.templating import Jinja2Templates
 
 from common.message_queue import RedisMessageQueue, Message
 from common.constants import *
@@ -20,6 +23,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+
+@app.get("/")
+async def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 class DownloadRequest(BaseModel):
@@ -64,17 +75,17 @@ def subscribe_channel(req: SubscribeChannelRequest):
 
 @app.get("/api/channel/list")
 def subscribe_channel(
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
+        page: int = Query(1, ge=1, description="Page number"),
+        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
     try:
         total = Channel.select().count()
         offset = (page - 1) * page_size
         channels = (Channel
-                 .select()
-                 .order_by(Channel.created_at.desc())
-                 .offset(offset)
-                 .limit(page_size))
+                    .select()
+                    .order_by(Channel.created_at.desc())
+                    .offset(offset)
+                    .limit(page_size))
 
         channel_convert_list = [
             {
@@ -106,15 +117,14 @@ class DownloadTaskListRequest(BaseModel):
 
 @app.get("/api/task/list")
 def get_tasks(
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
+        page: int = Query(1, ge=1, description="Page number"),
+        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
     try:
         return get_updated_task_list(page, page_size)
     except Exception as e:
         logger.error("查询失败", exc_info=True)
         raise HTTPException(status_code=500, detail="查询失败")
-
 
 
 def get_updated_task_list(page: int = 1, page_size: int = 10):

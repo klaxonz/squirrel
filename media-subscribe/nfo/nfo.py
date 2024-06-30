@@ -7,7 +7,7 @@ from meta.video import Video
 
 class NfoGenerator:
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    TEMPLATE_DIR = os.path.join(PROJECT_ROOT, 'templates')
+    TEMPLATE_DIR = os.path.join(PROJECT_ROOT, 'templates/nfo')
     TEMPLATE_ENV = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
 
     @staticmethod
