@@ -153,9 +153,9 @@ tr:nth-child(even) {
     padding: 0;
     transform: translate(-50%, -50%); /* 水平和垂直居中 */
     background-color: #fefefe;
-    width: 1000px;
+    width: 70%;
     display: flex;
-    max-width: 1000px; /* 可选：限制最大宽度，提高移动设备友好性 */
+    max-width: 70%; /* 可选：限制最大宽度，提高移动设备友好性 */
     box-shadow: 0 4px 8px rgba(0,0,0,0.3); /* 添加阴影效果 */
     border-radius: 8px;
 }
