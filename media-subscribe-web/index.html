@@ -35,6 +35,19 @@
         .delete-button {
             background-color: #f44336; /* Red */
         }
+
+        #pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px; /* 可选，根据需要调整分页与表格之间的间距 */
+        }
+        #pagination .active {
+            background-color: dodgerblue;
+            color: white;
+        }
+        #pagination button {
+            margin: 0 5px;
+        }
     </style>
      <script>        // 页面加载完成后建立WebSocket连接
         window.addEventListener('load', function() {
@@ -42,34 +55,19 @@
             var currentPage = 1; // 当前页码
             var itemsPerPage = 10; // 每页显示的项目数
 
-            socket.onopen = function(event) {
-                console.log("WebSocket连接已建立");
+            function sendMessage() {
                 socket.send(JSON.stringify({
                     'page': currentPage,
-                    'pageSize': itemsPerPage
+                    'pageSize': itemsPerPage,
                 }));
-            };
+            }
 
-            socket.onmessage = function(event) {
-                socket.send(JSON.stringify({
-                    'page': currentPage,
-                    'pageSize': itemsPerPage
-                }));
-                var tasksData = JSON.parse(event.data); // 假设服务器发送的是JSON格式的数据
-                updateTaskList(tasksData);
-            };
-
-            socket.onerror = function(error) {
-                console.error("WebSocket发生错误:", error);
-            };
-
-            socket.onclose = function(event) {
-                if (event.wasClean) {
-                    console.log(`[close] 连接关闭，代码=${event.code}，原因=${event.reason}`);
-                } else {
-                    console.error("[close] 连接异常关闭");
-                }
-            };
+            function fetchData() {
+                fetch(`http://localhost:8000/api/task/list?page=${currentPage}&pageSize=${itemsPerPage}`)
+                    .then(response => response.json())
+                    .then(updateTaskList)
+                    .catch(error => console.error('Error fetching data:', error));
+            }
 
             function formatBytes(bytes, decimals = 2) {
                 if (bytes === 0) return '0 Bytes';
@@ -108,6 +106,11 @@
                 generatePaginationButtons(taskInfo.total);
             }
 
+            fetchData();
+            setInterval(()=> {
+                fetchData();
+            }, 1000)
+
             function generatePaginationButtons(total_records) {
                 var pages = Math.ceil(total_records / itemsPerPage);
                 var paginationDiv = document.getElementById('pagination');
@@ -119,7 +122,7 @@
                     button.onclick = (function(page) {
                         return function() {
                             currentPage = page;
-                            socket.send(JSON.stringify({ 'page': currentPage, 'pageSize': itemsPerPage }));
+                            sendMessage();
                         };
                     })(i);
                     if (i === currentPage) button.classList.add('active');

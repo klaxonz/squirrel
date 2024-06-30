@@ -1,17 +1,13 @@
-import asyncio
 import json
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from starlette import status
-from starlette.websockets import WebSocket
 
 from common.message_queue import RedisMessageQueue, Message
 from common.constants import *
 import service.download_service as download_service
 from model.download_task import DownloadTask
-from utils import json_serialize
 
 logger = logging.getLogger(__name__)
 
@@ -65,35 +61,22 @@ def subscribe_channel(req: SubscribeChannelRequest):
         raise HTTPException(status_code=500, detail="订阅失败")
 
 
-@app.websocket("/ws/tasks")
-async def task_status(websocket: WebSocket):
-    await websocket.accept()
+class DownloadTaskListRequest(BaseModel):
+    page: str
+    page_size: str
 
-    page = 1
-    page_size = 10
 
+@app.get("/api/task/list")
+def get_tasks(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
+):
     try:
-        while True:
-            message = await websocket.receive_text()
-            if message:
-                try:
-                    data = json.loads(message)
-                    if 'page' in data:
-                        page = data['page']
-                    if 'pageSize' in data:
-                        page_size = data['pageSize']
-                except json.JSONDecodeError:
-                    logger.warning("Received invalid JSON from client.")
-
-            response_data = get_updated_task_list(page, page_size)
-            await websocket.send_text(json.dumps(response_data, default=json_serialize.more))
-            await asyncio.sleep(1)
+        return get_updated_task_list(page, page_size)
     except Exception as e:
-        logger.error("WebSocket通信异常", exc_info=True)
-        await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Internal Error")
-    finally:
-        # 清理资源等操作
-        pass
+        logger.error("查询失败", exc_info=True)
+        raise HTTPException(status_code=500, detail="查询失败")
+
 
 
 def get_updated_task_list(page: int = 1, page_size: int = 10):

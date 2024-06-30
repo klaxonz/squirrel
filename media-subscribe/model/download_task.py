@@ -4,7 +4,6 @@ from peewee import (
     AutoField,
     BigIntegerField,
     CharField,
-    IntegerField,
     DateTimeField,
 )
 
@@ -20,7 +19,7 @@ class DownloadTask(BaseModel):
     domain = CharField(max_length=255, null=False, verbose_name='下载链接域名')
     video_id = CharField(max_length=64, null=False, verbose_name='视频ID')
     title = CharField(max_length=255, null=True, verbose_name='视频标题')
-    status = CharField(choices=['PENDING', 'WAITING', 'DOWNLOADING', 'COMPLETED', 'FAILED', 'CANCELLED'], null=False,
+    status = CharField(choices=['PENDING', 'WAITING', 'DOWNLOADING', 'UNSUPPORTED', 'COMPLETED', 'FAILED', 'CANCELLED'], null=False,
                        default='PENDING', verbose_name='任务状态')
     downloaded_size = BigIntegerField(null=False, default=0, verbose_name='已下载大小（字节）')
     total_size = BigIntegerField(null=True, verbose_name='总大小（字节）')

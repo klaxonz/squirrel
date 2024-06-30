@@ -1,7 +1,6 @@
 import json
 import logging
 import threading
-import uvicorn
 from playhouse.shortcuts import dict_to_model, model_to_dict
 
 from downloader.downloader import Downloader
@@ -47,6 +46,12 @@ class ExtractorInfoTaskConsumerThread(threading.Thread):
                     DownloadTask.update(status='WAITING', title=video_info['title']).where(
                         DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'PENDING').execute()
 
+                    # 不支持playlist
+                    if '_type' in video_info and video_info['_type'] == 'playlist':
+                        DownloadTask.update(status='UNSUPPORTED').where(
+                            DownloadTask.task_id == download_task.task_id).execute()
+                        continue
+
                     message_body = json.dumps(model_to_dict(download_task), default=json_serialize.more)
                     message = Message(
                         body=message_body
@@ -78,6 +83,7 @@ class DownloadTaskConsumerThread(threading.Thread):
         client = RedisClient.get_instance().client
         mq = RedisMessageQueue(queue_name=self.queue_name)
         while self.running:
+            message = None
             download_task = None
             try:
                 message = mq.wait_and_dequeue(timeout=None)
@@ -104,7 +110,7 @@ class DownloadTaskConsumerThread(threading.Thread):
 
                     download_task = None
             except Exception as e:
-                logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+                logger.error(f"处理消息时发生错误: {e}, message: {json.dumps(model_to_dict(message), default=json_serialize.more)}", exc_info=True)
                 if download_task:
                     DownloadTask.update(status='FAILED', error_message=str(e)).where(
                         DownloadTask.task_id == download_task.task_id).execute()
