@@ -47,16 +47,15 @@ class ExtractorInfoTaskConsumerThread(threading.Thread):
                     if video_info is None:
                         continue
 
-                    thumbnail = video_info['thumbnail']
-
-                    DownloadTask.update(status='WAITING', thumbnail=thumbnail, title=video_info['title']).where(
-                        DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'PENDING').execute()
-
                     # 不支持playlist
                     if '_type' in video_info and video_info['_type'] == 'playlist':
-                        DownloadTask.update(status='UNSUPPORTED').where(
+                        DownloadTask.update(status='UNSUPPORTED', title=video_info['title']).where(
                             DownloadTask.task_id == download_task.task_id).execute()
                         continue
+
+                    thumbnail = video_info['thumbnail']
+                    DownloadTask.update(status='WAITING', thumbnail=thumbnail, title=video_info['title']).where(
+                        DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'PENDING').execute()
 
                     message_body = json.dumps(model_to_dict(download_task), default=json_serialize.more)
                     message = Message(
