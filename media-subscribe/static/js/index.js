@@ -61,7 +61,7 @@ function updateDownloadTaskList(taskInfo) {
     var tasks = taskInfo.data;
     tasks.forEach(function(task) {
         var statusText = statusMap[task.status] || '未知状态';
-        var row = `<tr>
+        var row = `<tr data-task-id="${task.id}">
             <td>${task.id}</td>
             <td>${task.title}</td>
             <td>${statusText}</td>
@@ -71,7 +71,7 @@ function updateDownloadTaskList(taskInfo) {
             <td>${task.eta}</td>
             <td>${task.created_at}</td>
             <td class="action-buttons">
-                <a href="#" class="button">详情</a>
+                <a href="#" class="button play-button">播放</a>
                 <a href="#" class="button delete-button">删除</a>
             </td>
         </tr>`;
@@ -79,6 +79,7 @@ function updateDownloadTaskList(taskInfo) {
     });
 
     generateDownloadTaskPaginationButtons(taskInfo.total);
+    setupPlayVideoEventListeners();
 }
 
 function updateSubscribeChannelList(subscribeInfo) {
@@ -109,7 +110,7 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
     tbody.innerHTML = ''; // 清空现有内容以准备更新
     var channelVideos = subscribeChannelVideoInfo.data;
     channelVideos.forEach(function(channelVideo) {
-        var row = `<tr>
+        var row = `<tr data-channel-id="${channelVideo.channel_id}" data-video-id="${channelVideo.video_id}">
             <td>${channelVideo.channel_name}</td>
             <td>${channelVideo.title}</td>
             <td>${channelVideo.url}</td>
@@ -117,7 +118,7 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
             <td>${channelVideo.if_downloaded == 1 ? '是' : '否'}</td>
             <td>${channelVideo.created_at}</td>
             <td class="action-buttons">
-                <a href="#" class="button">下载</a>
+                <a href="#" class="button download-button">下载</a>
                 <a href="#" class="button delete-button">删除</a>
             </td>
         </tr>`;
@@ -125,7 +126,43 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
     });
 
     generateSubscribeChannelVideoPaginationButtons(subscribeChannelVideoInfo.total);
+    setupChannelVideoDownloadEventListeners()
 }
+
+function handleDownloadClick(event) {
+    event.preventDefault();
+    // 在这里执行下载操作
+    const row = event.target.parentNode.parentNode;
+    var channelId = row.getAttribute('data-channel-id');
+    var videoId = row.getAttribute('data-video-id');
+    downloadChannelVideo(channelId, videoId)
+}
+
+
+function setupChannelVideoDownloadEventListeners() {
+    var downloadButtons = document.querySelectorAll('#subscribe-update-content table tbody .download-button');
+    downloadButtons.forEach(function(button) {
+        button.addEventListener('click', handleDownloadClick);
+    });
+}
+
+
+function handlePlayClick(event) {
+    event.preventDefault();
+    // 在这里执行下载操作
+    const row = event.target.parentNode.parentNode;
+    var taskId = row.getAttribute('data-task-id');
+    showVideoModal(`/api/task/video/play/${taskId}`)
+}
+
+
+function setupPlayVideoEventListeners() {
+    var playButtons = document.querySelectorAll('#download-content table tbody .play-button');
+    playButtons.forEach(function(button) {
+        button.addEventListener('click', handlePlayClick);
+    });
+}
+
 
 function generateDownloadTaskPaginationButtons(total_records) {
     var pages = Math.ceil(total_records / itemsPerPage);
@@ -149,7 +186,7 @@ function generateDownloadTaskPaginationButtons(total_records) {
 function generateSubscribeChannelPaginationButtons(total_records) {
     var pages = Math.ceil(total_records / itemsPerPage);
     var paginationDiv = document.getElementById('subscribe-channel-pagination');
-    paginationDiv.innerHTML = ''; // 清空现有分页按钮
+    paginationDiv.innerHTML = '';
 
     for (var i = 1; i <= pages; i++) {
         var button = document.createElement('button');
@@ -198,10 +235,49 @@ function downloadChannelVideo(channelId, videoId) {
     })
     .then(response => response.json())
     .then(data => {
-        console.log(data);
-        fetchDownloadTaskData(currentPage, itemsPerPage);
+        fetchSubscribeChannelVideoData();
+
+        // 显示自定义模态框
+        document.getElementById('modalMessage').innerText = '视频下载任务已成功创建！';
+        document.getElementById('customModal').style.display = 'block';
+        // 添加点击关闭按钮的事件监听器
+        document.querySelector('.close').addEventListener('click', function() {
+            document.getElementById('customModal').style.display = 'none';
+        });
     })
     .catch(error =>console.error('Error:', error));
+}
+
+// 确保此函数在其他脚本执行后运行，或者将其放在所有其他脚本之后
+function showVideoModal(videoUrl) {
+    var videoPlayer = document.getElementById('videoPlayer');
+    var videoSource = document.getElementById('videoSource');
+
+    // 设置视频源URL
+    videoSource.src = videoUrl;
+    // 开启自动播放
+    videoPlayer.autoplay = true;
+    // 重置视频源，以便重新加载
+    videoPlayer.load();
+
+    // 显示模态框
+    document.getElementById('videoPlayerModal').style.display = 'block';
+
+    // 可选：尝试播放视频，增强兼容性
+    videoPlayer.addEventListener('canplay', function() {
+        videoPlayer.play().catch(function(error) {
+            console.error("自动播放失败:", error);
+        });
+    });
+}
+
+function closeVideoModal() {
+    // 获取video元素
+    var videoPlayer = document.getElementById('videoPlayer');
+    // 暂停视频播放
+    videoPlayer.pause();
+    // 隐藏视频播放模态框
+    document.getElementById('videoPlayerModal').style.display = 'none';
 }
 
 

@@ -102,6 +102,9 @@ class ExtractorChannelVideoConsumerThread(threading.Thread):
                     video_info = Downloader.get_video_info(channel_video.url)
                     if video_info is None:
                         continue
+                    if '_type' in video_info and video_info['_type'] == 'playlist':
+                        continue
+
                     uploaded_time = datetime.fromtimestamp(int(video_info['timestamp']))
 
                     ChannelVideo.update(title=video_info['title'], uploaded_at=uploaded_time).where(

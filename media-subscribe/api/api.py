@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -10,6 +12,8 @@ from starlette.templating import Jinja2Templates
 from common.message_queue import RedisMessageQueue, Message
 from common.constants import *
 import service.download_service as download_service
+from downloader.downloader import Downloader
+from meta.video import VideoFactory
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
 
@@ -130,10 +134,11 @@ def subscribe_channel(
                 'id': chanel_video.id,
                 'channel_id': chanel_video.channel_id,
                 'channel_name': chanel_video.channel_name,
+                'video_id': chanel_video.video_id,
                 'title': chanel_video.title,
                 'domain': chanel_video.domain,
                 'url': chanel_video.url,
-                'if_enable': chanel_video.if_downloaded,
+                'if_downloaded': chanel_video.if_downloaded,
                 'uploaded_at': chanel_video.uploaded_at,
                 'created_at': chanel_video.created_at
             } for chanel_video in channel_videos
@@ -160,7 +165,7 @@ class DownloadChannelVideoRequest(BaseModel):
 def download_channel_video(req: DownloadChannelVideoRequest):
     try:
         channel_video = ChannelVideo.select().where(ChannelVideo.channel_id == req.channel_id,
-                                                    ChannelVideo.video_id == req.video_id)
+                                                    ChannelVideo.video_id == req.video_id).first()
         download_service.start_download(channel_video.url)
         ChannelVideo.update(if_downloaded=True).where(ChannelVideo.channel_id == req.channel_id,
                                                       ChannelVideo.video_id == req.video_id).execute()
@@ -220,3 +225,35 @@ def get_updated_task_list(page: int = 1, page_size: int = 10):
         "data": task_convert_list,
         "total": total_tasks,
     }
+
+
+@app.get("/api/task/video/play/{task_id}")
+async def play_video(task_id: str):
+    try:
+        download_task = DownloadTask.select().where(DownloadTask.task_id == task_id).first()
+        base_info = Downloader.get_video_info(download_task.url)
+        video = VideoFactory.create_video(download_task.url, base_info)
+        output_dir = video.get_download_full_path()
+        filename = video.get_valid_filename() + ".mp4"
+        video_path = os.path.join(output_dir, filename)
+
+        # 检查视频文件是否存在
+        if not os.path.exists(video_path):
+            raise HTTPException(status_code=404, detail="视频文件未找到")
+
+        # 使用Starlette的StreamingResponse直接发送视频流
+        from fastapi.responses import StreamingResponse
+
+        async def video_streamer(path):
+            with open(path, "rb") as video_file:
+                while True:
+                    chunk = video_file.read(1024)  # Read 1KB at a time
+                    if not chunk:
+                        break
+                    yield chunk
+
+        return StreamingResponse(video_streamer(video_path), media_type="video/mp4")
+
+    except Exception as e:
+        logger.error("视频播放错误", exc_info=True)
+        raise HTTPException(status_code=500, detail="视频播放失败")

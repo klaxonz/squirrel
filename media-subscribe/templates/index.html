@@ -50,7 +50,7 @@
                     <th>频道ID</th>
                     <th>频道名称</th>
                     <th>状态</th>
-                    <th>来源</th>
+                    <th>频道链接</th>
                     <th>操作</th>
                 </tr>
             </thead>
@@ -80,6 +80,25 @@
             </tbody>
         </table>
         <div id="subscribe-channel-update-pagination" class="pagination"></div>
+    </div>
+
+    <!-- 自定义模态框 -->
+    <div id="customModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <p id="modalMessage">视频下载任务已成功创建！</p>
+        </div>
+    </div>
+
+    <!-- 视频播放弹窗 -->
+    <div id="videoPlayerModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeVideoModal()">&times;</span>
+            <video id="videoPlayer" width="100%" controls crossorigin="anonymous">
+                <source id="videoSource" src="" type="video/mp4">
+                您的浏览器不支持视频播放。
+            </video>
+        </div>
     </div>
 </div>
 

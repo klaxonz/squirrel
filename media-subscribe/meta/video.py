@@ -1,5 +1,6 @@
 import json
 import re
+import os
 import requests
 from common.config import GlobalConfig
 from pathvalidate import sanitize_filename
@@ -60,14 +61,14 @@ class Video:
     def get_tv_show_root_path(self):
         root_path = GlobalConfig.get_download_root_path()
         uploader_name = self.get_valid_uploader_name()
-        return f"{root_path}/{uploader_name}"
+        return os.path.join(root_path, uploader_name)
 
     def get_download_full_path(self):
         root_path = GlobalConfig.get_download_root_path()
         uploader_name = self.get_valid_uploader_name()
         season = self.get_season()
 
-        return f"{root_path}/{uploader_name}/Season {season}"
+        return os.path.join(root_path, uploader_name, f"Season {season}")
 
     def get_valid_uploader_name(self):
         uploader_name = self.get_uploader().get_name()
