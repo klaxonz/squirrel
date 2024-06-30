@@ -68,10 +68,25 @@ def subscribe_channel(req: SubscribeChannelRequest):
 @app.websocket("/ws/tasks")
 async def task_status(websocket: WebSocket):
     await websocket.accept()
+
+    page = 1
+    page_size = 10
+
     try:
         while True:
-            tasks = get_updated_task_list()
-            await websocket.send_text(json.dumps(tasks, default=json_serialize.more))
+            message = await websocket.receive_text()
+            if message:
+                try:
+                    data = json.loads(message)
+                    if 'page' in data:
+                        page = data['page']
+                    if 'pageSize' in data:
+                        page_size = data['pageSize']
+                except json.JSONDecodeError:
+                    logger.warning("Received invalid JSON from client.")
+
+            response_data = get_updated_task_list(page, page_size)
+            await websocket.send_text(json.dumps(response_data, default=json_serialize.more))
             await asyncio.sleep(1)
     except Exception as e:
         logger.error("WebSocket通信异常", exc_info=True)
@@ -81,22 +96,36 @@ async def task_status(websocket: WebSocket):
         pass
 
 
-def get_updated_task_list():
-    tasks = DownloadTask.select().where(DownloadTask.title != '').order_by(DownloadTask.created_at.desc()).limit(10)
+def get_updated_task_list(page: int = 1, page_size: int = 10):
+    total_tasks = DownloadTask.select().where(DownloadTask.title != '').count()
+    offset = (page - 1) * page_size
 
-    task_convert_list = []
-    for task in tasks:
-        task_convert_list.append({
+    tasks = (DownloadTask
+             .select()
+             .where(DownloadTask.title != '')
+             .order_by(DownloadTask.created_at.desc())
+             .offset(offset)
+             .limit(page_size))
+
+    task_convert_list = [
+        {
             "id": task.task_id,
             "status": task.status,
             "title": task.title,
-            "downloaded_size": task.downloaded_size if task.downloaded_size else 0,
-            "total_size": task.total_size if task.total_size else 0,
-            "speed": task.speed if task.speed else '未知',
-            "eta": task.eta if task.eta else '未知',
-            "percent": task.percent if task.percent else '未知',
+            "downloaded_size": task.downloaded_size or 0,
+            "total_size": task.total_size or 0,
+            "speed": task.speed or '未知',
+            "eta": task.eta or '未知',
+            "percent": task.percent or '未知',
             "error_message": task.error_message,
             "created_at": task.created_at,
-        })
+        } for task in tasks
+    ]
 
-    return task_convert_list
+    # 使用指定字段组织返回数据
+    return {
+        "page": page,
+        "pageSize": page_size,
+        "data": task_convert_list,
+        "total": total_tasks,
+    }

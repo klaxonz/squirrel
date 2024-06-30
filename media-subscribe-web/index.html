@@ -39,12 +39,22 @@
      <script>        // 页面加载完成后建立WebSocket连接
         window.addEventListener('load', function() {
             var socket = new WebSocket("ws://localhost:8000/ws/tasks");
+            var currentPage = 1; // 当前页码
+            var itemsPerPage = 10; // 每页显示的项目数
 
             socket.onopen = function(event) {
                 console.log("WebSocket连接已建立");
+                socket.send(JSON.stringify({
+                    'page': currentPage,
+                    'pageSize': itemsPerPage
+                }));
             };
 
             socket.onmessage = function(event) {
+                socket.send(JSON.stringify({
+                    'page': currentPage,
+                    'pageSize': itemsPerPage
+                }));
                 var tasksData = JSON.parse(event.data); // 假设服务器发送的是JSON格式的数据
                 updateTaskList(tasksData);
             };
@@ -73,10 +83,10 @@
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
             }
 
-            function updateTaskList(tasks) {
+            function updateTaskList(taskInfo) {
                 var tbody = document.querySelector('table tbody');
                 tbody.innerHTML = ''; // 清空现有内容以准备更新
-
+                var tasks = taskInfo.data;
                 tasks.forEach(function(task) {
                     var row = `<tr>
                         <td>${task.id}</td>
@@ -94,6 +104,27 @@
                     </tr>`;
                     tbody.insertAdjacentHTML('beforeend', row);
                 });
+
+                generatePaginationButtons(taskInfo.total);
+            }
+
+            function generatePaginationButtons(total_records) {
+                var pages = Math.ceil(total_records / itemsPerPage);
+                var paginationDiv = document.getElementById('pagination');
+                paginationDiv.innerHTML = ''; // 清空现有分页按钮
+
+                for (var i = 1; i <= pages; i++) {
+                    var button = document.createElement('button');
+                    button.textContent = i;
+                    button.onclick = (function(page) {
+                        return function() {
+                            currentPage = page;
+                            socket.send(JSON.stringify({ 'page': currentPage, 'pageSize': itemsPerPage }));
+                        };
+                    })(i);
+                    if (i === currentPage) button.classList.add('active');
+                    paginationDiv.appendChild(button);
+               }
             }
         });
     </script>
@@ -119,6 +150,7 @@
 
     </tbody>
 </table>
+<div id="pagination" class="pagination"></div>
 
 </body>
 </html>
