@@ -3,157 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <title>下载任务列表</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-        }
-        tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-        .button {
-            background-color: #4CAF50; /* Green */
-            border: none;
-            color: white;
-            padding: 8px 16px;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        .delete-button {
-            background-color: #f44336; /* Red */
-        }
-
-        #pagination {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px; /* 可选，根据需要调整分页与表格之间的间距 */
-        }
-        #pagination .active {
-            background-color: dodgerblue;
-            color: white;
-        }
-        #pagination button {
-            margin: 0 5px;
-        }
-    </style>
-     <script>        // 页面加载完成后建立WebSocket连接
-        window.addEventListener('load', function() {
-            var socket = new WebSocket("ws://localhost:8000/ws/tasks");
-            var currentPage = 1; // 当前页码
-            var itemsPerPage = 10; // 每页显示的项目数
-
-            function sendMessage() {
-                socket.send(JSON.stringify({
-                    'page': currentPage,
-                    'pageSize': itemsPerPage,
-                }));
-            }
-
-            function fetchData() {
-                fetch(`http://localhost:8000/api/task/list?page=${currentPage}&pageSize=${itemsPerPage}`)
-                    .then(response => response.json())
-                    .then(updateTaskList)
-                    .catch(error => console.error('Error fetching data:', error));
-            }
-
-            function formatBytes(bytes, decimals = 2) {
-                if (bytes === 0) return '0 Bytes';
-
-                const k = 1024;
-                const dm = decimals < 0 ? 0 : decimals;
-                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-            }
-
-            function updateTaskList(taskInfo) {
-                var tbody = document.querySelector('table tbody');
-                tbody.innerHTML = ''; // 清空现有内容以准备更新
-                var tasks = taskInfo.data;
-                tasks.forEach(function(task) {
-                    var row = `<tr>
-                        <td>${task.id}</td>
-                        <td>${task.title}</td>
-                        <td>${task.status}</td>
-                        <td>${formatBytes(task.total_size)}</td>
-                        <td>${task.percent}</td>
-                        <td>${task.speed}</td>
-                        <td>${task.eta}</td>
-                        <td>${task.created_at}</td>
-                        <td class="action-buttons">
-                            <a href="#" class="button">详情</a>
-                            <a href="#" class="button delete-button">删除</a>
-                        </td>
-                    </tr>`;
-                    tbody.insertAdjacentHTML('beforeend', row);
-                });
-
-                generatePaginationButtons(taskInfo.total);
-            }
-
-            fetchData();
-            setInterval(()=> {
-                fetchData();
-            }, 1000)
-
-            function generatePaginationButtons(total_records) {
-                var pages = Math.ceil(total_records / itemsPerPage);
-                var paginationDiv = document.getElementById('pagination');
-                paginationDiv.innerHTML = ''; // 清空现有分页按钮
-
-                for (var i = 1; i <= pages; i++) {
-                    var button = document.createElement('button');
-                    button.textContent = i;
-                    button.onclick = (function(page) {
-                        return function() {
-                            currentPage = page;
-                            sendMessage();
-                        };
-                    })(i);
-                    if (i === currentPage) button.classList.add('active');
-                    paginationDiv.appendChild(button);
-               }
-            }
-        });
-    </script>
+    <link rel="stylesheet" href="index.css">
+    <script src="index.js"></script>
 </head>
 <body>
+<nav id="nav">
+    <ul>
+        <li id="nav-download" onclick="navigate('download')">下载任务</li>
+        <li id="nav-subscribe" onclick="navigate('subscribe')">订阅管理</li>
+    </ul>
+</nav>
 
-<h1>下载任务列表</h1>
-<table>
-    <thead>
-        <tr>
-            <th>任务ID</th>
-            <th>任务名称</th>
-            <th>状态</th>
-            <th>文件大小</th>
-            <th>进度</th>
-            <th>下载速度</th>
-            <th>剩余时间</th>
-            <th>创建时间</th>
-            <th>操作</th>
-        </tr>
-    </thead>
-    <tbody>
+<div id="content">
+    <!-- 默认显示下载任务列表 -->
+    <div id="download-content" style="display: block;">
+        <h1>下载任务列表</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>任务ID</th>
+                    <th>任务名称</th>
+                    <th>状态</th>
+                    <th>文件大小</th>
+                    <th>进度</th>
+                    <th>下载速度</th>
+                    <th>剩余时间</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
 
-    </tbody>
-</table>
-<div id="pagination" class="pagination"></div>
+            </tbody>
+        </table>
+        <div id="download-task-pagination" class="pagination"></div>
+    </div>
+
+    <!-- 订阅管理内容区域，初始隐藏 -->
+    <div id="subscribe-content" style="display: none;">
+        <h1>订阅列表</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>订阅ID</th>
+                    <th>频道ID</th>
+                    <th>频道名称</th>
+                    <th>状态</th>
+                    <th>来源</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+        <div id="subscribe-channel-pagination" class="pagination"></div>
+    </div>
+</div>
+
+
 
 </body>
 </html>

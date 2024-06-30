@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from common.message_queue import RedisMessageQueue, Message
 from common.constants import *
 import service.download_service as download_service
+from model.channel import Channel
 from model.download_task import DownloadTask
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,43 @@ def subscribe_channel(req: SubscribeChannelRequest):
     except Exception as e:
         logger.error("订阅失败", exc_info=True)
         raise HTTPException(status_code=500, detail="订阅失败")
+
+
+@app.get("/api/channel/list")
+def subscribe_channel(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
+):
+    try:
+        total = Channel.select().count()
+        offset = (page - 1) * page_size
+        channels = (Channel
+                 .select()
+                 .order_by(Channel.created_at.desc())
+                 .offset(offset)
+                 .limit(page_size))
+
+        channel_convert_list = [
+            {
+                'id': channel.id,
+                'channel_id': channel.channel_id,
+                'name': channel.name,
+                'url': channel.url,
+                'if_enable': channel.if_enable,
+                'created_at': channel.created_at
+            } for channel in channels
+        ]
+
+        return {
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+            "data": channel_convert_list
+        }
+
+    except Exception as e:
+        logger.error("查询失败", exc_info=True)
+        raise HTTPException(status_code=500, detail="查询失败")
 
 
 class DownloadTaskListRequest(BaseModel):

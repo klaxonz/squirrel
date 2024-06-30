@@ -1,0 +1,84 @@
+/* 导航栏样式 */
+nav {
+    overflow: hidden; /* 防止内容溢出 */
+}
+
+nav ul {
+    list-style-type: none; /* 移除列表默认样式 */
+    margin: 0;
+    padding: 0;
+    display: flex; /* 使用Flex布局 */
+    justify-content: center; /* 水平居中对齐 */
+    align-items: center; /* 垂直居中对齐（如果需要的话） */
+    cursor: pointer;
+}
+
+nav li {
+    display: inline;
+    margin: 0 20px;
+}
+
+nav a, nav button { /* 假设导航项可能是链接或按钮 */
+    display: inline-block;
+    color: white; /* 文字颜色 */
+    text-align: center;
+    padding: 14px 16px; /* 上下内边距和左右内边距 */
+    text-decoration: none; /* 移除链接下划线 */
+    transition: 0.3s; /* 平滑过渡效果 */
+}
+
+nav a:hover, nav button:hover {
+    background-color: #ddd; /* 鼠标悬停背景颜色 */
+    color: black; /* 鼠标悬停文字颜色 */
+}
+
+/* 如果需要，可以为当前活动的导航项添加特定样式 */
+nav .active {
+    background-color: dodgerblue; /* 示例活动颜色 */
+    color: white;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+}
+th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+.button {
+    background-color: #4CAF50; /* Green */
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    text-decoration: none;
+    cursor: pointer;
+}
+.delete-button {
+    background-color: #f44336; /* Red */
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px; /* 可选，根据需要调整分页与表格之间的间距 */
+}
+.pagination .active {
+    background-color: dodgerblue;
+    color: white;
+}
+.pagination button {
+    margin: 0 5px;
+}
