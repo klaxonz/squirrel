@@ -1,13 +1,16 @@
 import json
 import logging
 import threading
+from datetime import datetime
+
 from playhouse.shortcuts import dict_to_model, model_to_dict
 
 from downloader.downloader import Downloader
 from model.download_task import DownloadTask
 from model.message import Message
+from schedule.schedule import AutoUpdateChannelVideoTask
 from subscribe.subscribe import SubscribeChannelFactory
-from model.channel import Channel
+from model.channel import Channel, ChannelVideo
 from utils import json_serialize
 from .cache import RedisClient
 from .constants import QUEUE_DOWNLOAD_TASK
@@ -73,6 +76,47 @@ class ExtractorInfoTaskConsumerThread(threading.Thread):
         self.running = False
 
 
+class ExtractorChannelVideoConsumerThread(threading.Thread):
+    def __init__(self, queue_name):
+        super().__init__()
+        self.queue_name = queue_name
+        self.running = True
+
+    def run(self):
+        client = RedisClient.get_instance().client
+        mq = RedisMessageQueue(queue_name=self.queue_name)
+        while self.running:
+            try:
+                message = mq.wait_and_dequeue(timeout=None)
+                if message:
+                    Message.update(send_status='SUCCESS').where(
+                        Message.message_id == message.message_id, Message.send_status == 'SENDING').execute()
+
+                    channel_video = dict_to_model(ChannelVideo, json.loads(message.body))
+
+                    client = RedisClient.get_instance().client
+                    key = f"task:extract:{channel_video.domain}:{channel_video.channel_id}:{channel_video.video_id}"
+                    if client.exists(key):
+                        continue
+
+                    video_info = Downloader.get_video_info(channel_video.url)
+                    if video_info is None:
+                        continue
+                    uploaded_time = datetime.fromtimestamp(int(video_info['timestamp']))
+
+                    ChannelVideo.update(title=video_info['title'], uploaded_at=uploaded_time).where(
+                        ChannelVideo.channel_id == channel_video.channel_id,
+                        ChannelVideo.video_id == channel_video.video_id).execute()
+
+                    client.set(key, channel_video.video_id, 12 * 60 * 60)
+
+            except Exception as e:
+                logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+
+    def stop(self):
+        self.running = False
+
+
 class DownloadTaskConsumerThread(threading.Thread):
     def __init__(self, queue_name):
         super().__init__()
@@ -110,7 +154,9 @@ class DownloadTaskConsumerThread(threading.Thread):
 
                     download_task = None
             except Exception as e:
-                logger.error(f"处理消息时发生错误: {e}, message: {json.dumps(model_to_dict(message), default=json_serialize.more)}", exc_info=True)
+                logger.error(
+                    f"处理消息时发生错误: {e}, message: {json.dumps(model_to_dict(message), default=json_serialize.more)}",
+                    exc_info=True)
                 if download_task:
                     DownloadTask.update(status='FAILED', error_message=str(e)).where(
                         DownloadTask.task_id == download_task.task_id).execute()
@@ -139,6 +185,7 @@ class SubscribeChannelConsumerThread(threading.Thread):
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(url)
                     channel_info = subscribe_channel.get_channel_info()
                     Channel.subscribe(channel_info.id, channel_info.name, channel_info.url)
+                    AutoUpdateChannelVideoTask.run()
 
             except Exception as e:
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)

@@ -33,3 +33,19 @@ class Channel(BaseModel):
             if_enable=False,
             updated_at=datetime.now()
         ).where(Channel.id == id).execute()
+
+
+class ChannelVideo(BaseModel):
+    id = AutoField()
+    channel_id = CharField(max_length=255, null=False, verbose_name='频道ID')
+    channel_name = CharField(max_length=255, null=False, verbose_name='频道名称')
+    title = CharField(max_length=255, null=True, verbose_name='视频标题')
+    video_id = CharField(max_length=64, null=False, verbose_name='视频ID')
+    domain = CharField(max_length=255, null=False, verbose_name='视频链接域名')
+    url = CharField(max_length=1024, null=False, verbose_name='视频链接')
+    if_read = BooleanField(default=False, verbose_name='是否已读')
+    if_downloaded = BooleanField(default=False, verbose_name='是否已下载')
+    uploaded_at = DateTimeField(null=True, verbose_name='上传时间')
+    created_at = DateTimeField(default=datetime.now)
+    updated_at = DateTimeField(default=datetime.now)
+

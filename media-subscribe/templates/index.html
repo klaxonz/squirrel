@@ -11,6 +11,7 @@
     <ul>
         <li id="nav-download" onclick="navigate('download')">下载任务</li>
         <li id="nav-subscribe" onclick="navigate('subscribe')">订阅管理</li>
+        <li id="nav-subscribe-update" onclick="navigate('subscribe-update')">视频更新</li>
     </ul>
 </nav>
 
@@ -58,6 +59,27 @@
             </tbody>
         </table>
         <div id="subscribe-channel-pagination" class="pagination"></div>
+    </div>
+
+        <!-- 订阅频道视频更新内容区域，初始隐藏 -->
+    <div id="subscribe-update-content" style="display: none;">
+        <h1>更新列表</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>频道名称</th>
+                    <th>标题</th>
+                    <th>链接</th>
+                    <th>更新时间</th>
+                    <th>是否已下载</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+        <div id="subscribe-channel-update-pagination" class="pagination"></div>
     </div>
 </div>
 

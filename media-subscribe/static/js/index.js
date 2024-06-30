@@ -29,6 +29,8 @@ function navigate(section) {
         fetchDownloadTaskData();
     } else if (section === 'subscribe') {
         fetchSubscribeChannelData();
+    } else if (section === 'subscribe-update') {
+        fetchSubscribeChannelVideoData();
     }
 }
 
@@ -43,6 +45,13 @@ function fetchSubscribeChannelData() {
     fetch(`http://localhost:8000/api/channel/list?page=${currentPage}&pageSize=${itemsPerPage}`)
         .then(response => response.json())
         .then(updateSubscribeChannelList)
+        .catch(error => console.error('Error fetching data:', error));
+}
+
+function fetchSubscribeChannelVideoData() {
+    fetch(`http://localhost:8000/api/channel/video/list?page=${currentPage}&pageSize=${itemsPerPage}`)
+        .then(response => response.json())
+        .then(updateSubscribeChannelVideoList)
         .catch(error => console.error('Error fetching data:', error));
 }
 
@@ -95,6 +104,29 @@ function updateSubscribeChannelList(subscribeInfo) {
     generateSubscribeChannelPaginationButtons(subscribeInfo.total);
 }
 
+function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
+    var tbody = document.querySelector('#subscribe-update-content table tbody');
+    tbody.innerHTML = ''; // 清空现有内容以准备更新
+    var channelVideos = subscribeChannelVideoInfo.data;
+    channelVideos.forEach(function(channelVideo) {
+        var row = `<tr>
+            <td>${channelVideo.channel_name}</td>
+            <td>${channelVideo.title}</td>
+            <td>${channelVideo.url}</td>
+            <td>${channelVideo.uploaded_at}</td>
+            <td>${channelVideo.if_downloaded == 1 ? '是' : '否'}</td>
+            <td>${channelVideo.created_at}</td>
+            <td class="action-buttons">
+                <a href="#" class="button">下载</a>
+                <a href="#" class="button delete-button">删除</a>
+            </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+    });
+
+    generateSubscribeChannelVideoPaginationButtons(subscribeChannelVideoInfo.total);
+}
+
 function generateDownloadTaskPaginationButtons(total_records) {
     var pages = Math.ceil(total_records / itemsPerPage);
     var paginationDiv = document.getElementById('download-task-pagination');
@@ -133,6 +165,46 @@ function generateSubscribeChannelPaginationButtons(total_records) {
    }
 }
 
+
+function generateSubscribeChannelVideoPaginationButtons(total_records) {
+    var pages = Math.ceil(total_records / itemsPerPage);
+    var paginationDiv = document.getElementById('subscribe-channel-update-pagination');
+    paginationDiv.innerHTML = ''; // 清空现有分页按钮
+
+    for (var i = 1; i <= pages; i++) {
+        var button = document.createElement('button');
+        button.textContent = i;
+        button.onclick = (function(page) {
+            return function() {
+                currentPage = page;
+                fetchSubscribeChannelVideoData();
+            };
+        })(i);
+        if (i === currentPage) button.classList.add('active');
+        paginationDiv.appendChild(button);
+   }
+}
+
+function downloadChannelVideo(channelId, videoId) {
+    fetch('/api/channel/video/download/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            channel_id: channelId,
+            video_id: videoId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(data);
+        fetchDownloadTaskData(currentPage, itemsPerPage);
+    })
+    .catch(error =>console.error('Error:', error));
+}
+
+
 function formatBytes(bytes, decimals = 2) {
     if (bytes === 0) return '0 Bytes';
 
@@ -153,4 +225,6 @@ window.onload = function () {
     setInterval(()=> {
         fetchDownloadTaskData(currentPage, itemsPerPage);
     }, 1000)
+
+    document.sele
 };

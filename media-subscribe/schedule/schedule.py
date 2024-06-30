@@ -11,7 +11,7 @@ from common.constants import REDIS_KEY_UPDATE_CHANNEL_VIDEO_TASK, QUEUE_EXTRACT_
 from threading import Thread
 import logging
 
-from service.download_service import start_download
+from service.download_service import start_download, start_extract
 from subscribe.subscribe import SubscribeChannelFactory
 from utils import json_serialize
 
@@ -110,7 +110,7 @@ class AutoUpdateChannelVideoTask:
                 subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
                 video_list = subscribe_channel.get_channel_videos()
                 for video in video_list:
-                    start_download(video)
+                    start_extract(video, channel)
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
             logger.error(f"Error decoding JSON: {e}", exc_info=True)

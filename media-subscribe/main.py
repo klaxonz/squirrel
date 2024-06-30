@@ -6,10 +6,11 @@ import logging.config
 import os
 import uvicorn
 from api.api import app
-from common.constants import QUEUE_DOWNLOAD_TASK, QUEUE_SUBSCRIBE_TASK, QUEUE_EXTRACT_TASK
-from common.consumer import DownloadTaskConsumerThread, SubscribeChannelConsumerThread, ExtractorInfoTaskConsumerThread
+from common.constants import QUEUE_DOWNLOAD_TASK, QUEUE_SUBSCRIBE_TASK, QUEUE_EXTRACT_TASK, QUEUE_CHANNEL_VIDEO_UPDATE
+from common.consumer import DownloadTaskConsumerThread, SubscribeChannelConsumerThread, ExtractorInfoTaskConsumerThread, \
+    ExtractorChannelVideoConsumerThread
 from common.database import DatabaseManager
-from model.channel import Channel
+from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
 from schedule.schedule import Scheduler, RetryFailedTask, AutoUpdateChannelVideoTask
 
@@ -51,17 +52,18 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 if __name__ == "__main__":
     # 初始化数据库
-    tables = [DownloadTask, Channel, Message]
+    tables = [DownloadTask, Channel, ChannelVideo, Message]
     DatabaseManager.initialize_database(tables)
 
     # 启动消费者
     extract_info_consumer = ExtractorInfoTaskConsumerThread(queue_name=QUEUE_EXTRACT_TASK)
     download_consumer = DownloadTaskConsumerThread(queue_name=QUEUE_DOWNLOAD_TASK)
     subscribe_consumer = SubscribeChannelConsumerThread(queue_name=QUEUE_SUBSCRIBE_TASK)
+    subscribe_channel_video_consumer = ExtractorChannelVideoConsumerThread(queue_name=QUEUE_CHANNEL_VIDEO_UPDATE)
     extract_info_consumer.start()
     download_consumer.start()
     subscribe_consumer.start()
-
+    subscribe_channel_video_consumer.start()
     # 启动定时任务
     scheduler = Scheduler()
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
