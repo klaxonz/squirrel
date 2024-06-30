@@ -301,5 +301,10 @@ window.onload = function () {
         fetchDownloadTaskData(currentPage, itemsPerPage);
     }, 1000)
 
-    document.sele
+    document.addEventListener('keydown', function(event) {
+        // 检查用户是否按下了Esc键（其键码为27）
+        if (event.keyCode === 27 && document.getElementById('videoPlayerModal').style.display === 'block') {
+            closeVideoModal();
+        }
+    });
 };

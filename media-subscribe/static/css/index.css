@@ -1,3 +1,9 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
 /* 导航栏样式 */
 nav {
     overflow: hidden; /* 防止内容溢出 */
@@ -126,19 +132,40 @@ tr:nth-child(even) {
     cursor: pointer;
 }
 
+.video-modal {
+    display: none; /* 默认隐藏模态框 */
+    position: fixed; /* 使其脱离文档流 */
+    z-index: 1; /* 确保在顶部 */
+    left: 0;
+    top: 0;
+    width: 100%; /* 覆盖全屏宽度，用于半透明背景 */
+    height: 100%;
+    overflow: auto; /* 允许滚动，如果内容超出屏幕 */
+    background-color: rgba(0,0,0,0.4); /* 半透明黑色背景 */
+}
 
 /* 修改模态内容盒子样式以实现居中 */
 .video-modal-content{
     position: absolute; /* 改为绝对定位以便居中 */
     top: 50%;
     left: 50%;
+    margin: 0;
+    padding: 0;
     transform: translate(-50%, -50%); /* 水平和垂直居中 */
     background-color: #fefefe;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 600px; /* 可选：限制最大宽度，提高移动设备友好性 */
+    width: 1000px;
+    display: flex;
+    max-width: 1000px; /* 可选：限制最大宽度，提高移动设备友好性 */
     box-shadow: 0 4px 8px rgba(0,0,0,0.3); /* 添加阴影效果 */
+    border-radius: 8px;
+}
+
+.video-modal-content video {
+    height: 100%; /* 或者一个固定的像素值，如height: 400px; */
+    width: 100%; /* 保持宽高比 */
+    object-fit: cover; /* 保持视频宽高比并填充容器 */
+    border-radius: 8px;
+
 }
 
 /* 关闭按钮样式保持不变 */
