@@ -116,7 +116,6 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
             <td>${channelVideo.url}</td>
             <td>${channelVideo.uploaded_at}</td>
             <td>${channelVideo.if_downloaded == 1 ? '是' : '否'}</td>
-            <td>${channelVideo.created_at}</td>
             <td class="action-buttons">
                 <a href="#" class="button download-button">下载</a>
                 <a href="#" class="button delete-button">删除</a>
