@@ -47,7 +47,9 @@ class ExtractorInfoTaskConsumerThread(threading.Thread):
                     if video_info is None:
                         continue
 
-                    DownloadTask.update(status='WAITING', title=video_info['title']).where(
+                    thumbnail = video_info['thumbnail']
+
+                    DownloadTask.update(status='WAITING', thumbnail=thumbnail, title=video_info['title']).where(
                         DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'PENDING').execute()
 
                     # 不支持playlist

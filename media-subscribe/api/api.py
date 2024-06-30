@@ -207,6 +207,7 @@ def get_updated_task_list(page: int = 1, page_size: int = 10):
     task_convert_list = [
         {
             "id": task.task_id,
+            "thumbnail": task.thumbnail,
             "status": task.status,
             "title": task.title,
             "downloaded_size": task.downloaded_size or 0,

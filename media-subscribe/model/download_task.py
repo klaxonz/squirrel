@@ -16,6 +16,7 @@ class DownloadTask(BaseModel):
     """
     task_id = AutoField(primary_key=True, verbose_name='任务ID')
     url = CharField(max_length=2048, null=False, verbose_name='下载链接')
+    thumbnail = CharField(max_length=2048, null=True, verbose_name='封面链接')
     domain = CharField(max_length=255, null=False, verbose_name='下载链接域名')
     video_id = CharField(max_length=64, null=False, verbose_name='视频ID')
     title = CharField(max_length=255, null=True, verbose_name='视频标题')

@@ -63,6 +63,7 @@ function updateDownloadTaskList(taskInfo) {
         var statusText = statusMap[task.status] || '未知状态';
         var row = `<tr data-task-id="${task.id}">
             <td>${task.id}</td>
+            <td  class="img-box"><img src="${task.thumbnail}" referrerpolicy="no-referrer"></td>
             <td>${task.title}</td>
             <td>${statusText}</td>
             <td>${formatBytes(task.total_size)}</td>
@@ -110,7 +111,7 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
     tbody.innerHTML = ''; // 清空现有内容以准备更新
     var channelVideos = subscribeChannelVideoInfo.data;
     channelVideos.forEach(function(channelVideo) {
-        var row = `<tr data-channel-id="${channelVideo.channel_id}" data-video-id="${channelVideo.video_id}">
+        var row = `<tr data-channel-id="${channelVideo.channel_id}" data-video-id="${channelVideo.video_id}" >
             <td>${channelVideo.channel_name}</td>
             <td class="img-box"><img src="${channelVideo.thumbnail}" referrerpolicy="no-referrer"></td>
             <td>${channelVideo.title}</td>

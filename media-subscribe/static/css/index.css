@@ -76,14 +76,25 @@ tr:nth-child(even) {
     background-color: #f44336; /* Red */
 }
 
-#subscribe-update-content table tbody .img-box {
-    width: 200px;
+#download-content table tbody .img-box {
+    width: 140px;
+}
+
+#download-content table tbody img {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
 }
 
 
+#subscribe-update-content table tbody .img-box {
+    width: 140px;
+}
+
 #subscribe-update-content table tbody img {
-    width: 200px;
-    margin: 0 auto;
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
 }
 
 
