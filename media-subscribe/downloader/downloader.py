@@ -1,7 +1,10 @@
+import os
+
 import requests
 from yt_dlp import YoutubeDL
 
 from common.config import GlobalConfig
+from downloader.id_extractor import extract_id_from_url
 from meta.video import VideoFactory, Video
 from model.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
@@ -82,3 +85,9 @@ class Downloader:
             ydl.download([url])
             Downloader.download_avatar(video)
             NfoGenerator.generate_nfo(video)
+
+            filepath = os.path.join(output_dir, filename + '.mp4')
+            # 获取文件大小
+            file_size = os.path.getsize(filepath)
+            video_id = extract_id_from_url(url)
+            DownloadTask.update(total_size=file_size).where(DownloadTask.video_id == video_id).execute()

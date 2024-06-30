@@ -6,6 +6,7 @@ from datetime import datetime
 from playhouse.shortcuts import dict_to_model, model_to_dict
 
 from downloader.downloader import Downloader
+from meta.video import VideoFactory
 from model.download_task import DownloadTask
 from model.message import Message
 from schedule.schedule import AutoUpdateChannelVideoTask
