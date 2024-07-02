@@ -35,21 +35,21 @@ function navigate(section) {
 }
 
 function fetchDownloadTaskData() {
-    fetch(`http://localhost:8000/api/task/list?page=${currentPage}&pageSize=${itemsPerPage}`)
+    fetch(`/api/task/list?page=${currentPage}&pageSize=${itemsPerPage}`)
         .then(response => response.json())
         .then(updateDownloadTaskList)
         .catch(error => console.error('Error fetching data:', error));
 }
 
 function fetchSubscribeChannelData() {
-    fetch(`http://localhost:8000/api/channel/list?page=${currentPage}&pageSize=${itemsPerPage}`)
+    fetch(`/api/channel/list?page=${currentPage}&pageSize=${itemsPerPage}`)
         .then(response => response.json())
         .then(updateSubscribeChannelList)
         .catch(error => console.error('Error fetching data:', error));
 }
 
 function fetchSubscribeChannelVideoData() {
-    fetch(`http://localhost:8000/api/channel/video/list?page=${currentPage}&pageSize=${itemsPerPage}`)
+    fetch(`/api/channel/video/list?page=${currentPage}&pageSize=${itemsPerPage}`)
         .then(response => response.json())
         .then(updateSubscribeChannelVideoList)
         .catch(error => console.error('Error fetching data:', error));
