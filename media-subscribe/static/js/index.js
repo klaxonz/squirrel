@@ -55,6 +55,49 @@ function fetchSubscribeChannelVideoData() {
         .catch(error => console.error('Error fetching data:', error));
 }
 
+function downloadChannelVideo(channelId, videoId) {
+    fetch('/api/channel/video/download/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            channel_id: channelId,
+            video_id: videoId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        fetchSubscribeChannelVideoData();
+
+        // 显示自定义模态框
+        document.getElementById('modalMessage').innerText = '视频下载任务已成功创建！';
+        document.getElementById('customModal').style.display = 'block';
+        // 添加点击关闭按钮的事件监听器
+        document.querySelector('.close').addEventListener('click', function() {
+            document.getElementById('customModal').style.display = 'none';
+        });
+    })
+    .catch(error =>console.error('Error:', error));
+}
+
+function markReadChannelVideo(channelId, videoId) {
+    fetch('/api/channel/video/mark-read/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            channel_id: channelId,
+            video_id: videoId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        fetchSubscribeChannelVideoData();
+    });
+}
+
 function updateDownloadTaskList(taskInfo) {
     var tbody = document.querySelector('#download-content table tbody');
     tbody.innerHTML = ''; // 清空现有内容以准备更新
@@ -118,9 +161,10 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
             <td>${channelVideo.url}</td>
             <td>${channelVideo.uploaded_at}</td>
             <td>${channelVideo.if_downloaded == 1 ? '是' : '否'}</td>
+            <td>${channelVideo.if_read == 1 ? '是' : '否'}</td>
             <td class="action-buttons">
                 <a href="#" class="button download-button">下载</a>
-                <a href="#" class="button delete-button">删除</a>
+                <a href="#" class="button delete-button" onclick="markReadChannelVideo('${channelVideo.channel_id}', '${channelVideo.video_id}')">标记</a>
             </td>
         </tr>`;
         tbody.insertAdjacentHTML('beforeend', row);
@@ -221,32 +265,6 @@ function generateSubscribeChannelVideoPaginationButtons(total_records) {
         if (i === currentPage) button.classList.add('active');
         paginationDiv.appendChild(button);
    }
-}
-
-function downloadChannelVideo(channelId, videoId) {
-    fetch('/api/channel/video/download/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            channel_id: channelId,
-            video_id: videoId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        fetchSubscribeChannelVideoData();
-
-        // 显示自定义模态框
-        document.getElementById('modalMessage').innerText = '视频下载任务已成功创建！';
-        document.getElementById('customModal').style.display = 'block';
-        // 添加点击关闭按钮的事件监听器
-        document.querySelector('.close').addEventListener('click', function() {
-            document.getElementById('customModal').style.display = 'none';
-        });
-    })
-    .catch(error =>console.error('Error:', error));
 }
 
 // 确保此函数在其他脚本执行后运行，或者将其放在所有其他脚本之后

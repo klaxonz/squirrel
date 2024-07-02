@@ -140,6 +140,7 @@ def subscribe_channel(
                 'url': chanel_video.url,
                 'thumbnail': chanel_video.thumbnail,
                 'if_downloaded': chanel_video.if_downloaded,
+                'if_read': chanel_video.if_read,
                 'uploaded_at': chanel_video.uploaded_at,
                 'created_at': chanel_video.created_at
             } for chanel_video in channel_videos
@@ -155,6 +156,21 @@ def subscribe_channel(
     except Exception as e:
         logger.error("查询失败", exc_info=True)
         raise HTTPException(status_code=500, detail="查询失败")
+
+
+class MarkReadRequest(BaseModel):
+    channel_id: str
+    video_id: str
+
+
+@app.post("/api/channel/video/mark-read")
+def subscribe_channel(req: MarkReadRequest):
+    try:
+        ChannelVideo.update(if_read=True).where(
+            ChannelVideo.channel_id == req.channel_id, ChannelVideo.video_id == req.video_id).execute()
+    except Exception as e:
+        logger.error("标记成功", exc_info=True)
+        raise HTTPException(status_code=500, detail="标记失败")
 
 
 class DownloadChannelVideoRequest(BaseModel):
