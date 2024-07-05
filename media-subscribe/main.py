@@ -56,6 +56,8 @@ if __name__ == "__main__":
     DatabaseManager.initialize_database(tables)
 
     # 启动消费者
+    logger = logging.getLogger(__name__)
+    logger.info('Starting consumers...')
     extract_info_consumer = ExtractorInfoTaskConsumerThread(queue_name=QUEUE_EXTRACT_TASK)
     download_consumer = DownloadTaskConsumerThread(queue_name=QUEUE_DOWNLOAD_TASK)
     subscribe_consumer = SubscribeChannelConsumerThread(queue_name=QUEUE_SUBSCRIBE_TASK)
@@ -64,10 +66,14 @@ if __name__ == "__main__":
     download_consumer.start()
     subscribe_consumer.start()
     subscribe_channel_video_consumer.start()
+    logger.info('Consumers started.')
     # 启动定时任务
+    logger.info('Starting scheduler...')
     scheduler = Scheduler()
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=2, unit='minutes')
+    logger.info('Scheduler started.')
 
     # 启动服务
+    logger.info('Starting server...')
     uvicorn.run(app, host="0.0.0.0", port=8000)

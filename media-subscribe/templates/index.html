@@ -50,8 +50,10 @@
                     <th>订阅ID</th>
                     <th>频道ID</th>
                     <th>频道名称</th>
-                    <th>状态</th>
+                    <th>是否启用</th>
+                    <th>是否自动下载</th>
                     <th>频道链接</th>
+                    <th>订阅时间</th>
                     <th>操作</th>
                 </tr>
             </thead>
@@ -101,6 +103,41 @@
                 <source id="videoSource" src="" type="video/mp4">
                 您的浏览器不支持视频播放。
             </video>
+        </div>
+    </div>
+
+    <div id="channelInfoModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div id="modalDetailsContent">
+                <!-- 这里将填充从服务器获取的详细信息 -->
+                <p style="display: none"><strong>订阅ID:</strong> <span id="modalSubscribeId"></span></p>
+                <p><strong>频道ID:</strong> <span id="modalChannelId"></span></p>
+                <p><strong>频道名称:</strong> <span id="modalChannelName"></span></p>
+                <!--     是否启用(单选框)          -->
+                <p><strong>是否启用:</strong>
+                    <label>
+                        <input type="radio" name="modalChannelIfEnable" value="true" checked> 启用
+                    </label>
+                    <label>
+                        <input type="radio" name="modalChannelIfEnable" value="false"> 禁用
+                    </label>
+                </p>
+                <!--   是否自动下载(单选框)             -->
+                <p><strong>是否自动下载:</strong>
+                    <label>
+                        <input type="radio" name="modalChannelIfAutoDownload" value="true" checked> 启用
+                    </label>
+                    <label>
+                        <input type="radio" name="modalChannelIfAutoDownload" value="false"> 禁用
+                    </label>
+                </p>
+                <p><strong>频道链接:</strong> <span id="modalChannelUrl"></span></p>
+                <p><strong>订阅时间:</strong> <span id="modalChannelSubscribeTime"></span></p>
+            </div>
+            <div id="modalDetailsButtons">
+                <button id="modalDetailsSaveButton" onclick="handleChannelSaveClick()">保存</button>
+                <button id="modalDetailsCancelButton" onclick="handleChannelDetailCloseClick()">取消</button>
+            </div>
         </div>
     </div>
 </div>

@@ -98,12 +98,6 @@ class AutoUpdateChannelVideoTask:
 
     @classmethod
     def run(cls):
-        # 尝试获取锁
-        lock = DistributedLock(REDIS_KEY_UPDATE_CHANNEL_VIDEO_TASK)
-        if not lock.acquire(2 * 60 * 60):
-            logger.warning("Another instance of the task is running, skipping.")
-            return
-
         try:
             channels = Channel.select().where(Channel.if_enable == 1)
             for channel in channels:
@@ -117,6 +111,3 @@ class AutoUpdateChannelVideoTask:
         except Exception as e:
             # 捕获其他所有异常
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
-        finally:
-            # 确保锁被释放
-            lock.release()

@@ -57,19 +57,17 @@ def start_extract(url: str, channel: Channel):
     if client.exists(key):
         return
 
-    count = ChannelVideo.select().where(ChannelVideo.channel_id == channel.channel_id,
-                                        ChannelVideo.video_id == video_id).count()
-    if count > 0:
-        return
-
-    channel_video = ChannelVideo(
-        channel_id=channel.channel_id,
-        channel_name=channel.name,
-        domain=domain,
-        video_id=video_id,
-        url=url,
-    )
-    channel_video.save()
+    channel_video = ChannelVideo.select().where(ChannelVideo.channel_id == channel.channel_id,
+                                        ChannelVideo.video_id == video_id).first()
+    if channel_video is None:
+        channel_video = ChannelVideo(
+            channel_id=channel.channel_id,
+            channel_name=channel.name,
+            domain=domain,
+            video_id=video_id,
+            url=url,
+        )
+        channel_video.save()
 
     message = Message(
         body=json.dumps(model_to_dict(channel_video), default=json_serialize.more)

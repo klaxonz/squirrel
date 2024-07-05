@@ -40,6 +40,7 @@ class DatabaseManager:
             cls.create_database_if_not_exists(GlobalConfig.DEFAULT_MYSQL_DATABASE, connection)
         db = DbInstanceHolder.get_instance()
         db.create_tables(tables)
+        logger.info("Database initialized successfully.")
 
 
 class DbInstanceHolder:

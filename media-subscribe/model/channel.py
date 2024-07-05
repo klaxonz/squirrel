@@ -9,6 +9,7 @@ class Channel(BaseModel):
     name = CharField(max_length=255)
     url = CharField(max_length=1024)
     if_enable = BooleanField(default=True)
+    if_auto_download = BooleanField(default=False)
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)
 

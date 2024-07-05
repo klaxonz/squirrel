@@ -136,10 +136,11 @@ function updateSubscribeChannelList(subscribeInfo) {
             <td>${channel.channel_id}</td>
             <td>${channel.name}</td>
             <td>${channel.if_enable == 1 ? '启用' : '暂停'}</td>
+            <td>${channel.if_auto_download == 1 ? '是' : '否'}</td>
             <td>${channel.url}</td>
             <td>${channel.created_at}</td>
             <td class="action-buttons">
-                <a href="#" class="button">详情</a>
+                <a href="#" class="button" onclick="handleChannelDetailClick(${channel.id})">详情</a>
                 <a href="#" class="button delete-button">删除</a>
             </td>
         </tr>`;
@@ -172,6 +173,70 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
 
     generateSubscribeChannelVideoPaginationButtons(subscribeChannelVideoInfo.total);
     setupChannelVideoDownloadEventListeners()
+}
+
+function handleChannelDetailClick(subscribe_id) {
+    fetch(`/api/channel/detail?id=${subscribe_id}`)
+        .then(response => response.json())
+        .then(openChannelDetailModal)
+        .catch(error => console.error('Error fetching data:', error));
+}
+
+function openChannelDetailModal(channelDetail) {
+    document.getElementById('channelInfoModal').style.display = 'block';
+    document.getElementById('modalSubscribeId').innerText = channelDetail.id;
+    document.getElementById('modalChannelId').innerText = channelDetail.channelId;
+    document.getElementById('modalChannelName').innerText = channelDetail.name;
+    document.getElementById('modalChannelUrl').innerText = channelDetail.url;
+    document.getElementById('modalChannelSubscribeTime').innerText = channelDetail.createdAt;
+    const enableRadios = document.querySelectorAll('input[name="modalChannelIfEnable"]');
+    if (channelDetail.ifEnable == 1) {
+        enableRadios[0].checked = true;
+    } else {
+        enableRadios[1].checked = true;
+    }
+    const autoDownloadRadios = document.querySelectorAll('input[name="modalChannelIfAutoDownload"]');
+    if (channelDetail.ifAutoDownload == 1) {
+        autoDownloadRadios[0].checked = true;
+    } else {
+        autoDownloadRadios[1].checked = true;
+    }
+}
+
+function handleChannelSaveClick(event) {
+    var subscribeId = document.getElementById('modalSubscribeId').innerText.trim();
+    var ifEnable = document.querySelector('input[name="modalChannelIfEnable"]:checked').value;
+    var ifAutoDownload = document.querySelector('input[name="modalChannelIfAutoDownload"]:checked').value;
+
+    // Construct the request body as JSON
+    var requestBody = {
+        id: subscribeId,
+        ifEnable: ifEnable, // Assuming values are strings like 'true'/'false', convert to boolean if needed
+        ifAutoDownload: ifAutoDownload // Same conversion if applicable
+    };
+
+    fetch(`/api/channel/update`, {
+        method: 'POST', // Specify the method as POST
+        headers: {
+            'Content-Type': 'application/json', // Set the content type header
+        },
+        body: JSON.stringify(requestBody), // Convert the request body to a JSON string
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        handleChannelDetailCloseClick();
+        fetchSubscribeChannelData();
+    })
+    .catch(error => console.error('Error updating channel:', error));
+}
+
+function handleChannelDetailCloseClick(event) {
+    document.getElementById('channelInfoModal').style.display = 'none';
 }
 
 function handleDownloadClick(event) {
@@ -239,7 +304,7 @@ function generateSubscribeChannelPaginationButtons(total_records) {
         button.onclick = (function(page) {
             return function() {
                 currentPage = page;
-                fetchDownloadTaskData();
+                fetchSubscribeChannelData();
             };
         })(i);
         if (i === currentPage) button.classList.add('active');

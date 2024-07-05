@@ -79,6 +79,40 @@ def subscribe_channel(req: SubscribeChannelRequest):
         raise HTTPException(status_code=500, detail="订阅失败")
 
 
+class ChannelUpdateRequest(BaseModel):
+    id: int
+    ifEnable: bool
+    ifAutoDownload: bool
+
+
+@app.post("/api/channel/update")
+def update_chanel(req: ChannelUpdateRequest):
+    try:
+        Channel.update(if_enable=req.ifEnable, if_auto_download=req.ifAutoDownload).where(Channel.id == req.id).execute()
+        return {"status": "success", "message": "更新成功"}
+    except Exception as e:
+        logger.error("订阅失败", exc_info=True)
+        raise HTTPException(status_code=500, detail="订阅失败")
+
+
+@app.get("/api/channel/detail")
+def channel_detail(id: int):
+    try:
+        channel = Channel.select().where(Channel.id == id).get()
+        return {
+            "id": channel.id,
+            "channelId": channel.channel_id,
+            "name": channel.name,
+            "url": channel.url,
+            "ifEnable": channel.if_enable,
+            "ifAutoDownload": channel.if_auto_download,
+            "createdAt": channel.created_at,
+        }
+    except Exception as e:
+        logger.error("订阅失败", exc_info=True)
+        raise HTTPException(status_code=500, detail="订阅失败")
+
+
 @app.get("/api/channel/list")
 def subscribe_channel(
         page: int = Query(1, ge=1, description="Page number"),
@@ -100,6 +134,7 @@ def subscribe_channel(
                 'name': channel.name,
                 'url': channel.url,
                 'if_enable': channel.if_enable,
+                'if_auto_download': channel.if_auto_download,
                 'created_at': channel.created_at
             } for channel in channels
         ]

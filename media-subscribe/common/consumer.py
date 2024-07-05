@@ -6,10 +6,10 @@ from datetime import datetime
 from playhouse.shortcuts import dict_to_model, model_to_dict
 
 from downloader.downloader import Downloader
-from meta.video import VideoFactory
 from model.download_task import DownloadTask
 from model.message import Message
 from schedule.schedule import AutoUpdateChannelVideoTask
+from service import download_service
 from subscribe.subscribe import SubscribeChannelFactory
 from model.channel import Channel, ChannelVideo
 from utils import json_serialize
@@ -110,11 +110,17 @@ class ExtractorChannelVideoConsumerThread(threading.Thread):
                     uploaded_time = datetime.fromtimestamp(int(video_info['timestamp']))
                     thumbnail = video_info['thumbnail']
 
-                    ChannelVideo.update(title=video_info['title'], thumbnail=thumbnail, uploaded_at=uploaded_time).where(
+                    ChannelVideo.update(title=video_info['title'], thumbnail=thumbnail,
+                                        uploaded_at=uploaded_time).where(
                         ChannelVideo.channel_id == channel_video.channel_id,
                         ChannelVideo.video_id == channel_video.video_id).execute()
 
                     client.set(key, channel_video.video_id, 12 * 60 * 60)
+                    channel = Channel.select().where(Channel.channel_id == channel_video.channel_id).first()
+                    if channel.if_auto_download:
+                        download_service.start_download(channel_video.url)
+                        ChannelVideo.update(if_downloaded=True).where(ChannelVideo.video_id == channel_video.video_id,
+                                                                      ChannelVideo.channel_id == channel_video.channel_id).execute()
 
             except Exception as e:
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)
