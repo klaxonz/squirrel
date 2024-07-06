@@ -1,17 +1,17 @@
 import json
 import time
 
+from peewee import SQL
 from playhouse.shortcuts import model_to_dict
 
-from common.cache import DistributedLock
 from model.download_task import DownloadTask
 from model.channel import Channel
 from common.message_queue import RedisMessageQueue, Message
-from common.constants import REDIS_KEY_UPDATE_CHANNEL_VIDEO_TASK, QUEUE_EXTRACT_TASK
+from common.constants import QUEUE_EXTRACT_TASK
 from threading import Thread
 import logging
 
-from service.download_service import start_download, start_extract
+from service.download_service import start_extract
 from subscribe.subscribe import SubscribeChannelFactory
 from utils import json_serialize
 
@@ -77,7 +77,12 @@ class RetryFailedTask:
     @classmethod
     def run(cls):
         try:
-            tasks = DownloadTask.select().where(DownloadTask.status == 'FAILED').execute()
+            two_minutes_ago_sql = SQL("DATE_SUB(NOW(), INTERVAL 2 MINUTE)")
+            # 执行查询
+            tasks = DownloadTask.select().where(
+                (DownloadTask.status == 'FAILED') |
+                ((DownloadTask.status == 'DOWNLOADING') & (DownloadTask.updated_at <= two_minutes_ago_sql))
+            ).execute()
             # 把失败的任务放入redis队列,并修改状态
             for task in tasks:
                 message = Message(body=json.dumps(model_to_dict(task), default=json_serialize.more))

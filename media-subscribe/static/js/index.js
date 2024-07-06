@@ -35,7 +35,8 @@ function navigate(section) {
 }
 
 function fetchDownloadTaskData() {
-    fetch(`/api/task/list?page=${currentPage}&pageSize=${itemsPerPage}`)
+    const status = document.querySelector('input[name="download-task-status"]:checked').value;
+    fetch(`/api/task/list?status=${status}&page=${currentPage}&pageSize=${itemsPerPage}`)
         .then(response => response.json())
         .then(updateDownloadTaskList)
         .catch(error => console.error('Error fetching data:', error));
@@ -49,10 +50,18 @@ function fetchSubscribeChannelData() {
 }
 
 function fetchSubscribeChannelVideoData() {
-    fetch(`/api/channel-video/list?page=${currentPage}&pageSize=${itemsPerPage}`)
+    const title = document.getElementById('titleSearchInput').value.trim();
+    const channel_name = document.getElementById('channelSearchInput').value.trim();
+    fetch(`/api/channel-video/list?title=${title}&channel_name=${channel_name}&page=${currentPage}&pageSize=${itemsPerPage}`)
         .then(response => response.json())
         .then(updateSubscribeChannelVideoList)
         .catch(error => console.error('Error fetching data:', error));
+}
+
+function handleChannelSearchResetClick() {
+    document.getElementById('titleSearchInput').value = '';
+    document.getElementById('channelSearchInput').value = '';
+    fetchSubscribeChannelVideoData();
 }
 
 function downloadChannelVideo(channelId, videoId) {
@@ -69,14 +78,7 @@ function downloadChannelVideo(channelId, videoId) {
     .then(response => response.json())
     .then(data => {
         fetchSubscribeChannelVideoData();
-
-        // 显示自定义模态框
-        document.getElementById('modalMessage').innerText = '视频下载任务已成功创建！';
-        document.getElementById('customModal').style.display = 'block';
-        // 添加点击关闭按钮的事件监听器
-        document.querySelector('.close').addEventListener('click', function() {
-            document.getElementById('customModal').style.display = 'none';
-        });
+        openMessageModal('视频下载任务已成功创建！')
     })
     .catch(error =>console.error('Error:', error));
 }
@@ -142,7 +144,7 @@ function updateSubscribeChannelList(subscribeInfo) {
             <td>${channel.created_at}</td>
             <td class="action-buttons">
                 <a href="#" class="button" onclick="handleChannelDetailClick(${channel.id})">详情</a>
-                <a href="#" class="button delete-button">删除</a>
+                <a href="#" class="button delete-button" onclick="handleChannelDeleteClick(${channel.id})">删除</a>
             </td>
         </tr>`;
         tbody.insertAdjacentHTML('beforeend', row);
@@ -182,6 +184,30 @@ function handleChannelDetailClick(subscribe_id) {
         .then(response => openChannelDetailModal(response.data))
         .catch(error => console.error('Error fetching data:', error));
 }
+
+
+function handleChannelDeleteClick(subscribe_id) {
+    const requestBody = {
+        id: subscribe_id
+    };
+    fetch(`/api/channel/delete`, {
+        method: 'POST', // Specify the method as POST
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+    })
+        .then(response => {
+            if (response.status === 200) {
+                fetchSubscribeChannelData();
+                openMessageModal('订阅已删除！')
+            } else {
+                openMessageModal('订阅删除失败！')
+            }
+        })
+        .catch(error => console.error('Error fetching data:', error));
+}
+
 
 function openChannelDetailModal(channelDetail) {
     console.log(channelDetail)
@@ -340,6 +366,15 @@ function generateSubscribeChannelVideoPaginationButtons(total_records) {
         if (i === currentPage) button.classList.add('active');
         paginationDiv.appendChild(button);
    }
+}
+
+function openMessageModal(message) {
+    document.getElementById('modalMessage').innerText = message;
+    document.getElementById('customModal').style.display = 'block';
+    // 添加点击关闭按钮的事件监听器
+    document.querySelector('.close').addEventListener('click', function() {
+        document.getElementById('customModal').style.display = 'none';
+    });
 }
 
 // 确保此函数在其他脚本执行后运行，或者将其放在所有其他脚本之后

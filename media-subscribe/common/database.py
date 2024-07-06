@@ -1,4 +1,5 @@
 import threading
+
 from playhouse.pool import PooledMySQLDatabase
 from playhouse.shortcuts import ReconnectMixin
 from common.config import GlobalConfig
@@ -26,7 +27,7 @@ class ReconnectPooledMySQLDatabase(ReconnectMixin, PooledMySQLDatabase):
         """Returns the singleton instance of the database connection pool."""
         with cls._instance_lock:
             if cls._instance is None:
-                cls._instance = cls(**db_config, max_connections=20)
+                cls._instance = cls(**db_config, max_connections=10, timeout=60)
         return cls._instance
 
 

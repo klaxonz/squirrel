@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from common.constants import QUEUE_SUBSCRIBE_TASK
 from common.message_queue import RedisMessageQueue
-from model.channel import Channel
+from model.channel import Channel, ChannelVideo
 from model.message import Message
 import common.response as response
 
@@ -45,8 +45,22 @@ class ChannelUpdateRequest(BaseModel):
 
 @router.post("/api/channel/update")
 def update_chanel(req: ChannelUpdateRequest):
-    Channel.update(if_enable=req.ifEnable, if_auto_download=req.ifAutoDownload, if_download_all=req.ifDownloadAll).where(
+    Channel.update(if_enable=req.ifEnable, if_auto_download=req.ifAutoDownload,
+                   if_download_all=req.ifDownloadAll).where(
         Channel.id == req.id).execute()
+    return response.success()
+
+
+class ChannelDeleteRequest(BaseModel):
+    id: int
+
+
+@router.post("/api/channel/delete")
+def delete_channel(req: ChannelDeleteRequest):
+    channel = Channel.select().where(Channel.id == req.id).first()
+    if channel:
+        channel.delete_instance()
+        ChannelVideo.delete().where(ChannelVideo.channel_id == channel.channel_id).execute()
     return response.success()
 
 
@@ -101,4 +115,3 @@ def subscribe_channel(
         "data": channel_convert_list
     }
     return response.success(channel_list)
-

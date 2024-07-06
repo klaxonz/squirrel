@@ -19,6 +19,33 @@
     <!-- 默认显示下载任务列表 -->
     <div id="download-content" style="display: block;">
         <h1>下载任务列表</h1>
+        <!--    状态单选框['PENDING', 'WAITING', 'DOWNLOADING', 'UNSUPPORTED', 'COMPLETED', 'FAILED', 'CANCELLED']    -->
+        <div class="search-container">
+            <label>
+                <input type="radio" name="download-task-status" value="" checked> 全部
+            </label>
+            <label>
+                <input type="radio" name="download-task-status" value="PENDING"> 待处理
+            </label>
+            <label>
+                <input type="radio" name="download-task-status" value="WAITING"> 等待下载
+            </label>
+            <label>
+                <input type="radio" name="download-task-status" value="DOWNLOADING"> 下载中
+            </label>
+            <label>
+                <input type="radio" name="download-task-status" value="UNSUPPORTED"> 不支持
+            </label>
+            <label>
+                <input type="radio" name="download-task-status" value="COMPLETED"> 已完成
+            </label>
+            <label>
+                <input type="radio" name="download-task-status" value="FAILED"> 失败
+            </label>
+            <label>
+                <input type="radio" name="download-task-status" value="CANCELLED"> 取消
+            </label>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -68,6 +95,13 @@
         <!-- 订阅频道视频更新内容区域，初始隐藏 -->
     <div id="subscribe-update-content" style="display: none;">
         <h1>更新列表</h1>
+        <!--   频道搜索框(水平居中)     -->
+        <div class="search-container">
+            <input type="text" id="channelSearchInput" placeholder="搜索频道...">
+            <input type="text" id="titleSearchInput" placeholder="搜索标题...">
+            <button id="channelSearchButton" onclick="fetchSubscribeChannelVideoData()">搜索</button>
+            <button id="channelResetButton" onclick="handleChannelSearchResetClick()">重置</button>
+        </div>
         <table>
             <thead>
                 <tr>

@@ -15,14 +15,20 @@ router = APIRouter(
 
 @router.get("/api/channel-video/list")
 def subscribe_channel(
+        channel_name: str = Query(None, description="频道名称"),
+        title: str = Query(None, description="视频标题"),
         page: int = Query(1, ge=1, description="Page number"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
-    total = ChannelVideo.select().where(ChannelVideo.title != '', ChannelVideo.if_read == 0).count()
+    base_query = ChannelVideo.select().where(ChannelVideo.title != '', ChannelVideo.if_read == 0)
+    if channel_name:
+        base_query = base_query.where(ChannelVideo.channel_name ** f'%{channel_name}%')
+    if title:
+        base_query = base_query.where(ChannelVideo.title ** f'%{title}%')
+    total = base_query.count()
+
     offset = (page - 1) * page_size
-    channel_videos = (ChannelVideo
-                      .select()
-                      .where(ChannelVideo.title != '', ChannelVideo.if_read == 0)
+    channel_videos = (base_query
                       .order_by(ChannelVideo.uploaded_at.desc())
                       .offset(offset)
                       .limit(page_size))
@@ -52,7 +58,6 @@ def subscribe_channel(
     }
 
     return response.success(channel_video_page)
-
 
 
 class MarkReadRequest(BaseModel):

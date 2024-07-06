@@ -204,3 +204,29 @@ tr:nth-child(even) {
     text-decoration: none;
     cursor: pointer;
 }
+
+#subscribe-update-content .search-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+#subscribe-update-content .search-container input[type=text],button {
+    margin: 16px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 18px;
+}
+
+#subscribe-update-content .search-container button {
+    cursor: pointer;
+}
+
+
+#download-content .search-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px;
+}

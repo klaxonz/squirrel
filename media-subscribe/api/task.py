@@ -42,20 +42,22 @@ class DownloadTaskListRequest(BaseModel):
 
 @router.get("/api/task/list")
 def get_tasks(
+        status: str = Query(None, description="任务状态"),
         page: int = Query(1, ge=1, description="Page number"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
-    task_page = get_updated_task_list(page, page_size)
+    task_page = get_updated_task_list(status, page, page_size)
     return response.success(data=task_page)
 
 
-def get_updated_task_list(page: int = 1, page_size: int = 10):
-    total_tasks = DownloadTask.select().where(DownloadTask.title != '').count()
+def get_updated_task_list(status: str = None, page: int = 1, page_size: int = 10):
+    base_query = DownloadTask.select().where(DownloadTask.title != '')
+    if status:
+        base_query = base_query.where(DownloadTask.status == status)
+    total_tasks = base_query.count()
     offset = (page - 1) * page_size
 
-    tasks = (DownloadTask
-             .select()
-             .where(DownloadTask.title != '')
+    tasks = (base_query
              .order_by(DownloadTask.created_at.desc())
              .offset(offset)
              .limit(page_size))
