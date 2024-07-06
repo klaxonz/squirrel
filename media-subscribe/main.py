@@ -1,4 +1,7 @@
+import threading
+
 from dotenv import load_dotenv
+
 load_dotenv(override=True)
 
 import logging
@@ -6,7 +9,6 @@ from consumer.consumer_download_task import DownloadTaskConsumerThread
 from consumer.consumer_extract_channel_video import ExtractorChannelVideoConsumerThread
 from consumer.consumer_extract_video_info import ExtractorInfoTaskConsumerThread
 from consumer.consumer_subscribe_channel import SubscribeChannelConsumerThread
-
 
 from model.message import Message
 import uvicorn
@@ -34,13 +36,19 @@ def initialize_consumers():
     logger.info('Consumers started.')
 
 
-def start_scheduler():
+def _start_scheduler():
     """配置并启动定时任务调度器"""
     logger.info('Starting scheduler...')
     scheduler = Scheduler()
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=2, unit='minutes')
     logger.info('Scheduler started.')
+
+
+def start_scheduler():
+    scheduler_thread = threading.Thread(target=_start_scheduler)
+    scheduler_thread.daemon = True
+    scheduler_thread.start()
 
 
 if __name__ == "__main__":

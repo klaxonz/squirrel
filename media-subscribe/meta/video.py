@@ -2,6 +2,8 @@ import json
 import re
 import os
 import requests
+from bs4 import BeautifulSoup
+
 from common.config import GlobalConfig
 from pathvalidate import sanitize_filename
 
@@ -86,6 +88,12 @@ class BilibiliVideo(Video):
 
 
 class YoutubeVideo(Video):
+
+    def __init__(self, url, base_info):
+        super().__init__(url, base_info)
+
+
+class PornhubVideo(Video):
 
     def __init__(self, url, base_info):
         super().__init__(url, base_info)
@@ -178,6 +186,35 @@ class YoutubeUploader(Uploader):
                     self.tags = []
 
 
+class PornhubUploader(Uploader):
+    def __init__(self, url):
+        super().__init__(url)
+        self.init()
+
+    def init(self):
+        cookies = filter_cookies_to_query_string(self.url)
+        headers = {
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/124.0.0.0 Safari/537.36',
+            'Cookie': cookies
+        }
+
+        response = requests.get(self.url, headers=headers, timeout=15)
+        response.raise_for_status()  # 检查请求是否成功
+
+        bs4 = BeautifulSoup(response.text, 'html.parser')
+        self.name = bs4.select('.userInfoBlock .usernameWrap a')[0].text.strip()
+        user_type = bs4.select('.userInfoBlock .usernameWrap')[0].get('data-type')
+        if user_type == 'user':
+            self.id = bs4.select('.userInfoBlock .usernameWrap')[0].get('data-userid')
+        elif user_type == 'channel':
+            self.id = bs4.select('.userInfoBlock .usernameWrap')[0].get('data-channelid')
+        else:
+            raise Exception('Unknown user type')
+        self.avatar = bs4.select('.userInfoBlock .userAvatar img')[0].get('src')
+        self.tags = []
+
+
 class VideoFactory:
 
     @staticmethod
@@ -186,6 +223,8 @@ class VideoFactory:
             return BilibiliVideo(url, video_info)
         elif 'youtube.com' in url:
             return YoutubeVideo(url, video_info)
+        elif 'pornhub.com' in url:
+            return PornhubVideo(url, video_info)
 
 
 class UploaderFactory:
@@ -196,3 +235,6 @@ class UploaderFactory:
             return BilibiliUploader(url)
         elif 'youtube.com' in url:
             return YoutubeUploader(url)
+        elif 'pornhub.com' in url:
+            return PornhubUploader(url)
+

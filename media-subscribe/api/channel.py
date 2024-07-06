@@ -31,6 +31,7 @@ def subscribe_channel(req: SubscribeChannelRequest):
     message.save()
 
     subscribe_queue.enqueue(message)
+    Message.update(send_status='SENDING').where(Message.message_id == message.message_id).execute()
 
     return response.success()
 
