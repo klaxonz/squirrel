@@ -122,7 +122,7 @@ function updateDownloadTaskList(taskInfo) {
         tbody.insertAdjacentHTML('beforeend', row);
     });
 
-    generateDownloadTaskPaginationButtons(taskInfo.total);
+    generateDownloadTaskPaginationButtons(taskInfo.data.total);
     setupPlayVideoEventListeners();
 }
 
@@ -147,7 +147,7 @@ function updateSubscribeChannelList(subscribeInfo) {
         tbody.insertAdjacentHTML('beforeend', row);
     });
 
-    generateSubscribeChannelPaginationButtons(subscribeInfo.total);
+    generateSubscribeChannelPaginationButtons(subscribeInfo.data.total);
 }
 
 function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
@@ -171,7 +171,7 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
         tbody.insertAdjacentHTML('beforeend', row);
     });
 
-    generateSubscribeChannelVideoPaginationButtons(subscribeChannelVideoInfo.total);
+    generateSubscribeChannelVideoPaginationButtons(subscribeChannelVideoInfo.data.total);
     setupChannelVideoDownloadEventListeners()
 }
 
