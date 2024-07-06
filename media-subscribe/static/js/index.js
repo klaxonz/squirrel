@@ -101,7 +101,7 @@ function markReadChannelVideo(channelId, videoId) {
 function updateDownloadTaskList(taskInfo) {
     var tbody = document.querySelector('#download-content table tbody');
     tbody.innerHTML = ''; // 清空现有内容以准备更新
-    var tasks = taskInfo.data;
+    var tasks = taskInfo.data.data;
     tasks.forEach(function(task) {
         var statusText = statusMap[task.status] || '未知状态';
         var row = `<tr data-task-id="${task.id}">
@@ -129,7 +129,7 @@ function updateDownloadTaskList(taskInfo) {
 function updateSubscribeChannelList(subscribeInfo) {
     var tbody = document.querySelector('#subscribe-content table tbody');
     tbody.innerHTML = ''; // 清空现有内容以准备更新
-    var channels = subscribeInfo.data;
+    var channels = subscribeInfo.data.data;
     channels.forEach(function(channel) {
         var row = `<tr>
             <td>${channel.id}</td>
@@ -153,7 +153,7 @@ function updateSubscribeChannelList(subscribeInfo) {
 function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
     var tbody = document.querySelector('#subscribe-update-content table tbody');
     tbody.innerHTML = ''; // 清空现有内容以准备更新
-    var channelVideos = subscribeChannelVideoInfo.data;
+    var channelVideos = subscribeChannelVideoInfo.data.data;
     channelVideos.forEach(function(channelVideo) {
         var row = `<tr data-channel-id="${channelVideo.channel_id}" data-video-id="${channelVideo.video_id}" >
             <td>${channelVideo.channel_name}</td>
@@ -178,11 +178,12 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
 function handleChannelDetailClick(subscribe_id) {
     fetch(`/api/channel/detail?id=${subscribe_id}`)
         .then(response => response.json())
-        .then(openChannelDetailModal)
+        .then(response => openChannelDetailModal(response.data))
         .catch(error => console.error('Error fetching data:', error));
 }
 
 function openChannelDetailModal(channelDetail) {
+    console.log(channelDetail)
     document.getElementById('channelInfoModal').style.display = 'block';
     document.getElementById('modalSubscribeId').innerText = channelDetail.id;
     document.getElementById('modalChannelId').innerText = channelDetail.channelId;

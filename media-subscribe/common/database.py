@@ -26,7 +26,7 @@ class ReconnectPooledMySQLDatabase(ReconnectMixin, PooledMySQLDatabase):
         """Returns the singleton instance of the database connection pool."""
         with cls._instance_lock:
             if cls._instance is None:
-                cls._instance = cls(**db_config, max_connections=5)
+                cls._instance = cls(**db_config, max_connections=20)
         return cls._instance
 
 

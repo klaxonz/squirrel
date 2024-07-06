@@ -1,6 +1,6 @@
 import logging
 import os
-
+import common.response as response
 from fastapi import HTTPException, Query, APIRouter
 from pydantic import BaseModel
 
@@ -22,14 +22,10 @@ class DownloadRequest(BaseModel):
 
 @router.post("/api/task/download")
 def start_download(req: DownloadRequest):
-    try:
-        url = req.url
-        download_service.start_download(url)
+    url = req.url
+    download_service.start_download(url)
 
-        return {"status": "success", "message": "下载任务已启动"}
-    except Exception as e:
-        logger.error("下载过程中发生错误", exc_info=True)
-        raise HTTPException(status_code=500, detail="下载任务启动失败")
+    return response.success()
 
 
 class DownloadTaskListRequest(BaseModel):
@@ -42,11 +38,8 @@ def get_tasks(
         page: int = Query(1, ge=1, description="Page number"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
-    try:
-        return get_updated_task_list(page, page_size)
-    except Exception as e:
-        logger.error("查询失败", exc_info=True)
-        raise HTTPException(status_code=500, detail="查询失败")
+    task_page = get_updated_task_list(page, page_size)
+    return response.success(data=task_page)
 
 
 def get_updated_task_list(page: int = 1, page_size: int = 10):
@@ -87,31 +80,26 @@ def get_updated_task_list(page: int = 1, page_size: int = 10):
 
 @router.get("/api/task/video/play/{task_id}")
 async def play_video(task_id: str):
-    try:
-        download_task = DownloadTask.select().where(DownloadTask.task_id == task_id).first()
-        base_info = Downloader.get_video_info(download_task.url)
-        video = VideoFactory.create_video(download_task.url, base_info)
-        output_dir = video.get_download_full_path()
-        filename = video.get_valid_filename() + ".mp4"
-        video_path = os.path.join(output_dir, filename)
+    download_task = DownloadTask.select().where(DownloadTask.task_id == task_id).first()
+    base_info = Downloader.get_video_info(download_task.url)
+    video = VideoFactory.create_video(download_task.url, base_info)
+    output_dir = video.get_download_full_path()
+    filename = video.get_valid_filename() + ".mp4"
+    video_path = os.path.join(output_dir, filename)
 
-        # 检查视频文件是否存在
-        if not os.path.exists(video_path):
-            raise HTTPException(status_code=404, detail="视频文件未找到")
+    # 检查视频文件是否存在
+    if not os.path.exists(video_path):
+        raise HTTPException(status_code=404, detail="视频文件未找到")
 
-        # 使用Starlette的StreamingResponse直接发送视频流
-        from fastapi.responses import StreamingResponse
+    # 使用Starlette的StreamingResponse直接发送视频流
+    from fastapi.responses import StreamingResponse
 
-        async def video_streamer(path):
-            with open(path, "rb") as video_file:
-                while True:
-                    chunk = video_file.read(1024)  # Read 1KB at a time
-                    if not chunk:
-                        break
-                    yield chunk
+    async def video_streamer(path):
+        with open(path, "rb") as video_file:
+            while True:
+                chunk = video_file.read(1024)  # Read 1KB at a time
+                if not chunk:
+                    break
+                yield chunk
 
-        return StreamingResponse(video_streamer(video_path), media_type="video/mp4")
-
-    except Exception as e:
-        logger.error("视频播放错误", exc_info=True)
-        raise HTTPException(status_code=500, detail="视频播放失败")
+    return StreamingResponse(video_streamer(video_path), media_type="video/mp4")
