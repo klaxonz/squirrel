@@ -70,7 +70,7 @@
     const download = (url, data) => {
       GM_xmlhttpRequest({
           method: 'POST',
-          url: 'http://127.0.0.1:8000/api/download',
+          url: 'http://127.0.0.1:8000/api/task/download',
           data: data,
           headers: {
               "Content-Type": "application/json"

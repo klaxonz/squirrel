@@ -3,7 +3,7 @@ import logging.config
 import os
 
 current_dir = os.path.dirname(os.getcwd())
-LOG_DIR = os.path.join(current_dir, '..', 'logs')
+LOG_DIR = os.path.join(current_dir, 'logs')
 if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
 

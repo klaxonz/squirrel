@@ -49,14 +49,14 @@ function fetchSubscribeChannelData() {
 }
 
 function fetchSubscribeChannelVideoData() {
-    fetch(`/api/channel/video/list?page=${currentPage}&pageSize=${itemsPerPage}`)
+    fetch(`/api/channel-video/list?page=${currentPage}&pageSize=${itemsPerPage}`)
         .then(response => response.json())
         .then(updateSubscribeChannelVideoList)
         .catch(error => console.error('Error fetching data:', error));
 }
 
 function downloadChannelVideo(channelId, videoId) {
-    fetch('/api/channel/video/download/', {
+    fetch('/api/channel-video/download/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -82,7 +82,7 @@ function downloadChannelVideo(channelId, videoId) {
 }
 
 function markReadChannelVideo(channelId, videoId) {
-    fetch('/api/channel/video/mark-read/', {
+    fetch('/api/channel-video/mark-read/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
