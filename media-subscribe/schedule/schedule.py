@@ -102,7 +102,7 @@ class AutoUpdateChannelVideoTask:
             channels = Channel.select().where(Channel.if_enable == 1)
             for channel in channels:
                 subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
-                video_list = subscribe_channel.get_channel_videos()
+                video_list = subscribe_channel.get_channel_videos(update_all=channel.if_download_all)
                 for video in video_list:
                     start_extract(video, channel)
         except json.JSONDecodeError as e:

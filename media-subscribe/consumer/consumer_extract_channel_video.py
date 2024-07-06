@@ -19,15 +19,25 @@ class ExtractorChannelVideoConsumerThread(BaseConsumerThread):
                     self.handle_message(message)
 
                     channel_video = dict_to_model(ChannelVideo, json.loads(message.body))
+                    channel = Channel.select().where(Channel.channel_id == channel_video.channel_id).first()
 
                     key = f"task:extract:{channel_video.domain}:{channel_video.channel_id}:{channel_video.video_id}"
                     if self.redis.exists(key):
-                        continue
+                        if channel.if_auto_download:
+                            channel_video = ChannelVideo.select().where(
+                                ChannelVideo.channel_id == channel_video.channel_id,
+                                ChannelVideo.video_id == channel_video.video_id).first()
+                            if channel_video.if_downloaded:
+                                continue
+                        else:
+                            continue
 
                     video_info = Downloader.get_video_info(channel_video.url)
                     if video_info is None:
+                        logger.info(f"{channel_video.url} is not a video, skip")
                         continue
                     if '_type' in video_info and video_info['_type'] == 'playlist':
+                        logger.info(f"{channel_video.url} is a playlist, skip")
                         continue
 
                     uploaded_time = datetime.fromtimestamp(int(video_info['timestamp']))

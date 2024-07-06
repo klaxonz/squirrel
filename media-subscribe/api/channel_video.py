@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import Query, HTTPException, APIRouter
+from fastapi import Query, APIRouter
 from pydantic import BaseModel
 from model.channel import ChannelVideo
 from service import download_service

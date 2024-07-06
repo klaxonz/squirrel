@@ -16,7 +16,7 @@ class SubscribeChannel:
     def get_channel_info(self):
         pass
 
-    def get_channel_videos(self):
+    def get_channel_videos(self, update_all: bool):
         pass
 
 
@@ -53,14 +53,14 @@ class BilibiliSubscribeChannel(SubscribeChannel):
 
         return ChannelMeta(mid, info['data']['name'], self.url)
 
-    def get_channel_videos(self):
+    def get_channel_videos(self, update_all: bool):
         cookies = filter_cookies_to_query_string(self.url)
         headers = {
             'Referer': self.url,
             'User-Agent': 'Mozilla/5.0 ...',
             'Cookie': cookies
         }
-        ps = 25 if GlobalConfig.CHANNEL_UPDATE_ALL else GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE
+        ps = 25 if update_all else GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE
 
         params = {
             'mid': self.get_mid(),
@@ -96,7 +96,7 @@ class BilibiliSubscribeChannel(SubscribeChannel):
             else:
                 should_continue = False
 
-            if not GlobalConfig.CHANNEL_UPDATE_ALL:
+            if not update_all:
                 should_continue = False
 
         return video_list
@@ -128,7 +128,7 @@ class YouTubeSubscribeChannel(SubscribeChannel):
 
         return ChannelMeta(channel_id, name, self.url)
 
-    def get_channel_videos(self):
+    def get_channel_videos(self, update_all: bool):
         channel = Channel.select().where(Channel.url == self.url).get()
         channel_id = "UU" + channel.channel_id[2:]
 
@@ -160,7 +160,7 @@ class YouTubeSubscribeChannel(SubscribeChannel):
                 video_id = v["playlistVideoRenderer"]['videoId']
                 video_list.append(f'https://www.youtube.com/watch?v={video_id}')
 
-        if not GlobalConfig.CHANNEL_UPDATE_ALL:
+        if not update_all:
             video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
         return video_list
 

@@ -13,7 +13,6 @@ class GlobalConfig:
     DEFAULT_MYSQL_PASSWORD = 'root'
     DEFAULT_MYSQL_DATABASE = 'media_subscribe'
     CHANNEL_UPDATE_DEFAULT_SIZE = 10
-    CHANNEL_UPDATE_ALL = False
 
     @classmethod
     def get_download_root_path(cls):

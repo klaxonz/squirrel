@@ -137,6 +137,7 @@ function updateSubscribeChannelList(subscribeInfo) {
             <td>${channel.name}</td>
             <td>${channel.if_enable == 1 ? '启用' : '暂停'}</td>
             <td>${channel.if_auto_download == 1 ? '是' : '否'}</td>
+            <td>${channel.if_download_all == 1 ? '是' : '否'}</td>
             <td>${channel.url}</td>
             <td>${channel.created_at}</td>
             <td class="action-buttons">
@@ -202,18 +203,26 @@ function openChannelDetailModal(channelDetail) {
     } else {
         autoDownloadRadios[1].checked = true;
     }
+    const downloadAllRadios = document.querySelectorAll('input[name="modalChannelIfDownloadAll"]');
+    if (channelDetail.ifDownloadAll == 1) {
+        downloadAllRadios[0].checked = true;
+    } else {
+        downloadAllRadios[1].checked = true;
+    }
 }
 
 function handleChannelSaveClick(event) {
     var subscribeId = document.getElementById('modalSubscribeId').innerText.trim();
     var ifEnable = document.querySelector('input[name="modalChannelIfEnable"]:checked').value;
     var ifAutoDownload = document.querySelector('input[name="modalChannelIfAutoDownload"]:checked').value;
+    var ifDownloadAll = document.querySelector('input[name="modalChannelIfDownloadAll"]:checked').value;
 
     // Construct the request body as JSON
     var requestBody = {
         id: subscribeId,
         ifEnable: ifEnable, // Assuming values are strings like 'true'/'false', convert to boolean if needed
-        ifAutoDownload: ifAutoDownload // Same conversion if applicable
+        ifAutoDownload: ifAutoDownload,
+        ifDownloadAll: ifDownloadAll
     };
 
     fetch(`/api/channel/update`, {

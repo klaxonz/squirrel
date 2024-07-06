@@ -1,4 +1,5 @@
 import json
+import logging
 
 from playhouse.shortcuts import model_to_dict
 
@@ -11,6 +12,8 @@ from model.channel import ChannelVideo, Channel
 from model.download_task import DownloadTask
 from model.message import Message
 from utils import json_serialize
+
+logger = logging.getLogger(__name__)
 
 
 def start_download(url: str):
@@ -55,10 +58,18 @@ def start_extract(url: str, channel: Channel):
     key = f"task:extract:{domain}:{channel.channel_id}:{video_id}"
 
     if client.exists(key):
-        return
+        if channel.if_auto_download:
+            channel_video = ChannelVideo.select().where(ChannelVideo.channel_id == channel.channel_id,
+                                                        ChannelVideo.video_id == video_id).first()
+            if channel_video is not None and channel_video.if_downloaded:
+                logger.info(f"extract task already exists: {url}")
+                return
+        else:
+            logger.info(f"extract task already exists: {url}")
+            return
 
     channel_video = ChannelVideo.select().where(ChannelVideo.channel_id == channel.channel_id,
-                                        ChannelVideo.video_id == video_id).first()
+                                                ChannelVideo.video_id == video_id).first()
     if channel_video is None:
         channel_video = ChannelVideo(
             channel_id=channel.channel_id,
@@ -77,4 +88,3 @@ def start_extract(url: str, channel: Channel):
     RedisMessageQueue(queue_name=QUEUE_CHANNEL_VIDEO_UPDATE).enqueue(message)
     Message.update(send_status='SENDING').where(Message.message_id == message.message_id,
                                                 Message.send_status == 'PENDING').execute()
-

@@ -52,6 +52,7 @@
                     <th>频道名称</th>
                     <th>是否启用</th>
                     <th>是否自动下载</th>
+                    <th>是否下载全部</th>
                     <th>频道链接</th>
                     <th>订阅时间</th>
                     <th>操作</th>
@@ -129,6 +130,15 @@
                     </label>
                     <label>
                         <input type="radio" name="modalChannelIfAutoDownload" value="false"> 禁用
+                    </label>
+                </p>
+                     <!--   是否全部下载(单选框)             -->
+                <p><strong>是否全部下载:</strong>
+                    <label>
+                        <input type="radio" name="modalChannelIfDownloadAll" value="true" checked> 启用
+                    </label>
+                    <label>
+                        <input type="radio" name="modalChannelIfDownloadAll" value="false"> 禁用
                     </label>
                 </p>
                 <p><strong>频道链接:</strong> <span id="modalChannelUrl"></span></p>

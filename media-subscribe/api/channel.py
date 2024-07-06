@@ -39,11 +39,12 @@ class ChannelUpdateRequest(BaseModel):
     id: int
     ifEnable: bool
     ifAutoDownload: bool
+    ifDownloadAll: bool
 
 
 @router.post("/api/channel/update")
 def update_chanel(req: ChannelUpdateRequest):
-    Channel.update(if_enable=req.ifEnable, if_auto_download=req.ifAutoDownload).where(
+    Channel.update(if_enable=req.ifEnable, if_auto_download=req.ifAutoDownload, if_download_all=req.ifDownloadAll).where(
         Channel.id == req.id).execute()
     return response.success()
 
@@ -59,6 +60,7 @@ def channel_detail(id: int):
         "url": channel.url,
         "ifEnable": channel.if_enable,
         "ifAutoDownload": channel.if_auto_download,
+        "ifDownloadAll": channel.if_download_all,
         "createdAt": channel.created_at,
     }
 
@@ -86,6 +88,7 @@ def subscribe_channel(
             'url': channel.url,
             'if_enable': channel.if_enable,
             'if_auto_download': channel.if_auto_download,
+            'if_download_all': channel.if_download_all,
             'created_at': channel.created_at
         } for channel in channels
     ]
