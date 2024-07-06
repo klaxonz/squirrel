@@ -1,63 +1,54 @@
 import threading
-
-from playhouse.db_url import connect
+from playhouse.pool import PooledMySQLDatabase
+from playhouse.shortcuts import ReconnectMixin
 from common.config import GlobalConfig
 import logging
-import mysql.connector
-from mysql.connector import Error
 
 logger = logging.getLogger(__name__)
 
+db_config = {
+    'host': GlobalConfig.get_mysql_host(),
+    'port': GlobalConfig.get_mysql_port(),
+    'user': GlobalConfig.get_mysql_user(),
+    'password': GlobalConfig.get_mysql_password(),
+    'database': GlobalConfig.get_mysql_database(),
+}
+
+
+class ReconnectPooledMySQLDatabase(ReconnectMixin, PooledMySQLDatabase):
+    """Thread-safe singleton pattern for pooled MySQL database with reconnect capabilities."""
+
+    _instance_lock = threading.Lock()
+    _instance = None
+
+    @classmethod
+    def get_db_instance(cls):
+        """Returns the singleton instance of the database connection pool."""
+        with cls._instance_lock:
+            if cls._instance is None:
+                cls._instance = cls(**db_config, max_connections=5)
+        return cls._instance
+
 
 class DatabaseManager:
-    @classmethod
-    def create_database_if_not_exists(cls, database_name, connection):
-        cursor = connection.cursor()
-        try:
-            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database_name};")
-            logger.info(f"Database '{database_name}' created successfully.")
-        except Error as e:
-            logger.error(f"Error occurred: ", e)
+    """Manages database initialization and table creation."""
 
     @classmethod
-    def establish_connection(cls):
+    def create_database_if_not_exists(cls, database_name):
+        """Creates a database if it does not exist."""
         try:
-            connection = mysql.connector.connect(
-                host=GlobalConfig.get_mysql_host(),
-                port=GlobalConfig.get_mysql_port(),
-                user=GlobalConfig.get_mysql_user(),
-                password=GlobalConfig.get_mysql_password()
-            )
-            return connection
-        except Error as e:
-            logger.error(f"Error while connecting to MySQL", e)
-            return None
+            with ReconnectPooledMySQLDatabase.get_db_instance().connect() as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database_name};")
+                    logger.info(f"Database '{database_name}' created successfully.")
+        except Exception as e:
+            logger.error(f"Error creating database '{database_name}': {e}")
 
     @classmethod
     def initialize_database(cls, tables):
-        connection = cls.establish_connection()
-        if connection is not None:
-            cls.create_database_if_not_exists(GlobalConfig.DEFAULT_MYSQL_DATABASE, connection)
-        db = DbInstanceHolder.get_instance()
-        db.create_tables(tables)
+        """Initializes the default database and creates tables if they don't exist."""
+        # Assuming the default database is already created or will be created by another process.
+        db = ReconnectPooledMySQLDatabase.get_db_instance()
+        with db:
+            db.create_tables(tables, safe=True)  # Using 'safe=True' to avoid recreating existing tables
         logger.info("Database initialized successfully.")
-
-
-class DbInstanceHolder:
-    _lock = threading.Lock()
-    _instance = None
-
-    def __new__(cls):
-        """确保DbInstanceHolder是单例，且线程安全"""
-        with cls._lock:
-            if cls._instance is None:
-                cls._instance = super(DbInstanceHolder, cls).__new__(cls)
-                cls._instance.db_instance = connect(url=GlobalConfig.get_mysql_url())
-        return cls._instance
-
-    @classmethod
-    def get_instance(cls):
-        """获取DbInstanceHolder的单例实例"""
-        if cls._instance is None:
-            cls._instance = cls.__new__(cls)
-        return cls._instance.db_instance

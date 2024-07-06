@@ -48,7 +48,9 @@ class GlobalConfig:
 
     @classmethod
     def get_mysql_port(cls):
-        return os.getenv('MYSQL_PORT', cls.DEFAULT_MYSQL_PORT)
+        """Get MySQL port from environment variable or return default."""
+        port = os.getenv('MYSQL_PORT')
+        return int(port) if port is not None else cls.DEFAULT_MYSQL_PORT
 
     @classmethod
     def get_mysql_user(cls):

@@ -1,6 +1,6 @@
 from peewee import Model
 
-from common.database import DbInstanceHolder
+from common.database import ReconnectPooledMySQLDatabase
 
 
 def make_table_name(model_class):
@@ -11,4 +11,4 @@ def make_table_name(model_class):
 class BaseModel(Model):
     class Meta:
         table_function = make_table_name
-        database = DbInstanceHolder.get_instance()
+        database = ReconnectPooledMySQLDatabase.get_db_instance()
