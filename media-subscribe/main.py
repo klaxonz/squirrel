@@ -2,14 +2,17 @@ import logging
 
 from dotenv import load_dotenv
 
+from consumer.consumer_download_task import DownloadTaskConsumerThread
+from consumer.consumer_extract_channel_video import ExtractorChannelVideoConsumerThread
+from consumer.consumer_extract_video_info import ExtractorInfoTaskConsumerThread
+from consumer.consumer_subscribe_channel import SubscribeChannelConsumerThread
+
 load_dotenv(override=True)
 
 from model.message import Message
 import uvicorn
 from api.api import app
 from common.constants import QUEUE_DOWNLOAD_TASK, QUEUE_SUBSCRIBE_TASK, QUEUE_EXTRACT_TASK, QUEUE_CHANNEL_VIDEO_UPDATE
-from common.consumer import DownloadTaskConsumerThread, SubscribeChannelConsumerThread, ExtractorInfoTaskConsumerThread, \
-    ExtractorChannelVideoConsumerThread
 from common.database import DatabaseManager
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
