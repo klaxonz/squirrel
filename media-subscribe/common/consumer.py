@@ -20,27 +20,42 @@ from .message_queue import RedisMessageQueue
 logger = logging.getLogger(__name__)
 
 
-class ExtractorInfoTaskConsumerThread(threading.Thread):
+class BaseConsumerThread(threading.Thread):
+    """Base class for consumer threads to handle common setup and teardown."""
+
     def __init__(self, queue_name):
         super().__init__()
         self.queue_name = queue_name
         self.running = True
+        self.redis = RedisClient.get_instance().client  # Cache Redis client instance
+        self.mq = RedisMessageQueue(queue_name=self.queue_name)  # Initialize MQ once
+
+    def handle_message(self, message):
+        """Handle a generic message pattern to reduce duplication."""
+        try:
+            Message.update(send_status='SUCCESS').where(Message.message_id == message.message_id,
+                                                        Message.send_status == 'SENDING').execute()
+        except Exception as e:
+            logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+
+    def stop(self):
+        self.running = False
+
+
+class ExtractorInfoTaskConsumerThread(BaseConsumerThread):
 
     def run(self):
-        client = RedisClient.get_instance().client
-        mq = RedisMessageQueue(queue_name=self.queue_name)
         while self.running:
             download_task = None
             try:
-                message = mq.wait_and_dequeue(timeout=None)
+                message = self.mq.wait_and_dequeue(timeout=None)
                 if message:
-                    Message.update(send_status='SUCCESS').where(
-                        Message.message_id == message.message_id, Message.send_status == 'SENDING').execute()
+                    self.handle_message(message)
 
                     download_task = dict_to_model(DownloadTask, json.loads(message.body))
                     key = f"task:{download_task.domain}:{download_task.video_id}"
 
-                    if client.exists(key):
+                    if self.redis.exists(key):
                         continue
 
                     video_info = Downloader.get_video_info(download_task.url)
@@ -74,31 +89,19 @@ class ExtractorInfoTaskConsumerThread(threading.Thread):
                     DownloadTask.update(status='FAILED', error_message=str(e)).where(
                         DownloadTask.task_id == download_task.task_id).execute()
 
-    def stop(self):
-        self.running = False
 
-
-class ExtractorChannelVideoConsumerThread(threading.Thread):
-    def __init__(self, queue_name):
-        super().__init__()
-        self.queue_name = queue_name
-        self.running = True
-
+class ExtractorChannelVideoConsumerThread(BaseConsumerThread):
     def run(self):
-        client = RedisClient.get_instance().client
-        mq = RedisMessageQueue(queue_name=self.queue_name)
         while self.running:
             try:
-                message = mq.wait_and_dequeue(timeout=None)
+                message = self.mq.wait_and_dequeue(timeout=None)
                 if message:
-                    Message.update(send_status='SUCCESS').where(
-                        Message.message_id == message.message_id, Message.send_status == 'SENDING').execute()
+                    self.handle_message(message)
 
                     channel_video = dict_to_model(ChannelVideo, json.loads(message.body))
 
-                    client = RedisClient.get_instance().client
                     key = f"task:extract:{channel_video.domain}:{channel_video.channel_id}:{channel_video.video_id}"
-                    if client.exists(key):
+                    if self.redis.exists(key):
                         continue
 
                     video_info = Downloader.get_video_info(channel_video.url)
@@ -115,7 +118,7 @@ class ExtractorChannelVideoConsumerThread(threading.Thread):
                         ChannelVideo.channel_id == channel_video.channel_id,
                         ChannelVideo.video_id == channel_video.video_id).execute()
 
-                    client.set(key, channel_video.video_id, 12 * 60 * 60)
+                    self.redis.set(key, channel_video.video_id, 12 * 60 * 60)
                     channel = Channel.select().where(Channel.channel_id == channel_video.channel_id).first()
                     if channel.if_auto_download:
                         download_service.start_download(channel_video.url)
@@ -125,32 +128,22 @@ class ExtractorChannelVideoConsumerThread(threading.Thread):
             except Exception as e:
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)
 
-    def stop(self):
-        self.running = False
 
-
-class DownloadTaskConsumerThread(threading.Thread):
-    def __init__(self, queue_name):
-        super().__init__()
-        self.queue_name = queue_name
-        self.running = True
+class DownloadTaskConsumerThread(BaseConsumerThread):
 
     def run(self):
-        client = RedisClient.get_instance().client
-        mq = RedisMessageQueue(queue_name=self.queue_name)
         while self.running:
             message = None
             download_task = None
             try:
-                message = mq.wait_and_dequeue(timeout=None)
+                message = self.mq.wait_and_dequeue(timeout=None)
                 if message:
-                    Message.update(send_status='SUCCESS').where(
-                        Message.message_id == message.message_id, Message.send_status == 'SENDING').execute()
+                    self.handle_message(message)
 
                     download_task = dict_to_model(DownloadTask, json.loads(message.body))
                     key = f"task:{download_task.domain}:{download_task.video_id}"
 
-                    if client.exists(key):
+                    if self.redis.exists(key):
                         continue
 
                     DownloadTask.update(status='DOWNLOADING').where(
@@ -162,7 +155,7 @@ class DownloadTaskConsumerThread(threading.Thread):
                         DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'DOWNLOADING').execute()
 
                     # 写入缓存
-                    client.set(key, download_task.video_id, 12 * 60 * 60)
+                    self.redis.set(key, download_task.video_id, 12 * 60 * 60)
 
                     download_task = None
             except Exception as e:
@@ -173,25 +166,16 @@ class DownloadTaskConsumerThread(threading.Thread):
                     DownloadTask.update(status='FAILED', error_message=str(e)).where(
                         DownloadTask.task_id == download_task.task_id).execute()
 
-    def stop(self):
-        self.running = False
 
-
-class SubscribeChannelConsumerThread(threading.Thread):
-    def __init__(self, queue_name):
-        super().__init__()
-        self.queue_name = queue_name
-        self.running = True
+class SubscribeChannelConsumerThread(BaseConsumerThread):
 
     def run(self):
-        mq = RedisMessageQueue(queue_name=self.queue_name)
         while self.running:
             message = None
             try:
-                message = mq.wait_and_dequeue(timeout=None)
+                message = self.mq.wait_and_dequeue(timeout=None)
                 if message:
-                    Message.update(send_status='SUCCESS').where(
-                        Message.message_id == message.message_id, Message.send_status == 'SENDING').execute()
+                    self.handle_message(message)
 
                     url = json.loads(message.body)['url']
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(url)
@@ -201,6 +185,3 @@ class SubscribeChannelConsumerThread(threading.Thread):
 
             except Exception as e:
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)
-
-    def stop(self):
-        self.running = False
