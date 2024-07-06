@@ -168,8 +168,13 @@
           if(!element) {
               return;
           }
+          const btn = element.querySelector(".ytdlp-btn");
+          if (btn) {
+              return;
+          }
           const div = document.createElement('div');
           div.classList.add('toolbar-left-item-wrap');
+          div.classList.add('ytdlp-btn');
           div.textContent = '下载';
           div.style.cursor = 'pointer';
 
@@ -182,7 +187,7 @@
 
           element.appendChild(div);
       });
-    }, 5000);
+    }, 1000);
 
     setInterval(() => {
         getElement(document, '#dismissible', 10000).then(element => {
