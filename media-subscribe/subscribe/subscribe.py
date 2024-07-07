@@ -19,7 +19,7 @@ class SubscribeChannel:
     def get_channel_info(self):
         pass
 
-    def get_channel_videos(self, update_all: bool):
+    def get_channel_videos(self, channel: Channel, update_all: bool):
         pass
 
 
@@ -56,7 +56,7 @@ class BilibiliSubscribeChannel(SubscribeChannel):
 
         return ChannelMeta(mid, info['data']['name'], self.url)
 
-    def get_channel_videos(self, update_all: bool):
+    def get_channel_videos(self, channel: Channel, update_all: bool):
         cookies = filter_cookies_to_query_string(self.url)
         headers = {
             'Referer': self.url,
@@ -131,8 +131,7 @@ class YouTubeSubscribeChannel(SubscribeChannel):
 
         return ChannelMeta(channel_id, name, self.url)
 
-    def get_channel_videos(self, update_all: bool):
-        channel = Channel.select().where(Channel.url == self.url).get()
+    def get_channel_videos(self, channel: Channel, update_all: bool):
         channel_id = "UU" + channel.channel_id[2:]
 
         cookies = filter_cookies_to_query_string(self.url)
@@ -194,7 +193,7 @@ class PornhubSubscribeChannel(SubscribeChannel):
 
         return ChannelMeta(channel_id, name, url)
 
-    def get_channel_videos(self, update_all: bool):
+    def get_channel_videos(self, channel: Channel, update_all: bool):
 
         cookies = filter_cookies_to_query_string(self.url)
         headers = {
