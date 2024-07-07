@@ -21,13 +21,12 @@ class Downloader:
         """
         if video_info['status'] == 'downloading':
             downloaded_bytes = video_info.get('downloaded_bytes', 0)
-            total_bytes = video_info.get('total_bytes', None)
+            total_bytes = video_info.get('total_bytes', 0)
             speed = video_info.get('_speed_str', '')
             eta = video_info.get('_eta_str', '')
             percent = video_info.get('_percent_str', '')
 
             # 处理可能的None值，避免错误
-            total_bytes = total_bytes if total_bytes is not None else 'unknown'
             eta = eta if eta != '00:00' else 'unknown'
 
             if 'id' in video_info['info_dict']:
