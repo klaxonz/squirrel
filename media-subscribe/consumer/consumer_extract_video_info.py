@@ -7,7 +7,7 @@ from common.message_queue import RedisMessageQueue
 from consumer.base import BaseConsumerThread
 from downloader.downloader import Downloader
 from model.download_task import DownloadTask, DownloadTaskSchema
-from model.message import Message, MessageSchema
+from model.message import Message
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +17,8 @@ class ExtractorInfoTaskConsumerThread(BaseConsumerThread):
     def run(self):
         while self.running:
             download_task = None
-            try:
-                with get_session() as session:
+            with get_session() as session:
+                try:
                     message = self.mq.wait_and_dequeue(session=session, timeout=None)
                     if message:
                         session.query(Message).filter(Message.message_id == message.message_id,
@@ -57,8 +57,8 @@ class ExtractorInfoTaskConsumerThread(BaseConsumerThread):
                         session.commit()
 
                         download_task = None
-            except Exception as e:
-                logger.error(f"处理消息时发生错误: {e}", exc_info=True)
-                if download_task:
-                    with get_session() as session:
+                except Exception as e:
+                    logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+                    if download_task:
                         session.query(Message).filter(Message.message_id == download_task.task_id).update({'send_status': 'FAILED'})
+                        session.commit()

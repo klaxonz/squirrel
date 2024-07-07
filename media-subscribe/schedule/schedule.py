@@ -2,7 +2,7 @@ import json
 import time
 
 from common.database import get_session
-from model.download_task import DownloadTask
+from model.download_task import DownloadTask, DownloadTaskSchema
 from model.channel import Channel
 from common.message_queue import RedisMessageQueue, Message
 from common.constants import QUEUE_EXTRACT_TASK
@@ -83,7 +83,7 @@ class RetryFailedTask:
                 # 把失败的任务放入redis队列,并修改状态
                 for task in tasks:
                     message = Message()
-                    message.body = MessageSchema().dumps(task)
+                    message.body = DownloadTaskSchema().dumps(task)
                     session.add(message)
                     session.commit()
 
