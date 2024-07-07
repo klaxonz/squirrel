@@ -284,6 +284,9 @@ function handleDownloadClick(event) {
     downloadChannelVideo(channelId, videoId)
 }
 
+function handleDownloadTaskStatusClick() {
+    currentPage = 1;
+}
 
 function setupChannelVideoDownloadEventListeners() {
     var downloadButtons = document.querySelectorAll('#subscribe-update-content table tbody .download-button');
@@ -310,62 +313,75 @@ function setupPlayVideoEventListeners() {
 }
 
 
-function generateDownloadTaskPaginationButtons(total_records) {
+function generatePaginationButtons(selector, total_records, fetchDataFunction) {
+    var itemsPerPage = 10; // 假设每页显示10条记录
     var pages = Math.ceil(total_records / itemsPerPage);
-    var paginationDiv = document.getElementById('download-task-pagination');
+    var paginationDiv = document.getElementById(selector);
     paginationDiv.innerHTML = ''; // 清空现有分页按钮
 
-    for (var i = 1; i <= pages; i++) {
+    // 定义显示的页码范围
+    var visiblePages = 5; // 每边显示2个页码，加上当前页共5个页码
+    var startPage = Math.max(1, currentPage - Math.floor(visiblePages / 2));
+    var endPage = Math.min(pages, startPage + visiblePages - 1);
+
+    // 添加首页按钮
+    if (startPage > 1) {
+        var firstButton = document.createElement('button');
+        firstButton.textContent = '<<';
+        firstButton.onclick = () => {
+            currentPage = 1;
+            fetchDownloadTaskData();
+        };
+        paginationDiv.appendChild(firstButton);
+
+        // 添加省略号
+        var ellipsisStart = document.createElement('span');
+        ellipsisStart.textContent = '...';
+        paginationDiv.appendChild(ellipsisStart);
+    }
+
+    // 添加页码按钮
+    for (let i = startPage; i <= endPage; i++) {
         var button = document.createElement('button');
         button.textContent = i;
         button.onclick = (function(page) {
             return function() {
                 currentPage = page;
-                fetchDownloadTaskData();
+                fetchDataFunction();
             };
         })(i);
         if (i === currentPage) button.classList.add('active');
         paginationDiv.appendChild(button);
-   }
+    }
+
+    // 添加末页按钮
+    if (endPage < pages) {
+        // 添加省略号
+        var ellipsisEnd = document.createElement('span');
+        ellipsisEnd.textContent = '...';
+        paginationDiv.appendChild(ellipsisEnd);
+
+        var lastButton = document.createElement('button');
+        lastButton.textContent = '>>';
+        lastButton.onclick = () => {
+            currentPage = pages;
+            fetchDownloadTaskData();
+        };
+        paginationDiv.appendChild(lastButton);
+    }
+}
+
+function generateDownloadTaskPaginationButtons(total_records) {
+    generatePaginationButtons('download-task-pagination', total_records, fetchDownloadTaskData)
 }
 
 function generateSubscribeChannelPaginationButtons(total_records) {
-    var pages = Math.ceil(total_records / itemsPerPage);
-    var paginationDiv = document.getElementById('subscribe-channel-pagination');
-    paginationDiv.innerHTML = '';
-
-    for (var i = 1; i <= pages; i++) {
-        var button = document.createElement('button');
-        button.textContent = i;
-        button.onclick = (function(page) {
-            return function() {
-                currentPage = page;
-                fetchSubscribeChannelData();
-            };
-        })(i);
-        if (i === currentPage) button.classList.add('active');
-        paginationDiv.appendChild(button);
-   }
+    generatePaginationButtons('subscribe-channel-pagination', total_records, fetchSubscribeChannelData)
 }
 
 
 function generateSubscribeChannelVideoPaginationButtons(total_records) {
-    var pages = Math.ceil(total_records / itemsPerPage);
-    var paginationDiv = document.getElementById('subscribe-channel-update-pagination');
-    paginationDiv.innerHTML = ''; // 清空现有分页按钮
-
-    for (var i = 1; i <= pages; i++) {
-        var button = document.createElement('button');
-        button.textContent = i;
-        button.onclick = (function(page) {
-            return function() {
-                currentPage = page;
-                fetchSubscribeChannelVideoData();
-            };
-        })(i);
-        if (i === currentPage) button.classList.add('active');
-        paginationDiv.appendChild(button);
-   }
+    generatePaginationButtons('subscribe-channel-update-pagination', total_records, fetchSubscribeChannelVideoData)
 }
 
 function openMessageModal(message) {

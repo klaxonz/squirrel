@@ -9,6 +9,7 @@ from common.message_queue import RedisMessageQueue
 from model.channel import Channel, ChannelVideo
 from model.message import Message
 import common.response as response
+from schedule.schedule import AutoUpdateChannelVideoTask
 
 logger = logging.getLogger(__name__)
 

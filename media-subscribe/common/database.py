@@ -1,6 +1,7 @@
 import threading
 
-from playhouse.pool import PooledMySQLDatabase
+from peewee import OperationalError
+from playhouse.pool import PooledMySQLDatabase, MaxConnectionsExceeded
 from playhouse.shortcuts import ReconnectMixin
 from common.config import GlobalConfig
 import logging
@@ -19,6 +20,24 @@ db_config = {
 class ReconnectPooledMySQLDatabase(ReconnectMixin, PooledMySQLDatabase):
     """Thread-safe singleton pattern for pooled MySQL database with reconnect capabilities."""
 
+    reconnect_errors = (
+        # Error class, error message fragment (or empty string for all).
+        (OperationalError, '2006'),  # MySQL server has gone away.
+        (OperationalError, '2013'),  # Lost connection to MySQL server.
+        (OperationalError, '2014'),  # Commands out of sync.
+        (OperationalError, '4031'),  # Client interaction timeout.
+
+        # mysql-connector raises a slightly different error when an idle
+        # connection is terminated by the server. This is equivalent to 2013.
+        (OperationalError, 'MySQL Connection not available.'),
+        (MaxConnectionsExceeded, 'Max connections exceeded, timed out attempting to connect.'),
+
+        # Postgres error examples:
+        #(OperationalError, 'terminat'),
+        #(InterfaceError, 'connection already closed'),
+    )
+
+
     _instance_lock = threading.Lock()
     _instance = None
 
@@ -27,8 +46,36 @@ class ReconnectPooledMySQLDatabase(ReconnectMixin, PooledMySQLDatabase):
         """Returns the singleton instance of the database connection pool."""
         with cls._instance_lock:
             if cls._instance is None:
-                cls._instance = cls(**db_config, max_connections=10, timeout=60)
+                cls._instance = cls(**db_config, max_connections=10, timeout=60, stale_timeout=60)
         return cls._instance
+
+    def _reconnect(self, func, *args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as exc:
+            # If we are in a transaction, do not reconnect silently as
+            # any changes could be lost.
+            if self.in_transaction():
+                raise exc
+
+            exc_class = type(exc)
+            if exc_class not in self._reconnect_errors:
+                raise exc
+
+            exc_repr = str(exc).lower()
+            for err_fragment in self._reconnect_errors[exc_class]:
+                if err_fragment in exc_repr:
+                    break
+            else:
+                raise exc
+
+            if not self.is_closed():
+                self.close()
+                self.connect()
+            else:
+                self.connect()
+
+            return func(*args, **kwargs)
 
 
 class DatabaseManager:

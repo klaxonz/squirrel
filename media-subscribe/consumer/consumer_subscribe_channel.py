@@ -13,7 +13,6 @@ class SubscribeChannelConsumerThread(BaseConsumerThread):
 
     def run(self):
         while self.running:
-            message = None
             try:
                 message = self.mq.wait_and_dequeue(timeout=None)
                 if message:

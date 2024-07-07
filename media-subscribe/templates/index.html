@@ -22,28 +22,28 @@
         <!--    状态单选框['PENDING', 'WAITING', 'DOWNLOADING', 'UNSUPPORTED', 'COMPLETED', 'FAILED', 'CANCELLED']    -->
         <div class="search-container">
             <label>
-                <input type="radio" name="download-task-status" value="" checked> 全部
+                <input type="radio" name="download-task-status" value="" checked onclick="handleDownloadTaskStatusClick()"> 全部
             </label>
             <label>
-                <input type="radio" name="download-task-status" value="PENDING"> 待处理
+                <input type="radio" name="download-task-status" value="PENDING" onclick="handleDownloadTaskStatusClick()"> 待处理
             </label>
             <label>
-                <input type="radio" name="download-task-status" value="WAITING"> 等待下载
+                <input type="radio" name="download-task-status" value="WAITING" onclick="handleDownloadTaskStatusClick()"> 等待下载
             </label>
             <label>
-                <input type="radio" name="download-task-status" value="DOWNLOADING"> 下载中
+                <input type="radio" name="download-task-status" value="DOWNLOADING" onclick="handleDownloadTaskStatusClick()"> 下载中
             </label>
             <label>
-                <input type="radio" name="download-task-status" value="UNSUPPORTED"> 不支持
+                <input type="radio" name="download-task-status" value="UNSUPPORTED" onclick="handleDownloadTaskStatusClick()"> 不支持
             </label>
             <label>
-                <input type="radio" name="download-task-status" value="COMPLETED"> 已完成
+                <input type="radio" name="download-task-status" value="COMPLETED" onclick="handleDownloadTaskStatusClick()"> 已完成
             </label>
             <label>
-                <input type="radio" name="download-task-status" value="FAILED"> 失败
+                <input type="radio" name="download-task-status" value="FAILED" onclick="handleDownloadTaskStatusClick()"> 失败
             </label>
             <label>
-                <input type="radio" name="download-task-status" value="CANCELLED"> 取消
+                <input type="radio" name="download-task-status" value="CANCELLED" onclick="handleDownloadTaskStatusClick()"> 取消
             </label>
         </div>
         <table>
