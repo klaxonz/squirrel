@@ -23,10 +23,7 @@ class ExtractorChannelVideoConsumerThread(BaseConsumerThread):
                         channel_video = ChannelVideoSchema().load(json.loads(message.body), session=session)
                         channel = session.query(Channel).where(Channel.channel_id == channel_video.channel_id).first()
 
-                        if channel.if_auto_download:
-                            if channel_video.if_downloaded:
-                                continue
-                        else:
+                        if channel.if_auto_download and channel_video.if_downloaded:
                             continue
 
                         video_info = Downloader.get_video_info(channel_video.url)
