@@ -25,9 +25,9 @@ def subscribe_channel(
     with get_session() as s:
         base_query = s.query(ChannelVideo).filter(ChannelVideo.title != '', ChannelVideo.if_read == 0)
         if channel_name:
-            base_query = base_query.filter(ChannelVideo.channel_name ** f'%{channel_name}%')
+            base_query = base_query.filter(ChannelVideo.channel_name.ilike(f'%{channel_name}%'))
         if title:
-            base_query = base_query.filter(ChannelVideo.title ** f'%{title}%')
+            base_query = base_query.filter(ChannelVideo.title.ilike(f'%{title}%'))
         total = base_query.count()
 
         offset = (page - 1) * page_size
