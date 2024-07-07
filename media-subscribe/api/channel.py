@@ -68,8 +68,9 @@ def delete_channel(req: ChannelDeleteRequest):
     with get_session() as s:
         channel = s.query(Channel).filter(Channel.id == req.id).first()
         if channel:
-            channel.delete()
+            s.delete(channel)
             s.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id).delete()
+            s.commit()
     return response.success()
 
 
