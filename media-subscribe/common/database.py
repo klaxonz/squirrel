@@ -96,6 +96,7 @@ class DatabaseManager:
     def initialize_database(cls, tables):
         """Initializes the default database and creates tables if they don't exist."""
         # Assuming the default database is already created or will be created by another process.
+        cls.create_database_if_not_exists(GlobalConfig.get_mysql_database())
         db = ReconnectPooledMySQLDatabase.get_db_instance()
         with db:
             db.create_tables(tables, safe=True)  # Using 'safe=True' to avoid recreating existing tables
