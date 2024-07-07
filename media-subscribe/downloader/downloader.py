@@ -30,17 +30,18 @@ class Downloader:
             total_bytes = total_bytes if total_bytes is not None else 'unknown'
             eta = eta if eta != '00:00' else 'unknown'
 
-            video_id = video_info['info_dict']['id']
+            if 'id' in video_info['info_dict']:
+                video_id = video_info['info_dict']['id']
 
-            with get_session() as session:
-                session.query(DownloadTask).filter(DownloadTask.video_id == video_id).update({
-                    'downloaded_size': downloaded_bytes,
-                    'total_size': total_bytes,
-                    'speed': speed,
-                    'eta': eta,
-                    'percent': percent
-                })
-                session.commit()
+                with get_session() as session:
+                    session.query(DownloadTask).filter(DownloadTask.video_id == video_id).update({
+                        'downloaded_size': downloaded_bytes,
+                        'total_size': total_bytes,
+                        'speed': speed,
+                        'eta': eta,
+                        'percent': percent
+                    })
+                    session.commit()
 
 
     @staticmethod
@@ -80,7 +81,7 @@ class Downloader:
             'merge_output_format': 'mp4',
             'progress_hooks': [Downloader.on_progress_hook],
             'writesubtitles': True,
-            'subtitleslangs': ['zh', 'en']
+            'subtitleslangs': ['zh-Hans', 'zh-Hant', 'en']
         }
 
         cookie_file_path = GlobalConfig.get_cookies_file_path()

@@ -1,5 +1,6 @@
 import json
 import time
+from datetime import datetime, timedelta
 
 from common.database import get_session
 from model.download_task import DownloadTask, DownloadTaskSchema
@@ -9,7 +10,6 @@ from common.constants import QUEUE_EXTRACT_TASK
 from threading import Thread
 import logging
 
-from model.message import MessageSchema
 from service.download_service import start_extract
 from subscribe.subscribe import SubscribeChannelFactory
 
@@ -76,9 +76,11 @@ class RetryFailedTask:
     def run(cls):
         try:
             # 执行查询
+            ten_minutes_ago = datetime.now() - timedelta(minutes=5)
             with get_session() as session:
                 tasks = session.query(DownloadTask).filter(
-                    (DownloadTask.status == 'FAILED')
+                    (DownloadTask.status == 'FAILED') | (DownloadTask.status.in_(('FAILED', 'PENDING', 'RUNNING'))) &
+                    (DownloadTask.updated_at <= ten_minutes_ago)
                 ).all()
                 # 把失败的任务放入redis队列,并修改状态
                 for task in tasks:
@@ -93,7 +95,8 @@ class RetryFailedTask:
                     session.commit()
                     RedisMessageQueue(QUEUE_EXTRACT_TASK).enqueue(message)
 
-                    session.query(Message).filter(Message.message_id == message.message_id, Message.send_status == 'PENDING').update({
+                    session.query(Message).filter(Message.message_id == message.message_id,
+                                                  Message.send_status == 'PENDING').update({
                         'send_status': 'SENDING'
                     })
                     session.commit()

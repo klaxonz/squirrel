@@ -40,7 +40,7 @@ class ExtractorInfoTaskConsumerThread(BaseConsumerThread):
                             continue
 
                         thumbnail = video_info['thumbnail']
-
+                        download_task.status = 'WAITING'
                         session.query(DownloadTask).filter(DownloadTask.task_id == download_task.task_id,
                                                            DownloadTask.status == 'PENDING').update(
                             {'status': 'WAITING', 'thumbnail': thumbnail, 'title': video_info['title']})
