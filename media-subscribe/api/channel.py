@@ -47,6 +47,7 @@ class ChannelUpdateRequest(BaseModel):
     if_enable: bool
     if_auto_download: bool
     if_download_all: bool
+    if_extract_all: bool
 
 
 @router.post("/api/channel/update")
@@ -54,7 +55,7 @@ def update_chanel(req: ChannelUpdateRequest):
     with get_session() as s:
         s.query(Channel).filter(Channel.id == req.id).update(
             {"if_enable": req.if_enable, "if_auto_download": req.if_auto_download,
-             "if_download_all": req.if_download_all})
+             "if_download_all": req.if_download_all, "if_extract_all": req.if_extract_all})
 
     return response.success()
 
@@ -87,6 +88,7 @@ def channel_detail(id: int):
             "if_enable": channel.if_enable,
             "if_auto_download": channel.if_auto_download,
             "if_download_all": channel.if_download_all,
+            "if_extract_all": channel.if_extract_all,
             "created_at": channel.created_at,
         }
 
@@ -111,6 +113,7 @@ def subscribe_channel(
                 'if_enable': channel.if_enable,
                 'if_auto_download': channel.if_auto_download,
                 'if_download_all': channel.if_download_all,
+                'if_extract_all': channel.if_extract_all,
                 'created_at': channel.created_at
             } for channel in channels
         ]

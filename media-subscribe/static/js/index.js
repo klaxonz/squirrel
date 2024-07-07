@@ -140,6 +140,7 @@ function updateSubscribeChannelList(subscribeInfo) {
             <td>${channel.if_enable ? '启用' : '暂停'}</td>
             <td>${channel.if_auto_download ? '是' : '否'}</td>
             <td>${channel.if_download_all ? '是' : '否'}</td>
+            <td>${channel.if_extract_all ? '是' : '否'}</td>
             <td>${channel.url}</td>
             <td>${channel.created_at}</td>
             <td class="action-buttons">
@@ -235,6 +236,12 @@ function openChannelDetailModal(channelDetail) {
     } else {
         downloadAllRadios[1].checked = true;
     }
+    const extractAllRadios = document.querySelectorAll('input[name="modalChannelIfExtractAll"]');
+    if (channelDetail.if_extract_all) {
+        extractAllRadios[0].checked = true;
+    } else {
+        extractAllRadios[1].checked = true;
+    }
 }
 
 function handleChannelSaveClick(event) {
@@ -242,13 +249,15 @@ function handleChannelSaveClick(event) {
     var ifEnable = document.querySelector('input[name="modalChannelIfEnable"]:checked').value;
     var ifAutoDownload = document.querySelector('input[name="modalChannelIfAutoDownload"]:checked').value;
     var ifDownloadAll = document.querySelector('input[name="modalChannelIfDownloadAll"]:checked').value;
+    var ifExtractAll = document.querySelector('input[name="modalChannelIfExtractAll"]:checked').value;
 
     // Construct the request body as JSON
     var requestBody = {
         id: subscribeId,
         if_enable: ifEnable, // Assuming values are strings like 'true'/'false', convert to boolean if needed
         if_auto_download: ifAutoDownload,
-        if_download_all: ifDownloadAll
+        if_download_all: ifDownloadAll,
+        if_extract_all: ifExtractAll
     };
 
     fetch(`/api/channel/update`, {

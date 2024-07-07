@@ -17,6 +17,7 @@ class Channel(Base, BaseMixin):
     if_enable = Column(Boolean, default=True)
     if_auto_download = Column(Boolean, default=False)
     if_download_all = Column(Boolean, default=False)
+    if_extract_all = Column(Boolean, default=False)
 
 
 class ChannelVideo(Base, BaseMixin):

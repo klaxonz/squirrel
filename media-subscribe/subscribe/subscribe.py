@@ -63,11 +63,10 @@ class BilibiliSubscribeChannel(SubscribeChannel):
             'User-Agent': 'Mozilla/5.0 ...',
             'Cookie': cookies
         }
-        ps = 25 if update_all else GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE
 
         params = {
             'mid': self.get_mid(),
-            'ps': ps,
+            'ps': 25,
             'pn': 1,
             'index': 1,
             'order': 'pubdate',
@@ -76,7 +75,6 @@ class BilibiliSubscribeChannel(SubscribeChannel):
         }
         video_list = []
 
-        # 这里模拟"do"部分，至少执行一次
         should_continue = True
         while should_continue:
             query = sign(params)
@@ -162,8 +160,6 @@ class YouTubeSubscribeChannel(SubscribeChannel):
                 video_id = v["playlistVideoRenderer"]['videoId']
                 video_list.append(f'https://www.youtube.com/watch?v={video_id}')
 
-        if not update_all:
-            video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
         return video_list
 
 
@@ -231,10 +227,10 @@ class PornhubSubscribeChannel(SubscribeChannel):
                 page = new_page
             if current_page == page:
                 break
+            if not update_all:
+                break
             current_page += 1
 
-        if not update_all:
-            video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
         return video_list
 
 

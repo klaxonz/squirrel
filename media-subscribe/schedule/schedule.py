@@ -2,6 +2,7 @@ import json
 import time
 from datetime import datetime, timedelta
 
+from common.config import GlobalConfig
 from common.database import get_session
 from model.download_task import DownloadTask, DownloadTaskSchema
 from model.channel import Channel
@@ -117,7 +118,11 @@ class AutoUpdateChannelVideoTask:
                 channels = session.query(Channel).filter(Channel.if_enable == 1).all()
                 for channel in channels:
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
-                    video_list = subscribe_channel.get_channel_videos(channel=channel, update_all=channel.if_download_all)
+                    # 下载全部的
+                    update_all = channel.if_download_all or channel.if_extract_all
+                    video_list = subscribe_channel.get_channel_videos(channel=channel, update_all=update_all)
+                    if channel.if_extract_all and channel.if_download_all is False:
+                        video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
                     for video in video_list:
                         start_extract(video, channel)
         except json.JSONDecodeError as e:
