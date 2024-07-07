@@ -1,5 +1,7 @@
 import threading
 
+import mysql
+from mysql.connector import Error
 from peewee import OperationalError
 from playhouse.pool import PooledMySQLDatabase, MaxConnectionsExceeded
 from playhouse.shortcuts import ReconnectMixin
@@ -33,10 +35,9 @@ class ReconnectPooledMySQLDatabase(ReconnectMixin, PooledMySQLDatabase):
         (MaxConnectionsExceeded, 'Max connections exceeded, timed out attempting to connect.'),
 
         # Postgres error examples:
-        #(OperationalError, 'terminat'),
-        #(InterfaceError, 'connection already closed'),
+        # (OperationalError, 'terminat'),
+        # (InterfaceError, 'connection already closed'),
     )
-
 
     _instance_lock = threading.Lock()
     _instance = None
@@ -82,21 +83,35 @@ class DatabaseManager:
     """Manages database initialization and table creation."""
 
     @classmethod
-    def create_database_if_not_exists(cls, database_name):
-        """Creates a database if it does not exist."""
+    def create_database_if_not_exists(cls, database_name, connection):
+        cursor = connection.cursor()
         try:
-            with ReconnectPooledMySQLDatabase.get_db_instance().connect() as connection:
-                with connection.cursor() as cursor:
-                    cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database_name};")
-                    logger.info(f"Database '{database_name}' created successfully.")
-        except Exception as e:
-            logger.error(f"Error creating database '{database_name}': {e}")
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database_name};")
+            logger.info(f"Database '{database_name}' created successfully.")
+        except Error as e:
+            logger.error(f"Error occurred: ", e)
+
+    @classmethod
+    def establish_connection(cls):
+        try:
+            connection = mysql.connector.connect(
+                host=GlobalConfig.get_mysql_host(),
+                port=GlobalConfig.get_mysql_port(),
+                user=GlobalConfig.get_mysql_user(),
+                password=GlobalConfig.get_mysql_password()
+            )
+            return connection
+        except Error as e:
+            logger.error(f"Error while connecting to MySQL", e)
+            return None
 
     @classmethod
     def initialize_database(cls, tables):
         """Initializes the default database and creates tables if they don't exist."""
         # Assuming the default database is already created or will be created by another process.
-        cls.create_database_if_not_exists(GlobalConfig.get_mysql_database())
+        connection = cls.establish_connection()
+        if connection is not None:
+            cls.create_database_if_not_exists(GlobalConfig.DEFAULT_MYSQL_DATABASE, connection)
         db = ReconnectPooledMySQLDatabase.get_db_instance()
         with db:
             db.create_tables(tables, safe=True)  # Using 'safe=True' to avoid recreating existing tables
