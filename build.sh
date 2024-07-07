@@ -10,7 +10,7 @@ fi
 
 echo "Building Docker image with version $VERSION..."
 
-docker build --no-chache -t "$IMAGE_NAME:$VERSION" .
+docker build --no-cache -t "$IMAGE_NAME:$VERSION" .
 docker tag "$IMAGE_NAME:$VERSION" "$IMAGE_NAME:latest"
 
 echo "Image built and tagged as $IMAGE_NAME:$VERSION and $IMAGE_NAME:latest."
