@@ -21,9 +21,7 @@ class ExtractorInfoTaskConsumerThread(BaseConsumerThread):
                 try:
                     message = self.mq.wait_and_dequeue(session=session, timeout=None)
                     if message:
-                        session.query(Message).filter(Message.message_id == message.message_id,
-                                                      Message.send_status == 'SENDING').update(
-                            {'send_status': 'SUCCESS'})
+                        message.send_status = 'SUCCESS'
                         session.commit()
 
                         download_task = DownloadTaskSchema().load(json.loads(message.body), session=session)
@@ -32,18 +30,17 @@ class ExtractorInfoTaskConsumerThread(BaseConsumerThread):
                         if video_info is None:
                             continue
 
+                        download_task.title = video_info['title']
+
                         # 不支持playlist
                         if '_type' in video_info and video_info['_type'] == 'playlist':
-                            session.query(DownloadTask).filter(DownloadTask.task_id == download_task.task_id).update(
-                                {'status': 'UNSUPPORTED', 'title': video_info['title']})
+                            download_task.status = 'UNSUPPORTED'
                             session.commit()
                             continue
 
                         thumbnail = video_info['thumbnail']
                         download_task.status = 'WAITING'
-                        session.query(DownloadTask).filter(DownloadTask.task_id == download_task.task_id,
-                                                           DownloadTask.status == 'PENDING').update(
-                            {'status': 'WAITING', 'thumbnail': thumbnail, 'title': video_info['title']})
+                        download_task.thumbnail = thumbnail
                         session.commit()
 
                         message = Message()
@@ -52,13 +49,12 @@ class ExtractorInfoTaskConsumerThread(BaseConsumerThread):
                         session.commit()
 
                         RedisMessageQueue(queue_name=QUEUE_DOWNLOAD_TASK).enqueue(message)
-                        session.query(Message).filter(Message.message_id == message.message_id, Message.send_status == 'PENDING').update({'send_status': 'SENDING'})
-
+                        message.send_status = 'SENDING'
                         session.commit()
 
                         download_task = None
                 except Exception as e:
                     logger.error(f"处理消息时发生错误: {e}", exc_info=True)
                     if download_task:
-                        session.query(Message).filter(Message.message_id == download_task.task_id).update({'send_status': 'FAILED'})
+                        download_task.status = 'FAILED'
                         session.commit()

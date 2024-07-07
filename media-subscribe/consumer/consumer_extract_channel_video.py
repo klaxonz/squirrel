@@ -5,7 +5,7 @@ from datetime import datetime
 from common.database import get_session
 from consumer.base import BaseConsumerThread
 from downloader.downloader import Downloader
-from model.channel import ChannelVideo, Channel, ChannelVideoSchema
+from model.channel import Channel, ChannelVideoSchema
 from service import download_service
 
 logger = logging.getLogger(__name__)
@@ -37,21 +37,14 @@ class ExtractorChannelVideoConsumerThread(BaseConsumerThread):
                             logger.info(f"{channel_video.url} is a playlist, skip")
                             continue
 
-                        uploaded_time = datetime.fromtimestamp(int(video_info['timestamp']))
-                        thumbnail = video_info['thumbnail']
-
-                        session.query(ChannelVideo).where(ChannelVideo.channel_id == channel_video.channel_id, ChannelVideo.video_id == channel_video.video_id).update({
-                            ChannelVideo.title: video_info['title'],
-                            ChannelVideo.thumbnail: thumbnail,
-                            ChannelVideo.uploaded_at: uploaded_time
-                        })
+                        channel_video.title = video_info['title']
+                        channel_video.thumbnail = video_info['thumbnail']
+                        channel_video.uploaded_at = datetime.fromtimestamp(int(video_info['timestamp']))
                         session.commit()
 
                         if channel.if_auto_download:
                             download_service.start_download(channel_video.url)
-                            session.query(ChannelVideo).where(ChannelVideo.video_id == channel_video.video_id, ChannelVideo.channel_id == channel_video.channel_id).update({
-                                ChannelVideo.if_downloaded: True
-                            })
+                            channel_video.if_downloaded = True
                             session.commit()
 
             except Exception as e:
