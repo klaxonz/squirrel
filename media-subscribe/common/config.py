@@ -12,6 +12,9 @@ class GlobalConfig:
     DEFAULT_MYSQL_USER = 'root'
     DEFAULT_MYSQL_PASSWORD = 'root'
     DEFAULT_MYSQL_DATABASE = 'media_subscribe'
+    POOL_SIZE = 10
+    POOL_MAX_SIZE = 20
+    POOL_RECYCLE = 300
     CHANNEL_UPDATE_DEFAULT_SIZE = 10
 
     @classmethod
@@ -71,4 +74,4 @@ class GlobalConfig:
         password = cls.get_mysql_password()
         database = cls.get_mysql_database()
 
-        return f'mysql://{user}:{password}@{host}:{port}/{database}?charset=utf8mb4'
+        return f'mysql+pymysql://{user}:{password}@{host}:{port}/{database}?charset=utf8mb4'

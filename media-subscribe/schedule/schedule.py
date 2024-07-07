@@ -1,9 +1,7 @@
 import json
 import time
 
-from peewee import SQL
-from playhouse.shortcuts import model_to_dict
-
+from common.database import get_session
 from model.download_task import DownloadTask
 from model.channel import Channel
 from common.message_queue import RedisMessageQueue, Message
@@ -11,9 +9,9 @@ from common.constants import QUEUE_EXTRACT_TASK
 from threading import Thread
 import logging
 
+from model.message import MessageSchema
 from service.download_service import start_extract
 from subscribe.subscribe import SubscribeChannelFactory
-from utils import json_serialize
 
 logger = logging.getLogger(__name__)
 
@@ -35,25 +33,25 @@ class Scheduler:
             # 避免高CPU占用，休眠一段时间再检查
             time.sleep(1)
 
-    def add_job(self, func, interval, unit='seconds', startImmediately=True):
+    def add_job(self, func, interval, unit='seconds', start_immediately=True):
         """
         添加一个定时任务。
         
         :param func: 要执行的函数
         :param interval: 执行间隔
         :param unit: 时间间隔单位，默认为秒
-        :param startImmediately: 是否立即执行一次，默认为True
+        :param start_immediately: 是否立即执行一次，默认为True
         """
         if unit not in ['seconds', 'minutes']:
             raise ValueError("unit must be 'seconds' or 'minutes'")
 
         interval *= 60 if unit == 'minutes' else 1  # 转换为秒
 
-        if startImmediately:
+        if start_immediately:
             func()  # 立即执行一次
 
         # 计算第一次执行的时间
-        next_run = time.time() + interval if startImmediately else time.time()
+        next_run = time.time() + interval if start_immediately else time.time()
 
         self.jobs.append({
             'func': func,
@@ -77,20 +75,28 @@ class RetryFailedTask:
     @classmethod
     def run(cls):
         try:
-            two_minutes_ago_sql = SQL("DATE_SUB(NOW(), INTERVAL 2 MINUTE)")
             # 执行查询
-            tasks = DownloadTask.select().where(
-                (DownloadTask.status == 'FAILED') |
-                ((DownloadTask.status == 'DOWNLOADING') & (DownloadTask.updated_at <= two_minutes_ago_sql))
-            ).execute()
-            # 把失败的任务放入redis队列,并修改状态
-            for task in tasks:
-                message = Message(body=json.dumps(model_to_dict(task), default=json_serialize.more))
-                message.save()
-                DownloadTask.update(status='PENDING').where(DownloadTask.task_id == task.task_id).execute()
-                RedisMessageQueue(QUEUE_EXTRACT_TASK).enqueue(message)
-                Message.update(send_status='SENDING').where(
-                    Message.message_id == message.message_id, Message.send_status == 'PENDING').execute()
+            with get_session() as session:
+                tasks = session.query(DownloadTask).filter(
+                    (DownloadTask.status == 'FAILED')
+                ).all()
+                # 把失败的任务放入redis队列,并修改状态
+                for task in tasks:
+                    message = Message()
+                    message.body = MessageSchema().dumps(task)
+                    session.add(message)
+                    session.commit()
+
+                    session.query(DownloadTask).filter(DownloadTask.task_id == task.task_id).update({
+                        'status': 'PENDING'
+                    })
+                    session.commit()
+                    RedisMessageQueue(QUEUE_EXTRACT_TASK).enqueue(message)
+
+                    session.query(Message).filter(Message.message_id == message.message_id, Message.send_status == 'PENDING').update({
+                        'send_status': 'SENDING'
+                    })
+                    session.commit()
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
             logger.error(f"Error decoding JSON: {e}", exc_info=True)
@@ -104,12 +110,13 @@ class AutoUpdateChannelVideoTask:
     @classmethod
     def run(cls):
         try:
-            channels = Channel.select().where(Channel.if_enable == 1)
-            for channel in channels:
-                subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
-                video_list = subscribe_channel.get_channel_videos(update_all=channel.if_download_all)
-                for video in video_list:
-                    start_extract(video, channel)
+            with get_session() as session:
+                channels = session.query(Channel).filter(Channel.if_enable == 1).all()
+                for channel in channels:
+                    subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
+                    video_list = subscribe_channel.get_channel_videos(update_all=channel.if_download_all)
+                    for video in video_list:
+                        start_extract(video, channel)
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
             logger.error(f"Error decoding JSON: {e}", exc_info=True)

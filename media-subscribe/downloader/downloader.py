@@ -4,6 +4,7 @@ import requests
 from yt_dlp import YoutubeDL
 
 from common.config import GlobalConfig
+from common.database import get_session
 from downloader.id_extractor import extract_id_from_url
 from meta.video import VideoFactory, Video
 from model.download_task import DownloadTask
@@ -30,14 +31,17 @@ class Downloader:
             eta = eta if eta != '00:00' else 'unknown'
 
             video_id = video_info['info_dict']['id']
-            download_task = DownloadTask.select().where(DownloadTask.video_id == video_id).get()
-            download_task.status = 'DOWNLOADING'
-            download_task.total_size = total_bytes
-            download_task.downloaded_size = downloaded_bytes
-            download_task.speed = speed
-            download_task.eta = eta
-            download_task.percent = percent
-            download_task.save()
+
+            with get_session() as session:
+                session.query(DownloadTask).filter(DownloadTask.video_id == video_id).update({
+                    'downloaded_size': downloaded_bytes,
+                    'total_size': total_bytes,
+                    'speed': speed,
+                    'eta': eta,
+                    'percent': percent
+                })
+                session.commit()
+
 
     @staticmethod
     def get_video_info(url):
@@ -75,6 +79,8 @@ class Downloader:
             'outtmpl': f'{output_dir}/{filename}.%(ext)s',
             'merge_output_format': 'mp4',
             'progress_hooks': [Downloader.on_progress_hook],
+            'writesubtitles': True,
+            'subtitleslangs': ['zh', 'en']
         }
 
         cookie_file_path = GlobalConfig.get_cookies_file_path()
@@ -90,4 +96,9 @@ class Downloader:
             # 获取文件大小
             file_size = os.path.getsize(filepath)
             video_id = extract_id_from_url(url)
-            DownloadTask.update(total_size=file_size).where(DownloadTask.video_id == video_id).execute()
+
+            with get_session() as session:
+                session.query(DownloadTask).filter(DownloadTask.video_id == video_id).update({
+                    'total_size': file_size
+                })
+                session.commit()

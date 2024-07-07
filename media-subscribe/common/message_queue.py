@@ -1,10 +1,11 @@
 import json
 
-from playhouse.shortcuts import model_to_dict, dict_to_model
+from sqlalchemy.orm import Session
 
-from model.message import Message
+from model.message import Message, MessageSchema
 from utils import json_serialize
 from .cache import RedisClient
+from .database import get_session
 
 
 class RedisMessageQueue:
@@ -24,7 +25,7 @@ class RedisMessageQueue:
         :param message: Message对象实例
         :return: 新队列长度
         """
-        return self.client.rpush(self.queue_name, json.dumps(model_to_dict(message), default=json_serialize.more))
+        return self.client.rpush(self.queue_name, MessageSchema().dumps(message))
 
     def dequeue(self, block=True, timeout=0):
         """
@@ -35,18 +36,19 @@ class RedisMessageQueue:
         """
         raw_message = self.client.dequeue(block=block, timeout=timeout)
         if raw_message:
-            return dict_to_model(Message, json.loads(raw_message[1]))
+            return MessageSchema().loads(raw_message[1])
         return None
 
-    def wait_and_dequeue(self, timeout=None) -> Message:
+    def wait_and_dequeue(self, session: Session, timeout=None) -> Message:
         """
         阻塞等待并从队列头部取出一条消息
+        :param session:
         :param timeout: 等待超时时间（秒），None表示无限等待
         :return: Message对象实例，如果超时则返回None
         """
         raw_message = self.client.blpop(self.queue_name, timeout=timeout)
         if raw_message:
-            return dict_to_model(Message, json.loads(raw_message[1]))
+            return MessageSchema().load(json.loads(raw_message[1]), session=session)
         return None
 
     def queue_length(self):

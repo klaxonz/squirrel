@@ -137,9 +137,9 @@ function updateSubscribeChannelList(subscribeInfo) {
             <td>${channel.id}</td>
             <td>${channel.channel_id}</td>
             <td>${channel.name}</td>
-            <td>${channel.if_enable == 1 ? '启用' : '暂停'}</td>
-            <td>${channel.if_auto_download == 1 ? '是' : '否'}</td>
-            <td>${channel.if_download_all == 1 ? '是' : '否'}</td>
+            <td>${channel.if_enable ? '启用' : '暂停'}</td>
+            <td>${channel.if_auto_download ? '是' : '否'}</td>
+            <td>${channel.if_download_all ? '是' : '否'}</td>
             <td>${channel.url}</td>
             <td>${channel.created_at}</td>
             <td class="action-buttons">
@@ -213,24 +213,24 @@ function openChannelDetailModal(channelDetail) {
     console.log(channelDetail)
     document.getElementById('channelInfoModal').style.display = 'block';
     document.getElementById('modalSubscribeId').innerText = channelDetail.id;
-    document.getElementById('modalChannelId').innerText = channelDetail.channelId;
+    document.getElementById('modalChannelId').innerText = channelDetail.channel_id;
     document.getElementById('modalChannelName').innerText = channelDetail.name;
     document.getElementById('modalChannelUrl').innerText = channelDetail.url;
-    document.getElementById('modalChannelSubscribeTime').innerText = channelDetail.createdAt;
+    document.getElementById('modalChannelSubscribeTime').innerText = channelDetail.created_at;
     const enableRadios = document.querySelectorAll('input[name="modalChannelIfEnable"]');
-    if (channelDetail.ifEnable == 1) {
+    if (channelDetail.if_enable) {
         enableRadios[0].checked = true;
     } else {
         enableRadios[1].checked = true;
     }
     const autoDownloadRadios = document.querySelectorAll('input[name="modalChannelIfAutoDownload"]');
-    if (channelDetail.ifAutoDownload == 1) {
+    if (channelDetail.if_auto_download) {
         autoDownloadRadios[0].checked = true;
     } else {
         autoDownloadRadios[1].checked = true;
     }
     const downloadAllRadios = document.querySelectorAll('input[name="modalChannelIfDownloadAll"]');
-    if (channelDetail.ifDownloadAll == 1) {
+    if (channelDetail.if_download_all) {
         downloadAllRadios[0].checked = true;
     } else {
         downloadAllRadios[1].checked = true;
@@ -246,9 +246,9 @@ function handleChannelSaveClick(event) {
     // Construct the request body as JSON
     var requestBody = {
         id: subscribeId,
-        ifEnable: ifEnable, // Assuming values are strings like 'true'/'false', convert to boolean if needed
-        ifAutoDownload: ifAutoDownload,
-        ifDownloadAll: ifDownloadAll
+        if_enable: ifEnable, // Assuming values are strings like 'true'/'false', convert to boolean if needed
+        if_auto_download: ifAutoDownload,
+        if_download_all: ifDownloadAll
     };
 
     fetch(`/api/channel/update`, {

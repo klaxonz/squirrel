@@ -1,12 +1,11 @@
 import json
 import logging
 
-from playhouse.shortcuts import dict_to_model, model_to_dict
-
+from common.database import get_session
 from consumer.base import BaseConsumerThread
 from downloader.downloader import Downloader
-from model.download_task import DownloadTask
-from utils import json_serialize
+from model.download_task import DownloadTask, DownloadTaskSchema
+from model.message import MessageSchema
 
 logger = logging.getLogger(__name__)
 
@@ -17,33 +16,23 @@ class DownloadTaskConsumerThread(BaseConsumerThread):
         while self.running:
             message = None
             download_task = None
-            try:
-                message = self.mq.wait_and_dequeue(timeout=None)
-                if message:
-                    self.handle_message(message)
+            with get_session() as session:
+                try:
+                    message = self.mq.wait_and_dequeue(session=session, timeout=None)
+                    if message:
+                        self.handle_message(message, session)
+                        download_task = DownloadTaskSchema().load(json.loads(message.body), session=session)
 
-                    download_task = dict_to_model(DownloadTask, json.loads(message.body))
-                    key = f"task:{download_task.domain}:{download_task.video_id}"
+                        session.query(DownloadTask).filter(DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'WAITING').update({'status': 'DOWNLOADING'})
+                        session.commit()
+                        Downloader.download(download_task.url)
+                        session.query(DownloadTask).filter(DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'DOWNLOADING').update({'status': 'COMPLETED'})
+                        session.commit()
 
-                    if self.redis.exists(key):
-                        continue
-
-                    DownloadTask.update(status='DOWNLOADING').where(
-                        DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'WAITING').execute()
-
-                    Downloader.download(download_task.url)
-
-                    DownloadTask.update(status='COMPLETED').where(
-                        DownloadTask.task_id == download_task.task_id, DownloadTask.status == 'DOWNLOADING').execute()
-
-                    # 写入缓存
-                    self.redis.set(key, download_task.video_id, 12 * 60 * 60)
-
-                    download_task = None
-            except Exception as e:
-                logger.error(
-                    f"处理消息时发生错误: {e}, message: {json.dumps(model_to_dict(message), default=json_serialize.more)}",
-                    exc_info=True)
-                if download_task:
-                    DownloadTask.update(status='FAILED', error_message=str(e)).where(
-                        DownloadTask.task_id == download_task.task_id).execute()
+                        download_task = None
+                except Exception as e:
+                    logger.error(
+                        f"处理消息时发生错误: {e}, message: {MessageSchema().dumps(message)}",
+                        exc_info=True)
+                    if download_task:
+                        session.query(DownloadTask).filter(DownloadTask.task_id == download_task.task_id).update({'status': 'FAILED'})

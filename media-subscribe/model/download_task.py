@@ -1,36 +1,28 @@
-from datetime import datetime
-
-from peewee import (
-    AutoField,
-    BigIntegerField,
-    CharField,
-    DateTimeField,
-)
-
-from model.base import BaseModel
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+from sqlalchemy import Column, BigInteger, Text, Integer
+from sqlalchemy.dialects.mysql import VARCHAR
+from common.database import Base, BaseMixin
 
 
-class DownloadTask(BaseModel):
-    """
-    下载任务表的Peewee Model定义
-    """
-    task_id = AutoField(primary_key=True, verbose_name='任务ID')
-    url = CharField(max_length=2048, null=False, verbose_name='下载链接')
-    thumbnail = CharField(max_length=2048, null=True, verbose_name='封面链接')
-    domain = CharField(max_length=255, null=False, verbose_name='下载链接域名')
-    video_id = CharField(max_length=64, null=False, verbose_name='视频ID')
-    title = CharField(max_length=255, null=True, verbose_name='视频标题')
-    status = CharField(choices=['PENDING', 'WAITING', 'DOWNLOADING', 'UNSUPPORTED', 'COMPLETED', 'FAILED', 'CANCELLED'], null=False,
-                       default='PENDING', verbose_name='任务状态')
-    downloaded_size = BigIntegerField(null=False, default=0, verbose_name='已下载大小（字节）')
-    total_size = BigIntegerField(null=True, verbose_name='总大小（字节）')
-    speed = CharField(null=True, verbose_name='下载速度（字节/秒）')
-    eta = CharField(max_length=32, null=True, verbose_name='预计剩余下载时间')
-    percent = CharField(max_length=32, null=True, verbose_name='下载进度')
-    error_message = CharField(null=True, verbose_name='失败原因或错误信息')
-    created_at = DateTimeField(null=False, default=datetime.now, verbose_name='创建时间')
-    updated_at = DateTimeField(null=False, default=datetime.now, verbose_name='更新时间')
+class DownloadTask(Base, BaseMixin):
+    __tablename__ = 'download_task'
 
-    def __str__(self):
-        return f'Task ID: {self.task_id}, Title: {self.title}, Status: {self.status}'
+    task_id = Column(Integer, primary_key=True)
+    url = Column(VARCHAR(2048), nullable=False)
+    thumbnail = Column(VARCHAR(2048), nullable=True)
+    domain = Column(VARCHAR(255), nullable=False)
+    video_id = Column(VARCHAR(64), nullable=False)
+    title = Column(VARCHAR(255), nullable=True)
+    status = Column(VARCHAR(32), nullable=False, default='PENDING')
+    downloaded_size = Column(BigInteger, nullable=True, default=0)
+    total_size = Column(BigInteger, nullable=True, default=0)
+    speed = Column(VARCHAR(255), nullable=True)
+    eta = Column(VARCHAR(32), nullable=True)
+    percent = Column(VARCHAR(32), nullable=True)
+    error_message = Column(Text, nullable=True)
 
+
+class DownloadTaskSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = DownloadTask
+        load_instance = True
