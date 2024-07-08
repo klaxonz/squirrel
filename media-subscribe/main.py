@@ -26,13 +26,17 @@ logger = logging.getLogger(__name__)
 def initialize_consumers():
     """启动所有消费者线程"""
     logger.info('Starting consumers...')
+    download_consumers = []
+    for _ in range(6):
+        consumer = DownloadTaskConsumerThread(queue_name=constants.QUEUE_DOWNLOAD_TASK)
+        download_consumers.append(consumer)
+        consumer.start()
     extract_info_consumer = ExtractorInfoTaskConsumerThread(queue_name=constants.QUEUE_EXTRACT_TASK)
-    download_consumer = DownloadTaskConsumerThread(queue_name=constants.QUEUE_DOWNLOAD_TASK)
     subscribe_consumer = SubscribeChannelConsumerThread(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
     channel_video_extract_consumer = ChannelVideoExtractConsumerThread(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT)
     channel_video_extract_download_consumer = ChannelVideoExtractAndDownloadConsumerThread(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
     [consumer.start() for consumer in [
-        extract_info_consumer, download_consumer, subscribe_consumer, channel_video_extract_consumer,channel_video_extract_download_consumer
+        extract_info_consumer, subscribe_consumer, channel_video_extract_consumer,channel_video_extract_download_consumer
     ]]
     logger.info('Consumers started.')
 
