@@ -77,14 +77,23 @@ class RetryFailedTask:
     def run(cls):
         try:
             # 执行查询
-            ten_minutes_ago = datetime.now() - timedelta(minutes=5)
+            five_minutes_ago = datetime.now() - timedelta(minutes=5)
             with get_session() as session:
                 tasks = session.query(DownloadTask).filter(
-                    (DownloadTask.status == 'FAILED') | (DownloadTask.status.in_(('FAILED', 'PENDING', 'DOWNLOADING', 'WAITING'))) &
-                    (DownloadTask.updated_at <= ten_minutes_ago)
+                    (DownloadTask.status == 'FAILED') | (DownloadTask.status.in_(('PENDING', 'DOWNLOADING', 'WAITING'))) &
+                    (DownloadTask.updated_at <= five_minutes_ago)
                 ).all()
                 # 把失败的任务放入redis队列,并修改状态
                 for task in tasks:
+                    ten_minutes_ago = datetime.now() - timedelta(minutes=10)
+                    downloading_tasks = session.query(DownloadTask).filter(
+                        (DownloadTask.status == 'DOWNLOADING') &
+                        (DownloadTask.updated_at <= ten_minutes_ago)
+                    ).all()
+
+                    if (task.status == 'PENDING' or task.status == 'WAITING') and len(downloading_tasks) > 0:
+                        continue
+
                     message = Message()
                     message.body = DownloadTaskSchema().dumps(task)
                     session.add(message)
