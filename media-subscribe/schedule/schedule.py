@@ -80,7 +80,7 @@ class RetryFailedTask:
             ten_minutes_ago = datetime.now() - timedelta(minutes=5)
             with get_session() as session:
                 tasks = session.query(DownloadTask).filter(
-                    (DownloadTask.status == 'FAILED') | (DownloadTask.status.in_(('FAILED', 'PENDING', 'RUNNING'))) &
+                    (DownloadTask.status == 'FAILED') | (DownloadTask.status.in_(('FAILED', 'PENDING', 'RUNNING', 'WAITING'))) &
                     (DownloadTask.updated_at <= ten_minutes_ago)
                 ).all()
                 # 把失败的任务放入redis队列,并修改状态
