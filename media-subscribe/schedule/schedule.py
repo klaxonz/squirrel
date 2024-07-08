@@ -11,7 +11,7 @@ from common.constants import QUEUE_EXTRACT_TASK
 from threading import Thread
 import logging
 
-from service.download_service import start_extract
+from service.download_service import start_extract, start_extract_and_download
 from subscribe.subscribe import SubscribeChannelFactory
 
 logger = logging.getLogger(__name__)
@@ -121,10 +121,27 @@ class AutoUpdateChannelVideoTask:
                     # 下载全部的
                     update_all = channel.if_download_all or channel.if_extract_all
                     video_list = subscribe_channel.get_channel_videos(channel=channel, update_all=update_all)
-                    if channel.if_extract_all and channel.if_download_all is False:
-                        video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
-                    for video in video_list:
+                    extract_video_list = []
+                    extract_download_video_list = []
+                    if channel.if_extract_all:
+                        if channel.if_download_all:
+                            extract_download_video_list = video_list
+                        else:
+                            if channel.if_auto_download:
+                                extract_download_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
+                            else:
+                                extract_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
+                    else:
+                        if channel.if_auto_download:
+                            extract_download_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
+                        else:
+                            extract_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
+
+                    for video in extract_video_list:
                         start_extract(video, channel)
+                    for video in extract_download_video_list:
+                        start_extract_and_download(video, channel)
+
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
             logger.error(f"Error decoding JSON: {e}", exc_info=True)

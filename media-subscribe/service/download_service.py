@@ -1,6 +1,6 @@
 import logging
 
-from common.constants import QUEUE_EXTRACT_TASK, QUEUE_CHANNEL_VIDEO_UPDATE
+import common.constants as constants
 from common.database import get_session
 from common.message_queue import RedisMessageQueue
 from common.url_helper import extract_top_level_domain
@@ -33,11 +33,48 @@ def start_download(url: str):
         session.add(message)
         session.commit()
 
-        RedisMessageQueue(queue_name=QUEUE_EXTRACT_TASK).enqueue(message)
+        RedisMessageQueue(queue_name=constants.QUEUE_EXTRACT_TASK).enqueue(message)
 
         session.query(Message).filter(Message.message_id == message.message_id,
                                       Message.send_status == 'PENDING').update({'send_status': 'SENDING'})
 
+        session.commit()
+
+
+def start_extract_and_download(url: str, channel: Channel):
+    if 'youtube.com' in url:
+        url = "https://www.youtube.com/watch?" + url.split("?")[1]
+
+    domain = extract_top_level_domain(url)
+    video_id = extract_id_from_url(url)
+
+    with get_session() as session:
+        channel_video = session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id,
+                                                           ChannelVideo.video_id == video_id).first()
+        if channel_video and channel.if_auto_download:
+            if channel_video.if_downloaded:
+                logger.info(f"extract task already exists: {url}")
+                return
+
+        if channel_video is None:
+            channel_video = ChannelVideo()
+            channel_video.channel_id = channel.channel_id,
+            channel_video.channel_name = channel.name,
+            channel_video.domain = domain,
+            channel_video.video_id = video_id,
+            channel_video.url = url,
+            session.add(channel_video)
+            session.commit()
+
+        message = Message()
+        message.body = ChannelVideoSchema().dumps(channel_video)
+        session.add(message)
+        session.commit()
+
+        RedisMessageQueue(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD).enqueue(message)
+
+        session.query(Message).filter(Message.message_id == message.message_id,
+                                      Message.send_status == 'PENDING').update({'send_status': 'SENDING'})
         session.commit()
 
 
@@ -71,7 +108,7 @@ def start_extract(url: str, channel: Channel):
         session.add(message)
         session.commit()
 
-        RedisMessageQueue(queue_name=QUEUE_CHANNEL_VIDEO_UPDATE).enqueue(message)
+        RedisMessageQueue(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT).enqueue(message)
 
         session.query(Message).filter(Message.message_id == message.message_id,
                                       Message.send_status == 'PENDING').update({'send_status': 'SENDING'})

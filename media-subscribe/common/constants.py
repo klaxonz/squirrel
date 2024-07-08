@@ -1,7 +1,8 @@
 QUEUE_DOWNLOAD_TASK = 'video:download:queue'
 QUEUE_EXTRACT_TASK = 'video:extract:queue'
 QUEUE_SUBSCRIBE_TASK = 'video:subscribe:queue'
-QUEUE_CHANNEL_VIDEO_UPDATE = 'channel:video:update:queue'
+QUEUE_CHANNEL_VIDEO_EXTRACT = 'channel:video:extract'
+QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD = 'channel:video:extract:download'
 
 MESSAGE_TYPE_DOWNLOAD = 'download'
 MESSAGE_TYPE_SUBSCRIBE = 'subscribe'

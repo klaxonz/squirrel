@@ -6,14 +6,14 @@ load_dotenv(override=True)
 
 import logging
 from consumer.consumer_download_task import DownloadTaskConsumerThread
-from consumer.consumer_extract_channel_video import ExtractorChannelVideoConsumerThread
+from consumer.consumer_extract_channel_video import ChannelVideoExtractConsumerThread, ChannelVideoExtractAndDownloadConsumerThread
 from consumer.consumer_extract_video_info import ExtractorInfoTaskConsumerThread
 from consumer.consumer_subscribe_channel import SubscribeChannelConsumerThread
 
 from model.message import Message
 import uvicorn
 from api.base import app
-from common.constants import QUEUE_DOWNLOAD_TASK, QUEUE_SUBSCRIBE_TASK, QUEUE_EXTRACT_TASK, QUEUE_CHANNEL_VIDEO_UPDATE
+import common.constants as constants
 from common.database import DatabaseManager
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
@@ -26,12 +26,13 @@ logger = logging.getLogger(__name__)
 def initialize_consumers():
     """启动所有消费者线程"""
     logger.info('Starting consumers...')
-    extract_info_consumer = ExtractorInfoTaskConsumerThread(queue_name=QUEUE_EXTRACT_TASK)
-    download_consumer = DownloadTaskConsumerThread(queue_name=QUEUE_DOWNLOAD_TASK)
-    subscribe_consumer = SubscribeChannelConsumerThread(queue_name=QUEUE_SUBSCRIBE_TASK)
-    subscribe_channel_video_consumer = ExtractorChannelVideoConsumerThread(queue_name=QUEUE_CHANNEL_VIDEO_UPDATE)
+    extract_info_consumer = ExtractorInfoTaskConsumerThread(queue_name=constants.QUEUE_EXTRACT_TASK)
+    download_consumer = DownloadTaskConsumerThread(queue_name=constants.QUEUE_DOWNLOAD_TASK)
+    subscribe_consumer = SubscribeChannelConsumerThread(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
+    channel_video_extract_consumer = ChannelVideoExtractConsumerThread(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT)
+    channel_video_extract_download_consumer = ChannelVideoExtractAndDownloadConsumerThread(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
     [consumer.start() for consumer in [
-        extract_info_consumer, download_consumer, subscribe_consumer, subscribe_channel_video_consumer
+        extract_info_consumer, download_consumer, subscribe_consumer, channel_video_extract_consumer,channel_video_extract_download_consumer
     ]]
     logger.info('Consumers started.')
 
