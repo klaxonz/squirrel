@@ -1,16 +1,17 @@
 import json
+import logging
 import re
 from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
-from common.config import GlobalConfig
 from .bilibili_sign import sign
 from common.cookie import filter_cookies_to_query_string
 from meta.channel import ChannelMeta
 from model.channel import Channel
 
+logger = logging.getLogger(__name__)
 
 class SubscribeChannel:
     def __init__(self, url):
@@ -209,6 +210,10 @@ class PornhubSubscribeChannel(SubscribeChannel):
 
         video_list = []
         bs4 = BeautifulSoup(response.text, 'html.parser')
+        page_next_list = bs4.select('.page_next')
+        if len(page_next_list) == 0:
+            logger.info('channel extract error, channel url: {}', channel.url)
+            return video_list
         page = int(bs4.select('.page_next')[0].find_previous().text)
         current_page = 1
         while True:
