@@ -212,7 +212,7 @@ class PornhubSubscribeChannel(SubscribeChannel):
         bs4 = BeautifulSoup(response.text, 'html.parser')
         page_next_list = bs4.select('.page_next')
         if len(page_next_list) == 0:
-            logger.info('channel extract error, channel url: {}', channel.url)
+            logger.info(f'channel extract error, channel url: {channel.url}')
             return video_list
         page = int(bs4.select('.page_next')[0].find_previous().text)
         current_page = 1
