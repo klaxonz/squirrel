@@ -154,7 +154,7 @@ class AutoUpdateChannelVideoTask:
                         domain_id = extract_top_level_domain(video)
                         video_id = extract_id_from_url(video)
                         key = f"task:extract:{domain_id}:{channel.channel_id}:{video_id}"
-                        if redis_client.exist(key):
+                        if redis_client.exists(key):
                             continue
                         else:
                             RedisClient.get_instance().set_key(key, 1, 60 * 60 * 24)
@@ -163,7 +163,7 @@ class AutoUpdateChannelVideoTask:
                         domain_id = extract_top_level_domain(video)
                         video_id = extract_id_from_url(video)
                         key = f"task:extract:download:{domain_id}:{channel.channel_id}:{video_id}"
-                        if redis_client.exist(key):
+                        if redis_client.exists(key):
                             continue
                         else:
                             RedisClient.get_instance().set_key(key, 1, 60 * 60 * 24)
