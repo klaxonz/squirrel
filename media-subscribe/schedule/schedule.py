@@ -125,7 +125,7 @@ class AutoUpdateChannelVideoTask:
 
     @classmethod
     def run(cls):
-        redis_client = RedisClient.get_instance()
+        redis_client = RedisClient.get_instance().client
         try:
             with get_session() as session:
                 channels = session.query(Channel).filter(Channel.if_enable == 1).all()
