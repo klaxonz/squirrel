@@ -319,7 +319,9 @@
             span.classList.add('h-f-btn');
 
             let url = window.location.href;
-            url = url.split('?')[0];
+            const parsedUrl = new URL(url);
+            const baseUrl = parsedUrl.protocol + '//' + parsedUrl.host;
+            url = baseUrl + '/' + url.match(/\/(\d+)\/?.*/)[1];
             // 点击按钮发送请求的函数
             span.addEventListener('click', function(event) {
                 event.stopPropagation();
