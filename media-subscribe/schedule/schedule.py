@@ -2,8 +2,11 @@ import json
 import time
 from datetime import datetime, timedelta
 
+from common.cache import RedisClient
 from common.config import GlobalConfig
 from common.database import get_session
+from common.url_helper import extract_top_level_domain
+from downloader.id_extractor import extract_id_from_url
 from model.download_task import DownloadTask, DownloadTaskSchema
 from model.channel import Channel
 from common.message_queue import RedisMessageQueue, Message
@@ -122,6 +125,7 @@ class AutoUpdateChannelVideoTask:
 
     @classmethod
     def run(cls):
+        redis_client = RedisClient.get_instance()
         try:
             with get_session() as session:
                 channels = session.query(Channel).filter(Channel.if_enable == 1).all()
@@ -147,8 +151,22 @@ class AutoUpdateChannelVideoTask:
                             extract_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
 
                     for video in extract_video_list:
+                        domain_id = extract_top_level_domain(video)
+                        video_id = extract_id_from_url(video)
+                        key = f"task:extract:{domain_id}:{channel.channel_id}:{video_id}"
+                        if redis_client.exist(key):
+                            continue
+                        else:
+                            RedisClient.get_instance().set_key(key, 1, 60 * 60 * 24)
                         start_extract(video, channel)
                     for video in extract_download_video_list:
+                        domain_id = extract_top_level_domain(video)
+                        video_id = extract_id_from_url(video)
+                        key = f"task:extract:download:{domain_id}:{channel.channel_id}:{video_id}"
+                        if redis_client.exist(key):
+                            continue
+                        else:
+                            RedisClient.get_instance().set_key(key, 1, 60 * 60 * 24)
                         start_extract_and_download(video, channel)
 
         except json.JSONDecodeError as e:
