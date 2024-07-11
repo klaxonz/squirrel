@@ -16,6 +16,7 @@ class GlobalConfig:
     POOL_MAX_SIZE = 20
     POOL_RECYCLE = 300
     CHANNEL_UPDATE_DEFAULT_SIZE = 10
+    DOWNLOAD_RETRY_THRESHOLD = 5
 
     @classmethod
     def get_download_root_path(cls):

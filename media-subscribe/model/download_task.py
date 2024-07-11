@@ -19,6 +19,7 @@ class DownloadTask(Base, BaseMixin):
     speed = Column(VARCHAR(255), nullable=True)
     eta = Column(VARCHAR(32), nullable=True)
     percent = Column(VARCHAR(32), nullable=True)
+    retry = Column(Integer, nullable=False, default=0)
     error_message = Column(Text, nullable=True)
 
 

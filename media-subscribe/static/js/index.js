@@ -111,10 +111,12 @@ function updateDownloadTaskList(taskInfo) {
             <td  class="img-box"><img src="${task.thumbnail}" referrerpolicy="no-referrer"></td>
             <td>${task.title}</td>
             <td>${statusText}</td>
+            <td>${task.retry}</td>
             <td>${formatBytes(task.total_size)}</td>
             <td>${task.percent}</td>
             <td>${task.speed}</td>
             <td>${task.eta}</td>
+            <td>${task.error_message ? task.error_message : ''}</td>
             <td>${task.created_at}</td>
             <td class="action-buttons">
                 <a href="#" class="button play-button">播放</a>

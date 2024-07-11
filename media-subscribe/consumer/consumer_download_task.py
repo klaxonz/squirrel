@@ -27,6 +27,7 @@ class DownloadTaskConsumerThread(BaseConsumerThread):
                         session.commit()
                         Downloader.download(download_task.url)
                         download_task.status = 'COMPLETED'
+                        download_task.error_message = ''
                         session.commit()
 
                         download_task = None
@@ -36,4 +37,5 @@ class DownloadTaskConsumerThread(BaseConsumerThread):
                         exc_info=True)
                     if download_task:
                         download_task.status = 'FAILED'
+                        download_task.error_message = str(e)
                         session.commit()

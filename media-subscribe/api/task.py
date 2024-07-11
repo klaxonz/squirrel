@@ -76,6 +76,7 @@ def get_updated_task_list(status: str = None, page: int = 1, page_size: int = 10
                 "eta": task.eta or '未知',
                 "percent": task.percent or '未知',
                 "error_message": task.error_message,
+                "retry": task.retry,
                 "created_at": task.created_at,
             } for task in tasks
         ]

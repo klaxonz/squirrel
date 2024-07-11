@@ -13,6 +13,7 @@ from common.message_queue import RedisMessageQueue, Message
 from common.constants import QUEUE_EXTRACT_TASK
 from threading import Thread
 import logging
+from sqlalchemy import or_, and_, text
 
 from service.download_service import start_extract, start_extract_and_download
 from subscribe.subscribe import SubscribeChannelFactory
@@ -83,9 +84,10 @@ class RetryFailedTask:
             five_minutes_ago = datetime.now() - timedelta(minutes=5)
             with get_session() as session:
                 tasks = session.query(DownloadTask).filter(
-                    (DownloadTask.status == 'FAILED') | (DownloadTask.status.in_(('PENDING', 'DOWNLOADING', 'WAITING'))) &
-                    (DownloadTask.updated_at <= five_minutes_ago)
-                ).all()
+                    text("(status = 'FAILED' and retry < 5) or (status in ('DOWNLOADING', 'PENDING', 'WAITING') and retry < 5 and updated_at < :update_time)")
+                    .params(update_time=five_minutes_ago)
+                )
+
                 # 把失败的任务放入redis队列,并修改状态
                 for task in tasks:
                     ten_minutes_ago = datetime.now() - timedelta(minutes=10)
@@ -98,12 +100,14 @@ class RetryFailedTask:
                         continue
 
                     message = Message()
+                    task.error_message = ''
+                    task.retry = task.retry + 1
                     message.body = DownloadTaskSchema().dumps(task)
                     session.add(message)
                     session.commit()
 
                     session.query(DownloadTask).filter(DownloadTask.task_id == task.task_id).update({
-                        'status': 'PENDING'
+                        'status': 'PENDING',
                     })
                     session.commit()
                     RedisMessageQueue(QUEUE_EXTRACT_TASK).enqueue(message)
