@@ -157,7 +157,7 @@ class AutoUpdateChannelVideoTask:
                         if redis_client.exists(key):
                             continue
                         else:
-                            redis_client.set(key, 1, 60 * 60 * 24)
+                            redis_client.set(key, 1, 60 * 60 * 1)
                         start_extract(video, channel)
                     for video in extract_download_video_list:
                         domain_id = extract_top_level_domain(video)
@@ -166,7 +166,7 @@ class AutoUpdateChannelVideoTask:
                         if redis_client.exists(key):
                             continue
                         else:
-                            redis_client.set(key, 1, 60 * 60 * 24)
+                            redis_client.set(key, 1, 60 * 60 * 1)
                         start_extract_and_download(video, channel)
 
         except json.JSONDecodeError as e:
