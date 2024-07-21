@@ -25,4 +25,3 @@ def filter_cookies_to_query_string(target_url):
     cookie_strings = [f"{cookie.name}={cookie.value}" for cookie in filtered_cj]
     cookie_semicolon_string = '; '.join(cookie_strings)
     return cookie_semicolon_string
-

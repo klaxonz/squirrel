@@ -20,7 +20,7 @@ class ExtractorInfoTaskConsumerThread(BaseConsumerThread):
             download_task = None
             with get_session() as session:
                 try:
-                    message = self.mq.wait_and_dequeue(session=session, timeout=None)
+                    message = self.mq.wait_and_dequeue(session=session, timeout=5)
                     if message:
                         message.send_status = 'SUCCESS'
                         session.commit()

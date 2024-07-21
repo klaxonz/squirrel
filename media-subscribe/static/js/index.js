@@ -77,12 +77,12 @@ function downloadChannelVideo(channelId, videoId) {
             video_id: videoId
         })
     })
-    .then(response => response.json())
-    .then(data => {
-        fetchSubscribeChannelVideoData();
-        openMessageModal('视频下载任务已成功创建！')
-    })
-    .catch(error =>console.error('Error:', error));
+        .then(response => response.json())
+        .then(data => {
+            fetchSubscribeChannelVideoData();
+            openMessageModal('视频下载任务已成功创建！')
+        })
+        .catch(error => console.error('Error:', error));
 }
 
 function markReadChannelVideo(channelId, videoId) {
@@ -96,10 +96,10 @@ function markReadChannelVideo(channelId, videoId) {
             video_id: videoId
         })
     })
-    .then(response => response.json())
-    .then(data => {
-        fetchSubscribeChannelVideoData();
-    });
+        .then(response => response.json())
+        .then(data => {
+            fetchSubscribeChannelVideoData();
+        });
 }
 
 function updateDownloadTaskList(taskInfo) {
@@ -109,7 +109,7 @@ function updateDownloadTaskList(taskInfo) {
     // 创建一个映射，用于跟踪哪些行需要被移除（即不再存在于新数据中的行）
     let rowsToRemove = new Set(Object.keys(existingRows));
 
-    tasks.forEach(function(task) {
+    tasks.forEach(function (task) {
         const taskId = task.id;
         rowsToRemove.delete(String(taskId)); // 移除这个taskId，因为它仍然存在
 
@@ -192,7 +192,7 @@ function updateSubscribeChannelList(subscribeInfo) {
     var tbody = document.querySelector('#subscribe-content table tbody');
     tbody.innerHTML = ''; // 清空现有内容以准备更新
     var channels = subscribeInfo.data.data;
-    channels.forEach(function(channel) {
+    channels.forEach(function (channel) {
         var row = `<tr>
             <td>${channel.id}</td>
             <td  class="avatar-box"><img src="${channel.avatar}" referrerpolicy="no-referrer"></td>
@@ -218,7 +218,7 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
     var tbody = document.querySelector('#subscribe-update-content table tbody');
     tbody.innerHTML = ''; // 清空现有内容以准备更新
     var channelVideos = subscribeChannelVideoInfo.data.data;
-    channelVideos.forEach(function(channelVideo) {
+    channelVideos.forEach(function (channelVideo) {
         var row = `<tr data-channel-id="${channelVideo.channel_id}" data-video-id="${channelVideo.video_id}" >
             <td class="avatar-box"><img src="${channelVideo.channel_avatar}" referrerpolicy="no-referrer"></td>
             <td>${channelVideo.channel_name}</td>
@@ -328,17 +328,17 @@ function handleChannelSaveClick(event) {
         },
         body: JSON.stringify(requestBody), // Convert the request body to a JSON string
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        handleChannelDetailCloseClick();
-        fetchSubscribeChannelData();
-    })
-    .catch(error => console.error('Error updating channel:', error));
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            handleChannelDetailCloseClick();
+            fetchSubscribeChannelData();
+        })
+        .catch(error => console.error('Error updating channel:', error));
 }
 
 function handleChannelDetailCloseClick(event) {
@@ -360,7 +360,7 @@ function handleDownloadTaskStatusClick() {
 
 function setupChannelVideoDownloadEventListeners() {
     var downloadButtons = document.querySelectorAll('#subscribe-update-content table tbody .download-button');
-    downloadButtons.forEach(function(button) {
+    downloadButtons.forEach(function (button) {
         button.addEventListener('click', handleDownloadClick);
     });
 }
@@ -377,7 +377,7 @@ function handlePlayClick(event) {
 
 function setupPlayVideoEventListeners() {
     var playButtons = document.querySelectorAll('#download-content table tbody .play-button');
-    playButtons.forEach(function(button) {
+    playButtons.forEach(function (button) {
         button.addEventListener('click', handlePlayClick);
     });
 }
@@ -419,8 +419,8 @@ function generatePaginationButtons(selector, total_records, fetchDataFunction) {
     for (let i = startPage; i <= endPage; i++) {
         var button = document.createElement('button');
         button.textContent = i;
-        button.onclick = (function(page) {
-            return function() {
+        button.onclick = (function (page) {
+            return function () {
                 currentPage = page;
                 fetchDataFunction();
             };
@@ -463,7 +463,7 @@ function openMessageModal(message) {
     document.getElementById('modalMessage').innerText = message;
     document.getElementById('customModal').style.display = 'block';
     // 添加点击关闭按钮的事件监听器
-    document.querySelector('.close').addEventListener('click', function() {
+    document.querySelector('.close').addEventListener('click', function () {
         document.getElementById('customModal').style.display = 'none';
     });
 }
@@ -484,8 +484,8 @@ function showVideoModal(videoUrl) {
     document.getElementById('videoPlayerModal').style.display = 'block';
 
     // 可选：尝试播放视频，增强兼容性
-    videoPlayer.addEventListener('canplay', function() {
-        videoPlayer.play().catch(function(error) {
+    videoPlayer.addEventListener('canplay', function () {
+        videoPlayer.play().catch(function (error) {
             console.error("自动播放失败:", error);
         });
     });
@@ -518,11 +518,11 @@ window.onload = function () {
     document.getElementById('nav-download').classList.add('active');
 
     fetchDownloadTaskData(currentPage, itemsPerPage);
-    setInterval(()=> {
+    setInterval(() => {
         fetchDownloadTaskData(currentPage, itemsPerPage);
     }, 1000)
 
-    document.addEventListener('keydown', function(event) {
+    document.addEventListener('keydown', function (event) {
         // 检查用户是否按下了Esc键（其键码为27）
         if (event.keyCode === 27 && document.getElementById('videoPlayerModal').style.display === 'block') {
             closeVideoModal();

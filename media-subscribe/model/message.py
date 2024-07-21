@@ -21,4 +21,3 @@ class MessageSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Message
         load_instance = True
-

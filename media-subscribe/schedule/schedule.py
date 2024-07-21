@@ -34,7 +34,8 @@ class Scheduler:
             current_time = time.time()
             for job in self.jobs[:]:  # 复制列表以允许在循环中安全移除元素
                 if job['next_run'] <= current_time:
-                    job['func']()
+                    thread = Thread(target=job['func'])
+                    thread.start()
                     # 重新计算下次运行时间，这里简单地按固定间隔计算
                     job['next_run'] += job['interval']
             # 避免高CPU占用，休眠一段时间再检查
@@ -54,11 +55,8 @@ class Scheduler:
 
         interval *= 60 if unit == 'minutes' else 1  # 转换为秒
 
-        if start_immediately:
-            func()  # 立即执行一次
-
         # 计算第一次执行的时间
-        next_run = time.time() + interval if start_immediately else time.time()
+        next_run = time.time() if start_immediately else time.time() + interval
 
         self.jobs.append({
             'func': func,
@@ -66,6 +64,8 @@ class Scheduler:
             'next_run': next_run,
         })
 
+    def start(self):
+        """启动调度器"""
         if not self.running:
             self.running = True
             thread = Thread(target=self._run_jobs)
@@ -86,7 +86,8 @@ class RetryFailedTask:
             five_minutes_ago = datetime.now() - timedelta(minutes=5)
             with get_session() as session:
                 tasks = session.query(DownloadTask).filter(
-                    text("(status = 'FAILED' and retry < 5) or (status in ('DOWNLOADING', 'PENDING', 'WAITING') and retry < 5 and updated_at < :update_time)")
+                    text(
+                        "(status = 'FAILED' and retry < 5) or (status in ('DOWNLOADING', 'PENDING', 'WAITING') and retry < 5 and updated_at < :update_time)")
                     .params(update_time=five_minutes_ago)
                 )
 

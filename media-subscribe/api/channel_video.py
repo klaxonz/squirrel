@@ -72,7 +72,8 @@ class MarkReadRequest(BaseModel):
 @router.post("/api/channel-video/mark-read")
 def subscribe_channel(req: MarkReadRequest):
     with get_session() as s:
-        s.query(ChannelVideo).where(ChannelVideo.channel_id == req.channel_id, ChannelVideo.video_id == req.video_id).update({
+        s.query(ChannelVideo).where(ChannelVideo.channel_id == req.channel_id,
+                                    ChannelVideo.video_id == req.video_id).update({
             'if_read': True
         })
 
@@ -87,11 +88,13 @@ class DownloadChannelVideoRequest(BaseModel):
 @router.post("/api/channel-video/download")
 def download_channel_video(req: DownloadChannelVideoRequest):
     with get_session() as s:
-        channel_video = s.query(ChannelVideo).filter(ChannelVideo.channel_id == req.channel_id, ChannelVideo.video_id == req.video_id).first()
+        channel_video = s.query(ChannelVideo).filter(ChannelVideo.channel_id == req.channel_id,
+                                                     ChannelVideo.video_id == req.video_id).first()
 
         download_service.start_download(channel_video.url)
 
-        s.query(ChannelVideo).where(ChannelVideo.channel_id == req.channel_id, ChannelVideo.video_id == req.video_id).update({
+        s.query(ChannelVideo).where(ChannelVideo.channel_id == req.channel_id,
+                                    ChannelVideo.video_id == req.video_id).update({
             'if_downloaded': True
         })
         s.commit()

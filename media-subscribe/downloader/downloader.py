@@ -42,7 +42,6 @@ class Downloader:
                     })
                     session.commit()
 
-
     @staticmethod
     def get_video_info(url):
         ydl_opts = {

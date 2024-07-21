@@ -16,7 +16,7 @@ class ChannelVideoExtractConsumerThread(BaseConsumerThread):
         while self.running:
             try:
                 with get_session() as session:
-                    message = self.mq.wait_and_dequeue(session=session, timeout=None)
+                    message = self.mq.wait_and_dequeue(session=session, timeout=5)
                     if message:
                         self.handle_message(message, session)
 

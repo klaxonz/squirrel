@@ -48,22 +48,27 @@ table {
     width: 100%;
     border-collapse: collapse;
 }
+
 th, td {
     border: 1px solid #ccc;
     padding: 8px;
     text-align: left;
 }
+
 th {
     background-color: #f2f2f2;
     font-weight: bold;
 }
+
 tr:nth-child(even) {
     background-color: #f2f2f2;
 }
+
 .action-buttons {
     /*display: flex;*/
     /*gap: 0.5rem;*/
 }
+
 .button {
     background-color: #4CAF50; /* Green */
     border: none;
@@ -72,6 +77,7 @@ tr:nth-child(even) {
     text-decoration: none;
     cursor: pointer;
 }
+
 .delete-button {
     background-color: #f44336; /* Red */
 }
@@ -80,10 +86,10 @@ tr:nth-child(even) {
     width: 140px;
 }
 
-#download-content table tbody .img-box img{
-  width: 100%; /* 宽度自适应父容器的宽度 */
-  height: 64px; /* 固定高度 */
-  object-fit: scale-down;
+#download-content table tbody .img-box img {
+    width: 100%; /* 宽度自适应父容器的宽度 */
+    height: 64px; /* 固定高度 */
+    object-fit: scale-down;
 }
 
 #download-content table tbody .avatar-box {
@@ -102,7 +108,7 @@ tr:nth-child(even) {
     width: 140px;
 }
 
-#subscribe-update-content table tbody .img-box img{
+#subscribe-update-content table tbody .img-box img {
     width: 100%; /* 宽度自适应父容器的宽度 */
     height: 64px; /* 固定高度 */
     object-fit: scale-down;
@@ -112,6 +118,7 @@ tr:nth-child(even) {
     width: 64px;
     height: 64px;
 }
+
 #subscribe-update-content table tbody .avatar-box img {
     height: 100%;
     width: 100%;
@@ -122,6 +129,7 @@ tr:nth-child(even) {
     width: 64px;
     height: 64px;
 }
+
 #subscribe-content table tbody .avatar-box img {
     height: 100%;
     width: 100%;
@@ -134,10 +142,12 @@ tr:nth-child(even) {
     justify-content: center;
     margin-top: 20px; /* 可选，根据需要调整分页与表格之间的间距 */
 }
+
 .pagination .active {
     background-color: dodgerblue;
     color: white;
 }
+
 .pagination button {
     margin: 0 5px;
     cursor: pointer;
@@ -153,7 +163,7 @@ tr:nth-child(even) {
     width: 100%; /* 覆盖全屏宽度，用于半透明背景 */
     height: 100%;
     overflow: auto; /* 允许滚动，如果内容超出屏幕 */
-    background-color: rgba(0,0,0,0.4); /* 半透明黑色背景 */
+    background-color: rgba(0, 0, 0, 0.4); /* 半透明黑色背景 */
 }
 
 /* 修改模态内容盒子样式以实现居中 */
@@ -167,7 +177,7 @@ tr:nth-child(even) {
     border: 1px solid #888;
     width: 80%;
     max-width: 600px; /* 可选：限制最大宽度，提高移动设备友好性 */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3); /* 添加阴影效果 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* 添加阴影效果 */
 }
 
 /* 关闭按钮样式保持不变 */
@@ -194,11 +204,11 @@ tr:nth-child(even) {
     width: 100%; /* 覆盖全屏宽度，用于半透明背景 */
     height: 100%;
     overflow: auto; /* 允许滚动，如果内容超出屏幕 */
-    background-color: rgba(0,0,0,0.4); /* 半透明黑色背景 */
+    background-color: rgba(0, 0, 0, 0.4); /* 半透明黑色背景 */
 }
 
 /* 修改模态内容盒子样式以实现居中 */
-.video-modal-content{
+.video-modal-content {
     position: absolute; /* 改为绝对定位以便居中 */
     top: 50%;
     left: 50%;
@@ -209,7 +219,7 @@ tr:nth-child(even) {
     width: 70%;
     display: flex;
     max-width: 70%; /* 可选：限制最大宽度，提高移动设备友好性 */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3); /* 添加阴影效果 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* 添加阴影效果 */
     border-radius: 8px;
 }
 
@@ -243,7 +253,7 @@ tr:nth-child(even) {
     margin-top: 20px;
 }
 
-#subscribe-update-content .search-container input[type=text],button {
+#subscribe-update-content .search-container input[type=text], button {
     margin: 16px 10px;
     border: 1px solid #ccc;
     border-radius: 4px;

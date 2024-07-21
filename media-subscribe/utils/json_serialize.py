@@ -3,6 +3,7 @@ import datetime
 
 try:
     import uuid
+
     _use_uuid = True
 except ImportError:
     _use_uuid = False

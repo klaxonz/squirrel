@@ -16,13 +16,19 @@ class SubscribeChannelConsumerThread(BaseConsumerThread):
         while self.running:
             try:
                 with get_session() as session:
-                    message = self.mq.wait_and_dequeue(session=session, timeout=None)
+                    message = self.mq.wait_and_dequeue(session=session, timeout=5)
                     if message:
                         self.handle_message(message, session)
 
                         url = json.loads(message.body)['url']
                         subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(url)
                         channel_info = subscribe_channel.get_channel_info()
+
+                        channel = session.query(Channel).filter(Channel.channel_id == channel_info.id,
+                                                                Channel.name == channel_info.name).first()
+                        if channel:
+                            logger.info(f"频道 {channel_info.name} 已存在")
+                            continue
 
                         channel = Channel()
                         channel.channel_id = channel_info.id
@@ -31,8 +37,6 @@ class SubscribeChannelConsumerThread(BaseConsumerThread):
                         channel.avatar = channel_info.avatar
                         session.add(channel)
                         session.commit()
-
-                        AutoUpdateChannelVideoTask.run()
 
             except Exception as e:
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)

@@ -1,12 +1,11 @@
-import threading
-
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
 import logging
 from consumer.consumer_download_task import DownloadTaskConsumerThread
-from consumer.consumer_extract_channel_video import ChannelVideoExtractConsumerThread, ChannelVideoExtractAndDownloadConsumerThread
+from consumer.consumer_extract_channel_video import ChannelVideoExtractConsumerThread, \
+    ChannelVideoExtractAndDownloadConsumerThread
 from consumer.consumer_extract_video_info import ExtractorInfoTaskConsumerThread
 from consumer.consumer_subscribe_channel import SubscribeChannelConsumerThread
 
@@ -34,27 +33,24 @@ def initialize_consumers():
     extract_info_consumer = ExtractorInfoTaskConsumerThread(queue_name=constants.QUEUE_EXTRACT_TASK)
     subscribe_consumer = SubscribeChannelConsumerThread(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
     channel_video_extract_consumer = ChannelVideoExtractConsumerThread(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT)
-    channel_video_extract_download_consumer = ChannelVideoExtractAndDownloadConsumerThread(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
+    channel_video_extract_download_consumer = ChannelVideoExtractAndDownloadConsumerThread(
+        queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
     [consumer.start() for consumer in [
-        extract_info_consumer, subscribe_consumer, channel_video_extract_consumer,channel_video_extract_download_consumer
+        extract_info_consumer, subscribe_consumer, channel_video_extract_consumer,
+        channel_video_extract_download_consumer
     ]]
     logger.info('Consumers started.')
 
 
-def _start_scheduler():
+def start_scheduler():
     """配置并启动定时任务调度器"""
     logger.info('Starting scheduler...')
     scheduler = Scheduler()
     scheduler.add_job(MigrateDownloadTaskInfo.run, interval=60, unit='minutes')
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=2, unit='minutes')
+    scheduler.start()
     logger.info('Scheduler started.')
-
-
-def start_scheduler():
-    scheduler_thread = threading.Thread(target=_start_scheduler)
-    scheduler_thread.daemon = True
-    scheduler_thread.start()
 
 
 if __name__ == "__main__":

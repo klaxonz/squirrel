@@ -18,7 +18,7 @@ class DownloadTaskConsumerThread(BaseConsumerThread):
             download_task = None
             with get_session() as session:
                 try:
-                    message = self.mq.wait_and_dequeue(session=session, timeout=None)
+                    message = self.mq.wait_and_dequeue(session=session, timeout=5)
                     if message:
                         self.handle_message(message, session)
                         download_task = DownloadTaskSchema().load(json.loads(message.body), session=session)
