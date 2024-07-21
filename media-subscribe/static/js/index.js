@@ -197,6 +197,7 @@ function updateSubscribeChannelList(subscribeInfo) {
             <td>${channel.id}</td>
             <td  class="avatar-box"><img src="${channel.avatar}" referrerpolicy="no-referrer"></td>
             <td>${channel.name}</td>
+            <td>${channel.total_videos}</td>
             <td>${channel.if_enable ? '启用' : '暂停'}</td>
             <td>${channel.if_auto_download ? '是' : '否'}</td>
             <td>${channel.if_download_all ? '是' : '否'}</td>

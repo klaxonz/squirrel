@@ -213,3 +213,26 @@ class MigrateDownloadTaskInfo:
         except Exception as e:
             # 捕获其他所有异常
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+
+
+class RepairChanelInfoForTotalVideos:
+
+    @classmethod
+    def run(cls):
+        try:
+            with get_session() as session:
+                channels = session.query(Channel).filter(Channel.total_videos == 100).all()
+                for channel in channels:
+                    if channel.total_videos > 0:
+                        continue
+                    subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
+                    videos = subscribe_channel.get_channel_videos(channel, update_all=True)
+                    channel.total_videos = len(videos)
+                    session.commit()
+
+        except json.JSONDecodeError as e:
+            # 特定地捕获JSON解码错误
+            logger.error(f"Error decoding JSON: {e}", exc_info=True)
+        except Exception as e:
+            # 捕获其他所有异常
+            logger.error(f"An unexpected error occurred: {e}", exc_info=True)

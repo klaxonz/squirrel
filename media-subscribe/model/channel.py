@@ -15,6 +15,7 @@ class Channel(Base, BaseMixin):
     name = Column(VARCHAR(255), nullable=False)
     url = Column(VARCHAR(1024), nullable=False)
     avatar = Column(VARCHAR(2048), nullable=False)
+    total_videos = Column(Integer, nullable=False, default=0)
     if_enable = Column(Boolean, default=True)
     if_auto_download = Column(Boolean, default=False)
     if_download_all = Column(Boolean, default=False)

@@ -162,6 +162,41 @@ class YouTubeSubscribeChannel(SubscribeChannel):
                 video_id = v["playlistVideoRenderer"]['videoId']
                 video_list.append(f'https://www.youtube.com/watch?v={video_id}')
 
+        while len(origin_video_list) == 101:
+            v = origin_video_list[100]
+            click_tracking_params = v["continuationItemRenderer"]['continuationEndpoint']['clickTrackingParams']
+            continuation = v['continuationItemRenderer']['continuationEndpoint']['continuationCommand']['token']
+            url = "https://www.youtube.com/youtubei/v1/browse?prettyPrint=false"
+            payload = json.dumps({
+                "context": {
+                    "client": {
+                        "clientName": "WEB",
+                        "clientVersion": "2.20240719.00.00"
+                    },
+                    "clickTracking": {
+                        "clickTrackingParams": click_tracking_params
+                    }
+                },
+                "continuation": continuation
+            })
+            headers = {
+                'accept': '*/*',
+                'accept-language': 'zh-CN,zh;q=0.9,zh-Hans;q=0.8,en;q=0.7,zh-Hant;q=0.6,ja;q=0.5,und;q=0.4,de;q=0.3,fr;q=0.2,cy;q=0.1',
+                'content-type': 'application/json',
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload)
+            response.raise_for_status()
+
+            continuation_response = json.loads(response.text)
+            origin_video_list = continuation_response['onResponseReceivedActions'][0]['appendContinuationItemsAction']['continuationItems']
+
+            for v in origin_video_list:
+                if 'playlistVideoRenderer' in v:
+                    video_id = v["playlistVideoRenderer"]['videoId']
+                    video_list.append(f'https://www.youtube.com/watch?v={video_id}')
+
         return video_list
 
 
