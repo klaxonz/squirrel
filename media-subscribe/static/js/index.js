@@ -11,6 +11,8 @@ const statusMap = {
     'FAILED': '失败'
 };
 
+let existingRows = {};
+
 function navigate(section) {
     // 隐藏所有内容区域
     document.querySelectorAll('#content > div').forEach(div => div.style.display = 'none');
@@ -102,30 +104,84 @@ function markReadChannelVideo(channelId, videoId) {
 
 function updateDownloadTaskList(taskInfo) {
     var tbody = document.querySelector('#download-content table tbody');
-    tbody.innerHTML = ''; // 清空现有内容以准备更新
     var tasks = taskInfo.data.data;
+
+    // 创建一个映射，用于跟踪哪些行需要被移除（即不再存在于新数据中的行）
+    let rowsToRemove = new Set(Object.keys(existingRows));
+
     tasks.forEach(function(task) {
-        var statusText = statusMap[task.status] || '未知状态';
-        var row = `<tr data-task-id="${task.id}">
-            <td>${task.id}</td>
-            <td  class="avatar-box"><img src="${task.channel_avatar}" referrerpolicy="no-referrer"></td>
-            <td>${task.channel_name}</td>
-            <td  class="img-box"><img src="${task.thumbnail}" referrerpolicy="no-referrer"></td>
-            <td>${task.title}</td>
-            <td>${statusText}</td>
-            <td>${task.retry}</td>
-            <td>${formatBytes(task.total_size)}</td>
-            <td>${task.percent}</td>
-            <td>${task.speed}</td>
-            <td>${task.eta}</td>
-            <td style="width: 300px">${task.error_message ? task.error_message : ''}</td>
-            <td>${task.created_at}</td>
-            <td class="action-buttons">
-                <a href="#" class="button play-button">播放</a>
+        const taskId = task.id;
+        rowsToRemove.delete(String(taskId)); // 移除这个taskId，因为它仍然存在
+
+        if (!existingRows[taskId]) {
+            // 如果这个taskId对应的行不存在，创建一个新的行
+            var row = document.createElement('tr');
+            row.setAttribute('data-task-id', taskId);
+
+            // 创建并填充列元素
+            var columns = [
+                document.createElement('td'), // 任务ID
+                document.createElement('td'), // 频道封面
+                document.createElement('td'), // 频道名称
+                document.createElement('td'), // 封面
+                document.createElement('td'), // 任务名称
+                document.createElement('td'), // 状态
+                document.createElement('td'), // 重试次数
+                document.createElement('td'), // 文件大小
+                document.createElement('td'), // 进度
+                document.createElement('td'), // 下载速度
+                document.createElement('td'), // 剩余时间
+                document.createElement('td'), // 备注
+                document.createElement('td'), // 创建时间
+                document.createElement('td')  // 操作
+            ];
+
+            // 填充列内容
+            columns[0].textContent = task.id;
+            columns[1].classList.add('avatar-box');
+            columns[1].innerHTML = `<img src="${task.channel_avatar}" referrerpolicy="no-referrer">`;
+            columns[2].textContent = task.channel_name;
+            columns[3].classList.add('img-box');
+            columns[3].innerHTML = `<img src="${task.thumbnail}" referrerpolicy="no-referrer">`;
+            columns[4].textContent = task.title;
+            columns[5].textContent = statusMap[task.status] || '未知状态';
+            columns[6].textContent = task.retry;
+            columns[7].textContent = formatBytes(task.total_size);
+            columns[8].textContent = task.percent;
+            columns[9].textContent = task.speed;
+            columns[10].textContent = task.eta;
+            columns[11].textContent = task.error_message ? task.error_message : '';
+            columns[11].style.width = '300px';
+            columns[12].textContent = task.created_at;
+            columns[13].classList.add('action-buttons');
+            columns[13].innerHTML = `                <a href="#" class="button play-button">播放</a>
                 <a href="#" class="button delete-button">删除</a>
-            </td>
-        </tr>`;
-        tbody.insertAdjacentHTML('beforeend', row);
+            `;
+
+            // 将列元素添加到行中
+            columns.forEach(column => row.appendChild(column));
+
+            tbody.appendChild(row);
+            existingRows[taskId] = row;
+
+        } else {
+            // 否则，更新已存在的行
+            var row = existingRows[taskId];
+            row.children[5].textContent = statusMap[task.status] || '未知状态';
+            row.children[6].textContent = task.retry;
+            row.children[7].textContent = formatBytes(task.total_size);
+            row.children[8].textContent = task.percent;
+            row.children[9].textContent = task.speed;
+            row.children[10].textContent = task.eta;
+            row.children[11].textContent = task.error_message ? task.error_message : '';
+            row.children[11].style.width = '300px';
+        }
+    });
+
+    // 移除那些不再存在的行
+    rowsToRemove.forEach(taskId => {
+        tbody.removeChild(existingRows[taskId]);
+        delete existingRows[taskId];
     });
 
     generateDownloadTaskPaginationButtons(taskInfo.data.total);
