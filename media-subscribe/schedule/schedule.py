@@ -1,20 +1,22 @@
 import json
+import logging
 import time
 from datetime import datetime, timedelta
+from threading import Thread
+
+from sqlalchemy import text
 
 from common.cache import RedisClient
 from common.config import GlobalConfig
-from common.database import get_session
-from common.url_helper import extract_top_level_domain
-from downloader.id_extractor import extract_id_from_url
-from model.download_task import DownloadTask, DownloadTaskSchema
-from model.channel import Channel
-from common.message_queue import RedisMessageQueue, Message
 from common.constants import QUEUE_EXTRACT_TASK
-from threading import Thread
-import logging
-from sqlalchemy import or_, and_, text
-
+from common.database import get_session
+from common.message_queue import RedisMessageQueue, Message
+from common.url_helper import extract_top_level_domain
+from downloader.downloader import Downloader
+from downloader.id_extractor import extract_id_from_url
+from meta.video import VideoFactory
+from model.channel import Channel
+from model.download_task import DownloadTask, DownloadTaskSchema
 from service.download_service import start_extract, start_extract_and_download
 from subscribe.subscribe import SubscribeChannelFactory
 
@@ -135,6 +137,10 @@ class AutoUpdateChannelVideoTask:
                 channels = session.query(Channel).filter(Channel.if_enable == 1).all()
                 for channel in channels:
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
+                    if channel.avatar is None:
+                        channel.avatar = subscribe_channel.get_channel_info().avatar
+                        session.commit()
+
                     # 下载全部的
                     update_all = channel.if_download_all or channel.if_extract_all
                     video_list = subscribe_channel.get_channel_videos(channel=channel, update_all=update_all)
@@ -172,6 +178,33 @@ class AutoUpdateChannelVideoTask:
                         else:
                             redis_client.set(key, 1, 60 * 60 * 1)
                         start_extract_and_download(video, channel)
+
+        except json.JSONDecodeError as e:
+            # 特定地捕获JSON解码错误
+            logger.error(f"Error decoding JSON: {e}", exc_info=True)
+        except Exception as e:
+            # 捕获其他所有异常
+            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+
+
+class MigrateDownloadTaskInfo:
+
+    @classmethod
+    def run(cls):
+        try:
+            with get_session() as session:
+                download_tasks = session.query(DownloadTask).filter(DownloadTask.channel_name.is_(None)).all()
+                for download_task in download_tasks:
+                    if download_task.channel_name is not None:
+                        continue
+
+                    base_info = Downloader.get_video_info(download_task.url)
+                    video = VideoFactory.create_video(download_task.url, base_info)
+                    download_task.channel_id = video.get_uploader().id
+                    download_task.channel_url = video.get_uploader().url
+                    download_task.channel_name = video.get_uploader().name
+                    download_task.channel_avatar = video.get_uploader().avatar
+                    session.commit()
 
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误

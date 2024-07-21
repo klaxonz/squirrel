@@ -80,10 +80,21 @@ tr:nth-child(even) {
     width: 140px;
 }
 
-#download-content table tbody img {
+#download-content table tbody .img-box img{
+  width: 100%; /* 宽度自适应父容器的宽度 */
+  height: 64px; /* 固定高度 */
+  object-fit: scale-down;
+}
+
+#download-content table tbody .avatar-box {
+    width: 64px;
+    height: 64px;
+}
+
+#download-content table tbody .avatar-box img {
     height: 100%;
     width: 100%;
-    object-fit: cover;
+    object-fit: scale-down;
 }
 
 
@@ -91,15 +102,30 @@ tr:nth-child(even) {
     width: 140px;
 }
 
-#subscribe-update-content table tbody .avatar-box {
-    height: 100px;
-    width: 140px;
+#subscribe-update-content table tbody .img-box img{
+    width: 100%; /* 宽度自适应父容器的宽度 */
+    height: 64px; /* 固定高度 */
+    object-fit: scale-down;
 }
 
-#subscribe-update-content table tbody img {
+#subscribe-update-content table tbody .avatar-box {
+    width: 64px;
+    height: 64px;
+}
+#subscribe-update-content table tbody .avatar-box img {
     height: 100%;
     width: 100%;
-    object-fit: cover;
+    object-fit: scale-down;
+}
+
+#subscribe-content table tbody .avatar-box {
+    width: 64px;
+    height: 64px;
+}
+#subscribe-content table tbody .avatar-box img {
+    height: 100%;
+    width: 100%;
+    object-fit: scale-down;
 }
 
 

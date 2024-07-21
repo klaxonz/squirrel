@@ -13,6 +13,7 @@ from model.channel import Channel
 
 logger = logging.getLogger(__name__)
 
+
 class SubscribeChannel:
     def __init__(self, url):
         self.url = url
@@ -55,7 +56,7 @@ class BilibiliSubscribeChannel(SubscribeChannel):
 
         info = resp.json()
 
-        return ChannelMeta(mid, info['data']['name'], self.url)
+        return ChannelMeta(mid, info['data']['name'], info['data']['face'], self.url)
 
     def get_channel_videos(self, channel: Channel, update_all: bool):
         cookies = filter_cookies_to_query_string(self.url)
@@ -127,8 +128,8 @@ class YouTubeSubscribeChannel(SubscribeChannel):
 
         channel_id = data['metadata']['channelMetadataRenderer']['externalId']
         name = data['metadata']['channelMetadataRenderer']['title']
-
-        return ChannelMeta(channel_id, name, self.url)
+        avatar = data['metadata']['channelMetadataRenderer']['avatar']['thumbnails'][-1]['url']
+        return ChannelMeta(channel_id, name, avatar, self.url)
 
     def get_channel_videos(self, channel: Channel, update_all: bool):
         channel_id = "UU" + channel.channel_id[2:]
@@ -187,8 +188,9 @@ class PornhubSubscribeChannel(SubscribeChannel):
         subscribe_url = bs4.select('button[data-subscribe-url]')[0].get('data-subscribe-url')
         channel_id = re.search(r"id=([^&]+)", subscribe_url).group(1)
         url = re.search(r"^(.*?)(\?.*)?$", self.url).group(1)
+        avatar = bs4.select('#getAvatar')[0].get('src')
 
-        return ChannelMeta(channel_id, name, url)
+        return ChannelMeta(channel_id, name, avatar, url)
 
     def get_channel_videos(self, channel: Channel, update_all: bool):
 

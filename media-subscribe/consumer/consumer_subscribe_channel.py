@@ -28,6 +28,7 @@ class SubscribeChannelConsumerThread(BaseConsumerThread):
                         channel.channel_id = channel_info.id
                         channel.name = channel_info.name
                         channel.url = channel_info.url
+                        channel.avatar = channel_info.avatar
                         session.add(channel)
                         session.commit()
 

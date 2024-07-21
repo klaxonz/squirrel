@@ -17,7 +17,7 @@ import common.constants as constants
 from common.database import DatabaseManager
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
-from schedule.schedule import Scheduler, RetryFailedTask, AutoUpdateChannelVideoTask
+from schedule.schedule import Scheduler, RetryFailedTask, AutoUpdateChannelVideoTask, MigrateDownloadTaskInfo
 from common.log import init_logging
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,7 @@ def _start_scheduler():
     """配置并启动定时任务调度器"""
     logger.info('Starting scheduler...')
     scheduler = Scheduler()
+    scheduler.add_job(MigrateDownloadTaskInfo.run, interval=60, unit='minutes')
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=2, unit='minutes')
     logger.info('Scheduler started.')

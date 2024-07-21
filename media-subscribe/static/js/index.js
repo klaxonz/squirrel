@@ -139,7 +139,7 @@ function updateSubscribeChannelList(subscribeInfo) {
     channels.forEach(function(channel) {
         var row = `<tr>
             <td>${channel.id}</td>
-            <td>${channel.channel_id}</td>
+            <td  class="avatar-box"><img src="${channel.avatar}" referrerpolicy="no-referrer"></td>
             <td>${channel.name}</td>
             <td>${channel.if_enable ? '启用' : '暂停'}</td>
             <td>${channel.if_auto_download ? '是' : '否'}</td>
@@ -164,6 +164,7 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
     var channelVideos = subscribeChannelVideoInfo.data.data;
     channelVideos.forEach(function(channelVideo) {
         var row = `<tr data-channel-id="${channelVideo.channel_id}" data-video-id="${channelVideo.video_id}" >
+            <td class="avatar-box"><img src="${channelVideo.channel_avatar}" referrerpolicy="no-referrer"></td>
             <td>${channelVideo.channel_name}</td>
             <td class="img-box"><img src="${channelVideo.thumbnail}" referrerpolicy="no-referrer"></td>
             <td>${channelVideo.title}</td>

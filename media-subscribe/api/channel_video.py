@@ -41,6 +41,7 @@ def subscribe_channel(
                 'id': chanel_video.id,
                 'channel_id': chanel_video.channel_id,
                 'channel_name': chanel_video.channel_name,
+                'channel_avatar': chanel_video.channel_avatar,
                 'video_id': chanel_video.video_id,
                 'title': chanel_video.title,
                 'domain': chanel_video.domain,

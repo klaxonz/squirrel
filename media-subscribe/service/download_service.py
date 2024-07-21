@@ -60,6 +60,7 @@ def start_extract_and_download(url: str, channel: Channel):
             channel_video = ChannelVideo()
             channel_video.channel_id = channel.channel_id,
             channel_video.channel_name = channel.name,
+            channel_video.channel_avatar = channel.avatar,
             channel_video.domain = domain,
             channel_video.video_id = video_id,
             channel_video.url = url,

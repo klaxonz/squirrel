@@ -110,6 +110,7 @@ def subscribe_channel(
                 'channel_id': channel.channel_id,
                 'name': channel.name,
                 'url': channel.url,
+                'avatar': channel.avatar,
                 'if_enable': channel.if_enable,
                 'if_auto_download': channel.if_auto_download,
                 'if_download_all': channel.if_download_all,
