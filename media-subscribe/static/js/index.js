@@ -108,6 +108,8 @@ function updateDownloadTaskList(taskInfo) {
         var statusText = statusMap[task.status] || '未知状态';
         var row = `<tr data-task-id="${task.id}">
             <td>${task.id}</td>
+            <td  class="avatar-box"><img src="${task.channel_avatar}" referrerpolicy="no-referrer"></td>
+            <td>${task.channel_name}</td>
             <td  class="img-box"><img src="${task.thumbnail}" referrerpolicy="no-referrer"></td>
             <td>${task.title}</td>
             <td>${statusText}</td>

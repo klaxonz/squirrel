@@ -70,6 +70,8 @@ def get_updated_task_list(status: str = None, page: int = 1, page_size: int = 10
                 "thumbnail": task.thumbnail,
                 "status": task.status,
                 "title": task.title,
+                "channel_name": task.channel_name,
+                "channel_avatar": task.channel_avatar,
                 "downloaded_size": task.downloaded_size or 0,
                 "total_size": task.total_size or 0,
                 "speed": task.speed or '未知',

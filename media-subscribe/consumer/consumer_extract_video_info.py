@@ -6,7 +6,8 @@ from common.database import get_session
 from common.message_queue import RedisMessageQueue
 from consumer.base import BaseConsumerThread
 from downloader.downloader import Downloader
-from model.download_task import DownloadTask, DownloadTaskSchema
+from meta.video import VideoFactory
+from model.download_task import DownloadTaskSchema
 from model.message import Message
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,12 @@ class ExtractorInfoTaskConsumerThread(BaseConsumerThread):
                         video_info = Downloader.get_video_info(download_task.url)
                         if video_info is None:
                             continue
-
-                        download_task.title = video_info['title']
+                        video = VideoFactory.create_video(download_task.url, video_info)
+                        download_task.title = video.get_title()
+                        download_task.channel_id = video.get_uploader().id
+                        download_task.channel_url = video.get_uploader().url
+                        download_task.channel_name = video.get_uploader().name
+                        download_task.channel_avatar = video.get_uploader().avatar
 
                         # 不支持playlist
                         if '_type' in video_info and video_info['_type'] == 'playlist':

@@ -91,6 +91,11 @@ tr:nth-child(even) {
     width: 140px;
 }
 
+#subscribe-update-content table tbody .avatar-box {
+    height: 100px;
+    width: 140px;
+}
+
 #subscribe-update-content table tbody img {
     height: 100%;
     width: 100%;
