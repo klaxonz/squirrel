@@ -49,8 +49,8 @@ def subscribe_channel(
                 'thumbnail': chanel_video.thumbnail,
                 'if_downloaded': chanel_video.if_downloaded,
                 'if_read': chanel_video.if_read,
-                'uploaded_at': chanel_video.uploaded_at,
-                'created_at': chanel_video.created_at
+                'uploaded_at': chanel_video.uploaded_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'created_at': chanel_video.created_at.strftime('%Y-%m-%d %H:%M:%S')
             } for chanel_video in channel_videos
         ]
 

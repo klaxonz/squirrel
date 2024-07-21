@@ -89,7 +89,7 @@ def channel_detail(id: int):
             "if_auto_download": channel.if_auto_download,
             "if_download_all": channel.if_download_all,
             "if_extract_all": channel.if_extract_all,
-            "created_at": channel.created_at,
+            "created_at": channel.created_at.strftime('%Y-%m-%d %H:%M:%S'),
         }
 
         return response.success(channel_dict)
@@ -115,7 +115,7 @@ def subscribe_channel(
                 'if_auto_download': channel.if_auto_download,
                 'if_download_all': channel.if_download_all,
                 'if_extract_all': channel.if_extract_all,
-                'created_at': channel.created_at
+                'created_at': channel.created_at.strftime('%Y-%m-%d %H:%M:%S')
             } for channel in channels
         ]
 
