@@ -145,7 +145,7 @@ function updateSubscribeChannelList(subscribeInfo) {
             <td>${channel.if_auto_download ? '是' : '否'}</td>
             <td>${channel.if_download_all ? '是' : '否'}</td>
             <td>${channel.if_extract_all ? '是' : '否'}</td>
-            <td>${channel.url}</td>
+            <td><a target="_blank" href="${channel.url}">${channel.url}</a></td>
             <td>${channel.created_at}</td>
             <td class="action-buttons">
                 <a href="#" class="button" onclick="handleChannelDetailClick(${channel.id})">详情</a>
@@ -168,7 +168,7 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
             <td>${channelVideo.channel_name}</td>
             <td class="img-box"><img src="${channelVideo.thumbnail}" referrerpolicy="no-referrer"></td>
             <td>${channelVideo.title}</td>
-            <td>${channelVideo.url}</td>
+            <td><a target="_blank" href="${channelVideo.url}">${channelVideo.url}</a></td>
             <td>${channelVideo.uploaded_at}</td>
             <td>${channelVideo.if_downloaded == 1 ? '是' : '否'}</td>
             <td>${channelVideo.if_read == 1 ? '是' : '否'}</td>
