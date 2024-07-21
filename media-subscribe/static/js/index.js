@@ -118,7 +118,7 @@ function updateDownloadTaskList(taskInfo) {
             <td>${task.percent}</td>
             <td>${task.speed}</td>
             <td>${task.eta}</td>
-            <td>${task.error_message ? task.error_message : ''}</td>
+            <td style="width: 300px">${task.error_message ? task.error_message : ''}</td>
             <td>${task.created_at}</td>
             <td class="action-buttons">
                 <a href="#" class="button play-button">播放</a>
@@ -332,6 +332,11 @@ function generatePaginationButtons(selector, total_records, fetchDataFunction) {
     var pages = Math.ceil(total_records / itemsPerPage);
     var paginationDiv = document.getElementById(selector);
     paginationDiv.innerHTML = ''; // 清空现有分页按钮
+
+    // 添加总记录数显示
+    var totalRecordsSpan = document.createElement('span');
+    totalRecordsSpan.textContent = `总共: ${total_records}  `;
+    paginationDiv.appendChild(totalRecordsSpan);
 
     // 定义显示的页码范围
     var visiblePages = 5; // 每边显示2个页码，加上当前页共5个页码
