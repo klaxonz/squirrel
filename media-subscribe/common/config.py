@@ -13,7 +13,7 @@ class GlobalConfig:
     DEFAULT_MYSQL_PASSWORD = 'root'
     DEFAULT_MYSQL_DATABASE = 'media_subscribe'
     POOL_SIZE = 10
-    POOL_MAX_SIZE = 20
+    POOL_MAX_SIZE = 60
     POOL_RECYCLE = 300
     CHANNEL_UPDATE_DEFAULT_SIZE = 10
     DOWNLOAD_RETRY_THRESHOLD = 5
@@ -32,6 +32,17 @@ class GlobalConfig:
         获取cookie文件路径
         """
         cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies.txt'))
+        if cookie_path.exists():
+            return str(cookie_path)
+        else:
+            return None
+
+    @classmethod
+    def get_all_cookies_file_path(cls):
+        """
+        获取cookie文件路径
+        """
+        cookie_path = Path(os.path.join(base_dir, '..', 'config', 'all_cookies.txt'))
         if cookie_path.exists():
             return str(cookie_path)
         else:

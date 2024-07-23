@@ -10,7 +10,7 @@ def filter_cookies_to_query_string(target_url):
     :param target_url: 目标URL，用于确定需匹配的顶级域名
     :return: 筛选后Cookie的分号分隔格式字符串
     """
-    file_path = GlobalConfig.get_cookies_file_path()
+    file_path = GlobalConfig.get_all_cookies_file_path()
     cj = cookielib.MozillaCookieJar()
     cj.load(file_path, ignore_discard=True, ignore_expires=True)
 

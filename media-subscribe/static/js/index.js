@@ -12,6 +12,7 @@ const statusMap = {
 };
 
 let existingRows = {};
+let abortController;
 
 function navigate(section) {
     // 隐藏所有内容区域
@@ -198,6 +199,7 @@ function updateSubscribeChannelList(subscribeInfo) {
             <td  class="avatar-box"><img src="${channel.avatar}" referrerpolicy="no-referrer"></td>
             <td>${channel.name}</td>
             <td>${channel.total_videos}</td>
+            <td>${channel.total_extract}</td>
             <td>${channel.if_enable ? '启用' : '暂停'}</td>
             <td>${channel.if_auto_download ? '是' : '否'}</td>
             <td>${channel.if_download_all ? '是' : '否'}</td>
@@ -518,9 +520,9 @@ window.onload = function () {
 
     document.getElementById('nav-download').classList.add('active');
 
-    fetchDownloadTaskData(currentPage, itemsPerPage);
+    fetchDownloadTaskData();
     setInterval(() => {
-        fetchDownloadTaskData(currentPage, itemsPerPage);
+        fetchDownloadTaskData();
     }, 1000)
 
     document.addEventListener('keydown', function (event) {

@@ -4,7 +4,6 @@ import logging
 from common.database import get_session
 from consumer.base import BaseConsumerThread
 from model.channel import Channel
-from schedule.schedule import AutoUpdateChannelVideoTask
 from subscribe.subscribe import SubscribeChannelFactory
 
 logger = logging.getLogger(__name__)

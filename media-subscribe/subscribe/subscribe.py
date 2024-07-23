@@ -248,11 +248,9 @@ class PornhubSubscribeChannel(SubscribeChannel):
         video_list = []
         bs4 = BeautifulSoup(response.text, 'html.parser')
         page_next_list = bs4.select('.page_next')
-        if len(page_next_list) == 0:
-            logger.info(f'channel extract error, channel url: {channel.url}')
-            return video_list
-        page = int(bs4.select('.page_next')[0].find_previous().text)
+        page = int(bs4.select('.page_next')[0].find_previous().text) if len(page_next_list) > 0 else 1
         current_page = 1
+
         while True:
             response = requests.get(self.url + f'?page={current_page}', headers=headers, timeout=15)
             response.raise_for_status()
@@ -263,7 +261,7 @@ class PornhubSubscribeChannel(SubscribeChannel):
             for el in video_els:
                 video_list.append(f'{base_url}{el["href"]}')
 
-            new_page = int(bs4.select('.page_next')[0].find_previous().text)
+            new_page = int(bs4.select('.page_next')[0].find_previous().text) if len(page_next_list) > 0 else 1
 
             if new_page > page:
                 page = new_page

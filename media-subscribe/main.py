@@ -16,7 +16,7 @@ import common.constants as constants
 from common.database import DatabaseManager
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
-from schedule.schedule import Scheduler, RetryFailedTask, AutoUpdateChannelVideoTask, MigrateDownloadTaskInfo, \
+from schedule.schedule import Scheduler, RetryFailedTask, AutoUpdateChannelVideoTask, RepairDownloadTaskInfo, \
     RepairChanelInfoForTotalVideos
 from common.log import init_logging
 
@@ -31,14 +31,18 @@ def initialize_consumers():
         consumer = DownloadTaskConsumerThread(queue_name=constants.QUEUE_DOWNLOAD_TASK)
         download_consumers.append(consumer)
         consumer.start()
-    extract_info_consumer = ExtractorInfoTaskConsumerThread(queue_name=constants.QUEUE_EXTRACT_TASK)
+
+    channel_video_extract_consumers = []
+    for _ in range(20):
+        consumer = ChannelVideoExtractAndDownloadConsumerThread(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
+        channel_video_extract_consumers.append(consumer)
+        consumer.start()
+
+    # extract_info_consumer = ExtractorInfoTaskConsumerThread(queue_name=constants.QUEUE_EXTRACT_TASK)
     subscribe_consumer = SubscribeChannelConsumerThread(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
-    channel_video_extract_consumer = ChannelVideoExtractConsumerThread(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT)
-    channel_video_extract_download_consumer = ChannelVideoExtractAndDownloadConsumerThread(
-        queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
+
     [consumer.start() for consumer in [
-        extract_info_consumer, subscribe_consumer, channel_video_extract_consumer,
-        channel_video_extract_download_consumer
+         subscribe_consumer
     ]]
     logger.info('Consumers started.')
 
@@ -47,7 +51,7 @@ def start_scheduler():
     """配置并启动定时任务调度器"""
     logger.info('Starting scheduler...')
     scheduler = Scheduler()
-    scheduler.add_job(MigrateDownloadTaskInfo.run, interval=60, unit='minutes')
+    scheduler.add_job(RepairDownloadTaskInfo.run, interval=60, unit='minutes')
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=2, unit='minutes')
     scheduler.add_job(RepairChanelInfoForTotalVideos.run, interval=2, unit='minutes')

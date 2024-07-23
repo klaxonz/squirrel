@@ -112,6 +112,7 @@ def subscribe_channel(
                 'url': channel.url,
                 'avatar': channel.avatar,
                 'total_videos': channel.total_videos,
+                'total_extract': count_channel_videos(channel.channel_id),
                 'if_enable': channel.if_enable,
                 'if_auto_download': channel.if_auto_download,
                 'if_download_all': channel.if_download_all,
@@ -128,3 +129,8 @@ def subscribe_channel(
         }
 
     return response.success(channel_list)
+
+
+def count_channel_videos(channel_id):
+    with get_session() as s:
+        return s.query(ChannelVideo).filter(ChannelVideo.channel_id == channel_id).count()

@@ -1,3 +1,4 @@
+import json
 import logging
 
 import common.constants as constants
@@ -13,8 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 def start_download(url: str):
-    if 'youtube.com' in url:
-        url = "https://www.youtube.com/watch?" + url.split("?")[1]
 
     domain = extract_top_level_domain(url)
     video_id = extract_id_from_url(url)
@@ -41,41 +40,23 @@ def start_download(url: str):
         session.commit()
 
 
-def start_extract_and_download(url: str, channel: Channel):
-    if 'youtube.com' in url:
-        url = "https://www.youtube.com/watch?" + url.split("?")[1]
-
-    domain = extract_top_level_domain(url)
-    video_id = extract_id_from_url(url)
+def start_extract_and_download(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if_retry: bool = False):
 
     with get_session() as session:
-        channel_video = session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id,
-                                                           ChannelVideo.video_id == video_id).first()
-        if channel_video and channel.if_auto_download:
-            if channel_video.if_downloaded:
-                logger.info(f"extract task already exists: {url}")
-                return
 
-        if channel_video is None:
-            channel_video = ChannelVideo()
-            channel_video.channel_id = channel.channel_id,
-            channel_video.channel_name = channel.name,
-            channel_video.channel_avatar = channel.avatar,
-            channel_video.domain = domain,
-            channel_video.video_id = video_id,
-            channel_video.url = url,
-            session.add(channel_video)
-            session.commit()
+        content = {
+            'url': url,
+            'if_retry': if_retry,
+            'if_subscribe': if_subscribe,
+            'if_only_extract': if_only_extract
+        }
 
         message = Message()
-        message.body = ChannelVideoSchema().dumps(channel_video)
+        message.body = json.dumps(content)
         session.add(message)
         session.commit()
 
         RedisMessageQueue(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD).enqueue(message)
-
-        session.query(Message).filter(Message.message_id == message.message_id,
-                                      Message.send_status == 'PENDING').update({'send_status': 'SENDING'})
         session.commit()
 
 
@@ -89,7 +70,7 @@ def start_extract(url: str, channel: Channel):
     with get_session() as session:
         channel_video = session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id,
                                                            ChannelVideo.video_id == video_id).first()
-        if channel_video and channel.if_auto_download:
+        if channel_video and channel_video.title is not None and channel.if_auto_download:
             if channel_video.if_downloaded:
                 logger.info(f"extract task already exists: {url}")
                 return

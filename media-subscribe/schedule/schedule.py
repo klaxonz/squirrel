@@ -1,3 +1,4 @@
+import concurrent.futures
 import json
 import logging
 import time
@@ -6,18 +7,13 @@ from threading import Thread
 
 from sqlalchemy import text
 
-from common.cache import RedisClient
 from common.config import GlobalConfig
-from common.constants import QUEUE_EXTRACT_TASK
 from common.database import get_session
-from common.message_queue import RedisMessageQueue, Message
-from common.url_helper import extract_top_level_domain
 from downloader.downloader import Downloader
-from downloader.id_extractor import extract_id_from_url
 from meta.video import VideoFactory
 from model.channel import Channel
-from model.download_task import DownloadTask, DownloadTaskSchema
-from service.download_service import start_extract, start_extract_and_download
+from model.download_task import DownloadTask
+from service.download_service import start_extract_and_download
 from subscribe.subscribe import SubscribeChannelFactory
 
 logger = logging.getLogger(__name__)
@@ -102,24 +98,15 @@ class RetryFailedTask:
                     if (task.status == 'PENDING' or task.status == 'WAITING') and len(downloading_tasks) > 0:
                         continue
 
-                    message = Message()
                     task.error_message = ''
+                    task.status = 'PENDING'
                     task.retry = task.retry + 1
-                    message.body = DownloadTaskSchema().dumps(task)
-                    session.add(message)
                     session.commit()
 
-                    session.query(DownloadTask).filter(DownloadTask.task_id == task.task_id).update({
-                        'status': 'PENDING',
-                    })
-                    session.commit()
-                    RedisMessageQueue(QUEUE_EXTRACT_TASK).enqueue(message)
+                    channel = session.query(Channel).filter(Channel.channel_id == task.channel_id).first()
+                    if_subscribe = channel is not None
+                    start_extract_and_download(task.url, if_subscribe=if_subscribe, if_only_extract=False, if_retry=True)
 
-                    session.query(Message).filter(Message.message_id == message.message_id,
-                                                  Message.send_status == 'PENDING').update({
-                        'send_status': 'SENDING'
-                    })
-                    session.commit()
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
             logger.error(f"Error decoding JSON: {e}", exc_info=True)
@@ -132,53 +119,15 @@ class AutoUpdateChannelVideoTask:
 
     @classmethod
     def run(cls):
-        redis_client = RedisClient.get_instance().client
         try:
             with get_session() as session:
                 channels = session.query(Channel).filter(Channel.if_enable == 1).all()
-                for channel in channels:
-                    subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
-                    if channel.avatar is None:
-                        channel.avatar = subscribe_channel.get_channel_info().avatar
-                        session.commit()
 
-                    # 下载全部的
-                    update_all = channel.if_download_all or channel.if_extract_all
-                    video_list = subscribe_channel.get_channel_videos(channel=channel, update_all=update_all)
-                    extract_video_list = []
-                    extract_download_video_list = []
-                    if channel.if_extract_all:
-                        if channel.if_download_all:
-                            extract_download_video_list = video_list
-                        else:
-                            if channel.if_auto_download:
-                                extract_download_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
-                            else:
-                                extract_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
-                    else:
-                        if channel.if_auto_download:
-                            extract_download_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
-                        else:
-                            extract_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
-
-                    for video in extract_video_list:
-                        domain_id = extract_top_level_domain(video)
-                        video_id = extract_id_from_url(video)
-                        key = f"task:extract:{domain_id}:{channel.channel_id}:{video_id}"
-                        if redis_client.exists(key):
-                            continue
-                        else:
-                            redis_client.set(key, 1, 60 * 60 * 1)
-                        start_extract(video, channel)
-                    for video in extract_download_video_list:
-                        domain_id = extract_top_level_domain(video)
-                        video_id = extract_id_from_url(video)
-                        key = f"task:extract:download:{domain_id}:{channel.channel_id}:{video_id}"
-                        if redis_client.exists(key):
-                            continue
-                        else:
-                            redis_client.set(key, 1, 60 * 60 * 1)
-                        start_extract_and_download(video, channel)
+                # 使用线程池并行处理每个channel
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = [executor.submit(cls.update_channel_video, channel, session) for channel in channels]
+                    # 等待所有任务完成
+                    concurrent.futures.wait(futures)
 
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
@@ -187,8 +136,42 @@ class AutoUpdateChannelVideoTask:
             # 捕获其他所有异常
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
+    @classmethod
+    def update_channel_video(cls, channel, session):
+        logger.info(f"update {channel.name} channel video start")
+        subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
+        if channel.avatar is None:
+            channel.avatar = subscribe_channel.get_channel_info().avatar
+            session.commit()
+        # 下载全部的
+        update_all = channel.if_download_all or channel.if_extract_all
+        video_list = subscribe_channel.get_channel_videos(channel=channel, update_all=update_all)
+        extract_video_list = []
+        extract_download_video_list = []
+        if channel.if_extract_all:
+            if channel.if_auto_download:
+                if channel.if_download_all:
+                    extract_download_video_list = video_list
+                else:
+                    extract_video_list = video_list[GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE:]
+                    extract_download_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
+            else:
+                extract_video_list = video_list
 
-class MigrateDownloadTaskInfo:
+        else:
+            if channel.if_auto_download:
+                extract_download_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
+            else:
+                extract_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
+
+        for video in extract_video_list:
+            start_extract_and_download(video, if_subscribe=True)
+        for video in extract_download_video_list:
+            start_extract_and_download(video, if_subscribe=True, if_only_extract=False)
+        logger.info(f"update {channel.name} channel video end")
+
+
+class RepairDownloadTaskInfo:
 
     @classmethod
     def run(cls):
@@ -221,7 +204,7 @@ class RepairChanelInfoForTotalVideos:
     def run(cls):
         try:
             with get_session() as session:
-                channels = session.query(Channel).filter(Channel.total_videos == 100).all()
+                channels = session.query(Channel).filter(Channel.total_videos == 0).all()
                 for channel in channels:
                     if channel.total_videos > 0:
                         continue
