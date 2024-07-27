@@ -11,43 +11,11 @@ from consumer.base import BaseConsumerThread
 from downloader.downloader import Downloader
 from downloader.id_extractor import extract_id_from_url
 from meta.video import VideoFactory
-from model.channel import Channel, ChannelVideoSchema, ChannelVideo
+from model.channel import ChannelVideo
 from model.download_task import DownloadTask, DownloadTaskSchema
 from model.message import Message
 
 logger = logging.getLogger(__name__)
-
-
-class ChannelVideoExtractConsumerThread(BaseConsumerThread):
-    def run(self):
-        while self.running:
-            try:
-                with get_session() as session:
-                    message = self.mq.wait_and_dequeue(session=session, timeout=5)
-                    if message:
-                        self.handle_message(message, session)
-
-                        channel_video = ChannelVideoSchema().load(json.loads(message.body), session=session)
-                        channel = session.query(Channel).where(Channel.channel_id == channel_video.channel_id).first()
-
-                        if channel.if_auto_download and channel_video.if_downloaded:
-                            continue
-
-                        video_info = Downloader.get_video_info(channel_video.url)
-                        if video_info is None:
-                            logger.info(f"{channel_video.url} is not a video, skip")
-                            continue
-                        if '_type' in video_info and video_info['_type'] == 'playlist':
-                            logger.info(f"{channel_video.url} is a playlist, skip")
-                            continue
-
-                        channel_video.title = video_info['title']
-                        channel_video.thumbnail = video_info['thumbnail']
-                        channel_video.uploaded_at = datetime.fromtimestamp(int(video_info['timestamp']))
-                        session.commit()
-
-            except Exception as e:
-                logger.error(f"处理消息时发生错误: {e}", exc_info=True)
 
 
 class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
@@ -72,7 +40,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                                                                           ChannelVideo.video_id == video_id).first()
 
                         if if_only_extract and channel_video is not None:
-                            logger.info(f"视频已解析：{url}")
+                            logger.debug(f"视频已解析：{url}")
                             continue
 
                         # 视频基本信息
@@ -86,7 +54,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
 
                         video = VideoFactory.create_video(url, video_info)
 
-                        logger.info(f"开始解析视频：channel {video.get_uploader().name}, video: {url}")
+                        logger.debug(f"开始解析视频：channel {video.get_uploader().name}, video: {url}")
                         if if_subscribe and channel_video is None:
                             channel_video = ChannelVideo()
                             channel_video.url = url
@@ -102,7 +70,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                             session.add(channel_video)
                             session.commit()
 
-                        logger.info(f"结束解析视频：channel {video.get_uploader().name}, video: {url}")
+                        logger.debug(f"结束解析视频：channel {video.get_uploader().name}, video: {url}")
                         if if_only_extract:
                             continue
 

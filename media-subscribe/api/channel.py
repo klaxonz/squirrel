@@ -5,8 +5,8 @@ from fastapi import Query, APIRouter
 from pydantic import BaseModel
 
 from common.constants import QUEUE_SUBSCRIBE_TASK
-from common.database import get_session
 from common.message_queue import RedisMessageQueue
+from common.database import get_session
 from model.channel import Channel, ChannelVideo
 from model.message import Message
 import common.response as response

@@ -134,6 +134,7 @@ function updateDownloadTaskList(taskInfo) {
                 document.createElement('td'), // 剩余时间
                 document.createElement('td'), // 备注
                 document.createElement('td'), // 创建时间
+                document.createElement('td'), // 更新时间
                 document.createElement('td')  // 操作
             ];
 
@@ -154,8 +155,9 @@ function updateDownloadTaskList(taskInfo) {
             columns[11].textContent = task.error_message ? task.error_message : '';
             columns[11].style.width = '300px';
             columns[12].textContent = task.created_at;
-            columns[13].classList.add('action-buttons');
-            columns[13].innerHTML = `                <a href="#" class="button play-button">播放</a>
+            columns[13].textContent = task.updated_at;
+            columns[14].classList.add('action-buttons');
+            columns[14].innerHTML = `                <a href="#" class="button play-button">播放</a>
                 <a href="#" class="button delete-button">删除</a>
             `;
 
@@ -176,6 +178,7 @@ function updateDownloadTaskList(taskInfo) {
             row.children[10].textContent = task.eta;
             row.children[11].textContent = task.error_message ? task.error_message : '';
             row.children[11].style.width = '300px';
+            row.children[13].textContent = task.updated_at;
         }
     });
 

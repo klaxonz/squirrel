@@ -4,9 +4,7 @@ load_dotenv(override=True)
 
 import logging
 from consumer.consumer_download_task import DownloadTaskConsumerThread
-from consumer.consumer_extract_channel_video import ChannelVideoExtractConsumerThread, \
-    ChannelVideoExtractAndDownloadConsumerThread
-from consumer.consumer_extract_video_info import ExtractorInfoTaskConsumerThread
+from consumer.consumer_extract_channel_video import ChannelVideoExtractAndDownloadConsumerThread
 from consumer.consumer_subscribe_channel import SubscribeChannelConsumerThread
 
 from model.message import Message
