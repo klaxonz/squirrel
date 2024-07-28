@@ -17,6 +17,72 @@
 (function() {
     'use strict';
 
+    // 默认的后端接口host
+    const DEFAULT_HOST = "http://localhost:8000";
+
+    // 获取已保存的host配置
+    function getHostConfig() {
+        return localStorage.getItem('backendHost') || DEFAULT_HOST;
+    }
+
+    // 保存host配置
+    function setHostConfig(host) {
+        localStorage.setItem('backendHost', host);
+    }
+
+    // 创建悬浮按钮
+    function createFloatingButton() {
+        const button = document.createElement('button');
+        button.textContent = 'Configure Host';
+        button.style.position = 'fixed';
+        button.style.bottom = '20px';
+        button.style.right = '20px';
+        button.style.zIndex = '1000';
+        button.style.backgroundColor = '#f00';
+        button.style.color = '#fff';
+        button.style.padding = '10px 20px';
+        button.style.borderRadius = '5px';
+        button.style.border = 'none';
+        button.style.cursor = 'pointer';
+        button.addEventListener('click', showConfigDialog);
+
+        document.body.appendChild(button);
+    }
+
+    // 显示配置对话框
+    function showConfigDialog() {
+        const dialog = document.createElement('div');
+        dialog.style.position = 'fixed';
+        dialog.style.top = '50%';
+        dialog.style.left = '50%';
+        dialog.style.transform = 'translate(-50%, -50%)';
+        dialog.style.backgroundColor = '#fff';
+        dialog.style.padding = '20px';
+        dialog.style.zIndex = '1001';
+        dialog.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+        dialog.style.borderRadius = '5px';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = getHostConfig();
+        input.style.width = '100%';
+        input.style.marginBottom = '10px';
+
+        const saveButton = document.createElement('button');
+        saveButton.textContent = 'Save';
+        saveButton.addEventListener('click', () => {
+            setHostConfig(input.value);
+            dialog.remove();
+        });
+
+        dialog.appendChild(input);
+        dialog.appendChild(saveButton);
+        document.body.appendChild(dialog);
+    }
+
+     // 初始化
+    createFloatingButton();
+
     const getElement = (parent, selector, timeout = 0) => {
       return new Promise(resolve => {
         let result = parent.querySelector(selector);
@@ -73,7 +139,7 @@
     const download = (url, data) => {
       GM_xmlhttpRequest({
           method: 'POST',
-          url: 'http://127.0.0.1:8000/api/task/download',
+          url: `${getHostConfig()}/api/task/download`,
           data: data,
           headers: {
               "Content-Type": "application/json"
@@ -98,7 +164,7 @@
     const subscribe = (url, data) => {
       GM_xmlhttpRequest({
           method: 'POST',
-          url: 'http://127.0.0.1:8000/api/channel/subscribe',
+          url: `${getHostConfig()}/api/channel/subscribe`,
           data: data,
           headers: {
               "Content-Type": "application/json"
