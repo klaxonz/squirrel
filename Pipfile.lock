@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "8a65453382d7016734583fc4170b98b1b14901720867eeab03bb68e277fd5d91"
+            "sha256": "55feb5eab3f1e97972f213ff041b9e36acea81b6b920ad26452a246cd5ce44a2"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -752,6 +752,14 @@
             "index": "pypi",
             "markers": "python_version >= '3.8'",
             "version": "==2.23.0"
+        },
+        "pycookiecloud": {
+            "hashes": [
+                "sha256:d6f7db05b9d358b1ca7b1d117b0da2eeec539f7638e6449e5831c987db189a40",
+                "sha256:ec066ca736fbf5f3e48744e10ca2d8ea754e8b4f3147a9daa5e2f618030e7c45"
+            ],
+            "index": "pypi",
+            "version": "==1.0.3"
         },
         "pycparser": {
             "hashes": [

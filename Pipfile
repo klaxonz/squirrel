@@ -23,5 +23,6 @@ cryptography = "*"
 sqlalchemy = "*"
 marshmallow = "*"
 marshmallow-sqlalchemy = "*"
+pycookiecloud = "*"
 
 [dev-packages]

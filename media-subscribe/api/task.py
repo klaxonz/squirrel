@@ -46,7 +46,7 @@ def start_download(req: DownloadChangeStateRequest):
         download_task.status = 'PENDING'
         download_task.retry = download_task.retry + 1
         s.commit()
-        download_service.start(download_task.url, if_only_extract=False, if_retry=True)
+        download_service.start(download_task.url, if_only_extract=False, if_retry=True, if_manual_retry=True)
 
     return response.success()
 

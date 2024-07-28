@@ -31,11 +31,7 @@ class GlobalConfig:
         """
         获取cookie文件路径
         """
-        cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies.txt'))
-        if cookie_path.exists():
-            return str(cookie_path)
-        else:
-            return None
+        return Path(os.path.join(base_dir, '..', 'config', 'cookies.txt'))
 
     @classmethod
     def get_all_cookies_file_path(cls):
@@ -87,3 +83,38 @@ class GlobalConfig:
         database = cls.get_mysql_database()
 
         return f'mysql+pymysql://{user}:{password}@{host}:{port}/{database}?charset=utf8mb4'
+
+    @classmethod
+    def get_cookie_type(cls):
+        """
+        获取cookie类型
+        """
+        return os.getenv('COOKIE_TYPE', 'file')
+
+    @classmethod
+    def get_cookie_cloud_url(cls):
+        """
+        获取cookie云地址
+        """
+        return os.getenv('COOKIE_CLOUD_URL', '')
+
+    @classmethod
+    def get_cookie_cloud_uuid(cls):
+        """
+        获取cookie云uuid
+        """
+        return os.getenv('COOKIE_CLOUD_UUID', '')
+
+    @classmethod
+    def get_cookie_cloud_password(cls):
+        """
+        获取cookie云密码
+        """
+        return os.getenv('COOKIE_CLOUD_PASSWORD', '')
+
+    @classmethod
+    def get_cookie_cloud_domain(cls):
+        """
+        获取cookie云类型
+        """
+        return os.getenv('COOKIE_CLOUD_DOMAIN', '')

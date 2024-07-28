@@ -5,9 +5,11 @@ import time
 from datetime import datetime, timedelta
 from threading import Thread
 
+from PyCookieCloud import PyCookieCloud
 from sqlalchemy import text
 
 from common.config import GlobalConfig
+from common.cookie import json_cookie_to_netscape
 from common.database import get_session
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
@@ -73,6 +75,41 @@ class Scheduler:
         self.running = False
 
 
+class SyncCookies:
+
+    @classmethod
+    def run(cls):
+        try:
+            cookie_cloud = PyCookieCloud(GlobalConfig.get_cookie_cloud_url(), GlobalConfig.get_cookie_cloud_uuid(),
+                                         GlobalConfig.get_cookie_cloud_password())
+            the_key = cookie_cloud.get_the_key()
+            if not the_key:
+                logger.info('Failed to get the key')
+                return
+            encrypted_data = cookie_cloud.get_encrypted_data()
+            if not encrypted_data:
+                logger.info('Failed to get encrypted data')
+                return
+            decrypted_data = cookie_cloud.get_decrypted_data()
+            if not decrypted_data:
+                logger.info('Failed to get decrypted data')
+                return
+            domains = GlobalConfig.get_cookie_cloud_domain()
+            if domains:
+                expect_domains = domains.split(',')
+            else:
+                expect_domains = []
+
+            json_cookie_to_netscape(decrypted_data, expect_domains, GlobalConfig.get_cookies_file_path())
+
+        except json.JSONDecodeError as e:
+            # 特定地捕获JSON解码错误
+            logger.error(f"Error decoding JSON: {e}", exc_info=True)
+        except Exception as e:
+            # 捕获其他所有异常
+            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+
+
 class RetryFailedTask:
 
     @classmethod
@@ -106,6 +143,28 @@ class RetryFailedTask:
                     channel = session.query(Channel).filter(Channel.channel_id == task.channel_id).first()
                     if_subscribe = channel is not None
                     start(task.url, if_only_extract=False, if_subscribe=if_subscribe, if_retry=True)
+
+        except json.JSONDecodeError as e:
+            # 特定地捕获JSON解码错误
+            logger.error(f"Error decoding JSON: {e}", exc_info=True)
+        except Exception as e:
+            # 捕获其他所有异常
+            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+
+
+class ChangeStatusTask:
+
+    @classmethod
+    def run(cls):
+        try:
+            # 执行查询
+            with get_session() as session:
+                tasks = session.query(DownloadTask).filter(DownloadTask.status == 'PENDING', DownloadTask.retry >= 5)
+
+                # 把失败的任务放入redis队列,并修改状态
+                for task in tasks:
+                    task.status = 'FAILED'
+                    session.commit()
 
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误

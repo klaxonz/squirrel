@@ -1,5 +1,7 @@
 from dotenv import load_dotenv
 
+from common.config import GlobalConfig
+
 load_dotenv(override=True)
 
 import logging
@@ -15,13 +17,13 @@ from common.database import DatabaseManager
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
 from schedule.schedule import Scheduler, RetryFailedTask, AutoUpdateChannelVideoTask, RepairDownloadTaskInfo, \
-    RepairChanelInfoForTotalVideos
+    RepairChanelInfoForTotalVideos, ChangeStatusTask, SyncCookies
 from common.log import init_logging
 
 logger = logging.getLogger(__name__)
 
 
-def initialize_consumers():
+def start_consumers():
     """启动所有消费者线程"""
     logger.info('Starting consumers...')
     download_consumers = []
@@ -47,6 +49,9 @@ def start_scheduler():
     """配置并启动定时任务调度器"""
     logger.info('Starting scheduler...')
     scheduler = Scheduler()
+    if GlobalConfig.get_cookie_type() == 'cookiecloud':
+        scheduler.add_job(SyncCookies.run, interval=1, unit='minutes')
+    scheduler.add_job(ChangeStatusTask.run, interval=1, unit='minutes')
     scheduler.add_job(RepairDownloadTaskInfo.run, interval=60, unit='minutes')
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=2, unit='minutes')
@@ -62,8 +67,8 @@ if __name__ == "__main__":
     tables = [DownloadTask, Channel, ChannelVideo, Message]
     DatabaseManager.initialize_database(tables)
 
-    initialize_consumers()
     start_scheduler()
+    start_consumers()
 
     # 启动服务
     logger.info('Starting server...')

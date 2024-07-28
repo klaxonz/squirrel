@@ -36,6 +36,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                         if_retry = extract_info['if_retry']
                         if_subscribe = extract_info['if_subscribe']
                         if_only_extract = extract_info['if_only_extract']
+                        if_manual_retry = extract_info['if_manual_retry']
 
                         channel_video = session.query(ChannelVideo).where(ChannelVideo.domain == domain,
                                                                           ChannelVideo.video_id == video_id).first()
@@ -89,7 +90,8 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                         # 下载任务
                         logger.info(f"开始生成视频任务：channel {video.get_uploader().name}, video: {url}")
 
-                        download_task = session.query(DownloadTask).where(DownloadTask.domain == domain, DownloadTask.video_id == video_id).first()
+                        download_task = session.query(DownloadTask).where(DownloadTask.domain == domain,
+                                                                          DownloadTask.video_id == video_id).first()
                         if download_task and not if_retry:
                             key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{download_task.domain}:{download_task.video_id}"
                             client = RedisClient.get_instance().client
@@ -99,7 +101,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                         if download_task and download_task.status == 'COMPLETED':
                             logger.info(f"视频已下载：channel {video.get_uploader().name}, video: {url}")
                             continue
-                        if download_task and download_task.retry >= GlobalConfig.DOWNLOAD_RETRY_THRESHOLD:
+                        if download_task and not if_manual_retry and download_task.retry >= GlobalConfig.DOWNLOAD_RETRY_THRESHOLD:
                             logger.info(f"视频下载已超过重试次数：channel {video.get_uploader().name}, video: {url}")
                             continue
 

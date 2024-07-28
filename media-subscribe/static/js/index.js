@@ -11,7 +11,7 @@ const statusMap = {
     'FAILED': '失败'
 };
 
-let existingRows = {};
+
 let abortController;
 
 function navigate(section) {
@@ -107,12 +107,15 @@ function updateDownloadTaskList(taskInfo) {
     var tbody = document.querySelector('#download-content table tbody');
     var tasks = taskInfo.data.data;
 
-    // 创建一个映射，用于跟踪哪些行需要被移除（即不再存在于新数据中的行）
-    let rowsToRemove = new Set(Object.keys(existingRows));
+    const existingRows = {};
+    tbody.querySelectorAll('tr').forEach(function (row) {
+        existingRows[row.getAttribute('data-task-id')] = row;
+    })
+
+    let prevRow = null;
 
     tasks.forEach(function (task) {
         const taskId = task.id;
-        rowsToRemove.delete(String(taskId)); // 移除这个taskId，因为它仍然存在
 
         if (!existingRows[taskId]) {
             // 如果这个taskId对应的行不存在，创建一个新的行
@@ -167,18 +170,25 @@ function updateDownloadTaskList(taskInfo) {
                     <a href="#" class="button play-button" onclick="handleStopClick(event, ${task.id})">暂停</a>
                     <a href="#" class="button delete-button">删除</a>
                 `;
+            } else if (task.status === 'FAILED') {
+                columns[14].innerHTML = `                
+                    <a href="#" class="button play-button" onclick="handleRetryClick(event, ${task.id})">重试</a>
+                    <a href="#" class="button delete-button">删除</a>
+                `;
             } else {
                 columns[14].innerHTML = `                
                     <a href="#" class="button delete-button">删除</a>
                 `;
             }
 
-
             // 将列元素添加到行中
             columns.forEach(column => row.appendChild(column));
-
-            tbody.appendChild(row);
-            existingRows[taskId] = row;
+            if (prevRow) {
+                prevRow.insertAdjacentElement('afterend', row)
+            } else {
+                tbody.insertBefore(row, tbody.firstChild);
+            }
+            prevRow = row;
 
         } else {
             // 否则，更新已存在的行
@@ -202,22 +212,28 @@ function updateDownloadTaskList(taskInfo) {
                     <a href="#" class="button play-button" onclick="handleStopClick(event, ${task.id})">暂停</a>
                     <a href="#" class="button delete-button">删除</a>
                 `;
+            } else if (task.status === 'FAILED') {
+                row.children[14].innerHTML = `                
+                    <a href="#" class="button play-button" onclick="handleRetryClick(event, ${task.id})">重试</a>
+                    <a href="#" class="button delete-button">删除</a>
+                `;
             } else {
                 row.children[14].innerHTML = `                
                     <a href="#" class="button delete-button">删除</a>
                 `;
             }
+            delete existingRows[taskId];
+            prevRow = row;
         }
     });
 
     // 移除那些不再存在的行
-    rowsToRemove.forEach(taskId => {
-        tbody.removeChild(existingRows[taskId]);
-        delete existingRows[taskId];
+    Object.keys(existingRows).forEach(taskId => {
+        const row = existingRows[taskId];
+        tbody.removeChild(row);
     });
 
     generateDownloadTaskPaginationButtons(taskInfo.data.total);
-    setupPlayVideoEventListeners();
 }
 
 function updateSubscribeChannelList(subscribeInfo) {
@@ -420,11 +436,19 @@ function handleStopClick(event, taskId) {
 }
 
 
-function setupPlayVideoEventListeners() {
-    var playButtons = document.querySelectorAll('#download-content table tbody .play-button');
-    playButtons.forEach(function (button) {
-        button.addEventListener('click', handlePlayClick);
-    });
+function handleRetryClick(event, taskId) {
+    fetch('/api/task/retry', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            task_id: taskId,
+        })
+    })
+        .then(response => {
+            event.target.textContent = '开始';
+        });
 }
 
 
