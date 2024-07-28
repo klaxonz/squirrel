@@ -3,10 +3,10 @@ import logging
 from fastapi import Query, APIRouter
 from pydantic import BaseModel
 
+import common.response as response
 from common.database import get_session
 from model.channel import ChannelVideo
 from service import download_service
-import common.response as response
 
 logger = logging.getLogger(__name__)
 
@@ -91,12 +91,7 @@ def download_channel_video(req: DownloadChannelVideoRequest):
         channel_video = s.query(ChannelVideo).filter(ChannelVideo.channel_id == req.channel_id,
                                                      ChannelVideo.video_id == req.video_id).first()
 
-        download_service.start_download(channel_video.url)
-
-        s.query(ChannelVideo).where(ChannelVideo.channel_id == req.channel_id,
-                                    ChannelVideo.video_id == req.video_id).update({
-            'if_downloaded': True
-        })
-        s.commit()
+        download_service.start_extract_and_download(channel_video.url, if_subscribe=True, if_only_extract=False,
+                                                    if_retry=False)
 
     return response.success()

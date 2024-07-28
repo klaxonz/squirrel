@@ -3,9 +3,7 @@ import json
 from sqlalchemy.orm import Session
 
 from model.message import Message, MessageSchema
-from utils import json_serialize
 from .cache import RedisClient
-from .database import get_session
 
 
 class RedisMessageQueue:

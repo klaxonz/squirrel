@@ -5,12 +5,13 @@ import stat
 from email.utils import formatdate
 from mimetypes import guess_type
 
+from fastapi import Query, APIRouter, Request
+from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
 import common.response as response
-from fastapi import Query, APIRouter, Request
-from pydantic import BaseModel
-
+from common import constants
+from common.cache import RedisClient
 from common.database import get_session
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
@@ -30,9 +31,7 @@ class DownloadRequest(BaseModel):
 
 @router.post("/api/task/download")
 def start_download(req: DownloadRequest):
-    url = req.url
-    download_service.start_download(url)
-
+    download_service.start_extract_and_download(req.url, if_only_extract=False)
     return response.success()
 
 
@@ -64,25 +63,35 @@ def get_updated_task_list(status: str = None, page: int = 1, page_size: int = 10
                  .offset(offset)
                  .limit(page_size))
 
-        task_convert_list = [
-            {
+        task_convert_list = []
+        for task in tasks:
+            video_id = task.video_id
+
+            # 下载信息缓存到redis中
+            client = RedisClient.get_instance().client
+            downloaded_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}{video_id}', 'downloaded_size')
+            total_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}{video_id}', 'total_size')
+            speed = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}{video_id}', 'speed')
+            eta = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}{video_id}', 'eta')
+            percent = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}{video_id}', 'percent')
+
+            task_convert_list.append({
                 "id": task.task_id,
                 "thumbnail": task.thumbnail,
                 "status": task.status,
                 "title": task.title,
                 "channel_name": task.channel_name,
                 "channel_avatar": task.channel_avatar,
-                "downloaded_size": task.downloaded_size or 0,
-                "total_size": task.total_size or 0,
-                "speed": task.speed or '未知',
-                "eta": task.eta or '未知',
-                "percent": task.percent or '未知',
+                "downloaded_size": downloaded_size or 0,
+                "total_size": total_size or 0,
+                "speed": speed or '未知',
+                "eta": eta or '未知',
+                "percent": percent or '未知',
                 "error_message": task.error_message,
                 "retry": task.retry,
                 "updated_at": task.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
                 "created_at": task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            } for task in tasks
-        ]
+            })
 
     # 使用指定字段组织返回数据
     return {

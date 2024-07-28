@@ -31,17 +31,15 @@ def initialize_consumers():
         consumer.start()
 
     channel_video_extract_consumers = []
-    for _ in range(20):
-        consumer = ChannelVideoExtractAndDownloadConsumerThread(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
+    for _ in range(10):
+        consumer = ChannelVideoExtractAndDownloadConsumerThread(
+            queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
         channel_video_extract_consumers.append(consumer)
         consumer.start()
 
-    # extract_info_consumer = ExtractorInfoTaskConsumerThread(queue_name=constants.QUEUE_EXTRACT_TASK)
     subscribe_consumer = SubscribeChannelConsumerThread(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
+    subscribe_consumer.start()
 
-    [consumer.start() for consumer in [
-         subscribe_consumer
-    ]]
     logger.info('Consumers started.')
 
 

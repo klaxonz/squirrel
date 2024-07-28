@@ -1,15 +1,16 @@
+import logging
 import os
 
 import requests
 from yt_dlp import YoutubeDL
 
+from common.cache import RedisClient
 from common.config import GlobalConfig
 from common.database import get_session
 from downloader.id_extractor import extract_id_from_url
 from meta.video import VideoFactory, Video
 from model.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
-import logging
 
 
 class Downloader:
@@ -32,15 +33,13 @@ class Downloader:
             if 'id' in video_info['info_dict']:
                 video_id = video_info['info_dict']['id']
 
-                with get_session() as session:
-                    session.query(DownloadTask).filter(DownloadTask.video_id == video_id).update({
-                        'downloaded_size': downloaded_bytes,
-                        'total_size': total_bytes,
-                        'speed': speed,
-                        'eta': eta,
-                        'percent': percent
-                    })
-                    session.commit()
+                # 下载信息缓存到redis中
+                client = RedisClient.get_instance().client
+                client.hset(f'video:download:progress:{video_id}', 'downloaded_size', downloaded_bytes)
+                client.hset(f'video:download:progress:{video_id}', 'total_size', total_bytes)
+                client.hset(f'video:download:progress:{video_id}', 'speed', speed)
+                client.hset(f'video:download:progress:{video_id}', 'eta', eta)
+                client.hset(f'video:download:progress:{video_id}', 'percent', percent)
 
     @staticmethod
     def get_video_info(url):
