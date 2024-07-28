@@ -17,27 +17,31 @@ class SubscribeChannelConsumerThread(BaseConsumerThread):
                 with get_session() as session:
                     message = self.mq.wait_and_dequeue(session=session, timeout=5)
                     if message:
-                        self.handle_message(message, session)
+                        self.handle_message(message, session=session)
+                        session.expunge(message)
+                if message:
 
-                        url = json.loads(message.body)['url']
-                        subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(url)
-                        channel_info = subscribe_channel.get_channel_info()
+                    url = json.loads(message.body)['url']
+                    subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(url)
+                    channel_info = subscribe_channel.get_channel_info()
 
+                    with get_session() as session:
                         channel = session.query(Channel).filter(Channel.channel_id == channel_info.id,
                                                                 Channel.name == channel_info.name).first()
                         if channel:
                             logger.info(f"频道 {channel_info.name} 已存在")
                             continue
 
-                        channel = Channel()
-                        channel.channel_id = channel_info.id
-                        channel.name = channel_info.name
-                        channel.url = channel_info.url
-                        channel.avatar = channel_info.avatar
+                    channel = Channel()
+                    channel.channel_id = channel_info.id
+                    channel.name = channel_info.name
+                    channel.url = channel_info.url
+                    channel.avatar = channel_info.avatar
 
-                        videos = subscribe_channel.get_channel_videos(channel, update_all=True)
-                        channel.total_videos = len(videos)
+                    videos = subscribe_channel.get_channel_videos(channel, update_all=True)
+                    channel.total_videos = len(videos)
 
+                    with get_session() as session:
                         session.add(channel)
                         session.commit()
 

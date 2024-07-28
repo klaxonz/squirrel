@@ -51,11 +51,22 @@ def start_download(req: DownloadChangeStateRequest):
     return response.success()
 
 
-@router.post("/api/task/stop")
+@router.post("/api/task/pause")
 def start_download(req: DownloadChangeStateRequest):
     with get_session() as s:
-        download_task = s.query(DownloadTask).filter(DownloadTask.id == req.id).first()
-        download_task.status = 'STOPPED'
+        download_task = s.query(DownloadTask).filter(DownloadTask.task_id == req.task_id).first()
+        download_task.status = 'PAUSED'
+        s.commit()
+        download_service.stop(download_task.task_id)
+
+    return response.success()
+
+
+@router.post("/api/task/delete")
+def start_download(req: DownloadChangeStateRequest):
+    with get_session() as s:
+        download_task = s.query(DownloadTask).filter(DownloadTask.task_id == req.task_id).first()
+        s.delete(download_task)
         s.commit()
         download_service.stop(download_task.task_id)
 
@@ -109,8 +120,8 @@ def get_updated_task_list(status: str = None, page: int = 1, page_size: int = 10
                 "title": task.title,
                 "channel_name": task.channel_name,
                 "channel_avatar": task.channel_avatar,
-                "downloaded_size": downloaded_size or 0,
-                "total_size": total_size or 0,
+                "downloaded_size": int(downloaded_size) if downloaded_size else 0,
+                "total_size": int(total_size) if total_size else 0,
                 "speed": speed or '未知',
                 "eta": eta or '未知',
                 "percent": percent or '未知',

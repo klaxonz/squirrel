@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from sqlalchemy import Integer, Column, Text, VARCHAR, DateTime
-from sqlalchemy.orm import Session
 
 from common.database import Base, BaseMixin
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema

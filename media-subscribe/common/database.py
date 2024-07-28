@@ -26,7 +26,7 @@ engine = create_engine(
     max_overflow=GlobalConfig.POOL_MAX_SIZE,
     pool_recycle=GlobalConfig.POOL_RECYCLE,
 )
-Session = sessionmaker(bind=engine)
+Session = sessionmaker(bind=engine, expire_on_commit=False)
 Base = declarative_base()
 
 

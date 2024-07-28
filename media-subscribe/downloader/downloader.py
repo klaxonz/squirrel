@@ -14,6 +14,11 @@ from model.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
 
 
+class DownloadStoppedError(Exception):
+    """Exception raised when the download is intentionally stopped."""
+    pass
+
+
 def create_progress_hook(task_id: int):
     def on_progress_hook(video_info):
         """
@@ -33,7 +38,8 @@ def create_progress_hook(task_id: int):
                 client = RedisClient.get_instance().client
                 status = client.get(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_STATUS}:{task_id}')
                 if status == 'stop':
-                    raise Exception('Download stopped')
+                    client.delete(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_STATUS}:{task_id}')
+                    raise DownloadStoppedError('Download stopped')
 
                 client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'downloaded_size',
                             downloaded_bytes)
@@ -92,18 +98,26 @@ class Downloader:
         if cookie_file_path:
             ydl_opts['cookiefile'] = cookie_file_path
 
-        with YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-            Downloader.download_avatar(video)
-            NfoGenerator.generate_nfo(video)
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+                Downloader.download_avatar(video)
+                NfoGenerator.generate_nfo(video)
 
-            filepath = os.path.join(output_dir, filename + '.mp4')
-            # 获取文件大小
-            file_size = os.path.getsize(filepath)
-            video_id = extract_id_from_url(url)
+                filepath = os.path.join(output_dir, filename + '.mp4')
+                # 获取文件大小
+                file_size = os.path.getsize(filepath)
+                video_id = extract_id_from_url(url)
 
-            with get_session() as session:
-                session.query(DownloadTask).filter(DownloadTask.video_id == video_id).update({
-                    'total_size': file_size
-                })
-                session.commit()
+                with get_session() as session:
+                    session.query(DownloadTask).filter(DownloadTask.video_id == video_id).update({
+                        'total_size': file_size
+                    })
+                    session.commit()
+        except DownloadStoppedError as e:
+            logging.info(f"下载视频被停止: {url}")
+            return 2
+        except Exception as e:
+            logging.error(f"下载视频失败: {url}", exc_info=True)
+            return 1
+        return 0

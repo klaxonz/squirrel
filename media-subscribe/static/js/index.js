@@ -166,21 +166,21 @@ function updateDownloadTaskList(taskInfo) {
             if (task.status === 'COMPLETED') {
                 columns[14].innerHTML = `                
                     <a href="#" class="button play-button" onclick="handlePlayClick(${task.id})">播放</a>
-                    <a href="#" class="button delete-button">删除</a>
+                    <a href="#" class="button delete-button" onclick="handleDeleteClick(${task.id})">删除</a>
                 `;
             } else if (task.status === 'DOWNLOADING') {
                 columns[14].innerHTML = `                
-                    <a href="#" class="button play-button" onclick="handleStopClick(event, ${task.id})">暂停</a>
-                    <a href="#" class="button delete-button">删除</a>
+                    <a href="#" class="button play-button" onclick="handlePauseClick(event, ${task.id})">暂停</a>
+                    <a href="#" class="button delete-button" onclick="handleDeleteClick(${task.id})">删除</a>
                 `;
-            } else if (task.status === 'FAILED') {
+            } else if (task.status === 'FAILED' || task.status === 'PENDING' || task.status === 'PAUSED') {
                 columns[14].innerHTML = `                
                     <a href="#" class="button play-button" onclick="handleRetryClick(event, ${task.id})">重试</a>
-                    <a href="#" class="button delete-button">删除</a>
+                    <a href="#" class="button delete-button" onclick="handleDeleteClick(${task.id})">删除</a>
                 `;
             } else {
                 columns[14].innerHTML = `                
-                    <a href="#" class="button delete-button">删除</a>
+                    <a href="#" class="button delete-button" onclick="handleDeleteClick(${task.id})">删除</a>
                 `;
             }
 
@@ -208,21 +208,21 @@ function updateDownloadTaskList(taskInfo) {
             if (task.status === 'COMPLETED') {
                 row.children[14].innerHTML = `                
                     <a href="#" class="button play-button" onclick="handlePlayClick(${task.id})">播放</a>
-                    <a href="#" class="button delete-button">删除</a>
+                    <a href="#" class="button delete-button" onclick="handleDeleteClick(${task.id})">删除</a>
                 `;
             } else if (task.status === 'DOWNLOADING') {
                 row.children[14].innerHTML = `                
-                    <a href="#" class="button play-button" onclick="handleStopClick(event, ${task.id})">暂停</a>
-                    <a href="#" class="button delete-button">删除</a>
+                    <a href="#" class="button play-button" onclick="handlePauseClick(event, ${task.id})">暂停</a>
+                    <a href="#" class="button delete-button" onclick="handleDeleteClick(${task.id})">删除</a>
                 `;
-            } else if (task.status === 'FAILED') {
+            } else if (task.status === 'FAILED' || task.status === 'PENDING' || task.status === 'PAUSED') {
                 row.children[14].innerHTML = `                
                     <a href="#" class="button play-button" onclick="handleRetryClick(event, ${task.id})">重试</a>
-                    <a href="#" class="button delete-button">删除</a>
+                    <a href="#" class="button delete-button" onclick="handleDeleteClick(${task.id})">删除</a>
                 `;
             } else {
                 row.children[14].innerHTML = `                
-                    <a href="#" class="button delete-button">删除</a>
+                    <a href="#" class="button delete-button" onclick="handleDeleteClick(${task.id})">删除</a>
                 `;
             }
             delete existingRows[taskId];
@@ -423,8 +423,8 @@ function handlePlayClick(taskId) {
     showVideoModal(`/api/task/video/play/${taskId}`)
 }
 
-function handleStopClick(event, taskId) {
-    fetch('/api/task/stop', {
+function handlePauseClick(event, taskId) {
+    fetch('/api/task/pause', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -452,6 +452,18 @@ function handleRetryClick(event, taskId) {
         .then(response => {
             event.target.textContent = '开始';
         });
+}
+
+function handleDeleteClick(taskId) {
+    fetch('/api/task/delete', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            task_id: taskId,
+        })
+    })
 }
 
 function startDownloadTaskInterval() {
