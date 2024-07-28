@@ -58,12 +58,34 @@ class Downloader:
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            'ignoreerrors': True,
+            'ignoreerrors': False,
             'skip_download': True,
         }
+        cookie_file_path = GlobalConfig.get_cookies_file_path()
+        if cookie_file_path:
+            ydl_opts['cookiefile'] = cookie_file_path
+
         with YoutubeDL(ydl_opts) as ydl:
             video_info = ydl.extract_info(url, download=False)
             return video_info
+
+
+    @staticmethod
+    def get_video_info_thread(url: str, queue_thread_name: str):
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'ignoreerrors': False,
+            'skip_download': True,
+        }
+        cookie_file_path = GlobalConfig.get_cookies_file_path_thread(queue_thread_name)
+        if cookie_file_path:
+            ydl_opts['cookiefile'] = cookie_file_path
+
+        with YoutubeDL(ydl_opts) as ydl:
+            video_info = ydl.extract_info(url, download=False)
+            return video_info
+
 
     @staticmethod
     def download_avatar(video: Video):
@@ -75,8 +97,8 @@ class Downloader:
             file.write(response.content)
 
     @staticmethod
-    def download(task_id: int, url: str):
-        base_info = Downloader.get_video_info(url)
+    def download(task_id: int, url: str, queue_thread_name: str):
+        base_info = Downloader.get_video_info_thread(url, queue_thread_name)
         video = VideoFactory.create_video(url, base_info)
         if not video:
             logging.error(f"解析视频信息失败: {url}", )
@@ -94,7 +116,7 @@ class Downloader:
             'subtitleslangs': ['zh-Hans', 'zh-Hant', 'en']
         }
 
-        cookie_file_path = GlobalConfig.get_cookies_file_path()
+        cookie_file_path = GlobalConfig.get_cookies_file_path_thread(queue_thread_name)
         if cookie_file_path:
             ydl_opts['cookiefile'] = cookie_file_path
 

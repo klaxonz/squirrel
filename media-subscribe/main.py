@@ -16,7 +16,8 @@ import common.constants as constants
 from common.database import DatabaseManager
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
-from schedule.schedule import Scheduler, AutoUpdateChannelVideoTask, SyncCookies
+from schedule.schedule import Scheduler, AutoUpdateChannelVideoTask, SyncCookies, RepairChanelInfoForTotalVideos, \
+    RetryFailedTask, RepairDownloadTaskInfo, ChangeStatusTask
 from common.log import init_logging
 
 logger = logging.getLogger(__name__)
@@ -26,19 +27,19 @@ def start_consumers():
     """启动所有消费者线程"""
     logger.info('Starting consumers...')
     download_consumers = []
-    for _ in range(6):
-        consumer = DownloadTaskConsumerThread(queue_name=constants.QUEUE_DOWNLOAD_TASK)
+    for idx in range(5):
+        consumer = DownloadTaskConsumerThread(queue_name=constants.QUEUE_DOWNLOAD_TASK, thread_id=idx)
         download_consumers.append(consumer)
         consumer.start()
 
     channel_video_extract_consumers = []
-    for _ in range(50):
+    for idx in range(10):
         consumer = ChannelVideoExtractAndDownloadConsumerThread(
-            queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
+            queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD, thread_id=idx)
         channel_video_extract_consumers.append(consumer)
         consumer.start()
 
-    subscribe_consumer = SubscribeChannelConsumerThread(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
+    subscribe_consumer = SubscribeChannelConsumerThread(queue_name=constants.QUEUE_SUBSCRIBE_TASK, thread_id=1)
     subscribe_consumer.start()
 
     logger.info('Consumers started.')
@@ -49,12 +50,13 @@ def start_scheduler():
     logger.info('Starting scheduler...')
     scheduler = Scheduler()
     if GlobalConfig.get_cookie_type() == 'cookiecloud':
-        scheduler.add_job(SyncCookies.run, interval=1, unit='minutes')
-    # scheduler.add_job(ChangeStatusTask.run, interval=1, unit='minutes')
-    # scheduler.add_job(RepairDownloadTaskInfo.run, interval=60, unit='minutes')
-    # scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
-    scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=2, unit='minutes')
-    # scheduler.add_job(RepairChanelInfoForTotalVideos.run, interval=2, unit='minutes')
+        SyncCookies.run()
+        scheduler.add_job(SyncCookies.run, interval=60, unit='minutes', start_immediately=False)
+    scheduler.add_job(ChangeStatusTask.run, interval=1, unit='minutes')
+    scheduler.add_job(RepairDownloadTaskInfo.run, interval=60, unit='minutes')
+    scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
+    scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=10, unit='minutes')
+    scheduler.add_job(RepairChanelInfoForTotalVideos.run, interval=2, unit='minutes')
     scheduler.start()
     logger.info('Scheduler started.')
 

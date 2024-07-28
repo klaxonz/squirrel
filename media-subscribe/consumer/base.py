@@ -12,9 +12,10 @@ logger = logging.getLogger(__name__)
 class BaseConsumerThread(threading.Thread):
     """Base class for consumer threads to handle common setup and teardown."""
 
-    def __init__(self, queue_name):
+    def __init__(self, queue_name, thread_id):
         super().__init__()
         self.queue_name = queue_name
+        self.id = thread_id
         self.running = True
         self.redis = RedisClient.get_instance().client  # Cache Redis client instance
         self.mq = RedisMessageQueue(queue_name=self.queue_name)  # Initialize MQ once
@@ -29,3 +30,6 @@ class BaseConsumerThread(threading.Thread):
 
     def stop(self):
         self.running = False
+
+    def get_queue_thread_name(self):
+        return f"{self.queue_name}-{self.id}"

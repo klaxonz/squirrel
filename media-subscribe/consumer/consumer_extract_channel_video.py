@@ -22,12 +22,14 @@ logger = logging.getLogger(__name__)
 class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
     def run(self):
         while self.running:
+            url = None
             try:
                 with get_session() as session:
                     message = self.mq.wait_and_dequeue(session=session, timeout=5)
                     if message:
                         self.handle_message(message, session=session)
                         session.expunge(message)
+                url = None
                 if message:
                     extract_info = json.loads(message.body)
 
@@ -54,7 +56,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                         continue
 
                     # 视频基本信息
-                    video_info = Downloader.get_video_info(url)
+                    video_info = Downloader.get_video_info_thread(url, self.get_queue_thread_name())
                     if video_info is None:
                         logger.info(f"{url} is not a video, skip")
                         continue
@@ -63,6 +65,10 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                         continue
 
                     video = VideoFactory.create_video(url, video_info)
+                    uploader = video.get_uploader()
+                    if uploader.name is None:
+                        logger.info(f"{url} uploader name is None, skip")
+                        continue
 
                     logger.debug(f"开始解析视频：channel {video.get_uploader().name}, video: {url}")
                     if if_subscribe and channel_video is None:
@@ -105,7 +111,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                         if download_task:
                             session.expunge(download_task)
 
-                    if download_task and not if_retry:
+                    if download_task and not if_retry and not if_manual_retry:
                         key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{download_task.domain}:{download_task.video_id}"
                         client = RedisClient.get_instance().client
                         client.hset(key, 'if_download', 1)
@@ -148,4 +154,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                     logger.info(f"结束生成视频任务：channel {video.get_uploader().name}, video: {url}")
 
             except Exception as e:
-                logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+                if url:
+                    logger.error(f"处理消息时发生错误: url: {url}, {e}", exc_info=True)
+                else:
+                    logger.error(f"处理消息时发生错误: {e}", exc_info=True)

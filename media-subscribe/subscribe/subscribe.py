@@ -3,9 +3,9 @@ import logging
 import re
 from urllib.parse import urlparse
 
-import requests
 from bs4 import BeautifulSoup
 
+from common.http_wrapper import session
 from .bilibili_sign import sign
 from common.cookie import filter_cookies_to_query_string
 from meta.channel import ChannelMeta
@@ -50,7 +50,7 @@ class BilibiliSubscribeChannel(SubscribeChannel):
         }
         query = sign(params)
         req_url = f'https://api.bilibili.com/x/space/wbi/acc/info?{query}'
-        resp = requests.get(req_url, headers=headers)
+        resp = session.get(req_url, headers=headers)
         if resp.status_code != 200:
             raise Exception('Request failed')
 
@@ -62,7 +62,8 @@ class BilibiliSubscribeChannel(SubscribeChannel):
         cookies = filter_cookies_to_query_string(self.url)
         headers = {
             'Referer': self.url,
-            'User-Agent': 'Mozilla/5.0 ...',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/58.0.3029.110 Safari/537.3',
             'Cookie': cookies
         }
 
@@ -81,7 +82,7 @@ class BilibiliSubscribeChannel(SubscribeChannel):
         while should_continue:
             query = sign(params)
             req_url = f'https://api.bilibili.com/x/space/wbi/arc/search?{query}'
-            resp = requests.get(req_url, headers=headers)
+            resp = session.get(req_url, headers=headers)
             if resp.status_code != 200:
                 raise Exception('Request failed')
 
@@ -116,7 +117,7 @@ class YouTubeSubscribeChannel(SubscribeChannel):
                           'Chrome/124.0.0.0 Safari/537.36',
             'Cookie': cookies
         }
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = session.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
 
         match = re.search(r'var ytInitialData = (\{.*?\});', response.text)
@@ -142,7 +143,7 @@ class YouTubeSubscribeChannel(SubscribeChannel):
         }
         playlist_url = f'https://www.youtube.com/playlist?list={channel_id}'
 
-        response = requests.get(playlist_url, headers=headers, timeout=15)
+        response = session.get(playlist_url, headers=headers, timeout=15)
         response.raise_for_status()
 
         match = re.search(r'var ytInitialData = (\{.*?\});', response.text)
@@ -186,7 +187,7 @@ class YouTubeSubscribeChannel(SubscribeChannel):
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
             }
 
-            response = requests.request("POST", url, headers=headers, data=payload)
+            response = session.post(url, headers=headers, data=payload)
             response.raise_for_status()
 
             continuation_response = json.loads(response.text)
@@ -211,7 +212,7 @@ class PornhubSubscribeChannel(SubscribeChannel):
                           'Chrome/124.0.0.0 Safari/537.36',
             'Cookie': cookies
         }
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = session.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
 
         bs4 = BeautifulSoup(response.text, 'html.parser')
@@ -236,10 +237,10 @@ class PornhubSubscribeChannel(SubscribeChannel):
             'Cookie': cookies
         }
 
-        if 'pornhub.com/model' in self.url:
+        if 'pornhub.com/model' in self.url or 'pornhub.com/pornstar' in self.url:
             self.url = self.url + '/videos'
 
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = session.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
 
         parsed_url = urlparse(self.url)
@@ -252,7 +253,7 @@ class PornhubSubscribeChannel(SubscribeChannel):
         current_page = 1
 
         while True:
-            response = requests.get(self.url + f'?page={current_page}', headers=headers, timeout=15)
+            response = session.get(self.url + f'?page={current_page}', headers=headers, timeout=15)
             response.raise_for_status()
             bs4 = BeautifulSoup(response.text, 'html.parser')
             video_els = []

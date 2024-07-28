@@ -31,18 +31,29 @@ class GlobalConfig:
         """
         获取cookie文件路径
         """
-        return Path(os.path.join(base_dir, '..', 'config', 'cookies.txt'))
+        cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies.txt'))
+        return os.path.normpath(cookie_path)
 
     @classmethod
-    def get_all_cookies_file_path(cls):
+    def get_cookies_file_path_thread(cls, queue_thread_name: str):
         """
         获取cookie文件路径
         """
-        cookie_path = Path(os.path.join(base_dir, '..', 'config', 'all_cookies.txt'))
-        if cookie_path.exists():
-            return str(cookie_path)
-        else:
-            return None
+        queue_thread_name = queue_thread_name.replace(':', '-')
+        cookie_path = Path(os.path.join(base_dir, '..', 'config', f'cookies-{queue_thread_name}.txt'))
+        with open(cookie_path, 'w') as wf:
+            with open(cls.get_cookies_file_path(), 'r') as rf:
+                wf.write(rf.read())
+        return os.path.normpath(cookie_path)
+
+
+    @classmethod
+    def get_cookies_http_file_path(cls):
+        """
+        获取cookie文件路径
+        """
+        http_cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies_http.txt'))
+        return os.path.normpath(http_cookie_path)
 
     @classmethod
     def get_redis_host(cls):

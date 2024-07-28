@@ -18,7 +18,7 @@ class DownloadTaskConsumerThread(BaseConsumerThread):
     def run(self):
         while self.running:
             message = None
-            download_task = None
+            task_id = None
 
             try:
                 with get_session() as session:
@@ -34,18 +34,18 @@ class DownloadTaskConsumerThread(BaseConsumerThread):
                         session.commit()
                         session.expunge(download_task)
 
-                    status = Downloader.download(download_task.task_id, download_task.url)
+                    status = Downloader.download(download_task.task_id, download_task.url, self.get_queue_thread_name())
 
                     with get_session() as session:
                         download_task = session.query(DownloadTask).where(
                             DownloadTask.task_id == download_task.task_id).one()
-
+                        task_id = download_task.task_id
                         if status == 0:
                             download_task.status = 'COMPLETED'
                             download_task.error_message = ''
                             session.commit()
                             channel_video = session.query(ChannelVideo).where(
-                                ChannelVideo.video_id == download_task.video_id).one()
+                                ChannelVideo.video_id == download_task.video_id).first()
                             if channel_video:
                                 channel_video.if_downloaded = True
                                 session.commit()
@@ -64,16 +64,16 @@ class DownloadTaskConsumerThread(BaseConsumerThread):
                         session.expunge(download_task)
 
                     logger.info(f"下载视频结束, channel: {download_task.channel_name}, video: {download_task.url}")
-                    download_task = None
+                    task_id = None
 
             except Exception as e:
                 logger.error(
                     f"处理消息时发生错误: {e}, message: {MessageSchema().dumps(message)}",
                     exc_info=True)
-                if download_task:
+                if task_id:
                     with get_session() as session:
                         download_task = session.query(DownloadTask).where(
-                            DownloadTask.task_id == download_task.task_id).one()
+                            DownloadTask.task_id == task_id).first()
                         download_task.status = 'FAILED'
                         download_task.error_message = str(e)
                         session.commit()

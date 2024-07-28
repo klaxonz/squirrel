@@ -101,6 +101,7 @@ class SyncCookies:
                 expect_domains = []
 
             json_cookie_to_netscape(decrypted_data, expect_domains, GlobalConfig.get_cookies_file_path())
+            json_cookie_to_netscape(decrypted_data, expect_domains, GlobalConfig.get_cookies_http_file_path())
 
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
@@ -197,7 +198,7 @@ class AutoUpdateChannelVideoTask:
 
     @classmethod
     def update_channel_video(cls, channel):
-        logger.info(f"update {channel.name} channel video start")
+        logger.debug(f"update {channel.name} channel video start")
         subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
         if channel.avatar is None:
             with get_session() as session:
@@ -226,12 +227,10 @@ class AutoUpdateChannelVideoTask:
                 extract_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
 
         for video in extract_video_list:
-            # start(video, if_subscribe=True)
-            pass
+            start(video, if_subscribe=True)
         for video in extract_download_video_list:
-            # start(video, if_only_extract=False, if_subscribe=True)
-            pass
-        logger.info(f"update {channel.name} channel video end")
+            start(video, if_only_extract=False, if_subscribe=True)
+        logger.debug(f"update {channel.name} channel video end")
 
 
 class RepairDownloadTaskInfo:

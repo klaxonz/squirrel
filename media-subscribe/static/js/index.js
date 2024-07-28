@@ -58,7 +58,8 @@ function fetchSubscribeChannelData() {
 function fetchSubscribeChannelVideoData() {
     const title = document.getElementById('titleSearchInput').value.trim();
     const channel_name = document.getElementById('channelSearchInput').value.trim();
-    fetch(`/api/channel-video/list?title=${title}&channel_name=${channel_name}&page=${currentPage}&pageSize=${itemsPerPage}`)
+    const video_id = document.getElementById('videoIdSearchInput').value.trim();
+    fetch(`/api/channel-video/list?title=${title}&channel_name=${channel_name}&video_id=${video_id}&page=${currentPage}&pageSize=${itemsPerPage}`)
         .then(response => response.json())
         .then(updateSubscribeChannelVideoList)
         .catch(error => console.error('Error fetching data:', error));
@@ -68,25 +69,6 @@ function handleChannelSearchResetClick() {
     document.getElementById('titleSearchInput').value = '';
     document.getElementById('channelSearchInput').value = '';
     fetchSubscribeChannelVideoData();
-}
-
-function downloadChannelVideo(channelId, videoId) {
-    fetch('/api/channel-video/download/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            channel_id: channelId,
-            video_id: videoId
-        })
-    })
-        .then(response => response.json())
-        .then(data => {
-            fetchSubscribeChannelVideoData();
-            openMessageModal('视频下载任务已成功创建！')
-        })
-        .catch(error => console.error('Error:', error));
 }
 
 function markReadChannelVideo(channelId, videoId) {
@@ -272,25 +254,43 @@ function updateSubscribeChannelVideoList(subscribeChannelVideoInfo) {
     tbody.innerHTML = ''; // 清空现有内容以准备更新
     var channelVideos = subscribeChannelVideoInfo.data.data;
     channelVideos.forEach(function (channelVideo) {
-        var row = `<tr data-channel-id="${channelVideo.channel_id}" data-video-id="${channelVideo.video_id}" >
-            <td class="avatar-box"><img src="${channelVideo.channel_avatar}" referrerpolicy="no-referrer"></td>
-            <td>${channelVideo.channel_name}</td>
-            <td class="img-box"><img src="${channelVideo.thumbnail}" referrerpolicy="no-referrer"></td>
-            <td>${channelVideo.title}</td>
-            <td><a target="_blank" href="${channelVideo.url}">${channelVideo.url}</a></td>
-            <td>${channelVideo.uploaded_at}</td>
-            <td>${channelVideo.if_downloaded == 1 ? '是' : '否'}</td>
-            <td>${channelVideo.if_read == 1 ? '是' : '否'}</td>
-            <td class="action-buttons">
-                <a href="#" class="button download-button">下载</a>
-                <a href="#" class="button delete-button" onclick="markReadChannelVideo('${channelVideo.channel_id}', '${channelVideo.video_id}')">标记</a>
-            </td>
-        </tr>`;
-        tbody.insertAdjacentHTML('beforeend', row);
+
+        var row = document.createElement('tr');
+        var columns = [
+            document.createElement('td'),
+            document.createElement('td'),
+            document.createElement('td'),
+            document.createElement('td'),
+            document.createElement('td'),
+            document.createElement('td'),
+            document.createElement('td'),
+            document.createElement('td'),
+            document.createElement('td'),
+        ];
+
+        columns[0].innerHTML = `<img src="${channelVideo.channel_avatar}" referrerpolicy="no-referrer">`;
+        columns[0].classList.add('avatar-box');
+        columns[1].textContent = channelVideo.channel_name;
+        columns[2].innerHTML = `<img src="${channelVideo.thumbnail}" referrerpolicy="no-referrer">`;
+        columns[2].classList.add('img-box');
+        columns[3].textContent = channelVideo.title;
+        columns[4].innerHTML = `<a target="_blank" href="${channelVideo.url}">${channelVideo.url}</a>`
+        columns[5].textContent = channelVideo.uploaded_at;
+        columns[6].textContent = channelVideo.if_downloaded ? '是' : '否';
+        columns[7].textContent = channelVideo.if_read ? '是' : '否';
+
+        if (channelVideo.if_downloaded) {
+            columns[8].innerHTML = `<a href="#" class="button download-button" onclick="handleChannelVideoPlayClick('${channelVideo.channel_id}', '${channelVideo.video_id}')">播放</a>
+                                    <a href="#" class="button delete-button" onclick="markReadChannelVideo('${channelVideo.channel_id}', '${channelVideo.video_id}')">标记</a>`;
+        } else {
+            columns[8].innerHTML = `<a href="#" class="button download-button" onclick="handleDownloadClick('${channelVideo.channel_id}', '${channelVideo.video_id}')">下载</a>
+                                <a href="#" class="button delete-button" onclick="markReadChannelVideo('${channelVideo.channel_id}', '${channelVideo.video_id}')">标记</a>`;
+        }
+        columns.forEach(column => row.appendChild(column));
+        tbody.appendChild(row);
     });
 
     generateSubscribeChannelVideoPaginationButtons(subscribeChannelVideoInfo.data.total);
-    setupChannelVideoDownloadEventListeners()
 }
 
 function handleChannelDetailClick(subscribe_id) {
@@ -398,30 +398,37 @@ function handleChannelDetailCloseClick(event) {
     document.getElementById('channelInfoModal').style.display = 'none';
 }
 
-function handleDownloadClick(event) {
-    event.preventDefault();
-    // 在这里执行下载操作
-    const row = event.target.parentNode.parentNode;
-    var channelId = row.getAttribute('data-channel-id');
-    var videoId = row.getAttribute('data-video-id');
-    downloadChannelVideo(channelId, videoId)
+function handleDownloadClick(channelId, videoId) {
+    fetch('/api/channel-video/download/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            channel_id: channelId,
+            video_id: videoId
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            fetchSubscribeChannelVideoData();
+            openMessageModal('视频下载任务已成功创建！')
+        })
+        .catch(error => console.error('Error:', error));
 }
 
 function handleDownloadTaskStatusClick() {
     currentPage = 1;
 }
 
-function setupChannelVideoDownloadEventListeners() {
-    var downloadButtons = document.querySelectorAll('#subscribe-update-content table tbody .download-button');
-    downloadButtons.forEach(function (button) {
-        button.addEventListener('click', handleDownloadClick);
-    });
-}
-
-
 function handlePlayClick(taskId) {
     showVideoModal(`/api/task/video/play/${taskId}`)
 }
+
+function handleChannelVideoPlayClick(channelId, taskId) {
+    showVideoModal(`/api/channel/video/play/${channelId}/${taskId}`)
+}
+
 
 function handlePauseClick(event, taskId) {
     fetch('/api/task/pause', {

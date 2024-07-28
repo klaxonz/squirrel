@@ -1,13 +1,12 @@
 import json
 import re
 import os
-import requests
 from bs4 import BeautifulSoup
-
 from common.config import GlobalConfig
 from pathvalidate import sanitize_filename
 
 from common.cookie import filter_cookies_to_query_string
+from common.http_wrapper import session
 
 
 class Video:
@@ -133,7 +132,7 @@ class BilibiliUploader(Uploader):
         }
 
         # 发送带有请求头的HTTP GET请求
-        response = requests.get(self.url, headers=headers)
+        response = session.get(self.url, headers=headers, timeout=20)
         response.raise_for_status()  # 检查请求是否成功
 
         match = re.search(r'window\.__INITIAL_STATE__=(\{.*?\});', response.text)
@@ -165,7 +164,7 @@ class YoutubeUploader(Uploader):
             'Cookie': cookies
         }
 
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = session.get(self.url, headers=headers, timeout=20)
         response.raise_for_status()  # 检查请求是否成功
 
         match = re.search(r'var ytInitialData = (\{.*?\});', response.text)
@@ -192,25 +191,30 @@ class PornhubUploader(Uploader):
         self.init()
 
     def init(self):
+        cookies = filter_cookies_to_query_string(self.url)
+
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/124.0.0.0 Safari/537.36',
+            'Cookie': cookies
         }
 
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = session.get(self.url, headers=headers, timeout=20)
         response.raise_for_status()  # 检查请求是否成功
 
         bs4 = BeautifulSoup(response.text, 'html.parser')
-        self.name = bs4.select('.userInfoBlock .usernameWrap a')[0].text.strip()
-        user_type = bs4.select('.userInfoBlock .usernameWrap')[0].get('data-type')
-        if user_type == 'user':
-            self.id = bs4.select('.userInfoBlock .usernameWrap')[0].get('data-userid')
-        elif user_type == 'channel':
-            self.id = bs4.select('.userInfoBlock .usernameWrap')[0].get('data-channelid')
-        else:
-            raise Exception('Unknown user type')
-        self.avatar = bs4.select('.userInfoBlock .userAvatar img')[0].get('src')
-        self.tags = []
+        username_el = bs4.select('.userInfoBlock .usernameWrap')[0]
+        if username_el is not None:
+            self.name = bs4.select('.userInfoBlock .usernameWrap a')[0].text.strip()
+            user_type = bs4.select('.userInfoBlock .usernameWrap')[0].get('data-type')
+            if user_type == 'user':
+                self.id = bs4.select('.userInfoBlock .usernameWrap')[0].get('data-userid')
+            elif user_type == 'channel':
+                self.id = bs4.select('.userInfoBlock .usernameWrap')[0].get('data-channelid')
+            else:
+                raise Exception('Unknown user type')
+            self.avatar = bs4.select('.userInfoBlock .userAvatar img')[0].get('src')
+            self.tags = []
 
 
 class VideoFactory:
