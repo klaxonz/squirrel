@@ -91,7 +91,6 @@ def download_channel_video(req: DownloadChannelVideoRequest):
         channel_video = s.query(ChannelVideo).filter(ChannelVideo.channel_id == req.channel_id,
                                                      ChannelVideo.video_id == req.video_id).first()
 
-        download_service.start_extract_and_download(channel_video.url, if_subscribe=True, if_only_extract=False,
-                                                    if_retry=False)
+        download_service.start(channel_video.url, if_only_extract=False, if_subscribe=True, if_retry=False)
 
     return response.success()

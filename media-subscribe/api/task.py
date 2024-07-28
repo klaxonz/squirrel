@@ -31,7 +31,34 @@ class DownloadRequest(BaseModel):
 
 @router.post("/api/task/download")
 def start_download(req: DownloadRequest):
-    download_service.start_extract_and_download(req.url, if_only_extract=False)
+    download_service.start(req.url, if_only_extract=False)
+    return response.success()
+
+
+class DownloadChangeStateRequest(BaseModel):
+    task_id: int
+
+
+@router.post("/api/task/retry")
+def start_download(req: DownloadChangeStateRequest):
+    with get_session() as s:
+        download_task = s.query(DownloadTask).filter(DownloadTask.task_id == req.task_id).first()
+        download_task.status = 'PENDING'
+        download_task.retry = download_task.retry + 1
+        s.commit()
+        download_service.start(download_task.url, if_only_extract=False, if_retry=True)
+
+    return response.success()
+
+
+@router.post("/api/task/stop")
+def start_download(req: DownloadChangeStateRequest):
+    with get_session() as s:
+        download_task = s.query(DownloadTask).filter(DownloadTask.id == req.id).first()
+        download_task.status = 'STOPPED'
+        s.commit()
+        download_service.stop(download_task.task_id)
+
     return response.success()
 
 
@@ -65,15 +92,15 @@ def get_updated_task_list(status: str = None, page: int = 1, page_size: int = 10
 
         task_convert_list = []
         for task in tasks:
-            video_id = task.video_id
+            task_id = task.task_id
 
             # 下载信息缓存到redis中
             client = RedisClient.get_instance().client
-            downloaded_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}{video_id}', 'downloaded_size')
-            total_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}{video_id}', 'total_size')
-            speed = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}{video_id}', 'speed')
-            eta = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}{video_id}', 'eta')
-            percent = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}{video_id}', 'percent')
+            downloaded_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'downloaded_size')
+            total_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'total_size')
+            speed = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'speed')
+            eta = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'eta')
+            percent = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'percent')
 
             task_convert_list.append({
                 "id": task.task_id,

@@ -157,9 +157,22 @@ function updateDownloadTaskList(taskInfo) {
             columns[12].textContent = task.created_at;
             columns[13].textContent = task.updated_at;
             columns[14].classList.add('action-buttons');
-            columns[14].innerHTML = `                <a href="#" class="button play-button">播放</a>
-                <a href="#" class="button delete-button">删除</a>
-            `;
+            if (task.status === 'COMPLETED') {
+                columns[14].innerHTML = `                
+                    <a href="#" class="button play-button" onclick="handlePlayClick(${task.id})">播放</a>
+                    <a href="#" class="button delete-button">删除</a>
+                `;
+            } else if (task.status === 'DOWNLOADING') {
+                columns[14].innerHTML = `                
+                    <a href="#" class="button play-button" onclick="handleStopClick(event, ${task.id})">暂停</a>
+                    <a href="#" class="button delete-button">删除</a>
+                `;
+            } else {
+                columns[14].innerHTML = `                
+                    <a href="#" class="button delete-button">删除</a>
+                `;
+            }
+
 
             // 将列元素添加到行中
             columns.forEach(column => row.appendChild(column));
@@ -179,6 +192,21 @@ function updateDownloadTaskList(taskInfo) {
             row.children[11].textContent = task.error_message ? task.error_message : '';
             row.children[11].style.width = '300px';
             row.children[13].textContent = task.updated_at;
+            if (task.status === 'COMPLETED') {
+                row.children[14].innerHTML = `                
+                    <a href="#" class="button play-button" onclick="handlePlayClick(${task.id})">播放</a>
+                    <a href="#" class="button delete-button">删除</a>
+                `;
+            } else if (task.status === 'DOWNLOADING') {
+                row.children[14].innerHTML = `                
+                    <a href="#" class="button play-button" onclick="handleStopClick(event, ${task.id})">暂停</a>
+                    <a href="#" class="button delete-button">删除</a>
+                `;
+            } else {
+                row.children[14].innerHTML = `                
+                    <a href="#" class="button delete-button">删除</a>
+                `;
+            }
         }
     });
 
@@ -372,12 +400,23 @@ function setupChannelVideoDownloadEventListeners() {
 }
 
 
-function handlePlayClick(event) {
-    event.preventDefault();
-    // 在这里执行下载操作
-    const row = event.target.parentNode.parentNode;
-    var taskId = row.getAttribute('data-task-id');
+function handlePlayClick(taskId) {
     showVideoModal(`/api/task/video/play/${taskId}`)
+}
+
+function handleStopClick(event, taskId) {
+    fetch('/api/task/stop', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            task_id: taskId,
+        })
+    })
+        .then(response => {
+            event.target.textContent = '开始';
+        });
 }
 
 

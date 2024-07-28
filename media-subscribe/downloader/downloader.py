@@ -4,6 +4,7 @@ import os
 import requests
 from yt_dlp import YoutubeDL
 
+from common import constants
 from common.cache import RedisClient
 from common.config import GlobalConfig
 from common.database import get_session
@@ -13,9 +14,7 @@ from model.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
 
 
-class Downloader:
-
-    @staticmethod
+def create_progress_hook(task_id: int):
     def on_progress_hook(video_info):
         """
         回调函数，用于处理下载进度信息并更新到Redis。
@@ -31,15 +30,22 @@ class Downloader:
             eta = eta if eta != '00:00' else 'unknown'
 
             if 'id' in video_info['info_dict']:
-                video_id = video_info['info_dict']['id']
-
-                # 下载信息缓存到redis中
                 client = RedisClient.get_instance().client
-                client.hset(f'video:download:progress:{video_id}', 'downloaded_size', downloaded_bytes)
-                client.hset(f'video:download:progress:{video_id}', 'total_size', total_bytes)
-                client.hset(f'video:download:progress:{video_id}', 'speed', speed)
-                client.hset(f'video:download:progress:{video_id}', 'eta', eta)
-                client.hset(f'video:download:progress:{video_id}', 'percent', percent)
+                status = client.get(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_STATUS}:{task_id}')
+                if status == 'stop':
+                    raise Exception('Download stopped')
+
+                client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'downloaded_size',
+                            downloaded_bytes)
+                client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'total_size', total_bytes)
+                client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'speed', speed)
+                client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'eta', eta)
+                client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'percent', percent)
+
+    return on_progress_hook
+
+
+class Downloader:
 
     @staticmethod
     def get_video_info(url):
@@ -63,20 +69,21 @@ class Downloader:
             file.write(response.content)
 
     @staticmethod
-    def download(url: str):
+    def download(task_id: int, url: str):
         base_info = Downloader.get_video_info(url)
         video = VideoFactory.create_video(url, base_info)
         if not video:
             logging.error(f"解析视频信息失败: {url}", )
             return
 
+        hook = create_progress_hook(task_id)
         output_dir = video.get_download_full_path()
         filename = video.get_valid_filename()
         ydl_opts = {
             'writethumbnail': f'{output_dir}/{filename}.jpg',
             'outtmpl': f'{output_dir}/{filename}.%(ext)s',
             'merge_output_format': 'mp4',
-            'progress_hooks': [Downloader.on_progress_hook],
+            'progress_hooks': [hook],
             'writesubtitles': True,
             'subtitleslangs': ['zh-Hans', 'zh-Hant', 'en']
         }

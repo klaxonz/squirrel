@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 
 from common import constants
+from common.cache import RedisClient
 from common.config import GlobalConfig
 from common.database import get_session
 from common.message_queue import RedisMessageQueue
@@ -40,6 +41,9 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                                                                           ChannelVideo.video_id == video_id).first()
 
                         if if_only_extract and channel_video is not None:
+                            client = RedisClient.get_instance().client
+                            key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}"
+                            client.hset(key, 'if_extract', 1)
                             logger.debug(f"视频已解析：{url}")
                             continue
 
@@ -70,6 +74,10 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                             session.add(channel_video)
                             session.commit()
 
+                            client = RedisClient.get_instance().client
+                            key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}"
+                            client.hset(key, 'if_extract', 1)
+
                         logger.debug(f"结束解析视频：channel {video.get_uploader().name}, video: {url}")
                         if if_only_extract:
                             continue
@@ -83,6 +91,9 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
 
                         download_task = session.query(DownloadTask).where(DownloadTask.domain == domain, DownloadTask.video_id == video_id).first()
                         if download_task and not if_retry:
+                            key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{download_task.domain}:{download_task.video_id}"
+                            client = RedisClient.get_instance().client
+                            client.hset(key, 'if_download', 1)
                             logger.info(f"视频已生成任务：channel {video.get_uploader().name}, video: {url}")
                             continue
                         if download_task and download_task.status == 'COMPLETED':

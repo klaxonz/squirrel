@@ -13,7 +13,7 @@ from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.channel import Channel
 from model.download_task import DownloadTask
-from service.download_service import start_extract_and_download
+from service.download_service import start
 from subscribe.subscribe import SubscribeChannelFactory
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ class RetryFailedTask:
 
                     channel = session.query(Channel).filter(Channel.channel_id == task.channel_id).first()
                     if_subscribe = channel is not None
-                    start_extract_and_download(task.url, if_subscribe=if_subscribe, if_only_extract=False, if_retry=True)
+                    start(task.url, if_only_extract=False, if_subscribe=if_subscribe, if_retry=True)
 
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
@@ -165,9 +165,9 @@ class AutoUpdateChannelVideoTask:
                 extract_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
 
         for video in extract_video_list:
-            start_extract_and_download(video, if_subscribe=True)
+            start(video, if_subscribe=True)
         for video in extract_download_video_list:
-            start_extract_and_download(video, if_subscribe=True, if_only_extract=False)
+            start(video, if_only_extract=False, if_subscribe=True)
         logger.info(f"update {channel.name} channel video end")
 
 

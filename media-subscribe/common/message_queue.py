@@ -25,6 +25,14 @@ class RedisMessageQueue:
         """
         return self.client.rpush(self.queue_name, MessageSchema().dumps(message))
 
+    def enqueue_head(self, message):
+        """
+        序列化消息体并将其添加到队列头部
+        :param message: Message对象实例
+        :return: 新队列长度
+        """
+        return self.client.lpush(self.queue_name, MessageSchema().dumps(message))
+
     def dequeue(self, block=True, timeout=0):
         """
         从队列头部取出一条消息并反序列化为Message对象

@@ -1,6 +1,8 @@
 import json
 import logging
 
+from common import constants
+from common.cache import RedisClient
 from common.database import get_session
 from consumer.base import BaseConsumerThread
 from downloader.downloader import Downloader
@@ -27,7 +29,7 @@ class DownloadTaskConsumerThread(BaseConsumerThread):
 
                         download_task.status = 'DOWNLOADING'
                         session.commit()
-                        Downloader.download(download_task.url)
+                        Downloader.download(download_task.task_id, download_task.url)
                         download_task.status = 'COMPLETED'
                         download_task.error_message = ''
                         session.commit()
@@ -35,6 +37,10 @@ class DownloadTaskConsumerThread(BaseConsumerThread):
                         if channel_video:
                             channel_video.if_downloaded = True
                             session.commit()
+
+                        key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{download_task.domain}:{download_task.video_id}"
+                        client = RedisClient.get_instance().client
+                        client.hset(key, 'if_download', 1)
 
                         logger.info(f"下载视频结束, channel: {download_task.channel_name}, video: {download_task.url}")
                         download_task = None

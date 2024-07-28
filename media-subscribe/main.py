@@ -31,7 +31,7 @@ def initialize_consumers():
         consumer.start()
 
     channel_video_extract_consumers = []
-    for _ in range(10):
+    for _ in range(50):
         consumer = ChannelVideoExtractAndDownloadConsumerThread(
             queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
         channel_video_extract_consumers.append(consumer)
