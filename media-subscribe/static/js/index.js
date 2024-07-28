@@ -12,7 +12,7 @@ const statusMap = {
 };
 
 
-let abortController;
+let intervalId = null;
 
 function navigate(section) {
     // 隐藏所有内容区域
@@ -30,9 +30,12 @@ function navigate(section) {
     itemsPerPage = 10;
     if (section === 'download') {
         fetchDownloadTaskData();
+        startDownloadTaskInterval()
     } else if (section === 'subscribe') {
+        clearInterval(intervalId)
         fetchSubscribeChannelData();
     } else if (section === 'subscribe-update') {
+        clearInterval(intervalId)
         fetchSubscribeChannelVideoData();
     }
 }
@@ -451,6 +454,12 @@ function handleRetryClick(event, taskId) {
         });
 }
 
+function startDownloadTaskInterval() {
+    intervalId = setInterval(() => {
+        fetchDownloadTaskData();
+    }, 1000)
+}
+
 
 function generatePaginationButtons(selector, total_records, fetchDataFunction) {
     var itemsPerPage = 10; // 假设每页显示10条记录
@@ -587,9 +596,7 @@ window.onload = function () {
     document.getElementById('nav-download').classList.add('active');
 
     fetchDownloadTaskData();
-    setInterval(() => {
-        fetchDownloadTaskData();
-    }, 1000)
+    startDownloadTaskInterval()
 
     document.addEventListener('keydown', function (event) {
         // 检查用户是否按下了Esc键（其键码为27）

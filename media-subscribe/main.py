@@ -16,8 +16,7 @@ import common.constants as constants
 from common.database import DatabaseManager
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
-from schedule.schedule import Scheduler, RetryFailedTask, AutoUpdateChannelVideoTask, RepairDownloadTaskInfo, \
-    RepairChanelInfoForTotalVideos, ChangeStatusTask, SyncCookies
+from schedule.schedule import Scheduler, AutoUpdateChannelVideoTask, SyncCookies
 from common.log import init_logging
 
 logger = logging.getLogger(__name__)
@@ -51,11 +50,11 @@ def start_scheduler():
     scheduler = Scheduler()
     if GlobalConfig.get_cookie_type() == 'cookiecloud':
         scheduler.add_job(SyncCookies.run, interval=1, unit='minutes')
-    scheduler.add_job(ChangeStatusTask.run, interval=1, unit='minutes')
-    scheduler.add_job(RepairDownloadTaskInfo.run, interval=60, unit='minutes')
-    scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
+    # scheduler.add_job(ChangeStatusTask.run, interval=1, unit='minutes')
+    # scheduler.add_job(RepairDownloadTaskInfo.run, interval=60, unit='minutes')
+    # scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=2, unit='minutes')
-    scheduler.add_job(RepairChanelInfoForTotalVideos.run, interval=2, unit='minutes')
+    # scheduler.add_job(RepairChanelInfoForTotalVideos.run, interval=2, unit='minutes')
     scheduler.start()
     logger.info('Scheduler started.')
 

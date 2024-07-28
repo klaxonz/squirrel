@@ -130,41 +130,43 @@ def get_updated_task_list(status: str = None, page: int = 1, page_size: int = 10
 
 
 @router.get("/api/task/video/play/{task_id}")
-async def play_video(request: Request, task_id: str):
+def play_video(request: Request, task_id: str):
     with get_session() as s:
         download_task = s.query(DownloadTask).filter(DownloadTask.task_id == task_id).first()
-        base_info = Downloader.get_video_info(download_task.url)
-        video = VideoFactory.create_video(download_task.url, base_info)
-        output_dir = video.get_download_full_path()
-        filename = video.get_valid_filename() + ".mp4"
-        video_path = os.path.join(output_dir, filename)
+        s.expunge(download_task)
 
-        stat_result = os.stat(video_path)
-        content_type, encoding = guess_type(video_path)
-        content_type = content_type or 'application/octet-stream'
-        range_str = request.headers.get('range', '')
-        range_match = re.search(r'bytes=(\d+)-(\d+)', range_str, re.S) or re.search(r'bytes=(\d+)-', range_str, re.S)
-        if range_match:
-            start_bytes = int(range_match.group(1))
-            end_bytes = int(range_match.group(2)) if range_match.lastindex == 2 else stat_result.st_size - 1
-        else:
-            start_bytes = 0
-            end_bytes = stat_result.st_size - 1
+    base_info = Downloader.get_video_info(download_task.url)
+    video = VideoFactory.create_video(download_task.url, base_info)
+    output_dir = video.get_download_full_path()
+    filename = video.get_valid_filename() + ".mp4"
+    video_path = os.path.join(output_dir, filename)
 
-        content_length = stat_result.st_size - start_bytes if stat.S_ISREG(stat_result.st_mode) else stat_result.st_size
-        # 打开文件从起始位置开始分片读取文件
-        return StreamingResponse(
-            file_iterator(video_path, start_bytes, 1024 * 1024 * 1),  # 每次读取 1M
-            media_type=content_type,
-            headers={
-                'accept-ranges': 'bytes',
-                'connection': 'keep-alive',
-                'content-length': str(content_length),
-                'content-range': f'bytes {start_bytes}-{end_bytes}/{stat_result.st_size}',
-                'last-modified': formatdate(stat_result.st_mtime, usegmt=True),
-            },
-            status_code=206 if start_bytes > 0 else 200
-        )
+    stat_result = os.stat(video_path)
+    content_type, encoding = guess_type(video_path)
+    content_type = content_type or 'application/octet-stream'
+    range_str = request.headers.get('range', '')
+    range_match = re.search(r'bytes=(\d+)-(\d+)', range_str, re.S) or re.search(r'bytes=(\d+)-', range_str, re.S)
+    if range_match:
+        start_bytes = int(range_match.group(1))
+        end_bytes = int(range_match.group(2)) if range_match.lastindex == 2 else stat_result.st_size - 1
+    else:
+        start_bytes = 0
+        end_bytes = stat_result.st_size - 1
+
+    content_length = stat_result.st_size - start_bytes if stat.S_ISREG(stat_result.st_mode) else stat_result.st_size
+    # 打开文件从起始位置开始分片读取文件
+    return StreamingResponse(
+        file_iterator(video_path, start_bytes, 1024 * 1024 * 1),  # 每次读取 1M
+        media_type=content_type,
+        headers={
+            'accept-ranges': 'bytes',
+            'connection': 'keep-alive',
+            'content-length': str(content_length),
+            'content-range': f'bytes {start_bytes}-{end_bytes}/{stat_result.st_size}',
+            'last-modified': formatdate(stat_result.st_mtime, usegmt=True),
+        },
+        status_code=206 if start_bytes > 0 else 200
+    )
 
 
 def file_iterator(file_path, offset, chunk_size):

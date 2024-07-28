@@ -181,12 +181,12 @@ class AutoUpdateChannelVideoTask:
         try:
             with get_session() as session:
                 channels = session.query(Channel).filter(Channel.if_enable == 1).all()
+                for channel in channels:
+                    session.expunge(channel)
 
-                # 使用线程池并行处理每个channel
-                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                    futures = [executor.submit(cls.update_channel_video, channel, session) for channel in channels]
-                    # 等待所有任务完成
-                    concurrent.futures.wait(futures)
+            # 使用线程池并行处理每个channel
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                [executor.submit(cls.update_channel_video, channel) for channel in channels]
 
         except json.JSONDecodeError as e:
             # 特定地捕获JSON解码错误
@@ -196,12 +196,14 @@ class AutoUpdateChannelVideoTask:
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
     @classmethod
-    def update_channel_video(cls, channel, session):
+    def update_channel_video(cls, channel):
         logger.info(f"update {channel.name} channel video start")
         subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
         if channel.avatar is None:
-            channel.avatar = subscribe_channel.get_channel_info().avatar
-            session.commit()
+            with get_session() as session:
+                channel = session.query(Channel).filter(Channel.channel_id == channel.channel_id).first()
+                channel.avatar = subscribe_channel.get_channel_info().avatar
+                session.commit()
         # 下载全部的
         update_all = channel.if_download_all or channel.if_extract_all
         video_list = subscribe_channel.get_channel_videos(channel=channel, update_all=update_all)
@@ -224,9 +226,11 @@ class AutoUpdateChannelVideoTask:
                 extract_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
 
         for video in extract_video_list:
-            start(video, if_subscribe=True)
+            # start(video, if_subscribe=True)
+            pass
         for video in extract_download_video_list:
-            start(video, if_only_extract=False, if_subscribe=True)
+            # start(video, if_only_extract=False, if_subscribe=True)
+            pass
         logger.info(f"update {channel.name} channel video end")
 
 
