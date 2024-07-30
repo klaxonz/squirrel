@@ -219,10 +219,12 @@ class PornhubSubscribeChannel(SubscribeChannel):
         channel_els = bs4.select('#channelsProfile .title > h1')
         if len(channel_els) > 0:
             name = channel_els[0].text.strip()
+            subscribe_url = bs4.select('button[data-subscribe-url]')[0].get('data-subscribe-url')
+            channel_id = re.search(r"id=([^&]+)", subscribe_url).group(1)
         else:
             name = bs4.select('.nameSubscribe .name h1')[0].text.strip()
-        subscribe_url = bs4.select('button[data-subscribe-url]')[0].get('data-subscribe-url')
-        channel_id = re.search(r"id=([^&]+)", subscribe_url).group(1)
+            channel_id = bs4.select('.addFriendButton button[data-friend-url]')[0].get('data-id')
+
         url = re.search(r"^(.*?)(\?.*)?$", self.url).group(1)
         avatar = bs4.select('#getAvatar')[0].get('src')
 

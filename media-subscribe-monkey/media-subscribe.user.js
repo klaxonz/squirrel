@@ -414,7 +414,7 @@
             const div = document.createElement('div');
             const button = document.createElement('button');
             div.appendChild(button);
-            if (url.indexOf('/model') != -1) {
+            if (url.indexOf('/model') != -1 || url.indexOf('/pornstar') != -1) {
                 div.style.cursor = 'pointer';
                 div.style.margin = '0 0 0 4px';
                 div.style.color = 'white';
