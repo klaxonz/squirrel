@@ -1,5 +1,5 @@
 # 使用基础镜像，这里以Python官方镜像为例
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
