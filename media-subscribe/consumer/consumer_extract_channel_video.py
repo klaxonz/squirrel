@@ -92,7 +92,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
 
                         client = RedisClient.get_instance().client
                         key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}"
-                        client.hset(key, 'if_extract', 1)
+                        client.hset(key, 'if_extract', datetime.now().timestamp())
 
                     logger.debug(f"结束解析视频：channel {video.get_uploader().name}, video: {url}")
                     if if_only_extract:
@@ -114,7 +114,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                     if download_task and not if_retry and not if_manual_retry:
                         key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{download_task.domain}:{download_task.video_id}"
                         client = RedisClient.get_instance().client
-                        client.hset(key, 'if_download', 1)
+                        client.hset(key, 'if_download', datetime.now().timestamp())
                         logger.info(f"视频已生成任务：channel {video.get_uploader().name}, video: {url}")
                         continue
                     if download_task and download_task.status == 'COMPLETED':

@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 
 from common import constants
 from common.cache import RedisClient
@@ -52,7 +53,7 @@ class DownloadTaskConsumerThread(BaseConsumerThread):
 
                             key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{download_task.domain}:{download_task.video_id}"
                             client = RedisClient.get_instance().client
-                            client.hset(key, 'if_download', 1)
+                            client.hset(key, 'if_download', datetime.now().timestamp())
 
                         elif status == 1:
                             download_task.status = 'FAILED'

@@ -37,6 +37,7 @@ class SubscribeChannelConsumerThread(BaseConsumerThread):
                     channel.name = channel_info.name
                     channel.url = channel_info.url
                     channel.avatar = channel_info.avatar
+                    channel.if_extract_all = 1
 
                     videos = subscribe_channel.get_channel_videos(channel, update_all=True)
                     channel.total_videos = len(videos)
