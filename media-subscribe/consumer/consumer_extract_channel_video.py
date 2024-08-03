@@ -51,7 +51,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
                     if if_only_extract and channel_video is not None:
                         client = RedisClient.get_instance().client
                         key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}"
-                        client.hset(key, 'if_extract', 1)
+                        client.hset(key, 'if_extract', datetime.now().timestamp())
                         logger.debug(f"视频已解析：{url}")
                         continue
 

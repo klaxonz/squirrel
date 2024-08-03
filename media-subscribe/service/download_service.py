@@ -7,6 +7,7 @@ from common.database import get_session
 from common.message_queue import RedisMessageQueue
 from common.url_helper import extract_top_level_domain
 from downloader.id_extractor import extract_id_from_url
+from model.channel import Channel, ChannelVideo
 from model.message import Message
 
 logger = logging.getLogger(__name__)
@@ -20,13 +21,19 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
     client = RedisClient.get_instance().client
     key = f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}'
     if if_only_extract:
+        with get_session() as session:
+            channel_video = session.query(ChannelVideo).filter(ChannelVideo.domain == domain, ChannelVideo.video_id == video_id).one()
+            if channel_video:
+                return
+
         value = client.hget(key, 'if_extract')
         if value and value == '1':
             return
     else:
-        value = client.hget(key, 'if_download')
-        if value and value == '1':
-            return
+        if not if_manual_retry:
+            value = client.hget(key, 'if_download')
+            if value and value == '1':
+                return
 
     with get_session() as session:
         content = {
