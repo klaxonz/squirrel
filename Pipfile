@@ -22,5 +22,6 @@ yt-dlp = "==2024.7.16"
 cryptography = "*"
 sqlalchemy = "*"
 pycookiecloud = "*"
+marshmallow-sqlalchemy = "*"
 
 [dev-packages]
