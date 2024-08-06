@@ -93,7 +93,7 @@ class GlobalConfig:
         password = cls.get_mysql_password()
         database = cls.get_mysql_database()
 
-        return f'mysql+pymysql://{user}:{password}@{host}:{port}/{database}?charset=utf8mb4&serverTimezone=GMT%2B8'
+        return f'mysql+pymysql://{user}:{password}@{host}:{port}/{database}?charset=utf8mb4&time_zone=%2B08:00'
 
     @classmethod
     def get_cookie_type(cls):
