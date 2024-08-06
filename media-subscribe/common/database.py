@@ -39,8 +39,9 @@ class BaseMixin:
 
 @event.listens_for(engine, "before_cursor_execute")
 def comment_sql_calls(conn, cursor, statement, parameters, context, executemany):
-    raw_sql = statement%parameters
+    raw_sql = statement % parameters
     logger.debug(f"执行SQL: {raw_sql}")
+
 
 @contextlib.contextmanager
 def get_session() -> Session:

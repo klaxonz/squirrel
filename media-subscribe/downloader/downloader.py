@@ -110,7 +110,6 @@ class Downloader:
         ydl_opts = {
             'writethumbnail': f'{output_dir}/{filename}.jpg',
             'outtmpl': f'{output_dir}/{filename}.%(ext)s',
-            'merge_output_format': 'mp4',
             'progress_hooks': [hook],
             'writesubtitles': True,
             'subtitleslangs': ['zh-Hans', 'zh-Hant', 'en']
