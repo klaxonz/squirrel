@@ -25,6 +25,7 @@ engine = create_engine(
     pool_size=GlobalConfig.POOL_SIZE,
     max_overflow=GlobalConfig.POOL_MAX_SIZE,
     pool_recycle=GlobalConfig.POOL_RECYCLE,
+    connect_args={"init_command": "SET SESSION time_zone='+08:00'"}
 )
 Session = sessionmaker(bind=engine, expire_on_commit=False)
 Base = declarative_base()
