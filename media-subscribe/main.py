@@ -6,7 +6,7 @@ load_dotenv(override=True)
 
 import logging
 from consumer.consumer_download_task import DownloadTaskConsumerThread
-from consumer.consumer_extract_channel_video import ChannelVideoExtractAndDownloadConsumerThread
+from consumer.consumer_extract import ChannelVideoExtractAndDownloadConsumerThread
 from consumer.consumer_subscribe_channel import SubscribeChannelConsumerThread
 
 from model.message import Message

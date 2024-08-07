@@ -92,6 +92,10 @@ class BilibiliSubscribeChannel(SubscribeChannel):
 
             origin_vlist = info['data']['list']['vlist']
             for v in origin_vlist:
+                if v['is_union_video'] == 1:
+                    continue
+                if 'season_id' in v:
+                    continue
                 video_list.append(f'https://www.bilibili.com/video/{v["bvid"]}')
 
             # 判断是否继续循环，类似于"while"条件
