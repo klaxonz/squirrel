@@ -6,11 +6,10 @@
 // @author       你的名字
 // @match        *://*.bilibili.com/*
 // @match        *://*.youtube.com/*
-// @match        *://*.pornhub.com/*
-// @match        *://*.pornhub.com/model/*
-// @match        *://*.pornhub.com/channels/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_download
+// @grant        GM_setValue
+// @grant        GM_getValue
 // @run-at       document-end
 // ==/UserScript==
 
@@ -22,12 +21,12 @@
 
     // 获取已保存的host配置
     function getHostConfig() {
-        return localStorage.getItem('backendHost') || DEFAULT_HOST;
+        return GM_getValue('backendHost', DEFAULT_HOST);
     }
 
     // 保存host配置
     function setHostConfig(host) {
-        localStorage.setItem('backendHost', host);
+        GM_setValue('backendHost', host);
     }
 
     // 创建悬浮按钮
@@ -80,7 +79,7 @@
         document.body.appendChild(dialog);
     }
 
-     // 初始化
+    // 初始化
     createFloatingButton();
 
     const getElement = (parent, selector, timeout = 0) => {
@@ -290,41 +289,6 @@
         });
     }, 1000);
 
-    setInterval(() => {
-        getElement(document, '.pcVideoListItem', 10000).then(element => {
-            const videos = document.querySelectorAll('.pcVideoListItem');
-            videos.forEach(card => {
-
-                const bottomEl = card.querySelector(".vidTitleWrapper");
-                if (!bottomEl) {
-                  return
-                }
-                const btn = card.querySelector(".ytdlp-btn");
-                if (btn) {
-                  bottomEl.removeChild(btn);
-                }
-
-                const span = document.createElement('span');
-                span.textContent = '下载';
-                span.style.cursor = 'pointer';
-                span.style.margin = '0 0 0 4px';
-                span.classList.add('ytdlp-btn');
-
-                const host = window.location.href;
-                const href = card.querySelector(".phimage a.linkVideoThumb").getAttribute("href");
-                const url = host + href;
-
-                // 点击按钮发送请求的函数
-                span.addEventListener('click', function(event) {
-                    event.stopPropagation();
-                    const data = JSON.stringify({ url: url });
-                    download(url, data);
-                });
-                bottomEl.appendChild(span);
-            });
-        });
-    }, 1000);
-
     // 订阅
     setInterval(() => {
         getElement(document, '.yt-flexible-actions-view-model-wiz__action', 10000).then(element => {
@@ -397,62 +361,5 @@
             el.appendChild(span);
         });
     }, 1000);
-
-    setInterval(() => {
-        getElement(document, '.userButtons', 10000).then(element => {
-            let el = document.querySelector('.userButtons');
-            if (!el) {
-              return;
-            }
-
-            const btn = el.querySelector(".subscribe-btn");
-            if (btn) {
-              return;
-            }
-            let url = window.location.href;
-
-            const div = document.createElement('div');
-            const button = document.createElement('button');
-            div.appendChild(button);
-            if (url.indexOf('/model') != -1 || url.indexOf('/pornstar') != -1) {
-                div.style.cursor = 'pointer';
-                div.style.margin = '0 0 0 4px';
-                div.style.color = 'white';
-                div.classList.add('subscribe-btn');
-                div.classList.add('mainButton');
-                div.classList.add('float-left');
-                div.classList.add('updatedStyledBtn');
-
-                button.textContent = '外部订阅';
-                button.classList.add('buttonBase');
-            }
-            if (url.indexOf('/channels') != -1) {
-                el.firstElementChild.classList.add('floatLeft');
-
-                div.style.cursor = 'pointer';
-                div.style.margin = '0 0 0 4px';
-                div.style.color = '#000';
-                div.style.background = '#ff9000';
-
-                div.classList.add('subscribe-btn');
-                div.classList.add('floatLeft');
-
-                button.textContent = '外部订阅';
-                button.classList.add('buttonBase');
-            }
-
-
-            url = url.match(/^(https?:\/\/[^/]+\/[^/]+\/[^/?]+)(?:\/|$)/)[1];
-
-            // 点击按钮发送请求的函数
-            div.addEventListener('click', function(event) {
-                event.stopPropagation();
-                const data = JSON.stringify({ url: url });
-                subscribe(url, data);
-            });
-            el.appendChild(div);
-        });
-    }, 1000);
-
 
 })();

@@ -29,7 +29,7 @@ RUN ldconfig
 RUN pip install --no-cache-dir pipenv
 
 # 第二阶段：安装依赖并运行应用
-COPY Pipfile Pipfile.lock /app/
+COPY media-subscribe/Pipfile Pipfile.lock /app/
 COPY ./media-subscribe /app/media-subscribe
 RUN pipenv install --deploy
 
