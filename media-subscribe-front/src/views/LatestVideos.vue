@@ -35,46 +35,50 @@
           :key="video.id" 
           class="video-item bg-white shadow-sm rounded-lg overflow-hidden mb-4"
         >
-          <div class="video-thumbnail relative">
+          <div class="video-thumbnail relative cursor-pointer">
             <img 
               v-if="!video.isPlaying" 
               :src="video.thumbnail" 
               referrerpolicy="no-referrer" 
               alt="Video thumbnail" 
               class="w-full h-full object-cover"
-              @click="toggleVideoPlay(video)"
+              @click="playVideo(video)"
             >
-            <video
-              v-show="video.isPlaying"
-              :src="video.video_url"
-              :ref="el => { if (el) videoRefs[video.id] = el }"
-              class="absolute top-0 left-0 w-full h-full object-cover"
-              controls
-              @play="onVideoPlay(video)"
-              @pause="onVideoPause(video)"
-              @ended="onVideoEnded(video)"
-            ></video>
+            <div v-show="video.isPlaying" class="video-wrapper">
+              <video
+                :src="video.video_url"
+                :ref="el => { if (el) videoRefs[video.id] = el }"
+                class="video-player"
+                controls
+                @play="onVideoPlay(video)"
+                @pause="onVideoPause(video)"
+                @ended="onVideoEnded(video)"
+                @fullscreenchange="onFullscreenChange"
+              ></video>
+            </div>
             <div v-if="!video.isPlaying" class="video-duration">{{ formatDuration(video.duration) }}</div>
-            <div v-if="!video.isPlaying" class="play-button" @click="toggleVideoPlay(video)">
+            <div v-if="!video.isPlaying" class="play-button" @click="playVideo(video)">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12">
                 <path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clip-rule="evenodd" />
               </svg>
             </div>
           </div>
-          <div class="video-info p-3">
-            <h2 class="video-title text-base font-semibold text-gray-900 line-clamp-2">{{ video.title }}</h2>
-            <div class="flex items-center justify-between mt-2">
-              <div class="flex items-center">
+          <div class="video-info p-3 flex flex-col">
+            <div class="flex justify-between items-start">
+              <h2 class="video-title text-base font-semibold text-gray-900 line-clamp-2 flex-grow pr-2">{{ video.title }}</h2>
+              <div class="video-meta text-xs text-gray-500 whitespace-nowrap">
+                <span>{{ formatDate(video.uploaded_at) }}</span>
+              </div>
+            </div>
+            <div class="flex items-center mt-2">
+              <div class="flex items-center cursor-pointer" @click="goToChannelDetail(video.channel_id)">
                 <img 
                   :src="video.channel_avatar" 
                   :alt="video.channel_name" 
                   class="w-6 h-6 rounded-full mr-2"
                   referrerpolicy="no-referrer"
                 >
-                <p class="video-channel text-sm text-gray-600 truncate">{{ video.channel_name }}</p>
-              </div>
-              <div class="video-meta text-xs text-gray-500 text-right">
-                <span>{{ formatDate(video.uploaded_at) }}</span>
+                <p class="video-channel text-sm text-gray-600 truncate hover:text-blue-500 transition-colors duration-200">{{ video.channel_name }}</p>
               </div>
             </div>
           </div>
@@ -99,7 +103,10 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from '../utils/axios';
+
+const router = useRouter();
 
 const videoContainer = ref(null);
 const loadTrigger = ref(null);
@@ -199,23 +206,8 @@ const formatDate = (dateString) => {
   return `${Math.floor(diffDays / 365)}年前`;
 };
 
-const toggleVideoPlay = async (video) => {
-  // 停止所有正在播放的视频
-  videos.value.forEach(v => {
-    if (v.isPlaying && v !== video) {
-      v.isPlaying = false;
-      const videoElement = videoRefs.value[v.id];
-      if (videoElement) {
-        videoElement.pause();
-        videoElement.currentTime = 0;
-      }
-    }
-  });
-  
-  // 切换当前视频的播放状态
-  video.isPlaying = !video.isPlaying;
-
-  if (video.isPlaying && !video.video_url) {
+const playVideo = async (video) => {
+  if (!video.video_url) {
     try {
       const response = await axios.get('/api/channel-video/video/url', {
         params: {
@@ -225,68 +217,70 @@ const toggleVideoPlay = async (video) => {
       });
       if (response.data.code === 0) {
         video.video_url = response.data.data;
-        // 确保 DOM 更新后再播放视频
-        await nextTick();
-        const videoElement = videoRefs.value[video.id];
-        if (videoElement) {
-          videoElement.play();
-        }
       } else {
         throw new Error(response.data.msg || '获取视频地址失败');
       }
     } catch (err) {
       console.error('获取视频地址失败:', err);
-      video.isPlaying = false;
-      error.value = err.message || '获取视频地址失败，请稍后重试';
+      return;
     }
-  } else if (video.isPlaying) {
-    // 如果视频 URL 已存在，直接播放
-    const videoElement = videoRefs.value[video.id];
-    if (videoElement) {
-      videoElement.play();
+  }
+  
+  video.isPlaying = true;
+  
+  // 停止其他正在播放的视频
+  videos.value.forEach(v => {
+    if (v !== video && v.isPlaying) {
+      v.isPlaying = false;
+      const videoElement = videoRefs.value[v.id];
+      if (videoElement) {
+        videoElement.pause();
+      }
     }
-  } else {
-    // 如果是暂停状态，暂停视频
-    const videoElement = videoRefs.value[video.id];
-    if (videoElement) {
-      videoElement.pause();
+  });
+
+  // 等待 DOM 更新后播放视频
+  await nextTick();
+  const videoElement = videoRefs.value[video.id];
+  if (videoElement) {
+    try {
+      await videoElement.play();
+    } catch (error) {
+      console.error('自动播放失败:', error);
+      // 如果自动播放失败，可能是因为浏览器策略，我们保持 isPlaying 为 true，让用户手动点击播放
     }
   }
 };
 
 const onVideoPlay = (video) => {
   video.isPlaying = true;
-  setupIntersectionObserver(video);
 };
 
 const onVideoPause = (video) => {
-  video.isPlaying = false;
+  // 不要在这里设置 isPlaying 为 false，让用户可以暂停后继续播放
 };
 
 const onVideoEnded = (video) => {
   video.isPlaying = false;
 };
 
-const setupIntersectionObserver = (video) => {
-  const videoElement = videoRefs.value[video.id];
-  if (!videoElement) return;
+const onFullscreenChange = (event) => {
+  const videoElement = event.target;
+  if (document.fullscreenElement) {
+    // 进入全屏
+    if (window.screen.orientation.type.includes('portrait')) {
+      videoElement.style.objectFit = 'contain';
+    } else {
+      videoElement.style.objectFit = 'cover';
+    }
+  } else {
+    // 退出全屏
+    videoElement.style.objectFit = 'cover';
+  }
+};
 
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting && !videoElement.paused) {
-        videoElement.pause();
-        video.isPlaying = false;
-      }
-    });
-  }, {
-    threshold: 0.5 // 当视频有一半不可见时触发
-  });
-
-  observer.observe(videoElement);
-
-  // 在视频暂停或结束时取消观察
-  videoElement.addEventListener('pause', () => observer.disconnect());
-  videoElement.addEventListener('ended', () => observer.disconnect());
+const goToChannelDetail = (channelId) => {
+  router.push({ name: 'ChannelDetail', params: { id: channelId } });
 };
 
 onMounted(() => {
@@ -295,13 +289,30 @@ onMounted(() => {
   if (videoContainer.value) {
     videoContainer.value.addEventListener('scroll', handleScroll);
   }
+  window.addEventListener('orientationchange', handleOrientationChange);
 });
 
 onUnmounted(() => {
   if (videoContainer.value) {
     videoContainer.value.removeEventListener('scroll', handleScroll);
   }
+  window.removeEventListener('orientationchange', handleOrientationChange);
 });
+
+const handleOrientationChange = () => {
+  videos.value.forEach(video => {
+    if (video.isPlaying) {
+      const videoElement = videoRefs.value[video.id];
+      if (videoElement && document.fullscreenElement) {
+        if (window.screen.orientation.type.includes('portrait')) {
+          videoElement.style.objectFit = 'contain';
+        } else {
+          videoElement.style.objectFit = 'cover';
+        }
+      }
+    }
+  });
+};
 </script>
 
 <style scoped>
@@ -337,8 +348,15 @@ onUnmounted(() => {
   height: 0;
 }
 
-.video-thumbnail img,
-.video-thumbnail video {
+.video-wrapper {
+  @apply absolute top-0 left-0 w-full h-full;
+}
+
+.video-player {
+  @apply absolute top-0 left-0 w-full h-full object-cover;
+}
+
+.video-thumbnail img {
   @apply absolute top-0 left-0 w-full h-full object-cover;
 }
 
@@ -351,7 +369,7 @@ onUnmounted(() => {
 }
 
 .video-channel {
-  @apply truncate;
+  @apply truncate hover:text-blue-500 transition-colors duration-200;
 }
 
 .video-meta {
@@ -359,7 +377,7 @@ onUnmounted(() => {
 }
 
 .play-button {
-  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white opacity-80;
+  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white opacity-80 cursor-pointer;
 }
 
 .video-thumbnail:hover .play-button {
@@ -402,5 +420,9 @@ onUnmounted(() => {
   }
 }
 
-
+/* 确保视频控件在全屏模式下可见 */
+.video-player::-webkit-media-controls {
+  display: flex !important;
+  visibility: visible !important;
+}
 </style>

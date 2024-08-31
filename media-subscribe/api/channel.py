@@ -141,7 +141,6 @@ def subscribe_channel(
             "data": channel_convert_list
         }
 
-    print("sasdas", channel_list)
     return response.success(channel_list)
 
 
