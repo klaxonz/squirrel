@@ -63,11 +63,14 @@ def subscribe_channel(
 @router.get("/api/channel-video/list")
 def subscribe_channel(
         query: str = Query(None, description="搜索关键字"),
+        channel_id: str = Query(None, description="频道名称"),
         page: int = Query(1, ge=1, description="Page number"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
     with get_session() as s:
         base_query = s.query(ChannelVideo).filter(ChannelVideo.title != '', ChannelVideo.if_read == 0)
+        if channel_id:
+            base_query = base_query.filter(ChannelVideo.channel_id == channel_id)
         if query:
             base_query = base_query.filter(or_(
                 func.lower(ChannelVideo.channel_name).like(func.lower(f'%{query}%')),

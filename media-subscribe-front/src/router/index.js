@@ -2,12 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LatestVideos from '../views/LatestVideos.vue'
 import Subscribed from '../views/Subscribed.vue'
 import Settings from '../views/Settings.vue'
+import ChannelDetail from '../views/ChannelDetail.vue'
 
 const routes = [
   {
     path: '/',
     name: 'LatestVideos',
-    component: LatestVideos
+    component: LatestVideos,
+    meta: { keepAlive: true }
   },
   {
     path: '/subscribed',
@@ -18,6 +20,12 @@ const routes = [
     path: '/settings',
     name: 'Settings',
     component: Settings
+  },
+  {
+    path: '/channel/:id',
+    name: 'ChannelDetail',
+    component: ChannelDetail,
+    meta: { keepAlive: true }
   }
 ]
 

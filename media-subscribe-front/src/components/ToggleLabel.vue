@@ -2,7 +2,7 @@
     <button
       @click="toggle"
       :class="[
-        'px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ease-in-out',
+        'px-2 py-0.5 rounded-lg text-xs font-medium transition-colors duration-200 ease-in-out',
         modelValue ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700',
         enabled ? 'cursor-pointer hover:bg-opacity-80' : 'opacity-50 cursor-not-allowed'
       ]"

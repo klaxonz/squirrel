@@ -1,70 +1,82 @@
 <template>
-  <div class="app-container">
+  <div class="app-container bg-gray-100 flex flex-col min-h-screen">
     <!-- 主要内容区域 -->
-    <main class="content-area">
-      <router-view />
+    <main class="content-area flex-grow overflow-hidden">
+      <keep-alive>
+        <router-view v-if="$route.meta.keepAlive"/>
+      </keep-alive>
+      <router-view v-if="!$route.meta.keepAlive"/>
     </main>
 
-    <!-- 底部导航栏 -->
+    <!-- 底部导航栏（移动端）/ 侧边导航栏（桌面端） -->
     <nav class="nav-bar">
-      <router-link to="/" class="nav-item">
-        <i class="fas fa-home"></i>
-        <span>最新视频</span>
+      <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+        <span class="nav-text">最新</span>
       </router-link>
-      <router-link to="/subscribed" class="nav-item">
-        <i class="fas fa-star"></i>
-        <span>订阅</span>
+      <router-link to="/subscribed" class="nav-item" :class="{ active: $route.path === '/subscribed' }">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+        </svg>
+        <span class="nav-text">订阅</span>
       </router-link>
-      <router-link to="/settings" class="nav-item">
-        <i class="fas fa-cog"></i>
-        <span>设置</span>
+      <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span class="nav-text">设置</span>
       </router-link>
     </nav>
   </div>
 </template>
 
 <script setup>
-// 如果需要的话，这里可以添加组件逻辑
+// 如需要的话，这里可以添加组件逻辑
 </script>
 
 <style scoped>
 .app-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .content-area {
-  flex: 1;
-  overflow-y: auto;
-  padding-bottom: 60px; /* 为底部导航栏留出空间 */
+  padding-bottom: 56px; /* 移动端底部导航栏的高度 */
 }
+
 .nav-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-around;
-  background-color: #fff;
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
-  padding: 10px 0;
+  @apply fixed bottom-0 left-0 right-0 md:left-0 md:top-0 md:bottom-0 md:w-16 bg-white flex md:flex-col justify-around items-center shadow-md md:shadow-lg z-50;
+  height: 56px; /* 设置一个固定高度 */
 }
 
 .nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-decoration: none;
-  color: #333;
+  @apply flex flex-col items-center justify-center p-2 w-full text-gray-600 hover:text-blue-500 transition-colors duration-200;
 }
 
-.nav-item i {
-  font-size: 20px;
-  margin-bottom: 5px;
+.nav-item.active {
+  @apply text-blue-500;
 }
 
-.nav-item span {
-  font-size: 12px;
+.nav-item svg {
+  @apply mb-1 md:mb-2;
 }
+
+.nav-text {
+  @apply text-xs md:hidden;
+}
+
+@media (min-width: 768px) {
+  .content-area {
+    padding-bottom: 0;
+    padding-left: 4rem; /* 16 * 0.25rem = 4rem, 对应于 md:w-16 */
+  }
+
+  .nav-bar {
+    height: 100vh;
+  }
+}
+
+/* 其他样式保持不变 */
 </style>

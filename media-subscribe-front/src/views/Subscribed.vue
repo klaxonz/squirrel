@@ -1,7 +1,6 @@
 <template>
-  <div class="subscribed-channels bg-gray-100 min-h-screen  sm:p-6">
-    <div class="max-w-6xl mx-auto">
-
+  <div ref="subscribedChannels" class="subscribed-channels bg-gray-100 min-h-screen">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-grow flex flex-col">
       <!-- 搜索栏 -->
       <div class="search-bar sticky top-0 bg-white z-10 p-4 shadow-sm">
         <div class="flex items-center max-w-3xl mx-auto relative">
@@ -30,101 +29,113 @@
         </div>
       </div>
 
-      <!-- 频道列表 -->
-      <div v-if="channels.length > 0" class="space-y-2 px-4">
-        <div v-for="channel in channels" :key="channel.id" class="bg-white sm:p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-          <div class="flex flex-col  px-4 pt-4 sm:flex-row items-start sm:items-center justify-between">
-            <div class="flex items-center mb-4 sm:mb-0">
-              <img :src="channel.avatar" :alt="channel.name" referrerpolicy="no-referrer" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover mr-4" />
-              <div>
-                <div class="flex items-center">
-                  <h2 class="text-lg sm:text-xl font-semibold text-gray-800">{{ channel.name }}</h2>
-              
-                </div>
-                <div class="flex flex-wrap gap-2 mt-2 text-xs sm:text-sm text-gray-600">
-                  <a :href="channel.url" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-600">
-                    查看频道
-                  </a>
-                  <span>总视频: {{ channel.total_videos }}</span>
-                  <span>已提取: {{ channel.total_extract }}</span>
+      <div class="channel-container" ref="channelContainer" @scroll="handleScroll">
+        <!-- 频道列表 -->
+        <div v-if="channels.length > 0" class="space-y-4 mt-3">
+          <div v-for="channel in channels" :key="channel.id" class="channel-item bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4">
+              <div class="flex items-center mb-4 sm:mb-0">
+                <img :src="channel.avatar" :alt="channel.name" referrerpolicy="no-referrer" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover mr-4" />
+                <div>
+                  <div class="flex items-center">
+                    <router-link :to="{ name: 'ChannelDetail', params: { id: channel.channel_id } }" class="text-lg sm:text-xl font-semibold text-gray-800 hover:text-blue-500">
+                      {{ channel.name }}
+                    </router-link>
+                  </div>
+                  <div class="flex flex-wrap gap-2 mt-2 text-xs sm:text-sm text-gray-600">
+                    <a :href="channel.url" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-600">
+                      查看频道
+                    </a>
+                    <span>总视频: {{ channel.total_videos }}</span>
+                    <span>已提取: {{ channel.total_extract }}</span>
+                  </div>
                 </div>
               </div>
+              <div class="flex flex-wrap gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+                <ToggleLabel 
+                  v-model="channel.if_enable" 
+                  @update:modelValue="toggleStatus(channel.id, $event)" 
+                  label="启用" 
+                />
+                <ToggleLabel 
+                  v-model="channel.if_auto_download" 
+                  @update:modelValue="toggleAutoDownload(channel.id, $event)" 
+                  label="自动下载" 
+                  :enabled="channel.if_enable"
+                />
+                <ToggleLabel 
+                  v-if="channel.if_auto_download"
+                  v-model="channel.if_download_all" 
+                  @update:modelValue="toggleDownloadAll(channel.id, $event)" 
+                  label="下载全部" 
+                  :enabled="channel.if_enable && channel.if_auto_download"
+                />
+                <ToggleLabel 
+                  v-model="channel.if_extract_all" 
+                  @update:modelValue="toggleExtractAll(channel.id, $event)" 
+                  label="提取全部" 
+                  :enabled="channel.if_enable"
+                />
+              </div>
             </div>
-            <div class="flex flex-wrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-              <ToggleLabel 
-                v-model="channel.if_enable" 
-                @update:modelValue="toggleStatus(channel.id, $event)" 
-                label="启用" 
-              />
-              <ToggleLabel 
-                v-model="channel.if_auto_download" 
-                @update:modelValue="toggleAutoDownload(channel.id, $event)" 
-                label="自动下载" 
-                :enabled="channel.if_enable"
-              />
-              <ToggleLabel 
-                v-if="channel.if_auto_download"
-                v-model="channel.if_download_all" 
-                @update:modelValue="toggleDownloadAll(channel.id, $event)" 
-                label="下载全部" 
-                :enabled="channel.if_enable && channel.if_auto_download"
-              />
-              <ToggleLabel 
-                v-model="channel.if_extract_all" 
-                @update:modelValue="toggleExtractAll(channel.id, $event)" 
-                label="提取全部" 
-                :enabled="channel.if_enable"
-              />
+            <div class="px-4 py-2 bg-gray-50 rounded-b-lg text-xs font-medium">
+              <span>订阅时间 {{ formatDate(channel.created_at) }}</span>
             </div>
-        
           </div>
-          <div class="mt-2 px-4 py-1 bg-gray-100 rounded-b-lg text-xs font-medium">
-              <span>订阅时间: {{ channel.created_at }}</span>
-            </div>
+        </div>
+
+        <!-- 加载中状态 -->
+        <div v-if="loading" class="text-center py-4">
+          <p>加载中...</p>
+        </div>
+
+        <!-- 错误状态 -->
+        <div v-if="error" class="text-center text-red-500 py-4">
+          <p>{{ error }}</p>
+        </div>
+
+        <!-- 加载完成状态 -->
+        <div v-if="allLoaded" class="text-center py-4">
+          <p>没有更多频道了</p>
         </div>
       </div>
-
-      <!-- 加载中状态 -->
-      <div v-if="loading" class="text-center py-4">
-        <p>加载中...</p>
-      </div>
-
-      <!-- 错误状态 -->
-      <div v-if="error" class="text-center text-red-500 py-4">
-        <p>{{ error }}</p>
-      </div>
-
-      <!-- 无限滚动 -->
-      <infinite-loading @infinite="infiniteHandler">
-        <template #no-more>
-          <p class="text-center text-gray-500 my-4 sm:my-6">没有更多频道了</p>
-        </template>
-        <template #no-results>
-          <p class="text-center text-gray-500 my-4 sm:my-6">没有找到匹配的频道</p>
-        </template>
-        <template #error>
-          <p class="text-center text-red-500 my-4 sm:my-6">加载失败，请重试</p>
-        </template>
-      </infinite-loading>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import axios from '../utils/axios';
-import { ref, onMounted } from 'vue';
-import { debounce } from 'lodash';
-import InfiniteLoading from 'v3-infinite-loading';
 import ToggleLabel from '../components/ToggleLabel.vue';
 
+const subscribedChannels = ref(null);
+const channelContainer = ref(null);
 const channels = ref([]);
+const error = ref(null);
 const currentPage = ref(1);
 const searchQuery = ref('');
 const loading = ref(false);
-const error = ref(null);
+const allLoaded = ref(false);
+const scrollPosition = ref(0);
+const isLoadingMore = ref(false);
 
-const infiniteHandler = async ($state) => {
-  if (loading.value) return;
+const saveScrollPosition = () => {
+  if (channelContainer.value) {
+    scrollPosition.value = channelContainer.value.scrollTop;
+  }
+};
+
+const restoreScrollPosition = () => {
+  if (channelContainer.value && scrollPosition.value > 0) {
+    nextTick(() => {
+      channelContainer.value.scrollTop = scrollPosition.value;
+    });
+  }
+};
+
+const loadMore = async () => {
+  if (loading.value || allLoaded.value || isLoadingMore.value) return;
+  isLoadingMore.value = true;
   loading.value = true;
   try {
     const response = await axios.get('/api/channel/list', {
@@ -137,11 +148,10 @@ const infiniteHandler = async ($state) => {
     if (response.data.code === 0) {
       const newChannels = response.data.data.data;
       if (newChannels.length) {
-        channels.value.push(...newChannels);
+        channels.value = [...channels.value, ...newChannels];
         currentPage.value++;
-        $state.loaded();
       } else {
-        $state.complete();
+        allLoaded.value = true;
       }
     } else {
       throw new Error(response.data.msg || '获取频道列表失败');
@@ -149,17 +159,32 @@ const infiniteHandler = async ($state) => {
   } catch (err) {
     console.error('获取频道列表失败:', err);
     error.value = err.message || '获取频道列表失败';
-    $state.error();
   } finally {
     loading.value = false;
+    isLoadingMore.value = false;
+    nextTick(() => {
+      restoreScrollPosition();
+    });
+  }
+};
+
+const handleScroll = () => {
+  if (channelContainer.value) {
+    const { scrollTop, scrollHeight, clientHeight } = channelContainer.value;
+    if (scrollTop + clientHeight >= scrollHeight - 100 && !isLoadingMore.value) {
+      loadMore();
+    }
+    saveScrollPosition();
   }
 };
 
 const handleSearchClick = () => {
   channels.value = [];
   currentPage.value = 1;
+  allLoaded.value = false;
   error.value = null;
-  infiniteHandler({ loaded: () => {}, complete: () => {}, error: () => {} });
+  scrollPosition.value = 0;
+  loadMore();
 };
 
 const clearSearch = () => {
@@ -206,19 +231,55 @@ const toggleExtractAll = async (channelId, status) => {
   }
 };
 
+const formatDate = (dateString) => {
+  if (!dateString) return '未知日期';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+watch(channels, () => {
+  nextTick(() => {
+    restoreScrollPosition();
+  });
+}, { deep: true });
+
 onMounted(() => {
-  infiniteHandler({ loaded: () => {}, complete: () => {}, error: () => {} });
+  loadMore();
+});
+
+onUnmounted(() => {
+  if (channelContainer.value) {
+    channelContainer.value.removeEventListener('scroll', saveScrollPosition);
+  }
 });
 </script>
 
 <style scoped>
 .subscribed-channels {
-  max-width: 800px;
-  margin: 0 auto;
+  @apply pb-4 min-h-full;
 }
 
-.form-checkbox {
-  @apply rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50;
+.channel-container {
+  height: calc(100vh - 120px); /* 调整高度以适应你的布局 */
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+@media (min-width: 768px) {
+  .channel-container {
+    height: calc(100vh - 90px); /* 适用于桌面端 */
+  }
+}
+
+.channel-container::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.channel-item {
+  @apply mb-4;
 }
 
 .search-bar {
@@ -242,4 +303,12 @@ onMounted(() => {
 .search-bar button:focus {
   box-shadow: 0 0 0 0 rgba(111, 164, 248, 0.5);
 }
+
+@media (min-width: 640px) {
+  .channel-item > div:first-child {
+    @apply flex-row items-center;
+  }
+}
+
+
 </style>

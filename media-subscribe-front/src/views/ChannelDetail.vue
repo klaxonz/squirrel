@@ -1,5 +1,5 @@
 <template>
-  <div class="latest-videos bg-gray-100 min-h-screen flex flex-col">
+  <div class="channel-detail bg-gray-100 min-h-screen">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-grow flex flex-col">
       <!-- 搜索栏 -->
       <div class="search-bar sticky top-0 bg-white z-10 p-4 shadow-sm">
@@ -29,7 +29,7 @@
         </div>
       </div>
 
-      <div class="video-container flex-grow overflow-y-auto" ref="videoContainer" @scroll="handleScroll">
+      <div class="video-container" ref="videoContainer" @scroll="handleScroll">
         <div 
           v-for="video in videos" 
           :key="video.id" 
@@ -61,19 +61,10 @@
               </svg>
             </div>
           </div>
-          <div class="video-info p-3">
-            <h2 class="video-title text-base font-semibold text-gray-900 line-clamp-2">{{ video.title }}</h2>
-            <div class="flex items-center justify-between mt-2">
-              <div class="flex items-center">
-                <img 
-                  :src="video.channel_avatar" 
-                  :alt="video.channel_name" 
-                  class="w-6 h-6 rounded-full mr-2"
-                  referrerpolicy="no-referrer"
-                >
-                <p class="video-channel text-sm text-gray-600 truncate">{{ video.channel_name }}</p>
-              </div>
-              <div class="video-meta text-xs text-gray-500 text-right">
+          <div class="video-info p-3 flex flex-col">
+            <div class="flex justify-between items-start">
+              <h2 class="video-title text-base font-semibold text-gray-900 line-clamp-2 flex-grow pr-2">{{ video.title }}</h2>
+              <div class="video-meta text-xs text-gray-500 whitespace-nowrap">
                 <span>{{ formatDate(video.uploaded_at) }}</span>
               </div>
             </div>
@@ -89,70 +80,69 @@
         <div v-if="allLoaded" class="text-center py-4">
           <p>没有更多视频了</p>
         </div>
-
-        <!-- 添加一个用于触发加载的元素 -->
-        <div ref="loadTrigger" class="h-1"></div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { useRoute } from 'vue-router';
+const route = useRoute();
+const channelId = route.params.id;
 import axios from '../utils/axios';
 
+const channelInfo = ref({});
+const latestVideos = ref(null);
 const videoContainer = ref(null);
-const loadTrigger = ref(null);
 const videos = ref([]);
-const currentPage = ref(1);
-const loading = ref(false);
-const allLoaded = ref(false);
 const error = ref(null);
+const currentPage = ref(1);
 const searchQuery = ref('');
 const videoRefs = ref({});
+const loading = ref(false);
+const allLoaded = ref(false);
+const scrollPosition = ref(0);
+const isLoadingMore = ref(false);
 
-const handleScroll = () => {
-  if (loadTrigger.value && videoContainer.value) {
-    const containerRect = videoContainer.value.getBoundingClientRect();
-    const triggerRect = loadTrigger.value.getBoundingClientRect();
-    
-    if (triggerRect.top <= containerRect.bottom + 100) {
-      console.log('Trigger element is visible, loading more...'); // 调试信息
-      loadMore();
-    }
+const saveScrollPosition = () => {
+  if (videoContainer.value) {
+    scrollPosition.value = videoContainer.value.scrollTop;
+  }
+};
+
+const restoreScrollPosition = () => {
+  if (videoContainer.value && scrollPosition.value > 0) {
+    nextTick(() => {
+      videoContainer.value.scrollTop = scrollPosition.value;
+    });
   }
 };
 
 const loadMore = async () => {
-  if (loading.value || allLoaded.value) {
-    console.log('Already loading or all loaded, skipping...'); // 调试信息
-    return;
-  }
-  
-  console.log('Loading more videos...'); // 调试信息
+  if (loading.value || allLoaded.value || isLoadingMore.value) return;
+  isLoadingMore.value = true;
   loading.value = true;
   try {
     const response = await axios.get('/api/channel-video/list', {
       params: {
         page: currentPage.value,
         pageSize: 10,
+        channel_id: channelId,
         query: searchQuery.value
       }
     });
-    console.log('API response:', response.data); // 调试信息
     if (response.data.code === 0) {
       const newVideos = response.data.data.data.map(video => ({
         ...video,
         isPlaying: false,
         video_url: null
       }));
-      if (newVideos.length === 0) {
-        console.log('No more videos to load'); // 调试信息
-        allLoaded.value = true;
-      } else {
-        videos.value.push(...newVideos);
+      if (newVideos.length) {
+        videos.value = [...videos.value, ...newVideos];
         currentPage.value++;
-        console.log('New videos added, total count:', videos.value.length); // 调试信息
+      } else {
+        allLoaded.value = true;
       }
     } else {
       throw new Error(response.data.msg || '获取视频列表失败');
@@ -162,6 +152,20 @@ const loadMore = async () => {
     error.value = err.message || '获取视频列表失败';
   } finally {
     loading.value = false;
+    isLoadingMore.value = false;
+    nextTick(() => {
+      restoreScrollPosition();
+    });
+  }
+};
+
+const handleScroll = () => {
+  if (videoContainer.value) {
+    const { scrollTop, scrollHeight, clientHeight } = videoContainer.value;
+    if (scrollTop + clientHeight >= scrollHeight - 100 && !isLoadingMore.value) {
+      loadMore();
+    }
+    saveScrollPosition();
   }
 };
 
@@ -170,6 +174,7 @@ const handleSearchClick = () => {
   currentPage.value = 1;
   allLoaded.value = false;
   error.value = null;
+  scrollPosition.value = 0;
   loadMore();
 };
 
@@ -194,13 +199,16 @@ const formatDate = (dateString) => {
 
   if (diffDays === 1) return '昨天';
   if (diffDays <= 7) return `${diffDays}天前`;
-  if (diffDays <= 30) return `${Math.floor(diffDays / 7)}周前`;
-  if (diffDays <= 365) return `${Math.floor(diffDays / 30)}个月前`;
-  return `${Math.floor(diffDays / 365)}年前`;
+  return date.toLocaleDateString('zh-CN');
+};
+
+const formatViews = (views) => {
+  if (views < 1000) return views;
+  if (views < 1000000) return `${(views / 1000).toFixed(1)}K`;
+  return `${(views / 1000000).toFixed(1)}M`;
 };
 
 const toggleVideoPlay = async (video) => {
-  // 停止所有正在播放的视频
   videos.value.forEach(v => {
     if (v.isPlaying && v !== video) {
       v.isPlaying = false;
@@ -211,8 +219,7 @@ const toggleVideoPlay = async (video) => {
       }
     }
   });
-  
-  // 切换当前视频的播放状态
+
   video.isPlaying = !video.isPlaying;
 
   if (video.isPlaying && !video.video_url) {
@@ -225,7 +232,6 @@ const toggleVideoPlay = async (video) => {
       });
       if (response.data.code === 0) {
         video.video_url = response.data.data;
-        // 确保 DOM 更新后再播放视频
         await nextTick();
         const videoElement = videoRefs.value[video.id];
         if (videoElement) {
@@ -240,13 +246,11 @@ const toggleVideoPlay = async (video) => {
       error.value = err.message || '获取视频地址失败，请稍后重试';
     }
   } else if (video.isPlaying) {
-    // 如果视频 URL 已存在，直接播放
     const videoElement = videoRefs.value[video.id];
     if (videoElement) {
       videoElement.play();
     }
   } else {
-    // 如果是暂停状态，暂停视频
     const videoElement = videoRefs.value[video.id];
     if (videoElement) {
       videoElement.pause();
@@ -279,38 +283,39 @@ const setupIntersectionObserver = (video) => {
       }
     });
   }, {
-    threshold: 0.5 // 当视频有一半不可见时触发
+    threshold: 0.5
   });
 
   observer.observe(videoElement);
 
-  // 在视频暂停或结束时取消观察
   videoElement.addEventListener('pause', () => observer.disconnect());
   videoElement.addEventListener('ended', () => observer.disconnect());
 };
 
+watch(videos, () => {
+  nextTick(() => {
+    restoreScrollPosition();
+  });
+}, { deep: true });
+
 onMounted(() => {
-  console.log('Component mounted, loading initial videos...'); // 调试信息
   loadMore();
-  if (videoContainer.value) {
-    videoContainer.value.addEventListener('scroll', handleScroll);
-  }
 });
 
 onUnmounted(() => {
   if (videoContainer.value) {
-    videoContainer.value.removeEventListener('scroll', handleScroll);
+    videoContainer.value.removeEventListener('scroll', saveScrollPosition);
   }
 });
 </script>
 
 <style scoped>
-.latest-videos {
-  @apply min-h-full;
+.channel-detail {
+  @apply pb-4 min-h-full;
 }
 
 .video-container {
-  height: calc(100vh - 130px); /* 120px (搜索栏) + 56px (底部导航栏) */
+  height: calc(100vh - 130px); /* 适用于移动端 */
   overflow-y: auto;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* Internet Explorer 10+ */
@@ -318,7 +323,7 @@ onUnmounted(() => {
 
 @media (min-width: 768px) {
   .video-container {
-    height: calc(100vh - 90px); /* 只考虑搜索栏的高度，因为导航栏在侧边 */
+    height: calc(100vh - 90px); /* 适用于桌面端 */
   }
 }
 
@@ -347,15 +352,11 @@ onUnmounted(() => {
 }
 
 .video-title {
-  @apply line-clamp-2 leading-tight mb-2;
-}
-
-.video-channel {
-  @apply truncate;
+  @apply line-clamp-2 leading-tight;
 }
 
 .video-meta {
-  @apply text-right;
+  @apply mt-1 flex items-center;
 }
 
 .play-button {
@@ -367,11 +368,8 @@ onUnmounted(() => {
 }
 
 .search-bar {
-  position: sticky;
-  top: 0;
   background-color: white;
   z-index: 10;
-  padding: 1rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -402,5 +400,29 @@ onUnmounted(() => {
   }
 }
 
+.video-info {
+  @apply flex flex-col;
+}
 
+.video-title {
+  @apply line-clamp-2 leading-tight;
+}
+
+.video-meta {
+  @apply text-right flex-shrink-0;
+}
+
+@media (min-width: 640px) {
+  .video-item {
+    @apply flex;
+  }
+
+  .video-thumbnail {
+    @apply w-1/2 pt-[28.125%];
+  }
+
+  .video-info {
+    @apply w-1/2 flex flex-col justify-between p-3;
+  }
+}
 </style>
