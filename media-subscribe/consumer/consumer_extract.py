@@ -102,16 +102,16 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
         uploader = video.get_uploader()
         with get_session() as session:
             channel_video = ChannelVideo()
-            channel_video.url = video.url,
-            channel_video.domain = domain,
-            channel_video.video_id = video_id,
-            channel_video.channel_id = uploader.id,
-            channel_video.channel_name = uploader.name,
-            channel_video.channel_url = uploader.url,
-            channel_video.channel_avatar = uploader.avatar,
-            channel_video.title = video.get_title(),
-            channel_video.thumbnail = video.get_thumbnail(),
-            channel_video.duration = video.get_duration(),
+            channel_video.url = video.url
+            channel_video.domain = domain
+            channel_video.video_id = video_id
+            channel_video.channel_id = uploader.id
+            channel_video.channel_name = uploader.name
+            channel_video.channel_url = uploader.url
+            channel_video.channel_avatar = uploader.avatar
+            channel_video.title = video.get_title()
+            channel_video.thumbnail = video.get_thumbnail()
+            channel_video.duration = video.get_duration()
             channel_video.uploaded_at = datetime.fromtimestamp(int(video_info['timestamp']))
             session.add(channel_video)
             session.commit()
@@ -148,16 +148,16 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
         uploader = video.get_uploader()
         with get_session() as session:
             download_task = DownloadTask()
-            download_task.url = video.url,
-            download_task.domain = domain,
-            download_task.title = video.get_title(),
-            download_task.thumbnail = video.get_thumbnail(),
-            download_task.video_id = video_id,
-            download_task.status = "PENDING",
-            download_task.channel_id = uploader.id,
-            download_task.channel_url = uploader.url,
-            download_task.channel_name = uploader.name,
-            download_task.channel_avatar = uploader.avatar
+            download_task.url = video.url
+            download_task.domain = domain
+            download_task.title = video.get_title()
+            download_task.thumbnail = video.get_thumbnail()
+            download_task.video_id = video_id
+            download_task.status = "PENDING"
+            download_task.channel_id = uploader.get_id()
+            download_task.channel_url = uploader.get_url()
+            download_task.channel_name = uploader.get_name()
+            download_task.channel_avatar = uploader.get_avatar()
             session.add(download_task)
             session.commit()
             session.expunge(download_task)

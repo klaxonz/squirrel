@@ -3,6 +3,7 @@ import LatestVideos from '../views/LatestVideos.vue'
 import Subscribed from '../views/Subscribed.vue'
 import Settings from '../views/Settings.vue'
 import ChannelDetail from '../views/ChannelDetail.vue'
+import DownloadTasks from '../views/DownloadTasks.vue'
 
 const routes = [
   {
@@ -26,6 +27,11 @@ const routes = [
     name: 'ChannelDetail',
     component: ChannelDetail,
     meta: { keepAlive: true }
+  },
+  {
+    path: '/download-tasks',
+    name: 'DownloadTasks',
+    component: DownloadTasks
   }
 ]
 

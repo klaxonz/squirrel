@@ -21,7 +21,7 @@ from service import download_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    tags=['任务接口']
+    tags=['下载任务接口']
 )
 
 
