@@ -13,7 +13,7 @@ from common.cookie import json_cookie_to_netscape
 from common.database import get_session
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
-from model.channel import Channel
+from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
 from service.download_service import start
 from subscribe.subscribe import SubscribeChannelFactory
@@ -273,6 +273,32 @@ class RepairChanelInfoForTotalVideos:
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
                     videos = subscribe_channel.get_channel_videos(channel, update_all=True)
                     channel.total_videos = len(videos)
+                    session.commit()
+
+        except json.JSONDecodeError as e:
+            # 特定地捕获JSON解码错误
+            logger.error(f"Error decoding JSON: {e}", exc_info=True)
+        except Exception as e:
+            # 捕获其他所有异常
+            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+
+
+class RepairChanelVideoDuration:
+
+    @classmethod
+    def run(cls):
+        try:
+            with get_session() as session:
+                channel_videos = session.query(ChannelVideo).filter(ChannelVideo.duration == None).order_by(ChannelVideo.created_at.desc()).all()
+                for channel_video in channel_videos:
+                    if channel_video.duration is not None:
+                        continue
+                    url = channel_video.url
+                    base_info = Downloader.get_video_info(url)
+                    video = VideoFactory.create_video(url, base_info)
+                    if base_info is None or video.get_duration() is None:
+                        continue
+                    channel_video.duration = video.get_duration()
                     session.commit()
 
         except json.JSONDecodeError as e:

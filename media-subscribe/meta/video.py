@@ -17,6 +17,7 @@ class Video:
         self.title = None
         self.description = None
         self.tags = None
+        self.duration = None
         self.thumbnail = None
         self.upload_date = None
         self.uploader = None
@@ -53,6 +54,11 @@ class Video:
         if self.tags is None:
             self.tags = self.base_info.get("tags")
         return self.tags
+
+    def get_duration(self):
+        if self.duration is None:
+            self.duration = self.base_info.get("duration")
+        return self.duration
 
     def get_season(self):
         if self.season is None:

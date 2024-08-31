@@ -23,5 +23,6 @@ cryptography = "*"
 sqlalchemy = "*"
 pycookiecloud = "*"
 marshmallow-sqlalchemy = "*"
+pytubefix = "*"
 
 [dev-packages]

@@ -5,10 +5,14 @@ import stat
 from email.utils import formatdate
 from mimetypes import guess_type
 
-from fastapi import Query, APIRouter, Request
+from fastapi import Query, APIRouter, Request, Depends
 from pydantic import BaseModel
+from pytubefix import YouTube
+from sqlalchemy import or_, func
 from starlette.responses import StreamingResponse
+import requests
 
+from common.cookie import filter_cookies_to_query_string
 import common.response as response
 from common.database import get_session
 from downloader.downloader import Downloader
@@ -23,22 +27,53 @@ router = APIRouter(
 )
 
 
+@router.get("/api/channel-video/video/url")
+def subscribe_channel(
+        channel_id: str = Query(None, description="频道名称"),
+        video_id: str = Query(None, description="视频ID"),
+):
+    with get_session() as s:
+        channel_video = s.query(ChannelVideo).where(ChannelVideo.channel_id == channel_id,
+                                                    ChannelVideo.video_id == video_id).first()
+        domain = channel_video.domain
+        if domain == 'bilibili.com':
+
+            cookies = filter_cookies_to_query_string("https://www.bilibili.com")
+            headers = {
+                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
+                              'Chrome/124.0.0.0 Safari/537.36',
+                'Cookie': cookies
+            }
+
+            req_url = f'https://api.bilibili.com/x/web-interface/view?bvid={video_id}'
+            resp = requests.get(req_url, headers=headers)
+            cid = resp.json()['data']['cid']
+
+            video_url = f'https://api.bilibili.com/x/player/wbi/playurl?bvid={video_id}&cid={cid}&platform=html5'
+            resp = requests.get(video_url, headers=headers)
+            url_ = resp.json()['data']['durl'][0]['url']
+
+            return response.success(url_)
+        elif domain == 'youtube.com':
+            yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=True, allow_oauth_cache=True)
+            sd = yt.streams.filter(progressive=True).all()
+            return response.success(sd[0].url)
+
+
 @router.get("/api/channel-video/list")
 def subscribe_channel(
-        channel_name: str = Query(None, description="频道名称"),
-        title: str = Query(None, description="视频标题"),
-        video_id: str = Query(None, description="视频ID"),
+        query: str = Query(None, description="搜索关键字"),
         page: int = Query(1, ge=1, description="Page number"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
     with get_session() as s:
         base_query = s.query(ChannelVideo).filter(ChannelVideo.title != '', ChannelVideo.if_read == 0)
-        if channel_name:
-            base_query = base_query.filter(ChannelVideo.channel_name.ilike(f'%{channel_name}%'))
-        if title:
-            base_query = base_query.filter(ChannelVideo.title.ilike(f'%{title}%'))
-        if video_id:
-            base_query = base_query.filter(ChannelVideo.video_id.ilike(f'%{video_id}%'))
+        if query:
+            base_query = base_query.filter(or_(
+                func.lower(ChannelVideo.channel_name).like(func.lower(f'%{query}%')),
+                func.lower(ChannelVideo.title).like(func.lower(f'%{query}%'))
+            ))
+
         total = base_query.count()
 
         offset = (page - 1) * page_size
@@ -58,6 +93,7 @@ def subscribe_channel(
                 'domain': chanel_video.domain,
                 'url': chanel_video.url,
                 'thumbnail': chanel_video.thumbnail,
+                'duration': chanel_video.duration,
                 'if_downloaded': chanel_video.if_downloaded,
                 'if_read': chanel_video.if_read,
                 'uploaded_at': chanel_video.uploaded_at.strftime('%Y-%m-%d %H:%M:%S'),

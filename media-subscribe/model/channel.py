@@ -34,6 +34,7 @@ class ChannelVideo(Base, BaseMixin):
     domain = Column(VARCHAR(255), nullable=False)
     url = Column(VARCHAR(1024), nullable=False)
     thumbnail = Column(VARCHAR(2048), nullable=True)
+    duration = Column(Integer, nullable=True)
     if_read = Column(Boolean, default=False)
     if_downloaded = Column(Boolean, default=False)
     uploaded_at = Column(DateTime, nullable=True, default=datetime.now)
