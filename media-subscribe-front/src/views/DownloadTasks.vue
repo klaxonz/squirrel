@@ -100,6 +100,23 @@
         <div ref="loadTrigger" class="h-1"></div>
       </div>
     </div>
+
+    <!-- 视频播放器模态框 -->
+    <div v-if="showVideoPlayer" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+      <div class="bg-gray-900 rounded-lg overflow-hidden w-full max-w-4xl shadow-2xl">
+        <div class="relative">
+          <video ref="videoPlayer" controls autoplay class="w-full aspect-video">
+            <source :src="currentVideoUrl" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+          <button @click="closeVideoPlayer" class="absolute top-4 right-4 text-white hover:text-gray-300 focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -118,6 +135,12 @@ const taskContainer = ref(null);
 const eventSources = ref({});
 const newTaskEventSource = ref(null);
 const latestTaskId = ref(0);
+
+const showVideoPlayer = ref(false);
+const currentVideoUrl = ref('');
+const currentVideoTitle = ref('');
+const currentVideoChannel = ref('');
+const videoPlayer = ref(null);
 
 const setupEventSource = (taskId) => {
   console.log(`Setting up EventSource for task ${taskId}`);
@@ -247,7 +270,7 @@ const getStatusText = (task) => {
     return '已暂停';
   }
   if (task.status === 'PENDING') {
-    return '排队中';
+    return '等待中';
   }
   return task.status;
 };
@@ -356,7 +379,24 @@ const deleteTask = async (taskId) => {
 };
 
 const playVideo = (taskId) => {
-  window.open(`/api/task/video/play/${taskId}`, '_blank');
+  const task = tasks.value.find(t => t.id === taskId);
+  if (task) {
+    currentVideoUrl.value = `/api/task/video/play/${taskId}`;
+    showVideoPlayer.value = true;
+    nextTick(() => {
+      if (videoPlayer.value) {
+        videoPlayer.value.focus();
+      }
+    });
+  }
+};
+
+const closeVideoPlayer = () => {
+  showVideoPlayer.value = false;
+  if (videoPlayer.value) {
+    videoPlayer.value.pause();
+    videoPlayer.value.currentTime = 0;
+  }
 };
 
 const formatSize = (bytes) => {
