@@ -132,55 +132,31 @@ const loading = ref(false);
 const hasMore = ref(true);
 const taskContainer = ref(null);
 
-const eventSources = ref({});
-const newTaskEventSource = ref(null);
+const eventSource = ref(null);
 const latestTaskId = ref(0);
 
-const showVideoPlayer = ref(false);
-const currentVideoUrl = ref('');
-const videoPlayer = ref(null);
-
-const setupEventSource = (taskId) => {
-  console.log(`Setting up EventSource for task ${taskId}`);
-  if (eventSources.value[taskId]) {
-    console.log(`EventSource for task ${taskId} already exists, skipping setup`);
-    return;
+const setupEventSource = () => {
+  if (eventSource.value) {
+    eventSource.value.close();
   }
-  
-  console.log(`Setting up new EventSource for task ${taskId}`);
-  const eventSource = new EventSource(`/api/task/progress/${taskId}`);
-  
-  eventSource.onmessage = (event) => {
-    console.log(`Received progress for task ${taskId}:`, event.data);
+
+  const taskIds = tasks.value.map(task => task.id).join(',');
+  eventSource.value = new EventSource(`/api/task/progress?task_ids=${taskIds}`);
+
+  eventSource.value.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    const taskIndex = tasks.value.findIndex(task => task.id === data.task_id);
-    if (taskIndex !== -1) {
-      const updatedTask = { ...tasks.value[taskIndex], ...data, percent: parseFloat(data.percent) };
-      tasks.value[taskIndex] = updatedTask;
-
-      if (updatedTask.status !== 'DOWNLOADING') {
-        closeEventSource(taskId);
-        if (updatedTask.status === 'COMPLETED' || updatedTask.status === 'FAILED') {
-          // 可能需要触发一些UI更新或通知
-        }
+    data.forEach(taskData => {
+      const taskIndex = tasks.value.findIndex(task => task.id === taskData.task_id);
+      if (taskIndex !== -1) {
+        tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...taskData, percent: parseFloat(taskData.percent) };
       }
-    }
+    });
   };
 
-  eventSource.onerror = (error) => {
-    console.error(`EventSource error for task ${taskId}:`, error);
-    closeEventSource(taskId);
+  eventSource.value.onerror = (error) => {
+    console.error('EventSource error:', error);
+    eventSource.value.close();
   };
-
-  eventSources.value[taskId] = eventSource;
-};
-
-const closeEventSource = (taskId) => {
-  if (eventSources.value[taskId]) {
-    console.log(`Closing EventSource for task ${taskId}`);
-    eventSources.value[taskId].close();
-    delete eventSources.value[taskId];
-  }
 };
 
 const fetchTasks = async () => {
@@ -197,30 +173,16 @@ const fetchTasks = async () => {
     });
     const newTasks = response.data.data.data;
     
-    // 更新最新的任务ID
     if (newTasks.length > 0) {
       const maxTaskId = Math.max(...newTasks.map(task => task.id));
-      console.log('Updating latest task ID in fetchTasks from', latestTaskId.value, 'to', maxTaskId);
       latestTaskId.value = Math.max(latestTaskId.value, maxTaskId);
     }
     
-    // 更新任务列表
     tasks.value = [...tasks.value, ...newTasks];
     page.value++;
     hasMore.value = newTasks.length === pageSize.value;
     
-    // 设置或关闭 EventSource
-    tasks.value.forEach(task => {
-      setupEventSource(task.id);
-    });
-    
-    // 清理不再需要的 EventSource
-    Object.keys(eventSources.value).forEach(taskId => {
-      if (!tasks.value.some(task => task.id === parseInt(taskId))) {
-        closeEventSource(parseInt(taskId));
-      }
-    });
-    
+    setupEventSource();
   } catch (error) {
     console.error('获取任务列表失败:', error);
   } finally {
@@ -234,11 +196,11 @@ const resetAndFetchTasks = () => {
   tasks.value = [];
   page.value = 1;
   hasMore.value = true;
-  // 关闭所有现有的 EventSource 连接
-  Object.keys(eventSources.value).forEach(taskId => closeEventSource(parseInt(taskId)));
+  if (eventSource.value) {
+    eventSource.value.close();
+  }
   
   fetchTasks().then(() => {
-    // 在下一个 tick 恢复滚动位置
     nextTick(() => {
       if (taskContainer.value) {
         taskContainer.value.scrollTop = scrollPosition;
@@ -247,104 +209,16 @@ const resetAndFetchTasks = () => {
   });
 };
 
-// 监听 status 变化
 watch(status, resetAndFetchTasks);
 
-const getStatusText = (task) => {
-  if (task.status === 'DOWNLOADING') {
-    if (task.current_type) {
-      return `下载中 (${task.current_type === 'video' ? '视频' : '音频'})`;
-    } else {
-      return '准备下载中...';
-    }
-  }
-  if (task.status === 'COMPLETED') {
-    return '';
-  }
-  if (task.status === 'FAILED') {
-    return '失败';
-  }
-  if (task.status === 'PAUSED') {
-    return '已暂停';
-  }
-  if (task.status === 'PENDING') {
-    return '等待中';
-  }
-  return task.status;
-};
-
-const setupNewTaskNotification = () => {
-  console.log('Setting up new task notification with latest task ID:', latestTaskId.value);
-  if (newTaskEventSource.value) {
-    console.log('Closing existing EventSource');
-    newTaskEventSource.value.close();
-  }
-
-  newTaskEventSource.value = new EventSource(`/api/task/new_task_notification?latest_task_id=${latestTaskId.value}`);
-  
-  newTaskEventSource.value.onopen = (event) => {
-    console.log('New task notification EventSource opened:', event);
-  };
-
-  newTaskEventSource.value.onmessage = (event) => {
-    console.log('New task notification received:', event.data);
-    try {
-      const newTasks = JSON.parse(event.data);
-      if (Array.isArray(newTasks)) {
-        console.log('New tasks received:', newTasks);
-        
-        newTasks.forEach(newTask => {
-          const existingTaskIndex = tasks.value.findIndex(task => task.id === newTask.id);
-          
-          if (existingTaskIndex !== -1) {
-            // 更新现有任务
-            tasks.value[existingTaskIndex] = { ...tasks.value[existingTaskIndex], ...newTask };
-          } else {
-            // 添加新任务
-            tasks.value.unshift(newTask);
-          }
-
-          // 为所有新任务设置下载进度监听，不管其状态如何
-          setupEventSource(newTask.id);
-
-          // 更新最新的任务ID
-          if (newTask.id > latestTaskId.value) {
-            latestTaskId.value = newTask.id;
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error parsing event data:', error);
-    }
-  };
-
-  newTaskEventSource.value.addEventListener('heartbeat', (event) => {
-    console.log('Heartbeat event received:', event.data);
-  });
-
-  newTaskEventSource.value.onerror = (error) => {
-    console.error('New task notification error:', error);
-    newTaskEventSource.value.close();
-    // 添加重连逻辑
-    setTimeout(() => {
-      console.log('Attempting to reconnect...');
-      setupNewTaskNotification();
-    }, 5000);
-  };
-};
-
-onMounted(async () => {
-  console.log('Component mounted');
-  await fetchTasks();
-  console.log('Tasks fetched, setting up new task notification');
-  setupNewTaskNotification();
+onMounted(() => {
+  fetchTasks();
 });
 
 onUnmounted(() => {
-  if (newTaskEventSource.value) {
-    newTaskEventSource.value.close();
+  if (eventSource.value) {
+    eventSource.value.close();
   }
-  Object.values(eventSources.value).forEach(source => source.close());
 });
 
 const retryTask = async (taskId) => {
@@ -432,7 +306,29 @@ const getStatusClass = (status) => {
   }
 };
 
-// 监听 tasks 的变化
+const getStatusText = (task) => {
+  if (task.status === 'DOWNLOADING') {
+    if (task.current_type) {
+      return `下载中 (${task.current_type === 'video' ? '视频' : '音频'})`;
+    } else {
+      return '准备下载中...';
+    }
+  }
+  if (task.status === 'COMPLETED') {
+    return '';
+  }
+  if (task.status === 'FAILED') {
+    return '失败';
+  }
+  if (task.status === 'PAUSED') {
+    return '已暂停';
+  }
+  if (task.status === 'PENDING') {
+    return '等待中';
+  }
+  return task.status;
+};
+
 watch(tasks, (newTasks) => {
   console.log('Tasks updated:', newTasks);
 }, { deep: true });

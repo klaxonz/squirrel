@@ -12,7 +12,7 @@ class GlobalConfig:
     DEFAULT_MYSQL_USER = 'root'
     DEFAULT_MYSQL_PASSWORD = 'root'
     DEFAULT_MYSQL_DATABASE = 'media_subscribe'
-    POOL_SIZE = 10
+    POOL_SIZE = 30
     POOL_MAX_SIZE = 60
     POOL_RECYCLE = 300
     CHANNEL_UPDATE_DEFAULT_SIZE = 10

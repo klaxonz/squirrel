@@ -27,13 +27,13 @@ def start_consumers():
     """启动所有消费者线程"""
     logger.info('Starting consumers...')
     download_consumers = []
-    for idx in range(5):
+    for idx in range(1):
         consumer = DownloadTaskConsumerThread(queue_name=constants.QUEUE_DOWNLOAD_TASK, thread_id=idx)
         download_consumers.append(consumer)
         consumer.start()
 
     channel_video_extract_consumers = []
-    for idx in range(10):
+    for idx in range(2):
         consumer = ChannelVideoExtractAndDownloadConsumerThread(
             queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD, thread_id=idx)
         channel_video_extract_consumers.append(consumer)

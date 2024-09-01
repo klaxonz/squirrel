@@ -5,8 +5,10 @@ from redis.exceptions import LockError
 
 
 class _RedisClient:
-    def __init__(self, host='localhost', port=6379, db=0, decode_responses=True):
-        self.connection_pool = redis.ConnectionPool(host=host, port=port, db=db, decode_responses=decode_responses)
+    def __init__(self, host='localhost', port=6379, db=0, decode_responses=True, max_connections=20):
+        self.connection_pool = redis.ConnectionPool(
+            host=host, port=port, db=db, decode_responses=decode_responses, max_connections=max_connections
+        )
         self.client = redis.Redis(connection_pool=self.connection_pool)
         self.client.ping()
 
@@ -26,7 +28,8 @@ class RedisClient:
             decode_responses = True
             host = GlobalConfig.get_redis_host()
             port = GlobalConfig.get_redis_port()
-            RedisClient._instance = _RedisClient(host, port, db, decode_responses)
+            max_connections = 20  # 设置连接池大小
+            RedisClient._instance = _RedisClient(host, port, db, decode_responses, max_connections)
         return RedisClient._instance
 
     def get_client(self):

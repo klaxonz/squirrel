@@ -203,37 +203,38 @@ def file_iterator(file_path, offset, chunk_size):
                 break
 
 
-@router.get("/api/task/progress/{task_id}")
-async def task_progress(task_id: int):
+@router.get("/api/task/progress")
+async def tasks_progress(task_ids: str):
+    client = RedisClient.get_instance().client
+    task_ids_list = task_ids.split(',')
+
     async def event_generator():
         while True:
-            client = RedisClient.get_instance().client
-            progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}')
+            tasks_progress = []
+            for task_id in task_ids_list:
+                progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}')
+                with get_session() as s:
+                    task = s.query(DownloadTask).filter(DownloadTask.task_id == task_id).first()
+                    task_status = task.status if task else None
 
-            with get_session() as s:
-                task = s.query(DownloadTask).filter(DownloadTask.task_id == task_id).first()
-                task_status = task.status if task else None
+                if progress:
+                    current_type = progress.get('current_type', 'unknown')
+                    data = {
+                        "task_id": task_id,
+                        "status": task_status,
+                        "current_type": current_type,
+                        "downloaded_size": int(progress.get('downloaded_size', 0)),
+                        "total_size": int(progress.get('total_size', 0)),
+                        "speed": progress.get('speed', '未知'),
+                        "eta": progress.get('eta', '未知'),
+                        "percent": progress.get('percent', '未知'),
+                    }
+                    tasks_progress.append(data)
 
-            if progress:
-                current_type = progress.get('current_type', 'unknown')
-                data = {
-                    "task_id": task_id,
-                    "status": task_status,
-                    "current_type": current_type,
-                    "downloaded_size": int(progress.get('downloaded_size', 0)),
-                    "total_size": int(progress.get('total_size', 0)),
-                    "speed": progress.get('speed', '未知'),
-                    "eta": progress.get('eta', '未知'),
-                    "percent": progress.get('percent', '未知'),
-                }
-                logger.info(f"Sending progress update for task {task_id}: {data}")
-                yield {
-                    "event": "message",
-                    "data": json.dumps(data)
-                }
-            else:
-                logger.info(f"No progress data for task {task_id}")
-            
+            yield {
+                "event": "message",
+                "data": json.dumps(tasks_progress)
+            }
             await asyncio.sleep(1)  # 每秒更新一次
 
     return EventSourceResponse(event_generator())
@@ -241,21 +242,24 @@ async def task_progress(task_id: int):
 
 @router.get("/api/task/new_task_notification")
 async def new_task_notification(latest_task_id: int = Query(default=0)):
+    client = RedisClient.get_instance().client
+
     async def event_generator():
         while True:
             with get_session() as session:
-                new_tasks = session.query(DownloadTask).filter(DownloadTask.task_id > latest_task_id).order_by(desc(DownloadTask.task_id)).limit(10).all()
-                
+                new_tasks = session.query(DownloadTask).filter(DownloadTask.task_id > latest_task_id).order_by(
+                    desc(DownloadTask.task_id)).limit(10).all()
+
                 if new_tasks:
                     new_task_data = []
                     for task in new_tasks:
                         # 获取下载进度信息
-                        client = RedisClient.get_instance().client
-                        downloaded_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}', 'downloaded_size')
-                        total_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}', 'total_size')
-                        speed = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}', 'speed')
-                        eta = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}', 'eta')
-                        percent = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}', 'percent')
+                        progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}')
+                        downloaded_size = int(progress.get('downloaded_size', 0))
+                        total_size = int(progress.get('total_size', 0))
+                        speed = progress.get('speed', '未知')
+                        eta = progress.get('eta', '未知')
+                        percent = progress.get('percent', '未知')
 
                         new_task_data.append({
                             "id": task.task_id,
@@ -264,29 +268,28 @@ async def new_task_notification(latest_task_id: int = Query(default=0)):
                             "title": task.title,
                             "channel_name": task.channel_name,
                             "channel_avatar": task.channel_avatar,
-                            "downloaded_size": int(downloaded_size) if downloaded_size else 0,
-                            "total_size": int(total_size) if total_size else 0,
-                            "speed": speed if speed else '未知',
-                            "eta": eta if eta else '未知',
-                            "percent": percent if percent else '未知',
+                            "downloaded_size": downloaded_size,
+                            "total_size": total_size,
+                            "speed": speed,
+                            "eta": eta,
+                            "percent": percent,
                             "error_message": task.error_message,
                             "retry": task.retry,
                             "updated_at": task.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
                             "created_at": task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                         })
-                    
-                    print(f"Sending new tasks: {new_task_data}")
+
                     yield {
                         "event": "message",
                         "data": json.dumps(new_task_data)
                     }
+                    await asyncio.sleep(1)  # 每秒检查一次
+
                 else:
-                    print("No new tasks found, sending heartbeat")
                     yield {
                         "event": "heartbeat",
                         "data": json.dumps({"timestamp": time.time()})
                     }
-
-            await asyncio.sleep(1)  # 每5秒检查一次
+                    await asyncio.sleep(1)  # 每秒检查一次
 
     return EventSourceResponse(event_generator())
