@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -17,6 +18,9 @@ from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.download_task import DownloadTask
 from service import download_service
+
+from sse_starlette.sse import EventSourceResponse
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -196,3 +200,37 @@ def file_iterator(file_path, offset, chunk_size):
                 yield data
             else:
                 break
+
+
+@router.get("/api/task/progress/{task_id}")
+async def task_progress(task_id: int):
+    async def event_generator():
+        while True:
+            client = RedisClient.get_instance().client
+            progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}')
+
+            with get_session() as s:
+                task = s.query(DownloadTask).filter(DownloadTask.task_id == task_id).first()
+                task_status = task.status if task else None
+
+            if progress:
+                data = {
+                    "task_id": task_id,
+                    "status": task_status,
+                    "downloaded_size": int(progress.get('downloaded_size', 0)),
+                    "total_size": int(progress.get('total_size', 0)),
+                    "speed": progress.get('speed', 'unknown') if progress.get('speed') else '未知',
+                    "eta": progress.get('eta', 'unknown') if progress.get('eta') else '未知',
+                    "percent": progress.get('percent', 'unknown') if progress.get('percent') else '未知',
+                }
+                logger.info(f"Sending progress update for task {task_id}: {data}")
+                yield {
+                    "event": "message",  # 确保这里是 "message"
+                    "data": json.dumps(data)  # 使用 json.dumps 序列化数据
+                }
+            else:
+                logger.info(f"No progress data for task {task_id}")
+            
+            await asyncio.sleep(1)  # 每秒更新一次
+
+    return EventSourceResponse(event_generator())

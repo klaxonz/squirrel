@@ -48,15 +48,15 @@
                 </span>
               </div>
               
-              <div v-if="task.status === 'DOWNLOADING'" class="mt-2">
-                <div class="flex items-center justify-between text-xs text-gray-600">
+              <div v-if="task.status === 'DOWNLOADING'" class="download-progress">
+                <div class="progress-bar">
+                  <div :style="{ width: `${task.percent}%` }" class="progress"></div>
+                </div>
+                <div class="progress-info">
                   <span>{{ task.percent }}%</span>
                   <span>{{ formatSize(task.downloaded_size) }} / {{ formatSize(task.total_size) }}</span>
                   <span>{{ task.speed }}</span>
                   <span>剩余: {{ task.eta }}</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                  <div class="bg-blue-600 h-2 rounded-full" :style="{ width: `${task.percent}%` }"></div>
                 </div>
               </div>
               
@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import axios from '../utils/axios';
 
 const tasks = ref([]);
@@ -105,6 +105,54 @@ const pageSize = ref(10);
 const loading = ref(false);
 const hasMore = ref(true);
 const taskContainer = ref(null);
+
+const eventSources = ref({});
+
+const setupEventSource = (taskId) => {
+  if (eventSources.value[taskId]) {
+    console.log(`EventSource for task ${taskId} already exists, skipping setup`);
+    return;
+  }
+  
+  console.log(`Setting up new EventSource for task ${taskId}`);
+  const eventSource = new EventSource(`/api/task/progress/${taskId}`);
+  
+  eventSource.onopen = (event) => {
+    console.log(`EventSource connection opened for task ${taskId}`, event);
+  };
+
+  eventSource.onmessage = (event) => {
+    console.log(`Received message for task ${taskId}:`, event.data);
+    const data = JSON.parse(event.data);
+    const taskIndex = tasks.value.findIndex(task => task.id === data.task_id);
+    if (taskIndex !== -1) {
+      const updatedTask = { ...tasks.value[taskIndex], ...data };
+      tasks.value[taskIndex] = updatedTask;
+
+      if (updatedTask.status !== 'DOWNLOADING') {
+        closeEventSource(taskId);
+        if (updatedTask.status === 'COMPLETED' || updatedTask.status === 'FAILED') {
+          // 可能需要触发一些UI更新或通知
+        }
+      }
+    }
+  };
+
+  eventSource.onerror = (error) => {
+    console.error(`EventSource error for task ${taskId}:`, error);
+    closeEventSource(taskId);
+  };
+
+  eventSources.value[taskId] = eventSource;
+};
+
+const closeEventSource = (taskId) => {
+  if (eventSources.value[taskId]) {
+    console.log(`Closing EventSource for task ${taskId}`);
+    eventSources.value[taskId].close();
+    delete eventSources.value[taskId];
+  }
+};
 
 const fetchTasks = async () => {
   if (loading.value || !hasMore.value) return;
@@ -119,9 +167,28 @@ const fetchTasks = async () => {
       }
     });
     const newTasks = response.data.data.data;
-    tasks.value.push(...newTasks);
+    
+    // 更新任务列表
+    tasks.value = [...tasks.value, ...newTasks];
     page.value++;
     hasMore.value = newTasks.length === pageSize.value;
+    
+    // 设置或关闭 EventSource
+    tasks.value.forEach(task => {
+      if (task.status === 'DOWNLOADING') {
+        setupEventSource(task.id);
+      } else {
+        closeEventSource(task.id);
+      }
+    });
+    
+    // 清理不再需要的 EventSource
+    Object.keys(eventSources.value).forEach(taskId => {
+      if (!tasks.value.some(task => task.id === parseInt(taskId) && task.status === 'DOWNLOADING')) {
+        closeEventSource(parseInt(taskId));
+      }
+    });
+    
   } catch (error) {
     console.error('获取任务列表失败:', error);
   } finally {
@@ -133,8 +200,19 @@ const resetAndFetchTasks = () => {
   tasks.value = [];
   page.value = 1;
   hasMore.value = true;
+  // 关闭所有现有的 EventSource 连接
+  Object.keys(eventSources.value).forEach(taskId => closeEventSource(parseInt(taskId)));
   fetchTasks();
 };
+
+// 监听 status 变化
+watch(status, resetAndFetchTasks);
+
+onMounted(fetchTasks);
+
+onUnmounted(() => {
+  Object.keys(eventSources.value).forEach(taskId => closeEventSource(parseInt(taskId)));
+});
 
 const retryTask = async (taskId) => {
   try {
@@ -203,15 +281,6 @@ const getStatusClass = (status) => {
       return 'text-gray-700';
   }
 };
-
-onMounted(() => {
-  fetchTasks();
-  window.addEventListener('scroll', handleScroll);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll);
-});
 </script>
 
 <style scoped>
@@ -291,5 +360,29 @@ onUnmounted(() => {
 
 .task-status {
   @apply inline-block px-2 py-0.5 rounded-full text-xs;
+}
+
+.download-progress {
+  margin-top: 0.5rem;
+}
+
+.progress-bar {
+  background-color: #edf2f7;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.progress {
+  background-color: #3182ce;
+  height: 0.5rem;
+  transition: width 0.3s ease;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #718096;
+  margin-top: 0.25rem;
 }
 </style>

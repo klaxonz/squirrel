@@ -24,5 +24,6 @@ sqlalchemy = "*"
 pycookiecloud = "*"
 marshmallow-sqlalchemy = "*"
 pytubefix = "*"
+sse-starlette = "*"
 
 [dev-packages]
