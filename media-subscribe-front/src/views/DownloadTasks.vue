@@ -37,43 +37,42 @@
             <div class="flex-grow">
               <h2 class="task-title text-base font-semibold text-gray-900 line-clamp-2 mb-1">{{ task.title }}</h2>
               <p class="task-channel text-sm text-gray-600 truncate mb-2">{{ task.channel_name }}</p>
-              <div class="flex justify-between items-center">
-                <div class="task-status text-sm font-medium" :class="getStatusClass(task.status)">
+              
+              <!-- 修改下载进度信息显示 -->
+              <div class="flex items-center justify-between text-sm">
+                <span class="task-status font-medium" :class="getStatusClass(task.status)">
                   {{ task.status }}
+                </span>
+                <span v-if="task.total_size" class="text-gray-600">
+                  {{ formatSize(task.total_size) }}
+                </span>
+              </div>
+              
+              <div v-if="task.status === 'DOWNLOADING'" class="mt-2">
+                <div class="flex items-center justify-between text-xs text-gray-600">
+                  <span>{{ task.percent }}%</span>
+                  <span>{{ formatSize(task.downloaded_size) }} / {{ formatSize(task.total_size) }}</span>
+                  <span>{{ task.speed }}</span>
+                  <span>剩余: {{ task.eta }}</span>
                 </div>
-                <div class="text-sm text-gray-600">
-                  文件大小: {{ formatSize(task.total_size) }}
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                  <div class="bg-blue-600 h-2 rounded-full" :style="{ width: `${task.percent}%` }"></div>
                 </div>
               </div>
-            </div>
-          </div>
-          
-          <div v-if="task.status === 'DOWNLOADING'" class="mt-3">
-            <div class="flex justify-between items-center mb-1">
-              <span class="text-sm text-gray-600">下载进度</span>
-              <span class="text-sm text-gray-600">{{ task.percent }}%</span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2.5">
-              <div class="bg-blue-600 h-2.5 rounded-full" :style="{ width: `${task.percent}%` }"></div>
-            </div>
-            <p class="text-sm text-gray-600 mt-1">
-              {{ formatSize(task.downloaded_size) }} / {{ formatSize(task.total_size) }}
-            </p>
-            <p class="text-sm text-gray-600">速度: {{ task.speed }}</p>
-            <p class="text-sm text-gray-600">剩余时间: {{ task.eta }}</p>
-          </div>
-          
-          <p v-if="task.status === 'FAILED'" class="text-sm text-red-500 mt-2">错误: {{ task.error_message }}</p>
-          
-          <div class="mt-3 flex justify-between items-center">
-            <div class="text-sm text-gray-600">
-              重试次数: {{ task.retry }} 
-            </div>
-            <div>
-              <button v-if="task.status === 'FAILED'" @click="retryTask(task.id)" class="bg-blue-500 text-white px-3 py-1 rounded mr-2 text-sm">重试</button>
-              <button v-if="task.status === 'DOWNLOADING'" @click="pauseTask(task.id)" class="bg-yellow-500 text-white px-3 py-1 rounded mr-2 text-sm">暂停</button>
-              <button v-if="task.status === 'COMPLETED'" @click="playVideo(task.id)" class="bg-green-500 text-white px-3 py-1 rounded mr-2 text-sm">播放</button>
-              <button @click="deleteTask(task.id)" class="bg-red-500 text-white px-3 py-1 rounded text-sm">删除</button>
+              
+              <p v-if="task.status === 'FAILED'" class="text-sm text-red-500 mt-2">错误: {{ task.error_message }}</p>
+              
+              <div class="mt-3 flex justify-between items-center">
+                <div class="text-sm text-gray-600">
+                  重试次数: {{ task.retry }} 
+                </div>
+                <div>
+                  <button v-if="task.status === 'FAILED'" @click="retryTask(task.id)" class="bg-blue-500 text-white px-3 py-1 rounded mr-2 text-sm">重试</button>
+                  <button v-if="task.status === 'DOWNLOADING'" @click="pauseTask(task.id)" class="bg-yellow-500 text-white px-3 py-1 rounded mr-2 text-sm">暂停</button>
+                  <button v-if="task.status === 'COMPLETED'" @click="playVideo(task.id)" class="bg-green-500 text-white px-3 py-1 rounded mr-2 text-sm">播放</button>
+                  <button @click="deleteTask(task.id)" class="bg-red-500 text-white px-3 py-1 rounded text-sm">删除</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -291,6 +290,6 @@ onUnmounted(() => {
 }
 
 .task-status {
-  @apply inline-block px-2 py-1 rounded-full text-xs font-semibold;
+  @apply inline-block px-2 py-0.5 rounded-full text-xs;
 }
 </style>
