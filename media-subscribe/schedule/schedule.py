@@ -266,7 +266,7 @@ class RepairChanelInfoForTotalVideos:
     def run(cls):
         try:
             with get_session() as session:
-                channels = session.query(Channel).filter(Channel.total_videos == 0).all()
+                channels = session.query(Channel).all()
                 for channel in channels:
                     if channel.total_videos > 0:
                         continue
@@ -283,27 +283,35 @@ class RepairChanelInfoForTotalVideos:
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
 
-class RepairChanelVideoDuration:
+class RepairChannelVideoDuration:
 
     @classmethod
     def run(cls):
-        try:
-            with get_session() as session:
-                channel_videos = session.query(ChannelVideo).filter(ChannelVideo.duration == None).order_by(ChannelVideo.created_at.desc()).all()
-                for channel_video in channel_videos:
+        url = ''
+        with get_session() as session:
+            channel_videos = session.query(ChannelVideo).filter(ChannelVideo.duration == None).order_by(
+                ChannelVideo.created_at.desc()).all()
+            for channel_video in channel_videos:
+                try:
                     if channel_video.duration is not None:
                         continue
                     url = channel_video.url
+                    video = VideoFactory.create_video(url, None)
+                    if not video.video_exists():
+                        logger.info(f"video not exists: {url}")
+                        continue
+
                     base_info = Downloader.get_video_info(url)
                     video = VideoFactory.create_video(url, base_info)
+
                     if base_info is None or video.get_duration() is None:
                         continue
                     channel_video.duration = video.get_duration()
                     session.commit()
+                except json.JSONDecodeError as e:
+                    # 特定地捕获JSON解码错误
+                    logger.error(f"Error decoding JSON: {e}", exc_info=True)
+                except Exception as e:
+                    # 捕获其他所有异常
+                    logger.error(f"An unexpected error occurred: url: {url}, {e}", url, exc_info=True)
 
-        except json.JSONDecodeError as e:
-            # 特定地捕获JSON解码错误
-            logger.error(f"Error decoding JSON: {e}", exc_info=True)
-        except Exception as e:
-            # 捕获其他所有异常
-            logger.error(f"An unexpected error occurred: {e}", exc_info=True)

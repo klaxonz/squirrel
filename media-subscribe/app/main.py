@@ -17,7 +17,7 @@ from common.database import DatabaseManager
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
 from schedule.schedule import Scheduler, AutoUpdateChannelVideoTask, SyncCookies, RepairChanelInfoForTotalVideos, \
-    RetryFailedTask, RepairDownloadTaskInfo, ChangeStatusTask, RepairChanelVideoDuration
+    RetryFailedTask, RepairDownloadTaskInfo, ChangeStatusTask, RepairChannelVideoDuration
 from common.log import init_logging
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ def start_scheduler():
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=10, unit='minutes')
     scheduler.add_job(RepairChanelInfoForTotalVideos.run, interval=2, unit='minutes')
-    scheduler.add_job(RepairChanelVideoDuration.run, interval=120, unit='minutes')
+    scheduler.add_job(RepairChannelVideoDuration.run, interval=120, unit='minutes')
     scheduler.start()
     logger.info('Scheduler started.')
 

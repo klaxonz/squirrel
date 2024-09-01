@@ -121,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import axios from '../utils/axios';
 
 const tasks = ref([]);
@@ -138,8 +138,6 @@ const latestTaskId = ref(0);
 
 const showVideoPlayer = ref(false);
 const currentVideoUrl = ref('');
-const currentVideoTitle = ref('');
-const currentVideoChannel = ref('');
 const videoPlayer = ref(null);
 
 const setupEventSource = (taskId) => {

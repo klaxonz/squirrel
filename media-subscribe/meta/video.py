@@ -1,7 +1,10 @@
 import json
 import re
 import os
-from bs4 import BeautifulSoup
+
+import requests
+from pytubefix import YouTube
+
 from common.config import GlobalConfig
 from pathvalidate import sanitize_filename
 
@@ -24,7 +27,6 @@ class Video:
         self.base_info = base_info
         self.uploader = None
         self.season = None
-
 
     def get_url(self):
         return self.url
@@ -89,20 +91,28 @@ class Video:
         title = self.get_title()
         return sanitize_filename(title)
 
+    def video_exists(self):
+        return True
+
 
 class BilibiliVideo(Video):
 
     def __init__(self, url, base_info):
         super().__init__(url, base_info)
 
+    def video_exists(self):
+        cookies = filter_cookies_to_query_string(self.url)
+        headers = {
+            'Referer': self.url,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/58.0.3029.110 Safari/537.3',
+            'Cookie': cookies
+        }
+        response = requests.get(self.url, headers=headers)
+        return '视频去哪了' not in response.text
+
 
 class YoutubeVideo(Video):
-
-    def __init__(self, url, base_info):
-        super().__init__(url, base_info)
-
-
-class PornhubVideo(Video):
 
     def __init__(self, url, base_info):
         super().__init__(url, base_info)
@@ -170,32 +180,11 @@ class YoutubeUploader(Uploader):
         self.init()
 
     def init(self):
-        cookies = filter_cookies_to_query_string(self.url)
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
-                          'Chrome/124.0.0.0 Safari/537.36',
-            'Cookie': cookies
-        }
-
-        response = session.get(self.url, headers=headers, timeout=20)
-        response.raise_for_status()  # 检查请求是否成功
-
-        match = re.search(r'var ytInitialData = (\{.*?\});', response.text)
-        if match:
-            json_str = match.group(1)
-            data = json.loads(json_str)
-
-            contents = data.get("contents").get("twoColumnWatchNextResults").get("results").get("results").get(
-                "contents")
-            for content in contents:
-                if 'videoSecondaryInfoRenderer' in content:
-                    self.id = content.get('videoSecondaryInfoRenderer').get("subscribeButton").get(
-                        "subscribeButtonRenderer").get("channelId")
-                    self.name = content.get('videoSecondaryInfoRenderer').get("owner").get("videoOwnerRenderer").get("title").get(
-                        "runs")[0].get("text")
-                    self.avatar = content.get('videoSecondaryInfoRenderer').get("owner").get("videoOwnerRenderer").get(
-                        "thumbnail").get("thumbnails")[2].get("url")
-                    self.tags = []
+        video = YouTube(self.url, use_oauth=True, allow_oauth_cache=True, )
+        self.id = video.channel_id
+        self.name = video.author
+        self.avatar = video.thumbnail_url
+        self.tags = []
 
 
 class VideoFactory:
@@ -216,4 +205,3 @@ class UploaderFactory:
             return BilibiliUploader(url)
         elif 'youtube.com' in url:
             return YoutubeUploader(url)
-

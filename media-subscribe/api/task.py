@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -9,6 +10,8 @@ from mimetypes import guess_type
 
 from fastapi import Query, APIRouter, Request
 from pydantic import BaseModel
+from sqlalchemy import desc
+from sse_starlette.sse import EventSourceResponse
 from starlette.responses import StreamingResponse
 
 import common.response as response
@@ -19,10 +22,6 @@ from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.download_task import DownloadTask
 from service import download_service
-
-from sse_starlette.sse import EventSourceResponse
-import asyncio
-from sqlalchemy import desc
 
 logger = logging.getLogger(__name__)
 
@@ -267,9 +266,9 @@ async def new_task_notification(latest_task_id: int = Query(default=0)):
                             "channel_avatar": task.channel_avatar,
                             "downloaded_size": int(downloaded_size) if downloaded_size else 0,
                             "total_size": int(total_size) if total_size else 0,
-                            "speed": speed.decode('utf-8') if speed else '未知',
-                            "eta": eta.decode('utf-8') if eta else '未知',
-                            "percent": percent.decode('utf-8') if percent else '未知',
+                            "speed": speed if speed else '未知',
+                            "eta": eta if eta else '未知',
+                            "percent": percent if percent else '未知',
                             "error_message": task.error_message,
                             "retry": task.retry,
                             "updated_at": task.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
