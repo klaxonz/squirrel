@@ -1,6 +1,7 @@
 import concurrent.futures
 import json
 import logging
+import random
 import time
 from datetime import datetime, timedelta
 from threading import Thread
@@ -186,7 +187,7 @@ class AutoUpdateChannelVideoTask:
                     session.expunge(channel)
 
             # 使用线程池并行处理每个channel
-            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 [executor.submit(cls.update_channel_video, channel) for channel in channels]
 
         except json.JSONDecodeError as e:
@@ -303,6 +304,8 @@ class RepairChannelVideoDuration:
 
                     base_info = Downloader.get_video_info(url)
                     video = VideoFactory.create_video(url, base_info)
+                    # 随机休眠1-3秒
+                    time.sleep(random.randint(1, 2))
 
                     if base_info is None or video.get_duration() is None:
                         continue
