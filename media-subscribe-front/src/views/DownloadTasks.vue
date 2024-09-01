@@ -4,7 +4,7 @@
       <!-- 搜索栏 -->
       <div class="search-bar sticky top-0 bg-white z-10 p-4 shadow-sm">
         <div class="flex items-center max-w-3xl mx-auto relative">
-          <select v-model="status" @change="resetAndFetchTasks" class="flex-grow h-8 px-4 text-sm border border-gray-300 rounded-l-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200">
+          <select v-model="status" @change="resetAndFetchTasks" class="flex-grow h-10 px-4 text-sm border border-gray-300 rounded-l-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200">
             <option value="">全部状态</option>
             <option value="PENDING">等待中</option>
             <option value="DOWNLOADING">下载中</option>
@@ -14,7 +14,7 @@
           </select>
           <button 
             @click="resetAndFetchTasks"
-            class="h-8 px-6 text-sm font-medium bg-blue-500 text-white rounded-r-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 focus:ring-offset-2 transition duration-200"
+            class="h-10 px-6 text-sm font-medium bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200"
           >
             筛选
           </button>
@@ -66,7 +66,7 @@
               </div>
             </div>
             
-            <p v-if="task.status === 'FAILED'" class="text-sm text-red-500 mt-1">错误: {{ task.error_message }}</p>
+            <p v-if="task.status === 'FAILED'" class="text-sm text-red-600 mt-1">错误: {{ task.error_message }}</p>
           </div>
           
           <div class="mt-3 flex justify-between items-center">
@@ -74,22 +74,22 @@
               重试次数: {{ task.retry }} 
             </div>
             <div>
-              <button v-if="task.status === 'FAILED'" @click="retryTask(task.id)" class="bg-blue-500 text-white px-3 py-1 rounded mr-2 text-sm">重试</button>
-              <button v-if="task.status === 'DOWNLOADING'" @click="pauseTask(task.id)" class="bg-yellow-500 text-white px-3 py-1 rounded mr-2 text-sm">暂停</button>
-              <button v-if="task.status === 'COMPLETED'" @click="playVideo(task.id)" class="bg-green-500 text-white px-3 py-1 rounded mr-2 text-sm">播放</button>
-              <button @click="deleteTask(task.id)" class="bg-red-500 text-white px-3 py-1 rounded text-sm">删除</button>
+              <button v-if="task.status === 'FAILED'" @click="retryTask(task.id)" class="btn btn-primary">重试</button>
+              <button v-if="task.status === 'DOWNLOADING'" @click="pauseTask(task.id)" class="btn btn-primary">暂停</button>
+              <button v-if="task.status === 'COMPLETED'" @click="playVideo(task.id)" class="btn btn-primary">播放</button>
+              <button @click="deleteTask(task.id)" class="btn btn-danger">删除</button>
             </div>
           </div>
         </div>
 
         <!-- 加载状态 -->
         <div v-if="loading" class="text-center py-4">
-          <p>加载中...</p>
+          <p class="text-gray-600">加载中...</p>
         </div>
 
         <!-- 加载完成状态 -->
         <div v-if="!loading && !hasMore" class="text-center py-4">
-          <p>没有更多任务了</p>
+          <p class="text-gray-600">没有更多任务了</p>
         </div>
 
         <!-- 添加一个用于触发加载的元素 -->
@@ -369,15 +369,15 @@ const handleScroll = () => {
 const getStatusClass = (status) => {
   switch (status) {
     case 'PENDING':
-      return 'text-yellow-500';
+      return 'text-yellow-600';
     case 'DOWNLOADING':
-      return 'text-blue-500';
+      return 'text-blue-600';
     case 'COMPLETED':
-      return 'text-green-500';
+      return 'text-green-600';
     case 'FAILED':
-      return 'text-red-500';
+      return 'text-red-600';
     case 'PAUSED':
-      return 'text-gray-500';
+      return 'text-gray-600';
     default:
       return 'text-gray-700';
   }
@@ -439,24 +439,7 @@ const getStatusClass = (status) => {
 
 .search-bar select:focus,
 .search-bar button:focus {
-  box-shadow: 0 0 0 0 rgba(111, 164, 248, 0.5);
-}
-
-/* 添加进度条样式 */
-.bg-gray-200 {
-  background-color: #edf2f7;
-}
-
-.bg-blue-600 {
-  background-color: #3182ce;
-}
-
-.rounded-full {
-  border-radius: 9999px;
-}
-
-.h-2.5 {
-  height: 0.625rem;
+  box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
 }
 
 .task-status {
@@ -473,5 +456,21 @@ const getStatusClass = (status) => {
 
 .progress-bar > div {
   @apply bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out;
+}
+
+.btn {
+  @apply px-3 py-1 rounded text-sm font-medium transition duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50;
+}
+
+.btn-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+}
+
+.btn + .btn {
+  @apply ml-2;
 }
 </style>
