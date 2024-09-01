@@ -33,7 +33,7 @@
         <div 
           v-for="video in videos" 
           :key="video.id" 
-          class="video-item bg-white shadow-sm rounded-lg overflow-hidden mb-4"
+          class="video-item bg-white shadow-sm rounded-lg overflow-hidden mb-4 relative"
         >
           <div class="video-thumbnail relative cursor-pointer">
             <img 
@@ -65,12 +65,23 @@
           </div>
           <div class="video-info p-3 flex flex-col">
             <div class="flex justify-between items-start">
-              <h2 class="video-title text-base font-semibold text-gray-900 line-clamp-2 flex-grow pr-2">{{ video.title }}</h2>
-              <div class="video-meta text-xs text-gray-500 whitespace-nowrap">
-                <span>{{ formatDate(video.uploaded_at) }}</span>
+              <a 
+                :href="video.url" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                class="video-title text-base font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-200 line-clamp-2 flex-grow pr-2"
+              >
+                {{ video.title }}
+              </a>
+              <div class="flex-shrink-0 relative">
+                <button @click="toggleOptions(video.id, $event)" class="text-gray-500 hover:text-gray-700 focus:outline-none p-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                  </svg>
+                </button>
               </div>
             </div>
-            <div class="flex items-center mt-2">
+            <div class="flex justify-between items-center mt-2">
               <div class="flex items-center cursor-pointer" @click="goToChannelDetail(video.channel_id)">
                 <img 
                   :src="video.channel_avatar" 
@@ -80,6 +91,14 @@
                 >
                 <p class="video-channel text-sm text-gray-600 truncate hover:text-blue-500 transition-colors duration-200">{{ video.channel_name }}</p>
               </div>
+              <span class="text-xs text-gray-500 whitespace-nowrap">{{ formatDate(video.uploaded_at) }}</span>
+            </div>
+            <!-- 添加下载标识 -->
+            <div v-if="video.if_downloaded" class="downloaded-badge mt-2 text-green-500 text-xs">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+              已下载
             </div>
           </div>
         </div>
@@ -99,6 +118,19 @@
       </div>
     </div>
   </div>
+
+  <!-- 使用 Teleport 将选项框移到 body 下 -->
+  <Teleport to="body">
+    <div 
+      v-if="activeOptions !== null" 
+      class="absolute bg-white shadow-lg rounded-md py-2 z-50 w-32"
+      :style="{ top: optionsPosition.top + 'px', left: optionsPosition.left + 'px' }"
+      @click.stop
+    >
+      <button @click="downloadVideo" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">下载</button>
+      <button @click="copyVideoLink" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">复制链接</button>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -117,6 +149,9 @@ const allLoaded = ref(false);
 const error = ref(null);
 const searchQuery = ref('');
 const videoRefs = ref({});
+const activeOptions = ref(null);
+const optionsPosition = ref({ top: 0, left: 0 });
+const activeVideo = ref(null);
 
 const handleScroll = () => {
   if (loadTrigger.value && videoContainer.value) {
@@ -283,6 +318,91 @@ const goToChannelDetail = (channelId) => {
   router.push({ name: 'ChannelDetail', params: { id: channelId } });
 };
 
+const toggleOptions = (videoId, event) => {
+  event.stopPropagation();
+  if (activeOptions.value === videoId) {
+    closeOptions();
+  } else {
+    activeOptions.value = videoId;
+    activeVideo.value = videos.value.find(v => v.id === videoId);
+    nextTick(() => {
+      const button = event.target.closest('button');
+      const rect = button.getBoundingClientRect();
+      optionsPosition.value = {
+        top: rect.bottom + window.scrollY,
+        left: Math.min(rect.left, window.innerWidth - 128) // 128px 是选项框的宽度
+      };
+    });
+  }
+};
+
+const closeOptions = () => {
+  activeOptions.value = null;
+  activeVideo.value = null;
+};
+
+const showToast = (message, isError = false) => {
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.position = 'fixed';
+  toast.style.bottom = '20px';
+  toast.style.left = '50%';
+  toast.style.transform = 'translateX(-50%)';
+  toast.style.padding = '10px 20px';
+  toast.style.borderRadius = '4px';
+  toast.style.color = 'white';
+  toast.style.backgroundColor = isError ? '#f56c6c' : '#67c23a';
+  toast.style.zIndex = '9999';
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    document.body.removeChild(toast);
+  }, 3000);
+};
+
+const downloadVideo = async () => {
+  if (activeVideo.value) {
+    try {
+      const response = await axios.post('/api/channel-video/download', {
+        channel_id: activeVideo.value.channel_id,
+        video_id: activeVideo.value.video_id
+      });
+      
+      if (response.data.code === 0) {
+        showToast('视频下载已开始，请稍后查看下载列表');
+        // 更新视频的下载状态
+        activeVideo.value.if_downloaded = true;
+      } else {
+        throw new Error(response.data.msg || '下载视频失败');
+      }
+    } catch (error) {
+      console.error('下载视频失败:', error);
+      showToast('下载视频失败: ' + (error.message || '未知错误'), true);
+    }
+  }
+  closeOptions();
+};
+
+const copyVideoLink = () => {
+  if (activeVideo.value) {
+    navigator.clipboard.writeText(activeVideo.value.url).then(() => {
+      console.log('Video link copied to clipboard');
+      // 可以添加一个提示，告诉用户链接已复制
+    }).catch(err => {
+      console.error('Failed to copy link: ', err);
+    });
+  }
+  closeOptions();
+};
+
+// 点击外部关闭选项框
+const closeOptionsOnOutsideClick = (event) => {
+  if (activeOptions.value && !event.target.closest('.video-item')) {
+    activeOptions.value = null;
+  }
+};
+
 onMounted(() => {
   console.log('Component mounted, loading initial videos...'); // 调试信息
   loadMore();
@@ -290,6 +410,8 @@ onMounted(() => {
     videoContainer.value.addEventListener('scroll', handleScroll);
   }
   window.addEventListener('orientationchange', handleOrientationChange);
+  document.addEventListener('click', closeOptionsOnOutsideClick);
+  document.addEventListener('click', closeOptions);
 });
 
 onUnmounted(() => {
@@ -297,6 +419,8 @@ onUnmounted(() => {
     videoContainer.value.removeEventListener('scroll', handleScroll);
   }
   window.removeEventListener('orientationchange', handleOrientationChange);
+  document.removeEventListener('click', closeOptionsOnOutsideClick);
+  document.removeEventListener('click', closeOptions);
 });
 
 const handleOrientationChange = () => {
@@ -366,6 +490,11 @@ const handleOrientationChange = () => {
 
 .video-title {
   @apply line-clamp-2 leading-tight mb-2;
+  text-decoration: none;
+}
+
+.video-title:hover {
+  text-decoration: underline;
 }
 
 .video-channel {
@@ -425,4 +554,27 @@ const handleOrientationChange = () => {
   display: flex !important;
   visibility: visible !important;
 }
+
+.video-item {
+  position: relative;
+}
+
+.video-thumbnail {
+  position: relative;
+}
+
+.video-title {
+  flex: 1;
+  min-width: 0; /* 这有助于在flex容器中正确处理文本截断 */
+}
+
+.downloaded-badge {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+}
+
+/* 可以根据需要调整弹出框的样式 */
 </style>
