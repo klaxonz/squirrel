@@ -44,13 +44,7 @@
           <div class="mt-2">
             <div class="flex items-center justify-between text-sm mb-1">
               <span class="task-status font-medium" :class="getStatusClass(task.status)">
-                {{ task.status }}
-                <span v-if="task.status === 'DOWNLOADING'" class="ml-1 text-xs">
-                  {{ task.current_type ? `(${task.current_type === 'video' ? '视频' : '音频'})` : '(准备中)' }}
-                </span>
-              </span>
-              <span v-if="task.total_size" class="text-gray-600">
-                {{ formatSize(task.total_size) }}
+                {{ getStatusText(task) }}
               </span>
             </div>
             
@@ -77,6 +71,11 @@
           <div class="mt-3 flex justify-between items-center">
             <div class="text-sm text-gray-600">
               重试次数: {{ task.retry }} 
+            </div>
+            <div class="text-sm text-gray-600">
+              <span v-if="task.total_size" class="text-gray-600">
+                {{ formatSize(task.total_size) }}
+              </span>
             </div>
             <div>
               <button v-if="task.status === 'FAILED'" @click="retryTask(task.id)" class="btn btn-primary">重试</button>
@@ -105,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import axios from '../utils/axios';
 
 const tasks = ref([]);
@@ -230,6 +229,29 @@ const resetAndFetchTasks = () => {
 // 监听 status 变化
 watch(status, resetAndFetchTasks);
 
+const getStatusText = (task) => {
+  if (task.status === 'DOWNLOADING') {
+    if (task.current_type) {
+      return `下载中 (${task.current_type === 'video' ? '视频' : '音频'})`;
+    } else {
+      return '准备下载中...';
+    }
+  }
+  if (task.status === 'COMPLETED') {
+    return '';
+  }
+  if (task.status === 'FAILED') {
+    return '失败';
+  }
+  if (task.status === 'PAUSED') {
+    return '已暂停';
+  }
+  if (task.status === 'PENDING') {
+    return '排队中';
+  }
+  return task.status;
+};
+
 const setupNewTaskNotification = () => {
   console.log('Setting up new task notification with latest task ID:', latestTaskId.value);
   if (newTaskEventSource.value) {
@@ -301,7 +323,7 @@ onUnmounted(() => {
   if (newTaskEventSource.value) {
     newTaskEventSource.value.close();
   }
-  Object.keys(eventSources.value).forEach(taskId => closeEventSource(parseInt(taskId)));
+  Object.values(eventSources.value).forEach(source => source.close());
 });
 
 const retryTask = async (taskId) => {
@@ -371,6 +393,11 @@ const getStatusClass = (status) => {
       return 'text-gray-700';
   }
 };
+
+// 监听 tasks 的变化
+watch(tasks, (newTasks) => {
+  console.log('Tasks updated:', newTasks);
+}, { deep: true });
 </script>
 
 <style scoped>
