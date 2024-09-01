@@ -1,7 +1,7 @@
 #!/bin/bash
 
 IMAGE_NAME="klaxonz/media-subscribe"
-VERSION=$(grep '__version__' media-subscribe/__init__.py | awk -F "'" '{print $2}')
+VERSION=$(grep '__version__' media-subscribe/app/__init__.py | awk -F "'" '{print $2}')
 
 if [ -z "$VERSION" ]; then
     echo "Failed to retrieve version from media-subscribe/__init__.py"
