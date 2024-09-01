@@ -45,6 +45,9 @@
             <div class="flex items-center justify-between text-sm mb-1">
               <span class="task-status font-medium" :class="getStatusClass(task.status)">
                 {{ task.status }}
+                <span v-if="task.status === 'DOWNLOADING'" class="ml-1 text-xs">
+                  {{ task.current_type ? `(${task.current_type === 'video' ? '视频' : '音频'})` : '(准备中)' }}
+                </span>
               </span>
               <span v-if="task.total_size" class="text-gray-600">
                 {{ formatSize(task.total_size) }}
@@ -52,17 +55,19 @@
             </div>
             
             <div v-if="task.status === 'DOWNLOADING'" class="download-progress">
-              <div class="progress-bar bg-gray-200 rounded-full h-2.5 mb-1">
-                <div 
-                  class="bg-blue-600 h-2.5 rounded-full" 
-                  :style="{ width: `${task.percent}%` }"
-                ></div>
-              </div>
-              <div class="flex justify-between text-xs text-gray-600">
-                <span>{{ task.percent }}%</span>
-                <span>{{ formatSize(task.downloaded_size) }} / {{ formatSize(task.total_size) }}</span>
-                <span>{{ task.speed }}</span>
-                <span>剩余: {{ task.eta }}</span>
+              <div class="mb-2">
+                <div class="progress-bar bg-gray-200 rounded-full h-2.5 mb-1">
+                  <div 
+                    class="bg-blue-600 h-2.5 rounded-full" 
+                    :style="{ width: `${task.percent}%` }"
+                  ></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-600">
+                  <span>{{ task.percent }}%</span>
+                  <span>{{ formatSize(task.downloaded_size) }} / {{ formatSize(task.total_size) }}</span>
+                  <span>{{ task.speed }}</span>
+                  <span>剩余: {{ task.eta }}</span>
+                </div>
               </div>
             </div>
             
@@ -75,7 +80,7 @@
             </div>
             <div>
               <button v-if="task.status === 'FAILED'" @click="retryTask(task.id)" class="btn btn-primary">重试</button>
-              <button v-if="task.status === 'DOWNLOADING'" @click="pauseTask(task.id)" class="btn btn-primary">暂停</button>
+              <button v-if="task.status === 'DOWNLOADING'" @click="pauseTask(task.id)" class="btn btn-secondary">暂停</button>
               <button v-if="task.status === 'COMPLETED'" @click="playVideo(task.id)" class="btn btn-primary">播放</button>
               <button @click="deleteTask(task.id)" class="btn btn-danger">删除</button>
             </div>
@@ -100,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import axios from '../utils/axios';
 
 const tasks = ref([]);
@@ -130,7 +135,7 @@ const setupEventSource = (taskId) => {
     const data = JSON.parse(event.data);
     const taskIndex = tasks.value.findIndex(task => task.id === data.task_id);
     if (taskIndex !== -1) {
-      const updatedTask = { ...tasks.value[taskIndex], ...data };
+      const updatedTask = { ...tasks.value[taskIndex], ...data, percent: parseFloat(data.percent) };
       tasks.value[taskIndex] = updatedTask;
 
       if (updatedTask.status !== 'DOWNLOADING') {
@@ -186,16 +191,12 @@ const fetchTasks = async () => {
     
     // 设置或关闭 EventSource
     tasks.value.forEach(task => {
-      if (task.status === 'DOWNLOADING') {
-        setupEventSource(task.id);
-      } else {
-        closeEventSource(task.id);
-      }
+      setupEventSource(task.id);
     });
     
     // 清理不再需要的 EventSource
     Object.keys(eventSources.value).forEach(taskId => {
-      if (!tasks.value.some(task => task.id === parseInt(taskId) && task.status === 'DOWNLOADING')) {
+      if (!tasks.value.some(task => task.id === parseInt(taskId))) {
         closeEventSource(parseInt(taskId));
       }
     });
@@ -249,37 +250,25 @@ const setupNewTaskNotification = () => {
       if (Array.isArray(newTasks)) {
         console.log('New tasks received:', newTasks);
         
-        let shouldReconnect = false;
-        
         newTasks.forEach(newTask => {
+          const existingTaskIndex = tasks.value.findIndex(task => task.id === newTask.id);
+          
+          if (existingTaskIndex !== -1) {
+            // 更新现有任务
+            tasks.value[existingTaskIndex] = { ...tasks.value[existingTaskIndex], ...newTask };
+          } else {
+            // 添加新任务
+            tasks.value.unshift(newTask);
+          }
+
+          // 为所有新任务设置下载进度监听，不管其状态如何
+          setupEventSource(newTask.id);
+
+          // 更新最新的任务ID
           if (newTask.id > latestTaskId.value) {
             latestTaskId.value = newTask.id;
-            shouldReconnect = true;
-          }
-          
-          const existingTaskIndex = tasks.value.findIndex(task => task.id === newTask.id);
-          if (existingTaskIndex === -1) {
-            // 如果任务不存在，添加到列表开头
-            tasks.value.unshift(newTask);
-          } else {
-            // 如果任务已存在，更新现有任务
-            tasks.value[existingTaskIndex] = { ...tasks.value[existingTaskIndex], ...newTask };
-          }
-          
-          // 为新的下载中任务设置 EventSource
-          if (newTask.status === 'DOWNLOADING') {
-            setupEventSource(newTask.id);
-          } else {
-            closeEventSource(newTask.id);
           }
         });
-        
-        console.log('Updated latest task ID:', latestTaskId.value);
-        
-        if (shouldReconnect) {
-          console.log('Reconnecting with new latest task ID');
-          setupNewTaskNotification(); // 重新连接，传递新的 latestTaskId
-        }
       }
     } catch (error) {
       console.error('Error parsing event data:', error);
@@ -443,7 +432,7 @@ const getStatusClass = (status) => {
 }
 
 .task-status {
-  @apply inline-block py-0.5 rounded-full text-xs;
+  @apply inline-flex items-center;
 }
 
 .download-progress {
@@ -464,6 +453,10 @@ const getStatusClass = (status) => {
 
 .btn-primary {
   @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+}
+
+.btn-secondary {
+  @apply bg-gray-500 text-white hover:bg-gray-600 focus:ring-gray-400;
 }
 
 .btn-danger {

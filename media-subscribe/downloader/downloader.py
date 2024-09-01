@@ -30,6 +30,9 @@ def create_progress_hook(task_id: int):
             speed = video_info.get('_speed_str', '')
             eta = video_info.get('_eta_str', '')
             percent = video_info.get('_percent_str', '')
+            
+            # 区分视频和音频下载
+            file_type = 'video' if video_info.get('info_dict', {}).get('vcodec') != 'none' else 'audio'
 
             # 处理可能的None值，避免错误
             eta = eta if eta != '00:00' else 'unknown'
@@ -41,8 +44,9 @@ def create_progress_hook(task_id: int):
                     client.delete(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_STATUS}:{task_id}')
                     raise DownloadStoppedError('Download stopped')
 
-                client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'downloaded_size',
-                            downloaded_bytes)
+                # 更新Redis，只存储当前下载类型的信息
+                client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'current_type', file_type)
+                client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'downloaded_size', downloaded_bytes)
                 client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'total_size', total_bytes)
                 client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'speed', speed)
                 client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'eta', eta)
@@ -128,6 +132,11 @@ class Downloader:
                 filepath = os.path.join(output_dir, filename + '.mp4')
                 # 获取文件大小
                 file_size = os.path.getsize(filepath)
+                
+                # 更新文件大小到 Redis 缓存
+                redis_client = RedisClient.get_instance().client
+                redis_client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'total_size', file_size)
+                
                 video_id = extract_id_from_url(url)
 
                 with get_session() as session:

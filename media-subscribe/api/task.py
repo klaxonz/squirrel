@@ -216,19 +216,21 @@ async def task_progress(task_id: int):
                 task_status = task.status if task else None
 
             if progress:
+                current_type = progress.get('current_type', 'unknown')
                 data = {
                     "task_id": task_id,
                     "status": task_status,
+                    "current_type": current_type,
                     "downloaded_size": int(progress.get('downloaded_size', 0)),
                     "total_size": int(progress.get('total_size', 0)),
-                    "speed": progress.get('speed', 'unknown') if progress.get('speed') else '未知',
-                    "eta": progress.get('eta', 'unknown') if progress.get('eta') else '未知',
-                    "percent": progress.get('percent', 'unknown') if progress.get('percent') else '未知',
+                    "speed": progress.get('speed', '未知'),
+                    "eta": progress.get('eta', '未知'),
+                    "percent": progress.get('percent', '未知'),
                 }
                 logger.info(f"Sending progress update for task {task_id}: {data}")
                 yield {
-                    "event": "message",  # 确保这里是 "message"
-                    "data": json.dumps(data)  # 使用 json.dumps 序列化数据
+                    "event": "message",
+                    "data": json.dumps(data)
                 }
             else:
                 logger.info(f"No progress data for task {task_id}")
@@ -265,9 +267,9 @@ async def new_task_notification(latest_task_id: int = Query(default=0)):
                             "channel_avatar": task.channel_avatar,
                             "downloaded_size": int(downloaded_size) if downloaded_size else 0,
                             "total_size": int(total_size) if total_size else 0,
-                            "speed": speed if speed else '未知',
-                            "eta": eta if eta else '未知',
-                            "percent": percent if percent else '未知',
+                            "speed": speed.decode('utf-8') if speed else '未知',
+                            "eta": eta.decode('utf-8') if eta else '未知',
+                            "percent": percent.decode('utf-8') if percent else '未知',
                             "error_message": task.error_message,
                             "retry": task.retry,
                             "updated_at": task.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
