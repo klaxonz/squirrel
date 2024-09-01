@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import stat
+import time
 from email.utils import formatdate
 from mimetypes import guess_type
 
@@ -21,6 +22,7 @@ from service import download_service
 
 from sse_starlette.sse import EventSourceResponse
 import asyncio
+from sqlalchemy import desc
 
 logger = logging.getLogger(__name__)
 
@@ -232,5 +234,58 @@ async def task_progress(task_id: int):
                 logger.info(f"No progress data for task {task_id}")
             
             await asyncio.sleep(1)  # 每秒更新一次
+
+    return EventSourceResponse(event_generator())
+
+
+@router.get("/api/task/new_task_notification")
+async def new_task_notification(latest_task_id: int = Query(default=0)):
+    async def event_generator():
+        while True:
+            with get_session() as session:
+                new_tasks = session.query(DownloadTask).filter(DownloadTask.task_id > latest_task_id).order_by(desc(DownloadTask.task_id)).limit(10).all()
+                
+                if new_tasks:
+                    new_task_data = []
+                    for task in new_tasks:
+                        # 获取下载进度信息
+                        client = RedisClient.get_instance().client
+                        downloaded_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}', 'downloaded_size')
+                        total_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}', 'total_size')
+                        speed = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}', 'speed')
+                        eta = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}', 'eta')
+                        percent = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}', 'percent')
+
+                        new_task_data.append({
+                            "id": task.task_id,
+                            "thumbnail": task.thumbnail,
+                            "status": task.status,
+                            "title": task.title,
+                            "channel_name": task.channel_name,
+                            "channel_avatar": task.channel_avatar,
+                            "downloaded_size": int(downloaded_size) if downloaded_size else 0,
+                            "total_size": int(total_size) if total_size else 0,
+                            "speed": speed if speed else '未知',
+                            "eta": eta if eta else '未知',
+                            "percent": percent if percent else '未知',
+                            "error_message": task.error_message,
+                            "retry": task.retry,
+                            "updated_at": task.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                            "created_at": task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                        })
+                    
+                    print(f"Sending new tasks: {new_task_data}")
+                    yield {
+                        "event": "message",
+                        "data": json.dumps(new_task_data)
+                    }
+                else:
+                    print("No new tasks found, sending heartbeat")
+                    yield {
+                        "event": "heartbeat",
+                        "data": json.dumps({"timestamp": time.time()})
+                    }
+
+            await asyncio.sleep(1)  # 每5秒检查一次
 
     return EventSourceResponse(event_generator())
