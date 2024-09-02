@@ -269,7 +269,8 @@ class RepairChanelInfoForTotalVideos:
             with get_session() as session:
                 channels = session.query(Channel).all()
                 for channel in channels:
-                    if channel.total_videos > 0:
+                    extract_count = session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id).count()
+                    if channel.total_videos >= extract_count:
                         continue
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
                     videos = subscribe_channel.get_channel_videos(channel, update_all=True)

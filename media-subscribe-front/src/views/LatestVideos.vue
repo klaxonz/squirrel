@@ -35,7 +35,7 @@
         <div
             v-for="video in videos"
             :key="video.id"
-            class="video-item lg:mt-3 lg:rounded-lg bg-white shadow-sm overflow-hidden relative"
+            class="video-item lg:mt-3 md:mt-3 sm:mt-3 lg:rounded-lg bg-white shadow-sm overflow-hidden relative"
         >
           <div class="video-thumbnail relative cursor-pointer">
             <img

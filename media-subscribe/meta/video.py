@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import os
 
@@ -10,6 +11,8 @@ from pathvalidate import sanitize_filename
 
 from common.cookie import filter_cookies_to_query_string
 from common.http_wrapper import session
+
+logger = logging.getLogger(__name__)
 
 
 class Video:
@@ -163,6 +166,14 @@ class BilibiliUploader(Uploader):
         if match:
             json_str = match.group(1)  # 提取 JSON 字符串
             data = json.loads(json_str)
+
+            if 'videoStaffs' in data:
+                logger.info(f"Not a normal video. url: {self.url}")
+                return
+
+            if data.get('upData') is None:
+                logger.info(f"Failed to extract data from the response. url: {self.url}, text: {json_str}")
+                return
 
             self.id = data.get('upData').get('mid')
             self.name = data.get('upData').get('name')

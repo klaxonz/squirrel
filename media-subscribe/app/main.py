@@ -56,7 +56,7 @@ def start_scheduler():
     scheduler.add_job(RepairDownloadTaskInfo.run, interval=60, unit='minutes')
     scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=10, unit='minutes')
-    scheduler.add_job(RepairChanelInfoForTotalVideos.run, interval=2, unit='minutes')
+    scheduler.add_job(RepairChanelInfoForTotalVideos.run, interval=10, unit='minutes')
     scheduler.add_job(RepairChannelVideoDuration.run, interval=120, unit='minutes')
     scheduler.start()
     logger.info('Scheduler started.')
