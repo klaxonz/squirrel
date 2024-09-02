@@ -220,7 +220,7 @@ async def tasks_progress(task_ids: str):
                 if progress:
                     current_type = progress.get('current_type', 'unknown')
                     data = {
-                        "task_id": task_id,
+                        "task_id": int(task_id),
                         "status": task_status,
                         "current_type": current_type,
                         "downloaded_size": int(progress.get('downloaded_size', 0)),

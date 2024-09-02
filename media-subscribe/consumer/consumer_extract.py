@@ -44,7 +44,6 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
         video_id = extract_id_from_url(url)
 
         channel_video = self._get_channel_video(domain, video_id)
-
         if self._should_skip_extraction(extract_info, channel_video):
             return
 

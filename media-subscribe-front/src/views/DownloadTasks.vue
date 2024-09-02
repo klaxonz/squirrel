@@ -137,6 +137,7 @@ const videoPlayer = ref(null);
 
 const eventSource = ref(null);
 const latestTaskId = ref(0);
+const newTaskEventSource = ref(null);
 
 const setupEventSource = () => {
   if (eventSource.value) {
@@ -148,12 +149,21 @@ const setupEventSource = () => {
 
   eventSource.value.onmessage = (event) => {
     const data = JSON.parse(event.data);
+    let shouldRefetch = false;
     data.forEach(taskData => {
+      console.log('Received task data:', taskData);
       const taskIndex = tasks.value.findIndex(task => task.id === taskData.task_id);
       if (taskIndex !== -1) {
+        const oldStatus = tasks.value[taskIndex].status;
         tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...taskData, percent: parseFloat(taskData.percent) };
+        if (oldStatus === 'DOWNLOADING' && taskData.status === 'COMPLETED') {
+          shouldRefetch = true;
+        }
       }
     });
+    if (shouldRefetch) {
+      resetAndFetchTasks();
+    }
   };
 
   eventSource.value.onerror = (error) => {
@@ -161,6 +171,47 @@ const setupEventSource = () => {
     eventSource.value.close();
   };
 };
+
+const setupNewTaskEventSource = () => {
+  if (newTaskEventSource.value) {
+    newTaskEventSource.value.close();
+  }
+
+  newTaskEventSource.value = new EventSource(`/api/task/new_task_notification?latest_task_id=${latestTaskId.value}`);
+
+  newTaskEventSource.value.onmessage = (event) => {
+    const newTasks = JSON.parse(event.data);
+    if (newTasks.length > 0) {
+      tasks.value = [...newTasks, ...tasks.value];
+      latestTaskId.value = Math.max(...newTasks.map(task => task.id));
+      setupEventSource(); // Update the EventSource to include new task IDs
+    }
+  };
+
+  newTaskEventSource.value.onerror = (error) => {
+    console.error('New Task EventSource error:', error);
+    newTaskEventSource.value.close();
+  };
+};
+
+watch(latestTaskId, () => {
+  setupNewTaskEventSource();
+});
+
+onMounted(() => {
+  fetchTasks();
+  setupEventSource();
+  setupNewTaskEventSource();
+});
+
+onUnmounted(() => {
+  if (eventSource.value) {
+    eventSource.value.close();
+  }
+  if (newTaskEventSource.value) {
+    newTaskEventSource.value.close();
+  }
+});
 
 const fetchTasks = async () => {
   if (loading.value || !hasMore.value) return;
@@ -211,18 +262,6 @@ const resetAndFetchTasks = () => {
     });
   });
 };
-
-watch(status, resetAndFetchTasks);
-
-onMounted(() => {
-  fetchTasks();
-});
-
-onUnmounted(() => {
-  if (eventSource.value) {
-    eventSource.value.close();
-  }
-});
 
 const retryTask = async (taskId) => {
   try {

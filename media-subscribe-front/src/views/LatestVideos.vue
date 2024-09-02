@@ -1,22 +1,22 @@
 <template>
   <div class="latest-videos bg-gray-100 min-h-screen flex flex-col">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-grow flex flex-col">
+    <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 w-full flex-grow flex flex-col">
       <!-- 搜索栏 -->
-      <div class="search-bar sticky top-0 bg-white z-10 p-4 shadow-sm">
+      <div :class="['search-bar', { 'hidden': isScrollingUp }]" ref="searchBar">
         <div class="flex items-center max-w-3xl mx-auto relative">
           <input
               v-model="searchQuery"
               @keyup.enter="handleSearchClick"
               type="text"
               placeholder="搜索视频..."
-              class="flex-grow h-8 px-4 pr-10 text-sm border border-gray-300 rounded-l-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200"
+              class="search-input flex-grow h-8 px-4 pr-10 text-sm border border-gray-300 rounded-l-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200"
           >
           <button
               v-if="searchQuery"
               @click="clearSearch"
-              class="absolute right-20 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              class="clear-button absolute right-20 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
                     clip-rule="evenodd"/>
@@ -24,7 +24,7 @@
           </button>
           <button
               @click="handleSearchClick"
-              class="h-8 px-6 text-sm font-medium bg-blue-500 text-white rounded-r-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 focus:ring-offset-2 transition duration-200"
+              class="search-button h-8 px-4 text-sm font-medium bg-blue-500 text-white rounded-r-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 focus:ring-offset-2 transition duration-200"
           >
             搜索
           </button>
@@ -35,7 +35,7 @@
         <div
             v-for="video in videos"
             :key="video.id"
-            class="video-item bg-white shadow-sm rounded-lg overflow-hidden mb-4 relative"
+            class="video-item lg:mt-3 lg:rounded-lg bg-white shadow-sm overflow-hidden relative"
         >
           <div class="video-thumbnail relative cursor-pointer">
             <img
@@ -145,8 +145,8 @@
 </template>
 
 <script setup>
-import {nextTick, onMounted, onUnmounted, ref} from 'vue';
-import {useRouter} from 'vue-router';
+import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from '../utils/axios';
 
 const router = useRouter();
@@ -161,8 +161,10 @@ const error = ref(null);
 const searchQuery = ref('');
 const videoRefs = ref({});
 const activeOptions = ref(null);
-const optionsPosition = ref({top: 0, left: 0});
+const optionsPosition = ref({ top: 0, left: 0 });
 const activeVideo = ref(null);
+const isScrollingUp = ref(false);
+let lastScrollTop = 0;
 
 const handleScroll = () => {
   if (loadTrigger.value && videoContainer.value) {
@@ -173,6 +175,10 @@ const handleScroll = () => {
       console.log('Trigger element is visible, loading more...'); // 调试信息
       loadMore();
     }
+
+    const scrollTop = videoContainer.value.scrollTop;
+    isScrollingUp.value = scrollTop < lastScrollTop;
+    lastScrollTop = scrollTop <= 0 ? 0 : scrollTop; // For Mobile or negative scrolling
   }
 };
 
@@ -300,7 +306,7 @@ const playVideo = async (video) => {
     } catch (error) {
       console.error('自动播放失败:', error);
       showToast('自动播放失败，请手动点击播放按钮', true);
-      // 如果自动播放失败，可能是因为浏览器策略，我们保持 isPlaying 为 true，让用户手动点击播放
+      // 如果自动播放失败，可能是因为浏览器策略，我们保持 isPlaying 为 true，让用户手动点击播放按钮
     }
   }
 };
@@ -462,6 +468,40 @@ const handleOrientationChange = () => {
   @apply min-h-full;
 }
 
+.search-bar {
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 10;
+  padding: 0.5rem; /* Reduced padding */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease-in-out;
+}
+
+.search-bar.hidden {
+  transform: translateY(-100%);
+}
+
+.search-input {
+  border-right: none;
+  border-radius: 9999px 0 0 9999px; /* Rounded left corners */
+}
+
+.clear-button {
+  right: 2.5rem; /* Adjusted to fit better with reduced height */
+}
+
+.search-button {
+  border-left: none;
+  border-radius: 0 9999px 9999px 0; /* Rounded right corners */
+}
+
+.search-bar input:focus,
+.search-bar button:focus {
+  box-shadow: 0 0 0 0 rgba(111, 164, 248, 0.5);
+}
+
+/* Other existing styles */
 .video-container {
   height: calc(100vh - 130px); /* 120px (搜索栏) + 56px (底部导航栏) */
   overflow-y: auto;
@@ -479,10 +519,6 @@ const handleOrientationChange = () => {
   width: 0;
   height: 0;
   display: none; /* Chrome, Safari, Opera */
-}
-
-.video-item {
-  @apply mt-3;
 }
 
 .video-thumbnail {
@@ -519,38 +555,12 @@ const handleOrientationChange = () => {
   @apply truncate hover:text-blue-500 transition-colors duration-200;
 }
 
-.video-meta {
-  @apply text-right;
-}
-
 .play-button {
   @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white opacity-80 cursor-pointer;
 }
 
 .video-thumbnail:hover .play-button {
   @apply opacity-100;
-}
-
-.search-bar {
-  position: sticky;
-  top: 0;
-  background-color: white;
-  z-index: 10;
-  padding: 1rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.search-bar input {
-  border-right: none;
-}
-
-.search-bar button {
-  border-left: none;
-}
-
-.search-bar input:focus,
-.search-bar button:focus {
-  box-shadow: 0 0 0 0 rgba(111, 164, 248, 0.5);
 }
 
 @media (min-width: 640px) {
