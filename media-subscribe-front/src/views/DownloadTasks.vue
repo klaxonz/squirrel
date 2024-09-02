@@ -131,6 +131,9 @@ const pageSize = ref(10);
 const loading = ref(false);
 const hasMore = ref(true);
 const taskContainer = ref(null);
+const showVideoPlayer = ref(false);
+const currentVideoUrl = ref('');
+const videoPlayer = ref(null);
 
 const eventSource = ref(null);
 const latestTaskId = ref(0);
