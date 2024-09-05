@@ -154,8 +154,16 @@ def play_video(request: Request, task_id: str):
     base_info = Downloader.get_video_info(download_task.url)
     video = VideoFactory.create_video(download_task.url, base_info)
     output_dir = video.get_download_full_path()
-    filename = video.get_valid_filename() + ".mp4"
-    video_path = os.path.join(output_dir, filename)
+
+    ext_names = ['.mp4', '.mkv', '.webm']
+    filename = video.get_valid_filename()
+
+    files = os.listdir(output_dir)
+    video_path = None
+    for file in files:
+        if file.startswith(filename) and any(file.endswith(ext) for ext in ext_names):
+            video_path = os.path.join(output_dir, file)
+            break
 
     stat_result = os.stat(video_path)
     content_type, encoding = guess_type(video_path)

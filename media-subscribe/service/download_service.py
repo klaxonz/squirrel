@@ -59,7 +59,11 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
         session.add(message)
         session.commit()
 
-        RedisMessageQueue(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD).enqueue(message)
+        if if_manual_retry:
+            RedisMessageQueue(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD).enqueue_head(message)
+        else:
+            RedisMessageQueue(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD).enqueue(message)
+
         session.commit()
 
 

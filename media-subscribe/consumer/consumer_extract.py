@@ -21,12 +21,14 @@ logger = logging.getLogger(__name__)
 
 class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
     def run(self):
+        message = None
         while self.running:
             try:
                 message = self._dequeue_message()
                 if message:
                     self._process_message(message)
             except Exception as e:
+                logger.info(f"消息体: {message.body}")
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)
 
     def _dequeue_message(self):
@@ -58,7 +60,6 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
             return
 
         self._handle_video_extraction(extract_info, video, domain, video_id, video_info)
-
         if extract_info['if_only_extract']:
             return
 
@@ -121,14 +122,11 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
             return
 
         logger.info(f"开始生成视频任务：channel {video.get_uploader().name}, video: {video.url}")
-
         download_task = self._get_or_create_download_task(video, domain, video_id)
-
         if self._should_skip_download(extract_info, download_task):
             return
 
         self._create_download_message(download_task)
-
         logger.info(f"结束生成视频任务：channel {video.get_uploader().name}, video: {video.url}")
 
     def _get_or_create_download_task(self, video, domain, video_id):
@@ -170,8 +168,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
         if download_task and download_task.status == 'COMPLETED':
             logger.info(f"视频已下载：channel {download_task.channel_name}, video: {download_task.url}")
             return True
-        if download_task and not extract_info[
-            'if_manual_retry'] and download_task.retry >= GlobalConfig.DOWNLOAD_RETRY_THRESHOLD:
+        if download_task and not extract_info['if_manual_retry'] and download_task.retry >= GlobalConfig.DOWNLOAD_RETRY_THRESHOLD:
             logger.info(f"视频下载已超过重试次数：channel {download_task.channel_name}, video: {download_task.url}")
             return True
         return False

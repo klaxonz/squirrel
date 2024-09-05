@@ -59,7 +59,7 @@ class SubscribeChannelConsumerThread(BaseConsumerThread):
         channel.name = channel_info.name
         channel.url = channel_info.url
         channel.avatar = channel_info.avatar
-        channel.if_extract_all = 1
+        channel.if_extract_all = 0
         return channel
 
     def _save_channel(self, channel):

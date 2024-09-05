@@ -127,7 +127,9 @@ class YouTubeSubscribeChannel(SubscribeChannel):
         return ChannelMeta(self.channel.channel_id, self.channel.channel_name, self.channel.thumbnail_url, self.url)
 
     def get_channel_videos(self, channel: Channel, update_all: bool):
-        return [video.watch_url for video in self.channel.videos]
+        videos_ = [video.watch_url for video in self.channel.videos]
+        shorts_ = [short.watch_url for short in self.channel.shorts]
+        return videos_ + shorts_
 
 
 class SubscribeChannelFactory:

@@ -129,21 +129,28 @@ class Downloader:
                 Downloader.download_avatar(video)
                 NfoGenerator.generate_nfo(video)
 
-                filepath = os.path.join(output_dir, filename + '.mp4')
-                # 获取文件大小
-                file_size = os.path.getsize(filepath)
-                
-                # 更新文件大小到 Redis 缓存
-                redis_client = RedisClient.get_instance().client
-                redis_client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'total_size', file_size)
-                
-                video_id = extract_id_from_url(url)
+                ext_names = ['.mp4', '.mkv', '.webm']
+                files = os.listdir(output_dir)
+                filepath = None
+                for file in files:
+                    if file.startswith(filename) and any(file.endswith(ext) for ext in ext_names):
+                        filepath = os.path.join(output_dir, file)
+                        break
+                if filepath:
+                    # 获取文件大小
+                    file_size = os.path.getsize(filepath)
 
-                with get_session() as session:
-                    session.query(DownloadTask).filter(DownloadTask.video_id == video_id).update({
-                        'total_size': file_size
-                    })
-                    session.commit()
+                    # 更新文件大小到 Redis 缓存
+                    redis_client = RedisClient.get_instance().client
+                    redis_client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'total_size', file_size)
+
+                    video_id = extract_id_from_url(url)
+
+                    with get_session() as session:
+                        session.query(DownloadTask).filter(DownloadTask.video_id == video_id).update({
+                            'total_size': file_size
+                        })
+                        session.commit()
         except DownloadStoppedError as e:
             logging.info(f"下载视频被停止: {url}")
             return 2
