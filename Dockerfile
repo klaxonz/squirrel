@@ -16,16 +16,19 @@ RUN pnpm install --frozen-lockfile && pnpm run build
 # Stage 2: Build the backend
 FROM python:3.11-slim
 
-# Install FFmpeg
-COPY --from=jrottenberg/ffmpeg:6.0-ubuntu /usr/local /usr/local
-
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and FFmpeg
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libmariadb-dev \
-    libssl1.1 \
-    && rm -rf /var/lib/apt/lists/*
+    wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \
+    && tar xvf ffmpeg-release-amd64-static.tar.xz \
+    && mv ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ \
+    && mv ffmpeg-*-amd64-static/ffprobe /usr/local/bin/ \
+    && rm -rf ffmpeg-*-amd64-static* \
+    && apt-get purge -y wget
 
 # Install pipenv
 RUN pip install --no-cache-dir pipenv
