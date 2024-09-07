@@ -22,6 +22,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libmariadb-dev \
     wget \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/* \
     && wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \
     && tar xvf ffmpeg-release-amd64-static.tar.xz \
