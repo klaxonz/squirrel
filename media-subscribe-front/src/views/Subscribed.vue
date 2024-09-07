@@ -76,6 +76,12 @@
                   label="提取全部" 
                   :enabled="channel.if_enable"
                 />
+                <button
+                  @click="unsubscribeChannel(channel.id)"
+                  class="px-3 py-1 text-sm font-medium text-red-600 bg-red-100 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-50 transition duration-200"
+                >
+                  取消订阅
+                </button>
               </div>
             </div>
             <div class="px-4 py-2 bg-gray-50 rounded-b-lg text-xs font-medium">
@@ -235,6 +241,23 @@ const formatDate = (dateString) => {
   if (!dateString) return '未知日期';
   const date = new Date(dateString);
   return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+const unsubscribeChannel = async (channelId) => {
+  if (confirm('确定要取消订阅这个频道吗？这将删除所有相关的视频记录。')) {
+    try {
+      const response = await axios.post('/api/channel/unsubscribe', { id: channelId });
+      if (response.data.code === 0) {
+        channels.value = channels.value.filter(channel => channel.id !== channelId);
+        showToast('频道已成功取消订阅', false);
+      } else {
+        throw new Error(response.data.msg || '取消订阅失败');
+      }
+    } catch (error) {
+      console.error('取消订阅失败:', error);
+      showToast(error.message || '取消订阅失败', true);
+    }
+  }
 };
 
 watch(channels, () => {

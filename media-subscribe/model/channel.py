@@ -37,6 +37,7 @@ class ChannelVideo(Base, BaseMixin):
     duration = Column(Integer, nullable=True)
     if_read = Column(Boolean, default=False)
     if_downloaded = Column(Boolean, default=False)
+    is_disliked = Column(Boolean, default=False)
     uploaded_at = Column(DateTime, nullable=True, default=datetime.now)
 
 

@@ -11,3 +11,6 @@ REDIS_KEY_VIDEO_DOWNLOAD_STATUS = 'video:download:status'
 REDIS_KEY_VIDEO_DOWNLOAD_CACHE = 'video:download:cache'
 
 REDIS_KEY_TASK_STATUS = 'video:task:status'
+
+UNSUBSCRIBED_CHANNELS_SET = "unsubscribed_channels"
+UNSUBSCRIBE_EXPIRATION = 60 * 60 * 24  # 24 hours in seconds

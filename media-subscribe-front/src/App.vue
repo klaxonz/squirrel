@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container bg-gray-100 flex flex-col min-h-screen">
+  <div class="app-container bg-gray-100 flex flex-col h-screen">
     <!-- 主要内容区域 -->
     <main class="content-area flex-grow overflow-hidden">
       <keep-alive>
@@ -45,16 +45,16 @@
 
 <style scoped>
 .app-container {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .content-area {
-  padding-bottom: 56px; /* 移动端底部导航栏的高度 */
+  overflow-y: auto;
 }
 
 .nav-bar {
   @apply fixed bottom-0 left-0 right-0 md:left-0 md:top-0 md:bottom-0 md:w-16 bg-white flex md:flex-col justify-around items-center shadow-md md:shadow-lg z-50;
-  height: 56px; /* 设置一个固定高度 */
 }
 
 .nav-item {
@@ -75,8 +75,7 @@
 
 @media (min-width: 768px) {
   .content-area {
-    padding-bottom: 0;
-    padding-left: 4rem; /* 16 * 0.25rem = 4rem, 对应于 md:w-16 */
+    margin-left: 4rem; /* 16 * 0.25rem = 4rem, 对应于 md:w-16 */
   }
 
   .nav-bar {

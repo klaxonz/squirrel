@@ -5,7 +5,7 @@ import stat
 from email.utils import formatdate
 from mimetypes import guess_type
 
-from fastapi import Query, APIRouter, Request, Depends
+from fastapi import Query, APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from pytubefix import YouTube
 from sqlalchemy import or_, func
@@ -68,7 +68,11 @@ def subscribe_channel(
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
     with get_session() as s:
-        base_query = s.query(ChannelVideo).filter(ChannelVideo.title != '', ChannelVideo.if_read == 0)
+        base_query = s.query(ChannelVideo).filter(
+            ChannelVideo.title != '',
+            ChannelVideo.if_read == 0,
+            ChannelVideo.is_disliked == 0  # 添加这个条件
+        )
         if channel_id:
             base_query = base_query.filter(ChannelVideo.channel_id == channel_id)
         if query:
@@ -204,3 +208,25 @@ def file_iterator(file_path, offset, chunk_size):
                 yield data
             else:
                 break
+
+
+class DislikeRequest(BaseModel):
+    channel_id: str
+    video_id: str
+
+
+@router.post("/api/channel-video/dislike")
+def dislike_video(req: DislikeRequest):
+    with get_session() as session:
+        video = session.query(ChannelVideo).filter(
+            ChannelVideo.channel_id == req.channel_id,
+            ChannelVideo.video_id == req.video_id
+        ).first()
+
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+
+        video.is_disliked = True
+        session.commit()
+
+    return response.success({"message": "Video marked as disliked"})

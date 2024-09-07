@@ -13,7 +13,7 @@ from common.database import DatabaseManager
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
 from schedule.schedule import Scheduler, AutoUpdateChannelVideoTask, SyncCookies, RepairChanelInfoForTotalVideos, \
-    RetryFailedTask, RepairDownloadTaskInfo, ChangeStatusTask, RepairChannelVideoDuration
+    RetryFailedTask, RepairDownloadTaskInfo, ChangeStatusTask, RepairChannelVideoDuration, CleanUnsubscribedChannelsTask
 from common.log import init_logging
 from common import constants
 
@@ -70,6 +70,7 @@ def start_scheduler():
     scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=10, unit='minutes')
     scheduler.add_job(RepairChanelInfoForTotalVideos.run, interval=10, unit='minutes')
     scheduler.add_job(RepairChannelVideoDuration.run, interval=120, unit='minutes')
+    scheduler.add_job(CleanUnsubscribedChannelsTask.run, interval=60, unit='minutes')
     scheduler.start()
     logger.info('Scheduler started.')
 

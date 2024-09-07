@@ -9,6 +9,8 @@ from threading import Thread
 from PyCookieCloud import PyCookieCloud
 from sqlalchemy import text
 
+from common import constants
+from common.cache import RedisClient
 from common.config import GlobalConfig
 from common.cookie import json_cookie_to_netscape
 from common.database import get_session
@@ -199,6 +201,13 @@ class AutoUpdateChannelVideoTask:
 
     @classmethod
     def update_channel_video(cls, channel):
+        redis_client = RedisClient.get_instance().client
+
+        # Check if the channel is in the unsubscribed set
+        if redis_client.sismember(constants.UNSUBSCRIBED_CHANNELS_SET, channel.channel_id):
+            logger.info(f"Skipping update for recently unsubscribed channel: {channel.name}")
+            return
+
         logger.debug(f"update {channel.name} channel video start")
         subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
         if channel.avatar is None:
@@ -269,7 +278,8 @@ class RepairChanelInfoForTotalVideos:
             with get_session() as session:
                 channels = session.query(Channel).all()
                 for channel in channels:
-                    extract_count = session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id).count()
+                    extract_count = session.query(ChannelVideo).filter(
+                        ChannelVideo.channel_id == channel.channel_id).count()
                     if channel.total_videos >= extract_count:
                         continue
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
@@ -319,3 +329,32 @@ class RepairChannelVideoDuration:
                     # 捕获其他所有异常
                     logger.error(f"An unexpected error occurred: url: {url}, {e}", url, exc_info=True)
 
+
+class CleanUnsubscribedChannelsTask:
+
+    @classmethod
+    def run(cls):
+        redis_client = RedisClient.get_instance().client
+
+        # 获取所有未订阅的频道ID
+        unsubscribed_channels = redis_client.smembers(constants.UNSUBSCRIBED_CHANNELS_SET)
+
+        if unsubscribed_channels:
+            with get_session() as session:
+                # 删除未订阅频道的视频记录
+                session.query(ChannelVideo).filter(
+                    ChannelVideo.channel_id.in_(unsubscribed_channels)
+                ).delete(synchronize_session='fetch')
+
+                # 删除未订阅频道的下载任务
+                session.query(DownloadTask).filter(
+                    DownloadTask.channel_id.in_(unsubscribed_channels)
+                ).delete(synchronize_session='fetch')
+
+                session.commit()
+
+            logger.info(f"Cleaned up videos and download tasks for {len(unsubscribed_channels)} unsubscribed channels")
+
+        # 重置过期时间
+        redis_client.expire(constants.UNSUBSCRIBED_CHANNELS_SET, constants.UNSUBSCRIBE_EXPIRATION)
+        logger.info("Reset expiration for unsubscribed channels set")

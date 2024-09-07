@@ -1,5 +1,5 @@
 <template>
-  <div class="latest-videos bg-gray-100 min-h-screen flex flex-col">
+  <div class="latest-videos bg-gray-100 flex flex-col h-full">
     <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 w-full flex-grow flex flex-col">
       <!-- 搜索栏 -->
       <div :class="['search-bar', { 'hidden': isScrollingUp }]" ref="searchBar">
@@ -56,6 +56,7 @@
                   @pause="onVideoPause(video)"
                   @ended="onVideoEnded(video)"
                   @fullscreenchange="onFullscreenChange"
+                  @loadedmetadata="onVideoMetadataLoaded($event, video)"
               ></video>
             </div>
             <div v-if="!video.isPlaying" class="video-duration">{{ formatDuration(video.duration) }}</div>
@@ -65,6 +66,10 @@
                       d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z"
                       clip-rule="evenodd"/>
               </svg>
+            </div>
+            <!-- 修改下载标识，只在视频未播放时显示 -->
+            <div v-if="video.if_downloaded && !video.isPlaying" class="downloaded-badge absolute top-2 right-2 bg-gray-200 bg-opacity-70 text-gray-700 px-2 py-0.5 rounded-full text-xs font-medium opacity-80 hover:opacity-60 transition-opacity duration-200 backdrop-filter: blur(2px);">
+              已下载
             </div>
           </div>
           <div class="video-info p-3 flex flex-col">
@@ -100,16 +105,6 @@
               </div>
               <span class="text-xs text-gray-500 whitespace-nowrap">{{ formatDate(video.uploaded_at) }}</span>
             </div>
-            <!-- 添加下载标识 -->
-            <div v-if="video.if_downloaded" class="downloaded-badge mt-2 text-green-500 text-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" viewBox="0 0 20 20"
-                   fill="currentColor">
-                <path fill-rule="evenodd"
-                      d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                      clip-rule="evenodd"/>
-              </svg>
-              已下载
-            </div>
           </div>
         </div>
 
@@ -133,12 +128,27 @@
   <Teleport to="body">
     <div
         v-if="activeOptions !== null"
-        class="absolute bg-white shadow-lg rounded-md py-2 z-50 w-32"
+        class="options-menu fixed bg-white shadow-lg rounded-lg py-2 z-50 w-40"
         :style="{ top: optionsPosition.top + 'px', left: optionsPosition.left + 'px' }"
         @click.stop
     >
-      <button @click="downloadVideo" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">下载</button>
-      <button @click="copyVideoLink" class="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">复制链接
+      <button @click="downloadVideo" class="option-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        下载
+      </button>
+      <button @click="copyVideoLink" class="option-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+        复制链接
+      </button>
+      <button @click="dislikeVideo" class="option-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+        </svg>
+        不喜欢
       </button>
     </div>
   </Teleport>
@@ -165,6 +175,7 @@ const optionsPosition = ref({ top: 0, left: 0 });
 const activeVideo = ref(null);
 const isScrollingUp = ref(false);
 let lastScrollTop = 0;
+const observers = ref({});
 
 const handleScroll = () => {
   if (loadTrigger.value && videoContainer.value) {
@@ -172,23 +183,26 @@ const handleScroll = () => {
     const triggerRect = loadTrigger.value.getBoundingClientRect();
 
     if (triggerRect.top <= containerRect.bottom + 100) {
-      console.log('Trigger element is visible, loading more...'); // 调试信息
+      console.log('Trigger element is visible, loading more...');
       loadMore();
     }
 
     const scrollTop = videoContainer.value.scrollTop;
     isScrollingUp.value = scrollTop < lastScrollTop;
-    lastScrollTop = scrollTop <= 0 ? 0 : scrollTop; // For Mobile or negative scrolling
+    lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+
+    // 在滚动时关闭选项菜单
+    closeOptions();
   }
 };
 
 const loadMore = async () => {
   if (loading.value || allLoaded.value) {
-    console.log('Already loading or all loaded, skipping...'); // 调试信息
+    console.log('Already loading or all loaded, skipping...');
     return;
   }
 
-  console.log('Loading more videos...'); // 调试信息
+  console.log('Loading more videos...');
   loading.value = true;
   try {
     const response = await axios.get('/api/channel-video/list', {
@@ -198,7 +212,7 @@ const loadMore = async () => {
         query: searchQuery.value
       }
     });
-    console.log('API response:', response.data); // 调试信息
+    console.log('API response:', response.data);
     if (response.data.code === 0) {
       const newVideos = response.data.data.data.map(video => ({
         ...video,
@@ -206,12 +220,12 @@ const loadMore = async () => {
         video_url: null
       }));
       if (newVideos.length === 0) {
-        console.log('No more videos to load'); // 调试信息
+        console.log('No more videos to load');
         allLoaded.value = true;
       } else {
         videos.value.push(...newVideos);
         currentPage.value++;
-        console.log('New videos added, total count:', videos.value.length); // 调试信息
+        console.log('New videos added, total count:', videos.value.length);
       }
     } else {
       throw new Error(response.data.msg || '获取视频列表失败');
@@ -256,6 +270,29 @@ const formatDate = (dateString) => {
   if (diffDays <= 30) return `${Math.floor(diffDays / 7)}周前`;
   if (diffDays <= 365) return `${Math.floor(diffDays / 30)}个月前`;
   return `${Math.floor(diffDays / 365)}年前`;
+};
+
+const dislikeVideo = async () => {
+  if (activeVideo.value) {
+    try {
+      const response = await axios.post('/api/channel-video/dislike', {
+        channel_id: activeVideo.value.channel_id,
+        video_id: activeVideo.value.video_id
+      });
+
+      if (response.data.code === 0) {
+        showToast('已标记为不喜欢');
+        // 从列表中移除该视频
+        videos.value = videos.value.filter(v => v.id !== activeVideo.value.id);
+      } else {
+        throw new Error(response.data.msg || '操作失败');
+      }
+    } catch (error) {
+      console.error('标记不喜欢失败:', error);
+      showToast('标记不喜欢失败: ' + (error.message || '未知错误'), true);
+    }
+  }
+  closeOptions();
 };
 
 const playVideo = async (video) => {
@@ -309,6 +346,26 @@ const playVideo = async (video) => {
       // 如果自动播放失败，可能是因为浏览器策略，我们保持 isPlaying 为 true，让用户手动点击播放按钮
     }
   }
+
+  // 创建并启动 Intersection Observer
+  nextTick(() => {
+    const videoElement = videoRefs.value[video.id];
+    if (videoElement) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting && video.isPlaying) {
+              videoElement.pause();
+              video.isPlaying = false;
+            }
+          });
+        },
+        { threshold: 0.5 } // 当视频有一半不可见时触发
+      );
+      observer.observe(videoElement);
+      observers.value[video.id] = observer;
+    }
+  });
 };
 
 const onVideoPlay = (video) => {
@@ -321,20 +378,49 @@ const onVideoPause = (video) => {
 
 const onVideoEnded = (video) => {
   video.isPlaying = false;
+  // 停止观察这个视频
+  if (observers.value[video.id]) {
+    observers.value[video.id].disconnect();
+    delete observers.value[video.id];
+  }
 };
 
 const onFullscreenChange = (event) => {
   const videoElement = event.target;
   if (document.fullscreenElement) {
     // 进入全屏
-    if (window.screen.orientation.type.includes('portrait')) {
+    const aspectRatio = videoElement.videoWidth / videoElement.videoHeight;
+    if (aspectRatio < 1) {
+      // 竖屏视频
+      videoElement.style.width = '100%';
+      videoElement.style.height = '100%';
       videoElement.style.objectFit = 'contain';
     } else {
-      videoElement.style.objectFit = 'cover';
+      // 横屏视频
+      videoElement.style.width = '100%';
+      videoElement.style.height = '100%';
+      videoElement.style.objectFit = 'contain';
     }
   } else {
     // 退出全屏
-    videoElement.style.objectFit = 'cover';
+    onVideoMetadataLoaded({ target: videoElement }, null);
+  }
+};
+
+const onVideoMetadataLoaded = (event, video) => {
+  const videoElement = event.target;
+  const aspectRatio = videoElement.videoWidth / videoElement.videoHeight;
+  
+  if (aspectRatio < 1) {
+    // 竖屏视频
+    videoElement.style.width = '100%';
+    videoElement.style.height = 'auto';
+    videoElement.style.maxHeight = '100%';
+  } else {
+    // 横屏视频
+    videoElement.style.width = '100%';
+    videoElement.style.height = '100%';
+    videoElement.style.objectFit = 'contain';
   }
 };
 
@@ -352,9 +438,17 @@ const toggleOptions = (videoId, event) => {
     nextTick(() => {
       const button = event.target.closest('button');
       const rect = button.getBoundingClientRect();
+      const containerRect = videoContainer.value.getBoundingClientRect();
+      
+      // 计算左侧位置，确保不会超出容器右侧
+      const left = Math.min(
+        rect.left,
+        containerRect.right - 160 // 40px 的宽度
+      );
+      
       optionsPosition.value = {
         top: rect.bottom + window.scrollY,
-        left: Math.min(rect.left, window.innerWidth - 128) // 128px 是选项框的宽度
+        left: Math.max(containerRect.left, left) // 确保不会超出容器左侧
       };
     });
   }
@@ -420,22 +514,23 @@ const copyVideoLink = () => {
   closeOptions();
 };
 
-// 点击外部关闭选项框
+// 修改这个函数来防止立即重新打开选项菜单
 const closeOptionsOnOutsideClick = (event) => {
   if (activeOptions.value && !event.target.closest('.video-item')) {
-    activeOptions.value = null;
+    closeOptions();
   }
 };
 
 onMounted(() => {
-  console.log('Component mounted, loading initial videos...'); // 调试信息
+  console.log('Component mounted, loading initial videos...');
   loadMore();
   if (videoContainer.value) {
     videoContainer.value.addEventListener('scroll', handleScroll);
   }
   window.addEventListener('orientationchange', handleOrientationChange);
   document.addEventListener('click', closeOptionsOnOutsideClick);
-  document.addEventListener('click', closeOptions);
+  adjustVideoContainerHeight();
+  window.addEventListener('resize', adjustVideoContainerHeight);
 });
 
 onUnmounted(() => {
@@ -444,7 +539,9 @@ onUnmounted(() => {
   }
   window.removeEventListener('orientationchange', handleOrientationChange);
   document.removeEventListener('click', closeOptionsOnOutsideClick);
-  document.removeEventListener('click', closeOptions);
+  window.removeEventListener('resize', adjustVideoContainerHeight);
+  // 清理所有的 Intersection Observers
+  Object.values(observers.value).forEach(observer => observer.disconnect());
 });
 
 const handleOrientationChange = () => {
@@ -461,6 +558,16 @@ const handleOrientationChange = () => {
     }
   });
 };
+
+const adjustVideoContainerHeight = () => {
+  if (videoContainer.value) {
+    const windowHeight = window.innerHeight;
+    const searchBarHeight = document.querySelector('.search-bar')?.offsetHeight || 0;
+    const navBarHeight = document.querySelector('.nav-bar')?.offsetHeight || 0;
+    const newHeight = windowHeight - searchBarHeight - navBarHeight;
+    videoContainer.value.style.height = `${newHeight}px`;
+  }
+};
 </script>
 
 <style scoped>
@@ -473,7 +580,7 @@ const handleOrientationChange = () => {
   top: 0;
   background-color: white;
   z-index: 10;
-  padding: 0.5rem; /* Reduced padding */
+  padding: 0.5rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: transform 0.3s ease-in-out;
 }
@@ -484,16 +591,16 @@ const handleOrientationChange = () => {
 
 .search-input {
   border-right: none;
-  border-radius: 9999px 0 0 9999px; /* Rounded left corners */
+  border-radius: 9999px 0 0 9999px;
 }
 
 .clear-button {
-  right: 2.5rem; /* Adjusted to fit better with reduced height */
+  right: 2.5rem;
 }
 
 .search-button {
   border-left: none;
-  border-radius: 0 9999px 9999px 0; /* Rounded right corners */
+  border-radius: 0 9999px 9999px 0;
 }
 
 .search-bar input:focus,
@@ -501,24 +608,15 @@ const handleOrientationChange = () => {
   box-shadow: 0 0 0 0 rgba(111, 164, 248, 0.5);
 }
 
-/* Other existing styles */
 .video-container {
-  height: calc(100vh - 130px); /* 120px (搜索栏) + 56px (底部导航栏) */
-  overflow-y: auto;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-}
-
-@media (min-width: 768px) {
-  .video-container {
-    height: calc(100vh - 90px); /* 只考虑搜索栏的高度，因为导航栏在侧边 */
-  }
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .video-container::-webkit-scrollbar {
   width: 0;
   height: 0;
-  display: none; /* Chrome, Safari, Opera */
+  display: none;
 }
 
 .video-thumbnail {
@@ -527,11 +625,13 @@ const handleOrientationChange = () => {
 }
 
 .video-wrapper {
-  @apply absolute top-0 left-0 w-full h-full;
+  @apply absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black;
 }
 
 .video-player {
-  @apply absolute top-0 left-0 w-full h-full object-cover;
+  @apply max-w-full max-h-full;
+  width: 100%;
+  height: 100%;
 }
 
 .video-thumbnail img {
@@ -577,7 +677,6 @@ const handleOrientationChange = () => {
   }
 }
 
-/* 确保视频控件在全屏模式下可见 */
 .video-player::-webkit-media-controls {
   display: flex !important;
   visibility: visible !important;
@@ -593,16 +692,43 @@ const handleOrientationChange = () => {
 
 .video-title {
   flex: 1;
-  min-width: 0; /* 这有助于在flex容器中正确处理文本截断 */
+  min-width: 0;
 }
 
 .downloaded-badge {
   font-size: 0.75rem;
   line-height: 1rem;
-  z-index: 10;
-  display: flex;
-  align-items: center;
+  z-index: 20;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+  backdrop-filter: blur(2px);
 }
 
-/* 可以根据需要调整弹出框的样式 */
+.video-thumbnail:hover .downloaded-badge {
+  opacity: 0.6;
+}
+
+.options-menu {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.option-item {
+  @apply flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150 ease-in-out;
+}
+
+.option-item:first-child {
+  @apply rounded-t-lg;
+}
+
+.option-item:last-child {
+  @apply rounded-b-lg;
+}
+
+.option-item:hover {
+  @apply bg-blue-50 text-blue-600;
+}
+
+.option-item svg {
+  @apply text-gray-400 group-hover:text-blue-500 transition-colors duration-150 ease-in-out;
+}
 </style>
