@@ -18,6 +18,10 @@ class GlobalConfig:
     CHANNEL_UPDATE_DEFAULT_SIZE = 10
     DOWNLOAD_RETRY_THRESHOLD = 5
 
+    DOWNLOAD_CONSUMERS = 1
+    EXTRACT_CONSUMERS = 2
+    SUBSCRIBE_CONSUMERS = 1
+
     @classmethod
     def get_download_root_path(cls):
         """
@@ -129,3 +133,9 @@ class GlobalConfig:
         获取cookie云类型
         """
         return os.getenv('COOKIE_CLOUD_DOMAIN', '')
+
+    @classmethod
+    def load_config(cls):
+        cls.DOWNLOAD_CONSUMERS = int(os.getenv('DOWNLOAD_CONSUMERS', '1'))
+        cls.EXTRACT_CONSUMERS = int(os.getenv('EXTRACT_CONSUMERS', '2'))
+        cls.SUBSCRIBE_CONSUMERS = int(os.getenv('SUBSCRIBE_CONSUMERS', '1'))

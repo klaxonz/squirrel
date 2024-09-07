@@ -10,6 +10,7 @@ from starlette.staticfiles import StaticFiles
 from .task import router as task_router
 from .channel import router as channel_router
 from .channel_video import router as channel_video_router
+from .settings import router as settings_router
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(task_router)
+app.include_router(settings_router)
 app.include_router(channel_router)
 app.include_router(channel_video_router)
 
