@@ -1,38 +1,52 @@
-# 使用基础镜像，这里以Python官方镜像为例
+# Stage 1: Build the frontend
+FROM node:18 AS frontend-builder
+
+WORKDIR /app/frontend
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Copy frontend source code
+COPY media-subscribe-front/package.json media-subscribe-front/pnpm-lock.yaml ./
+COPY media-subscribe-front/ ./
+
+# Install dependencies and build the frontend
+RUN pnpm install --frozen-lockfile && pnpm run build
+
+# Stage 2: Build the backend
 FROM python:3.11-slim
+
+# Install FFmpeg
+COPY --from=jrottenberg/ffmpeg:6.0-ubuntu /usr/local /usr/local
 
 WORKDIR /app
 
-# 安装必要的依赖
-RUN apt-get update && \
-    apt-get install -y \
-    wget \
-    xz-utils \
-    build-essential \
-    nasm \
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libmariadb-dev \
+    libssl1.1 \
     && rm -rf /var/lib/apt/lists/*
 
-# 下载并安装FFmpeg 6.0
-RUN wget https://ffmpeg.org/releases/ffmpeg-6.0.tar.xz \
-    && tar -xJf ffmpeg-6.0.tar.xz \
-    && cd ffmpeg-6.0 \
-    && ./configure --disable-static --enable-shared \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -rf ffmpeg-6.0 ffmpeg-6.0.tar.xz
-
-# 更新动态链接库
-RUN ldconfig
-
-# 安装pipenv
+# Install pipenv
 RUN pip install --no-cache-dir pipenv
 
-# 第二阶段：安装依赖并运行应用
-COPY media-subscribe/Pipfile Pipfile.lock /app/
-COPY ./media-subscribe /app/media-subscribe
-RUN pipenv install --deploy
+# Copy Pipfile and Pipfile.lock
+COPY media-subscribe/Pipfile media-subscribe/Pipfile.lock ./
 
+# Install project dependencies
+RUN pipenv install --deploy --system
+
+# Copy the rest of the application code
+COPY media-subscribe /app/media-subscribe
+
+# Copy the built frontend files to the backend's static directory
+COPY --from=frontend-builder /app/frontend/dist /app/media-subscribe/static
+
+# Set the Python path to include the media-subscribe directory
+ENV PYTHONPATH=/app/media-subscribe:$PYTHONPATH
+
+# Expose the port the app runs on
 EXPOSE 8000
 
-CMD ["pipenv", "run", "python", "media-subscribe/main.py"]
+# Run the application
+CMD ["python", "media-subscribe/main.py"]
