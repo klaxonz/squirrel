@@ -41,6 +41,7 @@
     <OptionsMenu
       v-if="activeOptions !== null"
       :position="optionsPosition"
+      :is-read-page="isReadPage"
       @toggleReadStatus="toggleReadStatus"
       @markReadBatch="markReadBatch"
       @downloadVideo="downloadVideo"
@@ -96,6 +97,8 @@ const tabsWithCounts = computed(() => {
     count: videoCounts.value[tab.value]
   }));
 });
+
+const isReadPage = computed(() => activeTab.value === 'read');
 
 const handleScroll = () => {
   if (loadTrigger.value && videoContainer.value) {
