@@ -12,6 +12,7 @@
       @touchend="handleTouchEnd"
     >
       <div 
+        v-if="showRefreshIndicator"
         class="refresh-indicator flex items-center justify-center"
         :style="{ height: `${refreshHeight}px` }"
       >
@@ -21,25 +22,33 @@
         </svg>
       </div>
 
-      <div 
-        class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
-        :style="{ transform: `translateY(${refreshHeight}px)` }"
-      >
-        <VideoItem
-          v-for="video in videos"
-          :key="video.id"
-          :video="video"
-          @play="playVideo"
-          @setVideoRef="setVideoRef"
-          @videoPlay="onVideoPlay"
-          @videoPause="onVideoPause"
-          @videoEnded="onVideoEnded"
-          @fullscreenChange="onFullscreenChange"
-          @videoMetadataLoaded="onVideoMetadataLoaded"
-          @toggleOptions="toggleOptions"
-          @goToChannel="goToChannelDetail"
-        />
-      </div>
+      <Transition name="fade" mode="out-in">
+        <div 
+          :key="activeTab"
+          class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
+          :style="{ transform: `translateY(${refreshHeight}px)` }"
+        >
+          <template v-if="loading && videos.length === 0">
+            <div v-for="n in 10" :key="n" class="video-item-placeholder animate-pulse bg-gray-200 h-48"></div>
+          </template>
+          <template v-else>
+            <VideoItem
+              v-for="video in videos"
+              :key="video.id"
+              :video="video"
+              @play="playVideo"
+              @setVideoRef="setVideoRef"
+              @videoPlay="onVideoPlay"
+              @videoPause="onVideoPause"
+              @videoEnded="onVideoEnded"
+              @fullscreenChange="onFullscreenChange"
+              @videoMetadataLoaded="onVideoMetadataLoaded"
+              @toggleOptions="toggleOptions"
+              @goToChannel="goToChannelDetail"
+            />
+          </template>
+        </div>
+      </Transition>
 
       <!-- 加载完成状态 -->
       <div v-if="allLoaded" class="text-center py-4">
@@ -143,6 +152,7 @@ const loadMore = async () => {
   console.log('Loading more videos...');
   loading.value = true;
   try {
+    await new Promise(resolve => setTimeout(resolve, 300)); // 添加一个小延迟，使加载更平滑
     const response = await axios.get('/api/channel-video/list', {
       params: {
         page: currentPage.value,
@@ -162,7 +172,7 @@ const loadMore = async () => {
         console.log('No more videos to load');
         allLoaded.value = true;
       } else {
-        videos.value.push(...newVideos);
+        videos.value = [...videos.value, ...newVideos];
         currentPage.value++;
         console.log('New videos added, total count:', videos.value.length);
       }
@@ -192,9 +202,10 @@ const handleSearchClick = () => {
   loadMore();
 };
 
-const refreshContent = async () => {
+const refreshContent = async (showIndicator = false) => {
   console.log('Refreshing content');
   isRefreshing.value = true;
+  showRefreshIndicator.value = showIndicator;
   
   // 保持refreshHeight在刷新过程中
   const currentRefreshHeight = refreshHeight.value;
@@ -209,22 +220,30 @@ const refreshContent = async () => {
   
   // 使用 nextTick 确保 DOM 更新后再进行动画
   nextTick(() => {
-    // 平滑地将refreshHeight重置为0
-    const animation = videoContainer.value.animate(
-      [
-        { transform: `translateY(${currentRefreshHeight}px)` },
-        { transform: 'translateY(0px)' }
-      ],
-      {
-        duration: 300,
-        easing: 'ease-out'
-      }
-    );
-    
-    animation.onfinish = () => {
+    // 只有在显示刷新指示器时才执行动画
+    if (showIndicator) {
+      // 平滑地将refreshHeight重置为0
+      const animation = videoContainer.value.animate(
+        [
+          { transform: `translateY(${currentRefreshHeight}px)` },
+          { transform: 'translateY(0px)' }
+        ],
+        {
+          duration: 300,
+          easing: 'ease-out'
+        }
+      );
+      
+      animation.onfinish = () => {
+        refreshHeight.value = 0;
+        videoContainer.value.style.transform = '';
+        showRefreshIndicator.value = false;
+      };
+    } else {
       refreshHeight.value = 0;
       videoContainer.value.style.transform = '';
-    };
+      showRefreshIndicator.value = false;
+    }
   });
 };
 
@@ -534,20 +553,15 @@ const closeOptionsOnOutsideClick = (event) => {
 // 监听 activeTab 变化
 watch(activeTab, (newValue, oldValue) => {
   console.log('Active tab changed from', oldValue, 'to', newValue);
-  videos.value = [];
-  currentPage.value = 1;
-  allLoaded.value = false;
-  error.value = null;
-  loadMore();
+  refreshContent(false); // 切换标签页时不显示刷新图标
 });
 
 const emitter = inject('emitter');
 
 let touchStartX = 0;
 let touchStartY = 0;
-let touchEndX = 0;
-let touchEndY = 0;
 let isHorizontalSwipe = false;
+let swipeThreshold = 50;
 
 const handleTouchStart = (event) => {
   touchStartX = event.touches[0].clientX;
@@ -556,60 +570,62 @@ const handleTouchStart = (event) => {
 };
 
 const handleTouchMove = (event) => {
+  if (isHorizontalSwipe) {
+    event.preventDefault();
+    return;
+  }
+
   const currentX = event.touches[0].clientX;
   const currentY = event.touches[0].clientY;
   const diffX = currentX - touchStartX;
   const diffY = currentY - touchStartY;
 
-  if (!isHorizontalSwipe && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
+  if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
     isHorizontalSwipe = true;
-  }
-
-  if (isHorizontalSwipe) {
     event.preventDefault();
   } else if (diffY > 0 && videoContainer.value.scrollTop === 0) {
-    refreshHeight.value = Math.min(diffY * 0.5, 60); // 限制最大高度为60px
+    refreshHeight.value = Math.min(diffY * 0.5, 60);
     event.preventDefault();
   }
 };
 
 const handleTouchEnd = (event) => {
-  touchEndX = event.changedTouches[0].clientX;
-  touchEndY = event.changedTouches[0].clientY;
+  const touchEndX = event.changedTouches[0].clientX;
+  const touchEndY = event.changedTouches[0].clientY;
+  const diffX = touchEndX - touchStartX;
 
   if (isHorizontalSwipe) {
-    handleSwipe();
+    handleSwipe(diffX);
   } else {
-    handleVerticalSwipe();
+    handleVerticalSwipe(touchEndY - touchStartY);
   }
+
+  isHorizontalSwipe = false;
 };
 
-const handleSwipe = () => {
-  const swipeThreshold = 50;
-  const swipeDistance = touchEndX - touchStartX;
-
+const handleSwipe = (swipeDistance) => {
   console.log('Swipe distance:', swipeDistance);
   console.log('Current active tab:', activeTab.value);
 
-  if (Math.abs(swipeDistance) > swipeThreshold) {
-    const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
-    console.log('Current index:', currentIndex);
+  const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
+  console.log('Current index:', currentIndex);
 
-    if (swipeDistance > 0 && currentIndex > 0) {
-      console.log('Swiping right to:', tabs[currentIndex - 1].value);
-      activeTab.value = tabs[currentIndex - 1].value;
-    } else if (swipeDistance < 0 && currentIndex < tabs.length - 1) {
-      console.log('Swiping left to:', tabs[currentIndex + 1].value);
-      activeTab.value = tabs[currentIndex + 1].value;
-    }
+  if (swipeDistance > swipeThreshold && currentIndex > 0) {
+    console.log('Swiping right to:', tabs[currentIndex - 1].value);
+    activeTab.value = tabs[currentIndex - 1].value;
+    refreshContent(false); // 切换标签页时不显示刷新图标
+  } else if (swipeDistance < -swipeThreshold && currentIndex < tabs.length - 1) {
+    console.log('Swiping left to:', tabs[currentIndex + 1].value);
+    activeTab.value = tabs[currentIndex + 1].value;
+    refreshContent(false); // 切换标签页时不显示刷新图标
   }
 
   console.log('New active tab:', activeTab.value);
 };
 
-const handleVerticalSwipe = () => {
-  if (refreshHeight.value >= 50) {
-    refreshContent();
+const handleVerticalSwipe = (swipeDistance) => {
+  if (swipeDistance > 50 && refreshHeight.value >= 50) {
+    refreshContent(true); // 下拉刷新时显示刷新图标
   } else {
     // 如果没有触发刷新，平滑地将refreshHeight重置为0
     const animation = videoContainer.value.animate(
@@ -722,7 +738,7 @@ const touchMove = (e) => {
 
 const touchEnd = () => {
   if (refreshHeight.value >= 50) {
-    refreshContent();
+    refreshContent(true); // 下拉刷新时显示刷新图标
   } else {
     // 如果没有触发刷新，平滑地将refreshHeight重置为0
     const animation = refreshHeight.value.animate(
@@ -740,6 +756,9 @@ const touchEnd = () => {
     };
   }
 };
+
+// 添加一个新的 ref 来控制是否显示刷新图标
+const showRefreshIndicator = ref(false);
 </script>
 
 <style scoped>
