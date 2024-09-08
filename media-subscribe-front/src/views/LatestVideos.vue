@@ -3,8 +3,28 @@
     <SearchBar @search="handleSearch" ref="searchBar" />
     <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 
-    <div class="video-container flex-grow overflow-y-auto" ref="videoContainer" @scroll="handleScroll">
-      <div class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2">
+    <div 
+      class="video-container flex-grow overflow-y-auto relative" 
+      ref="videoContainer" 
+      @scroll="handleScroll"
+      @touchstart="touchStart"
+      @touchmove="touchMove"
+      @touchend="touchEnd"
+    >
+      <div 
+        class="refresh-indicator flex items-center justify-center"
+        :style="{ height: `${refreshHeight}px` }"
+      >
+        <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+
+      <div 
+        class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
+        :style="{ transform: `translateY(${refreshHeight}px)` }"
+      >
         <VideoItem
           v-for="video in videos"
           :key="video.id"
@@ -19,11 +39,6 @@
           @toggleOptions="toggleOptions"
           @goToChannel="goToChannelDetail"
         />
-      </div>
-
-      <!-- 加载状态 -->
-      <div v-if="loading" class="text-center py-4">
-        <p>加载中...</p>
       </div>
 
       <!-- 加载完成状态 -->
@@ -177,12 +192,51 @@ const handleSearchClick = () => {
   loadMore();
 };
 
-const refreshList = () => {
+const refreshContent = async () => {
+  console.log('Refreshing content');
+  isRefreshing.value = true;
+  
+  // 保持refreshHeight在刷新过程中
+  const currentRefreshHeight = refreshHeight.value;
+  
   videos.value = [];
   currentPage.value = 1;
   allLoaded.value = false;
   error.value = null;
-  loadMore();
+  await loadMore();
+  
+  isRefreshing.value = false;
+  
+  // 使用 nextTick 确保 DOM 更新后再进行动画
+  nextTick(() => {
+    // 平滑地将refreshHeight重置为0
+    const animation = videoContainer.value.animate(
+      [
+        { transform: `translateY(${currentRefreshHeight}px)` },
+        { transform: 'translateY(0px)' }
+      ],
+      {
+        duration: 300,
+        easing: 'ease-out'
+      }
+    );
+    
+    animation.onfinish = () => {
+      refreshHeight.value = 0;
+      videoContainer.value.style.transform = '';
+    };
+  });
+};
+
+const scrollToTopAndRefresh = () => {
+  console.log('Scrolling to top and refreshing');
+  if (videoContainer.value) {
+    videoContainer.value.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+  refreshContent();
 };
 
 const toggleReadStatus = async (isRead) => {
@@ -194,7 +248,7 @@ const toggleReadStatus = async (isRead) => {
         is_read: isRead
       });
       showToast(`视频已标记为${isRead ? '已读' : '未读'}`);
-      refreshList(); // 刷新列表
+      refreshContent(); // 刷新列表
     } catch (error) {
       console.error('更新阅读状态失败:', error);
       showToast('更新阅读状态失败', true);
@@ -212,7 +266,7 @@ const markReadBatch = async (direction) => {
         reference_id: activeVideo.value.id
       });
       showToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为已读`);
-      refreshList(); // 刷新列表
+      refreshContent(); // 刷新列表
     } catch (error) {
       console.error('批量更新阅读状态失败:', error);
       showToast('批量更新阅读状态失败', true);
@@ -231,7 +285,7 @@ const dislikeVideo = async () => {
 
       if (response.data.code === 0) {
         showToast('已标记为不喜欢');
-        refreshList(); // 刷新列表
+        refreshContent(); // 刷新列表
       } else {
         throw new Error(response.data.msg || '操作失败');
       }
@@ -488,26 +542,6 @@ watch(activeTab, () => {
 
 const emitter = inject('emitter');
 
-const scrollToTopAndRefresh = () => {
-  console.log('Scrolling to top and refreshing');
-  if (videoContainer.value) {
-    videoContainer.value.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  }
-  refreshContent();
-};
-
-const refreshContent = () => {
-  console.log('Refreshing content');
-  videos.value = [];
-  currentPage.value = 1;
-  allLoaded.value = false;
-  error.value = null;
-  loadMore();
-};
-
 onMounted(() => {
   console.log('Component mounted, loading initial videos...');
   loadMore();
@@ -564,30 +598,43 @@ const setVideoRef = (id, el) => {
   if (el) videoRefs.value[id] = el;
 };
 
-const toggleScroll = (scrollToTop) => {
-  console.log('Toggle scroll called, scrolling to:', scrollToTop ? 'top' : 'bottom');
-  if (videoContainer.value) {
-    videoContainer.value.scrollTo({
-      top: scrollToTop ? 0 : videoContainer.value.scrollHeight,
-      behavior: 'smooth'
-    });
-    if (scrollToTop) {
-      refreshContent();
-    }
+const refreshHeight = ref(0);
+const isRefreshing = ref(false);
+let startY = 0;
+
+const touchStart = (e) => {
+  startY = e.touches[0].clientY;
+};
+
+const touchMove = (e) => {
+  const currentY = e.touches[0].clientY;
+  const diff = currentY - startY;
+  if (diff > 0 && videoContainer.value.scrollTop === 0) {
+    refreshHeight.value = Math.min(diff * 0.5, 60); // 限制最大高度为60px
+    e.preventDefault();
   }
 };
 
-onMounted(() => {
-  // ... 其他 onMounted 代码 ...
-  emitter.on('toggleScroll', toggleScroll);
-  emitter.on('refreshContent', refreshContent);
-});
-
-onUnmounted(() => {
-  // ... 其他 onUnmounted 代码 ...
-  emitter.off('toggleScroll', toggleScroll);
-  emitter.off('refreshContent', refreshContent);
-});
+const touchEnd = () => {
+  if (refreshHeight.value >= 50) {
+    refreshContent();
+  } else {
+    // 如果没有触发刷新，平滑地将refreshHeight重置为0
+    const animation = refreshHeight.value.animate(
+      [
+        { height: `${refreshHeight.value}px` },
+        { height: '0px' }
+      ],
+      {
+        duration: 300,
+        easing: 'ease-out'
+      }
+    );
+    animation.onfinish = () => {
+      refreshHeight.value = 0;
+    };
+  }
+};
 </script>
 
 <style scoped>
@@ -636,5 +683,30 @@ onUnmounted(() => {
   border-radius: 0.25rem;
   padding: 0.125rem 0.25rem;
   margin-left: 0.25rem;
+}
+
+.refresh-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f3f4f6;
+  transition: height 0.3s ease;
+  overflow: hidden;
+}
+
+.video-grid {
+  transition: transform 0.3s ease;
+}
+
+.video-container {
+  transition: transform 0.3s ease;
+}
+
+.video-grid {
+  transition: transform 0.3s ease;
 }
 </style>
