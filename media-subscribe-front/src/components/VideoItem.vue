@@ -1,5 +1,5 @@
 <template>
-  <div class="video-item lg:mt-3 md:mt-3 sm:mt-3 lg:rounded-lg bg-white shadow-sm overflow-hidden relative">
+  <div class="video-item bg-white shadow-sm overflow-hidden relative">
     <div class="video-thumbnail relative cursor-pointer">
       <img
         v-if="!video.isPlaying"
@@ -103,9 +103,6 @@ const formatDate = (dateString) => {
 </script>
 
 <style scoped>
-.video-item {
-  @apply lg:mt-3 md:mt-3 sm:mt-3 lg:rounded-lg bg-white shadow-sm overflow-hidden relative;
-}
 
 .video-thumbnail {
   @apply relative pt-[56.25%] cursor-pointer;
@@ -154,20 +151,6 @@ const formatDate = (dateString) => {
 .downloaded-badge {
   @apply absolute top-2 right-2 bg-gray-200 bg-opacity-70 text-gray-700 px-2 py-0.5 rounded-full text-xs font-medium opacity-80 hover:opacity-60 transition-opacity duration-200;
   backdrop-filter: blur(2px);
-}
-
-@media (min-width: 640px) {
-  .video-item {
-    @apply flex;
-  }
-
-  .video-thumbnail {
-    @apply w-1/2 pt-[28.125%];
-  }
-
-  .video-info {
-    @apply w-1/2 flex flex-col justify-between p-3;
-  }
 }
 
 .video-player::-webkit-media-controls {

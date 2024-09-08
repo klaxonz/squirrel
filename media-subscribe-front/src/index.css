@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-2xs {
+    font-size: 0.65rem;
+    line-height: 0.75rem;
+  }
+}

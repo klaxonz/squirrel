@@ -6,6 +6,7 @@ import InfiniteLoading from "v3-infinite-loading";
 import "v3-infinite-loading/lib/style.css";
 import Toast from 'vue-toastification';
 import 'vue-toastification/dist/index.css';
+import './index.css';
 
 const app = createApp(App)
 app.use(router)
