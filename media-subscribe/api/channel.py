@@ -26,7 +26,7 @@ class SubscribeChannelRequest(BaseModel):
 
 @router.post("/api/channel/subscribe")
 def subscribe_channel(req: SubscribeChannelRequest):
-    subscribe_queue = RedisMessageQueue(queue_name=QUEUE_SUBSCRIBE_TASK)
+    subscribe_queue = RedisMessageQueue(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
     task = {
         "url": req.url,
     }
