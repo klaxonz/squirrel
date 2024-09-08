@@ -22,63 +22,65 @@
         <span class="text-gray-600">刷新中</span>
       </div>
 
-      <transition-group 
-        :name="transitionName"
-        tag="div"
-        class="tab-content-wrapper"
-      >
-        <div 
-          v-for="tab in tabs" 
-          :key="tab.value"
-          v-show="activeTab === tab.value"
-          class="tab-content"
+      <div class="tab-content-wrapper">
+        <transition-group 
+          :name="transitionName"
+          tag="div"
+          class="tab-content-inner"
         >
           <div 
-            class="refresh-wrapper"
-            :style="{ transform: `translateY(${refreshHeight}px)` }"
+            v-for="tab in tabs" 
+            :key="tab.value"
+            v-show="activeTab === tab.value"
+            class="tab-content"
           >
-            <div
-              class="scroll-content"
-              @scroll="handleScroll"
-              :class="{ 'no-scroll': isResetting }"
+            <div 
+              class="refresh-wrapper"
+              :style="{ transform: `translateY(${refreshHeight}px)` }"
             >
-              <TransitionGroup 
-                name="video-list" 
-                tag="div" 
-                class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
+              <div
+                class="scroll-content"
+                @scroll="handleScroll"
+                :class="{ 'no-scroll': isResetting }"
               >
-                <template v-if="loading && videos.length === 0">
-                  <div v-for="n in 10" :key="n" class="video-item-placeholder animate-pulse bg-gray-200 h-48"></div>
-                </template>
-                <template v-else>
-                  <VideoItem
-                    v-for="video in videos"
-                    :key="video.id"
-                    :video="video"
-                    @play="playVideo"
-                    @setVideoRef="setVideoRef"
-                    @videoPlay="onVideoPlay"
-                    @videoPause="onVideoPause"
-                    @videoEnded="onVideoEnded"
-                    @fullscreenChange="onFullscreenChange"
-                    @videoMetadataLoaded="onVideoMetadataLoaded"
-                    @toggleOptions="toggleOptions"
-                    @goToChannel="goToChannelDetail"
-                  />
-                </template>
-              </TransitionGroup>
+                <TransitionGroup 
+                  name="video-list" 
+                  tag="div" 
+                  class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
+                >
+                  <template v-if="loading && videos.length === 0">
+                    <div v-for="n in 10" :key="n" class="video-item-placeholder animate-pulse bg-gray-200 h-48"></div>
+                  </template>
+                  <template v-else>
+                    <VideoItem
+                      v-for="video in videos"
+                      :key="video.id"
+                      :video="video"
+                      @play="playVideo"
+                      @setVideoRef="setVideoRef"
+                      @videoPlay="onVideoPlay"
+                      @videoPause="onVideoPause"
+                      @videoEnded="onVideoEnded"
+                      @fullscreenChange="onFullscreenChange"
+                      @videoMetadataLoaded="onVideoMetadataLoaded"
+                      @toggleOptions="toggleOptions"
+                      @goToChannel="goToChannelDetail"
+                    />
+                  </template>
+                </TransitionGroup>
 
-              <!-- 加载完成状态 -->
-              <div v-if="allLoaded" class="text-center py-4">
-                <p>没有更多视频了</p>
+                <!-- 加载完成状态 -->
+                <div v-if="allLoaded" class="text-center py-4">
+                  <p>没有更多视频了</p>
+                </div>
+
+                <!-- 添加一个用于触发加载的元素 -->
+                <div ref="setLoadTrigger" class="h-1 load-trigger"></div>
               </div>
-
-              <!-- 添加一个用于触发加载的元素 -->
-              <div ref="setLoadTrigger" class="h-1 load-trigger"></div>
             </div>
           </div>
-        </div>
-      </transition-group>
+        </transition-group>
+      </div>
     </div>
   </div>
 
@@ -684,15 +686,15 @@ const handleTouchEnd = (event) => {
   isHorizontalSwipe = false;
 };
 
-const transitionName = ref('fade');
+const transitionName = ref('slide-right');
 
 const handleSwipe = (swipeDistance) => {
   const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
   if (swipeDistance > swipeThreshold && currentIndex > 0) {
-    transitionName.value = 'fade-right';
+    transitionName.value = 'slide-right';
     activeTab.value = tabs[currentIndex - 1].value;
   } else if (swipeDistance < -swipeThreshold && currentIndex < tabs.length - 1) {
-    transitionName.value = 'fade-left';
+    transitionName.value = 'slide-left';
     activeTab.value = tabs[currentIndex + 1].value;
   }
 };
