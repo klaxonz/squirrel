@@ -488,13 +488,24 @@ watch(activeTab, () => {
 
 const emitter = inject('emitter');
 
-const scrollToTop = () => {
+const scrollToTopAndRefresh = () => {
+  console.log('Scrolling to top and refreshing');
   if (videoContainer.value) {
     videoContainer.value.scrollTo({
       top: 0,
       behavior: 'smooth'
     });
   }
+  refreshContent();
+};
+
+const refreshContent = () => {
+  console.log('Refreshing content');
+  videos.value = [];
+  currentPage.value = 1;
+  allLoaded.value = false;
+  error.value = null;
+  loadMore();
 };
 
 onMounted(() => {
@@ -507,7 +518,8 @@ onMounted(() => {
   document.addEventListener('click', closeOptionsOnOutsideClick);
   adjustVideoContainerHeight();
   window.addEventListener('resize', adjustVideoContainerHeight);
-  emitter.on('scrollToTop', scrollToTop);
+  emitter.on('scrollToTopAndRefresh', scrollToTopAndRefresh);
+  emitter.on('refreshContent', refreshContent);
 });
 
 onUnmounted(() => {
@@ -519,7 +531,8 @@ onUnmounted(() => {
   window.removeEventListener('resize', adjustVideoContainerHeight);
   // 清理所有的 Intersection Observers
   Object.values(observers.value).forEach(observer => observer.disconnect());
-  emitter.off('scrollToTop', scrollToTop);
+  emitter.off('scrollToTopAndRefresh', scrollToTopAndRefresh);
+  emitter.off('refreshContent', refreshContent);
 });
 
 const handleOrientationChange = () => {
@@ -550,6 +563,31 @@ const adjustVideoContainerHeight = () => {
 const setVideoRef = (id, el) => {
   if (el) videoRefs.value[id] = el;
 };
+
+const toggleScroll = (scrollToTop) => {
+  console.log('Toggle scroll called, scrolling to:', scrollToTop ? 'top' : 'bottom');
+  if (videoContainer.value) {
+    videoContainer.value.scrollTo({
+      top: scrollToTop ? 0 : videoContainer.value.scrollHeight,
+      behavior: 'smooth'
+    });
+    if (scrollToTop) {
+      refreshContent();
+    }
+  }
+};
+
+onMounted(() => {
+  // ... 其他 onMounted 代码 ...
+  emitter.on('toggleScroll', toggleScroll);
+  emitter.on('refreshContent', refreshContent);
+});
+
+onUnmounted(() => {
+  // ... 其他 onUnmounted 代码 ...
+  emitter.off('toggleScroll', toggleScroll);
+  emitter.off('refreshContent', refreshContent);
+});
 </script>
 
 <style scoped>

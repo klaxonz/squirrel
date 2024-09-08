@@ -11,7 +11,7 @@
     </div>
 
     <!-- 底部导航栏 -->
-    <nav class="nav-bar w-full" @dblclick="emitScrollToTop">
+    <nav class="nav-bar w-full" @dblclick.prevent="handleNavBarDoubleClick">
       <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -37,6 +37,12 @@
         </svg>
         <span class="nav-text">设置</span>
       </router-link>
+      <button @click="refreshContent" class="nav-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span class="nav-text">刷新</span>
+      </button>
     </nav>
   </div>
 </template>
@@ -48,9 +54,18 @@ import mitt from 'mitt';
 const emitter = mitt();
 provide('emitter', emitter);
 
-const emitScrollToTop = () => {
-  emitter.emit('scrollToTop');
+const handleNavBarDoubleClick = () => {
+  console.log('Double click detected, scrolling to top and refreshing');
+  emitter.emit('scrollToTopAndRefresh');
 };
+
+// 提供一个刷新方法
+const refreshContent = () => {
+  console.log('Refresh content triggered');
+  emitter.emit('refreshContent');
+};
+
+provide('refreshContent', refreshContent);
 </script>
 
 <style scoped>
