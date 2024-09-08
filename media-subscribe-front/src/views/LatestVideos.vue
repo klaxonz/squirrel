@@ -33,6 +33,7 @@
             :key="tab.value"
             v-show="activeTab === tab.value"
             class="tab-content"
+            :ref="el => { if (el) tabContents[tab.value] = el.querySelector('.scroll-content') }"
           >
             <div 
               class="refresh-wrapper"
@@ -127,6 +128,12 @@ let lastScrollTop = 0;
 const observers = ref({});
 
 const activeTab = ref('all');
+const tabContents = ref({
+  all: null,
+  unread: null,
+  read: null
+});
+
 const tabs = [
   { label: '全部', value: 'all' },
   { label: '未读', value: 'unread' },
@@ -147,6 +154,14 @@ const tabsWithCounts = computed(() => {
 });
 
 const isReadPage = computed(() => activeTab.value === 'read');
+
+const tabScrollPositions = ref({
+  all: 0,
+  unread: 0,
+  read: 0
+});
+
+const isAtTopStart = ref(true);
 
 const handleScroll = (event) => {
   if (!loadTrigger.value) {
@@ -174,6 +189,13 @@ const handleScroll = (event) => {
 
   // 在滚动时关闭选项菜单
   closeOptions();
+
+  // 保存当前标签页的滚动位置
+  tabScrollPositions.value[activeTab.value] = scrollTop;
+  console.log('Saved scroll position for tab:', activeTab.value, 'Position:', scrollTop);
+
+  isAtTopStart.value = scrollTop <= 1;
+  console.log('Updated isAtTopStart on scroll:', isAtTopStart.value);
 };
 
 const loadMore = async () => {
@@ -609,7 +631,23 @@ const closeOptionsOnOutsideClick = (event) => {
 // 监听 activeTab 变化
 watch(activeTab, (newValue, oldValue) => {
   console.log('Active tab changed from', oldValue, 'to', newValue);
-  refreshContent(false); // 切换标签页时不显示刷新图标
+  resetPullToRefreshState(); // 重置下拉刷新相关的所有状态
+  nextTick(() => {
+    const scrollContent = tabContents.value[newValue];
+    if (scrollContent) {
+      console.log('Scroll content found for tab:', newValue);
+      console.log('Current scrollTop:', scrollContent.scrollTop);
+      // 恢复新标签页的滚动位置
+      scrollContent.scrollTop = tabScrollPositions.value[newValue];
+      console.log('Set scrollTop to:', tabScrollPositions.value[newValue]);
+      // 更新 isAtTopStart
+      isAtTopStart.value = scrollContent.scrollTop <= 1;
+      console.log('Updated isAtTopStart:', isAtTopStart.value);
+    } else {
+      console.warn('Scroll content not found for tab:', newValue);
+    }
+    refreshContent(false); // 切换标签页时不显示刷新图标
+  });
 });
 
 const emitter = inject('emitter');
@@ -627,7 +665,25 @@ let initialTouchY = 0;
 let lastTouchY = 0;
 let pullStarted = false;
 
+const resetPullToRefreshState = () => {
+  pullStarted = false;
+  isHorizontalSwipe = false;
+  refreshHeight.value = 0;
+  showRefreshIndicator.value = false;
+};
+
 const handleTouchStart = (event) => {
+  const scrollContent = tabContents.value[activeTab.value];
+  if (scrollContent) {
+    isAtTopStart.value = scrollContent.scrollTop <= 1;
+    // 更新当前标签页的滚动位置
+    tabScrollPositions.value[activeTab.value] = scrollContent.scrollTop;
+    console.log('Touch start, isAtTopStart:', isAtTopStart.value, 'scrollTop:', scrollContent.scrollTop);
+  } else {
+    isAtTopStart.value = false;
+    console.warn('Scroll content not found for tab:', activeTab.value);
+  }
+
   touchStartX = event.touches[0].clientX;
   touchStartY = event.touches[0].clientY;
   initialTouchY = touchStartY;
@@ -637,6 +693,20 @@ const handleTouchStart = (event) => {
 };
 
 const handleTouchMove = (event) => {
+  if (!isAtTopStart.value) {
+    return;
+  }
+
+  const scrollContent = tabContents.value[activeTab.value];
+  const isAtTop = scrollContent ? scrollContent.scrollTop <= 1 : false;
+
+  console.log('Touch move, isAtTop:', isAtTop, 'scrollTop:', scrollContent ? scrollContent.scrollTop : 'N/A');
+
+  if (!isAtTop) {
+    resetPullToRefreshState();
+    return;
+  }
+
   const currentX = event.touches[0].clientX;
   const currentY = event.touches[0].clientY;
   const diffX = currentX - touchStartX;
@@ -647,11 +717,13 @@ const handleTouchMove = (event) => {
   }
 
   if (isHorizontalSwipe) {
-    event.preventDefault();
-    return;
+    return; // 允许默认的水平滑动行为
   }
 
-  if (videoContainer.value.querySelector('.scroll-content').scrollTop === 0 && diffY > 0 && !pullStarted) {
+  // 添加一个小的阈值，防止轻微的向上滑动触发下拉刷新
+  const pullDownThreshold = 5;
+
+  if (diffY > pullDownThreshold && !pullStarted) {
     pullStarted = true;
     event.preventDefault();
   }
@@ -660,13 +732,18 @@ const handleTouchMove = (event) => {
     const deltaY = currentY - lastTouchY;
     lastTouchY = currentY;
 
-    refreshHeight.value = Math.max(0, Math.min(
-      refreshHeight.value + deltaY * RESISTANCE_FACTOR,
-      MAX_PULL_DISTANCE
-    ));
+    // 只有当下拉距离大于0时才更新refreshHeight
+    if (refreshHeight.value + deltaY * RESISTANCE_FACTOR > 0) {
+      refreshHeight.value = Math.max(0, Math.min(
+        refreshHeight.value + deltaY * RESISTANCE_FACTOR,
+        MAX_PULL_DISTANCE
+      ));
 
-    showRefreshIndicator.value = true;
-    event.preventDefault();
+      showRefreshIndicator.value = true;
+      event.preventDefault();
+    } else {
+      resetPullToRefreshState();
+    }
   }
 };
 
@@ -682,8 +759,7 @@ const handleTouchEnd = (event) => {
       resetRefreshState();
     }
   }
-  pullStarted = false;
-  isHorizontalSwipe = false;
+  resetPullToRefreshState();
 };
 
 const transitionName = ref('slide-right');
@@ -702,9 +778,6 @@ const handleSwipe = (swipeDistance) => {
 onMounted(() => {
   console.log('Component mounted, loading initial videos...');
   loadMore();
-  if (videoContainer.value) {
-    videoContainer.value.addEventListener('scroll', handleScroll);
-  }
   window.addEventListener('orientationchange', handleOrientationChange);
   document.addEventListener('click', closeOptionsOnOutsideClick);
   adjustVideoContainerHeight();
@@ -735,6 +808,36 @@ onMounted(() => {
       }
     }
   }, 100);
+
+  // 确保所有标签页的滚动容器都被正确初始化
+  nextTick(() => {
+    tabs.forEach(tab => {
+      if (tabContents.value[tab.value]) {
+        console.log('Initialized scroll content for tab:', tab.value);
+        tabContents.value[tab.value].addEventListener('scroll', handleScroll);
+      } else {
+        console.warn('Failed to initialize scroll content for tab:', tab.value);
+      }
+    });
+  });
+});
+
+onUnmounted(() => {
+  if (videoContainer.value) {
+    videoContainer.value.removeEventListener('scroll', handleScroll);
+  }
+  window.removeEventListener('orientationchange', handleOrientationChange);
+  document.removeEventListener('click', closeOptionsOnOutsideClick);
+  window.removeEventListener('resize', adjustVideoContainerHeight);
+  emitter.off('scrollToTopAndRefresh', scrollToTopAndRefresh);
+  emitter.off('refreshContent', refreshContent);
+
+  // 移除所有标签页的滚动事件监听器
+  tabs.forEach(tab => {
+    if (tabContents.value[tab.value]) {
+      tabContents.value[tab.value].removeEventListener('scroll', handleScroll);
+    }
+  });
 });
 
 onUnmounted(() => {
