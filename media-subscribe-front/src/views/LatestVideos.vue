@@ -52,7 +52,7 @@
 </template>
 
 <script setup>
-import { nextTick, onMounted, onUnmounted, ref, watch, computed } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch, computed, inject } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '../utils/axios';
 import SearchBar from '../components/SearchBar.vue';
@@ -486,6 +486,17 @@ watch(activeTab, () => {
   loadMore();
 });
 
+const emitter = inject('emitter');
+
+const scrollToTop = () => {
+  if (videoContainer.value) {
+    videoContainer.value.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+};
+
 onMounted(() => {
   console.log('Component mounted, loading initial videos...');
   loadMore();
@@ -496,6 +507,7 @@ onMounted(() => {
   document.addEventListener('click', closeOptionsOnOutsideClick);
   adjustVideoContainerHeight();
   window.addEventListener('resize', adjustVideoContainerHeight);
+  emitter.on('scrollToTop', scrollToTop);
 });
 
 onUnmounted(() => {
@@ -507,6 +519,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', adjustVideoContainerHeight);
   // 清理所有的 Intersection Observers
   Object.values(observers.value).forEach(observer => observer.disconnect());
+  emitter.off('scrollToTop', scrollToTop);
 });
 
 const handleOrientationChange = () => {

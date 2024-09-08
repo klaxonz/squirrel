@@ -133,7 +133,7 @@ const formatDate = (dateString) => {
 }
 
 .video-title:hover {
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .video-channel {

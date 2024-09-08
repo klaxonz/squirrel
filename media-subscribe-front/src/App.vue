@@ -11,7 +11,7 @@
     </div>
 
     <!-- 底部导航栏 -->
-    <nav class="nav-bar w-full">
+    <nav class="nav-bar w-full" @dblclick="emitScrollToTop">
       <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -42,7 +42,15 @@
 </template>
 
 <script setup>
-// 如需要的话，这里可以添加组件逻辑
+import { provide } from 'vue';
+import mitt from 'mitt';
+
+const emitter = mitt();
+provide('emitter', emitter);
+
+const emitScrollToTop = () => {
+  emitter.emit('scrollToTop');
+};
 </script>
 
 <style scoped>
@@ -75,6 +83,7 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
+  user-select: none; /* 防止双击选中文字 */
 }
 
 .nav-item {
