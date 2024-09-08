@@ -4,60 +4,68 @@
     <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 
     <div 
-      class="video-container flex-grow overflow-y-auto relative" 
+      class="video-container flex-grow relative overflow-hidden"
       ref="videoContainer" 
-      @scroll="handleScroll"
       @touchstart="handleTouchStart"
       @touchmove="handleTouchMove"
       @touchend="handleTouchEnd"
     >
       <div 
-        v-if="showRefreshIndicator"
-        class="refresh-indicator flex items-center justify-center"
+        class="refresh-indicator flex items-center justify-center absolute top-0 left-0 right-0 z-10"
+        :class="{ 'visible': showRefreshIndicator }"
         :style="{ height: `${refreshHeight}px` }"
       >
-        <svg class="animate-spin h-5 w-5 text-gray-500" viewBox="0 0 24 24">
+        <svg class="animate-spin h-5 w-5 text-gray-500 mr-2" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span class="ml-2 text-gray-600">{{ refreshText }}</span>
+        <span class="text-gray-600">刷新中</span>
       </div>
 
-      <Transition name="fade" mode="out-in">
-        <div 
-          :key="activeTab"
-          class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
-          :style="{ transform: `translateY(${refreshHeight}px)` }"
+      <div 
+        class="refresh-wrapper"
+        :style="{ transform: `translateY(${refreshHeight}px)` }"
+      >
+        <div
+          class="scroll-content"
+          @scroll="handleScroll"
+          :class="{ 'no-scroll': isResetting }"
         >
-          <template v-if="loading && videos.length === 0">
-            <div v-for="n in 10" :key="n" class="video-item-placeholder animate-pulse bg-gray-200 h-48"></div>
-          </template>
-          <template v-else>
-            <VideoItem
-              v-for="video in videos"
-              :key="video.id"
-              :video="video"
-              @play="playVideo"
-              @setVideoRef="setVideoRef"
-              @videoPlay="onVideoPlay"
-              @videoPause="onVideoPause"
-              @videoEnded="onVideoEnded"
-              @fullscreenChange="onFullscreenChange"
-              @videoMetadataLoaded="onVideoMetadataLoaded"
-              @toggleOptions="toggleOptions"
-              @goToChannel="goToChannelDetail"
-            />
-          </template>
+          <TransitionGroup 
+            name="video-list" 
+            tag="div" 
+            class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
+          >
+            <template v-if="loading && videos.length === 0">
+              <div v-for="n in 10" :key="n" class="video-item-placeholder animate-pulse bg-gray-200 h-48"></div>
+            </template>
+            <template v-else>
+              <VideoItem
+                v-for="video in videos"
+                :key="video.id"
+                :video="video"
+                @play="playVideo"
+                @setVideoRef="setVideoRef"
+                @videoPlay="onVideoPlay"
+                @videoPause="onVideoPause"
+                @videoEnded="onVideoEnded"
+                @fullscreenChange="onFullscreenChange"
+                @videoMetadataLoaded="onVideoMetadataLoaded"
+                @toggleOptions="toggleOptions"
+                @goToChannel="goToChannelDetail"
+              />
+            </template>
+          </TransitionGroup>
+
+          <!-- 加载完成状态 -->
+          <div v-if="allLoaded" class="text-center py-4">
+            <p>没有更多视频了</p>
+          </div>
+
+          <!-- 添加一个用于触发加载的元素 -->
+          <div ref="loadTrigger" class="h-1"></div>
         </div>
-      </Transition>
-
-      <!-- 加载完成状态 -->
-      <div v-if="allLoaded" class="text-center py-4">
-        <p>没有更多视频了</p>
       </div>
-
-      <!-- 添加一个用于触发加载的元素 -->
-      <div ref="loadTrigger" class="h-1"></div>
     </div>
   </div>
 
@@ -125,9 +133,9 @@ const tabsWithCounts = computed(() => {
 
 const isReadPage = computed(() => activeTab.value === 'read');
 
-const handleScroll = () => {
-  if (loadTrigger.value && videoContainer.value) {
-    const containerRect = videoContainer.value.getBoundingClientRect();
+const handleScroll = (event) => {
+  if (loadTrigger.value && event.target) {
+    const containerRect = event.target.getBoundingClientRect();
     const triggerRect = loadTrigger.value.getBoundingClientRect();
 
     if (triggerRect.top <= containerRect.bottom + 100) {
@@ -135,7 +143,7 @@ const handleScroll = () => {
       loadMore();
     }
 
-    const scrollTop = videoContainer.value.scrollTop;
+    const scrollTop = event.target.scrollTop;
     isScrollingUp.value = scrollTop < lastScrollTop;
     lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
 
@@ -207,31 +215,68 @@ const refreshContent = async (showIndicator = false) => {
   console.log('Refreshing content');
   isRefreshing.value = true;
   showRefreshIndicator.value = showIndicator;
-  refreshText.value = '正在刷新...';
   
-  // 保持refreshHeight在刷新过程中
-  const currentRefreshHeight = refreshHeight.value;
-  
-  videos.value = [];
-  currentPage.value = 1;
-  allLoaded.value = false;
-  error.value = null;
-  await loadMore();
-  
-  isRefreshing.value = false;
-  
-  // 使用 nextTick 确保 DOM 更新后再进行动画
-  nextTick(() => {
-    if (showIndicator) {
-      setTimeout(() => {
-        resetRefreshState();
-      }, 500); // 给用户一个视觉反馈的时间
+  try {
+    const response = await axios.get('/api/channel-video/list', {
+      params: {
+        page: 1,
+        pageSize: 10,
+        query: searchQuery.value,
+        read_status: activeTab.value === 'all' ? null : activeTab.value
+      }
+    });
+
+    if (response.data.code === 0) {
+      const newVideos = response.data.data.data.map(video => ({
+        ...video,
+        isPlaying: false,
+        video_url: null
+      }));
+      
+      videos.value = newVideos;
+      currentPage.value = 1;
+      allLoaded.value = newVideos.length < 10;
+      videoCounts.value = response.data.data.counts;
+    } else {
+      throw new Error(response.data.msg || '获取视频列表失败');
+    }
+  } catch (err) {
+    console.error('刷新内容失败:', err);
+    error.value = err.message || '刷新内容失败';
+  } finally {
+    isRefreshing.value = false;
+    
+    nextTick(() => {
+      resetRefreshState();
+    });
+  }
+};
+
+const isResetting = ref(false);
+
+const resetRefreshState = () => {
+  isResetting.value = true;
+  const startHeight = refreshHeight.value;
+  const duration = 300;
+  const startTime = performance.now();
+
+  const animate = (currentTime) => {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easeProgress = 1 - Math.pow(1 - progress, 3); // 使用缓出函数
+
+    refreshHeight.value = startHeight * (1 - easeProgress);
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
     } else {
       refreshHeight.value = 0;
       showRefreshIndicator.value = false;
-      refreshText.value = '下拉刷新';
+      isResetting.value = false;
     }
-  });
+  };
+
+  requestAnimationFrame(animate);
 };
 
 const scrollToTopAndRefresh = () => {
@@ -545,99 +590,56 @@ watch(activeTab, (newValue, oldValue) => {
 
 const emitter = inject('emitter');
 
-let touchStartX = 0;
 let touchStartY = 0;
 let isHorizontalSwipe = false;
 let swipeThreshold = 50;
 
+const MAX_PULL_DISTANCE = 80; // 最大下拉距离
+const REFRESH_THRESHOLD = 60; // 触发刷新的阈值
+const RESISTANCE_FACTOR = 0.5; // 下拉阻力因子
+
+let initialTouchY = 0;
+let lastTouchY = 0;
+let pullStarted = false;
+
 const handleTouchStart = (event) => {
-  startY = event.touches[0].clientY;
-  touchStartX = event.touches[0].clientX;
-  touchStartY = event.touches[0].clientY;
-  isHorizontalSwipe = false;
+  initialTouchY = event.touches[0].clientY;
+  lastTouchY = initialTouchY;
+  pullStarted = false;
 };
 
 const handleTouchMove = (event) => {
-  if (isHorizontalSwipe) {
-    event.preventDefault();
-    return;
-  }
-
-  const currentX = event.touches[0].clientX;
   const currentY = event.touches[0].clientY;
-  const diffX = currentX - touchStartX;
-  const diffY = currentY - touchStartY;
+  const diffY = currentY - initialTouchY;
 
-  if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-    isHorizontalSwipe = true;
+  if (videoContainer.value.querySelector('.scroll-content').scrollTop === 0 && diffY > 0 && !pullStarted) {
+    pullStarted = true;
     event.preventDefault();
-  } else if (diffY > 0 && videoContainer.value.scrollTop === 0) {
-    refreshHeight.value = Math.min(diffY * 0.5, 60);
+  }
+
+  if (pullStarted) {
+    const deltaY = currentY - lastTouchY;
+    lastTouchY = currentY;
+
+    refreshHeight.value = Math.max(0, Math.min(
+      refreshHeight.value + deltaY * RESISTANCE_FACTOR,
+      MAX_PULL_DISTANCE
+    ));
+
     showRefreshIndicator.value = true;
-    refreshText.value = refreshHeight.value >= 50 ? '释放刷新' : '下拉刷新';
     event.preventDefault();
   }
 };
 
-const handleTouchEnd = (event) => {
-  const touchEndX = event.changedTouches[0].clientX;
-  const touchEndY = event.changedTouches[0].clientY;
-  const diffX = touchEndX - touchStartX;
-
-  if (isHorizontalSwipe) {
-    handleSwipe(diffX);
-  } else {
-    handleVerticalSwipe(touchEndY - touchStartY);
-  }
-
-  isHorizontalSwipe = false;
-};
-
-const handleSwipe = (swipeDistance) => {
-  console.log('Swipe distance:', swipeDistance);
-  console.log('Current active tab:', activeTab.value);
-
-  const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
-  console.log('Current index:', currentIndex);
-
-  if (swipeDistance > swipeThreshold && currentIndex > 0) {
-    console.log('Swiping right to:', tabs[currentIndex - 1].value);
-    activeTab.value = tabs[currentIndex - 1].value;
-    refreshContent(false); // 切换标签页时不显示刷新图标
-  } else if (swipeDistance < -swipeThreshold && currentIndex < tabs.length - 1) {
-    console.log('Swiping left to:', tabs[currentIndex + 1].value);
-    activeTab.value = tabs[currentIndex + 1].value;
-    refreshContent(false); // 切换标签页时不显示刷新图标
-  }
-
-  console.log('New active tab:', activeTab.value);
-};
-
-const handleVerticalSwipe = (swipeDistance) => {
-  if (swipeDistance > 50 && refreshHeight.value >= 50) {
-    refreshContent(true); // 下拉刷新时显示刷新图标
-  } else {
-    resetRefreshState();
-  }
-};
-
-const resetRefreshState = () => {
-  const animation = videoContainer.value.animate(
-    [
-      { transform: `translateY(${refreshHeight.value}px)` },
-      { transform: 'translateY(0px)' }
-    ],
-    {
-      duration: 300,
-      easing: 'ease-out'
+const handleTouchEnd = () => {
+  if (pullStarted) {
+    if (refreshHeight.value >= REFRESH_THRESHOLD) {
+      refreshContent(true);
+    } else {
+      resetRefreshState();
     }
-  );
-  
-  animation.onfinish = () => {
-    refreshHeight.value = 0;
-    showRefreshIndicator.value = false;
-    refreshText.value = '下拉刷新';
-  };
+    pullStarted = false;
+  }
 };
 
 onMounted(() => {
@@ -705,8 +707,10 @@ const adjustVideoContainerHeight = () => {
   if (videoContainer.value) {
     const windowHeight = window.innerHeight;
     const searchBarHeight = document.querySelector('.search-bar')?.offsetHeight || 0;
-    const newHeight = windowHeight - searchBarHeight;
+    const tabBarHeight = document.querySelector('.custom-tab-bar')?.offsetHeight || 0;
+    const newHeight = windowHeight - searchBarHeight - tabBarHeight;
     videoContainer.value.style.height = `${newHeight}px`;
+    videoContainer.value.style.maxHeight = `${newHeight}px`; // 添加最大高度限制
     videoContainer.value.style.paddingBottom = '1rem'; // 添加一些底部内边距
   }
 };
@@ -718,7 +722,6 @@ const setVideoRef = (id, el) => {
 const refreshHeight = ref(0);
 const isRefreshing = ref(false);
 const showRefreshIndicator = ref(false);
-const refreshText = ref('下拉刷新');
 </script>
 
 <style scoped>
@@ -727,19 +730,50 @@ const refreshText = ref('下拉刷新');
 }
 
 .video-container {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding-bottom: 1rem; /* 添加一些底部内边距 */
+  overflow: hidden;
+  position: relative;
 }
 
-.video-container::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+.refresh-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: transform 0.3s ease;
+  will-change: transform;
+}
+
+.scroll-content {
+  height: 100%;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scroll-content::-webkit-scrollbar {
   display: none;
+}
+
+.scroll-content.no-scroll {
+  overflow: hidden !important;
+}
+
+.refresh-indicator {
+  background-color: #f3f4f6;
+  opacity: 0;
+  transition: opacity 0.3s ease, height 0.3s ease;
+  overflow: hidden;
+}
+
+.refresh-indicator.visible {
+  opacity: 1;
 }
 
 .video-grid {
   @apply grid-cols-1 sm:grid-cols-2;
+  min-height: 100%;
 }
 
 :deep(.custom-tab-bar) {
@@ -769,28 +803,19 @@ const refreshText = ref('下拉刷新');
   margin-left: 0.25rem;
 }
 
-.refresh-indicator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f3f4f6;
-  transition: height 0.3s ease;
-  overflow: hidden;
+.video-list-move {
+  transition: transform 0.5s ease;
 }
 
-.video-grid {
+.refresh-indicator.visible {
+  opacity: 1;
+}
+
+.refresh-wrapper {
   transition: transform 0.3s ease;
 }
 
-.video-container {
-  transition: transform 0.3s ease;
-}
-
-.video-grid {
-  transition: transform 0.3s ease;
+.video-list-move {
+  transition: transform 0.5s ease;
 }
 </style>
