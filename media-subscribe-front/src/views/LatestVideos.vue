@@ -561,9 +561,8 @@ const setVideoRef = (id, el) => {
 }
 
 :deep(.custom-tab-bar) {
-  background-color: #f5f5f5;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 0.5rem 0;
+  padding: 0.2rem 0;
 }
 
 :deep(.custom-tab-bar .tab-item) {

@@ -35,8 +35,8 @@ defineEmits(['update:modelValue']);
 }
 
 .tab-container button {
-  height: 2rem; /* 32px */
-  line-height: 1.75rem; /* 28px, to account for the border */
+  height: 1.75rem; /* 28px */
+  line-height: 1.5rem; /* 28px, to account for the border */
   transition: all 0.2s ease-in-out;
 }
 
@@ -45,7 +45,7 @@ defineEmits(['update:modelValue']);
 }
 
 .text-2xs {
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   line-height: 0.75rem;
 }
 </style>
