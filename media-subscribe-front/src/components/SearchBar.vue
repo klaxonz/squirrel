@@ -1,6 +1,6 @@
 <template>
   <div :class="['search-bar', { 'hidden': isScrollingUp }]" ref="searchBar">
-    <div class="flex items-center w-5/6 mx-auto relative ">
+    <div class="flex items-center w-11/12 mx-auto relative ">
       <input
         v-model="searchQuery"
         @keyup.enter="handleSearch"

@@ -1,5 +1,5 @@
 <template>
-  <div class="tab-container bg-white shadow-sm mb-1">
+  <div class="tab-container bg-white shadow-sm">
     <div class="flex justify-around">
       <button 
         v-for="tab in tabs" 
