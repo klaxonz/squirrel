@@ -1,15 +1,17 @@
 <template>
-  <div class="app-container bg-gray-100 flex flex-col h-screen">
-    <!-- 主要内容区域 -->
-    <main class="content-area flex-grow overflow-hidden">
-      <keep-alive>
-        <router-view v-if="$route.meta.keepAlive"/>
-      </keep-alive>
-      <router-view v-if="!$route.meta.keepAlive"/>
-    </main>
+  <div class="app-container bg-gray-100 flex flex-col h-screen max-w-4xl mx-auto">
+    <div class="content-wrapper w-full flex-grow flex flex-col">
+      <!-- 主要内容区域 -->
+      <main class="content-area flex-grow overflow-y-auto">
+        <keep-alive>
+          <router-view v-if="$route.meta.keepAlive"/>
+        </keep-alive>
+        <router-view v-if="!$route.meta.keepAlive"/>
+      </main>
+    </div>
 
-    <!-- 底部导航栏（移动端）/ 侧边导航栏（桌面端） -->
-    <nav class="nav-bar">
+    <!-- 底部导航栏 -->
+    <nav class="nav-bar w-full">
       <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -47,14 +49,32 @@
 .app-container {
   height: 100vh;
   overflow: hidden;
+  position: relative;
+}
+
+.content-wrapper {
+  display: flex;
+  flex-direction: column;
 }
 
 .content-area {
+  flex-grow: 1;
   overflow-y: auto;
+  padding-bottom: 60px; /* 为底部导航栏留出空间 */
 }
 
 .nav-bar {
-  @apply fixed bottom-0 left-0 right-0 md:left-0 md:top-0 md:bottom-0 md:w-16 bg-white flex md:flex-col justify-around items-center shadow-md md:shadow-lg z-50;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: white;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  height: 60px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
 }
 
 .nav-item {
@@ -66,22 +86,12 @@
 }
 
 .nav-item svg {
-  @apply mb-1 md:mb-2;
+  @apply mb-1;
 }
 
 .nav-text {
-  @apply text-xs md:hidden;
+  @apply text-xs;
 }
 
-@media (min-width: 768px) {
-  .content-area {
-    margin-left: 4rem; /* 16 * 0.25rem = 4rem, 对应于 md:w-16 */
-  }
-
-  .nav-bar {
-    height: 100vh;
-  }
-}
-
-/* 其他样式保持不变 */
+/* 移除之前的媒体查询 */
 </style>

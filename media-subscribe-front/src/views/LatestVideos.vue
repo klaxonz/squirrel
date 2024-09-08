@@ -1,6 +1,6 @@
 <template>
   <div class="latest-videos bg-gray-100 flex flex-col h-full">
-    <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 w-full flex-grow flex flex-col">
+    <div class="w-full flex-grow flex flex-col pb-4">
       <!-- 搜索栏 -->
       <div :class="['search-bar', { 'hidden': isScrollingUp }]" ref="searchBar">
         <div class="flex items-center max-w-3xl mx-auto relative">
@@ -27,6 +27,20 @@
               class="search-button h-8 px-4 text-sm font-medium bg-blue-500 text-white rounded-r-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 focus:ring-offset-2 transition duration-200"
           >
             搜索
+          </button>
+        </div>
+      </div>
+
+      <!-- 添加标签页 -->
+      <div class="tab-container bg-white shadow-sm mb-1">
+        <div class="flex justify-around">
+          <button 
+            v-for="tab in tabs" 
+            :key="tab.value" 
+            @click="activeTab = tab.value"
+            :class="['px-4 py-2 text-sm font-medium', activeTab === tab.value ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500']"
+          >
+            {{ tab.label }}
           </button>
         </div>
       </div>
@@ -128,10 +142,34 @@
   <Teleport to="body">
     <div
         v-if="activeOptions !== null"
-        class="options-menu fixed bg-white shadow-lg rounded-lg py-2 z-50 w-40"
+        class="options-menu fixed bg-white shadow-lg rounded-lg py-2 z-50 w-48"
         :style="{ top: optionsPosition.top + 'px', left: optionsPosition.left + 'px' }"
         @click.stop
     >
+      <button @click="toggleReadStatus(true)" class="option-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        标记为已读
+      </button>
+      <button @click="toggleReadStatus(false)" class="option-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        标记为未读
+      </button>
+      <button @click="markReadBatch('above')" class="option-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+        以上标记为已读
+      </button>
+      <button @click="markReadBatch('below')" class="option-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+        以下标记为已读
+      </button>
       <button @click="downloadVideo" class="option-item">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -140,7 +178,7 @@
       </button>
       <button @click="copyVideoLink" class="option-item">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-2.5" />
         </svg>
         复制链接
       </button>
@@ -155,7 +193,7 @@
 </template>
 
 <script setup>
-import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '../utils/axios';
 
@@ -176,6 +214,13 @@ const activeVideo = ref(null);
 const isScrollingUp = ref(false);
 let lastScrollTop = 0;
 const observers = ref({});
+
+const activeTab = ref('all');
+const tabs = [
+  { label: '全部', value: 'all' },
+  { label: '未读', value: 'unread' },
+  { label: '已读', value: 'read' },
+];
 
 const handleScroll = () => {
   if (loadTrigger.value && videoContainer.value) {
@@ -209,7 +254,8 @@ const loadMore = async () => {
       params: {
         page: currentPage.value,
         pageSize: 10,
-        query: searchQuery.value
+        query: searchQuery.value,
+        read_status: activeTab.value === 'all' ? null : activeTab.value
       }
     });
     console.log('API response:', response.data);
@@ -521,6 +567,58 @@ const closeOptionsOnOutsideClick = (event) => {
   }
 };
 
+const toggleReadStatus = async (isRead) => {
+  if (activeVideo.value) {
+    try {
+      await axios.post('/api/channel-video/mark-read', {
+        channel_id: activeVideo.value.channel_id,
+        video_id: activeVideo.value.video_id,
+        is_read: isRead
+      });
+      activeVideo.value.if_read = isRead;
+      showToast(`视频已标记为${isRead ? '已读' : '未读'}`);
+    } catch (error) {
+      console.error('更新阅读状态失败:', error);
+      showToast('更新阅读状态失败', true);
+    }
+  }
+  closeOptions();
+};
+
+const markReadBatch = async (direction) => {
+  if (activeVideo.value) {
+    try {
+      await axios.post('/api/channel-video/mark-read-batch', {
+        is_read: true,
+        direction: direction,
+        reference_id: activeVideo.value.id  // 使用 id 而不是 uploaded_at
+      });
+      // 更新本地视频列表的阅读状态
+      videos.value.forEach(video => {
+        if (direction === 'above' && video.id >= activeVideo.value.id) {
+          video.if_read = true;
+        } else if (direction === 'below' && video.id <= activeVideo.value.id) {
+          video.if_read = true;
+        }
+      });
+      showToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为已读`);
+    } catch (error) {
+      console.error('批量更新阅读状态失败:', error);
+      showToast('批量更新阅读状态失败', true);
+    }
+  }
+  closeOptions();
+};
+
+// 监听 activeTab 变化
+watch(activeTab, () => {
+  videos.value = [];
+  currentPage.value = 1;
+  allLoaded.value = false;
+  error.value = null;
+  loadMore();
+});
+
 onMounted(() => {
   console.log('Component mounted, loading initial videos...');
   loadMore();
@@ -563,9 +661,9 @@ const adjustVideoContainerHeight = () => {
   if (videoContainer.value) {
     const windowHeight = window.innerHeight;
     const searchBarHeight = document.querySelector('.search-bar')?.offsetHeight || 0;
-    const navBarHeight = document.querySelector('.nav-bar')?.offsetHeight || 0;
-    const newHeight = windowHeight - searchBarHeight - navBarHeight;
+    const newHeight = windowHeight - searchBarHeight;
     videoContainer.value.style.height = `${newHeight}px`;
+    videoContainer.value.style.paddingBottom = '1rem'; // 添加一些底部内边距
   }
 };
 </script>
@@ -611,6 +709,7 @@ const adjustVideoContainerHeight = () => {
 .video-container {
   scrollbar-width: none;
   -ms-overflow-style: none;
+  padding-bottom: 1rem; /* 添加一些底部内边距 */
 }
 
 .video-container::-webkit-scrollbar {
@@ -730,5 +829,11 @@ const adjustVideoContainerHeight = () => {
 
 .option-item svg {
   @apply text-gray-400 group-hover:text-blue-500 transition-colors duration-150 ease-in-out;
+}
+
+.tab-container {
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
 }
 </style>

@@ -8,7 +8,7 @@ from mimetypes import guess_type
 from fastapi import Query, APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from pytubefix import YouTube
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, and_
 from starlette.responses import StreamingResponse
 import requests
 
@@ -61,18 +61,16 @@ def subscribe_channel(
 
 
 @router.get("/api/channel-video/list")
-def subscribe_channel(
+def get_channel_videos(
         query: str = Query(None, description="搜索关键字"),
-        channel_id: str = Query(None, description="频道名称"),
-        page: int = Query(1, ge=1, description="Page number"),
-        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
+        channel_id: str = Query(None, description="频道ID"),
+        read_status: str = Query(None, description="阅读状态: all, read, unread"),
+        page: int = Query(1, ge=1, description="页码"),
+        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量")
 ):
     with get_session() as s:
-        base_query = s.query(ChannelVideo).filter(
-            ChannelVideo.title != '',
-            ChannelVideo.if_read == 0,
-            ChannelVideo.is_disliked == 0  # 添加这个条件
-        )
+        base_query = s.query(ChannelVideo).filter(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
+
         if channel_id:
             base_query = base_query.filter(ChannelVideo.channel_id == channel_id)
         if query:
@@ -80,14 +78,15 @@ def subscribe_channel(
                 func.lower(ChannelVideo.channel_name).like(func.lower(f'%{query}%')),
                 func.lower(ChannelVideo.title).like(func.lower(f'%{query}%'))
             ))
+        if read_status:
+            if read_status == 'read':
+                base_query = base_query.filter(ChannelVideo.if_read == True)
+            elif read_status == 'unread':
+                base_query = base_query.filter(ChannelVideo.if_read == False)
 
         total = base_query.count()
-
         offset = (page - 1) * page_size
-        channel_videos = (base_query
-                          .order_by(ChannelVideo.uploaded_at.desc())
-                          .offset(offset)
-                          .limit(page_size))
+        channel_videos = base_query.order_by(ChannelVideo.uploaded_at.desc()).offset(offset).limit(page_size)
 
         channel_video_convert_list = [
             {
@@ -121,16 +120,44 @@ def subscribe_channel(
 class MarkReadRequest(BaseModel):
     channel_id: str
     video_id: str
+    is_read: bool
 
 
 @router.post("/api/channel-video/mark-read")
-def subscribe_channel(req: MarkReadRequest):
+def mark_video_read(req: MarkReadRequest):
     with get_session() as s:
-        s.query(ChannelVideo).where(ChannelVideo.channel_id == req.channel_id,
-                                    ChannelVideo.video_id == req.video_id).update({
-            'if_read': True
-        })
+        s.query(ChannelVideo).filter(
+            ChannelVideo.channel_id == req.channel_id,
+            ChannelVideo.video_id == req.video_id
+        ).update({"if_read": req.is_read})
+        s.commit()
+    return response.success()
 
+
+# 新增请求模型
+class MarkReadRequest(BaseModel):
+    channel_id: str
+    video_id: str
+    is_read: bool
+
+
+class MarkReadBatchRequest(BaseModel):
+    is_read: bool
+    direction: str  # 'above' or 'below'
+    reference_id: int  # 改为使用 ID 而不是日期
+
+@router.post("/api/channel-video/mark-read-batch")
+def mark_videos_read_batch(req: MarkReadBatchRequest):
+    with get_session() as s:
+        query = s.query(ChannelVideo)
+        
+        if req.direction == 'above':
+            query = query.filter(ChannelVideo.id >= req.reference_id)
+        elif req.direction == 'below':
+            query = query.filter(ChannelVideo.id <= req.reference_id)
+        
+        query.update({"if_read": req.is_read})
+        s.commit()
     return response.success()
 
 
