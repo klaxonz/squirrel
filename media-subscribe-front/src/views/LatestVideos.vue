@@ -1,7 +1,7 @@
 <template>
   <div class="latest-videos bg-gray-100 flex flex-col h-full">
     <SearchBar @search="handleSearch" ref="searchBar" />
-    <TabBar v-model="activeTab" :tabs="tabs" />
+    <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 
     <div class="video-container flex-grow overflow-y-auto" ref="videoContainer" @scroll="handleScroll">
       <div class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-4">
@@ -51,7 +51,7 @@
 </template>
 
 <script setup>
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '../utils/axios';
 import SearchBar from '../components/SearchBar.vue';
@@ -83,6 +83,19 @@ const tabs = [
   { label: '未读', value: 'unread' },
   { label: '已读', value: 'read' },
 ];
+
+const videoCounts = ref({
+  all: 0,
+  unread: 0,
+  read: 0
+});
+
+const tabsWithCounts = computed(() => {
+  return tabs.map(tab => ({
+    ...tab,
+    count: videoCounts.value[tab.value]
+  }));
+});
 
 const handleScroll = () => {
   if (loadTrigger.value && videoContainer.value) {
@@ -135,6 +148,8 @@ const loadMore = async () => {
         currentPage.value++;
         console.log('New videos added, total count:', videos.value.length);
       }
+      // 更新视频计数
+      videoCounts.value = response.data.data.counts;
     } else {
       throw new Error(response.data.msg || '获取视频列表失败');
     }
@@ -159,6 +174,50 @@ const handleSearchClick = () => {
   loadMore();
 };
 
+const refreshList = () => {
+  videos.value = [];
+  currentPage.value = 1;
+  allLoaded.value = false;
+  error.value = null;
+  loadMore();
+};
+
+const toggleReadStatus = async (isRead) => {
+  if (activeVideo.value) {
+    try {
+      await axios.post('/api/channel-video/mark-read', {
+        channel_id: activeVideo.value.channel_id,
+        video_id: activeVideo.value.video_id,
+        is_read: isRead
+      });
+      showToast(`视频已标记为${isRead ? '已读' : '未读'}`);
+      refreshList(); // 刷新列表
+    } catch (error) {
+      console.error('更新阅读状态失败:', error);
+      showToast('更新阅读状态失败', true);
+    }
+  }
+  closeOptions();
+};
+
+const markReadBatch = async (direction) => {
+  if (activeVideo.value) {
+    try {
+      await axios.post('/api/channel-video/mark-read-batch', {
+        is_read: true,
+        direction: direction,
+        reference_id: activeVideo.value.id
+      });
+      showToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为已读`);
+      refreshList(); // 刷新列表
+    } catch (error) {
+      console.error('批量更新阅读状态失败:', error);
+      showToast('批量更新阅读状态失败', true);
+    }
+  }
+  closeOptions();
+};
+
 const dislikeVideo = async () => {
   if (activeVideo.value) {
     try {
@@ -169,8 +228,7 @@ const dislikeVideo = async () => {
 
       if (response.data.code === 0) {
         showToast('已标记为不喜欢');
-        // 从列表中移除该视频
-        videos.value = videos.value.filter(v => v.id !== activeVideo.value.id);
+        refreshList(); // 刷新列表
       } else {
         throw new Error(response.data.msg || '操作失败');
       }
@@ -327,16 +385,24 @@ const toggleOptions = (videoId, event) => {
       const rect = button.getBoundingClientRect();
       const containerRect = videoContainer.value.getBoundingClientRect();
       
-      // 计算左侧位置，确保不会超出容器右侧
-      const left = Math.min(
-        rect.left,
-        containerRect.right - 160 // 40px 的宽度
-      );
+      // 计算菜单的宽度和高度（假设为 160px 宽，200px 高）
+      const menuWidth = 160;
+      const menuHeight = 200;
       
-      optionsPosition.value = {
-        top: rect.bottom + window.scrollY,
-        left: Math.max(containerRect.left, left) // 确保不会超出容器左侧
-      };
+      // 计算左侧位置
+      let left = rect.left;
+      if (left + menuWidth > containerRect.right) {
+        left = containerRect.right - menuWidth;
+      }
+      left = Math.max(containerRect.left, left);
+      
+      // 计算顶部位置
+      let top = rect.bottom + window.scrollY;
+      if (top + menuHeight > window.innerHeight) {
+        top = rect.top + window.scrollY - menuHeight;
+      }
+      
+      optionsPosition.value = { top, left };
     });
   }
 };
@@ -406,49 +472,6 @@ const closeOptionsOnOutsideClick = (event) => {
   if (activeOptions.value && !event.target.closest('.video-item')) {
     closeOptions();
   }
-};
-
-const toggleReadStatus = async (isRead) => {
-  if (activeVideo.value) {
-    try {
-      await axios.post('/api/channel-video/mark-read', {
-        channel_id: activeVideo.value.channel_id,
-        video_id: activeVideo.value.video_id,
-        is_read: isRead
-      });
-      activeVideo.value.if_read = isRead;
-      showToast(`视频已标记为${isRead ? '已读' : '未读'}`);
-    } catch (error) {
-      console.error('更新阅读状态失败:', error);
-      showToast('更新阅读状态失败', true);
-    }
-  }
-  closeOptions();
-};
-
-const markReadBatch = async (direction) => {
-  if (activeVideo.value) {
-    try {
-      await axios.post('/api/channel-video/mark-read-batch', {
-        is_read: true,
-        direction: direction,
-        reference_id: activeVideo.value.id  // 使用 id 而不是 uploaded_at
-      });
-      // 更新本地视频列表的阅读状态
-      videos.value.forEach(video => {
-        if (direction === 'above' && video.id >= activeVideo.value.id) {
-          video.if_read = true;
-        } else if (direction === 'below' && video.id <= activeVideo.value.id) {
-          video.if_read = true;
-        }
-      });
-      showToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为已读`);
-    } catch (error) {
-      console.error('批量更新阅读状态失败:', error);
-      showToast('批量更新阅读状态失败', true);
-    }
-  }
-  closeOptions();
 };
 
 // 监听 activeTab 变化
@@ -532,5 +555,33 @@ const setVideoRef = (id, el) => {
 
 .video-grid {
   @apply grid-cols-1 sm:grid-cols-2;
+}
+
+:deep(.custom-tab-bar) {
+  background-color: #f5f5f5;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem 0;
+}
+
+:deep(.custom-tab-bar .tab-item) {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  margin: 0 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+:deep(.custom-tab-bar .tab-item.active) {
+  background-color: #42b983;
+  color: #fff;
+}
+
+:deep(.custom-tab-bar .tab-count) {
+  font-size: 0.75rem;
+  background-color: #ccc;
+  color: #fff;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  margin-left: 0.25rem;
 }
 </style>

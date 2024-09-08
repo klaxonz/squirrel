@@ -86,7 +86,12 @@ def get_channel_videos(
 
         total = base_query.count()
         offset = (page - 1) * page_size
-        channel_videos = base_query.order_by(ChannelVideo.uploaded_at.desc()).offset(offset).limit(page_size)
+        channel_videos = base_query.order_by(ChannelVideo.id.desc()).offset(offset).limit(page_size)
+
+        # 计算总数、已读数和未读数
+        total_count = s.query(ChannelVideo).count()
+        read_count = s.query(ChannelVideo).filter(ChannelVideo.if_read == True).count()
+        unread_count = total_count - read_count
 
         channel_video_convert_list = [
             {
@@ -111,7 +116,12 @@ def get_channel_videos(
             "total": total,
             "page": page,
             "pageSize": page_size,
-            "data": channel_video_convert_list
+            "data": channel_video_convert_list,
+            "counts": {
+                "all": total_count,
+                "read": read_count,
+                "unread": unread_count
+            }
         }
 
     return response.success(channel_video_page)
