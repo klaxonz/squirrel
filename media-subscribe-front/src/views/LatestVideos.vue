@@ -1,194 +1,50 @@
 <template>
   <div class="latest-videos bg-gray-100 flex flex-col h-full">
-    <div class="w-full flex-grow flex flex-col pb-4">
-      <!-- 搜索栏 -->
-      <div :class="['search-bar', { 'hidden': isScrollingUp }]" ref="searchBar">
-        <div class="flex items-center max-w-3xl mx-auto relative">
-          <input
-              v-model="searchQuery"
-              @keyup.enter="handleSearchClick"
-              type="text"
-              placeholder="搜索视频..."
-              class="search-input flex-grow h-8 px-4 pr-10 text-sm border border-gray-300 rounded-l-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200"
-          >
-          <button
-              v-if="searchQuery"
-              @click="clearSearch"
-              class="clear-button absolute right-20 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clip-rule="evenodd"/>
-            </svg>
-          </button>
-          <button
-              @click="handleSearchClick"
-              class="search-button h-8 px-4 text-sm font-medium bg-blue-500 text-white rounded-r-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 focus:ring-offset-2 transition duration-200"
-          >
-            搜索
-          </button>
-        </div>
+    <SearchBar @search="handleSearch" ref="searchBar" />
+    <TabBar v-model="activeTab" :tabs="tabs" />
+
+    <div class="video-container flex-grow overflow-y-auto" ref="videoContainer" @scroll="handleScroll">
+      <VideoItem
+        v-for="video in videos"
+        :key="video.id"
+        :video="video"
+        @play="playVideo"
+        @setVideoRef="setVideoRef"
+        @videoPlay="onVideoPlay"
+        @videoPause="onVideoPause"
+        @videoEnded="onVideoEnded"
+        @fullscreenChange="onFullscreenChange"
+        @videoMetadataLoaded="onVideoMetadataLoaded"
+        @toggleOptions="toggleOptions"
+        @goToChannel="goToChannelDetail"
+      />
+
+      <!-- 加载状态 -->
+      <div v-if="loading" class="text-center py-4">
+        <p>加载中...</p>
       </div>
 
-      <!-- 添加标签页 -->
-      <div class="tab-container bg-white shadow-sm mb-1">
-        <div class="flex justify-around">
-          <button 
-            v-for="tab in tabs" 
-            :key="tab.value" 
-            @click="activeTab = tab.value"
-            :class="['px-4 py-2 text-sm font-medium', activeTab === tab.value ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500']"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
+      <!-- 加载完成状态 -->
+      <div v-if="allLoaded" class="text-center py-4">
+        <p>没有更多视频了</p>
       </div>
 
-      <div class="video-container flex-grow overflow-y-auto" ref="videoContainer" @scroll="handleScroll">
-        <div
-            v-for="video in videos"
-            :key="video.id"
-            class="video-item lg:mt-3 md:mt-3 sm:mt-3 lg:rounded-lg bg-white shadow-sm overflow-hidden relative"
-        >
-          <div class="video-thumbnail relative cursor-pointer">
-            <img
-                v-if="!video.isPlaying"
-                :src="video.thumbnail"
-                referrerpolicy="no-referrer"
-                alt="Video thumbnail"
-                class="w-full h-full object-cover"
-                @click="playVideo(video)"
-            >
-            <div v-show="video.isPlaying" class="video-wrapper">
-              <video
-                  :src="video.video_url"
-                  :ref="el => { if (el) videoRefs[video.id] = el }"
-                  class="video-player"
-                  controls
-                  @play="onVideoPlay(video)"
-                  @pause="onVideoPause(video)"
-                  @ended="onVideoEnded(video)"
-                  @fullscreenchange="onFullscreenChange"
-                  @loadedmetadata="onVideoMetadataLoaded($event, video)"
-              ></video>
-            </div>
-            <div v-if="!video.isPlaying" class="video-duration">{{ formatDuration(video.duration) }}</div>
-            <div v-if="!video.isPlaying" class="play-button" @click="playVideo(video)">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12">
-                <path fill-rule="evenodd"
-                      d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z"
-                      clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <!-- 修改下载标识，只在视频未播放时显示 -->
-            <div v-if="video.if_downloaded && !video.isPlaying" class="downloaded-badge absolute top-2 right-2 bg-gray-200 bg-opacity-70 text-gray-700 px-2 py-0.5 rounded-full text-xs font-medium opacity-80 hover:opacity-60 transition-opacity duration-200 backdrop-filter: blur(2px);">
-              已下载
-            </div>
-          </div>
-          <div class="video-info p-3 flex flex-col">
-            <div class="flex justify-between items-start">
-              <a
-                  :href="video.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="video-title text-base font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-200 line-clamp-2 flex-grow pr-2"
-              >
-                {{ video.title }}
-              </a>
-              <div class="flex-shrink-0 relative">
-                <button @click="toggleOptions(video.id, $event)"
-                        class="text-gray-500 hover:text-gray-700 focus:outline-none p-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                        d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div class="flex justify-between items-center mt-2">
-              <div class="flex items-center cursor-pointer" @click="goToChannelDetail(video.channel_id)">
-                <img
-                    :src="video.channel_avatar"
-                    :alt="video.channel_name"
-                    class="w-6 h-6 rounded-full mr-2"
-                    referrerpolicy="no-referrer"
-                >
-                <p class="video-channel text-sm text-gray-600 truncate hover:text-blue-500 transition-colors duration-200">
-                  {{ video.channel_name }}</p>
-              </div>
-              <span class="text-xs text-gray-500 whitespace-nowrap">{{ formatDate(video.uploaded_at) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 加载状态 -->
-        <div v-if="loading" class="text-center py-4">
-          <p>加载中...</p>
-        </div>
-
-        <!-- 加载完成状态 -->
-        <div v-if="allLoaded" class="text-center py-4">
-          <p>没有更多视频了</p>
-        </div>
-
-        <!-- 添加一个用于触发加载的元素 -->
-        <div ref="loadTrigger" class="h-1"></div>
-      </div>
+      <!-- 添加一个用于触发加载的元素 -->
+      <div ref="loadTrigger" class="h-1"></div>
     </div>
   </div>
 
   <!-- 使用 Teleport 将选项框移到 body 下 -->
   <Teleport to="body">
-    <div
-        v-if="activeOptions !== null"
-        class="options-menu fixed bg-white shadow-lg rounded-lg py-2 z-50 w-48"
-        :style="{ top: optionsPosition.top + 'px', left: optionsPosition.left + 'px' }"
-        @click.stop
-    >
-      <button @click="toggleReadStatus(true)" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-        </svg>
-        标记为已读
-      </button>
-      <button @click="toggleReadStatus(false)" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-        标记为未读
-      </button>
-      <button @click="markReadBatch('above')" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-        </svg>
-        以上标记为已读
-      </button>
-      <button @click="markReadBatch('below')" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-        </svg>
-        以下标记为已读
-      </button>
-      <button @click="downloadVideo" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
-        下载
-      </button>
-      <button @click="copyVideoLink" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-2.5" />
-        </svg>
-        复制链接
-      </button>
-      <button @click="dislikeVideo" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-        </svg>
-        不喜欢
-      </button>
-    </div>
+    <OptionsMenu
+      v-if="activeOptions !== null"
+      :position="optionsPosition"
+      @toggleReadStatus="toggleReadStatus"
+      @markReadBatch="markReadBatch"
+      @downloadVideo="downloadVideo"
+      @copyVideoLink="copyVideoLink"
+      @dislikeVideo="dislikeVideo"
+    />
   </Teleport>
 </template>
 
@@ -196,6 +52,10 @@
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '../utils/axios';
+import SearchBar from '../components/SearchBar.vue';
+import TabBar from '../components/TabBar.vue';
+import VideoItem from '../components/VideoItem.vue';
+import OptionsMenu from '../components/OptionsMenu.vue';
 
 const router = useRouter();
 
@@ -284,38 +144,17 @@ const loadMore = async () => {
   }
 };
 
+const handleSearch = (query) => {
+  searchQuery.value = query;
+  handleSearchClick();
+};
+
 const handleSearchClick = () => {
   videos.value = [];
   currentPage.value = 1;
   allLoaded.value = false;
   error.value = null;
   loadMore();
-};
-
-const clearSearch = () => {
-  searchQuery.value = '';
-  handleSearchClick();
-};
-
-const formatDuration = (seconds) => {
-  if (!seconds) return '未知';
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '未知日期';
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffTime = Math.abs(now - date);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 1) return '昨天';
-  if (diffDays <= 7) return `${diffDays}天前`;
-  if (diffDays <= 30) return `${Math.floor(diffDays / 7)}周前`;
-  if (diffDays <= 365) return `${Math.floor(diffDays / 30)}个月前`;
-  return `${Math.floor(diffDays / 365)}年前`;
 };
 
 const dislikeVideo = async () => {
@@ -666,44 +505,15 @@ const adjustVideoContainerHeight = () => {
     videoContainer.value.style.paddingBottom = '1rem'; // 添加一些底部内边距
   }
 };
+
+const setVideoRef = (id, el) => {
+  if (el) videoRefs.value[id] = el;
+};
 </script>
 
 <style scoped>
 .latest-videos {
   @apply min-h-full;
-}
-
-.search-bar {
-  position: sticky;
-  top: 0;
-  background-color: white;
-  z-index: 10;
-  padding: 0.5rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease-in-out;
-}
-
-.search-bar.hidden {
-  transform: translateY(-100%);
-}
-
-.search-input {
-  border-right: none;
-  border-radius: 9999px 0 0 9999px;
-}
-
-.clear-button {
-  right: 2.5rem;
-}
-
-.search-button {
-  border-left: none;
-  border-radius: 0 9999px 9999px 0;
-}
-
-.search-bar input:focus,
-.search-bar button:focus {
-  box-shadow: 0 0 0 0 rgba(111, 164, 248, 0.5);
 }
 
 .video-container {
@@ -716,124 +526,5 @@ const adjustVideoContainerHeight = () => {
   width: 0;
   height: 0;
   display: none;
-}
-
-.video-thumbnail {
-  @apply relative pt-[56.25%] cursor-pointer;
-  height: 0;
-}
-
-.video-wrapper {
-  @apply absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black;
-}
-
-.video-player {
-  @apply max-w-full max-h-full;
-  width: 100%;
-  height: 100%;
-}
-
-.video-thumbnail img {
-  @apply absolute top-0 left-0 w-full h-full object-cover;
-}
-
-.video-duration {
-  @apply absolute bottom-2 right-2 bg-black bg-opacity-80 text-white text-xs px-1 py-0.5 rounded;
-}
-
-.video-title {
-  @apply line-clamp-2 leading-tight mb-2;
-  text-decoration: none;
-}
-
-.video-title:hover {
-  text-decoration: underline;
-}
-
-.video-channel {
-  @apply truncate hover:text-blue-500 transition-colors duration-200;
-}
-
-.play-button {
-  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white opacity-80 cursor-pointer;
-}
-
-.video-thumbnail:hover .play-button {
-  @apply opacity-100;
-}
-
-@media (min-width: 640px) {
-  .video-item {
-    @apply flex;
-  }
-
-  .video-thumbnail {
-    @apply w-1/2 pt-[28.125%];
-  }
-
-  .video-info {
-    @apply w-1/2 flex flex-col justify-between p-3;
-  }
-}
-
-.video-player::-webkit-media-controls {
-  display: flex !important;
-  visibility: visible !important;
-}
-
-.video-item {
-  position: relative;
-}
-
-.video-thumbnail {
-  position: relative;
-}
-
-.video-title {
-  flex: 1;
-  min-width: 0;
-}
-
-.downloaded-badge {
-  font-size: 0.75rem;
-  line-height: 1rem;
-  z-index: 20;
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
-  backdrop-filter: blur(2px);
-}
-
-.video-thumbnail:hover .downloaded-badge {
-  opacity: 0.6;
-}
-
-.options-menu {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.option-item {
-  @apply flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150 ease-in-out;
-}
-
-.option-item:first-child {
-  @apply rounded-t-lg;
-}
-
-.option-item:last-child {
-  @apply rounded-b-lg;
-}
-
-.option-item:hover {
-  @apply bg-blue-50 text-blue-600;
-}
-
-.option-item svg {
-  @apply text-gray-400 group-hover:text-blue-500 transition-colors duration-150 ease-in-out;
-}
-
-.tab-container {
-  overflow-x: auto;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
 }
 </style>
