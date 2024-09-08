@@ -7,9 +7,9 @@
       class="video-container flex-grow overflow-y-auto relative" 
       ref="videoContainer" 
       @scroll="handleScroll"
-      @touchstart="touchStart"
-      @touchmove="touchMove"
-      @touchend="touchEnd"
+      @touchstart="handleTouchStart"
+      @touchmove="handleTouchMove"
+      @touchend="handleTouchEnd"
     >
       <div 
         class="refresh-indicator flex items-center justify-center"
@@ -532,7 +532,8 @@ const closeOptionsOnOutsideClick = (event) => {
 };
 
 // 监听 activeTab 变化
-watch(activeTab, () => {
+watch(activeTab, (newValue, oldValue) => {
+  console.log('Active tab changed from', oldValue, 'to', newValue);
   videos.value = [];
   currentPage.value = 1;
   allLoaded.value = false;
@@ -541,6 +542,91 @@ watch(activeTab, () => {
 });
 
 const emitter = inject('emitter');
+
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+let isHorizontalSwipe = false;
+
+const handleTouchStart = (event) => {
+  touchStartX = event.touches[0].clientX;
+  touchStartY = event.touches[0].clientY;
+  isHorizontalSwipe = false;
+};
+
+const handleTouchMove = (event) => {
+  const currentX = event.touches[0].clientX;
+  const currentY = event.touches[0].clientY;
+  const diffX = currentX - touchStartX;
+  const diffY = currentY - touchStartY;
+
+  if (!isHorizontalSwipe && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
+    isHorizontalSwipe = true;
+  }
+
+  if (isHorizontalSwipe) {
+    event.preventDefault();
+  } else if (diffY > 0 && videoContainer.value.scrollTop === 0) {
+    refreshHeight.value = Math.min(diffY * 0.5, 60); // 限制最大高度为60px
+    event.preventDefault();
+  }
+};
+
+const handleTouchEnd = (event) => {
+  touchEndX = event.changedTouches[0].clientX;
+  touchEndY = event.changedTouches[0].clientY;
+
+  if (isHorizontalSwipe) {
+    handleSwipe();
+  } else {
+    handleVerticalSwipe();
+  }
+};
+
+const handleSwipe = () => {
+  const swipeThreshold = 50;
+  const swipeDistance = touchEndX - touchStartX;
+
+  console.log('Swipe distance:', swipeDistance);
+  console.log('Current active tab:', activeTab.value);
+
+  if (Math.abs(swipeDistance) > swipeThreshold) {
+    const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
+    console.log('Current index:', currentIndex);
+
+    if (swipeDistance > 0 && currentIndex > 0) {
+      console.log('Swiping right to:', tabs[currentIndex - 1].value);
+      activeTab.value = tabs[currentIndex - 1].value;
+    } else if (swipeDistance < 0 && currentIndex < tabs.length - 1) {
+      console.log('Swiping left to:', tabs[currentIndex + 1].value);
+      activeTab.value = tabs[currentIndex + 1].value;
+    }
+  }
+
+  console.log('New active tab:', activeTab.value);
+};
+
+const handleVerticalSwipe = () => {
+  if (refreshHeight.value >= 50) {
+    refreshContent();
+  } else {
+    // 如果没有触发刷新，平滑地将refreshHeight重置为0
+    const animation = videoContainer.value.animate(
+      [
+        { transform: `translateY(${refreshHeight.value}px)` },
+        { transform: 'translateY(0px)' }
+      ],
+      {
+        duration: 300,
+        easing: 'ease-out'
+      }
+    );
+    animation.onfinish = () => {
+      refreshHeight.value = 0;
+    };
+  }
+};
 
 onMounted(() => {
   console.log('Component mounted, loading initial videos...');
@@ -554,6 +640,17 @@ onMounted(() => {
   window.addEventListener('resize', adjustVideoContainerHeight);
   emitter.on('scrollToTopAndRefresh', scrollToTopAndRefresh);
   emitter.on('refreshContent', refreshContent);
+
+  // 禁用浏览器默认的滑动行为
+  if (videoContainer.value) {
+    videoContainer.value.style.overscrollBehavior = 'none';
+  }
+
+  // 阻止浏览器默认的回退/前进行为
+  window.history.pushState(null, '', window.location.href);
+  window.onpopstate = function() {
+    window.history.pushState(null, '', window.location.href);
+  };
 });
 
 onUnmounted(() => {
@@ -567,6 +664,14 @@ onUnmounted(() => {
   Object.values(observers.value).forEach(observer => observer.disconnect());
   emitter.off('scrollToTopAndRefresh', scrollToTopAndRefresh);
   emitter.off('refreshContent', refreshContent);
+
+  // 恢复默认的滑动行为
+  if (videoContainer.value) {
+    videoContainer.value.style.overscrollBehavior = 'auto';
+  }
+
+  // 移除 popstate 事件监听器
+  window.onpopstate = null;
 });
 
 const handleOrientationChange = () => {
