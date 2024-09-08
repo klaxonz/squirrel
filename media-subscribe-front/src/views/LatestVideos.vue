@@ -22,50 +22,63 @@
         <span class="text-gray-600">刷新中</span>
       </div>
 
-      <div 
-        class="refresh-wrapper"
-        :style="{ transform: `translateY(${refreshHeight}px)` }"
+      <transition-group 
+        :name="transitionName"
+        tag="div"
+        class="tab-content-wrapper"
       >
-        <div
-          class="scroll-content"
-          @scroll="handleScroll"
-          :class="{ 'no-scroll': isResetting }"
+        <div 
+          v-for="tab in tabs" 
+          :key="tab.value"
+          v-show="activeTab === tab.value"
+          class="tab-content"
         >
-          <TransitionGroup 
-            name="video-list" 
-            tag="div" 
-            class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
+          <div 
+            class="refresh-wrapper"
+            :style="{ transform: `translateY(${refreshHeight}px)` }"
           >
-            <template v-if="loading && videos.length === 0">
-              <div v-for="n in 10" :key="n" class="video-item-placeholder animate-pulse bg-gray-200 h-48"></div>
-            </template>
-            <template v-else>
-              <VideoItem
-                v-for="video in videos"
-                :key="video.id"
-                :video="video"
-                @play="playVideo"
-                @setVideoRef="setVideoRef"
-                @videoPlay="onVideoPlay"
-                @videoPause="onVideoPause"
-                @videoEnded="onVideoEnded"
-                @fullscreenChange="onFullscreenChange"
-                @videoMetadataLoaded="onVideoMetadataLoaded"
-                @toggleOptions="toggleOptions"
-                @goToChannel="goToChannelDetail"
-              />
-            </template>
-          </TransitionGroup>
+            <div
+              class="scroll-content"
+              @scroll="handleScroll"
+              :class="{ 'no-scroll': isResetting }"
+            >
+              <TransitionGroup 
+                name="video-list" 
+                tag="div" 
+                class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
+              >
+                <template v-if="loading && videos.length === 0">
+                  <div v-for="n in 10" :key="n" class="video-item-placeholder animate-pulse bg-gray-200 h-48"></div>
+                </template>
+                <template v-else>
+                  <VideoItem
+                    v-for="video in videos"
+                    :key="video.id"
+                    :video="video"
+                    @play="playVideo"
+                    @setVideoRef="setVideoRef"
+                    @videoPlay="onVideoPlay"
+                    @videoPause="onVideoPause"
+                    @videoEnded="onVideoEnded"
+                    @fullscreenChange="onFullscreenChange"
+                    @videoMetadataLoaded="onVideoMetadataLoaded"
+                    @toggleOptions="toggleOptions"
+                    @goToChannel="goToChannelDetail"
+                  />
+                </template>
+              </TransitionGroup>
 
-          <!-- 加载完成状态 -->
-          <div v-if="allLoaded" class="text-center py-4">
-            <p>没有更多视频了</p>
+              <!-- 加载完成状态 -->
+              <div v-if="allLoaded" class="text-center py-4">
+                <p>没有更多视频了</p>
+              </div>
+
+              <!-- 添加一个用于触发加载的元素 -->
+              <div ref="setLoadTrigger" class="h-1 load-trigger"></div>
+            </div>
           </div>
-
-          <!-- 添加一个用于触发加载的元素 -->
-          <div ref="loadTrigger" class="h-1"></div>
         </div>
-      </div>
+      </transition-group>
     </div>
   </div>
 
@@ -134,22 +147,31 @@ const tabsWithCounts = computed(() => {
 const isReadPage = computed(() => activeTab.value === 'read');
 
 const handleScroll = (event) => {
-  if (loadTrigger.value && event.target) {
-    const containerRect = event.target.getBoundingClientRect();
-    const triggerRect = loadTrigger.value.getBoundingClientRect();
-
-    if (triggerRect.top <= containerRect.bottom + 100) {
-      console.log('Trigger element is visible, loading more...');
-      loadMore();
-    }
-
-    const scrollTop = event.target.scrollTop;
-    isScrollingUp.value = scrollTop < lastScrollTop;
-    lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
-
-    // 在滚动时关闭选项菜单
-    closeOptions();
+  if (!loadTrigger.value) {
+    console.warn('Load trigger element not found');
+    return;
   }
+
+  const scrollContent = event.target;
+  if (!scrollContent) {
+    console.warn('Scroll content not found');
+    return;
+  }
+
+  const containerRect = scrollContent.getBoundingClientRect();
+  const triggerRect = loadTrigger.value.getBoundingClientRect();
+
+  if (triggerRect.top <= containerRect.bottom + 100) {
+    console.log('Trigger element is visible, loading more...');
+    loadMore();
+  }
+
+  const scrollTop = scrollContent.scrollTop;
+  isScrollingUp.value = scrollTop < lastScrollTop;
+  lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+
+  // 在滚动时关闭选项菜单
+  closeOptions();
 };
 
 const loadMore = async () => {
@@ -590,6 +612,7 @@ watch(activeTab, (newValue, oldValue) => {
 
 const emitter = inject('emitter');
 
+let touchStartX = 0;
 let touchStartY = 0;
 let isHorizontalSwipe = false;
 let swipeThreshold = 50;
@@ -603,14 +626,28 @@ let lastTouchY = 0;
 let pullStarted = false;
 
 const handleTouchStart = (event) => {
-  initialTouchY = event.touches[0].clientY;
+  touchStartX = event.touches[0].clientX;
+  touchStartY = event.touches[0].clientY;
+  initialTouchY = touchStartY;
   lastTouchY = initialTouchY;
   pullStarted = false;
+  isHorizontalSwipe = false;
 };
 
 const handleTouchMove = (event) => {
+  const currentX = event.touches[0].clientX;
   const currentY = event.touches[0].clientY;
-  const diffY = currentY - initialTouchY;
+  const diffX = currentX - touchStartX;
+  const diffY = currentY - touchStartY;
+
+  if (!isHorizontalSwipe && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+    isHorizontalSwipe = true;
+  }
+
+  if (isHorizontalSwipe) {
+    event.preventDefault();
+    return;
+  }
 
   if (videoContainer.value.querySelector('.scroll-content').scrollTop === 0 && diffY > 0 && !pullStarted) {
     pullStarted = true;
@@ -631,14 +668,32 @@ const handleTouchMove = (event) => {
   }
 };
 
-const handleTouchEnd = () => {
-  if (pullStarted) {
+const handleTouchEnd = (event) => {
+  if (isHorizontalSwipe) {
+    const touchEndX = event.changedTouches[0].clientX;
+    const diffX = touchEndX - touchStartX;
+    handleSwipe(diffX);
+  } else if (pullStarted) {
     if (refreshHeight.value >= REFRESH_THRESHOLD) {
       refreshContent(true);
     } else {
       resetRefreshState();
     }
-    pullStarted = false;
+  }
+  pullStarted = false;
+  isHorizontalSwipe = false;
+};
+
+const transitionName = ref('fade');
+
+const handleSwipe = (swipeDistance) => {
+  const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
+  if (swipeDistance > swipeThreshold && currentIndex > 0) {
+    transitionName.value = 'fade-right';
+    activeTab.value = tabs[currentIndex - 1].value;
+  } else if (swipeDistance < -swipeThreshold && currentIndex < tabs.length - 1) {
+    transitionName.value = 'fade-left';
+    activeTab.value = tabs[currentIndex + 1].value;
   }
 };
 
@@ -665,6 +720,19 @@ onMounted(() => {
   window.onpopstate = function() {
     window.history.pushState(null, '', window.location.href);
   };
+
+  // Add a small delay to ensure the DOM is fully rendered
+  setTimeout(() => {
+    if (!loadTrigger.value) {
+      console.warn('Load trigger not set after mount, attempting to set manually');
+      const triggerElement = document.querySelector('.load-trigger');
+      if (triggerElement) {
+        loadTrigger.value = triggerElement;
+      } else {
+        console.error('Unable to find load trigger element');
+      }
+    }
+  }, 100);
 });
 
 onUnmounted(() => {
@@ -722,6 +790,13 @@ const setVideoRef = (id, el) => {
 const refreshHeight = ref(0);
 const isRefreshing = ref(false);
 const showRefreshIndicator = ref(false);
+
+// Add this function to ensure loadTrigger is set
+const setLoadTrigger = (el) => {
+  if (el) {
+    loadTrigger.value = el;
+  }
+};
 </script>
 
 <style scoped>
@@ -752,28 +827,75 @@ const showRefreshIndicator = ref(false);
   -ms-overflow-style: none;
 }
 
-.scroll-content::-webkit-scrollbar {
-  display: none;
-}
-
-.scroll-content.no-scroll {
-  overflow: hidden !important;
-}
-
 .refresh-indicator {
-  background-color: #f3f4f6;
-  opacity: 0;
-  transition: opacity 0.3s ease, height 0.3s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: height 0.3s ease, opacity 0.3s ease;
+  height: 0;
   overflow: hidden;
+  opacity: 0;
 }
 
 .refresh-indicator.visible {
+  height: 60px;
   opacity: 1;
+}
+
+.tab-content-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.tab-content {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transition: all 0.3s ease;
+}
+
+.fade-left-enter-active,
+.fade-left-leave-active,
+.fade-right-enter-active,
+.fade-right-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-left-enter-from {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.fade-left-leave-to {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.fade-right-enter-from {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.fade-right-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.no-scroll {
+  overflow: hidden;
 }
 
 .video-grid {
   @apply grid-cols-1 sm:grid-cols-2;
   min-height: 100%;
+  will-change: transform;
 }
 
 :deep(.custom-tab-bar) {
@@ -801,18 +923,6 @@ const showRefreshIndicator = ref(false);
   border-radius: 0.25rem;
   padding: 0.125rem 0.25rem;
   margin-left: 0.25rem;
-}
-
-.video-list-move {
-  transition: transform 0.5s ease;
-}
-
-.refresh-indicator.visible {
-  opacity: 1;
-}
-
-.refresh-wrapper {
-  transition: transform 0.3s ease;
 }
 
 .video-list-move {
