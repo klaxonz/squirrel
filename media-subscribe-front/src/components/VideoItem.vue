@@ -159,6 +159,6 @@ const formatDate = (dateString) => {
 }
 
 .video-item {
-  @apply mb-4 sm:mb-0; /* 在小屏幕上保留下边距，在大屏幕上移除 */
+  @apply mb-3 sm:mb-0; /* 在小屏幕上保留下边距，在大屏幕上移除 */
 }
 </style>

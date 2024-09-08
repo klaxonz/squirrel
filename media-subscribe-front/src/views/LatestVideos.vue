@@ -4,7 +4,7 @@
     <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 
     <div class="video-container flex-grow overflow-y-auto" ref="videoContainer" @scroll="handleScroll">
-      <div class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-4">
+      <div class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-3">
         <VideoItem
           v-for="video in videos"
           :key="video.id"
