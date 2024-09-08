@@ -1,5 +1,5 @@
 <template>
-  <div class="video-item bg-white shadow-sm overflow-hidden relative">
+  <div class="video-item bg-white shadow-sm overflow-hidden relative rounded-lg">
     <div class="video-thumbnail relative cursor-pointer">
       <img
         v-if="!video.isPlaying"
@@ -156,5 +156,9 @@ const formatDate = (dateString) => {
 .video-player::-webkit-media-controls {
   display: flex !important;
   visibility: visible !important;
+}
+
+.video-item {
+  @apply mb-4 sm:mb-0; /* 在小屏幕上保留下边距，在大屏幕上移除 */
 }
 </style>

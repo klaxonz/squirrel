@@ -4,20 +4,22 @@
     <TabBar v-model="activeTab" :tabs="tabs" />
 
     <div class="video-container flex-grow overflow-y-auto" ref="videoContainer" @scroll="handleScroll">
-      <VideoItem
-        v-for="video in videos"
-        :key="video.id"
-        :video="video"
-        @play="playVideo"
-        @setVideoRef="setVideoRef"
-        @videoPlay="onVideoPlay"
-        @videoPause="onVideoPause"
-        @videoEnded="onVideoEnded"
-        @fullscreenChange="onFullscreenChange"
-        @videoMetadataLoaded="onVideoMetadataLoaded"
-        @toggleOptions="toggleOptions"
-        @goToChannel="goToChannelDetail"
-      />
+      <div class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-4">
+        <VideoItem
+          v-for="video in videos"
+          :key="video.id"
+          :video="video"
+          @play="playVideo"
+          @setVideoRef="setVideoRef"
+          @videoPlay="onVideoPlay"
+          @videoPause="onVideoPause"
+          @videoEnded="onVideoEnded"
+          @fullscreenChange="onFullscreenChange"
+          @videoMetadataLoaded="onVideoMetadataLoaded"
+          @toggleOptions="toggleOptions"
+          @goToChannel="goToChannelDetail"
+        />
+      </div>
 
       <!-- 加载状态 -->
       <div v-if="loading" class="text-center py-4">
@@ -526,5 +528,9 @@ const setVideoRef = (id, el) => {
   width: 0;
   height: 0;
   display: none;
+}
+
+.video-grid {
+  @apply grid-cols-1 sm:grid-cols-2;
 }
 </style>
