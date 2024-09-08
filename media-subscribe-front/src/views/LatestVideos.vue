@@ -16,10 +16,11 @@
         class="refresh-indicator flex items-center justify-center"
         :style="{ height: `${refreshHeight}px` }"
       >
-        <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+        <svg class="animate-spin h-5 w-5 text-gray-500" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
+        <span class="ml-2 text-gray-600">{{ refreshText }}</span>
       </div>
 
       <Transition name="fade" mode="out-in">
@@ -206,6 +207,7 @@ const refreshContent = async (showIndicator = false) => {
   console.log('Refreshing content');
   isRefreshing.value = true;
   showRefreshIndicator.value = showIndicator;
+  refreshText.value = '正在刷新...';
   
   // 保持refreshHeight在刷新过程中
   const currentRefreshHeight = refreshHeight.value;
@@ -220,29 +222,14 @@ const refreshContent = async (showIndicator = false) => {
   
   // 使用 nextTick 确保 DOM 更新后再进行动画
   nextTick(() => {
-    // 只有在显示刷新指示器时才执行动画
     if (showIndicator) {
-      // 平滑地将refreshHeight重置为0
-      const animation = videoContainer.value.animate(
-        [
-          { transform: `translateY(${currentRefreshHeight}px)` },
-          { transform: 'translateY(0px)' }
-        ],
-        {
-          duration: 300,
-          easing: 'ease-out'
-        }
-      );
-      
-      animation.onfinish = () => {
-        refreshHeight.value = 0;
-        videoContainer.value.style.transform = '';
-        showRefreshIndicator.value = false;
-      };
+      setTimeout(() => {
+        resetRefreshState();
+      }, 500); // 给用户一个视觉反馈的时间
     } else {
       refreshHeight.value = 0;
-      videoContainer.value.style.transform = '';
       showRefreshIndicator.value = false;
+      refreshText.value = '下拉刷新';
     }
   });
 };
@@ -564,6 +551,7 @@ let isHorizontalSwipe = false;
 let swipeThreshold = 50;
 
 const handleTouchStart = (event) => {
+  startY = event.touches[0].clientY;
   touchStartX = event.touches[0].clientX;
   touchStartY = event.touches[0].clientY;
   isHorizontalSwipe = false;
@@ -585,6 +573,8 @@ const handleTouchMove = (event) => {
     event.preventDefault();
   } else if (diffY > 0 && videoContainer.value.scrollTop === 0) {
     refreshHeight.value = Math.min(diffY * 0.5, 60);
+    showRefreshIndicator.value = true;
+    refreshText.value = refreshHeight.value >= 50 ? '释放刷新' : '下拉刷新';
     event.preventDefault();
   }
 };
@@ -627,21 +617,27 @@ const handleVerticalSwipe = (swipeDistance) => {
   if (swipeDistance > 50 && refreshHeight.value >= 50) {
     refreshContent(true); // 下拉刷新时显示刷新图标
   } else {
-    // 如果没有触发刷新，平滑地将refreshHeight重置为0
-    const animation = videoContainer.value.animate(
-      [
-        { transform: `translateY(${refreshHeight.value}px)` },
-        { transform: 'translateY(0px)' }
-      ],
-      {
-        duration: 300,
-        easing: 'ease-out'
-      }
-    );
-    animation.onfinish = () => {
-      refreshHeight.value = 0;
-    };
+    resetRefreshState();
   }
+};
+
+const resetRefreshState = () => {
+  const animation = videoContainer.value.animate(
+    [
+      { transform: `translateY(${refreshHeight.value}px)` },
+      { transform: 'translateY(0px)' }
+    ],
+    {
+      duration: 300,
+      easing: 'ease-out'
+    }
+  );
+  
+  animation.onfinish = () => {
+    refreshHeight.value = 0;
+    showRefreshIndicator.value = false;
+    refreshText.value = '下拉刷新';
+  };
 };
 
 onMounted(() => {
@@ -721,44 +717,8 @@ const setVideoRef = (id, el) => {
 
 const refreshHeight = ref(0);
 const isRefreshing = ref(false);
-let startY = 0;
-
-const touchStart = (e) => {
-  startY = e.touches[0].clientY;
-};
-
-const touchMove = (e) => {
-  const currentY = e.touches[0].clientY;
-  const diff = currentY - startY;
-  if (diff > 0 && videoContainer.value.scrollTop === 0) {
-    refreshHeight.value = Math.min(diff * 0.5, 60); // 限制最大高度为60px
-    e.preventDefault();
-  }
-};
-
-const touchEnd = () => {
-  if (refreshHeight.value >= 50) {
-    refreshContent(true); // 下拉刷新时显示刷新图标
-  } else {
-    // 如果没有触发刷新，平滑地将refreshHeight重置为0
-    const animation = refreshHeight.value.animate(
-      [
-        { height: `${refreshHeight.value}px` },
-        { height: '0px' }
-      ],
-      {
-        duration: 300,
-        easing: 'ease-out'
-      }
-    );
-    animation.onfinish = () => {
-      refreshHeight.value = 0;
-    };
-  }
-};
-
-// 添加一个新的 ref 来控制是否显示刷新图标
 const showRefreshIndicator = ref(false);
+const refreshText = ref('下拉刷新');
 </script>
 
 <style scoped>
