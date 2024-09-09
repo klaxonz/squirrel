@@ -693,6 +693,22 @@ const handleTouchStart = (event) => {
 };
 
 const handleTouchMove = (event) => {
+  const currentX = event.touches[0].clientX;
+  const currentY = event.touches[0].clientY;
+  const diffX = currentX - touchStartX;
+  const diffY = currentY - touchStartY;
+
+  // 首先检查是否是水平滑动
+  if (!isHorizontalSwipe && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+    isHorizontalSwipe = true;
+  }
+
+  if (isHorizontalSwipe) {
+    event.preventDefault(); // 阻止默认行为，以便我们可以自定义水平滑动
+    return; // 如果是水平滑动，不执行下拉刷新逻辑
+  }
+
+  // 如果不是在顶部，不执行下拉刷新逻辑
   if (!isAtTopStart.value) {
     return;
   }
@@ -705,19 +721,6 @@ const handleTouchMove = (event) => {
   if (!isAtTop) {
     resetPullToRefreshState();
     return;
-  }
-
-  const currentX = event.touches[0].clientX;
-  const currentY = event.touches[0].clientY;
-  const diffX = currentX - touchStartX;
-  const diffY = currentY - touchStartY;
-
-  if (!isHorizontalSwipe && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-    isHorizontalSwipe = true;
-  }
-
-  if (isHorizontalSwipe) {
-    return; // 允许默认的水平滑动行为
   }
 
   // 添加一个小的阈值，防止轻微的向上滑动触发下拉刷新
