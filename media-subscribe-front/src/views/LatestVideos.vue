@@ -136,6 +136,7 @@ const {
   refreshHeight,
   isRefreshing,
   showRefreshIndicator,
+  isResetting, // Add this line
 } = useLatestVideos();
 
 const {
@@ -246,9 +247,14 @@ onUnmounted(() => {
   window.onpopstate = null;
 });
 
+const goToChannelDetail = (channelId) => {
+  router.push({ name: 'ChannelDetail', params: { id: channelId } });
+};
+
 provide('videoOperations', {
   retryPlay,
-  setVideoRef,  // 添加 setVideoRef 到 provide 中
+  setVideoRef,
+  goToChannelDetail, // Now we can include this function
 });
 </script>
 

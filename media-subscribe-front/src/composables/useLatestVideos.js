@@ -23,6 +23,7 @@ export default function useLatestVideos() {
   const showRefreshIndicator = ref(false);
   const currentPage = ref(1);
   const searchQuery = ref('');
+  const isResetting = ref(false);
 
   const tabsWithCounts = computed(() => {
     return tabs.map(tab => ({
@@ -81,11 +82,14 @@ export default function useLatestVideos() {
   };
 
   const resetAndReload = () => {
+    isResetting.value = true;
     videos.value[activeTab.value] = [];
     currentPage.value = 1;
     allLoaded.value = false;
     error.value = null;
-    loadMore();
+    loadMore().then(() => {
+      isResetting.value = false;
+    });
   };
 
   const handleScroll = (event) => {
@@ -140,5 +144,6 @@ export default function useLatestVideos() {
     handleScroll,
     scrollToTopAndRefresh,
     setLoadTrigger,
+    isResetting,
   };
 }
