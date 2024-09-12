@@ -23,11 +23,7 @@
       </div>
 
       <div class="tab-content-wrapper">
-        <transition-group 
-          :name="transitionName"
-          tag="div"
-          class="tab-content-inner"
-        >
+        <div class="tab-content-inner">
           <div 
             v-for="tab in tabs" 
             :key="tab.value"
@@ -57,8 +53,9 @@
                       v-for="video in videos[activeTab]"
                       :key="video.id"
                       :video="video"
+                      :playbackError="playbackError"
                       @play="playVideo"
-                      @setVideoRef="setVideoRef"
+                      :setVideoRef="setVideoRef"
                       @videoPlay="onVideoPlay"
                       @videoPause="onVideoPause"
                       @videoEnded="onVideoEnded"
@@ -80,7 +77,7 @@
               </div>
             </div>
           </div>
-        </transition-group>
+        </div>
       </div>
     </div>
   </div>
@@ -101,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, inject } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, inject, provide } from 'vue';
 import { useRouter } from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import useVideoOperations from '../composables/useVideoOperations';
@@ -143,12 +140,14 @@ const {
 
 const {
   playVideo,
+  retryPlay,
+  playbackError,
   onVideoPlay,
   onVideoPause,
   onVideoEnded,
   onFullscreenChange,
   onVideoMetadataLoaded,
-  setVideoRef,
+  setVideoRef,  // 确保这里有 setVideoRef
   handleOrientationChange,
 } = useVideoOperations(videos, videoRefs);
 
@@ -245,6 +244,11 @@ onUnmounted(() => {
   }
 
   window.onpopstate = null;
+});
+
+provide('videoOperations', {
+  retryPlay,
+  setVideoRef,  // 添加 setVideoRef 到 provide 中
 });
 </script>
 

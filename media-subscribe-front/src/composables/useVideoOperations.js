@@ -1,7 +1,9 @@
-import { nextTick } from 'vue';
+import { ref, nextTick } from 'vue';
 import axios from '../utils/axios';
 
 export default function useVideoOperations(videos, videoRefs) {
+  const playbackError = ref(null);
+
   const playVideo = async (video) => {
     if (!video.video_url) {
       try {
@@ -22,32 +24,28 @@ export default function useVideoOperations(videos, videoRefs) {
         }
       } catch (err) {
         console.error('获取视频地址失败:', err);
+        playbackError.value = '获取视频地址失败';
         return;
       }
     }
 
-    video.isPlaying = true;
-
     // 停止其他正在播放的视频
-    videos.value[video.tab].forEach(v => {
-      if (v !== video && v.isPlaying) {
-        v.isPlaying = false;
-        const videoElement = videoRefs.value[v.id];
-        if (videoElement) {
-          videoElement.pause();
+    Object.values(videos.value).forEach(tabVideos => {
+      tabVideos.forEach(v => {
+        if (v !== video && v.isPlaying) {
+          v.isPlaying = false;
         }
-      }
+      });
     });
 
-    await nextTick();
-    const videoElement = videoRefs.value[video.id];
-    if (videoElement) {
-      try {
-        await videoElement.play();
-      } catch (error) {
-        console.error('自动播放失败:', error);
-      }
-    }
+    video.isPlaying = true;
+
+    // 移除这里的播放逻辑，因为现在 VideoPlayer 组件会自动开始播放
+  };
+
+  const retryPlay = (video) => {
+    playbackError.value = null;
+    playVideo(video);
   };
 
   const onVideoPlay = (video) => {
@@ -106,6 +104,8 @@ export default function useVideoOperations(videos, videoRefs) {
 
   return {
     playVideo,
+    retryPlay,
+    playbackError,
     onVideoPlay,
     onVideoPause,
     onVideoEnded,

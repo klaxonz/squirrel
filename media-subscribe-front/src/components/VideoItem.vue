@@ -1,5 +1,5 @@
 <template>
-  <div class="video-item bg-white shadow-sm overflow-hidden relative rounded-lg">
+  <div class="video-item relative">
     <div class="video-thumbnail relative cursor-pointer">
       <img
         v-if="!video.isPlaying"
@@ -7,23 +7,21 @@
         referrerpolicy="no-referrer"
         alt="Video thumbnail"
         class="w-full h-full object-cover"
-        @click="$emit('play', video)"
+        @click="playVideo"
       >
-      <div v-show="video.isPlaying" class="video-wrapper">
-        <video
-          :src="video.video_url"
-          :ref="el => { if (el) $emit('setVideoRef', video.id, el) }"
-          class="video-player"
-          controls
-          @play="$emit('videoPlay', video)"
-          @pause="$emit('videoPause', video)"
-          @ended="$emit('videoEnded', video)"
-          @fullscreenchange="$emit('fullscreenChange', $event)"
-          @loadedmetadata="$emit('videoMetadataLoaded', $event, video)"
-        ></video>
-      </div>
+      <VideoPlayer
+        v-if="video.isPlaying"
+        :key="video.id"
+        :video="video"
+        :setVideoRef="setVideoRef"
+        @play="onVideoPlay"
+        @pause="onVideoPause"
+        @ended="onVideoEnded"
+        @fullscreenChange="$emit('fullscreenChange', $event)"
+        @metadataLoaded="$emit('videoMetadataLoaded', $event, video)"
+      />
       <div v-if="!video.isPlaying" class="video-duration">{{ formatDuration(video.duration) }}</div>
-      <div v-if="!video.isPlaying" class="play-button" @click="$emit('play', video)">
+      <div v-if="!video.isPlaying" class="play-button" @click="playVideo">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12">
           <path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clip-rule="evenodd"/>
         </svg>
@@ -65,20 +63,70 @@
         <span class="text-xs text-gray-500 whitespace-nowrap">{{ formatDate(video.uploaded_at) }}</span>
       </div>
     </div>
+    <div v-if="playbackError" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="text-center">
+        <p class="text-white mb-2">{{ playbackError }}</p>
+        <button @click="retryPlay(video)" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          重试播放
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+import { defineProps, defineEmits, inject, watch } from 'vue';
+import VideoPlayer from './VideoPlayer.vue';
 
 const props = defineProps({
-  video: Object
+  video: Object,
+  playbackError: String,
+  setVideoRef: Function,
 });
 
 const emit = defineEmits([
   'play', 'setVideoRef', 'videoPlay', 'videoPause', 'videoEnded',
   'fullscreenChange', 'videoMetadataLoaded', 'toggleOptions', 'goToChannel'
 ]);
+
+const { retryPlay } = inject('videoOperations');
+
+const playVideo = () => {
+  console.log('Attempting to play video:', props.video);
+  emit('play', props.video);
+};
+
+const onVideoPlay = () => {
+  console.log('Video started playing');
+  emit('videoPlay', props.video);
+};
+
+const onVideoPause = () => {
+  console.log('Video paused');
+  emit('videoPause', props.video);
+};
+
+const onVideoEnded = () => {
+  console.log('Video ended');
+  emit('videoEnded', props.video);
+};
+
+const onVideoMetadataLoaded = (event) => {
+  console.log('Video metadata loaded');
+  emit('videoMetadataLoaded', event, props.video);
+};
+
+watch(() => props.video.isPlaying, (newValue) => {
+  if (newValue) {
+    const videoElement = document.querySelector(`#video-${props.video.id}`);
+    if (videoElement && videoElement.paused) {
+      console.log('Video is playing, attempting to play');
+      videoElement.play().catch(error => {
+        console.warn('播放失败，可能是由于浏览器策略:', error);
+      });
+    }
+  }
+});
 
 const formatDuration = (seconds) => {
   if (!seconds) return '未知';
@@ -103,7 +151,6 @@ const formatDate = (dateString) => {
 </script>
 
 <style scoped>
-
 .video-thumbnail {
   @apply relative pt-[56.25%] cursor-pointer;
   height: 0;
@@ -114,9 +161,7 @@ const formatDate = (dateString) => {
 }
 
 .video-player {
-  @apply max-w-full max-h-full;
-  width: 100%;
-  height: 100%;
+  @apply w-full h-full object-contain;
 }
 
 .video-thumbnail img {
