@@ -1,0 +1,97 @@
+.latest-videos {
+  @apply min-h-full;
+}
+
+.video-container {
+  overflow: hidden;
+  position: relative;
+}
+
+.refresh-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: transform 0.3s ease;
+  will-change: transform;
+}
+
+.scroll-content {
+  height: 100%;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.refresh-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: height 0.3s ease, opacity 0.3s ease;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.refresh-indicator.visible {
+  height: 60px;
+  opacity: 1;
+}
+
+.tab-content-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.tab-content {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transition: all 0.3s ease;
+}
+
+.no-scroll {
+  overflow: hidden;
+}
+
+.video-grid {
+  @apply grid-cols-1 sm:grid-cols-2;
+  min-height: 100%;
+  will-change: transform;
+}
+
+:deep(.custom-tab-bar) {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 0.2rem 0;
+}
+
+:deep(.custom-tab-bar .tab-item) {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  margin: 0 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+:deep(.custom-tab-bar .tab-item.active) {
+  background-color: #42b983;
+  color: #fff;
+}
+
+:deep(.custom-tab-bar .tab-count) {
+  font-size: 0.75rem;
+  background-color: #ccc;
+  color: #fff;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  margin-left: 0.25rem;
+}
