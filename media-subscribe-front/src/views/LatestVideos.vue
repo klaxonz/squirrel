@@ -120,6 +120,7 @@
       @downloadVideo="downloadVideo"
       @copyVideoLink="copyVideoLink"
       @dislikeVideo="dislikeVideo"
+      @close="closeOptions"
     />
   </Teleport>
 
@@ -181,7 +182,7 @@ const {
   onVideoMetadataLoaded,
   setVideoRef,
   handleOrientationChange,
-  pauseVideo, // Add this new method
+  pauseVideo,
 } = useVideoOperations(videos, videoRefs);
 
 const activeScrollContent = computed(() => tabContents.value[activeTab.value]);
@@ -203,7 +204,7 @@ const {
   downloadVideo,
   copyVideoLink,
   dislikeVideo,
-} = useOptionsMenu();
+} = useOptionsMenu(videos);
 
 const filteredVideos = computed(() => {
   return (videos.value[activeTab.value] || []).filter(video => video && video.id);
@@ -297,7 +298,6 @@ const handleTouchEnd = (event) => {
 onMounted(() => {
   loadMore();
   window.addEventListener('orientationchange', handleOrientationChange);
-  document.addEventListener('click', closeOptions);
   adjustVideoContainerHeight();
   window.addEventListener('resize', adjustVideoContainerHeight);
   emitter.on('scrollToTopAndRefresh', scrollToTopAndRefresh);
@@ -343,7 +343,6 @@ onUnmounted(() => {
     videoContainer.value.removeEventListener('touchend', handleTouchEnd);
   }
   window.removeEventListener('orientationchange', handleOrientationChange);
-  document.removeEventListener('click', closeOptions);
   window.removeEventListener('resize', adjustVideoContainerHeight);
   emitter.off('scrollToTopAndRefresh', scrollToTopAndRefresh);
   emitter.off('refreshContent', refreshContent);

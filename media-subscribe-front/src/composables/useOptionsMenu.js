@@ -1,7 +1,7 @@
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import axios from '../utils/axios';
 
-export default function useOptionsMenu() {
+export default function useOptionsMenu(videos) {
   const activeOptions = ref(null);
   const optionsPosition = ref({ top: 0, left: 0 });
   const activeVideo = ref(null);
@@ -12,7 +12,7 @@ export default function useOptionsMenu() {
       closeOptions();
     } else {
       activeOptions.value = videoId;
-      activeVideo.value = videos.value.find(v => v.id === videoId);
+      activeVideo.value = Object.values(videos.value).flat().find(v => v.id === videoId);
       updateOptionsPosition(event);
     }
   };
@@ -42,6 +42,11 @@ export default function useOptionsMenu() {
   const closeOptions = () => {
     activeOptions.value = null;
     activeVideo.value = null;
+  };
+
+  // Add this new function
+  const handleScrollOrClickOutside = () => {
+    closeOptions();
   };
 
   const toggleReadStatus = async (isRead) => {
@@ -112,6 +117,16 @@ export default function useOptionsMenu() {
     }
     closeOptions();
   };
+
+  onMounted(() => {
+    document.addEventListener('scroll', handleScrollOrClickOutside, true);
+    document.addEventListener('click', handleScrollOrClickOutside);
+  });
+
+  onUnmounted(() => {
+    document.removeEventListener('scroll', handleScrollOrClickOutside, true);
+    document.removeEventListener('click', handleScrollOrClickOutside);
+  });
 
   return {
     activeOptions,

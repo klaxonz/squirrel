@@ -30,7 +30,7 @@ export default function useVideoOperations(videos, videoRefs) {
     }
 
     // 停止其他正在播放的视频
-    Object.values(videos.value).forEach(tabVideos => {
+    Object.values(videos).forEach(tabVideos => {
       tabVideos.forEach(v => {
         if (v !== video && v.isPlaying) {
           v.isPlaying = false;
