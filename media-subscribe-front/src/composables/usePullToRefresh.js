@@ -1,70 +1,71 @@
 import { ref } from 'vue';
 
-export default function usePullToRefresh(refreshContent, refreshHeight, showRefreshIndicator) {
-  const MAX_PULL_DISTANCE = 80;
-  const REFRESH_THRESHOLD = 60;
-  const RESISTANCE_FACTOR = 0.5;
+export default function usePullToRefresh(refreshContent, refreshHeight, showRefreshIndicator, activeScrollContent) {
+  let startY = 0;
+  let currentY = 0;
+  const isRefreshing = ref(false);
 
-  let initialTouchY = 0;
-  let lastTouchY = 0;
-  let pullStarted = false;
-  const isAtTopStart = ref(true);
-
-  const handleTouchStart = (event) => {
-    initialTouchY = event.touches[0].clientY;
-    lastTouchY = initialTouchY;
-    pullStarted = false;
-    isAtTopStart.value = event.target.scrollTop <= 1;
+  const handleTouchStart = (e) => {
+    if (isRefreshing.value) return;
+    startY = e.touches[0].clientY;
   };
 
-  const handleTouchMove = (event) => {
-    if (!isAtTopStart.value) return;
-
-    const currentY = event.touches[0].clientY;
-    const diffY = currentY - initialTouchY;
-
-    if (diffY > 5 && !pullStarted) {
-      pullStarted = true;
-      event.preventDefault();
+  const handleTouchMove = (e) => {
+    if (isRefreshing.value) return;
+    if (!activeScrollContent.value || activeScrollContent.value.scrollTop > 0) {
+      return;
     }
 
-    if (pullStarted) {
-      const deltaY = currentY - lastTouchY;
-      lastTouchY = currentY;
+    currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
 
-      if (refreshHeight.value + deltaY * RESISTANCE_FACTOR > 0) {
-        refreshHeight.value = Math.max(0, Math.min(
-          refreshHeight.value + deltaY * RESISTANCE_FACTOR,
-          MAX_PULL_DISTANCE
-        ));
-
-        showRefreshIndicator.value = true;
-        event.preventDefault();
-      } else {
-        resetPullToRefreshState();
-      }
+    if (diff > 0) {
+      e.preventDefault();
+      refreshHeight.value = Math.min(diff * 0.5, 60);
+      showRefreshIndicator.value = true;
     }
   };
 
   const handleTouchEnd = () => {
-    if (pullStarted) {
-      if (refreshHeight.value >= REFRESH_THRESHOLD) {
-        refreshContent(true);
-      } else {
-        resetPullToRefreshState();
-      }
+    if (isRefreshing.value) return;
+    if (refreshHeight.value >= 60) {
+      isRefreshing.value = true;
+      refreshContent().then(() => {
+        setTimeout(() => {
+          resetRefresh();
+        }, 300); // 延迟一小段时间后开始回弹
+      });
+    } else {
+      resetRefresh();
     }
   };
 
-  const resetPullToRefreshState = () => {
-    pullStarted = false;
-    refreshHeight.value = 0;
-    showRefreshIndicator.value = false;
+  const resetRefresh = () => {
+    const duration = 300; // 回弹动画持续时间（毫秒）
+    const start = refreshHeight.value;
+    const startTime = performance.now();
+
+    function animate(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      refreshHeight.value = start * (1 - progress);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        refreshHeight.value = 0;
+        showRefreshIndicator.value = false;
+        isRefreshing.value = false;
+      }
+    }
+
+    requestAnimationFrame(animate);
   };
 
   return {
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
+    isRefreshing,
   };
 }

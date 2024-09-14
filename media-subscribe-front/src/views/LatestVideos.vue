@@ -12,14 +12,14 @@
     >
       <div 
         class="refresh-indicator flex items-center justify-center absolute top-0 left-0 right-0 z-10"
-        :class="{ 'visible': showRefreshIndicator }"
+        :class="{ 'visible': showRefreshIndicator || isRefreshing }"
         :style="{ height: `${refreshHeight}px` }"
       >
         <svg class="animate-spin h-5 w-5 text-gray-500 mr-2" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span class="text-gray-600">刷新中</span>
+        <span class="text-gray-600">{{ isRefreshing ? '刷新中' : '下拉刷新' }}</span>
       </div>
 
       <div class="tab-content-wrapper">
@@ -98,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, inject, provide } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, inject, provide, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import useVideoOperations from '../composables/useVideoOperations';
@@ -134,7 +134,6 @@ const {
   loadTrigger,
   setLoadTrigger,
   refreshHeight,
-  isRefreshing,
   showRefreshIndicator,
   isResetting, // Add this line
 } = useLatestVideos();
@@ -152,11 +151,14 @@ const {
   handleOrientationChange,
 } = useVideoOperations(videos, videoRefs);
 
+const activeScrollContent = computed(() => tabContents.value[activeTab.value]);
+
 const {
   handleTouchStart,
   handleTouchMove,
   handleTouchEnd,
-} = usePullToRefresh(refreshContent, refreshHeight, showRefreshIndicator);
+  isRefreshing, // 只从 usePullToRefresh 中获取 isRefreshing
+} = usePullToRefresh(refreshContent, refreshHeight, showRefreshIndicator, activeScrollContent);
 
 const {
   activeOptions,
