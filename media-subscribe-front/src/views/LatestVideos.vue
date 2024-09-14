@@ -187,9 +187,9 @@ const {
 const activeScrollContent = computed(() => tabContents.value[activeTab.value]);
 
 const {
-  handleTouchStart,
-  handleTouchMove,
-  handleTouchEnd,
+  handleTouchStart: handlePullToRefreshTouchStart,
+  handleTouchMove: handlePullToRefreshTouchMove,
+  handleTouchEnd: handlePullToRefreshTouchEnd,
   isRefreshing,
 } = usePullToRefresh(refreshContent, refreshHeight, showRefreshIndicator, activeScrollContent);
 
@@ -236,6 +236,37 @@ const preventGoBack = (event) => {
   window.history.pushState(null, '', router.currentRoute.value.fullPath);
 };
 
+const touchStartX = ref(0);
+const touchEndX = ref(0);
+
+const handleTouchStart = (event) => {
+  touchStartX.value = event.touches[0].clientX;
+};
+
+const handleTouchMove = (event) => {
+  touchEndX.value = event.touches[0].clientX;
+};
+
+const handleTouchEnd = () => {
+  const swipeThreshold = 100; // 最小滑动距离
+  const swipeDistance = touchEndX.value - touchStartX.value;
+
+  if (Math.abs(swipeDistance) > swipeThreshold) {
+    const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
+    if (swipeDistance > 0 && currentIndex > 0) {
+      // 向右滑动，切换到上一个标签
+      activeTab.value = tabs[currentIndex - 1].value;
+    } else if (swipeDistance < 0 && currentIndex < tabs.length - 1) {
+      // 向左滑动，切换到下一个标签
+      activeTab.value = tabs[currentIndex + 1].value;
+    }
+  }
+
+  // 重置触摸位置
+  touchStartX.value = 0;
+  touchEndX.value = 0;
+};
+
 onMounted(() => {
   loadMore();
   window.addEventListener('orientationchange', handleOrientationChange);
@@ -247,6 +278,9 @@ onMounted(() => {
 
   if (videoContainer.value) {
     videoContainer.value.style.overscrollBehavior = 'none';
+    videoContainer.value.addEventListener('touchstart', handleTouchStart);
+    videoContainer.value.addEventListener('touchmove', handleTouchMove);
+    videoContainer.value.addEventListener('touchend', handleTouchEnd);
   }
 
   window.history.pushState(null, '', router.currentRoute.value.fullPath);
@@ -277,6 +311,9 @@ onMounted(() => {
 onUnmounted(() => {
   if (videoContainer.value) {
     videoContainer.value.removeEventListener('scroll', handleScroll);
+    videoContainer.value.removeEventListener('touchstart', handleTouchStart);
+    videoContainer.value.removeEventListener('touchmove', handleTouchMove);
+    videoContainer.value.removeEventListener('touchend', handleTouchEnd);
   }
   window.removeEventListener('orientationchange', handleOrientationChange);
   document.removeEventListener('click', closeOptions);
