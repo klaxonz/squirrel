@@ -231,6 +231,11 @@ const adjustVideoContainerHeight = () => {
   }
 };
 
+const preventGoBack = (event) => {
+  event.preventDefault();
+  window.history.pushState(null, '', router.currentRoute.value.fullPath);
+};
+
 onMounted(() => {
   loadMore();
   window.addEventListener('orientationchange', handleOrientationChange);
@@ -244,10 +249,8 @@ onMounted(() => {
     videoContainer.value.style.overscrollBehavior = 'none';
   }
 
-  window.history.pushState(null, '', window.location.href);
-  window.onpopstate = function() {
-    window.history.pushState(null, '', window.location.href);
-  };
+  window.history.pushState(null, '', router.currentRoute.value.fullPath);
+  window.addEventListener('popstate', preventGoBack);
 
   setTimeout(() => {
     if (!loadTrigger.value) {
