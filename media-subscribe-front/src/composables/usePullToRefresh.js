@@ -30,10 +30,15 @@ export default function usePullToRefresh(refreshContent, refreshHeight, showRefr
     if (isRefreshing.value) return;
     if (refreshHeight.value >= 60) {
       isRefreshing.value = true;
+      showRefreshIndicator.value = true;
+      console.log('Starting refresh in usePullToRefresh');
       refreshContent().then(() => {
-        setTimeout(() => {
-          resetRefresh();
-        }, 300); // 延迟一小段时间后开始回弹
+        console.log('Refresh completed in usePullToRefresh');
+      }).catch(error => {
+        console.error('Refresh error in usePullToRefresh:', error);
+      }).finally(() => {
+        console.log('Resetting refresh in usePullToRefresh');
+        resetRefresh();
       });
     } else {
       resetRefresh();
@@ -41,6 +46,7 @@ export default function usePullToRefresh(refreshContent, refreshHeight, showRefr
   };
 
   const resetRefresh = () => {
+    console.log('Resetting refresh');
     const duration = 300; // 回弹动画持续时间（毫秒）
     const start = refreshHeight.value;
     const startTime = performance.now();
@@ -56,6 +62,7 @@ export default function usePullToRefresh(refreshContent, refreshHeight, showRefr
         refreshHeight.value = 0;
         showRefreshIndicator.value = false;
         isRefreshing.value = false;
+        console.log('Reset completed');
       }
     }
 

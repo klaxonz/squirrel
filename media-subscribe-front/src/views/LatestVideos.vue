@@ -45,10 +45,26 @@
                   tag="div" 
                   class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
                 >
-                  <template v-if="loading && videos[activeTab].length === 0">
-                    <div v-for="n in 10" :key="n" class="video-item-placeholder animate-pulse bg-gray-200 h-48"></div>
+                  <template v-if="loading || isRefreshing">
+                    <div v-for="n in 10" :key="`skeleton-${n}`" class="video-item-skeleton bg-white rounded-lg shadow-md p-3 mb-4">
+                      <div class="animate-pulse">
+                        <div class="bg-gray-300 h-40 w-full rounded-md mb-3"></div>
+                        <div class="flex items-center space-x-2 mb-2">
+                          <div class="rounded-full bg-gray-300 h-8 w-8"></div>
+                          <div class="h-4 bg-gray-300 rounded w-1/2"></div>
+                        </div>
+                        <div class="space-y-2">
+                          <div class="h-4 bg-gray-300 rounded w-3/4"></div>
+                          <div class="h-4 bg-gray-300 rounded w-1/2"></div>
+                        </div>
+                        <div class="mt-2 flex justify-between items-center">
+                          <div class="h-3 bg-gray-300 rounded w-1/4"></div>
+                          <div class="h-3 bg-gray-300 rounded w-1/4"></div>
+                        </div>
+                      </div>
+                    </div>
                   </template>
-                  <template v-else>
+                  <template v-else-if="videos[activeTab] && videos[activeTab].length > 0">
                     <VideoItem
                       v-for="video in videos[activeTab]"
                       :key="video.id"
@@ -64,6 +80,11 @@
                       @toggleOptions="toggleOptions"
                       @goToChannel="goToChannelDetail"
                     />
+                  </template>
+                  <template v-else>
+                    <div class="text-center py-4 col-span-2">
+                      <p>没有找到视频</p>
+                    </div>
                   </template>
                 </TransitionGroup>
 
@@ -95,10 +116,15 @@
       @dislikeVideo="dislikeVideo"
     />
   </Teleport>
+
+  <!-- Error message display -->
+  <div v-if="error" class="text-center py-4 text-red-500">
+    {{ error }}
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, inject, provide, computed } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, inject, provide, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import useVideoOperations from '../composables/useVideoOperations';
@@ -135,7 +161,7 @@ const {
   setLoadTrigger,
   refreshHeight,
   showRefreshIndicator,
-  isResetting, // Add this line
+  isResetting,
 } = useLatestVideos();
 
 const {
@@ -147,7 +173,7 @@ const {
   onVideoEnded,
   onFullscreenChange,
   onVideoMetadataLoaded,
-  setVideoRef,  // 确保这里有 setVideoRef
+  setVideoRef,
   handleOrientationChange,
 } = useVideoOperations(videos, videoRefs);
 
@@ -157,8 +183,13 @@ const {
   handleTouchStart,
   handleTouchMove,
   handleTouchEnd,
-  isRefreshing, // 只从 usePullToRefresh 中获取 isRefreshing
+  isRefreshing,
 } = usePullToRefresh(refreshContent, refreshHeight, showRefreshIndicator, activeScrollContent);
+
+// Add this watch effect to log isRefreshing changes
+watch(isRefreshing, (newValue) => {
+  console.log('isRefreshing changed:', newValue);
+});
 
 const {
   activeOptions,
@@ -256,7 +287,25 @@ const goToChannelDetail = (channelId) => {
 provide('videoOperations', {
   retryPlay,
   setVideoRef,
-  goToChannelDetail, // Now we can include this function
+  goToChannelDetail,
+});
+
+// Add this watch effect to force re-render when videos change
+watch(() => videos.value[activeTab.value], (newVideos) => {
+  console.log('Videos updated:', newVideos);
+}, { deep: true });
+
+// Add watches for loading and isRefreshing states
+watch(() => videos.value[activeTab.value], (newVideos) => {
+  console.log('Videos updated in component:', newVideos);
+}, { deep: true });
+
+watch(loading, (newLoading) => {
+  console.log('Loading state changed:', newLoading);
+});
+
+watch(isRefreshing, (newIsRefreshing) => {
+  console.log('isRefreshing state changed:', newIsRefreshing);
 });
 </script>
 

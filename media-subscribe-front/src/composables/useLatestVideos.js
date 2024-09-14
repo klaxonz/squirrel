@@ -73,12 +73,46 @@ export default function useLatestVideos() {
     }
   };
 
-  const refreshContent = async (showIndicator = false) => {
+  const refreshContent = async () => {
+    console.log('Refreshing content started');
+    loading.value = true;
     isRefreshing.value = true;
-    showRefreshIndicator.value = showIndicator;
-    resetAndReload();
-    isRefreshing.value = false;
-    showRefreshIndicator.value = false;
+    try {
+      currentPage.value = 1;
+      const response = await axios.get('/api/channel-video/list', {
+        params: {
+          page: 1,
+          pageSize: 10,
+          query: searchQuery.value,
+          read_status: activeTab.value === 'all' ? null : activeTab.value
+        }
+      });
+
+      console.log('API response:', response.data);
+
+      if (response.data.code === 0) {
+        const newVideos = response.data.data.data.map(video => ({
+          ...video,
+          isPlaying: false,
+          video_url: null
+        }));
+        console.log('New videos:', newVideos);
+        videos.value[activeTab.value] = newVideos;
+        allLoaded.value = newVideos.length < 10;
+        videoCounts.value = response.data.data.counts;
+        console.log('Videos updated:', videos.value[activeTab.value]);
+        console.log('Content refreshed successfully');
+      } else {
+        throw new Error(response.data.msg || '刷新视频列表失败');
+      }
+    } catch (error) {
+      console.error('Error refreshing content:', error);
+      error.value = error.message;
+    } finally {
+      loading.value = false;
+      isRefreshing.value = false;
+      console.log('Refresh completed, loading:', loading.value, 'isRefreshing:', isRefreshing.value);
+    }
   };
 
   const resetAndReload = () => {
