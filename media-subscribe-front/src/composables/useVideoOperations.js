@@ -92,14 +92,26 @@ export default function useVideoOperations(videos, videoRefs) {
   };
 
   const handleOrientationChange = () => {
-    videos.value.forEach(video => {
-      if (video.isPlaying) {
-        const videoElement = videoRefs.value[video.id];
-        if (videoElement && document.fullscreenElement) {
-          videoElement.style.objectFit = window.screen.orientation.type.includes('portrait') ? 'contain' : 'cover';
+    Object.values(videos.value).forEach(tabVideos => {
+      tabVideos.forEach(video => {
+        if (video.isPlaying) {
+          const videoElement = videoRefs.value[video.id];
+          if (videoElement && document.fullscreenElement) {
+            videoElement.style.objectFit = window.screen.orientation.type.includes('portrait') ? 'contain' : 'cover';
+          }
         }
-      }
+      });
     });
+  };
+
+  const pauseVideo = (video) => {
+    if (video.isPlaying) {
+      const videoElement = videoRefs.value[video.id];
+      if (videoElement) {
+        videoElement.pause();
+        video.isPlaying = false;
+      }
+    }
   };
 
   return {
@@ -113,5 +125,6 @@ export default function useVideoOperations(videos, videoRefs) {
     onVideoMetadataLoaded,
     setVideoRef,
     handleOrientationChange,
+    pauseVideo,
   };
 }

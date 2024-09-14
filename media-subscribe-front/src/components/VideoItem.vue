@@ -1,5 +1,5 @@
 <template>
-  <div class="video-item relative">
+  <div class="video-item relative" ref="videoItemRef">
     <div class="video-thumbnail relative cursor-pointer">
       <img
         v-if="!video.isPlaying"
@@ -75,7 +75,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, inject, watch } from 'vue';
+import { defineProps, defineEmits, inject, watch, onMounted, onUnmounted, ref } from 'vue';
 import VideoPlayer from './VideoPlayer.vue';
 
 const props = defineProps({
@@ -86,7 +86,8 @@ const props = defineProps({
 
 const emit = defineEmits([
   'play', 'setVideoRef', 'videoPlay', 'videoPause', 'videoEnded',
-  'fullscreenChange', 'videoMetadataLoaded', 'toggleOptions', 'goToChannel'
+  'fullscreenChange', 'videoMetadataLoaded', 'toggleOptions', 'goToChannel',
+  'videoEnterViewport', 'videoLeaveViewport' // Add these new events
 ]);
 
 const { retryPlay } = inject('videoOperations');
@@ -115,6 +116,56 @@ const onVideoMetadataLoaded = (event) => {
   console.log('Video metadata loaded');
   emit('videoMetadataLoaded', event, props.video);
 };
+
+const videoItemRef = ref(null);
+const observer = ref(null);
+const isInViewport = ref(false);
+
+const checkIfInViewport = (entry) => {
+  const viewportHeight = window.innerHeight;
+  const verticalOffset = entry.boundingClientRect.top;
+  const elementHeight = entry.boundingClientRect.height;
+
+  // Consider the video in viewport if at least 50% of it is visible
+  const threshold = elementHeight * 0.5;
+
+  return (
+    (verticalOffset > -threshold && verticalOffset < viewportHeight - threshold) ||
+    (verticalOffset + elementHeight > threshold && verticalOffset + elementHeight < viewportHeight + threshold)
+  );
+};
+
+onMounted(() => {
+  observer.value = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const verticalOffset = entry.boundingClientRect.top;
+      console.log(`Video ${props.video.id} vertical offset: ${verticalOffset.toFixed(2)}px`);
+
+      const inViewport = checkIfInViewport(entry);
+      if (inViewport !== isInViewport.value) {
+        isInViewport.value = inViewport;
+        if (inViewport) {
+          emit('videoEnterViewport', props.video);
+        } else {
+          emit('videoLeaveViewport', props.video);
+        }
+      }
+    });
+  }, {
+    threshold: [0, 0.25, 0.5, 0.75, 1],
+    rootMargin: '0px'
+  });
+
+  if (videoItemRef.value) {
+    observer.value.observe(videoItemRef.value);
+  }
+});
+
+onUnmounted(() => {
+  if (observer.value) {
+    observer.value.disconnect();
+  }
+});
 
 watch(() => props.video.isPlaying, (newValue) => {
   if (newValue) {

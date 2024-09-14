@@ -66,7 +66,7 @@
                   </template>
                   <template v-else>
                     <VideoItem
-                      v-for="video in videos[activeTab]"
+                      v-for="video in filteredVideos"
                       :key="video.id"
                       :video="video"
                       :playbackError="playbackError"
@@ -79,6 +79,8 @@
                       @videoMetadataLoaded="onVideoMetadataLoaded"
                       @toggleOptions="toggleOptions"
                       @goToChannel="goToChannelDetail"
+                      @videoEnterViewport="onVideoEnterViewport"
+                      @videoLeaveViewport="onVideoLeaveViewport"
                     />
                   </template>
                 </TransitionGroup>
@@ -179,6 +181,7 @@ const {
   onVideoMetadataLoaded,
   setVideoRef,
   handleOrientationChange,
+  pauseVideo, // Add this new method
 } = useVideoOperations(videos, videoRefs);
 
 const activeScrollContent = computed(() => tabContents.value[activeTab.value]);
@@ -201,6 +204,20 @@ const {
   copyVideoLink,
   dislikeVideo,
 } = useOptionsMenu();
+
+const filteredVideos = computed(() => {
+  return (videos.value[activeTab.value] || []).filter(video => video && video.id);
+});
+
+const onVideoEnterViewport = (video) => {
+  console.log(`Video ${video.id} entered viewport`);
+  // 如果需要，可以在这里添加自动播放逻辑
+};
+
+const onVideoLeaveViewport = (video) => {
+  console.log(`Video ${video.id} left viewport`);
+  pauseVideo(video);
+};
 
 const adjustVideoContainerHeight = () => {
   if (videoContainer.value) {
@@ -270,7 +287,12 @@ onUnmounted(() => {
     }
   });
 
-  Object.values(observers.value).forEach(observer => observer.disconnect());
+  // Disconnect all observers
+  Object.values(observers.value).forEach(observer => {
+    if (observer && typeof observer.disconnect === 'function') {
+      observer.disconnect();
+    }
+  });
 
   if (videoContainer.value) {
     videoContainer.value.style.overscrollBehavior = 'auto';

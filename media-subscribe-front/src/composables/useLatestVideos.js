@@ -3,7 +3,11 @@ import axios from '../utils/axios';
 
 export default function useLatestVideos() {
   const videoContainer = ref(null);
-  const videos = ref({ all: [], unread: [], read: [] });
+  const videos = ref({
+    all: [],
+    unread: [],
+    read: []
+  });
   const loading = ref(false);
   const allLoaded = ref(false);
   const error = ref(null);
@@ -124,10 +128,11 @@ export default function useLatestVideos() {
   const handleScroll = (event) => {
     const scrollContent = event.target;
     const containerRect = scrollContent.getBoundingClientRect();
-    const triggerRect = loadTrigger.value.getBoundingClientRect();
-
-    if (triggerRect.top <= containerRect.bottom + 100) {
-      loadMore();
+    if (loadTrigger.value && loadTrigger.value.getBoundingClientRect) {
+      const triggerRect = loadTrigger.value.getBoundingClientRect();
+      if (triggerRect.top <= containerRect.bottom + 100) {
+        loadMore();
+      }
     }
   };
 
