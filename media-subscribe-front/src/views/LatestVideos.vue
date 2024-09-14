@@ -237,34 +237,61 @@ const preventGoBack = (event) => {
 };
 
 const touchStartX = ref(0);
+const touchStartY = ref(0);
 const touchEndX = ref(0);
+const touchEndY = ref(0);
+const isHorizontalSwipe = ref(false);
 
 const handleTouchStart = (event) => {
   touchStartX.value = event.touches[0].clientX;
+  touchStartY.value = event.touches[0].clientY;
+  isHorizontalSwipe.value = false;
+  handlePullToRefreshTouchStart(event);
 };
 
 const handleTouchMove = (event) => {
   touchEndX.value = event.touches[0].clientX;
+  touchEndY.value = event.touches[0].clientY;
+  
+  const deltaX = Math.abs(touchEndX.value - touchStartX.value);
+  const deltaY = Math.abs(touchEndY.value - touchStartY.value);
+  
+  // 如果水平移动距离大于垂直移动距离，且大于一定阈值，则认为是水平滑动
+  if (deltaX > deltaY && deltaX > 10) {
+    isHorizontalSwipe.value = true;
+  }
+  
+  // 只有在不是水平滑动的情况下，才触发下拉刷新的移动事件
+  if (!isHorizontalSwipe.value) {
+    handlePullToRefreshTouchMove(event);
+  }
 };
 
-const handleTouchEnd = () => {
+const handleTouchEnd = (event) => {
   const swipeThreshold = 100; // 最小滑动距离
-  const swipeDistance = touchEndX.value - touchStartX.value;
+  const swipeDistanceX = touchEndX.value - touchStartX.value;
+  const swipeDistanceY = touchEndY.value - touchStartY.value;
 
-  if (Math.abs(swipeDistance) > swipeThreshold) {
-    const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
-    if (swipeDistance > 0 && currentIndex > 0) {
-      // 向右滑动，切换到上一个标签
-      activeTab.value = tabs[currentIndex - 1].value;
-    } else if (swipeDistance < 0 && currentIndex < tabs.length - 1) {
-      // 向左滑动，切换到下一个标签
-      activeTab.value = tabs[currentIndex + 1].value;
+  if (isHorizontalSwipe.value) {
+    if (Math.abs(swipeDistanceX) > swipeThreshold) {
+      const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
+      if (swipeDistanceX > 0 && currentIndex > 0) {
+        // 向右滑动，切换到上一个标签
+        activeTab.value = tabs[currentIndex - 1].value;
+      } else if (swipeDistanceX < 0 && currentIndex < tabs.length - 1) {
+        // 向左滑动，切换到下一个标签
+        activeTab.value = tabs[currentIndex + 1].value;
+      }
     }
+  } else {
+    handlePullToRefreshTouchEnd(event);
   }
 
   // 重置触摸位置
   touchStartX.value = 0;
+  touchStartY.value = 0;
   touchEndX.value = 0;
+  touchEndY.value = 0;
 };
 
 onMounted(() => {
