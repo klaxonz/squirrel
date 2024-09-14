@@ -45,7 +45,7 @@
                   tag="div" 
                   class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
                 >
-                  <template v-if="loading || isRefreshing">
+                  <template v-if="isRefreshing">
                     <div v-for="n in 10" :key="`skeleton-${n}`" class="video-item-skeleton bg-white rounded-lg shadow-md p-3 mb-4">
                       <div class="animate-pulse">
                         <div class="bg-gray-300 h-40 w-full rounded-md mb-3"></div>
@@ -64,7 +64,7 @@
                       </div>
                     </div>
                   </template>
-                  <template v-else-if="videos[activeTab] && videos[activeTab].length > 0">
+                  <template v-else>
                     <VideoItem
                       v-for="video in videos[activeTab]"
                       :key="video.id"
@@ -81,20 +81,24 @@
                       @goToChannel="goToChannelDetail"
                     />
                   </template>
-                  <template v-else>
-                    <div class="text-center py-4 col-span-2">
-                      <p>没有找到视频</p>
-                    </div>
-                  </template>
                 </TransitionGroup>
 
+                <!-- 加载更多指示器 -->
+                <div v-if="loading && !isRefreshing" class="loading-indicator text-center py-4">
+                  <svg class="animate-spin h-5 w-5 text-gray-500 mx-auto" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p class="mt-2">加载更多...</p>
+                </div>
+
                 <!-- 加载完成状态 -->
-                <div v-if="allLoaded" class="text-center py-4">
+                <div v-if="allLoaded && !loading && !isRefreshing" class="text-center py-4">
                   <p>没有更多视频了</p>
                 </div>
 
                 <!-- 添加一个用于触发加载的元素 -->
-                <div ref="setLoadTrigger" class="h-1 load-trigger"></div>
+                <div v-if="!allLoaded && !loading && !isRefreshing" ref="setLoadTrigger" class="h-1 load-trigger"></div>
               </div>
             </div>
           </div>
@@ -185,11 +189,6 @@ const {
   handleTouchEnd,
   isRefreshing,
 } = usePullToRefresh(refreshContent, refreshHeight, showRefreshIndicator, activeScrollContent);
-
-// Add this watch effect to log isRefreshing changes
-watch(isRefreshing, (newValue) => {
-  console.log('isRefreshing changed:', newValue);
-});
 
 const {
   activeOptions,
@@ -288,24 +287,6 @@ provide('videoOperations', {
   retryPlay,
   setVideoRef,
   goToChannelDetail,
-});
-
-// Add this watch effect to force re-render when videos change
-watch(() => videos.value[activeTab.value], (newVideos) => {
-  console.log('Videos updated:', newVideos);
-}, { deep: true });
-
-// Add watches for loading and isRefreshing states
-watch(() => videos.value[activeTab.value], (newVideos) => {
-  console.log('Videos updated in component:', newVideos);
-}, { deep: true });
-
-watch(loading, (newLoading) => {
-  console.log('Loading state changed:', newLoading);
-});
-
-watch(isRefreshing, (newIsRefreshing) => {
-  console.log('isRefreshing state changed:', newIsRefreshing);
 });
 </script>
 

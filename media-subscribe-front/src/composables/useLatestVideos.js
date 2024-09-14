@@ -40,7 +40,7 @@ export default function useLatestVideos() {
   };
 
   const loadMore = async () => {
-    if (loading.value || allLoaded.value) return;
+    if (loading.value || allLoaded.value || isRefreshing.value) return;
 
     loading.value = true;
     try {
@@ -59,7 +59,7 @@ export default function useLatestVideos() {
           isPlaying: false,
           video_url: null
         }));
-        videos.value[activeTab.value].push(...newVideos);
+        videos.value[activeTab.value] = [...videos.value[activeTab.value], ...newVideos];
         currentPage.value++;
         allLoaded.value = newVideos.length < 10;
         videoCounts.value = response.data.data.counts;
@@ -74,9 +74,10 @@ export default function useLatestVideos() {
   };
 
   const refreshContent = async () => {
-    console.log('Refreshing content started');
-    loading.value = true;
+    if (isRefreshing.value) return;
+    
     isRefreshing.value = true;
+    loading.value = true;
     try {
       currentPage.value = 1;
       const response = await axios.get('/api/channel-video/list', {
@@ -88,20 +89,15 @@ export default function useLatestVideos() {
         }
       });
 
-      console.log('API response:', response.data);
-
       if (response.data.code === 0) {
         const newVideos = response.data.data.data.map(video => ({
           ...video,
           isPlaying: false,
           video_url: null
         }));
-        console.log('New videos:', newVideos);
         videos.value[activeTab.value] = newVideos;
         allLoaded.value = newVideos.length < 10;
         videoCounts.value = response.data.data.counts;
-        console.log('Videos updated:', videos.value[activeTab.value]);
-        console.log('Content refreshed successfully');
       } else {
         throw new Error(response.data.msg || '刷新视频列表失败');
       }
@@ -111,7 +107,6 @@ export default function useLatestVideos() {
     } finally {
       loading.value = false;
       isRefreshing.value = false;
-      console.log('Refresh completed, loading:', loading.value, 'isRefreshing:', isRefreshing.value);
     }
   };
 
