@@ -38,12 +38,6 @@
         </svg>
         <span class="nav-text">设置</span>
       </router-link>
-      <button @click="refreshContent" class="nav-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        <span class="nav-text">刷新</span>
-      </button>
     </nav>
   </div>
 </template>
@@ -60,13 +54,6 @@ const handleNavBarDoubleClick = () => {
   emitter.emit('scrollToTopAndRefresh');
 };
 
-// 提供一个刷新方法
-const refreshContent = () => {
-  console.log('Refresh content triggered');
-  emitter.emit('refreshContent');
-};
-
-provide('refreshContent', refreshContent);
 </script>
 
 <style scoped>
