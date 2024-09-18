@@ -1,9 +1,9 @@
-import { ref } from 'vue';
+import { ref, inject } from 'vue';
 import axios from '../utils/axios';
 import useToast from './useToast';
 
 export default function useVideoOperations(videos, videoRefs) {
-  const { displayToast } = useToast();
+  const displayToast = inject('toast');
   const playbackError = ref(null);
 
   const playVideo = async (video) => {

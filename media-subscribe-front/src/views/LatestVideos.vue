@@ -130,9 +130,11 @@
   </div>
 
   <!-- Add this near the end of your template -->
-  <div v-if="showToast" class="toast-message">
-    {{ toastMessage }}
-  </div>
+  <Teleport to="body">
+    <div v-if="showToast" class="toast-message">
+      {{ toastMessage }}
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -340,6 +342,9 @@ onMounted(() => {
       }
     });
   });
+
+  // 为了测试 toast 是否正常工作，我们可以在组件挂载时显示一条消息
+  displayToast('欢迎来到最新视频页面');
 });
 
 onUnmounted(() => {
@@ -395,10 +400,13 @@ provide('videoOperations', {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.8);
   color: white;
   padding: 10px 20px;
   border-radius: 5px;
-  z-index: 1000;
+  z-index: 9999;
+  font-size: 16px;
+  max-width: 80%;
+  text-align: center;
 }
 </style>

@@ -1,9 +1,9 @@
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, inject } from 'vue';
 import axios from '../utils/axios';
 import useToast from './useToast';
 
 export default function useOptionsMenu(videos) {
-  const { displayToast } = useToast();
+  const displayToast = inject('toast');
   const activeOptions = ref(null);
   const optionsPosition = ref({ top: 0, left: 0 });
   const activeVideo = ref(null);
