@@ -30,13 +30,23 @@ export default function useVideoOperations(videos, videoRefs) {
     }
 
     // 停止其他正在播放的视频
-    Object.values(videos).forEach(tabVideos => {
-      tabVideos.forEach(v => {
+    if (Array.isArray(videos.value)) {
+      videos.value.forEach(v => {
         if (v !== video && v.isPlaying) {
           v.isPlaying = false;
         }
       });
-    });
+    } else if (typeof videos.value === 'object') {
+      Object.values(videos.value).forEach(tabVideos => {
+        if (Array.isArray(tabVideos)) {
+          tabVideos.forEach(v => {
+            if (v !== video && v.isPlaying) {
+              v.isPlaying = false;
+            }
+          });
+        }
+      });
+    }
 
     video.isPlaying = true;
 

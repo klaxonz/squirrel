@@ -154,7 +154,6 @@ const {
   activeTab,
   tabContents,
   tabs,
-  videoCounts,
   tabsWithCounts,
   isReadPage,
   handleSearch,
