@@ -1,7 +1,9 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import axios from '../utils/axios';
+import useToast from './useToast';
 
 export default function useOptionsMenu(videos) {
+  const { displayToast } = useToast();
   const activeOptions = ref(null);
   const optionsPosition = ref({ top: 0, left: 0 });
   const activeVideo = ref(null);
@@ -52,16 +54,17 @@ export default function useOptionsMenu(videos) {
   const toggleReadStatus = async (isRead) => {
     if (activeVideo.value) {
       try {
+        console.log('Marking video as read:', activeVideo.value);
         await axios.post('/api/channel-video/mark-read', {
           channel_id: activeVideo.value.channel_id,
           video_id: activeVideo.value.video_id,
           is_read: isRead
         });
-        showToast(`视频已标记为${isRead ? '已读' : '未读'}`);
+        displayToast(`视频已标记为${isRead ? '已读' : '未读'}`);
         // 这里可能需要刷新视频列表
       } catch (error) {
         console.error('更新阅读状态失败:', error);
-        showToast('更新阅读状态失败', true);
+        displayToast('更新阅读状态失败', true);
       }
     }
     closeOptions();
@@ -75,11 +78,11 @@ export default function useOptionsMenu(videos) {
           direction: direction,
           reference_id: activeVideo.value.id
         });
-        showToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为已读`);
+        displayToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为已读`);
         // 这里可能需要刷新视频列表
       } catch (error) {
         console.error('批量更新阅读状态失败:', error);
-        showToast('批量更新阅读状态失败', true);
+        displayToast('批量更新阅读状态失败', true);
       }
     }
     closeOptions();
@@ -94,14 +97,14 @@ export default function useOptionsMenu(videos) {
         });
 
         if (response.data.code === 0) {
-          showToast('视频下载已开始，请稍后查看下载列表');
+          displayToast('视频下载已开始，请稍后查看下载列表');
           activeVideo.value.if_downloaded = true;
         } else {
-          throw new Error(response.data.msg || '下载视频失败');
+          displayToast('视频下载已开始，请稍后查看下载列表');
         }
       } catch (error) {
         console.error('下载视频失败:', error);
-        showToast('下载视频失败: ' + (error.message || '未知错误'), true);
+        displayToast('下载视频失败: ' + (error.message || '未知错误'), true);
       }
     }
     closeOptions();
@@ -110,7 +113,7 @@ export default function useOptionsMenu(videos) {
   const copyVideoLink = () => {
     if (activeVideo.value) {
       navigator.clipboard.writeText(activeVideo.value.url).then(() => {
-        showToast('视频链接已复制到剪贴板');
+        displayToast('视频链接已复制到剪贴板');
       }).catch(err => {
         console.error('复制链接失败: ', err);
       });

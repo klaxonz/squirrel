@@ -1,7 +1,9 @@
-import { ref, nextTick } from 'vue';
+import { ref } from 'vue';
 import axios from '../utils/axios';
+import useToast from './useToast';
 
 export default function useVideoOperations(videos, videoRefs) {
+  const { displayToast } = useToast();
   const playbackError = ref(null);
 
   const playVideo = async (video) => {
@@ -19,7 +21,7 @@ export default function useVideoOperations(videos, videoRefs) {
           if (response.data.code === 0) {
             video.video_url = response.data.data;
           } else {
-            throw new Error(response.data.msg || '获取视频地址失败');
+            displayToast(response.data.msg || '获取视频地址失败');
           }
         }
       } catch (err) {

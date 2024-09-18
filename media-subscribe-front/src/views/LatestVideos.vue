@@ -128,6 +128,11 @@
   <div v-if="error" class="text-center py-4 text-red-500">
     {{ error }}
   </div>
+
+  <!-- Add this near the end of your template -->
+  <div v-if="showToast" class="toast-message">
+    {{ toastMessage }}
+  </div>
 </template>
 
 <script setup>
@@ -137,6 +142,7 @@ import useLatestVideos from '../composables/useLatestVideos';
 import useVideoOperations from '../composables/useVideoOperations';
 import usePullToRefresh from '../composables/usePullToRefresh';
 import useOptionsMenu from '../composables/useOptionsMenu';
+import useToast from '../composables/useToast';
 import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
 import VideoItem from '../components/VideoItem.vue';
@@ -169,6 +175,8 @@ const {
   showRefreshIndicator,
   isResetting,
 } = useLatestVideos();
+
+const { toastMessage, showToast, displayToast } = useToast();
 
 const {
   playVideo,
@@ -374,7 +382,23 @@ provide('videoOperations', {
   retryPlay,
   setVideoRef,
   goToChannelDetail,
+  displayToast,
 });
 </script>
 
 <style src="./LatestVideos.css" scoped></style>
+
+<style scoped>
+/* Add this to your component's styles */
+.toast-message {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  z-index: 1000;
+}
+</style>
