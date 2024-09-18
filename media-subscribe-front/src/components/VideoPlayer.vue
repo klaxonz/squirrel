@@ -6,6 +6,7 @@
       :ref="el => setVideoRef(video.id, el)"
       class="video-player"
       controls
+      autoplay
       @play="onVideoPlay"
       @pause="onVideoPause"
       @ended="onVideoEnded"
