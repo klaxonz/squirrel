@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         视频下载
 // @namespace    http://tampermonkey.net/
-// @version      0.1.0
-// @description  尝试在访问特定网站时执行操作
+// @version      0.1.1
+// @description  在特定网站执行视频下载和频道订阅操作
 // @author       你的名字
 // @match        *://*.bilibili.com/*
 // @match        *://*.youtube.com/*
@@ -16,50 +16,103 @@
 (function() {
     'use strict';
 
-    // 默认的后端接口host
+    // 常量定义
     const DEFAULT_HOST = "http://localhost:8000";
+    const SELECTORS = {
+        BILIBILI: {
+            VIDEO_CARD: '.bili-video-card',
+            INFO_BOTTOM: '.bili-video-card__info--bottom',
+            VIDEO_TOOLBAR: '.video-toolbar-left-main',
+            SUBSCRIBE_BUTTON: '.up-info__btn-panel .follow-btn',
+            UP_INFO_CONTAINER: '.up-info-container',
+        },
+        YOUTUBE: {
+            VIDEO_CARD: '#dismissible',
+            METADATA_LINE: '#metadata-line',
+            SUBSCRIBE_BUTTON: '.yt-flexible-actions-view-model-wiz__action',
+        },
+        COMMON: {
+            DOWNLOAD_BUTTON: '.ytdlp-btn',
+            SUBSCRIBE_BUTTON: '.subscribe-btn',
+        }
+    };
 
-    // 获取已保存的host配置
-    function getHostConfig() {
-        return GM_getValue('backendHost', DEFAULT_HOST);
-    }
+    // 工具函数
+    const getHostConfig = () => GM_getValue('backendHost', DEFAULT_HOST);
+    const setHostConfig = (host) => GM_setValue('backendHost', host);
 
-    // 保存host配置
-    function setHostConfig(host) {
-        GM_setValue('backendHost', host);
-    }
+    // 添加下载图标的 SVG
+    const DOWNLOAD_ICON_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+  <polyline points="7 10 12 15 17 10"></polyline>
+  <line x1="12" y1="15" x2="12" y2="3"></line>
+</svg>
+`;
 
-    // 创建悬浮按钮
-    function createFloatingButton() {
+    // 修改 createButton 函数，支持使用图标
+    const createButton = (text, className, clickHandler, useIcon = false) => {
         const button = document.createElement('button');
-        button.textContent = 'Configure Host';
-        button.style.position = 'fixed';
-        button.style.bottom = '20px';
-        button.style.right = '20px';
-        button.style.zIndex = '1000';
-        button.style.backgroundColor = '#f00';
-        button.style.color = '#fff';
-        button.style.padding = '10px 20px';
-        button.style.borderRadius = '5px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.addEventListener('click', showConfigDialog);
+        if (useIcon) {
+            button.innerHTML = DOWNLOAD_ICON_SVG;
+            button.title = text; // 使用 title 属性显示悬停文本
+        } else {
+            button.textContent = text;
+        }
+        button.classList.add(className);
+        button.addEventListener('click', clickHandler);
+        return button;
+    };
 
+    const sendRequest = async (url, data, endpoint) => {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: `${getHostConfig()}${endpoint}`,
+                data: JSON.stringify(data),
+                headers: { "Content-Type": "application/json" },
+                onload: (response) => resolve(response.status === 200),
+                onerror: reject,
+                ontimeout: reject,
+                timeout: 10000
+            });
+        });
+    };
+
+    const download = (url, data) => sendRequest(url, data, '/api/task/download');
+    const subscribe = (url, data) => sendRequest(url, data, '/api/channel/subscribe');
+
+    // UI 相关函数
+    const createFloatingButton = () => {
+        const button = createButton('Configure Host', 'config-host-btn', showConfigDialog);
+        Object.assign(button.style, {
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            zIndex: '1000',
+            backgroundColor: '#f00',
+            color: '#fff',
+            padding: '10px 20px',
+            borderRadius: '5px',
+            border: 'none',
+            cursor: 'pointer',
+        });
         document.body.appendChild(button);
-    }
+    };
 
-    // 显示配置对话框
-    function showConfigDialog() {
+    const showConfigDialog = () => {
         const dialog = document.createElement('div');
-        dialog.style.position = 'fixed';
-        dialog.style.top = '50%';
-        dialog.style.left = '50%';
-        dialog.style.transform = 'translate(-50%, -50%)';
-        dialog.style.backgroundColor = '#fff';
-        dialog.style.padding = '20px';
-        dialog.style.zIndex = '1001';
-        dialog.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
-        dialog.style.borderRadius = '5px';
+        Object.assign(dialog.style, {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: '#fff',
+            padding: '20px',
+            zIndex: '1001',
+            boxShadow: '0 0 10px rgba(0, 0, 0, 0.5)',
+            borderRadius: '5px',
+        });
 
         const input = document.createElement('input');
         input.type = 'text';
@@ -67,9 +120,7 @@
         input.style.width = '100%';
         input.style.marginBottom = '10px';
 
-        const saveButton = document.createElement('button');
-        saveButton.textContent = 'Save';
-        saveButton.addEventListener('click', () => {
+        const saveButton = createButton('Save', 'save-config-btn', () => {
             setHostConfig(input.value);
             dialog.remove();
         });
@@ -77,10 +128,176 @@
         dialog.appendChild(input);
         dialog.appendChild(saveButton);
         document.body.appendChild(dialog);
-    }
+    };
+
+    // 主要逻辑函数
+    const addDownloadButtonToBilibili = () => {
+        const videoCards = document.querySelectorAll(SELECTORS.BILIBILI.VIDEO_CARD);
+        videoCards.forEach(card => {
+            const infoBottom = card.querySelector(SELECTORS.BILIBILI.INFO_BOTTOM);
+            if (infoBottom && !infoBottom.querySelector(SELECTORS.COMMON.DOWNLOAD_BUTTON)) {
+                const downloadButton = createButton('下载视频', SELECTORS.COMMON.DOWNLOAD_BUTTON.slice(1), (event) => {
+                    event.preventDefault();
+                    const videoUrl = card.querySelector('.bili-video-card__image--link').getAttribute('href');
+                    download(videoUrl, { url: videoUrl });
+                }, true); // 使用图标
+                
+                // 设置按钮样式
+                Object.assign(downloadButton.style, {
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#757575', // 使用哔哩哔哩的灰色
+                });
+                
+                infoBottom.appendChild(downloadButton);
+            }
+        });
+    };
+
+    const addDownloadButtonToBilibiliVideo = async () => {
+        const element = await getElement(document, SELECTORS.BILIBILI.VIDEO_TOOLBAR, 10000);
+        if (element && !element.querySelector(SELECTORS.COMMON.DOWNLOAD_BUTTON)) {
+            const downloadButton = createButton('下载', SELECTORS.COMMON.DOWNLOAD_BUTTON.slice(1), () => {
+                const url = window.location.href;
+                download(url, { url });
+            }, true); // 使用图标
+            
+            // 设置按钮样式
+            Object.assign(downloadButton.style, {
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '8px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#757575', // 使用哔哩哔哩的灰色
+            });
+            
+            element.appendChild(downloadButton);
+        }
+    };
+
+    const addDownloadButtonToYoutube = async () => {
+        const videoCards = document.querySelectorAll(SELECTORS.YOUTUBE.VIDEO_CARD);
+        videoCards.forEach(card => {
+            const bottomEl = card.querySelector(SELECTORS.YOUTUBE.METADATA_LINE);
+            if (bottomEl) {
+                const existingBtn = bottomEl.querySelector(SELECTORS.COMMON.DOWNLOAD_BUTTON);
+                if (existingBtn) {
+                    bottomEl.removeChild(existingBtn);
+                }
+
+                const downloadButton = createButton('下载', SELECTORS.COMMON.DOWNLOAD_BUTTON.slice(1), (event) => {
+                    event.stopPropagation();
+                    const href = card.querySelector("a.ytd-thumbnail").getAttribute("href");
+                    const url = `${window.location.origin}${href}`;
+                    download(url, { url });
+                });
+                bottomEl.appendChild(downloadButton);
+            }
+        });
+    };
+
+    const addSubscribeButtonToYoutube = async () => {
+        const element = await getElement(document, SELECTORS.YOUTUBE.SUBSCRIBE_BUTTON, 10000);
+        if (element && !element.parentNode.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
+            let url = window.location.href.replace(/\/(videos|featured)/, '');
+            const subscribeButton = createButton('立即订阅', SELECTORS.COMMON.SUBSCRIBE_BUTTON.slice(1), (event) => {
+                event.stopPropagation();
+                subscribe(url, { url });
+            });
+            Object.assign(subscribeButton.style, {
+                cursor: 'pointer',
+                margin: '0 0 0 4px',
+                color: 'white',
+            });
+            element.parentNode.appendChild(subscribeButton);
+        }
+    };
+
+    const addSubscribeButtonToBilibili = async () => {
+        const element = await getElement(document, SELECTORS.BILIBILI.UP_INFO_CONTAINER, 10000);
+        if (element && !element.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
+            const channelUrl = getChannelUrlFromBilibili(element);
+            console.log('Bilibili channel URL:', channelUrl); // 添加这行日志
+            if (!channelUrl) return;
+
+            const subscribeButton = createButton('订阅', SELECTORS.COMMON.SUBSCRIBE_BUTTON.slice(1), (event) => {
+                event.stopPropagation();
+                subscribe(channelUrl, { url: channelUrl });
+            });
+            
+            // 设置订阅按钮样式
+            Object.assign(subscribeButton.style, {
+                padding: '0 12px',
+                height: '34px',
+                lineHeight: '34px',
+                fontSize: '14px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                backgroundColor: '#00a1d6',
+                color: '#fff',
+                border: 'none',
+                marginRight: '10px',
+            });
+            
+            const btnPanel = element.querySelector('.up-info__btn-panel');
+            if (btnPanel) {
+                // 获取所有现有的按钮
+                const existingButtons = btnPanel.querySelectorAll('.default-btn');
+                
+                // 移除所有现有的按钮
+                existingButtons.forEach(btn => btn.remove());
+                
+                // 添加订阅按钮作为第一个按钮
+                btnPanel.appendChild(subscribeButton);
+                
+                // 重新添加其他按钮，并调整它们的样式
+                existingButtons.forEach(btn => {
+                    Object.assign(btn.style, {
+                        padding: '0 12px',
+                        height: '34px',
+                        lineHeight: '34px',
+                        fontSize: '14px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        backgroundColor: '#f4f4f4',
+                        color: '#505050',
+                        border: 'none',
+                        marginRight: '10px',
+                    });
+                    btnPanel.appendChild(btn);
+                });
+                
+                // 确保按钮面板是flex布局
+                Object.assign(btnPanel.style, {
+                    display: 'flex',
+                    alignItems: 'center',
+                });
+            }
+        }
+    };
 
     // 初始化
     createFloatingButton();
+
+    // 定时器
+    setInterval(() => {
+        if (window.location.hostname.includes('bilibili.com')) {
+            addDownloadButtonToBilibili();
+            addDownloadButtonToBilibiliVideo();
+            addSubscribeButtonToBilibili();
+        } else if (window.location.hostname.includes('youtube.com')) {
+            addDownloadButtonToYoutube();
+            addSubscribeButtonToYoutube();
+        }
+    }, 1000);
 
     const getElement = (parent, selector, timeout = 0) => {
       return new Promise(resolve => {
@@ -135,231 +352,37 @@
       });
     }
 
-    const download = (url, data) => {
-      GM_xmlhttpRequest({
-          method: 'POST',
-          url: `${getHostConfig()}/api/task/download`,
-          data: data,
-          headers: {
-              "Content-Type": "application/json"
-          },
-          onload: function(response) {
-              if (response.status === 200) {
-                  console.log('下载任务已启动');
-              } else {
-                  console.log('下载任务启动失败');
-              }
-          },
-          onerror: function(response) {
-              console.error('下载请求出错:', response.statusText);
-          },
-          ontimeout: function(response) {
-              console.error('下载请求超时');
-          },
-          timeout: 10000
-      });
+    const main = () => {
+        if (window.location.hostname.includes('bilibili.com')) {
+            addDownloadButtonToBilibili();
+            addDownloadButtonToBilibiliVideo();
+            addSubscribeButtonToBilibili();
+        } else if (window.location.hostname.includes('youtube.com')) {
+            addDownloadButtonToYoutube();
+            addSubscribeButtonToYoutube();
+        }
     };
 
-    const subscribe = (url, data) => {
-      GM_xmlhttpRequest({
-          method: 'POST',
-          url: `${getHostConfig()}/api/channel/subscribe`,
-          data: data,
-          headers: {
-              "Content-Type": "application/json"
-          },
-          onload: function(response) {
-              if (response.status === 200) {
-                  console.log('订阅成功');
-              } else {
-                  console.log('订阅失败');
-              }
-          },
-          onerror: function(response) {
-              console.error('订阅失败:', response.statusText);
-          },
-          ontimeout: function(response) {
-              console.error('订阅失败');
-          },
-          timeout: 10000
-      });
+    // 使用 MutationObserver 来监听 DOM 变化
+    const observer = new MutationObserver(main);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // 初次运行
+    main();
+
+    const getChannelUrlFromBilibili = (container) => {
+        const avatarLink = container.querySelector('.up-avatar');
+        if (avatarLink) {
+            const href = avatarLink.getAttribute('href');
+            if (href.startsWith('//')) {
+                return `https:${href}`;
+            } else if (href.startsWith('/')) {
+                return `https://space.bilibili.com${href}`;
+            } else {
+                return href;
+            }
+        }
+        return null;
     };
-
-    const createDownloadButton = () => {
-        // 创建下载按钮元素
-        const downloadButton = document.createElement('button');
-        downloadButton.textContent = '下载视频';
-        downloadButton.style.padding = '5px 10px';
-        downloadButton.style.cursor = 'pointer';
-        downloadButton.style.border = 'none';
-        downloadButton.style.borderRadius = '5px';
-        downloadButton.classList.add('ytdlp-btn');
-
-        // 点击按钮发送请求的函数
-        downloadButton.addEventListener('click', function(event) {
-            event.preventDefault(); // 阻止链接默认的跳转行为
-            const videoCard = event.target.closest('.bili-video-card');
-            if (videoCard) {
-                const videoUrl = videoCard.querySelector('.bili-video-card__image--link').getAttribute('href');
-                const downloadData = JSON.stringify({ url: videoUrl });
-                download(videoUrl, downloadData);
-            }
-        });
-
-        return downloadButton;
-    }
-
-
-    // Bilibili 首页
-    setInterval(() => {
-      // 寻找页面上所有的视频卡片，并添加下载按钮
-      const videoCards = document.querySelectorAll('.bili-video-card');
-      videoCards.forEach(card => {
-          const infoBottom = card.querySelector('.bili-video-card__info--bottom');
-          if (infoBottom) {
-              const addedBtn = infoBottom.querySelector('.ytdlp-btn');
-              if (addedBtn) {
-                return;
-              }
-              const downloadButton = createDownloadButton();
-              infoBottom.appendChild(downloadButton);
-          }
-      });
-    }, 1000)
-
-    // 视频播放页
-    setTimeout(() => {
-      getElement(document, '.video-toolbar-left-main', 10000).then(element => {
-          if(!element) {
-              return;
-          }
-          const btn = element.querySelector(".ytdlp-btn");
-          if (btn) {
-              return;
-          }
-          const div = document.createElement('div');
-          div.classList.add('toolbar-left-item-wrap');
-          div.classList.add('ytdlp-btn');
-          div.textContent = '下载';
-          div.style.cursor = 'pointer';
-
-          // 点击按钮发送请求的函数
-          div.addEventListener('click', function(event) {
-              const url = window.location.href;
-              const data = JSON.stringify({ url: url });
-              download(url, data);
-          });
-
-          element.appendChild(div);
-      });
-    }, 1000);
-
-    setInterval(() => {
-        getElement(document, '#dismissible', 10000).then(element => {
-            const bilibiliVideoCards = document.querySelectorAll('#dismissible');
-            bilibiliVideoCards.forEach(card => {
-                const btn = card.querySelector(".ytdlp-btn");
-
-                const bottomEl = card.querySelector("#metadata-line");
-                if (!bottomEl) {
-                  return
-                }
-                if (btn) {
-                  bottomEl.removeChild(btn);
-                }
-
-                const span = document.createElement('span');
-                span.textContent = '下载';
-                span.style.cursor = 'pointer';
-                span.style.margin = '0 0 0 4px';
-                span.classList.add('ytdlp-btn');
-
-                const host = window.location.href;
-                const href = card.querySelector("a.ytd-thumbnail").getAttribute("href");
-                const url = host + href;
-
-                // 点击按钮发送请求的函数
-                span.addEventListener('click', function(event) {
-                    event.stopPropagation();
-                    const data = JSON.stringify({ url: url });
-                    download(url, data);
-                });
-                bottomEl.appendChild(span);
-            });
-        });
-    }, 1000);
-
-    // 订阅
-    setInterval(() => {
-        getElement(document, '.yt-flexible-actions-view-model-wiz__action', 10000).then(element => {
-            let el = document.querySelector('.yt-flexible-actions-view-model-wiz__action');
-            if (!el) {
-              return;
-            }
-            el = el.parentNode;
-            console.log('sss', el);
-
-            const btn = el.querySelector(".subscribe-btn");
-            if (btn) {
-              return;
-            }
-
-            const span = document.createElement('span');
-            span.textContent = '立即订阅';
-            span.style.cursor = 'pointer';
-            span.style.margin = '0 0 0 4px';
-            span.style.color = 'white';
-            span.classList.add('subscribe-btn');
-
-            let url = window.location.href;
-            if (url.includes("/videos")) {
-              url = url.replace("/videos", "");
-            }
-            if (url.includes("/featured")) {
-              url = url.replace("/featured", "");
-            }
-            // 点击按钮发送请求的函数
-            span.addEventListener('click', function(event) {
-                event.stopPropagation();
-                const data = JSON.stringify({ url: url });
-                subscribe(url, data);
-            });
-            el.appendChild(span);
-        });
-    }, 1000);
-
-    setInterval(() => {
-        getElement(document, '.h-action', 10000).then(element => {
-            let el = document.querySelector('.h-action');
-            if (!el) {
-              return;
-            }
-
-            const btn = el.querySelector(".subscribe-btn");
-            if (btn) {
-              return;
-            }
-
-            const span = document.createElement('span');
-            span.textContent = '立即订阅';
-            span.style.cursor = 'pointer';
-            span.style.margin = '0 0 0 4px';
-            span.style.color = 'white';
-            span.classList.add('subscribe-btn');
-            span.classList.add('h-f-btn');
-
-            let url = window.location.href;
-            const parsedUrl = new URL(url);
-            const baseUrl = parsedUrl.protocol + '//' + parsedUrl.host;
-            url = baseUrl + '/' + url.match(/\/(\d+)\/?.*/)[1];
-            // 点击按钮发送请求的函数
-            span.addEventListener('click', function(event) {
-                event.stopPropagation();
-                const data = JSON.stringify({ url: url });
-                subscribe(url, data);
-            });
-            el.appendChild(span);
-        });
-    }, 1000);
 
 })();
