@@ -8,7 +8,7 @@ export default function useOptionsMenu(videos, refreshContent) {
   const optionsPosition = ref({ top: 0, left: 0 });
   const activeVideo = ref(null);
 
-  const toggleOptions = (videoId, event) => {
+  const toggleOptions = (event, videoId) => {
     event.stopPropagation();
     if (activeOptions.value === videoId) {
       closeOptions();

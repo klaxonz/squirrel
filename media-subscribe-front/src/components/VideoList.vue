@@ -45,7 +45,7 @@
         @videoEnded="$emit('videoEnded', video)"
         @fullscreenChange="$emit('fullscreenChange', $event)"
         @videoMetadataLoaded="$emit('videoMetadataLoaded', $event, video)"
-        @toggleOptions="$emit('toggleOptions', video.id, $event)"
+        @toggleOptions="$emit('toggleOptions', $event, video.id)"
         @goToChannel="$emit('goToChannel', video.channel_id)"
         @videoEnterViewport="$emit('videoEnterViewport', video)"
         @videoLeaveViewport="$emit('videoLeaveViewport', video)"
