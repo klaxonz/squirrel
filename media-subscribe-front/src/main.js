@@ -9,6 +9,7 @@ import './index.css';
 const app = createApp(App)
 app.use(router)
 app.use(Toast, {
+    maxToasts: 1,
     toastClassName: "custom-toast",
     containerClassName: "custom-toast-container",
 })
