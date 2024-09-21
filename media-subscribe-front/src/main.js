@@ -6,7 +6,7 @@ import Toast from 'vue-toastification';
 import 'vue-toastification/dist/index.css';
 import './index.css';
 import Player from 'xgplayer';
-
+import 'xgplayer/dist/index.min.css';
 const app = createApp(App)
 app.use(router)
 app.use(Toast, {
