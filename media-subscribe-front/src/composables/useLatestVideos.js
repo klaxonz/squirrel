@@ -77,6 +77,17 @@ export default function useLatestVideos() {
     }
   };
 
+  const handleScroll = (event) => {
+    const scrollContent = event.target;
+    const scrollPosition = scrollContent.scrollTop + scrollContent.clientHeight;
+    const scrollHeight = scrollContent.scrollHeight;
+
+    // 当滚动到距离底部 100px 时加载更多
+    if (scrollHeight - scrollPosition <= 100 && !loading.value && !allLoaded.value) {
+      loadMore();
+    }
+  };
+
   const refreshContent = async () => {
     if (isRefreshing.value) return;
     
@@ -123,17 +134,6 @@ export default function useLatestVideos() {
     loadMore().then(() => {
       isResetting.value = false;
     });
-  };
-
-  const handleScroll = (event) => {
-    const scrollContent = event.target;
-    const containerRect = scrollContent.getBoundingClientRect();
-    if (loadTrigger.value && loadTrigger.value.getBoundingClientRect) {
-      const triggerRect = loadTrigger.value.getBoundingClientRect();
-      if (triggerRect.top <= containerRect.bottom + 100) {
-        loadMore();
-      }
-    }
   };
 
   const scrollToTopAndRefresh = () => {

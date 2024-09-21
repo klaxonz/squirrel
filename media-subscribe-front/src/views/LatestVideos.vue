@@ -70,9 +70,6 @@
                 <div v-if="allLoaded && !loading && !isRefreshing" class="text-center py-4">
                   <p>没有更多视频了</p>
                 </div>
-
-                <!-- 添加一个用于触发加载的元素 -->
-                <div v-if="!allLoaded && !loading && !isRefreshing" ref="setLoadTrigger" class="h-1 load-trigger"></div>
               </div>
             </div>
           </div>
