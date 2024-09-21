@@ -37,9 +37,12 @@ export default function useVideoOperations(videos, videoRefs) {
         tabVideos.forEach(v => {
           if (v !== video && v.isPlaying) {
             v.isPlaying = false;
+              console.log('Video paused:', video.id)
+
             const playerInstance = videoRefs.value[v.id];
             if (playerInstance) {
               playerInstance.pause();
+              console.log('Video paused:', video.id)
             }
           }
         });
@@ -117,11 +120,16 @@ export default function useVideoOperations(videos, videoRefs) {
   const pauseVideo = (video) => {
     if (video.isPlaying) {
       const videoElement = videoRefs.value[video.id];
+      console.log('Pause video:', videoElement)
       if (videoElement) {
         videoElement.pause();
         video.isPlaying = false;
       }
     }
+  };
+
+  const onVideoLeaveViewport = (video) => {
+    pauseVideo(video);
   };
 
   const attemptAutoplay = async (videoId) => {
@@ -151,11 +159,10 @@ export default function useVideoOperations(videos, videoRefs) {
     onVideoPlay,
     onVideoPause,
     onVideoEnded,
-    // onFullscreenChange,
-    // onVideoMetadataLoaded,
     setVideoRef,
     handleOrientationChange,
     pauseVideo,
     attemptAutoplay,
+    onVideoLeaveViewport,
   };
 }

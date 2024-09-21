@@ -17,8 +17,6 @@
         @play="onVideoPlay"
         @pause="onVideoPause"
         @ended="onVideoEnded"
-        @fullscreenChange="$emit('fullscreenChange', $event)"
-        @metadataLoaded="$emit('videoMetadataLoaded', $event, video)"
       />
       <div v-if="!video.isPlaying" class="video-duration">{{ formatDuration(video.duration) }}</div>
       <div v-if="!video.isPlaying" class="play-button" @click="playVideo">
@@ -90,7 +88,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'play', 'setVideoRef', 'videoPlay', 'videoPause', 'videoEnded',
- 'toggleOptions', 'goToChannel',
+  'toggleOptions', 'goToChannel',
   'videoEnterViewport', 'videoLeaveViewport' // Add these new events
 ]);
 
@@ -121,43 +119,20 @@ const onVideoEnded = () => {
   emit('videoEnded', props.video);
 };
 
-
-
 const videoItemRef = ref(null);
 const observer = ref(null);
-const isInViewport = ref(false);
-
-const checkIfInViewport = (entry) => {
-  const viewportHeight = window.innerHeight;
-  const verticalOffset = entry.boundingClientRect.top;
-  const elementHeight = entry.boundingClientRect.height;
-
-  // Consider the video in viewport if at least 50% of it is visible
-  const threshold = elementHeight * 0.5;
-
-  return (
-    (verticalOffset > -threshold && verticalOffset < viewportHeight - threshold) ||
-    (verticalOffset + elementHeight > threshold && verticalOffset + elementHeight < viewportHeight + threshold)
-  );
-};
 
 onMounted(() => {
-  observer.value = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      const inViewport = checkIfInViewport(entry);
-      if (inViewport !== isInViewport.value) {
-        isInViewport.value = inViewport;
-        if (inViewport) {
-          emit('videoEnterViewport', props.video);
-        } else {
-          emit('videoLeaveViewport', props.video);
-        }
+  observer.value = new IntersectionObserver(
+    ([entry]) => {
+      console.log('IntersectionObserver callback:', entry);
+      if (!entry.isIntersecting && props.video.isPlaying) {
+        console.log('Video left viewport');
+        emit('videoLeaveViewport', props.video);
       }
-    });
-  }, {
-    threshold: [0, 0.25, 0.5, 0.75, 1],
-    rootMargin: '0px'
-  });
+    },
+    { threshold: 0.5 } // Adjust this threshold as needed
+  );
 
   if (videoItemRef.value) {
     observer.value.observe(videoItemRef.value);

@@ -12,7 +12,7 @@ const props = defineProps({
   video: Object,
 });
 
-const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'metadataLoaded']);
+const emit = defineEmits(['play', 'pause', 'ended']);
 
 const player = ref(null);
 
@@ -42,9 +42,7 @@ const initPlayer = () => {
     height: '100%',
     cssFullscreen: false,
     commonStyle: {
-      // 播放完成部分进度条底色
       playedColor: '#00a1d6',
-      // 进度条底色
       progressColor: 'rgba(255, 255, 255, 0.3)',
     },
   });
@@ -52,8 +50,6 @@ const initPlayer = () => {
   player.value.on('play', () => emit('play', props.video));
   player.value.on('pause', () => emit('pause', props.video));
   player.value.on('ended', () => emit('ended', props.video));
-  player.value.on('fullscreenChange', (e) => emit('fullscreenChange', e));
-  player.value.on('loadedmetadata', (e) => emit('metadataLoaded', e));
 };
 </script>
 

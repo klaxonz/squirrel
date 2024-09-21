@@ -154,8 +154,8 @@ const {
   onVideoEnded,
   setVideoRef,
   handleOrientationChange,
-  pauseVideo,
   attemptAutoplay,
+  onVideoLeaveViewport
 } = useVideoOperations(videos, videoRefs);
 
 const activeScrollContent = computed(() => tabContents.value[activeTab.value]);
@@ -191,9 +191,6 @@ const onVideoEnterViewport = (video) => {
   // 如果需要，可以在这里添加自动播放逻辑
 };
 
-const onVideoLeaveViewport = (video) => {
-  pauseVideo(video);
-};
 
 const adjustVideoContainerHeight = () => {
   if (videoContainer.value) {
