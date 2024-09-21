@@ -224,12 +224,10 @@ const filteredVideos = computed(() => {
 });
 
 const onVideoEnterViewport = (video) => {
-  console.log(`Video ${video.id} entered viewport`);
   // 如果需要，可以在这里添加自动播放逻辑
 };
 
 const onVideoLeaveViewport = (video) => {
-  console.log(`Video ${video.id} left viewport`);
   pauseVideo(video);
 };
 
@@ -269,7 +267,7 @@ const handleTouchMove = (event) => {
   
   const deltaX = Math.abs(touchEndX.value - touchStartX.value);
   const deltaY = Math.abs(touchEndY.value - touchStartY.value);
-  
+  console.log(`Delta X: ${deltaX}, Delta Y: ${deltaY}`);
   // 如果水平移动距离大于垂直移动距离，且大于一定阈值，则认为是水平滑动
   if (deltaX > deltaY && deltaX > 10) {
     isHorizontalSwipe.value = true;
@@ -282,7 +280,7 @@ const handleTouchMove = (event) => {
 };
 
 const handleTouchEnd = (event) => {
-  const swipeThreshold = 100; // 最小滑动距离
+  const swipeThreshold = 50; // 最小滑动距离
   const swipeDistanceX = touchEndX.value - touchStartX.value;
   const swipeDistanceY = touchEndY.value - touchStartY.value;
 

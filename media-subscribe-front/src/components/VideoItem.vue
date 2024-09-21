@@ -138,9 +138,6 @@ const checkIfInViewport = (entry) => {
 onMounted(() => {
   observer.value = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      const verticalOffset = entry.boundingClientRect.top;
-      console.log(`Video ${props.video.id} vertical offset: ${verticalOffset.toFixed(2)}px`);
-
       const inViewport = checkIfInViewport(entry);
       if (inViewport !== isInViewport.value) {
         isInViewport.value = inViewport;
