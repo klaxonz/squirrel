@@ -80,6 +80,7 @@
       v-if="activeOptions !== null"
       :position="optionsPosition"
       :is-read-page="isReadPage"
+      :active-tab="activeTab"
       @toggleReadStatus="toggleReadStatus"
       @markReadBatch="markReadBatch"
       @downloadVideo="downloadVideo"

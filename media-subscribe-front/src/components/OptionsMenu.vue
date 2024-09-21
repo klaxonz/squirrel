@@ -25,7 +25,7 @@
       复制链接
     </button>
     <div class="divider"></div>
-    <template v-if="!isReadPage">
+    <template v-if="activeTab === 'unread' || activeTab === 'all'">
       <button @click="$emit('toggleReadStatus', true)" class="option-item">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -33,25 +33,41 @@
         标记为已读
       </button>
     </template>
-    <button @click="$emit('toggleReadStatus', false)" class="option-item">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-      </svg>
-      标记为未读
-    </button>
+    <template v-if="activeTab === 'read' || activeTab === 'all'">
+      <button @click="$emit('toggleReadStatus', false)" class="option-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        标记为未读
+      </button>
+    </template>
     <div class="divider"></div>
-    <template v-if="!isReadPage">
-      <button @click="$emit('markReadBatch', 'above')" class="option-item">
+    <template v-if="activeTab === 'unread' || activeTab === 'all'">
+      <button @click="$emit('markReadBatch', isChannelPage, true,'above')" class="option-item">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
         </svg>
         以上标记为已读
       </button>
-      <button @click="$emit('markReadBatch', 'below')" class="option-item">
+      <button @click="$emit('markReadBatch', isChannelPage, true, 'below')" class="option-item">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
         </svg>
         以下标记为已读
+      </button>
+    </template>
+    <template v-if="activeTab === 'read' || activeTab === 'all'">
+      <button @click="$emit('markReadBatch', isChannelPage, false, 'above')" class="option-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+        以上标记为未读
+      </button>
+      <button @click="$emit('markReadBatch', isChannelPage, false, 'below')" class="option-item">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+        以下标记为未读
       </button>
     </template>
   </div>
@@ -65,9 +81,17 @@ defineProps({
     type: Object,
     required: true
   },
+  isChannelPage: {
+    type: Boolean,
+    default: false
+  },
   isReadPage: {
     type: Boolean,
     default: false
+  },
+  activeTab: {
+    type: String,
+    default: ''
   }
 });
 

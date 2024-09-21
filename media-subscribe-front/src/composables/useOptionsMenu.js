@@ -62,6 +62,7 @@ export default function useOptionsMenu(videos, refreshContent) {
         });
         displayToast(`视频已标记为${isRead ? '已读' : '未读'}`);
         // 这里可能需要刷新视频列表
+        await refreshContent();
       } catch (error) {
         console.error('更新阅读状态失败:', error);
         displayToast('更新阅读状态失败', true);
@@ -70,17 +71,19 @@ export default function useOptionsMenu(videos, refreshContent) {
     closeOptions();
   };
 
-  const markReadBatch = async (direction) => {
+  const markReadBatch = async (isChannel, isRead, direction) => {
     if (activeVideo.value) {
       try {
+        const channelId = isChannel ? activeVideo.value.channel_id : null;
         const response = await axios.post('/api/channel-video/mark-read-batch', {
-          is_read: true,
+          is_read: isRead,
+          channel_id: channelId,
           direction: direction,
-          reference_id: activeVideo.value.id
+          uploaded_at: activeVideo.value.uploaded_at
         });
 
         if (response.data.code === 0) {
-          displayToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为已读`);
+          displayToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为${isRead ? '已读' : '未读'}`);
 
           // 刷新内容以获取更新后的视频列表和计数
           await refreshContent();

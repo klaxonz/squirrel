@@ -4,6 +4,7 @@ import re
 import stat
 from email.utils import formatdate
 from mimetypes import guess_type
+from typing import Optional
 
 from fastapi import Query, APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
@@ -86,7 +87,7 @@ def get_channel_videos(
 
         total = base_query.count()
         offset = (page - 1) * page_size
-        channel_videos = base_query.order_by(ChannelVideo.id.desc()).offset(offset).limit(page_size)
+        channel_videos = base_query.order_by(ChannelVideo.uploaded_at.desc()).offset(offset).limit(page_size)
 
         # 计算总数、已读数和未读数
         s_query = s.query(ChannelVideo)
@@ -156,18 +157,21 @@ class MarkReadRequest(BaseModel):
 
 class MarkReadBatchRequest(BaseModel):
     is_read: bool
+    channel_id: Optional[str] = None
     direction: str  # 'above' or 'below'
-    reference_id: int  # 改为使用 ID 而不是日期
+    uploaded_at: str  # 改为使用 ID 而不是日期
 
 @router.post("/api/channel-video/mark-read-batch")
 def mark_videos_read_batch(req: MarkReadBatchRequest):
     with get_session() as s:
         query = s.query(ChannelVideo)
+        if req.channel_id:
+            query = query.filter(ChannelVideo.channel_id == req.channel_id)
         
         if req.direction == 'above':
-            query = query.filter(ChannelVideo.id >= req.reference_id)
+            query = query.filter(ChannelVideo.uploaded_at >= req.uploaded_at)
         elif req.direction == 'below':
-            query = query.filter(ChannelVideo.id <= req.reference_id)
+            query = query.filter(ChannelVideo.uploaded_at <= req.uploaded_at)
         
         query.update({"if_read": req.is_read})
         s.commit()
