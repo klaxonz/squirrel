@@ -266,9 +266,9 @@ onMounted(() => {
 
   if (videoContainer.value) {
     videoContainer.value.style.overscrollBehavior = 'none';
-    videoContainer.value.addEventListener('touchstart', handleTouchStart);
-    videoContainer.value.addEventListener('touchmove', handleTouchMove);
-    videoContainer.value.addEventListener('touchend', handleTouchEnd);
+    videoContainer.value.addEventListener('touchstart', handleTouchStart, { passive: true });
+    videoContainer.value.addEventListener('touchmove', handleTouchMove, { passive: true });
+    videoContainer.value.addEventListener('touchend', handleTouchEnd, { passive: true });
   }
 
   window.history.pushState(null, '', router.currentRoute.value.fullPath);
@@ -277,7 +277,7 @@ onMounted(() => {
   nextTick(() => {
     tabs.forEach(tab => {
       if (tabContents.value[tab.value]) {
-        tabContents.value[tab.value].addEventListener('scroll', handleScroll);
+        tabContents.value[tab.value].addEventListener('scroll', handleScroll, { passive: true });
       } else {
         console.warn('Failed to initialize scroll content for tab:', tab.value);
       }
