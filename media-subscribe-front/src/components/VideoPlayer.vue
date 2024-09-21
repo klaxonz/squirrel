@@ -10,6 +10,7 @@ import Player from 'xgplayer';
 
 const props = defineProps({
   video: Object,
+  setVideoRef: Function,
 });
 
 const emit = defineEmits(['play', 'pause', 'ended']);
@@ -50,6 +51,14 @@ const initPlayer = () => {
   player.value.on('play', () => emit('play', props.video));
   player.value.on('pause', () => emit('pause', props.video));
   player.value.on('ended', () => emit('ended', props.video));
+
+  // 将 player 实例传递给父组件
+  if (props.setVideoRef) {
+    console.log('Calling setVideoRef for video:', props.video.id);
+    props.setVideoRef(props.video.id, player.value);
+  } else {
+    console.warn('setVideoRef function not provided for video:', props.video.id);
+  }
 };
 </script>
 

@@ -61,19 +61,11 @@
         <span class="text-xs text-gray-500 whitespace-nowrap">{{ formatDate(video.uploaded_at) }}</span>
       </div>
     </div>
-    <div v-if="playbackError" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div class="text-center">
-        <p class="text-white mb-2">{{ playbackError }}</p>
-        <button @click="retryPlay(video)" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-          重试播放
-        </button>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup>
-import { defineProps, defineEmits, inject, watch, onMounted, onUnmounted, ref } from 'vue';
+import { defineProps, defineEmits, onMounted, onUnmounted, ref } from 'vue';
 import VideoPlayer from './VideoPlayer.vue';
 
 const props = defineProps({
@@ -82,17 +74,14 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
-  playbackError: String,
   setVideoRef: Function,
 });
 
 const emit = defineEmits([
   'play', 'setVideoRef', 'videoPlay', 'videoPause', 'videoEnded',
   'toggleOptions', 'goToChannel',
-  'videoEnterViewport', 'videoLeaveViewport' // Add these new events
+  'videoEnterViewport', 'videoLeaveViewport'
 ]);
-
-const { retryPlay, attemptAutoplay } = inject('videoOperations');
 
 const playVideo = () => {
   console.log('Attempting to play video:', props.video);
@@ -101,11 +90,6 @@ const playVideo = () => {
 
 const onVideoPlay = () => {
   console.log('Video started playing');
-  if (attemptAutoplay) {
-    attemptAutoplay(props.video.id);
-  } else {
-    console.warn('attemptAutoplay function is not available');
-  }
   emit('videoPlay', props.video);
 };
 
@@ -125,13 +109,11 @@ const observer = ref(null);
 onMounted(() => {
   observer.value = new IntersectionObserver(
     ([entry]) => {
-      console.log('IntersectionObserver callback:', entry);
       if (!entry.isIntersecting && props.video.isPlaying) {
-        console.log('Video left viewport');
         emit('videoLeaveViewport', props.video);
       }
     },
-    { threshold: 0.5 } // Adjust this threshold as needed
+    { threshold: 0.5 }
   );
 
   if (videoItemRef.value) {
@@ -145,19 +127,6 @@ onUnmounted(() => {
   }
 });
 
-watch(() => props.video.isPlaying, (newValue) => {
-  if (newValue) {
-    const videoElement = document.querySelector(`#video-${props.video.id}`);
-    if (videoElement && videoElement.paused) {
-      console.log('Video is playing, attempting to play');
-      if (attemptAutoplay) {
-        attemptAutoplay(props.video.id);
-      } else {
-        console.warn('attemptAutoplay function is not available');
-      }
-    }
-  }
-});
 
 const formatDuration = (seconds) => {
   if (!seconds) return '未知';

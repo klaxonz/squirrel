@@ -38,7 +38,6 @@
         :key="video.id"
         :video="video"
         :showAvatar="showAvatar"
-        :playbackError="playbackError"
         @play="$emit('play', video)"
         :setVideoRef="setVideoRef"
         @videoPlay="$emit('videoPlay', video)"
@@ -64,7 +63,6 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
-  playbackError: String,
   setVideoRef: Function,
 });
 

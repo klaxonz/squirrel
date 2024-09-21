@@ -44,7 +44,6 @@
                   :show-avatar="showAvatar"
                   :videos="filteredVideos[tab.value]"
                   :loading="loading && !isRefreshing"
-                  :playbackError="playbackError"
                   :setVideoRef="setVideoRef"
                   @play="playVideo"
                   @videoPlay="onVideoPlay"
@@ -52,7 +51,6 @@
                   @videoEnded="onVideoEnded"
                   @toggleOptions="toggleOptions"
                   @goToChannel="goToChannelDetail"
-                  @videoEnterViewport="onVideoEnterViewport"
                   @videoLeaveViewport="onVideoLeaveViewport"
                 />
 
@@ -151,17 +149,12 @@ const { toastMessage, showToast, displayToast } = useToast();
 
 const {
   playVideo,
-  retryPlay,
-  playbackError,
   onVideoPlay,
   onVideoPause,
   onVideoEnded,
-  // onFullscreenChange,
-  // onVideoMetadataLoaded,
   setVideoRef,
   handleOrientationChange,
-  pauseVideo,
-  attemptAutoplay,
+  onVideoLeaveViewport,
 } = useVideoOperations(videos, videoRefs);
 
 const activeScrollContent = computed(() => tabContents.value[activeTab.value]);
@@ -192,14 +185,6 @@ const filteredVideos = computed(() => {
   });
   return result;
 });
-
-const onVideoEnterViewport = (video) => {
-  // 如果需要，可以在这里添加自动播放逻辑
-};
-
-const onVideoLeaveViewport = (video) => {
-  pauseVideo(video);
-};
 
 const adjustVideoContainerHeight = () => {
   if (videoContainer.value) {
@@ -342,11 +327,9 @@ const goToChannelDetail = (channelId) => {
 };
 
 provide('videoOperations', {
-  retryPlay,
   setVideoRef,
   goToChannelDetail,
   displayToast,
-  attemptAutoplay,
 });
 </script>
 
