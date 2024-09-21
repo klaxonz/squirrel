@@ -106,7 +106,6 @@ export default function useVideoOperations(videos, videoRefs) {
     onVideoPause,
     onVideoEnded,
     onFullscreenChange,
-    onVideoMetadataLoaded,
     setVideoRef,
     handleOrientationChange,
     pauseVideo,
