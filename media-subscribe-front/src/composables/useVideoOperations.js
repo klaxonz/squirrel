@@ -32,27 +32,25 @@ export default function useVideoOperations(videos, videoRefs) {
     }
 
     // 停止其他正在播放的视频
-    if (Array.isArray(videos.value)) {
-      videos.value.forEach(v => {
-        if (v !== video && v.isPlaying) {
-          v.isPlaying = false;
-        }
-      });
-    } else if (typeof videos.value === 'object') {
-      Object.values(videos.value).forEach(tabVideos => {
-        if (Array.isArray(tabVideos)) {
-          tabVideos.forEach(v => {
-            if (v !== video && v.isPlaying) {
-              v.isPlaying = false;
+    Object.values(videos.value).forEach(tabVideos => {
+      if (Array.isArray(tabVideos)) {
+        tabVideos.forEach(v => {
+          if (v !== video && v.isPlaying) {
+            v.isPlaying = false;
+            const playerInstance = videoRefs.value[v.id];
+            if (playerInstance) {
+              playerInstance.pause();
             }
-          });
-        }
-      });
-    }
+          }
+        });
+      }
+    });
 
     video.isPlaying = true;
-
-    // 移除这里的播放逻辑，因为现在 VideoPlayer 组件会自动开始播放
+    const playerInstance = videoRefs.value[video.id];
+    if (playerInstance) {
+      playerInstance.play();
+    }
   };
 
   const retryPlay = (video) => {
@@ -99,8 +97,8 @@ export default function useVideoOperations(videos, videoRefs) {
     }
   };
 
-  const setVideoRef = (id, el) => {
-    if (el) videoRefs.value[id] = el;
+  const setVideoRef = (id, playerInstance) => {
+    if (playerInstance) videoRefs.value[id] = playerInstance;
   };
 
   const handleOrientationChange = () => {
