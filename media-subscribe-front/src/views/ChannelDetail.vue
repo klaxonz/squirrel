@@ -143,7 +143,7 @@ const {
   refreshHeight,
   showRefreshIndicator,
   isResetting,
-} = useLatestVideos();
+} = useLatestVideos(channelId);
 
 const { toastMessage, showToast, displayToast } = useToast();
 
@@ -261,7 +261,7 @@ const handleTouchEnd = (event) => {
 };
 
 onMounted(() => {
-  loadMore(channelId);
+  loadMore();
   window.addEventListener('orientationchange', handleOrientationChange);
   adjustVideoContainerHeight();
   window.addEventListener('resize', adjustVideoContainerHeight);

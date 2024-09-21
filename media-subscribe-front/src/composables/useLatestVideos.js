@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue';
 import axios from '../utils/axios';
 
-export default function useLatestVideos() {
+export default function useLatestVideos(channelId) {
   const videoContainer = ref(null);
   const videos = ref({
     all: [],
@@ -43,7 +43,7 @@ export default function useLatestVideos() {
     resetAndReload();
   };
 
-  const loadMore = async (channelId) => {
+  const loadMore = async () => {
     if (loading.value || allLoaded.value || isRefreshing.value) return;
 
     loading.value = true;
@@ -101,6 +101,7 @@ export default function useLatestVideos() {
           page: 1,
           pageSize: 10,
           query: searchQuery.value,
+          channel_id: channelId,
           read_status: activeTab.value === 'all' ? null : activeTab.value
         }
       });
