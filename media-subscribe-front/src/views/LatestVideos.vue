@@ -192,6 +192,7 @@ const {
   setVideoRef,
   handleOrientationChange,
   pauseVideo,
+  attemptAutoplay,
 } = useVideoOperations(videos, videoRefs);
 
 const activeScrollContent = computed(() => tabContents.value[activeTab.value]);
@@ -388,6 +389,7 @@ provide('videoOperations', {
   setVideoRef,
   goToChannelDetail,
   displayToast,
+  attemptAutoplay,
 });
 </script>
 

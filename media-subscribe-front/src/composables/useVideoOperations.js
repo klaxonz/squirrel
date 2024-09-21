@@ -126,6 +126,26 @@ export default function useVideoOperations(videos, videoRefs) {
     }
   };
 
+  const attemptAutoplay = async (videoId) => {
+    const videoElement = videoRefs.value[videoId];
+    if (videoElement) {
+      try {
+        await videoElement.play();
+        // 如果成功播放，尝试取消静音
+        videoElement.muted = false;
+      } catch (error) {
+        console.warn('Autoplay failed:', error);
+        // 如果自动播放失败，保持静音状态并再次尝试播放
+        videoElement.muted = true;
+        try {
+          await videoElement.play();
+        } catch (innerError) {
+          console.error('Autoplay failed even with muted video:', innerError);
+        }
+      }
+    }
+  };
+
   return {
     playVideo,
     retryPlay,
@@ -138,5 +158,6 @@ export default function useVideoOperations(videos, videoRefs) {
     setVideoRef,
     handleOrientationChange,
     pauseVideo,
+    attemptAutoplay,
   };
 }

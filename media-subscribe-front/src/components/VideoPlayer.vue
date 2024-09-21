@@ -7,6 +7,7 @@
       class="video-player"
       controls
       autoplay
+      muted
       @play="onVideoPlay"
       @pause="onVideoPause"
       @ended="onVideoEnded"

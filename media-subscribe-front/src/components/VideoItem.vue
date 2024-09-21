@@ -90,7 +90,7 @@ const emit = defineEmits([
   'videoEnterViewport', 'videoLeaveViewport' // Add these new events
 ]);
 
-const { retryPlay } = inject('videoOperations');
+const { retryPlay, attemptAutoplay } = inject('videoOperations');
 
 const playVideo = () => {
   console.log('Attempting to play video:', props.video);
@@ -99,6 +99,11 @@ const playVideo = () => {
 
 const onVideoPlay = () => {
   console.log('Video started playing');
+  if (attemptAutoplay) {
+    attemptAutoplay(props.video.id);
+  } else {
+    console.warn('attemptAutoplay function is not available');
+  }
   emit('videoPlay', props.video);
 };
 
@@ -169,9 +174,11 @@ watch(() => props.video.isPlaying, (newValue) => {
     const videoElement = document.querySelector(`#video-${props.video.id}`);
     if (videoElement && videoElement.paused) {
       console.log('Video is playing, attempting to play');
-      videoElement.play().catch(error => {
-        console.warn('播放失败，可能是由于浏览器策略:', error);
-      });
+      if (attemptAutoplay) {
+        attemptAutoplay(props.video.id);
+      } else {
+        console.warn('attemptAutoplay function is not available');
+      }
     }
   }
 });
