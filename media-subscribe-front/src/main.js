@@ -8,5 +8,8 @@ import './index.css';
 
 const app = createApp(App)
 app.use(router)
-app.use(Toast)
+app.use(Toast, {
+    toastClassName: "custom-toast",
+    containerClassName: "custom-toast-container",
+})
 app.mount('#app')

@@ -104,10 +104,10 @@ export default function useOptionsMenu(videos, refreshContent) {
         });
 
         if (response.data.code === 0) {
-          displayToast('视频下载已开始，请稍后查看下载列表');
+          displayToast('视频下载已开始，请查看下载列表');
           activeVideo.value.if_downloaded = true;
         } else {
-          displayToast('视频下载已开始，请稍后查看下载列表');
+          displayToast('视频下载已开始，请查看下载列表');
         }
       } catch (error) {
         console.error('下载视频失败:', error);
@@ -119,13 +119,40 @@ export default function useOptionsMenu(videos, refreshContent) {
 
   const copyVideoLink = () => {
     if (activeVideo.value) {
-      navigator.clipboard.writeText(activeVideo.value.url).then(() => {
-        displayToast('视频链接已复制到剪贴板');
-      }).catch(err => {
-        console.error('复制链接失败: ', err);
-      });
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(activeVideo.value.url)
+          .then(() => {
+            displayToast('视频链接已复制到剪贴板');
+          })
+          .catch(err => {
+            console.error('复制链接失败: ', err);
+            fallbackCopyTextToClipboard(activeVideo.value.url);
+          });
+      } else {
+        fallbackCopyTextToClipboard(activeVideo.value.url);
+      }
     }
     closeOptions();
+  };
+
+  const fallbackCopyTextToClipboard = (text) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+      const successful = document.execCommand('copy');
+      const msg = successful ? '视频链接已复制到剪贴板' : '复制失败，请手动复制';
+      displayToast(msg);
+    } catch (err) {
+      console.error('Fallback: Oops, unable to copy', err);
+      displayToast('复制失败，请手动复制');
+    }
+
+    document.body.removeChild(textArea);
   };
 
   onMounted(() => {
