@@ -38,6 +38,7 @@ const initPlayer = () => {
     url: props.video.video_url,
     autoplay: true,
     width: '100%',
+    volume: 1,
     height: '100%',
     cssFullscreen: false
   });
