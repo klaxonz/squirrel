@@ -1,21 +1,13 @@
-import { ref } from 'vue';
+import { useToast } from 'vue-toastification';
 
-const toastMessage = ref('');
-const showToast = ref(false);
+export default function useCustomToast() {
+  const toast = useToast();
 
-export default function useToast() {
-  const displayToast = (message, duration = 3000) => {
-    console.log('displayToast', message);
-    showToast.value = true;
-    toastMessage.value = message;
-    setTimeout(() => {
-      showToast.value = false;
-    }, duration);
+  const displayToast = (message, options = {}) => {
+    toast(message, options);
   };
 
   return {
-    toastMessage,
-    showToast,
     displayToast,
   };
 }

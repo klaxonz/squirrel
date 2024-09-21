@@ -107,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, inject, provide, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, inject, provide, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import useVideoOperations from '../composables/useVideoOperations';

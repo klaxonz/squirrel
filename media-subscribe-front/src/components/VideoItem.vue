@@ -41,7 +41,7 @@
           {{ video.title }}
         </a>
         <div class="flex-shrink-0 relative">
-          <button @click="$emit('toggleOptions', video.id, $event)"
+          <button @click.stop="$emit('toggleOptions', video.id, $event)"
             class="text-gray-500 hover:text-gray-700 focus:outline-none p-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
