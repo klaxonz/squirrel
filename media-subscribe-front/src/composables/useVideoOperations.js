@@ -1,8 +1,9 @@
-import { ref, inject } from 'vue';
+import { ref, inject, onMounted, onUnmounted } from 'vue';
 import axios from '../utils/axios';
 
 export default function useVideoOperations(videos, videoRefs) {
   const displayToast = inject('toast');
+  const isFullscreen = ref(false);
 
   const playVideo = async (video) => {
     if (!video.video_url) {
@@ -34,23 +35,12 @@ export default function useVideoOperations(videos, videoRefs) {
         tabVideos.forEach(v => {
           if (v !== video && v.isPlaying) {
             v.isPlaying = false;
-              console.log('Video paused:', video.id)
-
-            const playerInstance = videoRefs.value[v.id];
-            if (playerInstance) {
-              playerInstance.pause();
-              console.log('Video paused:', video.id)
-            }
           }
         });
       }
     });
 
     video.isPlaying = true;
-    const playerInstance = videoRefs.value[video.id];
-    if (playerInstance) {
-      playerInstance.play();
-    }
   };
 
   const onVideoPlay = (video) => {
@@ -63,6 +53,10 @@ export default function useVideoOperations(videos, videoRefs) {
 
   const onVideoEnded = (video) => {
     video.isPlaying = false;
+  };
+
+  const onFullscreenChange = (event) => {
+    isFullscreen.value = !!document.fullscreenElement;
   };
 
   const setVideoRef = (id, playerInstance) => {
@@ -84,27 +78,39 @@ export default function useVideoOperations(videos, videoRefs) {
 
   const pauseVideo = (video) => {
     if (video.isPlaying) {
-      const videoElement = videoRefs.value[video.id];
-      console.log('Pause video:', videoElement)
-      if (videoElement) {
-        videoElement.pause();
+      const playerInstance = videoRefs.value[video.id];
+      if (playerInstance && playerInstance.pause) {
+        playerInstance.pause();
         video.isPlaying = false;
       }
     }
   };
 
   const onVideoLeaveViewport = (video) => {
-    pauseVideo(video);
+    if (!isFullscreen.value) {
+      pauseVideo(video);
+    }
   };
+
+  onMounted(() => {
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+  });
+
+  onUnmounted(() => {
+    document.removeEventListener('fullscreenchange', onFullscreenChange);
+  });
 
   return {
     playVideo,
     onVideoPlay,
     onVideoPause,
     onVideoEnded,
+    onFullscreenChange,
+    onVideoMetadataLoaded,
     setVideoRef,
     handleOrientationChange,
     pauseVideo,
     onVideoLeaveViewport,
+    isFullscreen,
   };
 }

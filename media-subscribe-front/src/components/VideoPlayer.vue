@@ -13,7 +13,7 @@ const props = defineProps({
   setVideoRef: Function,
 });
 
-const emit = defineEmits(['play', 'pause', 'ended']);
+const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange']);
 
 const player = ref(null);
 
@@ -51,6 +51,9 @@ const initPlayer = () => {
   player.value.on('play', () => emit('play', props.video));
   player.value.on('pause', () => emit('pause', props.video));
   player.value.on('ended', () => emit('ended', props.video));
+  player.value.on('fullscreenChange', (isFullscreen) => {
+    emit('fullscreenChange', isFullscreen);
+  });
 
   // 将 player 实例传递给父组件
   if (props.setVideoRef) {
