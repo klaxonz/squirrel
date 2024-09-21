@@ -43,7 +43,7 @@
                 <TransitionGroup 
                   name="video-list" 
                   tag="div" 
-                  class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
+                  class="video-grid sm:grid sm:grid-cols-2 sm:gap-x-4"
                 >
                   <template v-if="isRefreshing">
                     <div v-for="n in 10" :key="`skeleton-${n}`" class="video-item-skeleton bg-white rounded-lg shadow-md p-3 mb-4">

@@ -211,14 +211,6 @@ const formatDate = (dateString) => {
   height: 0;
 }
 
-.video-wrapper {
-  @apply absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black;
-}
-
-.video-player {
-  @apply w-full h-full object-contain;
-}
-
 .video-thumbnail img {
   @apply absolute top-0 left-0 w-full h-full object-cover;
 }
@@ -253,12 +245,7 @@ const formatDate = (dateString) => {
   backdrop-filter: blur(2px);
 }
 
-.video-player::-webkit-media-controls {
-  display: flex !important;
-  visibility: visible !important;
-}
-
 .video-item {
-  @apply mb-3 sm:mb-0; /* 在小屏幕上保留下边距，在大屏幕上移除 */
+  @apply sm:mb-0; /* 在小屏幕上保留下边距，在大屏幕上移除 */
 }
 </style>

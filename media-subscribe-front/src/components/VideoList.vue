@@ -2,7 +2,7 @@
   <TransitionGroup 
     name="video-list" 
     tag="div" 
-    class="video-grid sm:grid sm:grid-cols-2 sm:gap-4 p-2"
+    class="video-grid sm:grid sm:grid-cols-2 sm:gap-4"
   >
     <template v-if="loading && videos.length === 0">
       <div v-for="n in 10" :key="n" class="video-item-placeholder animate-pulse bg-gray-200 h-48"></div>
@@ -55,7 +55,4 @@ defineEmits([
   will-change: transform;
 }
 
-.video-list-move {
-  transition: transform 0.5s ease;
-}
 </style>
