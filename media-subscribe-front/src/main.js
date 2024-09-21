@@ -7,7 +7,6 @@ import 'vue-toastification/dist/index.css';
 import './index.css';
 import Player from 'xgplayer';
 import 'xgplayer/dist/index.min.css';
-import 'default-passive-events'
 
 const app = createApp(App)
 app.use(router)
