@@ -39,6 +39,7 @@ const initPlayer = () => {
     autoplay: true,
     width: '100%',
     height: '100%',
+    cssFullscreen: false
   });
 
   player.value.on('play', () => emit('play', props.video));
