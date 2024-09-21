@@ -85,18 +85,19 @@ const handleNavBarDoubleClick = () => {
 }
 
 .nav-bar {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   background-color: white;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   z-index: 50;
-  height: 50px; /* 减小高度 */
+  height: calc(50px + env(safe-area-inset-bottom)); /* 调整高度 */
   display: flex;
   justify-content: space-around;
   align-items: center;
   user-select: none; /* 防止双击选中文字 */
+  padding-bottom: env(safe-area-inset-bottom); /* 确保不会被遮挡 */
 }
 
 .nav-item {
