@@ -296,17 +296,6 @@ onMounted(() => {
   window.history.pushState(null, '', router.currentRoute.value.fullPath);
   window.addEventListener('popstate', preventGoBack);
 
-  setTimeout(() => {
-    if (!loadTrigger.value) {
-      const triggerElement = document.querySelector('.load-trigger');
-      if (triggerElement) {
-        loadTrigger.value = triggerElement;
-      } else {
-        console.error('Unable to find load trigger element');
-      }
-    }
-  }, 100);
-
   nextTick(() => {
     tabs.forEach(tab => {
       if (tabContents.value[tab.value]) {
