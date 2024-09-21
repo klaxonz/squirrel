@@ -66,7 +66,7 @@
                   </template>
                   <template v-else>
                     <VideoItem
-                      v-for="video in filteredVideos"
+                      v-for="video in filteredVideos[tab.value]"
                       :key="video.id"
                       :video="video"
                       :playbackError="playbackError"
@@ -216,7 +216,11 @@ const {
 } = useOptionsMenu(videos);
 
 const filteredVideos = computed(() => {
-  return (videos.value[activeTab.value] || []).filter(video => video && video.id);
+  const result = {};
+  tabs.forEach(tab => {
+    result[tab.value] = (videos.value[tab.value] || []).filter(video => video && video.id);
+  });
+  return result;
 });
 
 const onVideoEnterViewport = (video) => {
