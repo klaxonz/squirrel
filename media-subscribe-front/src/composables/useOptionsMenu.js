@@ -2,7 +2,7 @@ import { ref, onMounted, onUnmounted, inject } from 'vue';
 import axios from '../utils/axios';
 import useToast from './useToast';
 
-export default function useOptionsMenu(videos) {
+export default function useOptionsMenu(videos, refreshContent) {
   const displayToast = inject('toast');
   const activeOptions = ref(null);
   const optionsPosition = ref({ top: 0, left: 0 });
@@ -23,21 +23,21 @@ export default function useOptionsMenu(videos) {
     const button = event.target.closest('button');
     const rect = button.getBoundingClientRect();
     const containerRect = document.querySelector('.video-container').getBoundingClientRect();
-    
+
     const menuWidth = 160;
     const menuHeight = 200;
-    
+
     let left = rect.left;
     if (left + menuWidth > containerRect.right) {
       left = containerRect.right - menuWidth;
     }
     left = Math.max(containerRect.left, left);
-    
+
     let top = rect.bottom + window.scrollY;
     if (top + menuHeight > window.innerHeight) {
       top = rect.top + window.scrollY - menuHeight;
     }
-    
+
     optionsPosition.value = { top, left };
   };
 
@@ -73,13 +73,20 @@ export default function useOptionsMenu(videos) {
   const markReadBatch = async (direction) => {
     if (activeVideo.value) {
       try {
-        await axios.post('/api/channel-video/mark-read-batch', {
+        const response = await axios.post('/api/channel-video/mark-read-batch', {
           is_read: true,
           direction: direction,
           reference_id: activeVideo.value.id
         });
-        displayToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为已读`);
-        // 这里可能需要刷新视频列表
+
+        if (response.data.code === 0) {
+          displayToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为已读`);
+
+          // 刷新内容以获取更新后的视频列表和计数
+          await refreshContent();
+        } else {
+          throw new Error(response.data.msg || '批量更新阅读状态失败');
+        }
       } catch (error) {
         console.error('批量更新阅读状态失败:', error);
         displayToast('批量更新阅读状态失败', true);

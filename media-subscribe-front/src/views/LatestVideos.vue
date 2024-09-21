@@ -214,7 +214,7 @@ const {
   downloadVideo,
   copyVideoLink,
   dislikeVideo,
-} = useOptionsMenu(videos);
+} = useOptionsMenu(videos, refreshContent);
 
 const filteredVideos = computed(() => {
   const result = {};
@@ -268,7 +268,6 @@ const handleTouchMove = (event) => {
   
   const deltaX = Math.abs(touchEndX.value - touchStartX.value);
   const deltaY = Math.abs(touchEndY.value - touchStartY.value);
-  console.log(`Delta X: ${deltaX}, Delta Y: ${deltaY}`);
   // 如果水平移动距离大于垂直移动距离，且大于一定阈值，则认为是水平滑动
   if (deltaX > deltaY && deltaX > 10) {
     isHorizontalSwipe.value = true;
