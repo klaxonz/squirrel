@@ -139,11 +139,28 @@ const formatDate = (dateString) => {
   if (!dateString) return '未知日期';
   const date = new Date(dateString);
   const now = new Date();
-  const diffTime = Math.abs(now - date);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 1) return '昨天';
-  if (diffDays <= 7) return `${diffDays}天前`;
+  // 获取当前日期和目标日期的年、月、日
+  const todayYear = now.getFullYear();
+  const todayMonth = now.getMonth();
+  const todayDay = now.getDate();
+
+  const dateYear = date.getFullYear();
+  const dateMonth = date.getMonth();
+  const dateDay = date.getDate();
+
+  // 比较日期
+  if (dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay) {
+    return '今天';
+  }
+  if (dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay - 1) {
+    return '昨天';
+  }
+
+  const diffTime = Math.abs(now - date);
+  const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+  if (diffDays <= 7) return `${Math.floor(diffDays)}天前`;
   if (diffDays <= 30) return `${Math.floor(diffDays / 7)}周前`;
   if (diffDays <= 365) return `${Math.floor(diffDays / 30)}个月前`;
   return `${Math.floor(diffDays / 365)}年前`;
