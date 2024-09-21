@@ -18,8 +18,7 @@ export default function usePullToRefresh(refreshContent, refreshHeight, showRefr
 
     currentY = e.touches[0].clientY;
     const diff = currentY - startY;
-
-    if (diff > 0) {
+    if (diff > 100) {
       e.preventDefault();
       refreshHeight.value = Math.min(diff * 0.5, 60);
       showRefreshIndicator.value = true;
