@@ -347,8 +347,6 @@ onMounted(() => {
     });
   });
 
-  // 为了测试 toast 是否正常工作，我们可以在组件挂载时显示一条消息
-  displayToast('欢迎来到最新视频页面');
 });
 
 onUnmounted(() => {
