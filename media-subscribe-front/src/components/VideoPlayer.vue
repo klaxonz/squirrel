@@ -40,7 +40,13 @@ const initPlayer = () => {
     width: '100%',
     volume: 1,
     height: '100%',
-    cssFullscreen: false
+    cssFullscreen: false,
+    commonStyle: {
+      // 播放完成部分进度条底色
+      playedColor: '#00a1d6',
+      // 进度条底色
+      progressColor: 'rgba(255, 255, 255, 0.3)',
+    },
   });
 
   player.value.on('play', () => emit('play', props.video));

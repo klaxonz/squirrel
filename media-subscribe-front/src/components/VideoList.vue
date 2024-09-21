@@ -37,14 +37,13 @@
         v-for="video in videos"
         :key="video.id"
         :video="video"
+        :showAvatar="showAvatar"
         :playbackError="playbackError"
         @play="$emit('play', video)"
         :setVideoRef="setVideoRef"
         @videoPlay="$emit('videoPlay', video)"
         @videoPause="$emit('videoPause', video)"
         @videoEnded="$emit('videoEnded', video)"
-        @fullscreenChange="$emit('fullscreenChange', $event)"
-        @videoMetadataLoaded="$emit('videoMetadataLoaded', $event, video)"
         @toggleOptions="$emit('toggleOptions', $event, video.id)"
         @goToChannel="$emit('goToChannel', video.channel_id)"
         @videoEnterViewport="$emit('videoEnterViewport', video)"
@@ -61,6 +60,10 @@ import VideoItem from './VideoItem.vue';
 const props = defineProps({
   videos: Array,
   loading: Boolean,
+  showAvatar: {
+    type: Boolean,
+    default: true
+  },
   playbackError: String,
   setVideoRef: Function,
 });
@@ -70,8 +73,6 @@ defineEmits([
   'videoPlay',
   'videoPause',
   'videoEnded',
-  'fullscreenChange',
-  'videoMetadataLoaded',
   'toggleOptions',
   'goToChannel',
   'videoEnterViewport',

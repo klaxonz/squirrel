@@ -43,7 +43,7 @@ export default function useLatestVideos() {
     resetAndReload();
   };
 
-  const loadMore = async () => {
+  const loadMore = async (channelId) => {
     if (loading.value || allLoaded.value || isRefreshing.value) return;
 
     loading.value = true;
@@ -53,6 +53,7 @@ export default function useLatestVideos() {
           page: currentPage.value,
           pageSize: 10,
           query: searchQuery.value,
+          channel_id: channelId,
           read_status: activeTab.value === 'all' ? null : activeTab.value
         }
       });
@@ -77,14 +78,14 @@ export default function useLatestVideos() {
     }
   };
 
-  const handleScroll = (event) => {
+  const handleScroll = (event, channelId) => {
     const scrollContent = event.target;
     const scrollPosition = scrollContent.scrollTop + scrollContent.clientHeight;
     const scrollHeight = scrollContent.scrollHeight;
 
     // 当滚动到距离底部 100px 时加载更多
     if (scrollHeight - scrollPosition <= 100 && !loading.value && !allLoaded.value) {
-      loadMore();
+      loadMore(channelId);
     }
   };
 

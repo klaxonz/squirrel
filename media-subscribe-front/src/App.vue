@@ -3,11 +3,7 @@
     <div class="content-wrapper w-full flex-grow flex flex-col">
       <!-- 主要内容区域 -->
       <main class="content-area flex-grow overflow-y-auto">
-        <router-view v-slot="{ Component }">
-          <keep-alive>
-            <component :is="Component" />
-          </keep-alive>
-        </router-view>
+        <router-view />
       </main>
     </div>
 

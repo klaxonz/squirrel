@@ -1,5 +1,5 @@
 <template>
-  <div class="latest-videos bg-gray-100 flex flex-col h-full">
+  <div class="latest-videos flex flex-col h-full">
     <SearchBar @search="handleSearch" ref="searchBar" />
     <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 
@@ -49,8 +49,6 @@
                   @videoPlay="onVideoPlay"
                   @videoPause="onVideoPause"
                   @videoEnded="onVideoEnded"
-                  @fullscreenChange="onFullscreenChange"
-                  @videoMetadataLoaded="onVideoMetadataLoaded"
                   @toggleOptions="toggleOptions"
                   @goToChannel="goToChannelDetail"
                   @videoEnterViewport="onVideoEnterViewport"
@@ -140,8 +138,6 @@ const {
   scrollToTopAndRefresh,
   observers,
   videoRefs,
-  loadTrigger,
-  setLoadTrigger,
   refreshHeight,
   showRefreshIndicator,
   isResetting,
@@ -156,8 +152,6 @@ const {
   onVideoPlay,
   onVideoPause,
   onVideoEnded,
-  onFullscreenChange,
-  onVideoMetadataLoaded,
   setVideoRef,
   handleOrientationChange,
   pauseVideo,

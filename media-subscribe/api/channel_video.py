@@ -89,8 +89,11 @@ def get_channel_videos(
         channel_videos = base_query.order_by(ChannelVideo.id.desc()).offset(offset).limit(page_size)
 
         # 计算总数、已读数和未读数
-        total_count = s.query(ChannelVideo).count()
-        read_count = s.query(ChannelVideo).filter(ChannelVideo.if_read == True).count()
+        s_query = s.query(ChannelVideo)
+        if channel_id:
+            s_query = s_query.filter(ChannelVideo.channel_id == channel_id)
+        total_count = s_query.count()
+        read_count = s_query.filter(ChannelVideo.if_read == True).count()
         unread_count = total_count - read_count
 
         channel_video_convert_list = [

@@ -50,7 +50,7 @@
         </div>
       </div>
       <div class="flex justify-between items-center mt-2">
-        <div class="flex items-center cursor-pointer" @click="$emit('goToChannel', video.channel_id)">
+        <div v-if="props.showAvatar" class="flex items-center cursor-pointer" @click="$emit('goToChannel', video.channel_id)">
           <img
             :src="video.channel_avatar"
             :alt="video.channel_name"
@@ -80,13 +80,17 @@ import VideoPlayer from './VideoPlayer.vue';
 
 const props = defineProps({
   video: Object,
+  showAvatar: {
+    type: Boolean,
+    default: true
+  },
   playbackError: String,
   setVideoRef: Function,
 });
 
 const emit = defineEmits([
   'play', 'setVideoRef', 'videoPlay', 'videoPause', 'videoEnded',
-  'fullscreenChange', 'videoMetadataLoaded', 'toggleOptions', 'goToChannel',
+ 'toggleOptions', 'goToChannel',
   'videoEnterViewport', 'videoLeaveViewport' // Add these new events
 ]);
 
@@ -117,10 +121,7 @@ const onVideoEnded = () => {
   emit('videoEnded', props.video);
 };
 
-const onVideoMetadataLoaded = (event) => {
-  console.log('Video metadata loaded');
-  emit('videoMetadataLoaded', event, props.video);
-};
+
 
 const videoItemRef = ref(null);
 const observer = ref(null);
