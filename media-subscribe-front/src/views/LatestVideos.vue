@@ -40,50 +40,22 @@
                 @scroll="handleScroll"
                 :class="{ 'no-scroll': isResetting }"
               >
-                <TransitionGroup 
-                  name="video-list" 
-                  tag="div" 
-                  class="video-grid sm:grid sm:grid-cols-2 sm:gap-x-4"
-                >
-                  <template v-if="isRefreshing">
-                    <div v-for="n in 10" :key="`skeleton-${n}`" class="video-item-skeleton bg-white rounded-lg shadow-md p-3 mb-4">
-                      <div class="animate-pulse">
-                        <div class="bg-gray-300 h-40 w-full rounded-md mb-3"></div>
-                        <div class="flex items-center space-x-2 mb-2">
-                          <div class="rounded-full bg-gray-300 h-8 w-8"></div>
-                          <div class="h-4 bg-gray-300 rounded w-1/2"></div>
-                        </div>
-                        <div class="space-y-2">
-                          <div class="h-4 bg-gray-300 rounded w-3/4"></div>
-                          <div class="h-4 bg-gray-300 rounded w-1/2"></div>
-                        </div>
-                        <div class="mt-2 flex justify-between items-center">
-                          <div class="h-3 bg-gray-300 rounded w-1/4"></div>
-                          <div class="h-3 bg-gray-300 rounded w-1/4"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <VideoItem
-                      v-for="video in filteredVideos[tab.value]"
-                      :key="video.id"
-                      :video="video"
-                      :playbackError="playbackError"
-                      @play="playVideo"
-                      :setVideoRef="setVideoRef"
-                      @videoPlay="onVideoPlay"
-                      @videoPause="onVideoPause"
-                      @videoEnded="onVideoEnded"
-                      @fullscreenChange="onFullscreenChange"
-                      @videoMetadataLoaded="onVideoMetadataLoaded"
-                      @toggleOptions="toggleOptions"
-                      @goToChannel="goToChannelDetail"
-                      @videoEnterViewport="onVideoEnterViewport"
-                      @videoLeaveViewport="onVideoLeaveViewport"
-                    />
-                  </template>
-                </TransitionGroup>
+                <VideoList
+                  :videos="filteredVideos[tab.value]"
+                  :loading="loading && !isRefreshing"
+                  :playbackError="playbackError"
+                  :setVideoRef="setVideoRef"
+                  @play="playVideo"
+                  @videoPlay="onVideoPlay"
+                  @videoPause="onVideoPause"
+                  @videoEnded="onVideoEnded"
+                  @fullscreenChange="onFullscreenChange"
+                  @videoMetadataLoaded="onVideoMetadataLoaded"
+                  @toggleOptions="toggleOptions"
+                  @goToChannel="goToChannelDetail"
+                  @videoEnterViewport="onVideoEnterViewport"
+                  @videoLeaveViewport="onVideoLeaveViewport"
+                />
 
                 <!-- 加载更多指示器 -->
                 <div v-if="loading && !isRefreshing" class="loading-indicator text-center py-4">
@@ -147,7 +119,7 @@ import useOptionsMenu from '../composables/useOptionsMenu';
 import useToast from '../composables/useToast';
 import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
-import VideoItem from '../components/VideoItem.vue';
+import VideoList from '../components/VideoList.vue';
 import OptionsMenu from '../components/OptionsMenu.vue';
 
 const router = useRouter();
