@@ -20,6 +20,16 @@ router = APIRouter(
 )
 
 
+@router.get("/api/channel/subscription-status")
+def get_subscription_status(channel_id: str):
+    with get_session() as s:
+        channel = s.query(Channel).filter(Channel.channel_id == channel_id).first()
+        if channel:
+            return response.success({"isSubscribed": True})
+        else:
+            return response.success({"isSubscribed": False})
+
+
 class SubscribeChannelRequest(BaseModel):
     url: str
 

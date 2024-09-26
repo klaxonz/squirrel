@@ -5,33 +5,71 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "download") {
-    chrome.storage.sync.get('backendHost', (data) => {
-      fetch(`${data.backendHost}/api/task/download`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request.data),
-      })
-      .then(response => response.json())
-      .then(data => sendResponse({ success: true, data }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    });
-    return true;  // 保持消息通道开放
-  } else if (request.action === "subscribe") {
-    chrome.storage.sync.get('backendHost', (data) => {
-      fetch(`${data.backendHost}/api/channel/subscribe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request.data),
-      })
-      .then(response => response.json())
-      .then(data => sendResponse({ success: true, data }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    });
-    return true;  // 保持消息通道开放
-  }
+  chrome.storage.sync.get('backendHost', (data) => {
+    const backendHost = data.backendHost;
+
+    switch (request.action) {
+      case "download":
+        handleDownload(backendHost, request.data, sendResponse);
+        break;
+      case "subscribe":
+        handleSubscribe(backendHost, request.data, sendResponse);
+        break;
+      case "unsubscribe":
+        handleUnsubscribe(backendHost, request.data, sendResponse);
+        break;
+      case "checkSubscription":
+        handleCheckSubscription(backendHost, request.data, sendResponse);
+        break;
+      default:
+        sendResponse({ success: false, error: "Unknown action" });
+    }
+  });
+  return true;  // 保持消息通道开放
 });
+
+function handleDownload(backendHost, data, sendResponse) {
+  fetch(`${backendHost}/api/task/download`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  .then(response => response.json())
+  .then(data => sendResponse({ success: true, data }))
+  .catch(error => sendResponse({ success: false, error: error.message }));
+}
+
+function handleSubscribe(backendHost, data, sendResponse) {
+  fetch(`${backendHost}/api/channel/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  .then(response => response.json())
+  .then(data => sendResponse({ success: true, data }))
+  .catch(error => sendResponse({ success: false, error: error.message }));
+}
+
+function handleUnsubscribe(backendHost, data, sendResponse) {
+  fetch(`${backendHost}/api/channel/unsubscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  .then(response => response.json())
+  .then(data => sendResponse({ success: true, data }))
+  .catch(error => sendResponse({ success: false, error: error.message }));
+}
+
+function handleCheckSubscription(backendHost, data, sendResponse) {
+  fetch(`${backendHost}/api/channel/subscription-status?channel_id=${data.channelId}`)
+    .then(response => response.json())
+    .then(data => {
+      console.log("API response for subscription status:", data);
+      sendResponse({ success: true, data: data.data });
+    })
+    .catch(error => {
+      console.error("Error in handleCheckSubscription:", error);
+      sendResponse({ success: false, error: error.message });
+    });
+}

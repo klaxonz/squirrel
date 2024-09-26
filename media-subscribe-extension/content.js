@@ -13,6 +13,9 @@ const SELECTORS = {
   }
 };
 
+let isHandleVideoPage = false;
+let isHandleChannelDetailPage = false;
+
 const DOWNLOAD_ICON_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -84,16 +87,36 @@ const createBilibiliSubscribeButton = (text, classNames, clickHandler) => {
 };
 
 const download = (url, data) => {
-  chrome.runtime.sendMessage({ action: "download", data: { url, ...data } }, (response) => {
-    console.log("Download response:", response);
-    // 可以在这里添加下载成功或失败的用户反馈
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ 
+      action: "download", 
+      data: { url, ...data } 
+    }, (response) => {
+      if (response.success) {
+        console.log("Download response:", response.data);
+        resolve(response.data);
+      } else {
+        console.error("Error downloading:", response.error);
+        reject(response.error);
+      }
+    });
   });
 };
 
 const subscribe = (url, data) => {
-  chrome.runtime.sendMessage({ action: "subscribe", data: { url, ...data } }, (response) => {
-    console.log("Subscribe response:", response);
-    // 可以在这里添加订阅成功或失败的用户反馈
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ 
+      action: "subscribe", 
+      data: { url, ...data } 
+    }, (response) => {
+      if (response.success) {
+        console.log("Subscribe response:", response.data);
+        resolve(response.data);
+      } else {
+        console.error("Error subscribing:", response.error);
+        reject(response.error);
+      }
+    });
   });
 };
 
@@ -144,34 +167,54 @@ const addDownloadButtonToBilibiliVideo = (container) => {
 const addSubscribeButtonToBilibili = (container) => {
   const toolbar = container.querySelector(SELECTORS.BILIBILI.VIDEO_TOOLBAR);
   const upInfoContainer = container.querySelector(SELECTORS.BILIBILI.UP_INFO_CONTAINER);
-  if (toolbar && upInfoContainer && !toolbar.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
+  if (!isHandleVideoPage && toolbar && upInfoContainer && !toolbar.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
+    isHandleVideoPage = true;
     const channelUrl = getChannelUrlFromBilibili(upInfoContainer);
     if (channelUrl) {
-      const subscribeButton = createStyledButton('订阅', SELECTORS.COMMON.SUBSCRIBE_BUTTON.slice(1), () => {
-        const channelId = getChannelIdFromUrl(channelUrl);
-        subscribe(channelUrl, { channelId });
-      }, SUBSCRIBE_ICON_SVG);
-      toolbar.appendChild(subscribeButton);
+      const channelId = getChannelIdFromUrl(channelUrl);
+      checkSubscriptionStatus(channelId).then(isSubscribed => {
+        const buttonText = isSubscribed ? '取消订阅' : '订阅';
+        const subscribeButton = createStyledButton(buttonText, SELECTORS.COMMON.SUBSCRIBE_BUTTON.slice(1), () => {
+          if (isSubscribed) {
+            unsubscribe(channelUrl, { channelId });
+          } else {
+            subscribe(channelUrl, { channelId });
+          }
+        }, SUBSCRIBE_ICON_SVG);
+        toolbar.appendChild(subscribeButton);
+        isHandleVideoPage = false;
+      })
     }
   }
 };
 
 const addSubscribeButtonToBilibiliDetail = (container) => {
   const upInfoContainer = container.querySelector(SELECTORS.BILIBILI.UP_INFO_DETAIL_CONTAINER);
-  if (upInfoContainer && !upInfoContainer.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
-    const channelUrl = getChannelUrlFromLocation()
+  if (!isHandleChannelDetailPage && upInfoContainer && !upInfoContainer.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
+    isHandleChannelDetailPage = true;
+    const channelUrl = getChannelUrlFromLocation();
     if (channelUrl) {
-      const classNames = ['subscribe-btn', 'h-f-btn']
-      const subscribeButton = createBilibiliSubscribeButton('订阅', classNames, () => {
-        const channelId = getChannelIdFromUrl(channelUrl);
-        subscribe(channelUrl, { channelId });
+      const channelId = getChannelIdFromUrl(channelUrl);
+      checkSubscriptionStatus(channelId).then(isSubscribed => {
+        const classNames = ['subscribe-btn', 'h-f-btn'];
+        const buttonText = isSubscribed ? '取消订阅' : '订阅';
+        const subscribeButton = createBilibiliSubscribeButton(buttonText, classNames, () => {
+        if (isSubscribed) {
+            unsubscribe(channelUrl, { channelId });
+          } else {
+            subscribe(channelUrl, { channelId });
+          }
+          subscribeButton.textContent = isSubscribed ? '订阅' : '取消订阅';
+        });
+
+        const firstChild = upInfoContainer.firstChild;
+        if (firstChild) {
+          upInfoContainer.insertBefore(subscribeButton, firstChild);
+        } else {
+          upInfoContainer.appendChild(subscribeButton);
+        }
+        isHandleChannelDetailPage = false;
       });
-      const firstChild = upInfoContainer.firstChild;
-      if (firstChild) {
-        upInfoContainer.insertBefore(subscribeButton, firstChild);
-      } else {
-        upInfoContainer.appendChild(subscribeButton);
-      }
     }
   }
 };
@@ -241,3 +284,38 @@ window.addEventListener('load', () => {
 document.addEventListener('DOMContentLoaded', () => {
   addButtonsToPage(document.body);
 });
+
+// 添加这个新函数来检查订阅状态
+const checkSubscriptionStatus = (channelId) => {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ 
+      action: "checkSubscription", 
+      data: { channelId } 
+    }, (response) => {
+      if (response.success) {
+        resolve(response.data.isSubscribed);
+      } else {
+        console.error("Error checking subscription status:", response.error);
+        reject(response.error);
+      }
+    });
+  });
+};
+
+// 添加取消订阅的函数
+const unsubscribe = (url, data) => {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ 
+      action: "unsubscribe", 
+      data: { id: data.channelId } 
+    }, (response) => {
+      if (response.success) {
+        console.log("Unsubscribe response:", response.data.data);
+        resolve(response.data.data);
+      } else {
+        console.error("Error unsubscribing:", response.error);
+        reject(response.error);
+      }
+    });
+  });
+};
