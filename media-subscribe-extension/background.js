@@ -7,7 +7,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "download") {
     chrome.storage.sync.get('backendHost', (data) => {
-      fetch(`${data.backendHost}/api/v3/videos/download`, {
+      fetch(`${data.backendHost}/api/task/download`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -21,7 +21,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;  // 保持消息通道开放
   } else if (request.action === "subscribe") {
     chrome.storage.sync.get('backendHost', (data) => {
-      fetch(`${data.backendHost}/api/v3/channels/subscribe`, {
+      fetch(`${data.backendHost}/api/channel/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
