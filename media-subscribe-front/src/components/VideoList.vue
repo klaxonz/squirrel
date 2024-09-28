@@ -14,6 +14,7 @@
       @goToChannel="$emit('goToChannel', video.channel_id)"
       @videoEnterViewport="$emit('videoEnterViewport', video)"
       @videoLeaveViewport="$emit('videoLeaveViewport', video)"
+      @openModal="$emit('openModal', video)"
     />
   </div>
 </template>
@@ -40,9 +41,10 @@ const emit = defineEmits([
   'goToChannel',
   'videoEnterViewport',
   'videoLeaveViewport',
+  'openModal',
 ]);
 </script>
 
 <style scoped>
-
+/* 保持现有样式不变 */
 </style>

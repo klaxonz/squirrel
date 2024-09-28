@@ -27,14 +27,17 @@
               <VideoList
                 :videos="filteredVideos[tab.value]"
                 :loading="loading"
+                :showAvatar="true"
                 :setVideoRef="setVideoRef"
                 @play="playVideo"
                 @videoPlay="onVideoPlay"
                 @videoPause="onVideoPause"
                 @videoEnded="onVideoEnded"
                 @toggleOptions="toggleOptions"
-                @goToChannel="goToChannelDetail"
+                @goToChannel="goToChannel"
+                @videoEnterViewport="onVideoEnterViewport"
                 @videoLeaveViewport="onVideoLeaveViewport"
+                @openModal="openVideoModal"
               />
 
               <!-- 加载更多指示器 -->
@@ -55,6 +58,16 @@
         </div>
       </div>
     </div>
+
+    <VideoModal
+      :isOpen="isModalOpen"
+      :video="selectedVideo"
+      :setVideoRef="setVideoRef"
+      @close="closeVideoModal"
+      @videoPlay="onVideoPlay"
+      @videoPause="onVideoPause"
+      @videoEnded="onVideoEnded"
+    />
   </div>
 
   <!-- 使用 Teleport 将选项框移到 body 下 -->
@@ -87,7 +100,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, nextTick, inject, provide, computed } from 'vue';
+import {onMounted, onUnmounted, nextTick, inject, provide, computed, ref} from 'vue';
 import { useRouter } from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import useVideoOperations from '../composables/useVideoOperations';
@@ -97,6 +110,7 @@ import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
 import VideoList from '../components/VideoList.vue';
 import OptionsMenu from '../components/OptionsMenu.vue';
+import VideoModal from '../components/VideoModal.vue';
 
 const router = useRouter();
 const emitter = inject('emitter');
@@ -155,6 +169,19 @@ const filteredVideos = computed(() => {
   return result;
 });
 
+const isModalOpen = ref(false);
+const selectedVideo = ref(null);
+
+const openVideoModal = async (video) => {
+  await playVideo(video)
+  selectedVideo.value = video;
+  isModalOpen.value = true;
+};
+
+const closeVideoModal = () => {
+  isModalOpen.value = false;
+  selectedVideo.value = null;
+};
 
 onMounted(() => {
   loadMore();

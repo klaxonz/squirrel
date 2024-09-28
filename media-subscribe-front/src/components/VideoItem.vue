@@ -5,28 +5,16 @@
     @touchstart="startLongPress"
     @touchend="cancelLongPress"
     @touchmove="cancelLongPress"
-    @mouseenter="startHoverPlay"
-    @mouseleave="stopHoverPlay"
   >
-    <div class="video-thumbnail relative cursor-pointer" @click="playVideo">
+    <div class="video-thumbnail relative cursor-pointer" @click="$emit('openModal', video)">
       <img
-        v-if="!video.isPlaying"
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
         alt="Video thumbnail"
         class="w-full h-auto object-cover"
         @load="onImageLoad"
       >
-      <VideoPlayer
-        v-if="video.isPlaying"
-        :key="video.id"
-        :video="video"
-        :setVideoRef="setVideoRef"
-        @play="onVideoPlay"
-        @pause="onVideoPause"
-        @ended="onVideoEnded"
-      />
-      <div v-if="!video.isPlaying" class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
+      <div class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
       </div>
     </div>
@@ -42,9 +30,6 @@
       :position="menuPosition"
       @close="closeContextMenu"
     >
-      <div @click="playVideo" class="context-menu-item">
-        <i class="fas fa-play mr-2"></i>播放
-      </div>
       <div @click="toggleReadStatus" class="context-menu-item">
         <i class="fas fa-check-circle mr-2"></i>标记为{{ video.is_read ? '未读' : '已读' }}
       </div>
@@ -60,7 +45,6 @@
 
 <script setup>
 import { defineProps, defineEmits, onMounted, onUnmounted, ref } from 'vue';
-import VideoPlayer from './VideoPlayer.vue';
 import ContextMenu from './ContextMenu.vue';
 
 const props = defineProps({
@@ -76,7 +60,7 @@ const emit = defineEmits([
   'play', 'setVideoRef', 'videoPlay', 'videoPause', 'videoEnded',
   'toggleOptions', 'goToChannel', 'hoverStop', 'hoverPlay',
   'videoEnterViewport', 'videoLeaveViewport',
-  'imageLoaded'
+  'imageLoaded', 'openModal'
 ]);
 
 const playVideo = () => {
@@ -189,7 +173,6 @@ const startLongPress = (event) => {
 const cancelLongPress = () => {
   clearTimeout(longPressTimer);
 };
-
 
 // Add this new function
 const handleScroll = () => {
