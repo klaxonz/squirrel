@@ -57,8 +57,15 @@ def subscribe_channel(
             return response.success(url_)
         elif domain == 'youtube.com':
             yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=True, allow_oauth_cache=True)
-            sd = yt.streams.filter(progressive=True).all()
-            return response.success(sd[0].url)
+
+            RES = '2160p'
+            for idx, i in enumerate(yt.streams):
+                if i.resolution == RES:
+                    print(idx)
+                    print(i.resolution)
+                    break
+
+            return response.success(yt.streams[idx].url)
 
 
 @router.get("/api/channel-video/list")

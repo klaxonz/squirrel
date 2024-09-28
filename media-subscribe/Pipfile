@@ -23,7 +23,7 @@ cryptography = "*"
 sqlalchemy = "*"
 pycookiecloud = "*"
 marshmallow-sqlalchemy = "*"
-pytubefix = "*"
+pytubefix = "==7.1-rc2"
 sse-starlette = "*"
 
 [dev-packages]

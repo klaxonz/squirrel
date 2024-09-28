@@ -6,9 +6,6 @@
     <div 
       class="video-container flex-grow relative overflow-hidden"
       ref="videoContainer" 
-      @touchstart="handleTouchStart"
-      @touchmove="handleTouchMove"
-      @touchend="handleTouchEnd"
     >
       <div class="tab-content-wrapper">
         <div class="tab-content-inner">

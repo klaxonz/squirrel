@@ -19,7 +19,12 @@
       </div>
     </div>
     <div class="p-2">
-      <h3 class="text-xs font-medium text-gray-900 line-clamp-2 h-9">{{ video.title }}</h3>
+      <h3 
+        class="text-xs font-medium text-gray-900 line-clamp-2 h-9 cursor-pointer hover:text-blue-600"
+        @click="openVideoLink"
+      >
+        {{ video.title }}
+      </h3>
       <div class="flex items-center justify-between text-2xs text-gray-500 mt-1">
         <span class="truncate">{{ video.channel_name }}</span>
         <span>{{ formatDate(video.uploaded_at) }}</span>
@@ -174,10 +179,15 @@ const cancelLongPress = () => {
   clearTimeout(longPressTimer);
 };
 
-// Add this new function
 const handleScroll = () => {
   if (showMenu.value) {
     closeContextMenu();
+  }
+};
+
+const openVideoLink = () => {
+  if (props.video && props.video.url) {
+    window.open(props.video.url, '_blank');
   }
 };
 
@@ -240,5 +250,13 @@ onUnmounted(() => {
 
 .context-menu-item {
   @apply px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover\:text-blue-600:hover {
+  color: #2563eb;
 }
 </style>
