@@ -1,6 +1,9 @@
 lockfileVersion: '6.0'
 
 dependencies:
+  '@heroicons/vue':
+    specifier: ^2.1.5
+    version: 2.1.5(vue@3.4.35)
   axios:
     specifier: ^1.7.3
     version: 1.7.3
@@ -276,6 +279,14 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@heroicons/vue@2.1.5(vue@3.4.35):
+    resolution: {integrity: sha512-IpqR72sFqFs55kyKfFS7tN+Ww6odFNeH/7UxycIOrlVYfj4WUGAdzQtLBnJspucSeqWFQsKM0g0YrgU655BEfA==}
+    peerDependencies:
+      vue: '>= 3'
+    dependencies:
+      vue: 3.4.35
+    dev: false
 
   /@isaacs/cliui@8.0.2:
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}

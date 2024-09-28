@@ -1,13 +1,12 @@
 <template>
-  <div class="video-item relative" ref="videoItemRef">
-    <div class="video-thumbnail relative cursor-pointer">
+  <div class="video-item bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="video-thumbnail relative cursor-pointer" @click="playVideo">
       <img
         v-if="!video.isPlaying"
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
         alt="Video thumbnail"
-        class="w-full h-full object-cover"
-        @click="playVideo"
+        class="w-full h-40 object-cover"
       >
       <VideoPlayer
         v-if="video.isPlaying"
@@ -18,47 +17,15 @@
         @pause="onVideoPause"
         @ended="onVideoEnded"
       />
-      <div v-if="!video.isPlaying" class="video-duration">{{ formatDuration(video.duration) }}</div>
-      <div v-if="!video.isPlaying" class="play-button" @click="playVideo">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12">
-          <path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clip-rule="evenodd"/>
-        </svg>
-      </div>
-      <div v-if="video.if_downloaded && !video.isPlaying" class="downloaded-badge absolute top-2 right-2 bg-gray-200 bg-opacity-70 text-gray-700 px-2 py-0.5 rounded-full text-xs font-medium opacity-80 hover:opacity-60 transition-opacity duration-200 backdrop-filter: blur(2px);">
-        已下载
+      <div v-if="!video.isPlaying" class="video-duration absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded">
+        {{ formatDuration(video.duration) }}
       </div>
     </div>
-    <div class="video-info p-3 flex flex-col">
-      <div class="flex justify-between items-start">
-        <a
-          :href="video.url"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="video-title text-base font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-200 line-clamp-2 flex-grow pr-2"
-        >
-          {{ video.title }}
-        </a>
-        <div class="flex-shrink-0 relative">
-          <button @click.stop="$emit('toggleOptions', $event, video.id)"
-            class="text-gray-500 hover:text-gray-700 focus:outline-none p-1">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="flex justify-between items-center mt-2">
-        <div v-if="props.showAvatar" class="flex items-center cursor-pointer" @click="$emit('goToChannel', video.channel_id)">
-          <img
-            :src="video.channel_avatar"
-            :alt="video.channel_name"
-            class="w-6 h-6 rounded-full mr-2"
-            referrerpolicy="no-referrer"
-          >
-          <p class="video-channel text-sm text-gray-600 truncate hover:text-blue-500 transition-colors duration-200">
-            {{ video.channel_name }}</p>
-        </div>
-        <span class="text-xs text-gray-500 whitespace-nowrap">{{ formatDate(video.uploaded_at) }}</span>
+    <div class="p-3">
+      <h3 class="text-sm font-medium text-gray-900 line-clamp-2 mb-1">{{ video.title }}</h3>
+      <div class="flex items-center justify-between text-xs text-gray-500">
+        <span>{{ video.channel_name }}</span>
+        <span>{{ formatDate(video.uploaded_at) }}</span>
       </div>
     </div>
   </div>
@@ -168,6 +135,14 @@ const formatDate = (dateString) => {
 </script>
 
 <style scoped>
+.video-item {
+  @apply transition-shadow duration-200 ease-in-out;
+}
+
+.video-item:hover {
+  @apply shadow-md;
+}
+
 .video-thumbnail {
   @apply relative pt-[56.25%] cursor-pointer;
   height: 0;
@@ -178,7 +153,7 @@ const formatDate = (dateString) => {
 }
 
 .video-duration {
-  @apply absolute bottom-2 right-2 bg-black bg-opacity-80 text-white text-xs px-1 py-0.5 rounded;
+  @apply absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded;
 }
 
 .video-title {

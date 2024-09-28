@@ -1,14 +1,15 @@
 <template>
-  <div class="tab-container bg-white shadow-sm">
-    <div class="flex justify-around">
+  <div class="tab-container mb-4">
+    <div class="flex space-x-1">
       <button 
         v-for="tab in tabs" 
         :key="tab.value" 
         @click="$emit('update:modelValue', tab.value)"
-        :class="['px-3 py-1 text-xs font-medium flex items-center', modelValue === tab.value ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500']"
+        :class="['px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150 ease-in-out', 
+                 modelValue === tab.value ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200']"
       >
         {{ tab.label }}
-        <span v-if="tab.count !== undefined" class="ml-1 bg-gray-200 text-gray-700 rounded-full px-2 py-0.5 text-2xs">
+        <span v-if="tab.count !== undefined" class="ml-1 bg-blue-200 text-blue-800 rounded-full px-1.5 py-0.5 text-2xs">
           {{ tab.count }}
         </span>
       </button>
@@ -29,23 +30,10 @@ defineEmits(['update:modelValue']);
 
 <style scoped>
 .tab-container {
-  overflow-x: auto;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
-}
-
-.tab-container button {
-  height: 1.75rem; /* 28px */
-  line-height: 1.5rem; /* 28px, to account for the border */
-  transition: all 0.2s ease-in-out;
-}
-
-.tab-container button:hover {
-  color: #3b82f6; /* text-blue-500 */
+  @apply overflow-x-auto whitespace-nowrap overscroll-contain overflow-touch;
 }
 
 .text-2xs {
-  font-size: 0.55rem;
-  line-height: 0.75rem;
+  @apply text-[10px] leading-[14px];
 }
 </style>

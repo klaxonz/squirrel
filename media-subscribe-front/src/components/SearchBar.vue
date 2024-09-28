@@ -1,29 +1,20 @@
 <template>
-  <div :class="['search-bar', { 'hidden': isScrollingUp }]" ref="searchBar">
-    <div class="flex items-center w-11/12 mx-auto relative ">
-      <div class="relative flex-grow">
-        <input
-          v-model="searchQuery"
-          @keyup.enter="handleSearch"
-          type="text"
-          placeholder="搜索视频..."
-          class="search-input w-full h-7 px-3 pr-3 text-xs border border-gray-300 rounded-l-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200"
-        >
-        <button
-          v-if="searchQuery"
-          @click="clearSearch"
-          class="clear-button absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-          </svg>
-        </button>
-      </div>
+  <div class="search-bar">
+    <div class="relative">
+      <input
+        v-model="searchQuery"
+        @keyup.enter="handleSearch"
+        type="text"
+        placeholder="搜索视频..."
+        class="w-full h-9 px-4 pr-10 text-sm bg-gray-100 border-none rounded-full focus:outline-none focus:ring-2 focus:ring-blue-300"
+      >
       <button
         @click="handleSearch"
-        class="search-button h-7 px-3 text-xs font-medium bg-blue-500 text-white rounded-r-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 focus:ring-offset-2 transition duration-200"
+        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
       >
-        搜索
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+        </svg>
       </button>
     </div>
   </div>
@@ -54,30 +45,6 @@ const emit = defineEmits(['search']);
 
 <style scoped>
 .search-bar {
-  position: sticky;
-  top: 0;
-  background-color: white;
-  z-index: 10;
-  padding: 0.25rem;
-  transition: transform 0.3s ease-in-out;
-}
-
-.search-bar.hidden {
-  transform: translateY(-100%);
-}
-
-.search-input {
-  border-right: none;
-  border-radius: 9999px 0 0 9999px;
-}
-
-.search-button {
-  border-left: none;
-  border-radius: 0 9999px 9999px 0;
-}
-
-.search-bar input:focus,
-.search-bar button:focus {
-  box-shadow: 0 0 0 0 rgba(111, 164, 248, 0.5);
+  @apply sticky top-0 bg-white z-10 py-2;
 }
 </style>
