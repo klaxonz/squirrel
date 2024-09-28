@@ -143,7 +143,6 @@ const onImageLoad = () => {
 .video-item {
   width: 100%;
   break-inside: avoid;
-  margin-bottom: 16px;
 }
 
 .video-thumbnail {

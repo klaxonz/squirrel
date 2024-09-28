@@ -48,10 +48,11 @@ export default function useLatestVideos(channelId) {
 
     loading.value = true;
     try {
+      const pageSize = currentPage.value === 1 ? 30 : 10; // Load 30 items on first page, 10 on subsequent pages
       const response = await axios.get('/api/channel-video/list', {
         params: {
           page: currentPage.value,
-          pageSize: 10,
+          pageSize: pageSize,
           query: searchQuery.value,
           channel_id: channelId,
           read_status: activeTab.value === 'all' ? null : activeTab.value
@@ -66,7 +67,7 @@ export default function useLatestVideos(channelId) {
         }));
         videos.value[activeTab.value] = [...videos.value[activeTab.value], ...newVideos];
         currentPage.value++;
-        allLoaded.value = newVideos.length < 10;
+        allLoaded.value = newVideos.length < pageSize;
         videoCounts.value = response.data.data.counts;
       } else {
         throw new Error(response.data.msg || '获取视频列表失败');
@@ -83,8 +84,7 @@ export default function useLatestVideos(channelId) {
     const scrollPosition = scrollContent.scrollTop + scrollContent.clientHeight;
     const scrollHeight = scrollContent.scrollHeight;
 
-    // 当滚动到距离底部 100px 时加载更多
-    if (scrollHeight - scrollPosition <= 100 && !loading.value && !allLoaded.value) {
+    if (scrollHeight - scrollPosition <= 300 && !loading.value && !allLoaded.value) {
       loadMore(channelId);
     }
   };
