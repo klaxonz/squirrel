@@ -1,12 +1,13 @@
 <template>
   <div class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
-    <div class="video-thumbnail relative cursor-pointer aspect-video" @click="playVideo">
+    <div class="video-thumbnail relative cursor-pointer" @click="playVideo">
       <img
         v-if="!video.isPlaying"
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
         alt="Video thumbnail"
-        class="w-full h-full object-cover"
+        class="w-full h-auto object-cover"
+        @load="onImageLoad"
       >
       <VideoPlayer
         v-if="video.isPlaying"
@@ -22,9 +23,7 @@
       </div>
     </div>
     <div class="p-2">
-      <div class="h-9"> <!-- 固定高度为两行文本 -->
-        <h3 class="text-xs font-medium text-gray-900 line-clamp-2">{{ video.title }}</h3>
-      </div>
+      <h3 class="text-xs font-medium text-gray-900 line-clamp-2 h-9">{{ video.title }}</h3>
       <div class="flex items-center justify-between text-2xs text-gray-500 mt-1">
         <span class="truncate">{{ video.channel_name }}</span>
         <span>{{ formatDate(video.uploaded_at) }}</span>
@@ -49,7 +48,8 @@ const props = defineProps({
 const emit = defineEmits([
   'play', 'setVideoRef', 'videoPlay', 'videoPause', 'videoEnded',
   'toggleOptions', 'goToChannel',
-  'videoEnterViewport', 'videoLeaveViewport'
+  'videoEnterViewport', 'videoLeaveViewport',
+  'imageLoaded'
 ]);
 
 const playVideo = () => {
@@ -96,7 +96,6 @@ onUnmounted(() => {
   }
 });
 
-
 const formatDuration = (seconds) => {
   if (!seconds) return '未知';
   const minutes = Math.floor(seconds / 60);
@@ -134,35 +133,45 @@ const formatDate = (dateString) => {
   if (diffDays <= 365) return `${Math.floor(diffDays / 30)}个月前`;
   return `${Math.floor(diffDays / 365)}年前`;
 };
+
+const onImageLoad = () => {
+  emit('imageLoaded');
+};
 </script>
 
 <style scoped>
 .video-item {
-  @apply transition-shadow duration-200 ease-in-out;
-}
-
-.video-item:hover {
-  @apply shadow-md;
+  width: 100%;
+  break-inside: avoid;
+  margin-bottom: 16px;
 }
 
 .video-thumbnail {
-  @apply relative cursor-pointer;
+  position: relative;
+  padding-top: 56.25%; /* 16:9 宽高比 */
+}
+
+.video-thumbnail img,
+.video-thumbnail .video-player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .video-duration {
-  @apply absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded;
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  border-radius: 2px;
 }
 
-.aspect-video {
-  aspect-ratio: 16 / 9;
-}
-
-/* 确保标题容器高度固定 */
-.h-9 {
-  height: 2.25rem; /* 36px, 足够容纳两行文本 */
-}
-
-/* 确保标题文本不会溢出容器 */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -173,5 +182,9 @@ const formatDate = (dateString) => {
 .text-2xs {
   font-size: 0.625rem; /* 10px */
   line-height: 0.75rem; /* 12px */
+}
+
+.h-9 {
+  height: 2.25rem; /* 36px */
 }
 </style>
