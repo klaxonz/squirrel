@@ -1,5 +1,13 @@
 <template>
-  <div class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+  <div 
+    class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
+    @contextmenu.prevent="showContextMenu"
+    @touchstart="startLongPress"
+    @touchend="cancelLongPress"
+    @touchmove="cancelLongPress"
+    @mouseenter="startHoverPlay"
+    @mouseleave="stopHoverPlay"
+  >
     <div class="video-thumbnail relative cursor-pointer" @click="playVideo">
       <img
         v-if="!video.isPlaying"
@@ -29,12 +37,31 @@
         <span>{{ formatDate(video.uploaded_at) }}</span>
       </div>
     </div>
+    <ContextMenu 
+      v-if="showMenu"
+      :position="menuPosition"
+      @close="closeContextMenu"
+    >
+      <div @click="playVideo" class="context-menu-item">
+        <i class="fas fa-play mr-2"></i>播放
+      </div>
+      <div @click="toggleReadStatus" class="context-menu-item">
+        <i class="fas fa-check-circle mr-2"></i>标记为{{ video.is_read ? '未读' : '已读' }}
+      </div>
+      <div @click="downloadVideo" class="context-menu-item">
+        <i class="fas fa-download mr-2"></i>下载
+      </div>
+      <div @click="copyVideoLink" class="context-menu-item">
+        <i class="fas fa-link mr-2"></i>复制链接
+      </div>
+    </ContextMenu>
   </div>
 </template>
 
 <script setup>
 import { defineProps, defineEmits, onMounted, onUnmounted, ref } from 'vue';
 import VideoPlayer from './VideoPlayer.vue';
+import ContextMenu from './ContextMenu.vue';
 
 const props = defineProps({
   video: Object,
@@ -47,7 +74,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'play', 'setVideoRef', 'videoPlay', 'videoPause', 'videoEnded',
-  'toggleOptions', 'goToChannel',
+  'toggleOptions', 'goToChannel', 'hoverStop', 'hoverPlay',
   'videoEnterViewport', 'videoLeaveViewport',
   'imageLoaded'
 ]);
@@ -137,6 +164,47 @@ const formatDate = (dateString) => {
 const onImageLoad = () => {
   emit('imageLoaded');
 };
+
+const showMenu = ref(false);
+const menuPosition = ref({ x: 0, y: 0 });
+let longPressTimer = null;
+
+const showContextMenu = (event) => {
+  event.preventDefault();
+  menuPosition.value = { x: event.clientX, y: event.clientY };
+  showMenu.value = true;
+};
+
+const closeContextMenu = () => {
+  showMenu.value = false;
+};
+
+const startLongPress = (event) => {
+  longPressTimer = setTimeout(() => {
+    menuPosition.value = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    showMenu.value = true;
+  }, 500); // 500ms long press
+};
+
+const cancelLongPress = () => {
+  clearTimeout(longPressTimer);
+};
+
+
+// Add this new function
+const handleScroll = () => {
+  if (showMenu.value) {
+    closeContextMenu();
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll, true);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll, true);
+});
 </script>
 
 <style scoped>
@@ -185,5 +253,9 @@ const onImageLoad = () => {
 
 .h-9 {
   height: 2.25rem; /* 36px */
+}
+
+.context-menu-item {
+  @apply px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center;
 }
 </style>

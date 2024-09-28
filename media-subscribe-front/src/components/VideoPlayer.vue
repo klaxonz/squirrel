@@ -55,12 +55,8 @@ const initPlayer = () => {
     emit('fullscreenChange', isFullscreen);
   });
 
-  // 将 player 实例传递给父组件
   if (props.setVideoRef) {
-    console.log('Calling setVideoRef for video:', props.video.id);
     props.setVideoRef(props.video.id, player.value);
-  } else {
-    console.warn('setVideoRef function not provided for video:', props.video.id);
   }
 };
 </script>

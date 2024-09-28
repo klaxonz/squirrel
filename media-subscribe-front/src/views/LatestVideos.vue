@@ -132,7 +132,7 @@ const {
   setVideoRef,
   handleOrientationChange,
   onVideoLeaveViewport,
-  isFullscreen,
+  isFullscreen
 } = useVideoOperations(videos, videoRefs);
 
 const {

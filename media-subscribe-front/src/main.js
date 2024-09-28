@@ -7,6 +7,7 @@ import 'vue-toastification/dist/index.css';
 import './index.css';
 import Player from 'xgplayer';
 import 'xgplayer/dist/index.min.css';
+import '@fortawesome/fontawesome-free/css/all.min.css';  // 更新这行
 
 const app = createApp(App)
 app.use(router)

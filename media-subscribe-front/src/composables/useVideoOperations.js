@@ -110,6 +110,6 @@ export default function useVideoOperations(videos, videoRefs) {
     handleOrientationChange,
     pauseVideo,
     onVideoLeaveViewport,
-    isFullscreen,
+    isFullscreen
   };
 }
