@@ -6,12 +6,14 @@ from email.utils import formatdate
 from mimetypes import guess_type
 from typing import Optional
 
+import httpx
 from fastapi import Query, APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from pytubefix import YouTube
 from sqlalchemy import or_, func, and_
 from starlette.responses import StreamingResponse
 import requests
+from urllib.parse import quote
 
 from common.cookie import filter_cookies_to_query_string
 import common.response as response
@@ -50,12 +52,21 @@ def subscribe_channel(
             resp = requests.get(req_url, headers=headers)
             cid = resp.json()['data']['cid']
 
-            video_url = f'https://api.bilibili.com/x/player/wbi/playurl?bvid={video_id}&cid={cid}&platform=html5'
+            video_url = f'https://api.bilibili.com/x/player/wbi/playurl?bvid={video_id}&cid={cid}&fnval=144'
             resp = requests.get(video_url, headers=headers)
-            url_ = resp.json()['data']['durl'][0]['url']
+            data = resp.json()['data']
+
+            # Extract the best quality video URL
+            video_urls = data['dash']['video']
+            best_video_url = max(video_urls, key=lambda x: x['bandwidth'])['baseUrl']
+
+            # Extract the best quality audio URL
+            audio_urls = data['dash']['audio']
+            best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
 
             return response.success({
-                'video_url': url_,
+                'video_url': f"http://localhost:8000/api/channel-video/proxy-video?url={quote(best_video_url)}",
+                'audio_url': f"http://localhost:8000/api/channel-video/proxy-video?url={quote(best_audio_url)}",
             })
         elif domain == 'youtube.com':
             yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=True, allow_oauth_cache=True)
@@ -169,18 +180,19 @@ class MarkReadBatchRequest(BaseModel):
     direction: str  # 'above' or 'below'
     uploaded_at: str  # 改为使用 ID 而不是日期
 
+
 @router.post("/api/channel-video/mark-read-batch")
 def mark_videos_read_batch(req: MarkReadBatchRequest):
     with get_session() as s:
         query = s.query(ChannelVideo)
         if req.channel_id:
             query = query.filter(ChannelVideo.channel_id == req.channel_id)
-        
+
         if req.direction == 'above':
             query = query.filter(ChannelVideo.uploaded_at >= req.uploaded_at)
         elif req.direction == 'below':
             query = query.filter(ChannelVideo.uploaded_at <= req.uploaded_at)
-        
+
         query.update({"if_read": req.is_read})
         s.commit()
     return response.success()
@@ -282,3 +294,32 @@ def dislike_video(req: DislikeRequest):
         session.commit()
 
     return response.success({"message": "Video marked as disliked"})
+
+
+@router.get("/api/channel-video/proxy-video")
+async def proxy_video(request: Request, url: str):
+    headers = {
+        "Referer": "https://www.bilibili.com",
+        "User-Agent": request.headers.get("User-Agent"),
+        "Range": request.headers.get("Range")
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(url, headers=headers, follow_redirects=True)
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(status_code=exc.response.status_code, detail=str(exc))
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=500, detail=f"An error occurred while requesting {exc.request.url!r}.")
+
+    return StreamingResponse(
+        resp.iter_bytes(),
+        status_code=resp.status_code,
+        headers={
+            "Content-Type": resp.headers.get("Content-Type"),
+            "Content-Range": resp.headers.get("Content-Range"),
+            "Content-Length": resp.headers.get("Content-Length"),
+            "Accept-Ranges": "bytes"
+        }
+    )

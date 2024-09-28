@@ -39,7 +39,6 @@ watch(() => [props.video.video_url, props.video.audio_url], ([newVideoUrl, newAu
 });
 
 const initPlayer = () => {
-  console.log('initPlayer', props.video)
   player.value = new Player({
     id: `video-player-${props.video.id}`,
     url: props.video.video_url,
