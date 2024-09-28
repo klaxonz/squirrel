@@ -1,15 +1,15 @@
 <template>
-  <div class="tab-container mb-4">
-    <div class="flex space-x-1">
+  <div class="tab-container mb-4 bg-white">
+    <div class="flex space-x-2 px-4 py-2 overflow-x-auto">
       <button 
         v-for="tab in tabs" 
         :key="tab.value" 
         @click="$emit('update:modelValue', tab.value)"
-        :class="['px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-150 ease-in-out', 
-                 modelValue === tab.value ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200']"
+        :class="['px-3 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ease-in-out', 
+                 modelValue === tab.value ? 'bg-gray-200 text-gray-900' : 'text-gray-600 hover:bg-gray-100']"
       >
         {{ tab.label }}
-        <span v-if="tab.count !== undefined" class="ml-1 bg-blue-200 text-blue-800 rounded-full px-1.5 py-0.5 text-2xs">
+        <span v-if="tab.count !== undefined" class="ml-1 bg-gray-300 text-gray-800 rounded-full px-1.5 py-0.5 text-xs">
           {{ tab.count }}
         </span>
       </button>
@@ -30,10 +30,11 @@ defineEmits(['update:modelValue']);
 
 <style scoped>
 .tab-container {
-  @apply overflow-x-auto whitespace-nowrap overscroll-contain overflow-touch;
+  @apply sticky top-0 z-10 border-b border-gray-200;
 }
 
-.text-2xs {
-  @apply text-[10px] leading-[14px];
+.text-xs {
+  font-size: 0.75rem;
+  line-height: 1rem;
 }
 </style>
