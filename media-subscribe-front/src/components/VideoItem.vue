@@ -17,13 +17,15 @@
         @pause="onVideoPause"
         @ended="onVideoEnded"
       />
-      <div v-if="!video.isPlaying" class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded">
+      <div v-if="!video.isPlaying" class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
       </div>
     </div>
     <div class="p-2">
-      <h3 class="text-sm font-medium text-gray-900 line-clamp-2 mb-1">{{ video.title }}</h3>
-      <div class="flex items-center justify-between text-xs text-gray-500">
+      <div class="h-9"> <!-- 固定高度为两行文本 -->
+        <h3 class="text-xs font-medium text-gray-900 line-clamp-2">{{ video.title }}</h3>
+      </div>
+      <div class="flex items-center justify-between text-2xs text-gray-500 mt-1">
         <span class="truncate">{{ video.channel_name }}</span>
         <span>{{ formatDate(video.uploaded_at) }}</span>
       </div>
@@ -148,10 +150,28 @@ const formatDate = (dateString) => {
 }
 
 .video-duration {
-  @apply absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded;
+  @apply absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded;
 }
 
 .aspect-video {
   aspect-ratio: 16 / 9;
+}
+
+/* 确保标题容器高度固定 */
+.h-9 {
+  height: 2.25rem; /* 36px, 足够容纳两行文本 */
+}
+
+/* 确保标题文本不会溢出容器 */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.text-2xs {
+  font-size: 0.625rem; /* 10px */
+  line-height: 0.75rem; /* 12px */
 }
 </style>
