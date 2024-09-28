@@ -64,7 +64,6 @@
 }
 
 .video-grid {
-  @apply grid-cols-1 sm:grid-cols-2;
   min-height: 100%;
   will-change: transform;
 }

@@ -1,12 +1,12 @@
 <template>
-  <div class="video-item bg-white rounded-xl shadow-sm overflow-hidden">
-    <div class="video-thumbnail relative cursor-pointer" @click="playVideo">
+  <div class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+    <div class="video-thumbnail relative cursor-pointer aspect-video" @click="playVideo">
       <img
         v-if="!video.isPlaying"
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
         alt="Video thumbnail"
-        class="w-full h-40 object-cover"
+        class="w-full h-full object-cover"
       >
       <VideoPlayer
         v-if="video.isPlaying"
@@ -17,14 +17,14 @@
         @pause="onVideoPause"
         @ended="onVideoEnded"
       />
-      <div v-if="!video.isPlaying" class="video-duration absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded">
+      <div v-if="!video.isPlaying" class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
       </div>
     </div>
-    <div class="p-3">
+    <div class="p-2">
       <h3 class="text-sm font-medium text-gray-900 line-clamp-2 mb-1">{{ video.title }}</h3>
       <div class="flex items-center justify-between text-xs text-gray-500">
-        <span>{{ video.channel_name }}</span>
+        <span class="truncate">{{ video.channel_name }}</span>
         <span>{{ formatDate(video.uploaded_at) }}</span>
       </div>
     </div>
@@ -144,45 +144,14 @@ const formatDate = (dateString) => {
 }
 
 .video-thumbnail {
-  @apply relative pt-[56.25%] cursor-pointer;
-  height: 0;
-}
-
-.video-thumbnail img {
-  @apply absolute top-0 left-0 w-full h-full object-cover;
+  @apply relative cursor-pointer;
 }
 
 .video-duration {
-  @apply absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded;
+  @apply absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded;
 }
 
-.video-title {
-  @apply text-base font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-200 line-clamp-2 flex-grow pr-2;
-  text-decoration: none;
-}
-
-.video-title:hover {
-  text-decoration: none;
-}
-
-.video-channel {
-  @apply text-sm text-gray-600 truncate hover:text-blue-500 transition-colors duration-200;
-}
-
-.play-button {
-  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white opacity-80 cursor-pointer;
-}
-
-.video-thumbnail:hover .play-button {
-  @apply opacity-100;
-}
-
-.downloaded-badge {
-  @apply absolute top-2 right-2 bg-gray-200 bg-opacity-70 text-gray-700 px-2 py-0.5 rounded-full text-xs font-medium opacity-80 hover:opacity-60 transition-opacity duration-200;
-  backdrop-filter: blur(2px);
-}
-
-.video-item {
-  @apply sm:mb-0; /* 在小屏幕上保留下边距，在大屏幕上移除 */
+.aspect-video {
+  aspect-ratio: 16 / 9;
 }
 </style>
