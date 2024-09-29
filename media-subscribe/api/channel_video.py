@@ -7,7 +7,7 @@ from mimetypes import guess_type
 from typing import Optional
 
 import httpx
-from fastapi import Query, APIRouter, Request, Depends, HTTPException
+from fastapi import Query, APIRouter, Request, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from pytubefix import YouTube
 from sqlalchemy import or_, func, and_
@@ -297,29 +297,31 @@ def dislike_video(req: DislikeRequest):
 
 
 @router.get("/api/channel-video/proxy-video")
-async def proxy_video(request: Request, url: str):
+async def proxy_video(request: Request, url: str, background_tasks: BackgroundTasks):
     headers = {
         "Referer": "https://www.bilibili.com",
         "User-Agent": request.headers.get("User-Agent"),
         "Range": request.headers.get("Range")
     }
 
-    async with httpx.AsyncClient() as client:
-        try:
-            resp = await client.get(url, headers=headers, follow_redirects=True)
-            resp.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=exc.response.status_code, detail=str(exc))
-        except httpx.RequestError as exc:
-            raise HTTPException(status_code=500, detail=f"An error occurred while requesting {exc.request.url!r}.")
+    async def stream_video():
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
+            try:
+                async with client.stream("GET", url, headers=headers, follow_redirects=True) as resp:
+                    resp.raise_for_status()
+                    async for chunk in resp.aiter_bytes(chunk_size=8192):
+                        yield chunk
+            except httpx.HTTPStatusError as exc:
+                raise HTTPException(status_code=exc.response.status_code, detail=str(exc))
+            except httpx.RequestError as exc:
+                raise HTTPException(status_code=500, detail=f"An error occurred while requesting {exc.request.url!r}.")
 
     return StreamingResponse(
-        resp.iter_bytes(),
-        status_code=resp.status_code,
+        stream_video(),
+        status_code=200,
         headers={
-            "Content-Type": resp.headers.get("Content-Type"),
-            "Content-Range": resp.headers.get("Content-Range"),
-            "Content-Length": resp.headers.get("Content-Length"),
+            "Content-Type": "video/mp4",  # 假设是MP4格式，根据实际情况调整
             "Accept-Ranges": "bytes"
-        }
+        },
+        background=background_tasks
     )
