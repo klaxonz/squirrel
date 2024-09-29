@@ -100,6 +100,10 @@ class BilibiliSubscribeChannel(SubscribeChannel):
                 if resp.status_code != 200:
                     raise Exception('Request failed')
 
+                resp_json = resp.json()
+                if 'data' not in resp_json:
+                    logger.error(resp.json())
+                    continue
                 video_info = resp.json()['data']
                 if 'pages' in video_info and len(video_info['pages']) > 1:
                     continue

@@ -65,8 +65,8 @@ def subscribe_channel(
             best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
 
             return response.success({
-                'video_url': f"http://localhost:8000/api/channel-video/proxy-video?url={quote(best_video_url)}",
-                'audio_url': f"http://localhost:8000/api/channel-video/proxy-video?url={quote(best_audio_url)}",
+                'video_url': best_video_url,
+                'audio_url': best_audio_url,
             })
         elif domain == 'youtube.com':
             yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=True, allow_oauth_cache=True)
@@ -295,33 +295,3 @@ def dislike_video(req: DislikeRequest):
 
     return response.success({"message": "Video marked as disliked"})
 
-
-@router.get("/api/channel-video/proxy-video")
-async def proxy_video(request: Request, url: str, background_tasks: BackgroundTasks):
-    headers = {
-        "Referer": "https://www.bilibili.com",
-        "User-Agent": request.headers.get("User-Agent"),
-        "Range": request.headers.get("Range")
-    }
-
-    async def stream_video():
-        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
-            try:
-                async with client.stream("GET", url, headers=headers, follow_redirects=True) as resp:
-                    resp.raise_for_status()
-                    async for chunk in resp.aiter_bytes(chunk_size=8192):
-                        yield chunk
-            except httpx.HTTPStatusError as exc:
-                raise HTTPException(status_code=exc.response.status_code, detail=str(exc))
-            except httpx.RequestError as exc:
-                raise HTTPException(status_code=500, detail=f"An error occurred while requesting {exc.request.url!r}.")
-
-    return StreamingResponse(
-        stream_video(),
-        status_code=200,
-        headers={
-            "Content-Type": "video/mp4",  # 假设是MP4格式，根据实际情况调整
-            "Accept-Ranges": "bytes"
-        },
-        background=background_tasks
-    )
