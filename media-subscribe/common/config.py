@@ -68,6 +68,14 @@ class GlobalConfig:
         return os.getenv('REDIS_PORT', cls.DEFAULT_REDIS_PORT)
 
     @classmethod
+    def get_redis_db(cls):
+        return os.getenv('REDIS_DB', '0')
+
+    @classmethod
+    def get_redis_password(cls):
+        return os.getenv('REDIS_PASSWORD')
+
+    @classmethod
     def get_mysql_host(cls):
         return os.getenv('MYSQL_HOST', cls.DEFAULT_MYSQL_HOST)
 

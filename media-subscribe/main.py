@@ -17,15 +17,18 @@ from schedule.schedule import Scheduler, AutoUpdateChannelVideoTask, SyncCookies
 from common.log import init_logging
 from common import constants
 
+
 def create_app():
     from api.base import app
     return app
+
 
 logger = logging.getLogger(__name__)
 
 download_consumers = []
 channel_video_extract_consumers = []
 subscribe_consumer = None
+
 
 def start_consumers():
     """启动所有消费者线程"""
@@ -96,6 +99,7 @@ def restart_consumers():
 def start_fastapi_server():
     app = create_app()
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 if __name__ == "__main__":
     # 初始化日志配置

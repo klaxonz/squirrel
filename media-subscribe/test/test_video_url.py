@@ -44,18 +44,23 @@ from subscribe.subscribe import SubscribeChannelFactory
 # videos = subscribe_channel.get_channel_videos(channel, update_all=True)
 # channel.total_videos = len(videos)
 # print(videos)
+#
+# from yt_dlp import YoutubeDL
+#
+# url = 'https://www.youtube.com/@LucyThomasMusic/videos'
+#
+# ydl_opts = {
+#     'playlist_items': '-1',
+#     'extract_flat': 'in_playlist',
+# }
+#
+# with YoutubeDL(ydl_opts) as ydl:
+#     info = ydl.extract_info(url, download=False)
+#
+#     print(json.dumps(info))
 
-from yt_dlp import YoutubeDL
 
-url = 'https://www.youtube.com/@LucyThomasMusic/videos'
+resp = requests.get(
+    '')
 
-ydl_opts = {
-    'playlist_items': '-1',
-    'extract_flat': 'in_playlist',
-}
-
-with YoutubeDL(ydl_opts) as ydl:
-    info = ydl.extract_info(url, download=False)
-
-    print(json.dumps(info))
-
+print(resp.status_code)

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import re
@@ -5,18 +6,18 @@ import stat
 from email.utils import formatdate
 from mimetypes import guess_type
 from typing import Optional
-
-import httpx
-from fastapi import Query, APIRouter, Request, Depends, HTTPException, BackgroundTasks
-from pydantic import BaseModel
-from pytubefix import YouTube
-from sqlalchemy import or_, func, and_
-from starlette.responses import StreamingResponse
-import requests
 from urllib.parse import quote
 
-from common.cookie import filter_cookies_to_query_string
+import httpx
+import requests
+from fastapi import Query, APIRouter, Request, HTTPException
+from pydantic import BaseModel
+from pytubefix import YouTube
+from sqlalchemy import or_, func
+from starlette.responses import StreamingResponse
+
 import common.response as response
+from common.cookie import filter_cookies_to_query_string
 from common.database import get_session
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
@@ -65,8 +66,8 @@ def subscribe_channel(
             best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
 
             return response.success({
-                'video_url': best_video_url,
-                'audio_url': best_audio_url,
+                'video_url': "http://localhost:8000/api/channel-video/proxy?url=" + quote(best_video_url),
+                'audio_url': "http://localhost:8000/api/channel-video/proxy?url=" + quote(best_audio_url),
             })
         elif domain == 'youtube.com':
             yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=True, allow_oauth_cache=True)
@@ -295,3 +296,59 @@ def dislike_video(req: DislikeRequest):
 
     return response.success({"message": "Video marked as disliked"})
 
+
+@router.get("/api/channel-video/proxy")
+async def proxy_video(url: str, request: Request):
+    """
+    代理视频文件，用于解决跨域问题
+    """
+    max_retries = 3
+    chunk_size = 1024  # 减小 chunk size
+
+    headers = {
+        "Referer": "https://www.bilibili.com",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
+    if "range" in request.headers:
+        headers["Range"] = request.headers["range"]
+
+    async def stream_with_retry():
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
+                    async with client.stream("GET", url, headers=headers) as resp:
+                        resp.raise_for_status()
+                        async for chunk in resp.aiter_bytes(chunk_size=chunk_size):
+                            yield chunk
+                return  # 如果成功完成，就退出函数
+            except (httpx.NetworkError, httpx.TimeoutException, httpx.StreamClosed) as e:
+                if attempt == max_retries - 1:
+                    logger.error(f"Failed after {max_retries} attempts: {str(e)}")
+                    raise
+                logger.warning(f"Attempt {attempt + 1} failed, retrying: {str(e)}")
+                await asyncio.sleep(1)  # 在重试之前等待一秒
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
+            async with client.stream("GET", url, headers=headers) as resp:
+                resp.raise_for_status()
+                content_type = resp.headers.get('Content-Type', 'application/octet-stream')
+                resp_headers = {
+                    "Accept-Ranges": "bytes",
+                    "Content-Type": content_type,
+                }
+                if 'Content-Range' in resp.headers:
+                    resp_headers['Content-Range'] = resp.headers['Content-Range']
+
+                return StreamingResponse(
+                    stream_with_retry(),
+                    status_code=resp.status_code,
+                    headers=resp_headers
+                )
+    except httpx.HTTPStatusError as exc:
+        logger.error(f"HTTP error occurred: {exc.response.status_code} {exc.response.reason_phrase}")
+        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.reason_phrase)
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
