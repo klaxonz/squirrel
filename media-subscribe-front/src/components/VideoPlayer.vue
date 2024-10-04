@@ -83,22 +83,43 @@ const handleSeeking = () => {
 };
 
 const handleSeeked = () => {
-  if (!player.value.paused) {
+  const syncAndPlay = () => {
     audioPlayer.value.currentTime = player.value.currentTime;
-    audioPlayer.value.play();
+    if (!player.value.paused) {
+      audioPlayer.value.play().then(() => {
+        player.value.play();
+      }).catch(error => {
+        console.error('Failed to play audio after seeking:', error);
+        player.value.pause();
+      });
+    }
+  };
+
+  if (audioPlayer.value.readyState >= 3) { // HAVE_FUTURE_DATA or HAVE_ENOUGH_DATA
+    syncAndPlay();
+  } else {
+    player.value.pause();
+    const waitForAudio = () => {
+      if (audioPlayer.value.readyState >= 3) {
+        syncAndPlay();
+        audioPlayer.value.removeEventListener('canplay', waitForAudio);
+      }
+    };
+    audioPlayer.value.addEventListener('canplay', waitForAudio);
   }
 };
 
 const handleTimeUpdate = () => {
-  if (Math.abs(audioPlayer.value.currentTime - player.value.currentTime) > 0.1) {
-    console.log('handleTimeUpdate', audioPlayer.value.currentTime, player.value.currentTime);
-    audioPlayer.value.currentTime = player.value.currentTime + 0.1;
+  console.log('handleTimeUpdate', audioPlayer.value.currentTime, player.value.currentTime);
+
+  if (Math.abs(audioPlayer.value.currentTime - player.value.currentTime) > 1) {
+    audioPlayer.value.currentTime = player.value.currentTime + 1;
   }
 };
 
 const handleEnded = () => {
   audioPlayer.value.pause();
-  audioPlayer.value.currentTime = 0;
+  audioPlayer.value.currentTime = 0;  
   emit('ended', props.video);
 };
 </script>
