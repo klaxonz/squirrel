@@ -1,10 +1,10 @@
 <template>
   <div class="latest-videos flex flex-col h-full">
-    <SearchBar @search="handleSearch" ref="searchBar" />
+    <SearchBar class="pt-4" @search="handleSearch" ref="searchBar" />
     <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 
     <div 
-      class="video-container flex-grow relative overflow-hidden"
+      class="video-container px-2 px-1 flex-grow relative overflow-hidden"
       ref="videoContainer" 
     >
       <div class="tab-content-wrapper">

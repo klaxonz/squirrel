@@ -1,14 +1,15 @@
 <template>
-  <div class="app-container bg-gray-50 flex h-screen">
+  <div class="app-container flex h-screen bg-gray-100">
     <!-- 侧边栏 -->
-    <nav class="sidebar w-60 bg-white border-r border-gray-200 p-4">
-      <div class="logo mb-8">
-        <h1 class="text-xl font-semibold text-gray-800">Squirrel</h1>
+    <nav class="sidebar w-56 bg-white h-full overflow-y-auto flex-shrink-0 border-r border-gray-200">
+      <div class="logo h-16 px-6 flex items-center">
+        <img src="/squirrel-icon.svg" alt="Squirrel" class="w-8 h-8 mr-2" />
+        <h1 class="text-xl font-semibold text-gray-900">Squirrel</h1>
       </div>
-      <ul class="space-y-1">
+      <ul class="mt-2">
         <li v-for="route in routes" :key="route.path">
           <router-link :to="route.path" class="nav-item" :class="{ active: $route.path === route.path }">
-            <component :is="route.icon" class="w-4 h-4 mr-3" />
+            <component :is="route.icon" class="w-6 h-6 mr-4" />
             {{ route.name }}
           </router-link>
         </li>
@@ -16,16 +17,14 @@
     </nav>
 
     <!-- 主内容区 -->
-    <main class="flex-grow overflow-hidden">
-      <div class="h-full overflow-y-auto px-8 py-6">
-        <router-view />
-      </div>
+    <main class="flex-grow overflow-hidden bg-white">
+      <router-view />
     </main>
   </div>
 </template>
 
 <script setup>
-import {provide, ref} from 'vue';
+import { provide, ref } from 'vue';
 import mitt from 'mitt';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
 
@@ -33,7 +32,7 @@ const emitter = mitt();
 provide('emitter', emitter);
 
 const routes = ref([
-  { path: '/', name: '最新', icon: HomeIcon },
+  { path: '/', name: '首页', icon: HomeIcon },
   { path: '/subscribed', name: '订阅', icon: BookmarkIcon },
   { path: '/download-tasks', name: '下载', icon: ArrowDownTrayIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
@@ -42,18 +41,14 @@ const routes = ref([
 
 <style scoped>
 .app-container {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Roboto', 'Arial', sans-serif;
 }
 
 .nav-item {
-  @apply flex items-center px-3 py-2 text-sm text-gray-600 rounded-lg transition-colors duration-150 ease-in-out;
-}
-
-.nav-item:hover {
-  @apply bg-gray-100 text-gray-900;
+  @apply flex items-center px-6 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150 ease-in-out;
 }
 
 .nav-item.active {
-  @apply bg-blue-50 text-blue-600;
+  @apply bg-gray-100 font-medium text-red-600;
 }
 </style>

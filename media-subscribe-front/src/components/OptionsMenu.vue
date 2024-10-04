@@ -1,25 +1,23 @@
 <template>
   <div
-    class="options-menu fixed bg-white shadow-lg rounded-lg py-1 z-50 w-40"
+    class="options-menu absolute bg-white shadow-lg rounded-md py-2 z-50 w-48"
     :style="{ top: position.top + 'px', left: position.left + 'px' }"
     @click.stop
   >
     <button @click="$emit('dislikeVideo')" class="option-item">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
       </svg>
       不喜欢
     </button>
-    <div class="divider"></div>
     <button @click="$emit('downloadVideo')" class="option-item">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
       </svg>
       下载视频
     </button>
-    <div class="divider"></div>
     <button @click="$emit('copyVideoLink')" class="option-item">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-2.5" />
       </svg>
       复制链接
@@ -110,7 +108,7 @@ defineEmits([
 }
 
 .option-item {
-  @apply flex items-center w-full text-left px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 transition-colors duration-150 ease-in-out;
+  @apply flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150 ease-in-out;
 }
 
 .option-item:first-child {
