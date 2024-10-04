@@ -83,15 +83,16 @@ const handleSeeking = () => {
 };
 
 const handleSeeked = () => {
-  audioPlayer.value.currentTime = player.value.currentTime;
   if (!player.value.paused) {
+    audioPlayer.value.currentTime = player.value.currentTime;
     audioPlayer.value.play();
   }
 };
 
 const handleTimeUpdate = () => {
   if (Math.abs(audioPlayer.value.currentTime - player.value.currentTime) > 0.1) {
-    audioPlayer.value.currentTime = player.value.currentTime;
+    console.log('handleTimeUpdate', audioPlayer.value.currentTime, player.value.currentTime);
+    audioPlayer.value.currentTime = player.value.currentTime + 0.1;
   }
 };
 
@@ -111,7 +112,4 @@ const handleEnded = () => {
   @apply w-full h-full object-contain;
 }
 
-audio {
-  display: none; /* 隐藏音频元素 */
-}
 </style>

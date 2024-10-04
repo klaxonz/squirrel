@@ -340,6 +340,8 @@ async def proxy_video(url: str, request: Request):
                 }
                 if 'Content-Range' in resp.headers:
                     resp_headers['Content-Range'] = resp.headers['Content-Range']
+                if 'Content-Length' in resp.headers:
+                    resp_headers['Content-Length'] = resp.headers['Content-Length']
 
                 return StreamingResponse(
                     stream_with_retry(),
