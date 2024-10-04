@@ -35,14 +35,14 @@
       :position="menuPosition"
       @close="closeContextMenu"
     >
-      <div @click="toggleReadStatus" class="context-menu-item">
-        <i class="fas fa-check-circle mr-2"></i>标记为{{ video.is_read ? '未读' : '已读' }}
-      </div>
       <div @click="downloadVideo" class="context-menu-item">
-        <i class="fas fa-download mr-2"></i>下载
+        <i class="fas fa-download mr-2"></i>下载视频
       </div>
       <div @click="copyVideoLink" class="context-menu-item">
         <i class="fas fa-link mr-2"></i>复制链接
+      </div>
+      <div @click="toggleReadStatus" class="context-menu-item">
+        <i class="fas fa-check-circle mr-2"></i>标记为{{ video.is_read ? '未读' : '已读' }}
       </div>
     </ContextMenu>
   </div>
@@ -67,26 +67,6 @@ const emit = defineEmits([
   'videoEnterViewport', 'videoLeaveViewport',
   'imageLoaded', 'openModal'
 ]);
-
-const playVideo = () => {
-  console.log('Attempting to play video:', props.video);
-  emit('play', props.video);
-};
-
-const onVideoPlay = () => {
-  console.log('Video started playing');
-  emit('videoPlay', props.video);
-};
-
-const onVideoPause = () => {
-  console.log('Video paused');
-  emit('videoPause', props.video);
-};
-
-const onVideoEnded = () => {
-  console.log('Video ended');
-  emit('videoEnded', props.video);
-};
 
 const videoItemRef = ref(null);
 const observer = ref(null);

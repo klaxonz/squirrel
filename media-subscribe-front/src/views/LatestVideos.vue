@@ -4,7 +4,7 @@
     <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 
     <div 
-      class="video-container px-2 px-1 flex-grow relative overflow-hidden"
+      class="video-container px-2 pt-1 flex-grow relative overflow-hidden"
       ref="videoContainer" 
     >
       <div class="tab-content-wrapper">
