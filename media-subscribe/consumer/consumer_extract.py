@@ -3,7 +3,6 @@ import logging
 from datetime import datetime
 from sqlalchemy.orm import Session
 from common import constants
-from common.cache import RedisClient
 from common.config import GlobalConfig
 from common.database import get_session, get_db_session
 from common.message_queue import RedisMessageQueue
@@ -24,57 +23,56 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
         super().__init__(queue_name, thread_id)
         self.db_session: Session = get_db_session()
 
-    def run(self):
-        message = None
-        while self.running:
-            try:
-                message = self._dequeue_message()
-                if message:
-                    self._process_message(message)
-            except Exception as e:
-                logger.info(f"消息体: {message.body}")
-                logger.error(f"处理消息时发生错误: {e}", exc_info=True)
-
-    def _dequeue_message(self):
-        with get_session() as session:
-            message = self.mq.wait_and_dequeue(session=session, timeout=5)
-            if message:
-                self.handle_message(message, session=session)
-                session.expunge(message)
-        return message
-
     def _process_message(self, message):
         try:
-            # Merge the message object into the current session
-            message = self.db_session.merge(message)
+            extract_info = self._parse_message(message)
+            url, domain, video_id = self._extract_video_info(extract_info['url'])
             
-            extract_info = json.loads(message.body)
-            url = extract_info['url']
-            domain = extract_top_level_domain(url)
-            video_id = extract_id_from_url(url)
-
-            channel_video = self._get_channel_video(domain, video_id)
-            if self._should_skip_extraction(extract_info, channel_video):
+            if self._should_skip_processing(extract_info, domain, video_id):
                 return
 
             video_info = self._get_video_info(url)
             if not video_info:
                 return
 
-            video = VideoFactory.create_video(url, video_info)
-            uploader = video.get_uploader()
-            if not uploader.name:
+            video = self._create_video(url, video_info)
+            if not video.get_uploader().name:
                 logger.info(f"{url} uploader name is None, skip")
                 return
 
             self._handle_video_extraction(extract_info, video, domain, video_id, video_info)
-            if extract_info['if_only_extract']:
-                return
-
-            self._handle_download_task(extract_info, video, domain, video_id, channel_video)
+            if not extract_info['if_only_extract']:
+                self._handle_download_task(extract_info, video, domain, video_id)
+        except Exception as e:
+            logger.error(f"处理消息时发生错误: {e}", exc_info=True)
         finally:
-            # Make sure to close the session when done
             self.db_session.close()
+
+    def _parse_message(self, message):
+        return json.loads(message.body)
+
+    def _extract_video_info(self, url):
+        domain = extract_top_level_domain(url)
+        video_id = extract_id_from_url(url)
+        return url, domain, video_id
+
+    def _should_skip_processing(self, extract_info, domain, video_id):
+        channel_video = self._get_channel_video(domain, video_id)
+        if extract_info['if_only_extract'] and channel_video is not None:
+            self._update_redis_cache(domain, video_id, 'if_extract')
+            logger.debug(f"视频已解析：{channel_video.url}")
+            return True
+        return False
+
+    def _get_video_info(self, url):
+        video_info = Downloader.get_video_info_thread(url, self.get_queue_thread_name())
+        if video_info is None or ('_type' in video_info and video_info['_type'] == 'playlist'):
+            logger.info(f"{url} is not a valid video, skip")
+            return None
+        return video_info
+
+    def _create_video(self, url, video_info):
+        return VideoFactory.create_video(url, video_info)
 
     def _get_channel_video(self, domain, video_id):
         with get_session() as session:
@@ -85,23 +83,6 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
             if channel_video:
                 session.expunge(channel_video)
         return channel_video
-
-    def _should_skip_extraction(self, extract_info, channel_video):
-        if extract_info['if_only_extract'] and channel_video is not None:
-            self._update_redis_cache(channel_video.domain, channel_video.video_id, 'if_extract')
-            logger.debug(f"视频已解析：{channel_video.url}")
-            return True
-        return False
-
-    def _get_video_info(self, url):
-        video_info = Downloader.get_video_info_thread(url, self.get_queue_thread_name())
-        if video_info is None:
-            logger.info(f"{url} is not a video, skip")
-            return None
-        if '_type' in video_info and video_info['_type'] == 'playlist':
-            logger.info(f"{url} is a playlist, skip")
-            return None
-        return video_info
 
     def _handle_video_extraction(self, extract_info, video, domain, video_id, video_info):
         logger.debug(f"开始解析视频：channel {video.get_uploader().name}, video: {video.url}")
@@ -128,7 +109,8 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
             session.commit()
         self._update_redis_cache(domain, video_id, 'if_extract')
 
-    def _handle_download_task(self, extract_info, video, domain, video_id, channel_video):
+    def _handle_download_task(self, extract_info, video, domain, video_id):
+        channel_video = self._get_channel_video(domain, video_id)
         if extract_info['if_subscribe'] and channel_video and channel_video.if_downloaded:
             return
 
@@ -195,6 +177,5 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
             session.commit()
 
     def _update_redis_cache(self, domain, video_id, cache_key):
-        client = RedisClient.get_instance().client
         key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}"
-        client.hset(key, cache_key, datetime.now().timestamp())
+        self.redis.hset(key, cache_key, datetime.now().timestamp())

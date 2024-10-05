@@ -1,10 +1,9 @@
 import logging
 import threading
-
 from sqlalchemy.orm import Session
-
 from common.cache import RedisClient
 from common.message_queue import RedisMessageQueue
+from common.database import get_session
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +19,32 @@ class BaseConsumerThread(threading.Thread):
         self.redis = RedisClient.get_instance().client  # Cache Redis client instance
         self.mq = RedisMessageQueue(queue_name=self.queue_name)  # Initialize MQ once
 
-    def handle_message(self, message, session: Session):
-        """Handle a generic message pattern to reduce duplication."""
+    def run(self):
+        while self.running:
+            try:
+                message = self._dequeue_message()
+                if message:
+                    self._process_message(message)
+            except Exception as e:
+                logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+
+    def _dequeue_message(self):
+        with get_session() as session:
+            message = self.mq.wait_and_dequeue(session=session, timeout=5)
+            if message:
+                self._handle_message(message, session)
+                session.expunge(message)
+        return message
+
+    def _handle_message(self, message, session: Session):
         try:
             message.send_status = 'SUCCESS'
             session.commit()
         except Exception as e:
-            logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+            logger.error(f"处理消息状态时发生错误: {e}", exc_info=True)
+
+    def _process_message(self, message):
+        raise NotImplementedError("Subclasses must implement this method")
 
     def stop(self):
         self.running = False
