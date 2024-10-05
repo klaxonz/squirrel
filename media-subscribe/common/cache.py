@@ -1,41 +1,34 @@
 import redis
-
-from common.config import GlobalConfig
+from redis import ConnectionPool
 from redis.exceptions import LockError
 
-
-class _RedisClient:
-    def __init__(self, host='localhost', port=6379, db=0, password=None, decode_responses=True, max_connections=20):
-        self.connection_pool = redis.ConnectionPool(
-            host=host, port=port, db=db, password=password, decode_responses=decode_responses, max_connections=max_connections
-        )
-        self.client = redis.Redis(connection_pool=self.connection_pool)
-        self.client.ping()
+from common.config import GlobalConfig
 
 
-# 实现单例
 class RedisClient:
     _instance = None
+    _pool = None
 
-    @staticmethod
-    def get_instance():
-        """
-        获取RedisClient的单例实例，使用全局配置来初始化。
-        """
-        if RedisClient._instance is None:
-            # 使用全局配置来初始化实例
-            db = GlobalConfig.get_redis_db()
-            decode_responses = True
-            host = GlobalConfig.get_redis_host()
-            port = GlobalConfig.get_redis_port()
-            password = GlobalConfig.get_redis_password()
-            max_connections = 20  # 设置连接池大小
-            RedisClient._instance = _RedisClient(host, port, db, password, decode_responses, max_connections)
-        return RedisClient._instance
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def __init__(self):
+        if self._pool is None:
+            self._pool = ConnectionPool(
+                host=GlobalConfig.get_redis_host(),
+                port=GlobalConfig.get_redis_port(),
+                db=GlobalConfig.get_redis_db(),
+                password=GlobalConfig.get_redis_password(),
+                decode_responses=True,
+                max_connections=20
+            )
+        self.client = redis.Redis(connection_pool=self._pool)
 
     def get_client(self):
-        """提供对内部Redis客户端的访问"""
-        return self._instance.client
+        return self.client
 
 
 class DistributedLock:

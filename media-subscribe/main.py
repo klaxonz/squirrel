@@ -1,6 +1,7 @@
-from alembic import command
 from alembic.config import Config
 from dotenv import load_dotenv
+
+from alembic import command
 from common.config import GlobalConfig
 
 load_dotenv(override=True)
@@ -10,10 +11,12 @@ from consumer.consumer_download_task import DownloadTaskConsumerThread
 from consumer.consumer_extract import ChannelVideoExtractAndDownloadConsumerThread
 from consumer.consumer_subscribe_channel import SubscribeChannelConsumerThread
 import uvicorn
-from schedule.schedule import Scheduler, AutoUpdateChannelVideoTask, SyncCookies, RepairChanelInfoForTotalVideos, \
-    RetryFailedTask, RepairDownloadTaskInfo, ChangeStatusTask, RepairChannelVideoDuration, CleanUnsubscribedChannelsTask
+from schedule.schedule import (
+    Scheduler
+)
 from common.log import init_logging
 from common import constants
+from schedule import TaskRegistry
 
 
 def create_app():
@@ -66,16 +69,16 @@ def start_scheduler():
     """配置并启动定时任务调度器"""
     logger.info('Starting scheduler...')
     scheduler = Scheduler()
-    if GlobalConfig.get_cookie_type() == 'cookiecloud':
-        SyncCookies.run()
-        scheduler.add_job(SyncCookies.run, interval=60, unit='minutes', start_immediately=False)
-    scheduler.add_job(ChangeStatusTask.run, interval=1, unit='minutes')
-    scheduler.add_job(RepairDownloadTaskInfo.run, interval=60, unit='minutes')
-    scheduler.add_job(RetryFailedTask.run, interval=1, unit='minutes')
-    scheduler.add_job(AutoUpdateChannelVideoTask.run, interval=10, unit='minutes')
-    scheduler.add_job(RepairChanelInfoForTotalVideos.run, interval=10, unit='minutes')
-    scheduler.add_job(RepairChannelVideoDuration.run, interval=120, unit='minutes')
-    scheduler.add_job(CleanUnsubscribedChannelsTask.run, interval=60, unit='minutes')
+    
+    for task_class in TaskRegistry.tasks:
+        logger.info(f"Registering task: {task_class.__name__} with interval {task_class.interval} {task_class.unit}")
+        scheduler.add_job(
+            task_class.run,
+            interval=task_class.interval,
+            unit=task_class.unit,
+            start_immediately=task_class.start_immediately
+        )
+    
     scheduler.start()
     logger.info('Scheduler started.')
 
