@@ -1,7 +1,9 @@
 import json
 import logging
 from datetime import datetime
+
 from sqlalchemy.orm import Session
+
 from common import constants
 from common.config import GlobalConfig
 from common.database import get_session, get_db_session
@@ -17,7 +19,10 @@ from model.message import Message
 
 logger = logging.getLogger(__name__)
 
+from consumer.decorators import ConsumerRegistry
 
+
+@ConsumerRegistry.register(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD, num_threads=2)
 class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
     def __init__(self, queue_name, thread_id):
         super().__init__(queue_name, thread_id)
@@ -27,7 +32,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
         try:
             extract_info = self._parse_message(message)
             url, domain, video_id = self._extract_video_info(extract_info['url'])
-            
+
             if self._should_skip_processing(extract_info, domain, video_id):
                 return
 
@@ -161,7 +166,8 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
         if download_task and download_task.status == 'COMPLETED':
             logger.info(f"视频已下载：channel {download_task.channel_name}, video: {download_task.url}")
             return True
-        if download_task and not extract_info['if_manual_retry'] and download_task.retry >= GlobalConfig.DOWNLOAD_RETRY_THRESHOLD:
+        if download_task and not extract_info[
+            'if_manual_retry'] and download_task.retry >= GlobalConfig.DOWNLOAD_RETRY_THRESHOLD:
             logger.info(f"视频下载已超过重试次数：channel {download_task.channel_name}, video: {download_task.url}")
             return True
         return False

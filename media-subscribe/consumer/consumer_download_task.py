@@ -5,14 +5,15 @@ from datetime import datetime
 from common import constants
 from common.database import get_session
 from consumer.base import BaseConsumerThread
+from consumer.decorators import ConsumerRegistry
 from downloader.downloader import Downloader
 from model.channel import ChannelVideo
 from model.download_task import DownloadTaskSchema, DownloadTask
-from model.message import MessageSchema
 
 logger = logging.getLogger(__name__)
 
 
+@ConsumerRegistry.register(queue_name=constants.QUEUE_DOWNLOAD_TASK, num_threads=3)
 class DownloadTaskConsumerThread(BaseConsumerThread):
     def _process_message(self, message):
         try:
