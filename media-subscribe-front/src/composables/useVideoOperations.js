@@ -46,14 +46,21 @@ export default function useVideoOperations(videos, videoRefs) {
 
   const onVideoPlay = (video) => {
     video.isPlaying = true;
+    video.progressSavingInterval = startProgressSaving(video);
   };
 
   const onVideoPause = (video) => {
-    // 不改变 isPlaying 状态，允许用户暂停后继续播放
+    clearInterval(video.progressSavingInterval);
+    const playerInstance = videoRefs.value[video.id];
+    if (playerInstance && playerInstance.currentTime) {
+      saveVideoProgress(video, playerInstance.currentTime);
+    }
   };
 
   const onVideoEnded = (video) => {
     video.isPlaying = false;
+    clearInterval(video.progressSavingInterval);
+    saveVideoProgress(video, 0); // 视频结束时，重置进度
   };
 
   const onFullscreenChange = (event) => {
@@ -93,6 +100,44 @@ export default function useVideoOperations(videos, videoRefs) {
     }
   };
 
+  const saveVideoProgress = async (video, progress) => {
+    try {
+      await axios.post('/api/channel-video/save-progress', {
+        channel_id: video.channel_id,
+        video_id: video.video_id,
+        progress: progress
+      });
+    } catch (error) {
+      console.error('保存视频进度失败:', error);
+    }
+  };
+
+  const getVideoProgress = async (video) => {
+    try {
+      const response = await axios.get('/api/channel-video/get-progress', {
+        params: {
+          channel_id: video.channel_id,
+          video_id: video.video_id
+        }
+      });
+      return response.data.data.progress;
+    } catch (error) {
+      console.error('获取视频进度失败:', error);
+      return 0;
+    }
+  };
+
+  const startProgressSaving = (video) => {
+    const saveInterval = setInterval(() => {
+      const playerInstance = videoRefs.value[video.id];
+      if (playerInstance && playerInstance.currentTime) {
+        saveVideoProgress(video, playerInstance.currentTime);
+      }
+    }, 5000); // 每5秒保存一次进度
+
+    return saveInterval;
+  };
+
   onMounted(() => {
     document.addEventListener('fullscreenchange', onFullscreenChange);
   });
@@ -111,6 +156,9 @@ export default function useVideoOperations(videos, videoRefs) {
     handleOrientationChange,
     pauseVideo,
     onVideoLeaveViewport,
-    isFullscreen
+    isFullscreen,
+    saveVideoProgress,
+    getVideoProgress,
+    startProgressSaving
   };
 }

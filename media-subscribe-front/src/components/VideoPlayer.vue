@@ -8,6 +8,7 @@
 <script setup>
 import { onMounted, onUnmounted, watch, ref } from 'vue';
 import Player from 'xgplayer';
+import useVideoOperations from '../composables/useVideoOperations';
 
 const props = defineProps({
   video: Object,
@@ -19,12 +20,16 @@ const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange']);
 const player = ref(null);
 const audioPlayer = ref(null);
 
-onMounted(() => {
-  initPlayer();
+const { saveVideoProgress, getVideoProgress, startProgressSaving } = useVideoOperations();
+
+onMounted(async () => {
+  const initialProgress = await getVideoProgress(props.video);
+  initPlayer(initialProgress);
 });
 
 onUnmounted(() => {
   if (player.value) {
+    clearInterval(props.video.progressSavingInterval);
     player.value.destroy();
   }
 });
@@ -38,7 +43,7 @@ watch(() => [props.video.video_url, props.video.audio_url], ([newVideoUrl, newAu
   }
 });
 
-const initPlayer = () => {
+const initPlayer = (initialProgress) => {
   player.value = new Player({
     id: `video-player-${props.video.id}`,
     url: props.video.video_url,
@@ -51,6 +56,7 @@ const initPlayer = () => {
       playedColor: '#00a1d6',
       progressColor: 'rgba(255, 255, 255, 0.3)',
     },
+    currentTime: initialProgress,
   });
 
   player.value.on('play', handlePlay);
@@ -66,6 +72,8 @@ const initPlayer = () => {
   if (props.setVideoRef) {
     props.setVideoRef(props.video.id, player.value);
   }
+
+  props.video.progressSavingInterval = startProgressSaving(props.video);
 };
 
 const handlePlay = () => {
@@ -75,6 +83,7 @@ const handlePlay = () => {
 
 const handlePause = () => {
   audioPlayer.value.pause();
+  saveVideoProgress(props.video, player.value.currentTime);
   emit('pause', props.video);
 };
 
@@ -120,6 +129,7 @@ const handleTimeUpdate = () => {
 const handleEnded = () => {
   audioPlayer.value.pause();
   audioPlayer.value.currentTime = 0;  
+  saveVideoProgress(props.video, 0);
   emit('ended', props.video);
 };
 </script>

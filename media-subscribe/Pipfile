@@ -25,5 +25,6 @@ pycookiecloud = "*"
 marshmallow-sqlalchemy = "*"
 pytubefix = "==7.1-rc2"
 sse-starlette = "*"
+alembic = "*"
 
 [dev-packages]

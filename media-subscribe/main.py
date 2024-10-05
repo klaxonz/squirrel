@@ -1,3 +1,5 @@
+from alembic import command
+from alembic.config import Config
 from dotenv import load_dotenv
 from common.config import GlobalConfig
 
@@ -7,11 +9,7 @@ import logging
 from consumer.consumer_download_task import DownloadTaskConsumerThread
 from consumer.consumer_extract import ChannelVideoExtractAndDownloadConsumerThread
 from consumer.consumer_subscribe_channel import SubscribeChannelConsumerThread
-from model.message import Message
 import uvicorn
-from common.database import DatabaseManager
-from model.channel import Channel, ChannelVideo
-from model.download_task import DownloadTask
 from schedule.schedule import Scheduler, AutoUpdateChannelVideoTask, SyncCookies, RepairChanelInfoForTotalVideos, \
     RetryFailedTask, RepairDownloadTaskInfo, ChangeStatusTask, RepairChannelVideoDuration, CleanUnsubscribedChannelsTask
 from common.log import init_logging
@@ -29,6 +27,10 @@ download_consumers = []
 channel_video_extract_consumers = []
 subscribe_consumer = None
 
+
+def upgrade_database():
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
 
 def start_consumers():
     """启动所有消费者线程"""
@@ -105,8 +107,7 @@ if __name__ == "__main__":
     # 初始化日志配置
     init_logging()
     # 初始化数据库
-    tables = [DownloadTask, Channel, ChannelVideo, Message]
-    DatabaseManager.initialize_database(tables)
+    upgrade_database()
 
     start_scheduler()
     start_consumers()

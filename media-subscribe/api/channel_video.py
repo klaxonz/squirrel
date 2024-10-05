@@ -22,6 +22,7 @@ from common.database import get_session
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.channel import ChannelVideo
+from model.video_progress import VideoProgress
 from service import download_service
 
 logger = logging.getLogger(__name__)
@@ -109,7 +110,7 @@ def get_channel_videos(
         offset = (page - 1) * page_size
         channel_videos = base_query.order_by(ChannelVideo.uploaded_at.desc()).offset(offset).limit(page_size)
 
-        # 计算总数、已读数和未读数
+        # 计���总数、已读数和未读数
         s_query = s.query(ChannelVideo)
         if channel_id:
             s_query = s_query.filter(ChannelVideo.channel_id == channel_id)
@@ -354,3 +355,43 @@ async def proxy_video(url: str, request: Request):
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/api/channel-video/save-progress")
+async def save_video_progress(request: Request):
+    data = await request.json()
+    channel_id = data.get('channel_id')
+    video_id = data.get('video_id')
+    progress = data.get('progress')
+
+    with get_session() as session:
+        video_progress = session.query(VideoProgress).filter_by(
+            channel_id=channel_id, video_id=video_id
+        ).first()
+
+        if video_progress:
+            video_progress.progress = progress
+        else:
+            video_progress = VideoProgress(
+                channel_id=channel_id,
+                video_id=video_id,
+                progress=progress
+            )
+            session.add(video_progress)
+
+        session.commit()
+
+    return response.success({"message": "Progress saved successfully"})
+
+
+@router.get("/api/channel-video/get-progress")
+def get_video_progress(channel_id: str, video_id: str):
+    with get_session() as session:
+        video_progress = session.query(VideoProgress).filter_by(
+            channel_id=channel_id, video_id=video_id
+        ).first()
+
+        if video_progress:
+            return response.success({"progress": video_progress.progress})
+        else:
+            return response.success({"progress": 0})
