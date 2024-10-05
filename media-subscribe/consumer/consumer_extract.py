@@ -1,11 +1,11 @@
 import json
 import logging
 from datetime import datetime
-
+from sqlalchemy.orm import Session
 from common import constants
 from common.cache import RedisClient
 from common.config import GlobalConfig
-from common.database import get_session
+from common.database import get_session, get_db_session
 from common.message_queue import RedisMessageQueue
 from common.url_helper import extract_top_level_domain
 from consumer.base import BaseConsumerThread
@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 
 
 class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
+    def __init__(self, queue_name, thread_id):
+        super().__init__(queue_name, thread_id)
+        self.db_session: Session = get_db_session()
+
     def run(self):
         message = None
         while self.running:
@@ -40,30 +44,37 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
         return message
 
     def _process_message(self, message):
-        extract_info = json.loads(message.body)
-        url = extract_info['url']
-        domain = extract_top_level_domain(url)
-        video_id = extract_id_from_url(url)
+        try:
+            # Merge the message object into the current session
+            message = self.db_session.merge(message)
+            
+            extract_info = json.loads(message.body)
+            url = extract_info['url']
+            domain = extract_top_level_domain(url)
+            video_id = extract_id_from_url(url)
 
-        channel_video = self._get_channel_video(domain, video_id)
-        if self._should_skip_extraction(extract_info, channel_video):
-            return
+            channel_video = self._get_channel_video(domain, video_id)
+            if self._should_skip_extraction(extract_info, channel_video):
+                return
 
-        video_info = self._get_video_info(url)
-        if not video_info:
-            return
+            video_info = self._get_video_info(url)
+            if not video_info:
+                return
 
-        video = VideoFactory.create_video(url, video_info)
-        uploader = video.get_uploader()
-        if not uploader.name:
-            logger.info(f"{url} uploader name is None, skip")
-            return
+            video = VideoFactory.create_video(url, video_info)
+            uploader = video.get_uploader()
+            if not uploader.name:
+                logger.info(f"{url} uploader name is None, skip")
+                return
 
-        self._handle_video_extraction(extract_info, video, domain, video_id, video_info)
-        if extract_info['if_only_extract']:
-            return
+            self._handle_video_extraction(extract_info, video, domain, video_id, video_info)
+            if extract_info['if_only_extract']:
+                return
 
-        self._handle_download_task(extract_info, video, domain, video_id, channel_video)
+            self._handle_download_task(extract_info, video, domain, video_id, channel_video)
+        finally:
+            # Make sure to close the session when done
+            self.db_session.close()
 
     def _get_channel_video(self, domain, video_id):
         with get_session() as session:

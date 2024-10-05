@@ -61,3 +61,6 @@ def get_session() -> Session:
         raise e
     finally:
         s.close()
+
+def get_db_session():
+    return SessionLocal()

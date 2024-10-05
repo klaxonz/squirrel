@@ -9,6 +9,7 @@ from mimetypes import guess_type
 import httpx
 from fastapi import Query, APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 from starlette.responses import StreamingResponse
 
 import common.response as response
@@ -105,9 +106,16 @@ def get_video_progress(channel_id: str, video_id: str, db: Session = Depends(get
 @router.get("/api/channel/video/play/{channel_id}/{video_id}")
 def play_video(request: Request, channel_id: str, video_id: str):
     with get_session() as s:
-        channel_video = s.query(ChannelVideo).filter(ChannelVideo.channel_id == channel_id,
-                                                     ChannelVideo.video_id == video_id).first()
-        s.expunge(channel_video)
+        channel_video = s.query(ChannelVideo).filter(
+            and_(
+                ChannelVideo.channel_id == channel_id,
+                ChannelVideo.video_id == video_id
+            )
+        ).first()
+        if channel_video:
+            s.expunge(channel_video)
+        else:
+            raise HTTPException(status_code=404, detail="Video not found")
 
     base_info = Downloader.get_video_info(channel_video.url)
     video = VideoFactory.create_video(channel_video.url, base_info)
