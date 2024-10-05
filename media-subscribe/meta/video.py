@@ -1,14 +1,13 @@
 import json
 import logging
-import re
 import os
+import re
 
 import requests
+from pathvalidate import sanitize_filename
 from pytubefix import YouTube
 
 from common.config import GlobalConfig
-from pathvalidate import sanitize_filename
-
 from common.cookie import filter_cookies_to_query_string
 from common.http_wrapper import session
 

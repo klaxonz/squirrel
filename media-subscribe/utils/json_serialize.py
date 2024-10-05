@@ -1,5 +1,5 @@
-from decimal import Decimal
 import datetime
+from decimal import Decimal
 
 try:
     import uuid

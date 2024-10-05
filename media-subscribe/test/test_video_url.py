@@ -1,12 +1,6 @@
-import json
-
 import requests
-from pytubefix import YouTube, Channel as YouTubeChannel
 
-from common.cookie import filter_cookies_to_query_string
-from downloader.downloader import Downloader
 # from model.channel import Channel
-from subscribe.subscribe import SubscribeChannelFactory
 
 # yt = YouTube('https://youtube.com/watch?v=GxQC3pqoA9Y', use_oauth=True, allow_oauth_cache=True,)
 # print(yt.title)

@@ -5,25 +5,19 @@ import re
 import stat
 from email.utils import formatdate
 from mimetypes import guess_type
-from typing import Optional
-from urllib.parse import quote
 
 import httpx
-import requests
-from fastapi import Query, APIRouter, Request, HTTPException
-from pydantic import BaseModel
-from pytubefix import YouTube
-from sqlalchemy import or_, func
+from fastapi import Query, APIRouter, Request, HTTPException, Depends
+from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse
 
 import common.response as response
-from common.cookie import filter_cookies_to_query_string
-from common.database import get_session
+from common.database import get_db, get_session
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.channel import ChannelVideo
-from model.video_progress import VideoProgress
-from service import download_service
+from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, DislikeRequest
+from services.channel_video_service import ChannelVideoService
 
 logger = logging.getLogger(__name__)
 
@@ -33,188 +27,79 @@ router = APIRouter(
 
 
 @router.get("/api/channel-video/video/url")
-def subscribe_channel(
-        channel_id: str = Query(None, description="频道名称"),
-        video_id: str = Query(None, description="视频ID"),
+def get_video_url(
+    channel_id: str = Query(None, description="频道名称"),
+    video_id: str = Query(None, description="视频ID"),
+    db: Session = Depends(get_db)
 ):
-    with get_session() as s:
-        channel_video = s.query(ChannelVideo).where(ChannelVideo.channel_id == channel_id,
-                                                    ChannelVideo.video_id == video_id).first()
-        domain = channel_video.domain
-        if domain == 'bilibili.com':
-
-            cookies = filter_cookies_to_query_string("https://www.bilibili.com")
-            headers = {
-                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
-                              'Chrome/124.0.0.0 Safari/537.36',
-                'Cookie': cookies
-            }
-
-            req_url = f'https://api.bilibili.com/x/web-interface/view?bvid={video_id}'
-            resp = requests.get(req_url, headers=headers)
-            cid = resp.json()['data']['cid']
-
-            video_url = f'https://api.bilibili.com/x/player/wbi/playurl?bvid={video_id}&cid={cid}&fnval=144'
-            resp = requests.get(video_url, headers=headers)
-            data = resp.json()['data']
-
-            # Extract the best quality video URL
-            video_urls = data['dash']['video']
-            best_video_url = max(video_urls, key=lambda x: x['bandwidth'])['baseUrl']
-
-            # Extract the best quality audio URL
-            audio_urls = data['dash']['audio']
-            best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
-
-            return response.success({
-                'video_url': "http://localhost:8000/api/channel-video/proxy?url=" + quote(best_video_url),
-                'audio_url': "http://localhost:8000/api/channel-video/proxy?url=" + quote(best_audio_url),
-            })
-        elif domain == 'youtube.com':
-            yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=True, allow_oauth_cache=True)
-
-            video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
-            audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
-
-            return response.success({
-                'video_url': video_stream.url if video_stream else None,
-                'audio_url': audio_stream.url if audio_stream else None,
-            })
+    channel_video_service = ChannelVideoService(db)
+    video_urls = channel_video_service.get_video_url(channel_id, video_id)
+    return response.success(video_urls)
 
 
 @router.get("/api/channel-video/list")
 def get_channel_videos(
-        query: str = Query(None, description="搜索关键字"),
-        channel_id: str = Query(None, description="频道ID"),
-        read_status: str = Query(None, description="阅读状态: all, read, unread"),
-        page: int = Query(1, ge=1, description="页码"),
-        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量")
+    query: str = Query(None, description="搜索关键字"),
+    channel_id: str = Query(None, description="频道ID"),
+    read_status: str = Query(None, description="阅读状态: all, read, unread"),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
+    db: Session = Depends(get_db)
 ):
-    with get_session() as s:
-        base_query = s.query(ChannelVideo).filter(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
-
-        if channel_id:
-            base_query = base_query.filter(ChannelVideo.channel_id == channel_id)
-        if query:
-            base_query = base_query.filter(or_(
-                func.lower(ChannelVideo.channel_name).like(func.lower(f'%{query}%')),
-                func.lower(ChannelVideo.title).like(func.lower(f'%{query}%'))
-            ))
-        if read_status:
-            if read_status == 'read':
-                base_query = base_query.filter(ChannelVideo.if_read == True)
-            elif read_status == 'unread':
-                base_query = base_query.filter(ChannelVideo.if_read == False)
-
-        total = base_query.count()
-        offset = (page - 1) * page_size
-        channel_videos = base_query.order_by(ChannelVideo.uploaded_at.desc()).offset(offset).limit(page_size)
-
-        # 计���总数、已读数和未读数
-        s_query = s.query(ChannelVideo)
-        if channel_id:
-            s_query = s_query.filter(ChannelVideo.channel_id == channel_id)
-        total_count = s_query.count()
-        read_count = s_query.filter(ChannelVideo.if_read == True).count()
-        unread_count = total_count - read_count
-
-        channel_video_convert_list = [
-            {
-                'id': chanel_video.id,
-                'channel_id': chanel_video.channel_id,
-                'channel_name': chanel_video.channel_name,
-                'channel_avatar': chanel_video.channel_avatar,
-                'video_id': chanel_video.video_id,
-                'title': chanel_video.title,
-                'domain': chanel_video.domain,
-                'url': chanel_video.url,
-                'thumbnail': chanel_video.thumbnail,
-                'duration': chanel_video.duration,
-                'if_downloaded': chanel_video.if_downloaded,
-                'if_read': chanel_video.if_read,
-                'uploaded_at': chanel_video.uploaded_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'created_at': chanel_video.created_at.strftime('%Y-%m-%d %H:%M:%S')
-            } for chanel_video in channel_videos
-        ]
-
-        channel_video_page = {
-            "total": total,
-            "page": page,
-            "pageSize": page_size,
-            "data": channel_video_convert_list,
-            "counts": {
-                "all": total_count,
-                "read": read_count,
-                "unread": unread_count
-            }
-        }
-
-    return response.success(channel_video_page)
-
-
-class MarkReadRequest(BaseModel):
-    channel_id: str
-    video_id: str
-    is_read: bool
+    channel_video_service = ChannelVideoService(db)
+    videos, counts = channel_video_service.list_channel_videos(query, channel_id, read_status, page, page_size)
+    return response.success({
+        "total": len(videos),
+        "page": page,
+        "pageSize": page_size,
+        "data": videos,
+        "counts": counts
+    })
 
 
 @router.post("/api/channel-video/mark-read")
-def mark_video_read(req: MarkReadRequest):
-    with get_session() as s:
-        s.query(ChannelVideo).filter(
-            ChannelVideo.channel_id == req.channel_id,
-            ChannelVideo.video_id == req.video_id
-        ).update({"if_read": req.is_read})
-        s.commit()
+def mark_video_read(req: MarkReadRequest, db: Session = Depends(get_db)):
+    channel_video_service = ChannelVideoService(db)
+    channel_video_service.mark_video_read(req.channel_id, req.video_id, req.is_read)
     return response.success()
-
-
-# 新增请求模型
-class MarkReadRequest(BaseModel):
-    channel_id: str
-    video_id: str
-    is_read: bool
-
-
-class MarkReadBatchRequest(BaseModel):
-    is_read: bool
-    channel_id: Optional[str] = None
-    direction: str  # 'above' or 'below'
-    uploaded_at: str  # 改为使用 ID 而不是日期
 
 
 @router.post("/api/channel-video/mark-read-batch")
-def mark_videos_read_batch(req: MarkReadBatchRequest):
-    with get_session() as s:
-        query = s.query(ChannelVideo)
-        if req.channel_id:
-            query = query.filter(ChannelVideo.channel_id == req.channel_id)
-
-        if req.direction == 'above':
-            query = query.filter(ChannelVideo.uploaded_at >= req.uploaded_at)
-        elif req.direction == 'below':
-            query = query.filter(ChannelVideo.uploaded_at <= req.uploaded_at)
-
-        query.update({"if_read": req.is_read})
-        s.commit()
+def mark_videos_read_batch(req: MarkReadBatchRequest, db: Session = Depends(get_db)):
+    channel_video_service = ChannelVideoService(db)
+    channel_video_service.mark_videos_read_batch(req.channel_id, req.direction, req.uploaded_at, req.is_read)
     return response.success()
-
-
-class DownloadChannelVideoRequest(BaseModel):
-    channel_id: str
-    video_id: str
 
 
 @router.post("/api/channel-video/download")
-def download_channel_video(req: DownloadChannelVideoRequest):
-    with get_session() as s:
-        channel_video = s.query(ChannelVideo).filter(ChannelVideo.channel_id == req.channel_id,
-                                                     ChannelVideo.video_id == req.video_id).first()
-
-        download_service.start(channel_video.url, if_only_extract=False, if_subscribe=True, if_retry=False,
-                               if_manual_retry=True)
-
+def download_channel_video(req: DownloadChannelVideoRequest, db: Session = Depends(get_db)):
+    channel_video_service = ChannelVideoService(db)
+    channel_video_service.download_channel_video(req.channel_id, req.video_id)
     return response.success()
+
+
+@router.post("/api/channel-video/dislike")
+def dislike_video(req: DislikeRequest, db: Session = Depends(get_db)):
+    channel_video_service = ChannelVideoService(db)
+    success = channel_video_service.dislike_video(req.channel_id, req.video_id)
+    if success:
+        return response.success({"message": "Video marked as disliked"})
+    raise HTTPException(status_code=404, detail="Video not found")
+
+
+@router.post("/api/channel-video/save-progress")
+async def save_video_progress(request: Request, db: Session = Depends(get_db)):
+    data = await request.json()
+    channel_video_service = ChannelVideoService(db)
+    channel_video_service.save_video_progress(data['channel_id'], data['video_id'], data['progress'])
+    return response.success({"message": "Progress saved successfully"})
+
+
+@router.get("/api/channel-video/get-progress")
+def get_video_progress(channel_id: str, video_id: str, db: Session = Depends(get_db)):
+    channel_video_service = ChannelVideoService(db)
+    progress = channel_video_service.get_video_progress(channel_id, video_id)
+    return response.success({"progress": progress})
 
 
 @router.get("/api/channel/video/play/{channel_id}/{video_id}")
@@ -276,28 +161,6 @@ def file_iterator(file_path, offset, chunk_size):
                 break
 
 
-class DislikeRequest(BaseModel):
-    channel_id: str
-    video_id: str
-
-
-@router.post("/api/channel-video/dislike")
-def dislike_video(req: DislikeRequest):
-    with get_session() as session:
-        video = session.query(ChannelVideo).filter(
-            ChannelVideo.channel_id == req.channel_id,
-            ChannelVideo.video_id == req.video_id
-        ).first()
-
-        if not video:
-            raise HTTPException(status_code=404, detail="Video not found")
-
-        video.is_disliked = True
-        session.commit()
-
-    return response.success({"message": "Video marked as disliked"})
-
-
 @router.get("/api/channel-video/proxy")
 async def proxy_video(url: str, request: Request):
     """
@@ -355,43 +218,3 @@ async def proxy_video(url: str, request: Request):
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
-
-@router.post("/api/channel-video/save-progress")
-async def save_video_progress(request: Request):
-    data = await request.json()
-    channel_id = data.get('channel_id')
-    video_id = data.get('video_id')
-    progress = data.get('progress')
-
-    with get_session() as session:
-        video_progress = session.query(VideoProgress).filter_by(
-            channel_id=channel_id, video_id=video_id
-        ).first()
-
-        if video_progress:
-            video_progress.progress = progress
-        else:
-            video_progress = VideoProgress(
-                channel_id=channel_id,
-                video_id=video_id,
-                progress=progress
-            )
-            session.add(video_progress)
-
-        session.commit()
-
-    return response.success({"message": "Progress saved successfully"})
-
-
-@router.get("/api/channel-video/get-progress")
-def get_video_progress(channel_id: str, video_id: str):
-    with get_session() as session:
-        video_progress = session.query(VideoProgress).filter_by(
-            channel_id=channel_id, video_id=video_id
-        ).first()
-
-        if video_progress:
-            return response.success({"progress": video_progress.progress})
-        else:
-            return response.success({"progress": 0})

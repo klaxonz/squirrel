@@ -1,6 +1,7 @@
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from sqlalchemy import Column, BigInteger, Text, Integer
 from sqlalchemy.dialects.mysql import VARCHAR
+
 from common.database import Base, BaseMixin
 
 

@@ -1,12 +1,12 @@
 import contextlib
 import datetime
+import logging
 
 from sqlalchemy import create_engine, Column, DateTime, event
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
 from common.config import GlobalConfig
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ engine = create_engine(
     pool_recycle=GlobalConfig.POOL_RECYCLE,
     connect_args={"init_command": "SET time_zone='+08:00'"}
 )
-Session = sessionmaker(bind=engine, expire_on_commit=False)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
@@ -42,9 +42,17 @@ def comment_sql_calls(conn, cursor, statement, parameters, context, executemany)
     logger.debug(f"执行SQL: {raw_sql}")
 
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 @contextlib.contextmanager
 def get_session() -> Session:
-    s = Session()
+    s = SessionLocal()
     try:
         yield s
         s.commit()

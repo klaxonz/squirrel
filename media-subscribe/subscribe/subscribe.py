@@ -1,12 +1,13 @@
 import logging
 import re
 
-from common.http_wrapper import session
-from .bilibili_sign import sign
+from pytubefix import Channel as YouTubeChannel
+
 from common.cookie import filter_cookies_to_query_string
+from common.http_wrapper import session
 from meta.channel import ChannelMeta
 from model.channel import Channel
-from pytubefix import Channel as YouTubeChannel
+from .bilibili_sign import sign
 
 logger = logging.getLogger(__name__)
 

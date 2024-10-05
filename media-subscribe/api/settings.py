@@ -1,16 +1,18 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
+
 from common.config import GlobalConfig
-import main
 
 router = APIRouter(
     tags=['设置接口']
 )
 
+
 class ConsumerSettings(BaseModel):
     downloadConsumers: int
     extractConsumers: int
     subscribeConsumers: int
+
 
 @router.get("/api/settings")
 def get_settings():
@@ -22,6 +24,7 @@ def get_settings():
             "subscribeConsumers": GlobalConfig.SUBSCRIBE_CONSUMERS
         }
     }
+
 
 @router.post("/api/settings")
 def update_settings(settings: ConsumerSettings):
