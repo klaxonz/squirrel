@@ -26,7 +26,10 @@ class BaseConsumerThread(threading.Thread):
             try:
                 message = self._dequeue_message()
                 if message:
-                    self._process_message(message)
+                    with get_session() as session:
+                        # 重新附加消息到新的会话
+                        session.add(message)
+                        self._process_message(message, session)
             except Exception as e:
                 logger.error(f"处理消息时发生错误: {e}", exc_info=True)
 
@@ -45,7 +48,7 @@ class BaseConsumerThread(threading.Thread):
         except Exception as e:
             logger.error(f"处理消息状态时发生错误: {e}", exc_info=True)
 
-    def _process_message(self, message):
+    def _process_message(self, message, session):
         raise NotImplementedError("Subclasses must implement this method")
 
     def stop(self):

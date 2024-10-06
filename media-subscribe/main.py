@@ -7,12 +7,10 @@ load_dotenv(override=True)
 
 import logging
 import uvicorn
-from schedule.schedule import (
-    Scheduler
-)
+from schedule.schedule import Scheduler
 from common.log import init_logging
 from schedule import TaskRegistry
-from consumer.decorators import ConsumerRegistry
+from consumer import ConsumerRegistry
 
 
 def create_app():
@@ -29,6 +27,7 @@ def upgrade_database():
     alembic_cfg = Config("alembic.ini")
     command.upgrade(alembic_cfg, "head")
 
+
 def start_consumers():
     """启动所有消费者线程"""
     logger.info('Starting consumers...')
@@ -39,22 +38,22 @@ def start_consumers():
         consumer.stop()
 
     consumers = []
-    for queue_name, consumer_info in ConsumerRegistry.get_consumers().items():
-        consumer_class = consumer_info['class']
-        num_threads = consumer_info['num_threads']
+    for consumer_class in ConsumerRegistry.consumers:
+        queue_name = consumer_class.queue_name
+        num_threads = consumer_class.num_threads
         for idx in range(num_threads):
             consumer = consumer_class(queue_name=queue_name, thread_id=idx)
             consumers.append(consumer)
             consumer.start()
 
-    logger.info('Consumers started.')
+    logger.info(f'Consumers started. Total consumers: {len(consumers)}')
 
 
 def start_scheduler():
     """配置并启动定时任务调度器"""
     logger.info('Starting scheduler...')
     scheduler = Scheduler()
-    
+
     for task_class in TaskRegistry.tasks:
         logger.info(f"Registering task: {task_class.__name__} with interval {task_class.interval} {task_class.unit}")
         scheduler.add_job(
@@ -63,7 +62,7 @@ def start_scheduler():
             unit=task_class.unit,
             start_immediately=task_class.start_immediately
         )
-    
+
     scheduler.start()
     logger.info('Scheduler started.')
 

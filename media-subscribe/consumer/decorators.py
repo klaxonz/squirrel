@@ -4,16 +4,16 @@ from consumer.base import BaseConsumerThread
 
 
 class ConsumerRegistry:
-    consumers = {}
+    consumers = []
 
     @classmethod
     def register(cls, queue_name: str, num_threads: int = 1):
-        def decorator(consumer_class: Type[BaseConsumerThread]):
-            cls.consumers[queue_name] = {
-                'class': consumer_class,
-                'num_threads': num_threads
-            }
+        def decorator(consumer_class):
+            consumer_class.queue_name = queue_name
+            consumer_class.num_threads = num_threads
+            cls.consumers.append(consumer_class)
             return consumer_class
+
         return decorator
 
     @classmethod
