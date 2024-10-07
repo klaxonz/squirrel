@@ -62,5 +62,6 @@ def get_session() -> Session:
     finally:
         s.close()
 
+
 def get_db_session():
     return SessionLocal()
