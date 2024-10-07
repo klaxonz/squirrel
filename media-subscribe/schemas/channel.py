@@ -1,7 +1,9 @@
 from pydantic import BaseModel
 
+
 class SubscribeChannelRequest(BaseModel):
     url: str
+
 
 class ChannelUpdateRequest(BaseModel):
     id: int
@@ -10,8 +12,10 @@ class ChannelUpdateRequest(BaseModel):
     if_download_all: bool = None
     if_extract_all: bool = None
 
+
 class ChannelDeleteRequest(BaseModel):
     id: int
+
 
 class ToggleStatusRequest(BaseModel):
     channel_id: int

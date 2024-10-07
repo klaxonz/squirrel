@@ -30,7 +30,7 @@ def create_progress_hook(task_id: int):
             speed = video_info.get('_speed_str', '')
             eta = video_info.get('_eta_str', '')
             percent = video_info.get('_percent_str', '')
-            
+
             # 区分视频和音频下载
             file_type = 'video' if video_info.get('info_dict', {}).get('vcodec') != 'none' else 'audio'
 
@@ -46,7 +46,8 @@ def create_progress_hook(task_id: int):
 
                 # 更新Redis，只存储当前下载类型的信息
                 client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'current_type', file_type)
-                client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'downloaded_size', downloaded_bytes)
+                client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'downloaded_size',
+                            downloaded_bytes)
                 client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'total_size', total_bytes)
                 client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'speed', speed)
                 client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'eta', eta)
@@ -73,7 +74,6 @@ class Downloader:
             video_info = ydl.extract_info(url, download=False)
             return video_info
 
-
     @staticmethod
     def get_video_info_thread(url: str, queue_thread_name: str):
         ydl_opts = {
@@ -89,7 +89,6 @@ class Downloader:
         with YoutubeDL(ydl_opts) as ydl:
             video_info = ydl.extract_info(url, download=False)
             return video_info
-
 
     @staticmethod
     def download_avatar(video: Video):
@@ -142,7 +141,8 @@ class Downloader:
 
                     # 更新文件大小到 Redis 缓存
                     redis_client = RedisClient.get_instance().client
-                    redis_client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'total_size', file_size)
+                    redis_client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'total_size',
+                                      file_size)
 
                     video_id = extract_id_from_url(url)
 
@@ -151,10 +151,10 @@ class Downloader:
                             'total_size': file_size
                         })
                         session.commit()
-        except DownloadStoppedError as e:
+        except DownloadStoppedError:
             logging.info(f"下载视频被停止: {url}")
             return 2
-        except Exception as e:
+        except Exception:
             logging.error(f"下载视频失败: {url}", exc_info=True)
             return 1
         return 0

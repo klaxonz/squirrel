@@ -50,7 +50,6 @@ class GlobalConfig:
                 wf.write(rf.read())
         return os.path.normpath(cookie_path)
 
-
     @classmethod
     def get_cookies_http_file_path(cls):
         """

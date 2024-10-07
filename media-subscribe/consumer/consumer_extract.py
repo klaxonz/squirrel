@@ -16,10 +16,9 @@ from meta.video import VideoFactory
 from model.channel import ChannelVideo
 from model.download_task import DownloadTask, DownloadTaskSchema
 from model.message import Message
+from consumer.decorators import ConsumerRegistry
 
 logger = logging.getLogger(__name__)
-
-from consumer.decorators import ConsumerRegistry
 
 
 @ConsumerRegistry.register(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD, num_threads=2)

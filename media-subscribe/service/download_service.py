@@ -23,7 +23,8 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
     key = f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}'
     if if_only_extract:
         with get_session() as session:
-            channel_video = session.query(ChannelVideo).filter(ChannelVideo.domain == domain, ChannelVideo.video_id == video_id).first()
+            channel_video = session.query(ChannelVideo).filter(ChannelVideo.domain == domain,
+                                                               ChannelVideo.video_id == video_id).first()
             if channel_video:
                 return
 

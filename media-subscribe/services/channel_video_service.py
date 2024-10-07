@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from common.cookie import filter_cookies_to_query_string
 from model.channel import ChannelVideo
 from model.video_progress import VideoProgress
+from service import download_service
 
 
 class ChannelVideoService:
@@ -20,7 +21,7 @@ class ChannelVideoService:
             ChannelVideo.channel_id == channel_id,
             ChannelVideo.video_id == video_id
         ).first()
-        
+
         if channel_video.domain == 'bilibili.com':
             # Bilibili video URL fetching logic
             cookies = filter_cookies_to_query_string("https://www.bilibili.com")
@@ -53,7 +54,8 @@ class ChannelVideoService:
             }
         return {}
 
-    def list_channel_videos(self, query: str, channel_id: str, read_status: str, page: int, page_size: int) -> Tuple[List[dict], dict]:
+    def list_channel_videos(self, query: str, channel_id: str, read_status: str, page: int, page_size: int) -> Tuple[
+        List[dict], dict]:
         base_query = self.db.query(ChannelVideo).filter(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
         if channel_id:
             base_query = base_query.filter(ChannelVideo.channel_id == channel_id)
@@ -64,11 +66,10 @@ class ChannelVideoService:
             ))
         if read_status:
             if read_status == 'read':
-                base_query = base_query.filter(ChannelVideo.if_read == True)
+                base_query = base_query.filter(ChannelVideo.if_read is True)
             elif read_status == 'unread':
-                base_query = base_query.filter(ChannelVideo.if_read == False)
+                base_query = base_query.filter(ChannelVideo.if_read is False)
 
-        total = base_query.count()
         offset = (page - 1) * page_size
         channel_videos = base_query.order_by(ChannelVideo.uploaded_at.desc()).offset(offset).limit(page_size)
 
@@ -76,7 +77,7 @@ class ChannelVideoService:
         if channel_id:
             s_query = s_query.filter(ChannelVideo.channel_id == channel_id)
         total_count = s_query.count()
-        read_count = s_query.filter(ChannelVideo.if_read == True).count()
+        read_count = s_query.filter(ChannelVideo.if_read is True).count()
         unread_count = total_count - read_count
 
         channel_video_convert_list = [{
@@ -159,8 +160,9 @@ class ChannelVideoService:
             ChannelVideo.channel_id == channel_id,
             ChannelVideo.video_id == video_id
         ).first()
-        
+
         if not channel_video:
             raise ValueError("Channel video not found")
-        
-        download_service.start(channel_video.url, if_only_extract=False, if_subscribe=True, if_retry=False, if_manual_retry=True)
+
+        download_service.start(channel_video.url, if_only_extract=False, if_subscribe=True, if_retry=False,
+                               if_manual_retry=True)

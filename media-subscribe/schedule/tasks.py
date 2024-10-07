@@ -45,6 +45,7 @@ class TaskRegistry:
             task_class.start_immediately = start_immediately
             cls.tasks.append(task_class)
             return task_class
+
         return decorator
 
 
@@ -254,7 +255,7 @@ class RepairChannelVideoDuration(BaseTask):
     def run(cls):
         url = ''
         with get_session() as session:
-            channel_videos = session.query(ChannelVideo).filter(ChannelVideo.duration == None).order_by(
+            channel_videos = session.query(ChannelVideo).filter(ChannelVideo.duration is None).order_by(
                 ChannelVideo.created_at.desc()).all()
             for channel_video in channel_videos:
                 try:

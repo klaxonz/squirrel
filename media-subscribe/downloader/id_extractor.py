@@ -40,4 +40,3 @@ def extract_bilibili_id(url: str) -> str:
         return match.group(0)  # 返回完整的BV加上后面的ID
     else:
         raise ValueError("Invalid url")
-

@@ -1,8 +1,3 @@
-from typing import Type
-
-from consumer.base import BaseConsumerThread
-
-
 class ConsumerRegistry:
     consumers = []
 

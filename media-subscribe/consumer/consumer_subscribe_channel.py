@@ -2,13 +2,13 @@ import json
 import logging
 
 from common import constants
-from common.database import get_session
 from consumer.base import BaseConsumerThread
 from consumer.decorators import ConsumerRegistry
 from model.channel import Channel
 from subscribe.subscribe import SubscribeChannelFactory
 
 logger = logging.getLogger(__name__)
+
 
 @ConsumerRegistry.register(queue_name=constants.QUEUE_SUBSCRIBE_TASK, num_threads=1)
 class SubscribeChannelConsumerThread(BaseConsumerThread):

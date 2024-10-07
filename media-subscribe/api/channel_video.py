@@ -29,9 +29,9 @@ router = APIRouter(
 
 @router.get("/api/channel-video/video/url")
 def get_video_url(
-    channel_id: str = Query(None, description="频道名称"),
-    video_id: str = Query(None, description="视频ID"),
-    db: Session = Depends(get_db)
+        channel_id: str = Query(None, description="频道名称"),
+        video_id: str = Query(None, description="视频ID"),
+        db: Session = Depends(get_db)
 ):
     channel_video_service = ChannelVideoService(db)
     video_urls = channel_video_service.get_video_url(channel_id, video_id)
@@ -40,12 +40,12 @@ def get_video_url(
 
 @router.get("/api/channel-video/list")
 def get_channel_videos(
-    query: str = Query(None, description="搜索关键字"),
-    channel_id: str = Query(None, description="频道ID"),
-    read_status: str = Query(None, description="阅读状态: all, read, unread"),
-    page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
-    db: Session = Depends(get_db)
+        query: str = Query(None, description="搜索关键字"),
+        channel_id: str = Query(None, description="频道ID"),
+        read_status: str = Query(None, description="阅读状态: all, read, unread"),
+        page: int = Query(1, ge=1, description="页码"),
+        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
+        db: Session = Depends(get_db)
 ):
     channel_video_service = ChannelVideoService(db)
     videos, counts = channel_video_service.list_channel_videos(query, channel_id, read_status, page, page_size)

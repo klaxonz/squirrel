@@ -57,4 +57,3 @@ class Scheduler:
     def stop(self):
         """停止调度器"""
         self.running = False
-
