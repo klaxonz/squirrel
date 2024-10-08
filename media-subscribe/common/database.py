@@ -36,6 +36,16 @@ class BaseMixin:
                         index=True)
 
 
+class ModelBase(Base, BaseMixin):
+    __abstract__ = True
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        super().__init__()
+
+
 @event.listens_for(engine, "before_cursor_execute")
 def comment_sql_calls(conn, cursor, statement, parameters, context, executemany):
     raw_sql = statement % parameters

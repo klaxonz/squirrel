@@ -3,7 +3,7 @@ from urllib.parse import quote
 
 import requests
 from pytubefix import YouTube
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, Column
 from sqlalchemy.orm import Session
 
 from common.cookie import filter_cookies_to_query_string
@@ -71,7 +71,7 @@ class ChannelVideoService:
                 base_query = base_query.filter(ChannelVideo.if_read is False)
 
         offset = (page - 1) * page_size
-        channel_videos = base_query.order_by(ChannelVideo.uploaded_at.desc()).offset(offset).limit(page_size)
+        channel_videos = base_query.order_by(Column(ChannelVideo.uploaded_at).desc()).offset(offset).limit(page_size)
 
         s_query = self.db.query(ChannelVideo)
         if channel_id:

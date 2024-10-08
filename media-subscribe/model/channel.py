@@ -1,13 +1,12 @@
 from datetime import datetime
 
-from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from sqlalchemy import Column, Boolean, DateTime, Integer
 from sqlalchemy.dialects.mysql import VARCHAR
 
-from common.database import Base, BaseMixin
+from common.database import ModelBase
 
 
-class Channel(Base, BaseMixin):
+class Channel(ModelBase):
     __tablename__ = 'channel'
 
     id = Column(Integer, primary_key=True)
@@ -22,7 +21,7 @@ class Channel(Base, BaseMixin):
     if_extract_all = Column(Boolean, default=False)
 
 
-class ChannelVideo(Base, BaseMixin):
+class ChannelVideo(ModelBase):
     __tablename__ = 'channel_video'
 
     id = Column(Integer, primary_key=True)
@@ -40,8 +39,3 @@ class ChannelVideo(Base, BaseMixin):
     is_disliked = Column(Boolean, default=False)
     uploaded_at = Column(DateTime, nullable=True, default=datetime.now)
 
-
-class ChannelVideoSchema(SQLAlchemyAutoSchema):
-    class Meta:
-        model = ChannelVideo
-        load_instance = True

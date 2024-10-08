@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, String, Float
 
-from common.database import Base, BaseMixin
+from common.database import ModelBase
 
 
-class VideoProgress(Base, BaseMixin):
+class VideoProgress(ModelBase):
     __tablename__ = 'video_progress'
 
     id = Column(Integer, primary_key=True, autoincrement=True)

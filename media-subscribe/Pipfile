@@ -28,5 +28,6 @@ sse-starlette = "*"
 alembic = "*"
 ruff = "*"
 pre-commit = "*"
+sqlalchemy-stubs = "*"
 
 [dev-packages]

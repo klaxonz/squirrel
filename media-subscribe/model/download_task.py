@@ -2,10 +2,10 @@ from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from sqlalchemy import Column, BigInteger, Text, Integer
 from sqlalchemy.dialects.mysql import VARCHAR
 
-from common.database import Base, BaseMixin
+from common.database import ModelBase
 
 
-class DownloadTask(Base, BaseMixin):
+class DownloadTask(ModelBase):
     __tablename__ = 'download_task'
 
     task_id = Column(Integer, primary_key=True)

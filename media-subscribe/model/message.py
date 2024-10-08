@@ -3,10 +3,10 @@ from datetime import datetime
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from sqlalchemy import Integer, Column, Text, VARCHAR, DateTime
 
-from common.database import Base, BaseMixin
+from common.database import ModelBase
 
 
-class Message(Base, BaseMixin):
+class Message(ModelBase):
     __tablename__ = 'message'
 
     message_id = Column(Integer, primary_key=True)
