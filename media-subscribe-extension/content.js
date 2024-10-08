@@ -264,15 +264,8 @@ const addButtonsToPage = (container) => {
 
 const main = () => {
   const config = { childList: true, subtree: true };
-  
   // 检查是否在首页（有 #bewly 元素）
-  const bewly = document.querySelector('#bewly');
-  if (bewly && bewly.shadowRoot) {
-    observeDOM(bewly.shadowRoot, config, addButtonsToPage);
-  } else {
-    // 如果不在首页，直接观察 document.body
-    observeDOM(document.body, config, addButtonsToPage);
-  }
+  observeDOM(document.body, config, addButtonsToPage);
 };
 
 // 等待页面加载完成后开始观察

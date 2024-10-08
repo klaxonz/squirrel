@@ -1,16 +1,14 @@
 from alembic.config import Config
 from dotenv import load_dotenv
-
 from alembic import command
-
-load_dotenv(override=True)
-
 import logging
 import uvicorn
 from schedule.schedule import Scheduler
 from common.log import init_logging
 from schedule import TaskRegistry
-from consumer import ConsumerRegistry
+from consumer.decorators import ConsumerRegistry
+
+load_dotenv(override=True)
 
 
 def create_app():

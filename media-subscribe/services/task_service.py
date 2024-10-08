@@ -1,7 +1,6 @@
 import json
 from typing import List, Tuple
 
-from sqlalchemy import Column
 from sqlalchemy.orm import Session
 
 from common import constants
@@ -61,7 +60,7 @@ class TaskService:
         offset = (page - 1) * page_size
 
         tasks = (base_query
-                 .order_by(Column(DownloadTask.created_at).desc())
+                 .order_by(DownloadTask.created_at.desc())
                  .offset(offset)
                  .limit(page_size))
 
@@ -120,7 +119,7 @@ class TaskService:
 
     def get_new_tasks(self, latest_task_id: int) -> List[dict]:
         new_tasks = self.db.query(DownloadTask).filter(DownloadTask.task_id > latest_task_id).order_by(
-            Column(DownloadTask.task_id).desc()).limit(10).all()
+            DownloadTask.task_id.desc()).limit(10).all()
 
         client = RedisClient.get_instance().client
         new_task_data = []

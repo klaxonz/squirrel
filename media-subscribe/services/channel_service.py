@@ -1,7 +1,7 @@
 import json
 from typing import List, Tuple
 
-from sqlalchemy import or_, Column
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from common import constants
@@ -39,7 +39,7 @@ class ChannelService:
             self.db.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id).delete()
             self.db.commit()
 
-    def get_channel_detail(self, channel_id: int) -> dict:
+    def get_channel_detail(self, channel_id: int):
         channel = self.db.query(Channel).filter(Channel.id == channel_id).first()
         if channel:
             return {
@@ -58,10 +58,10 @@ class ChannelService:
     def list_channels(self, query: str, page: int, page_size: int) -> Tuple[List[dict], int]:
         query_obj = self.db.query(Channel)
         if query:
-            query_obj = query_obj.filter(or_(Column(Channel.name).ilike(f"%{query}%"), Column(Channel.url).ilike(f"%{query}%")))
+            query_obj = query_obj.filter(or_(Channel.name.ilike(f"%{query}%"), Channel.url.ilike(f"%{query}%")))
         total = query_obj.count()
         offset = (page - 1) * page_size
-        channels = query_obj.order_by(Column(Channel.created_at).desc()).offset(offset).limit(page_size)
+        channels = query_obj.order_by(Channel.created_at.desc()).offset(offset).limit(page_size)
         channel_list = [{
             'id': channel.id,
             'channel_id': channel.channel_id,
