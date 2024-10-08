@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from common.cookie import filter_cookies_to_query_string
 from model.channel import ChannelVideo
 from model.video_progress import VideoProgress
-from service import download_service
+from services import download_service
 
 
 class ChannelVideoService:

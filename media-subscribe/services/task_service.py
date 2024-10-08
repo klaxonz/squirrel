@@ -9,7 +9,7 @@ from common.cache import RedisClient
 from common.message_queue import RedisMessageQueue
 from model.download_task import DownloadTask
 from model.message import Message
-from service import download_service
+from services import download_service
 
 
 class TaskService:

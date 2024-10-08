@@ -18,7 +18,7 @@ from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
-from service.download_service import start
+from services.download_service import start
 from subscribe.subscribe import SubscribeChannelFactory
 
 logger = logging.getLogger(__name__)
