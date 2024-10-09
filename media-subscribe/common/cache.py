@@ -2,7 +2,7 @@ import redis
 from redis import ConnectionPool
 from redis.exceptions import LockError
 
-from common.config import GlobalConfig
+from core.config import settings
 
 
 class RedisClient:
@@ -18,10 +18,10 @@ class RedisClient:
     def __init__(self):
         if self._pool is None:
             self._pool = ConnectionPool(
-                host=GlobalConfig.get_redis_host(),
-                port=GlobalConfig.get_redis_port(),
-                db=GlobalConfig.get_redis_db(),
-                password=GlobalConfig.get_redis_password(),
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                db=settings.REDIS_DB,
+                password=settings.REDIS_PASSWORD,
                 decode_responses=True,
                 max_connections=20
             )

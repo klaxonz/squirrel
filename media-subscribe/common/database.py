@@ -6,23 +6,23 @@ from sqlalchemy import create_engine, Column, DateTime, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
-from common.config import GlobalConfig
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
 db_config = {
-    'host': GlobalConfig.get_mysql_host(),
-    'port': GlobalConfig.get_mysql_port(),
-    'user': GlobalConfig.get_mysql_user(),
-    'password': GlobalConfig.get_mysql_password(),
-    'database': GlobalConfig.get_mysql_database(),
+    'host': settings.MYSQL_HOST,
+    'port': settings.MYSQL_PORT,
+    'user': settings.MYSQL_USER,
+    'password': settings.MYSQL_PASSWORD,
+    'database': settings.MYSQL_DATABASE,
 }
 
 engine = create_engine(
-    GlobalConfig.get_mysql_url(),
-    pool_size=GlobalConfig.POOL_SIZE,
-    max_overflow=GlobalConfig.POOL_MAX_SIZE,
-    pool_recycle=GlobalConfig.POOL_RECYCLE,
+    settings.database_url,
+    pool_size=settings.POOL_SIZE,
+    max_overflow=settings.POOL_MAX_SIZE,
+    pool_recycle=settings.POOL_RECYCLE,
     connect_args={"init_command": "SET time_zone='+08:00'"}
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -5,18 +5,18 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from common import constants
-from common.config import GlobalConfig
 from common.database import get_session, get_db_session
 from common.message_queue import RedisMessageQueue
 from common.url_helper import extract_top_level_domain
 from consumer.base import BaseConsumerThread
+from consumer.decorators import ConsumerRegistry
+from core.config import settings
 from downloader.downloader import Downloader
 from downloader.id_extractor import extract_id_from_url
 from meta.video import VideoFactory
 from model.channel import ChannelVideo
 from model.download_task import DownloadTask, DownloadTaskSchema
 from model.message import Message
-from consumer.decorators import ConsumerRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +160,7 @@ class ChannelVideoExtractAndDownloadConsumerThread(BaseConsumerThread):
             logger.info(f"视频已下载：channel {download_task.channel_name}, video: {download_task.url}")
             return True
         if download_task and not extract_info[
-            'if_manual_retry'] and download_task.retry >= GlobalConfig.DOWNLOAD_RETRY_THRESHOLD:
+            'if_manual_retry'] and download_task.retry >= settings.DOWNLOAD_RETRY_THRESHOLD:
             logger.info(f"视频下载已超过重试次数：channel {download_task.channel_name}, video: {download_task.url}")
             return True
         return False

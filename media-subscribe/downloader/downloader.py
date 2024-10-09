@@ -6,8 +6,8 @@ from yt_dlp import YoutubeDL
 
 from common import constants
 from common.cache import RedisClient
-from common.config import GlobalConfig
 from common.database import get_session
+from core.config import settings
 from downloader.id_extractor import extract_id_from_url
 from meta.video import VideoFactory, Video
 from model.download_task import DownloadTask
@@ -66,7 +66,7 @@ class Downloader:
             'ignoreerrors': False,
             'skip_download': True,
         }
-        cookie_file_path = GlobalConfig.get_cookies_file_path()
+        cookie_file_path = settings.get_cookies_file_path()
         if cookie_file_path:
             ydl_opts['cookiefile'] = cookie_file_path
 
@@ -82,7 +82,7 @@ class Downloader:
             'ignoreerrors': False,
             'skip_download': True,
         }
-        cookie_file_path = GlobalConfig.get_cookies_file_path_thread(queue_thread_name)
+        cookie_file_path = settings.get_cookies_file_path_thread(queue_thread_name)
         if cookie_file_path:
             ydl_opts['cookiefile'] = cookie_file_path
 
@@ -118,7 +118,7 @@ class Downloader:
             'subtitleslangs': ['zh-Hans', 'zh-Hant', 'en']
         }
 
-        cookie_file_path = GlobalConfig.get_cookies_file_path_thread(queue_thread_name)
+        cookie_file_path = settings.get_cookies_file_path_thread(queue_thread_name)
         if cookie_file_path:
             ydl_opts['cookiefile'] = cookie_file_path
 

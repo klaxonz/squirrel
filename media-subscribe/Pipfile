@@ -29,5 +29,6 @@ alembic = "*"
 ruff = "*"
 pre-commit = "*"
 sqlalchemy-stubs = "*"
+pydantic-settings = "*"
 
 [dev-packages]

@@ -11,9 +11,9 @@ from sqlalchemy import text
 
 from common import constants
 from common.cache import RedisClient
-from common.config import GlobalConfig
 from common.cookie import json_cookie_to_netscape
 from common.database import get_session
+from core.config import settings
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.channel import Channel, ChannelVideo
@@ -54,8 +54,8 @@ class SyncCookies(BaseTask):
     @classmethod
     def run(cls):
         try:
-            cookie_cloud = PyCookieCloud(GlobalConfig.get_cookie_cloud_url(), GlobalConfig.get_cookie_cloud_uuid(),
-                                         GlobalConfig.get_cookie_cloud_password())
+            cookie_cloud = PyCookieCloud(settings.COOKIE_CLOUD_URL, settings.COOKIE_CLOUD_UUID,
+                                         settings.COOKIE_CLOUD_PASSWORD())
             the_key = cookie_cloud.get_the_key()
             if not the_key:
                 logger.info('Failed to get the key')
@@ -68,14 +68,14 @@ class SyncCookies(BaseTask):
             if not decrypted_data:
                 logger.info('Failed to get decrypted data')
                 return
-            domains = GlobalConfig.get_cookie_cloud_domain()
+            domains = settings.COOKIE_CLOUD_DOMAIN
             if domains:
                 expect_domains = domains.split(',')
             else:
                 expect_domains = []
 
-            json_cookie_to_netscape(decrypted_data, expect_domains, GlobalConfig.get_cookies_file_path())
-            json_cookie_to_netscape(decrypted_data, expect_domains, GlobalConfig.get_cookies_http_file_path())
+            json_cookie_to_netscape(decrypted_data, expect_domains, settings.get_cookies_file_path())
+            json_cookie_to_netscape(decrypted_data, expect_domains, settings.get_cookies_http_file_path())
 
         except json.JSONDecodeError as e:
             logger.error(f"Error decoding JSON: {e}", exc_info=True)
@@ -183,16 +183,16 @@ class AutoUpdateChannelVideoTask(BaseTask):
                 if channel.if_download_all:
                     extract_download_video_list = video_list
                 else:
-                    extract_video_list = video_list[GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE:]
-                    extract_download_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
+                    extract_video_list = video_list[settings.CHANNEL_UPDATE_DEFAULT_SIZE:]
+                    extract_download_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
             else:
                 extract_video_list = video_list
 
         else:
             if channel.if_auto_download:
-                extract_download_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
+                extract_download_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
             else:
-                extract_video_list = video_list[:GlobalConfig.CHANNEL_UPDATE_DEFAULT_SIZE]
+                extract_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
 
         for video in extract_video_list:
             start(video, if_subscribe=True)

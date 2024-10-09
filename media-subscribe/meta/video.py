@@ -7,9 +7,9 @@ import requests
 from pathvalidate import sanitize_filename
 from pytubefix import YouTube
 
-from common.config import GlobalConfig
 from common.cookie import filter_cookies_to_query_string
 from common.http_wrapper import session
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -74,12 +74,12 @@ class Video:
         return self.season
 
     def get_tv_show_root_path(self):
-        root_path = GlobalConfig.get_download_root_path()
+        root_path = settings.get_download_root_path()
         uploader_name = self.get_valid_uploader_name()
         return os.path.join(root_path, uploader_name)
 
     def get_download_full_path(self):
-        root_path = GlobalConfig.get_download_root_path()
+        root_path = settings.get_download_root_path()
         uploader_name = self.get_valid_uploader_name()
         season = self.get_season()
 
