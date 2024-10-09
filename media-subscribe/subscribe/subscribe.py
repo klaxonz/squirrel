@@ -3,7 +3,7 @@ import re
 
 from pytubefix import Channel as YouTubeChannel
 
-from common.cookie import filter_cookies_to_query_string
+from utils.cookie import filter_cookies_to_query_string
 from common.http_wrapper import session
 from meta.channel import ChannelMeta
 from model.channel import Channel

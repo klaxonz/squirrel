@@ -11,7 +11,7 @@ from sqlalchemy import text
 
 from common import constants
 from core.cache import RedisClient
-from common.cookie import json_cookie_to_netscape
+from utils.cookie import json_cookie_to_netscape
 from core.database import get_session
 from core.config import settings
 from downloader.downloader import Downloader

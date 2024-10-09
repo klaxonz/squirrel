@@ -6,7 +6,7 @@ from pytubefix import YouTube
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
-from common.cookie import filter_cookies_to_query_string
+from utils.cookie import filter_cookies_to_query_string
 from model.channel import ChannelVideo
 from model.video_progress import VideoProgress
 from services import download_service
