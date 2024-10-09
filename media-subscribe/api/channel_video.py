@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse
 
 import common.response as response
-from common.database import get_db, get_session
+from core.database import get_db, get_session
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.channel import ChannelVideo

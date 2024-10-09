@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float
 
-from common.database import ModelBase
+from core.database import ModelBase
 
 
 class VideoProgress(ModelBase):

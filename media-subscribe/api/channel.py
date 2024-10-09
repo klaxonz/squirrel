@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 import common.response as response
-from common.database import get_db
+from core.database import get_db
 from schemas.channel import SubscribeChannelRequest, ChannelUpdateRequest, ChannelDeleteRequest, ToggleStatusRequest
 from services.channel_service import ChannelService
 

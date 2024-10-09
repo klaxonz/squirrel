@@ -4,7 +4,7 @@ import logging
 
 from common import constants
 from common.cache import RedisClient
-from common.database import get_session
+from core.database import get_session
 from common.message_queue import RedisMessageQueue
 from common.url_helper import extract_top_level_domain
 from downloader.id_extractor import extract_id_from_url

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 import common.response as response
-from common.database import get_db
+from core.database import get_db
 from schemas.task import DownloadRequest, DownloadChangeStateRequest
 from services.task_service import TaskService
 

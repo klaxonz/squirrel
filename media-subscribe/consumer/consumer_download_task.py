@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 
 from common import constants
-from common.database import get_session
+from core.database import get_session
 from consumer.base import BaseConsumerThread
 from consumer.decorators import ConsumerRegistry
 from downloader.downloader import Downloader

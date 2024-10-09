@@ -6,7 +6,7 @@ from yt_dlp import YoutubeDL
 
 from common import constants
 from common.cache import RedisClient
-from common.database import get_session
+from core.database import get_session
 from core.config import settings
 from downloader.id_extractor import extract_id_from_url
 from meta.video import VideoFactory, Video

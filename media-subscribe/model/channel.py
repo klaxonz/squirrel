@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import Column, Boolean, DateTime, Integer
 from sqlalchemy.dialects.mysql import VARCHAR
 
-from common.database import ModelBase
+from core.database import ModelBase
 
 
 class Channel(ModelBase):

@@ -12,7 +12,7 @@ from sqlalchemy import text
 from common import constants
 from common.cache import RedisClient
 from common.cookie import json_cookie_to_netscape
-from common.database import get_session
+from core.database import get_session
 from core.config import settings
 from downloader.downloader import Downloader
 from meta.video import VideoFactory

@@ -3,7 +3,7 @@ from datetime import datetime
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from sqlalchemy import Integer, Column, Text, VARCHAR, DateTime
 
-from common.database import ModelBase
+from core.database import ModelBase
 
 
 class Message(ModelBase):
