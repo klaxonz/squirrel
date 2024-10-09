@@ -5,7 +5,7 @@ import logging
 from common import constants
 from core.cache import RedisClient
 from core.database import get_session
-from common.message_queue import RedisMessageQueue
+from core.message_queue import RedisMessageQueue
 from common.url_helper import extract_top_level_domain
 from downloader.id_extractor import extract_id_from_url
 from model.channel import ChannelVideo

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from core.cache import RedisClient
 from core.database import get_session
-from common.message_queue import RedisMessageQueue
+from core.message_queue import RedisMessageQueue
 
 logger = logging.getLogger(__name__)
 

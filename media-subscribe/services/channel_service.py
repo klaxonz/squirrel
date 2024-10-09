@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from common import constants
 from core.cache import RedisClient
-from common.message_queue import RedisMessageQueue
+from core.message_queue import RedisMessageQueue
 from model.channel import Channel, ChannelVideo
 from model.message import Message
 

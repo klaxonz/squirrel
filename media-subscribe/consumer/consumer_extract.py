@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from common import constants
 from core.database import get_session, get_db_session
-from common.message_queue import RedisMessageQueue
+from core.message_queue import RedisMessageQueue
 from common.url_helper import extract_top_level_domain
 from consumer.base import BaseConsumerThread
 from consumer.decorators import ConsumerRegistry
