@@ -3,7 +3,7 @@ import threading
 
 from sqlalchemy.orm import Session
 
-from common.cache import RedisClient
+from core.cache import RedisClient
 from core.database import get_session
 from common.message_queue import RedisMessageQueue
 

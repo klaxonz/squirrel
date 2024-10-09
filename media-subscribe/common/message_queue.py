@@ -8,7 +8,7 @@ from redis.exceptions import RedisError
 from sqlalchemy.orm import Session
 
 from model.message import Message, MessageSchema
-from .cache import RedisClient
+from core.cache import RedisClient
 
 
 class RedisMessageQueue:

@@ -3,7 +3,7 @@ import json
 import logging
 
 from common import constants
-from common.cache import RedisClient
+from core.cache import RedisClient
 from core.database import get_session
 from common.message_queue import RedisMessageQueue
 from common.url_helper import extract_top_level_domain
