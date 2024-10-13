@@ -30,7 +30,7 @@ LOGGING_CONFIG = {
     },
     'root': {  # 全局日志配置
         'handlers': ['console', 'file'],  # 同时输出到控制台和文件
-        'level': 'INFO',  # 应用默认日志级别
+        'level': 'DEBUG',  # 应用默认日志级别
     },
 }
 

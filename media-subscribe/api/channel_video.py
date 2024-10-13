@@ -9,11 +9,11 @@ from mimetypes import guess_type
 import httpx
 from fastapi import Query, APIRouter, Request, HTTPException, Depends
 from sqlalchemy import and_
-from sqlalchemy.orm import Session
+from sqlmodel import Session
 from starlette.responses import StreamingResponse
 
 import common.response as response
-from core.database import get_db, get_session
+from core.database import get_session
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.channel import ChannelVideo
@@ -31,9 +31,9 @@ router = APIRouter(
 def get_video_url(
         channel_id: str = Query(None, description="频道名称"),
         video_id: str = Query(None, description="视频ID"),
-        db: Session = Depends(get_db)
+        session: Session = Depends(get_session)
 ):
-    channel_video_service = ChannelVideoService(db)
+    channel_video_service = ChannelVideoService(session)
     video_urls = channel_video_service.get_video_url(channel_id, video_id)
     return response.success(video_urls)
 
@@ -45,9 +45,9 @@ def get_channel_videos(
         read_status: str = Query(None, description="阅读状态: all, read, unread"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
-        db: Session = Depends(get_db)
+        session: Session = Depends(get_session)
 ):
-    channel_video_service = ChannelVideoService(db)
+    channel_video_service = ChannelVideoService(session)
     videos, counts = channel_video_service.list_channel_videos(query, channel_id, read_status, page, page_size)
     return response.success({
         "total": len(videos),
@@ -59,29 +59,29 @@ def get_channel_videos(
 
 
 @router.post("/api/channel-video/mark-read")
-def mark_video_read(req: MarkReadRequest, db: Session = Depends(get_db)):
-    channel_video_service = ChannelVideoService(db)
+def mark_video_read(req: MarkReadRequest, session: Session = Depends(get_session)):
+    channel_video_service = ChannelVideoService(session)
     channel_video_service.mark_video_read(req.channel_id, req.video_id, req.is_read)
     return response.success()
 
 
 @router.post("/api/channel-video/mark-read-batch")
-def mark_videos_read_batch(req: MarkReadBatchRequest, db: Session = Depends(get_db)):
-    channel_video_service = ChannelVideoService(db)
+def mark_videos_read_batch(req: MarkReadBatchRequest, session: Session = Depends(get_session)):
+    channel_video_service = ChannelVideoService(session)
     channel_video_service.mark_videos_read_batch(req.channel_id, req.direction, req.uploaded_at, req.is_read)
     return response.success()
 
 
 @router.post("/api/channel-video/download")
-def download_channel_video(req: DownloadChannelVideoRequest, db: Session = Depends(get_db)):
-    channel_video_service = ChannelVideoService(db)
+def download_channel_video(req: DownloadChannelVideoRequest, session: Session = Depends(get_session)):
+    channel_video_service = ChannelVideoService(session)
     channel_video_service.download_channel_video(req.channel_id, req.video_id)
     return response.success()
 
 
 @router.post("/api/channel-video/dislike")
-def dislike_video(req: DislikeRequest, db: Session = Depends(get_db)):
-    channel_video_service = ChannelVideoService(db)
+def dislike_video(req: DislikeRequest, session: Session = Depends(get_session)):
+    channel_video_service = ChannelVideoService(session)
     success = channel_video_service.dislike_video(req.channel_id, req.video_id)
     if success:
         return response.success({"message": "Video marked as disliked"})
@@ -89,16 +89,16 @@ def dislike_video(req: DislikeRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/api/channel-video/save-progress")
-async def save_video_progress(request: Request, db: Session = Depends(get_db)):
+async def save_video_progress(request: Request, session: Session = Depends(get_session)):
     data = await request.json()
-    channel_video_service = ChannelVideoService(db)
+    channel_video_service = ChannelVideoService(session)
     channel_video_service.save_video_progress(data['channel_id'], data['video_id'], data['progress'])
     return response.success({"message": "Progress saved successfully"})
 
 
 @router.get("/api/channel-video/get-progress")
-def get_video_progress(channel_id: str, video_id: str, db: Session = Depends(get_db)):
-    channel_video_service = ChannelVideoService(db)
+def get_video_progress(channel_id: str, video_id: str, session: Session = Depends(get_session)):
+    channel_video_service = ChannelVideoService(session)
     progress = channel_video_service.get_video_progress(channel_id, video_id)
     return response.success({"progress": progress})
 

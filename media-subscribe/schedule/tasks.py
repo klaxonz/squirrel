@@ -1,4 +1,3 @@
-import concurrent.futures
 import json
 import logging
 import random
@@ -7,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import List, Type
 
 from PyCookieCloud import PyCookieCloud
-from sqlalchemy import text
+from sqlmodel import col, or_, and_, select, func
 
 from common import constants
 from core.cache import RedisClient
@@ -55,7 +54,7 @@ class SyncCookies(BaseTask):
     def run(cls):
         try:
             cookie_cloud = PyCookieCloud(settings.COOKIE_CLOUD_URL, settings.COOKIE_CLOUD_UUID,
-                                         settings.COOKIE_CLOUD_PASSWORD())
+                                         settings.COOKIE_CLOUD_PASSWORD)
             the_key = cookie_cloud.get_the_key()
             if not the_key:
                 logger.info('Failed to get the key')
@@ -90,18 +89,15 @@ class RetryFailedTask(BaseTask):
         try:
             five_minutes_ago = datetime.now() - timedelta(minutes=5)
             with get_session() as session:
-                tasks = session.query(DownloadTask).filter(
-                    text(
-                        "(status = 'FAILED' and retry < 5) or (status in ('DOWNLOADING', 'PENDING', 'WAITING') and retry < 5 and updated_at < :update_time)")
-                    .params(update_time=five_minutes_ago)
-                )
-
+                tasks = session.exec(select(DownloadTask).where(
+                    or_(
+                        and_(DownloadTask.status == 'FAILED', DownloadTask.retry < 5),
+                        (and_(col(DownloadTask.status).in_(['DOWNLOADING', 'PENDING', 'WAITING']),
+                              DownloadTask.updated_at <= five_minutes_ago)))))
                 for task in tasks:
                     ten_minutes_ago = datetime.now() - timedelta(minutes=10)
-                    downloading_tasks = session.query(DownloadTask).filter(
-                        (DownloadTask.status == 'DOWNLOADING') &
-                        (DownloadTask.updated_at <= ten_minutes_ago)
-                    ).all()
+                    downloading_tasks = session.exec(select(DownloadTask).where(DownloadTask.status == 'DOWNLOADING',
+                                                                                DownloadTask.updated_at < ten_minutes_ago))
 
                     if (task.status == 'PENDING' or task.status == 'WAITING') and len(downloading_tasks) > 0:
                         continue
@@ -111,7 +107,7 @@ class RetryFailedTask(BaseTask):
                     task.retry = task.retry + 1
                     session.commit()
 
-                    channel = session.query(Channel).filter(Channel.channel_id == task.channel_id).first()
+                    channel = session.exec(select(Channel).where(Channel.channel_id == task.channel_id)).one()
                     if_subscribe = channel is not None
                     start(task.url, if_only_extract=False, if_subscribe=if_subscribe, if_retry=True)
 
@@ -127,8 +123,8 @@ class ChangeStatusTask(BaseTask):
     def run(cls):
         try:
             with get_session() as session:
-                tasks = session.query(DownloadTask).filter(DownloadTask.status == 'PENDING', DownloadTask.retry >= 5)
-
+                tasks = session.exec(
+                    select(DownloadTask).where(DownloadTask.status == 'PENDING', DownloadTask.retry >= 5))
                 for task in tasks:
                     task.status = 'FAILED'
                     session.commit()
@@ -140,24 +136,23 @@ class ChangeStatusTask(BaseTask):
 
 
 @TaskRegistry.register(interval=2, unit='minutes')
-class AutoUpdateChannelVideoTask(BaseTask):
+class AutoUpdateChannelVideo(BaseTask):
     @classmethod
     def run(cls):
         try:
+            logger.info('auto_update_channel_video start')
             with get_session() as session:
-                channels = session.query(Channel).filter(Channel.if_enable == 1).all()
+                channels = session.exec(select(Channel).where(Channel.if_enable == 1))
                 for channel in channels:
                     session.expunge(channel)
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                [executor.submit(cls.update_channel_video, channel) for channel in channels]
+                    cls.update_channel_video(channel)
 
         except json.JSONDecodeError as e:
             logger.error(f"Error decoding JSON: {e}", exc_info=True)
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
-    @classmethod
+    @classmethod 
     def update_channel_video(cls, channel):
         redis_client = RedisClient.get_instance().client
 
@@ -170,7 +165,7 @@ class AutoUpdateChannelVideoTask(BaseTask):
         subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
         if channel.avatar is None:
             with get_session() as session:
-                channel = session.query(Channel).filter(Channel.channel_id == channel.channel_id).first()
+                channel = session.exec(select(Channel).where(Channel.channel_id == channel.channel_id)).one()
                 channel.avatar = subscribe_channel.get_channel_info().avatar
                 session.commit()
         # 下载全部的
@@ -207,7 +202,7 @@ class RepairDownloadTaskInfo(BaseTask):
     def run(cls):
         try:
             with get_session() as session:
-                download_tasks = session.query(DownloadTask).filter(DownloadTask.channel_name.is_(None)).all()
+                download_tasks = session.exec(select(DownloadTask).where(col(DownloadTask.channel_name).is_(None)))
                 for download_task in download_tasks:
                     if download_task.channel_name is not None:
                         continue
@@ -232,10 +227,11 @@ class RepairChanelInfoForTotalVideos(BaseTask):
     def run(cls):
         try:
             with get_session() as session:
-                channels = session.query(Channel).all()
+                channels = session.exec(select(Channel)).all()
                 for channel in channels:
-                    extract_count = session.query(ChannelVideo).filter(
-                        ChannelVideo.channel_id == channel.channel_id).count()
+                    extract_count = session.exec(
+                        select(func.count(col(ChannelVideo.id))).where(
+                            ChannelVideo.channel_id == channel.channel_id)).one()
                     if channel.total_videos >= extract_count:
                         continue
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
@@ -255,8 +251,9 @@ class RepairChannelVideoDuration(BaseTask):
     def run(cls):
         url = ''
         with get_session() as session:
-            channel_videos = session.query(ChannelVideo).filter(ChannelVideo.duration is None).order_by(
-                ChannelVideo.created_at.desc()).all()
+            statement = select(ChannelVideo).where(ChannelVideo.duration is None).order_by(
+                col(ChannelVideo.created_at).desc())
+            channel_videos = session.exec(statement)
             for channel_video in channel_videos:
                 try:
                     if channel_video.duration is not None:
@@ -291,14 +288,12 @@ class CleanUnsubscribedChannelsTask(BaseTask):
 
         if unsubscribed_channels:
             with get_session() as session:
-                session.query(ChannelVideo).filter(
-                    ChannelVideo.channel_id.in_(unsubscribed_channels)
-                ).delete(synchronize_session='fetch')
-
-                session.query(DownloadTask).filter(
-                    DownloadTask.channel_id.in_(unsubscribed_channels)
-                ).delete(synchronize_session='fetch')
-
+                channel_videos = session.exec(
+                    select(Channel).where(col(Channel.channel_id).in_(unsubscribed_channels)))
+                download_tasks = session.exec(
+                    select(DownloadTask).where(col(DownloadTask.channel_id).in_(unsubscribed_channels)))
+                session.delete(channel_videos)
+                session.delete(download_tasks)
                 session.commit()
 
             logger.info(f"Cleaned up videos and download tasks for {len(unsubscribed_channels)} unsubscribed channels")

@@ -2,45 +2,49 @@ import json
 from typing import List, Tuple
 
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
 
 from common import constants
 from core.cache import RedisClient
-from core.message_queue import RedisMessageQueue
 from model.channel import Channel, ChannelVideo
 from model.message import Message
-
+from consumer import subscribe_task
 
 class ChannelService:
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, session: Session):
+        self.session = session
 
     def get_subscription_status(self, channel_id: str) -> bool:
-        channel = self.db.query(Channel).filter(Channel.channel_id == channel_id).first()
+        channel = self.session.exec(select(Channel).where(Channel.channel_id == channel_id)).first()
         return channel is not None
 
     def subscribe_channel(self, url: str):
-        subscribe_queue = RedisMessageQueue(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
         task = {"url": url}
-        message = Message(body=json.dumps(task))
-        self.db.add(message)
-        self.db.commit()
-        subscribe_queue.enqueue(message)
-        self.db.query(Message).filter(Message.message_id == message.message_id).update({"send_status": "SENDING"})
+        message = Message(
+            body=json.dumps(task),
+        )
+        self.session.add(message)
+        self.session.commit()
+
+        message = self.session.exec(select(Message).where(Message.message_id == message.message_id)).first()
+        dump_json = message.model_dump_json()
+        subscribe_task.process_subscribe_message.send(dump_json)
+        message.send_status = 'SENDING'
+        self.session.refresh(message)
 
     def update_channel(self, channel_id: int, data: dict):
-        self.db.query(Channel).filter(Channel.id == channel_id).update(data)
-        self.db.commit()
+        self.session.exec(select(Channel).where(Channel.id == channel_id).update(data))
+        self.session.commit()
 
     def delete_channel(self, channel_id: int):
-        channel = self.db.query(Channel).filter(Channel.id == channel_id).first()
+        channel = self.session.query(Channel).filter(Channel.id == channel_id).first()
         if channel:
-            self.db.delete(channel)
-            self.db.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id).delete()
-            self.db.commit()
+            self.session.delete(channel)
+            self.session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id).delete()
+            self.session.commit()
 
     def get_channel_detail(self, channel_id: int):
-        channel = self.db.query(Channel).filter(Channel.id == channel_id).first()
+        channel = self.session.query(Channel).filter(Channel.id == channel_id).first()
         if channel:
             return {
                 "id": channel.id,
@@ -56,7 +60,7 @@ class ChannelService:
         return None
 
     def list_channels(self, query: str, page: int, page_size: int) -> Tuple[List[dict], int]:
-        query_obj = self.db.query(Channel)
+        query_obj = self.session.query(Channel)
         if query:
             query_obj = query_obj.filter(or_(Channel.name.ilike(f"%{query}%"), Channel.url.ilike(f"%{query}%")))
         total = query_obj.count()
@@ -79,22 +83,22 @@ class ChannelService:
         return channel_list, total
 
     def count_channel_videos(self, channel_id: str) -> int:
-        return self.db.query(ChannelVideo).filter(ChannelVideo.channel_id == channel_id).count()
+        return self.session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel_id).count()
 
     def toggle_channel_status(self, channel_id: int, status: bool, field: str):
-        channel = self.db.query(Channel).filter(Channel.id == channel_id).first()
+        channel = self.session.query(Channel).filter(Channel.id == channel_id).first()
         if channel:
             setattr(channel, field, status)
-            self.db.commit()
+            self.session.commit()
             return True
         return False
 
     def unsubscribe_channel(self, channel_id: int):
-        channel = self.db.query(Channel).filter(Channel.id == channel_id).first()
+        channel = self.session.query(Channel).filter(Channel.id == channel_id).first()
         if channel:
-            self.db.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id).delete()
-            self.db.delete(channel)
-            self.db.commit()
+            self.session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id).delete()
+            self.session.delete(channel)
+            self.session.commit()
             redis_client = RedisClient.get_instance().client
             redis_client.sadd(constants.UNSUBSCRIBED_CHANNELS_SET, channel.channel_id)
             redis_client.expire(constants.UNSUBSCRIBED_CHANNELS_SET, constants.UNSUBSCRIBE_EXPIRATION)

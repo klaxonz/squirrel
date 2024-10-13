@@ -5,5 +5,3 @@ from core.config import settings
 
 redis_broker = RedisBroker(url=settings.get_redis_url())
 dramatiq.set_broker(broker=redis_broker)
-
-

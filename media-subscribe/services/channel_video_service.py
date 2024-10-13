@@ -1,10 +1,12 @@
+import logging
 from typing import List, Tuple
 from urllib.parse import quote
 
 import requests
 from pytubefix import YouTube
-from sqlalchemy import or_, func
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+
+from sqlmodel import Session, select, or_, col
 
 from utils.cookie import filter_cookies_to_query_string
 from model.channel import ChannelVideo
@@ -12,15 +14,18 @@ from model.video_progress import VideoProgress
 from services import download_service
 
 
+logger = logging.getLogger('sqlalchemy.engine')
+logger.setLevel(logging.DEBUG)
+
 class ChannelVideoService:
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, session: Session):
+        self.session = session
 
     def get_video_url(self, channel_id: str, video_id: str) -> dict:
-        channel_video = self.db.query(ChannelVideo).filter(
+        channel_video = self.session.exec(select(ChannelVideo).where(
             ChannelVideo.channel_id == channel_id,
             ChannelVideo.video_id == video_id
-        ).first()
+        )).first()
 
         if channel_video.domain == 'bilibili.com':
             # Bilibili video URL fetching logic
@@ -56,28 +61,29 @@ class ChannelVideoService:
 
     def list_channel_videos(self, query: str, channel_id: str, read_status: str, page: int, page_size: int) -> Tuple[
         List[dict], dict]:
-        base_query = self.db.query(ChannelVideo).filter(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
+        base_query = select(ChannelVideo).where(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
         if channel_id:
-            base_query = base_query.filter(ChannelVideo.channel_id == channel_id)
+            base_query = base_query.where(ChannelVideo.channel_id == channel_id)
         if query:
-            base_query = base_query.filter(or_(
-                func.lower(ChannelVideo.channel_name).like(func.lower(f'%{query}%')),
-                func.lower(ChannelVideo.title).like(func.lower(f'%{query}%'))
+            base_query = base_query.where(or_(
+                col(ChannelVideo.channel_name).like(f'%{query}%'),
+                col(ChannelVideo.title).like(f'%{query}%')
             ))
         if read_status:
             if read_status == 'read':
-                base_query = base_query.filter(ChannelVideo.if_read is True)
+                base_query = base_query.where(ChannelVideo.if_read == 1)
             elif read_status == 'unread':
-                base_query = base_query.filter(ChannelVideo.if_read is False)
+                base_query = base_query.where(ChannelVideo.if_read == 0)
 
         offset = (page - 1) * page_size
-        channel_videos = base_query.order_by(ChannelVideo.uploaded_at.desc()).offset(offset).limit(page_size)
+        base_query = base_query.order_by(col(ChannelVideo.uploaded_at).desc()).offset(offset).limit(page_size)
+        channel_videos = self.session.exec(base_query).all()
 
-        s_query = self.db.query(ChannelVideo)
+        s_query = select(func.count(ChannelVideo.id))
         if channel_id:
-            s_query = s_query.filter(ChannelVideo.channel_id == channel_id)
-        total_count = s_query.count()
-        read_count = s_query.filter(ChannelVideo.if_read is True).count()
+            s_query = s_query.where(ChannelVideo.channel_id == channel_id)
+        total_count = self.session.exec(s_query).one()
+        read_count = self.session.exec(s_query.where(ChannelVideo.if_read == 1)).one()
         unread_count = total_count - read_count
 
         channel_video_convert_list = [{
@@ -106,14 +112,14 @@ class ChannelVideoService:
         return channel_video_convert_list, counts
 
     def mark_video_read(self, channel_id: str, video_id: str, is_read: bool):
-        self.db.query(ChannelVideo).filter(
+        self.session.query(ChannelVideo).filter(
             ChannelVideo.channel_id == channel_id,
             ChannelVideo.video_id == video_id
         ).update({"if_read": is_read})
-        self.db.commit()
+        self.session.commit()
 
     def mark_videos_read_batch(self, channel_id: str, direction: str, uploaded_at: str, is_read: bool):
-        query = self.db.query(ChannelVideo)
+        query = self.session.query(ChannelVideo)
         if channel_id:
             query = query.filter(ChannelVideo.channel_id == channel_id)
         if direction == 'above':
@@ -121,10 +127,10 @@ class ChannelVideoService:
         elif direction == 'below':
             query = query.filter(ChannelVideo.uploaded_at <= uploaded_at)
         query.update({"if_read": is_read})
-        self.db.commit()
+        self.session.commit()
 
     def save_video_progress(self, channel_id: str, video_id: str, progress: float):
-        video_progress = self.db.query(VideoProgress).filter_by(
+        video_progress = self.session.query(VideoProgress).filter_by(
             channel_id=channel_id, video_id=video_id
         ).first()
         if video_progress:
@@ -135,28 +141,28 @@ class ChannelVideoService:
                 video_id=video_id,
                 progress=progress
             )
-            self.db.add(video_progress)
-        self.db.commit()
+            self.session.add(video_progress)
+        self.session.commit()
 
     def get_video_progress(self, channel_id: str, video_id: str) -> float:
-        video_progress = self.db.query(VideoProgress).filter_by(
+        video_progress = self.session.query(VideoProgress).filter_by(
             channel_id=channel_id, video_id=video_id
         ).first()
         return video_progress.progress if video_progress else 0
 
     def dislike_video(self, channel_id: str, video_id: str):
-        video = self.db.query(ChannelVideo).filter(
+        video = self.session.query(ChannelVideo).filter(
             ChannelVideo.channel_id == channel_id,
             ChannelVideo.video_id == video_id
         ).first()
         if video:
             video.is_disliked = True
-            self.db.commit()
+            self.session.commit()
             return True
         return False
 
     def download_channel_video(self, channel_id: str, video_id: str):
-        channel_video = self.db.query(ChannelVideo).filter(
+        channel_video = self.session.query(ChannelVideo).filter(
             ChannelVideo.channel_id == channel_id,
             ChannelVideo.video_id == video_id
         ).first()

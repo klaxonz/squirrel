@@ -66,6 +66,9 @@ class Settings(BaseSettings):
         http_cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies_http.txt'))
         return os.path.normpath(http_cookie_path)
 
+    def get_redis_url(self):
+        return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
 
 @lru_cache()
 def get_settings():
