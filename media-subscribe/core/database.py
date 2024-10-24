@@ -23,12 +23,4 @@ engine = create_engine(
 
 
 def get_session() -> Session:
-    s = Session(engine)
-    try:
-        yield s
-        s.commit()
-    except Exception as e:
-        s.rollback()
-        raise e
-    finally:
-        s.close()
+    return Session(engine)

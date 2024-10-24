@@ -21,6 +21,7 @@ __all__ = ['process_download_message']
 @dramatiq.actor(queue_name=constants.QUEUE_DOWNLOAD_TASK)
 def process_download_message(message: str):
     try:
+        logger.info(f"开始处理下载任务: {message}")
         message_obj = Message.model_validate(message)
         download_task = _prepare_download_task(message_obj)
         status = _download_video(download_task, constants.QUEUE_DOWNLOAD_TASK)

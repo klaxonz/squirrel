@@ -1,4 +1,3 @@
-import logging
 from typing import List, Tuple
 from urllib.parse import quote
 
@@ -13,9 +12,6 @@ from model.channel import ChannelVideo
 from model.video_progress import VideoProgress
 from services import download_service
 
-
-logger = logging.getLogger('sqlalchemy.engine')
-logger.setLevel(logging.DEBUG)
 
 class ChannelVideoService:
     def __init__(self, session: Session):

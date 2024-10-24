@@ -1,9 +1,6 @@
-import dramatiq
-from dramatiq.brokers.redis import RedisBroker
+from consumer import base
+from consumer import download_task
+from consumer import extract_task
+from consumer import subscribe_task
 
-from core.config import settings
-
-redis_broker = RedisBroker(url=settings.get_redis_url())
-dramatiq.set_broker(broker=redis_broker)
-
-
+__all__ = ['base', 'download_task', 'extract_task', 'subscribe_task']

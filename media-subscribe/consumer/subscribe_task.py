@@ -15,9 +15,11 @@ logger = logging.getLogger(__name__)
 # 在文件末尾添加
 __all__ = ['process_subscribe_message']
 
+
 @dramatiq.actor(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
 def process_subscribe_message(message):
     try:
+        logger.info(f"开始处理订阅频道消息：{message}")
         if not message or message == '{}':
             return
         logger.info(f"收到订阅频道消息: {message}")
@@ -68,5 +70,3 @@ def _save_channel(channel):
     with get_session() as session:
         session.add(channel)
         session.commit()
-
-

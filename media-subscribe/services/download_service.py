@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if_retry: bool = False,
-                if_manual_retry: bool = False):
+          if_manual_retry: bool = False):
     video_id = extract_id_from_url(url)
     domain = extract_top_level_domain(url)
 
