@@ -9,7 +9,6 @@
         referrerpolicy="no-referrer"
         alt="Video thumbnail"
         class="w-full h-auto object-cover"
-        @load="onImageLoad"
       >
       <div class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
@@ -56,15 +55,16 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  isChannelPage: Boolean,
+  activeTab: String,
   setVideoRef: Function,
   refreshContent: Function, // 添加这一行
 });
 
 const emit = defineEmits([
-  'play', 'setVideoRef', 'videoPlay', 'videoPause', 'videoEnded',
-  'toggleOptions', 'goToChannel', 'hoverStop', 'hoverPlay',
-  'videoEnterViewport', 'videoLeaveViewport',
-  'imageLoaded', 'openModal', 'downloadVideo'
+  'setVideoRef',
+  'goToChannel',
+  'openModal', 'downloadVideo'
 ]);
 
 const videoItemRef = ref(null);
@@ -129,10 +129,6 @@ const formatDate = (dateString) => {
   return `${Math.floor(diffDays / 365)}年前`;
 };
 
-const onImageLoad = () => {
-  emit('imageLoaded');
-};
-
 const showMenu = ref(false);
 const menuPosition = ref({ x: 0, y: 0 });
 
@@ -142,7 +138,7 @@ const {
   downloadVideo,
   copyVideoLink,
   dislikeVideo,
-} = useOptionsMenu(props.video, props.refreshContent); // 传入 props.refreshContent
+} = useOptionsMenu(props.video, props.refreshContent);
 
 const showContextMenu = async (event) => {
   event.preventDefault();

@@ -4,17 +4,13 @@
       v-for="video in videos"
       :key="video.id"
       :video="video"
+      :isChannelPage="isChannelPage"
+      :activeTab="activeTab"
       :showAvatar="showAvatar"
       :setVideoRef="setVideoRef"
       :refreshContent="refreshContent"
-      @play="$emit('play', video)"
-      @videoPlay="$emit('videoPlay', video)"
-      @videoPause="$emit('videoPause', video)"
-      @videoEnded="$emit('videoEnded', video)"
       @toggleOptions="$emit('toggleOptions', $event, video.id)"
       @goToChannel="$emit('goToChannel', video.channel_id)"
-      @videoEnterViewport="$emit('videoEnterViewport', video)"
-      @videoLeaveViewport="$emit('videoLeaveViewport', video)"
       @openModal="$emit('openModal', video)"
     />
   </div>
@@ -32,18 +28,14 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  isChannelPage: Boolean,
+  activeTab: String,
   setVideoRef: Function,
   refreshContent: Function,
 });
 defineEmits([
-  'play',
-  'videoPlay',
-  'videoPause',
-  'videoEnded',
   'toggleOptions',
   'goToChannel',
-  'videoEnterViewport',
-  'videoLeaveViewport',
   'openModal',
 ]);
 

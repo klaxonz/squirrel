@@ -26,6 +26,8 @@
                 :loading="loading"
                 :showAvatar="true"
                 :setVideoRef="setVideoRef"
+                :is-channel-page="false"
+                :active-tab="activeTab"
                 @play="playVideo"
                 @videoPlay="onVideoPlay"
                 @videoPause="onVideoPause"
