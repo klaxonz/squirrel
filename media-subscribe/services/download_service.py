@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if_retry: bool = False,
-          if_manual_retry: bool = False):
+          if_manual_retry: bool = False, if_manual_download: bool = False):
     video_id = extract_id_from_url(url)
     domain = extract_top_level_domain(url)
 
@@ -54,7 +54,8 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
             'if_retry': if_retry,
             'if_subscribe': if_subscribe,
             'if_only_extract': if_only_extract,
-            'if_manual_retry': if_manual_retry
+            'if_manual_retry': if_manual_retry,
+            'if_manual_download': if_manual_download
         }
 
         message = Message()
@@ -84,7 +85,11 @@ async def start_priority(url: str, if_only_extract: bool = True, if_subscribe: b
         session.add(message)
         session.commit()
 
-        extract_task.process_extract_message.send(message.model_dump_json())
+        message = session.exec(select(Message).where(Message.message_id == message.message_id)).first()
+        dump_json = message.model_dump_json()
+        extract_task.process_extract_message.send(dump_json)
+
+        message.send_status = 'SENDING'
         session.commit()
 
 

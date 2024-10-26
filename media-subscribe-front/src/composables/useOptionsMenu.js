@@ -1,8 +1,9 @@
 import { inject } from 'vue';
 import axios from '../utils/axios';
+import useCustomToast from './useToast';
 
 export default function useOptionsMenu(video, refreshContent) {
-  const displayToast = inject('toast');
+  const { displayToast } = useCustomToast();
 
   const toggleReadStatus = async (isRead) => {
     try {
@@ -12,10 +13,10 @@ export default function useOptionsMenu(video, refreshContent) {
         is_read: isRead
       });
       displayToast(`视频已标记为${isRead ? '已读' : '未读'}`);
-      await refreshContent();
+      if (refreshContent) await refreshContent();
     } catch (error) {
       console.error('更新阅读状态失败:', error);
-      displayToast('更新阅读状态失败', true);
+      displayToast('更新阅读状态失败', { type: 'error' });
     }
   };
 
@@ -31,13 +32,13 @@ export default function useOptionsMenu(video, refreshContent) {
 
       if (response.data.code === 0) {
         displayToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为${isRead ? '已读' : '未读'}`);
-        await refreshContent();
+        if (refreshContent) await refreshContent();
       } else {
         throw new Error(response.data.msg || '批量更新阅读状态失败');
       }
     } catch (error) {
       console.error('批量更新阅读状态失败:', error);
-      displayToast('批量更新阅读状态失败', true);
+      displayToast('批量更新阅读状态失败', { type: 'error' });
     }
   };
 
@@ -56,7 +57,7 @@ export default function useOptionsMenu(video, refreshContent) {
       }
     } catch (error) {
       console.error('下载视频失败:', error);
-      displayToast('下载视频失败: ' + (error.message || '未知错误'), true);
+      displayToast('下载视频失败: ' + (error.message || '未知错误'), { type: 'error' });
     }
   };
 
@@ -88,7 +89,7 @@ export default function useOptionsMenu(video, refreshContent) {
       displayToast(msg);
     } catch (err) {
       console.error('Fallback: Oops, unable to copy', err);
-      displayToast('复制失败，请手动复制');
+      displayToast('复制失败，请手动复制', { type: 'error' });
     }
 
     document.body.removeChild(textArea);

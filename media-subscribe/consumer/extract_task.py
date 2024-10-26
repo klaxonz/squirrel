@@ -2,6 +2,8 @@ import json
 import logging
 from datetime import datetime
 
+from sqlmodel import select
+
 from core.config import settings
 import dramatiq
 from common import constants
@@ -124,66 +126,74 @@ def _handle_download_task(extract_info, video, domain, video_id):
         return
 
     logger.info(f"开始生成视频任务：channel {video.get_uploader().name}, video: {video.url}")
-    download_task = _get_or_create_download_task(video, domain, video_id)
-    if _should_skip_download(extract_info, download_task):
+    task = _get_or_create_download_task(video, domain, video_id)
+    if _should_skip_download(extract_info, task):
         return
 
-    _create_download_message(download_task)
+    _create_download_message(task)
     logger.info(f"结束生成视频任务：channel {video.get_uploader().name}, video: {video.url}")
 
 
 def _get_or_create_download_task(video, domain, video_id):
     with get_session() as session:
-        download_task = session.query(DownloadTask).filter(
+        task = session.exec(select(DownloadTask).where(
             DownloadTask.domain == domain,
             DownloadTask.video_id == video_id
-        ).first()
-        if not download_task:
-            download_task = _create_download_task(video, domain, video_id)
-        return download_task
+        )).first()
+        if not task:
+            task = _create_download_task(video, domain, video_id, session)
+        else:
+            session.refresh(task)
+        
+        return task
 
 
-def _create_download_task(video, domain, video_id):
+def _create_download_task(video, domain, video_id, session):
+    uploader = video.get_uploader()
+    task = DownloadTask()
+    task.url = video.url
+    task.domain = domain
+    task.title = video.get_title()
+    task.thumbnail = video.get_thumbnail()
+    task.video_id = video_id
+    task.status = "PENDING"
+    task.channel_id = uploader.get_id()
+    task.channel_url = uploader.get_url()
+    task.channel_name = uploader.get_name()
+    task.channel_avatar = uploader.get_avatar()
+    session.add(task)
+    session.commit()
+    return task
+
+
+def _should_skip_download(extract_info, task):
     with get_session() as session:
-        uploader = video.get_uploader()
-        download_task = DownloadTask()
-        download_task.url = video.url
-        download_task.domain = domain
-        download_task.title = video.get_title()
-        download_task.thumbnail = video.get_thumbnail()
-        download_task.video_id = video_id
-        download_task.status = "PENDING"
-        download_task.channel_id = uploader.get_id()
-        download_task.channel_url = uploader.get_url()
-        download_task.channel_name = uploader.get_name()
-        download_task.channel_avatar = uploader.get_avatar()
-        session.add(download_task)
-        session.commit()
-        return download_task
-
-
-def _should_skip_download(extract_info, download_task):
-    if download_task and not extract_info['if_retry'] and not extract_info['if_manual_retry']:
-        _update_redis_cache(download_task.domain, download_task.video_id, 'if_download')
-        logger.info(f"视频已生成任务：channel {download_task.channel_name}, video: {download_task.url}")
-        return True
-    if download_task and download_task.status == 'COMPLETED':
-        logger.info(f"视频已下载：channel {download_task.channel_name}, video: {download_task.url}")
-        return True
-    if download_task and not extract_info[
-        'if_manual_retry'] and download_task.retry >= settings.DOWNLOAD_RETRY_THRESHOLD:
-        logger.info(f"视频下载已超过重试次数：channel {download_task.channel_name}, video: {download_task.url}")
-        return True
-    return False
+        if task:
+            task = session.merge(task)
+        if task and not extract_info['if_manual_download'] and not extract_info['if_retry'] and not extract_info['if_manual_retry']:
+            _update_redis_cache(task.domain, task.video_id, 'if_download')
+            logger.info(f"视频已生成任务：channel {task.channel_name}, video: {task.url}")
+            return True
+        if task and task.status == 'COMPLETED':
+            logger.info(f"视频已下载：channel {task.channel_name}, video: {task.url}")
+            return True
+        if task and not extract_info['if_manual_retry'] and task.retry >= settings.DOWNLOAD_RETRY_THRESHOLD:
+            logger.info(f"视频下载已超过重试次数：channel {task.channel_name}, video: {task.url}")
+            return True
+        return False
 
 
 def _create_download_message(task):
     with get_session() as session:
+        task = session.merge(task)
         message = Message()
-        message.body = DownloadTask.model_dump_json(task)
+        message.body = task.model_dump_json()
         session.add(message)
         session.commit()
-        download_task.process_download_message.send(message.model_dump_json())
+
+        message = session.exec(select(Message).where(Message.message_id == message.message_id)).first()
+        dump_json = message.model_dump_json()
+        download_task.process_download_message.send(dump_json)
         message.send_status = 'SENDING'
         session.commit()
 

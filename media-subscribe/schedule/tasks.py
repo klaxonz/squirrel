@@ -97,7 +97,7 @@ class RetryFailedTask(BaseTask):
                 for task in tasks:
                     ten_minutes_ago = datetime.now() - timedelta(minutes=10)
                     downloading_tasks = session.exec(select(DownloadTask).where(DownloadTask.status == 'DOWNLOADING',
-                                                                                DownloadTask.updated_at < ten_minutes_ago))
+                                                                                DownloadTask.updated_at < ten_minutes_ago)).all()
 
                     if (task.status == 'PENDING' or task.status == 'WAITING') and len(downloading_tasks) > 0:
                         continue

@@ -1,14 +1,12 @@
-import json
 from typing import List, Tuple
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlmodel import select, Session, col
 
 from common import constants
 from core.cache import RedisClient
 from model.download_task import DownloadTask
-from model.message import Message
 from services import download_service
-from consumer import download_task 
 
 
 class TaskService:
@@ -16,52 +14,48 @@ class TaskService:
         self.session = session
 
     def start_download(self, url: str):
-        task = {"url": url, "if_only_extract": False}
-        message = Message(body=json.dumps(task))
-        self.session.add(message)
-        self.session.commit()
-        download_task.process_download_message.send(message.model_dump_json())
-        self.session.query(Message).filter_by(message_id=message.message_id).update({"send_status": "SENDING"})
+        download_service.start(url, if_only_extract=False, if_manual_download=True)
 
     def retry_download(self, task_id: int):
-        download_task = self.session.query(DownloadTask).filter_by(task_id=task_id).first()
-        if download_task:
-            download_task.status = 'PENDING'
-            download_task.retry = download_task.retry + 1
+        task = self.session.exec(select(DownloadTask).where(DownloadTask.task_id == task_id)).first()
+        if task:
+            task.status = 'PENDING'
+            task.retry = task.retry + 1
             self.session.commit()
-            download_service.start(download_task.url, if_only_extract=False, if_retry=True, if_manual_retry=True)
+            download_service.start(task.url, if_only_extract=False, if_retry=True, if_manual_retry=True)
             return True
         return False
 
     def pause_download(self, task_id: int):
-        download_task = self.session.query(DownloadTask).filter_by(task_id=task_id).first()
-        if download_task:
-            download_task.status = 'PAUSED'
+        task = self.session.exec(select(DownloadTask).where(DownloadTask.task_id == task_id)).first()
+        if task:
+            task.status = 'PAUSED'
             self.session.commit()
-            download_service.stop(download_task.task_id)
+            download_service.stop(task.task_id)
             return True
         return False
 
     def delete_download(self, task_id: int):
-        download_task = self.session.query(DownloadTask).filter_by(task_id=task_id).first()
-        if download_task:
-            self.session.delete(download_task)
+        task = self.session.exec(select(DownloadTask).where(DownloadTask.task_id == task_id)).first()
+        if task:
+            self.session.delete(task)
             self.session.commit()
-            download_service.stop(download_task.task_id)
+            download_service.stop(task.task_id)
             return True
         return False
 
     def list_tasks(self, status: str, page: int, page_size: int) -> Tuple[List[dict], int]:
-        base_query = self.session.query(DownloadTask).filter(DownloadTask.title != '')
+
+        base_query = select(DownloadTask).where(DownloadTask.title != '')
+        count_query = select(func.count(DownloadTask.task_id)).where(DownloadTask.title != '')
         if status:
-            base_query = base_query.filter(DownloadTask.status == status)
-        total_tasks = base_query.count()
+            base_query = base_query.where(DownloadTask.status == status)
+            count_query = count_query.where(DownloadTask.status == status)
+        total_tasks = self.session.exec(count_query).one()
         offset = (page - 1) * page_size
 
-        tasks = (base_query
-                 .order_by(DownloadTask.created_at.desc())
-                 .offset(offset)
-                 .limit(page_size))
+        base_query = base_query.order_by(col(DownloadTask.created_at).desc()).offset(offset).limit(page_size)
+        tasks = self.session.exec(base_query).all()
 
         client = RedisClient.get_instance().client
         task_convert_list = []
@@ -98,7 +92,7 @@ class TaskService:
         tasks_progress = []
         for task_id in task_ids:
             progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}')
-            task = self.session.query(DownloadTask).filter_by(task_id=task_id).first()
+            task = self.session.exec(select(DownloadTask).where(DownloadTask.task_id == task_id)).first()
             task_status = task.status if task else None
 
             if progress:
@@ -117,8 +111,8 @@ class TaskService:
         return tasks_progress
 
     def get_new_tasks(self, latest_task_id: int) -> List[dict]:
-        new_tasks = self.session.query(DownloadTask).filter(DownloadTask.task_id > latest_task_id).order_by(
-            DownloadTask.task_id.desc()).limit(10).all()
+        new_tasks = self.session.exec(select(DownloadTask).where(DownloadTask.task_id > latest_task_id).order_by(
+            col(DownloadTask.task_id).desc()).limit(10)).all()
 
         client = RedisClient.get_instance().client
         new_task_data = []

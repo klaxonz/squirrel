@@ -1,7 +1,9 @@
+import json
 import logging
 from datetime import datetime
 
 import dramatiq
+from sqlmodel import select
 
 from common import constants
 from core.cache import RedisClient
@@ -22,10 +24,11 @@ __all__ = ['process_download_message']
 def process_download_message(message: str):
     try:
         logger.info(f"开始处理下载任务: {message}")
-        message_obj = Message.model_validate(message)
+        message_obj = Message.model_validate(json.loads(message))
         download_task = _prepare_download_task(message_obj)
         status = _download_video(download_task, constants.QUEUE_DOWNLOAD_TASK)
         _update_task_status(download_task, status)
+        
         logger.info(f"下载视频结束, channel: {download_task.channel_name}, video: {download_task.url}")
     except Exception as e:
         logger.error(f"处理下载任务时发生错误: {e}", exc_info=True)
@@ -33,12 +36,14 @@ def process_download_message(message: str):
 
 def _prepare_download_task(message):
     with get_session() as session:
-        download_task = DownloadTask.model_validate(message.body)
+        download_task = DownloadTask.model_validate(json.loads(message.body))
+        download_task = session.merge(download_task)
         logger.info(f"下载视频开始, channel: {download_task.channel_name}, video: {download_task.url}")
         download_task.status = 'DOWNLOADING'
+        dt = DownloadTask.model_validate(json.loads(download_task.model_dump_json()))
         session.commit()
-        session.expunge(download_task)
-    return download_task
+        return dt
+
 
 
 def _download_video(download_task, task_name):
@@ -47,8 +52,8 @@ def _download_video(download_task, task_name):
 
 def _update_task_status(download_task, status):
     with get_session() as session:
-        download_task = session.query(DownloadTask).filter(
-            DownloadTask.task_id == download_task.task_id).one()
+        download_task = session.exec(select(DownloadTask).where(
+            DownloadTask.task_id == download_task.task_id)).one()
 
         if status == 0:
             _handle_completed_download(download_task, session)
@@ -65,8 +70,8 @@ def _handle_completed_download(download_task, session):
     download_task.error_message = ''
     session.commit()
 
-    channel_video = session.query(ChannelVideo).filter(
-        ChannelVideo.video_id == download_task.video_id).first()
+    channel_video = session.exec(select(ChannelVideo).where(
+        ChannelVideo.video_id == download_task.video_id)).first()
     if channel_video:
         channel_video.if_downloaded = True
         session.commit()
