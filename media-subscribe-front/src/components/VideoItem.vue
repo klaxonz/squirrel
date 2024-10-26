@@ -3,13 +3,15 @@
     class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
     @contextmenu.prevent="showContextMenu"
   >
-    <div class="video-thumbnail relative cursor-pointer" @click="$emit('openModal', video)">
+    <div class="video-thumbnail relative cursor-pointer" @click="$emit('openModal', video)" ref="imageRef">
       <img
+        v-if="isImageLoaded"
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
         alt="Video thumbnail"
         class="w-full h-auto object-cover"
       >
+      <div v-else class="w-full h-0 pb-[56.25%] bg-gray-200"></div>
       <div class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
       </div>
@@ -67,28 +69,38 @@ const emit = defineEmits([
   'openModal', 'downloadVideo'
 ]);
 
-const videoItemRef = ref(null);
-const observer = ref(null);
+const imageRef = ref(null);
+const isImageLoaded = ref(false);
 
 onMounted(() => {
-  observer.value = new IntersectionObserver(
-    ([entry]) => {
-      if (!entry.isIntersecting && props.video.isPlaying) {
-        emit('videoLeaveViewport', props.video);
-      }
-    },
-    { threshold: 0.5 }
-  );
+  const options = {
+    root: null,
+    rootMargin: '0px',
+    threshold: 0.1
+  };
 
-  if (videoItemRef.value) {
-    observer.value.observe(videoItemRef.value);
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = new Image();
+        img.src = props.video.thumbnail;
+        img.onload = () => {
+          isImageLoaded.value = true;
+        };
+        observer.unobserve(entry.target);
+      }
+    });
+  }, options);
+
+  if (imageRef.value) {
+    observer.observe(imageRef.value);
   }
+
+  window.addEventListener('scroll', handleScroll, true);
 });
 
 onUnmounted(() => {
-  if (observer.value) {
-    observer.value.disconnect();
-  }
+  window.removeEventListener('scroll', handleScroll, true);
 });
 
 const formatDuration = (seconds) => {
@@ -171,14 +183,6 @@ const openVideoLink = () => {
   }
 };
 
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll, true);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll, true);
-});
-
 document.addEventListener('closeAllContextMenus', closeContextMenu);
 document.addEventListener('click', closeContextMenu);
 
@@ -248,3 +252,4 @@ onUnmounted(() => {
   color: #2563eb;
 }
 </style>
+
