@@ -31,6 +31,4 @@ def update_settings(settings: ConsumerSettings):
     settings.DOWNLOAD_CONSUMERS = settings.downloadConsumers
     settings.EXTRACT_CONSUMERS = settings.extractConsumers
     settings.SUBSCRIBE_CONSUMERS = settings.subscribeConsumers
-    from main import restart_consumers
-    restart_consumers()
     return {"code": 0, "msg": "Settings updated successfully"}

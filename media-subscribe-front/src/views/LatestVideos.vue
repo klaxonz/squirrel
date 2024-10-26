@@ -67,21 +67,6 @@
     />
   </div>
 
-  <!-- 使用 Teleport 将选项框移到 body 下 -->
-  <Teleport to="body">
-    <OptionsMenu
-      v-if="activeOptions !== null"
-      :position="optionsPosition"
-      :is-read-page="isReadPage"
-      :active-tab="activeTab"
-      @toggleReadStatus="toggleReadStatus"
-      @markReadBatch="markReadBatch"
-      @downloadVideo="downloadVideo"
-      @copyVideoLink="copyVideoLink"
-      @dislikeVideo="dislikeVideo"
-      @close="closeOptions"
-    />
-  </Teleport>
 
   <!-- Error message display -->
   <div v-if="error" class="text-center py-4 text-red-500">
@@ -106,7 +91,6 @@ import useToast from '../composables/useToast';
 import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
 import VideoList from '../components/VideoList.vue';
-import OptionsMenu from '../components/OptionsMenu.vue';
 import VideoModal from '../components/VideoModal.vue';
 
 const router = useRouter();
@@ -122,7 +106,6 @@ const {
   tabContents,
   tabs,
   tabsWithCounts,
-  isReadPage,
   handleSearch,
   loadMore,
   refreshContent,

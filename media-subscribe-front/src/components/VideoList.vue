@@ -5,8 +5,9 @@
       :key="video.id"
       :video="video"
       :showAvatar="showAvatar"
-      @play="$emit('play', video)"
       :setVideoRef="setVideoRef"
+      :refreshContent="refreshContent"
+      @play="$emit('play', video)"
       @videoPlay="$emit('videoPlay', video)"
       @videoPause="$emit('videoPause', video)"
       @videoEnded="$emit('videoEnded', video)"
@@ -21,6 +22,8 @@
 
 <script setup>
 import VideoItem from './VideoItem.vue';
+import useOptionsMenu from "../composables/useOptionsMenu.js";
+
 
 const props = defineProps({
   videos: Array,
@@ -30,9 +33,9 @@ const props = defineProps({
     default: true
   },
   setVideoRef: Function,
+  refreshContent: Function,
 });
-
-const emit = defineEmits([
+defineEmits([
   'play',
   'videoPlay',
   'videoPause',
@@ -43,6 +46,20 @@ const emit = defineEmits([
   'videoLeaveViewport',
   'openModal',
 ]);
+
+const { refreshContent } = useOptionsMenu(props.videos);
+
+const {
+  toggleOptions,
+  toggleReadStatus,
+  markReadBatch,
+  downloadVideo,
+  copyVideoLink,
+  dislikeVideo,
+} = useOptionsMenu(props.videos, refreshContent);
+
+
+
 </script>
 
 <style scoped>

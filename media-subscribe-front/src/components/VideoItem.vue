@@ -2,9 +2,6 @@
   <div 
     class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
     @contextmenu.prevent="showContextMenu"
-    @touchstart="startLongPress"
-    @touchend="cancelLongPress"
-    @touchmove="cancelLongPress"
   >
     <div class="video-thumbnail relative cursor-pointer" @click="$emit('openModal', video)">
       <img
@@ -30,27 +27,28 @@
         <span>{{ formatDate(video.uploaded_at) }}</span>
       </div>
     </div>
-    <ContextMenu 
-      v-if="showMenu"
-      :position="menuPosition"
-      @close="closeContextMenu"
-    >
-      <div @click="downloadVideo" class="context-menu-item">
-        <i class="fas fa-download mr-2"></i>下载视频
-      </div>
-      <div @click="copyVideoLink" class="context-menu-item">
-        <i class="fas fa-link mr-2"></i>复制链接
-      </div>
-      <div @click="toggleReadStatus" class="context-menu-item">
-        <i class="fas fa-check-circle mr-2"></i>标记为{{ video.is_read ? '未读' : '已读' }}
-      </div>
-    </ContextMenu>
+    <Teleport to="body">
+      <ContextMenu 
+        v-if="showMenu"
+        :position="menuPosition"
+        :isOpen="showMenu"
+        :isChannelPage="isChannelPage"
+        :activeTab="activeTab"
+        @close="closeContextMenu"
+        @toggleReadStatus="toggleReadStatus"
+        @markReadBatch="markReadBatch"
+        @downloadVideo="downloadVideo"
+        @copyVideoLink="copyVideoLink"
+        @dislikeVideo="dislikeVideo"
+      />
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted, ref } from 'vue';
+import { defineProps, defineEmits, onMounted, onUnmounted, ref, nextTick } from 'vue';
 import ContextMenu from './ContextMenu.vue';
+import useOptionsMenu from "../composables/useOptionsMenu.js";
 
 const props = defineProps({
   video: Object,
@@ -59,13 +57,14 @@ const props = defineProps({
     default: true
   },
   setVideoRef: Function,
+  refreshContent: Function, // 添加这一行
 });
 
 const emit = defineEmits([
   'play', 'setVideoRef', 'videoPlay', 'videoPause', 'videoEnded',
   'toggleOptions', 'goToChannel', 'hoverStop', 'hoverPlay',
   'videoEnterViewport', 'videoLeaveViewport',
-  'imageLoaded', 'openModal'
+  'imageLoaded', 'openModal', 'downloadVideo'
 ]);
 
 const videoItemRef = ref(null);
@@ -136,27 +135,32 @@ const onImageLoad = () => {
 
 const showMenu = ref(false);
 const menuPosition = ref({ x: 0, y: 0 });
-let longPressTimer = null;
 
-const showContextMenu = (event) => {
+const {
+  toggleReadStatus,
+  markReadBatch,
+  downloadVideo,
+  copyVideoLink,
+  dislikeVideo,
+} = useOptionsMenu(props.video, props.refreshContent); // 传入 props.refreshContent
+
+const showContextMenu = async (event) => {
   event.preventDefault();
-  menuPosition.value = { x: event.clientX, y: event.clientY };
+  // 关闭所有其他的上下文菜单
+  document.dispatchEvent(new CustomEvent('closeAllContextMenus'));
+  
+  await nextTick();
+  
+  // 使用全局坐标
+  const x = event.clientX;
+  const y = event.clientY;
+  
+  menuPosition.value = { x, y };
   showMenu.value = true;
 };
 
 const closeContextMenu = () => {
   showMenu.value = false;
-};
-
-const startLongPress = (event) => {
-  longPressTimer = setTimeout(() => {
-    menuPosition.value = { x: event.touches[0].clientX, y: event.touches[0].clientY };
-    showMenu.value = true;
-  }, 500); // 500ms long press
-};
-
-const cancelLongPress = () => {
-  clearTimeout(longPressTimer);
 };
 
 const handleScroll = () => {
@@ -177,6 +181,14 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll, true);
+});
+
+document.addEventListener('closeAllContextMenus', closeContextMenu);
+document.addEventListener('click', closeContextMenu);
+
+onUnmounted(() => {
+  document.removeEventListener('closeAllContextMenus', closeContextMenu);
+  document.removeEventListener('click', closeContextMenu);
 });
 </script>
 
