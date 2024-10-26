@@ -1,8 +1,9 @@
 import { ref, inject, onMounted, onUnmounted } from 'vue';
 import axios from '../utils/axios';
+import useCustomToast from "./useToast.js";
 
 export default function useVideoOperations(videos, videoRefs) {
-  const displayToast = inject('toast');
+  const { displayToast } = useCustomToast();
   const isFullscreen = ref(false);
 
   const playVideo = async (video) => {
@@ -128,14 +129,12 @@ export default function useVideoOperations(videos, videoRefs) {
   };
 
   const startProgressSaving = (video) => {
-    const saveInterval = setInterval(() => {
+    return setInterval(() => {
       const playerInstance = videoRefs.value[video.id];
       if (playerInstance && playerInstance.currentTime) {
         saveVideoProgress(video, playerInstance.currentTime);
       }
     }, 5000); // 每5秒保存一次进度
-
-    return saveInterval;
   };
 
   onMounted(() => {
