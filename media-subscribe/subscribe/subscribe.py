@@ -1,6 +1,7 @@
 import logging
 import re
 
+from bs4 import BeautifulSoup
 from pytubefix import Channel as YouTubeChannel
 
 from utils.cookie import filter_cookies_to_query_string
@@ -39,22 +40,31 @@ class BilibiliSubscribeChannel(SubscribeChannel):
         mid = self.get_mid()
         cookies = filter_cookies_to_query_string(self.url)
         headers = {
+            "Referer": self.url,
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/58.0.3029.110 Safari/537.3',
             'Cookie': cookies
         }
-        params = {
-            'mid': self.get_mid()
-        }
-        query = sign(params)
-        req_url = f'https://api.bilibili.com/x/space/wbi/acc/info?{query}'
-        resp = session.get(req_url, headers=headers)
-        if resp.status_code != 200:
-            raise Exception('Request failed')
+        resp = session.get(self.url, headers=headers)
+        soup = BeautifulSoup(resp.text, 'html.parser')
 
-        info = resp.json()
+        # 提取频道名称
+        title_tag = soup.find('title')
+        if title_tag:
+            channel_name = title_tag.text.split('的个人空间')[0]
+        else:
+            channel_name = None
 
-        return ChannelMeta(mid, info['data']['name'], info['data']['face'], self.url)
+        # 提取头像图片 URL
+        avatar_link = soup.find('link', rel='apple-touch-icon')
+        if avatar_link:
+            avatar_url = avatar_link.get('href')
+            if avatar_url.startswith('//'):
+                avatar_url = 'https:' + avatar_url
+        else:
+            avatar_url = None
+
+        return ChannelMeta(mid, channel_name, avatar_url, self.url)
 
     def get_channel_videos(self, channel: Channel, update_all: bool):
         cookies = filter_cookies_to_query_string(self.url)

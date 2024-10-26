@@ -32,13 +32,16 @@ def process_subscribe_message(message):
             logger.info(f"频道 {channel_info.name} 已存在")
             return
         logger.info(f"开始添加新频道: {channel_info.name}")
-        channel = _create_channel(channel_info)
-        videos = subscribe_channel.get_channel_videos(channel, update_all=True)
-        channel.total_videos = len(videos)
 
         with get_session() as session:
+            channel = _create_channel(channel_info)
             session.add(channel)
             session.commit()
+
+            videos = subscribe_channel.get_channel_videos(channel, update_all=True)
+            channel.total_videos = len(videos)
+            session.commit()
+
             logger.info(f"成功添加新频道: {channel.name}")
     except Exception as e:
         logger.error(f"处理订阅频道消息时发生错误: {e}", exc_info=True)
