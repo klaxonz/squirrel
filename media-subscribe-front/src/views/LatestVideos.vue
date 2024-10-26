@@ -31,9 +31,6 @@
                 @videoPause="onVideoPause"
                 @videoEnded="onVideoEnded"
                 @toggleOptions="toggleOptions"
-                @goToChannel="goToChannel"
-                @videoEnterViewport="onVideoEnterViewport"
-                @videoLeaveViewport="onVideoLeaveViewport"
                 @openModal="openVideoModal"
               />
 
@@ -125,15 +122,11 @@ const {
   onVideoEnded,
   setVideoRef,
   handleOrientationChange,
-  onVideoLeaveViewport,
   isFullscreen
 } = useVideoOperations(videos, videoRefs);
 
 const {
-  activeOptions,
-  optionsPosition,
   toggleOptions,
-  closeOptions,
   toggleReadStatus,
   markReadBatch,
   downloadVideo,
