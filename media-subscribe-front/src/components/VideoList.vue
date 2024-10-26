@@ -1,5 +1,5 @@
 <template>
-  <div class="grid grid-cols-6 gap-4">
+  <div class="grid grid-cols-5 gap-4">
     <VideoItem
       v-for="video in videos"
       :key="video.id"

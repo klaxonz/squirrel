@@ -45,7 +45,7 @@ export default function useLatestVideos(channelId) {
 
     loading.value = true;
     try {
-      const pageSize = currentPage.value === 1 ? 30 : 10; // Load 30 items on first page, 10 on subsequent pages
+      const pageSize = currentPage.value === 1 ? 30 : 20; // Load 30 items on first page, 10 on subsequent pages
       const response = await axios.get('/api/channel-video/list', {
         params: {
           page: currentPage.value,
