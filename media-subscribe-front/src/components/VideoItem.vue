@@ -9,9 +9,8 @@
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
         alt="Video thumbnail"
-        class="w-full h-auto object-cover"
+        class="w-full h-full object-cover absolute top-0 left-0"
       >
-      <div v-else class="w-full h-0 pb-[56.25%] bg-gray-200"></div>
       <div class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
       </div>
@@ -75,13 +74,13 @@ const isImageLoaded = ref(false);
 onMounted(() => {
   const options = {
     root: null,
-    rootMargin: '0px',
+    rootMargin: '100px', // 预加载范围扩大
     threshold: 0.1
   };
 
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
+      if (entry.isIntersecting && !isImageLoaded.value) {
         const img = new Image();
         img.src = props.video.thumbnail;
         img.onload = () => {
@@ -96,7 +95,11 @@ onMounted(() => {
     observer.observe(imageRef.value);
   }
 
-  window.addEventListener('scroll', handleScroll, true);
+  return () => {
+    if (imageRef.value) {
+      observer.unobserve(imageRef.value);
+    }
+  };
 });
 
 onUnmounted(() => {
@@ -195,12 +198,14 @@ onUnmounted(() => {
 <style scoped>
 .video-item {
   width: 100%;
+  height: 100%;
   break-inside: avoid;
 }
 
 .video-thumbnail {
   position: relative;
   padding-top: 56.25%; /* 16:9 宽高比 */
+  background-color: #f0f0f0; /* 添加背景色 */
 }
 
 .video-thumbnail img,
@@ -251,5 +256,15 @@ onUnmounted(() => {
 .hover\:text-blue-600:hover {
   color: #2563eb;
 }
-</style>
 
+/* 添加一些响应式调整 */
+@media (max-width: 768px) {
+  .text-2xs {
+    font-size: 0.5625rem;
+  }
+  
+  .h-9 {
+    height: 2rem;
+  }
+}
+</style>

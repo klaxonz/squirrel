@@ -3,52 +3,23 @@
     <SearchBar class="pt-4" @search="handleSearch" ref="searchBar" />
     <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 
-    <div 
-      class="video-container px-2 pt-1 flex-grow relative overflow-hidden"
-      ref="videoContainer" 
-    >
-      <div class="tab-content-wrapper">
-        <div class="tab-content-inner">
-          <div 
-            v-for="tab in tabs" 
-            :key="tab.value"
-            v-show="activeTab === tab.value"
-            class="tab-content"
-            :ref="el => { if (el) tabContents[tab.value] = el.querySelector('.scroll-content') }"
-          >
-             <VideoList
-                :videos="filteredVideos[tab.value]"
-                :loading="loading"
-                :allLoaded="allLoaded"
-                :showAvatar="true"
-                :setVideoRef="setVideoRef"
-                :is-channel-page="false"
-                :active-tab="activeTab"
-                @loadMore="loadMore"
-                @play="playVideo"
-                @videoPlay="onVideoPlay"
-                @videoPause="onVideoPause"
-                @videoEnded="onVideoEnded"
-                @toggleOptions="toggleOptions"
-                @openModal="openVideoModal"
-              />
-
-              <!-- 加载更多指示器 -->
-              <div v-if="loading" class="loading-indicator text-center py-4">
-                <svg class="animate-spin h-5 w-5 text-gray-500 mx-auto" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="mt-2">加载更多...</p>
-              </div>
-
-              <!-- 加载完成状态 -->
-              <div v-if="allLoaded && !loading" class="text-center py-4">
-                <p>没有更多视频了</p>
-              </div>
-          </div>
-        </div>
-      </div>
+    <div class="video-container pt-1 flex-grow">
+      <VideoList
+        :videos="filteredVideos[activeTab]"
+        :loading="loading"
+        :allLoaded="allLoaded"
+        :showAvatar="true"
+        :setVideoRef="setVideoRef"
+        :is-channel-page="false"
+        :active-tab="activeTab"
+        @loadMore="loadMore"
+        @play="playVideo"
+        @videoPlay="onVideoPlay"
+        @videoPause="onVideoPause"
+        @videoEnded="onVideoEnded"
+        @toggleOptions="toggleOptions"
+        @openModal="openVideoModal"
+      />
     </div>
 
     <VideoModal
@@ -61,7 +32,6 @@
       @videoEnded="onVideoEnded"
     />
   </div>
-
 
   <!-- Error message display -->
   <div v-if="error" class="text-center py-4 text-red-500">
@@ -135,7 +105,7 @@ const {
 const filteredVideos = computed(() => {
   const result = {};
   tabs.forEach(tab => {
-    result[tab.value] = (videos.value[tab.value] || []).filter(video => video && video.id);
+    result[tab.value] = videos.value[tab.value] || [];
   });
   return result;
 });
@@ -197,6 +167,14 @@ provide('videoOperations', {
 <style src="./LatestVideos.css" scoped></style>
 
 <style scoped>
-/* Add this to your component's styles */
+.latest-videos {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 
+.video-container {
+  flex: 1;
+  overflow: hidden;
+}
 </style>
