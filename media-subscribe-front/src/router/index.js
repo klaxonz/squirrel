@@ -13,8 +13,8 @@ const routes = [
     meta: { keepAlive: true }
   },
   {
-    path: '/subscribed',
-    name: 'Subscribed',
+    path: '/subscriptions',
+    name: 'Subscriptions',
     component: Subscribed
   },
   {

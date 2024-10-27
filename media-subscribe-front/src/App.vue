@@ -48,7 +48,7 @@ provide('emitter', emitter);
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
   { path: '/trending', name: '趋势', icon: FireIcon },
-  { path: '/subscriptions', name: '订阅内容', icon: BookmarkIcon },
+  { path: '/subscriptions', name: '订阅', icon: BookmarkIcon },
   { path: '/library', name: '媒体库', icon: FilmIcon },
   { path: '/history', name: '历史记录', icon: ClockIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
