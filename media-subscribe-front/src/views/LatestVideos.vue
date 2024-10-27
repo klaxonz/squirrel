@@ -1,5 +1,5 @@
 <template>
-  <div class="latest-videos flex flex-col h-full">
+  <div class="latest-videos flex flex-col h-full mx-4">
     <SearchBar class="pt-4" @search="handleSearch" ref="searchBar" />
     <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 

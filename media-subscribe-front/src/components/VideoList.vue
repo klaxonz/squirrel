@@ -161,7 +161,6 @@ watch(() => props.videos.length, updateContainerWidth);
   height: 100%;
   overflow: hidden;
   margin: 0 auto;
-  padding: 0 v-bind(sidePadding + 'px');
 }
 
 .scroller {

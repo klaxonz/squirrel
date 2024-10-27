@@ -40,7 +40,7 @@
 <script setup>
 import { provide, ref } from 'vue';
 import mitt from 'mitt';
-import { HomeIcon, FireIcon, ClockIcon, BookmarkIcon, FilmIcon, CogIcon } from '@heroicons/vue/24/outline';
+import { HomeIcon, FireIcon, ClockIcon, BookmarkIcon, FilmIcon, CogIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
 
 const emitter = mitt();
 provide('emitter', emitter);
@@ -51,6 +51,7 @@ const routes = ref([
   { path: '/subscriptions', name: '订阅', icon: BookmarkIcon },
   { path: '/library', name: '媒体库', icon: FilmIcon },
   { path: '/history', name: '历史记录', icon: ClockIcon },
+  { path: '/download-tasks', name: '下载任务', icon: ArrowDownTrayIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
 ]);
 

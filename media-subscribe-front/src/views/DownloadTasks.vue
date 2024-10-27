@@ -1,112 +1,78 @@
 <template>
-  <div class="download-tasks bg-gray-100 min-h-screen flex flex-col">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-grow flex flex-col">
-      <!-- 搜索栏 -->
-      <div class="search-bar sticky top-0 bg-white z-10 p-4 shadow-sm">
-        <div class="flex items-center max-w-3xl mx-auto relative">
-          <select v-model="status" @change="resetAndFetchTasks" class="flex-grow h-10 px-4 text-sm border border-gray-300 rounded-l-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200">
-            <option value="">全部状态</option>
-            <option value="PENDING">等待中</option>
-            <option value="DOWNLOADING">下载中</option>
-            <option value="COMPLETED">已完成</option>
-            <option value="FAILED">失败</option>
-            <option value="PAUSED">已暂停</option>
-          </select>
-          <button 
-            @click="resetAndFetchTasks"
-            class="h-10 px-6 text-sm font-medium bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200"
-          >
-            筛选
-          </button>
-        </div>
-      </div>
+  <div class="download-tasks bg-[#0f0f0f] min-h-screen text-white mx-4">
+    <!-- 搜索框 -->
+    <SearchBar @search="handleSearch"/>
 
-      <div class="task-container flex-grow overflow-y-auto" ref="taskContainer" @scroll="handleScroll">
-        <div 
-          v-for="task in tasks" 
-          :key="task.id" 
-          class="task-item bg-white shadow-sm rounded-lg overflow-hidden mb-4 p-4"
-        >
-          <div class="flex items-start mb-3">
-            <img 
-              :src="task.thumbnail" 
-              :alt="task.title"
-              referrerpolicy="no-referrer"
-              class="w-24 h-16 object-cover rounded mr-4"
-            >
-            <div class="flex-grow">
-              <h2 class="task-title text-base font-semibold text-gray-900 line-clamp-2 mb-1">{{ task.title }}</h2>
-              <p class="task-channel text-sm text-gray-600 truncate">{{ task.channel_name }}</p>
-            </div>
-          </div>
-          
-          <!-- 进度信息 -->
-          <div class="mt-2">
-            <div class="flex items-center justify-between text-sm mb-1">
-              <span class="task-status font-medium" :class="getStatusClass(task.status)">
+    <!-- 标签栏 -->
+    <TabBar
+      v-model="activeTab"
+      :tabs="tabs"
+    />
+
+    <!-- 任务列表 -->
+    <div class="task-container space-y-4" ref="taskContainer" @scroll="handleScroll">
+      <div v-for="task in tasks" :key="task.id" class="task-item bg-[#272727] rounded-lg overflow-hidden">
+        <div class="flex p-4">
+          <img :src="task.thumbnail" :alt="task.title" referrerpolicy="no-referrer" class="w-40 h-24 object-cover rounded mr-4">
+          <div class="flex-grow">
+            <h2 class="task-title text-lg font-semibold mb-2">{{ task.title }}</h2>
+            <p class="task-channel text-sm text-gray-400">{{ task.channel_name }}</p>
+            <div class="mt-2 flex items-center justify-between">
+              <span class="task-status text-sm font-medium" :class="getStatusClass(task.status)">
                 {{ getStatusText(task) }}
               </span>
-            </div>
-            
-            <div v-if="task.status === 'DOWNLOADING'" class="download-progress">
-              <div class="mb-2">
-                <div class="progress-bar bg-gray-200 rounded-full h-2.5 mb-1">
-                  <div 
-                    class="bg-blue-600 h-2.5 rounded-full" 
-                    :style="{ width: `${task.percent}%` }"
-                  ></div>
-                </div>
-                <div class="flex justify-between text-xs text-gray-600">
-                  <span>{{ task.percent }}%</span>
-                  <span>{{ formatSize(task.downloaded_size) }} / {{ formatSize(task.total_size) }}</span>
-                  <span>{{ task.speed }}</span>
-                  <span>剩余: {{ task.eta }}</span>
-                </div>
+              <div class="text-sm text-gray-400">
+                {{ formatSize(task.total_size) }}
               </div>
             </div>
-            
-            <p v-if="task.status === 'FAILED'" class="text-sm text-red-600 mt-1">错误: {{ task.error_message }}</p>
-          </div>
-          
-          <div class="mt-3 flex justify-between items-center">
-            <div class="text-sm text-gray-600">
-              重试次数: {{ task.retry }} 
-            </div>
-            <div class="text-sm text-gray-600">
-              <span v-if="task.total_size" class="text-gray-600">
-                {{ formatSize(task.total_size) }}
-              </span>
-            </div>
-            <div>
-              <button v-if="task.status === 'FAILED'" @click="retryTask(task.id)" class="btn btn-primary">重试</button>
-              <button v-if="task.status === 'DOWNLOADING'" @click="pauseTask(task.id)" class="btn btn-secondary">暂停</button>
-              <button v-if="task.status === 'COMPLETED'" @click="playVideo(task.id)" class="btn btn-primary">播放</button>
-              <button @click="deleteTask(task.id)" class="btn btn-danger">删除</button>
+
+            <!-- 进度条 -->
+            <div v-if="task.status === 'DOWNLOADING'" class="mt-2">
+              <div class="bg-gray-700 rounded-full h-2">
+                <div class="bg-red-500 h-2 rounded-full" :style="{ width: `${task.percent}%` }"></div>
+              </div>
+              <div class="flex justify-between text-xs text-gray-400 mt-1">
+                <span>{{ task.percent }}%</span>
+                <span>{{ task.speed }}</span>
+                <span>剩余: {{ task.eta }}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 加载状态 -->
-        <div v-if="loading" class="text-center py-4">
-          <p class="text-gray-600">加载中...</p>
+        <!-- 操作按钮 -->
+        <div class="px-4 py-2 bg-[#1f1f1f] flex justify-end space-x-2">
+          <button v-if="task.status === 'FAILED'" @click="retryTask(task.id)" class="btn btn-red">重试</button>
+          <button v-if="task.status === 'DOWNLOADING'" @click="pauseTask(task.id)" class="btn btn-gray">暂停</button>
+          <button v-if="task.status === 'COMPLETED'" @click="playVideo(task.id)" class="btn btn-red">播放</button>
+          <button @click="deleteTask(task.id)" class="btn btn-gray">删除</button>
         </div>
-
-        <!-- 加载完成状态 -->
-        <div v-if="!loading && !hasMore" class="text-center py-4">
-          <p class="text-gray-600">没有更多任务了</p>
-        </div>
-
-        <!-- 添加一个用于触发加载的元素 -->
-        <div ref="loadTrigger" class="h-1"></div>
       </div>
+
+      <!-- 加载状态 -->
+      <div v-if="loading" class="text-center py-4">
+        <p class="text-gray-400">加载中...</p>
+      </div>
+
+      <!-- 加载完成状态 -->
+      <div v-if="!loading && !hasMore" class="text-center py-4">
+        <p class="text-gray-400">没有更多任务了</p>
+      </div>
+
+      <div ref="loadTrigger" class="h-1"></div>
     </div>
 
-    <!-- 视频播放器模态框 -->
+    <!-- 简化的视频播放器模态框 -->
     <div v-if="showVideoPlayer" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div class="bg-gray-900 rounded-lg overflow-hidden w-full max-w-4xl shadow-2xl">
+      <div class="bg-[#0f0f0f] rounded-lg overflow-hidden w-full max-w-4xl shadow-2xl">
         <div class="relative">
-          <video ref="videoPlayer" controls autoplay class="w-full aspect-video">
-            <source :src="currentVideoUrl" type="video/mp4">
+          <video
+            ref="videoPlayer"
+            :src="currentVideoUrl"
+            controls
+            autoplay
+            class="w-full aspect-video"
+          >
             Your browser does not support the video tag.
           </video>
           <button @click="closeVideoPlayer" class="absolute top-4 right-4 text-white hover:text-gray-300 focus:outline-none">
@@ -123,9 +89,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import axios from '../utils/axios';
+import SearchBar from '../components/SearchBar.vue';
+import TabBar from '../components/TabBar.vue';
 
 const tasks = ref([]);
-const status = ref('');
 const page = ref(1);
 const pageSize = ref(10);
 const loading = ref(false);
@@ -138,6 +105,15 @@ const videoPlayer = ref(null);
 const eventSource = ref(null);
 const latestTaskId = ref(0);
 const newTaskEventSource = ref(null);
+
+const activeTab = ref('all');
+const tabs = [
+  { label: '全部', value: 'all' },
+  { label: '下载中', value: 'downloading' },
+  { label: '已完成', value: 'completed' },
+  { label: '已暂停', value: 'paused' }, // 新增的已暂停标签
+  { label: '失败', value: 'failed' },
+];
 
 const setupEventSource = () => {
   if (eventSource.value) {
@@ -220,7 +196,7 @@ const fetchTasks = async () => {
   try {
     const response = await axios.get('/api/task/list', {
       params: {
-        status: status.value,
+        status: activeTab.value === 'all' ? '' : activeTab.value.toUpperCase(),
         page: page.value,
         pageSize: pageSize.value
       }
@@ -357,7 +333,7 @@ const getStatusText = (task) => {
     }
   }
   if (task.status === 'COMPLETED') {
-    return '';
+    return '已完成';
   }
   if (task.status === 'FAILED') {
     return '失败';
@@ -371,6 +347,16 @@ const getStatusText = (task) => {
   return task.status;
 };
 
+const handleSearch = (query) => {
+  console.log('Search query:', query);
+  // 实现搜索逻辑
+};
+
+watch(activeTab, (newTab) => {
+  console.log('Active tab changed:', newTab);
+  resetAndFetchTasks();
+});
+
 watch(tasks, (newTasks) => {
   console.log('Tasks updated:', newTasks);
 }, { deep: true });
@@ -382,7 +368,7 @@ watch(tasks, (newTasks) => {
 }
 
 .task-container {
-  height: calc(100vh - 130px); /* 120px (搜索栏) + 56px (底部导航栏) */
+  height: calc(100vh - 130px); /* 恢复原有高度 */
   overflow-y: auto;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* Internet Explorer 10+ */
@@ -390,7 +376,7 @@ watch(tasks, (newTasks) => {
 
 @media (min-width: 768px) {
   .task-container {
-    height: calc(100vh - 90px); /* 只考虑搜索栏的高度，因为导航栏在侧边 */
+    height: calc(100vh - 90px); /* 恢复原有高度 */
   }
 }
 
@@ -401,7 +387,7 @@ watch(tasks, (newTasks) => {
 }
 
 .task-item {
-  @apply mt-3;
+  @apply mt-3; /* 恢复为 mt-3 */
 }
 
 .task-title {
@@ -412,58 +398,32 @@ watch(tasks, (newTasks) => {
   @apply truncate;
 }
 
-.search-bar {
-  position: sticky;
-  top: 0;
-  background-color: white;
-  z-index: 10;
-  padding: 1rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.search-bar select {
-  border-right: none;
-}
-
-.search-bar button {
-  border-left: none;
-}
-
-.search-bar select:focus,
-.search-bar button:focus {
-  box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
-}
-
 .task-status {
   @apply inline-flex items-center;
 }
 
 .download-progress {
-  @apply mt-2;
+  @apply mt-2; /* 恢复为 mt-2 */
 }
 
 .progress-bar {
-  @apply bg-gray-200 rounded-full h-2.5;
+  @apply bg-gray-700 rounded-full h-2;
 }
 
 .progress-bar > div {
-  @apply bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out;
+  @apply bg-red-500 h-2 rounded-full transition-all duration-300 ease-in-out;
 }
 
 .btn {
-  @apply px-3 py-1 rounded text-sm font-medium transition duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50;
+  @apply px-4 py-2 rounded-full text-sm font-medium transition duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50;
 }
 
-.btn-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+.btn-red {
+  @apply bg-red-500 text-white hover:bg-red-600 focus:ring-red-500;
 }
 
-.btn-secondary {
-  @apply bg-gray-500 text-white hover:bg-gray-600 focus:ring-gray-400;
-}
-
-.btn-danger {
-  @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+.btn-gray {
+  @apply bg-gray-700 text-white hover:bg-gray-600 focus:ring-gray-500;
 }
 
 .btn + .btn {

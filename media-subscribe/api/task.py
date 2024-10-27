@@ -1,15 +1,24 @@
 import asyncio
 import json
+import os
+import re
+import stat
 import time
+from email.utils import formatdate
+from mimetypes import guess_type
 
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session, select, col
 from sse_starlette import EventSourceResponse
+from starlette.requests import Request
+from starlette.responses import StreamingResponse
 
 import common.response as response
 from common import constants
 from core.cache import RedisClient
 from core.database import get_session
+from downloader.downloader import Downloader
+from meta.video import VideoFactory
 from model.download_task import DownloadTask
 from schemas.task import DownloadRequest, DownloadChangeStateRequest
 from services.task_service import TaskService
@@ -152,3 +161,70 @@ async def new_task_notification(latest_task_id: int = Query(default=0)):
                     await asyncio.sleep(1)  # 每秒检查一次
 
     return EventSourceResponse(event_generator())
+
+
+@router.get("/api/task/video/play/{task_id}")
+def play_video(request: Request, task_id: str):
+    with get_session() as s:
+        download_task = s.query(DownloadTask).filter(DownloadTask.task_id == task_id).first()
+        s.expunge(download_task)
+
+    base_info = Downloader.get_video_info(download_task.url)
+    video = VideoFactory.create_video(download_task.url, base_info)
+    output_dir = video.get_download_full_path()
+
+    ext_names = ['.mp4', '.mkv', '.webm']
+    filename = video.get_valid_filename()
+
+    files = os.listdir(output_dir)
+    video_path = None
+    for file in files:
+        if file.startswith(filename) and any(file.endswith(ext) for ext in ext_names):
+            video_path = os.path.join(output_dir, file)
+            break
+
+    stat_result = os.stat(video_path)
+    content_type, encoding = guess_type(video_path)
+    content_type = content_type or 'application/octet-stream'
+    range_str = request.headers.get('range', '')
+    range_match = re.search(r'bytes=(\d+)-(\d+)', range_str, re.S) or re.search(r'bytes=(\d+)-', range_str, re.S)
+    if range_match:
+        start_bytes = int(range_match.group(1))
+        end_bytes = int(range_match.group(2)) if range_match.lastindex == 2 else stat_result.st_size - 1
+    else:
+        start_bytes = 0
+        end_bytes = stat_result.st_size - 1
+
+    content_length = stat_result.st_size - start_bytes if stat.S_ISREG(stat_result.st_mode) else stat_result.st_size
+    # 打开文件从起始位置开始分片读取文件
+    return StreamingResponse(
+        file_iterator(video_path, start_bytes, 1024 * 1024 * 1),  # 每次读取 1M
+        media_type=content_type,
+        headers={
+            'accept-ranges': 'bytes',
+            'connection': 'keep-alive',
+            'content-length': str(content_length),
+            'content-range': f'bytes {start_bytes}-{end_bytes}/{stat_result.st_size}',
+            'last-modified': formatdate(stat_result.st_mtime, usegmt=True),
+        },
+        status_code=206 if start_bytes > 0 else 200
+    )
+
+
+def file_iterator(file_path, offset, chunk_size):
+    """
+    文件生成器
+    :param file_path: 文件绝对路径
+    :param offset: 文件读取的起始位置
+    :param chunk_size: 文件读取的块大小
+    :return: yield
+    """
+    with open(file_path, 'rb') as f:
+        f.seek(offset, os.SEEK_SET)
+        while True:
+            data = f.read(chunk_size)
+            if data:
+                yield data
+            else:
+                break
+
