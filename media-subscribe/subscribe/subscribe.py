@@ -30,7 +30,7 @@ class BilibiliSubscribeChannel(SubscribeChannel):
 
     def get_mid(self):
         # 提取 mid
-        match = re.search(r'/(\d+)$', self.url)
+        match = re.search(r'/(\d+)(?:\?.*)?', self.url)
         if not match:
             raise Exception('Invalid url')
 
