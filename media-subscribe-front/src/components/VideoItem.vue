@@ -1,30 +1,40 @@
 <template>
   <div 
-    class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
+    class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ease-in-out transform hover:-translate-y-1"
     @contextmenu.prevent="showContextMenu"
   >
-    <div class="video-thumbnail relative cursor-pointer" @click="$emit('openModal', video)" ref="imageRef">
+    <div class="video-thumbnail relative cursor-pointer overflow-hidden group" @click="$emit('openModal', video)" ref="imageRef">
       <img
         v-if="isImageLoaded"
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
         alt="Video thumbnail"
-        class="w-full h-full object-cover absolute top-0 left-0"
+        class="w-full h-full object-cover absolute top-0 left-0 transition-transform duration-300 group-hover:scale-105"
       >
+      <div v-else class="w-full h-full bg-gray-200 animate-pulse"></div>
       <div class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
       </div>
+      <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
     </div>
     <div class="p-2">
       <h3 
-        class="text-xs font-medium text-gray-900 line-clamp-2 h-9 cursor-pointer hover:text-blue-600"
+        class="text-xs font-medium text-gray-900 line-clamp-2 h-9 cursor-pointer hover:text-blue-600 transition-colors duration-200"
         @click="openVideoLink"
       >
         {{ video.title }}
       </h3>
       <div class="flex items-center justify-between text-2xs text-gray-500 mt-1">
-        <span class="truncate">{{ video.channel_name }}</span>
-        <span>{{ formatDate(video.uploaded_at) }}</span>
+        <div class="flex items-center">
+          <img 
+            :src="video.channel_avatar" 
+            alt="Channel Avatar" 
+            class="w-4 h-4 rounded-full mr-1 object-cover flex-shrink-0"
+            referrerpolicy="no-referrer"
+          >
+          <span class="truncate hover:text-blue-500 transition-colors duration-200 leading-4">{{ video.channel_name }}</span>
+        </div>
+        <span class="leading-4">{{ formatDate(video.uploaded_at) }}</span>
       </div>
     </div>
     <Teleport to="body">
@@ -238,7 +248,7 @@ onUnmounted(() => {
 
 .text-2xs {
   font-size: 0.625rem; /* 10px */
-  line-height: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px, 调整行高以匹配头像高度 */
 }
 
 .h-9 {

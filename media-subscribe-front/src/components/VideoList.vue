@@ -103,7 +103,7 @@ const computedItemSecondarySize = computed(() => {
 });
 
 const computedItemSize = computed(() => {
-  return Math.floor(computedItemSecondarySize.value * (9 / 16) + 70);
+  return Math.floor(computedItemSecondarySize.value * (9 / 16) + 76);
 });
 
 
@@ -140,6 +140,17 @@ watch(() => props.videos.length, updateContainerWidth);
 .grid-item {
   padding: 8px;
   box-sizing: border-box;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .loading-indicator, .text-center {
