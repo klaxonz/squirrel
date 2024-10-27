@@ -16,18 +16,15 @@
             class="tab-content"
             :ref="el => { if (el) tabContents[tab.value] = el.querySelector('.scroll-content') }"
           >
-            <div
-              class="scroll-content"
-              @scroll="handleScroll"
-              :class="{ 'no-scroll': isResetting }"
-            >
-              <VideoList
+             <VideoList
                 :videos="filteredVideos[tab.value]"
                 :loading="loading"
+                :allLoaded="allLoaded"
                 :showAvatar="true"
                 :setVideoRef="setVideoRef"
                 :is-channel-page="false"
                 :active-tab="activeTab"
+                @loadMore="loadMore"
                 @play="playVideo"
                 @videoPlay="onVideoPlay"
                 @videoPause="onVideoPause"
@@ -49,7 +46,6 @@
               <div v-if="allLoaded && !loading" class="text-center py-4">
                 <p>没有更多视频了</p>
               </div>
-            </div>
           </div>
         </div>
       </div>
@@ -164,17 +160,6 @@ onMounted(() => {
   emitter.on('scrollToTopAndRefresh', scrollToTopAndRefresh);
   emitter.on('refreshContent', refreshContent);
   window.history.pushState(null, '', router.currentRoute.value.fullPath);
-
-  nextTick(() => {
-    tabs.forEach(tab => {
-      if (tabContents.value[tab.value]) {
-        tabContents.value[tab.value].addEventListener('scroll', handleScroll);
-      } else {
-        console.warn('Failed to initialize scroll content for tab:', tab.value);
-      }
-    });
-  });
-
 });
 
 onUnmounted(() => {
@@ -182,12 +167,6 @@ onUnmounted(() => {
   window.removeEventListener('orientationchange', handleOrientationChange);
   emitter.off('scrollToTopAndRefresh', scrollToTopAndRefresh);
   emitter.off('refreshContent', refreshContent);
-
-  tabs.forEach(tab => {
-    if (tabContents.value[tab.value]) {
-      tabContents.value[tab.value].removeEventListener('scroll', handleScroll);
-    }
-  });
 
   // Disconnect all observers
   Object.values(observers.value).forEach(observer => {
