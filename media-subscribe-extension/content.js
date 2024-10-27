@@ -233,9 +233,10 @@ const getChannelUrlFromBilibili = (container) => {
   }
   return null;
 };
-
+  
 const getChannelUrlFromLocation = () => {
-  return window.location.href;
+  const url = new URL(window.location.href);
+  return `${url.origin}${url.pathname}`;
 };
 
 const getChannelIdFromUrl = (url) => {
