@@ -18,6 +18,7 @@
         @videoEnded="onVideoEnded"
         @toggleOptions="toggleOptions"
         @openModal="openVideoModal"
+        @goToChannel="goToChannelDetail"
       />
     </div>
 

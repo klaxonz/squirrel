@@ -1,18 +1,200 @@
 <template>
-  <div class="latest-videos bg-gray-100 flex flex-col h-full">
+  <div class="latest-videos flex flex-col h-full mx-4">
+    <SearchBar class="pt-4" @search="handleSearch" ref="searchBar" />
+    <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 
+    <div class="video-container pt-1 flex-grow">
+      <VideoList
+        :videos="filteredVideos[activeTab]"
+        :loading="loading"
+        :allLoaded="allLoaded"
+        :showAvatar="false"
+        :is-channel-page="true"
+        :active-tab="activeTab"
+        @loadMore="loadMore"
+        @play="playVideo"
+        @videoPlay="onVideoPlay"
+        @videoPause="onVideoPause"
+        @videoEnded="onVideoEnded"
+        @toggleOptions="toggleOptions"
+        @openModal="openVideoModal"
+      />
+    </div>
+
+    <VideoModal
+      :isOpen="isModalOpen"
+      :video="selectedVideo"
+      :setVideoRef="setVideoRef"
+      :playlist="currentPlaylist"
+      @close="closeVideoModal"
+      @videoPlay="onVideoPlay"
+      @videoPause="onVideoPause"
+      @videoEnded="onVideoEnded"
+      @changeVideo="handleChangeVideo"
+    />
   </div>
 
+  <!-- Error message display -->
+  <div v-if="error" class="text-center py-4 text-red-500">
+    {{ error }}
+  </div>
 
+  <!-- Add this near the end of your template -->
+  <Teleport to="body">
+    <div v-if="showToast" class="toast-message">
+      {{ toastMessage }}
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
+import { onMounted, onUnmounted, inject, provide, computed, ref, watchEffect } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import useLatestVideos from '../composables/useLatestVideos';
+import useVideoOperations from '../composables/useVideoOperations';
+import useOptionsMenu from '../composables/useOptionsMenu';
+import useToast from '../composables/useToast';
+import SearchBar from '../components/SearchBar.vue';
+import TabBar from '../components/TabBar.vue';
+import VideoList from '../components/VideoList.vue';
+import VideoModal from '../components/VideoModal.vue';
 
+const router = useRouter();
+const route = useRoute();
+const emitter = inject('emitter');
+
+const channelId = ref(route.params.id);
+console.log('Channel ID:', channelId.value);
+
+const {
+  videoContainer,
+  videos,
+  loading,
+  allLoaded,
+  error,
+  activeTab,
+  tabs,
+  tabsWithCounts,
+  handleSearch,
+  loadMore,
+  refreshContent,
+  scrollToTopAndRefresh,
+  observers,
+  videoRefs,
+} = useLatestVideos(channelId.value);
+
+const { toastMessage, showToast, displayToast } = useToast();
+
+const {
+  playVideo,
+  changeVideo,
+  onVideoPlay,
+  onVideoPause,
+  onVideoEnded,
+  setVideoRef,
+  handleOrientationChange,
+  isFullscreen
+} = useVideoOperations(videos, videoRefs);
+
+const {
+  toggleOptions,
+  toggleReadStatus,
+  markReadBatch,
+  downloadVideo,
+  copyVideoLink,
+  dislikeVideo,
+} = useOptionsMenu(videos, refreshContent);
+
+const filteredVideos = computed(() => {
+  const result = {};
+  tabs.forEach(tab => {
+    result[tab.value] = videos.value[tab.value] || [];
+  });
+  return result;
+});
+
+const isModalOpen = ref(false);
+const selectedVideo = ref(null);
+
+const openVideoModal = async (video) => {
+  await playVideo(video)
+  selectedVideo.value = video;
+  isModalOpen.value = true;
+};
+
+const closeVideoModal = () => {
+  isModalOpen.value = false;
+  selectedVideo.value = null;
+};
+
+onMounted(() => {
+  loadMore();
+  window.addEventListener('orientationchange', handleOrientationChange);
+  emitter.on('scrollToTopAndRefresh', scrollToTopAndRefresh);
+  emitter.on('refreshContent', refreshContent);
+  window.history.pushState(null, '', router.currentRoute.value.fullPath);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('orientationchange', handleOrientationChange);
+  emitter.off('scrollToTopAndRefresh', scrollToTopAndRefresh);
+  emitter.off('refreshContent', refreshContent);
+
+  Object.values(observers.value).forEach(observer => {
+    if (observer && typeof observer.disconnect === 'function') {
+      observer.disconnect();
+    }
+  });
+
+  if (videoContainer.value) {
+    videoContainer.value.style.overscrollBehavior = 'auto';
+  }
+
+  window.onpopstate = null;
+});
+
+provide('videoOperations', {
+  setVideoRef,
+  displayToast,
+  isFullscreen,
+});
+
+const currentPlaylist = computed(() => {
+  return filteredVideos.value[activeTab.value].slice(0, 50);
+});
+
+const handleChangeVideo = async (newVideo) => {
+  try {
+    const updatedVideo = await changeVideo(newVideo);
+    if (updatedVideo) {
+      selectedVideo.value = updatedVideo;
+    }
+  } catch (err) {
+    console.error('切换视频失败:', err);
+    displayToast('切换视频失败');
+  }
+};
+
+watchEffect(() => {
+  if (route.params.id !== channelId.value) {
+    console.log('Channel ID changed to:', route.params.id)
+    channelId.value = route.params.id;
+    refreshContent();
+  }
+});
 </script>
 
 <style src="./LatestVideos.css" scoped></style>
 
 <style scoped>
-/* Add this to your component's styles */
+.latest-videos {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 
+.video-container {
+  flex: 1;
+  overflow: hidden;
+}
 </style>

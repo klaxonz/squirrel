@@ -39,10 +39,11 @@
           <img 
             :src="video.channel_avatar" 
             alt="Channel Avatar" 
-            class="w-4 h-4 rounded-full mr-1 object-cover flex-shrink-0"
+            class="w-4 h-4 rounded-full mr-1 object-cover flex-shrink-0 cursor-pointer"
             referrerpolicy="no-referrer"
+            @click.stop="goToChannel"
           >
-          <span class="truncate hover:text-blue-400 transition-colors duration-200 leading-4">{{ video.channel_name }}</span>
+          <span class="truncate hover:text-blue-400 transition-colors duration-200 leading-4 cursor-pointer" @click.stop="goToChannel">{{ video.channel_name }}</span>
         </div>
         <span class="leading-4">{{ formatDate(video.uploaded_at) }}</span>
       </div>
@@ -224,6 +225,10 @@ const handleClick = (event) => {
   } else {
     emit('openModal', props.video);
   }
+};
+
+const goToChannel = () => {
+  emit('goToChannel', props.video.channel_id);
 };
 
 onMounted(() => {

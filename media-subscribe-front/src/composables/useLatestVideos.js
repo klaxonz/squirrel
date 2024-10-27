@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue';
 import axios from '../utils/axios';
 
-export default function useLatestVideos(channelId) {
+export default function useLatestVideos(channelId = null) {
   const videoContainer = ref(null);
   const videos = ref({
     all: [],
@@ -45,7 +45,7 @@ export default function useLatestVideos(channelId) {
 
     loading.value = true;
     try {
-      const pageSize = currentPage.value === 1 ? 30 : 30; // Load 30 items on first page, 10 on subsequent pages
+      const pageSize = currentPage.value === 1 ? 30 : 30;
       const response = await axios.get('/api/channel-video/list', {
         params: {
           page: currentPage.value,

@@ -22,7 +22,7 @@
             :showAvatar="showAvatar"
             :refreshContent="refreshContent"
             @toggleOptions="$emit('toggleOptions', $event, video.id)"
-            @goToChannel="$emit('goToChannel', video.channel_id)"
+            @goToChannel="$emit('goToChannel', $event)"
             @openModal="$emit('openModal', video)"
             @markReadBatch="handleMarkReadBatch"
           />
@@ -78,7 +78,7 @@ const emit = defineEmits([
   'openModal',
   'loadMore',
   'batchMarkAsRead',
-  'markReadBatch'  // 添加这个事件
+  'markReadBatch'
 ]);
 
 const containerRef = ref(null);
