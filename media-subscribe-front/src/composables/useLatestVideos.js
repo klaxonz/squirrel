@@ -59,6 +59,7 @@ export default function useLatestVideos(channelId) {
       if (response.data.code === 0) {
         const newVideos = response.data.data.data.map(video => ({
           ...video,
+          is_read: video.is_read ?? false,  // 确保 is_read 属性存在
           isPlaying: false,
           video_url: null
         }));

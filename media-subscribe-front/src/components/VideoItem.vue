@@ -1,9 +1,13 @@
 <template>
   <div 
-    class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ease-in-out transform hover:-translate-y-1"
+    class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ease-in-out transform hover:-translate-y-1 relative"
     @contextmenu.prevent="showContextMenu"
+    :class="{ 'border-2 border-blue-500': isSelected }"
+    @click="handleClick"
   >
-    <div class="video-thumbnail relative cursor-pointer overflow-hidden group" @click="$emit('openModal', video)" ref="imageRef">
+    <!-- 移除默认显示的勾选框 -->
+    
+    <div class="video-thumbnail relative cursor-pointer overflow-hidden group" ref="imageRef">
       <img
         v-if="isImageLoaded"
         :src="video.thumbnail"
@@ -16,11 +20,17 @@
         {{ formatDuration(video.duration) }}
       </div>
       <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+      
+      <!-- 添加选中状态指示器 -->
+      <div v-if="isSelected" class="absolute top-2 left-2 bg-blue-500 text-white rounded-full p-1">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+        </svg>
+      </div>
     </div>
     <div class="p-2">
       <h3 
         class="text-xs font-medium text-gray-900 line-clamp-2 h-9 cursor-pointer hover:text-blue-600 transition-colors duration-200"
-        @click="openVideoLink"
       >
         {{ video.title }}
       </h3>
@@ -42,26 +52,37 @@
         v-if="showMenu"
         :position="menuPosition"
         :isOpen="showMenu"
-        :isChannelPage="isChannelPage"
-        :activeTab="activeTab"
+        :isRead="!!video.is_read"
+        :isSelected="isSelected"
         @close="closeContextMenu"
         @toggleReadStatus="toggleReadStatus"
         @markReadBatch="markReadBatch"
         @downloadVideo="downloadVideo"
         @copyVideoLink="copyVideoLink"
         @dislikeVideo="dislikeVideo"
+        @toggleSelection="$emit('toggleSelection', video.id)"
       />
     </Teleport>
   </div>
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted, ref, nextTick } from 'vue';
+import { defineProps, defineEmits, onMounted, onUnmounted, ref, nextTick, inject } from 'vue';
 import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from "../composables/useOptionsMenu.js";
 
 const props = defineProps({
-  video: Object,
+  video: {
+    type: Object,
+    required: true,
+    validator: (value) => {
+      if (typeof value.is_read === 'undefined') {
+        console.warn('Video object is missing is_read property');
+        return false;
+      }
+      return true;
+    }
+  },
   showAvatar: {
     type: Boolean,
     default: true
@@ -69,14 +90,21 @@ const props = defineProps({
   isChannelPage: Boolean,
   activeTab: String,
   setVideoRef: Function,
-  refreshContent: Function, // 添加这一行
+  refreshContent: Function,
+  isSelected: Boolean,
 });
 
 const emit = defineEmits([
   'setVideoRef',
   'goToChannel',
-  'openModal', 'downloadVideo'
+  'openModal', 
+  'downloadVideo',
+  'select',
+  'markReadBatch',
+  'toggleSelection'
 ]);
+
+const isSelectionMode = inject('isSelectionMode', ref(false));
 
 const imageRef = ref(null);
 const isImageLoaded = ref(false);
@@ -167,6 +195,7 @@ const {
 
 const showContextMenu = async (event) => {
   event.preventDefault();
+  event.stopPropagation();
   // 关闭所有其他的上下文菜单
   document.dispatchEvent(new CustomEvent('closeAllContextMenus'));
   
@@ -190,18 +219,24 @@ const handleScroll = () => {
   }
 };
 
-const openVideoLink = () => {
-  if (props.video && props.video.url) {
-    window.open(props.video.url, '_blank');
+const handleClick = (event) => {
+  if (isSelectionMode.value) {
+    emit('toggleSelection', props.video.id);
+  } else {
+    emit('openModal', props.video);
   }
 };
 
-document.addEventListener('closeAllContextMenus', closeContextMenu);
-document.addEventListener('click', closeContextMenu);
+onMounted(() => {
+  document.addEventListener('closeAllContextMenus', closeContextMenu);
+  document.addEventListener('click', closeContextMenu);
+  window.addEventListener('scroll', handleScroll, true);
+});
 
 onUnmounted(() => {
   document.removeEventListener('closeAllContextMenus', closeContextMenu);
   document.removeEventListener('click', closeContextMenu);
+  window.removeEventListener('scroll', handleScroll, true);
 });
 </script>
 
@@ -276,5 +311,9 @@ onUnmounted(() => {
   .h-9 {
     height: 2rem;
   }
+}
+
+.video-item.border-2 {
+  box-shadow: 0 0 0 2px theme('colors.blue.500');
 }
 </style>

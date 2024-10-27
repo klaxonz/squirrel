@@ -11,6 +11,11 @@ import '@fortawesome/fontawesome-free/css/all.min.css';  // 更新这行
 import VueVirtualScroller from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 
+// 阻止默认的右键菜单
+document.addEventListener('contextmenu', (event) => {
+  event.preventDefault();
+});
+
 const app = createApp(App)
 app.use(router)
 app.use(Toast, {

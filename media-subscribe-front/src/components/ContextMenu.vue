@@ -1,80 +1,105 @@
 <template>
   <div 
     v-if="isOpen"
-    class="context-menu absolute bg-white shadow-lg rounded-md py-2 z-50 w-48"
+    class="context-menu fixed bg-white shadow-xl rounded-lg py-2 z-50 w-64 border border-gray-200 overflow-visible transition-all duration-200 ease-in-out"
     :style="{ top: `${position.y}px`, left: `${position.x}px` }"
     @click.stop
   >
-    <button @click="$emit('dislikeVideo')" class="option-item">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-      </svg>
-      不喜欢
-    </button>
-    <button @click="$emit('downloadVideo')" class="option-item">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-      </svg>
-      下载视频
-    </button>
-    <button @click="$emit('copyVideoLink')" class="option-item">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-2.5" />
-      </svg>
-      复制链接
-    </button>
-    <div class="divider"></div>
-    <template v-if="activeTab === 'unread' || activeTab === 'all'">
-      <button @click="$emit('toggleReadStatus', true)" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
+      <h3 class="text-sm font-semibold text-gray-800">视频选项</h3>
+    </div>
+    <div class="py-1">
+      <button @click="$emit('toggleSelection')" class="option-item group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>
-        标记为已读
+        <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">
+          {{ isSelected ? '取消选择' : '选择此项' }}
+        </span>
       </button>
-    </template>
-    <template v-if="activeTab === 'read' || activeTab === 'all'">
-      <button @click="$emit('toggleReadStatus', false)" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      <div class="relative group" 
+           @mouseenter="showReadMenu = true" 
+           @mouseleave="showReadMenu = false"
+           @click.stop="toggleReadMenu">
+        <button class="option-item w-full flex justify-between items-center group">
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">标记为已读</span>
+          </span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <div v-show="showReadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-white shadow-lg rounded-lg overflow-hidden">
+          <button @click.stop="$emit('toggleReadStatus', true)" class="sub-option-item">
+            <span class="mr-2">✓</span>此项
+          </button>
+          <button @click.stop="$emit('markReadBatch', true, 'above')" class="sub-option-item">
+            <span class="mr-2">↑</span>以上
+          </button>
+          <button @click.stop="$emit('markReadBatch', true, 'below')" class="sub-option-item">
+            <span class="mr-2">↓</span>以下
+          </button>
+        </div>
+      </div>
+      <div class="relative group" 
+           @mouseenter="showUnreadMenu = true" 
+           @mouseleave="showUnreadMenu = false"
+           @click.stop="toggleUnreadMenu">
+        <button class="option-item w-full flex justify-between items-center group">
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">标记为未读</span>
+          </span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <div v-if="showUnreadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-white shadow-lg rounded-lg overflow-hidden">
+          <button @click.stop="$emit('toggleReadStatus', false)" class="sub-option-item">
+            <span class="mr-2">✓</span>此项
+          </button>
+          <button @click.stop="$emit('markReadBatch', false, 'above')" class="sub-option-item">
+            <span class="mr-2">↑</span>以上
+          </button>
+          <button @click.stop="$emit('markReadBatch', false, 'below')" class="sub-option-item">
+            <span class="mr-2">↓</span>以下
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="border-t border-gray-100 my-1"></div>
+    <div class="py-1">
+      <button @click="$emit('dislikeVideo')" class="option-item group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
         </svg>
-        标记为未读
+        <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">不喜欢</span>
       </button>
-    </template>
-    <div class="divider"></div>
-    <template v-if="activeTab === 'unread' || activeTab === 'all'">
-      <button @click="$emit('markReadBatch', isChannelPage, true,'above')" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+      <button @click="$emit('downloadVideo')" class="option-item group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        以上标记为已读
+        <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">下载视频</span>
       </button>
-      <button @click="$emit('markReadBatch', isChannelPage, true, 'below')" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+      <button @click="$emit('copyVideoLink')" class="option-item group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-2.5" />
         </svg>
-        以下标记为已读
+        <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">复制链接</span>
       </button>
-    </template>
-    <template v-if="activeTab === 'read' || activeTab === 'all'">
-      <button @click="$emit('markReadBatch', isChannelPage, false, 'above')" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-        </svg>
-        以上标记为未读
-      </button>
-      <button @click="$emit('markReadBatch', isChannelPage, false, 'below')" class="option-item">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-        </svg>
-        以下标记为未读
-      </button>
-    </template>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted } from 'vue';
-defineProps({
+import { defineProps, defineEmits, onMounted, onUnmounted, ref } from 'vue';
+
+const props = defineProps({
   position: {
     type: Object,
     required: true
@@ -83,27 +108,46 @@ defineProps({
     type: Boolean,
     required: true
   },
-  isChannelPage: {
+  isRead: {
     type: Boolean,
     default: false
   },
-  activeTab: {
-    type: String,
-    default: ''
+  isSelected: {
+    type: Boolean,
+    default: false
   }
 });
+
 const emit = defineEmits([
   'close',
   'toggleReadStatus',
-  'markReadBatch',
+  'dislikeVideo',
   'downloadVideo',
   'copyVideoLink',
-  'dislikeVideo'
+  'markReadBatch',
+  'toggleSelection'
 ]);
+
+const showReadMenu = ref(false);
+const showUnreadMenu = ref(false);
+
+const toggleReadMenu = (event) => {
+  event.stopPropagation();
+  showReadMenu.value = !showReadMenu.value;
+  showUnreadMenu.value = false;
+};
+
+const toggleUnreadMenu = (event) => {
+  event.stopPropagation();
+  showUnreadMenu.value = !showUnreadMenu.value;
+  showReadMenu.value = false;
+};
 
 const handleClickOutside = (event) => {
   if (!event.target.closest('.context-menu')) {
     emit('close');
+    showReadMenu.value = false;
+    showUnreadMenu.value = false;
   }
 };
 
@@ -118,30 +162,45 @@ onUnmounted(() => {
 
 <style scoped>
 .context-menu {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  animation: fadeIn 0.2s ease-out;
 }
 
 .option-item {
-  @apply flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150 ease-in-out;
+  @apply flex items-center w-full px-4 py-2 text-sm font-medium transition-colors duration-150 ease-in-out;
 }
 
-.option-item:first-child {
-  @apply rounded-t-lg;
-}
-
-.option-item:last-child {
-  @apply rounded-b-lg;
+.sub-option-item {
+  @apply w-full px-4 py-2 text-sm font-normal text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-150 ease-in-out flex items-center;
 }
 
 .option-item:hover {
-  @apply bg-blue-50 text-blue-600;
+  @apply bg-gray-50;
 }
 
-.option-item svg {
-  @apply text-gray-400 group-hover:text-blue-500 transition-colors duration-150 ease-in-out;
+.submenu {
+  animation: slideIn 0.2s ease-out;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.divider {
-  @apply h-px bg-gray-200 my-0.5 mx-2;
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.context-menu {
+  position: fixed;
+}
+
+.submenu {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  z-index: 60;
 }
 </style>

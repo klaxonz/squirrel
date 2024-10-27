@@ -1,5 +1,5 @@
 <template>
-  <div class="video-list-container" ref="containerRef">
+  <div class="video-list-container relative" ref="containerRef">
     <RecycleScroller
       class="scroller"
       :items="props.videos"
@@ -15,6 +15,8 @@
         <div class="grid-item">
           <VideoItem
             :video="video"
+            :isSelected="selectedVideos.includes(video.id)"
+            @toggleSelection="toggleVideoSelection"
             :isChannelPage="isChannelPage"
             :activeTab="activeTab"
             :showAvatar="showAvatar"
@@ -23,11 +25,22 @@
             @toggleOptions="$emit('toggleOptions', $event, video.id)"
             @goToChannel="$emit('goToChannel', video.channel_id)"
             @openModal="$emit('openModal', video)"
+            @markReadBatch="handleMarkReadBatch"
           />
         </div>
       </template>
     </RecycleScroller>
     
+    <!-- 批量操作浮动按钮 -->
+    <div v-if="selectedVideos.length > 0" class="fixed bottom-4 right-4 z-50">
+      <button @click="batchMarkAsRead" class="bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg mr-2">
+        标记为已读 ({{ selectedVideos.length }})
+      </button>
+      <button @click="clearSelection" class="bg-gray-500 text-white px-4 py-2 rounded-full shadow-lg">
+        取消选择
+      </button>
+    </div>
+
     <!-- 加载更多指示器 -->
     <div v-if="props.loading" class="loading-indicator text-center py-4">
       <svg class="animate-spin h-5 w-5 text-gray-500 mx-auto" viewBox="0 0 24 24">
@@ -45,7 +58,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, onUnmounted } from 'vue';
+import { ref, onMounted, watch, computed, onUnmounted, provide } from 'vue';
 import { RecycleScroller } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import VideoItem from './VideoItem.vue';
@@ -66,6 +79,8 @@ const emit = defineEmits([
   'goToChannel',
   'openModal',
   'loadMore',
+  'batchMarkAsRead',
+  'markReadBatch'  // 添加这个事件
 ]);
 
 const containerRef = ref(null);
@@ -106,13 +121,38 @@ const computedItemSize = computed(() => {
   return Math.floor(computedItemSecondarySize.value * (9 / 16) + 76);
 });
 
+const selectedVideos = ref([]);
+const isSelectionMode = computed(() => selectedVideos.value.length > 0);
+provide('isSelectionMode', isSelectionMode);
 
+const toggleVideoSelection = (videoId) => {
+  const index = selectedVideos.value.indexOf(videoId);
+  if (index === -1) {
+    selectedVideos.value.push(videoId);
+  } else {
+    selectedVideos.value.splice(index, 1);
+  }
+};
+
+const batchMarkAsRead = () => {
+  // 实现批量标记为已读的逻辑
+  emit('batchMarkAsRead', selectedVideos.value);
+  clearSelection();
+};
+
+const clearSelection = () => {
+  selectedVideos.value = [];
+};
 
 const handleScroll = (event) => {
   const { scrollTop, clientHeight, scrollHeight } = event.target;
   if (scrollHeight - scrollTop - clientHeight < computedItemSize.value * 2 && !props.loading && !props.allLoaded) {
     emit('loadMore');
   }
+};
+
+const handleMarkReadBatch = (videoId, isRead, direction) => {
+  emit('markReadBatch', videoId, isRead, direction);
 };
 
 watch(() => props.videos.length, updateContainerWidth);
