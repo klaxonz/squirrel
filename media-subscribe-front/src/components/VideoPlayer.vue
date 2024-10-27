@@ -76,6 +76,9 @@ const initPlayer = (initialProgress) => {
   player.value.on('seeked', handleSeeked);
   player.value.on('timeupdate', handleTimeUpdate);
   player.value.on('ended', handleEnded);
+  player.value.on('waiting', handleWaiting);
+  player.value.on('playing', handlePlaying);
+  player.value.on('volumechange', handleVolumechange);
   player.value.on('fullscreenChange', (isFullscreen) => {
     emit('fullscreenChange', isFullscreen);
   });
@@ -131,8 +134,6 @@ const handleSeeked = () => {
 };
 
 const handleTimeUpdate = () => {
-  console.log('handleTimeUpdate', audioPlayer.value.currentTime, player.value.currentTime);
-
   if (Math.abs(audioPlayer.value.currentTime - player.value.currentTime) > 1) {
     audioPlayer.value.currentTime = player.value.currentTime + 1;
   }
@@ -143,6 +144,18 @@ const handleEnded = () => {
   audioPlayer.value.currentTime = 0;  
   saveVideoProgress(props.video, 0);
   emit('ended', props.video);
+};
+
+const handleWaiting = () => {
+  audioPlayer.value.pause();
+};
+
+const handlePlaying = () => {
+  audioPlayer.value.play();
+};
+
+const handleVolumechange = () => {
+  audioPlayer.value.volume = player.value.muted ? 0 : player.value.volume;
 };
 
 </script>
