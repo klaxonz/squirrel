@@ -300,3 +300,22 @@ class CleanUnsubscribedChannelsTask(BaseTask):
 
         redis_client.expire(constants.UNSUBSCRIBED_CHANNELS_SET, constants.UNSUBSCRIBE_EXPIRATION)
         logger.info("Reset expiration for unsubscribed channels set")
+
+
+@TaskRegistry.register(interval=1, unit='minutes')
+class AutoUpdateChannelExtractAll(BaseTask):
+    @classmethod
+    def run(cls):
+        with get_session() as session:
+            channels = session.exec(select(Channel)).all()
+            for channel in channels:
+                extract_count = session.exec(
+                    select(func.count(col(ChannelVideo.id))).where(
+                        ChannelVideo.channel_id == channel.channel_id)).one()
+                if channel.total_videos > extract_count and channel.total_videos - extract_count > 10:
+                    channel.if_extract_all = 1
+                else:
+                    channel.if_extract_all = 0
+                session.add(channel)
+                session.commit()
+                session.refresh(channel)
