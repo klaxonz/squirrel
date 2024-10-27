@@ -1,6 +1,6 @@
 <template>
   <div 
-    class="video-item bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ease-in-out transform hover:-translate-y-1 relative"
+    class="video-item bg-[#212121] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ease-in-out transform hover:-translate-y-1 relative"
     @contextmenu.prevent="showContextMenu"
     :class="{ 'border-2 border-blue-500': isSelected }"
     @click="handleClick"
@@ -30,11 +30,11 @@
     </div>
     <div class="p-2">
       <h3 
-        class="text-xs font-medium text-gray-900 line-clamp-2 h-9 cursor-pointer hover:text-blue-600 transition-colors duration-200"
+        class="text-xs font-medium text-white line-clamp-2 h-9 cursor-pointer hover:text-blue-400 transition-colors duration-200"
       >
         {{ video.title }}
       </h3>
-      <div class="flex items-center justify-between text-2xs text-gray-500 mt-1">
+      <div class="flex items-center justify-between text-2xs text-gray-400 mt-1">
         <div class="flex items-center">
           <img 
             :src="video.channel_avatar" 
@@ -42,7 +42,7 @@
             class="w-4 h-4 rounded-full mr-1 object-cover flex-shrink-0"
             referrerpolicy="no-referrer"
           >
-          <span class="truncate hover:text-blue-500 transition-colors duration-200 leading-4">{{ video.channel_name }}</span>
+          <span class="truncate hover:text-blue-400 transition-colors duration-200 leading-4">{{ video.channel_name }}</span>
         </div>
         <span class="leading-4">{{ formatDate(video.uploaded_at) }}</span>
       </div>
@@ -250,7 +250,7 @@ onUnmounted(() => {
 .video-thumbnail {
   position: relative;
   padding-top: 56.25%; /* 16:9 宽高比 */
-  background-color: #f0f0f0; /* 添加背景色 */
+  background-color: #181818; /* 更深的背景色 */
 }
 
 .video-thumbnail img,
@@ -298,8 +298,8 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.hover\:text-blue-600:hover {
-  color: #2563eb;
+.hover\:text-blue-400:hover {
+  color: #60a5fa;
 }
 
 /* 添加一些响应式调整 */
