@@ -6,7 +6,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, watch, ref } from 'vue';
+import { onMounted, onUnmounted, watch, ref, defineExpose } from 'vue';
 import Player from 'xgplayer';
 import useVideoOperations from '../composables/useVideoOperations';
 
@@ -143,6 +143,16 @@ const handleEnded = () => {
   saveVideoProgress(props.video, 0);
   emit('ended', props.video);
 };
+
+const play = () => {
+  if (player.value) {
+    player.value.play();
+  }
+};
+
+defineExpose({
+  play
+});
 </script>
 
 <style scoped>

@@ -6,7 +6,7 @@ export default function useVideoOperations(videos, videoRefs) {
   const { displayToast } = useCustomToast();
   const isFullscreen = ref(false);
 
-  const playVideo = async (video) => {
+  const getVideoUrl = async (video) => {
     if (!video.video_url) {
       try {
         if (video.if_downloaded) {
@@ -23,12 +23,21 @@ export default function useVideoOperations(videos, videoRefs) {
             video.audio_url = response.data.data.audio_url;
           } else {
             displayToast(response.data.msg || '获取视频地址失败');
+            return false;
           }
         }
       } catch (err) {
         console.error('获取视频地址失败:', err);
-        return;
+        displayToast('获取视频地址失败');
+        return false;
       }
+    }
+    return true;
+  };
+
+  const playVideo = async (video) => {
+    if (!(await getVideoUrl(video))) {
+      return;
     }
 
     // 停止其他正在播放的视频
@@ -43,6 +52,28 @@ export default function useVideoOperations(videos, videoRefs) {
     });
 
     video.isPlaying = true;
+  };
+
+  const changeVideo = async (newVideo) => {
+    if (!(await getVideoUrl(newVideo))) {
+      return;
+    }
+
+    // 停止当前正在播放的视频
+    Object.values(videos.value).forEach(tabVideos => {
+      if (Array.isArray(tabVideos)) {
+        tabVideos.forEach(v => {
+          if (v.isPlaying) {
+            v.isPlaying = false;
+          }
+        });
+      }
+    });
+
+    newVideo.isPlaying = true;
+
+    // 返回更新后的视频对象
+    return newVideo;
   };
 
   const onVideoPlay = (video) => {
@@ -130,10 +161,10 @@ export default function useVideoOperations(videos, videoRefs) {
 
   const startProgressSaving = (video) => {
     return setInterval(() => {
-      const playerInstance = videoRefs.value[video.id];
-      if (playerInstance && playerInstance.currentTime) {
-        saveVideoProgress(video, playerInstance.currentTime);
-      }
+      // const playerInstance = videoRefs.value[video.id];
+      // if (playerInstance && playerInstance.currentTime) {
+      //   saveVideoProgress(video, playerInstance.currentTime);
+      // }
     }, 5000); // 每5秒保存一次进度
   };
 
@@ -147,6 +178,7 @@ export default function useVideoOperations(videos, videoRefs) {
 
   return {
     playVideo,
+    changeVideo,
     onVideoPlay,
     onVideoPause,
     onVideoEnded,

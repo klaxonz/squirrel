@@ -87,6 +87,7 @@ const { toastMessage, showToast, displayToast } = useToast();
 
 const {
   playVideo,
+  changeVideo,
   onVideoPlay,
   onVideoPause,
   onVideoEnded,
@@ -169,9 +170,24 @@ const currentPlaylist = computed(() => {
   return filteredVideos.value[activeTab.value].slice(0, 50);
 });
 
-const handleChangeVideo = (newVideo) => {
-  selectedVideo.value = newVideo;
-  // 可能需要其他逻辑来处理视频切换，比如更新播放状态等
+const handleChangeVideo = async (newVideo) => {
+  try {
+    const updatedVideo = await changeVideo(newVideo);
+    if (updatedVideo) {
+      selectedVideo.value = updatedVideo;
+      await nextTick();
+      const videoPlayerComponent = videoRefs.value[updatedVideo.id];
+      if (videoPlayerComponent && videoPlayerComponent.play) {
+        await videoPlayerComponent.play();
+        onVideoPlay(updatedVideo);
+      } else {
+        console.error('Video player component or play method not found');
+      }
+    }
+  } catch (err) {
+    console.error('切换视频失败:', err);
+    displayToast('切换视频失败');
+  }
 };
 </script>
 
