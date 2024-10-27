@@ -1,19 +1,16 @@
 <template>
   <div 
     v-if="isOpen"
-    class="context-menu fixed bg-white shadow-xl rounded-lg py-2 z-50 w-64 border border-gray-200 overflow-visible transition-all duration-200 ease-in-out"
+    class="context-menu fixed bg-[#282828] shadow-xl rounded-lg py-2 z-50 w-56 overflow-visible transition-all duration-200 ease-in-out"
     :style="{ top: `${position.y}px`, left: `${position.x}px` }"
     @click.stop
   >
-    <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
-      <h3 class="text-sm font-semibold text-gray-800">视频选项</h3>
-    </div>
     <div class="py-1">
       <button @click="$emit('toggleSelection')" class="option-item group">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>
-        <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">
+        <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">
           {{ isSelected ? '取消选择' : '选择此项' }}
         </span>
       </button>
@@ -23,16 +20,16 @@
            @click.stop="toggleReadMenu">
         <button class="option-item w-full flex justify-between items-center group">
           <span class="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
-            <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">标记为已读</span>
+            <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">标记为已读</span>
           </span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
           </svg>
         </button>
-        <div v-show="showReadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-white shadow-lg rounded-lg overflow-hidden">
+        <div v-show="showReadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-[#282828] shadow-lg rounded-lg overflow-hidden">
           <button @click.stop="$emit('toggleReadStatus', true)" class="sub-option-item">
             <span class="mr-2">✓</span>此项
           </button>
@@ -50,16 +47,16 @@
            @click.stop="toggleUnreadMenu">
         <button class="option-item w-full flex justify-between items-center group">
           <span class="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
-            <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">标记为未读</span>
+            <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">标记为未读</span>
           </span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
           </svg>
         </button>
-        <div v-if="showUnreadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-white shadow-lg rounded-lg overflow-hidden">
+        <div v-if="showUnreadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-[#282828] shadow-lg rounded-lg overflow-hidden">
           <button @click.stop="$emit('toggleReadStatus', false)" class="sub-option-item">
             <span class="mr-2">✓</span>此项
           </button>
@@ -72,25 +69,25 @@
         </div>
       </div>
     </div>
-    <div class="border-t border-gray-100 my-1"></div>
+    <div class="border-t border-[#3f3f3f] my-1"></div>
     <div class="py-1">
       <button @click="$emit('dislikeVideo')" class="option-item group">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
         </svg>
-        <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">不喜欢</span>
+        <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">不喜欢</span>
       </button>
       <button @click="$emit('downloadVideo')" class="option-item group">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">下载视频</span>
+        <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">下载视频</span>
       </button>
       <button @click="$emit('copyVideoLink')" class="option-item group">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-2.5" />
         </svg>
-        <span class="text-gray-700 group-hover:text-blue-600 transition-colors duration-150">复制链接</span>
+        <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">复制链接</span>
       </button>
     </div>
   </div>
@@ -162,25 +159,25 @@ onUnmounted(() => {
 
 <style scoped>
 .context-menu {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   animation: fadeIn 0.2s ease-out;
 }
 
 .option-item {
-  @apply flex items-center w-full px-4 py-2 text-sm font-medium transition-colors duration-150 ease-in-out;
+  @apply flex items-center w-full px-3 py-2 text-sm font-medium transition-colors duration-150 ease-in-out;
 }
 
 .sub-option-item {
-  @apply w-full px-4 py-2 text-sm font-normal text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-150 ease-in-out flex items-center;
+  @apply w-full px-3 py-2 text-sm font-normal text-[#ffffff] hover:bg-[#3f3f3f] transition-colors duration-150 ease-in-out flex items-center;
 }
 
 .option-item:hover {
-  @apply bg-gray-50;
+  @apply bg-[#3f3f3f];
 }
 
 .submenu {
   animation: slideIn 0.2s ease-out;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes fadeIn {
