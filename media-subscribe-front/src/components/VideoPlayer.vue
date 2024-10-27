@@ -1,5 +1,5 @@
 <template>
-  <div class="video-wrapper">
+  <div class="video-wrapper bg-[#0f0f0f]">
     <div :id="`video-player-${video.id}`" class="video-player"></div>
     <audio ref="audioPlayer" :src="video.audio_url" preload="auto"></audio>
   </div>
@@ -52,11 +52,22 @@ const initPlayer = (initialProgress) => {
     width: '100%',
     height: '100%',
     cssFullscreen: false,
-    commonStyle: {
+    currentTime: initialProgress,
+    playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
+    ignores: ['time'],
+    controls: {
+      mode: 'flex',
+    },
+    theme: {
+      background: '#000000',
+      primary: '#00a1d6',
+      progress: '#00a1d6',
       playedColor: '#00a1d6',
       progressColor: 'rgba(255, 255, 255, 0.3)',
+      volumeColor: '#00a1d6',
+      controlsBgColor: 'rgba(0, 0, 0, 0.5)',
+      textColor: '#ffffff',
     },
-    currentTime: initialProgress,
   });
 
   player.value.on('play', handlePlay);
@@ -136,11 +147,58 @@ const handleEnded = () => {
 
 <style scoped>
 .video-wrapper {
-  @apply absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black;
+  @apply absolute top-0 left-0 w-full h-full flex items-center justify-center;
 }
 
 .video-player {
   @apply w-full h-full object-contain;
 }
 
+:deep(.xgplayer) {
+  background-color: #0f0f0f;
+}
+
+:deep(.xgplayer .xgplayer-controls) {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+:deep(.xgplayer .xgplayer-slider) {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+:deep(.xgplayer .xgplayer-slider .xgplayer-bar) {
+  background-color: #ff0000;
+}
+
+:deep(.xgplayer .xgplayer-icon) {
+  color: #aaaaaa;
+}
+
+:deep(.xgplayer .xgplayer-time) {
+  color: #aaaaaa;
+}
+
+:deep(.xgplayer .xgplayer-play) {
+  border-color: transparent transparent transparent #aaaaaa;
+}
+
+:deep(.xgplayer .xgplayer-play.xgplayer-pause::before, .xgplayer .xgplayer-play.xgplayer-pause::after) {
+  background-color: #aaaaaa;
+}
+
+:deep(.xgplayer .xgplayer-slider .xgplayer-progress) {
+  background-color: #ff0000;
+}
+
+:deep(.xgplayer .xgplayer-slider .xgplayer-progress-btn) {
+  background-color: #ff0000;
+}
+
+:deep(.xgplayer .xgplayer-volume .xgplayer-volume-bar) {
+  background-color: #aaaaaa;
+}
+
+:deep(.xgplayer .xgplayer-volume .xgplayer-volume-active) {
+  background-color: #ff0000;
+}
 </style>
