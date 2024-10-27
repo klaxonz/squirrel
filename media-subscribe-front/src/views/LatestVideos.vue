@@ -26,10 +26,12 @@
       :isOpen="isModalOpen"
       :video="selectedVideo"
       :setVideoRef="setVideoRef"
+      :playlist="currentPlaylist"
       @close="closeVideoModal"
       @videoPlay="onVideoPlay"
       @videoPause="onVideoPause"
       @videoEnded="onVideoEnded"
+      @changeVideo="handleChangeVideo"
     />
   </div>
 
@@ -162,6 +164,15 @@ provide('videoOperations', {
   displayToast,
   isFullscreen,
 });
+
+const currentPlaylist = computed(() => {
+  return filteredVideos.value[activeTab.value].slice(0, 50);
+});
+
+const handleChangeVideo = (newVideo) => {
+  selectedVideo.value = newVideo;
+  // 可能需要其他逻辑来处理视频切换，比如更新播放状态等
+};
 </script>
 
 <style src="./LatestVideos.css" scoped></style>
