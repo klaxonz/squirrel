@@ -95,7 +95,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-  'setVideoRef',
   'goToChannel',
   'openModal', 
   'downloadVideo',

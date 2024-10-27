@@ -47,7 +47,7 @@ const initPlayer = (initialProgress) => {
   player.value = new Player({
     id: `video-player-${props.video.id}`,
     url: props.video.video_url,
-    autoplay: false,
+    autoplay: true,
     volume: 1,
     width: '100%',
     height: '100%',
@@ -84,10 +84,11 @@ const initPlayer = (initialProgress) => {
     props.setVideoRef(props.video.id, player.value);
   }
 
-  props.video.progressSavingInterval = startProgressSaving(props.video);
+  // props.video.progressSavingInterval = startProgressSaving(props.video);
 };
 
 const handlePlay = () => {
+  console.log('handlePlay', player.value.currentTime)
   audioPlayer.value.play();
   emit('play', props.video);
 };
@@ -144,15 +145,6 @@ const handleEnded = () => {
   emit('ended', props.video);
 };
 
-const play = () => {
-  if (player.value) {
-    player.value.play();
-  }
-};
-
-defineExpose({
-  play
-});
 </script>
 
 <style scoped>

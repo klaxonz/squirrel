@@ -13,6 +13,7 @@
             @pause="onVideoPause"
             @ended="onVideoEnded"
             class="w-full h-full"
+            ref="playerRef"
           />
         </div>
         <div class="p-4 bg-[#0f0f0f] border-t border-[#272727]">
@@ -88,6 +89,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'videoPlay', 'videoPause', 'videoEnded', 'changeVideo']);
+const playerRef = ref(null);
 
 const currentIndex = computed(() => {
   return props.playlist.findIndex(item => item.id === props.video?.id);

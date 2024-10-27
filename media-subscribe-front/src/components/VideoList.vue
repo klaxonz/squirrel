@@ -20,7 +20,6 @@
             :isChannelPage="isChannelPage"
             :activeTab="activeTab"
             :showAvatar="showAvatar"
-            :setVideoRef="setVideoRef"
             :refreshContent="refreshContent"
             @toggleOptions="$emit('toggleOptions', $event, video.id)"
             @goToChannel="$emit('goToChannel', video.channel_id)"
@@ -70,7 +69,6 @@ const props = defineProps({
   showAvatar: Boolean,
   isChannelPage: Boolean,
   activeTab: String,
-  setVideoRef: Function,
   refreshContent: Function,
 });
 

@@ -9,7 +9,6 @@
         :loading="loading"
         :allLoaded="allLoaded"
         :showAvatar="true"
-        :setVideoRef="setVideoRef"
         :is-channel-page="false"
         :active-tab="activeTab"
         @loadMore="loadMore"
@@ -70,17 +69,14 @@ const {
   allLoaded,
   error,
   activeTab,
-  tabContents,
   tabs,
   tabsWithCounts,
   handleSearch,
   loadMore,
   refreshContent,
-  handleScroll,
   scrollToTopAndRefresh,
   observers,
   videoRefs,
-  isResetting,
 } = useLatestVideos();
 
 const { toastMessage, showToast, displayToast } = useToast();
@@ -175,14 +171,6 @@ const handleChangeVideo = async (newVideo) => {
     const updatedVideo = await changeVideo(newVideo);
     if (updatedVideo) {
       selectedVideo.value = updatedVideo;
-      await nextTick();
-      const videoPlayerComponent = videoRefs.value[updatedVideo.id];
-      if (videoPlayerComponent && videoPlayerComponent.play) {
-        await videoPlayerComponent.play();
-        onVideoPlay(updatedVideo);
-      } else {
-        console.error('Video player component or play method not found');
-      }
     }
   } catch (err) {
     console.error('切换视频失败:', err);
