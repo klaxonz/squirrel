@@ -1,28 +1,28 @@
 <template>
-  <div class="settings-container">
+  <div class="settings-container bg-[#0f0f0f] text-white min-h-screen p-4 md:p-8">
+    <h1 class="text-2xl font-bold mb-6">设置</h1>
     
-    <div class="settings-card">
-      <h2 class="settings-subtitle">消费者配置</h2>
+    <div class="settings-section mb-8">
+      <h2 class="text-xl font-semibold mb-4">消费者配置</h2>
       
       <div class="setting-item" v-for="(value, key) in settings" :key="key">
-        <label :for="key" class="setting-label">{{ getLabel(key) }}</label>
-        <div class="slider-container">
-          <input 
-            type="range" 
-            :id="key" 
-            v-model="settings[key]" 
-            :min="getMin(key)" 
-            :max="getMax(key)" 
-            step="1"
-            class="slider"
-          >
-          <span class="slider-value">{{ settings[key] }}</span>
+        <div class="flex justify-between items-center mb-2">
+          <label :for="key" class="text-sm font-medium">{{ getLabel(key) }}</label>
+          <span class="text-sm font-medium text-gray-400">{{ settings[key] }}</span>
         </div>
+        <input 
+          type="range" 
+          :id="key" 
+          v-model="settings[key]" 
+          :min="getMin(key)" 
+          :max="getMax(key)" 
+          step="1"
+          class="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+        >
       </div>
     </div>
     
-    <button @click="saveSettings" class="save-button">
-      <span class="save-icon">💾</span>
+    <button @click="saveSettings" class="save-button bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
       保存设置
     </button>
   </div>
@@ -82,120 +82,48 @@ const saveSettings = async () => {
 
 <style scoped>
 .settings-container {
-  min-height: calc(100vh - 56px); /* Subtract the height of the bottom nav bar */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 2rem;
-  background-color: #f8fafc;
-}
-
-@media (min-width: 768px) {
-  .settings-container {
-    min-height: 100vh; /* Full height for desktop */
-    padding-left: 4rem; /* Account for the side nav bar */
-  }
-}
-
-.settings-card {
-  width: 100%;
-  max-width: 600px;
-  background-color: white;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.settings-subtitle {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #334155;
-  margin-bottom: 1rem;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .setting-item {
   margin-bottom: 1.5rem;
 }
 
-.setting-label {
-  display: block;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #475569;
-  margin-bottom: 0.5rem;
-}
-
-.slider-container {
-  display: flex;
-  align-items: center;
-}
-
-.slider {
-  flex-grow: 1;
+input[type="range"] {
   -webkit-appearance: none;
   width: 100%;
-  height: 8px;
-  border-radius: 4px;
-  background: #e2e8f0;
+  height: 4px;
+  border-radius: 2px;
+  background: #4a4a4a;
   outline: none;
   opacity: 0.7;
   transition: opacity 0.2s;
 }
 
-.slider:hover {
-  opacity: 1;
-}
-
-.slider::-webkit-slider-thumb {
+input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: #ff0000;
   cursor: pointer;
 }
 
-.slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: #ff0000;
   cursor: pointer;
-}
-
-.slider-value {
-  min-width: 2rem;
-  text-align: center;
-  font-weight: 600;
-  color: #3b82f6;
-  margin-left: 1rem;
 }
 
 .save-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .save-button:hover {
-  background-color: #2563eb;
-}
-
-.save-icon {
-  margin-right: 0.5rem;
-  font-size: 1.25rem;
+  background-color: #cc0000;
 }
 </style>

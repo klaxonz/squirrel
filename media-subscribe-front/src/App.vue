@@ -4,20 +4,12 @@
     <nav :class="['sidebar h-full overflow-y-auto flex-shrink-0 transition-all duration-300 ease-in-out bg-[#0f0f0f]', 
                   isCollapsed ? 'w-20' : 'w-64']">
       <div class="flex flex-col h-full">
-        <div class="logo p-4 flex items-center">
+        <div class="logo p-4 flex items-center mx-2">
           <button @click="toggleSidebar" class="mr-4 text-white hover:text-gray-300 focus:outline-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <div class="flex items-center space-x-2">
-            <svg class="w-8 h-8 text-[#FF0000]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <h1 class="text-xl font-bold text-white tracking-wide">Squirrel</h1>
-          </div>
         </div>
         <ul class="flex-grow py-2">
           <li v-for="route in routes" :key="route.path">
