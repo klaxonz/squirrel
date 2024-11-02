@@ -26,15 +26,16 @@
         </div>
 
         <!-- 加载更多按钮 -->
-        <div v-if="!allLoaded && !loading" class="mt-8 mb-8 text-center">
-          <button @click="loadMore" class="px-6 py-2 bg-[#cc0000] text-white font-medium rounded-full hover:bg-[#990000] transition-colors duration-200">
-            加载更多
-          </button>
-        </div>
-
-        <!-- 加载中状态 -->
-        <div v-if="loading" class="mt-8 mb-8 text-center">
-          <p class="text-[#aaa]">加载中...</p>
+        <div 
+          v-if="!allLoaded" 
+          class="mt-8 mb-8 text-center loading-trigger"
+          ref="loadingTrigger"
+        >
+          <div v-if="loading" class="flex items-center justify-center space-x-2">
+            <div class="w-2 h-2 bg-[#cc0000] rounded-full animate-bounce"></div>
+            <div class="w-2 h-2 bg-[#cc0000] rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+            <div class="w-2 h-2 bg-[#cc0000] rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+          </div>
         </div>
 
         <!-- 全部加载完毕 -->
@@ -80,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import axios from '../utils/axios';
 import SearchBar from '../components/SearchBar.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
@@ -94,6 +95,22 @@ const searchBar = ref(null);
 
 const showSettings = ref(false);
 const selectedChannel = ref(null);
+
+const observer = ref(null);
+const loadingTrigger = ref(null);
+
+const setupIntersectionObserver = () => {
+  observer.value = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting && !loading.value && !allLoaded.value) {
+        loadMore();
+      }
+    },
+    {
+      threshold: 0.5
+    }
+  );
+};
 
 const loadChannels = async () => {
   if (loading.value || allLoaded.value) return;
@@ -118,6 +135,12 @@ const loadChannels = async () => {
       if (newChannels.length < 20) {
         allLoaded.value = true;
       }
+      
+      nextTick(() => {
+        if (loadingTrigger.value && observer.value) {
+          observer.value.observe(loadingTrigger.value);
+        }
+      });
     }
   } catch (error) {
     console.error('获取频道列表失败:', error);
@@ -127,6 +150,9 @@ const loadChannels = async () => {
 };
 
 const handleSearch = (query) => {
+  if (observer.value && loadingTrigger.value) {
+    observer.value.unobserve(loadingTrigger.value);
+  }
   searchQuery.value = query;
   channels.value = [];
   currentPage.value = 1;
@@ -236,6 +262,13 @@ const showToast = (message, isError = false) => {
 
 onMounted(() => {
   loadChannels();
+  setupIntersectionObserver();
+});
+
+onUnmounted(() => {
+  if (observer.value) {
+    observer.value.disconnect();
+  }
 });
 </script>
 
