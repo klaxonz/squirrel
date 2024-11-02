@@ -64,7 +64,6 @@ const route = useRoute();
 const emitter = inject('emitter');
 
 const channelId = ref(route.params.id);
-console.log('Channel ID:', channelId.value);
 
 const {
   videoContainer,
@@ -117,9 +116,10 @@ const isModalOpen = ref(false);
 const selectedVideo = ref(null);
 
 const openVideoModal = async (video) => {
-  await playVideo(video)
+  emitter.emit('closeMiniPlayer');
   selectedVideo.value = video;
   isModalOpen.value = true;
+  await playVideo(video)
 };
 
 const closeVideoModal = () => {

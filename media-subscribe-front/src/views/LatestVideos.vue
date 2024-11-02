@@ -49,7 +49,7 @@
 </template>
 
 <script setup>
-import {onMounted, onUnmounted, nextTick, inject, provide, computed, ref} from 'vue';
+import {onMounted, onUnmounted, inject, provide, computed, ref} from 'vue';
 import { useRouter } from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import useVideoOperations from '../composables/useVideoOperations';
@@ -59,7 +59,6 @@ import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
 import VideoList from '../components/VideoList.vue';
 import VideoModal from '../components/VideoModal.vue';
-import axios from 'axios';
 
 const router = useRouter();
 const emitter = inject('emitter');
