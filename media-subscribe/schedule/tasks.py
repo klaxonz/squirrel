@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import List, Type
 
 from PyCookieCloud import PyCookieCloud
+from sqlalchemy import delete
 from sqlmodel import col, or_, and_, select, func
 
 from common import constants
@@ -283,21 +284,13 @@ class CleanUnsubscribedChannelsTask(BaseTask):
     @classmethod
     def run(cls):
         redis_client = RedisClient.get_instance().client
-
         unsubscribed_channels = redis_client.smembers(constants.UNSUBSCRIBED_CHANNELS_SET)
-
         if unsubscribed_channels:
             with get_session() as session:
-                channel_videos = session.exec(
-                    select(Channel).where(col(Channel.channel_id).in_(unsubscribed_channels)))
-                download_tasks = session.exec(
-                    select(DownloadTask).where(col(DownloadTask.channel_id).in_(unsubscribed_channels)))
-                session.delete(channel_videos)
-                session.delete(download_tasks)
+                session.exec(delete(ChannelVideo).where(col(Channel.channel_id).in_(unsubscribed_channels)))
+                session.exec(delete(DownloadTask).where(col(DownloadTask.channel_id).in_(unsubscribed_channels)))
                 session.commit()
-
             logger.info(f"Cleaned up videos and download tasks for {len(unsubscribed_channels)} unsubscribed channels")
-
         redis_client.expire(constants.UNSUBSCRIBED_CHANNELS_SET, constants.UNSUBSCRIBE_EXPIRATION)
         logger.info("Reset expiration for unsubscribed channels set")
 

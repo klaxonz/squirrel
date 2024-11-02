@@ -1,6 +1,7 @@
 import json
 from typing import List, Tuple
 
+from mutagen.dsdiff import delete
 from sqlalchemy import or_, func
 from sqlmodel import Session, select, col
 
@@ -103,10 +104,9 @@ class ChannelService:
         return False
 
     def unsubscribe_channel(self, channel_id: int):
-        channel = self.session.query(Channel).filter(Channel.id == channel_id).first()
+        channel = self.session.exec(select(Channel).where(Channel.id == channel_id)).first()
         if channel:
-            self.session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel.channel_id).delete()
-            self.session.delete(channel)
+            self.session.exec(delete(ChannelVideo).where(ChannelVideo.channel_id == channel.channel_id))
             self.session.commit()
             redis_client = RedisClient.get_instance().client
             redis_client.sadd(constants.UNSUBSCRIBED_CHANNELS_SET, channel.channel_id)

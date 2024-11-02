@@ -23,8 +23,10 @@ const audioPlayer = ref(null);
 const { saveVideoProgress, getVideoProgress, startProgressSaving } = useVideoOperations();
 
 onMounted(async () => {
-  const initialProgress = await getVideoProgress(props.video);
-  initPlayer(initialProgress);
+  if (props.video?.video_url) {
+    const initialProgress = await getVideoProgress(props.video);
+    initPlayer(initialProgress);
+  }
 });
 
 onUnmounted(() => {
@@ -34,19 +36,33 @@ onUnmounted(() => {
   }
 });
 
-watch(() => [props.video.video_url, props.video.audio_url], ([newVideoUrl, newAudioUrl]) => {
-  if (player.value && newVideoUrl) {
-    player.value.src = newVideoUrl;
+watch(() => props.video?.video_url, async (newVideoUrl) => {
+  if (newVideoUrl) {
+    if (!player.value) {
+      const initialProgress = await getVideoProgress(props.video);
+      initPlayer(initialProgress);
+    } else {
+      player.value.src = newVideoUrl;
+    }
   }
+});
+
+watch(() => props.video?.audio_url, (newAudioUrl) => {
   if (audioPlayer.value && newAudioUrl) {
     audioPlayer.value.src = newAudioUrl;
   }
 });
 
 const initPlayer = (initialProgress) => {
+  if (!props.video?.video_url) {
+    console.warn('Cannot initialize player: video_url is missing');
+    return;
+  }
+
   player.value = new Player({
     id: `video-player-${props.video.id}`,
     url: props.video.video_url,
+    poster: props.video.thumbnail,
     autoplay: true,
     volume: 1,
     width: '100%',
@@ -58,7 +74,6 @@ const initPlayer = (initialProgress) => {
     controls: {
       mode: 'flex',
     },
-    videoInit: true,
     theme: {
       background: '#000000',
       primary: '#00a1d6',

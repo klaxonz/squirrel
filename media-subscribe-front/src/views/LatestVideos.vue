@@ -114,9 +114,9 @@ const isModalOpen = ref(false);
 const selectedVideo = ref(null);
 
 const openVideoModal = async (video) => {
-  await playVideo(video)
   selectedVideo.value = video;
   isModalOpen.value = true;
+  await playVideo(video)
 };
 
 const closeVideoModal = () => {
