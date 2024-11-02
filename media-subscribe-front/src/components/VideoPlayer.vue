@@ -58,6 +58,7 @@ const initPlayer = (initialProgress) => {
     controls: {
       mode: 'flex',
     },
+    videoInit: true,
     theme: {
       background: '#000000',
       primary: '#00a1d6',
@@ -100,6 +101,10 @@ const handlePause = () => {
   audioPlayer.value.pause();
   saveVideoProgress(props.video, player.value.currentTime);
   emit('pause', props.video);
+  if(document.visibilityState === 'hidden') {
+    player.value.play()
+    audioPlayer.value.play();
+  }
 };
 
 const handleSeeking = () => {
