@@ -9,6 +9,7 @@
             :key="video.id"
             :video="video"
             :setVideoRef="setVideoRef"
+            :initialTime="video.currentTime"
             @play="onVideoPlay"
             @pause="onVideoPause"
             @ended="onVideoEnded"
@@ -70,6 +71,18 @@
         <div class="text-white text-lg font-semibold p-4 border-b border-[#272727] flex items-center relative">
           <span>播放列表</span>
           <span class="text-sm text-[#aaaaaa] ml-2">{{ currentIndex + 1 }} / {{ playlist.length }}</span>
+          
+          <!-- 添加最小化按钮 -->
+          <button 
+            @click="minimizePlayer"
+            class="absolute right-12 top-1/2 transform -translate-y-1/2 text-[#aaaaaa] hover:text-white transition-colors duration-150 focus:outline-none"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+            </svg>
+          </button>
+          
+          <!-- 现有的关闭按钮 -->
           <button 
             @click="close" 
             class="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#aaaaaa] hover:text-white transition-colors duration-150 focus:outline-none"
@@ -171,7 +184,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted, ref, computed } from 'vue';
+import { defineProps, defineEmits, onMounted, onUnmounted, ref, computed, inject, watch, nextTick } from 'vue';
 import VideoPlayer from './VideoPlayer.vue';
 
 const props = defineProps({
@@ -181,6 +194,10 @@ const props = defineProps({
   playlist: {
     type: Array,
     default: () => []
+  },
+  initialTime: {
+    type: Number,
+    default: 0
   }
 });
 
@@ -316,6 +333,29 @@ const getActorChannels = (item) => {
 const hasActorsInItem = (item) => {
   return getActorChannels(item).length > 0;
 };
+
+const emitter = inject('emitter');
+
+const minimizePlayer = () => {
+  if (playerRef.value) {
+    const currentTime = playerRef.value.player.currentTime;
+    emitter.emit('minimizePlayer', { 
+      video: props.video,
+      currentTime: currentTime
+    });
+    emit('close');
+  }
+};
+
+watch(() => props.video, async (newVideo) => {
+  if (newVideo && newVideo.currentTime) {
+    nextTick(() => {
+      if (playerRef.value && playerRef.value.player) {
+        playerRef.value.player.currentTime = newVideo.currentTime;
+      }
+    });
+  }
+}, { immediate: true });
 </script>
 
 <style scoped>

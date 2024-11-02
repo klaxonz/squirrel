@@ -175,7 +175,7 @@ async def proxy_video(url: str, request: Request):
     代理视频文件，用于解决跨域问题
     """
     max_retries = 3
-    chunk_size = 1024  # 减小 chunk size
+    chunk_size = 256  # 减小 chunk size
 
     headers = {
         "Referer": "https://www.bilibili.com",

@@ -21,14 +21,10 @@ export default function useVideoOperations(videos, videoRefs) {
           if (response.data.code === 0) {
             video.video_url = response.data.data.video_url;
             video.audio_url = response.data.data.audio_url;
-          } else {
-            displayToast(response.data.msg || '获取视频地址失败');
-            return false;
           }
         }
       } catch (err) {
         console.error('获取视频地址失败:', err);
-        displayToast('获取视频地址失败');
         return false;
       }
     }

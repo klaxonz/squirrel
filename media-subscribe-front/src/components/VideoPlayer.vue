@@ -13,6 +13,10 @@ import useVideoOperations from '../composables/useVideoOperations';
 const props = defineProps({
   video: Object,
   setVideoRef: Function,
+  initialTime: {
+    type: Number,
+    default: 0
+  }
 });
 
 const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange']);
@@ -53,6 +57,12 @@ watch(() => props.video?.audio_url, (newAudioUrl) => {
   }
 });
 
+watch(() => props.initialTime, (newTime) => {
+  if (player.value && newTime > 0) {
+    player.value.currentTime = newTime;
+  }
+});
+
 const initPlayer = (initialProgress) => {
   if (!props.video?.video_url) {
     console.warn('Cannot initialize player: video_url is missing');
@@ -68,7 +78,7 @@ const initPlayer = (initialProgress) => {
     width: '100%',
     height: '100%',
     cssFullscreen: false,
-    currentTime: initialProgress,
+    startTime: props.initialTime || initialProgress || 0,
     playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
     ignores: ['time'],
     controls: {
@@ -103,30 +113,45 @@ const initPlayer = (initialProgress) => {
     props.setVideoRef(props.video.id, player.value);
   }
 
-  // props.video.progressSavingInterval = startProgressSaving(props.video);
 };
 
 const handlePlay = () => {
-  console.log('handlePlay', player.value.currentTime)
-  audioPlayer.value.play();
-  emit('play', props.video);
+  if (audioPlayer.value && player.value) {
+    console.log('handlePlay', player.value.currentTime);
+    audioPlayer.value.play();
+    emit('play', props.video);
+  }
 };
 
 const handlePause = () => {
-  audioPlayer.value.pause();
-  saveVideoProgress(props.video, player.value.currentTime);
-  emit('pause', props.video);
-  if(document.visibilityState === 'hidden') {
-    player.value.play()
-    audioPlayer.value.play();
+  if (audioPlayer.value && player.value) {
+    audioPlayer.value.pause();
+    saveVideoProgress(props.video, player.value.currentTime);
+    emit('pause', props.video);
+    if(document.visibilityState === 'hidden') {
+      player.value.play();
+      audioPlayer.value.play();
+    }
   }
 };
 
 const handleSeeking = () => {
-  audioPlayer.value.pause();
+  if (audioPlayer.value) {
+    console.log('handleSeeking');
+    audioPlayer.value.pause();
+  }
 };
 
 const handleSeeked = () => {
+  if (!player.value) return;
+  
+  // 如果没有单独的音频轨道，直接播放视频
+  if (!props.video?.audio_url || !audioPlayer.value) {
+    if (!player.value.paused) {
+      player.value.play();
+    }
+    return;
+  }
   const syncAndPlay = () => {
     audioPlayer.value.currentTime = player.value.currentTime;
     if (!player.value.paused) {
@@ -138,45 +163,49 @@ const handleSeeked = () => {
       });
     }
   };
+  syncAndPlay();
 
-  if (audioPlayer.value.readyState >= 3) { // HAVE_FUTURE_DATA or HAVE_ENOUGH_DATA
-    syncAndPlay();
-  } else {
-    player.value.pause();
-    const waitForAudio = () => {
-      if (audioPlayer.value.readyState >= 3) {
-        syncAndPlay();
-        audioPlayer.value.removeEventListener('canplay', waitForAudio);
-      }
-    };
-    audioPlayer.value.addEventListener('canplay', waitForAudio);
-  }
 };
 
 const handleTimeUpdate = () => {
-  if (Math.abs(audioPlayer.value.currentTime - player.value.currentTime) > 1) {
-    audioPlayer.value.currentTime = player.value.currentTime + 1;
+  if (audioPlayer.value && player.value) {
+    if (Math.abs(audioPlayer.value.currentTime - player.value.currentTime) > 1) {
+      audioPlayer.value.currentTime = player.value.currentTime + 1;
+    }
   }
 };
 
 const handleEnded = () => {
-  audioPlayer.value.pause();
-  audioPlayer.value.currentTime = 0;  
-  saveVideoProgress(props.video, 0);
-  emit('ended', props.video);
+  if (audioPlayer.value && player.value) {
+    audioPlayer.value.pause();
+    audioPlayer.value.currentTime = 0;  
+    saveVideoProgress(props.video, 0);
+    emit('ended', props.video);
+  }
 };
 
 const handleWaiting = () => {
-  audioPlayer.value.pause();
+  if (audioPlayer.value) {
+    console.log('handleWaiting');
+    audioPlayer.value.pause();
+  }
 };
 
 const handlePlaying = () => {
-  audioPlayer.value.play();
+  if (audioPlayer.value) {
+    audioPlayer.value.play();
+  }
 };
 
 const handleVolumechange = () => {
-  audioPlayer.value.volume = player.value.muted ? 0 : player.value.volume;
+  if (audioPlayer.value && player.value) {
+    audioPlayer.value.volume = player.value.muted ? 0 : player.value.volume;
+  }
 };
+
+defineExpose({
+  player
+});
 
 </script>
 

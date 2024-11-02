@@ -26,12 +26,24 @@
     <main class="flex-grow overflow-hidden bg-[#0f0f0f]">
       <router-view />
     </main>
+
+    <!-- 添加迷你播放器 -->
+    <MiniPlayer
+      v-if="miniPlayerVideo"
+      :video="miniPlayerVideo"
+      :isCollapsed="isCollapsed"
+      :currentTime="savedTime"
+      @close="closeMiniPlayer"
+      @expandToModal="expandToModal"
+      @timeUpdate="updateSavedTime"
+    />
   </div>
 </template>
 
 <script setup>
-import { provide, ref } from 'vue';
+import { provide, ref, onUnmounted } from 'vue';
 import mitt from 'mitt';
+import MiniPlayer from './components/MiniPlayer.vue';
 import { HomeIcon, FireIcon, ClockIcon, BookmarkIcon, FilmIcon, CogIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
 
 const emitter = mitt();
@@ -52,6 +64,48 @@ const isCollapsed = ref(false);
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value;
 };
+
+const miniPlayerVideo = ref(null);
+const savedTime = ref(0);
+
+// 监听最小化播放器事件
+emitter.on('minimizePlayer', (data) => {
+  miniPlayerVideo.value = data.video;
+  savedTime.value = data.currentTime || 0;
+});
+
+const closeMiniPlayer = () => {
+  miniPlayerVideo.value = null;
+  savedTime.value = 0;
+};
+
+const expandToModal = (video) => {
+  emitter.emit('openVideoModal', { 
+    video: {
+      ...video,
+      video_url: video.video_url,
+      audio_url: video.audio_url
+    }, 
+    currentTime: video.currentTime || savedTime.value 
+  });
+  closeMiniPlayer();
+};
+
+const updateSavedTime = (time) => {
+  savedTime.value = time;
+};
+
+// 监听关闭迷你播放器事件
+emitter.on('closeMiniPlayer', () => {
+  closeMiniPlayer();
+});
+
+// 确保 emitter 在组件卸载时清理事件监听
+onUnmounted(() => {
+  emitter.off('minimizePlayer');
+  emitter.off('closeMiniPlayer');
+  emitter.all.clear();
+});
 </script>
 
 <style>

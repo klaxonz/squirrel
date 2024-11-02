@@ -59,6 +59,7 @@ import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
 import VideoList from '../components/VideoList.vue';
 import VideoModal from '../components/VideoModal.vue';
+import axios from 'axios';
 
 const router = useRouter();
 const emitter = inject('emitter');
@@ -113,10 +114,31 @@ const filteredVideos = computed(() => {
 const isModalOpen = ref(false);
 const selectedVideo = ref(null);
 
-const openVideoModal = async (video) => {
+const openVideoModal = async (video, startTime = 0) => {
+  emitter.emit('closeMiniPlayer');
+
+  if (!video.video_url) {
+    try {
+      const response = await axios.get('/api/channel-video/video/url', {
+        params: {
+          channel_id: video.channel_id,
+          video_id: video.video_id
+        }
+      });
+      if (response.data.code === 0) {
+        video.video_url = response.data.data.video_url;
+        video.audio_url = response.data.data.audio_url;
+      }
+    } catch (error) {
+      console.error('获取视频地址失败:', error);
+      return;
+    }
+  }
+
+  video.currentTime = startTime;
   selectedVideo.value = video;
+  currentPlaylist.value = filteredVideos.value[activeTab.value];
   isModalOpen.value = true;
-  await playVideo(video)
 };
 
 const closeVideoModal = () => {
@@ -130,6 +152,7 @@ onMounted(() => {
   emitter.on('scrollToTopAndRefresh', scrollToTopAndRefresh);
   emitter.on('refreshContent', refreshContent);
   window.history.pushState(null, '', router.currentRoute.value.fullPath);
+  emitter.on('openVideoModal', handleOpenVideoModal);
 });
 
 onUnmounted(() => {
@@ -150,6 +173,7 @@ onUnmounted(() => {
   }
 
   window.onpopstate = null;
+  emitter.off('openVideoModal', handleOpenVideoModal);
 });
 
 const goToChannelDetail = (channelId) => {
@@ -176,6 +200,13 @@ const handleChangeVideo = async (newVideo) => {
   } catch (err) {
     console.error('切换视频失败:', err);
     displayToast('切换视频失败');
+  }
+};
+
+const handleOpenVideoModal = (data) => {
+  if (data.video) {
+    console.log('handleOpenVideoModal', data)
+    openVideoModal(data.video, data.currentTime);
   }
 };
 </script>
