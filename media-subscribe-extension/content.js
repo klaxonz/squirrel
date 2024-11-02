@@ -19,7 +19,15 @@ const SELECTORS = {
   COMMON: {
     DOWNLOAD_BUTTON: '.ytdlp-btn',
     SUBSCRIBE_BUTTON: '.subscribe-btn',
-  }
+  },
+  PORNHUB: {
+    SUBSCRIBE_CONTAINER: '.userButtons, .nameSubscribe',
+    CHANNEL_NAME: '#channelsProfile .title > h1, .nameSubscribe .name h1',
+    SUBSCRIBE_BUTTON: 'button[data-subscribe-url], .addFriendButton button[data-friend-url]',
+    AVATAR: '#getAvatar',
+    CHANNEL_LINK: '.usernameBadgesWrapper a',
+    VIDEO_UPLOADER: '.video-detailed-info .usernameBadgesWrapper a'
+  },
 };
 
 let isHandleVideoPage = false;
@@ -256,7 +264,6 @@ const observeDOM = (targetNode, config, callback) => {
 const main = () => {
   const config = { childList: true, subtree: true };
   
-  // 对于 YouTube，我们需要监听更多的变化
   if (window.location.hostname.includes('youtube.com')) {
     let lastUrl = location.href;
     let buttonCheckInterval;
@@ -294,10 +301,20 @@ const main = () => {
 
     // 初始启动按钮检查
     startButtonCheck();
-  }
-
-  // 对于 B 站，保持原有的观察逻辑
-  if (window.location.hostname.includes('bilibili.com')) {
+  } else if (window.location.hostname.includes('pornhub.com')) {
+    // 对 Pornhub 使用类似的观察逻辑
+    let lastUrl = location.href;
+    new MutationObserver(() => {
+      const url = location.href;
+      if (url !== lastUrl) {
+        lastUrl = url;
+        console.log('URL changed, re-adding buttons');
+        setTimeout(() => {
+          addButtonsToPage(document.body);
+        }, 1000);
+      }
+    }).observe(document.body, config);
+  } else if (window.location.hostname.includes('bilibili.com')) {
     observeDOM(document.body, config, addButtonsToPage);
   }
 };
@@ -428,7 +445,7 @@ const addSubscribeButtonToYoutube = async (container) => {
     // 等待订阅按钮容器出现
     const subscribeContainer = await waitForElement(SELECTORS.YOUTUBE.SUBSCRIBE_CONTAINER);
     
-    // 再次检查，防止在等待过程中按钮被添加
+    // 再次检查��防止在等待过程中��钮被添加
     if (document.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
       console.log('Subscribe button was added while waiting');
       return;
@@ -524,10 +541,142 @@ const addSubscribeButtonToYoutube = async (container) => {
   }
 };
 
-// 修改 addButtonsToPage 函数，添加 YouTube 支持
+// 修改获取 Pornhub 频道 ID 的函数
+const getPornhubChannelIdFromUrl = (container) => {
+  // 尝试从订阅按钮获取
+  const subscribeButton = container.querySelector(SELECTORS.PORNHUB.SUBSCRIBE_BUTTON);
+  if (subscribeButton) {
+    const subscribeUrl = subscribeButton.getAttribute('data-subscribe-url');
+    const friendUrl = subscribeButton.getAttribute('data-friend-url');
+    const dataId = subscribeButton.getAttribute('data-id');
+
+    if (subscribeUrl) {
+      const match = subscribeUrl.match(/id=([^&]+)/);
+      if (match) return match[1];
+    }
+
+    if (dataId) {
+      return dataId;
+    }
+  }
+
+  // 如果找不到按钮属性，尝试从 URL 获取
+  const url = window.location.href;
+  const urlMatch = url.match(/\/(users|model|channels)\/([^\/\?]+)/i);
+  return urlMatch ? urlMatch[2] : null;
+};
+
+// 修改获取 Pornhub 频道信息的函数
+const getPornhubChannelInfo = (container) => {
+  const nameElement = container.querySelector(SELECTORS.PORNHUB.CHANNEL_NAME);
+  const avatarElement = container.querySelector(SELECTORS.PORNHUB.AVATAR);
+  
+  return {
+    name: nameElement ? nameElement.textContent.trim() : null,
+    avatar: avatarElement ? avatarElement.getAttribute('src') : null,
+    url: window.location.href.split('?')[0], // 移除查询参数
+  };
+};
+
+// 修改 Pornhub 订阅按钮的函数
+const addSubscribeButtonToPornhub = async (container) => {
+  try {
+    if (document.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
+      return;
+    }
+
+    const subscribeContainer = await waitForElement(SELECTORS.PORNHUB.SUBSCRIBE_CONTAINER);
+    if (!subscribeContainer) {
+      console.log('Could not find subscribe container');
+      return;
+    }
+
+    const channelInfo = getPornhubChannelInfo(container);
+    const channelId = getPornhubChannelIdFromUrl(container);
+
+    if (!channelId || !channelInfo.name) {
+      console.log('Could not find channel information');
+      return;
+    }
+
+    console.log('Channel Info:', channelInfo);
+    console.log('Channel ID:', channelId);
+
+    let isSubscribed = await checkSubscriptionStatus(channelId);
+    const buttonText = isSubscribed ? '取消订阅' : '订阅';
+    const subscribeButton = createStyledButton(buttonText, SELECTORS.COMMON.SUBSCRIBE_BUTTON.slice(1), async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      try {
+        if (isSubscribed) {
+          await unsubscribe(channelInfo.url, { 
+            channelId,
+            name: channelInfo.name,
+            avatar: channelInfo.avatar
+          });
+          isSubscribed = false;
+          subscribeButton.textContent = '订阅';
+        } else {
+          await subscribe(channelInfo.url, {
+            channelId,
+            name: channelInfo.name,
+            avatar: channelInfo.avatar
+          });
+          isSubscribed = true;
+          subscribeButton.textContent = '取消订阅';
+        }
+      } catch (error) {
+        console.error('Error handling subscription:', error);
+      }
+    }, SUBSCRIBE_ICON_SVG);
+
+    // 调整按钮样式以匹配 Pornhub 风格
+    Object.assign(subscribeButton.style, {
+      backgroundColor: '#ff9000',
+      color: '#000',
+      marginLeft: '8px',
+      height: '36px',
+      padding: '0 16px',
+      fontSize: '14px',
+      fontWeight: '500',
+      borderRadius: '4px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: 'none',
+      cursor: 'pointer'
+    });
+
+    // 添加悬停效果
+    subscribeButton.addEventListener('mouseover', () => {
+      subscribeButton.style.backgroundColor = '#ff7000';
+    });
+
+    subscribeButton.addEventListener('mouseout', () => {
+      subscribeButton.style.backgroundColor = '#ff9000';
+    });
+
+    // 将按钮插入到合适的位置
+    const existingSubscribeButton = subscribeContainer.querySelector(SELECTORS.PORNHUB.SUBSCRIBE_BUTTON);
+    if (existingSubscribeButton) {
+      existingSubscribeButton.parentNode.insertBefore(subscribeButton, existingSubscribeButton.nextSibling);
+    } else {
+      subscribeContainer.appendChild(subscribeButton);
+    }
+    
+    console.log('Subscribe button added successfully');
+
+  } catch (error) {
+    console.error('Error in addSubscribeButtonToPornhub:', error);
+  }
+};
+
+// 修改 addButtonsToPage 函数，添加 Pornhub 支持
 const addButtonsToPage = (container) => {
   const isYoutube = window.location.hostname.includes('youtube.com');
   const isBilibili = window.location.hostname.includes('bilibili.com');
+  const isPornhub = window.location.hostname.includes('pornhub.com');
 
   if (isBilibili) {
     addDownloadButtonToBilibili(container);
@@ -537,5 +686,7 @@ const addButtonsToPage = (container) => {
   } else if (isYoutube) {
     // 对于 YouTube，我们需要在页面加载完成后添加按钮
     addSubscribeButtonToYoutube(container);
+  } else if (isPornhub) {
+    addSubscribeButtonToPornhub(container);
   }
 };

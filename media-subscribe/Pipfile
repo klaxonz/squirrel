@@ -31,6 +31,7 @@ pre-commit = "*"
 sqlalchemy-stubs = "*"
 pydantic-settings = "*"
 sqlmodel = "*"
-dramatiq = {extras = ["watch", "redis"], version = "*"}
+dramatiq = {extras = ["watch", "redis"] }
+phub = "*"
 
 [dev-packages]

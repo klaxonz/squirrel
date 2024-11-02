@@ -1,7 +1,9 @@
 from typing import List, Tuple
 from urllib.parse import quote
 
+import phub
 import requests
+from phub import Quality
 from pytubefix import YouTube
 from sqlalchemy import func
 
@@ -52,6 +54,14 @@ class ChannelVideoService:
             return {
                 'video_url': video_stream.url if video_stream else None,
                 'audio_url': audio_stream.url if audio_stream else None,
+            }
+        elif channel_video.domain == 'pornhub.com':
+            client = phub.Client()
+            video = client.get(channel_video.url)
+            video_url = video.get_direct_url(quality=Quality.BEST)
+            return {
+                'video_url': video_url,
+                'audio_url': None,
             }
         return {}
 

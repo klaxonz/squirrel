@@ -10,6 +10,7 @@ from model.channel import Channel, ChannelVideo
 from model.message import Message
 from consumer import subscribe_task
 
+
 class ChannelService:
     def __init__(self, session: Session):
         self.session = session
