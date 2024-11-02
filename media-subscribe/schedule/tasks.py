@@ -10,6 +10,7 @@ from sqlmodel import col, or_, and_, select, func
 
 from common import constants
 from core.cache import RedisClient
+from services.channel_service import ChannelService
 from utils.cookie import json_cookie_to_netscape
 from core.database import get_session
 from core.config import settings
@@ -152,7 +153,7 @@ class AutoUpdateChannelVideo(BaseTask):
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
-    @classmethod 
+    @classmethod
     def update_channel_video(cls, channel):
         redis_client = RedisClient.get_instance().client
 
@@ -221,18 +222,17 @@ class RepairDownloadTaskInfo(BaseTask):
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
 
-@TaskRegistry.register(interval=10, unit='minutes')
+@TaskRegistry.register(interval=2, unit='minutes')
 class RepairChanelInfoForTotalVideos(BaseTask):
     @classmethod
     def run(cls):
         try:
             with get_session() as session:
+                channel_service = ChannelService(session)
                 channels = session.exec(select(Channel)).all()
                 for channel in channels:
-                    extract_count = session.exec(
-                        select(func.count(col(ChannelVideo.id))).where(
-                            ChannelVideo.channel_id == channel.channel_id)).one()
-                    if channel.total_videos >= extract_count:
+                    extract_videos = channel_service.count_channel_videos(channel.channel_id)
+                    if channel.total_videos >= extract_videos:
                         continue
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
                     videos = subscribe_channel.get_channel_videos(channel, update_all=True)

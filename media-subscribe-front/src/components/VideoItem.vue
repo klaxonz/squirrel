@@ -34,16 +34,69 @@
       >
         {{ video.title }}
       </h3>
-      <div class="flex items-center justify-between text-2xs text-gray-400 mt-1">
-        <div class="flex items-center">
-          <img 
-            :src="video.channel_avatar" 
-            alt="Channel Avatar" 
-            class="w-4 h-4 rounded-full mr-1 object-cover flex-shrink-0 cursor-pointer"
-            referrerpolicy="no-referrer"
-            @click.stop="goToChannel"
+      <div class="flex items-center justify-between text-2xs text-gray-400">
+        <div class="relative group">
+          <div class="flex items-center">
+            <img 
+              :src="mainChannelInfo.avatar" 
+              alt="Channel Avatar" 
+              class="w-4 h-4 rounded-full mr-1 object-cover flex-shrink-0 cursor-pointer"
+              referrerpolicy="no-referrer"
+              @click.stop="goToChannel(mainChannelInfo.id)"
+            >
+            <span 
+              class="truncate hover:text-blue-400 transition-colors duration-200 leading-4 cursor-pointer" 
+              @click.stop="goToChannel(mainChannelInfo.id)"
+            >
+              {{ mainChannelInfo.name }}
+            </span>
+          </div>
+
+          <!-- 悬浮模态框 -->
+          <div 
+            v-if="hasActors"
+            class="channel-popup opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute left-0 bottom-full mb-2 bg-[#282828] rounded-lg shadow-lg transition-all duration-200 z-50 w-max max-w-[300px] p-3"
           >
-          <span class="truncate hover:text-blue-400 transition-colors duration-200 leading-4 cursor-pointer" @click.stop="goToChannel">{{ video.channel_name }}</span>
+            <!-- 主频道信息 -->
+            <div class="flex items-center mb-2">
+              <img 
+                :src="mainChannelInfo.avatar" 
+                alt="Channel Avatar" 
+                class="w-8 h-8 rounded-full mr-2 object-cover"
+                referrerpolicy="no-referrer"
+              >
+              <div class="flex flex-col">
+                <span class="text-white text-sm font-medium">{{ mainChannelInfo.name }}</span>
+                <span class="text-gray-400 text-xs">主频道</span>
+              </div>
+            </div>
+            
+            <!-- 分割线 -->
+            <div class="h-[1px] bg-gray-700 my-2"></div>
+            
+            <!-- 演员列表 -->
+            <div class="flex flex-col gap-2">
+              <div 
+                v-for="actor in actorChannels" 
+                :key="actor.id"
+                class="flex items-center group/actor cursor-pointer hover:bg-gray-700/50 p-1 rounded-lg transition-colors duration-150"
+                @click.stop="goToChannel(actor.id)"
+              >
+                <img 
+                  :src="actor.avatar" 
+                  alt="Actor Avatar" 
+                  class="w-6 h-6 rounded-full mr-2 object-cover"
+                  referrerpolicy="no-referrer"
+                >
+                <span class="text-gray-300 group-hover/actor:text-white transition-colors duration-150">
+                  {{ actor.name }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- 小三角形 -->
+            <div class="absolute -bottom-2 left-4 w-4 h-4 bg-[#282828] transform rotate-45"></div>
+          </div>
         </div>
         <span class="leading-4">{{ formatDate(video.uploaded_at) }}</span>
       </div>
@@ -68,7 +121,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted, ref, nextTick, inject } from 'vue';
+import { defineProps, defineEmits, onMounted, onUnmounted, ref, nextTick, inject, computed } from 'vue';
 import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from "../composables/useOptionsMenu.js";
 
@@ -227,8 +280,37 @@ const handleClick = (event) => {
   }
 };
 
-const goToChannel = () => {
-  emit('goToChannel', props.video.channel_id);
+// 修改计算属性来处理逗号分隔的字符串
+const mainChannelInfo = computed(() => {
+  const ids = props.video.channel_id?.toString().split(',') || [];
+  const names = props.video.channel_name?.toString().split(',') || [];
+  const avatars = props.video.channel_avatar?.toString().split(',') || [];
+  
+  return {
+    id: ids[0] || '',
+    name: names[0] || '',
+    avatar: avatars[0] || '',
+  };
+});
+
+const actorChannels = computed(() => {
+  const ids = props.video.channel_id?.toString().split(',') || [];
+  const names = props.video.channel_name?.toString().split(',') || [];
+  const avatars = props.video.channel_avatar?.toString().split(',') || [];
+  
+  // 跳过第一个元素（主频道），处理剩余的演员信息
+  return ids.slice(1).map((id, index) => ({
+    id: id.trim(),
+    name: names[index + 1]?.trim() || '',
+    avatar: avatars[index + 1]?.trim() || '',
+  })).filter(actor => actor.id && actor.name); // 过滤掉无效的数据
+});
+
+const hasActors = computed(() => actorChannels.value.length > 0);
+
+// 修改 goToChannel 方法以接收 channel_id 参数
+const goToChannel = (channelId) => {
+  emit('goToChannel', channelId);
 };
 
 onMounted(() => {
@@ -319,5 +401,44 @@ onUnmounted(() => {
 
 .video-item.border-2 {
   box-shadow: 0 0 0 2px theme('colors.blue.500');
+}
+
+/* 添加新的样式 */
+.gap-1 {
+  gap: 0.25rem;
+}
+
+.leading-3 {
+  line-height: 0.75rem;
+}
+
+/* 添加新的样式 */
+.channel-popup {
+  transform-origin: top left;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.channel-popup::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  height: 8px;
+  background: transparent;
+}
+
+/* 确保弹窗在其他元素之上 */
+.group:hover .channel-popup {
+  z-index: 1000;
+}
+
+/* 添加一些动画效果 */
+.group-hover\:opacity-100 {
+  transition-delay: 200ms;
+}
+
+.group:not(:hover) .channel-popup {
+  transition-delay: 0ms;
 }
 </style>

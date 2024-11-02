@@ -209,10 +209,13 @@ class PornhubSubscribeChannel(SubscribeChannel):
             'Cookie': cookies
         }
 
-        if 'pornhub.com/model' in self.url:
+        if 'pornhub.com/model' in self.url or 'pornhub.com/pornstar' in self.url:
             self.url = self.url + '/videos'
 
         response = session.get(self.url, headers=headers, timeout=15)
+        if response.status_code == 404:
+            self.url = self.url.replace('/videos', '')
+            response = session.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
 
         parsed_url = urlparse(self.url)

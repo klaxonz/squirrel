@@ -21,14 +21,46 @@
             <h2 class="text-lg font-semibold text-white mr-2">{{ video?.title }}</h2>
             <span class="text-xs text-[#aaaaaa]">{{ formatDate(video?.uploaded_at) }}</span>
           </div>
-          <div class="mt-2 flex items-center">
-            <img 
-              :src="video?.channel_avatar" 
-              alt="Channel Avatar" 
-              class="w-10 h-10 rounded-full mr-3 object-cover"
-              referrerpolicy="no-referrer"
-            >
-            <p class="text-sm font-medium text-white">{{ video?.channel_name }}</p>
+          
+          <!-- 频道和演员信息区域 -->
+          <div class="mt-4 flex items-center">
+            <!-- 主频道信息 -->
+            <div class="flex items-center">
+              <img 
+                :src="mainChannelInfo.avatar" 
+                alt="Channel Avatar" 
+                class="w-10 h-10 rounded-full mr-3 object-cover"
+                referrerpolicy="no-referrer"
+              >
+              <div class="flex flex-col">
+                <p class="text-sm font-medium text-white hover:text-blue-400 cursor-pointer" @click="goToChannel(mainChannelInfo.id)">
+                  {{ mainChannelInfo.name }}
+                </p>
+                <p class="text-xs text-[#aaaaaa] mt-0.5">主频道</p>
+              </div>
+            </div>
+
+            <!-- 演员信息 -->
+            <div v-if="hasActors" class="flex items-center ml-6 pl-6 border-l border-[#272727] flex-grow overflow-hidden">
+              <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar-x">
+                <div 
+                  v-for="actor in actorChannels" 
+                  :key="actor.id"
+                  class="flex items-center px-3 py-1.5 rounded-full hover:bg-[#272727] transition-colors duration-150 cursor-pointer group min-w-fit"
+                  @click="goToChannel(actor.id)"
+                >
+                  <img 
+                    :src="actor.avatar" 
+                    alt="Actor Avatar" 
+                    class="w-6 h-6 rounded-full mr-2 object-cover"
+                    referrerpolicy="no-referrer"
+                  >
+                  <span class="text-sm text-[#aaaaaa] group-hover:text-white transition-colors duration-150 whitespace-nowrap">
+                    {{ actor.name }}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -48,21 +80,85 @@
           </button>
         </div>
         <div class="flex-grow overflow-y-auto custom-scrollbar">
-          <div v-for="(item, index) in playlist" :key="item.id" 
-               class="flex items-start p-2 hover:bg-[#272727] cursor-pointer"
-               :class="{ 'bg-[#383838]': item.id === video?.id }"
-               @click="changeVideo(item)">
+          <div 
+            v-for="(item, index) in playlist" 
+            :key="item.id" 
+            class="flex p-2 hover:bg-[#272727] cursor-pointer"
+            :class="{ 'bg-[#383838]': item.id === video?.id }"
+            @click="changeVideo(item)"
+          >
+            <!-- 缩略图部分 -->
             <div class="w-40 h-[5.625rem] relative mr-3 flex-shrink-0">
               <img :src="item.thumbnail" alt="Video thumbnail" class="w-full h-full object-cover">
               <span class="absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
                 {{ formatDuration(item.duration) }}
               </span>
             </div>
-            <div class="flex-grow min-w-0">
-              <p class="text-white text-sm line-clamp-2" :class="{ 'font-semibold': item.id === video?.id }">{{ item.title }}</p>
-              <p class="text-[#aaaaaa] text-xs mt-1 truncate">{{ item.channel_name }}</p>
+
+            <!-- 视频信息部分 -->
+            <div class="flex-grow min-w-0 flex flex-col justify-between">
+              <!-- 标题 -->
+              <p class="text-white text-sm line-clamp-2 mb-auto" :class="{ 'font-semibold': item.id === video?.id }">
+                {{ item.title }}
+              </p>
+
+              <!-- 频道信息 -->
+              <div class="relative group">
+                <div class="flex items-center">
+                  <img 
+                    :src="getMainChannelInfo(item).avatar" 
+                    alt="Channel Avatar" 
+                    class="w-4 h-4 rounded-full mr-1 object-cover"
+                    referrerpolicy="no-referrer"
+                  >
+                  <span class="text-[#aaaaaa] text-xs truncate hover:text-white transition-colors duration-150">
+                    {{ getMainChannelInfo(item).name }}
+                  </span>
+                </div>
+
+                <!-- 悬浮框 -->
+                <div 
+                  v-if="hasActorsInItem(item)"
+                  class="channel-popup opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute left-0 bottom-full mb-2 bg-[#282828] rounded-lg shadow-lg transition-all duration-200 z-50 w-max max-w-[300px] p-3"
+                >
+                  <div class="flex items-center mb-2">
+                    <img 
+                      :src="getMainChannelInfo(item).avatar" 
+                      alt="Channel Avatar" 
+                      class="w-8 h-8 rounded-full mr-2 object-cover"
+                      referrerpolicy="no-referrer"
+                    >
+                    <div class="flex flex-col">
+                      <span class="text-white text-sm font-medium">{{ getMainChannelInfo(item).name }}</span>
+                      <span class="text-gray-400 text-xs">主频道</span>
+                    </div>
+                  </div>
+                  <div class="h-[1px] bg-gray-700 my-2"></div>
+                  <div class="flex flex-col gap-2">
+                    <div 
+                      v-for="actor in getActorChannels(item)" 
+                      :key="actor.id"
+                      class="flex items-center group/actor cursor-pointer hover:bg-gray-700/50 p-1 rounded-lg transition-colors duration-150"
+                      @click.stop="goToChannel(actor.id)"
+                    >
+                      <img 
+                        :src="actor.avatar" 
+                        alt="Actor Avatar" 
+                        class="w-5 h-5 rounded-full mr-1.5 object-cover"
+                        referrerpolicy="no-referrer"
+                      >
+                      <span class="text-gray-300 text-xs group-hover/actor:text-white transition-colors duration-150">
+                        {{ actor.name }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="absolute -bottom-2 left-4 w-4 h-4 bg-[#282828] transform rotate-45"></div>
+                </div>
+              </div>
             </div>
-            <div v-if="item.id === video?.id" class="ml-2 text-[#aaaaaa] flex-shrink-0">
+
+            <!-- 播放中图标 -->
+            <div v-if="item.id === video?.id" class="ml-2 text-[#aaaaaa] flex-shrink-0 self-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
               </svg>
@@ -88,7 +184,14 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'videoPlay', 'videoPause', 'videoEnded', 'changeVideo']);
+const emit = defineEmits([
+  'close', 
+  'videoPlay', 
+  'videoPause', 
+  'videoEnded', 
+  'changeVideo',
+  'goToChannel'
+]);
 const playerRef = ref(null);
 
 const currentIndex = computed(() => {
@@ -149,6 +252,70 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown);
 });
+
+// 添加频道信息处理的计算属性
+const mainChannelInfo = computed(() => {
+  const ids = props.video?.channel_id?.toString().split(',') || [];
+  const names = props.video?.channel_name?.toString().split(',') || [];
+  const avatars = props.video?.channel_avatar?.toString().split(',') || [];
+  
+  return {
+    id: ids[0] || '',
+    name: names[0] || '',
+    avatar: avatars[0] || '',
+  };
+});
+
+const actorChannels = computed(() => {
+  if (!props.video) return [];
+  
+  const ids = props.video.channel_id?.toString().split(',') || [];
+  const names = props.video.channel_name?.toString().split(',') || [];
+  const avatars = props.video.channel_avatar?.toString().split(',') || [];
+  
+  return ids.slice(1).map((id, index) => ({
+    id: id.trim(),
+    name: names[index + 1]?.trim() || '',
+    avatar: avatars[index + 1]?.trim() || '',
+  })).filter(actor => actor.id && actor.name);
+});
+
+const hasActors = computed(() => actorChannels.value.length > 0);
+
+// 添加跳转到频道的方法
+const goToChannel = (channelId) => {
+  // 这里需要添加 emit 来处理频道跳转
+  emit('goToChannel', channelId);
+};
+
+// 添加处理播放列表项频道信息的方法
+const getMainChannelInfo = (item) => {
+  const ids = item.channel_id?.toString().split(',') || [];
+  const names = item.channel_name?.toString().split(',') || [];
+  const avatars = item.channel_avatar?.toString().split(',') || [];
+  
+  return {
+    id: ids[0] || '',
+    name: names[0] || '',
+    avatar: avatars[0] || '',
+  };
+};
+
+const getActorChannels = (item) => {
+  const ids = item.channel_id?.toString().split(',') || [];
+  const names = item.channel_name?.toString().split(',') || [];
+  const avatars = item.channel_avatar?.toString().split(',') || [];
+  
+  return ids.slice(1).map((id, index) => ({
+    id: id.trim(),
+    name: names[index + 1]?.trim() || '',
+    avatar: avatars[index + 1]?.trim() || '',
+  })).filter(actor => actor.id && actor.name);
+};
+
+const hasActorsInItem = (item) => {
+  return getActorChannels(item).length > 0;
+};
 </script>
 
 <style scoped>
@@ -184,5 +351,115 @@ onUnmounted(() => {
 
 button:focus {
   outline: none;
+}
+
+/* 添加新的样式 */
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 确保悬浮效果平滑 */
+.transition-colors {
+  transition-property: background-color, color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* 添加水平滚动条样式 */
+.custom-scrollbar-x {
+  scrollbar-width: thin;
+  scrollbar-color: #606060 transparent;
+  padding-bottom: 4px; /* 为滚动条预留空间 */
+  /* 移除最大宽度限制 */
+}
+
+.custom-scrollbar-x::-webkit-scrollbar {
+  height: 2px;
+}
+
+.custom-scrollbar-x::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar-x::-webkit-scrollbar-thumb {
+  background-color: #606060;
+  border-radius: 1px;
+}
+
+.custom-scrollbar-x::-webkit-scrollbar-thumb:hover {
+  background-color: #909090;
+}
+
+/* 确保最小宽度适合内容 */
+.min-w-fit {
+  min-width: fit-content;
+}
+
+/* 优化间距和对齐 */
+.gap-2 {
+  gap: 0.5rem;
+}
+
+/* 添加边框过渡效果 */
+.border-l {
+  transition: border-color 0.2s ease;
+}
+
+/* 悬浮效果优化 */
+.group:hover .text-[#aaaaaa] {
+  color: #ffffff;
+}
+
+/* 添加播放列表项悬浮框特定样式 */
+.channel-popup {
+  transform-origin: top left;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.channel-popup::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  height: 8px;
+  background: transparent;
+}
+
+/* 确保弹窗在其他元素之上 */
+.group:hover .channel-popup {
+  z-index: 1000;
+}
+
+/* 添加一些动画效果 */
+.group-hover\:opacity-100 {
+  transition-delay: 200ms;
+}
+
+.group:not(:hover) .channel-popup {
+  transition-delay: 0ms;
+}
+
+/* 添加新的样式 */
+.flex-col {
+  flex-direction: column;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.mb-auto {
+  margin-bottom: auto;
+}
+
+.self-center {
+  align-self: center;
 }
 </style>

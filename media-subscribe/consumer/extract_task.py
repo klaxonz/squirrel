@@ -9,6 +9,7 @@ import dramatiq
 from common import constants
 from core.cache import RedisClient
 from core.database import get_session
+from subscribe.subscribe import SubscribeChannelFactory
 from utils.url_helper import extract_top_level_domain
 from downloader.downloader import Downloader
 from downloader.id_extractor import extract_id_from_url
@@ -108,9 +109,25 @@ def _create_channel_video(video, domain, video_id, video_info):
         channel_video.url = video.url
         channel_video.domain = domain
         channel_video.video_id = video_id
-        channel_video.channel_id = uploader.id
-        channel_video.channel_name = uploader.name
-        channel_video.channel_avatar = uploader.avatar
+        actors = uploader.get_actors()
+        channel_id = uploader.get_id()
+        channel_name = uploader.get_name()
+        channel_avatar = uploader.get_avatar()
+        if len(actors) > 0:
+            for actor in actors:
+                actor_channel = SubscribeChannelFactory.create_subscribe_channel(actor)
+                if channel_id:
+                    channel_id = channel_id + ","
+                if channel_name:
+                    channel_name = channel_name + ","
+                if channel_avatar:
+                    channel_avatar = channel_avatar + ","
+                channel_id = channel_id + actor_channel.get_channel_info().id
+                channel_name = channel_name + actor_channel.get_channel_info().name
+                channel_avatar = channel_avatar + actor_channel.get_channel_info().avatar
+        channel_video.channel_id = channel_id
+        channel_video.channel_name = channel_name
+        channel_video.channel_avatar = channel_avatar
         channel_video.title = video.get_title()
         channel_video.thumbnail = video.get_thumbnail()
         channel_video.duration = video.get_duration()

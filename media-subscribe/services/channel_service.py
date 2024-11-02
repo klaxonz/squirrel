@@ -1,8 +1,8 @@
 import json
 from typing import List, Tuple
 
-from sqlalchemy import or_
-from sqlmodel import Session, select
+from sqlalchemy import or_, func
+from sqlmodel import Session, select, col
 
 from common import constants
 from core.cache import RedisClient
@@ -84,7 +84,15 @@ class ChannelService:
         return channel_list, total
 
     def count_channel_videos(self, channel_id: str) -> int:
-        return self.session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel_id).count()
+        return self.session.exec(select(func.count(ChannelVideo.id))
+        .where(
+            or_(
+                ChannelVideo.channel_id == channel_id,
+                col(ChannelVideo.channel_id).like(f"{channel_id},%"),
+                col(ChannelVideo.channel_id).like(f"%,{channel_id}"),
+                col(ChannelVideo.channel_id).like(f"%,{channel_id},%")
+            )
+           )).one()
 
     def toggle_channel_status(self, channel_id: int, status: bool, field: str):
         channel = self.session.query(Channel).filter(Channel.id == channel_id).first()

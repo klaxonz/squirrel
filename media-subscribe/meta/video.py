@@ -134,6 +134,7 @@ class Uploader:
         self.name = None
         self.avatar = None
         self.tags = None
+        self.actors = []
 
     def get_id(self):
         return self.id
@@ -149,6 +150,9 @@ class Uploader:
 
     def get_tags(self):
         return self.tags
+
+    def get_actors(self):
+        return self.actors
 
 
 class BilibiliUploader(Uploader):
@@ -246,6 +250,11 @@ class PornhubUploader(Uploader):
                 raise Exception('Unknown user type')
             self.avatar = bs4.select('.userInfoBlock .userAvatar img')[0].get('src')
             self.tags = []
+        actors = bs4.select('.pornstarsWrapper a.pstar-list-btn')
+        if len(actors) > 0:
+            base_url = self.url.split('/')[2]
+            for actor in actors:
+                self.actors.append(f'https://{base_url}{actor.get("href")}')
 
 
 class UploaderFactory:

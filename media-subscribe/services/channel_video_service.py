@@ -69,7 +69,12 @@ class ChannelVideoService:
         List[dict], dict]:
         base_query = select(ChannelVideo).where(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
         if channel_id:
-            base_query = base_query.where(ChannelVideo.channel_id == channel_id)
+            base_query = base_query.where( or_(
+                ChannelVideo.channel_id == channel_id,
+                col(ChannelVideo.channel_id).like(f"{channel_id},%"),
+                col(ChannelVideo.channel_id).like(f"%,{channel_id}"),
+                col(ChannelVideo.channel_id).like(f"%,{channel_id},%")
+            ))
         if query:
             base_query = base_query.where(or_(
                 col(ChannelVideo.channel_name).like(f'%{query}%'),
@@ -87,7 +92,12 @@ class ChannelVideoService:
 
         s_query = select(func.count(ChannelVideo.id))
         if channel_id:
-            s_query = s_query.where(ChannelVideo.channel_id == channel_id)
+            s_query = s_query.where(or_(
+                ChannelVideo.channel_id == channel_id,
+                col(ChannelVideo.channel_id).like(f"{channel_id},%"),
+                col(ChannelVideo.channel_id).like(f"%,{channel_id}"),
+                col(ChannelVideo.channel_id).like(f"%,{channel_id},%")
+            ))
         total_count = self.session.exec(s_query).one()
         read_count = self.session.exec(s_query.where(ChannelVideo.if_read == 1)).one()
         unread_count = total_count - read_count
