@@ -116,29 +116,11 @@ const selectedVideo = ref(null);
 
 const openVideoModal = async (video, startTime = 0) => {
   emitter.emit('closeMiniPlayer');
-
-  if (!video.video_url) {
-    try {
-      const response = await axios.get('/api/channel-video/video/url', {
-        params: {
-          channel_id: video.channel_id,
-          video_id: video.video_id
-        }
-      });
-      if (response.data.code === 0) {
-        video.video_url = response.data.data.video_url;
-        video.audio_url = response.data.data.audio_url;
-      }
-    } catch (error) {
-      console.error('获取视频地址失败:', error);
-      return;
-    }
-  }
-
   video.currentTime = startTime;
   selectedVideo.value = video;
   currentPlaylist.value = filteredVideos.value[activeTab.value];
   isModalOpen.value = true;
+  await playVideo(video)
 };
 
 const closeVideoModal = () => {
