@@ -7,6 +7,15 @@ const SELECTORS = {
     UP_INFO_CONTAINER: '.up-info-container',
     UP_INFO_DETAIL_CONTAINER: '.h-inner .h-action'
   },
+  YOUTUBE: {
+    SUBSCRIBE_CONTAINER: '.page-header-view-model-wiz__page-header-headline-info',
+    SUBSCRIBE_BUTTON: '.yt-spec-button-shape-next',
+    CHANNEL_NAME: '#channel-name, #owner-name',
+    VIDEO_OWNER: '#owner',
+    VIDEO_OWNER_LINK: '#owner a',
+    CHANNEL_ID_META: 'meta[itemprop="channelId"]',
+    CHANNEL_HANDLE: 'yt-formatted-string.ytd-channel-name'
+  },
   COMMON: {
     DOWNLOAD_BUTTON: '.ytdlp-btn',
     SUBSCRIBE_BUTTON: '.subscribe-btn',
@@ -54,23 +63,11 @@ const createStyledButton = (text, className, clickHandler, icon) => {
     padding: '4px 8px',
     fontSize: '12px',
     cursor: 'pointer',
-    transition: 'all 0.3s ease',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   });
 
-  button.addEventListener('mouseover', () => {
-    button.style.backgroundColor = '#0091c2';
-    button.style.transform = 'translateY(-1px)';
-    button.style.boxShadow = '0 2px 4px rgba(0, 161, 214, 0.4)';
-  });
-
-  button.addEventListener('mouseout', () => {
-    button.style.backgroundColor = '#00a1d6';
-    button.style.transform = 'translateY(0)';
-    button.style.boxShadow = 'none';
-  });
 
   return button;
 };
@@ -256,27 +253,71 @@ const observeDOM = (targetNode, config, callback) => {
   observer.observe(targetNode, config);
 };
 
-const addButtonsToPage = (container) => {
-  addDownloadButtonToBilibili(container);
-  addDownloadButtonToBilibiliVideo(container);
-  addSubscribeButtonToBilibili(container);
-  addSubscribeButtonToBilibiliDetail(container)
-};
-
 const main = () => {
   const config = { childList: true, subtree: true };
-  // 检查是否在首页（有 #bewly 元素）
-  observeDOM(document.body, config, addButtonsToPage);
+  
+  // 对于 YouTube，我们需要监听更多的变化
+  if (window.location.hostname.includes('youtube.com')) {
+    let lastUrl = location.href;
+    let buttonCheckInterval;
+
+    // 监听 URL 变化
+    new MutationObserver(() => {
+      const url = location.href;
+      if (url !== lastUrl) {
+        lastUrl = url;
+        console.log('URL changed, re-adding buttons');
+        clearInterval(buttonCheckInterval); // 清除旧的检查
+        addButtonsToPage(document.body);
+        startButtonCheck(); // 开始新的检查
+      }
+    }).observe(document.body, config);
+
+    // 定义按钮检查函数
+    const checkButton = () => {
+      const subscribeContainer = document.querySelector(SELECTORS.YOUTUBE.SUBSCRIBE_CONTAINER);
+      const existingButton = document.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON);
+      
+      if (subscribeContainer && !existingButton) {
+        console.log('Subscribe container found but button missing, re-adding button');
+        addButtonsToPage(document.body);
+      }
+    };
+
+    // 开始按钮检查的函数
+    const startButtonCheck = () => {
+      // 60秒后停止检查
+      setTimeout(() => {
+        checkButton()
+      }, 5000);
+    };
+
+    // 初始启动按钮检查
+    startButtonCheck();
+  }
+
+  // 对于 B 站，保持原有的观察逻辑
+  if (window.location.hostname.includes('bilibili.com')) {
+    observeDOM(document.body, config, addButtonsToPage);
+  }
 };
 
-// 等待页面加载完成后开始观察
+// 保持原有的事件监听，但添加防抖动
+let addButtonsTimeout;
 window.addEventListener('load', () => {
-  main();
+  clearTimeout(addButtonsTimeout);
+  addButtonsTimeout = setTimeout(() => {
+    console.log('DOM fully loaded and parsed');
+    main();
+    addButtonsToPage(document.body);
+  }, 500);
 });
 
-// 由于页面可能在加载后动态变化，我们也在 DOMContentLoaded 后立即运行一次
 document.addEventListener('DOMContentLoaded', () => {
-  addButtonsToPage(document.body);
+  clearTimeout(addButtonsTimeout);
+  addButtonsTimeout = setTimeout(() => {
+    addButtonsToPage(document.body);
+  }, 500);
 });
 
 // 添加这个新函数来检查订阅状态
@@ -312,4 +353,189 @@ const unsubscribe = (url, data) => {
       }
     });
   });
+};
+
+// 修改获取 YouTube 频道 ID 的函数
+const getYoutubeChannelIdFromUrl = (url) => {
+  // 首先尝试从 head 中的 link 标签获取
+  const channelLink = document.querySelector('link[itemprop="url"][href*="/channel/"]');
+  if (channelLink) {
+    const match = channelLink.href.match(/\/channel\/(UC[\w-]+)/);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  // 如果找不到 link 标签，尝试从 URL 中获取
+  const urlMatch = url.match(/\/channel\/(UC[\w-]+)/);
+  if (urlMatch) {
+    return urlMatch[1];
+  }
+
+  return null;
+};
+
+// 修改获取 YouTube 频道 URL 的函数
+const getChannelUrlFromYoutube = (container) => {
+  // 首先尝试从 head 中的 link 标签获取
+  const channelLink = document.querySelector('link[itemprop="url"][href*="/channel/"]');
+  if (channelLink) {
+    return channelLink.href;
+  }
+
+  // 从当前 URL 获取（如果在频道页面）
+  if (window.location.pathname.includes('/channel/') || 
+      window.location.pathname.includes('/@')) {
+    return window.location.href.split('?')[0];
+  }
+
+  return null;
+};
+
+// 添加一个函数来等待元素出现
+const waitForElement = (selector, timeout = 5000) => {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+
+    const checkElement = () => {
+      const element = document.querySelector(selector);
+      if (element) {
+        resolve(element);
+        return;
+      }
+
+      if (Date.now() - startTime >= timeout) {
+        reject(new Error(`Timeout waiting for element: ${selector}`));
+        return;
+      }
+
+      requestAnimationFrame(checkElement);
+    };
+
+    checkElement();
+  });
+};
+
+// 修改 addSubscribeButtonToYoutube 函数，添加防重复检查
+const addSubscribeButtonToYoutube = async (container) => {
+  try {
+    // 检查是否已经存在我们的按钮
+    if (document.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
+      console.log('Subscribe button already exists');
+      return;
+    }
+
+    // 等待订阅按钮容器出现
+    const subscribeContainer = await waitForElement(SELECTORS.YOUTUBE.SUBSCRIBE_CONTAINER);
+    
+    // 再次检查，防止在等待过程中按钮被添加
+    if (document.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
+      console.log('Subscribe button was added while waiting');
+      return;
+    }
+
+    console.log('Found subscribe container:', subscribeContainer);
+
+    // 等待频道信息加载
+    await waitForElement(SELECTORS.YOUTUBE.CHANNEL_NAME);
+
+    const channelUrl = getChannelUrlFromYoutube(container);
+    if (!channelUrl) {
+      console.log('Could not find channel URL');
+      return;
+    }
+
+    const channelId = getYoutubeChannelIdFromUrl(channelUrl);
+    if (!channelId) {
+      console.log('Could not find channel ID');
+      return;
+    }
+
+    console.log('Channel URL:', channelUrl);
+    console.log('Channel ID:', channelId);
+
+    let isSubscribed = await checkSubscriptionStatus(channelId);
+    const buttonText = isSubscribed ? '取消订阅' : '订阅';
+    const subscribeButton = createStyledButton(buttonText, SELECTORS.COMMON.SUBSCRIBE_BUTTON.slice(1), async (event) => {
+      event.preventDefault(); // 阻止默认行为
+      event.stopPropagation(); // 阻止事件冒泡
+      
+      try {
+        if (isSubscribed) {
+          await unsubscribe(channelUrl, { channelId });
+          isSubscribed = false;
+          subscribeButton.textContent = '订阅';
+        } else {
+          await subscribe(channelUrl, { channelId });
+          isSubscribed = true;
+          subscribeButton.textContent = '取消订阅';
+        }
+        
+      } catch (error) {
+        console.error('Error handling subscription:', error);
+      }
+    }, SUBSCRIBE_ICON_SVG);
+
+    // 调整按钮样式以匹配 YouTube 的新设计
+    Object.assign(subscribeButton.style, {
+      backgroundColor: '#0f0f0f',
+      color: '#fff',
+      marginLeft: '8px',
+      height: '36px',
+      padding: '0 16px',
+      fontSize: '14px',
+      fontWeight: '500',
+      textTransform: 'uppercase',
+      borderRadius: '18px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: 'none',
+      cursor: 'pointer'
+    });
+
+    // 添加悬停效果
+    subscribeButton.addEventListener('mouseover', () => {
+      subscribeButton.style.backgroundColor = '#272727';
+    });
+
+    subscribeButton.addEventListener('mouseout', () => {
+      subscribeButton.style.backgroundColor = '#0f0f0f';
+    });
+
+    // 修改按钮插入逻辑
+    const targetContainer = subscribeContainer.querySelector(SELECTORS.YOUTUBE.SUBSCRIBE_CONTAINER);
+    if (targetContainer) {
+      // 创建一个包装容器
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'inline-block';
+      wrapper.appendChild(subscribeButton);
+      
+      // 插入包装容器
+      targetContainer.appendChild(wrapper);
+      console.log('Subscribe button added successfully in wrapper');
+    } else {
+      subscribeContainer.appendChild(subscribeButton);
+      console.log('Subscribe button added successfully directly');
+    }
+
+  } catch (error) {
+    console.error('Error in addSubscribeButtonToYoutube:', error);
+  }
+};
+
+// 修改 addButtonsToPage 函数，添加 YouTube 支持
+const addButtonsToPage = (container) => {
+  const isYoutube = window.location.hostname.includes('youtube.com');
+  const isBilibili = window.location.hostname.includes('bilibili.com');
+
+  if (isBilibili) {
+    addDownloadButtonToBilibili(container);
+    addDownloadButtonToBilibiliVideo(container);
+    addSubscribeButtonToBilibili(container);
+    addSubscribeButtonToBilibiliDetail(container);
+  } else if (isYoutube) {
+    // 对于 YouTube，我们需要在页面加载完成后添加按钮
+    addSubscribeButtonToYoutube(container);
+  }
 };

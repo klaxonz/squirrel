@@ -2,20 +2,24 @@
   "manifest_version": 3,
   "name": "视频下载和订阅",
   "version": "3.0",
-  "description": "在B站添加视频下载和频道订阅按钮 (v3)",
+  "description": "在B站和YouTube添加视频下载和频道订阅按钮 (v3)",
   "permissions": [
     "activeTab",
     "storage"
   ],
   "host_permissions": [
-    "*://*.bilibili.com/*"
+    "*://*.bilibili.com/*",
+    "*://*.youtube.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["*://*.bilibili.com/*"],
+      "matches": [
+        "*://*.bilibili.com/*",
+        "*://*.youtube.com/*"
+      ],
       "js": ["content.js"]
     }
   ],
