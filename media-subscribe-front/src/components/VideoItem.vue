@@ -142,7 +142,6 @@ const props = defineProps({
     default: true
   },
   isChannelPage: Boolean,
-  activeTab: String,
   setVideoRef: Function,
   refreshContent: Function,
   isSelected: Boolean,

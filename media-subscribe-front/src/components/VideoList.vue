@@ -18,7 +18,6 @@
             :isSelected="selectedVideos.includes(video.id)"
             @toggleSelection="toggleVideoSelection"
             :isChannelPage="isChannelPage"
-            :activeTab="activeTab"
             :showAvatar="showAvatar"
             :refreshContent="refreshContent"
             @toggleOptions="$emit('toggleOptions', $event, video.id)"
@@ -68,7 +67,6 @@ const props = defineProps({
   allLoaded: Boolean,
   showAvatar: Boolean,
   isChannelPage: Boolean,
-  activeTab: String,
   refreshContent: Function,
 });
 

@@ -24,7 +24,11 @@
 
     <!-- 主内容区 -->
     <main class="flex-grow overflow-hidden bg-[#0f0f0f]">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive>
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </main>
 
     <!-- 添加迷你播放器 -->
@@ -51,10 +55,10 @@ provide('emitter', emitter);
 
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
-  { path: '/trending', name: '趋势', icon: FireIcon },
+  // { path: '/trending', name: '趋势', icon: FireIcon },
   { path: '/subscriptions', name: '订阅', icon: BookmarkIcon },
-  { path: '/library', name: '媒体库', icon: FilmIcon },
-  { path: '/history', name: '历史记录', icon: ClockIcon },
+  // { path: '/library', name: '媒体库', icon: FilmIcon },
+  // { path: '/history', name: '历史记录', icon: ClockIcon },
   { path: '/download-tasks', name: '下载任务', icon: ArrowDownTrayIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
 ]);

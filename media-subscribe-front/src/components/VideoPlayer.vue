@@ -8,11 +8,9 @@
 <script setup>
 import { onMounted, onUnmounted, watch, ref, defineExpose } from 'vue';
 import Player from 'xgplayer';
-import useVideoOperations from '../composables/useVideoOperations';
 
 const props = defineProps({
   video: Object,
-  setVideoRef: Function,
   initialTime: {
     type: Number,
     default: 0
@@ -24,12 +22,10 @@ const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange']);
 const player = ref(null);
 const audioPlayer = ref(null);
 
-const { saveVideoProgress, getVideoProgress, startProgressSaving } = useVideoOperations();
 
 onMounted(async () => {
   if (props.video?.video_url) {
-    const initialProgress = await getVideoProgress(props.video);
-    initPlayer(initialProgress);
+    initPlayer();
   }
 });
 
@@ -43,8 +39,7 @@ onUnmounted(() => {
 watch(() => props.video?.video_url, async (newVideoUrl) => {
   if (newVideoUrl) {
     if (!player.value) {
-      const initialProgress = await getVideoProgress(props.video);
-      initPlayer(initialProgress);
+      initPlayer();
     } else {
       player.value.src = newVideoUrl;
     }
@@ -63,7 +58,7 @@ watch(() => props.initialTime, (newTime) => {
   }
 });
 
-const initPlayer = (initialProgress) => {
+const initPlayer = () => {
   if (!props.video?.video_url) {
     console.warn('Cannot initialize player: video_url is missing');
     return;
@@ -78,7 +73,7 @@ const initPlayer = (initialProgress) => {
     width: '100%',
     height: '100%',
     cssFullscreen: false,
-    startTime: props.initialTime || initialProgress || 0,
+    startTime: props.initialTime || 0,
     playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
     ignores: ['time'],
     controls: {
@@ -108,16 +103,10 @@ const initPlayer = (initialProgress) => {
   player.value.on('fullscreenChange', (isFullscreen) => {
     emit('fullscreenChange', isFullscreen);
   });
-
-  if (props.setVideoRef) {
-    props.setVideoRef(props.video.id, player.value);
-  }
-
 };
 
 const handlePlay = () => {
   if (audioPlayer.value && player.value) {
-    console.log('handlePlay', player.value.currentTime);
     audioPlayer.value.play();
     emit('play', props.video);
   }
@@ -126,7 +115,6 @@ const handlePlay = () => {
 const handlePause = () => {
   if (audioPlayer.value && player.value) {
     audioPlayer.value.pause();
-    saveVideoProgress(props.video, player.value.currentTime);
     emit('pause', props.video);
     if(document.visibilityState === 'hidden') {
       player.value.play();
@@ -137,7 +125,6 @@ const handlePause = () => {
 
 const handleSeeking = () => {
   if (audioPlayer.value) {
-    console.log('handleSeeking');
     audioPlayer.value.pause();
   }
 };
@@ -179,14 +166,12 @@ const handleEnded = () => {
   if (audioPlayer.value && player.value) {
     audioPlayer.value.pause();
     audioPlayer.value.currentTime = 0;  
-    saveVideoProgress(props.video, 0);
     emit('ended', props.video);
   }
 };
 
 const handleWaiting = () => {
   if (audioPlayer.value) {
-    console.log('handleWaiting');
     audioPlayer.value.pause();
   }
 };

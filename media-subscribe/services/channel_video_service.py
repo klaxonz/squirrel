@@ -9,10 +9,10 @@ from sqlalchemy import func
 
 from sqlmodel import Session, select, or_, col
 
-from utils.cookie import filter_cookies_to_query_string
 from model.channel import ChannelVideo
 from model.video_progress import VideoProgress
 from services import download_service
+from utils.cookie import filter_cookies_to_query_string
 
 
 class ChannelVideoService:
@@ -69,7 +69,7 @@ class ChannelVideoService:
         List[dict], dict]:
         base_query = select(ChannelVideo).where(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
         if channel_id:
-            base_query = base_query.where( or_(
+            base_query = base_query.where(or_(
                 ChannelVideo.channel_id == channel_id,
                 col(ChannelVideo.channel_id).like(f"{channel_id},%"),
                 col(ChannelVideo.channel_id).like(f"%,{channel_id}"),
@@ -91,6 +91,11 @@ class ChannelVideoService:
         channel_videos = self.session.exec(base_query).all()
 
         s_query = select(func.count(ChannelVideo.id))
+        if query:
+            s_query = s_query.where(or_(
+                col(ChannelVideo.channel_name).like(f'%{query}%'),
+                col(ChannelVideo.title).like(f'%{query}%')
+            ))
         if channel_id:
             s_query = s_query.where(or_(
                 ChannelVideo.channel_id == channel_id,

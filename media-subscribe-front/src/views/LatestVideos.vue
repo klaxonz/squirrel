@@ -4,28 +4,24 @@
     <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
 
     <div class="video-container pt-1 flex-grow">
-      <VideoList
-        :videos="filteredVideos[activeTab]"
-        :loading="loading"
-        :allLoaded="allLoaded"
-        :showAvatar="true"
-        :is-channel-page="false"
-        :active-tab="activeTab"
-        @loadMore="loadMore"
-        @play="playVideo"
-        @videoPlay="onVideoPlay"
-        @videoPause="onVideoPause"
-        @videoEnded="onVideoEnded"
-        @toggleOptions="toggleOptions"
-        @openModal="openVideoModal"
-        @goToChannel="goToChannelDetail"
-      />
+      <router-view 
+        v-slot="{ Component }" 
+      >
+        <component
+          :is="Component"
+          :active-tab="activeTab"
+          :search-query="searchQuery"
+          :selected-channel-id="channelId"
+          @update-counts="updateCounts"
+          @openModal="openVideoModal"
+          @goToChannel="goToChannelDetail"
+        />
+      </router-view>
     </div>
 
     <VideoModal
       :isOpen="isModalOpen"
       :video="selectedVideo"
-      :setVideoRef="setVideoRef"
       :playlist="currentPlaylist"
       @close="closeVideoModal"
       @videoPlay="onVideoPlay"
@@ -35,12 +31,10 @@
     />
   </div>
 
-  <!-- Error message display -->
   <div v-if="error" class="text-center py-4 text-red-500">
     {{ error }}
   </div>
 
-  <!-- Add this near the end of your template -->
   <Teleport to="body">
     <div v-if="showToast" class="toast-message">
       {{ toastMessage }}
@@ -49,15 +43,13 @@
 </template>
 
 <script setup>
-import {onMounted, onUnmounted, inject, provide, computed, ref} from 'vue';
-import { useRouter } from 'vue-router';
+import {onMounted, onUnmounted, inject, ref, watch, computed} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import useVideoOperations from '../composables/useVideoOperations';
-import useOptionsMenu from '../composables/useOptionsMenu';
 import useToast from '../composables/useToast';
 import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
-import VideoList from '../components/VideoList.vue';
 import VideoModal from '../components/VideoModal.vue';
 
 const router = useRouter();
@@ -66,18 +58,8 @@ const emitter = inject('emitter');
 const {
   videoContainer,
   videos,
-  loading,
-  allLoaded,
   error,
-  activeTab,
-  tabs,
-  tabsWithCounts,
-  handleSearch,
   loadMore,
-  refreshContent,
-  scrollToTopAndRefresh,
-  observers,
-  videoRefs,
 } = useLatestVideos();
 
 const { toastMessage, showToast, displayToast } = useToast();
@@ -88,36 +70,51 @@ const {
   onVideoPlay,
   onVideoPause,
   onVideoEnded,
-  setVideoRef,
-  handleOrientationChange,
-  isFullscreen
-} = useVideoOperations(videos, videoRefs);
+} = useVideoOperations(videos);
 
-const {
-  toggleOptions,
-  toggleReadStatus,
-  markReadBatch,
-  downloadVideo,
-  copyVideoLink,
-  dislikeVideo,
-} = useOptionsMenu(videos, refreshContent);
+const activeTab = ref('all');
+const route = useRoute();
 
-const filteredVideos = computed(() => {
-  const result = {};
-  tabs.forEach(tab => {
-    result[tab.value] = videos.value[tab.value] || [];
-  });
-  return result;
-});
+// 使用 computed 获取路由参数，这样可以响应式地获取参数变化
+const channelId = computed(() => route.params.id);
 
 const isModalOpen = ref(false);
 const selectedVideo = ref(null);
+const currentPlaylist = ref([]);
+const tabsWithCounts = ref([
+  {
+    value: 'all',
+    count: 0,
+    label: '全部'
+  },
+  {
+    value: 'unread',
+    count: 0,
+    label: '未读'
+  },
+  {
+    value: 'read',
+    count: 0,
+    label: '已读'
+  }
+]);
 
-const openVideoModal = async (video, startTime = 0) => {
+const searchQuery = ref('');
+
+const updateCounts = (counts) => {
+  tabsWithCounts.value = counts;
+};
+
+const handleSearch = (keyword) => {
+  console.log('Search query changed:', keyword)
+  searchQuery.value = keyword;
+};
+
+const openVideoModal = async (video, videos, startTime = 0) => {
   emitter.emit('closeMiniPlayer');
   video.currentTime = startTime;
   selectedVideo.value = video;
-  currentPlaylist.value = filteredVideos.value[activeTab.value];
+  currentPlaylist.value = videos;
   isModalOpen.value = true;
   await playVideo(video)
 };
@@ -128,27 +125,11 @@ const closeVideoModal = () => {
 };
 
 onMounted(() => {
-  loadMore();
-  window.addEventListener('orientationchange', handleOrientationChange);
-  emitter.on('scrollToTopAndRefresh', scrollToTopAndRefresh);
-  emitter.on('refreshContent', refreshContent);
-  window.history.pushState(null, '', router.currentRoute.value.fullPath);
+  console.log('onMounted', channelId.value);
   emitter.on('openVideoModal', handleOpenVideoModal);
 });
 
 onUnmounted(() => {
-
-  window.removeEventListener('orientationchange', handleOrientationChange);
-  emitter.off('scrollToTopAndRefresh', scrollToTopAndRefresh);
-  emitter.off('refreshContent', refreshContent);
-
-  // Disconnect all observers
-  Object.values(observers.value).forEach(observer => {
-    if (observer && typeof observer.disconnect === 'function') {
-      observer.disconnect();
-    }
-  });
-
   if (videoContainer.value) {
     videoContainer.value.style.overscrollBehavior = 'auto';
   }
@@ -157,20 +138,10 @@ onUnmounted(() => {
   emitter.off('openVideoModal', handleOpenVideoModal);
 });
 
-const goToChannelDetail = (channelId) => {
-  router.push({ name: 'ChannelDetail', params: { id: channelId } });
+const goToChannelDetail = (newChannelId) => {
+  console.log('goToChannelDetail', newChannelId);
+  router.replace(`/channel/${newChannelId}/all`);
 };
-
-provide('videoOperations', {
-  setVideoRef,
-  goToChannelDetail,
-  displayToast,
-  isFullscreen,
-});
-
-const currentPlaylist = computed(() => {
-  return filteredVideos.value[activeTab.value].slice(0, 50);
-});
 
 const handleChangeVideo = async (newVideo) => {
   try {
@@ -186,10 +157,14 @@ const handleChangeVideo = async (newVideo) => {
 
 const handleOpenVideoModal = (data) => {
   if (data.video) {
-    console.log('handleOpenVideoModal', data)
     openVideoModal(data.video, data.currentTime);
   }
 };
+
+watch(() => activeTab.value, (newVal) => {
+  router.push(`/videos/${newVal}`);
+});
+
 </script>
 
 <style src="./LatestVideos.css" scoped></style>

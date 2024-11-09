@@ -1,13 +1,9 @@
 import { ref, computed, watch } from 'vue';
 import axios from '../utils/axios';
 
-export default function useLatestVideos(channelId = null) {
+export default function useLatestVideos() {
   const videoContainer = ref(null);
-  const videos = ref({
-    all: [],
-    unread: [],
-    read: []
-  });
+  const videos = ref([]);
   const loading = ref(false);
   const allLoaded = ref(false);
   const error = ref(null);
@@ -25,6 +21,14 @@ export default function useLatestVideos(channelId = null) {
   const currentPage = ref(1);
   const searchQuery = ref('');
   const isResetting = ref(false);
+  const channelId = ref('');
+  const readStatus = computed(() => {
+    if (activeTab.value === 'all') {
+      return undefined;
+    } else {
+      return activeTab.value;
+    }
+  });
 
   const tabsWithCounts = computed(() => {
     return tabs.map(tab => ({
@@ -33,10 +37,7 @@ export default function useLatestVideos(channelId = null) {
     }));
   });
 
-  const isReadPage = computed(() => activeTab.value === 'read');
-
-  const handleSearch = (query) => {
-    searchQuery.value = query;
+  const handleSearch = () => {
     resetAndReload();
   };
 
@@ -51,22 +52,32 @@ export default function useLatestVideos(channelId = null) {
           page: currentPage.value,
           pageSize: pageSize,
           query: searchQuery.value,
-          channel_id: channelId,
-          read_status: activeTab.value === 'all' ? null : activeTab.value
+          channel_id: channelId.value,
+          read_status: readStatus.value
         }
       });
 
       if (response.data.code === 0) {
         const newVideos = response.data.data.data.map(video => ({
           ...video,
-          is_read: video.is_read ?? false,  // 确保 is_read 属性存在
+          is_read: video.is_read ?? false,
           isPlaying: false,
           video_url: null
         }));
-        videos.value[activeTab.value] = [...videos.value[activeTab.value], ...newVideos];
+        
+        if (currentPage.value === 1) {
+          videos.value = newVideos;
+        } else {
+          videos.value = [...videos.value, ...newVideos];
+        }
+        
         currentPage.value++;
         allLoaded.value = newVideos.length < pageSize;
-        videoCounts.value = response.data.data.counts;
+        
+        if (response.data.data.counts) {
+          videoCounts.value = response.data.data.counts;
+          return response.data.data.counts;
+        }
       } else {
         throw new Error(response.data.msg || '获取视频列表失败');
       }
@@ -77,23 +88,23 @@ export default function useLatestVideos(channelId = null) {
     }
   };
 
-  const handleScroll = (event, channelId) => {
+  const handleScroll = (event, channelId, read_status, keyword) => {
     const scrollContent = event.target;
     const scrollPosition = scrollContent.scrollTop + scrollContent.clientHeight;
     const scrollHeight = scrollContent.scrollHeight;
 
     if (scrollHeight - scrollPosition <= 300 && !loading.value && !allLoaded.value) {
-      loadMore(channelId);
+      loadMore();
     }
   };
 
-  const resetAndReload = () => {
+  const resetAndReload = (readStatus) => {
     isResetting.value = true;
-    videos.value[activeTab.value] = [];
+    videos.value = [];
     currentPage.value = 1;
     allLoaded.value = false;
     error.value = null;
-    loadMore().then(() => {
+    loadMore(readStatus).then(() => {
       isResetting.value = false;
     });
   };
@@ -102,9 +113,6 @@ export default function useLatestVideos(channelId = null) {
     if (el) loadTrigger.value = el;
   };
 
-  watch(activeTab, () => {
-    resetAndReload();
-  });
 
   return {
     videoContainer,
@@ -117,7 +125,6 @@ export default function useLatestVideos(channelId = null) {
     tabs,
     videoCounts,
     tabsWithCounts,
-    isReadPage,
     observers,
     videoRefs,
     loadTrigger,
@@ -126,5 +133,7 @@ export default function useLatestVideos(channelId = null) {
     handleScroll,
     setLoadTrigger,
     isResetting,
+    searchQuery,
+    channelId
   };
 }

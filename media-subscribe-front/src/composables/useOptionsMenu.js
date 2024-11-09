@@ -2,7 +2,7 @@ import { inject } from 'vue';
 import axios from '../utils/axios';
 import useCustomToast from './useToast';
 
-export default function useOptionsMenu(video, refreshContent) {
+export default function useOptionsMenu(video) {
   const { displayToast } = useCustomToast();
 
   const toggleReadStatus = async (isRead) => {
@@ -13,7 +13,6 @@ export default function useOptionsMenu(video, refreshContent) {
         is_read: isRead
       });
       displayToast(`视频已标记为${isRead ? '已读' : '未读'}`);
-      if (refreshContent) await refreshContent();
     } catch (error) {
       console.error('更新阅读状态失败:', error);
       displayToast('更新阅读状态失败', { type: 'error' });
@@ -32,7 +31,6 @@ export default function useOptionsMenu(video, refreshContent) {
 
       if (response.data.code === 0) {
         displayToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为${isRead ? '已读' : '未读'}`);
-        if (refreshContent) await refreshContent();
       } else {
         throw new Error(response.data.msg || '批量更新阅读状态失败');
       }

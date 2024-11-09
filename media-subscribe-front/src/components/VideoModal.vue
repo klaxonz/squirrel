@@ -8,7 +8,6 @@
             v-if="video"
             :key="video.id"
             :video="video"
-            :setVideoRef="setVideoRef"
             :initialTime="video.currentTime"
             @play="onVideoPlay"
             @pause="onVideoPause"
@@ -190,7 +189,6 @@ import VideoPlayer from './VideoPlayer.vue';
 const props = defineProps({
   isOpen: Boolean,
   video: Object,
-  setVideoRef: Function,
   playlist: {
     type: Array,
     default: () => []
@@ -338,7 +336,7 @@ const emitter = inject('emitter');
 
 const minimizePlayer = () => {
   if (playerRef.value) {
-    const currentTime = playerRef.value.player.currentTime;
+    const currentTime = playerRef.value.player?.currentTime || 0;
     emitter.emit('minimizePlayer', { 
       video: props.video,
       currentTime: currentTime
