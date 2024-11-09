@@ -31,34 +31,62 @@
       </router-view>
     </main>
 
-    <!-- 添加迷你播放器 -->
-    <MiniPlayer
-      v-if="miniPlayerVideo"
-      :video="miniPlayerVideo"
-      :isCollapsed="isCollapsed"
-      :currentTime="savedTime"
-      @close="closeMiniPlayer"
-      @expandToModal="expandToModal"
-      @timeUpdate="updateSavedTime"
+    <!-- 添加 VideoModal -->
+    <VideoModal
+      v-if="isModalOpen"
+      :isOpen="isModalOpen"
+      :video="selectedVideo"
+      :playlist="currentPlaylist"
+      @close="closeVideoModal"
+      @videoPlay="onVideoPlay"
+      @videoPause="onVideoPause"
+      @videoEnded="onVideoEnded"
+      @changeVideo="handleChangeVideo"
+      @goToChannel="handleGoToChannel"
     />
+
+    <Teleport to="body">
+      <div v-if="showToast" class="toast-message">
+        {{ toastMessage }}
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { provide, ref, onUnmounted } from 'vue';
+import { provide, ref, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import mitt from 'mitt';
+import VideoModal from './components/VideoModal.vue';
 import MiniPlayer from './components/MiniPlayer.vue';
-import { HomeIcon, FireIcon, ClockIcon, BookmarkIcon, FilmIcon, CogIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
+import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
+import useVideoOperations from './composables/useVideoOperations';
+import useToast from './composables/useToast';
 
+const router = useRouter();
 const emitter = mitt();
 provide('emitter', emitter);
 
+// 添加视频播放相关的状态
+const isModalOpen = ref(false);
+const selectedVideo = ref(null);
+const currentPlaylist = ref([]);
+const videos = ref([]);
+
+// 使用视频操作 composable
+const {
+  playVideo,
+  changeVideo,
+  onVideoPlay,
+  onVideoPause,
+  onVideoEnded,
+} = useVideoOperations(videos);
+
+const { toastMessage, showToast, displayToast } = useToast();
+
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
-  // { path: '/trending', name: '趋势', icon: FireIcon },
   { path: '/subscriptions', name: '订阅', icon: BookmarkIcon },
-  // { path: '/library', name: '媒体库', icon: FilmIcon },
-  // { path: '/history', name: '历史记录', icon: ClockIcon },
   { path: '/download-tasks', name: '下载任务', icon: ArrowDownTrayIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
 ]);
@@ -69,45 +97,45 @@ const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value;
 };
 
-const miniPlayerVideo = ref(null);
-const savedTime = ref(0);
-
-// 监听最小化播放器事件
-emitter.on('minimizePlayer', (data) => {
-  miniPlayerVideo.value = data.video;
-  savedTime.value = data.currentTime || 0;
-});
-
-const closeMiniPlayer = () => {
-  miniPlayerVideo.value = null;
-  savedTime.value = 0;
+// 添加视频模态框相关方法
+const openVideoModal = async (video, playlist, startTime = 0) => {
+  emitter.emit('closeMiniPlayer');
+  video.currentTime = startTime;
+  selectedVideo.value = video;
+  currentPlaylist.value = playlist;
+  isModalOpen.value = true;
+  await playVideo(video);
 };
 
-const expandToModal = (video) => {
-  emitter.emit('openVideoModal', { 
-    video: {
-      ...video,
-      video_url: video.video_url,
-      audio_url: video.audio_url
-    }, 
-    currentTime: video.currentTime || savedTime.value 
+const closeVideoModal = () => {
+  isModalOpen.value = false;
+  selectedVideo.value = null;
+};
+
+const handleChangeVideo = async (newVideo) => {
+  try {
+    const updatedVideo = await changeVideo(newVideo);
+    if (updatedVideo) {
+      selectedVideo.value = updatedVideo;
+    }
+  } catch (err) {
+    console.error('切换视频失败:', err);
+    displayToast('切换视频失败');
+  }
+};
+
+const handleGoToChannel = (channelId) => {
+  router.push(`/channel/${channelId}/all`);
+};
+
+// 监听视频模态框打开事件
+onMounted(() => {
+  emitter.on('openVideoModal', ({ video, playlist, currentTime }) => {
+    openVideoModal(video, playlist, currentTime);
   });
-  closeMiniPlayer();
-};
-
-const updateSavedTime = (time) => {
-  savedTime.value = time;
-};
-
-// 监听关闭迷你播放器事件
-emitter.on('closeMiniPlayer', () => {
-  closeMiniPlayer();
 });
 
-// 确保 emitter 在组件卸载时清理事件监听
 onUnmounted(() => {
-  emitter.off('minimizePlayer');
-  emitter.off('closeMiniPlayer');
   emitter.all.clear();
 });
 </script>
