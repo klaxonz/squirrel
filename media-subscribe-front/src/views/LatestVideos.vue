@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import {onMounted, inject, ref, computed, watch} from 'vue';
+import {onMounted, inject, ref, computed, watch, onUnmounted} from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import SearchBar from '../components/SearchBar.vue';
@@ -83,6 +83,18 @@ const goToChannelDetail = (newChannelId) => {
 
 watch(() => activeTab.value, (newVal) => {
   router.push(`/videos/${newVal}`);
+});
+
+onMounted(() => {
+  emitter.on('sidebarStateChanged', () => {
+    if (videoContainer.value) {
+      videoContainer.value.dispatchEvent(new Event('resize'));
+    }
+  });
+});
+
+onUnmounted(() => {
+  emitter.off('sidebarStateChanged');
 });
 </script>
 

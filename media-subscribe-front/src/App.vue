@@ -98,6 +98,8 @@ const isCollapsed = ref(false);
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value;
+  // 触发侧边栏状态改变事件
+  emitter.emit('sidebarStateChanged');
 };
 
 // 添加视频模态框相关方法

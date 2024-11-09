@@ -56,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, onUnmounted, provide } from 'vue';
+import { ref, onMounted, watch, computed, onUnmounted, provide, nextTick } from 'vue';
 import { RecycleScroller } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import VideoItem from './VideoItem.vue';
@@ -85,17 +85,28 @@ const sidePadding = 16;
 
 const updateContainerWidth = () => {
   if (containerRef.value) {
-    containerWidth.value = containerRef.value.offsetWidth - (sidePadding * 2);
+    requestAnimationFrame(() => {
+      containerWidth.value = containerRef.value.offsetWidth - (sidePadding * 2);
+    });
   }
 };
 
 onMounted(() => {
   updateContainerWidth();
   window.addEventListener('resize', updateContainerWidth);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateContainerWidth);
+  
+  const resizeObserver = new ResizeObserver(() => {
+    updateContainerWidth();
+  });
+  
+  if (containerRef.value) {
+    resizeObserver.observe(containerRef.value);
+  }
+  
+  onUnmounted(() => {
+    window.removeEventListener('resize', updateContainerWidth);
+    resizeObserver.disconnect();
+  });
 });
 
 const computedGridItems = computed(() => {
@@ -151,7 +162,9 @@ const handleMarkReadBatch = (videoId, isRead, direction) => {
   emit('markReadBatch', videoId, isRead, direction);
 };
 
-watch(() => props.videos.length, updateContainerWidth);
+watch(() => props.videos.length, () => {
+  nextTick(updateContainerWidth);
+});
 </script>
 
 <style scoped>
