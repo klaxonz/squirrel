@@ -15,7 +15,10 @@
           <li v-for="route in routes" :key="route.path">
             <router-link :to="route.path" class="nav-item" :class="{ active: $route.path === route.path }" :title="isCollapsed ? route.name : ''">
               <component :is="route.icon" class="w-6 h-6" :class="{'mr-4': !isCollapsed}" />
-              <span v-if="!isCollapsed" class="text-sm">{{ route.name }}</span>
+              <span :class="['text-sm transition-all duration-300 ease-in-out', 
+                           isCollapsed ? 'opacity-0 w-0' : 'opacity-100 w-auto']">
+                {{ route.name }}
+              </span>
             </router-link>
           </li>
         </ul>
@@ -158,7 +161,8 @@ body {
 }
 
 .nav-item {
-  @apply flex items-center px-4 py-2 text-[#f1f1f1] hover:bg-[#272727] rounded-lg mx-2 transition-all duration-200 ease-in-out;
+  @apply flex items-center px-4 py-2 text-[#f1f1f1] hover:bg-[#272727] rounded-lg mx-2 transition-all duration-200 ease-in-out overflow-hidden;
+  white-space: nowrap;
 }
 
 .nav-item.active {
@@ -166,7 +170,7 @@ body {
 }
 
 .nav-item .w-6 {
-  @apply text-[#f1f1f1];
+  @apply text-[#f1f1f1] transition-all duration-300 ease-in-out flex-shrink-0;
 }
 
 .nav-item:hover .w-6,
@@ -185,5 +189,11 @@ button {
 /* 添加一些全局样式来增强整体视觉效果 */
 .hover-lift {
   @apply transition-transform duration-300 ease-in-out hover:-translate-y-1;
+}
+
+/* 添加文字过渡效果 */
+.nav-item span {
+  display: inline-block;
+  transition: opacity 0.3s ease-in-out, width 0.3s ease-in-out;
 }
 </style>
