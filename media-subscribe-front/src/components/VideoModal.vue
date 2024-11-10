@@ -328,8 +328,23 @@ const onVideoPause = () => {
 };
 
 const onVideoEnded = () => {
-  updateWatchHistory(props.video.video_id, props.video.duration, props.video.duration);
-  emit('videoEnded', props.video);
+  // 异步更新观看历史
+  updateWatchHistory(
+    props.video.video_id,
+    props.video.channel_id,
+    props.video.duration, 
+    props.video.duration
+  ).catch(err => {
+    console.error('Failed to update watch history:', err);
+  });
+
+  // 立即执行下一个视频的播放
+  const nextIndex = currentIndex.value + 1;
+  if (nextIndex < props.playlist.length) {
+    changeVideo(props.playlist[nextIndex]);
+  } else {
+    emit('videoEnded', props.video);
+  }
 };
 
 const changeVideo = (newVideo) => {
@@ -716,15 +731,16 @@ const { updateWatchHistory } = useVideoHistory();
 
 // 修改 onVideoTimeUpdate 方法
 const onVideoTimeUpdate = (currentTime) => {
-  // 每30秒记录一次观看进度
+  // 每5秒记录一次观看进度,异步执行
   if (Math.floor(currentTime) % 5 === 0) {
-    // 获取主频道ID
     updateWatchHistory(
       props.video.video_id,
       props.video.channel_id,
       currentTime, 
       props.video.duration
-    );
+    ).catch(err => {
+      console.error('Failed to update watch history:', err);
+    });
   }
 };
 
@@ -1011,7 +1027,7 @@ button:focus {
   cursor: auto;
 }
 
-/* 优化控制按钮的点击区域 */
+/* 优化控制钮的点击区域 */
 .mini-control-btn {
   cursor: pointer;
   z-index: 10;
