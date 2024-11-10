@@ -2,7 +2,7 @@
   <div class="app-container flex h-screen bg-[#0f0f0f] text-white">
     <!-- 侧边栏 -->
     <nav :class="['sidebar h-full overflow-y-auto flex-shrink-0 transition-all duration-300 ease-in-out bg-[#0f0f0f]', 
-                  isCollapsed ? 'w-20' : 'w-64']">
+                  isCollapsed ? 'w-20' : 'w-48']">
       <div class="flex flex-col h-full">
         <div class="logo p-4 flex items-center mx-2">
           <button @click="toggleSidebar" class="mr-4 text-white hover:text-gray-300 focus:outline-none">

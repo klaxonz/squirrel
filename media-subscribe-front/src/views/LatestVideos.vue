@@ -78,7 +78,7 @@ const handleOpenModal = (video, playlist) => {
 };
 
 const goToChannelDetail = (newChannelId) => {
-  router.replace(`/channel/${newChannelId}/all`);
+  router.push(`/channel/${newChannelId}/all`);
 };
 
 watch(() => activeTab.value, (newVal) => {

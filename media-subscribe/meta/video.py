@@ -201,7 +201,7 @@ class YoutubeUploader(Uploader):
         self.init()
 
     def init(self):
-        video = YouTube(self.url, use_oauth=True, allow_oauth_cache=True, )
+        video = YouTube(self.url, use_oauth=False)
         self.id = video.channel_id
         self.name = video.author
         self.avatar = video.thumbnail_url

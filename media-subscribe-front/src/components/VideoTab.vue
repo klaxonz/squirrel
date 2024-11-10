@@ -81,6 +81,7 @@ const {
 
 onMounted(async () => {
   console.log('onMounted');
+  channelId.value = props.selectedChannelId;
   await loadMore();
 })
 

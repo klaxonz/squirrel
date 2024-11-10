@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import {createRouter, createWebHistory} from 'vue-router'
 import LatestVideos from '../views/LatestVideos.vue'
 import Subscribed from '../views/Subscribed.vue'
 import Settings from '../views/Settings.vue'
@@ -15,27 +15,27 @@ const routes = [
         path: 'all',
         name: 'AllVideos',
         component: VideoTab,
-        meta: { keepAlive: true }
+        meta: {keepAlive: true}
       },
       {
         path: 'unread',
         name: 'UnreadVideos',
         component: VideoTab,
-        meta: { keepAlive: true }
+        meta: {keepAlive: true}
       },
       {
         path: 'read',
         name: 'ReadVideos',
         component: VideoTab,
-        meta: { keepAlive: true }
+        meta: {keepAlive: true}
       }
     ],
-    redirect: { name: 'AllVideos' },
-    meta: { keepAlive: true }
+    redirect: {name: 'AllVideos'},
+    meta: {keepAlive: true}
   },
   {
     path: '/',
-    redirect: { name: 'AllVideos', replace: true }  // 添加 replace: true
+    redirect: {name: 'AllVideos', replace: true}  // 添加 replace: true
   },
   {
     path: '/subscriptions',
@@ -53,25 +53,29 @@ const routes = [
     component: LatestVideos,
     children: [
       {
+        path: '',
+        redirect: to => ({name: 'ChannelAllVideos', params: {id: to.params.id}})
+      },
+      {
         path: 'all',
         name: 'ChannelAllVideos',
         component: VideoTab,
-        meta: { keepAlive: true }
+        meta: {keepAlive: true}
       },
       {
         path: 'unread',
         name: 'ChannelUnreadVideos',
         component: VideoTab,
-        meta: { keepAlive: true }
+        meta: {keepAlive: true}
       },
       {
         path: 'read',
         name: 'ChannelVideos',
         component: VideoTab,
-        meta: { keepAlive: true }
+        meta: {keepAlive: true}
       }
     ],
-    meta: { keepAlive: true }
+    meta: {keepAlive: true}
   },
   {
     path: '/download-tasks',

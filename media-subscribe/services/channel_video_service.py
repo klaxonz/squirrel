@@ -48,7 +48,7 @@ class ChannelVideoService:
             }
         elif channel_video.domain == 'youtube.com':
             # YouTube video URL fetching logic
-            yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=True, allow_oauth_cache=True)
+            yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=False)
             video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
             audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
             return {
