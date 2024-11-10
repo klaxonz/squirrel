@@ -27,6 +27,20 @@
           <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
         </svg>
       </div>
+
+      <!-- 添加进度条 - 移动到封面底部 -->
+      <div 
+        v-if="showProgress && progress > 0" 
+        class="absolute bottom-0 left-0 right-0 h-[2px] bg-black/40 backdrop-blur-sm"
+      >
+        <div 
+          class="h-full bg-red-600/90 transition-all duration-200"
+          :style="{ 
+            width: `${(progress * 100).toFixed(1)}%`,
+            borderRadius: '1px'
+          }"
+        ></div>
+      </div>
     </div>
     <div class="p-2">
       <h3 
@@ -129,13 +143,6 @@ const props = defineProps({
   video: {
     type: Object,
     required: true,
-    validator: (value) => {
-      if (typeof value.is_read === 'undefined') {
-        console.warn('Video object is missing is_read property');
-        return false;
-      }
-      return true;
-    }
   },
   showAvatar: {
     type: Boolean,
@@ -145,6 +152,14 @@ const props = defineProps({
   setVideoRef: Function,
   refreshContent: Function,
   isSelected: Boolean,
+  showProgress: {
+    type: Boolean,
+    default: false
+  },
+  progress: {
+    type: Number,
+    default: 0
+  }
 });
 
 const emit = defineEmits([
@@ -279,7 +294,7 @@ const handleClick = (event) => {
   }
 };
 
-// 修改计算属性来处理逗号分隔的字符串
+// 修改算属性来处理逗号分隔的字符串
 const mainChannelInfo = computed(() => {
   const ids = props.video.channel_id?.toString().split(',') || [];
   const names = props.video.channel_name?.toString().split(',') || [];
@@ -439,5 +454,17 @@ onUnmounted(() => {
 
 .group:not(:hover) .channel-popup {
   transition-delay: 0ms;
+}
+
+/* 添加进度条相关样式 */
+.video-thumbnail:hover .bg-red-600\/90 {
+  @apply bg-red-500;
+  height: 3px;
+  margin-top: -1px;
+}
+
+/* 确保进度条容器在hover时保持原高度 */
+.video-thumbnail:hover .h-\[2px\] {
+  height: 2px;
 }
 </style>

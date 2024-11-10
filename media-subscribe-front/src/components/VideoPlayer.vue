@@ -8,6 +8,7 @@
 <script setup>
 import { onMounted, onUnmounted, watch, ref, defineExpose } from 'vue';
 import Player from 'xgplayer';
+import useVideoOperations from "../composables/useVideoOperations.js";
 
 const props = defineProps({
   video: Object,
@@ -17,21 +18,23 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange']);
+const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate']);
 
 const player = ref(null);
 const audioPlayer = ref(null);
-
+const {
+  playVideo,
+} = useVideoOperations();
 
 onMounted(async () => {
-  if (props.video?.video_url) {
-    initPlayer();
+  if (!props.video?.video_url) {
+    await playVideo(props.video);
   }
+  initPlayer();
 });
 
 onUnmounted(() => {
   if (player.value) {
-    clearInterval(props.video.progressSavingInterval);
     player.value.destroy();
   }
 });
@@ -159,6 +162,7 @@ const handleTimeUpdate = () => {
     if (Math.abs(audioPlayer.value.currentTime - player.value.currentTime) > 1) {
       audioPlayer.value.currentTime = player.value.currentTime + 1;
     }
+    emit('timeupdate', player.value.currentTime);
   }
 };
 

@@ -8,6 +8,7 @@ from common.log import init_logging
 from core.config import settings
 from schedule import TaskRegistry
 from schedule.schedule import Scheduler
+
 logger = logging.getLogger(__name__)
 
 

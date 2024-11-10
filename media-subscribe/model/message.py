@@ -1,29 +1,20 @@
-from datetime import datetime
+import datetime
 from typing import Optional
+
+from sqlalchemy import Text, Column, DateTime, Integer, VARCHAR
 from sqlmodel import Field, SQLModel
-from sqlalchemy import Text, String, func, Index
 
 
 class Message(SQLModel, table=True):
     __tablename__ = 'message'
 
-    message_id: Optional[int] = Field(default=None, primary_key=True)
-    body: str = Field(...)
-    send_status: str = Field(default='PENDING')
+    message_id: Optional[int] = Field(sa_column=Column(Integer, primary_key=True))
+    body: str = Field(sa_column=Column(Text, nullable=False))
+    send_status: str = Field(sa_column=Column(VARCHAR(32), nullable=False, default='PENDING'))
     retry_count: int = Field(default=0)
-    next_retry_time: Optional[datetime] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    next_retry_time: Optional[datetime.datetime] = Field(default=None)
+    created_at: Optional[datetime.datetime] = Field(sa_column=Column(DateTime, nullable=False, default=datetime.datetime.now))
+    updated_at: Optional[datetime.datetime] = Field(
+        sa_column=Column(DateTime, nullable=False, default=datetime.datetime.now, onupdate=datetime.datetime.now,
+                         index=True))
 
-    class Config:
-        sa_column_kwargs = {
-            "message_id": {"autoincrement": True},
-            "body": {"type": Text()},
-            "send_status": {"type": String(32)},
-            "created_at": {"server_default": func.current_timestamp()},
-            "updated_at": {"server_default": func.current_timestamp(), "onupdate": func.current_timestamp()}
-        }
-
-    __table_args__ = (
-        Index('ix_message_updated_at', 'updated_at'),
-    )

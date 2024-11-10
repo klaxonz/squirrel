@@ -62,7 +62,7 @@ import { useRouter } from 'vue-router';
 import mitt from 'mitt';
 import VideoModal from './components/VideoModal.vue';
 import MiniPlayer from './components/MiniPlayer.vue';
-import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
+import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon } from '@heroicons/vue/24/outline';
 import useVideoOperations from './composables/useVideoOperations';
 import useToast from './composables/useToast';
 
@@ -90,6 +90,7 @@ const { toastMessage, showToast, displayToast } = useToast();
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
   { path: '/subscriptions', name: '订阅', icon: BookmarkIcon },
+  { path: '/history', name: '历史记录', icon: ClockIcon },
   { path: '/download-tasks', name: '下载任务', icon: ArrowDownTrayIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
 ]);
@@ -103,9 +104,8 @@ const toggleSidebar = () => {
 };
 
 // 添加视频模态框相关方法
-const openVideoModal = async (video, playlist, startTime = 0) => {
+const openVideoModal = async (video, playlist) => {
   emitter.emit('closeMiniPlayer');
-  video.currentTime = startTime;
   selectedVideo.value = video;
   currentPlaylist.value = playlist;
   isModalOpen.value = true;
@@ -135,8 +135,8 @@ const handleGoToChannel = (channelId) => {
 
 // 监听视频模态框打开事件
 onMounted(() => {
-  emitter.on('openVideoModal', ({ video, playlist, currentTime }) => {
-    openVideoModal(video, playlist, currentTime);
+  emitter.on('openVideoModal', ({ video, playlist }) => {
+    openVideoModal(video, playlist);
   });
 });
 

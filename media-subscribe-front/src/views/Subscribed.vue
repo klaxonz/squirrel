@@ -191,7 +191,6 @@ const closeSettings = () => {
 
 const toggleStatus = async (channelId, status) => {
   try {
-    console.log(`Updating status for channel ${channelId} to ${status}`);
     await axios.post('/api/channel/toggle-status', {channel_id: channelId, if_enable: status});
     updateLocalChannel(channelId, {if_enable: status});
     if (!status) {

@@ -20,6 +20,8 @@
             :isChannelPage="isChannelPage"
             :showAvatar="showAvatar"
             :refreshContent="refreshContent"
+            :showProgress="video.showProgress"
+            :progress="video.progress"
             @toggleOptions="$emit('toggleOptions', $event, video.id)"
             @goToChannel="$emit('goToChannel', $event)"
             @openModal="$emit('openModal', video)"

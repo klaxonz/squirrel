@@ -10,6 +10,7 @@ from .channel import router as channel_router
 from .channel_video import router as channel_video_router
 from .settings import router as settings_router
 from .task import router as task_router
+from .video_history import router as video_history_router
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ app.include_router(task_router)
 app.include_router(settings_router)
 app.include_router(channel_router)
 app.include_router(channel_video_router)
-
+app.include_router(video_history_router)
 
 @app.exception_handler(Exception)
 async def default_exception_handler(request: Request, exc: Exception):

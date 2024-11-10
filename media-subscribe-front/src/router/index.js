@@ -4,6 +4,7 @@ import Subscribed from '../views/Subscribed.vue'
 import Settings from '../views/Settings.vue'
 import DownloadTasks from '../views/DownloadTasks.vue'
 import VideoTab from "../components/VideoTab.vue";
+import History from '../views/History.vue';
 
 const routes = [
   {
@@ -81,6 +82,11 @@ const routes = [
     path: '/download-tasks',
     name: 'DownloadTasks',
     component: DownloadTasks
+  },
+  {
+    path: '/history',
+    name: 'History',
+    component: History,
   }
 ]
 

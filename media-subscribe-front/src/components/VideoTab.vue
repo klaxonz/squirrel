@@ -1,6 +1,6 @@
 <template>
   <VideoList
-      :videos="videos"
+      :videos="processedVideos"
       :loading="loading"
       :allLoaded="allLoaded"
       :showAvatar="false"
@@ -12,13 +12,14 @@
       @videoEnded="onVideoEnded"
       @toggleOptions="toggleOptions"
       @openModal="(video) => emit('openModal', video, videos)"
-      @goToChannel="(channelId) => emit('goToChannel', channelId)"
+      @goToChannel="(newChannelId) => emit('goToChannel', newChannelId)"
   />
 
 </template>
 
 
 <script setup>
+import { computed } from 'vue';
 import VideoList from "./VideoList.vue";
 import useLatestVideos from "../composables/useLatestVideos.js";
 import useVideoOperations from "../composables/useVideoOperations.js";
@@ -48,6 +49,15 @@ const {
   channelId
 } = useLatestVideos();
 
+// 添加计算属性来处理视频进度
+const processedVideos = computed(() => {
+  return videos.value.map(video => ({
+    ...video,
+    showProgress: true,
+    progress: video.last_position / video.total_duration
+  }));
+});
+
 watch(() => props.activeTab, (newTab) => {
   activeTab.value = newTab;
   handleSearch();
@@ -63,7 +73,6 @@ watch(() => tabsWithCounts.value, (newCounts) => {
 });
 
 watch(() => props.selectedChannelId, (newChannelId) => {
-  console.log('watch selectedChannelId', newChannelId);
   channelId.value = newChannelId;
   handleSearch();
 })
@@ -80,7 +89,6 @@ const {
 } = useOptionsMenu(videos);
 
 onMounted(async () => {
-  console.log('onMounted');
   channelId.value = props.selectedChannelId;
   await loadMore();
 })

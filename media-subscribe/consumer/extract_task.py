@@ -73,6 +73,7 @@ def _should_skip_processing(extract_info, domain, video_id):
 
 def _get_video_info(url, task_name):
     video_info = Downloader.get_video_info_thread(url, task_name)
+    # logger.info(f"视频信息：{video_info}" )
     if video_info is None or ('_type' in video_info and video_info['_type'] == 'playlist'):
         logger.info(f"{url} is not a valid video, skip")
         return None

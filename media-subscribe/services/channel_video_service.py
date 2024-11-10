@@ -10,6 +10,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select, or_, col
 
 from model.channel import ChannelVideo
+from model.video_history import VideoHistory
 from model.video_progress import VideoProgress
 from services import download_service
 from utils.cookie import filter_cookies_to_query_string
@@ -67,7 +68,12 @@ class ChannelVideoService:
 
     def list_channel_videos(self, query: str, channel_id: str, read_status: str, page: int, page_size: int) -> Tuple[
         List[dict], dict]:
-        base_query = select(ChannelVideo).where(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
+        base_query = (
+            select(ChannelVideo, VideoHistory)
+            .outerjoin(VideoHistory, ChannelVideo.video_id == VideoHistory.video_id)
+            .where(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
+        )
+        
         if channel_id:
             base_query = base_query.where(or_(
                 ChannelVideo.channel_id == channel_id,
@@ -88,7 +94,7 @@ class ChannelVideoService:
 
         offset = (page - 1) * page_size
         base_query = base_query.order_by(col(ChannelVideo.uploaded_at).desc()).offset(offset).limit(page_size)
-        channel_videos = self.session.exec(base_query).all()
+        results = self.session.exec(base_query).all()
 
         s_query = select(func.count(ChannelVideo.id))
         if query:
@@ -107,22 +113,28 @@ class ChannelVideoService:
         read_count = self.session.exec(s_query.where(ChannelVideo.if_read == 1)).one()
         unread_count = total_count - read_count
 
-        channel_video_convert_list = [{
-            'id': cv.id,
-            'channel_id': cv.channel_id,
-            'channel_name': cv.channel_name,
-            'channel_avatar': cv.channel_avatar,
-            'video_id': cv.video_id,
-            'title': cv.title,
-            'domain': cv.domain,
-            'url': cv.url,
-            'thumbnail': cv.thumbnail,
-            'duration': cv.duration,
-            'if_downloaded': cv.if_downloaded,
-            'if_read': cv.if_read,
-            'uploaded_at': cv.uploaded_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'created_at': cv.created_at.strftime('%Y-%m-%d %H:%M:%S')
-        } for cv in channel_videos]
+        channel_video_convert_list = []
+        for cv, history in results:
+            video_data = {
+                'id': cv.id,
+                'channel_id': cv.channel_id,
+                'channel_name': cv.channel_name,
+                'channel_avatar': cv.channel_avatar,
+                'video_id': cv.video_id,
+                'title': cv.title,
+                'domain': cv.domain,
+                'url': cv.url,
+                'thumbnail': cv.thumbnail,
+                'duration': cv.duration,
+                'if_downloaded': cv.if_downloaded,
+                'if_read': cv.if_read,
+                'uploaded_at': cv.uploaded_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'created_at': cv.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'last_position': history.last_position if history else 0,
+                'total_duration': history.total_duration if history else cv.duration,
+                'watch_duration': history.watch_duration if history else 0,
+            }
+            channel_video_convert_list.append(video_data)
 
         counts = {
             "all": total_count,

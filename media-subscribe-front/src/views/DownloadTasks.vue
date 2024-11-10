@@ -353,12 +353,10 @@ const handleSearch = (query) => {
 };
 
 watch(activeTab, (newTab) => {
-  console.log('Active tab changed:', newTab);
   resetAndFetchTasks();
 });
 
 watch(tasks, (newTasks) => {
-  console.log('Tasks updated:', newTasks);
 }, { deep: true });
 </script>
 

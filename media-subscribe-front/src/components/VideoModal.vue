@@ -41,10 +41,11 @@
             v-if="video"
             :key="video.id"
             :video="video"
-            :initialTime="video.currentTime"
+            :initialTime="video.last_position || 0"
             @play="onVideoPlay"
             @pause="onVideoPause"
             @ended="onVideoEnded"
+            @timeupdate="onVideoTimeUpdate"
             class="w-full h-full"
             ref="playerRef"
           />
@@ -181,7 +182,7 @@
           <div 
             v-for="(item, index) in playlist" 
             :key="item.id" 
-            class="flex p-2 hover:bg-[#272727] cursor-pointer"
+            class="flex p-2 hover:bg-[#272727] cursor-pointer relative"
             :class="{ 'bg-[#383838]': item.id === video?.id }"
             @click="changeVideo(item)"
           >
@@ -191,6 +192,20 @@
               <span class="absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
                 {{ formatDuration(item.duration) }}
               </span>
+              
+              <!-- 添加进度条 -->
+              <div 
+                v-if="item.last_position > 0" 
+                class="absolute bottom-0 left-0 right-0 h-[2px] bg-black/40 backdrop-blur-sm"
+              >
+                <div 
+                  class="h-full bg-red-600/90 transition-all duration-200"
+                  :style="{ 
+                    width: `${((item.last_position / item.total_duration) * 100).toFixed(1)}%`,
+                    borderRadius: '1px'
+                  }"
+                ></div>
+              </div>
             </div>
 
             <!-- 视频信息部分 -->
@@ -271,6 +286,7 @@
 <script setup>
 import { defineProps, defineEmits, onMounted, onUnmounted, ref, computed, inject, watch, nextTick } from 'vue';
 import VideoPlayer from './VideoPlayer.vue';
+import { useVideoHistory } from '../composables/useVideoHistory';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -312,6 +328,7 @@ const onVideoPause = () => {
 };
 
 const onVideoEnded = () => {
+  updateWatchHistory(props.video.video_id, props.video.duration, props.video.duration);
   emit('videoEnded', props.video);
 };
 
@@ -693,6 +710,22 @@ const stopDrag = () => {
   setTimeout(() => {
     window.getSelection().removeAllRanges();
   }, 0);
+};
+
+const { updateWatchHistory } = useVideoHistory();
+
+// 修改 onVideoTimeUpdate 方法
+const onVideoTimeUpdate = (currentTime) => {
+  // 每30秒记录一次观看进度
+  if (Math.floor(currentTime) % 5 === 0) {
+    // 获取主频道ID
+    updateWatchHistory(
+      props.video.video_id,
+      props.video.channel_id,
+      currentTime, 
+      props.video.duration
+    );
+  }
 };
 
 </script>
