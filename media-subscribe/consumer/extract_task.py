@@ -31,6 +31,39 @@ def process_extract_message(message: str):
         logger.info(f"开始处理视频解析消息：{message}")
         message_obj = Message.model_validate(json.loads(message))
         extract_info = _parse_message(message_obj)
+        url = extract_info['url']
+        domain = extract_top_level_domain(url)
+        if domain == 'bilibili.com':
+            process_extract_bilibili_message.send(message)
+        elif domain == 'youtube.com':
+            process_extract_youtube_message.send(message)
+        elif domain == 'pornhub.com':
+            process_extract_pornhub_message.send(message)
+        
+    except Exception as e:
+        logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+
+
+@dramatiq.actor(queue_name='extract_bilibili')
+def process_extract_bilibili_message(message: str):
+    process_extract_task(message)
+
+
+@dramatiq.actor(queue_name='extract_youtube')
+def process_extract_youtube_message(message: str):
+    process_extract_task(message)
+
+
+@dramatiq.actor(queue_name='extract_pornhub')
+def process_extract_pornhub_message(message: str):
+    process_extract_task(message)
+
+
+def process_extract_task(message: str):
+    try:
+        logger.info(f"开始处理视频解析消息：{message}")
+        message_obj = Message.model_validate(json.loads(message))
+        extract_info = _parse_message(message_obj)
         url, domain, video_id = _extract_video_info(extract_info['url'])
 
         if _should_skip_processing(extract_info, domain, video_id):

@@ -228,7 +228,7 @@ class RepairChanelInfoForTotalVideos(BaseTask):
     def run(cls):
         try:
             with get_session() as session:
-                channel_service = ChannelService(session)
+                channel_service = ChannelService()
                 channels = session.exec(select(Channel)).all()
                 for channel in channels:
                     extract_videos = channel_service.count_channel_videos(channel.channel_id)

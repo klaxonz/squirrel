@@ -29,11 +29,10 @@ def update_watch_history(
 @router.get("/api/video-history/list")
 def get_watch_history(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    session: Session = Depends(get_session)
+    page_size: int = Query(20, ge=1, le=100)
 ):
     """获取观看历史列表"""
-    video_history_service = VideoHistoryService(session)
+    video_history_service = VideoHistoryService()
     history_list, total = video_history_service.get_watch_history(page, page_size)
     return response.success({
         "items": history_list,
@@ -44,10 +43,9 @@ def get_watch_history(
 
 @router.post("/api/video-history/clear")
 def clear_history(
-    request: ClearHistoryRequest,
-    session: Session = Depends(get_session)
+    request: ClearHistoryRequest
 ):
     """清空观看历史"""
-    video_history_service = VideoHistoryService(session)
+    video_history_service = VideoHistoryService()
     video_history_service.clear_history(request.video_ids)
     return response.success() 

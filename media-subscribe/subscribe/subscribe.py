@@ -178,7 +178,12 @@ class PornhubSubscribeChannel(SubscribeChannel):
             channel_id = re.search(r"id=([^&]+)", subscribe_url).group(1)
         else:
             channel_id = None
-            name = bs4.select('.nameSubscribe .name h1')[0].text.strip()
+            name_el = bs4.select('.nameSubscribe .name h1')
+            if len(name_el) == 0:
+                logger.error(f'Can not find channel name in {self.url}')
+                raise Exception(f'Can not find channel name in {self.url}')
+                
+            name = name_el[0].text.strip()
             add_friend_btn = bs4.select('.addFriendButton button[data-friend-url]')
             if len(add_friend_btn) > 0:
                 channel_id = add_friend_btn[0].get('data-id')
@@ -233,7 +238,7 @@ class PornhubSubscribeChannel(SubscribeChannel):
             bs4 = BeautifulSoup(response.text, 'html.parser')
             video_els = []
             video_els.extend(bs4.select('#channelsProfile .videos a.videoPreviewBg'))
-            video_els.extend(bs4.select('#profileContent .videos a.videoPreviewBg'))
+            video_els.extend(bs4.select('#profileContent ul:not(#privateVideosSection) .videos a.videoPreviewBg'))
             video_els.extend(bs4.select('#pornstarsVideoSection .videoPreviewBg'))
             for el in video_els:
                 video_list.append(f'{base_url}{el["href"]}')

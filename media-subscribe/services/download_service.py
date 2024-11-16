@@ -33,7 +33,7 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
         value = client.hget(key, 'if_extract')
         if value:
             now = datetime.datetime.now().timestamp()
-            if now - float(value) > 10 * 60 * 1000:
+            if now - float(value) < 10 * 60 * 1000:
                 return
     else:
         if not if_manual_retry:
@@ -45,7 +45,7 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
             value = client.hget(key, 'if_download')
             if value:
                 now = datetime.datetime.now().timestamp()
-                if now - float(value) > 10 * 60 * 1000:
+                if now - float(value) < 10 * 60 * 1000:
                     return
 
     with get_session() as session:

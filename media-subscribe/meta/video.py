@@ -182,7 +182,7 @@ class BilibiliUploader(Uploader):
                 return
 
             if data.get('upData') is None:
-                logger.info(f"Failed to extract data from the response. url: {self.url}, text: {json_str}")
+                logger.info(f"Failed to extract data from the response. url: {self.url}")
                 return
 
             self.id = data.get('upData').get('mid')
