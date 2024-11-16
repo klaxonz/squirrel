@@ -30,10 +30,10 @@
       <div class="resize-corner resize-se" @mousedown.stop="startResize('se')"></div>
     </template>
 
-    <div :class="['relative bg-[#0f0f0f] flex', isMinimized ? 'h-full' : 'w-full h-full']">
+    <div :class="['relative bg-[#0f0f0f] flex video-container', isMinimized ? 'h-full' : 'w-full h-full']">
       <!-- 视频播放区域 -->
       <div :class="[
-        'flex-grow flex flex-col h-full',
+        'video-section',
         isMinimized ? 'w-full' : resizeState.width
       ]">
         <div class="flex-grow relative">
@@ -168,7 +168,7 @@
 
       <!-- 播放列表 - 在非最小化状态下显示 -->
       <div v-if="!isMinimized" 
-           class="h-full bg-[#181818] flex flex-col"
+           class="playlist-section"
            :style="{ width: `${resizeState.playlistWidth}px` }"
       >
         <div class="text-white text-lg font-semibold p-4 border-b border-[#272727] flex items-center relative">
@@ -455,7 +455,7 @@ const goToChannel = (channelId) => {
   emit('goToChannel', channelId);
 };
 
-// 添加处理播放列表项频道信息的��法
+// 添加处理播放列表项频道信息的方法
 const getMainChannelInfo = (item) => {
   const ids = item.channel_id?.toString().split(',') || [];
   const names = item.channel_name?.toString().split(',') || [];
@@ -538,7 +538,7 @@ const toggleMinimize = () => {
     root.style.setProperty('--initial-y', `${position.value.y}px`);
   }
 
-  // 添加相应的动画类
+  // 添���相应的动画类
   const container = document.querySelector('.video-modal-container');
   if (container) {
     container.classList.add(isMinimized.value ? 'maximizing' : 'minimized');
@@ -915,7 +915,7 @@ button:focus {
 }
 
 /* 悬浮效果优化 */
-.group:hover .text-[#aaaaaa] {
+.group:hover .text-\[\#aaaaaa\] {
   color: #ffffff;
 }
 
@@ -1276,5 +1276,35 @@ button:focus {
 
 .hover\:opacity-100:hover {
   transition: opacity 0.2s ease-in-out;
+}
+
+/* 添加竖屏布局相关样式 */
+@media (max-aspect-ratio: 16/9) {
+  /* 非最小化状态下的竖屏布局 */
+  .video-container:not(.minimized) {
+    flex-direction: column;
+  }
+
+  /* 调整视频区域在竖屏下的样式 */
+  .video-section:not(.minimized) {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* 调整播放列表在竖屏下的样式 */
+  .playlist-section:not(.minimized) {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 40vh;
+  }
+}
+
+/* 添加视频容器和播放列表的基础类 */
+.video-section {
+  @apply flex-grow flex flex-col;
+}
+
+.playlist-section {
+  @apply h-full bg-[#181818] flex flex-col;
 }
 </style>
