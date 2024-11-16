@@ -63,6 +63,16 @@
               </div>
               <div class="flex items-center gap-1 flex-shrink-0">
                 <button 
+                  @click="goToOriginalVideo"
+                  class="mini-control-btn"
+                  title="在新标签页中打开原视频"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                  </svg>
+                </button>
+                <button 
                   @click="toggleMinimize"
                   class="mini-control-btn"
                   title="还原"
@@ -96,8 +106,20 @@
         
         <!-- 视频信息区域 - 在非最小化状态下显示 -->
         <div v-if="!isMinimized" class="p-4 bg-[#0f0f0f] border-t border-[#272727]">
-          <div class="flex items-baseline">
-            <h2 class="text-lg font-semibold text-white mr-2">{{ video?.title }}</h2>
+          <div class="flex items-start gap-2">
+            <h2 class="text-lg font-semibold text-white">{{ video?.title }}</h2>
+            <button 
+              @click="goToOriginalVideo"
+              class="mt-1.5 text-[#aaaaaa] hover:text-white transition-colors duration-150 flex items-center gap-1 text-xs"
+              title="在新标签页中打开原视频"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+              </svg>
+            </button>
+          </div>
+          <div class="mt-1">
             <span class="text-xs text-[#aaaaaa]">{{ formatDate(video?.uploaded_at) }}</span>
           </div>
           
@@ -433,7 +455,7 @@ const goToChannel = (channelId) => {
   emit('goToChannel', channelId);
 };
 
-// 添加处理播放列表项频道信息的方法
+// 添加处理播放列表项频道信息的��法
 const getMainChannelInfo = (item) => {
   const ids = item.channel_id?.toString().split(',') || [];
   const names = item.channel_name?.toString().split(',') || [];
@@ -503,11 +525,15 @@ const toggleMinimize = () => {
   // 设置动画所需的 CSS 变量
   const root = document.documentElement;
   if (!isMinimized.value) {
-    // 最小化时
+    // 最小化时，确保位置合理
+    const windowHeight = window.innerHeight;
+    position.value = {
+      x: 24,
+      y: windowHeight - size.value.height - 24
+    };
     root.style.setProperty('--final-x', `${position.value.x}px`);
     root.style.setProperty('--final-y', `${position.value.y}px`);
   } else {
-    // 最大化时
     root.style.setProperty('--initial-x', `${position.value.x}px`);
     root.style.setProperty('--initial-y', `${position.value.y}px`);
   }
@@ -516,7 +542,6 @@ const toggleMinimize = () => {
   const container = document.querySelector('.video-modal-container');
   if (container) {
     container.classList.add(isMinimized.value ? 'maximizing' : 'minimized');
-    // 动画结束后移除类
     container.addEventListener('animationend', () => {
       container.classList.remove('maximizing', 'minimized');
     }, { once: true });
@@ -524,7 +549,6 @@ const toggleMinimize = () => {
 
   isMinimized.value = !isMinimized.value;
   if (!isMinimized.value) {
-    // 恢复到默认大小
     resizeState.value.playlistWidth = 384;
   }
 };
@@ -755,6 +779,45 @@ const onVideoTimeUpdate = (currentTime) => {
     });
   }
 };
+
+const goToOriginalVideo = () => {
+  if (props.video?.url) {
+    window.open(props.video.url, '_blank');
+  }
+};
+
+// 添加窗口大小改变处理函数
+const handleWindowResize = () => {
+  if (!isMinimized.value) return;
+  
+  // 获取当前窗口尺寸
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+  
+  // 确保迷你播放器不会超出新的窗口边界
+  position.value = {
+    x: Math.min(position.value.x, windowWidth - size.value.width),
+    y: Math.min(position.value.y, windowHeight - size.value.height)
+  };
+  
+  // 如果位置为负值，重置到默认位置
+  if (position.value.x < 0 || position.value.y < 0) {
+    position.value = {
+      x: 24,
+      y: windowHeight - size.value.height - 24
+    };
+  }
+};
+
+// 在组件挂载时添加事件监听
+onMounted(() => {
+  window.addEventListener('resize', handleWindowResize);
+});
+
+// 在组件卸载时移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('resize', handleWindowResize);
+});
 
 </script>
 
