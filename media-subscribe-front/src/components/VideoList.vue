@@ -99,11 +99,16 @@ onMounted(() => {
   
   const resizeObserver = new ResizeObserver(() => {
     updateContainerWidth();
+    checkInitialContent();
   });
   
   if (containerRef.value) {
     resizeObserver.observe(containerRef.value);
   }
+  
+  nextTick(() => {
+    checkInitialContent();
+  });
   
   onUnmounted(() => {
     window.removeEventListener('resize', updateContainerWidth);
@@ -164,8 +169,24 @@ const handleMarkReadBatch = (videoId, isRead, direction) => {
   emit('markReadBatch', videoId, isRead, direction);
 };
 
+const checkInitialContent = () => {
+  if (!containerRef.value) return;
+  
+  const container = containerRef.value;
+  const scroller = container.querySelector('.scroller');
+  if (!scroller) return;
+
+  // 如果内容高度小于容器高度，且还有更多内容可以加载，则触发加载更多
+  if (scroller.scrollHeight <= scroller.clientHeight && !props.loading && !props.allLoaded) {
+    emit('loadMore');
+  }
+};
+
 watch(() => props.videos.length, () => {
-  nextTick(updateContainerWidth);
+  nextTick(() => {
+    updateContainerWidth();
+    checkInitialContent();
+  });
 });
 </script>
 

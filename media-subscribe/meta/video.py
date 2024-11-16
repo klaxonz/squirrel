@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import re
-import time
 
 import requests
 from bs4 import BeautifulSoup
@@ -236,8 +235,6 @@ class PornhubUploader(Uploader):
         }
         req_url = self.url.replace('www', 'cn')
         response = session.get(req_url, headers=headers, timeout=20)
-        logger.info(f"Request text: {response.text}")
-        time.sleep(60)
         response.raise_for_status()  # 检查请求是否成功
         bs4 = BeautifulSoup(response.text, 'html.parser')
         username_el = bs4.select('.userInfoBlock .usernameWrap')[0]
