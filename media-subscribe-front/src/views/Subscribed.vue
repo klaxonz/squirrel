@@ -10,14 +10,27 @@
                class="channel-item bg-[#202020] rounded-lg overflow-hidden hover:bg-[#303030] transition-all duration-200 relative group"
                @click="goToChannel(channel.channel_id)"
           >
-            <img :src="channel.avatar" :alt="channel.name" class="w-full h-32 object-cover"/>
-            <div class="p-4">
+            <div class="flex justify-center items-center p-6 bg-[#181818]">
+              <div class="relative w-24 h-24">
+                <img 
+                  :src="channel.avatar" 
+                  :alt="channel.name" 
+                  class="w-full h-full rounded-full object-cover ring-2 ring-[#303030] transition-transform duration-300 group-hover:scale-105"
+                  referrerpolicy="no-referrer"
+                  @error="handleImageError($event)"
+                />
+                <div class="absolute -inset-0.5 bg-gradient-to-b from-transparent to-[#181818] opacity-20 rounded-full"></div>
+              </div>
+            </div>
+
+            <div class="p-4 text-center">
               <h3 class="text-sm font-semibold truncate text-white">{{ channel.name }}</h3>
               <p class="text-xs text-[#aaa] mt-1">
                 总视频: {{ channel.total_videos }} | 已解析: {{ channel.total_extract }}
               </p>
               <p class="text-xs text-[#aaa] mt-1">订阅时间: {{ formatDate(channel.created_at) }}</p>
             </div>
+
             <button @click.stop="openSettings(channel)"
                     class="absolute top-2 right-2 p-2 bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition-colors duration-200 opacity-0 group-hover:opacity-100">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20"
@@ -98,6 +111,7 @@ import axios from '../utils/axios';
 import SearchBar from '../components/SearchBar.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
+import useCustomToast from '../composables/useToast';
 
 const router = useRouter();
 
@@ -113,6 +127,8 @@ const selectedChannel = ref(null);
 
 const observer = ref(null);
 const loadingTrigger = ref(null);
+
+const { displayToast, confirm } = useCustomToast();
 
 const setupIntersectionObserver = () => {
   observer.value = new IntersectionObserver(
@@ -252,19 +268,21 @@ const formatDate = (dateString) => {
 };
 
 const unsubscribeChannel = async (channelId) => {
-  if (confirm('确定要取消订阅这个频道吗？这将删除所有相关的视频记录。')) {
+  const confirmed = await confirm('确定要取消订阅这个频道吗？这将删除所有相关的视频记录。');
+  
+  if (confirmed) {
     try {
       const response = await axios.post('/api/channel/unsubscribe', {id: channelId});
       if (response.data.code === 0) {
         channels.value = channels.value.filter(channel => channel.id !== channelId);
-        showToast('频道已成功取消订阅', false);
+        displayToast('频道已成功取消订阅');
         closeSettings();
       } else {
         throw new Error(response.data.msg || '取消订阅失败');
       }
     } catch (error) {
       console.error('取消订阅失败:', error);
-      showToast(error.message || '取消订阅失败', true);
+      displayToast(error.message || '取消订阅失败', { type: 'error' });
     }
   }
 };
@@ -274,8 +292,15 @@ const goToChannel = (channelId) => {
 }
 
 const showToast = (message, isError = false) => {
-  // 实现一个简单的 toast 通知
-  alert(message); // 这里可以替换为更优雅的 toast 实现
+  displayToast(message, {
+    type: isError ? 'error' : 'success'
+  });
+};
+
+// 添加图片加载错误处理函数
+const handleImageError = (event) => {
+  // 设置默认头像
+  event.target.src = '/squirrel-icon.svg'; // 使用项目中的默认头像
 };
 
 onMounted(() => {
@@ -306,10 +331,39 @@ onUnmounted(() => {
 
 .channel-item {
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .channel-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.channel-item img {
+  transition: all 0.3s ease-in-out;
+  backface-visibility: hidden;
+}
+
+.channel-item:hover img {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.channel-item > div:nth-child(2) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-item .w-24 {
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
 }
 </style>

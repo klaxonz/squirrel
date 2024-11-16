@@ -1,8 +1,8 @@
 import json
 from typing import List, Tuple
 
-from sqlalchemy import or_, func, delete
-from sqlmodel import Session, select, col
+from sqlalchemy import or_, func
+from sqlmodel import Session, select, col, delete
 
 from common import constants
 from core.cache import RedisClient
@@ -105,6 +105,7 @@ class ChannelService:
     def unsubscribe_channel(self, channel_id: int):
         channel = self.session.exec(select(Channel).where(Channel.id == channel_id)).first()
         if channel:
+            self.session.delete(channel)
             self.session.exec(delete(ChannelVideo).where(ChannelVideo.channel_id == channel.channel_id))
             self.session.commit()
             redis_client = RedisClient.get_instance().client
