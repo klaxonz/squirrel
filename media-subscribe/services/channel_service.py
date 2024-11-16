@@ -1,8 +1,7 @@
 import json
 from typing import List, Tuple
 
-from mutagen.dsdiff import delete
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, delete
 from sqlmodel import Session, select, col
 
 from common import constants

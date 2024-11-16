@@ -44,7 +44,7 @@
     </div>
     <div class="p-2">
       <h3 
-        class="text-xs font-medium text-white line-clamp-2 h-9 cursor-pointer hover:text-blue-400 transition-colors duration-200"
+        class="text-xs font-medium text-white line-clamp-2 h-8 cursor-pointer hover:text-blue-400 transition-colors duration-200"
       >
         {{ video.title }}
       </h3>
@@ -466,5 +466,10 @@ onUnmounted(() => {
 /* 确保进度条容器在hover时保持原高度 */
 .video-thumbnail:hover .h-\[2px\] {
   height: 2px;
+}
+
+/* 修改标题高度 */
+.h-8 {
+  height: 2rem; /* 32px, 刚好容纳两行文字 */
 }
 </style>

@@ -96,15 +96,15 @@ def _get_channel_video(domain, video_id):
 
 
 def _handle_video_extraction(extract_info, video, domain, video_id, video_info):
-    logger.debug(f"开始解析视频：channel {video.get_uploader().name}, video: {video.url}")
+    logger.info(f"开始解析视频：channel {video.get_uploader().name}, video: {video.url}")
     if extract_info['if_subscribe'] and not _get_channel_video(domain, video_id):
         _create_channel_video(video, domain, video_id, video_info)
-    logger.debug(f"结束解析视频：channel {video.get_uploader().name}, video: {video.url}")
+    logger.info(f"结束解析视频：channel {video.get_uploader().name}, video: {video.url}")
 
 
 def _create_channel_video(video, domain, video_id, video_info):
     with get_session() as session:
-        logger.debug(f"开始创建channel video: {video.url}")
+        logger.info(f"开始创建channel video: {video.url}")
         uploader = video.get_uploader()
         channel_video = ChannelVideo()
         channel_video.url = video.url
@@ -114,6 +114,7 @@ def _create_channel_video(video, domain, video_id, video_info):
         channel_id = uploader.get_id()
         channel_name = uploader.get_name()
         channel_avatar = uploader.get_avatar()
+        logger.info(f"channel: {channel_id}, name: {channel_name}, avatar: {channel_avatar}")
         if len(actors) > 0:
             for actor in actors:
                 actor_channel = SubscribeChannelFactory.create_subscribe_channel(actor)

@@ -141,18 +141,17 @@ class ChangeStatusTask(BaseTask):
 class AutoUpdateChannelVideo(BaseTask):
     @classmethod
     def run(cls):
-        try:
-            logger.info('auto_update_channel_video start')
-            with get_session() as session:
-                channels = session.exec(select(Channel).where(Channel.if_enable == 1))
-                for channel in channels:
+        logger.info('auto_update_channel_video start')
+        with get_session() as session:
+            channels = session.exec(select(Channel).where(Channel.if_enable == 1))
+            for channel in channels:
+                try:
                     session.expunge(channel)
                     cls.update_channel_video(channel)
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Error decoding JSON: {e}", exc_info=True)
-        except Exception as e:
-            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+                except json.JSONDecodeError as e:
+                    logger.error(f"Error decoding JSON: {e}", exc_info=True)
+                except Exception as e:
+                    logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
     @classmethod
     def update_channel_video(cls, channel):

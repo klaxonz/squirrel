@@ -49,7 +49,7 @@ class ChannelVideoService:
             }
         elif channel_video.domain == 'youtube.com':
             # YouTube video URL fetching logic
-            yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=False)
+            yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=False, allow_oauth_cache=True, use_po_token=True)
             video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
             audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
             return {
@@ -66,7 +66,7 @@ class ChannelVideoService:
             }
         return {}
 
-    def list_channel_videos(self, query: str, channel_id: str, read_status: str, page: int, page_size: int) -> Tuple[
+    def list_channel_videos(self, query: str, channel_id: str, read_status: str, sort_by: str, page: int, page_size: int) -> Tuple[
         List[dict], dict]:
         base_query = (
             select(ChannelVideo, VideoHistory)
@@ -93,7 +93,14 @@ class ChannelVideoService:
                 base_query = base_query.where(ChannelVideo.if_read == 0)
 
         offset = (page - 1) * page_size
-        base_query = base_query.order_by(col(ChannelVideo.uploaded_at).desc()).offset(offset).limit(page_size)
+        
+        # 根据排序字段进行排序
+        if sort_by == 'created_at':
+            base_query = base_query.order_by(col(ChannelVideo.created_at).desc())
+        else:  # default: uploaded_at
+            base_query = base_query.order_by(col(ChannelVideo.uploaded_at).desc())
+        
+        base_query = base_query.offset(offset).limit(page_size)
         results = self.session.exec(base_query).all()
 
         s_query = select(func.count(ChannelVideo.id))

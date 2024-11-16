@@ -1,4 +1,10 @@
+from enum import Enum
 from pydantic import BaseModel
+
+
+class SortBy(str, Enum):
+    UPLOADED_AT = "uploaded_at"
+    CREATED_AT = "created_at"
 
 
 class MarkReadRequest(BaseModel):

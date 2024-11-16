@@ -34,7 +34,11 @@ const props = defineProps({
     default: ''
   },
   activeTab: String,
-  selectedChannelId: String
+  selectedChannelId: String,
+  sortBy: {
+    type: String,
+    default: 'uploaded_at'
+  }
 });
 
 const {
@@ -46,7 +50,8 @@ const {
   handleSearch,
   activeTab,
   tabsWithCounts,
-  channelId
+  channelId,
+  sortBy
 } = useLatestVideos();
 
 // 添加计算属性来处理视频进度
@@ -76,6 +81,11 @@ watch(() => props.selectedChannelId, (newChannelId) => {
   channelId.value = newChannelId;
   handleSearch();
 })
+
+watch(() => props.sortBy, () => {
+  sortBy.value = props.sortBy;
+  handleSearch();
+});
 
 const {
   playVideo,

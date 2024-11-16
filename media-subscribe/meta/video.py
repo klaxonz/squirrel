@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import time
 
 import requests
 from bs4 import BeautifulSoup
@@ -201,7 +202,7 @@ class YoutubeUploader(Uploader):
         self.init()
 
     def init(self):
-        video = YouTube(self.url, use_oauth=False)
+        video = YouTube(self.url, use_oauth=False, allow_oauth_cache=True, use_po_token=True)
         self.id = video.channel_id
         self.name = video.author
         self.avatar = video.thumbnail_url
@@ -226,17 +227,18 @@ class PornhubUploader(Uploader):
         self.init()
 
     def init(self):
-        cookies = filter_cookies_to_query_string(self.url)
+        # cookies = filter_cookies_to_query_string(self.url)
 
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/124.0.0.0 Safari/537.36',
-            'Cookie': cookies
+            # 'Cookie': cookies
         }
-
-        response = session.get(self.url, headers=headers, timeout=20)
+        req_url = self.url.replace('www', 'cn')
+        response = session.get(req_url, headers=headers, timeout=20)
+        logger.info(f"Request text: {response.text}")
+        time.sleep(60)
         response.raise_for_status()  # 检查请求是否成功
-
         bs4 = BeautifulSoup(response.text, 'html.parser')
         username_el = bs4.select('.userInfoBlock .usernameWrap')[0]
         if username_el is not None:

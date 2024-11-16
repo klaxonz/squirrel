@@ -1,10 +1,10 @@
-import requests
+from pytubefix import YouTube
 
 # from model.channel import Channel
 
-# yt = YouTube('https://youtube.com/watch?v=GxQC3pqoA9Y', use_oauth=True, allow_oauth_cache=True,)
-# print(yt.title)
-# print(yt.streaming_data)
+yt = YouTube('https://www.youtube.com/watch?v=Qw1HnHfRLFc', use_oauth=False, allow_oauth_cache=True, use_po_token=True)
+print(yt.title)
+print(yt.streaming_data)
 
 # c = YouTubeChannel('https://www.youtube.com/@clark_ash')
 # for url in c.video_urls:
@@ -54,7 +54,4 @@ import requests
 #     print(json.dumps(info))
 
 
-resp = requests.get(
-    '')
 
-print(resp.status_code)

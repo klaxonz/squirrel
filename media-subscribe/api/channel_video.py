@@ -17,7 +17,7 @@ from core.database import get_session
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.channel import ChannelVideo
-from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, DislikeRequest
+from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, DislikeRequest, SortBy
 from services.channel_video_service import ChannelVideoService
 
 logger = logging.getLogger(__name__)
@@ -43,12 +43,13 @@ def get_channel_videos(
         query: str = Query(None, description="搜索关键字"),
         channel_id: str = Query(None, description="频道ID"),
         read_status: str = Query(None, description="阅读状态: all, read, unread"),
+        sort_by: SortBy = Query(SortBy.UPLOADED_AT, description="排序字段"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
         session: Session = Depends(get_session)
 ):
     channel_video_service = ChannelVideoService(session)
-    videos, counts = channel_video_service.list_channel_videos(query, channel_id, read_status, page, page_size)
+    videos, counts = channel_video_service.list_channel_videos(query, channel_id, read_status, sort_by, page, page_size)
     return response.success({
         "total": len(videos),
         "page": page,

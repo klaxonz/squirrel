@@ -29,6 +29,7 @@ export default function useLatestVideos() {
       return activeTab.value;
     }
   });
+  const sortBy = ref('uploaded_at')
 
   const tabsWithCounts = computed(() => {
     return tabs.map(tab => ({
@@ -53,7 +54,8 @@ export default function useLatestVideos() {
           pageSize: pageSize,
           query: searchQuery.value,
           channel_id: channelId.value,
-          read_status: readStatus.value
+          read_status: readStatus.value,
+          sort_by: sortBy.value
         }
       });
 
@@ -134,6 +136,7 @@ export default function useLatestVideos() {
     setLoadTrigger,
     isResetting,
     searchQuery,
-    channelId
+    channelId,
+    sortBy
   };
 }

@@ -1,6 +1,6 @@
 <template>
   <div class="video-wrapper bg-[#0f0f0f]">
-    <div :id="`video-player-${video.id}`" class="video-player"></div>
+    <div :id="`video-player`" class="video-player"></div>
     <audio ref="audioPlayer" :src="video.audio_url" preload="auto"></audio>
   </div>
 </template>
@@ -29,6 +29,9 @@ const {
 onMounted(async () => {
   if (!props.video?.video_url) {
     await playVideo(props.video);
+    if (props.video.audio_url) {
+      audioPlayer.value.src = props.video.audio_url;
+    }
   }
   initPlayer();
 });
@@ -68,7 +71,7 @@ const initPlayer = () => {
   }
 
   player.value = new Player({
-    id: `video-player-${props.video.id}`,
+    id: `video-player`,
     url: props.video.video_url,
     poster: props.video.thumbnail,
     autoplay: true,
@@ -78,7 +81,6 @@ const initPlayer = () => {
     cssFullscreen: false,
     startTime: props.initialTime || 0,
     playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
-    ignores: ['time'],
     controls: {
       mode: 'flex',
     },
@@ -159,8 +161,11 @@ const handleSeeked = () => {
 
 const handleTimeUpdate = () => {
   if (audioPlayer.value && player.value) {
-    if (Math.abs(audioPlayer.value.currentTime - player.value.currentTime) > 1) {
-      audioPlayer.value.currentTime = player.value.currentTime + 1;
+    const threshold = 0.3;
+    const timeDiff = Math.abs(audioPlayer.value.currentTime - player.value.currentTime);
+    
+    if (timeDiff > threshold) {
+      audioPlayer.value.currentTime = player.value.currentTime;
     }
     emit('timeupdate', player.value.currentTime);
   }

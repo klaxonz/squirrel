@@ -1,7 +1,12 @@
 <template>
   <div class="latest-videos flex flex-col h-full mx-4">
     <SearchBar class="pt-4" @search="handleSearch" ref="searchBar" />
-    <TabBar v-model="activeTab" :tabs="tabsWithCounts" class="custom-tab-bar" />
+    <TabBar 
+      v-model="activeTab" 
+      :tabs="tabsWithCounts" 
+      class="custom-tab-bar"
+      @sort-change="handleSortChange"
+    />
 
     <div class="video-container pt-1 flex-grow">
       <router-view 
@@ -12,6 +17,7 @@
           :active-tab="activeTab"
           :search-query="searchQuery"
           :selected-channel-id="channelId"
+          :sort-by="sortBy"
           @update-counts="updateCounts"
           @openModal="handleOpenModal"
           @goToChannel="goToChannelDetail"
@@ -65,6 +71,8 @@ const tabsWithCounts = ref([
 
 const searchQuery = ref('');
 
+const sortBy = ref('uploaded_at');
+
 const updateCounts = (counts) => {
   tabsWithCounts.value = counts;
 };
@@ -79,6 +87,10 @@ const handleOpenModal = (video, playlist) => {
 
 const goToChannelDetail = (newChannelId) => {
   router.push(`/channel/${newChannelId}/all`);
+};
+
+const handleSortChange = (newSort) => {
+  sortBy.value = newSort;
 };
 
 watch(() => activeTab.value, (newVal) => {

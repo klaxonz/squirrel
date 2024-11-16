@@ -41,7 +41,8 @@ const routes = [
   {
     path: '/subscriptions',
     name: 'Subscriptions',
-    component: Subscribed
+    component: Subscribed,
+     meta: {keepAlive: false}
   },
   {
     path: '/settings',

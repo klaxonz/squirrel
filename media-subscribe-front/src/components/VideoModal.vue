@@ -41,7 +41,7 @@
             v-if="video"
             :key="video.id"
             :video="video"
-            :initialTime="video.last_position || 0"
+            :initialTime="startTime"
             @play="onVideoPlay"
             @pause="onVideoPause"
             @ended="onVideoEnded"
@@ -314,6 +314,18 @@ const playerRef = ref(null);
 const currentIndex = computed(() => {
   return props.playlist.findIndex(item => item.id === props.video?.id);
 });
+
+const startTime = computed(() => {
+  if (props.video.last_position) {
+    if (props.video.total_duration - props.video.last_position < 10) {
+      return 0;
+    } else {
+      return props.video.last_position;
+    }
+  } else {
+    return 0;
+  }
+})
 
 const close = () => {
   emit('close');
