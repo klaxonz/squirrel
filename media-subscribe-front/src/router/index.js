@@ -16,23 +16,19 @@ const routes = [
         path: 'all',
         name: 'AllVideos',
         component: VideoTab,
-        meta: {keepAlive: true}
       },
       {
         path: 'unread',
         name: 'UnreadVideos',
         component: VideoTab,
-        meta: {keepAlive: true}
       },
       {
         path: 'read',
         name: 'ReadVideos',
         component: VideoTab,
-        meta: {keepAlive: true}
       }
     ],
     redirect: {name: 'AllVideos'},
-    meta: {keepAlive: true}
   },
   {
     path: '/',
@@ -42,7 +38,6 @@ const routes = [
     path: '/subscriptions',
     name: 'Subscriptions',
     component: Subscribed,
-     meta: {keepAlive: false}
   },
   {
     path: '/settings',
@@ -62,22 +57,18 @@ const routes = [
         path: 'all',
         name: 'ChannelAllVideos',
         component: VideoTab,
-        meta: {keepAlive: true}
       },
       {
         path: 'unread',
         name: 'ChannelUnreadVideos',
         component: VideoTab,
-        meta: {keepAlive: true}
       },
       {
         path: 'read',
         name: 'ChannelVideos',
         component: VideoTab,
-        meta: {keepAlive: true}
       }
     ],
-    meta: {keepAlive: true}
   },
   {
     path: '/download-tasks',

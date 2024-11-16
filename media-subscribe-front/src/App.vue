@@ -28,9 +28,7 @@
     <!-- 主内容区 -->
     <main class="flex-grow overflow-hidden bg-[#0f0f0f]">
       <router-view v-slot="{ Component }">
-        <keep-alive>
-          <component :is="Component" />
-        </keep-alive>
+        <component :is="Component" />
       </router-view>
     </main>
 
