@@ -137,21 +137,28 @@ class ChangeStatusTask(BaseTask):
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
 
-@TaskRegistry.register(interval=2, unit='minutes')
+@TaskRegistry.register(interval=10, unit='minutes')
 class AutoUpdateChannelVideo(BaseTask):
     @classmethod
     def run(cls):
         logger.info('auto_update_channel_video start')
-        with get_session() as session:
-            channels = session.exec(select(Channel).where(Channel.if_enable == 1))
+        channel_ids = []
+        with get_session() as outer_session:
+            channels = outer_session.exec(select(Channel).where(Channel.if_enable == 1))
             for channel in channels:
-                try:
-                    session.expunge(channel)
+                channel_ids.append(channel.channel_id)
+
+        for channel_id in channel_ids:
+            try:
+                with get_session() as inner_session:
+                    channel = inner_session.exec(select(Channel).where(Channel.channel_id == channel_id)).one()
+                    if 'bilibili' in channel.url:
+                        continue
                     cls.update_channel_video(channel)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Error decoding JSON: {e}", exc_info=True)
-                except Exception as e:
-                    logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+            except json.JSONDecodeError as e:
+                logger.error(f"Error decoding JSON: {e}", exc_info=True)
+            except Exception as e:
+                logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
     @classmethod
     def update_channel_video(cls, channel):
@@ -222,17 +229,23 @@ class RepairDownloadTaskInfo(BaseTask):
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
 
-@TaskRegistry.register(interval=2, unit='minutes')
+@TaskRegistry.register(interval=30, unit='minutes')
 class RepairChanelInfoForTotalVideos(BaseTask):
     @classmethod
     def run(cls):
         try:
+            channel_ids = []
             with get_session() as session:
                 channel_service = ChannelService()
                 channels = session.exec(select(Channel)).all()
                 for channel in channels:
+                    channel_ids.append(channel.channel_id)
+
+            for channel_id in channel_ids:
+                with get_session() as session:
+                    channel = session.exec(select(Channel).where(Channel.channel_id == channel_id)).one()
                     extract_videos = channel_service.count_channel_videos(channel.channel_id)
-                    if channel.total_videos >= extract_videos:
+                    if channel.total_videos >= extract_videos and channel.total_videos > 0:
                         continue
                     subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
                     videos = subscribe_channel.get_channel_videos(channel, update_all=True)

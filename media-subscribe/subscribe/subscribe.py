@@ -1,9 +1,11 @@
 import logging
 import re
+import time
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 from pytubefix import Channel as YouTubeChannel
+import requests
 
 from utils.cookie import filter_cookies_to_query_string
 from common.http_wrapper import session
@@ -108,7 +110,7 @@ class BilibiliSubscribeChannel(SubscribeChannel):
 
                 # 如果是分P视频则不下载
                 req_url = f'https://api.bilibili.com/x/web-interface/wbi/view?bvid={v["bvid"]}'
-                resp = session.get(req_url, headers=headers)
+                resp = requests.get(req_url, headers=headers)
                 if resp.status_code != 200:
                     raise Exception('Request failed')
 
@@ -131,13 +133,16 @@ class BilibiliSubscribeChannel(SubscribeChannel):
             if not update_all:
                 should_continue = False
 
+            # 1-3秒
+            time.sleep(0.5)
+
         return video_list
 
 
 class YouTubeSubscribeChannel(SubscribeChannel):
     def __init__(self, url):
         super().__init__(url)
-        self.channel = YouTubeChannel(url)
+        self.channel = YouTubeChannel(url, use_oauth=False)
 
     def get_channel_info(self):
         return ChannelMeta(self.channel.channel_id, self.channel.channel_name, self.channel.thumbnail_url, self.url)
@@ -238,7 +243,7 @@ class PornhubSubscribeChannel(SubscribeChannel):
             bs4 = BeautifulSoup(response.text, 'html.parser')
             video_els = []
             video_els.extend(bs4.select('#channelsProfile .videos a.videoPreviewBg'))
-            video_els.extend(bs4.select('#profileContent ul:not(#privateVideosSection) .videos a.videoPreviewBg'))
+            video_els.extend(bs4.select('#profileContent .videos:not(#privateVideosSection) a.videoPreviewBg'))
             video_els.extend(bs4.select('#pornstarsVideoSection .videoPreviewBg'))
             for el in video_els:
                 video_list.append(f'{base_url}{el["href"]}')

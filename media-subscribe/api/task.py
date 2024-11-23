@@ -27,29 +27,29 @@ router = APIRouter(tags=['下载任务接口'])
 
 
 @router.post("/api/task/download")
-def start_download(req: DownloadRequest, session: Session = Depends(get_session)):
-    task_service = TaskService(session)
+def start_download(req: DownloadRequest):
+    task_service = TaskService()
     task_service.start_download(req.url)
     return response.success()
 
 
 @router.post("/api/task/retry")
-def retry_download(req: DownloadChangeStateRequest, session: Session = Depends(get_session)):
-    task_service = TaskService(session)
+def retry_download(req: DownloadChangeStateRequest):
+    task_service = TaskService()
     success = task_service.retry_download(req.task_id)
     return response.success() if success else response.error("Task not found")
 
 
 @router.post("/api/task/pause")
-def pause_download(req: DownloadChangeStateRequest, session: Session = Depends(get_session)):
-    task_service = TaskService(session)
+def pause_download(req: DownloadChangeStateRequest):
+    task_service = TaskService()
     success = task_service.pause_download(req.task_id)
     return response.success() if success else response.error("Task not found")
 
 
 @router.post("/api/task/delete")
-def delete_download(req: DownloadChangeStateRequest, session: Session = Depends(get_session)):
-    task_service = TaskService(session)
+def delete_download(req: DownloadChangeStateRequest):
+    task_service = TaskService()
     success = task_service.delete_download(req.task_id)
     return response.success() if success else response.error("Task not found")
 
@@ -61,7 +61,7 @@ def get_tasks(
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page"),
         session: Session = Depends(get_session)
 ):
-    task_service = TaskService(session)
+    task_service = TaskService()
     task_convert_list, total_tasks = task_service.list_tasks(status, page, page_size)
     return response.success({
         "page": page,

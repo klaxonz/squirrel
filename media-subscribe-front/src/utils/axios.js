@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const instance = axios.create({
-  timeout: 10000,  // 请求超时时间
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },

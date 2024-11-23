@@ -65,7 +65,7 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
 
         message = session.exec(select(Message).where(Message.message_id == message.message_id)).first()
         dump_json = message.model_dump_json()
-        if if_manual_retry:
+        if if_manual_retry or if_manual_download:
             extract_task.process_extract_message.send(dump_json)
         else:
             extract_task.process_extract_message.send(dump_json)

@@ -51,7 +51,7 @@ class ChannelVideoService:
                 }
             elif channel_video.domain == 'youtube.com':
                 # YouTube video URL fetching logic
-                yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=False, allow_oauth_cache=True, use_po_token=True)
+                yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=False)
                 video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
                 audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
                 return {
@@ -70,11 +70,7 @@ class ChannelVideoService:
 
     def list_channel_videos(self, query: str, channel_id: str, read_status: str, sort_by: str, page: int, page_size: int) -> Tuple[
         List[dict], dict]:
-        base_query = (
-            select(ChannelVideo, VideoHistory)
-            .outerjoin(VideoHistory, ChannelVideo.video_id == VideoHistory.video_id)
-            .where(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
-        )
+        base_query = select(ChannelVideo).where(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
         
         if channel_id:
             base_query = base_query.where(or_(
@@ -124,7 +120,13 @@ class ChannelVideoService:
             unread_count = total_count - read_count
 
             channel_video_convert_list = []
-            for cv, history in results:
+
+            video_ids = [cv.video_id for cv in results]
+            history_list = session.exec(select(VideoHistory).where(VideoHistory.video_id.in_(video_ids))).all()
+            history_dict = {h.video_id: h for h in history_list}
+
+            for cv in results:
+                history = history_dict.get(cv.video_id)
                 video_data = {
                     'id': cv.id,
                     'channel_id': cv.channel_id,

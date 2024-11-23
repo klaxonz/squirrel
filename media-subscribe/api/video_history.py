@@ -1,7 +1,5 @@
-from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
+from fastapi import APIRouter, Query
 
-from core.database import get_session
 import common.response as response
 from services.video_history_service import VideoHistoryService
 from schemas.video_history import UpdateHistoryRequest, ClearHistoryRequest
@@ -13,10 +11,9 @@ router = APIRouter(
 @router.post("/api/video-history/update")
 def update_watch_history(
     request: UpdateHistoryRequest,
-    session: Session = Depends(get_session)
 ):
     """更新视频观看历史"""
-    video_history_service = VideoHistoryService(session)
+    video_history_service = VideoHistoryService()
     video_history_service.update_watch_history(
         request.video_id,
         request.channel_id,

@@ -259,7 +259,7 @@ const {
   downloadVideo,
   copyVideoLink,
   dislikeVideo,
-} = useOptionsMenu(props.video, props.refreshContent);
+} = useOptionsMenu(props.video);
 
 const showContextMenu = async (event) => {
   event.preventDefault();

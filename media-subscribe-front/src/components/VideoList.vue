@@ -8,7 +8,7 @@
       :buffer="400"
       @scroll="handleScroll"
       :gridItems="computedGridItems"
-      :prerender="20"
+      :prerender="30"
       :item-secondary-size="computedItemSecondarySize"
     >
       <template #default="{ item: video }">
@@ -185,7 +185,7 @@ const checkInitialContent = () => {
 watch(() => props.videos.length, () => {
   nextTick(() => {
     updateContainerWidth();
-    checkInitialContent();
+    // checkInitialContent();
   });
 });
 </script>

@@ -769,14 +769,14 @@ const { updateWatchHistory } = useVideoHistory();
 const onVideoTimeUpdate = (currentTime) => {
   // 每5秒记录一次观看进度,异步执行
   if (Math.floor(currentTime) % 5 === 0) {
-    updateWatchHistory(
-      props.video.video_id,
-      props.video.channel_id,
-      currentTime, 
-      props.video.duration
-    ).catch(err => {
-      console.error('Failed to update watch history:', err);
-    });
+    // updateWatchHistory(
+    //   props.video.video_id,
+    //   props.video.channel_id,
+    //   currentTime,
+    //   props.video.duration
+    // ).catch(err => {
+    //   console.error('Failed to update watch history:', err);
+    // });
   }
 };
 
