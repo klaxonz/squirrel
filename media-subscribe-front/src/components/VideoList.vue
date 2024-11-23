@@ -185,7 +185,7 @@ const checkInitialContent = () => {
 watch(() => props.videos.length, () => {
   nextTick(() => {
     updateContainerWidth();
-    // checkInitialContent();
+    checkInitialContent();
   });
 });
 </script>
