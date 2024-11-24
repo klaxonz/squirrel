@@ -1,16 +1,19 @@
 import json
 import logging
 import random
+import re
 import time
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import List, Type
 
+import feedparser
 from PyCookieCloud import PyCookieCloud
 from sqlmodel import col, or_, and_, select, func
 
 from common import constants
 from core.cache import RedisClient
+from model.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
 from services.channel_service import ChannelService
 from utils.cookie import json_cookie_to_netscape
 from core.database import get_session
@@ -358,3 +361,90 @@ class AutoUpdateChannelExtractAll(BaseTask):
                 session.add(channel)
                 session.commit()
                 session.refresh(channel)
+
+
+@TaskRegistry.register(interval=30, unit='minutes')
+class UpdatePodcastsTask(BaseTask):
+    @classmethod
+    def run(cls):
+        """定时更新所有订阅的播客内容"""
+        logger.info('开始更新播客内容')
+        try:
+            with get_session() as session:
+                # 获取所有已订阅的播客
+                channels = session.exec(
+                    select(PodcastChannel)
+                    .join(PodcastSubscription)
+                ).all()
+
+                for channel in channels:
+                    try:
+                        # 解析RSS feed
+                        feed = feedparser.parse(channel.rss_url)
+                        if hasattr(feed, 'bozo_exception'):
+                            logger.error(f'解析播客RSS失败: {channel.title}, {feed.bozo_exception}')
+                            continue
+
+                        # 更新频道信息
+                        if hasattr(feed.feed, "description"):
+                            channel.description = re.sub(r'<.*?>', '', feed.feed.description)
+                        if hasattr(feed.feed, "image"):
+                            channel.cover_url = feed.feed.image.href
+                        channel.last_updated = datetime.now()
+                        session.add(channel)
+
+                        # 添加新剧集
+                        for entry in feed.entries:
+                            # 检查剧集是否已存在
+                            existing = session.exec(
+                                select(PodcastEpisode)
+                                .where(
+                                    and_(
+                                        PodcastEpisode.channel_id == channel.id,
+                                        PodcastEpisode.title == entry.title
+                                    )
+                                )
+                            ).first()
+                            
+                            if existing:
+                                continue
+
+                            description = entry.description if hasattr(entry, "description") else None
+                            if description:
+                                description = re.sub(r'<.*?>', '', description)
+                            
+                            episode = PodcastEpisode(
+                                channel_id=channel.id,
+                                title=entry.title,
+                                description=description,
+                                audio_url=entry.enclosures[0].href if hasattr(entry, "enclosures") else None,
+                                published_at=datetime(*entry.published_parsed[:6]) if hasattr(entry, "published_parsed") else None,
+                                duration=cls.parse_duration(entry.itunes_duration) if hasattr(entry, "itunes_duration") else None
+                            )
+                            session.add(episode)
+
+                        session.commit()
+                        logger.info(f'更新播客成功: {channel.title}')
+
+                    except Exception as e:
+                        logger.error(f'更新播客失败: {channel.title}, {str(e)}', exc_info=True)
+                        continue
+
+        except Exception as e:
+            logger.error(f'更新播客任务失败: {str(e)}', exc_info=True)
+
+
+    @classmethod
+    def parse_duration(cls, duration_str):
+        parts = duration_str.split(':')
+        if len(parts) == 3:
+            h, m, s = map(int, parts)
+            return h * 3600 + m * 60 + s
+        elif len(parts) == 2:
+            m, s = map(int, parts)
+            return m * 60 + s
+        elif len(parts) == 1:
+            s = int(parts[0])
+            return s
+        else:
+            return 0
