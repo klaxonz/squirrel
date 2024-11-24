@@ -70,7 +70,9 @@ export default function useLatestVideos() {
         if (currentPage.value === 1) {
           videos.value = newVideos;
         } else {
-          videos.value = [...videos.value, ...newVideos];
+          const existingVideoIds = new Set(videos.value.map(v => v.id));
+          const uniqueNewVideos = newVideos.filter(video => !existingVideoIds.has(video.id));
+          videos.value = [...videos.value, ...uniqueNewVideos];
         }
         
         currentPage.value++;

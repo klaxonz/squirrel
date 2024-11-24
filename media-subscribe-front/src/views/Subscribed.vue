@@ -3,19 +3,19 @@
     <SearchBar class="pt-4 px-4" @search="handleSearch" ref="searchBar"/>
 
     <div class="channel-container pt-4 flex-grow overflow-y-auto">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
         <!-- 频道列表 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
           <div v-for="channel in channels" :key="channel.id"
                class="channel-item bg-[#202020] rounded-lg overflow-hidden hover:bg-[#303030] transition-all duration-200 relative group"
                @click="goToChannel(channel.channel_id)"
           >
-            <div class="flex justify-center items-center p-6 bg-[#181818]">
-              <div class="relative w-24 h-24">
+            <div class="flex justify-center items-center p-3 bg-[#181818]">
+              <div class="relative w-14 h-14">
                 <img 
                   :src="channel.avatar" 
                   :alt="channel.name" 
-                  class="w-full h-full rounded-full object-cover ring-2 ring-[#303030] transition-transform duration-300 group-hover:scale-105"
+                  class="w-full h-full rounded-full object-cover ring-1 ring-[#303030] transition-transform duration-300 group-hover:scale-105"
                   referrerpolicy="no-referrer"
                   @error="handleImageError($event)"
                 />
@@ -23,17 +23,17 @@
               </div>
             </div>
 
-            <div class="p-4 text-center">
-              <h3 class="text-sm font-semibold truncate text-white">{{ channel.name }}</h3>
-              <p class="text-xs text-[#aaa] mt-1">
+            <div class="p-2 text-center">
+              <h3 class="text-xs font-semibold truncate text-white">{{ channel.name }}</h3>
+              <p class="text-[10px] text-[#aaa] mt-0.5">
                 总视频: {{ channel.total_videos }} | 已解析: {{ channel.total_extract }}
               </p>
-              <p class="text-xs text-[#aaa] mt-1">订阅时间: {{ formatDate(channel.created_at) }}</p>
+              <p class="text-[10px] text-[#aaa] mt-0.5">订阅时间: {{ formatDate(channel.created_at) }}</p>
             </div>
 
             <button @click.stop="openSettings(channel)"
-                    class="absolute top-2 right-2 p-2 bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition-colors duration-200 opacity-0 group-hover:opacity-100">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20"
+                    class="absolute top-1 right-1 p-1 bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition-colors duration-200 opacity-0 group-hover:opacity-100">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" viewBox="0 0 20 20"
                    fill="currentColor">
                 <path fill-rule="evenodd"
                       d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"

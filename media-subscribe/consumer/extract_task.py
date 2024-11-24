@@ -28,7 +28,6 @@ __all__ = ['process_extract_message']
 @dramatiq.actor(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
 def process_extract_message(message: str):
     try:
-        logger.info(f"开始处理视频解析消息：{message}")
         message_obj = Message.model_validate(json.loads(message))
         extract_info = _parse_message(message_obj)
         url = extract_info['url']
@@ -173,9 +172,13 @@ def _create_channel_video(video, domain, video_id, video_info):
         channel_video.thumbnail = video.get_thumbnail()
         channel_video.duration = video.get_duration()
         channel_video.uploaded_at = datetime.fromtimestamp(int(video_info['timestamp']))
-        session.add(channel_video)
-        session.commit()
-        _update_redis_cache(domain, video_id, 'if_extract')
+        # 查询库
+        cv_db = session.query(ChannelVideo).filter(ChannelVideo.domain == domain,
+                                                   ChannelVideo.video_id == video_id).first()
+        if not cv_db:
+            session.add(channel_video)
+            session.commit()
+            _update_redis_cache(domain, video_id, 'if_extract')
 
 
 def _handle_download_task(extract_info, video, domain, video_id):

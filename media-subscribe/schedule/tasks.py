@@ -232,15 +232,15 @@ class RepairDownloadTaskInfo(BaseTask):
 class RepairChanelInfoForTotalVideos(BaseTask):
     @classmethod
     def run(cls):
-        try:
-            channel_ids = []
-            with get_session() as session:
-                channel_service = ChannelService()
-                channels = session.exec(select(Channel)).all()
-                for channel in channels:
-                    channel_ids.append(channel.channel_id)
+        channel_ids = []
+        with get_session() as session:
+            channel_service = ChannelService()
+            channels = session.exec(select(Channel)).all()
+            for channel in channels:
+                channel_ids.append(channel.channel_id)
 
-            for channel_id in channel_ids:
+        for channel_id in channel_ids:
+            try:
                 with get_session() as session:
                     channel = session.exec(select(Channel).where(Channel.channel_id == channel_id)).one()
                     extract_videos = channel_service.count_channel_videos(channel.channel_id)
@@ -250,11 +250,10 @@ class RepairChanelInfoForTotalVideos(BaseTask):
                     videos = subscribe_channel.get_channel_videos(channel, update_all=True)
                     channel.total_videos = len(videos)
                     session.commit()
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Error decoding JSON: {e}", exc_info=True)
-        except Exception as e:
-            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+            except json.JSONDecodeError as e:
+                logger.error(f"Error decoding JSON: {e}", exc_info=True)
+            except Exception as e:
+                logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
 
 @TaskRegistry.register(interval=120, unit='minutes')
