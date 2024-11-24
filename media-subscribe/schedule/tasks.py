@@ -2,7 +2,7 @@ import json
 import logging
 import random
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import List, Type
 
@@ -139,36 +139,52 @@ class ChangeStatusTask(BaseTask):
 
 @TaskRegistry.register(interval=10, unit='minutes')
 class AutoUpdateChannelVideo(BaseTask):
+    _thread_pools = None
+
+    @classmethod
+    def initialize_pools(cls):
+        if cls._thread_pools is None:
+            cls._thread_pools = {
+                'bilibili': ThreadPoolExecutor(max_workers=1, thread_name_prefix='bilibili'),
+                'pornhub': ThreadPoolExecutor(max_workers=1, thread_name_prefix='pornhub'),
+                'youtube': ThreadPoolExecutor(max_workers=1, thread_name_prefix='youtube'),
+                'javdb': ThreadPoolExecutor(max_workers=1, thread_name_prefix='javdb')
+            }
+
+    @classmethod
+    def get_pool(cls, url):
+        if cls._thread_pools is None:
+            cls.initialize_pools()
+        
+        if 'bilibili' in url:
+            return cls._thread_pools['bilibili']
+        elif 'pornhub' in url:
+            return cls._thread_pools['pornhub']
+        elif 'youtube' in url:
+            return cls._thread_pools['youtube']
+        elif 'javdb' in url:
+            return cls._thread_pools['javdb']
+        return None
+
     @classmethod
     def run(cls):
         logger.info('auto_update_channel_video start')
+        cls.initialize_pools()
+        
         channel_ids = []
         with get_session() as outer_session:
             channels = outer_session.exec(select(Channel).where(Channel.if_enable == 1))
             for channel in channels:
                 channel_ids.append(channel.channel_id)
 
-        # 四个线程池，每个线程池只有一个线程
-        bilibili_thread_pool = ThreadPoolExecutor(max_workers=1)
-        pornhub_thread_pool = ThreadPoolExecutor(max_workers=1)
-        youtube_thread_pool = ThreadPoolExecutor(max_workers=1)
-        javdb_thread_pool = ThreadPoolExecutor(max_workers=1)
         for channel_id in channel_ids:
             try:
                 with get_session() as inner_session:
                     channel = inner_session.exec(select(Channel).where(Channel.channel_id == channel_id)).one()
-                    # if 'bilibili' in channel.url or 'pornhub' in channel.url or 'javdb' in channel.url:
-                    #     continue
-                    if 'bilibili' in channel.url:
-                        bilibili_thread_pool.submit(cls.update_channel_video, channel)
-                    if 'pornhub' in channel.url:
-                        pornhub_thread_pool.submit(cls.update_channel_video, channel)
-                    if 'youtube' in channel.url:
-                        youtube_thread_pool.submit(cls.update_channel_video, channel)
-                    if 'javdb' in channel.url:
-                        javdb_thread_pool.submit(cls.update_channel_video, channel)
-            except json.JSONDecodeError as e:
-                logger.error(f"Error decoding JSON: {e}", exc_info=True)
+                    pool = cls.get_pool(channel.url)
+                    if pool:
+                        pool.submit(cls.update_channel_video, channel)
+                    
             except Exception as e:
                 logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
@@ -214,6 +230,13 @@ class AutoUpdateChannelVideo(BaseTask):
         for video in extract_download_video_list:
             start(video, if_only_extract=False, if_subscribe=True)
         logger.debug(f"update {channel.name} channel video end")
+
+    @classmethod
+    def shutdown(cls):
+        if cls._thread_pools:
+            for pool in cls._thread_pools.values():
+                pool.shutdown(wait=True)
+            cls._thread_pools = None
 
 
 @TaskRegistry.register(interval=60, unit='minutes')

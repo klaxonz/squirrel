@@ -15,7 +15,6 @@ from sqlmodel import select, or_, col
 from core.database import get_session
 from model.channel import ChannelVideo
 from model.video_history import VideoHistory
-from model.video_progress import VideoProgress
 from services import download_service
 from utils.cookie import filter_cookies_to_query_string
 
@@ -225,29 +224,6 @@ class ChannelVideoService:
                 query = query.filter(ChannelVideo.uploaded_at <= uploaded_at)
             query.update({"if_read": is_read})
             session.commit()
-
-    def save_video_progress(self, channel_id: str, video_id: str, progress: float):
-        with get_session() as session:
-            video_progress = session.query(VideoProgress).filter_by(
-                channel_id=channel_id, video_id=video_id
-            ).first()
-            if video_progress:
-                video_progress.progress = progress
-            else:
-                video_progress = VideoProgress(
-                    channel_id=channel_id,
-                    video_id=video_id,
-                    progress=progress
-                )
-                session.add(video_progress)
-            session.commit()
-
-    def get_video_progress(self, channel_id: str, video_id: str) -> float:
-        with get_session() as session:
-            video_progress = session.query(VideoProgress).filter_by(
-                channel_id=channel_id, video_id=video_id
-            ).first()
-            return video_progress.progress if video_progress else 0
 
     def dislike_video(self, channel_id: str, video_id: str):
         with get_session() as session:

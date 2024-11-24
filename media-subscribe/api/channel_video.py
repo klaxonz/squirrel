@@ -87,19 +87,6 @@ def dislike_video(req: DislikeRequest):
     raise HTTPException(status_code=404, detail="Video not found")
 
 
-@router.post("/api/channel-video/save-progress")
-async def save_video_progress(request: Request):
-    data = await request.json()
-    channel_video_service = ChannelVideoService()
-    channel_video_service.save_video_progress(data['channel_id'], data['video_id'], data['progress'])
-    return response.success({"message": "Progress saved successfully"})
-
-
-@router.get("/api/channel-video/get-progress")
-def get_video_progress(channel_id: str, video_id: str):
-    channel_video_service = ChannelVideoService()
-    progress = channel_video_service.get_video_progress(channel_id, video_id)
-    return response.success({"progress": progress})
 
 
 @router.get("/api/channel/video/play/{channel_id}/{video_id}")

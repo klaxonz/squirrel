@@ -17,6 +17,11 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
+from model.channel import Channel, ChannelVideo
+from model.message import Message
+from model.podcast import PodcastChannel, PodcastEpisode
+from model.video_history import VideoHistory
+from model.download_task import DownloadTask
 target_metadata = SQLModel.metadata
 
 

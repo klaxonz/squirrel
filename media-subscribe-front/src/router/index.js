@@ -5,6 +5,8 @@ import Settings from '../views/Settings.vue'
 import DownloadTasks from '../views/DownloadTasks.vue'
 import VideoTab from "../components/VideoTab.vue";
 import History from '../views/History.vue';
+import PodcastHome from '../views/PodcastHome.vue'
+import PodcastChannel from '../views/PodcastChannel.vue'
 
 const routes = [
   {
@@ -79,6 +81,16 @@ const routes = [
     path: '/history',
     name: 'History',
     component: History,
+  },
+  {
+    path: '/podcasts',
+    name: 'Podcasts',
+    component: PodcastHome
+  },
+  {
+    path: '/podcasts/channel/:id',
+    name: 'PodcastChannel',
+    component: PodcastChannel
   }
 ]
 

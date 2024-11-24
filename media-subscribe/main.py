@@ -17,9 +17,6 @@ def init_app():
     # 初始化日志配置
     init_logging()
 
-    # 初始化数据库
-    # upgrade_database()
-
     # 使用 settings.database_url
     logger.info(f"Initializing app with DATABASE_URL: {settings.database_url}")
 

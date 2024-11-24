@@ -51,6 +51,17 @@
         {{ toastMessage }}
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <AudioPlayer
+        v-if="currentEpisode"
+        :episode="currentEpisode"
+        :channel="currentPodcast"
+        @progress="updateProgress"
+        @ended="onEpisodeEnded"
+        @close="closeAudioPlayer"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -59,10 +70,11 @@ import { provide, ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import mitt from 'mitt';
 import VideoModal from './components/VideoModal.vue';
-import MiniPlayer from './components/MiniPlayer.vue';
-import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon } from '@heroicons/vue/24/outline';
+import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 import useVideoOperations from './composables/useVideoOperations';
 import useToast from './composables/useToast';
+import AudioPlayer from './components/AudioPlayer.vue';
+import axios from 'axios';
 
 const router = useRouter();
 const emitter = mitt();
@@ -88,6 +100,7 @@ const { toastMessage, showToast, displayToast } = useToast();
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
   { path: '/subscriptions', name: '订阅', icon: BookmarkIcon },
+  { path: '/podcasts', name: '播客', icon: SpeakerWaveIcon },
   { path: '/history', name: '历史记录', icon: ClockIcon },
   { path: '/download-tasks', name: '下载任务', icon: ArrowDownTrayIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
@@ -141,6 +154,46 @@ onMounted(() => {
 onUnmounted(() => {
   emitter.all.clear();
 });
+
+// 添加播客相关状态
+const currentEpisode = ref(null);
+const currentPodcast = ref(null);
+
+// 提供全局方法来控制播放器
+provide('playPodcast', (episode, podcast) => {
+  currentEpisode.value = episode;
+  currentPodcast.value = podcast;
+});
+
+// 播放器控制方法
+const updateProgress = async (position) => {
+  if (!currentEpisode.value) return;
+  // try {
+  //   await axios.post(`/api/podcasts/episodes/${currentEpisode.value.id}/progress`, {
+  //     position: Math.floor(position)
+  //   });
+  // } catch (error) {
+  //   console.error('Failed to update progress:', error);
+  // }
+};
+
+const onEpisodeEnded = async () => {
+  if (!currentEpisode.value) return;
+  try {
+    await axios.post(`/api/podcasts/episodes/${currentEpisode.value.id}/mark-read`, {
+      is_read: true
+    });
+  } catch (error) {
+    console.error('Failed to mark episode as read:', error);
+  }
+  currentEpisode.value = null;
+  currentPodcast.value = null;
+};
+
+const closeAudioPlayer = () => {
+  currentEpisode.value = null;
+  currentPodcast.value = null;
+};
 </script>
 
 <style>

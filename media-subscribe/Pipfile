@@ -34,5 +34,6 @@ sqlmodel = "*"
 dramatiq = {extras = ["watch", "redis"] }
 phub = "*"
 cloudscraper = "*"
+feedparser = "*"
 
 [dev-packages]
