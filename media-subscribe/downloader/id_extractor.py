@@ -13,6 +13,8 @@ def extract_id_from_url(url: str) -> str:
         return extract_bilibili_id(url)
     elif "pornhub.com" in url:
         return extract_pornhub_id(url)
+    elif "javdb.com" in url:
+        return extract_javdb_id(url)
     else:
         raise ValueError("Invalid url")
 
@@ -50,3 +52,7 @@ def extract_pornhub_id(url: str) -> str:
         return match.group(1)
     else:
         raise ValueError("Invalid url")
+
+
+def extract_javdb_id(url):
+    return url.split('/')[-1]

@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from typing import List, Type
 
 from PyCookieCloud import PyCookieCloud
-from sqlalchemy import delete
 from sqlmodel import col, or_, and_, select, func
 
 from common import constants
@@ -152,8 +151,8 @@ class AutoUpdateChannelVideo(BaseTask):
             try:
                 with get_session() as inner_session:
                     channel = inner_session.exec(select(Channel).where(Channel.channel_id == channel_id)).one()
-                    if 'bilibili' in channel.url:
-                        continue
+                    # if 'bilibili' in channel.url or 'pornhub' in channel.url or 'youtube' in channel.url:
+                    #     continue
                     cls.update_channel_video(channel)
             except json.JSONDecodeError as e:
                 logger.error(f"Error decoding JSON: {e}", exc_info=True)
@@ -291,20 +290,20 @@ class RepairChannelVideoDuration(BaseTask):
                     logger.error(f"An unexpected error occurred: url: {url}, {e}", url, exc_info=True)
 
 
-@TaskRegistry.register(interval=60, unit='minutes')
-class CleanUnsubscribedChannelsTask(BaseTask):
-    @classmethod
-    def run(cls):
-        redis_client = RedisClient.get_instance().client
-        unsubscribed_channels = redis_client.smembers(constants.UNSUBSCRIBED_CHANNELS_SET)
-        if unsubscribed_channels:
-            with get_session() as session:
-                session.exec(delete(ChannelVideo).where(col(Channel.channel_id).in_(unsubscribed_channels)))
-                session.exec(delete(DownloadTask).where(col(DownloadTask.channel_id).in_(unsubscribed_channels)))
-                session.commit()
-            logger.info(f"Cleaned up videos and download tasks for {len(unsubscribed_channels)} unsubscribed channels")
-        redis_client.expire(constants.UNSUBSCRIBED_CHANNELS_SET, constants.UNSUBSCRIBE_EXPIRATION)
-        logger.info("Reset expiration for unsubscribed channels set")
+# @TaskRegistry.register(interval=60, unit='minutes')
+# class CleanUnsubscribedChannelsTask(BaseTask):
+#     @classmethod
+#     def run(cls):
+#         redis_client = RedisClient.get_instance().client
+#         unsubscribed_channels = redis_client.smembers(constants.UNSUBSCRIBED_CHANNELS_SET)
+#         if unsubscribed_channels:
+#             with get_session() as session:
+#                 session.exec(delete(ChannelVideo).where(col(Channel.channel_id).in_(unsubscribed_channels)))
+#                 session.exec(delete(DownloadTask).where(col(DownloadTask.channel_id).in_(unsubscribed_channels)))
+#                 session.commit()
+#             logger.info(f"Cleaned up videos and download tasks for {len(unsubscribed_channels)} unsubscribed channels")
+#         redis_client.expire(constants.UNSUBSCRIBED_CHANNELS_SET, constants.UNSUBSCRIBE_EXPIRATION)
+#         logger.info("Reset expiration for unsubscribed channels set")
 
 
 @TaskRegistry.register(interval=1, unit='minutes')

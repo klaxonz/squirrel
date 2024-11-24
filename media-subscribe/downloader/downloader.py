@@ -1,10 +1,13 @@
+import datetime
 import logging
 import os
 
 import requests
+from bs4 import BeautifulSoup
 from yt_dlp import YoutubeDL
 
 from common import constants
+from common.http_wrapper import session
 from core.cache import RedisClient
 from core.database import get_session
 from core.config import settings
@@ -12,6 +15,7 @@ from downloader.id_extractor import extract_id_from_url
 from meta.video import VideoFactory, Video
 from model.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
+from utils.cookie import filter_cookies_to_query_string
 
 
 class DownloadStoppedError(Exception):
@@ -60,35 +64,75 @@ class Downloader:
 
     @staticmethod
     def get_video_info(url):
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'ignoreerrors': False,
-            'skip_download': True,
-        }
-        cookie_file_path = settings.get_cookies_file_path()
-        if cookie_file_path:
-            ydl_opts['cookiefile'] = cookie_file_path
+        if 'javdb.com' in url:
+            cookies = filter_cookies_to_query_string(url)
+            headers = {
+                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
+                              'Chrome/124.0.0.0 Safari/537.36',
+                'Cookie': cookies
+            }
+            response = session.get(url, headers=headers, timeout=15)
+            response.raise_for_status()
+            bs4 = BeautifulSoup(response.text, 'html.parser')
+            video_info = {}
 
-        with YoutubeDL(ydl_opts) as ydl:
-            video_info = ydl.extract_info(url, download=False)
+            video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[1].text.strip()
+            video_info['thumbnail'] = bs4.select('.video-cover')[0]['src']
+            duration = bs4.select('.movie-panel-info .panel-block:nth-of-type(3) span')[0].text.split(' ')[0].strip()
+            video_info['duration'] = int(duration) * 60
+            video_info['id'] = extract_id_from_url(url)
+            video_info['timestamp'] = int(datetime.datetime.strptime(bs4.select('.movie-panel-info .panel-block:nth-of-type(2) span')[0].text.strip(), '%Y-%m-%d').timestamp())
             return video_info
+        else:
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'ignoreerrors': False,
+                'skip_download': True,
+            }
+            cookie_file_path = settings.get_cookies_file_path()
+            if cookie_file_path:
+                ydl_opts['cookiefile'] = cookie_file_path
+
+            with YoutubeDL(ydl_opts) as ydl:
+                video_info = ydl.extract_info(url, download=False)
+                return video_info
 
     @staticmethod
     def get_video_info_thread(url: str, queue_thread_name: str):
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'ignoreerrors': False,
-            'skip_download': True,
-        }
-        cookie_file_path = settings.get_cookies_file_path_thread(queue_thread_name)
-        if cookie_file_path:
-            ydl_opts['cookiefile'] = cookie_file_path
+        if 'javdb.com' in url:
+            cookies = filter_cookies_to_query_string(url)
+            headers = {
+                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
+                              'Chrome/124.0.0.0 Safari/537.36',
+                'Cookie': cookies
+            }
+            response = session.get(url, headers=headers, timeout=15)
+            response.raise_for_status()
+            bs4 = BeautifulSoup(response.text, 'html.parser')
+            video_info = {}
 
-        with YoutubeDL(ydl_opts) as ydl:
-            video_info = ydl.extract_info(url, download=False)
+            video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[1].text.strip()
+            video_info['thumbnail'] = bs4.select('.video-cover')[0]['src']
+            duration = bs4.select('.movie-panel-info .panel-block:nth-of-type(3) span')[0].text.split(' ')[0].strip()
+            video_info['duration'] = int(duration) * 60
+            video_info['id'] = extract_id_from_url(url)
+            video_info['timestamp'] = int(datetime.datetime.strptime(bs4.select('.movie-panel-info .panel-block:nth-of-type(2) span')[0].text.strip(), '%Y-%m-%d').timestamp())
             return video_info
+        else:
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'ignoreerrors': False,
+                'skip_download': True,
+            }
+            cookie_file_path = settings.get_cookies_file_path_thread(queue_thread_name)
+            if cookie_file_path:
+                ydl_opts['cookiefile'] = cookie_file_path
+
+            with YoutubeDL(ydl_opts) as ydl:
+                video_info = ydl.extract_info(url, download=False)
+                return video_info
 
     @staticmethod
     def download_avatar(video: Video):

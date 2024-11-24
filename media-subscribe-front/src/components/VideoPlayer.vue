@@ -9,6 +9,7 @@
 import { onMounted, onUnmounted, watch, ref, defineExpose } from 'vue';
 import Player from 'xgplayer';
 import useVideoOperations from "../composables/useVideoOperations.js";
+import {HlsPlugin} from "xgplayer-hls";
 
 const props = defineProps({
   video: Object,
@@ -69,32 +70,61 @@ const initPlayer = () => {
     console.warn('Cannot initialize player: video_url is missing');
     return;
   }
+  if (props.video.domain === 'javdb.com') {
+    player.value = new Player({
+      id: `video-player`,
+      url: props.video.video_url,
+      poster: props.video.thumbnail,
+      autoplay: true,
+      volume: 1,
+      width: '100%',
+      height: '100%',
+      cssFullscreen: false,
+      startTime: props.initialTime || 0,
+      playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
+      controls: {
+        mode: 'flex',
+      },
+      theme: {
+        background: '#000000',
+        primary: '#00a1d6',
+        progress: '#00a1d6',
+        playedColor: '#00a1d6',
+        progressColor: 'rgba(255, 255, 255, 0.3)',
+        volumeColor: '#00a1d6',
+        controlsBgColor: 'rgba(0, 0, 0, 0.5)',
+        textColor: '#ffffff',
+      },
+      plugins: [HlsPlugin]
+    });
+  } else {
+    player.value = new Player({
+      id: `video-player`,
+      url: props.video.video_url,
+      poster: props.video.thumbnail,
+      autoplay: true,
+      volume: 1,
+      width: '100%',
+      height: '100%',
+      cssFullscreen: false,
+      startTime: props.initialTime || 0,
+      playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
+      controls: {
+        mode: 'flex',
+      },
+      theme: {
+        background: '#000000',
+        primary: '#00a1d6',
+        progress: '#00a1d6',
+        playedColor: '#00a1d6',
+        progressColor: 'rgba(255, 255, 255, 0.3)',
+        volumeColor: '#00a1d6',
+        controlsBgColor: 'rgba(0, 0, 0, 0.5)',
+        textColor: '#ffffff',
+      },
+    });
+  }
 
-  player.value = new Player({
-    id: `video-player`,
-    url: props.video.video_url,
-    poster: props.video.thumbnail,
-    autoplay: true,
-    volume: 1,
-    width: '100%',
-    height: '100%',
-    cssFullscreen: false,
-    startTime: props.initialTime || 0,
-    playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
-    controls: {
-      mode: 'flex',
-    },
-    theme: {
-      background: '#000000',
-      primary: '#00a1d6',
-      progress: '#00a1d6',
-      playedColor: '#00a1d6',
-      progressColor: 'rgba(255, 255, 255, 0.3)',
-      volumeColor: '#00a1d6',
-      controlsBgColor: 'rgba(0, 0, 0, 0.5)',
-      textColor: '#ffffff',
-    },
-  });
 
   player.value.on('play', handlePlay);
   player.value.on('pause', handlePause);

@@ -28,6 +28,13 @@ const SELECTORS = {
     CHANNEL_LINK: '.usernameBadgesWrapper a',
     VIDEO_UPLOADER: '.video-detailed-info .usernameBadgesWrapper a'
   },
+  JAVDB: {
+    SUBSCRIBE_CONTAINER: '.section-title',
+    ACTOR_NAME: '.actor-section-name',
+    ACTOR_AVATAR: '.actor-avatar',
+    ACTOR_ID: '.section-title',
+    VIDEO_ACTOR_LINK: '.video-meta .value a[href^="/actors/"]'
+  },
 };
 
 let isHandleVideoPage = false;
@@ -445,7 +452,7 @@ const addSubscribeButtonToYoutube = async (container) => {
     // 等待订阅按钮容器出现
     const subscribeContainer = await waitForElement(SELECTORS.YOUTUBE.SUBSCRIBE_CONTAINER);
     
-    // 再次检查��防止在等待过程中��钮被添加
+    // 再次检查防止在等待过程中按钮被添加
     if (document.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
       console.log('Subscribe button was added while waiting');
       return;
@@ -677,6 +684,7 @@ const addButtonsToPage = (container) => {
   const isYoutube = window.location.hostname.includes('youtube.com');
   const isBilibili = window.location.hostname.includes('bilibili.com');
   const isPornhub = window.location.hostname.includes('pornhub.com');
+  const isJavDb = window.location.hostname.includes('javdb.com');
 
   if (isBilibili) {
     addDownloadButtonToBilibili(container);
@@ -688,5 +696,118 @@ const addButtonsToPage = (container) => {
     addSubscribeButtonToYoutube(container);
   } else if (isPornhub) {
     addSubscribeButtonToPornhub(container);
+  } else if (isJavDb) {
+    addSubscribeButtonToJavDb(container);
+    addDownloadButtonToJavDb(container);
+  }
+};
+
+// Add getJavDbChannelInfo function
+const getJavDbChannelInfo = (container) => {
+  const nameElement = container.querySelector(SELECTORS.JAVDB.ACTOR_NAME);
+  const avatarElement = document.querySelector(SELECTORS.JAVDB.ACTOR_AVATAR);
+  const channelId = window.location.pathname.split('/')[2]; // Get ID from URL path /actors/{ID}
+  
+  return {
+    name: nameElement ? nameElement.textContent.trim() : null,
+    avatar: avatarElement ? avatarElement.style.backgroundImage.replace(/^url\(['"](.+)['"]\)/, '$1') : null,
+    url: window.location.href.split('?')[0],
+    channelId: channelId
+  };
+};
+
+// Add addSubscribeButtonToJavDb function
+const addSubscribeButtonToJavDb = async (container) => {
+  try {
+    if (document.querySelector(SELECTORS.COMMON.SUBSCRIBE_BUTTON)) {
+      return;
+    }
+
+    const subscribeContainer = await waitForElement(SELECTORS.JAVDB.SUBSCRIBE_CONTAINER);
+    if (!subscribeContainer) {
+      console.log('Could not find subscribe container');
+      return;
+    }
+
+    const channelInfo = getJavDbChannelInfo(container);
+    if (!channelInfo.channelId || !channelInfo.name) {
+      console.log('Could not find actor information');
+      return;
+    }
+
+    console.log('Actor Info:', channelInfo);
+
+    let isSubscribed = await checkSubscriptionStatus(channelInfo.channelId);
+    const buttonText = isSubscribed ? '取消订阅' : '订阅';
+    const subscribeButton = createStyledButton(buttonText, SELECTORS.COMMON.SUBSCRIBE_BUTTON.slice(1), async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      try {
+        if (isSubscribed) {
+          await unsubscribe(channelInfo.url, {
+            channelId: channelInfo.channelId,
+            name: channelInfo.name,
+            avatar: channelInfo.avatar
+          });
+          isSubscribed = false;
+          subscribeButton.textContent = '订阅';
+        } else {
+          await subscribe(channelInfo.url, {
+            channelId: channelInfo.channelId,
+            name: channelInfo.name,
+            avatar: channelInfo.avatar
+          });
+          isSubscribed = true;
+          subscribeButton.textContent = '取消订阅';
+        }
+      } catch (error) {
+        console.error('Error handling subscription:', error);
+      }
+    }, SUBSCRIBE_ICON_SVG);
+
+    // Style the button to match JavDB's design
+    Object.assign(subscribeButton.style, {
+      backgroundColor: '#e4e4e4',
+      color: '#333',
+      marginLeft: '8px',
+      height: '32px',
+      padding: '0 16px',
+      fontSize: '14px',
+      fontWeight: '500',
+      borderRadius: '4px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: '1px solid #ccc',
+      cursor: 'pointer'
+    });
+
+    // Add hover effects
+    subscribeButton.addEventListener('mouseover', () => {
+      subscribeButton.style.backgroundColor = '#d4d4d4';
+    });
+
+    subscribeButton.addEventListener('mouseout', () => {
+      subscribeButton.style.backgroundColor = '#e4e4e4';
+    });
+
+    // Insert the button after the actor name
+    const sectionAddition = document.querySelector('.section-addition');
+    if (sectionAddition) {
+      const buttonField = sectionAddition.querySelector('.field');
+      if (buttonField) {
+        buttonField.appendChild(subscribeButton);
+      } else {
+        sectionAddition.appendChild(subscribeButton);
+      }
+    } else {
+      subscribeContainer.appendChild(subscribeButton);
+    }
+    
+    console.log('Subscribe button added successfully to JavDB');
+
+  } catch (error) {
+    console.error('Error in addSubscribeButtonToJavDb:', error);
   }
 };

@@ -33,5 +33,6 @@ pydantic-settings = "*"
 sqlmodel = "*"
 dramatiq = {extras = ["watch", "redis"] }
 phub = "*"
+cloudscraper = "*"
 
 [dev-packages]

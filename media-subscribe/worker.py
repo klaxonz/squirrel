@@ -18,7 +18,8 @@ def start_workers():
         "channel_video_extract_download_queue",
         "extract_bilibili",
         "extract_pornhub",
-        "extract_youtube"
+        "extract_youtube",
+        "extract_javdb",
     ]
     
     processes = []

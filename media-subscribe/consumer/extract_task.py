@@ -39,7 +39,9 @@ def process_extract_message(message: str):
             process_extract_youtube_message.send(message)
         elif domain == 'pornhub.com':
             process_extract_pornhub_message.send(message)
-        
+        elif domain == 'javdb.com':
+            process_extract_javdb_message.send(message)
+
     except Exception as e:
         logger.error(f"处理消息时发生错误: {e}", exc_info=True)
 
@@ -56,6 +58,10 @@ def process_extract_youtube_message(message: str):
 
 @dramatiq.actor(queue_name='extract_pornhub')
 def process_extract_pornhub_message(message: str):
+    process_extract_task(message)
+
+@dramatiq.actor(queue_name='extract_javdb')
+def process_extract_javdb_message(message: str):
     process_extract_task(message)
 
 

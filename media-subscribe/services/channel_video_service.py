@@ -1,8 +1,11 @@
+import re
 from typing import List, Tuple
 from urllib.parse import quote
 
+import cloudscraper
 import phub
 import requests
+from bs4 import BeautifulSoup
 from phub import Quality
 from pytubefix import YouTube
 from sqlalchemy import func
@@ -46,8 +49,8 @@ class ChannelVideoService:
                 audio_urls = data['dash']['audio']
                 best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
                 return {
-                    'video_url': "http://localhost:8000/api/channel-video/proxy?url=" + quote(best_video_url),
-                    'audio_url': "http://localhost:8000/api/channel-video/proxy?url=" + quote(best_audio_url),
+                    'video_url': "http://localhost:8000/api/channel-video/proxy?domain=bilibili.com&url=" + quote(best_video_url),
+                    'audio_url': "http://localhost:8000/api/channel-video/proxy?domain=bilibili.com&url=" + quote(best_audio_url),
                 }
             elif channel_video.domain == 'youtube.com':
                 # YouTube video URL fetching logic
@@ -66,7 +69,54 @@ class ChannelVideoService:
                     'video_url': video_url,
                     'audio_url': None,
                 }
+            elif channel_video.domain == 'javdb.com':
+                title = channel_video.title
+                no = title.split(' ')[0]
+                url = self.get_jav_video_url(no)
+                return {
+                    'video_url': "http://localhost:8000/api/channel-video/proxy?domain=javdb.com&url=" + quote(url),
+                    'audio_url': None,
+                }
             return {}
+
+
+    def get_jav_video_url(self, no: str):
+        url = f'https://missav.com/search/{no}'
+        scraper = cloudscraper.create_scraper()
+        response = scraper.get(url)
+        bs4 = BeautifulSoup(response.text, 'html.parser')
+        items = bs4.select('div.thumbnail')
+        if len(items) > 0:
+            target = items[0]
+            target_url = target.select_one('a')['href']
+
+            response = scraper.get(target_url)
+            r = self.extract_parts_from_html_content(response.text)
+            url_path = r.split("m3u8|")[1].split("|playlist|source")[0]
+            url_words = url_path.split('|')
+            video_index = url_words.index("video")
+            protocol = url_words[video_index-1]
+            video_format = url_words[video_index + 1]
+
+            m3u8_url_path = "-".join((url_words[0:5])[::-1])
+            base_url_path = ".".join((url_words[5:video_index-1])[::-1])
+
+            formatted_url = "{0}://{1}/{2}/{3}/{4}.m3u8".format(protocol, base_url_path, m3u8_url_path, video_format, url_words[video_index])
+            return formatted_url
+
+    def extract_parts_from_html_content(self, html_content):
+        soup = BeautifulSoup(html_content, 'html.parser')
+
+        # 查找所有script标签
+        for script in soup.find_all('script'):
+            if script.string and 'm3u8|' in script.string:
+                # 找到包含目标字符串的部分
+                pattern = r"'([^']*m3u8\|[^']*)'"
+                match = re.search(pattern, script.string)
+                if match:
+                    parts = match.group(1)
+                    return parts
+        return None
 
     def list_channel_videos(self, query: str, channel_id: str, read_status: str, sort_by: str, page: int, page_size: int) -> Tuple[
         List[dict], dict]:

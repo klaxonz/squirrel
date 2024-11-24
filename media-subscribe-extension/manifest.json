@@ -10,7 +10,8 @@
   "host_permissions": [
     "*://*.bilibili.com/*",
     "*://*.youtube.com/*",
-    "*://*.pornhub.com/*"
+    "*://*.pornhub.com/*",
+    "*://*.javdb.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -20,7 +21,8 @@
       "matches": [
         "*://*.bilibili.com/*",
         "*://*.youtube.com/*",
-        "*://*.pornhub.com/*"
+        "*://*.pornhub.com/*",
+        "*://*.javdb.com/*"
       ],
       "js": ["content.js"]
     }
