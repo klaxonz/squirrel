@@ -32,6 +32,7 @@ def process_extract_message(message: str):
         extract_info = _parse_message(message_obj)
         url = extract_info['url']
         domain = extract_top_level_domain(url)
+        logger.info(f"domain: {domain}")
         if domain == 'bilibili.com':
             process_extract_bilibili_message.send(message)
         elif domain == 'youtube.com':

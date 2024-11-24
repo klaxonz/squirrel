@@ -1,6 +1,9 @@
+import json
+
 from fastapi import APIRouter, Query
 
 import common.response as response
+from consumer import video_progress_task
 from services.video_history_service import VideoHistoryService
 from schemas.video_history import UpdateHistoryRequest, ClearHistoryRequest
 
@@ -12,15 +15,15 @@ router = APIRouter(
 def update_watch_history(
     request: UpdateHistoryRequest,
 ):
-    """更新视频观看历史"""
-    video_history_service = VideoHistoryService()
-    video_history_service.update_watch_history(
-        request.video_id,
-        request.channel_id,
-        request.watch_duration,
-        request.last_position,
-        request.total_duration
-    )
+
+    data = {
+        'video_id': request.video_id,
+        'channel_id': request.channel_id,
+        'watch_duration': request.watch_duration,
+        'last_position': request.last_position,
+        'total_duration': request.total_duration
+    }
+    video_progress_task.process_video_progress_message.send(json.dumps(data))
     return response.success()
 
 @router.get("/api/video-history/list")

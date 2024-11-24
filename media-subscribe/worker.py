@@ -15,6 +15,7 @@ def start_workers():
     queues = [
         "video_download_queue",
         "video_subscribe_queue",
+        "video_progress_queue",
         "channel_video_extract_download_queue",
         "extract_bilibili",
         "extract_pornhub",

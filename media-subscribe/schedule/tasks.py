@@ -2,6 +2,7 @@ import json
 import logging
 import random
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import List, Type
 
@@ -147,13 +148,25 @@ class AutoUpdateChannelVideo(BaseTask):
             for channel in channels:
                 channel_ids.append(channel.channel_id)
 
+        # 四个线程池，每个线程池只有一个线程
+        bilibili_thread_pool = ThreadPoolExecutor(max_workers=1)
+        pornhub_thread_pool = ThreadPoolExecutor(max_workers=1)
+        youtube_thread_pool = ThreadPoolExecutor(max_workers=1)
+        javdb_thread_pool = ThreadPoolExecutor(max_workers=1)
         for channel_id in channel_ids:
             try:
                 with get_session() as inner_session:
                     channel = inner_session.exec(select(Channel).where(Channel.channel_id == channel_id)).one()
-                    # if 'bilibili' in channel.url or 'pornhub' in channel.url or 'youtube' in channel.url:
+                    # if 'bilibili' in channel.url or 'pornhub' in channel.url or 'javdb' in channel.url:
                     #     continue
-                    cls.update_channel_video(channel)
+                    if 'bilibili' in channel.url:
+                        bilibili_thread_pool.submit(cls.update_channel_video, channel)
+                    if 'pornhub' in channel.url:
+                        pornhub_thread_pool.submit(cls.update_channel_video, channel)
+                    if 'youtube' in channel.url:
+                        youtube_thread_pool.submit(cls.update_channel_video, channel)
+                    if 'javdb' in channel.url:
+                        javdb_thread_pool.submit(cls.update_channel_video, channel)
             except json.JSONDecodeError as e:
                 logger.error(f"Error decoding JSON: {e}", exc_info=True)
             except Exception as e:
