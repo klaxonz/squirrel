@@ -41,6 +41,8 @@ COPY media-subscribe /app/media-subscribe
 # Install project dependencies
 RUN pipenv install --deploy --system
 
+COPY media-subscribe/temp/bilibili.py /usr/local/lib/python3.11/site-packages/yt_dlp/extractor/bilibili.py
+
 # Copy the built frontend files to the backend's static directory
 COPY --from=frontend-builder /app/frontend/dist /app/media-subscribe/static
 
@@ -50,7 +52,4 @@ ENV PYTHONPATH=/app/media-subscribe:$PYTHONPATH
 # Expose the port the app runs on
 EXPOSE 8000
 
-
-RUN chmod +x start.sh
-
-CMD ["./start.sh"]
+CMD ["python", "main.py"]
