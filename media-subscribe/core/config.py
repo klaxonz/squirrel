@@ -73,6 +73,7 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings():
     load_dotenv(override=True)
+    load_dotenv(dotenv_path='../.env', override=True)
     return Settings()
 
 

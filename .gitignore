@@ -9,7 +9,7 @@ redis
 logs
 
 # Environment variables
-media-subscribe/.env
+.env
 
 # IDE and Editor-specific files
 .vscode/

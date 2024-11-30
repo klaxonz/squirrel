@@ -1,10 +1,13 @@
 import logging
+import os
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.staticfiles import StaticFiles
 
 from .channel import router as channel_router
 from .channel_video import router as channel_video_router
@@ -14,7 +17,6 @@ from .video_history import router as video_history_router
 from .podcast import router as podcast_router
 
 logger = logging.getLogger(__name__)
-
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -29,6 +31,13 @@ app.include_router(channel_router)
 app.include_router(channel_video_router)
 app.include_router(video_history_router)
 app.include_router(podcast_router)
+
+# 挂载静态文件
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+static_dir = os.path.join(base_dir, "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/", StaticFiles(directory=static_dir, html=True), name="root")
+
 
 @app.exception_handler(Exception)
 async def default_exception_handler(request: Request, exc: Exception):
