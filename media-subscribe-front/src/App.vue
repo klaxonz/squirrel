@@ -1,7 +1,7 @@
 <template>
   <div class="app-container flex h-screen bg-[#0f0f0f] text-white">
     <!-- 侧边栏 -->
-    <nav :class="['sidebar h-full overflow-y-auto flex-shrink-0 transition-all duration-300 ease-in-out bg-[#0f0f0f]', 
+    <nav :class="['sidebar h-full overflow-y-auto flex-shrink-0 transition-all duration-300 ease-in-out bg-[#0f0f0f] hidden md:block', 
                   isCollapsed ? 'w-20' : 'w-48']">
       <div class="flex flex-col h-full">
         <div class="logo p-4 flex items-center mx-2">
@@ -31,6 +31,9 @@
         <component :is="Component" />
       </router-view>
     </main>
+
+    <!-- 移动端导航 -->
+    <MobileNav class="md:hidden" :routes="routes" />
 
     <!-- 添加 VideoModal -->
     <VideoModal
@@ -70,6 +73,7 @@ import { provide, ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import mitt from 'mitt';
 import VideoModal from './components/VideoModal.vue';
+import MobileNav from './components/MobileNav.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 import useVideoOperations from './composables/useVideoOperations';
 import useToast from './composables/useToast';
