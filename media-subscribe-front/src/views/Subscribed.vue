@@ -46,7 +46,7 @@
         <!-- 加载更多按钮 -->
         <div
             v-if="!allLoaded"
-            class="mt-8 mb-8 text-center loading-trigger"
+            class="mt-4 mb-4 text-center loading-trigger h-20 flex items-center justify-center"
             ref="loadingTrigger"
         >
           <div v-if="loading" class="flex items-center justify-center space-x-2">
@@ -57,7 +57,7 @@
         </div>
 
         <!-- 全部加载完毕 -->
-        <div v-if="allLoaded" class="mt-8 mb-8 text-center text-[#aaa]">
+        <div v-if="allLoaded" class="mt-4 mb-4 text-center text-[#aaa]">
           <p>已经到底啦</p>
         </div>
       </div>
@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-import {nextTick, onMounted, onUnmounted, ref} from 'vue';
+import {nextTick, onMounted, onUnmounted, ref, watch} from 'vue';
 import axios from '../utils/axios';
 import SearchBar from '../components/SearchBar.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
@@ -138,9 +138,16 @@ const setupIntersectionObserver = () => {
         }
       },
       {
-        threshold: 0.5
+        root: document.querySelector('.channel-container'),
+        rootMargin: '100px',
+        threshold: 0
       }
   );
+
+  // 确保在组件挂载后观察loading trigger
+  if (loadingTrigger.value) {
+    observer.value.observe(loadingTrigger.value);
+  }
 };
 
 const loadChannels = async () => {
@@ -305,8 +312,20 @@ const handleImageError = (event) => {
 
 onMounted(() => {
   loadChannels();
-  setupIntersectionObserver();
+  nextTick(() => {
+    setupIntersectionObserver();
+  });
 });
+
+// 添加监听器以在内容变化时重新设置observer
+watch(channels, () => {
+  nextTick(() => {
+    if (observer.value && loadingTrigger.value) {
+      observer.value.unobserve(loadingTrigger.value);
+      observer.value.observe(loadingTrigger.value);
+    }
+  });
+}, { deep: true });
 
 onUnmounted(() => {
   if (observer.value) {

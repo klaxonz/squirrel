@@ -1,8 +1,6 @@
 import logging
 import os
-import threading
 import dramatiq
-import time
 import signal
 import importlib
 import pkgutil
@@ -21,20 +19,21 @@ from consumer.base import redis_broker
 
 logger = logging.getLogger(__name__)
 
+
 def auto_discover_actors(package_name='consumer'):
     """自动发现和导入所有的 actors"""
     package = importlib.import_module(package_name)
-    
+
     logger.info(f"Discovering actors in package: {package_name}")
-    
+
     for _, name, _ in pkgutil.iter_modules([os.path.dirname(package.__file__)]):
-        if name != 'base':  # 跳过 base.py
+        if name != 'base':
             module_name = f'{package_name}.{name}'
             logger.info(f"Importing module: {module_name}")
             importlib.import_module(module_name)
 
+
 def create_workers():
-    # 声明所有队列
     queues = [
         constants.QUEUE_SUBSCRIBE_TASK,
         constants.QUEUE_DOWNLOAD_TASK,
@@ -45,20 +44,17 @@ def create_workers():
         'extract_pornhub',
         'extract_javdb'
     ]
-    
+
     for queue in queues:
         redis_broker.declare_queue(queue)
 
     logger.info(f"Broker middleware: {redis_broker.middleware}")
     logger.info(f"Target queues: {redis_broker.queues}")
 
-    # 设置全局 broker
     dramatiq.set_broker(redis_broker)
 
-    # 自动发现和导入 actors
     auto_discover_actors()
 
-    # 为每个队列创建一个 worker
     workers = []
     for queue in queues:
         worker = Worker(
@@ -73,9 +69,10 @@ def create_workers():
     logger.info(f"Registered actors: {redis_broker.actors}")
     return workers
 
+
 def run_workers():
     workers = create_workers()
-    
+
     def signal_handler(signum, frame):
         logger.info("Stopping workers...")
         for worker in workers:
@@ -90,18 +87,15 @@ def run_workers():
 
     return workers
 
+
 def start_workers():
-    """在新线程中启动 workers"""
     logger.info('Starting workers in background thread...')
     workers = run_workers()
     return workers
 
-def init_app():
-    """初始化应用程序"""
-    # 初始化日志配置
-    init_logging()
 
-    # 使用 settings.database_url
+def init_app():
+    init_logging()
     logger.info(f"Initializing app with DATABASE_URL: {settings.database_url}")
 
 
@@ -134,7 +128,6 @@ def start_scheduler():
 
     scheduler.start()
     logger.info('Scheduler started.')
-
 
 
 def start_fastapi_server():

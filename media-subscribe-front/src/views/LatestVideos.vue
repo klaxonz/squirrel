@@ -1,14 +1,20 @@
 <template>
-  <div class="latest-videos flex flex-col h-full mx-4">
-    <SearchBar class="pt-4" @search="handleSearch" ref="searchBar" />
-    <TabBar 
-      v-model="activeTab" 
-      :tabs="tabsWithCounts" 
-      class="custom-tab-bar"
-      @sort-change="handleSortChange"
-    />
+  <div class="latest-videos flex flex-col h-full">
+    <SearchBar class="pt-4 px-4" @search="handleSearch" ref="searchBar" />
+    <div class="flex items-center justify-between py-1">
+      <TabBar 
+        v-model="activeTab" 
+        :tabs="tabsWithCounts" 
+        class="custom-tab-bar flex-grow pl-4"
+      />
+      <SortButton
+        v-model="sortBy"
+        @update:modelValue="handleSortChange"
+        class="ml-2 pr-4"
+      />
+    </div>
 
-    <div class="video-container pt-1 flex-grow">
+    <div class="video-container flex-grow">
       <router-view 
         v-slot="{ Component }" 
       >
@@ -37,6 +43,7 @@ import { useRoute, useRouter } from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
+import SortButton from '../components/SortButton.vue';
 
 const router = useRouter();
 const emitter = inject('emitter');
@@ -110,7 +117,7 @@ onUnmounted(() => {
 });
 </script>
 
-<style src="./LatestVideos.css" scoped></style>
+<style src="../styles/components/LatestVideos.css" scoped></style>
 
 <style scoped>
 .latest-videos {
