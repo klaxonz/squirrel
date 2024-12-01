@@ -14,6 +14,22 @@
 
     <!-- Mobile navigation -->
     <MobileNav v-if="isMobile" :routes="mobileRoutes" />
+
+    <!-- Video Modal -->
+    <Teleport to="body">
+      <VideoModal
+        v-if="isModalOpen"
+        :isOpen="isModalOpen"
+        :video="selectedVideo"
+        :playlist="currentPlaylist"
+        @close="closeVideoModal"
+        @videoPlay="onVideoPlay"
+        @videoPause="onVideoPause"
+        @videoEnded="onVideoEnded"
+        @changeVideo="handleChangeVideo"
+        @goToChannel="handleGoToChannel"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -27,8 +43,6 @@ import Sidebar from './components/Sidebar.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 import useVideoOperations from './composables/useVideoOperations';
 import useToast from './composables/useToast';
-import AudioPlayer from './components/AudioPlayer.vue';
-import axios from 'axios';
 import { useWindowSize } from '@vueuse/core'
 import './styles/layout.css'
 
@@ -54,7 +68,7 @@ const {
   onVideoEnded,
 } = useVideoOperations(videos);
 
-const { toastMessage, showToast, displayToast } = useToast();
+const {displayToast } = useToast();
 
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
@@ -65,15 +79,9 @@ const routes = ref([
   { path: '/settings', name: '设置', icon: CogIcon },
 ]);
 
-const isCollapsed = ref(false);
-
-const handleSidebarCollapse = (collapsed) => {
-  isCollapsed.value = collapsed;
-  emitter.emit('sidebarStateChanged');
-};
-
 // 添加视频模态框相关方法
 const openVideoModal = async (video, playlist) => {
+  console.log('Opening video modal with:', video);
   emitter.emit('closeMiniPlayer');
   selectedVideo.value = video;
   currentPlaylist.value = playlist;
@@ -104,7 +112,9 @@ const handleGoToChannel = (channelId) => {
 
 // 监听视频模态框打开事件
 onMounted(() => {
+  console.log('Setting up video modal event listener');
   emitter.on('openVideoModal', ({ video, playlist }) => {
+    console.log('Received openVideoModal event:', video);
     openVideoModal(video, playlist);
   });
 });
@@ -122,36 +132,6 @@ provide('playPodcast', (episode, podcast) => {
   currentEpisode.value = episode;
   currentPodcast.value = podcast;
 });
-
-// 播放器控制方法
-const updateProgress = async (position) => {
-  if (!currentEpisode.value) return;
-  // try {
-  //   await axios.post(`/api/podcasts/episodes/${currentEpisode.value.id}/progress`, {
-  //     position: Math.floor(position)
-  //   });
-  // } catch (error) {
-  //   console.error('Failed to update progress:', error);
-  // }
-};
-
-const onEpisodeEnded = async () => {
-  if (!currentEpisode.value) return;
-  try {
-    await axios.post(`/api/podcasts/episodes/${currentEpisode.value.id}/mark-read`, {
-      is_read: true
-    });
-  } catch (error) {
-    console.error('Failed to mark episode as read:', error);
-  }
-  currentEpisode.value = null;
-  currentPodcast.value = null;
-};
-
-const closeAudioPlayer = () => {
-  currentEpisode.value = null;
-  currentPodcast.value = null;
-};
 
 const sidebarRoutes = computed(() => {
   return routes.value.filter(route => !route.path.includes('/settings'))
@@ -180,28 +160,6 @@ body {
   @apply bg-[#0f0f0f] text-white;
 }
 
-.app-container {
-  font-family: var(--font-sans);
-}
-
-.nav-item {
-  @apply flex items-center px-4 py-2 text-[#f1f1f1] hover:bg-[#272727] rounded-lg mx-2 transition-all duration-200 ease-in-out overflow-hidden;
-  white-space: nowrap;
-}
-
-.nav-item.active {
-  @apply bg-[#272727] text-white;
-}
-
-.nav-item .w-6 {
-  @apply text-[#f1f1f1] transition-all duration-300 ease-in-out flex-shrink-0;
-}
-
-.nav-item:hover .w-6,
-.nav-item.active .w-6 {
-  @apply text-white;
-}
-
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-sans);
 }
@@ -210,14 +168,4 @@ button {
   @apply focus:outline-none;
 }
 
-/* 添加一些全局样式来增强整体视觉效果 */
-.hover-lift {
-  @apply transition-transform duration-300 ease-in-out hover:-translate-y-1;
-}
-
-/* 添加文字过渡效果 */
-.nav-item span {
-  display: inline-block;
-  transition: opacity 0.3s ease-in-out, width 0.3s ease-in-out;
-}
 </style>

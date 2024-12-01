@@ -100,6 +100,11 @@ const menuItems = [
     icon: SpeakerWaveIcon,
   },
   {
+    name: '下载',
+    path: '/downloads',
+    icon: ArrowDownTrayIcon,
+  },
+  {
     name: '历史记录',
     path: '/history',
     icon: ClockIcon,
@@ -107,11 +112,6 @@ const menuItems = [
 ];
 
 const bottomItems = [
-  {
-    name: '下载任务',
-    path: '/downloads',
-    icon: ArrowDownTrayIcon,
-  },
   {
     name: '设置',
     path: '/settings',

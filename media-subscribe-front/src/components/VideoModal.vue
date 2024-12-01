@@ -1,36 +1,37 @@
 <template>
   <div v-if="isOpen" 
        :class="[
-         'fixed z-50 bg-black transition-all duration-300',
-         isMinimized ? 'shadow-lg rounded-lg overflow-hidden' : 'inset-0',
-         isDragging ? 'dragging select-none' : '',
-         resizeState.isResizing ? 'resizing select-none' : ''
+         'fixed z-50 bg-black transition-all duration-300 video-modal-container',
+         isMinimized ? 'minimized shadow-lg rounded-lg overflow-hidden' : 'fixed inset-0',
+         isDragging ? 'dragging' : '',
+         isResizing ? 'resizing' : ''
        ]"
        :style="miniPlayerStyle"
-       @mousedown="startDrag"
-       @keydown.esc="close" 
        tabindex="0"
+       @keydown.esc="close"
   >
+
     <template v-if="isMinimized">
       <!-- 左边缘 -->
-      <div class="resize-edge resize-w" @mousedown.stop="startResize('w')"></div>
+      <div class="resize-edge resize-w" @mousedown.stop.prevent="startResize('w')"></div>
       <!-- 右边缘 -->
-      <div class="resize-edge resize-e" @mousedown.stop="startResize('e')"></div>
+      <div class="resize-edge resize-e" @mousedown.stop.prevent="startResize('e')"></div>
       <!-- 上边缘 -->
-      <div class="resize-edge resize-n" @mousedown.stop="startResize('n')"></div>
+      <div class="resize-edge resize-n" @mousedown.stop.prevent="startResize('n')"></div>
       <!-- 下边缘 -->
-      <div class="resize-edge resize-s" @mousedown.stop="startResize('s')"></div>
+      <div class="resize-edge resize-s" @mousedown.stop.prevent="startResize('s')"></div>
       <!-- 左上角 -->
-      <div class="resize-corner resize-nw" @mousedown.stop="startResize('nw')"></div>
+      <div class="resize-corner resize-nw" @mousedown.stop.prevent="startResize('nw')"></div>
       <!-- 右上角 -->
-      <div class="resize-corner resize-ne" @mousedown.stop="startResize('ne')"></div>
+      <div class="resize-corner resize-ne" @mousedown.stop.prevent="startResize('ne')"></div>
       <!-- 左下角 -->
-      <div class="resize-corner resize-sw" @mousedown.stop="startResize('sw')"></div>
+      <div class="resize-corner resize-sw" @mousedown.stop.prevent="startResize('sw')"></div>
       <!-- 右下角 -->
-      <div class="resize-corner resize-se" @mousedown.stop="startResize('se')"></div>
+      <div class="resize-corner resize-se" @mousedown.stop.prevent="startResize('se')"></div>
     </template>
 
-    <div :class="['relative bg-[#0f0f0f] flex video-container', isMinimized ? 'h-full' : 'w-full h-full']">
+    <div :class="['relative bg-[#0f0f0f] flex video-container', isMinimized ? 'h-full' : 'w-full h-full']"
+         @mousedown.stop="startDrag">
       <!-- 视频播放区域 -->
       <div :class="[
         'video-section',
@@ -52,18 +53,19 @@
           
           <!-- 控制层 - 只在最小化时显示 -->
           <div v-if="isMinimized" 
-               class="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-200">
-            <!-- 渐变背景 -->
+               class="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-200"
+               >
+            <!-- 渐变背景 - 不应该接收事件 -->
             <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60"></div>
             
-            <!-- 顶部控制栏 -->
+            <!-- 顶部控制栏 - 只有按钮可以接收事件 -->
             <div class="absolute top-0 left-0 right-0 p-2 flex items-start justify-between">
               <div class="text-white text-sm font-medium line-clamp-2 pr-12">
                 {{ video?.title }}
               </div>
-              <div class="flex items-center gap-1 flex-shrink-0">
+              <div class="flex items-center gap-1 flex-shrink-0 pointer-events-auto">
                 <button 
-                  @click="goToOriginalVideo"
+                  @click.stop="goToOriginalVideo"
                   class="mini-control-btn"
                   title="在新标签页中打开原视频"
                 >
@@ -73,7 +75,7 @@
                   </svg>
                 </button>
                 <button 
-                  @click="toggleMinimize"
+                  @click.stop="toggleMinimize"
                   class="mini-control-btn"
                   title="还原"
                 >
@@ -82,7 +84,7 @@
                   </svg>
                 </button>
                 <button 
-                  @click="close"
+                  @click.stop="close"
                   class="mini-control-btn"
                   title="关闭"
                 >
@@ -93,7 +95,7 @@
               </div>
             </div>
 
-            <!-- 底部控制栏 -->
+            <!-- 底部控制栏 - 不接收事件 -->
             <div class="absolute bottom-0 left-0 right-0 p-2">
               <div class="flex items-center justify-between">
                 <div class="text-white/80 text-xs">
@@ -407,7 +409,7 @@ const formatDuration = (seconds) => {
   return `${hours ? hours + ':' : ''}${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-const handleKeyDown = (event) => {
+const  handleKeyDown = (event) => {
   if (event.key === 'Escape') {
     close();
   }
@@ -523,32 +525,19 @@ const resizeState = ref({
 
 // 切换最小化状态
 const toggleMinimize = () => {
-  // 设置动画所需的 CSS 变量
-  const root = document.documentElement;
   if (!isMinimized.value) {
-    // 最小化时，确保位置合理
+    // 最小化时，设固定位置
     const windowHeight = window.innerHeight;
     position.value = {
       x: 24,
       y: windowHeight - size.value.height - 24
     };
-    root.style.setProperty('--final-x', `${position.value.x}px`);
-    root.style.setProperty('--final-y', `${position.value.y}px`);
-  } else {
-    root.style.setProperty('--initial-x', `${position.value.x}px`);
-    root.style.setProperty('--initial-y', `${position.value.y}px`);
   }
-
-  // 添���相应的动画类
-  const container = document.querySelector('.video-modal-container');
-  if (container) {
-    container.classList.add(isMinimized.value ? 'maximizing' : 'minimized');
-    container.addEventListener('animationend', () => {
-      container.classList.remove('maximizing', 'minimized');
-    }, { once: true });
-  }
-
+  
+  // 切换状态
   isMinimized.value = !isMinimized.value;
+  
+  // 重置播放列表宽度（如果是最大化）
   if (!isMinimized.value) {
     resizeState.value.playlistWidth = 384;
   }
@@ -569,89 +558,13 @@ const handlePlaylistResize = (e) => {
   }
 };
 
-// 停止播放列表宽度调整
+// 止播放列宽度调整
 const stopPlaylistResize = () => {
   resizeState.value.isResizing = false;
   document.removeEventListener('mousemove', handlePlaylistResize);
   document.removeEventListener('mouseup', stopPlaylistResize);
 };
 
-// 修改调整大小相关的方法
-const startResize = (direction) => {
-  if (!isMinimized.value) return;
-  
-  resizeState.value = {
-    isResizing: true,
-    direction,
-    startX: event.clientX,
-    startY: event.clientY,
-    startWidth: size.value.width,
-    startHeight: size.value.height,
-    startLeft: position.value.x,
-    startTop: position.value.y
-  };
-  
-  document.addEventListener('mousemove', handleResize);
-  document.addEventListener('mouseup', stopResize);
-};
-
-const handleResize = (e) => {
-  if (!resizeState.value.isResizing) return;
-  
-  const { direction, startX, startY, startWidth, startHeight, startLeft, startTop } = resizeState.value;
-  const aspectRatio = 16 / 9;
-  const minWidth = 160;
-  const maxWidth = 800;
-  const deltaX = e.clientX - startX;
-  const deltaY = e.clientY - startY;
-  
-  let newWidth = startWidth;
-  let newHeight = startHeight;
-  let newLeft = startLeft;
-  let newTop = startTop;
-
-  // 根据不同方向计算新的尺寸和位置
-  if (direction.includes('e')) {
-    newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX));
-    newHeight = newWidth / aspectRatio;
-  }
-  if (direction.includes('w')) {
-    const proposedWidth = Math.max(minWidth, Math.min(maxWidth, startWidth - deltaX));
-    if (proposedWidth !== startWidth) {
-      newWidth = proposedWidth;
-      newHeight = newWidth / aspectRatio;
-      newLeft = startLeft + (startWidth - newWidth);
-    }
-  }
-  if (direction.includes('s')) {
-    newHeight = Math.max(minWidth / aspectRatio, Math.min(maxWidth / aspectRatio, startHeight + deltaY));
-    newWidth = newHeight * aspectRatio;
-  }
-  if (direction.includes('n')) {
-    const proposedHeight = Math.max(minWidth / aspectRatio, Math.min(maxWidth / aspectRatio, startHeight - deltaY));
-    if (proposedHeight !== startHeight) {
-      newHeight = proposedHeight;
-      newWidth = newHeight * aspectRatio;
-      newTop = startTop + (startHeight - newHeight);
-    }
-  }
-
-  // 确保不超出屏幕边界
-  if (newLeft < 0) newLeft = 0;
-  if (newTop < 0) newTop = 0;
-  if (newLeft + newWidth > window.innerWidth) newLeft = window.innerWidth - newWidth;
-  if (newTop + newHeight > window.innerHeight) newTop = window.innerHeight - newHeight;
-
-  // 更新状态
-  size.value = { width: newWidth, height: newHeight };
-  position.value = { x: newLeft, y: newTop };
-};
-
-const stopResize = () => {
-  resizeState.value.isResizing = false;
-  document.removeEventListener('mousemove', handleResize);
-  document.removeEventListener('mouseup', stopResize);
-};
 
 // 在组件卸载时清理事件监听
 onUnmounted(() => {
@@ -661,108 +574,34 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', stopResize);
 });
 
-// 添加拖动和大小调整状态
-const position = ref({ x: 24, y: window.innerHeight - 135 });
-const size = ref({ width: 220, height: 124 }); // 16:9 比例
-const isDragging = ref(false);
-const dragOffset = ref({ x: 0, y: 0 });
+// 添加拖动��大小调整状态
+const position = ref({ x: 24, y: window.innerHeight - 180 - 24 });
+const size = ref({
+  width: 320,  // 16:9 比例的宽度
+  height: 180  // 16:9 比例的高度
+});
 
-// 计算迷你播放器样式
+// 修改 miniPlayerStyle computed 属性
 const miniPlayerStyle = computed(() => {
-  if (isMinimized.value) {
-    return {
-      transform: `translate(${position.value.x}px, ${position.value.y}px)`,
-      width: `${size.value.width}px`,
-      height: `${size.value.height}px`,
-      transformOrigin: 'bottom left'
-    };
-  } else {
+  if (!isMinimized.value) {
     return {
       transform: 'none',
       width: '100%',
       height: '100%',
-      transformOrigin: 'bottom left'
+      left: '0',
+      top: '0'
     };
   }
-});
-
-// 修改 startDrag 方法
-const startDrag = (e) => {
-  // 如果不是最小化状态，或者点击了控制按钮或调整大小手柄，则不启动拖动
-  if (!isMinimized.value || 
-      e.target.closest('.control-btn, .resize-edge, .resize-corner, button, .custom-scrollbar')) {
-    return;
-  }
   
-  // 阻止默认行为和冒泡
-  e.preventDefault();
-  e.stopPropagation();
-  
-  isDragging.value = true;
-  dragOffset.value = {
-    x: e.clientX - position.value.x,
-    y: e.clientY - position.value.y
+  return {
+    position: 'fixed',
+    left: `${position.value.x}px`,
+    top: `${position.value.y}px`,
+    width: `${size.value.width}px`,
+    height: `${size.value.height}px`,
+    cursor: isDragging.value ? 'grabbing' : isResizing.value ? 'auto' : 'grab'
   };
-  
-  // 添加全局事件监听
-  document.addEventListener('mousemove', handleDrag, { passive: false });
-  document.addEventListener('mouseup', stopDrag);
-  
-  // 添加选中保护 - 应用到整个文档
-  document.documentElement.style.userSelect = 'none';
-  document.documentElement.style.cursor = 'grabbing';
-  
-  // 防止文本选中
-  window.getSelection().removeAllRanges();
-};
-
-// 修改 handleDrag 方法
-const handleDrag = (e) => {
-  if (!isDragging.value) return;
-  
-  // 阻止所有默认行为和冒泡
-  e.preventDefault();
-  e.stopPropagation();
-  
-  let newX = e.clientX - dragOffset.value.x;
-  let newY = e.clientY - dragOffset.value.y;
-  
-  // 添加边界吸附
-  const snapDistance = 20;
-  const maxX = window.innerWidth - size.value.width;
-  const maxY = window.innerHeight - size.value.height;
-  
-  // 左边界吸附
-  if (newX < snapDistance) newX = 0;
-  // 右边界吸附
-  if (maxX - newX < snapDistance) newX = maxX;
-  // 上边界吸附
-  if (newY < snapDistance) newY = 0;
-  // 下边界吸附
-  if (maxY - newY < snapDistance) newY = maxY;
-  
-  // 确保不超出窗口边界
-  newX = Math.max(0, Math.min(newX, maxX));
-  newY = Math.max(0, Math.min(newY, maxY));
-  
-  position.value = { x: newX, y: newY };
-};
-
-// 修改 stopDrag 方法
-const stopDrag = () => {
-  isDragging.value = false;
-  document.removeEventListener('mousemove', handleDrag);
-  document.removeEventListener('mouseup', stopDrag);
-  
-  // 恢复选中和鼠标样式 - 应用到整个文档
-  document.documentElement.style.userSelect = '';
-  document.documentElement.style.cursor = '';
-  
-  // 防止触发点击事件
-  setTimeout(() => {
-    window.getSelection().removeAllRanges();
-  }, 0);
-};
+});
 
 const { updateWatchHistory } = useVideoHistory();
 
@@ -787,27 +626,15 @@ const goToOriginalVideo = () => {
   }
 };
 
-// 添加窗口大小改变处理函数
+// 简化窗口大小改变处理
 const handleWindowResize = () => {
   if (!isMinimized.value) return;
   
-  // 获取当前窗口尺寸
-  const windowWidth = window.innerWidth;
   const windowHeight = window.innerHeight;
-  
-  // 确保迷你播放器不会超出新的窗口边界
   position.value = {
-    x: Math.min(position.value.x, windowWidth - size.value.width),
-    y: Math.min(position.value.y, windowHeight - size.value.height)
+    x: 24,
+    y: windowHeight - size.value.height - 24
   };
-  
-  // 如果位置为负值，重置到默认位置
-  if (position.value.x < 0 || position.value.y < 0) {
-    position.value = {
-      x: 24,
-      y: windowHeight - size.value.height - 24
-    };
-  }
 };
 
 // 在组件挂载时添加事件监听
@@ -815,10 +642,152 @@ onMounted(() => {
   window.addEventListener('resize', handleWindowResize);
 });
 
-// 在组件卸载时移除事件监听
+// 在组卸载时移除事件监听
 onUnmounted(() => {
   window.removeEventListener('resize', handleWindowResize);
 });
+
+// 在 script setup 中添加新的状态
+const isDragging = ref(false);
+const dragStartPos = ref({ x: 0, y: 0 });
+
+// 添加拖拽相关的方法
+const startDrag = (e) => {
+  console.log('startDrag');
+  // 如果点击了控制按钮或调整大小的句柄，不处理拖拽
+  console.log('e.target', e.target.closest('.xgplayer-controls'));
+  if (e.target.closest('button') || 
+      e.target.closest('.resize-edge') || 
+      e.target.closest('.resize-corner')) {
+    console.log('点击了控制按钮或调整大小的句柄');
+    return;
+  }
+  
+  isDragging.value = true;
+  dragStartPos.value = {
+    x: e.clientX - position.value.x,
+    y: e.clientY - position.value.y
+  };
+  console.log('dragStartPos', dragStartPos.value);
+  
+  document.addEventListener('mousemove', handleDrag);
+  document.addEventListener('mouseup', stopDrag);
+};
+
+const handleDrag = (e) => {
+  console.log('handleDrag');
+  if (!isDragging.value) return;
+  
+  // 计算新位置
+  let newX = e.clientX - dragStartPos.value.x;
+  let newY = e.clientY - dragStartPos.value.y;
+  console.log('newX', newX);
+  // 限制不超出窗口边界
+  const maxX = window.innerWidth - size.value.width;
+  const maxY = window.innerHeight - size.value.height;
+  
+  newX = Math.max(0, Math.min(maxX, newX));
+  newY = Math.max(0, Math.min(maxY, newY));
+  
+  position.value = { x: newX, y: newY };
+  console.log('position', position.value);
+};
+
+const stopDrag = () => {
+  isDragging.value = false;
+  document.removeEventListener('mousemove', handleDrag);
+  document.removeEventListener('mouseup', stopDrag);
+};
+
+// 添加调整大小的状态
+const isResizing = ref(false);
+const resizeDirection = ref('');
+const resizeStartPos = ref({ x: 0, y: 0 });
+const resizeStartSize = ref({ width: 0, height: 0 });
+const resizeStartPosition = ref({ x: 0, y: 0 });
+
+// 开始调整大小
+const startResize = (direction) => {
+  if (!isMinimized.value) return;
+  
+  isResizing.value = true;
+  resizeDirection.value = direction;
+  resizeStartPos.value = {
+    x: event.clientX,
+    y: event.clientY
+  };
+  resizeStartSize.value = {
+    width: size.value.width,
+    height: size.value.height
+  };
+  resizeStartPosition.value = {
+    x: position.value.x,
+    y: position.value.y
+  };
+  
+  document.addEventListener('mousemove', handleResize);
+  document.addEventListener('mouseup', stopResize);
+};
+
+// 处理调整大小
+const handleResize = (e) => {
+  if (!isResizing.value) return;
+  
+  const deltaX = e.clientX - resizeStartPos.value.x;
+  const deltaY = e.clientY - resizeStartPos.value.y;
+  const aspectRatio = 16 / 9;
+  const minWidth = 320;
+  const maxWidth = window.innerWidth - 48;
+  const direction = resizeDirection.value;
+  
+  let newWidth = resizeStartSize.value.width;
+  let newHeight = resizeStartSize.value.height;
+  let newX = resizeStartPosition.value.x;
+  let newY = resizeStartPosition.value.y;
+
+  // 根据调整方向计算新的尺寸和位置
+  if (direction.includes('e')) {
+    newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartSize.value.width + deltaX));
+    newHeight = newWidth / aspectRatio;
+  }
+  if (direction.includes('w')) {
+    const proposedWidth = Math.max(minWidth, Math.min(maxWidth, resizeStartSize.value.width - deltaX));
+    if (proposedWidth !== newWidth) {
+      newWidth = proposedWidth;
+      newHeight = newWidth / aspectRatio;
+      newX = resizeStartPosition.value.x + (resizeStartSize.value.width - newWidth);
+    }
+  }
+  if (direction.includes('s')) {
+    newHeight = Math.max(minWidth / aspectRatio, Math.min(maxWidth / aspectRatio, resizeStartSize.value.height + deltaY));
+    newWidth = newHeight * aspectRatio;
+  }
+  if (direction.includes('n')) {
+    const proposedHeight = Math.max(minWidth / aspectRatio, Math.min(maxWidth / aspectRatio, resizeStartSize.value.height - deltaY));
+    if (proposedHeight !== newHeight) {
+      newHeight = proposedHeight;
+      newWidth = newHeight * aspectRatio;
+      newY = resizeStartPosition.value.y + (resizeStartSize.value.height - newHeight);
+    }
+  }
+
+  // 确保不超出屏幕边界
+  if (newX < 0) newX = 0;
+  if (newY < 0) newY = 0;
+  if (newX + newWidth > window.innerWidth) newX = window.innerWidth - newWidth;
+  if (newY + newHeight > window.innerHeight) newY = window.innerHeight - newHeight;
+
+  // 更新状态
+  size.value = { width: newWidth, height: newHeight };
+  position.value = { x: newX, y: newY };
+};
+
+// 停止调整大小
+const stopResize = () => {
+  isResizing.value = false;
+  document.removeEventListener('mousemove', handleResize);
+  document.removeEventListener('mouseup', stopResize);
+};
 
 </script>
 
@@ -879,7 +848,7 @@ button:focus {
 .custom-scrollbar-x {
   scrollbar-width: thin;
   scrollbar-color: #606060 transparent;
-  padding-bottom: 4px; /* 为滚动条预留空间 */
+  padding-bottom: 4px; /* 为滚动条留空间 */
   /* 移除最大宽度限制 */
 }
 
@@ -900,7 +869,7 @@ button:focus {
   background-color: #909090;
 }
 
-/* 确保最小宽度适合内容 */
+/* 确保��小宽度适合内容 */
 .min-w-fit {
   min-width: fit-content;
 }
@@ -936,7 +905,7 @@ button:focus {
   background: transparent;
 }
 
-/* 确保弹窗在其他元素之上 */
+/* 确保弹窗在他元素之上 */
 .group:hover .channel-popup {
   z-index: 1000;
 }
@@ -950,7 +919,7 @@ button:focus {
   transition-delay: 0ms;
 }
 
-/* 添加新的样式 */
+/* 添加新的式 */
 .flex-col {
   flex-direction: column;
 }
@@ -989,20 +958,19 @@ button:focus {
 .transition-all {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+              height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 最小化时的样式 */
 .minimized {
-  @apply rounded-lg overflow-hidden shadow-lg;
+  @apply rounded-lg  shadow-lg;
   width: 220px; /* 默认宽度改为 220px */
   height: 124px; /* 保持 16:9 比例 */
   position: fixed;
   left: 24px;
   bottom: 24px;
   background: #000;
-  transform-origin: bottom left !important;
+  transform-origin: bottom right !important;
   animation: minimize 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1064,157 +1032,20 @@ button:focus {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-/* 拖动时禁用过渡效果 */
-.dragging {
-  transition: none !important;
-  cursor: grabbing !important;
-  user-select: none !important;
-}
-
-.resizing {
-  transition: none !important;
-  cursor: nw-resize !important;
-  user-select: none !important;
-}
-
-/* 添加鼠标样式 */
-.minimized:not(.dragging):not(.resizing) {
-  cursor: grab;
-}
-
-/* 防止文字选中 */
-.select-none {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-/* 优化过渡效果 */
-.transition-all {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 确保播放列表内容可以选中 */
-.custom-scrollbar {
-  user-select: text;
-  cursor: auto;
-}
-
-/* 优化控制钮的点击区域 */
-.mini-control-btn {
-  cursor: pointer;
-  z-index: 10;
-}
-
-/* 调整大小手柄样 */
-.minimized .resize-handle {
-  @apply opacity-0 hover:opacity-100;
-  width: 16px;
-  height: 16px;
-  right: 0;
-  bottom: 0;
-  cursor: nw-resize;
-  background: transparent;
-}
-
-/* 添加调整大小时的视觉反馈 */
-.minimized .resize-handle::before {
-  content: '';
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 6px;
-  height: 6px;
-  border-right: 2px solid rgba(255, 255, 255, 0.5);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.5);
-}
-
-/* 优化拖动和调整大小时的视觉效果 */
-.minimized:not(.dragging):not(.resizing):hover {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-.minimized.dragging,
-.minimized.resizing {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
-}
-
-/* 控制层样式优化 */
-.minimized .control-layer {
-  background: linear-gradient(to bottom,
-    rgba(0, 0, 0, 0.7) 0%,
-    transparent 40%,
-    transparent 60%,
-    rgba(0, 0, 0, 0.7) 100%
-  );
-}
-
-/* 添加调整大小的边缘样式 */
-.resize-edge {
-  position: absolute;
-  background: transparent;
-  z-index: 10;
-}
-
-.resize-w, .resize-e {
-  width: 4px;
-  height: 100%;
-  top: 0;
-  cursor: ew-resize;
-}
-
-.resize-n, .resize-s {
-  height: 4px;
-  width: 100%;
-  left: 0;
-  cursor: ns-resize;
-}
-
-.resize-w { left: 0; }
-.resize-e { right: 0; }
-.resize-n { top: 0; }
-.resize-s { bottom: 0; }
-
-.resize-corner {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  background: transparent;
-  z-index: 11;
-}
-
-.resize-nw { top: 0; left: 0; cursor: nw-resize; }
-.resize-ne { top: 0; right: 0; cursor: ne-resize; }
-.resize-sw { bottom: 0; left: 0; cursor: sw-resize; }
-.resize-se { bottom: 0; right: 0; cursor: se-resize; }
-
-/* 调整大小时的视觉反馈 */
-.resizing .resize-edge,
-.resizing .resize-corner {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-/* 鼠标悬停时显示调整区域 */
-.resize-edge:hover,
-.resize-corner:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
 /* 添加最小化动画类 */
 .maximizing {
-  animation: maximize 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: maximize 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* 定义最大化动画 */
 @keyframes maximize {
   0% {
-    transform: translate(var(--initial-x), var(--initial-y)) scale(0.3) rotate(-45deg);
+    transform: translate(var(--initial-x), var(--initial-y)) scale(1);
+    border-radius: 0.5rem;
   }
   100% {
-    transform: translate(0, 0) scale(1) rotate(0deg);
+    transform: translate(0, 0) scale(1);
+    border-radius: 0;
   }
 }
 
@@ -1224,49 +1055,45 @@ button:focus {
   @apply overflow-hidden;
 }
 
-/* 修改拖动时禁用动画的样式 */
-.dragging,
-.resizing {
-  transition: none !important;
-  animation: none !important;
-}
-
 /* 修改过渡效果 */
 .transition-all {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+              height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 修改最小化动画 */
 .minimized {
   transform-origin: bottom left !important;
-  animation: minimize 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: minimize 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* 修改最大化动画 */
 .maximizing {
-  animation: maximize 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: maximize 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* 定义最小化动画 */
 @keyframes minimize {
   0% {
     transform: translate(0, 0) scale(1);
+    border-radius: 0;
   }
   100% {
-    transform: translate(var(--final-x), var(--final-y)) scale(0.3);
+    transform: translate(var(--final-x), var(--final-y)) scale(1);
+    border-radius: 0.5rem;
   }
 }
 
 /* 定义最大化动画 */
 @keyframes maximize {
   0% {
-    transform: translate(var(--initial-x), var(--initial-y)) scale(0.3);
+    transform: translate(var(--initial-x), var(--initial-y)) scale(1);
+    border-radius: 0.5rem;
   }
   100% {
     transform: translate(0, 0) scale(1);
+    border-radius: 0;
   }
 }
 
@@ -1307,5 +1134,226 @@ button:focus {
 
 .playlist-section {
   @apply h-full bg-[#181818] flex flex-col;
+}
+
+/* 修改动画相关的类 */
+.minimizing {
+  animation: minimize 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.maximizing {
+  animation: maximize 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.minimized {
+  position: fixed !important;
+  transform-origin: bottom left;
+  width: 320px; /* 使用 JS 中定义的默认宽度 */
+  height: 180px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+@keyframes minimize {
+  0% {
+    transform: translate(0, 0) scale(1);
+    border-radius: 0;
+  }
+  100% {
+    transform: translate(var(--final-x), var(--final-y)) scale(1);
+    border-radius: 0.5rem;
+  }
+}
+
+@keyframes maximize {
+  0% {
+    transform: translate(var(--initial-x), var(--initial-y)) scale(1);
+    border-radius: 0.5rem;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    border-radius: 0;
+  }
+}
+
+/* 修改动画相关样式 */
+.video-modal-container {
+  will-change: transform;
+}
+
+.minimized {
+  position: fixed !important;
+  transform-origin: bottom left;
+}
+
+/* 拖拽时禁用过渡 */
+.dragging {
+  transition: none !important;
+  user-select: none;
+}
+
+/* 非拖拽时的过渡效果 */
+.transition-all:not(.dragging) {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 鼠标样式 */
+.minimized:not(.dragging):not(.resizing) {
+  cursor: grab;
+}
+
+.minimized.dragging {
+  cursor: grabbing !important;
+}
+
+/* 添加调整大小的边缘样式 */
+.resize-edge {
+  position: absolute;
+  background: transparent;
+  z-index: 20;
+  /* 增加际可点击区域 */
+  padding: 4px;
+  margin: -4px;
+}
+
+.resize-edge.resize-e,
+.resize-edge.resize-w {
+  width: 4px;
+  height: 100%;
+  top: 0;
+  cursor: ew-resize;
+}
+
+.resize-edge.resize-n,
+.resize-edge.resize-s {
+  height: 4px;
+  width: 100%;
+  left: 0;
+  cursor: ns-resize;
+}
+
+.resize-edge.resize-e { right: -2px; }
+.resize-edge.resize-w { left: -2px; }
+.resize-edge.resize-n { top: -2px; }
+.resize-edge.resize-s { bottom: -2px; }
+
+/* 添加调整大小的角落样式 */
+.resize-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: transparent;
+  z-index: 30;
+  /* 增加实际可点击区域 */
+  padding: 4px;
+  margin: -4px;
+}
+
+.resize-corner.resize-nw { 
+  top: -4px; 
+  left: -4px; 
+  cursor: nw-resize;
+}
+.resize-corner.resize-ne { 
+  top: -4px; 
+  right: -4px; 
+  cursor: ne-resize;
+}
+.resize-corner.resize-sw { 
+  bottom: -4px; 
+  left: -4px; 
+  cursor: sw-resize;
+}
+.resize-corner.resize-se { 
+  bottom: -4px; 
+  right: -4px; 
+  cursor: se-resize;
+}
+
+/* 拖拽时禁用过渡效果 */
+.dragging {
+  transition: none !important;
+  user-select: none;
+}
+
+/* 整大小时禁用过渡效果 */
+.resizing {
+  transition: none !important;
+  user-select: none;
+}
+
+/* 非拖拽和调整大小时的过渡效果 */
+.transition-all:not(.dragging):not(.resizing) {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 鼠标样式 */
+.minimized:not(.dragging):not(.resizing) {
+  cursor: grab;
+}
+
+.minimized.dragging {
+  cursor: grabbing !important;
+}
+
+/* 确保拖拽区域在最上层 */
+.minimized {
+  position: fixed !important;
+  transform-origin: bottom left;
+  z-index: 1000;
+}
+
+/* 确保调整大小的边缘和角落在视频控制层之上 */
+.resize-edge,
+.resize-corner {
+  z-index: 1001;
+}
+
+/* 添加调试样式（可选，帮助查看拖拽区域） */
+.resize-edge:hover,
+.resize-corner:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* 添加拖拽句柄样式 */
+.drag-handle {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  cursor: grab;
+  padding: 8px;
+  pointer-events: auto;
+}
+
+/* 确保控制按钮在拖拽句柄之上 */
+.mini-control-btn {
+  position: relative;
+  z-index: 40;
+}
+
+/* 确保调整大小的边缘和角落在拖拽句柄之上 */
+.resize-edge,
+.resize-corner {
+  z-index: 50;
+}
+
+/* 修改拖拽相关样式 */
+.dragging .drag-handle {
+  cursor: grabbing !important;
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+/* 确保视频控制层在拖拽句柄之上 */
+.video-container {
+  position: relative;
+  z-index: 20;
 }
 </style>

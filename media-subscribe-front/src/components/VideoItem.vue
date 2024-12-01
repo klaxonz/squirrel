@@ -285,11 +285,18 @@ const handleScroll = () => {
 };
 
 const handleClick = (event) => {
+  console.log('Video clicked:', props.video); // 添加调试日志
+  
+  // 如果是选择模式，切换选择状态
   if (isSelectionMode.value) {
+    console.log('Selection mode active'); // 调试日志
     emit('toggleSelection', props.video.id);
-  } else {
-    emit('openModal', props.video);
+    return;
   }
+  
+  // 否则打开视频模态框
+  console.log('Opening video modal'); // 调试日志
+  emit('openModal', props.video);
 };
 
 // 修改算属性来处理逗号分隔的字符串
@@ -469,5 +476,22 @@ onUnmounted(() => {
 /* 修改标题高度 */
 .h-8 {
   height: 2rem; /* 32px, 刚好容纳两行文字 */
+}
+
+/* 确保点击区域可以正常工作 */
+.video-item {
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+}
+
+/* 移除可能影响点击的变换效果 */
+.video-item:hover {
+  transform: none;
+}
+
+.video-thumbnail {
+  position: relative;
+  z-index: 1;
 }
 </style>
