@@ -88,7 +88,7 @@ const sidePadding = 16;
 const updateContainerWidth = () => {
   if (containerRef.value) {
     requestAnimationFrame(() => {
-      containerWidth.value = containerRef.value.offsetWidth - (sidePadding * 2);
+      containerWidth.value = containerRef.value.offsetWidth;
     });
   }
 };
@@ -128,11 +128,11 @@ const computedGridItems = computed(() => {
 
 const computedItemSecondarySize = computed(() => {
   const availableWidth = containerWidth.value;
-  return Math.floor(availableWidth / computedGridItems.value);
+  return Math.floor((availableWidth) / computedGridItems.value);
 });
 
 const computedItemSize = computed(() => {
-  return Math.floor(computedItemSecondarySize.value * (9 / 16) + 76);
+  return Math.floor(computedItemSecondarySize.value * (9 / 16)) + 76;
 });
 
 const selectedVideos = ref([]);

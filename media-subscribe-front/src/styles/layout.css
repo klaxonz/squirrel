@@ -1,0 +1,53 @@
+/* 移动端底部导航栏高度 */
+:root {
+  --mobile-nav-height: 64px;
+}
+
+/* 禁止选中文本和长按操作 */
+* {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 允许输入框选中文本 */
+input, textarea {
+  -webkit-user-select: text;
+  -khtml-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* 页面容器基础样式 */
+.page-container {
+  @apply flex flex-col h-full bg-[#0f0f0f] text-white;
+}
+
+/* 内容区域基础样式 */
+.content-container {
+  @apply flex-grow overflow-y-auto;
+  height: 100vh;
+}
+
+/* 移动端内容区域高度调整 */
+@media (max-width: 768px) {
+  .content-container {
+    height: calc(100vh - var(--mobile-nav-height));
+    padding-bottom: 0;
+  }
+}
+
+/* 隐藏滚动条 */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+} 

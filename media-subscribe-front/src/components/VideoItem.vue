@@ -5,8 +5,6 @@
     :class="{ 'border-2 border-blue-500': isSelected }"
     @click="handleClick"
   >
-    <!-- 移除默认显示的勾选框 -->
-    
     <div class="video-thumbnail relative cursor-pointer overflow-hidden group" ref="imageRef">
       <img
         v-if="isImageLoaded"
@@ -21,15 +19,13 @@
       </div>
       <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
       
-      <!-- 添加选中状态指示器 -->
       <div v-if="isSelected" class="absolute top-2 left-2 bg-blue-500 text-white rounded-full p-1">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
         </svg>
       </div>
 
-      <!-- 添加进度条 - 移动到封面底部 -->
-      <div 
+      <div
         v-if="showProgress && progress > 0" 
         class="absolute bottom-0 left-0 right-0 h-[2px] bg-black/40 backdrop-blur-sm"
       >
@@ -43,12 +39,12 @@
       </div>
     </div>
     <div class="p-2">
-      <h3 
-        class="text-xs font-medium text-white line-clamp-2 h-8 cursor-pointer hover:text-blue-400 transition-colors duration-200"
+      <h5 
+        class="text-[10px] text-white font-medium line-clamp-2 h-8 cursor-pointer hover:text-blue-400 transition-colors duration-200"
       >
         {{ video.title }}
-      </h3>
-      <div class="flex items-center justify-between text-2xs text-gray-400">
+      </h5>
+      <div class="flex items-center justify-between text-2xs text-gray-400 pt-1">
         <div class="relative group">
           <div class="flex items-center">
             <img 
@@ -59,7 +55,7 @@
               @click.stop="goToChannel(mainChannelInfo.id)"
             >
             <span 
-              class="truncate hover:text-blue-400 transition-colors duration-200 leading-4 cursor-pointer" 
+              class="truncate hover:text-blue-400 font-medium transition-colors duration-200 leading-4 cursor-pointer" 
               @click.stop="goToChannel(mainChannelInfo.id)"
             >
               {{ mainChannelInfo.name }}
@@ -112,7 +108,7 @@
             <div class="absolute -bottom-2 left-4 w-4 h-4 bg-[#282828] transform rotate-45"></div>
           </div>
         </div>
-        <span class="leading-4">{{ formatDate(video.uploaded_at) }}</span>
+        <span class="leading-4 font-medium">{{ formatDate(video.uploaded_at) }}</span>
       </div>
     </div>
     <Teleport to="body">
@@ -244,6 +240,7 @@ const formatDate = (dateString) => {
   const diffTime = Math.abs(now - date);
   const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
+  if (diffDays < 1) return '刚刚';
   if (diffDays <= 7) return `${Math.floor(diffDays)}天前`;
   if (diffDays <= 30) return `${Math.floor(diffDays / 7)}周前`;
   if (diffDays <= 365) return `${Math.floor(diffDays / 30)}个月前`;

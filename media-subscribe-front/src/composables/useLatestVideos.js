@@ -1,5 +1,5 @@
-import { ref, computed, watch } from 'vue';
-import axios from '../utils/axios';
+import { ref, computed } from 'vue';
+import { get } from '../utils/request';
 
 export default function useLatestVideos() {
   const videoContainer = ref(null);
@@ -8,115 +8,88 @@ export default function useLatestVideos() {
   const allLoaded = ref(false);
   const error = ref(null);
   const activeTab = ref('all');
-  const tabContents = ref({ all: null, unread: null, read: null });
+  const videoCounts = ref({ all: 0, unread: 0, read: 0 });
+  const currentPage = ref(1);
+  const searchQuery = ref('');
+  const isResetting = ref(false);
+  const channelId = ref('');
+  const sortBy = ref('uploaded_at');
+
   const tabs = [
     { label: '全部', value: 'all' },
     { label: '未读', value: 'unread' },
     { label: '已读', value: 'read' },
   ];
-  const videoCounts = ref({ all: 0, unread: 0, read: 0 });
-  const observers = ref({});
-  const videoRefs = ref({});
-  const loadTrigger = ref(null);
-  const currentPage = ref(1);
-  const searchQuery = ref('');
-  const isResetting = ref(false);
-  const channelId = ref('');
-  const readStatus = computed(() => {
-    if (activeTab.value === 'all') {
-      return undefined;
-    } else {
-      return activeTab.value;
-    }
-  });
-  const sortBy = ref('uploaded_at')
 
-  const tabsWithCounts = computed(() => {
-    return tabs.map(tab => ({
+  const readStatus = computed(() => activeTab.value === 'all' ? undefined : activeTab.value);
+
+  const tabsWithCounts = computed(() => 
+    tabs.map(tab => ({
       ...tab,
       count: videoCounts.value[tab.value]
-    }));
-  });
-
-  const handleSearch = () => {
-    resetAndReload();
-  };
+    }))
+  );
 
   const loadMore = async () => {
     if (loading.value || allLoaded.value) return;
-
     loading.value = true;
-    try {
-      const pageSize = 30;
-      const response = await axios.get('/api/channel-video/list', {
-        params: {
-          page: currentPage.value,
-          pageSize: pageSize,
-          query: searchQuery.value,
-          channel_id: channelId.value,
-          read_status: readStatus.value,
-          sort_by: sortBy.value
-        }
-      });
 
-      if (response.data.code === 0) {
-        const newVideos = response.data.data.data.map(video => ({
-          ...video,
-          is_read: video.is_read ?? false,
-          isPlaying: false,
-          video_url: null
-        }));
-        
-        if (currentPage.value === 1) {
-          videos.value = newVideos;
-        } else {
-          const existingVideoIds = new Set(videos.value.map(v => v.id));
-          const uniqueNewVideos = newVideos.filter(video => !existingVideoIds.has(video.id));
-          videos.value = [...videos.value, ...uniqueNewVideos];
-        }
-        
-        currentPage.value++;
-        allLoaded.value = newVideos.length < pageSize;
-        
-        if (response.data.data.counts) {
-          videoCounts.value = response.data.data.counts;
-          return response.data.data.counts;
-        }
-      } else {
-        throw new Error(response.data.msg || '获取视频列表失败');
-      }
-    } catch (err) {
-      error.value = err.message;
-    } finally {
+    const pageSize = 30;
+    const { data, error: requestError } = await get('/api/channel-video/list', {
+      page: currentPage.value,
+      pageSize,
+      query: searchQuery.value,
+      channel_id: channelId.value,
+      read_status: readStatus.value,
+      sort_by: sortBy.value
+    });
+
+    if (requestError) {
+      error.value = requestError;
       loading.value = false;
+      return;
+    }
+
+    const newVideos = data.data.map(video => ({
+      ...video,
+      is_read: video.is_read ?? false,
+      isPlaying: false,
+      video_url: null
+    }));
+    
+    videos.value = currentPage.value === 1 
+      ? newVideos 
+      : [...videos.value, ...newVideos.filter(video => 
+          !videos.value.some(v => v.id === video.id)
+        )];
+    
+    currentPage.value++;
+    allLoaded.value = newVideos.length < pageSize;
+    loading.value = false;
+    
+    if (data.counts) {
+      videoCounts.value = data.counts;
+      return data.counts;
     }
   };
 
-  const handleScroll = (event, channelId, read_status, keyword) => {
-    const scrollContent = event.target;
-    const scrollPosition = scrollContent.scrollTop + scrollContent.clientHeight;
-    const scrollHeight = scrollContent.scrollHeight;
-
-    if (scrollHeight - scrollPosition <= 300 && !loading.value && !allLoaded.value) {
+  const handleScroll = (event) => {
+    const { scrollTop, clientHeight, scrollHeight } = event.target;
+    if (scrollHeight - (scrollTop + clientHeight) <= 300 && !loading.value && !allLoaded.value) {
       loadMore();
     }
   };
 
-  const resetAndReload = (readStatus) => {
+  const resetAndReload = () => {
     isResetting.value = true;
     videos.value = [];
     currentPage.value = 1;
     allLoaded.value = false;
     error.value = null;
-    loadMore(readStatus).then(() => {
+    loadMore().finally(() => {
       isResetting.value = false;
     });
   };
-
-  const setLoadTrigger = (el) => {
-    if (el) loadTrigger.value = el;
-  };
-
 
   return {
     videoContainer,
@@ -125,18 +98,12 @@ export default function useLatestVideos() {
     allLoaded,
     error,
     activeTab,
-    tabContents,
     tabs,
     videoCounts,
     tabsWithCounts,
-    observers,
-    videoRefs,
-    loadTrigger,
-    handleSearch,
+    handleSearch: resetAndReload,
     loadMore,
     handleScroll,
-    setLoadTrigger,
-    isResetting,
     searchQuery,
     channelId,
     sortBy

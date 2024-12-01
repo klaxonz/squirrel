@@ -50,7 +50,6 @@ const emitter = inject('emitter');
 
 const {
   videoContainer,
-  videos,
   error,
 } = useLatestVideos();
 

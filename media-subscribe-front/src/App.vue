@@ -1,88 +1,43 @@
 <template>
-  <div class="app-container flex h-screen bg-[#0f0f0f] text-white">
-    <!-- 侧边栏 -->
-    <nav :class="['sidebar h-full overflow-y-auto flex-shrink-0 transition-all duration-300 ease-in-out bg-[#0f0f0f] hidden md:block', 
-                  isCollapsed ? 'w-20' : 'w-48']">
-      <div class="flex flex-col h-full">
-        <div class="logo p-4 flex items-center mx-2">
-          <button @click="toggleSidebar" class="mr-4 text-white hover:text-gray-300 focus:outline-none">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar for desktop -->
+    <Sidebar v-if="!isMobile" :routes="sidebarRoutes" />
+    
+    <!-- Main content area -->
+    <main class="flex-1 relative">
+      <div class="page-container absolute inset-0">
+        <div class="content-container scrollbar-hide">
+          <router-view></router-view>
         </div>
-        <ul class="flex-grow py-2">
-          <li v-for="route in routes" :key="route.path">
-            <router-link :to="route.path" class="nav-item" :class="{ active: $route.path === route.path }" :title="isCollapsed ? route.name : ''">
-              <component :is="route.icon" class="w-6 h-6" :class="{'mr-4': !isCollapsed}" />
-              <span :class="['text-sm transition-all duration-300 ease-in-out', 
-                           isCollapsed ? 'opacity-0 w-0' : 'opacity-100 w-auto']">
-                {{ route.name }}
-              </span>
-            </router-link>
-          </li>
-        </ul>
       </div>
-    </nav>
-
-    <!-- 主内容区 -->
-    <main class="flex-grow overflow-hidden bg-[#0f0f0f]">
-      <router-view v-slot="{ Component }">
-        <component :is="Component" />
-      </router-view>
     </main>
 
-    <!-- 移动端导航 -->
-    <MobileNav class="md:hidden" :routes="routes" />
-
-    <!-- 添加 VideoModal -->
-    <VideoModal
-      v-if="isModalOpen"
-      :isOpen="isModalOpen"
-      :video="selectedVideo"
-      :playlist="currentPlaylist"
-      @close="closeVideoModal"
-      @videoPlay="onVideoPlay"
-      @videoPause="onVideoPause"
-      @videoEnded="onVideoEnded"
-      @changeVideo="handleChangeVideo"
-      @goToChannel="handleGoToChannel"
-    />
-
-    <Teleport to="body">
-      <div v-if="showToast" class="toast-message">
-        {{ toastMessage }}
-      </div>
-    </Teleport>
-
-    <Teleport to="body">
-      <AudioPlayer
-        v-if="currentEpisode"
-        :episode="currentEpisode"
-        :channel="currentPodcast"
-        @progress="updateProgress"
-        @ended="onEpisodeEnded"
-        @close="closeAudioPlayer"
-      />
-    </Teleport>
+    <!-- Mobile navigation -->
+    <MobileNav v-if="isMobile" :routes="mobileRoutes" />
   </div>
 </template>
 
 <script setup>
-import { provide, ref, onMounted, onUnmounted } from 'vue';
+import { provide, ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import mitt from 'mitt';
 import VideoModal from './components/VideoModal.vue';
 import MobileNav from './components/MobileNav.vue';
+import Sidebar from './components/Sidebar.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 import useVideoOperations from './composables/useVideoOperations';
 import useToast from './composables/useToast';
 import AudioPlayer from './components/AudioPlayer.vue';
 import axios from 'axios';
+import { useWindowSize } from '@vueuse/core'
+import './styles/layout.css'
 
 const router = useRouter();
 const emitter = mitt();
 provide('emitter', emitter);
+
+const { width } = useWindowSize()
+const isMobile = computed(() => width.value < 768)
 
 // 添加视频播放相关的状态
 const isModalOpen = ref(false);
@@ -103,18 +58,17 @@ const { toastMessage, showToast, displayToast } = useToast();
 
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
-  { path: '/subscriptions', name: '订阅', icon: BookmarkIcon },
+  { path: '/subscribed', name: '订阅', icon: BookmarkIcon },
   { path: '/podcasts', name: '播客', icon: SpeakerWaveIcon },
   { path: '/history', name: '历史记录', icon: ClockIcon },
-  { path: '/download-tasks', name: '下载任务', icon: ArrowDownTrayIcon },
+  { path: '/downloads', name: '下载任务', icon: ArrowDownTrayIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
 ]);
 
 const isCollapsed = ref(false);
 
-const toggleSidebar = () => {
-  isCollapsed.value = !isCollapsed.value;
-  // 触发侧边栏状态改变事件
+const handleSidebarCollapse = (collapsed) => {
+  isCollapsed.value = collapsed;
   emitter.emit('sidebarStateChanged');
 };
 
@@ -198,6 +152,14 @@ const closeAudioPlayer = () => {
   currentEpisode.value = null;
   currentPodcast.value = null;
 };
+
+const sidebarRoutes = computed(() => {
+  return routes.value.filter(route => !route.path.includes('/settings'))
+})
+
+const mobileRoutes = computed(() => {
+  return routes.value
+})
 </script>
 
 <style>
@@ -206,6 +168,11 @@ const closeAudioPlayer = () => {
 
 :root {
   --font-sans: 'Roboto', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+}
+
+html, body {
+  @apply h-full overflow-hidden;
+  overscroll-behavior: none;
 }
 
 body {
