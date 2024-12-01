@@ -120,7 +120,7 @@ class ChannelVideoService:
 
     def list_channel_videos(self, query: str, channel_id: str, read_status: str, sort_by: str, page: int, page_size: int) -> Tuple[
         List[dict], dict]:
-        base_query = select(ChannelVideo).where(ChannelVideo.title != '', ChannelVideo.is_disliked == 0)
+        base_query = select(ChannelVideo).where(ChannelVideo.title != '')
         
         if channel_id:
             base_query = base_query.where(or_(
@@ -144,6 +144,8 @@ class ChannelVideoService:
                 base_query = base_query.where(ChannelVideo.if_read == 1)
             elif read_status == 'unread':
                 base_query = base_query.where(ChannelVideo.if_read == 0)
+            elif read_status == 'liked':
+                base_query = base_query.where(ChannelVideo.is_liked == 1)
             
         offset = (page - 1) * page_size
         
@@ -174,6 +176,7 @@ class ChannelVideoService:
             read_count = session.exec(s_query.where(ChannelVideo.if_read == 1, ChannelVideo.uploaded_at <= datetime.now())).one()
             unread_count = total_count - read_count
             preview_count = session.exec(s_query.where(ChannelVideo.uploaded_at > datetime.now())).one()
+            liked_count = session.exec(s_query.where(ChannelVideo.is_liked == 1)).one()
 
             channel_video_convert_list = []
 
@@ -196,6 +199,7 @@ class ChannelVideoService:
                     'duration': cv.duration,
                     'if_downloaded': cv.if_downloaded,
                     'if_read': cv.if_read,
+                    'is_liked': cv.is_liked,
                     'uploaded_at': cv.uploaded_at.strftime('%Y-%m-%d %H:%M:%S'),
                     'created_at': cv.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                     'last_position': history.last_position if history else 0,
@@ -208,7 +212,8 @@ class ChannelVideoService:
                 "all": total_count,
                 "read": read_count,
                 "unread": unread_count,
-                "preview": preview_count
+                "preview": preview_count,
+                "liked": liked_count
             }
 
             return channel_video_convert_list, counts
@@ -233,17 +238,16 @@ class ChannelVideoService:
             query.update({"if_read": is_read})
             session.commit()
 
-    def dislike_video(self, channel_id: str, video_id: str):
+    def toggle_like_video(self, channel_id: str, video_id: str, is_liked: bool):
         with get_session() as session:
             video = session.query(ChannelVideo).filter(
                 ChannelVideo.channel_id == channel_id,
                 ChannelVideo.video_id == video_id
             ).first()
             if video:
-                video.is_disliked = True
+                video.is_liked = is_liked
                 session.commit()
-                return True
-            return False
+
 
     def download_channel_video(self, channel_id: str, video_id: str):
         with get_session() as session:

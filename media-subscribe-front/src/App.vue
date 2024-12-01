@@ -28,6 +28,7 @@
         @videoEnded="onVideoEnded"
         @changeVideo="handleChangeVideo"
         @goToChannel="handleGoToChannel"
+        @updateVideo="handleVideoUpdate"
       />
     </Teleport>
 
@@ -179,6 +180,17 @@ const sidebarRoutes = computed(() => {
 const mobileRoutes = computed(() => {
   return routes.value
 })
+
+const handleVideoUpdate = (updatedVideo) => {
+  // 更新当前视频
+  selectedVideo.value = updatedVideo;
+  
+  // 更新播放列表中的视频
+  const index = currentPlaylist.value.findIndex(v => v.video_id === updatedVideo.video_id);
+  if (index !== -1) {
+    currentPlaylist.value[index] = updatedVideo;
+  }
+};
 </script>
 
 <style>

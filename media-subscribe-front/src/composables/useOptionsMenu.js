@@ -1,4 +1,3 @@
-import { inject, ref, watch } from 'vue';
 import axios from '../utils/axios';
 import useCustomToast from './useToast';
 
@@ -93,9 +92,35 @@ export default function useOptionsMenu(videoRef) {
     document.body.removeChild(textArea);
   };
 
-  const dislikeVideo = () => {
-    // 实现不喜欢视频的逻辑
-    displayToast('已标记为不喜欢');
+  const toggleLikeVideo = async () => {
+    try {
+      const response = await axios.post('/api/channel-video/toggle-like', {
+        channel_id: videoRef.value.channel_id,
+        video_id: videoRef.value.video_id,
+        is_liked: videoRef.value.is_liked === null ? 1 : 
+                  videoRef.value.is_liked ? 0 : null
+      });
+
+      if (response.data.code === 0) {
+        const newLikeStatus = videoRef.value.is_liked === null ? 1 : 
+                             videoRef.value.is_liked ? 0 : null;
+        
+        videoRef.value.is_liked = newLikeStatus;
+        const playlist = document.querySelector('.playlist-section');
+        if (playlist) {
+          const videos = playlist.querySelectorAll('.video-item');
+          videos.forEach(video => {
+            if (video.dataset.videoId === videoRef.value.video_id) {
+              video.__vue__.$data.video.is_liked = newLikeStatus;
+            }
+          });
+        }
+      } else {
+        throw new Error(response.data.msg || '操作失败');
+      }
+    } catch (error) {
+      console.error('切换喜欢状态失败:', error);
+    }
   };
 
   return {
@@ -103,6 +128,6 @@ export default function useOptionsMenu(videoRef) {
     markReadBatch,
     downloadVideo,
     copyVideoLink,
-    dislikeVideo,
+    toggleLikeVideo,
   };
 }

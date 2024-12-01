@@ -8,7 +8,7 @@ export default function useLatestVideos() {
   const allLoaded = ref(false);
   const error = ref(null);
   const activeTab = ref('all');
-  const videoCounts = ref({ all: 0, unread: 0, read: 0, preview: 0 });
+  const videoCounts = ref({ all: 0, unread: 0, read: 0, preview: 0, liked: 0});
   const currentPage = ref(1);
   const searchQuery = ref('');
   const isResetting = ref(false);
@@ -20,6 +20,7 @@ export default function useLatestVideos() {
     { label: '未读', value: 'unread' },
     { label: '已读', value: 'read' },
     { label: '预告', value: 'preview' },
+    { label: '喜欢', value: 'liked' },
   ];
 
   const readStatus = computed(() => activeTab.value === 'all' ? undefined : activeTab.value);

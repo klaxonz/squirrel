@@ -83,7 +83,6 @@ const emit = defineEmits([
 
 const containerRef = ref(null);
 const containerWidth = ref(0);
-const sidePadding = 16;
 
 const updateContainerWidth = () => {
   if (containerRef.value) {

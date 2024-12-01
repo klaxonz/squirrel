@@ -8,16 +8,19 @@ from mimetypes import guess_type
 from urllib.parse import urljoin
 
 import httpx
-from fastapi import Query, APIRouter, Request, HTTPException
+from fastapi import Query, APIRouter, Request, HTTPException, Body, Depends
 from sqlalchemy import and_
 from starlette.responses import StreamingResponse
+from typing import Optional
+from pydantic import BaseModel
 
 import common.response as response
 from core.database import get_session
 from downloader.downloader import Downloader
 from meta.video import VideoFactory
 from model.channel import ChannelVideo
-from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, DislikeRequest, SortBy
+from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, DislikeRequest, \
+    SortBy, ToggleLikeRequest
 from services.channel_video_service import ChannelVideoService
 
 logger = logging.getLogger(__name__)
@@ -78,15 +81,14 @@ def download_channel_video(req: DownloadChannelVideoRequest):
     return response.success()
 
 
-@router.post("/api/channel-video/dislike")
-def dislike_video(req: DislikeRequest):
+@router.post("/api/channel-video/toggle-like")
+def toggle_like_video(
+    req: ToggleLikeRequest,
+):
+
     channel_video_service = ChannelVideoService()
-    success = channel_video_service.dislike_video(req.channel_id, req.video_id)
-    if success:
-        return response.success({"message": "Video marked as disliked"})
-    raise HTTPException(status_code=404, detail="Video not found")
-
-
+    channel_video_service.toggle_like_video(channel_id=req.channel_id, video_id=req.video_id, is_liked=req.is_liked)
+    return response.success()
 
 
 @router.get("/api/channel/video/play/{channel_id}/{video_id}")
@@ -264,7 +266,7 @@ async def proxy_video(domain: str, url: str, request: Request):
                 # 修改处理视频分片的部分
                 return StreamingResponse(
                     iter([content]),
-                    media_type=content_type or 'application/octet-stream',  # 确保始终有content-type
+                    media_type=content_type or 'application/octet-stream',  # 确��始终有content-type
                     headers={
                         'Access-Control-Allow-Origin': '*',
                         'Cache-Control': 'public, max-age=31536000',

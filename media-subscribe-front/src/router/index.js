@@ -32,6 +32,11 @@ const routes = [
         path: 'preview',
         name: 'PreviewVideos',
         component: VideoTab,
+      },
+      {
+        path: 'liked',
+        name: 'LikedVideos',
+        component: VideoTab,
       }
     ],
     redirect: {name: 'AllVideos'},

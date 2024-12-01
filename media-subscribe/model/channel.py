@@ -39,7 +39,7 @@ class ChannelVideo(SQLModel, table=True):
     duration: int = Field(sa_column=Column(Integer, nullable=True))
     if_read: bool = Field(sa_column=Column(Boolean, default=False))
     if_downloaded: bool = Field(sa_column=Column(Boolean, default=False))
-    is_disliked: bool = Field(sa_column=Column(Boolean, default=False))
+    is_liked: bool = Field(sa_column=Column(Integer, nullable=True))
     uploaded_at: datetime.datetime = Field(sa_column=Column(DateTime, nullable=True, default=datetime.datetime.now))
     created_at: datetime.datetime = Field(sa_column=Column(DateTime, nullable=False, default=datetime.datetime.now))
     updated_at: datetime.datetime = Field(

@@ -77,6 +77,11 @@ const tabsWithCounts = ref([
     value: 'preview',
     count: 0,
     label: '预告'
+  },
+  {
+    value: 'liked',
+    count: 0,
+    label: '喜欢'
   }
 ]);
 

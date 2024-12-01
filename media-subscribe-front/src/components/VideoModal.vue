@@ -108,59 +108,107 @@
         
         <!-- 视频信息区域 - 在非最小化状态下显示 -->
         <div v-if="!isMinimized" class="p-4 bg-[#0f0f0f] border-t border-[#272727]">
-          <div class="flex items-start gap-2">
-            <h2 class="text-lg font-semibold text-white">{{ video?.title }}</h2>
-            <button 
-              @click="goToOriginalVideo"
-              class="mt-1.5 text-[#aaaaaa] hover:text-white transition-colors duration-150 flex items-center gap-1 text-xs"
-              title="在新标签页中打开原视频"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-              </svg>
-            </button>
-          </div>
-          <div class="mt-1">
-            <span class="text-xs text-[#aaaaaa]">{{ formatDate(video?.uploaded_at) }}</span>
-          </div>
-          
-          <!-- 频道和演员信息区域 -->
-          <div class="mt-4 flex items-center">
-            <!-- 主频道信息 -->
-            <div class="flex items-center">
-              <img 
-                :src="mainChannelInfo.avatar" 
-                alt="Channel Avatar" 
-                class="w-10 h-10 rounded-full mr-3 object-cover"
-                referrerpolicy="no-referrer"
-              >
-              <div class="flex flex-col">
-                <p class="text-sm font-medium text-white hover:text-blue-400 cursor-pointer" @click="goToChannel(mainChannelInfo.id)">
-                  {{ mainChannelInfo.name }}
-                </p>
-                <p class="text-xs text-[#aaaaaa] mt-0.5">主频道</p>
+          <div class="flex flex-col">
+            <div class="flex items-start justify-between">
+              <h2 class="text-lg font-semibold text-white flex-grow">{{ video?.title }}</h2>
+              <div class="flex items-center gap-2 ml-4 flex-shrink-0">
+                <!-- 喜欢按钮 -->
+                <button 
+                  @click="handleToggleLike"
+                  class="flex items-center gap-1 px-2 py-1 rounded-full 
+                         transition-all duration-150 hover:bg-[#272727]"
+                  :class="{
+                    'text-red-500': video.is_liked === 1,
+                    'text-yellow-500': video.is_liked === 0,
+                    'text-[#aaaaaa] hover:text-white': video.is_liked === null
+                  }"
+                >
+                  <svg v-if="video.is_liked === 1"
+                       xmlns="http://www.w3.org/2000/svg" 
+                       class="h-5 w-5" 
+                       fill="currentColor"
+                       viewBox="0 0 24 24"
+                  >
+                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  <svg v-else-if="video.is_liked === 0"
+                       xmlns="http://www.w3.org/2000/svg" 
+                       class="h-5 w-5" 
+                       fill="none"
+                       viewBox="0 0 24 24" 
+                       stroke="currentColor"
+                  >
+                    <path stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          stroke-width="2" 
+                          d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+                  </svg>
+                  <svg v-else
+                       xmlns="http://www.w3.org/2000/svg" 
+                       class="h-5 w-5" 
+                       fill="none"
+                       viewBox="0 0 24 24" 
+                       stroke="currentColor"
+                  >
+                    <path stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          stroke-width="2" 
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </button>
+                <button 
+                  @click="goToOriginalVideo"
+                  class="text-[#aaaaaa] hover:text-white transition-colors duration-150 flex items-center gap-1 text-xs"
+                  title="在新标签页中打开原视频"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                  </svg>
+                </button>
               </div>
             </div>
-
-            <!-- 演员信息 -->
-            <div v-if="hasActors" class="flex items-center ml-6 pl-6 border-l border-[#272727] flex-grow overflow-hidden">
-              <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar-x">
-                <div 
-                  v-for="actor in actorChannels" 
-                  :key="actor.id"
-                  class="flex items-center px-3 py-1.5 rounded-full hover:bg-[#272727] transition-colors duration-150 cursor-pointer group min-w-fit"
-                  @click="goToChannel(actor.id)"
+            <div class="mt-1">
+              <span class="text-xs text-[#aaaaaa]">{{ formatDate(video?.uploaded_at) }}</span>
+            </div>
+            
+            <!-- 频道和演员信息区域 -->
+            <div class="mt-4 flex items-center">
+              <!-- 主频道信息 -->
+              <div class="flex items-center">
+                <img 
+                  :src="mainChannelInfo.avatar" 
+                  alt="Channel Avatar" 
+                  class="w-10 h-10 rounded-full mr-3 object-cover"
+                  referrerpolicy="no-referrer"
                 >
-                  <img 
-                    :src="actor.avatar" 
-                    alt="Actor Avatar" 
-                    class="w-6 h-6 rounded-full mr-2 object-cover"
-                    referrerpolicy="no-referrer"
+                <div class="flex flex-col">
+                  <p class="text-sm font-medium text-white hover:text-blue-400 cursor-pointer" @click="goToChannel(mainChannelInfo.id)">
+                    {{ mainChannelInfo.name }}
+                  </p>
+                  <p class="text-xs text-[#aaaaaa] mt-0.5">主频道</p>
+                </div>
+              </div>
+
+              <!-- 演员信息 -->
+              <div v-if="hasActors" class="flex items-center ml-6 pl-6 border-l border-[#272727] flex-grow overflow-hidden">
+                <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar-x">
+                  <div 
+                    v-for="actor in actorChannels" 
+                    :key="actor.id"
+                    class="flex items-center px-3 py-1.5 rounded-full hover:bg-[#272727] transition-colors duration-150 cursor-pointer group min-w-fit"
+                    @click="goToChannel(actor.id)"
                   >
-                  <span class="text-sm text-[#aaaaaa] group-hover:text-white transition-colors duration-150 whitespace-nowrap">
-                    {{ actor.name }}
-                  </span>
+                    <img 
+                      :src="actor.avatar" 
+                      alt="Actor Avatar" 
+                      class="w-6 h-6 rounded-full mr-2 object-cover"
+                      referrerpolicy="no-referrer"
+                    >
+                    <span class="text-sm text-[#aaaaaa] group-hover:text-white transition-colors duration-150 whitespace-nowrap">
+                      {{ actor.name }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -308,10 +356,11 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted, ref, computed, inject, watch, nextTick } from 'vue';
+import { defineProps, defineEmits, onMounted, onUnmounted, ref, computed, inject, watch, nextTick, toRef } from 'vue';
 import VideoPlayer from './VideoPlayer.vue';
 import { useVideoHistory } from '../composables/useVideoHistory';
 import { formatDate, formatDuration } from '../utils/dateFormat';
+import useOptionsMenu from "../composables/useOptionsMenu";
 
 const props = defineProps({
   isOpen: Boolean,
@@ -332,7 +381,8 @@ const emit = defineEmits([
   'videoPause', 
   'videoEnded', 
   'changeVideo',
-  'goToChannel'
+  'goToChannel',
+  'updateVideo'
 ]);
 const playerRef = ref(null);
 
@@ -466,18 +516,6 @@ const hasActorsInItem = (item) => {
   return getActorChannels(item).length > 0;
 };
 
-const emitter = inject('emitter');
-
-const minimizePlayer = () => {
-  if (playerRef.value) {
-    const currentTime = playerRef.value.player?.currentTime || 0;
-    emitter.emit('minimizePlayer', { 
-      video: props.video,
-      currentTime: currentTime
-    });
-    emit('close');
-  }
-};
 
 watch(() => props.video, async (newVideo) => {
   if (newVideo && newVideo.currentTime) {
@@ -553,7 +591,7 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', stopResize);
 });
 
-// 添加拖动��大小调整状态
+// 添加拖动大小调整状态
 const position = ref({ x: 24, y: window.innerHeight - 180 - 24 });
 const size = ref({
   width: 320,  // 16:9 比例的宽度
@@ -768,6 +806,18 @@ const stopResize = () => {
   document.removeEventListener('mouseup', stopResize);
 };
 
+const videoRef = toRef(props, 'video');
+const { toggleLikeVideo } = useOptionsMenu(videoRef);
+
+const handleToggleLike = async () => {
+  await toggleLikeVideo();
+  // 通知父组件更新视频数据
+  emit('updateVideo', {
+    ...props.video,
+    is_liked: props.video.is_liked
+  });
+};
+
 </script>
 
 <style scoped>
@@ -848,7 +898,7 @@ button:focus {
   background-color: #909090;
 }
 
-/* 确保��小宽度适合内容 */
+/* 确保小宽度适合内容 */
 .min-w-fit {
   min-width: fit-content;
 }
@@ -915,7 +965,7 @@ button:focus {
   align-self: center;
 }
 
-/* 添加新的样式 */
+/* 添加新的��式 */
 .resize-handle {
   position: absolute;
   left: 0;

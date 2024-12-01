@@ -14,6 +14,35 @@
         class="w-full h-full object-cover absolute top-0 left-0 transition-transform duration-300 group-hover:scale-105"
       >
       <div v-else class="w-full h-full bg-gray-200 animate-pulse"></div>
+      
+      <div v-if="video.is_liked !== null" 
+           @click.stop="toggleLikeVideo"
+           class="absolute top-2 right-2 z-10 rounded-full p-1.5 bg-black/50 backdrop-blur-sm 
+                  hover:bg-black/70 cursor-pointer transition-all duration-150 
+                  transform hover:scale-110 active:scale-95"
+      >
+        <svg v-if="video.is_liked === 1"
+             xmlns="http://www.w3.org/2000/svg" 
+             class="h-4 w-4 text-red-500" 
+             fill="currentColor"
+             viewBox="0 0 24 24"
+        >
+          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+        <svg v-else
+             xmlns="http://www.w3.org/2000/svg" 
+             class="h-4 w-4 text-yellow-500" 
+             fill="none"
+             viewBox="0 0 24 24" 
+             stroke="currentColor"
+        >
+          <path stroke-linecap="round" 
+                stroke-linejoin="round" 
+                stroke-width="2" 
+                d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+        </svg>
+      </div>
+
       <div class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
       </div>
@@ -126,6 +155,7 @@
         @copyVideoLink="copyVideoLink"
         @dislikeVideo="dislikeVideo"
         @toggleSelection="$emit('toggleSelection', video.id)"
+        @toggleLike="toggleLikeVideo"
       />
     </Teleport>
   </div>
@@ -219,7 +249,8 @@ const {
   downloadVideo,
   copyVideoLink,
   dislikeVideo,
-} = useOptionsMenu(videoRef);  // 传递响应式引用
+  toggleLikeVideo,
+} = useOptionsMenu(videoRef);  // 传��响应式引用
 
 // 添加 watch 来监听视频对象的变化
 watch(() => props.video, (newVideo) => {
@@ -229,7 +260,7 @@ watch(() => props.video, (newVideo) => {
     markReadBatch: newMarkReadBatch,
     downloadVideo: newDownloadVideo,
     copyVideoLink: newCopyVideoLink,
-    dislikeVideo: newDislikeVideo,
+    toggleLikeVideo: newToggleLikeVideo,
   } = useOptionsMenu(newVideo);
 
   // 更新方法引用
@@ -237,7 +268,7 @@ watch(() => props.video, (newVideo) => {
   toggleReadStatus.value = newToggleReadStatus;
   markReadBatch.value = newMarkReadBatch;
   copyVideoLink.value = newCopyVideoLink;
-  dislikeVideo.value = newDislikeVideo;
+  toggleLikeVideo.value = newToggleLikeVideo;
 }, { deep: true });
 
 const showContextMenu = async (event) => {
