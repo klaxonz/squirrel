@@ -286,15 +286,6 @@ audio.value.addEventListener('timeupdate', () => {
   throttledUpdateProgress(currentTime, duration);
 });
 
-// 在关键时刻强制更新
-const criticalUpdatePoints = () => {
-  if (ws.value && ws.value.readyState === WebSocket.OPEN && audio.value.src) {
-    ws.value.send(JSON.stringify({
-      position: Math.floor(audio.value.currentTime),
-      duration: Math.floor(audio.value.duration)
-    }));
-  }
-};
 
 // 监听剧集变化
 watch(() => props.currentEpisode?.id, (newId) => {

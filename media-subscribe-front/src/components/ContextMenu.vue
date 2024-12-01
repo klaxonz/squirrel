@@ -114,6 +114,10 @@ const props = defineProps({
   isSelected: {
     type: Boolean,
     default: false
+  },
+  video: {
+    type: Object,
+    required: true
   }
 });
 
@@ -167,7 +171,7 @@ const showToast = (message, type = 'success') => {
 
 const handleDownload = async () => {
   try {
-    emit('downloadVideo');
+    emit('downloadVideo', props.video);
     showToast('已添加到下载队列');
     emit('close');
   } catch (error) {

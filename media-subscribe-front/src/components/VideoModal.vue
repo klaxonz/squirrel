@@ -311,6 +311,7 @@
 import { defineProps, defineEmits, onMounted, onUnmounted, ref, computed, inject, watch, nextTick } from 'vue';
 import VideoPlayer from './VideoPlayer.vue';
 import { useVideoHistory } from '../composables/useVideoHistory';
+import { formatDate, formatDuration } from '../utils/dateFormat';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -385,28 +386,6 @@ const onVideoEnded = () => {
 
 const changeVideo = (newVideo) => {
   emit('changeVideo', newVideo);
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '未知日期';
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffTime = Math.abs(now - date);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 1) return '1 天前';
-  if (diffDays <= 7) return `${diffDays} 天前`;
-  if (diffDays <= 30) return `${Math.ceil(diffDays / 7)} 周前`;
-  if (diffDays <= 365) return `${Math.ceil(diffDays / 30)} 个月前`;
-  return `${Math.ceil(diffDays / 365)} 年前`;
-};
-
-const formatDuration = (seconds) => {
-  if (!seconds) return '未知';
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = seconds % 60;
-  return `${hours ? hours + ':' : ''}${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
 const  handleKeyDown = (event) => {

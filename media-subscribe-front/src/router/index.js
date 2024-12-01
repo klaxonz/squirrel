@@ -6,7 +6,6 @@ import DownloadTasks from '../views/DownloadTasks.vue'
 import VideoTab from "../components/VideoTab.vue";
 import History from '../views/History.vue';
 import Podcasts from '../views/Podcasts.vue'
-import PodcastChannel from '../views/PodcastChannel.vue'
 
 const routes = [
   {
@@ -34,7 +33,7 @@ const routes = [
   },
   {
     path: '/',
-    redirect: {name: 'AllVideos', replace: true}  // 添加 replace: true
+    redirect: {name: 'AllVideos', replace: true}
   },
   {
     path: '/subscribed',
@@ -86,11 +85,6 @@ const routes = [
     path: '/podcasts',
     name: 'Podcasts',
     component: Podcasts
-  },
-  {
-    path: '/podcasts/channel/:id',
-    name: 'PodcastChannel',
-    component: PodcastChannel
   }
 ]
 

@@ -8,6 +8,7 @@ from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from .channel import router as channel_router
 from .channel_video import router as channel_video_router
@@ -35,9 +36,7 @@ app.include_router(podcast_router)
 # 挂载静态文件
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 static_dir = os.path.join(base_dir, "static")
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
-app.mount("/", StaticFiles(directory=static_dir, html=True), name="root")
-
+app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
 
 @app.exception_handler(Exception)
 async def default_exception_handler(request: Request, exc: Exception):
@@ -61,3 +60,9 @@ async def general_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"code": 500, "msg": "Internal Server Error"}
     )
+
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(os.path.join(static_dir, "index.html"))

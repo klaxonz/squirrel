@@ -115,9 +115,10 @@
       <ContextMenu 
         v-if="showMenu"
         :position="menuPosition"
-        :isOpen="showMenu"
-        :isRead="!!video.is_read"
-        :isSelected="isSelected"
+        :is-open="showMenu"
+        :is-read="video.is_read"
+        :is-selected="isSelected"
+        :video="video"
         @close="closeContextMenu"
         @toggleReadStatus="toggleReadStatus"
         @markReadBatch="markReadBatch"
@@ -131,9 +132,10 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted, ref, nextTick, inject, computed, watch } from 'vue';
+import { defineProps, defineEmits, onMounted, onUnmounted, ref, nextTick, inject, computed, watch, toRef } from 'vue';
 import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from "../composables/useOptionsMenu.js";
+import { formatDate, formatDuration } from '../utils/dateFormat';
 
 const props = defineProps({
   video: {
@@ -207,56 +209,17 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll, true);
 });
 
-const formatDuration = (seconds) => {
-  if (!seconds) return '未知';
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = seconds % 60;
-  return `${hours ? hours + ':' : ''}${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '未知日期';
-  const date = new Date(dateString);
-  const now = new Date();
-
-  // 获取当前日期和目标日期的年、月、日
-  const todayYear = now.getFullYear();
-  const todayMonth = now.getMonth();
-  const todayDay = now.getDate();
-
-  const dateYear = date.getFullYear();
-  const dateMonth = date.getMonth();
-  const dateDay = date.getDate();
-
-  // 比较日期
-  if (dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay) {
-    return '今天';
-  }
-  if (dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay - 1) {
-    return '昨天';
-  }
-
-  const diffTime = Math.abs(now - date);
-  const diffDays = diffTime / (1000 * 60 * 60 * 24);
-
-  if (diffDays < 1) return '刚刚';
-  if (diffDays <= 7) return `${Math.floor(diffDays)}天前`;
-  if (diffDays <= 30) return `${Math.floor(diffDays / 7)}周前`;
-  if (diffDays <= 365) return `${Math.floor(diffDays / 30)}个月前`;
-  return `${Math.floor(diffDays / 365)}年前`;
-};
-
 const showMenu = ref(false);
 const menuPosition = ref({ x: 0, y: 0 });
 
+const videoRef = toRef(props, 'video');  // 将 props.video 转换为响应式引用
 const {
   toggleReadStatus,
   markReadBatch,
   downloadVideo,
   copyVideoLink,
   dislikeVideo,
-} = useOptionsMenu(props.video);
+} = useOptionsMenu(videoRef);  // 传递响应式引用
 
 // 添加 watch 来监听视频对象的变化
 watch(() => props.video, (newVideo) => {

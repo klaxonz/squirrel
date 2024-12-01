@@ -129,6 +129,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import axios from '../utils/axios';
+import { formatDate, formatDuration, formatLastUpdate } from '../utils/dateFormat';
 
 const props = defineProps({
   podcast: {
@@ -248,41 +249,6 @@ onUnmounted(() => {
   isDestroyed.value = true;
 });
 
-const formatDuration = (seconds) => {
-  if (!seconds) return '未知';
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = seconds % 60;
-  
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
-
-const formatDate = (date) => {
-  if (!date) return '未知';
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-};
-
-const formatLastUpdate = (date) => {
-  if (!date) return '未知';
-  const updateDate = new Date(date);
-  const now = new Date();
-  const diffTime = Math.abs(now - updateDate);
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) return '今天更新';
-  if (diffDays === 1) return '昨天更新';
-  if (diffDays < 7) return `${diffDays}天前更新`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前更新`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}个月前更新`;
-  return `${Math.floor(diffDays / 365)}年前更新`;
-};
 </script>
 
 <style scoped>

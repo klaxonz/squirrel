@@ -1,15 +1,15 @@
-import { inject } from 'vue';
+import { inject, ref, watch } from 'vue';
 import axios from '../utils/axios';
 import useCustomToast from './useToast';
 
-export default function useOptionsMenu(video) {
+export default function useOptionsMenu(videoRef) {
   const { displayToast } = useCustomToast();
 
   const toggleReadStatus = async (isRead) => {
     try {
       await axios.post('/api/channel-video/mark-read', {
-        channel_id: video.channel_id,
-        video_id: video.video_id,
+        channel_id: videoRef.value.channel_id,
+        video_id: videoRef.value.video_id,
         is_read: isRead
       });
       displayToast(`视频已标记为${isRead ? '已读' : '未读'}`);
@@ -19,14 +19,14 @@ export default function useOptionsMenu(video) {
     }
   };
 
-  const markReadBatch = async (isChannel, isRead, direction) => {
+  const markReadBatch = async (isRead, direction) => {
     try {
-      const channelId = isChannel ? video.channel_id : null;
+      const channelId = videoRef.value.channel_id;
       const response = await axios.post('/api/channel-video/mark-read-batch', {
         is_read: isRead,
         channel_id: channelId,
         direction: direction,
-        uploaded_at: video.uploaded_at
+        uploaded_at: videoRef.value.uploaded_at
       });
 
       if (response.data.code === 0) {
@@ -42,17 +42,14 @@ export default function useOptionsMenu(video) {
 
   const downloadVideo = async () => {
     try {
-      const currentVideo = video;
-      console.log('Downloading video:', currentVideo);
-
       const response = await axios.post('/api/channel-video/download', {
-        channel_id: currentVideo.channel_id,
-        video_id: currentVideo.video_id
+        channel_id: videoRef.value.channel_id,
+        video_id: videoRef.value.video_id
       });
 
       if (response.data.code === 0) {
         displayToast('视频下载已开始，请查看下载列表');
-        currentVideo.if_downloaded = true;
+        videoRef.value.if_downloaded = true;
       } else {
         displayToast('视频下载已开始，请查看下载列表');
       }
@@ -64,15 +61,15 @@ export default function useOptionsMenu(video) {
 
   const copyVideoLink = () => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(video.url)
+      navigator.clipboard.writeText(videoRef.value.url)
         .then(() => {
           displayToast('视频链接已复制到剪贴板');
         })
         .catch(err => {
-          fallbackCopyTextToClipboard(video.url);
+          fallbackCopyTextToClipboard(videoRef.value.url);
         });
     } else {
-      fallbackCopyTextToClipboard(video.url);
+      fallbackCopyTextToClipboard(videoRef.value.url);
     }
   };
 
