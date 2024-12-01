@@ -13,7 +13,7 @@
       </button>
     </div>
 
-    <div class="flex-grow overflow-y-auto">
+    <div class="flex-1 overflow-y-auto scrollbar-hide">
       <div class="max-w-[1800px] mx-auto px-4">
         <VideoList
           :videos="processedVideos"
@@ -99,5 +99,16 @@ onMounted(() => {
 <style scoped>
 .history-page {
   height: 100vh;
+}
+
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+  width: 0;
+  height: 0;
 }
 </style> 

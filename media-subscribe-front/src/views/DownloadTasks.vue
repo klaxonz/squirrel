@@ -51,7 +51,7 @@
               <!-- 状态和大小 -->
               <div class="flex items-center justify-between text-[12px] md:text-[13px] text-[#aaa]">
                 <div class="flex items-center">
-                  <span v-if="task.status === 'DOWNLOADING'" class="flex items-center text-[#3ea6ff]">
+                  <span v-if="task.status === 'DOWNLOADING'" class="flex items-center text-[#aaa]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
@@ -165,6 +165,8 @@ import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import axios from '../utils/axios';
 import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
+import { createApp } from 'vue';
+import Toast from '../components/Toast.vue';
 
 const tasks = ref([]);
 const page = ref(1);
@@ -232,15 +234,32 @@ const setupNewTaskEventSource = () => {
   newTaskEventSource.value.onmessage = (event) => {
     const newTasks = JSON.parse(event.data);
     if (newTasks.length > 0) {
-      tasks.value = [...newTasks, ...tasks.value];
+      // 更新最新任务ID
       latestTaskId.value = Math.max(...newTasks.map(task => task.id));
-      setupEventSource(); // Update the EventSource to include new task IDs
+      
+      // 检查是否需要重新获取任务列表
+      const shouldRefetch = newTasks.some(newTask => {
+        // 检查新任务是否符合当前标签页的状态过滤条件
+        const matchesFilter = activeTab.value === 'all' || 
+                            newTask.status.toLowerCase() === activeTab.value.toLowerCase();
+        
+        // 检查新任务是否已经存在于列表中
+        const isDuplicate = tasks.value.some(existingTask => existingTask.id === newTask.id);
+        
+        return matchesFilter && !isDuplicate;
+      });
+
+      if (shouldRefetch) {
+        resetAndFetchTasks();
+      }
     }
   };
 
   newTaskEventSource.value.onerror = (error) => {
     console.error('New Task EventSource error:', error);
     newTaskEventSource.value.close();
+    // 可以添加重连逻辑
+    setTimeout(setupNewTaskEventSource, 5000);
   };
 };
 
@@ -294,40 +313,52 @@ const fetchTasks = async () => {
   }
 };
 
-const resetAndFetchTasks = () => {
-  const scrollPosition = taskContainer.value ? taskContainer.value.scrollTop : 0;
-  
-  tasks.value = [];
-  page.value = 1;
-  hasMore.value = true;
-  if (eventSource.value) {
-    eventSource.value.close();
-  }
-  
-  fetchTasks().then(() => {
-    nextTick(() => {
-      if (taskContainer.value) {
-        taskContainer.value.scrollTop = scrollPosition;
+const resetAndFetchTasks = (() => {
+  let timeout;
+  return () => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    timeout = setTimeout(() => {
+      const scrollPosition = taskContainer.value ? taskContainer.value.scrollTop : 0;
+      
+      tasks.value = [];
+      page.value = 1;
+      hasMore.value = true;
+      if (eventSource.value) {
+        eventSource.value.close();
       }
-    });
-  });
-};
+      
+      fetchTasks().then(() => {
+        nextTick(() => {
+          if (taskContainer.value) {
+            taskContainer.value.scrollTop = scrollPosition;
+          }
+        });
+      });
+    }, 300); // 300ms 的防抖延迟
+  };
+})();
 
 const retryTask = async (taskId) => {
   try {
     await axios.post('/api/task/retry', { task_id: taskId });
+    showToast('任务已重试');
     resetAndFetchTasks();
   } catch (error) {
     console.error('重试任务失败:', error);
+    showToast('重试任务失败', 'error');
   }
 };
 
 const pauseTask = async (taskId) => {
   try {
     await axios.post('/api/task/pause', { task_id: taskId });
+    showToast('任务已暂停');
     resetAndFetchTasks();
   } catch (error) {
     console.error('暂停任务失败:', error);
+    showToast('暂停任务失败', 'error');
   }
 };
 
@@ -335,9 +366,11 @@ const deleteTask = async (taskId) => {
   if (confirm('确定要删除这个任务吗？')) {
     try {
       await axios.post('/api/task/delete', { task_id: taskId });
+      showToast('任务已删除');
       resetAndFetchTasks();
     } catch (error) {
       console.error('删除任务失败:', error);
+      showToast('删除任务失败', 'error');
     }
   }
 };
@@ -352,6 +385,8 @@ const playVideo = (taskId) => {
         videoPlayer.value.focus();
       }
     });
+  } else {
+    showToast('无法播放视频', 'error');
   }
 };
 
@@ -425,6 +460,21 @@ const formatDuration = (seconds) => {
   }
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
+
+const showToast = (message, type = 'success') => {
+  const toast = createApp(Toast, {
+    message,
+    type,
+    duration: 3000,
+  });
+  const mountNode = document.createElement('div');
+  document.body.appendChild(mountNode);
+  toast.mount(mountNode);
+  
+  setTimeout(() => {
+    document.body.removeChild(mountNode);
+  }, 3000);
+};
 </script>
 
 <style scoped>
@@ -439,12 +489,18 @@ const formatDuration = (seconds) => {
 }
 
 /* 隐藏滚动条但保持功能 */
-.scrollbar-hide {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+.scrollbar-hide,
+.overflow-y-auto,
+.overflow-x-auto {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+.scrollbar-hide::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+  width: 0;
+  height: 0;
 }
 </style>

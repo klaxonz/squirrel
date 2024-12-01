@@ -30,6 +30,19 @@
         @goToChannel="handleGoToChannel"
       />
     </Teleport>
+
+    <!-- 全局播放器 -->
+    <Teleport to="body">
+      <PodcastPlayer
+        v-if="currentPodcast && currentEpisode"
+        :podcast="currentPodcast"
+        :currentEpisode="currentEpisode"
+        :isPlaying="isPlaying"
+        @play="handlePodcastPlay"
+        @pause="handlePodcastPause"
+        @timeupdate="handlePodcastTimeUpdate"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -40,11 +53,13 @@ import mitt from 'mitt';
 import VideoModal from './components/VideoModal.vue';
 import MobileNav from './components/MobileNav.vue';
 import Sidebar from './components/Sidebar.vue';
+import PodcastPlayer from './components/PodcastPlayer.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 import useVideoOperations from './composables/useVideoOperations';
 import useToast from './composables/useToast';
 import { useWindowSize } from '@vueuse/core'
 import './styles/layout.css'
+import { usePodcasts } from './composables/usePodcasts';
 
 const router = useRouter();
 const emitter = mitt();
@@ -126,12 +141,36 @@ onUnmounted(() => {
 // 添加播客相关状态
 const currentEpisode = ref(null);
 const currentPodcast = ref(null);
+const isPlaying = ref(false);
+
+// 提供全局状态
+provide('currentPodcast', currentPodcast);
+provide('currentEpisode', currentEpisode);
+provide('isPlaying', isPlaying);
 
 // 提供全局方法来控制播放器
 provide('playPodcast', (episode, podcast) => {
   currentEpisode.value = episode;
   currentPodcast.value = podcast;
+  isPlaying.value = true;
 });
+
+// 播放器控制方法
+const handlePodcastPlay = () => {
+  isPlaying.value = true;
+};
+
+const handlePodcastPause = () => {
+  isPlaying.value = false;
+};
+
+const { updatePlayProgress } = usePodcasts();
+
+const handlePodcastTimeUpdate = ({ position, duration }) => {
+  if (currentEpisode.value) {
+    updatePlayProgress(currentEpisode.value.id, position, duration);
+  }
+};
 
 const sidebarRoutes = computed(() => {
   return routes.value.filter(route => !route.path.includes('/settings'))

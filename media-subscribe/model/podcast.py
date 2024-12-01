@@ -56,6 +56,7 @@ class PodcastEpisode(PodcastEpisodeBase, table=True):
 
     # Relationships
     channel: PodcastChannel = Relationship(back_populates="episodes")
+    play_history: List["PodcastPlayHistory"] = Relationship(back_populates="episode")
 
 
 class PodcastSubscription(SQLModel, table=True):
@@ -67,3 +68,17 @@ class PodcastSubscription(SQLModel, table=True):
 
     # Relationships
     channel: PodcastChannel = Relationship(back_populates="subscription")
+
+
+class PodcastPlayHistory(SQLModel, table=True):
+    __tablename__ = "podcast_play_history"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: int = Field(foreign_key="podcast_episodes.id")
+    position: int = Field(default=0)  # 播放位置（秒）
+    duration: int = Field(default=0)  # 总时长（秒）
+    last_played_at: datetime = Field(default_factory=datetime.now)
+    is_finished: bool = Field(default=False)  # 是否播放完成（进度超过90%）
+    
+    # Relationships
+    episode: PodcastEpisode = Relationship(back_populates="play_history")

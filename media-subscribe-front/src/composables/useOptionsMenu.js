@@ -42,14 +42,17 @@ export default function useOptionsMenu(video) {
 
   const downloadVideo = async () => {
     try {
+      const currentVideo = video;
+      console.log('Downloading video:', currentVideo);
+
       const response = await axios.post('/api/channel-video/download', {
-        channel_id: video.channel_id,
-        video_id: video.video_id
+        channel_id: currentVideo.channel_id,
+        video_id: currentVideo.video_id
       });
 
       if (response.data.code === 0) {
         displayToast('视频下载已开始，请查看下载列表');
-        video.if_downloaded = true;
+        currentVideo.if_downloaded = true;
       } else {
         displayToast('视频下载已开始，请查看下载列表');
       }

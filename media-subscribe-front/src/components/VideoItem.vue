@@ -131,7 +131,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted, ref, nextTick, inject, computed } from 'vue';
+import { defineProps, defineEmits, onMounted, onUnmounted, ref, nextTick, inject, computed, watch } from 'vue';
 import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from "../composables/useOptionsMenu.js";
 
@@ -257,6 +257,25 @@ const {
   copyVideoLink,
   dislikeVideo,
 } = useOptionsMenu(props.video);
+
+// 添加 watch 来监听视频对象的变化
+watch(() => props.video, (newVideo) => {
+  // 重新初始化 useOptionsMenu
+  const {
+    toggleReadStatus: newToggleReadStatus,
+    markReadBatch: newMarkReadBatch,
+    downloadVideo: newDownloadVideo,
+    copyVideoLink: newCopyVideoLink,
+    dislikeVideo: newDislikeVideo,
+  } = useOptionsMenu(newVideo);
+
+  // 更新方法引用
+  downloadVideo.value = newDownloadVideo;
+  toggleReadStatus.value = newToggleReadStatus;
+  markReadBatch.value = newMarkReadBatch;
+  copyVideoLink.value = newCopyVideoLink;
+  dislikeVideo.value = newDislikeVideo;
+}, { deep: true });
 
 const showContextMenu = async (event) => {
   event.preventDefault();

@@ -77,7 +77,7 @@
         </svg>
         <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">不喜欢</span>
       </button>
-      <button @click="$emit('downloadVideo')" class="option-item group">
+      <button @click="handleDownload" class="option-item group">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
@@ -95,6 +95,8 @@
 
 <script setup>
 import { defineProps, defineEmits, onMounted, onUnmounted, ref } from 'vue';
+import { createApp } from 'vue';
+import Toast from './Toast.vue';
 
 const props = defineProps({
   position: {
@@ -145,6 +147,31 @@ const handleClickOutside = (event) => {
     emit('close');
     showReadMenu.value = false;
     showUnreadMenu.value = false;
+  }
+};
+
+const showToast = (message, type = 'success') => {
+  const toast = createApp(Toast, {
+    message,
+    type,
+    duration: 3000,
+  });
+  const mountNode = document.createElement('div');
+  document.body.appendChild(mountNode);
+  toast.mount(mountNode);
+  
+  setTimeout(() => {
+    document.body.removeChild(mountNode);
+  }, 3000);
+};
+
+const handleDownload = async () => {
+  try {
+    emit('downloadVideo');
+    showToast('已添加到下载队列');
+    emit('close');
+  } catch (error) {
+    showToast('添加下载任务失败', 'error');
   }
 };
 

@@ -1,21 +1,137 @@
+import logging
 import re
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Response, WebSocket
 from sqlalchemy import func
 from sqlmodel import Session, select, delete
-from typing import List, Optional
-from datetime import datetime
+from typing import List, Optional, AsyncGenerator, Dict
+from datetime import datetime, timedelta
 import feedparser
+from collections import defaultdict
+import asyncio
+from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
 
 from core.database import get_session
 from model.podcast import (
     PodcastChannel,
     PodcastEpisode,
-    PodcastSubscription
+    PodcastSubscription,
+    PodcastPlayHistory
 )
+
+# 添加请求体模型
+class PlayProgressUpdate(BaseModel):
+    position: int
+    duration: int
 
 router = APIRouter(prefix="/api/podcasts", tags=["podcasts"])
 
+# 创建内存缓存
+progress_cache = defaultdict(dict)
+last_write_time = {}
+
+# 存储播放进度的内存缓存
+play_progress_connections = {}
+
+# 存储活跃的WebSocket连接
+active_connections: Dict[int, WebSocket] = {}
+
+async def write_progress_to_db(episode_id: int, session: Session):
+    """后台任务：将缓存中的进度写入数据库"""
+    if episode_id not in progress_cache:
+        return
+        
+    progress_data = progress_cache[episode_id]
+    history = session.exec(
+        select(PodcastPlayHistory)
+        .where(PodcastPlayHistory.episode_id == episode_id)
+    ).first()
+    
+    if not history:
+        history = PodcastPlayHistory(
+            episode_id=episode_id,
+            **progress_data
+        )
+    else:
+        for key, value in progress_data.items():
+            setattr(history, key, value)
+            
+    session.add(history)
+    session.commit()
+    
+    # 清理缓存
+    del progress_cache[episode_id]
+    del last_write_time[episode_id]
+
+async def send_progress_updates(episode_id: int) -> AsyncGenerator[str, None]:
+    """生成进度更新事件"""
+    try:
+        while True:
+            if episode_id in progress_cache:
+                data = progress_cache[episode_id]
+                yield {
+                    "event": "progress",
+                    "data": data
+                }
+            await asyncio.sleep(1)  # 每秒检查一次进度
+    except asyncio.CancelledError:
+        # 清理连接
+        if episode_id in play_progress_connections:
+            del play_progress_connections[episode_id]
+
+@router.post("/episodes/{episode_id}/play")
+async def update_play_progress(
+    episode_id: int,
+    progress: PlayProgressUpdate,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session)
+):
+    """更新播放进度（带缓存）"""
+    # 更新缓存
+    progress_cache[episode_id].update({
+        "position": progress.position,
+        "duration": progress.duration,
+        "last_played_at": datetime.now(),
+        "is_finished": progress.position >= progress.duration * 0.9
+    })
+    
+    # 检查是否需要写入数据库
+    now = datetime.now()
+    last_write = last_write_time.get(episode_id)
+    
+    should_write = (
+        not last_write or  # 首次写入
+        (now - last_write) > timedelta(minutes=1) or  # 距离上次写入超过1分钟
+        progress.position >= progress.duration * 0.9  # 播放接近结束
+    )
+    
+    if should_write:
+        background_tasks.add_task(write_progress_to_db, episode_id, session)
+        last_write_time[episode_id] = now
+    
+    return {"message": "进度已更新"}
+
+# 添加定时清理任务
+async def cleanup_expired_cache():
+    while True:
+        now = datetime.now()
+        expired_episodes = [
+            episode_id
+            for episode_id, last_write in last_write_time.items()
+            if (now - last_write) > timedelta(hours=1)
+        ]
+        
+        for episode_id in expired_episodes:
+            if episode_id in progress_cache:
+                del progress_cache[episode_id]
+            del last_write_time[episode_id]
+            
+        await asyncio.sleep(3600)  # 每小时检查一次
+
+@router.on_event("startup")
+async def start_cleanup_task():
+    asyncio.create_task(cleanup_expired_cache())
 
 @router.post("/channels/subscribe")
 async def subscribe_podcast(
@@ -91,19 +207,19 @@ async def subscribe_podcast(
 
 @router.get("/channels")
 async def get_subscribed_channels(
-        page: int = 1,
-        page_size: int = 20,
-        session: Session = Depends(get_session)
+    page: int = 1,
+    page_size: int = 20,
+    session: Session = Depends(get_session)
 ):
     """获取已订阅的播客列表"""
     # 获取频道和对应的剧集数量
     channels_with_count = session.exec(
         select(
             PodcastChannel,
-            func.count(PodcastEpisode.id).label('episode_count')
+            func.count(PodcastEpisode.id).label('total_count')
         )
         .join(PodcastSubscription)
-        .outerjoin(PodcastEpisode)
+        .outerjoin(PodcastEpisode)  # 使用 outerjoin 以包含没有剧集的频道
         .group_by(PodcastChannel.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
@@ -116,14 +232,36 @@ async def get_subscribed_channels(
     ).one()
 
     # 处理结果
-    channels = []
-    for channel, episode_count in channels_with_count:
+    result = []
+    for channel, total_count in channels_with_count:
+        # 获取最新剧集
+        latest_episode = session.exec(
+            select(PodcastEpisode)
+            .where(PodcastEpisode.channel_id == channel.id)
+            .where(PodcastEpisode.audio_url is not None)  # 确保有音频地址
+            .order_by(PodcastEpisode.published_at.desc())
+            .limit(1)
+        ).first()
+
+        if latest_episode:
+            episode_dict = latest_episode.dict()
+            # 确保音频 URL 是完整的
+            if not episode_dict['audio_url'].startswith(('http://', 'https://')):
+                episode_dict['audio_url'] = f"https://{episode_dict['audio_url']}"
+            episodes = [episode_dict]
+        else:
+            episodes = []
+
         channel_dict = channel.dict()
-        channel_dict['total_count'] = episode_count
-        channels.append(channel_dict)
+        channel_dict.update({
+            'total_count': total_count,
+            'episodes': episodes,
+            'last_updated': latest_episode.published_at if latest_episode else channel.last_updated
+        })
+        result.append(channel_dict)
 
     return {
-        "items": channels,
+        "items": result,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -131,44 +269,94 @@ async def get_subscribed_channels(
     }
 
 
-@router.get("/channels/{channel_id}/episodes", response_model=List[PodcastEpisode])
+@router.get("/channels/{channel_id}/episodes")
 async def get_channel_episodes(
-        channel_id: int,
-        page: int = 1,
-        page_size: int = 20,
-        read_status: Optional[bool] = None,
-        session: Session = Depends(get_session)
+    channel_id: int,
+    page: int = 1,
+    page_size: int = 20,
+    session: Session = Depends(get_session)
 ):
     """获取播客剧集列表"""
-    query = select(PodcastEpisode).where(PodcastEpisode.channel_id == channel_id)
+    # 获取总数
+    total = session.exec(
+        select(func.count(PodcastEpisode.id))
+        .where(PodcastEpisode.channel_id == channel_id)
+    ).one()
 
-    if read_status is not None:
-        query = query.where(PodcastEpisode.is_read == read_status)
-
+    # 获取分页数据
     episodes = session.exec(
-        query.order_by(PodcastEpisode.published_at.desc())
+        select(PodcastEpisode)
+        .where(PodcastEpisode.channel_id == channel_id)
+        .order_by(PodcastEpisode.published_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()
 
-    return episodes
+    # 处理音频 URL
+    result = []
+    for episode in episodes:
+        episode_dict = episode.dict()
+        if episode_dict['audio_url'] and not episode_dict['audio_url'].startswith(('http://', 'https://')):
+            episode_dict['audio_url'] = f"https://{episode_dict['audio_url']}"
+        result.append(episode_dict)
 
+    return {
+        "items": result,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "has_more": total > page * page_size
+    }
+
+
+@router.get("/episodes/{episode_id}/progress")
+async def stream_progress(
+    episode_id: int,
+    response: Response,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session)
+):
+    """建立 SSE 连接以流式传输进度更新"""
+    play_progress_connections[episode_id] = True
+    
+    return EventSourceResponse(
+        send_progress_updates(episode_id),
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
 @router.post("/episodes/{episode_id}/progress")
-async def update_episode_progress(
-        episode_id: int,
-        position: int,
-        session: Session = Depends(get_session)
+async def update_progress(
+    episode_id: int,
+    progress: PlayProgressUpdate,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session)
 ):
-    """更新播放进度"""
-    episode = session.get(PodcastEpisode, episode_id)
-    if not episode:
-        raise HTTPException(status_code=404, detail="剧集不存在")
-
-    episode.last_position = position
-    session.add(episode)
-    session.commit()
-    return {"message": "进度更新成功"}
+    """更新播放进度（只更新缓存）"""
+    progress_cache[episode_id].update({
+        "position": progress.position,
+        "duration": progress.duration,
+        "last_played_at": datetime.now(),
+        "is_finished": progress.position >= progress.duration * 0.9
+    })
+    
+    # 检查是否需要写入数据库
+    now = datetime.now()
+    last_write = last_write_time.get(episode_id)
+    
+    should_write = (
+        not last_write or  # 首次写入
+        (now - last_write) > timedelta(minutes=1) or  # 距离上次写入超过1分钟
+        progress.position >= progress.duration * 0.9  # 播放接近结束
+    )
+    
+    if should_write:
+        background_tasks.add_task(write_progress_to_db, episode_id, session)
+        last_write_time[episode_id] = now
+    
+    return {"message": "进度已更新"}
 
 
 @router.post("/episodes/{episode_id}/mark-read")
@@ -326,3 +514,118 @@ async def get_latest_episodes(
         "page_size": page_size,
         "has_more": total > page * page_size
     }
+
+
+@router.post("/channels/preview")
+async def preview_podcast(
+    rss_url: str,
+    session: Session = Depends(get_session)
+):
+    """预览播客信息"""
+    # 解析RSS feed
+    feed = feedparser.parse(rss_url)
+    if hasattr(feed, 'bozo_exception'):
+        raise HTTPException(status_code=400, detail="无效的RSS地址")
+
+    # 提取预信息
+    description = feed.feed.description if hasattr(feed.feed, "description") else None
+    if description:
+        description = re.sub(r'<.*?>', '', description)
+        
+    return {
+        "data": {
+            "title": feed.feed.title,
+            "description": description,
+            "author": feed.feed.author if hasattr(feed.feed, "author") else None,
+            "cover_url": feed.feed.image.href if hasattr(feed.feed, "image") else None,
+            "website_url": feed.feed.link if hasattr(feed.feed, "link") else None,
+            "language": feed.feed.language if hasattr(feed.feed, "language") else None,
+        }
+    }
+
+
+@router.get("/listening")
+async def get_listening_podcasts(
+    session: Session = Depends(get_session)
+):
+    """获取正在收听的播客"""
+    stmt = (
+        select(PodcastChannel)
+        .join(PodcastChannel.episodes)
+        .join(PodcastEpisode.play_history)
+        .where(PodcastPlayHistory.is_finished is False)
+        .order_by(PodcastPlayHistory.last_played_at.desc())
+        .limit(6)
+    )
+    
+    channels = session.exec(stmt).all()
+    
+    return [
+        {
+            **channel.dict(),
+            "current_episode": channel.episodes[0].dict(),
+            "progress": channel.episodes[0].play_history[0].position / channel.episodes[0].play_history[0].duration 
+            if channel.episodes[0].play_history[0].duration > 0 else 0
+        }
+        for channel in channels
+    ]
+
+
+@router.get("/categories")
+async def get_podcast_categories():
+    """获取播客分类列表"""
+    return {
+        "categories": [
+            {"label": "全部", "value": "all"},
+            {"label": "新闻", "value": "news"},
+            {"label": "科技", "value": "tech"},
+            {"label": "商业", "value": "business"},
+            {"label": "文化", "value": "culture"},
+            {"label": "教育", "value": "education"},
+            {"label": "娱乐", "value": "entertainment"},
+            {"label": "音乐", "value": "music"},
+            {"label": "其他", "value": "others"}
+        ]
+    }
+
+@router.websocket("/episodes/{episode_id}/ws")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    episode_id: int,
+    session: Session = Depends(get_session)
+):
+    await websocket.accept()
+    active_connections[episode_id] = websocket
+    
+    try:
+        while True:
+            # 等待客户端发送进度更新
+            data = await websocket.receive_json()
+            
+            # 更新缓存
+            progress_cache[episode_id].update({
+                "position": data["position"],
+                "duration": data["duration"],
+                "last_played_at": datetime.now(),
+                "is_finished": data["position"] >= data["duration"] * 0.9
+            })
+            
+            # 检查是否需要写入数据库
+            now = datetime.now()
+            last_write = last_write_time.get(episode_id)
+            
+            should_write = (
+                not last_write or  # 首次写入
+                (now - last_write) > timedelta(minutes=1) or  # 距离上次写入超过1分钟
+                data["position"] >= data["duration"] * 0.9  # 播放接近结束
+            )
+            
+            if should_write:
+                await write_progress_to_db(episode_id, session)
+                last_write_time[episode_id] = now
+                
+    except Exception as e:
+        logging.error(f"WebSocket error: {e}")
+    finally:
+        if episode_id in active_connections:
+            del active_connections[episode_id]
