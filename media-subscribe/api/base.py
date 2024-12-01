@@ -36,7 +36,6 @@ app.include_router(podcast_router)
 # 挂载静态文件
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 static_dir = os.path.join(base_dir, "static")
-app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
 
 @app.exception_handler(Exception)
 async def default_exception_handler(request: Request, exc: Exception):

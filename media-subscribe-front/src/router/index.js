@@ -27,6 +27,11 @@ const routes = [
         path: 'read',
         name: 'ReadVideos',
         component: VideoTab,
+      },
+      {
+        path: 'preview',
+        name: 'PreviewVideos',
+        component: VideoTab,
       }
     ],
     redirect: {name: 'AllVideos'},

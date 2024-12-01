@@ -24,7 +24,7 @@ import VideoList from "./VideoList.vue";
 import useLatestVideos from "../composables/useLatestVideos.js";
 import useVideoOperations from "../composables/useVideoOperations.js";
 import useOptionsMenu from "../composables/useOptionsMenu.js";
-import {defineEmits, onActivated, onDeactivated, onMounted, watch} from "vue";
+import {defineEmits, onMounted, watch} from "vue";
 
 const emit = defineEmits(['openModal', 'update-counts', 'goToChannel']);
 

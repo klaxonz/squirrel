@@ -41,7 +41,7 @@ def get_video_url(
 def get_channel_videos(
         query: str = Query(None, description="搜索关键字"),
         channel_id: str = Query(None, description="频道ID"),
-        read_status: str = Query(None, description="阅读状态: all, read, unread"),
+        read_status: str = Query(None, description="阅读状态: all, read, unread, preview"),
         sort_by: SortBy = Query(SortBy.UPLOADED_AT, description="排序字段"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),

@@ -72,6 +72,11 @@ const tabsWithCounts = ref([
     value: 'read',
     count: 0,
     label: '已读'
+  },
+  {
+    value: 'preview',
+    count: 0,
+    label: '预告'
   }
 ]);
 

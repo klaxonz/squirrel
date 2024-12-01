@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from typing import List, Tuple
 from urllib.parse import quote
 
@@ -133,18 +134,23 @@ class ChannelVideoService:
                 col(ChannelVideo.channel_name).like(f'%{query}%'),
                 col(ChannelVideo.title).like(f'%{query}%')
             ))
+        if read_status == 'preview':
+            base_query = base_query.where(ChannelVideo.uploaded_at > datetime.now())
+        else:
+            base_query = base_query.where(ChannelVideo.uploaded_at <= datetime.now())
+
         if read_status:
             if read_status == 'read':
                 base_query = base_query.where(ChannelVideo.if_read == 1)
             elif read_status == 'unread':
                 base_query = base_query.where(ChannelVideo.if_read == 0)
-
+            
         offset = (page - 1) * page_size
         
         # 根据排序字段进行排序
         if sort_by == 'created_at':
             base_query = base_query.order_by(col(ChannelVideo.created_at).desc())
-        else:  # default: uploaded_at
+        else:
             base_query = base_query.order_by(col(ChannelVideo.uploaded_at).desc())
         
         with get_session() as session:
@@ -164,9 +170,10 @@ class ChannelVideoService:
                     col(ChannelVideo.channel_id).like(f"%,{channel_id}"),
                     col(ChannelVideo.channel_id).like(f"%,{channel_id},%")
                 ))
-            total_count = session.exec(s_query).one()
-            read_count = session.exec(s_query.where(ChannelVideo.if_read == 1)).one()
+            total_count = session.exec(s_query.where(ChannelVideo.uploaded_at <= datetime.now())).one()
+            read_count = session.exec(s_query.where(ChannelVideo.if_read == 1, ChannelVideo.uploaded_at <= datetime.now())).one()
             unread_count = total_count - read_count
+            preview_count = session.exec(s_query.where(ChannelVideo.uploaded_at > datetime.now())).one()
 
             channel_video_convert_list = []
 
@@ -200,7 +207,8 @@ class ChannelVideoService:
             counts = {
                 "all": total_count,
                 "read": read_count,
-                "unread": unread_count
+                "unread": unread_count,
+                "preview": preview_count
             }
 
             return channel_video_convert_list, counts
