@@ -10,6 +10,7 @@ logs
 
 # Environment variables
 .env
+.env.dev
 
 # IDE and Editor-specific files
 .vscode/
