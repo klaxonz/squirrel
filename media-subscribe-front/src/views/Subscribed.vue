@@ -159,7 +159,7 @@ const loadChannels = async () => {
       params: {
         query: searchQuery.value,
         page: currentPage.value,
-        pageSize: 20
+        pageSize: 100
       }
     });
     if (response.data.code === 0) {
