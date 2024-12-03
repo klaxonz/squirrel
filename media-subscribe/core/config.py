@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     SUBSCRIBE_CONSUMERS: int = 1
 
     class Config:
-        env_file = ".env"
+        env_file = f".env.{os.getenv('ENV')}" if os.getenv("ENV") else ".env"
         env_file_encoding = "utf-8"
 
     @property
@@ -44,9 +44,6 @@ class Settings(BaseSettings):
         return f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}?charset=utf8mb4"
 
     def get_download_root_path(self):
-        """
-        获取下载根目录
-        """
         download_path = Path(os.path.join(base_dir, '..', 'downloads'))
         return os.getenv('MEDIA_DOWNLOAD_PATH', download_path)
 
@@ -72,8 +69,6 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings():
-    load_dotenv(override=True)
-    load_dotenv(dotenv_path='../.env', override=True)
     return Settings()
 
 
