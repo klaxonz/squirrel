@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import List, Optional
-
 from sqlmodel import select, col
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from model.video_history import VideoHistory
@@ -15,29 +16,55 @@ class VideoHistoryService:
     def update_watch_history(self, video_id: str, channel_id: str, watch_duration: int, last_position: int,
                              total_duration: int) -> None:
         """更新视频观看历史"""
-        # 使用 select 语句查找现有记录
-        with get_session() as session:
-            history_stmt = select(VideoHistory).where(VideoHistory.video_id == video_id,
-                                                      VideoHistory.channel_id == channel_id)
-            history = session.exec(history_stmt).first()
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                with get_session() as session:
+                    # 使用 SELECT FOR UPDATE 加锁查询
+                    history_stmt = (
+                        select(VideoHistory)
+                        .where(
+                            VideoHistory.video_id == video_id,
+                            VideoHistory.channel_id == channel_id
+                        )
+                        .with_for_update()  # 添加行级锁
+                    )
+                    history = session.exec(history_stmt).first()
 
-            if history:
-                # 更新现有记录
-                history.watch_duration = watch_duration
-                history.last_position = last_position
-                history.total_duration = total_duration
-                history.updated_at = datetime.now()
-            else:
-                # 创建新记录
-                history = VideoHistory(
-                    video_id=video_id,
-                    channel_id=channel_id,
-                    watch_duration=watch_duration,
-                    last_position=last_position,
-                    total_duration=total_duration
-                )
-                session.add(history)
-            session.commit()
+                    if history:
+                        # 更新现有记录
+                        history.watch_duration = watch_duration
+                        history.last_position = last_position
+                        history.total_duration = total_duration
+                        history.updated_at = datetime.now()
+                    else:
+                        # 创建新记录
+                        history = VideoHistory(
+                            video_id=video_id,
+                            channel_id=channel_id,
+                            watch_duration=watch_duration,
+                            last_position=last_position,
+                            total_duration=total_duration
+                        )
+                        session.add(history)
+                    
+                    session.commit()
+                    break  # 成功后跳出重试循环
+                    
+            except IntegrityError:
+                # 如果发生并发冲突，回滚并重试
+                session.rollback()
+                retry_count += 1
+                if retry_count >= max_retries:
+                    raise Exception("更新观看历史失败：并发冲突无法解决")
+                continue
+            
+            except Exception as e:
+                # 其他异常直接抛出
+                session.rollback()
+                raise e
 
     def get_watch_history(self, page: int = 1, page_size: int = 20) -> tuple[List[dict], int]:
         """获取观看历史列表"""
