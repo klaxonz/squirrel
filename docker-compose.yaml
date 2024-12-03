@@ -10,7 +10,7 @@ services:
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
-      - ${MEDIA_DOWNLOAD_PATH}:/downloads
+      - ./downloads:/downloads
     depends_on:
       redis:
         condition: service_healthy
