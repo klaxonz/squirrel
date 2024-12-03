@@ -49,8 +49,8 @@ class ChannelVideoService:
                 audio_urls = data['dash']['audio']
                 best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
                 return {
-                    'video_url': "http://localhost:8000/api/channel-video/proxy?domain=bilibili.com&url=" + quote(best_video_url),
-                    'audio_url': "http://localhost:8000/api/channel-video/proxy?domain=bilibili.com&url=" + quote(best_audio_url),
+                    'video_url': "/api/channel-video/proxy?domain=bilibili.com&url=" + quote(best_video_url),
+                    'audio_url': "/api/channel-video/proxy?domain=bilibili.com&url=" + quote(best_audio_url),
                 }
             elif channel_video.domain == 'youtube.com':
                 # YouTube video URL fetching logic
@@ -74,7 +74,7 @@ class ChannelVideoService:
                 no = title.split(' ')[0]
                 url = self.get_jav_video_url(no)
                 return {
-                    'video_url': "http://localhost:8000/api/channel-video/proxy?domain=javdb.com&url=" + quote(url),
+                    'video_url': "/api/channel-video/proxy?domain=javdb.com&url=" + quote(url),
                     'audio_url': None,
                 }
             return {}
