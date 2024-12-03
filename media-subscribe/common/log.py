@@ -19,18 +19,18 @@ LOGGING_CONFIG = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'default',
-            'level': 'DEBUG',  # 控制台日志级别
+            'level': 'DEBUG',
         },
         'file': {
-            'class': 'logging.FileHandler',  # 如果需要记录到文件
-            'filename': os.path.join(LOG_DIR, 'app.log.py'),  # 日志文件名
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOG_DIR, 'app.log'),
             'formatter': 'default',
-            'level': 'INFO',  # 文件日志级别
+            'level': 'INFO',
         },
     },
-    'root': {  # 全局日志配置
-        'handlers': ['console', 'file'],  # 同时输出到控制台和文件
-        'level': 'INFO',  # 应用默认日志级别
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'INFO',
     },
 }
 
