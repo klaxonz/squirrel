@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="isVisible"
-    class="fixed top-4 right-4 z-50 animate-slide-in"
+    class="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-in"
   >
     <div class="bg-[#282828] text-white px-4 py-2 rounded-lg shadow-lg flex items-center">
       <span v-if="type === 'success'" class="mr-2 text-green-500">
@@ -54,11 +54,11 @@ onMounted(() => {
 
 @keyframes slideIn {
   from {
-    transform: translateX(100%);
+    transform: translate(-50%, -100%);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translate(-50%, 0);
     opacity: 1;
   }
 }

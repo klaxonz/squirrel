@@ -1,6 +1,17 @@
 <template>
   <div class="subscribed-page flex flex-col h-full bg-[#0f0f0f] text-white">
-    <SearchBar class="pt-4 px-4" @search="handleSearch" ref="searchBar"/>
+    <div class="flex items-center pt-4 px-4">
+      <SearchBar class="flex-grow" @search="handleSearch" ref="searchBar"/>
+      <button 
+        @click="showAddDialog = true"
+        class="ml-4 h-9 px-6 min-w-[120px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+        </svg>
+        <span class="ml-2 text-sm font-medium">添加频道</span>
+      </button>
+    </div>
 
     <div class="channel-container pt-4 flex-grow overflow-y-auto">
       <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -102,6 +113,21 @@
         </button>
       </div>
     </div>
+
+    <!-- 添加频道对话框 -->
+    <AddChannelDialog 
+      :show="showAddDialog"
+      @close="showAddDialog = false"
+      @added="handleChannelAdded"
+    />
+
+    <!-- Toast 提示 -->
+    <Toast 
+      v-if="toast.show"
+      :message="toast.message"
+      :type="toast.type"
+      :duration="3000"
+    />
   </div>
 </template>
 
@@ -112,6 +138,8 @@ import SearchBar from '../components/SearchBar.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
 import useCustomToast from '../composables/useToast';
+import AddChannelDialog from '../components/AddChannelDialog.vue';
+import Toast from '../components/Toast.vue';
 
 const router = useRouter();
 
@@ -129,6 +157,13 @@ const observer = ref(null);
 const loadingTrigger = ref(null);
 
 const { displayToast, confirm } = useCustomToast();
+
+const showAddDialog = ref(false);
+const toast = ref({
+  show: false,
+  message: '',
+  type: 'success'
+});
 
 const setupIntersectionObserver = () => {
   observer.value = new IntersectionObserver(
@@ -298,16 +333,33 @@ const goToChannel = (channelId) => {
   router.push(`/channel/${channelId}/all`);
 }
 
-const showToast = (message, isError = false) => {
-  displayToast(message, {
-    type: isError ? 'error' : 'success'
-  });
+const showToast = (message, type = 'success') => {
+  toast.value = {
+    show: true,
+    message,
+    type
+  };
+  
+  // 3秒后隐藏
+  setTimeout(() => {
+    toast.value.show = false;
+  }, 3000);
 };
 
 // 添加图片加载错误处理函数
 const handleImageError = (event) => {
   // 设置默认头像
   event.target.src = '/squirrel-icon.svg'; // 使用项目中的默认头像
+};
+
+// 处理频道添加成功
+const handleChannelAdded = () => {
+  showToast('频道添加成功');
+  // 重新加载频道列表
+  channels.value = [];
+  currentPage.value = 1;
+  allLoaded.value = false;
+  loadChannels();
 };
 
 onMounted(() => {
