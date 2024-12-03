@@ -20,10 +20,20 @@ from model.podcast import (
     PodcastPlayHistory
 )
 
-# 添加请求体模型
+
 class PlayProgressUpdate(BaseModel):
     position: int
     duration: int
+
+
+# 添加请求模型
+class PreviewPodcastRequest(BaseModel):
+    rss_url: str
+
+
+class SubscribePodcastRequest(BaseModel):
+    rss_url: str
+
 
 router = APIRouter(prefix="/api/podcasts", tags=["podcasts"])
 
@@ -135,34 +145,40 @@ async def start_cleanup_task():
 
 @router.post("/channels/subscribe")
 async def subscribe_podcast(
-        rss_url: str,
-        session: Session = Depends(get_session)
+    request: SubscribePodcastRequest,
+    session: Session = Depends(get_session)
 ):
     """订阅新的播客"""
     # 检查是否已订阅
     existing = session.exec(
-        select(PodcastChannel).where(PodcastChannel.rss_url == rss_url)
+        select(PodcastChannel).where(PodcastChannel.rss_url == request.rss_url)
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="已订阅该播客")
 
-    # 解析RSS feed
-    feed = feedparser.parse(rss_url)
+    feed = feedparser.parse(request.rss_url)
     if hasattr(feed, 'bozo_exception'):
         raise HTTPException(status_code=400, detail="无效的RSS地址")
 
-    # 创建频道
     description = feed.feed.description if hasattr(feed.feed, "description") else None
     if description:
         description = re.sub(r'<.*?>', '', description)
+
+    title = feed.feed.title
+    author = feed.feed.author if hasattr(feed.feed, "author") else None
+    cover_url = feed.feed.image.href if hasattr(feed.feed, "image") else None
+    website_url = feed.feed.link if hasattr(feed.feed, "link") else None
+    language = feed.feed.language if hasattr(feed.feed, "language") else None
+
+    # 创建频道
     channel = PodcastChannel(
-        title=feed.feed.title,
+        title=title,
         description=description,
-        author=feed.feed.author if hasattr(feed.feed, "author") else None,
-        cover_url=feed.feed.image.href if hasattr(feed.feed, "image") else None,
-        rss_url=rss_url,
-        website_url=feed.feed.link if hasattr(feed.feed, "link") else None,
-        language=feed.feed.language if hasattr(feed.feed, "language") else None,
+        author=author,
+        cover_url=cover_url,
+        rss_url=request.rss_url,
+        website_url=website_url,
+        language=language,
         last_updated=datetime.now()
     )
     session.add(channel)
@@ -274,34 +290,30 @@ async def get_channel_episodes(
     channel_id: int,
     page: int = 1,
     page_size: int = 20,
+    sort_order: str = "desc",
     session: Session = Depends(get_session)
 ):
-    """获取播客剧集列表"""
+    """获取频道的剧集列表"""
+    # 确定排序方式
+    order_by = PodcastEpisode.published_at.desc() if sort_order == "desc" else PodcastEpisode.published_at.asc()
+    
+    # 查询剧集
+    episodes = session.exec(
+        select(PodcastEpisode)
+        .where(PodcastEpisode.channel_id == channel_id)
+        .order_by(order_by)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).all()
+    
     # 获取总数
     total = session.exec(
         select(func.count(PodcastEpisode.id))
         .where(PodcastEpisode.channel_id == channel_id)
     ).one()
-
-    # 获取分页数据
-    episodes = session.exec(
-        select(PodcastEpisode)
-        .where(PodcastEpisode.channel_id == channel_id)
-        .order_by(PodcastEpisode.published_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    ).all()
-
-    # 处理音频 URL
-    result = []
-    for episode in episodes:
-        episode_dict = episode.dict()
-        if episode_dict['audio_url'] and not episode_dict['audio_url'].startswith(('http://', 'https://')):
-            episode_dict['audio_url'] = f"https://{episode_dict['audio_url']}"
-        result.append(episode_dict)
-
+    
     return {
-        "items": result,
+        "items": [episode.dict() for episode in episodes],
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -477,36 +489,63 @@ async def get_latest_episodes(
     page_size: int = 20,
     session: Session = Depends(get_session)
 ):
-    """获取所有订阅播客的最新剧集"""
-    # 获取已订阅的频道的最新剧集
-    episodes = session.exec(
-        select(
-            PodcastEpisode,
-            PodcastChannel.title.label('channel_title'),
-            PodcastChannel.cover_url.label('channel_cover_url')
-        )
-        .join(PodcastChannel)
-        .join(PodcastSubscription)
+    """获取已订阅的频道的最新剧集"""
+    # 先获取已订阅的频道ID
+    subscribed_channels = session.exec(
+        select(PodcastSubscription.channel_id)
+    ).all()
+    
+    if not subscribed_channels:
+        return {
+            "items": [],
+            "total": 0,
+            "page": page,
+            "page_size": page_size,
+            "has_more": False
+        }
+    
+    # 查询这些频道的最新剧集
+    episodes_stmt = (
+        select(PodcastEpisode)
+        .where(PodcastEpisode.channel_id.in_(subscribed_channels))
         .order_by(PodcastEpisode.published_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
-    ).all()
-
+    )
+    episodes = session.exec(episodes_stmt).all()
+    
+    if not episodes:
+        return {
+            "items": [],
+            "total": 0,
+            "page": page,
+            "page_size": page_size,
+            "has_more": False
+        }
+    
+    # 获取相关的频道信息
+    channel_ids = {e.channel_id for e in episodes}
+    channels_stmt = (
+        select(PodcastChannel)
+        .where(PodcastChannel.id.in_(channel_ids))
+    )
+    channels = {c.id: c for c in session.exec(channels_stmt).all()}
+    
     # 获取总数
     total = session.exec(
         select(func.count(PodcastEpisode.id))
-        .join(PodcastChannel)
-        .join(PodcastSubscription)
+        .where(PodcastEpisode.channel_id.in_(subscribed_channels))
     ).one()
-
-    # 处理结果
+    
+    # 组装结果
     result = []
-    for episode, channel_title, channel_cover_url in episodes:
+    for episode in episodes:
+        channel = channels[episode.channel_id]
         episode_dict = episode.dict()
-        episode_dict['channel_title'] = channel_title
-        episode_dict['channel_cover_url'] = channel_cover_url
+        episode_dict['channel_title'] = channel.title
+        episode_dict['channel_cover_url'] = channel.cover_url
         result.append(episode_dict)
-
+    
     return {
         "items": result,
         "total": total,
@@ -518,21 +557,22 @@ async def get_latest_episodes(
 
 @router.post("/channels/preview")
 async def preview_podcast(
-    rss_url: str,
+    request: PreviewPodcastRequest,
     session: Session = Depends(get_session)
 ):
     """预览播客信息"""
     # 解析RSS feed
-    feed = feedparser.parse(rss_url)
+    feed = feedparser.parse(request.rss_url)
     if hasattr(feed, 'bozo_exception'):
         raise HTTPException(status_code=400, detail="无效的RSS地址")
 
-    # 提取预信息
+    # 提取预览信息
     description = feed.feed.description if hasattr(feed.feed, "description") else None
     if description:
         description = re.sub(r'<.*?>', '', description)
         
     return {
+        "code": 0,
         "data": {
             "title": feed.feed.title,
             "description": description,

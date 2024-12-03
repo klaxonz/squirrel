@@ -80,7 +80,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import axios from '../utils/axios';
 
 const props = defineProps({
@@ -94,6 +94,26 @@ const loading = ref(false);
 const error = ref('');
 const previewData = ref(null);
 
+const resetForm = () => {
+  rssUrl.value = '';
+  error.value = '';
+  previewData.value = null;
+  loading.value = false;
+};
+
+// 监听 show 属性的变化，当对话框关闭时重置表单
+watch(() => props.show, (newVal) => {
+  if (!newVal) {
+    resetForm();
+  }
+});
+
+// 监听 URL 变化，重置预览状态
+watch(() => rssUrl.value, () => {
+  previewData.value = null;
+  error.value = '';
+});
+
 const handlePreview = async () => {
   if (!rssUrl.value) return;
   
@@ -101,10 +121,11 @@ const handlePreview = async () => {
   error.value = '';
   
   try {
-    const response = await axios.post('/api/podcasts/channels/subscribe', {
+    const response = await axios.post('/api/podcasts/channels/preview', {
       rss_url: rssUrl.value
     });
     previewData.value = response.data.data;
+    console.log('Preview data:', previewData.value);
   } catch (err) {
     error.value = err.response?.data?.message || '解析RSS失败，请检查地址是否正确';
   } finally {
@@ -117,12 +138,18 @@ const handleSubmit = async () => {
   error.value = '';
   
   try {
-    await axios.post('/api/podcasts/channels/subscribe', {
-      rss_url: rssUrl.value
-    });
+    const submitData = {
+      rss_url: rssUrl.value,
+      ...previewData.value
+    };
+    console.log('Submit data:', submitData);
+    await axios.post('/api/podcasts/channels/subscribe', submitData);
     emit('added');
     emit('close');
+    rssUrl.value = '';
+    previewData.value = null;
   } catch (err) {
+    console.error('Error response:', err.response?.data);
     error.value = err.response?.data?.message || '添加播客失败，请稍后重试';
   } finally {
     loading.value = false;

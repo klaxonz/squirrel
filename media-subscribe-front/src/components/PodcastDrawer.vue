@@ -151,6 +151,17 @@ const loading = ref(false);
 const hasMore = ref(true);
 const isDestroyed = ref(false);
 
+// 防抖函数
+const debounce = (fn, delay = 300) => {
+  let timer = null;
+  return (...args) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      fn.apply(this, args);
+    }, delay);
+  };
+};
+
 // 处理关闭
 const handleClose = () => {
   if (!isDestroyed.value) {
@@ -168,14 +179,16 @@ const handlePlay = (episode) => {
 // 加载剧集
 const loadEpisodes = async (isLoadMore = false) => {
   if (isDestroyed.value) return;
-  if (loading.value || (!isLoadMore && !hasMore.value)) return;
+  if (loading.value) return;
+  if (isLoadMore && !hasMore.value) return;  // 如果是加载更多且没有更多数据，直接返回
   
   loading.value = true;
   try {
     const response = await axios.get(`/api/podcasts/channels/${props.podcast.id}/episodes`, {
       params: {
         page: page.value,
-        page_size: 20
+        page_size: 20,
+        sort_order: sortOrder.value === '最新' ? 'desc' : 'asc'
       }
     });
     
@@ -202,28 +215,27 @@ const loadEpisodes = async (isLoadMore = false) => {
   }
 };
 
-// 监听滚动
-const handleScroll = (event) => {
+// 监听滚动的实际处理函数
+const handleScrollImpl = (event) => {
   if (isDestroyed.value) return;
+  if (!hasMore.value) return;  // 如果没有更多数据，直接返回
+  
   const { scrollTop, clientHeight, scrollHeight } = event.target;
   if (scrollHeight - scrollTop <= clientHeight + 100) {
     loadEpisodes(true);
   }
 };
 
-const sortedEpisodes = computed(() => {
-  const episodeList = episodes.value || [];
-  return [...episodeList].sort((a, b) => {
-    const aDate = new Date(a.published_at);
-    const bDate = new Date(b.published_at);
-    return sortOrder.value === '最新' ? bDate - aDate : aDate - bDate;
-  });
-});
+// 使用防抖包装滚动处理函数
+const handleScroll = debounce(handleScrollImpl, 200);
 
-// 监听排序变化
+const sortedEpisodes = computed(() => episodes.value || []);
+
+// 监听排序变化，重置并重新加载
 watch(sortOrder, () => {
   if (isDestroyed.value) return;
   page.value = 1;
+  episodes.value = [];  // 清空现有数据
   hasMore.value = true;
   loadEpisodes();
 });
