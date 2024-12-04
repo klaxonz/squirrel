@@ -287,6 +287,7 @@ class JavSubscribeChannel(SubscribeChannel):
         style = avatar_el['style']
         avatar = re.search(r'url\((.*?)\)', style).group(1)
         channel_id = self.url.split('/')[-1]
+        time.sleep(1)
 
         return ChannelMeta(channel_id, name, avatar, self.url)
 
@@ -330,7 +331,7 @@ class JavSubscribeChannel(SubscribeChannel):
             if not update_all:
                 break
             current_page += 1
-            time.sleep(0.5)
+            time.sleep(1)
 
         return video_list
 

@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import time
 
 import requests
 from bs4 import BeautifulSoup
@@ -297,6 +298,7 @@ class JavUploader(Uploader):
             self.avatar = re.search(r'url\((.*?)\)', style).group(1)
             self.id = self.url.split('/')[-1]
             self.tags = []
+        time.sleep(1)
 
 
 class UploaderFactory:
