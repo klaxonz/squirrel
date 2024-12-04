@@ -16,17 +16,25 @@ from model.message import Message
 logger = logging.getLogger(__name__)
 
 
-# 在文件末尾添加
 __all__ = ['process_download_message']
 
 
-@dramatiq.actor(queue_name=constants.QUEUE_DOWNLOAD_TASK)
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_DOWNLOAD_TASK)
 def process_download_message(message: str):
+    _process_download_message(message, constants.QUEUE_VIDEO_DOWNLOAD_TASK)
+
+
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED_TASK)
+def process_download_scheduled_message(message: str):
+    _process_download_message(message, constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED_TASK)
+
+
+def _process_download_message(message: str, queue: str):
     try:
         logger.info(f"开始处理下载任务: {message}")
         message_obj = Message.model_validate(json.loads(message))
         download_task = _prepare_download_task(message_obj)
-        status = _download_video(download_task, constants.QUEUE_DOWNLOAD_TASK)
+        status = _download_video(download_task, queue)
         _update_task_status(download_task, status)
         
         logger.info(f"下载视频结束, channel: {download_task.channel_name}, video: {download_task.url}")
@@ -43,7 +51,6 @@ def _prepare_download_task(message):
         dt = DownloadTask.model_validate(json.loads(download_task.model_dump_json()))
         session.commit()
         return dt
-
 
 
 def _download_video(download_task, task_name):

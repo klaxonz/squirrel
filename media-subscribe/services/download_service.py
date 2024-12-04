@@ -55,7 +55,8 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
             'if_subscribe': if_subscribe,
             'if_only_extract': if_only_extract,
             'if_manual_retry': if_manual_retry,
-            'if_manual_download': if_manual_download
+            'if_manual_download': if_manual_download,
+            'if_manual': if_manual_retry or if_manual_download
         }
 
         message = Message()
@@ -66,31 +67,9 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
         message = session.exec(select(Message).where(Message.message_id == message.message_id)).first()
         dump_json = message.model_dump_json()
         if if_manual_retry or if_manual_download:
-            extract_task.process_extract_message.send(dump_json)
+            extract_task.process_extract_scheduled_message.send(dump_json)
         else:
             extract_task.process_extract_message.send(dump_json)
-
-
-async def start_priority(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if_retry: bool = False):
-    with get_session() as session:
-        content = {
-            'url': url,
-            'if_retry': if_retry,
-            'if_subscribe': if_subscribe,
-            'if_only_extract': if_only_extract
-        }
-
-        message = Message()
-        message.body = json.dumps(content)
-        session.add(message)
-        session.commit()
-
-        message = session.exec(select(Message).where(Message.message_id == message.message_id)).first()
-        dump_json = message.model_dump_json()
-        extract_task.process_extract_message.send(dump_json)
-
-        message.send_status = 'SENDING'
-        session.commit()
 
 
 def stop(task_id: int):

@@ -21,51 +21,93 @@ from consumer import download_task
 
 logger = logging.getLogger(__name__)
 
-# 在文件末尾添加
-__all__ = ['process_extract_message']
+
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_TASK)
+def process_extract_message(message):
+    _process_extract_message(message)
 
 
-@dramatiq.actor(queue_name=constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
-def process_extract_message(message: str):
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_SCHEDULED_TASK)
+def process_extract_scheduled_message(message):
+    _process_extract_message(message)
+
+
+def _process_extract_message(message: str):
+    url = None
     try:
         message_obj = Message.model_validate(json.loads(message))
         extract_info = _parse_message(message_obj)
+        if_manual = extract_info['if_manual']
         url = extract_info['url']
         domain = extract_top_level_domain(url)
-        logger.info(f"domain: {domain}")
-        if domain == 'bilibili.com':
-            process_extract_bilibili_message.send(message)
-        elif domain == 'youtube.com':
-            process_extract_youtube_message.send(message)
-        elif domain == 'pornhub.com':
-            process_extract_pornhub_message.send(message)
-        elif domain == 'javdb.com':
-            process_extract_javdb_message.send(message)
+
+        if if_manual:
+            if domain == 'bilibili.com':
+                process_extract_bilibili_message.send(message)
+            elif domain == 'youtube.com':
+                process_extract_youtube_message.send(message)
+            elif domain == 'pornhub.com':
+                process_extract_pornhub_message.send(message)
+            elif domain == 'javdb.com':
+                process_extract_javdb_message.send(message)
+        else:
+            if domain == 'bilibili.com':
+                process_extract_bilibili_scheduled_message.send(message)
+            elif domain == 'youtube.com':
+                process_extract_youtube_scheduled_message.send(message)
+            elif domain == 'pornhub.com':
+                process_extract_pornhub_scheduled_message.send(message)
+            elif domain == 'javdb.com':
+                process_extract_javdb_scheduled_message.send(message)
 
     except Exception as e:
-        logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+        if url:
+            logger.error(f"处理消息时发生错误: url:{url}, error: {e}", exc_info=True)
+        else:
+            logger.error(f"处理消息时发生错误: {e}", exc_info=True)
 
 
-@dramatiq.actor(queue_name='extract_bilibili')
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_BILIBILI_TASK)
 def process_extract_bilibili_message(message: str):
-    process_extract_task(message)
+    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_BILIBILI_TASK)
 
 
-@dramatiq.actor(queue_name='extract_youtube')
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_BILIBILI_SCHEDULED_TASK)
+def process_extract_bilibili_scheduled_message(message: str):
+    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_BILIBILI_SCHEDULED_TASK)
+
+
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_TASK)
 def process_extract_youtube_message(message: str):
-    process_extract_task(message)
+    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_TASK)
 
 
-@dramatiq.actor(queue_name='extract_pornhub')
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_SCHEDULED_TASK)
+def process_extract_youtube_scheduled_message(message: str):
+    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_SCHEDULED_TASK)
+
+
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_PORNHUB_TASK)
 def process_extract_pornhub_message(message: str):
-    process_extract_task(message)
+    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_PORNHUB_TASK)
 
-@dramatiq.actor(queue_name='extract_javdb')
+
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_PORNHUB_SCHEDULED_TASK)
+def process_extract_pornhub_scheduled_message(message: str):
+    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_PORNHUB_SCHEDULED_TASK)
+
+
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_JAVDB_TASK)
 def process_extract_javdb_message(message: str):
-    process_extract_task(message)
+    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_JAVDB_TASK)
 
 
-def process_extract_task(message: str):
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_JAVDB_SCHEDULED_TASK)
+def process_extract_javdb_scheduled_message(message: str):
+    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_JAVDB_SCHEDULED_TASK)
+
+
+def process_extract_task(message: str, queue: str):
     try:
         logger.info(f"开始处理视频解析消息：{message}")
         message_obj = Message.model_validate(json.loads(message))
@@ -75,7 +117,7 @@ def process_extract_task(message: str):
         if _should_skip_processing(extract_info, domain, video_id):
             return
 
-        video_info = _get_video_info(url, constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD)
+        video_info = _get_video_info(url, queue)
         if not video_info:
             return
 
@@ -112,7 +154,6 @@ def _should_skip_processing(extract_info, domain, video_id):
 
 def _get_video_info(url, task_name):
     video_info = Downloader.get_video_info_thread(url, task_name)
-    # logger.info(f"视频信息：{video_info}" )
     if video_info is None or ('_type' in video_info and video_info['_type'] == 'playlist'):
         logger.info(f"{url} is not a valid video, skip")
         return None
@@ -183,6 +224,7 @@ def _create_channel_video(video, domain, video_id, video_info):
 
 
 def _handle_download_task(extract_info, video, domain, video_id):
+    if_manual = extract_info['if_manual']
     channel_video = _get_channel_video(domain, video_id)
     if extract_info['if_subscribe'] and channel_video and channel_video.if_downloaded:
         return
@@ -192,7 +234,7 @@ def _handle_download_task(extract_info, video, domain, video_id):
     if _should_skip_download(extract_info, task):
         return
 
-    _create_download_message(task)
+    _create_download_message(task, if_manual)
     logger.info(f"结束生成视频任务：channel {video.get_uploader().name}, video: {video.url}")
 
 
@@ -245,7 +287,7 @@ def _should_skip_download(extract_info, task):
         return False
 
 
-def _create_download_message(task):
+def _create_download_message(task, if_manual):
     with get_session() as session:
         task = session.merge(task)
         message = Message()
@@ -255,7 +297,10 @@ def _create_download_message(task):
 
         message = session.exec(select(Message).where(Message.message_id == message.message_id)).first()
         dump_json = message.model_dump_json()
-        download_task.process_download_message.send(dump_json)
+        if if_manual:
+            download_task.process_download_message.send(dump_json)
+        else:
+            download_task.process_download_scheduled_message.send(dump_json)
         message.send_status = 'SENDING'
         session.commit()
 

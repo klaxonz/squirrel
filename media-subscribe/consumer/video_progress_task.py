@@ -8,8 +8,6 @@ from services.video_history_service import VideoHistoryService
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['process_video_progress_message']
-
 
 @dramatiq.actor(queue_name=constants.QUEUE_VIDEO_PROGRESS_TASK)
 def process_video_progress_message(message):

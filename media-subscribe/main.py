@@ -12,7 +12,6 @@ from alembic import command
 
 from common.log import init_logging
 from common import constants
-from core.config import settings
 from schedule import TaskRegistry
 from schedule.schedule import Scheduler
 from consumer.base import redis_broker
@@ -35,21 +34,27 @@ def auto_discover_actors(package_name='consumer'):
 
 def create_workers():
     queues = [
+        constants.QUEUE_VIDEO_DOWNLOAD_TASK,
+        constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_SCHEDULED_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_SCHEDULED_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_BILIBILI_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_BILIBILI_SCHEDULED_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_SCHEDULED_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_PORNHUB_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_PORNHUB_SCHEDULED_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_JAVDB_TASK,
+        constants.QUEUE_VIDEO_EXTRACT_JAVDB_SCHEDULED_TASK,
+        constants.QUEUE_VIDEO_DOWNLOAD_TASK,
+        constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED_TASK,
         constants.QUEUE_SUBSCRIBE_TASK,
-        constants.QUEUE_DOWNLOAD_TASK,
-        constants.QUEUE_CHANNEL_VIDEO_EXTRACT_DOWNLOAD,
         constants.QUEUE_VIDEO_PROGRESS_TASK,
-        'extract_bilibili',
-        'extract_youtube',
-        'extract_pornhub',
-        'extract_javdb'
     ]
 
     for queue in queues:
         redis_broker.declare_queue(queue)
-
-    logger.info(f"Broker middleware: {redis_broker.middleware}")
-    logger.info(f"Target queues: {redis_broker.queues}")
 
     dramatiq.set_broker(redis_broker)
 
@@ -96,7 +101,6 @@ def start_workers():
 
 def init_app():
     init_logging()
-    logger.info(f"Initializing app with DATABASE_URL: {settings.database_url}")
 
 
 def create_app():

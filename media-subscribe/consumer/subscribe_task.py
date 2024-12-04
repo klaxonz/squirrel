@@ -12,9 +12,6 @@ from subscribe.subscribe import SubscribeChannelFactory
 
 logger = logging.getLogger(__name__)
 
-# 在文件末尾添加
-__all__ = ['process_subscribe_message']
-
 
 @dramatiq.actor(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
 def process_subscribe_message(message):
