@@ -69,6 +69,9 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings():
+    env_file = f".env.{os.getenv('ENV')}" if os.getenv("ENV") else ".env"
+    env_path = os.path.join(os.path.dirname(base_dir), env_file)
+    load_dotenv(env_path, override=True)
     return Settings()
 
 

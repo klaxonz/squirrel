@@ -31,7 +31,7 @@ class ChannelVideo(SQLModel, table=True):
     channel_id: str = Field(sa_column=Column(VARCHAR(255), nullable=False))
     channel_name: str = Field(sa_column=Column(VARCHAR(255), nullable=False))
     channel_avatar: str = Field(sa_column=Column(VARCHAR(2048), nullable=False))
-    title: str = Field(sa_column=Column(VARCHAR(255), nullable=True))
+    title: str = Field(sa_column=Column(VARCHAR(1024), nullable=True))
     video_id: str = Field(sa_column=Column(VARCHAR(64), nullable=False))
     domain: str = Field(sa_column=Column(VARCHAR(255), nullable=False))
     url: str = Field(sa_column=Column(VARCHAR(1024), nullable=False))
