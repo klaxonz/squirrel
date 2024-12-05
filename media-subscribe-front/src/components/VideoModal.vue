@@ -69,7 +69,7 @@
                   class="mini-control-btn"
                   title="在新标签页中打开原视频"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
                     <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
                   </svg>
@@ -79,7 +79,7 @@
                   class="mini-control-btn"
                   title="还原"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-8-2h2v-4h4v-2h-4V7h-2v4H7v2h4z"/>
                   </svg>
                 </button>
@@ -88,7 +88,7 @@
                   class="mini-control-btn"
                   title="关闭"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
                   </svg>
                 </button>
@@ -110,68 +110,69 @@
         <div v-if="!isMinimized" class="p-4 bg-[#0f0f0f] border-t border-[#272727]">
           <div class="flex flex-col">
             <div class="flex items-start justify-between">
-              <h2 class="text-lg font-semibold text-white flex-grow">{{ video?.title }}</h2>
-              <div class="flex items-center gap-2 ml-4 flex-shrink-0">
+              <h2 class="text-sm sm:text-lg font-semibold text-white flex-grow line-clamp-2 sm:line-clamp-none leading-5 sm:leading-6">
+                {{ video?.title }}
+              </h2>
+              <div class="flex items-start gap-4 ml-4 flex-shrink-0">
                 <!-- 喜欢按钮 -->
-                <button 
-                  @click="handleToggleLike"
-                  class="flex items-center gap-1 px-2 py-1 rounded-full 
-                         transition-all duration-150 hover:bg-[#272727]"
-                  :class="{
-                    'text-red-500': video.is_liked === 1,
-                    'text-yellow-500': video.is_liked === 0,
-                    'text-[#aaaaaa] hover:text-white': video.is_liked === null
-                  }"
-                >
-                  <svg v-if="video.is_liked === 1"
-                       xmlns="http://www.w3.org/2000/svg" 
-                       class="h-5 w-5" 
-                       fill="currentColor"
-                       viewBox="0 0 24 24"
+                <div class="flex flex-col items-center">
+                  <button 
+                    @click="handleToggleLike"
+                    class="flex items-center justify-center w-5 h-5 rounded-full 
+                           transition-all duration-150 hover:bg-[#272727]"
+                    :class="{
+                      'text-red-500': video.is_liked === 1,
+                      'text-yellow-500': video.is_liked === 0,
+                      'text-[#aaaaaa] hover:text-white': video.is_liked === null
+                    }"
                   >
-                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                  <svg v-else-if="video.is_liked === 0"
-                       xmlns="http://www.w3.org/2000/svg" 
-                       class="h-5 w-5" 
-                       fill="none"
-                       viewBox="0 0 24 24" 
-                       stroke="currentColor"
+                    <svg v-if="video.is_liked === 1"
+                         xmlns="http://www.w3.org/2000/svg" 
+                         class="h-4 w-4" 
+                         viewBox="0 0 20 20" 
+                         fill="currentColor"
+                    >
+                      <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                    </svg>
+                    <svg v-else-if="video.is_liked === 0"
+                         xmlns="http://www.w3.org/2000/svg" 
+                         class="h-4 w-4" 
+                         viewBox="0 0 20 20" 
+                         fill="currentColor"
+                    >
+                      <path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.105-1.79l-.05-.025A4 4 0 0011.055 2H5.64a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l1.4-1.866a4 4 0 00.8-2.4z" />
+                    </svg>
+                    <svg v-else
+                         xmlns="http://www.w3.org/2000/svg" 
+                         class="h-4 w-4" 
+                         viewBox="0 0 24 24" 
+                         fill="none" 
+                         stroke="currentColor"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- 原视频按钮 -->
+                <div class="flex flex-col items-center">
+                  <button 
+                    @click="goToOriginalVideo"
+                    class="flex items-center justify-center w-5 h-5 rounded-full
+                           text-[#aaaaaa] hover:text-white hover:bg-[#272727] 
+                           transition-all duration-150"
+                    title="在新标签页中打开原视频"
                   >
-                    <path stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          stroke-width="2" 
-                          d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-                  </svg>
-                  <svg v-else
-                       xmlns="http://www.w3.org/2000/svg" 
-                       class="h-5 w-5" 
-                       fill="none"
-                       viewBox="0 0 24 24" 
-                       stroke="currentColor"
-                  >
-                    <path stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          stroke-width="2" 
-                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </button>
-                <button 
-                  @click="goToOriginalVideo"
-                  class="text-[#aaaaaa] hover:text-white transition-colors duration-150 flex items-center gap-1 text-xs"
-                  title="在新标签页中打开原视频"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-                  </svg>
-                </button>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                      <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                    </svg>
+                  </button>
+                  <span class="text-xs text-[#aaaaaa] mt-1">{{ formatDate(video?.uploaded_at) }}</span>
+                </div>
               </div>
             </div>
-            <div class="mt-1">
-              <span class="text-xs text-[#aaaaaa]">{{ formatDate(video?.uploaded_at) }}</span>
-            </div>
-            
+
             <!-- 频道和演员信息区域 -->
             <div class="mt-4 flex items-center">
               <!-- 主频道信息 -->
@@ -216,7 +217,7 @@
         </div>
       </div>
 
-      <!-- 播放列表 - 在非最小化状态下显示 -->
+      <!-- 播放列表 - 在非最化状态下显示 -->
       <div v-if="!isMinimized" 
            class="playlist-section"
            :style="{ width: `${resizeState.playlistWidth}px` }"
@@ -231,7 +232,7 @@
               @click="toggleMinimize"
               class="p-2 text-[#aaaaaa] hover:text-white transition-colors duration-150 focus:outline-none"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-8-2h2v-4h4v-2h-4V7h-2v4H7v2h4z"/>
               </svg>
             </button>
@@ -239,7 +240,7 @@
               @click="close" 
               class="p-2 text-[#aaaaaa] hover:text-white transition-colors duration-150 focus:outline-none"
             >
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
               </svg>
             </button>
@@ -344,7 +345,7 @@
 
             <!-- 播放中图标 -->
             <div v-if="item.id === video?.id" class="ml-2 text-[#aaaaaa] flex-shrink-0 self-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
               </svg>
             </div>
@@ -535,7 +536,7 @@ const resizeState = ref({
   isResizing: false,
   startX: 0,
   width: '70%',
-  playlistWidth: 384, // 默认播放列表宽度
+  playlistWidth: 384, // 默认播放列宽度
   minPlaylistWidth: 320, // 最小播放列表宽度
   maxPlaylistWidth: 600 // 最大播放列表宽度
 });
@@ -583,7 +584,7 @@ const stopPlaylistResize = () => {
 };
 
 
-// 在组件卸载时清理事件监听
+// 在组件载时清理事件听
 onUnmounted(() => {
   document.removeEventListener('mousemove', handlePlaylistResize);
   document.removeEventListener('mouseup', stopPlaylistResize);
@@ -811,7 +812,7 @@ const { toggleLikeVideo } = useOptionsMenu(videoRef);
 
 const handleToggleLike = async () => {
   await toggleLikeVideo();
-  // 通知父组件更新视频数据
+  // 通知父组件更新频数据
   emit('updateVideo', {
     ...props.video,
     is_liked: props.video.is_liked
@@ -877,7 +878,7 @@ button:focus {
 .custom-scrollbar-x {
   scrollbar-width: thin;
   scrollbar-color: #606060 transparent;
-  padding-bottom: 4px; /* 为滚动条留空间 */
+  padding-bottom: 4px; /* 为滚条留空间 */
   /* 移除最大宽度限制 */
 }
 
@@ -965,7 +966,7 @@ button:focus {
   align-self: center;
 }
 
-/* 添加新的��式 */
+/* 添加新的式 */
 .resize-handle {
   position: absolute;
   left: 0;
@@ -1023,7 +1024,7 @@ button:focus {
   font-size: 0.625rem; /* 10px */
 }
 
-/* 确保视频播放器在最小化时保持比例 */
+/* 确保视频播放器在小化时保持比例 */
 .minimized .video-player {
   aspect-ratio: 16/9;
 }
@@ -1148,7 +1149,7 @@ button:focus {
     height: auto !important;
   }
 
-  /* 调整播放列表在竖屏下的样式 */
+  /* 调整播放列表在竖下的样式 */
   .playlist-section:not(.minimized) {
     width: 100% !important;
     height: auto !important;
@@ -1343,7 +1344,7 @@ button:focus {
   z-index: 1001;
 }
 
-/* 添加调试样式（可选，帮助查看拖拽区域） */
+/* 添加调试样式（可选，助查看拖拽区域） */
 .resize-edge:hover,
 .resize-corner:hover {
   background: rgba(255, 255, 255, 0.1);
