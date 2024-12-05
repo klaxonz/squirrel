@@ -13,7 +13,7 @@ from utils.cookie import filter_cookies_to_query_string
 from common.http_wrapper import session
 from core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class Video:

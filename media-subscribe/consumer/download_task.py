@@ -13,7 +13,7 @@ from model.channel import ChannelVideo
 from model.download_task import DownloadTask
 from model.message import Message
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 __all__ = ['process_download_message']

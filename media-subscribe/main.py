@@ -99,10 +99,6 @@ def start_workers():
     return workers
 
 
-def init_app():
-    init_logging()
-
-
 def create_app():
     from api.base import app
     return app
@@ -140,11 +136,10 @@ def start_fastapi_server():
 
 
 def main():
-    # 初始化应用
-    init_app()
-
     # 执行数据库迁移
     upgrade_database()
+    
+    init_logging()
 
     # 启动 workers
     workers = start_workers()

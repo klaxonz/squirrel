@@ -23,7 +23,7 @@ from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, Downloa
     SortBy, ToggleLikeRequest
 from services.channel_video_service import ChannelVideoService
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 router = APIRouter(
     tags=['频道视频接口']

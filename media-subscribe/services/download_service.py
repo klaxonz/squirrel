@@ -13,7 +13,7 @@ from model.channel import ChannelVideo
 from model.message import Message
 from consumer import extract_task
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if_retry: bool = False,

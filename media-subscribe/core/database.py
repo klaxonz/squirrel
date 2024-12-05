@@ -1,9 +1,11 @@
 import logging
 
+from common.log import init_logging
 from core.config import settings
 from sqlmodel import create_engine, Session
 
-logger = logging.getLogger(__name__)
+init_logging()
+logger = logging.getLogger()
 
 db_config = {
     'host': settings.MYSQL_HOST,

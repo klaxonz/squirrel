@@ -16,7 +16,7 @@ from .task import router as task_router
 from .video_history import router as video_history_router
 from .podcast import router as podcast_router
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,

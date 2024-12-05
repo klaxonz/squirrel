@@ -10,7 +10,7 @@ from model.channel import Channel
 from model.message import Message
 from subscribe.subscribe import SubscribeChannelFactory
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 @dramatiq.actor(queue_name=constants.QUEUE_SUBSCRIBE_TASK)

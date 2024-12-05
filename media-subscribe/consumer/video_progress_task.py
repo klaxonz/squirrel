@@ -6,7 +6,7 @@ import dramatiq
 from common import constants
 from services.video_history_service import VideoHistoryService
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 @dramatiq.actor(queue_name=constants.QUEUE_VIDEO_PROGRESS_TASK)

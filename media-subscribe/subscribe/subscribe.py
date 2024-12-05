@@ -13,7 +13,7 @@ from meta.channel import ChannelMeta
 from model.channel import Channel
 from .bilibili_sign import sign
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class SubscribeChannel:

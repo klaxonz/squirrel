@@ -25,7 +25,7 @@ from model.download_task import DownloadTask
 from services.download_service import start
 from subscribe.subscribe import SubscribeChannelFactory
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class BaseTask:

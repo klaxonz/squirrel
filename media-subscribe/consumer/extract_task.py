@@ -19,7 +19,7 @@ from model.download_task import DownloadTask
 from model.message import Message
 from consumer import download_task
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 @dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_TASK)
