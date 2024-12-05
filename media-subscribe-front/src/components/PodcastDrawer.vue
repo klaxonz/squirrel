@@ -11,7 +11,7 @@
 
     <!-- 抽屉内容 -->
     <div 
-      class="relative ml-auto w-[600px] bg-[#1f1f1f] h-full flex flex-col"
+      class="relative w-full sm:ml-auto sm:w-[600px] bg-[#1f1f1f] h-full flex flex-col"
     >
       <!-- 头部 -->
       <div class="relative flex-none">
@@ -24,18 +24,18 @@
         </div>
 
         <!-- 内容 -->
-        <div class="relative p-8">
-          <div class="flex items-start space-x-8">
+        <div class="relative p-4 sm:p-8">
+          <div class="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-8">
             <img 
               :src="podcast.cover_url" 
               :alt="podcast.title"
-              class="w-48 h-48 rounded-lg shadow-2xl object-cover"
+              class="w-32 h-32 sm:w-48 sm:h-48 rounded-lg shadow-2xl object-cover mx-auto sm:mx-0"
             >
-            <div class="flex-grow">
-              <h1 class="text-4xl font-bold">{{ podcast.title }}</h1>
-              <p class="text-lg text-[#aaaaaa] mt-2">{{ podcast.author }}</p>
+            <div class="flex-grow text-center sm:text-left">
+              <h1 class="text-2xl sm:text-4xl font-bold">{{ podcast.title }}</h1>
+              <p class="text-base sm:text-lg text-[#aaaaaa] mt-2">{{ podcast.author }}</p>
               <p class="text-sm text-[#aaaaaa] mt-4 line-clamp-3">{{ podcast.description }}</p>
-              <div class="flex items-center mt-6 space-x-6">
+              <div class="flex items-center justify-center sm:justify-start mt-4 sm:mt-6 space-x-6">
                 <span class="text-sm">{{ podcast.total_count }} 集</span>
                 <span class="text-sm">{{ formatLastUpdate(podcast.last_updated) }}</span>
               </div>
@@ -55,9 +55,9 @@
       </div>
 
       <!-- 剧集列表标题 -->
-      <div class="flex-none px-6 py-4 border-b border-[#272727]">
+      <div class="flex-none px-4 sm:px-6 py-4 border-b border-[#272727]">
         <div class="flex items-center justify-between">
-          <h2 class="text-xl font-bold">所有剧集</h2>
+          <h2 class="text-lg sm:text-xl font-bold">所有剧集</h2>
           <div class="flex items-center space-x-4">
             <button 
               v-for="sort in ['最新', '最早']" 
@@ -74,21 +74,21 @@
 
       <!-- 剧集列表 -->
       <div class="flex-1 overflow-y-auto scrollbar-hide" @scroll="handleScroll">
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
           <!-- 剧集列表 -->
           <div class="space-y-2">
             <div 
               v-for="episode in sortedEpisodes" 
               :key="episode.id"
-              class="group flex items-center p-4 rounded-lg hover:bg-[#272727] cursor-pointer transition-colors"
+              class="group flex items-center p-3 sm:p-4 rounded-lg hover:bg-[#272727] cursor-pointer transition-colors"
             >
-              <div class="w-12 h-12 flex-shrink-0">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
                 <img 
                   :src="podcast.cover_url" 
                   class="w-full h-full rounded object-cover"
                 >
               </div>
-              <div class="flex-grow min-w-0 ml-4">
+              <div class="flex-grow min-w-0 ml-3 sm:ml-4">
                 <h3 class="text-sm font-medium truncate">{{ episode.title }}</h3>
                 <p class="text-xs text-[#aaaaaa] mt-1 line-clamp-2">{{ episode.description }}</p>
                 <div class="flex items-center mt-2 space-x-4">
@@ -97,10 +97,19 @@
                 </div>
               </div>
               <button 
-                class="p-2 text-white opacity-0 group-hover:opacity-100"
+                class="p-2 text-white opacity-0 group-hover:opacity-100 sm:block hidden"
                 @click="handlePlay(episode)"
               >
                 <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M4 4l12 6-12 6V4z"/>
+                </svg>
+              </button>
+              <!-- 移动端播放按钮 -->
+              <button 
+                class="p-2 text-white sm:hidden"
+                @click="handlePlay(episode)"
+              >
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M4 4l12 6-12 6V4z"/>
                 </svg>
               </button>

@@ -1,44 +1,60 @@
 <template>
-  <div class="podcasts-page flex h-full bg-[#0f0f0f] text-white">
-    <!-- 左侧导航栏 -->
-    <div class="w-60 flex-shrink-0 flex flex-col border-r border-[#272727]">
-      <!-- Logo/标题 -->
-      <div class="p-4 border-b border-[#272727]">
+  <div class="podcasts-page flex flex-col sm:flex-row h-full bg-[#0f0f0f] text-white">
+    <!-- 移动端顶部搜索栏 -->
+    <div class="sm:hidden p-4 border-b border-[#272727]">
+      <div class="flex items-center gap-4">
+        <div class="flex-1">
+          <SearchBar 
+            @search="handleSearch" 
+            ref="searchBar"
+            placeholder="搜索播客..."
+          />
+        </div>
+        <button
+          @click="showAddDialog = true"
+          class="p-2 text-[#aaaaaa] hover:text-white flex-shrink-0"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 左侧导航栏 - 在移动端变为第二行导航 -->
+    <div class="w-full sm:w-60 flex-shrink-0 flex flex-col border-r border-[#272727]">
+      <!-- Logo/标题 - 仅在桌面端显示 -->
+      <div class="hidden sm:flex p-4 border-b border-[#272727] items-center">
         <h1 class="text-xl font-bold">播客</h1>
       </div>
 
       <!-- 导航菜单 -->
-      <nav class="flex-1 overflow-y-auto scrollbar-hide">
-        <div class="p-4">
+      <nav class="flex-none sm:flex-1 overflow-x-auto sm:overflow-y-auto scrollbar-hide">
+        <div class="p-4 flex sm:flex-col gap-2">
           <button
             v-for="item in navItems"
             :key="item.id"
             @click="currentView = item.id"
-            class="w-full px-4 py-2 mb-1 flex items-center rounded-lg text-sm transition-colors"
+            class="flex items-center rounded-lg text-sm transition-colors whitespace-nowrap px-4 py-2"
             :class="currentView === item.id ? 'bg-[#272727] text-white' : 'text-[#aaaaaa] hover:text-white'"
           >
-            <component :is="item.icon" class="w-5 h-5 mr-3"/>
+            <component :is="item.icon" class="w-5 h-5 mr-3 flex-shrink-0"/>
             {{ item.label }}
-          </button>
-        </div>
-
-        <!-- 分类列表 -->
-        <div class="px-4 mt-2">
-          <h3 class="px-4 text-xs font-medium text-[#aaaaaa] uppercase mb-2">分类</h3>
-          <button
-            v-for="category in categories"
-            :key="category.value"
-            @click="activeCategory = category.value"
-            class="w-full px-4 py-2 mb-1 text-left rounded-lg text-sm transition-colors"
-            :class="activeCategory === category.value ? 'bg-[#272727] text-white' : 'text-[#aaaaaa] hover:text-white'"
-          >
-            {{ category.label }}
           </button>
         </div>
       </nav>
 
-      <!-- 添加按钮 -->
-      <div class="p-4 border-t border-[#272727]">
+      <!-- 桌面端搜索栏 -->
+      <div class="hidden sm:block p-4 border-t border-b border-[#272727]">
+        <SearchBar 
+          @search="handleSearch" 
+          ref="searchBar"
+          placeholder="搜索播客..."
+        />
+      </div>
+
+      <!-- 添加按钮 - 在桌面端显示 -->
+      <div class="hidden sm:block p-4 border-t border-[#272727]">
         <button
           @click="showAddDialog = true"
           class="w-full px-4 py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#aa0000] transition-colors flex items-center justify-center"
@@ -53,17 +69,8 @@
 
     <!-- 主内容区域 -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <!-- 顶部搜索栏 -->
-      <div class="p-4 border-b border-[#272727]">
-        <SearchBar 
-          @search="handleSearch" 
-          ref="searchBar"
-          placeholder="索播客..."
-        />
-      </div>
-
       <!-- 内容区域 -->
-      <div class="flex-1 overflow-y-auto scrollbar-hide p-6">
+      <div class="flex-1 overflow-y-auto scrollbar-hide p-4 sm:p-6">
         <!-- 正在收听 -->
         <section v-if="currentView === 'listening' && listening.length > 0" class="mb-8">
           <h2 class="text-xl font-bold mb-4">正在收听</h2>
@@ -95,12 +102,10 @@
 
         <!-- 所有播客 -->
         <section>
-          <h2 class="text-xl font-bold mb-4">
-            {{ currentView === 'all' ? '所有播客' : getCategoryLabel(activeCategory) }}
-          </h2>
+          <h2 class="text-xl font-bold mb-4">所有播客</h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
             <PodcastCard
-              v-for="podcast in filteredPodcasts"
+              v-for="podcast in podcasts"
               :key="podcast.id"
               :podcast="podcast"
               :isPlaying="currentPodcast?.id === podcast.id"
@@ -165,19 +170,7 @@ const {
   updatePlayProgress
 } = usePodcasts();
 
-const categories = [
-  { label: '全部', value: 'all' },
-  { label: '新闻', value: 'news' },
-  { label: '科技', value: 'tech' },
-  { label: '商业', value: 'business' },
-  { label: '文化', value: 'culture' },
-  { label: '教育', value: 'education' },
-  { label: '娱乐', value: 'entertainment' },
-  { label: '音乐', value: 'music' },
-  { label: '其他', value: 'others' }
-];
-
-const activeCategory = ref('all');
+const categories = ref([]);
 const listening = ref([]); // 正在收听的播客
 const recentlyUpdated = computed(() => {
   return podcasts.value
@@ -185,17 +178,6 @@ const recentlyUpdated = computed(() => {
     .sort((a, b) => new Date(b.last_update) - new Date(a.last_update))
     .slice(0, 6);
 });
-
-const filteredPodcasts = computed(() => {
-  if (activeCategory.value === 'all') {
-    return podcasts.value;
-  }
-  return podcasts.value.filter(podcast => podcast.category === activeCategory.value);
-});
-
-const getCategoryLabel = (value) => {
-  return categories.find(c => c.value === value)?.label || '全部播客';
-};
 
 const handleSearch = (keyword) => {
   searchQuery.value = keyword;
@@ -283,8 +265,11 @@ const navItems = [
 </script>
 
 <style scoped>
-.podcasts-page {
-  height: 100vh;
+/* 添加移动端特定样式 */
+@media (max-width: 640px) {
+  .podcasts-page {
+    height: calc(100vh - 56px); /* 减去底部播放器高度 */
+  }
 }
 
 .scrollbar-hide {
