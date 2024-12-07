@@ -1,30 +1,39 @@
 <template>
-  <VideoList
-      :videos="processedVideos"
-      :loading="loading"
-      :allLoaded="allLoaded"
-      :showAvatar="false"
-      :is-channel-page="true"
-      @loadMore="loadMore"
-      @play="playVideo"
-      @videoPlay="onVideoPlay"
-      @videoPause="onVideoPause"
-      @videoEnded="onVideoEnded"
-      @toggleOptions="toggleOptions"
-      @openModal="(video) => emit('openModal', video, videos)"
-      @goToChannel="(newChannelId) => emit('goToChannel', newChannelId)"
-  />
-
+  <keep-alive>
+    <VideoList
+        :key="`video-list-${$route.name}`"
+        :videos="processedVideos"
+        :loading="loading"
+        :allLoaded="allLoaded"
+        :showAvatar="false"
+        :is-channel-page="true"
+        @loadMore="loadMore"
+        @play="playVideo"
+        @videoPlay="onVideoPlay"
+        @videoPause="onVideoPause"
+        @videoEnded="onVideoEnded"
+        @toggleOptions="toggleOptions"
+        @openModal="(video) => emit('openModal', video, videos)"
+        @goToChannel="(newChannelId) => emit('goToChannel', newChannelId)"
+    />
+  </keep-alive>
 </template>
 
 
+<script>
+export default {
+  name: 'VideoTab'
+}
+</script>
+
 <script setup>
-import { computed } from 'vue';
+import {computed, onMounted} from 'vue';
 import VideoList from "./VideoList.vue";
 import useLatestVideos from "../composables/useLatestVideos.js";
 import useVideoOperations from "../composables/useVideoOperations.js";
 import useOptionsMenu from "../composables/useOptionsMenu.js";
-import {defineEmits, onMounted, watch} from "vue";
+import {defineEmits, watch} from "vue";
+
 
 const emit = defineEmits(['openModal', 'update-counts', 'goToChannel']);
 
@@ -54,7 +63,6 @@ const {
   sortBy
 } = useLatestVideos();
 
-// 添加计算属性来处理视频进度
 const processedVideos = computed(() => {
   return videos.value.map(video => ({
     ...video,

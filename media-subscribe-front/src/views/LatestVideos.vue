@@ -1,33 +1,33 @@
 <template>
   <div class="latest-videos flex flex-col h-full">
-    <SearchBar class="pt-4 px-4" @search="handleSearch" ref="searchBar" />
+    <SearchBar ref="searchBar" class="pt-4 px-4" @search="handleSearch"/>
     <div class="flex items-center justify-between py-1">
-      <TabBar 
-        v-model="activeTab" 
-        :tabs="tabsWithCounts" 
-        class="custom-tab-bar flex-grow pl-4"
+      <TabBar
+          v-model="activeTab"
+          :tabs="tabsWithCounts"
+          class="custom-tab-bar flex-grow pl-4"
       />
       <SortButton
-        v-model="sortBy"
-        @update:modelValue="handleSortChange"
-        class="ml-2 pr-4"
+          v-model="sortBy"
+          class="ml-2 pr-4"
+          @update:modelValue="handleSortChange"
       />
     </div>
 
     <div class="video-container flex-grow">
-      <router-view 
-        v-slot="{ Component }" 
-      >
-        <component
-          :is="Component"
-          :active-tab="activeTab"
-          :search-query="searchQuery"
-          :selected-channel-id="channelId"
-          :sort-by="sortBy"
-          @update-counts="updateCounts"
-          @openModal="handleOpenModal"
-          @goToChannel="goToChannelDetail"
-        />
+      <router-view v-slot="{ Component }">
+        <keep-alive :max="10">
+          <component 
+              :is="Component"
+              :active-tab="activeTab"
+              :search-query="searchQuery"
+              :selected-channel-id="channelId"
+              :sort-by="sortBy"
+              @goToChannel="goToChannelDetail"
+              @openModal="handleOpenModal"
+              @update-counts="updateCounts"
+          />
+        </keep-alive>
       </router-view>
     </div>
   </div>
@@ -38,8 +38,8 @@
 </template>
 
 <script setup>
-import {onMounted, inject, ref, computed, watch, onUnmounted} from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
@@ -127,7 +127,7 @@ onUnmounted(() => {
 });
 </script>
 
-<style src="../styles/components/LatestVideos.css" scoped></style>
+<style scoped src="../styles/components/LatestVideos.css"></style>
 
 <style scoped>
 .latest-videos {

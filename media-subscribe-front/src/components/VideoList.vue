@@ -1,51 +1,41 @@
 <template>
   <div class="video-list-container relative" ref="containerRef">
     <RecycleScroller
-      class="scroller"
-      :items="props.videos"
-      :item-size="computedItemSize"
-      key-field="id"
-      :buffer="400"
-      @scroll="handleScroll"
-      :gridItems="computedGridItems"
-      :prerender="30"
-      :item-secondary-size="computedItemSecondarySize"
+        class="scroller"
+        :items="props.videos"
+        :item-size="computedItemSize"
+        key-field="id"
+        :buffer="400"
+        @scroll="handleScroll"
+        :gridItems="computedGridItems"
+        :prerender="30"
+        :item-secondary-size="computedItemSecondarySize"
     >
       <template #default="{ item: video }">
         <div class="grid-item">
           <VideoItem
-            :video="video"
-            :isSelected="selectedVideos.includes(video.id)"
-            @toggleSelection="toggleVideoSelection"
-            :isChannelPage="isChannelPage"
-            :showAvatar="showAvatar"
-            :refreshContent="refreshContent"
-            :showProgress="video.showProgress"
-            :progress="video.progress"
-            @toggleOptions="$emit('toggleOptions', $event, video.id)"
-            @goToChannel="$emit('goToChannel', $event)"
-            @openModal="$emit('openModal', video)"
-            @markReadBatch="handleMarkReadBatch"
+              :video="video"
+              :isSelected="selectedVideos.includes(video.id)"
+              @toggleSelection="toggleVideoSelection"
+              :isChannelPage="isChannelPage"
+              :showAvatar="showAvatar"
+              :showProgress="video.showProgress"
+              :progress="video.progress"
+              @toggleOptions="$emit('toggleOptions', $event, video.id)"
+              @goToChannel="$emit('goToChannel', $event)"
+              @openModal="$emit('openModal', video)"
+              @markReadBatch="handleMarkReadBatch"
           />
         </div>
       </template>
     </RecycleScroller>
-    
-    <!-- 批量操作浮动按钮 -->
-    <div v-if="selectedVideos.length > 0" class="fixed bottom-4 right-4 z-50">
-      <button @click="batchMarkAsRead" class="bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg mr-2">
-        标记为已读 ({{ selectedVideos.length }})
-      </button>
-      <button @click="clearSelection" class="bg-gray-500 text-white px-4 py-2 rounded-full shadow-lg">
-        取消选择
-      </button>
-    </div>
 
     <!-- 加载更多指示器 -->
     <div v-if="props.loading" class="loading-indicator text-center py-4">
       <svg class="animate-spin h-5 w-5 text-gray-500 mx-auto" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        <path class="opacity-75" fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
       <p class="mt-2">加载更多...</p>
     </div>
@@ -58,8 +48,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, onUnmounted, provide, nextTick } from 'vue';
-import { RecycleScroller } from 'vue-virtual-scroller';
+import {computed, onMounted, provide, ref} from 'vue';
+import {RecycleScroller} from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import VideoItem from './VideoItem.vue';
 
@@ -69,7 +59,6 @@ const props = defineProps({
   allLoaded: Boolean,
   showAvatar: Boolean,
   isChannelPage: Boolean,
-  refreshContent: Function,
 });
 
 const emit = defineEmits([
@@ -94,25 +83,6 @@ const updateContainerWidth = () => {
 
 onMounted(() => {
   updateContainerWidth();
-  window.addEventListener('resize', updateContainerWidth);
-  
-  const resizeObserver = new ResizeObserver(() => {
-    updateContainerWidth();
-    checkInitialContent();
-  });
-  
-  if (containerRef.value) {
-    resizeObserver.observe(containerRef.value);
-  }
-  
-  nextTick(() => {
-    checkInitialContent();
-  });
-  
-  onUnmounted(() => {
-    window.removeEventListener('resize', updateContainerWidth);
-    resizeObserver.disconnect();
-  });
 });
 
 const computedGridItems = computed(() => {
@@ -147,18 +117,8 @@ const toggleVideoSelection = (videoId) => {
   }
 };
 
-const batchMarkAsRead = () => {
-  // 实现批量标记为已读的逻辑
-  emit('batchMarkAsRead', selectedVideos.value);
-  clearSelection();
-};
-
-const clearSelection = () => {
-  selectedVideos.value = [];
-};
-
 const handleScroll = (event) => {
-  const { scrollTop, clientHeight, scrollHeight } = event.target;
+  const {scrollTop, clientHeight, scrollHeight} = event.target;
   if (scrollHeight - scrollTop - clientHeight < computedItemSize.value * 2 && !props.loading && !props.allLoaded) {
     emit('loadMore');
   }
@@ -168,25 +128,6 @@ const handleMarkReadBatch = (videoId, isRead, direction) => {
   emit('markReadBatch', videoId, isRead, direction);
 };
 
-const checkInitialContent = () => {
-  if (!containerRef.value) return;
-  
-  const container = containerRef.value;
-  const scroller = container.querySelector('.scroller');
-  if (!scroller) return;
-
-  // 如果内容高度小于容器高度，且还有更多内容可以加载，则触发加载更多
-  if (scroller.scrollHeight <= scroller.clientHeight && !props.loading && !props.allLoaded) {
-    emit('loadMore');
-  }
-};
-
-watch(() => props.videos.length, () => {
-  nextTick(() => {
-    updateContainerWidth();
-    checkInitialContent();
-  });
-});
 </script>
 
 <style scoped>

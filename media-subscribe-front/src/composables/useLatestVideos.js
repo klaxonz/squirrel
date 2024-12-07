@@ -1,20 +1,21 @@
 import { ref, computed } from 'vue';
 import { get } from '../utils/request';
 
-export default function useLatestVideos() {
-  const videoContainer = ref(null);
-  const videos = ref([]);
-  const loading = ref(false);
-  const allLoaded = ref(false);
-  const error = ref(null);
-  const activeTab = ref('all');
-  const videoCounts = ref({ all: 0, unread: 0, read: 0, preview: 0, liked: 0});
-  const currentPage = ref(1);
-  const searchQuery = ref('');
-  const isResetting = ref(false);
-  const channelId = ref('');
-  const sortBy = ref('uploaded_at');
+// 将状态提升到模块级别
+const videoContainer = ref(null);
+const videos = ref([]);
+const loading = ref(false);
+const allLoaded = ref(false);
+const error = ref(null);
+const activeTab = ref('all');
+const videoCounts = ref({ all: 0, unread: 0, read: 0, preview: 0, liked: 0});
+const currentPage = ref(1);
+const searchQuery = ref('');
+const isResetting = ref(false);
+const channelId = ref('');
+const sortBy = ref('uploaded_at');
 
+export default function useLatestVideos() {
   const tabs = [
     { label: '全部', value: 'all' },
     { label: '未读', value: 'unread' },

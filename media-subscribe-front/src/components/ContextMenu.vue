@@ -6,15 +6,7 @@
     @click.stop
   >
     <div class="py-1">
-      <button @click="$emit('toggleSelection')" class="option-item group">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-        </svg>
-        <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">
-          {{ isSelected ? '取消选择' : '选择此项' }}
-        </span>
-      </button>
-      <div class="relative group" 
+      <div class="relative group"
            @mouseenter="showReadMenu = true" 
            @mouseleave="showReadMenu = false"
            @click.stop="toggleReadMenu">
@@ -149,10 +141,6 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  isSelected: {
-    type: Boolean,
-    default: false
-  },
   video: {
     type: Object,
     required: true
@@ -166,7 +154,6 @@ const emit = defineEmits([
   'downloadVideo',
   'copyVideoLink',
   'markReadBatch',
-  'toggleSelection',
   'toggleLike'
 ]);
 

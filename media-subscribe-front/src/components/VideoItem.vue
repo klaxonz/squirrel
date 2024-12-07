@@ -2,7 +2,6 @@
   <div 
     class="video-item bg-[#212121] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ease-in-out transform hover:-translate-y-1 relative"
     @contextmenu.prevent="showContextMenu"
-    :class="{ 'border-2 border-blue-500': isSelected }"
     @click="handleClick"
   >
     <div class="video-thumbnail relative cursor-pointer overflow-hidden group" ref="imageRef">
@@ -47,12 +46,6 @@
         {{ formatDuration(video.duration) }}
       </div>
       <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-      
-      <div v-if="isSelected" class="absolute top-2 left-2 bg-blue-500 text-white rounded-full p-1">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-        </svg>
-      </div>
 
       <div
         v-if="showProgress && progress > 0" 
@@ -146,7 +139,6 @@
         :position="menuPosition"
         :is-open="showMenu"
         :is-read="video.is_read"
-        :is-selected="isSelected"
         :video="video"
         @close="closeContextMenu"
         @toggleReadStatus="toggleReadStatus"
@@ -154,7 +146,6 @@
         @downloadVideo="downloadVideo"
         @copyVideoLink="copyVideoLink"
         @dislikeVideo="dislikeVideo"
-        @toggleSelection="$emit('toggleSelection', video.id)"
         @toggleLike="toggleLikeVideo"
       />
     </Teleport>
@@ -176,10 +167,7 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
-  isChannelPage: Boolean,
   setVideoRef: Function,
-  refreshContent: Function,
-  isSelected: Boolean,
   showProgress: {
     type: Boolean,
     default: false
@@ -194,12 +182,8 @@ const emit = defineEmits([
   'goToChannel',
   'openModal', 
   'downloadVideo',
-  'select',
-  'markReadBatch',
-  'toggleSelection'
 ]);
 
-const isSelectionMode = inject('isSelectionMode', ref(false));
 
 const imageRef = ref(null);
 const isImageLoaded = ref(false);
@@ -242,7 +226,7 @@ onUnmounted(() => {
 const showMenu = ref(false);
 const menuPosition = ref({ x: 0, y: 0 });
 
-const videoRef = toRef(props, 'video');  // 将 props.video 转换为响应式引用
+const videoRef = toRef(props, 'video');
 const {
   toggleReadStatus,
   markReadBatch,
@@ -250,11 +234,9 @@ const {
   copyVideoLink,
   dislikeVideo,
   toggleLikeVideo,
-} = useOptionsMenu(videoRef);  // 传��响应式引用
+} = useOptionsMenu(videoRef);
 
-// 添加 watch 来监听视频对象的变化
 watch(() => props.video, (newVideo) => {
-  // 重新初始化 useOptionsMenu
   const {
     toggleReadStatus: newToggleReadStatus,
     markReadBatch: newMarkReadBatch,
@@ -263,7 +245,6 @@ watch(() => props.video, (newVideo) => {
     toggleLikeVideo: newToggleLikeVideo,
   } = useOptionsMenu(newVideo);
 
-  // 更新方法引用
   downloadVideo.value = newDownloadVideo;
   toggleReadStatus.value = newToggleReadStatus;
   markReadBatch.value = newMarkReadBatch;
@@ -274,12 +255,10 @@ watch(() => props.video, (newVideo) => {
 const showContextMenu = async (event) => {
   event.preventDefault();
   event.stopPropagation();
-  // 关闭所有其他的上下文菜单
   document.dispatchEvent(new CustomEvent('closeAllContextMenus'));
   
   await nextTick();
   
-  // 使用全局坐标
   const x = event.clientX;
   const y = event.clientY;
   
@@ -298,17 +277,6 @@ const handleScroll = () => {
 };
 
 const handleClick = (event) => {
-  console.log('Video clicked:', props.video); // 添加调试日志
-  
-  // 如果是选择模式，切换选择状态
-  if (isSelectionMode.value) {
-    console.log('Selection mode active'); // 调试日志
-    emit('toggleSelection', props.video.id);
-    return;
-  }
-  
-  // 否则打开视频模态框
-  console.log('Opening video modal'); // 调试日志
   emit('openModal', props.video);
 };
 

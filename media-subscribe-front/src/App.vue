@@ -7,7 +7,11 @@
     <main class="flex-1 relative">
       <div class="page-container absolute inset-0">
         <div class="content-container scrollbar-hide">
-          <router-view></router-view>
+          <router-view v-slot="{ Component }">
+            <keep-alive :include="['LatestVideos']">
+              <component :is="Component" />
+            </keep-alive>
+          </router-view>
         </div>
       </div>
     </main>
