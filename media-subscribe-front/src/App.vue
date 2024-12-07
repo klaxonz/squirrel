@@ -36,15 +36,11 @@
 
 <script setup>
 import { provide, ref, onMounted, onUnmounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
 import mitt from 'mitt';
-import VideoModal from './components/VideoModal.vue';
 import MobileNav from './components/MobileNav.vue';
 import Sidebar from './components/Sidebar.vue';
 import PodcastPlayer from './components/PodcastPlayer.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
-import useVideoOperations from './composables/useVideoOperations';
-import useToast from './composables/useToast';
 import { useWindowSize } from '@vueuse/core'
 import './styles/layout.css'
 import { usePodcasts } from './composables/usePodcasts';
@@ -65,11 +61,6 @@ const routes = ref([
   { path: '/settings', name: '设置', icon: CogIcon },
 ]);
 
-
-// 监听视频模态框打开事件
-onMounted(() => {
-
-});
 
 onUnmounted(() => {
   emitter.all.clear();

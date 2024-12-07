@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import {computed, onMounted, provide, ref} from 'vue';
+import {computed, onMounted, provide, ref, inject, onUnmounted} from 'vue';
 import {RecycleScroller} from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import VideoItem from './VideoItem.vue';
@@ -79,8 +79,23 @@ const updateContainerWidth = () => {
   }
 };
 
+const emitter = inject('emitter');
+
 onMounted(() => {
   updateContainerWidth();
+  
+  // 监听侧边栏状态变化
+  emitter.on('sidebarStateChanged', () => {
+    // 使用 setTimeout 确保 DOM 已更新
+    setTimeout(() => {
+      updateContainerWidth();
+    }, 300); // 300ms 是侧边栏动画的持续时间
+  });
+});
+
+// 在组件卸载时清理事件监听
+onUnmounted(() => {
+  emitter.off('sidebarStateChanged');
 });
 
 const computedGridItems = computed(() => {
@@ -149,6 +164,20 @@ const handleMarkReadBatch = (videoId, isRead, direction) => {
 .grid-item {
   padding: 8px;
   box-sizing: border-box;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.grid-item :deep(.video-item) {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.grid-item :deep(.video-thumbnail) {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.grid-item :deep(img) {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
 }
 
 @keyframes fadeIn {

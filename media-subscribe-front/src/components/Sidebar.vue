@@ -68,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, inject } from 'vue';
 import { useRoute } from 'vue-router';
 import {
   HomeIcon,
@@ -82,6 +82,7 @@ import {
 const route = useRoute();
 const isCollapsed = ref(false);
 const emit = defineEmits(['collapse']);
+const emitter = inject('emitter');
 
 const menuItems = [
   {
@@ -122,6 +123,7 @@ const bottomItems = [
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value;
   emit('collapse', isCollapsed.value);
+  emitter.emit('sidebarStateChanged');
 };
 
 // 监听路由变化，在移动端自动收起侧边栏
