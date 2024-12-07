@@ -6,7 +6,6 @@
         :loading="loading"
         :allLoaded="allLoaded"
         :showAvatar="false"
-        :is-channel-page="true"
         @loadMore="loadMore"
         @play="playVideo"
         @videoPlay="onVideoPlay"
@@ -18,13 +17,6 @@
     />
   </keep-alive>
 </template>
-
-
-<script>
-export default {
-  name: 'VideoTab'
-}
-</script>
 
 <script setup>
 import {computed, onMounted} from 'vue';

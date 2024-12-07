@@ -17,7 +17,6 @@
               :video="video"
               :isSelected="selectedVideos.includes(video.id)"
               @toggleSelection="toggleVideoSelection"
-              :isChannelPage="isChannelPage"
               :showAvatar="showAvatar"
               :showProgress="video.showProgress"
               :progress="video.progress"
@@ -58,7 +57,6 @@ const props = defineProps({
   loading: Boolean,
   allLoaded: Boolean,
   showAvatar: Boolean,
-  isChannelPage: Boolean,
 });
 
 const emit = defineEmits([
