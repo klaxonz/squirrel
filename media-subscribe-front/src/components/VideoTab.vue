@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import {computed, onMounted} from 'vue';
+import {computed, inject, onMounted} from 'vue';
 import VideoList from "./VideoList.vue";
 import useLatestVideos from "../composables/useLatestVideos.js";
 import useVideoOperations from "../composables/useVideoOperations.js";
@@ -27,6 +27,7 @@ import useOptionsMenu from "../composables/useOptionsMenu.js";
 import {defineEmits, watch} from "vue";
 
 
+const emitter = inject('emitter');
 const emit = defineEmits(['openModal', 'update-counts', 'goToChannel']);
 
 const props = defineProps({
@@ -100,7 +101,12 @@ const {
 
 onMounted(async () => {
   channelId.value = props.selectedChannelId;
+  emitter.on('reloadContent', (tab) => {
+    handleSearch();
+  });
   await loadMore();
+
+
 })
 
 </script>

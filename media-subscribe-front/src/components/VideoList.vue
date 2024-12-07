@@ -5,7 +5,7 @@
         :items="props.videos"
         :item-size="computedItemSize"
         key-field="id"
-        :buffer="400"
+        :buffer="200"
         @scroll="handleScroll"
         :gridItems="computedGridItems"
         :prerender="30"
@@ -15,8 +15,6 @@
         <div class="grid-item">
           <VideoItem
               :video="video"
-              :isSelected="selectedVideos.includes(video.id)"
-              @toggleSelection="toggleVideoSelection"
               :showAvatar="showAvatar"
               :showProgress="video.showProgress"
               :progress="video.progress"
@@ -47,7 +45,7 @@
 </template>
 
 <script setup>
-import {computed, onMounted, provide, ref, inject, onUnmounted} from 'vue';
+import {computed, onMounted, ref, inject, onUnmounted} from 'vue';
 import {RecycleScroller} from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import VideoItem from './VideoItem.vue';
@@ -71,32 +69,39 @@ const emit = defineEmits([
 const containerRef = ref(null);
 const containerWidth = ref(0);
 
-const updateContainerWidth = () => {
-  if (containerRef.value) {
-    requestAnimationFrame(() => {
-      containerWidth.value = containerRef.value.offsetWidth;
-    });
-  }
-};
-
 const emitter = inject('emitter');
 
 onMounted(() => {
   updateContainerWidth();
   
   // 监听侧边栏状态变化
-  emitter.on('sidebarStateChanged', () => {
-    // 使用 setTimeout 确保 DOM 已更新
-    setTimeout(() => {
-      updateContainerWidth();
-    }, 300); // 300ms 是侧边栏动画的持续时间
-  });
+  emitter.on('sidebarStateChanged', updateContainerWidth);
+  // 监听窗口大小变化
+  window.addEventListener('resize', updateContainerWidth);
+
 });
 
 // 在组件卸载时清理事件监听
 onUnmounted(() => {
-  emitter.off('sidebarStateChanged');
+  emitter.off('sidebarStateChanged', updateContainerWidth);
+  emitter.off('reloadContent');
+  window.removeEventListener('resize', updateContainerWidth);
 });
+
+// 优化 updateContainerWidth，添加防抖
+const updateContainerWidth = (() => {
+  let timer = null;
+  return () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (containerRef.value) {
+        requestAnimationFrame(() => {
+          containerWidth.value = containerRef.value.offsetWidth;
+        });
+      }
+    }, 100);
+  };
+})();
 
 const computedGridItems = computed(() => {
   const width = containerWidth.value;
@@ -116,19 +121,6 @@ const computedItemSecondarySize = computed(() => {
 const computedItemSize = computed(() => {
   return Math.floor(computedItemSecondarySize.value * (9 / 16)) + 76;
 });
-
-const selectedVideos = ref([]);
-const isSelectionMode = computed(() => selectedVideos.value.length > 0);
-provide('isSelectionMode', isSelectionMode);
-
-const toggleVideoSelection = (videoId) => {
-  const index = selectedVideos.value.indexOf(videoId);
-  if (index === -1) {
-    selectedVideos.value.push(videoId);
-  } else {
-    selectedVideos.value.splice(index, 1);
-  }
-};
 
 const handleScroll = (event) => {
   const {scrollTop, clientHeight, scrollHeight} = event.target;

@@ -6,6 +6,7 @@
         v-for="tab in tabs"
         :key="tab.value"
         @click="$emit('update:modelValue', tab.value)"
+        @dblclick="$emit('tab-dblclick', tab.value)"
         :class="[
           'px-3 py-1 text-xs font-medium rounded-full transition-colors duration-150 ease-in-out flex items-center',
           modelValue === tab.value
@@ -38,7 +39,7 @@ defineProps({
   tabs: Array
 });
 
-defineEmits(['update:modelValue']);
+defineEmits(['update:modelValue', 'tab-dblclick']);
 </script>
 
 <style scoped>

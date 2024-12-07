@@ -6,6 +6,7 @@
           v-model="activeTab"
           :tabs="tabsWithCounts"
           class="custom-tab-bar flex-grow pl-4"
+          @tab-dblclick="handleTabDoubleClick"
       />
       <SortButton
           v-model="sortBy"
@@ -108,6 +109,12 @@ const goToChannelDetail = (newChannelId) => {
 
 const handleSortChange = (newSort) => {
   sortBy.value = newSort;
+};
+
+const handleTabDoubleClick = (tab) => {
+  if (tab === activeTab.value) {
+    emitter.emit('reloadContent', activeTab.value);
+  }
 };
 
 watch(() => activeTab.value, (newVal) => {
