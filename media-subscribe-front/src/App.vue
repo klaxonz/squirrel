@@ -15,23 +15,6 @@
     <!-- Mobile navigation -->
     <MobileNav v-if="isMobile" :routes="mobileRoutes" />
 
-    <!-- Video Modal -->
-    <Teleport to="body">
-      <VideoModal
-        v-if="isModalOpen"
-        :isOpen="isModalOpen"
-        :video="selectedVideo"
-        :playlist="currentPlaylist"
-        @close="closeVideoModal"
-        @videoPlay="onVideoPlay"
-        @videoPause="onVideoPause"
-        @videoEnded="onVideoEnded"
-        @changeVideo="handleChangeVideo"
-        @goToChannel="handleGoToChannel"
-        @updateVideo="handleVideoUpdate"
-      />
-    </Teleport>
-
     <!-- 全局播放器 -->
     <Teleport to="body">
       <PodcastPlayer
@@ -62,29 +45,12 @@ import { useWindowSize } from '@vueuse/core'
 import './styles/layout.css'
 import { usePodcasts } from './composables/usePodcasts';
 
-const router = useRouter();
 const emitter = mitt();
 provide('emitter', emitter);
 
 const { width } = useWindowSize()
 const isMobile = computed(() => width.value < 768)
 
-// 添加视频播放相关的状态
-const isModalOpen = ref(false);
-const selectedVideo = ref(null);
-const currentPlaylist = ref([]);
-const videos = ref([]);
-
-// 使用视频操作 composable
-const {
-  playVideo,
-  changeVideo,
-  onVideoPlay,
-  onVideoPause,
-  onVideoEnded,
-} = useVideoOperations(videos);
-
-const {displayToast } = useToast();
 
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
@@ -95,44 +61,10 @@ const routes = ref([
   { path: '/settings', name: '设置', icon: CogIcon },
 ]);
 
-// 添加视频模态框相关方法
-const openVideoModal = async (video, playlist) => {
-  console.log('Opening video modal with:', video);
-  emitter.emit('closeMiniPlayer');
-  selectedVideo.value = video;
-  currentPlaylist.value = playlist;
-  isModalOpen.value = true;
-  await playVideo(video);
-};
-
-const closeVideoModal = () => {
-  isModalOpen.value = false;
-  selectedVideo.value = null;
-};
-
-const handleChangeVideo = async (newVideo) => {
-  try {
-    const updatedVideo = await changeVideo(newVideo);
-    if (updatedVideo) {
-      selectedVideo.value = updatedVideo;
-    }
-  } catch (err) {
-    console.error('切换视频失败:', err);
-    displayToast('切换视频失败');
-  }
-};
-
-const handleGoToChannel = (channelId) => {
-  router.push(`/channel/${channelId}/all`);
-};
 
 // 监听视频模态框打开事件
 onMounted(() => {
-  console.log('Setting up video modal event listener');
-  emitter.on('openVideoModal', ({ video, playlist }) => {
-    console.log('Received openVideoModal event:', video);
-    openVideoModal(video, playlist);
-  });
+
 });
 
 onUnmounted(() => {
@@ -181,16 +113,6 @@ const mobileRoutes = computed(() => {
   return routes.value
 })
 
-const handleVideoUpdate = (updatedVideo) => {
-  // 更新当前视频
-  selectedVideo.value = updatedVideo;
-  
-  // 更新播放列表中的视频
-  const index = currentPlaylist.value.findIndex(v => v.video_id === updatedVideo.video_id);
-  if (index !== -1) {
-    currentPlaylist.value[index] = updatedVideo;
-  }
-};
 </script>
 
 <style>

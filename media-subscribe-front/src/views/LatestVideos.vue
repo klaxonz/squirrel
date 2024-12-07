@@ -98,7 +98,8 @@ const handleSearch = (keyword) => {
 };
 
 const handleOpenModal = (video, playlist) => {
-  emitter.emit('openVideoModal', { video, playlist });
+  console.log('handleOpenModal', video, playlist);
+  router.push(`/video/${video.channel_id}/${video.video_id}`);
 };
 
 const goToChannelDetail = (newChannelId) => {

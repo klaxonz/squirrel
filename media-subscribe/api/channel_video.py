@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 
 import httpx
 from fastapi import Query, APIRouter, Request, HTTPException, Body, Depends
+from pydantic.json_schema import model_json_schema
 from sqlalchemy import and_
 from starlette.responses import StreamingResponse
 from typing import Optional
@@ -38,6 +39,16 @@ def get_video_url(
     channel_video_service = ChannelVideoService()
     video_urls = channel_video_service.get_video_url(channel_id, video_id)
     return response.success(video_urls)
+
+@router.get("/api/channel-video/video")
+def get_video(
+        channel_id: str = Query(None, description="频道名称"),
+        video_id: str = Query(None, description="视频ID")
+):
+    channel_video_service = ChannelVideoService()
+    video = channel_video_service.get_video(channel_id, video_id)
+
+    return response.success(video)
 
 
 @router.get("/api/channel-video/list")

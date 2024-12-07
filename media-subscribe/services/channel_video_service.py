@@ -261,3 +261,8 @@ class ChannelVideoService:
 
         download_service.start(channel_video.url, if_only_extract=False, if_subscribe=True, if_retry=False,
                                if_manual_retry=True)
+
+    def get_video(self, channel_id, video_id):
+        with get_session() as session:
+            video = session.query(ChannelVideo).filter(ChannelVideo.channel_id == channel_id, ChannelVideo.video_id == video_id)
+            return video.first()

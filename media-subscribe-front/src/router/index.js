@@ -6,6 +6,7 @@ import DownloadTasks from '../views/DownloadTasks.vue'
 import VideoTab from "../components/VideoTab.vue";
 import History from '../views/History.vue';
 import Podcasts from '../views/Podcasts.vue'
+import VideoPlay from '../views/VideoPlay.vue'
 
 const routes = [
   {
@@ -95,6 +96,11 @@ const routes = [
     path: '/podcasts',
     name: 'Podcasts',
     component: Podcasts
+  },
+  {
+    path: '/video/:channelId/:videoId',
+    name: 'VideoPlay',
+    component: VideoPlay
   }
 ]
 
