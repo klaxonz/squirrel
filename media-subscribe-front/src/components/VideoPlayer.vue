@@ -193,11 +193,9 @@ const handleTimeUpdate = () => {
   if (audioPlayer.value && player.value) {
     const threshold = 0.3;
     const timeDiff = Math.abs(audioPlayer.value.currentTime - player.value.currentTime);
-    
     if (timeDiff > threshold) {
       audioPlayer.value.currentTime = player.value.currentTime;
     }
-    emit('timeupdate', player.value.currentTime);
   }
 };
 
