@@ -56,9 +56,6 @@ ENV PYTHONPATH=/app/media-subscribe:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Change ownership of application files
-RUN chown -R appuser:appuser /app
-
 # Expose port
 EXPOSE 8000
 
