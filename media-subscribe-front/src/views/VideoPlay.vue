@@ -23,108 +23,138 @@
           <!-- 视频标题 -->
           <h1 class="text-xs md:text-sm lg:text-base lg:font-medium text-white">{{ video?.title }}</h1>
           
-          <!-- 频道信息和操作按钮在同一行 -->
-          <div class="flex items-center justify-between mt-3 pb-3 border-b border-[#272727]">
-            <!-- 频道信息 -->
-            <div class="flex items-center">
-              <img 
-                :src="video?.channel_avatar" 
-                :alt="video?.channel_name"
-                class="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 rounded-full object-cover"
-                referrerpolicy="no-referrer"
-              >
-              <div class="ml-2 md:ml-2.5 lg:ml-3 flex flex-col">
-                <router-link 
-                  :to="`/channel/${video?.channel_id}/all`"
-                  class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
+          <!-- 频道信息和操作按钮区域 -->
+          <div class="mt-3 pb-3 border-b border-[#272727]">
+            <!-- 第一行：主频道和操作按钮 -->
+            <div class="flex items-center justify-between">
+              <!-- 主频道信息 -->
+              <div class="flex items-center">
+                <img 
+                  :src="mainChannel.avatar" 
+                  :alt="mainChannel.name"
+                  class="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 rounded-full object-cover"
+                  referrerpolicy="no-referrer"
                 >
-                  {{ video?.channel_name }}
-                </router-link>
-                <span class="text-[10px] md:text-xs text-gray-400">{{ video?.total_video_count || 0 }} 个视频</span>
+                <div class="ml-2 md:ml-2.5 lg:ml-3 flex flex-col">
+                  <router-link 
+                    :to="`/channel/${mainChannel.id}/all`"
+                    class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
+                  >
+                    {{ mainChannel.name }}
+                  </router-link>
+                </div>
               </div>
-            </div>
 
-            <!-- 操作按钮组 -->
-            <div class="flex items-center space-x-1">
-              <!-- 主要按钮显示在外面 -->
-              <button 
-                @click="handleLike(1)"
-                class="p-2 rounded-full hover:bg-[#272727] transition-colors"
-                :class="{ 'text-red-500': video?.is_liked === 1 }"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="video?.is_liked === 1 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                </svg>
-              </button>
-
-              <button 
-                @click="handleLike(0)"
-                class="p-2 rounded-full hover:bg-[#272727] transition-colors"
-                :class="{ 'text-gray-400': video?.is_liked === 0 }"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-180" :fill="video?.is_liked === 0 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                </svg>
-              </button>
-
-              <!-- 更多按钮 - 点击显示下拉菜单 -->
-              <div class="relative">
+              <!-- 操作按钮组 -->
+              <div class="flex items-center space-x-1">
+                <!-- 主要按钮显示在外面 -->
                 <button 
-                  @click="handleMoreOptionsClick"
+                  @click="handleLike(1)"
                   class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+                  :class="{ 'text-red-500': video?.is_liked === 1 }"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="video?.is_liked === 1 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                   </svg>
                 </button>
 
-                <!-- 下拉菜单 -->
-                <div v-if="showMoreOptions" 
-                     class="absolute right-0 mt-2 py-2 min-w-[40px] rounded-lg shadow-lg bg-[#282828] z-50"
-                     @click.stop
+                <button 
+                  @click="handleLike(0)"
+                  class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+                  :class="{ 'text-gray-400': video?.is_liked === 0 }"
                 >
-                  <div class="flex flex-col">
-                    <button
-                      @click="handleDownload"
-                      class="flex items-center w-full px-4 py-2 text-sm text-white hover:bg-[#3f3f3f]"
-                    >
-                      <svg v-if="!video?.if_downloaded" 
-                           xmlns="http://www.w3.org/2000/svg" 
-                           class="h-5 w-5 mr-4" 
-                           fill="none" 
-                           viewBox="0 0 24 24" 
-                           stroke="currentColor"
-                      >
-                        <path stroke-linecap="round" 
-                              stroke-linejoin="round" 
-                              stroke-width="2" 
-                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" 
-                        />
-                      </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-180" :fill="video?.is_liked === 0 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                  </svg>
+                </button>
 
-                      <svg v-else
-                           xmlns="http://www.w3.org/2000/svg" 
-                           class="h-5 w-5 mr-4" 
-                           viewBox="0 0 24 24" 
-                           fill="currentColor"
-                      >
-                        <path fill-rule="evenodd" 
-                              d="M12 2a1 1 0 011 1v10.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L11 13.586V3a1 1 0 011-1zM4.5 19A1.5 1.5 0 003 20.5v.5a2 2 0 002 2h14a2 2 0 002-2v-.5a1.5 1.5 0 00-1.5-1.5h-15z" 
-                              clip-rule="evenodd"
-                        />
-                      </svg>
+                <!-- 更多按钮 - 点击显示下拉菜单 -->
+                <div class="relative">
+                  <button 
+                    @click="handleMoreOptionsClick"
+                    class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                    </svg>
+                  </button>
 
-                      <span class="whitespace-nowrap">下载</span>
-                    </button>
-                    <button
-                      @click="handleCopyLink"
-                      class="flex items-center w-full px-4 py-2 text-sm text-white hover:bg-[#3f3f3f]"
+                  <!-- 下拉菜单 -->
+                  <div v-if="showMoreOptions" 
+                       class="absolute right-0 mt-2 py-2 min-w-[40px] rounded-lg shadow-lg bg-[#282828] z-50"
+                       @click.stop
+                  >
+                    <div class="flex flex-col">
+                      <button
+                        @click="handleDownload"
+                        class="flex items-center w-full px-4 py-2 text-sm text-white hover:bg-[#3f3f3f]"
+                      >
+                        <svg v-if="!video?.if_downloaded" 
+                             xmlns="http://www.w3.org/2000/svg" 
+                             class="h-5 w-5 mr-4" 
+                             fill="none" 
+                             viewBox="0 0 24 24" 
+                             stroke="currentColor"
+                        >
+                          <path stroke-linecap="round" 
+                                stroke-linejoin="round" 
+                                stroke-width="2" 
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" 
+                          />
+                        </svg>
+
+                        <svg v-else
+                             xmlns="http://www.w3.org/2000/svg" 
+                             class="h-5 w-5 mr-4" 
+                             viewBox="0 0 24 24" 
+                             fill="currentColor"
+                        >
+                          <path fill-rule="evenodd" 
+                                d="M12 2a1 1 0 011 1v10.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L11 13.586V3a1 1 0 011-1zM4.5 19A1.5 1.5 0 003 20.5v.5a2 2 0 002 2h14a2 2 0 002-2v-.5a1.5 1.5 0 00-1.5-1.5h-15z" 
+                                clip-rule="evenodd"
+                          />
+                        </svg>
+
+                        <span class="whitespace-nowrap">下载</span>
+                      </button>
+                      <button
+                        @click="handleCopyLink"
+                        class="flex items-center w-full px-4 py-2 text-sm text-white hover:bg-[#3f3f3f]"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <span class="whitespace-nowrap">分享</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 第二行：演员信息 -->
+            <div v-if="otherChannels.length > 0" 
+                 class="mt-3 flex items-center"
+            >
+              <span class="text-[#aaaaaa] text-xs md:text-sm shrink-0">演员:</span>
+              <div class="overflow-x-auto no-scrollbar flex-1 ml-2">
+                <div class="flex items-center space-x-2 min-w-min pr-4">
+                  <div v-for="channel in otherChannels" 
+                       :key="channel.id" 
+                       class="flex items-center shrink-0"
+                  >
+                    <img 
+                      :src="channel.avatar" 
+                      :alt="channel.name"
+                      class="w-5 h-5 md:w-6 md:h-6 rounded-full object-cover"
+                      referrerpolicy="no-referrer"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      <span class="whitespace-nowrap">分享</span>
-                    </button>
+                    <router-link 
+                      :to="`/channel/${channel.id}/all`"
+                      class="ml-1 text-xs md:text-sm text-white hover:text-[#3ea6ff] transition-colors whitespace-nowrap"
+                    >
+                      {{ channel.name }}
+                    </router-link>
                   </div>
                 </div>
               </div>
@@ -146,7 +176,7 @@
       <!-- 右侧区域 - 可以加相关视频列表等内容 -->
       <div class="hidden lg:block w-[400px] ml-6">
         <div class="sticky top-4">
-          <!-- 这里可以添加相关视频列表或其他内��� -->
+          <!-- 这里可以添加相关视频列表或其他内容 -->
           <div class="bg-[#272727] rounded-xl p-4">
             <h2 class="text-white text-lg mb-4">相关视频</h2>
             <!-- 相关视频列表将在这里添加 -->
@@ -278,6 +308,34 @@ const handleMoreOptionsClick = (event) => {
   event.stopPropagation(); // 阻止事件冒泡
   showMoreOptions.value = !showMoreOptions.value;
 };
+
+const mainChannel = computed(() => {
+  if (!video.value) return { id: '', name: '', avatar: '' };
+  
+  const ids = video.value.channel_id.split(',');
+  const names = video.value.channel_name.split(',');
+  const avatars = video.value.channel_avatar.split(',');
+  
+  return {
+    id: ids[0],
+    name: names[0],
+    avatar: avatars[0]
+  };
+});
+
+const otherChannels = computed(() => {
+  if (!video.value) return [];
+  
+  const ids = video.value.channel_id.split(',');
+  const names = video.value.channel_name.split(',');
+  const avatars = video.value.channel_avatar.split(',');
+  
+  return ids.slice(1).map((id, index) => ({
+    id,
+    name: names[index + 1],
+    avatar: avatars[index + 1]
+  }));
+});
 </script>
 
 <style scoped>
@@ -331,5 +389,15 @@ const handleMoreOptionsClick = (event) => {
 
 .video-page::-webkit-scrollbar-thumb:hover {
   background-color: #909090;
+}
+
+/* 隐藏滚动条但保持可滚动 */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
 }
 </style> 

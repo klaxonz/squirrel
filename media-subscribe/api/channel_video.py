@@ -47,16 +47,8 @@ def get_video(
 ):
     channel_video_service = ChannelVideoService()
     video = channel_video_service.get_video(id)
-    split = video.channel_id.split(',')
-    channel_id = split[0]
-    channel_service = ChannelService()
-    channel = channel_service.get_channel(channel_id)
-    
-    # Convert the video object to a dictionary and add additional data
     response_data = video.__dict__
-    response_data["total_video_count"] = channel.total_videos
-    response_data["extract_video_count"] = channel_service.count_channel_videos(channel_id)
-    
+
     return response.success(response_data)
 
 
