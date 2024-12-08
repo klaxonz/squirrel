@@ -45,7 +45,7 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref, inject, onUnmounted} from 'vue';
+import {computed, onMounted, ref, inject, onUnmounted, onActivated} from 'vue';
 import {RecycleScroller} from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import VideoItem from './VideoItem.vue';
@@ -87,6 +87,10 @@ onUnmounted(() => {
   emitter.off('reloadContent');
   window.removeEventListener('resize', updateContainerWidth);
 });
+
+onActivated(() => {
+    updateContainerWidth();
+})
 
 // 优化 updateContainerWidth，添加防抖
 const updateContainerWidth = (() => {

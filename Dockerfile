@@ -21,9 +21,6 @@ FROM python:3.11-slim-bullseye AS backend
 
 WORKDIR /app
 
-# Create a non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-
 # Install system dependencies and FFmpeg
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libmariadb-dev \
@@ -61,9 +58,6 @@ ENV PYTHONPATH=/app/media-subscribe:$PYTHONPATH \
 
 # Change ownership of application files
 RUN chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
 
 # Expose port
 EXPOSE 8000
