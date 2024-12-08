@@ -54,7 +54,7 @@ function getChannelInfo(url) {
   }
   
   if (url.includes('pornhub.com')) {
-    const match = url.match(/\/(users|model|channels)\/([^\/\?]+)/i);
+    const match = url.match(/\/(users|model|channels|pornstar)\/([^\/\?]+)/i);
     return match ? { id: match[2], platform: 'pornhub' } : null;
   }
   
