@@ -1,6 +1,6 @@
 <template>
   <div class="video-page bg-[#0f0f0f] min-h-screen">
-    <div class="max-w-[1720px] mx-auto px-4 lg:px-6 pt-6 flex">
+    <div class="max-w-[1720px] mx-auto lg:px-6 pt-6 flex">
       <!-- 左侧主内容区域 -->
       <div class="flex-1 max-w-[1280px]">
         <!-- 视频播放区域 -->
@@ -19,8 +19,8 @@
         </div>
 
         <!-- 视频信息区域 -->
-        <div class="mt-3">
-          <h1 class="text-xl font-medium text-white">{{ video?.title }}</h1>
+        <div class="mt-3 px-4">
+          <h1 class="text-xs md:text-sm lg:text-xl lg:font-medium text-white">{{ video?.title }}</h1>
           
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 pb-3 border-b border-[#272727]">
             <!-- 频道信息 -->
@@ -28,64 +28,63 @@
               <img 
                 :src="video?.channel_avatar" 
                 :alt="video?.channel_name"
-                class="w-10 h-10 rounded-full object-cover"
+                class="w-6 h-6 md:w-7 md:h-7 lg:w-10 lg:h-10 rounded-full object-cover"
                 referrerpolicy="no-referrer"
               >
-              <div class="ml-3">
+              <div class="ml-2 md:ml-2.5 lg:ml-3">
                 <router-link 
                   :to="`/channel/${video?.channel_id}/all`"
-                  class="text-white font-medium hover:text-[#3ea6ff] transition-colors"
+                  class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
                 >
                   {{ video?.channel_name }}
                 </router-link>
-                <p class="text-sm text-[#aaaaaa]">来自 {{ getDomain(video?.domain) }}</p>
               </div>
             </div>
 
             <!-- 操作按钮组 -->
-            <div class="flex items-center space-x-2 mt-4 sm:mt-0">
+            <div class="grid grid-cols-3 gap-1 mt-2 xl:flex xl:items-center xl:justify-start xl:space-x-2 xl:mt-0">
               <button 
                 @click="handleLike"
-                class="flex items-center space-x-1 px-4 py-2 rounded-full hover:bg-[#272727] transition-colors"
+                class="flex flex-col items-center justify-center px-1 py-1 xl:flex-row xl:space-x-1 xl:px-3 xl:py-1.5 rounded-full hover:bg-[#272727] transition-colors text-[10px] xl:text-xs"
                 :class="{ 'text-[#3ea6ff]': video?.is_liked === 1 }"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" :fill="video?.is_liked === 1 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 xl:h-5 xl:w-5" :fill="video?.is_liked === 1 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                 </svg>
-                <span>{{ video?.is_liked === 1 ? '已喜欢' : '喜欢' }}</span>
+                <span class="mt-0.5 xl:mt-0">{{ video?.is_liked === 1 ? '已喜欢' : '喜欢' }}</span>
               </button>
 
               <button 
                 @click="handleDownload"
-                class="flex items-center space-x-1 px-4 py-2 rounded-full hover:bg-[#272727] transition-colors"
+                class="flex flex-col items-center justify-center px-1 py-1 xl:flex-row xl:space-x-1 xl:px-3 xl:py-1.5 rounded-full hover:bg-[#272727] transition-colors text-[10px] xl:text-xs"
                 :class="{ 'text-[#3ea6ff]': video?.if_downloaded }"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 xl:h-5 xl:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                <span>{{ video?.if_downloaded ? '已下载' : '下载' }}</span>
+                <span class="mt-0.5 xl:mt-0">{{ video?.if_downloaded ? '已下载' : '下载' }}</span>
               </button>
 
               <button 
                 @click="handleCopyLink"
-                class="flex items-center space-x-1 px-4 py-2 rounded-full hover:bg-[#272727] transition-colors"
+                class="flex flex-col items-center justify-center px-1 py-1 xl:flex-row xl:space-x-1 xl:px-3 xl:py-1.5 rounded-full hover:bg-[#272727] transition-colors text-[10px] xl:text-xs"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 xl:h-5 xl:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-                <span>分享</span>
+                <span class="mt-0.5 xl:mt-0">分享</span>
               </button>
             </div>
           </div>
 
           <!-- 视频描述 -->
           <div class="mt-4 p-3 bg-[#272727] rounded-xl">
-            <div class="flex items-center text-sm text-[#aaaaaa] space-x-4 mb-2">
+            <div class="flex items-center text-[10px] md:text-xs lg:text-sm text-[#aaaaaa] space-x-4 mb-2">
               <span>{{ formatDuration(video?.duration) }}</span>
               <span>{{ formatDate(video?.uploaded_at) }}</span>
               <span>{{ video?.if_read ? '已观看' : '未观看' }}</span>
             </div>
-            <p class="text-sm text-white whitespace-pre-wrap">{{ video?.title }}</p>
+            <p class="text-[10px] md:text-xs lg:text-sm text-white whitespace-pre-wrap">{{ video?.title }}</p>
           </div>
         </div>
       </div>
@@ -114,14 +113,13 @@ import { useVideoHistory } from '../composables/useVideoHistory';
 
 const toast = useToast();
 const route = useRoute();
-const router = useRouter();
 const { updateWatchHistory } = useVideoHistory();
 
 const video = ref(null);
 const channelId = computed(() => route.params.channelId);
 const videoId = computed(() => route.params.videoId);
 
-// 计算起始播放时间
+// 计算起始放时间
 const startTime = computed(() => {
   if (video.value?.last_position) {
     if (video.value.total_duration - video.value.last_position < 10) {

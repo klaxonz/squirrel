@@ -28,8 +28,20 @@ export const formatDate = (dateString) => {
 
   const diffTime = Math.abs(now - date);
   const diffDays = diffTime / (1000 * 60 * 60 * 24);
+  const diffHours = diffTime / (1000 * 60 * 60);
+  const diffMinutes = diffTime / (1000 * 60);
 
-  if (diffDays < 1) return '刚刚';
+  if (diffDays < 1) {
+    if (diffHours < 24) {
+      if (diffMinutes < 60) {
+        return `${Math.floor(diffMinutes)}分钟前`;
+      } else {
+        return `${Math.floor(diffHours)}小时前`;
+      }
+    } else {
+      return '刚刚';
+    }
+  }
   if (diffDays <= 7) {
     if (date > now) {
       return `${Math.floor(diffDays)}天后`;
