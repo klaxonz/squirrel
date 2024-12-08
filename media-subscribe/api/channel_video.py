@@ -43,18 +43,17 @@ def get_video_url(
 
 @router.get("/api/channel-video/video")
 def get_video(
-        channel_id: str = Query(None, description="频道名称"),
-        video_id: str = Query(None, description="视频ID")
+        id: int = Query(None, description="视频ID")
 ):
     channel_video_service = ChannelVideoService()
-    video = channel_video_service.get_video(channel_id, video_id)
+    video = channel_video_service.get_video(id)
     channel_service = ChannelService()
-    channel = channel_service.get_channel(channel_id)
+    channel = channel_service.get_channel(video.channel_id)
     
     # Convert the video object to a dictionary and add additional data
     response_data = video.__dict__
     response_data["total_video_count"] = channel.total_videos
-    response_data["extract_video_count"] = channel_service.count_channel_videos(channel_id)
+    response_data["extract_video_count"] = channel_service.count_channel_videos(video.channel_id)
     
     return response.success(response_data)
 

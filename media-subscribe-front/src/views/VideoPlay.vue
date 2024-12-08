@@ -203,14 +203,8 @@ const startTime = computed(() => {
 // 获取视频详情
 const fetchVideoDetails = async () => {
   try {
-    const response = await axios.get(`/api/channel-video/video?channel_id=${route.params.channelId}&video_id=${route.params.videoId}`);
+    const response = await axios.get(`/api/channel-video/video?id=${route.params.videoId}`);
     video.value = response.data.data;
-    
-    // 如果后端没有直接返回视频数，可以单独获取
-    if (!video.value.channel_video_count) {
-      const channelResponse = await axios.get(`/api/channel/${route.params.channelId}/info`);
-      video.value.channel_video_count = channelResponse.data.video_count;
-    }
   } catch (error) {
     console.error('Failed to fetch video details:', error);
   }

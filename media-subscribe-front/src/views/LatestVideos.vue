@@ -100,7 +100,7 @@ const handleSearch = (keyword) => {
 
 const handleOpenModal = (video, playlist) => {
   console.log('handleOpenModal', video, playlist);
-  router.push(`/video/${video.channel_id}/${video.video_id}`);
+  router.push(`/video/${video.id}`);
 };
 
 const goToChannelDetail = (newChannelId) => {

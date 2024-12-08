@@ -98,7 +98,7 @@ const routes = [
     component: Podcasts
   },
   {
-    path: '/video/:channelId/:videoId',
+    path: '/video/:videoId',
     name: 'VideoPlay',
     component: VideoPlay
   }
