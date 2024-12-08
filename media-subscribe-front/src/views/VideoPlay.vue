@@ -20,60 +20,114 @@
 
         <!-- 视频信息区域 -->
         <div class="mt-3 px-4">
-          <h1 class="text-xs md:text-sm lg:text-xl lg:font-medium text-white">{{ video?.title }}</h1>
+          <!-- 视频标题 -->
+          <h1 class="text-xs md:text-sm lg:text-base lg:font-medium text-white">{{ video?.title }}</h1>
           
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 pb-3 border-b border-[#272727]">
+          <!-- 频道信息和操作按钮在同一行 -->
+          <div class="flex items-center justify-between mt-3 pb-3 border-b border-[#272727]">
             <!-- 频道信息 -->
             <div class="flex items-center">
               <img 
                 :src="video?.channel_avatar" 
                 :alt="video?.channel_name"
-                class="w-6 h-6 md:w-7 md:h-7 lg:w-10 lg:h-10 rounded-full object-cover"
+                class="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 rounded-full object-cover"
                 referrerpolicy="no-referrer"
               >
-              <div class="ml-2 md:ml-2.5 lg:ml-3">
+              <div class="ml-2 md:ml-2.5 lg:ml-3 flex flex-col">
                 <router-link 
                   :to="`/channel/${video?.channel_id}/all`"
                   class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
                 >
                   {{ video?.channel_name }}
                 </router-link>
+                <span class="text-[10px] md:text-xs text-gray-400">{{ video?.total_video_count || 0 }} 个视频</span>
               </div>
             </div>
 
             <!-- 操作按钮组 -->
-            <div class="grid grid-cols-3 gap-1 mt-2 xl:flex xl:items-center xl:justify-start xl:space-x-2 xl:mt-0">
+            <div class="flex items-center space-x-1">
+              <!-- 主要按钮显示在外面 -->
               <button 
-                @click="handleLike"
-                class="flex flex-col items-center justify-center px-1 py-1 xl:flex-row xl:space-x-1 xl:px-3 xl:py-1.5 rounded-full hover:bg-[#272727] transition-colors text-[10px] xl:text-xs"
-                :class="{ 'text-[#3ea6ff]': video?.is_liked === 1 }"
+                @click="handleLike(1)"
+                class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+                :class="{ 'text-red-500': video?.is_liked === 1 }"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 xl:h-5 xl:w-5" :fill="video?.is_liked === 1 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="video?.is_liked === 1 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                 </svg>
-                <span class="mt-0.5 xl:mt-0">{{ video?.is_liked === 1 ? '已喜欢' : '喜欢' }}</span>
               </button>
 
               <button 
-                @click="handleDownload"
-                class="flex flex-col items-center justify-center px-1 py-1 xl:flex-row xl:space-x-1 xl:px-3 xl:py-1.5 rounded-full hover:bg-[#272727] transition-colors text-[10px] xl:text-xs"
-                :class="{ 'text-[#3ea6ff]': video?.if_downloaded }"
+                @click="handleLike(0)"
+                class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+                :class="{ 'text-gray-400': video?.is_liked === 0 }"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 xl:h-5 xl:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-180" :fill="video?.is_liked === 0 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                 </svg>
-                <span class="mt-0.5 xl:mt-0">{{ video?.if_downloaded ? '已下载' : '下载' }}</span>
               </button>
 
-              <button 
-                @click="handleCopyLink"
-                class="flex flex-col items-center justify-center px-1 py-1 xl:flex-row xl:space-x-1 xl:px-3 xl:py-1.5 rounded-full hover:bg-[#272727] transition-colors text-[10px] xl:text-xs"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 xl:h-5 xl:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <span class="mt-0.5 xl:mt-0">分享</span>
-              </button>
+              <!-- 更多按钮 - 点击显示下拉菜单 -->
+              <div class="relative">
+                <button 
+                  @click="handleMoreOptionsClick"
+                  class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  </svg>
+                </button>
+
+                <!-- 下拉菜单 -->
+                <div v-if="showMoreOptions" 
+                     class="absolute right-0 mt-2 py-2 min-w-[40px] rounded-lg shadow-lg bg-[#282828] z-50"
+                     @click.stop
+                >
+                  <div class="flex flex-col">
+                    <button
+                      @click="handleDownload"
+                      class="flex items-center w-full px-4 py-2 text-sm text-white hover:bg-[#3f3f3f]"
+                    >
+                      <svg v-if="!video?.if_downloaded" 
+                           xmlns="http://www.w3.org/2000/svg" 
+                           class="h-5 w-5 mr-4" 
+                           fill="none" 
+                           viewBox="0 0 24 24" 
+                           stroke="currentColor"
+                      >
+                        <path stroke-linecap="round" 
+                              stroke-linejoin="round" 
+                              stroke-width="2" 
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" 
+                        />
+                      </svg>
+
+                      <svg v-else
+                           xmlns="http://www.w3.org/2000/svg" 
+                           class="h-5 w-5 mr-4" 
+                           viewBox="0 0 24 24" 
+                           fill="currentColor"
+                      >
+                        <path fill-rule="evenodd" 
+                              d="M12 2a1 1 0 011 1v10.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L11 13.586V3a1 1 0 011-1zM4.5 19A1.5 1.5 0 003 20.5v.5a2 2 0 002 2h14a2 2 0 002-2v-.5a1.5 1.5 0 00-1.5-1.5h-15z" 
+                              clip-rule="evenodd"
+                        />
+                      </svg>
+
+                      <span class="whitespace-nowrap">下载</span>
+                    </button>
+                    <button
+                      @click="handleCopyLink"
+                      class="flex items-center w-full px-4 py-2 text-sm text-white hover:bg-[#3f3f3f]"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      <span class="whitespace-nowrap">分享</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -89,10 +143,10 @@
         </div>
       </div>
 
-      <!-- 右侧区域 - 可以添加相关视频列表等内容 -->
+      <!-- 右侧区域 - 可以加相关视频列表等内容 -->
       <div class="hidden lg:block w-[400px] ml-6">
         <div class="sticky top-4">
-          <!-- 这里可以添加相关视频列表或其他内容 -->
+          <!-- 这里可以添加相关视频列表或其他内��� -->
           <div class="bg-[#272727] rounded-xl p-4">
             <h2 class="text-white text-lg mb-4">相关视频</h2>
             <!-- 相关视频列表将在这里添加 -->
@@ -104,20 +158,35 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useToast } from 'vue-toastification';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useRoute } from 'vue-router';
 import axios from '../utils/axios';
 import VideoPlayer from '../components/VideoPlayer.vue';
 import { useVideoHistory } from '../composables/useVideoHistory';
+import useOptionsMenu from '../composables/useOptionsMenu';
+import { formatDate, formatDuration } from '../utils/dateFormat';
 
-const toast = useToast();
 const route = useRoute();
+const video = ref(null);
 const { updateWatchHistory } = useVideoHistory();
 
-const video = ref(null);
-const channelId = computed(() => route.params.channelId);
-const videoId = computed(() => route.params.videoId);
+// 使用 useOptionsMenu
+const { toggleLikeVideo, downloadVideo, copyVideoLink } = useOptionsMenu(video);
+
+// 处理喜欢操作
+const handleLike = async (targetStatus) => {
+  await toggleLikeVideo(targetStatus);
+};
+
+// 处理下载操作
+const handleDownload = async () => {
+  await downloadVideo();
+};
+
+// 处理复制链接操作
+const handleCopyLink = () => {
+  copyVideoLink();
+};
 
 // 计算起始放时间
 const startTime = computed(() => {
@@ -134,11 +203,16 @@ const startTime = computed(() => {
 // 获取视频详情
 const fetchVideoDetails = async () => {
   try {
-    const response = await axios.get(`/api/channel-video/video?channel_id=${channelId.value}&video_id=${videoId.value}`);
+    const response = await axios.get(`/api/channel-video/video?channel_id=${route.params.channelId}&video_id=${route.params.videoId}`);
     video.value = response.data.data;
+    
+    // 如果后端没有直接返回视频数，可以单独获取
+    if (!video.value.channel_video_count) {
+      const channelResponse = await axios.get(`/api/channel/${route.params.channelId}/info`);
+      video.value.channel_video_count = channelResponse.data.video_count;
+    }
   } catch (error) {
     console.error('Failed to fetch video details:', error);
-    toast.error('获取视频信息失败');
   }
 };
 
@@ -174,65 +248,42 @@ const onVideoTimeUpdate = (currentTime) => {
   }
 };
 
-// 操作处理
-const handleLike = async () => {
-  try {
-    const response = await axios.post(`/api/videos/${videoId.value}/like`, {
-      is_liked: video.value?.is_liked === 1 ? 0 : 1
-    });
-    video.value = { ...video.value, is_liked: response.data.is_liked };
-    toast.success(response.data.is_liked === 1 ? '已添加到喜欢' : '已取消喜欢');
-  } catch (error) {
-    toast.error('操作失败');
+// 添加下拉菜单态控制
+const showMoreOptions = ref(false);
+
+// 添加点击外部关闭下拉菜单的处理函数
+const handleClickOutside = (event) => {
+  const dropdown = document.querySelector('.relative');
+  if (dropdown && !dropdown.contains(event.target)) {
+    showMoreOptions.value = false;
   }
 };
 
-const handleDownload = async () => {
-  if (video.value?.if_downloaded) {
-    toast.info('视频已下载');
-    return;
-  }
-  try {
-    await axios.post(`/api/videos/${videoId.value}/download`);
-    video.value.if_downloaded = true;
-    toast.success('已添加到下载队列');
-  } catch (error) {
-    toast.error('添加下载任务失败');
+// 添加 ESC 键关闭下拉菜单的处理函数
+const handleEscKey = (event) => {
+  if (event.key === 'Escape') {
+    showMoreOptions.value = false;
   }
 };
 
-const handleCopyLink = () => {
-  const link = video.value?.url || '';
-  navigator.clipboard.writeText(link)
-    .then(() => toast.success('链接已复制'))
-    .catch(() => toast.error('复制失败'));
-};
-
-// 格式化函数
-const formatDate = (date) => {
-  if (!date) return '';
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-};
-
-const formatDuration = (seconds) => {
-  if (!seconds) return '00:00';
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
-
-const getDomain = (domain) => {
-  if (!domain) return '';
-  return domain.charAt(0).toUpperCase() + domain.slice(1).replace('.com', '');
-};
-
+// 在组件挂载时添加事件监听
 onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+  document.addEventListener('keydown', handleEscKey);
   fetchVideoDetails();
 });
+
+// 在组件卸载时移除事件监听
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+  document.removeEventListener('keydown', handleEscKey);
+});
+
+// 修改下拉菜单按钮的点击处理函数
+const handleMoreOptionsClick = (event) => {
+  event.stopPropagation(); // 阻止事件冒泡
+  showMoreOptions.value = !showMoreOptions.value;
+};
 </script>
 
 <style scoped>

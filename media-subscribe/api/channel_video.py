@@ -22,6 +22,7 @@ from meta.video import VideoFactory
 from model.channel import ChannelVideo
 from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, DislikeRequest, \
     SortBy, ToggleLikeRequest
+from services.channel_service import ChannelService
 from services.channel_video_service import ChannelVideoService
 
 logger = logging.getLogger()
@@ -47,8 +48,15 @@ def get_video(
 ):
     channel_video_service = ChannelVideoService()
     video = channel_video_service.get_video(channel_id, video_id)
-
-    return response.success(video)
+    channel_service = ChannelService()
+    channel = channel_service.get_channel(channel_id)
+    
+    # Convert the video object to a dictionary and add additional data
+    response_data = video.__dict__
+    response_data["total_video_count"] = channel.total_videos
+    response_data["extract_video_count"] = channel_service.count_channel_videos(channel_id)
+    
+    return response.success(response_data)
 
 
 @router.get("/api/channel-video/list")
@@ -263,7 +271,7 @@ async def proxy_video(domain: str, url: str, request: Request):
                         content_text
                     )
 
-                    # 不再需要单独处理m3u8，因为上面的正则已经包含了
+                    # 不再需要单独处理m3u8，因为上面的��则已经包含了
                     
                     return StreamingResponse(
                         iter([content_text.encode()]),
@@ -277,7 +285,7 @@ async def proxy_video(domain: str, url: str, request: Request):
                 # 修改处理视频分片的部分
                 return StreamingResponse(
                     iter([content]),
-                    media_type=content_type or 'application/octet-stream',  # 确��始终有content-type
+                    media_type=content_type or 'application/octet-stream',  # 确保始终有content-type
                     headers={
                         'Access-Control-Allow-Origin': '*',
                         'Cache-Control': 'public, max-age=31536000',

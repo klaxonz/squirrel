@@ -14,34 +14,6 @@
       >
       <div v-else class="w-full h-full bg-gray-200 animate-pulse"></div>
       
-      <div v-if="video.is_liked !== null" 
-           @click.stop="toggleLikeVideo"
-           class="absolute top-2 right-2 z-10 rounded-full p-1.5 bg-black/50 backdrop-blur-sm 
-                  hover:bg-black/70 cursor-pointer transition-all duration-150 
-                  transform hover:scale-110 active:scale-95"
-      >
-        <svg v-if="video.is_liked === 1"
-             xmlns="http://www.w3.org/2000/svg" 
-             class="h-4 w-4 text-red-500" 
-             fill="currentColor"
-             viewBox="0 0 24 24"
-        >
-          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-        </svg>
-        <svg v-else
-             xmlns="http://www.w3.org/2000/svg" 
-             class="h-4 w-4 text-yellow-500" 
-             fill="none"
-             viewBox="0 0 24 24" 
-             stroke="currentColor"
-        >
-          <path stroke-linecap="round" 
-                stroke-linejoin="round" 
-                stroke-width="2" 
-                d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-        </svg>
-      </div>
-
       <div class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
       </div>
@@ -191,7 +163,7 @@ const isImageLoaded = ref(false);
 onMounted(() => {
   const options = {
     root: null,
-    rootMargin: '100px', // 预加载范围扩大
+    rootMargin: '100px',
     threshold: 0.1
   };
 
@@ -280,7 +252,7 @@ const handleClick = (event) => {
   emit('openModal', props.video);
 };
 
-// 修改算属性来处理逗号分隔的字符串
+// 修改算属来处理逗号分隔的字符串
 const mainChannelInfo = computed(() => {
   const ids = props.video.channel_id?.toString().split(',') || [];
   const names = props.video.channel_name?.toString().split(',') || [];
@@ -403,7 +375,6 @@ onUnmounted(() => {
   box-shadow: 0 0 0 2px theme('colors.blue.500');
 }
 
-/* 添加新的样式 */
 .gap-1 {
   gap: 0.25rem;
 }
@@ -412,7 +383,6 @@ onUnmounted(() => {
   line-height: 0.75rem;
 }
 
-/* 添加新的样式 */
 .channel-popup {
   transform-origin: top left;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);

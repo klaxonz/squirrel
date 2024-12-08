@@ -16,6 +16,12 @@ class ChannelService:
     def __init__(self):
         pass
 
+
+    def get_channel(self, channel_id: str):
+        with get_session() as session:
+            channel = session.query(Channel).filter(Channel.channel_id == channel_id).first()
+            return channel
+
     def get_subscription_status(self, channel_id: str) -> bool:
         with get_session() as session:
             channel = session.exec(select(Channel).where(Channel.channel_id == channel_id)).first()
@@ -58,6 +64,7 @@ class ChannelService:
                     "channel_id": channel.channel_id,
                     "name": channel.name,
                     "url": channel.url,
+                    "total": channel.total_videos,
                     "if_enable": channel.if_enable,
                     "if_auto_download": channel.if_auto_download,
                     "if_download_all": channel.if_download_all,
