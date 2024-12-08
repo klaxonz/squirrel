@@ -62,11 +62,16 @@ function handleUnsubscribe(backendHost, data, sendResponse) {
 }
 
 function handleCheckSubscription(backendHost, data, sendResponse) {
-  fetch(`${backendHost}/api/channel/subscription-status?channel_id=${data.channelId}`)
+  fetch(`${backendHost}/api/channel/subscription-status?channel_url=${data.url}`)
     .then(response => response.json())
     .then(data => {
       console.log("API response for subscription status:", data);
-      sendResponse({ success: true, data: data.data });
+      sendResponse({ 
+        success: true, 
+        data: {
+          isSubscribed: data.data.isSubscribed
+        }
+      });
     })
     .catch(error => {
       console.error("Error in handleCheckSubscription:", error);

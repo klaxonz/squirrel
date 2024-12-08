@@ -5,8 +5,13 @@
   "description": "在B站、YouTube和PH添加视频下载和频道订阅按钮 (v3)",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "tabs"
   ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "host_permissions": [
     "*://*.bilibili.com/*",
     "*://*.youtube.com/*",
@@ -16,17 +21,6 @@
   "background": {
     "service_worker": "background.js"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "*://*.bilibili.com/*",
-        "*://*.youtube.com/*",
-        "*://*.pornhub.com/*",
-        "*://*.javdb.com/*"
-      ],
-      "js": ["content.js"]
-    }
-  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

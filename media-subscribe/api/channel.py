@@ -8,9 +8,9 @@ router = APIRouter(tags=['频道接口'])
 
 
 @router.get("/api/channel/subscription-status")
-def get_subscription_status(channel_id: str):
+def get_subscription_status(channel_url: str):
     channel_service = ChannelService()
-    is_subscribed = channel_service.get_subscription_status(channel_id)
+    is_subscribed = channel_service.get_subscription_status(channel_url)
     return response.success({"isSubscribed": is_subscribed})
 
 
@@ -91,7 +91,7 @@ def toggle_extract_all(req: ToggleStatusRequest):
 @router.post("/api/channel/unsubscribe")
 def unsubscribe_channel(req: ChannelDeleteRequest):
     channel_service = ChannelService()
-    success = channel_service.unsubscribe_channel(req.id)
+    success = channel_service.unsubscribe_channel(req.id, req.url)
     if success:
         return response.success({"message": "Channel unsubscribed successfully"})
     raise HTTPException(status_code=404, detail="Channel not found")

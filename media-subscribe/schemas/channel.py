@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -14,7 +16,8 @@ class ChannelUpdateRequest(BaseModel):
 
 
 class ChannelDeleteRequest(BaseModel):
-    id: int
+    id: Optional[int] = None
+    url: Optional[str] = None
 
 
 class ToggleStatusRequest(BaseModel):

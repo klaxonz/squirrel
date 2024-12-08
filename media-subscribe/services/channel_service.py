@@ -22,9 +22,10 @@ class ChannelService:
             channel = session.query(Channel).filter(Channel.channel_id == channel_id).first()
             return channel
 
-    def get_subscription_status(self, channel_id: str) -> bool:
+
+    def get_subscription_status(self, channel_url: str) -> bool:
         with get_session() as session:
-            channel = session.exec(select(Channel).where(Channel.channel_id == channel_id)).first()
+            channel = session.exec(select(Channel).where(Channel.url == channel_url)).first()
             return channel is not None
 
     def subscribe_channel(self, url: str):
@@ -154,15 +155,20 @@ class ChannelService:
                 return True
             return False
 
-    def unsubscribe_channel(self, channel_id: int):
+    def unsubscribe_channel(self, channel_id: int, channel_url: str):
         with get_session() as session:
-            channel = session.exec(select(Channel).where(Channel.id == channel_id)).first()
-            if channel:
-                session.delete(channel)
-                session.exec(delete(ChannelVideo).where(ChannelVideo.channel_id == channel.channel_id))
-                session.commit()
-                redis_client = RedisClient.get_instance().client
-                redis_client.sadd(constants.UNSUBSCRIBED_CHANNELS_SET, channel.channel_id)
-                redis_client.expire(constants.UNSUBSCRIBED_CHANNELS_SET, constants.UNSUBSCRIBE_EXPIRATION)
-                return True
+            if channel_id or channel_url:
+                channel = None
+                if channel_id:
+                    channel = session.exec(select(Channel).where(Channel.id == channel_id)).first()
+                if channel_url and  channel is None:
+                    channel = session.exec(select(Channel).where(Channel.url == channel_url)).first()
+                if channel:
+                    session.delete(channel)
+                    session.exec(delete(ChannelVideo).where(ChannelVideo.channel_id == channel.channel_id))
+                    session.commit()
+                    redis_client = RedisClient.get_instance().client
+                    redis_client.sadd(constants.UNSUBSCRIBED_CHANNELS_SET, channel.channel_id)
+                    redis_client.expire(constants.UNSUBSCRIBED_CHANNELS_SET, constants.UNSUBSCRIBE_EXPIRATION)
+                    return True
             return False

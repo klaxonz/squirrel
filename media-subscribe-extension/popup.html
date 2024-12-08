@@ -2,17 +2,257 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>视频下载和订阅设置</title>
+  <title>Squirrel</title>
   <style>
-    body { width: 300px; padding: 10px; font-family: Arial, sans-serif; }
-    input { width: 100%; margin-bottom: 10px; padding: 5px; }
-    button { width: 100%; padding: 5px; }
+    :root {
+      /* Colors */
+      --primary: #4c6ef5;
+      --primary-hover: #3b5bdb;
+      --secondary: #f1f3f5;
+      --secondary-hover: #e9ecef;
+      --text-primary: #212529;
+      --text-secondary: #868e96;
+      --border: #dee2e6;
+      --background: #ffffff;
+      
+      /* Spacing */
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      
+      /* Shadows */
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+      
+      /* Border Radius */
+      --radius: 6px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--background);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.5;
+      padding: var(--space-4);
+    }
+
+    .header {
+      margin-bottom: var(--space-4);
+    }
+
+    .header h3 {
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: var(--space-2);
+    }
+
+    .input-group {
+      position: relative;
+      margin-bottom: var(--space-3);
+    }
+
+    input {
+      width: 100%;
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-primary);
+      transition: all 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr 40px;
+      gap: var(--space-2);
+      align-items: center;
+    }
+
+    button {
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--background);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--secondary);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #saveButton {
+      width: 100%;
+      margin-bottom: var(--space-4);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    #saveButton:hover:not(:disabled) {
+      background: var(--primary);
+      color: white;
+    }
+
+    #downloadButton, #subscribeButton {
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      padding: var(--space-2) var(--space-3);
+      height: 36px;
+    }
+
+    #downloadButton:hover:not(:disabled),
+    #subscribeButton:hover:not(:disabled) {
+      background: var(--secondary-hover);
+    }
+
+    .status {
+      margin-top: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius);
+      font-size: 13px;
+      display: none;
+    }
+
+    .success {
+      background: #d3f9d8;
+      color: #2b8a3e;
+      border: 1px solid #8ce99a;
+    }
+
+    .error {
+      background: #ffe3e3;
+      color: #c92a2a;
+      border: 1px solid #ffa8a8;
+    }
+
+    .icon {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    /* 修改设置按钮样式 */
+    .settings-button {
+      padding: var(--space-2);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: all 0.2s;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .settings-button:hover {
+      opacity: 1;
+    }
+
+    .settings-button .icon {
+      width: 16px;
+      height: 16px;
+      stroke: var(--text-secondary);
+    }
+
+    .container {
+      padding: var(--space-4);
+    }
+
+    #subscribeButton {
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      padding: var(--space-2) var(--space-3);
+      height: 36px;
+      transition: all 0.2s;
+    }
+
+    #subscribeButton.subscribed {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    #subscribeButton.subscribed:hover {
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+
+    #subscribeButton.subscribed .icon {
+      stroke: white;
+    }
+
+    #subscribeButton:not(.subscribed):hover {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    #subscribeButton:not(.subscribed):hover .icon {
+      stroke: white;
+    }
   </style>
 </head>
 <body>
-  <h2>后端主机设置</h2>
-  <input type="text" id="backendHost" placeholder="http://localhost:8000">
-  <button id="saveButton">保存</button>
+  <div class="container">
+    <div class="button-group">
+      <button id="downloadButton">
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        下载视频
+      </button>
+      <button id="subscribeButton">
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <line x1="19" y1="8" x2="19" y2="14"></line>
+          <line x1="22" y1="11" x2="16" y2="11"></line>
+        </svg>
+        订阅频道
+      </button>
+      <button class="settings-button" id="settingsButton" title="设置">
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div id="status" class="status"></div>
+  </div>
+  
   <script src="popup.js"></script>
 </body>
 </html>
