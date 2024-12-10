@@ -88,19 +88,20 @@ class ChannelService:
             sql = text("""
                 SELECT channel_id, COUNT(1) as count 
                 FROM channel_video 
-                WHERE channel_id IN :channel_ids
                 GROUP BY channel_id
             """)
-            result = session.execute(sql, {"channel_ids": tuple(channel_ids)})
+            result = session.execute(sql)
+            rows = result.fetchall()
             channel_id_count_map = {}
             for channel in channels:
-                for row in result:
+                cid = channel.channel_id
+                for row in rows:
                     channel_id, count = row
                     channel_id_list = channel_id.split(',')
-                    if channel.channel_id in channel_id_list and len(channel_id_list) > 1:
-                        channel_id_count_map[channel.channel_id] = channel_id_count_map.get(channel.channel_id, 0) + count
-                    elif channel.channel_id == channel_id:
-                        channel_id_count_map[channel.channel_id] = count
+                    if cid in channel_id_list and len(channel_id_list) > 1:
+                        channel_id_count_map[cid] = channel_id_count_map.get(cid, 0) + count
+                    elif cid == channel_id:
+                        channel_id_count_map[cid] = count
 
             channel_list = [{
                 'id': channel.id,
