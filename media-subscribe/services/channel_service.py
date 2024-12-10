@@ -1,7 +1,7 @@
 import json
 from typing import List, Tuple
 
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, text
 from sqlmodel import select, col, delete
 
 from common import constants
@@ -82,6 +82,26 @@ class ChannelService:
             total = query_obj.count()
             offset = (page - 1) * page_size
             channels = query_obj.order_by(Channel.created_at.desc()).offset(offset).limit(page_size)
+            channel_ids = []
+            for channel in channels:
+                channel_ids.append(channel.channel_id)
+            sql = text("""
+                SELECT channel_id, COUNT(1) as count 
+                FROM channel_video 
+                WHERE channel_id IN :channel_ids
+                GROUP BY channel_id
+            """)
+            result = session.execute(sql, {"channel_ids": tuple(channel_ids)})
+            channel_id_count_map = {}
+            for channel in channels:
+                for row in result:
+                    channel_id, count = row
+                    channel_id_list = channel_id.split(',')
+                    if channel.channel_id in channel_id_list and len(channel_id_list) > 1:
+                        channel_id_count_map[channel.channel_id] = channel_id_count_map.get(channel.channel_id, 0) + count
+                    elif channel.channel_id == channel_id:
+                        channel_id_count_map[channel.channel_id] = count
+
             channel_list = [{
                 'id': channel.id,
                 'channel_id': channel.channel_id,
@@ -89,7 +109,7 @@ class ChannelService:
                 'url': channel.url,
                 'avatar': channel.avatar,
                 'total_videos': channel.total_videos,
-                'total_extract': self.count_channel_videos(channel.channel_id),
+                'total_extract': channel_id_count_map.get(channel.channel_id, 0),
                 'if_enable': channel.if_enable,
                 'if_auto_download': channel.if_auto_download,
                 'if_download_all': channel.if_download_all,

@@ -135,7 +135,7 @@ class BilibiliSubscribeChannel(SubscribeChannel):
                 should_continue = False
 
             # 1-3秒
-            time.sleep(0.5)
+            time.sleep(random.uniform(3,5))
 
         return video_list
 

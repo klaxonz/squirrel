@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "视频下载和订阅",
+  "name": "Squirrel",
   "version": "3.0",
   "description": "在B站、YouTube和PH添加视频下载和频道订阅按钮 (v3)",
   "permissions": [
