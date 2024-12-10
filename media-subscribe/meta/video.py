@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import random
 import re
 import time
 
@@ -198,6 +199,7 @@ class BilibiliUploader(Uploader):
             tags = data.get('tags')
             for tag in tags:
                 self.tags.append(tag.get('tag_name'))
+        time.sleep(random.uniform(3, 5))
 
 
 class YoutubeUploader(Uploader):
@@ -211,6 +213,7 @@ class YoutubeUploader(Uploader):
         self.name = video.author
         self.avatar = video.thumbnail_url
         self.tags = []
+        time.sleep(random.uniform(3, 5))
 
 
 class VideoFactory:
@@ -298,7 +301,7 @@ class JavUploader(Uploader):
             self.avatar = re.search(r'url\((.*?)\)', style).group(1)
             self.id = self.url.split('/')[-1]
             self.tags = []
-        time.sleep(1)
+        time.sleep(random.uniform(3,5))
 
 
 class UploaderFactory:

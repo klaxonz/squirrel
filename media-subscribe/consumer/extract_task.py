@@ -204,6 +204,10 @@ def _create_channel_video(video, domain, video_id, video_info):
                     channel_name = channel_name + ","
                 if channel_avatar:
                     channel_avatar = channel_avatar + ","
+                actor_channel_info = actor_channel.get_channel_info()
+                if not actor_channel_info:
+                    logger.info(f"{actor} is not a valid channel, skip")
+                    continue
                 channel_id = channel_id + actor_channel.get_channel_info().id
                 channel_name = channel_name + actor_channel.get_channel_info().name
                 channel_avatar = channel_avatar + actor_channel.get_channel_info().avatar

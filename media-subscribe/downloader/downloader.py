@@ -3,6 +3,7 @@ import logging
 import os
 
 import requests
+import yt_dlp
 from bs4 import BeautifulSoup
 from yt_dlp import YoutubeDL
 
@@ -16,6 +17,8 @@ from meta.video import VideoFactory, Video
 from model.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
 from utils.cookie import filter_cookies_to_query_string
+
+logger = logging.getLogger()
 
 
 class DownloadStoppedError(Exception):
@@ -76,6 +79,10 @@ class Downloader:
             bs4 = BeautifulSoup(response.text, 'html.parser')
             video_info = {}
 
+            if '永久VIP' in response.text:
+                logger.info(f'{url} is permanent VIP')
+                return None
+
             video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[1].text.strip()
             video_info['thumbnail'] = bs4.select('.video-cover')[0]['src']
             duration = bs4.select('.movie-panel-info .panel-block:nth-of-type(3) span')[0].text.split(' ')[0].strip()
@@ -112,6 +119,10 @@ class Downloader:
             bs4 = BeautifulSoup(response.text, 'html.parser')
             video_info = {}
 
+            if '永久VIP' in response.text:
+                logger.info(f'{url} is permanent VIP')
+                return None
+
             video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[1].text.strip()
             video_info['thumbnail'] = bs4.select('.video-cover')[0]['src']
             duration = bs4.select('.movie-panel-info .panel-block:nth-of-type(3) span')[0].text.split(' ')[0].strip()
@@ -130,9 +141,16 @@ class Downloader:
             if cookie_file_path:
                 ydl_opts['cookiefile'] = cookie_file_path
 
-            with YoutubeDL(ydl_opts) as ydl:
-                video_info = ydl.extract_info(url, download=False)
-                return video_info
+            try:
+                with YoutubeDL(ydl_opts) as ydl:
+                    video_info = ydl.extract_info(url, download=False)
+                    return video_info
+            except yt_dlp.utils.DownloadError as de:
+                logger.error(f"解析视频信息失败: {url}, error: {de.msg}")
+                return None
+            except Exception:
+                logger.error(f"解析视频信息失败: {url}", exc_info=True)
+                return None
 
     @staticmethod
     def download_avatar(video: Video):

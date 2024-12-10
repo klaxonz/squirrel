@@ -68,6 +68,7 @@ class BilibiliSubscribeChannel(SubscribeChannel):
         else:
             avatar_url = None
 
+        time.sleep(random.uniform(3, 5))
         return ChannelMeta(mid, channel_name, avatar_url, self.url)
 
     def get_channel_videos(self, channel: Channel, update_all: bool):
@@ -159,6 +160,7 @@ class YouTubeSubscribeChannel(SubscribeChannel):
             for short in self.channel.shorts:
                 if short and short.watch_url:
                     shorts_.append(short.watch_url)
+        time.sleep(random.uniform(3, 5))
         return videos_ + shorts_
 
 
