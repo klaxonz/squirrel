@@ -15,6 +15,7 @@ from common import constants
 from core.cache import RedisClient
 from model.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
 from services.channel_service import ChannelService
+from subscribe.factory import SubscribeChannelFactory
 from utils.cookie import json_cookie_to_netscape
 from core.database import get_session
 from core.config import settings
@@ -23,7 +24,6 @@ from meta.video import VideoFactory
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
 from services.download_service import start
-from subscribe.subscribe import SubscribeChannelFactory
 
 logger = logging.getLogger()
 
@@ -326,22 +326,6 @@ class RepairChannelVideoDuration(BaseTask):
                     logger.error(f"Error decoding JSON: {e}", exc_info=True)
                 except Exception as e:
                     logger.error(f"An unexpected error occurred: url: {url}, {e}", url, exc_info=True)
-
-
-# @TaskRegistry.register(interval=60, unit='minutes')
-# class CleanUnsubscribedChannelsTask(BaseTask):
-#     @classmethod
-#     def run(cls):
-#         redis_client = RedisClient.get_instance().client
-#         unsubscribed_channels = redis_client.smembers(constants.UNSUBSCRIBED_CHANNELS_SET)
-#         if unsubscribed_channels:
-#             with get_session() as session:
-#                 session.exec(delete(ChannelVideo).where(col(Channel.channel_id).in_(unsubscribed_channels)))
-#                 session.exec(delete(DownloadTask).where(col(DownloadTask.channel_id).in_(unsubscribed_channels)))
-#                 session.commit()
-#             logger.info(f"Cleaned up videos and download tasks for {len(unsubscribed_channels)} unsubscribed channels")
-#         redis_client.expire(constants.UNSUBSCRIBED_CHANNELS_SET, constants.UNSUBSCRIBE_EXPIRATION)
-#         logger.info("Reset expiration for unsubscribed channels set")
 
 
 @TaskRegistry.register(interval=1, unit='minutes')

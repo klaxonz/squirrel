@@ -8,7 +8,7 @@ from common import constants
 from core.database import get_session
 from model.channel import Channel
 from model.message import Message
-from subscribe.subscribe import SubscribeChannelFactory
+from subscribe.factory import SubscribeChannelFactory
 
 logger = logging.getLogger()
 

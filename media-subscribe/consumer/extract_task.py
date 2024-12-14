@@ -9,7 +9,7 @@ import dramatiq
 from common import constants
 from core.cache import RedisClient
 from core.database import get_session
-from subscribe.subscribe import SubscribeChannelFactory
+from subscribe.factory import SubscribeChannelFactory
 from utils.url_helper import extract_top_level_domain
 from downloader.downloader import Downloader
 from downloader.id_extractor import extract_id_from_url

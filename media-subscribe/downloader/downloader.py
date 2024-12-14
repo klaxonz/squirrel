@@ -86,7 +86,10 @@ class Downloader:
             video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[1].text.strip()
             video_info['thumbnail'] = bs4.select('.video-cover')[0]['src']
             duration = bs4.select('.movie-panel-info .panel-block:nth-of-type(3) span')[0].text.split(' ')[0].strip()
-            video_info['duration'] = int(duration) * 60
+            try:
+                video_info['duration'] = int(duration) * 60
+            except ValueError:
+                video_info['duration'] = None
             video_info['id'] = extract_id_from_url(url)
             video_info['timestamp'] = int(datetime.datetime.strptime(bs4.select('.movie-panel-info .panel-block:nth-of-type(2) span')[0].text.strip(), '%Y-%m-%d').timestamp())
             return video_info
@@ -126,7 +129,10 @@ class Downloader:
             video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[1].text.strip()
             video_info['thumbnail'] = bs4.select('.video-cover')[0]['src']
             duration = bs4.select('.movie-panel-info .panel-block:nth-of-type(3) span')[0].text.split(' ')[0].strip()
-            video_info['duration'] = int(duration) * 60
+            try:
+                video_info['duration'] = int(duration) * 60
+            except ValueError:
+                video_info['duration'] = None
             video_info['id'] = extract_id_from_url(url)
             video_info['timestamp'] = int(datetime.datetime.strptime(bs4.select('.movie-panel-info .panel-block:nth-of-type(2) span')[0].text.strip(), '%Y-%m-%d').timestamp())
             return video_info
