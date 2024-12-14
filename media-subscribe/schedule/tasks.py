@@ -13,6 +13,7 @@ from sqlmodel import col, or_, and_, select, func
 
 from common import constants
 from core.cache import RedisClient
+from meta import VideoFactory
 from model.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
 from services.channel_service import ChannelService
 from subscribe.factory import SubscribeChannelFactory
@@ -20,7 +21,6 @@ from utils.cookie import json_cookie_to_netscape
 from core.database import get_session
 from core.config import settings
 from downloader.downloader import Downloader
-from meta.video import VideoFactory
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
 from services.download_service import start
@@ -255,10 +255,10 @@ class RepairDownloadTaskInfo(BaseTask):
 
                     base_info = Downloader.get_video_info(download_task.url)
                     video = VideoFactory.create_video(download_task.url, base_info)
-                    download_task.channel_id = video.get_uploader().id
-                    download_task.channel_url = video.get_uploader().url
-                    download_task.channel_name = video.get_uploader().name
-                    download_task.channel_avatar = video.get_uploader().avatar
+                    download_task.channel_id = video.uploader.id
+                    download_task.channel_url = video.uploader.url
+                    download_task.channel_name = video.uploader.name
+                    download_task.channel_avatar = video.uploader.avatar
                     session.commit()
 
         except json.JSONDecodeError as e:
@@ -318,9 +318,9 @@ class RepairChannelVideoDuration(BaseTask):
                     video = VideoFactory.create_video(url, base_info)
                     time.sleep(random.randint(1, 2))
 
-                    if base_info is None or video.get_duration() is None:
+                    if base_info is None or video.duration is None:
                         continue
-                    channel_video.duration = video.get_duration()
+                    channel_video.duration = video.duration
                     session.commit()
                 except json.JSONDecodeError as e:
                     logger.error(f"Error decoding JSON: {e}", exc_info=True)

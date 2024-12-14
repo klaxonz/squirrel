@@ -8,21 +8,17 @@ from mimetypes import guess_type
 from urllib.parse import urljoin
 
 import httpx
-from fastapi import Query, APIRouter, Request, HTTPException, Body, Depends
-from pydantic.json_schema import model_json_schema
+from fastapi import Query, APIRouter, Request, HTTPException
 from sqlalchemy import and_
 from starlette.responses import StreamingResponse
-from typing import Optional
-from pydantic import BaseModel
 
 import common.response as response
 from core.database import get_session
 from downloader.downloader import Downloader
-from meta.video import VideoFactory
+from meta import VideoFactory
 from model.channel import ChannelVideo
-from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, DislikeRequest, \
-    SortBy, ToggleLikeRequest
-from services.channel_service import ChannelService
+from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, SortBy, \
+    ToggleLikeRequest
 from services.channel_video_service import ChannelVideoService
 
 logger = logging.getLogger()

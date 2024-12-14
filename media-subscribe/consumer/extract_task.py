@@ -9,11 +9,11 @@ import dramatiq
 from common import constants
 from core.cache import RedisClient
 from core.database import get_session
+from meta import VideoFactory
 from subscribe.factory import SubscribeChannelFactory
 from utils.url_helper import extract_top_level_domain
 from downloader.downloader import Downloader
 from downloader.id_extractor import extract_id_from_url
-from meta.video import VideoFactory
 from model.channel import ChannelVideo
 from model.download_task import DownloadTask
 from model.message import Message
@@ -122,15 +122,15 @@ def process_extract_task(message: str, queue: str):
             return
 
         video = _create_video(url, video_info)
-        if not video.get_uploader().name:
+        if not video.uploader.name:
             logger.info(f"{url} uploader name is None, skip")
             return
 
         _handle_video_extraction(extract_info, video, domain, video_id, video_info)
         if not extract_info['if_only_extract']:
             _handle_download_task(extract_info, video, domain, video_id)
-    except Exception as e:
-        logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+    except Exception:
+        logger.error(f"处理消息时发生错误: message: {message}", exc_info=True)
 
 
 def _parse_message(message):
@@ -176,24 +176,24 @@ def _get_channel_video(domain, video_id):
 
 
 def _handle_video_extraction(extract_info, video, domain, video_id, video_info):
-    logger.info(f"开始解析视频：channel {video.get_uploader().name}, video: {video.url}")
+    logger.info(f"开始解析视频：channel {video.uploader.name}, video: {video.url}")
     if extract_info['if_subscribe'] and not _get_channel_video(domain, video_id):
         _create_channel_video(video, domain, video_id, video_info)
-    logger.info(f"结束解析视频：channel {video.get_uploader().name}, video: {video.url}")
+    logger.info(f"结束解析视频：channel {video.uploader.name}, video: {video.url}")
 
 
 def _create_channel_video(video, domain, video_id, video_info):
     with get_session() as session:
         logger.info(f"开始创建channel video: {video.url}")
-        uploader = video.get_uploader()
+        uploader = video.uploader
         channel_video = ChannelVideo()
         channel_video.url = video.url
         channel_video.domain = domain
         channel_video.video_id = video_id
-        actors = uploader.get_actors()
-        channel_id = uploader.get_id()
-        channel_name = uploader.get_name()
-        channel_avatar = uploader.get_avatar()
+        actors = uploader.actors
+        channel_id = uploader.id
+        channel_name = uploader.name
+        channel_avatar = uploader.avatar
         logger.info(f"channel: {channel_id}, name: {channel_name}, avatar: {channel_avatar}")
         if len(actors) > 0:
             for actor in actors:
@@ -214,9 +214,9 @@ def _create_channel_video(video, domain, video_id, video_info):
         channel_video.channel_id = channel_id
         channel_video.channel_name = channel_name
         channel_video.channel_avatar = channel_avatar
-        channel_video.title = video.get_title()
-        channel_video.thumbnail = video.get_thumbnail()
-        channel_video.duration = video.get_duration()
+        channel_video.title = video.title
+        channel_video.thumbnail = video.thumbnail
+        channel_video.duration = video.duration
         channel_video.uploaded_at = datetime.fromtimestamp(int(video_info['timestamp']))
         # 查询库
         cv_db = session.query(ChannelVideo).filter(ChannelVideo.domain == domain,
@@ -233,13 +233,13 @@ def _handle_download_task(extract_info, video, domain, video_id):
     if extract_info['if_subscribe'] and channel_video and channel_video.if_downloaded:
         return
 
-    logger.info(f"开始生成视频任务：channel {video.get_uploader().name}, video: {video.url}")
+    logger.info(f"开始生成视频任务：channel {video.uploader.name}, video: {video.url}")
     task = _get_or_create_download_task(video, domain, video_id)
     if _should_skip_download(extract_info, task):
         return
 
     _create_download_message(task, if_manual)
-    logger.info(f"结束生成视频任务：channel {video.get_uploader().name}, video: {video.url}")
+    logger.info(f"结束生成视频任务：channel {video.uploader.name}, video: {video.url}")
 
 
 def _get_or_create_download_task(video, domain, video_id):
@@ -257,18 +257,18 @@ def _get_or_create_download_task(video, domain, video_id):
 
 
 def _create_download_task(video, domain, video_id, session):
-    uploader = video.get_uploader()
+    uploader = video.uploader
     task = DownloadTask()
     task.url = video.url
     task.domain = domain
-    task.title = video.get_title()
-    task.thumbnail = video.get_thumbnail()
+    task.title = video.title
+    task.thumbnail = video.thumbnail
     task.video_id = video_id
     task.status = "PENDING"
-    task.channel_id = uploader.get_id()
-    task.channel_url = uploader.get_url()
-    task.channel_name = uploader.get_name()
-    task.channel_avatar = uploader.get_avatar()
+    task.channel_id = uploader.id
+    task.channel_url = uploader.url
+    task.channel_name = uploader.name
+    task.channel_avatar = uploader.avatar
     session.add(task)
     session.commit()
     return task

@@ -3,7 +3,7 @@ from contextlib import suppress
 
 from jinja2 import Environment, FileSystemLoader
 
-from meta.video import Video
+from meta import Video
 
 
 class NfoGenerator:
@@ -20,7 +20,7 @@ class NfoGenerator:
 
     @staticmethod
     def generate_tv_show_nfo(video: Video):
-        uploader = video.get_uploader()
+        uploader = video.uploader
         uploader_id = uploader.get_id()
         uploader_name = uploader.get_name()
         tags = uploader.get_tags()
@@ -38,14 +38,14 @@ class NfoGenerator:
 
     @staticmethod
     def generate_episode_nfo(video: Video):
-        uploader = video.get_uploader()
+        uploader = video.uploader
         template = NfoGenerator.TEMPLATE_ENV.get_template('episode_nfo.xml')
         nfo_content = template.render(
             series_title=uploader.get_name(),
-            season=video.get_season(),
-            episode_title=video.get_title(),
-            description=video.get_description(),
-            thumbnail_path=video.get_thumbnail()
+            season=video.season,
+            episode_title=video.title,
+            description=video.description(),
+            thumbnail_path=video.thumbnail()
         )
 
         download_path = video.get_download_full_path()

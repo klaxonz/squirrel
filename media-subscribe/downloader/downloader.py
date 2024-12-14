@@ -13,7 +13,7 @@ from core.cache import RedisClient
 from core.database import get_session
 from core.config import settings
 from downloader.id_extractor import extract_id_from_url
-from meta.video import VideoFactory, Video
+from meta import Video, VideoFactory
 from model.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
 from utils.cookie import filter_cookies_to_query_string
@@ -160,7 +160,7 @@ class Downloader:
 
     @staticmethod
     def download_avatar(video: Video):
-        response = requests.get(video.get_uploader().get_avatar(), timeout=15)
+        response = requests.get(video.uploader.avatar, timeout=15)
         response.raise_for_status()
         download_path = video.get_tv_show_root_path()
         download_fullpath = f'{download_path}/poster.jpg'
