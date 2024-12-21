@@ -7,6 +7,7 @@ from sqlmodel import select
 from common import constants
 from core.cache import RedisClient
 from core.database import get_session
+from model import Video
 from utils.url_helper import extract_top_level_domain
 from downloader.id_extractor import extract_id_from_url
 from model.channel import ChannelVideo
@@ -16,8 +17,15 @@ from consumer import extract_task
 logger = logging.getLogger()
 
 
-def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if_retry: bool = False,
-          if_manual_retry: bool = False, if_manual_download: bool = False):
+def start(
+    url: str,
+    if_only_extract: bool = True,
+    if_subscribe: bool = False,
+    if_retry: bool = False,
+    if_manual_retry: bool = False,
+    if_manual_download: bool = False,
+    subscribe_id: int = None,
+):
     video_id = extract_id_from_url(url)
     domain = extract_top_level_domain(url)
 
@@ -25,9 +33,8 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
     key = f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}'
     if if_only_extract:
         with get_session() as session:
-            channel_video = session.query(ChannelVideo).filter(ChannelVideo.domain == domain,
-                                                               ChannelVideo.video_id == video_id).first()
-            if channel_video:
+            video = session.exec(select(Video).where(Video.video_id == url)).first()
+            if video:
                 return
 
         value = client.hget(key, 'if_extract')
@@ -38,10 +45,9 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
     else:
         if not if_manual_retry:
             with get_session() as session:
-                channel_video = session.query(ChannelVideo).filter(ChannelVideo.domain == domain,
-                                                                   ChannelVideo.video_id == video_id).first()
-                if channel_video and channel_video.if_downloaded:
-                    return
+                video = session.exec(select(Video).where(Video.video_id == url)).first()
+                # if video and channel_video.if_downloaded:
+                #     return
             value = client.hget(key, 'if_download')
             if value:
                 now = datetime.datetime.now().timestamp()
@@ -56,7 +62,8 @@ def start(url: str, if_only_extract: bool = True, if_subscribe: bool = False, if
             'if_only_extract': if_only_extract,
             'if_manual_retry': if_manual_retry,
             'if_manual_download': if_manual_download,
-            'if_manual': if_manual_retry or if_manual_download
+            'if_manual': if_manual_retry or if_manual_download,
+            'subscribe_id': subscribe_id,
         }
 
         message = Message()

@@ -1,11 +1,11 @@
-from .youtube import YouTubeSubscribeChannel
-from .pornhub import PornhubSubscribeChannel
-from .javdb import JavSubscribeChannel
-from .bilibili import BilibiliSubscribeChannel
+from .youtube import YouTubeSubscription
+from .pornhub import PornhubSubscription
+from .javdb import JavSubscription
+from .bilibili import BilibiliSubscription
 
 __all__ = [
-    'YouTubeSubscribeChannel',
-    'PornhubSubscribeChannel', 
-    'JavSubscribeChannel',
-    'BilibiliSubscribeChannel'
+    'YouTubeSubscription',
+    'PornhubSubscription',
+    'JavSubscription',
+    'BilibiliSubscription'
 ] 

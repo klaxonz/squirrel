@@ -1,26 +1,28 @@
 import time
 import random
 from pytubefix import Channel as YouTubeChannel
-from ..base import BaseSubscribeChannel
-from meta.channel import ChannelMeta
-from model.channel import Channel
 
-class YouTubeSubscribeChannel(BaseSubscribeChannel):
+from model import Subscription
+from ..base import BaseSubscription
+from meta.channel import SubscriptionMeta
+
+
+class YouTubeSubscription(BaseSubscription):
     DOMAIN = 'youtube.com'
 
     def __init__(self, url):
         super().__init__(url)
         self.channel = YouTubeChannel(url, use_oauth=False)
 
-    def get_channel_info(self):
-        return ChannelMeta(
+    def get_subscribe_info(self):
+        return SubscriptionMeta(
             self.channel.channel_id,
             self.channel.channel_name,
             self.channel.thumbnail_url,
             self.url
         )
 
-    def get_channel_videos(self, channel: Channel, update_all: bool):
+    def get_subscribe_videos(self, subscription: Subscription, update_all: bool):
         videos_ = []
         if self.channel.videos:
             for video in self.channel.videos:

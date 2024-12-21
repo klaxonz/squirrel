@@ -1,3 +1,3 @@
-from .channel import BilibiliSubscribeChannel
+from .channel import BilibiliSubscription
 
-__all__ = ['BilibiliSubscribeChannel'] 
+__all__ = ['BilibiliSubscription']

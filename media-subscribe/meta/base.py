@@ -1,6 +1,4 @@
 import os
-import importlib
-import pkgutil
 from pathvalidate import sanitize_filename
 from core.config import settings
 
@@ -20,6 +18,7 @@ class Video:
         self._thumbnail = None
         self._upload_date = None
         self._uploader = None
+        self._actors = []
         self._season = None
 
     @property
@@ -69,7 +68,7 @@ class Video:
         return self._season
 
     @property
-    def uploader(self):
+    def actors(self):
         if self._uploader is None:
             from .factory import UploaderFactory
             self._uploader = UploaderFactory.create_uploader(self.url)
@@ -95,17 +94,14 @@ class Video:
         return True
 
 
-class Uploader:
+class Actor:
     """Base class for channel/uploader metadata"""
     DOMAIN = None
 
     def __init__(self, url):
         self._url = url
-        self._id = None
         self._name = None
         self._avatar = None
-        self._tags = None
-        self._actors = []
 
     @property
     def url(self):
@@ -114,14 +110,6 @@ class Uploader:
     @url.setter
     def url(self, value):
         self._url = value
-
-    @property
-    def id(self):
-        return self._id
-
-    @id.setter
-    def id(self, value):
-        self._id = value
 
     @property
     def name(self):
@@ -138,19 +126,3 @@ class Uploader:
     @avatar.setter
     def avatar(self, value):
         self._avatar = value
-
-    @property
-    def tags(self):
-        return self._tags
-
-    @tags.setter
-    def tags(self, value):
-        self._tags = value
-
-    @property
-    def actors(self):
-        return self._actors
-
-    @actors.setter
-    def actors(self, value):
-        self._actors = value 

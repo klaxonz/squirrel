@@ -15,6 +15,7 @@ from .settings import router as settings_router
 from .task import router as task_router
 from .video_history import router as video_history_router
 from .podcast import router as podcast_router
+from .subscription import router as subscription_router
 
 logger = logging.getLogger()
 app = FastAPI()
@@ -31,6 +32,7 @@ app.include_router(channel_router)
 app.include_router(channel_video_router)
 app.include_router(video_history_router)
 app.include_router(podcast_router)
+app.include_router(subscription_router)
 
 # 判断是否为开发环境
 IS_DEV = os.getenv("ENV", "prod").lower() == "dev"

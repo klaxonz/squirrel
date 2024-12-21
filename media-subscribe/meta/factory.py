@@ -1,7 +1,8 @@
-from .platforms.bilibili import BilibiliVideo, BilibiliUploader
-from .platforms.youtube import YoutubeVideo, YoutubeUploader
-from .platforms.pornhub import PornhubVideo, PornhubUploader
-from .platforms.javdb import JavVideo, JavUploader
+from .platforms.bilibili import BilibiliVideo
+from .platforms.javdb import JavVideo
+from .platforms.pornhub import PornhubVideo
+from .platforms.youtube import YoutubeVideo
+
 
 class VideoFactory:
     @staticmethod
@@ -15,14 +16,3 @@ class VideoFactory:
         elif 'javdb.com' in url:
             return JavVideo(url, video_info)
 
-class UploaderFactory:
-    @staticmethod
-    def create_uploader(url):
-        if 'bilibili.com' in url:
-            return BilibiliUploader(url)
-        elif 'youtube.com' in url:
-            return YoutubeUploader(url)
-        elif 'pornhub.com' in url:
-            return PornhubUploader(url)
-        elif 'javdb.com' in url:
-            return JavUploader(url) 

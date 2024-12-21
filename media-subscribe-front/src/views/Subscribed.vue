@@ -1,15 +1,15 @@
 <template>
   <div class="subscribed-page flex flex-col h-full bg-[#0f0f0f] text-white">
     <div class="flex items-center pt-4 px-4">
-      <SearchBar class="flex-grow" @search="handleSearch" ref="searchBar"/>
+      <SearchBar ref="searchBar" class="flex-grow" @search="handleSearch"/>
       <button 
-        @click="showAddDialog = true"
         class="ml-4 h-9 px-6 min-w-[120px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap"
+        @click="showAddDialog = true"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" fill-rule="evenodd" />
         </svg>
-        <span class="ml-2 text-sm font-medium">添加频道</span>
+        <span class="ml-2 text-sm font-medium">添加订阅</span>
       </button>
     </div>
 
@@ -17,15 +17,15 @@
       <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
         <!-- 频道列表 -->
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
-          <div v-for="channel in channels" :key="channel.id"
+          <div v-for="subscription in subscriptions" :key="subscription.subscription_id"
                class="channel-item bg-[#202020] rounded-lg overflow-hidden hover:bg-[#303030] transition-all duration-200 relative group"
-               @click="goToChannel(channel.channel_id)"
+               @click="goToChannel(subscription.subscription_id)"
           >
             <div class="flex justify-center items-center p-3 bg-[#181818]">
               <div class="relative w-14 h-14">
                 <img 
-                  :src="channel.avatar" 
-                  :alt="channel.name" 
+                  :alt="subscription.content_name"
+                  :src="subscription.avatar_url"
                   class="w-full h-full rounded-full object-cover ring-1 ring-[#303030] transition-transform duration-300 group-hover:scale-105"
                   referrerpolicy="no-referrer"
                   @error="handleImageError($event)"
@@ -35,20 +35,20 @@
             </div>
 
             <div class="p-2 text-center">
-              <h3 class="text-xs font-semibold truncate text-white">{{ channel.name }}</h3>
+              <h3 class="text-xs font-semibold truncate text-white">{{ subscription.content_name }}</h3>
               <p class="text-[10px] text-[#aaa] mt-0.5">
-                总视频: {{ channel.total_videos }} | 已解析: {{ channel.total_extract }}
+                总视频: {{ subscription.total_videos }} | 已解析: {{ subscription.total_extract }}
               </p>
-              <p class="text-[10px] text-[#aaa] mt-0.5">订阅时间: {{ formatDate(channel.created_at) }}</p>
+              <p class="text-[10px] text-[#aaa] mt-0.5">订阅时间: {{ formatDate(subscription.created_at) }}</p>
             </div>
 
-            <button @click.stop="openSettings(channel)"
-                    class="absolute top-1 right-1 p-1 bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition-colors duration-200 opacity-0 group-hover:opacity-100">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" viewBox="0 0 20 20"
-                   fill="currentColor">
-                <path fill-rule="evenodd"
+            <button class="absolute top-1 right-1 p-1 bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition-colors duration-200 opacity-0 group-hover:opacity-100"
+                    @click.stop="openSettings(subscription)">
+              <svg class="h-3.5 w-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"
+                   xmlns="http://www.w3.org/2000/svg">
+                <path clip-rule="evenodd"
                       d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                      clip-rule="evenodd"/>
+                      fill-rule="evenodd"/>
               </svg>
             </button>
           </div>
@@ -57,8 +57,8 @@
         <!-- 加载更多按钮 -->
         <div
             v-if="!allLoaded"
-            class="mt-4 mb-4 text-center loading-trigger h-20 flex items-center justify-center"
             ref="loadingTrigger"
+            class="mt-4 mb-4 text-center loading-trigger h-20 flex items-center justify-center"
         >
           <div v-if="loading" class="flex items-center justify-center space-x-2">
             <div class="w-2 h-2 bg-[#cc0000] rounded-full animate-bounce"></div>
@@ -78,37 +78,37 @@
     <div v-if="showSettings" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
          @click.self="closeSettings">
       <div class="bg-[#212121] rounded-lg p-6 w-full max-w-md">
-        <h2 class="text-xl font-bold mb-4 text-white">{{ selectedChannel.name }} 设置</h2>
+        <h2 class="text-xl font-bold mb-4 text-white">{{ selectedSubscription.content_name }} 设置</h2>
         <div class="space-y-6">
           <div class="flex items-center justify-between">
             <span class="text-sm text-[#fff]">开启监控</span>
-            <ToggleSwitch v-model="selectedChannel.if_enable"
-                          @update:modelValue="(value) => toggleStatus(selectedChannel.id, value)"/>
+            <ToggleSwitch v-model="selectedSubscription.is_enable"
+                          @update:modelValue="(value) => toggleStatus(selectedSubscription.subscription_id, value)"/>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-sm text-[#fff]">解析全部视频</span>
-            <ToggleSwitch v-model="selectedChannel.if_extract_all"
-                          @update:modelValue="(value) => toggleExtractAll(selectedChannel.id, value)"/>
+            <ToggleSwitch v-model="selectedSubscription.is_extract_all"
+                          @update:modelValue="(value) => toggleExtractAll(selectedSubscription.subscription_id, value)"/>
           </div>
-          <template v-if="selectedChannel.if_enable">
+          <template v-if="selectedSubscription.is_enable">
             <div class="flex items-center justify-between">
               <span class="text-sm text-[#fff]">自动下载视频</span>
-              <ToggleSwitch v-model="selectedChannel.if_auto_download"
-                            @update:modelValue="(value) => toggleAutoDownload(selectedChannel.id, value)"/>
+              <ToggleSwitch v-model="selectedSubscription.is_auto_download"
+                            @update:modelValue="(value) => toggleAutoDownload(selectedSubscription.subscription_id, value)"/>
             </div>
-            <div v-if="selectedChannel.if_auto_download" class="flex items-center justify-between">
+            <div v-if="selectedSubscription.is_auto_download" class="flex items-center justify-between">
               <span class="text-sm text-[#fff]">下载全部视频</span>
-              <ToggleSwitch v-model="selectedChannel.if_download_all"
-                            @update:modelValue="(value) => toggleDownloadAll(selectedChannel.id, value)"/>
+              <ToggleSwitch v-model="selectedSubscription.is_download_all"
+                            @update:modelValue="(value) => toggleDownloadAll(selectedSubscription.subscription_id, value)"/>
             </div>
           </template>
-          <button @click="unsubscribeChannel(selectedChannel.id)"
-                  class="w-full py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] transition-colors duration-200 text-sm">
+          <button class="w-full py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] transition-colors duration-200 text-sm"
+                  @click="unsubscribe(selectedSubscription.subscription_id)">
             取消订阅
           </button>
         </div>
-        <button @click="closeSettings"
-                class="mt-6 w-full py-2 bg-[#606060] text-white rounded-lg hover:bg-[#808080] transition-colors duration-200 text-sm font-medium">
+        <button class="mt-6 w-full py-2 bg-[#606060] text-white rounded-lg hover:bg-[#808080] transition-colors duration-200 text-sm font-medium"
+                @click="closeSettings">
           关闭
         </button>
       </div>
@@ -117,16 +117,16 @@
     <!-- 添加频道对话框 -->
     <AddChannelDialog 
       :show="showAddDialog"
-      @close="showAddDialog = false"
       @added="handleChannelAdded"
+      @close="showAddDialog = false"
     />
 
     <!-- Toast 提示 -->
     <Toast 
       v-if="toast.show"
+      :duration="3000"
       :message="toast.message"
       :type="toast.type"
-      :duration="3000"
     />
   </div>
 </template>
@@ -140,10 +140,11 @@ import {useRouter} from "vue-router";
 import useCustomToast from '../composables/useToast';
 import AddChannelDialog from '../components/AddChannelDialog.vue';
 import Toast from '../components/Toast.vue';
+import {formatDate} from '../utils/dateFormat';
 
 const router = useRouter();
 
-const channels = ref([]);
+const subscriptions = ref([]);
 const loading = ref(false);
 const allLoaded = ref(false);
 const currentPage = ref(1);
@@ -151,7 +152,7 @@ const searchQuery = ref('');
 const searchBar = ref(null);
 
 const showSettings = ref(false);
-const selectedChannel = ref(null);
+const selectedSubscription = ref(null);
 
 const observer = ref(null);
 const loadingTrigger = ref(null);
@@ -185,27 +186,27 @@ const setupIntersectionObserver = () => {
   }
 };
 
-const loadChannels = async () => {
+const loadSubscriptions = async () => {
   if (loading.value || allLoaded.value) return;
 
   loading.value = true;
   try {
-    const response = await axios.get('/api/channel/list', {
+    const response = await axios.get('/api/subscription/list', {
       params: {
         query: searchQuery.value,
         page: currentPage.value,
-        pageSize: 100
+        page_size: 100
       }
     });
     if (response.data.code === 0) {
-      const newChannels = response.data.data.data;
-      channels.value = [...channels.value, ...newChannels.map(channel => ({
-        ...channel,
-        total_videos: channel.total_videos || 0,
-        total_extract: channel.total_extract || 0
+      const newSubscriptions = response.data.data.data;
+      subscriptions.value = [...subscriptions.value, ...newSubscriptions.map(subscription => ({
+        ...subscription,
+        total_videos: subscription.total_videos || 0,
+        total_extract: subscription.total_extract || 0
       }))];
       currentPage.value++;
-      if (newChannels.length < 20) {
+      if (newSubscriptions.length < 20) {
         allLoaded.value = true;
       }
 
@@ -227,96 +228,90 @@ const handleSearch = (query) => {
     observer.value.unobserve(loadingTrigger.value);
   }
   searchQuery.value = query;
-  channels.value = [];
+  subscriptions.value = [];
   currentPage.value = 1;
   allLoaded.value = false;
-  loadChannels();
+  loadSubscriptions();
 };
 
 const loadMore = () => {
-  loadChannels();
+  loadSubscriptions();
 };
 
-const openSettings = (channel) => {
-  selectedChannel.value = {...channel};
+const openSettings = (subscription) => {
+  selectedSubscription.value = {...subscription};
   showSettings.value = true;
 };
 
 const closeSettings = () => {
   showSettings.value = false;
-  selectedChannel.value = null;
+  selectedSubscription.value = null;
 };
 
-const toggleStatus = async (channelId, status) => {
+const toggleStatus = async (subscription_id, status) => {
   try {
-    await axios.post('/api/channel/toggle-status', {channel_id: channelId, if_enable: status});
-    updateLocalChannel(channelId, {if_enable: status});
+    await axios.post('/api/subscription/toggle-status', {subscription_id: subscription_id, is_enable: status});
+    updateLocalSubscription(subscription_id, {is_enable: status});
     if (!status) {
       // 如果关闭监控，同时关闭其他选项
-      await toggleAutoDownload(channelId, false);
-      await toggleExtractAll(channelId, false);
-      await toggleDownloadAll(channelId, false);
+      await toggleAutoDownload(subscription_id, false);
+      await toggleExtractAll(subscription_id, false);
+      await toggleDownloadAll(subscription_id, false);
     }
   } catch (error) {
     console.error('更新频道状态失败:', error);
   }
 };
 
-const toggleAutoDownload = async (channelId, status) => {
+const toggleAutoDownload = async (subscriptionId, status) => {
   try {
-    await axios.post('/api/channel/toggle-auto-download', {channel_id: channelId, if_enable: status});
-    updateLocalChannel(channelId, {if_auto_download: status});
+    await axios.post('/api/subscription/toggle-auto-download', {subscription_id: subscriptionId, is_enable: status});
+    updateLocalSubscription(subscriptionId, {is_auto_download: status});
     if (!status) {
       // 如果关闭自动下载，同时关闭下载全部视频
-      await toggleDownloadAll(channelId, false);
+      await toggleDownloadAll(subscriptionId, false);
     }
   } catch (error) {
     console.error('更新自动下载状态失败:', error);
   }
 };
 
-const toggleDownloadAll = async (channelId, status) => {
+const toggleDownloadAll = async (subscriptionId, status) => {
   try {
-    await axios.post('/api/channel/toggle-download-all', {channel_id: channelId, if_enable: status});
-    updateLocalChannel(channelId, {if_download_all: status});
+    await axios.post('/api/subscription/toggle-download-all', {subscription_id: subscriptionId, is_enable: status});
+    updateLocalSubscription(subscriptionId, {is_download_all: status});
   } catch (error) {
     console.error('更新下载全部状态失败:', error);
   }
 };
 
-const toggleExtractAll = async (channelId, status) => {
+const toggleExtractAll = async (subscriptionId, status) => {
   try {
-    await axios.post('/api/channel/toggle-extract-all', {channel_id: channelId, if_enable: status});
-    updateLocalChannel(channelId, {if_extract_all: status});
+    await axios.post('/api/subscription/toggle-extract-all', {subscription_id: subscriptionId, is_enable: status});
+    updateLocalSubscription(subscriptionId, {is_extract_all: status});
   } catch (error) {
     console.error('更新提取全部状态失败:', error);
   }
 };
 
-const updateLocalChannel = (channelId, updates) => {
-  const index = channels.value.findIndex(c => c.id === channelId);
+const updateLocalSubscription = (subscriptionId, updates) => {
+  const index = subscriptions.value.findIndex(c => c.subscription_id === subscriptionId);
   if (index !== -1) {
-    channels.value[index] = {...channels.value[index], ...updates};
+    subscriptions.value[index] = {...subscriptions.value[index], ...updates};
   }
-  if (selectedChannel.value && selectedChannel.value.id === channelId) {
-    selectedChannel.value = {...selectedChannel.value, ...updates};
+  if (selectedSubscription.value && selectedSubscription.value.subscription_id === subscriptionId) {
+    selectedSubscription.value = {...selectedSubscription.value, ...updates};
   }
 };
 
-const formatDate = (dateString) => {
-  if (!dateString) return '未知日期';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('zh-CN', {year: 'numeric', month: 'long', day: 'numeric'});
-};
-
-const unsubscribeChannel = async (channelId) => {
+const unsubscribe = async (subscriptionId) => {
   const confirmed = await confirm('确定要取消订阅这个频道吗？这将删除所有相关的视频记录。');
   
   if (confirmed) {
     try {
-      const response = await axios.post('/api/channel/unsubscribe', {id: channelId});
+      const response = await axios.post('/api/subscription/unsubscribe', {subscription_id: subscriptionId});
       if (response.data.code === 0) {
-        channels.value = channels.value.filter(channel => channel.id !== channelId);
+        subscriptions.value = subscriptions.value.filter(subscription => subscription.subscription_id !== subscriptionId);
         displayToast('频道已成功取消订阅');
         closeSettings();
       } else {
@@ -348,29 +343,27 @@ const showToast = (message, type = 'success') => {
 
 // 添加图片加载错误处理函数
 const handleImageError = (event) => {
-  // 设置默认头像
-  event.target.src = '/squirrel-icon.svg'; // 使用项目中的默认头像
+  event.target.src = '/squirrel-icon.svg';
 };
 
 // 处理频道添加成功
 const handleChannelAdded = () => {
   showToast('频道添加成功');
-  // 重新加载频道列表
-  channels.value = [];
+  subscriptions.value = [];
   currentPage.value = 1;
   allLoaded.value = false;
-  loadChannels();
+  loadSubscriptions();
 };
 
 onMounted(() => {
-  loadChannels();
+  loadSubscriptions();
   nextTick(() => {
     setupIntersectionObserver();
   });
 });
 
 // 添加监听器以在内容变化时重新设置observer
-watch(channels, () => {
+watch(subscriptions, () => {
   nextTick(() => {
     if (observer.value && loadingTrigger.value) {
       observer.value.unobserve(loadingTrigger.value);

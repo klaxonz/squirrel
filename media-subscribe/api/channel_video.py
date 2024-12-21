@@ -15,7 +15,7 @@ from starlette.responses import StreamingResponse
 import common.response as response
 from core.database import get_session
 from downloader.downloader import Downloader
-from meta import VideoFactory
+from meta.factory import VideoFactory
 from model.channel import ChannelVideo
 from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, SortBy, \
     ToggleLikeRequest

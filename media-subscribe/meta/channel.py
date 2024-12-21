@@ -1,4 +1,4 @@
-class ChannelMeta:
+class SubscriptionMeta:
 
     def __init__(self, id, name, avatar, url):
         self.id = id

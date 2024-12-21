@@ -1,23 +1,26 @@
 import re
 import time
 import random
+
+import cloudscraper
+import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
+from model import Subscription
 from utils.cookie import filter_cookies_to_query_string
 from common.http_wrapper import session
-from meta.channel import ChannelMeta
+from meta.channel import SubscriptionMeta
 from model.channel import Channel
-from ..base import BaseSubscribeChannel
+from ..base import BaseSubscription
 
-class JavSubscribeChannel(BaseSubscribeChannel):
+
+class JavSubscription(BaseSubscription):
     DOMAIN = 'javdb.com'
 
-    def get_channel_info(self):
-        cookies = filter_cookies_to_query_string(self.url)
+    def get_subscribe_info(self):
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Cookie': cookies
         }
         response = session.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
@@ -36,16 +39,16 @@ class JavSubscribeChannel(BaseSubscribeChannel):
         avatar = re.search(r'url\((.*?)\)', style).group(1)
         channel_id = self.url.split('/')[-1]
         
-        return ChannelMeta(channel_id, name, avatar, self.url)
+        return SubscriptionMeta(channel_id, name, avatar, self.url)
 
-    def get_channel_videos(self, channel: Channel, update_all: bool):
+    def get_subscribe_videos(self, subscription: Subscription, update_all: bool):
         cookies = filter_cookies_to_query_string(self.url)
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Cookie': cookies
         }
 
-        response = session.get(self.url + "?t=s&sort_type=0", headers=headers, timeout=15)
+        response = session.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
 
         parsed_url = urlparse(self.url)

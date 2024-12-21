@@ -18,7 +18,7 @@ from common import constants
 from core.cache import RedisClient
 from core.database import get_session
 from downloader.downloader import Downloader
-from meta import VideoFactory
+from meta.factory import VideoFactory
 from model.download_task import DownloadTask
 from schemas.task import DownloadRequest, DownloadChangeStateRequest
 from services.task_service import TaskService

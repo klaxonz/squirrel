@@ -13,7 +13,8 @@ from core.cache import RedisClient
 from core.database import get_session
 from core.config import settings
 from downloader.id_extractor import extract_id_from_url
-from meta import Video, VideoFactory
+from meta.base import Video
+from meta.factory import VideoFactory
 from model.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
 from utils.cookie import filter_cookies_to_query_string
@@ -68,11 +69,9 @@ class Downloader:
     @staticmethod
     def get_video_info(url):
         if 'javdb.com' in url:
-            cookies = filter_cookies_to_query_string(url)
             headers = {
                 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
                               'Chrome/124.0.0.0 Safari/537.36',
-                'Cookie': cookies
             }
             response = session.get(url, headers=headers, timeout=15)
             response.raise_for_status()
@@ -111,11 +110,9 @@ class Downloader:
     @staticmethod
     def get_video_info_thread(url: str, queue_thread_name: str):
         if 'javdb.com' in url:
-            cookies = filter_cookies_to_query_string(url)
             headers = {
                 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
                               'Chrome/124.0.0.0 Safari/537.36',
-                'Cookie': cookies
             }
             response = session.get(url, headers=headers, timeout=15)
             response.raise_for_status()
@@ -160,7 +157,7 @@ class Downloader:
 
     @staticmethod
     def download_avatar(video: Video):
-        response = requests.get(video.uploader.avatar, timeout=15)
+        response = requests.get(video.actors.avatar, timeout=15)
         response.raise_for_status()
         download_path = video.get_tv_show_root_path()
         download_fullpath = f'{download_path}/poster.jpg'

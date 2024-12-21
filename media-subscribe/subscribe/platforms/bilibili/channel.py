@@ -5,16 +5,17 @@ import time
 from bs4 import BeautifulSoup
 import requests
 
+from model import Subscription
 from utils.cookie import filter_cookies_to_query_string
 from common.http_wrapper import session
-from meta.channel import ChannelMeta
+from meta.channel import SubscriptionMeta
 from model.channel import Channel
-from ...base import BaseSubscribeChannel
+from ...base import BaseSubscription
 from .sign import sign
 
 logger = logging.getLogger()
 
-class BilibiliSubscribeChannel(BaseSubscribeChannel):
+class BilibiliSubscription(BaseSubscription):
     DOMAIN = 'bilibili.com'
 
     def get_mid(self):
@@ -23,7 +24,7 @@ class BilibiliSubscribeChannel(BaseSubscribeChannel):
             raise Exception('Invalid url')
         return match.group(1)
 
-    def get_channel_info(self):
+    def get_subscribe_info(self):
         mid = self.get_mid()
         cookies = filter_cookies_to_query_string(self.url)
         headers = {
@@ -44,9 +45,9 @@ class BilibiliSubscribeChannel(BaseSubscribeChannel):
             if avatar_url.startswith('//'):
                 avatar_url = 'https:' + avatar_url
 
-        return ChannelMeta(mid, channel_name, avatar_url, self.url)
+        return SubscriptionMeta(mid, channel_name, avatar_url, self.url)
 
-    def get_channel_videos(self, channel: Channel, update_all: bool):
+    def get_subscribe_videos(self, subscription: Subscription, update_all: bool):
         cookies = filter_cookies_to_query_string(self.url)
         headers = {
             'Referer': self.url,

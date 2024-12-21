@@ -5,25 +5,25 @@ import re
 import time
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from logging import exception
 from typing import List, Type
 
 import feedparser
 from PyCookieCloud import PyCookieCloud
 from sqlmodel import col, or_, and_, select, func
 
-from common import constants
-from core.cache import RedisClient
-from meta import VideoFactory
-from model.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
-from services.channel_service import ChannelService
-from subscribe.factory import SubscribeChannelFactory
-from utils.cookie import json_cookie_to_netscape
-from core.database import get_session
 from core.config import settings
+from core.database import get_session
 from downloader.downloader import Downloader
+from meta.factory import VideoFactory
+from model import Subscription
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
+from model.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
+from services.channel_service import ChannelService
 from services.download_service import start
+from subscribe.factory import SubscriptionFactory
+from utils.cookie import json_cookie_to_netscape
 
 logger = logging.getLogger()
 
@@ -174,65 +174,57 @@ class AutoUpdateChannelVideo(BaseTask):
         logger.info('auto_update_channel_video start')
         cls.initialize_pools()
         
-        channel_ids = []
+        subscription_ids = []
         with get_session() as outer_session:
-            channels = outer_session.exec(select(Channel).where(Channel.if_enable == 1))
-            for channel in channels:
-                channel_ids.append(channel.channel_id)
+            subscriptions = outer_session.exec(select(Subscription).where(Subscription.is_enable == 1))
+            for subscription in subscriptions:
+                subscription_ids.append(subscription.subscription_id)
 
-        for channel_id in channel_ids:
+        for subscription_id in subscription_ids:
             try:
                 with get_session() as inner_session:
-                    channel = inner_session.exec(select(Channel).where(Channel.channel_id == channel_id)).one()
-                    pool = cls.get_pool(channel.url)
+                    subscription = inner_session.exec(select(Subscription).where(Subscription.subscription_id == subscription_id)).one()
+                    pool = cls.get_pool(subscription.content_url)
                     if pool:
-                        pool.submit(cls.update_channel_video, channel)
+                        pool.submit(cls.update_subscription_video, subscription)
                     
             except Exception as e:
                 logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
     @classmethod
-    def update_channel_video(cls, channel):
-        redis_client = RedisClient.get_instance().client
+    def update_subscription_video(cls, subscription):
+        try:
+            logger.debug(f"update {subscription.content_name} subscription video start")
+            subscribe_channel = SubscriptionFactory.create_subscription(subscription.content_url)
 
-        # Check if the channel is in the unsubscribed set
-        if redis_client.sismember(constants.UNSUBSCRIBED_CHANNELS_SET, channel.channel_id):
-            logger.info(f"Skipping update for recently unsubscribed channel: {channel.name}")
-            return
-
-        logger.debug(f"update {channel.name} channel video start")
-        subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
-        if channel.avatar is None:
-            with get_session() as session:
-                channel = session.exec(select(Channel).where(Channel.channel_id == channel.channel_id)).one()
-                channel.avatar = subscribe_channel.get_channel_info().avatar
-                session.commit()
-        # 下载全部的
-        update_all = channel.if_download_all or channel.if_extract_all
-        video_list = subscribe_channel.get_channel_videos(channel=channel, update_all=update_all)
-        extract_video_list = []
-        extract_download_video_list = []
-        if channel.if_extract_all:
-            if channel.if_auto_download:
-                if channel.if_download_all:
-                    extract_download_video_list = video_list
+            # 下载全部的
+            update_all = subscription.is_download_all or subscription.is_extract_all
+            video_list = subscribe_channel.get_subscribe_videos(subscription=subscription, update_all=update_all)
+            extract_video_list = []
+            extract_download_video_list = []
+            if subscription.is_extract_all:
+                if subscription.is_auto_download:
+                    if subscription.is_download_all:
+                        extract_download_video_list = video_list
+                    else:
+                        extract_video_list = video_list[settings.CHANNEL_UPDATE_DEFAULT_SIZE:]
+                        extract_download_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
                 else:
-                    extract_video_list = video_list[settings.CHANNEL_UPDATE_DEFAULT_SIZE:]
+                    extract_video_list = video_list
+
+            else:
+                if subscription.is_auto_download:
                     extract_download_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
-            else:
-                extract_video_list = video_list
+                else:
+                    extract_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
 
-        else:
-            if channel.if_auto_download:
-                extract_download_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
-            else:
-                extract_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
-
-        for video in extract_video_list:
-            start(video, if_subscribe=True)
-        for video in extract_download_video_list:
-            start(video, if_only_extract=False, if_subscribe=True)
-        logger.debug(f"update {channel.name} channel video end")
+            for video in extract_video_list:
+                start(video, if_subscribe=True, subscribe_id=subscription.subscription_id)
+            for video in extract_download_video_list:
+                start(video, if_only_extract=False, if_subscribe=True, subscribe_id=subscription.subscription_id)
+            logger.debug(f"update {subscription.name} video end")
+        except exception as e:
+            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
     @classmethod
     def shutdown(cls):
@@ -285,8 +277,8 @@ class RepairChanelInfoForTotalVideos(BaseTask):
                     extract_videos = channel_service.count_channel_videos(channel.channel_id)
                     if channel.total_videos >= extract_videos and channel.total_videos > 0:
                         continue
-                    subscribe_channel = SubscribeChannelFactory.create_subscribe_channel(channel.url)
-                    videos = subscribe_channel.get_channel_videos(channel, update_all=True)
+                    subscribe_channel = SubscriptionFactory.create_subscription(channel.url)
+                    videos = subscribe_channel.get_subscribe_videos(channel, update_all=True)
                     channel.total_videos = len(videos)
                     session.commit()
             except json.JSONDecodeError as e:

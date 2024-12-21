@@ -1,8 +1,8 @@
 from datetime import datetime
-from sqlmodel import SQLModel, Field
+from sqlmodel import Field
 
 
-class TimestampMixin(SQLModel):
+class TimestampMixin:
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(),
         sa_column_kwargs={"onupdate": lambda: datetime.now()}

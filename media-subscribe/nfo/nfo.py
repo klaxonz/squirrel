@@ -3,7 +3,7 @@ from contextlib import suppress
 
 from jinja2 import Environment, FileSystemLoader
 
-from meta import Video
+from model import Video
 
 
 class NfoGenerator:
