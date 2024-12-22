@@ -9,7 +9,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse, RedirectResponse
 from starlette.staticfiles import StaticFiles
 
-from .channel_video import router as channel_video_router
 from .settings import router as settings_router
 from .task import router as task_router
 from .video_history import router as video_history_router
@@ -27,7 +26,6 @@ app.add_middleware(
 )
 app.include_router(task_router)
 app.include_router(settings_router)
-app.include_router(channel_video_router)
 app.include_router(video_history_router)
 app.include_router(podcast_router)
 app.include_router(subscription_router)

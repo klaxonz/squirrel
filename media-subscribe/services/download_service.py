@@ -5,14 +5,13 @@ import logging
 from sqlmodel import select
 
 from common import constants
+from consumer import extract_task
 from core.cache import RedisClient
 from core.database import get_session
-from model import Video
-from utils.url_helper import extract_top_level_domain
 from downloader.id_extractor import extract_id_from_url
-from model.channel import ChannelVideo
+from model import Video
 from model.message import Message
-from consumer import extract_task
+from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()
 

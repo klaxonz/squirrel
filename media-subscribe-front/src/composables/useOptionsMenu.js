@@ -4,44 +4,9 @@ import useCustomToast from './useToast';
 export default function useOptionsMenu(videoRef) {
   const { displayToast } = useCustomToast();
 
-  const toggleReadStatus = async (isRead) => {
-    try {
-      await axios.post('/api/channel-video/mark-read', {
-        channel_id: videoRef.value.channel_id,
-        video_id: videoRef.value.video_id,
-        is_read: isRead
-      });
-      displayToast(`视频已标记为${isRead ? '已读' : '未读'}`);
-    } catch (error) {
-      console.error('更新阅读状态失败:', error);
-      displayToast('更新阅读状态失败', { type: 'error' });
-    }
-  };
-
-  const markReadBatch = async (isRead, direction) => {
-    try {
-      const channelId = videoRef.value.channel_id;
-      const response = await axios.post('/api/channel-video/mark-read-batch', {
-        is_read: isRead,
-        channel_id: channelId,
-        direction: direction,
-        uploaded_at: videoRef.value.uploaded_at
-      });
-
-      if (response.data.code === 0) {
-        displayToast(`已将${direction === 'above' ? '以上' : '以下'}视频标记为${isRead ? '已读' : '未读'}`);
-      } else {
-        throw new Error(response.data.msg || '批量更新阅读状态失败');
-      }
-    } catch (error) {
-      console.error('批量更新阅读状态失败:', error);
-      displayToast('批量更新阅读状态失败', { type: 'error' });
-    }
-  };
-
   const downloadVideo = async () => {
     try {
-      const response = await axios.post('/api/channel-video/download', {
+      const response = await axios.post('/api/video/download', {
         channel_id: videoRef.value.channel_id,
         video_id: videoRef.value.video_id
       });
@@ -92,41 +57,8 @@ export default function useOptionsMenu(videoRef) {
     document.body.removeChild(textArea);
   };
 
-  const toggleLikeVideo = async (targetStatus) => {
-    try {
-      const nextLikeStatus = videoRef.value.is_liked === targetStatus ? null : targetStatus;
-
-      const response = await axios.post('/api/channel-video/toggle-like', {
-        channel_id: videoRef.value.channel_id,
-        video_id: videoRef.value.video_id,
-        is_liked: nextLikeStatus
-      });
-
-      if (response.data.code === 0) {
-        videoRef.value.is_liked = nextLikeStatus;
-        
-        const playlist = document.querySelector('.playlist-section');
-        if (playlist) {
-          const videos = playlist.querySelectorAll('.video-item');
-          videos.forEach(video => {
-            if (video.dataset.videoId === videoRef.value.video_id) {
-              video.__vue__.$data.video.is_liked = nextLikeStatus;
-            }
-          });
-        }
-      } else {
-        throw new Error(response.data.msg || '操作失败');
-      }
-    } catch (error) {
-      console.error('切换喜欢状态失败:', error);
-    }
-  };
-
   return {
-    toggleReadStatus,
-    markReadBatch,
     downloadVideo,
     copyVideoLink,
-    toggleLikeVideo,
   };
 }

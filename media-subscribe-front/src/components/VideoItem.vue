@@ -186,28 +186,18 @@ const menuPosition = ref({ x: 0, y: 0 });
 
 const videoRef = toRef(props, 'video');
 const {
-  toggleReadStatus,
-  markReadBatch,
   downloadVideo,
   copyVideoLink,
-  dislikeVideo,
-  toggleLikeVideo,
 } = useOptionsMenu(videoRef);
 
 watch(() => props.video, (newVideo) => {
   const {
-    toggleReadStatus: newToggleReadStatus,
-    markReadBatch: newMarkReadBatch,
     downloadVideo: newDownloadVideo,
     copyVideoLink: newCopyVideoLink,
-    toggleLikeVideo: newToggleLikeVideo,
   } = useOptionsMenu(newVideo);
 
   downloadVideo.value = newDownloadVideo;
-  toggleReadStatus.value = newToggleReadStatus;
-  markReadBatch.value = newMarkReadBatch;
   copyVideoLink.value = newCopyVideoLink;
-  toggleLikeVideo.value = newToggleLikeVideo;
 }, { deep: true });
 
 const showContextMenu = async (event) => {

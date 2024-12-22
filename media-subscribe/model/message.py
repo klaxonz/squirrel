@@ -17,4 +17,3 @@ class Message(SQLModel, table=True):
     updated_at: Optional[datetime.datetime] = Field(
         sa_column=Column(DateTime, nullable=False, default=datetime.datetime.now, onupdate=datetime.datetime.now,
                          index=True))
-

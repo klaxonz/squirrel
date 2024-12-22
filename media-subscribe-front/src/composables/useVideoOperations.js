@@ -7,9 +7,9 @@ export default function useVideoOperations() {
     if (!video.stream_video_url) {
       try {
         if (video.if_downloaded) {
-          video.stream_video_url = `/api/channel/video/play/${video.video_id}`;
+          video.stream_video_url = `/api/video/play/${video.video_id}`;
         } else {
-          const response = await axios.get('/api/channel-video/video/url', {
+          const response = await axios.get('/api/video/url', {
             params: {
               video_id: video.video_id
             }

@@ -2,18 +2,17 @@ from datetime import datetime
 from typing import List, Optional
 from sqlmodel import select, col
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from core.database import get_session
+from model import Video
 from model.video_history import VideoHistory
-from model.channel import ChannelVideo
 
 
 class VideoHistoryService:
     def __init__(self):
         pass
 
-    def update_watch_history(self, video_id: str, channel_id: str, watch_duration: int, last_position: int,
+    def update_watch_history(self, video_id: int, watch_duration: int, last_position: int,
                              total_duration: int) -> None:
         """更新视频观看历史"""
         max_retries = 3
@@ -22,12 +21,10 @@ class VideoHistoryService:
         while retry_count < max_retries:
             try:
                 with get_session() as session:
-                    # 使用 SELECT FOR UPDATE 加锁查询
                     history_stmt = (
                         select(VideoHistory)
                         .where(
                             VideoHistory.video_id == video_id,
-                            VideoHistory.channel_id == channel_id
                         )
                         .with_for_update()  # 添加行级锁
                     )
@@ -43,7 +40,6 @@ class VideoHistoryService:
                         # 创建新记录
                         history = VideoHistory(
                             video_id=video_id,
-                            channel_id=channel_id,
                             watch_duration=watch_duration,
                             last_position=last_position,
                             total_duration=total_duration
@@ -70,8 +66,7 @@ class VideoHistoryService:
         """获取观看历史列表"""
         # 使用 select 语句查询总数
         with get_session() as session:
-            count_stmt = select(VideoHistory)
-            total = len(session.exec(count_stmt).all())
+            total = len(session.exec(select(VideoHistory)).all())
 
             stmt = select(VideoHistory).order_by(col(VideoHistory.updated_at).desc()).offset(
                 (page - 1) * page_size).limit(page_size)
@@ -79,7 +74,7 @@ class VideoHistoryService:
             results = session.exec(stmt).all()
 
             video_ids = [result.video_id for result in results]
-            videos = session.exec(select(ChannelVideo).where(ChannelVideo.video_id.in_(video_ids))).all()
+            videos = session.exec(select(Video).where(Video.video_id.in_(video_ids))).all()
             video_dict = {video.video_id: video for video in videos}
 
             # 组合数据
@@ -91,13 +86,10 @@ class VideoHistoryService:
                 history_list.append({
                     "id": history.id,
                     "video_id": video.video_id,
-                    "channel_id": video.channel_id,
-                    "channel_name": video.channel_name,
-                    "channel_avatar": video.channel_avatar,
-                    "title": video.title,
+                    "title": video.video_title,
                     "thumbnail": video.thumbnail,
                     "duration": video.duration,
-                    "url": video.url,
+                    "url": video.video_url,
                     "uploaded_at": video.uploaded_at,
                     "watch_duration": history.watch_duration,
                     "last_position": history.last_position,

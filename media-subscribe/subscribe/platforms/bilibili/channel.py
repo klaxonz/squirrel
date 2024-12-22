@@ -1,7 +1,5 @@
 import logging
-import random
 import re
-import time
 from bs4 import BeautifulSoup
 import requests
 
@@ -9,7 +7,6 @@ from model import Subscription
 from utils.cookie import filter_cookies_to_query_string
 from common.http_wrapper import session
 from meta.channel import SubscriptionMeta
-from model.channel import Channel
 from ...base import BaseSubscription
 from .sign import sign
 

@@ -10,15 +10,7 @@ class DownloadTask(SQLModel, table=True):
     __tablename__ = 'download_task'
 
     task_id: Optional[int] = Field(sa_column=Column(Integer, primary_key=True))
-    url: str = Field(sa_column=Column(VARCHAR(2048), nullable=False))
-    thumbnail: Optional[str] = Field(sa_column=Column(VARCHAR(2048), nullable=True))
-    domain: str = Field(sa_column=Column(VARCHAR(255), nullable=False))
     video_id: str = Field(sa_column=Column(VARCHAR(64), nullable=False))
-    channel_id: Optional[str] = Field(sa_column=Column(VARCHAR(255), nullable=True))
-    channel_name: Optional[str] = Field(sa_column=Column(VARCHAR(255), nullable=True))
-    channel_url: Optional[str] = Field(sa_column=Column(VARCHAR(2048), nullable=True))
-    channel_avatar: Optional[str] = Field(sa_column=Column(VARCHAR(2048), nullable=True))
-    title: Optional[str] = Field(sa_column=Column(VARCHAR(255), nullable=True))
     status: str = Field(sa_column=Column(VARCHAR(32), nullable=False, default='PENDING'))
     downloaded_size: Optional[int] = Field(sa_column=Column(BigInteger, nullable=True, default=0))
     total_size: Optional[int] = Field(sa_column=Column(BigInteger, nullable=True, default=0))

@@ -9,7 +9,7 @@ from common import constants
 from core.cache import RedisClient
 from core.database import get_session
 from downloader.downloader import Downloader
-from model.channel import ChannelVideo
+from model import Video
 from model.download_task import DownloadTask
 from model.message import Message
 
@@ -77,10 +77,9 @@ def _handle_completed_download(download_task, session):
     download_task.error_message = ''
     session.commit()
 
-    channel_video = session.exec(select(ChannelVideo).where(
-        ChannelVideo.video_id == download_task.video_id)).first()
-    if channel_video:
-        channel_video.if_downloaded = True
+    video = session.exec(select(Video).where(Video.video_id == download_task.video_id)).first()
+    if video:
+        video.if_downloaded = True
         session.commit()
 
     _update_redis_cache(download_task)

@@ -18,7 +18,6 @@ class PodcastChannelBase(SQLModel):
     last_updated: Optional[datetime] = None
 
 
-
 class PodcastChannel(PodcastChannelBase, table=True):
     __tablename__ = "podcast_channels"
 
@@ -79,6 +78,6 @@ class PodcastPlayHistory(SQLModel, table=True):
     duration: int = Field(default=0)  # 总时长（秒）
     last_played_at: datetime = Field(default_factory=datetime.now)
     is_finished: bool = Field(default=False)  # 是否播放完成（进度超过90%）
-    
+
     # Relationships
     episode: PodcastEpisode = Relationship(back_populates="play_history")

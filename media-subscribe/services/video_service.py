@@ -13,13 +13,12 @@ from sqlmodel import select, or_
 
 from core.database import get_session
 from model import Video, SubscriptionVideo, Subscription, VideoCreator, Creator
-from model.channel import ChannelVideo
 from services import download_service
 from utils.cookie import filter_cookies_to_query_string
 from utils.url_helper import extract_top_level_domain
 
 
-class ChannelVideoService:
+class VideoService:
     def __init__(self):
         pass
 
@@ -50,8 +49,8 @@ class ChannelVideoService:
                 audio_urls = data['dash']['audio']
                 best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
                 return {
-                    'video_url': "/api/channel-video/proxy?domain=bilibili.com&url=" + quote(best_video_url),
-                    'audio_url': "/api/channel-video/proxy?domain=bilibili.com&url=" + quote(best_audio_url),
+                    'video_url': "/api/video/proxy?domain=bilibili.com&url=" + quote(best_video_url),
+                    'audio_url': "/api/video/proxy?domain=bilibili.com&url=" + quote(best_audio_url),
                 }
             elif video_domain == 'youtube.com':
                 # YouTube video URL fetching logic
@@ -74,7 +73,7 @@ class ChannelVideoService:
                 no = video.video_title.split(' ')[0]
                 url = self.get_jav_video_url(no)
                 return {
-                    'video_url': "/api/channel-video/proxy?domain=javdb.com&url=" + quote(url),
+                    'video_url': "/api/video/proxy?domain=javdb.com&url=" + quote(url),
                     'audio_url': None,
                 }
             return {}
@@ -119,7 +118,7 @@ class ChannelVideoService:
         return None
 
 
-    def list_channel_videos(self, query: str, subscription_id: str, category: str, sort_by: str, page: int, page_size: int) -> Tuple[
+    def list_videos(self, query: str, subscription_id: int, category: str, sort_by: str, page: int, page_size: int) -> Tuple[
         List[dict], dict]:
         # Start with Video table and join with SubscriptionVideo
         base_query = select(Video, SubscriptionVideo).join(
@@ -208,38 +207,9 @@ class ChannelVideoService:
 
             return video_list, counts
 
-    def mark_video_read(self, channel_id: str, video_id: str, is_read: bool):
-        with get_session() as session:
-            session.query(ChannelVideo).filter(
-                ChannelVideo.channel_id == channel_id,
-                ChannelVideo.video_id == video_id
-            ).update({"if_read": is_read})
-            session.commit()
-
-    def mark_videos_read_batch(self, channel_id: str, direction: str, uploaded_at: str, is_read: bool):
-        with get_session() as session:
-            query = session.query(ChannelVideo)
-            if channel_id:
-                query = query.filter(ChannelVideo.channel_id == channel_id)
-            if direction == 'above':
-                query = query.filter(ChannelVideo.uploaded_at >= uploaded_at)
-            elif direction == 'below':
-                query = query.filter(ChannelVideo.uploaded_at <= uploaded_at)
-            query.update({"if_read": is_read})
-            session.commit()
-
-    def toggle_like_video(self, channel_id: str, video_id: str, is_liked: bool):
-        with get_session() as session:
-            video = session.query(ChannelVideo).filter(
-                ChannelVideo.channel_id == channel_id,
-                ChannelVideo.video_id == video_id
-            ).first()
-            if video:
-                video.is_liked = is_liked
-                session.commit()
 
 
-    def download_channel_video(self, video_id: int):
+    def download_video(self, video_id: int):
         with get_session() as session:
             video = session.query(Video).filter(
                 Video.video_id == video_id

@@ -38,7 +38,7 @@ export default function useLatestVideos() {
     loading.value = true;
 
     const pageSize = 30;
-    const { data, error: requestError } = await get('/api/channel-video/list', {
+    const { data, error: requestError } = await get('/api/video/list', {
       page: currentPage.value,
       pageSize,
       query: searchQuery.value,

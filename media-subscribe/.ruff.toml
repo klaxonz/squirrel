@@ -1,3 +1,0 @@
-ignore = ["E402", "F401"]
-
-extend-exclude = ["temp/bilibili.py"]

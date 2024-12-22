@@ -1,8 +1,6 @@
 import json
 import logging
-import random
 import re
-import time
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from logging import exception
@@ -18,10 +16,8 @@ from core.database import get_session
 from downloader.downloader import Downloader
 from meta.factory import VideoFactory
 from model import Subscription, SubscriptionVideo
-from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
 from model.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
-from services.channel_service import ChannelService
 from services.download_service import start
 from subscribe.factory import SubscriptionFactory
 from utils.cookie import json_cookie_to_netscape
@@ -113,8 +109,8 @@ class RetryFailedTask(BaseTask):
                     task.retry = task.retry + 1
                     session.commit()
 
-                    channel = session.exec(select(Channel).where(Channel.channel_id == task.channel_id)).one()
-                    if_subscribe = channel is not None
+                    subscription_video = session.exec(select(SubscriptionVideo).where(SubscriptionVideo.video_id == task.video_id)).one()
+                    if_subscribe = subscription_video is not None
                     start(task.url, if_only_extract=False, if_subscribe=if_subscribe, if_retry=True)
 
         except json.JSONDecodeError as e:

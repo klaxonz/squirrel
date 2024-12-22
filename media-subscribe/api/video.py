@@ -9,7 +9,6 @@ from urllib.parse import urljoin
 
 import httpx
 from fastapi import Query, APIRouter, Request, HTTPException
-from sqlalchemy import and_
 from starlette.responses import StreamingResponse
 
 import common.response as response
@@ -17,10 +16,8 @@ from core.database import get_session
 from downloader.downloader import Downloader
 from meta.factory import VideoFactory
 from model import Video
-from model.channel import ChannelVideo
-from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, SortBy, \
-    ToggleLikeRequest
-from services.channel_video_service import ChannelVideoService
+from schemas.video import DownloadVideoRequest, SortBy
+from services.video_service import VideoService
 
 logger = logging.getLogger()
 
@@ -29,26 +26,26 @@ router = APIRouter(
 )
 
 
-@router.get("/api/channel-video/video/url")
+@router.get("/api/video/url")
 def get_video_url(
         video_id: int = Query(None, description="视频ID")
 ):
-    channel_video_service = ChannelVideoService()
-    video_urls = channel_video_service.get_video_url(video_id)
+    video_service = VideoService()
+    video_urls = video_service.get_video_url(video_id)
     return response.success(video_urls)
 
 
-@router.get("/api/channel-video/detail")
+@router.get("/api/video/detail")
 def get_video(
         id: int = Query(None, description="视频ID")
 ):
-    channel_video_service = ChannelVideoService()
-    video = channel_video_service.get_video(id)
+    video_service = VideoService()
+    video = video_service.get_video(id)
 
     return response.success(video)
 
 
-@router.get("/api/channel-video/list")
+@router.get("/api/video/list")
 def get_channel_videos(
         query: str = Query(None, description="搜索关键字"),
         subscription_id: int = Query(None, description="订阅ID"),
@@ -57,8 +54,8 @@ def get_channel_videos(
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
 ):
-    channel_video_service = ChannelVideoService()
-    videos, counts = channel_video_service.list_channel_videos(query, subscription_id, category, sort_by, page, page_size)
+    channel_video_service = VideoService()
+    videos, counts = channel_video_service.list_videos(query, subscription_id, category, sort_by, page, page_size)
     return response.success({
         "total": len(videos),
         "page": page,
@@ -68,27 +65,17 @@ def get_channel_videos(
     })
 
 
-@router.post("/api/channel-video/download")
-def download_channel_video(req: DownloadChannelVideoRequest):
-    channel_video_service = ChannelVideoService()
-    channel_video_service.download_channel_video(req.channel_id, req.video_id)
+@router.post("/api/video/download")
+def download_video(req: DownloadVideoRequest):
+    video_service = VideoService()
+    video_service.download_video(req.video_id)
     return response.success()
 
 
-@router.post("/api/channel-video/toggle-like")
-def toggle_like_video(
-    req: ToggleLikeRequest,
-):
-
-    channel_video_service = ChannelVideoService()
-    channel_video_service.toggle_like_video(channel_id=req.channel_id, video_id=req.video_id, is_liked=req.is_liked)
-    return response.success()
-
-
-@router.get("/api/channel/video/play//{video_id}")
+@router.get("/api/video/play/{video_id}")
 def play_video(request: Request, video_id: int):
     with get_session() as s:
-        video = s.query(Video).filter( ChannelVideo.video_id == video_id).first()
+        video = s.query(Video).filter( Video.video_id == video_id).first()
         if video:
             s.expunge(video)
         else:
@@ -146,7 +133,7 @@ def file_iterator(file_path, offset, chunk_size):
                 break
 
 
-@router.get("/api/channel-video/proxy")
+@router.get("/api/video/proxy")
 async def proxy_video(domain: str, url: str, request: Request):
     """
     代理视频文件，用于解决跨域问题
@@ -232,7 +219,7 @@ async def proxy_video(domain: str, url: str, request: Request):
                             full_url = path
                         else:
                             full_url = urljoin(base_url + '/', path)
-                        return f"/api/channel-video/proxy?domain=javdb.com&url={full_url}"
+                        return f"/api/video/proxy?domain=javdb.com&url={full_url}"
 
                     # 替换所有视频分片文件路径（包括.ts和.jpeg）
                     content_text = re.sub(
@@ -241,8 +228,6 @@ async def proxy_video(domain: str, url: str, request: Request):
                         content_text
                     )
 
-                    # 不再需要单独处理m3u8，因为上面的��则已经包含了
-                    
                     return StreamingResponse(
                         iter([content_text.encode()]),
                         media_type='application/vnd.apple.mpegurl',

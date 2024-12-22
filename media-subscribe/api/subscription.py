@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query
 from sqlmodel import select
 
 import common.response as response
