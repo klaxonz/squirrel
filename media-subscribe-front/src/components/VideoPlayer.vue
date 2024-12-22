@@ -1,7 +1,7 @@
 <template>
   <div class="video-wrapper bg-[#0f0f0f]">
     <div :id="`video-player`" class="video-player"></div>
-    <audio ref="audioPlayer" :src="video.audio_url" preload="auto"></audio>
+    <audio ref="audioPlayer" :src="video.stream_audio_url" preload="auto"></audio>
   </div>
 </template>
 
@@ -28,10 +28,10 @@ const {
 } = useVideoOperations();
 
 onMounted(async () => {
-  if (!props.video?.video_url) {
+  if (!props.video?.stream_video_url) {
     await playVideo(props.video);
-    if (props.video.audio_url) {
-      audioPlayer.value.src = props.video.audio_url;
+    if (props.video.stream_audio_url) {
+      audioPlayer.value.src = props.video.stream_audio_url;
     }
   }
   initPlayer();
@@ -43,7 +43,7 @@ onUnmounted(() => {
   }
 });
 
-watch(() => props.video?.video_url, async (newVideoUrl) => {
+watch(() => props.video?.stream_video_url, async (newVideoUrl) => {
   if (newVideoUrl) {
     if (!player.value) {
       initPlayer();
@@ -53,7 +53,7 @@ watch(() => props.video?.video_url, async (newVideoUrl) => {
   }
 });
 
-watch(() => props.video?.audio_url, (newAudioUrl) => {
+watch(() => props.video?.stream_audio_url, (newAudioUrl) => {
   if (audioPlayer.value && newAudioUrl) {
     audioPlayer.value.src = newAudioUrl;
   }
@@ -66,14 +66,14 @@ watch(() => props.initialTime, (newTime) => {
 });
 
 const initPlayer = () => {
-  if (!props.video?.video_url) {
+  if (!props.video?.stream_video_url) {
     console.warn('Cannot initialize player: video_url is missing');
     return;
   }
   if (props.video.domain === 'javdb.com') {
     player.value = new Player({
       id: `video-player`,
-      url: props.video.video_url,
+      url: props.video.stream_video_url,
       poster: props.video.thumbnail,
       autoplay: true,
       volume: 1,
@@ -100,7 +100,7 @@ const initPlayer = () => {
   } else {
     player.value = new Player({
       id: `video-player`,
-      url: props.video.video_url,
+      url: props.video.stream_video_url,
       poster: props.video.thumbnail,
       autoplay: true,
       volume: 1,
@@ -168,7 +168,7 @@ const handleSeeked = () => {
   if (!player.value) return;
   
   // 如果没有单独的音频轨道，直接播放视频
-  if (!props.video?.audio_url || !audioPlayer.value) {
+  if (!props.video?.stream_audio_url || !audioPlayer.value) {
     if (!player.value.paused) {
       player.value.play();
     }

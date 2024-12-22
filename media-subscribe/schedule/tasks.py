@@ -10,13 +10,14 @@ from typing import List, Type
 
 import feedparser
 from PyCookieCloud import PyCookieCloud
+from sqlalchemy.sql.functions import count
 from sqlmodel import col, or_, and_, select, func
 
 from core.config import settings
 from core.database import get_session
 from downloader.downloader import Downloader
 from meta.factory import VideoFactory
-from model import Subscription
+from model import Subscription, SubscriptionVideo
 from model.channel import Channel, ChannelVideo
 from model.download_task import DownloadTask
 from model.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
@@ -263,23 +264,22 @@ class RepairDownloadTaskInfo(BaseTask):
 class RepairChanelInfoForTotalVideos(BaseTask):
     @classmethod
     def run(cls):
-        channel_ids = []
+        subscription_ids = []
         with get_session() as session:
-            channel_service = ChannelService()
-            channels = session.exec(select(Channel)).all()
-            for channel in channels:
-                channel_ids.append(channel.channel_id)
+            subscriptions = session.exec(select(Subscription)).all()
+            for subscription in subscriptions:
+                subscription_ids.append(subscription.subscription_id)
 
-        for channel_id in channel_ids:
+        for subscription_id in subscription_ids:
             try:
                 with get_session() as session:
-                    channel = session.exec(select(Channel).where(Channel.channel_id == channel_id)).one()
-                    extract_videos = channel_service.count_channel_videos(channel.channel_id)
-                    if channel.total_videos >= extract_videos and channel.total_videos > 0:
+                    subscription = session.exec(select(Subscription).where(Subscription.subscription_id == subscription_id)).first()
+                    videos_count = session.exec(select(count(SubscriptionVideo.video_id)).where(SubscriptionVideo.subscription_id == subscription_id)).one()
+                    if subscription.total_videos is not None and subscription.total_videos >= videos_count and subscription.total_videos > 0:
                         continue
-                    subscribe_channel = SubscriptionFactory.create_subscription(channel.url)
-                    videos = subscribe_channel.get_subscribe_videos(channel, update_all=True)
-                    channel.total_videos = len(videos)
+                    subscribe_channel = SubscriptionFactory.create_subscription(subscription.content_url)
+                    videos = subscribe_channel.get_subscribe_videos(subscription, update_all=True)
+                    subscription.total_videos = len(videos)
                     session.commit()
             except json.JSONDecodeError as e:
                 logger.error(f"Error decoding JSON: {e}", exc_info=True)
@@ -287,56 +287,23 @@ class RepairChanelInfoForTotalVideos(BaseTask):
                 logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
 
-@TaskRegistry.register(interval=120, unit='minutes')
-class RepairChannelVideoDuration(BaseTask):
-    @classmethod
-    def run(cls):
-        url = ''
-        with get_session() as session:
-            statement = select(ChannelVideo).where(ChannelVideo.duration is None).order_by(
-                col(ChannelVideo.created_at).desc())
-            channel_videos = session.exec(statement)
-            for channel_video in channel_videos:
-                try:
-                    if channel_video.duration is not None:
-                        continue
-                    url = channel_video.url
-                    video = VideoFactory.create_video(url, None)
-                    if not video.video_exists():
-                        logger.info(f"video not exists: {url}")
-                        continue
-
-                    base_info = Downloader.get_video_info(url)
-                    video = VideoFactory.create_video(url, base_info)
-                    time.sleep(random.randint(1, 2))
-
-                    if base_info is None or video.duration is None:
-                        continue
-                    channel_video.duration = video.duration
-                    session.commit()
-                except json.JSONDecodeError as e:
-                    logger.error(f"Error decoding JSON: {e}", exc_info=True)
-                except Exception as e:
-                    logger.error(f"An unexpected error occurred: url: {url}, {e}", url, exc_info=True)
-
-
 @TaskRegistry.register(interval=1, unit='minutes')
-class AutoUpdateChannelExtractAll(BaseTask):
+class AutoUpdateSubscriptionExtractAll(BaseTask):
     @classmethod
     def run(cls):
         with get_session() as session:
-            channels = session.exec(select(Channel)).all()
-            for channel in channels:
+            subscriptions = session.exec(select(Subscription)).all()
+            for subscription in subscriptions:
                 extract_count = session.exec(
-                    select(func.count(col(ChannelVideo.id))).where(
-                        ChannelVideo.channel_id == channel.channel_id)).one()
-                if channel.total_videos > extract_count and channel.total_videos - extract_count > 10:
-                    channel.if_extract_all = 1
+                    select(func.count(col(SubscriptionVideo.video_id))).where(
+                        SubscriptionVideo.subscription_id == subscription.subscription_id)).one()
+                if subscription.total_videos is not None and subscription.total_videos > extract_count and subscription.total_videos - extract_count > 10:
+                    subscription.is_extract_all = 1
                 else:
-                    channel.if_extract_all = 0
-                session.add(channel)
+                    subscription.is_extract_all = 0
+                session.add(subscription)
                 session.commit()
-                session.refresh(channel)
+                session.refresh(subscription)
 
 
 @TaskRegistry.register(interval=30, unit='minutes')

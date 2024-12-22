@@ -74,7 +74,6 @@ const selectOption = (value) => {
   isOpen.value = false;
 };
 
-// Close dropdown when clicking outside
 const handleClickOutside = (event) => {
   if (!event.target.closest('.relative')) {
     isOpen.value = false;

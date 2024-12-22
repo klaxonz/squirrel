@@ -19,7 +19,7 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
           <div v-for="subscription in subscriptions" :key="subscription.subscription_id"
                class="channel-item bg-[#202020] rounded-lg overflow-hidden hover:bg-[#303030] transition-all duration-200 relative group"
-               @click="goToChannel(subscription.subscription_id)"
+               @click="getSubscriptionVideos(subscription.subscription_id)"
           >
             <div class="flex justify-center items-center p-3 bg-[#181818]">
               <div class="relative w-14 h-14">
@@ -324,8 +324,8 @@ const unsubscribe = async (subscriptionId) => {
   }
 };
 
-const goToChannel = (channelId) => {
-  router.push(`/channel/${channelId}/all`);
+const getSubscriptionVideos = (subscriptionId) => {
+  router.push(`/subscription/${subscriptionId}/all`);
 }
 
 const showToast = (message, type = 'success') => {

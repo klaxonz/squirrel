@@ -19,7 +19,7 @@
               :showProgress="video.showProgress"
               :progress="video.progress"
               @toggleOptions="$emit('toggleOptions', $event, video.id)"
-              @goToChannel="$emit('goToChannel', $event)"
+              @goToSubscription="$emit('goToSubscription', $event)"
               @openModal="$emit('openModal', video)"
               @markReadBatch="handleMarkReadBatch"
           />
@@ -59,7 +59,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'toggleOptions',
-  'goToChannel',
+  'goToSubscription',
   'openModal',
   'loadMore',
   'batchMarkAsRead',

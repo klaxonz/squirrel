@@ -46,8 +46,8 @@ def start(
         if not if_manual_retry:
             with get_session() as session:
                 video = session.exec(select(Video).where(Video.video_id == url)).first()
-                # if video and channel_video.if_downloaded:
-                #     return
+                if video and video.is_downloaded:
+                    return
             value = client.hget(key, 'if_download')
             if value:
                 now = datetime.datetime.now().timestamp()

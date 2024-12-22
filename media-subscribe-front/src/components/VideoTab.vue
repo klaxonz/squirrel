@@ -7,13 +7,9 @@
         :allLoaded="allLoaded"
         :showAvatar="false"
         @loadMore="loadMore"
-        @play="playVideo"
-        @videoPlay="onVideoPlay"
-        @videoPause="onVideoPause"
-        @videoEnded="onVideoEnded"
         @toggleOptions="toggleOptions"
         @openModal="(video) => emit('openModal', video, videos)"
-        @goToChannel="(newChannelId) => emit('goToChannel', newChannelId)"
+        @goToSubscription="(newSubscriptionId) => emit('goToSubscription', newSubscriptionId)"
     />
   </keep-alive>
 </template>
@@ -28,7 +24,7 @@ import {defineEmits, watch} from "vue";
 
 
 const emitter = inject('emitter');
-const emit = defineEmits(['openModal', 'update-counts', 'goToChannel']);
+const emit = defineEmits(['openModal', 'update-counts', 'goToSubscription']);
 
 const props = defineProps({
   searchQuery: {
@@ -36,7 +32,7 @@ const props = defineProps({
     default: ''
   },
   activeTab: String,
-  selectedChannelId: String,
+  selectedSubscriptionId: Number,
   sortBy: {
     type: String,
     default: 'uploaded_at'
@@ -52,7 +48,7 @@ const {
   handleSearch,
   activeTab,
   tabsWithCounts,
-  channelId,
+  subscriptionId,
   sortBy
 } = useLatestVideos();
 
@@ -78,8 +74,8 @@ watch(() => tabsWithCounts.value, (newCounts) => {
   emit('update-counts', newCounts);
 });
 
-watch(() => props.selectedChannelId, (newChannelId) => {
-  channelId.value = newChannelId;
+watch(() => props.selectedSubscriptionId, (newSubscriptionId) => {
+  subscriptionId.value = newSubscriptionId;
   handleSearch();
 })
 
@@ -87,20 +83,12 @@ watch(() => props.sortBy, () => {
   sortBy.value = props.sortBy;
   handleSearch();
 });
-
-const {
-  playVideo,
-  onVideoPlay,
-  onVideoPause,
-  onVideoEnded,
-} = useVideoOperations(videos);
-
 const {
   toggleOptions,
 } = useOptionsMenu(videos);
 
 onMounted(async () => {
-  channelId.value = props.selectedChannelId;
+  subscriptionId.value = props.selectedSubscriptionId;
   emitter.on('reloadContent', (tab) => {
     handleSearch();
   });

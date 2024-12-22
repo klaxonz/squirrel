@@ -4,20 +4,19 @@ import useCustomToast from "./useToast.js";
 
 export default function useVideoOperations() {
   const getVideoUrl = async (video) => {
-    if (!video.video_url) {
+    if (!video.stream_video_url) {
       try {
         if (video.if_downloaded) {
-          video.video_url = `/api/channel/video/play/${video.channel_id}/${video.video_id}`;
+          video.stream_video_url = `/api/channel/video/play/${video.video_id}`;
         } else {
           const response = await axios.get('/api/channel-video/video/url', {
             params: {
-              channel_id: video.channel_id,
               video_id: video.video_id
             }
           });
           if (response.data.code === 0) {
-            video.video_url = response.data.data.video_url;
-            video.audio_url = response.data.data.audio_url;
+            video.stream_video_url = response.data.data.video_url;
+            video.stream_audio_url = response.data.data.audio_url;
           }
         }
       } catch (err) {
@@ -32,18 +31,6 @@ export default function useVideoOperations() {
     if (!(await getVideoUrl(video))) {
       return;
     }
-
-    // 停止其他正在播放的视频
-    // Object.values(videos.value).forEach(tabVideos => {
-    //   if (Array.isArray(tabVideos)) {
-    //     tabVideos.forEach(v => {
-    //       if (v !== video && v.isPlaying) {
-    //         v.isPlaying = false;
-    //       }
-    //     });
-    //   }
-    // });
-
     video.isPlaying = true;
   };
 
@@ -51,18 +38,6 @@ export default function useVideoOperations() {
     if (!(await getVideoUrl(newVideo))) {
       return;
     }
-
-    // 停止当前正在播放的视频
-    // Object.values(videos.value).forEach(tabVideos => {
-    //   if (Array.isArray(tabVideos)) {
-    //     tabVideos.forEach(v => {
-    //       if (v.isPlaying) {
-    //         v.isPlaying = false;
-    //       }
-    //     });
-    //   }
-    // });
-    newVideo.isPlaying = true;
     return newVideo;
   };
 

@@ -21,26 +21,35 @@
         <!-- 视频信息区域 -->
         <div class="mt-3 px-4">
           <!-- 视频标题 -->
-          <h1 class="text-xs md:text-sm lg:text-base lg:font-medium text-white">{{ video?.title }}</h1>
+          <h1 class="text-xs md:text-sm lg:text-base lg:font-medium text-white">{{ video?.video_title }}</h1>
           
           <!-- 频道信息和操作按钮区域 -->
           <div class="mt-3 pb-3 border-b border-[#272727]">
-            <!-- 第一行：主频道和操作按钮 -->
             <div class="flex items-center justify-between">
-              <!-- 主频道信息 -->
+              <!-- 订阅信息 -->
               <div class="flex items-center">
-                <img 
-                  :src="mainChannel.avatar" 
-                  :alt="mainChannel.name"
-                  class="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 rounded-full object-cover"
-                  referrerpolicy="no-referrer"
-                >
-                <div class="ml-2 md:ml-2.5 lg:ml-3 flex flex-col">
+                <!-- 层叠的头像 -->
+                <div class="flex -space-x-3">
+                  <img 
+                    v-for="(sub, index) in video?.subscriptions"
+                    :key="sub.subscription_id"
+                    :src="sub.avatar_url" 
+                    :alt="sub.content_name"
+                    class="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-full object-cover ring-2 ring-[#0f0f0f]"
+                    :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
+                    referrerpolicy="no-referrer"
+                  >
+                </div>
+                <!-- 订阅名称 -->
+                <div class="ml-3 flex items-center">
                   <router-link 
-                    :to="`/channel/${mainChannel.id}/all`"
+                    v-for="(sub, index) in video?.subscriptions"
+                    :key="sub.subscription_id"
+                    :to="`/subscription/${sub.subscription_id}/all`"
                     class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
                   >
-                    {{ mainChannel.name }}
+                    {{ sub.content_name }}{{ index < video?.subscriptions.length - 1 ? ',' : '' }}
+                    <span v-if="index < video?.subscriptions.length - 1" class="mx-1 text-[#aaaaaa]"></span>
                   </router-link>
                 </div>
               </div>
@@ -131,44 +140,16 @@
                 </div>
               </div>
             </div>
-
-            <!-- 第二行：演员信息 -->
-            <div v-if="otherChannels.length > 0" 
-                 class="mt-3 flex items-center"
-            >
-              <span class="text-[#aaaaaa] text-xs md:text-sm shrink-0">演员:</span>
-              <div class="overflow-x-auto no-scrollbar flex-1 ml-2">
-                <div class="flex items-center space-x-2 min-w-min pr-4">
-                  <div v-for="channel in otherChannels" 
-                       :key="channel.id" 
-                       class="flex items-center shrink-0"
-                  >
-                    <img 
-                      :src="channel.avatar" 
-                      :alt="channel.name"
-                      class="w-5 h-5 md:w-6 md:h-6 rounded-full object-cover"
-                      referrerpolicy="no-referrer"
-                    >
-                    <router-link 
-                      :to="`/channel/${channel.id}/all`"
-                      class="ml-1 text-xs md:text-sm text-white hover:text-[#3ea6ff] transition-colors whitespace-nowrap"
-                    >
-                      {{ channel.name }}
-                    </router-link>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <!-- 视频描述 -->
           <div class="mt-4 p-3 bg-[#272727] rounded-xl">
             <div class="flex items-center text-[10px] md:text-xs lg:text-sm text-[#aaaaaa] space-x-4 mb-2">
-              <span>{{ formatDuration(video?.duration) }}</span>
-              <span>{{ formatDate(video?.uploaded_at) }}</span>
+              <span>{{ formatDuration(video?.video_duration) }}</span>
+              <span>{{ formatDate(video?.publish_date) }}</span>
               <span>{{ video?.if_read ? '已观看' : '未观看' }}</span>
             </div>
-            <p class="text-[10px] md:text-xs lg:text-sm text-white whitespace-pre-wrap">{{ video?.title }}</p>
+            <p class="text-[10px] md:text-xs lg:text-sm text-white whitespace-pre-wrap">{{ video?.video_title }}</p>
           </div>
         </div>
       </div>
@@ -233,7 +214,7 @@ const startTime = computed(() => {
 // 获取视频详情
 const fetchVideoDetails = async () => {
   try {
-    const response = await axios.get(`/api/channel-video/video?id=${route.params.videoId}`);
+    const response = await axios.get(`/api/channel-video/detail?id=${route.params.videoId}`);
     video.value = response.data.data;
   } catch (error) {
     console.error('Failed to fetch video details:', error);

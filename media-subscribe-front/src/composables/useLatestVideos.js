@@ -12,8 +12,8 @@ const videoCounts = ref({ all: 0, unread: 0, read: 0, preview: 0, liked: 0});
 const currentPage = ref(1);
 const searchQuery = ref('');
 const isResetting = ref(false);
-const channelId = ref('');
-const sortBy = ref('uploaded_at');
+const subscriptionId = ref(null);
+const sortBy = ref('publish_date');
 
 export default function useLatestVideos() {
   const tabs = [
@@ -24,7 +24,7 @@ export default function useLatestVideos() {
     { label: '喜欢', value: 'liked' },
   ];
 
-  const readStatus = computed(() => activeTab.value === 'all' ? undefined : activeTab.value);
+  const category = computed(() => activeTab.value === 'all' ? undefined : activeTab.value);
 
   const tabsWithCounts = computed(() => 
     tabs.map(tab => ({
@@ -42,8 +42,8 @@ export default function useLatestVideos() {
       page: currentPage.value,
       pageSize,
       query: searchQuery.value,
-      channel_id: channelId.value,
-      read_status: readStatus.value,
+      subscription_id: subscriptionId.value,
+      category: category.value,
       sort_by: sortBy.value
     });
 
@@ -108,7 +108,7 @@ export default function useLatestVideos() {
     loadMore,
     handleScroll,
     searchQuery,
-    channelId,
+    subscriptionId,
     sortBy
   };
 }

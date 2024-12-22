@@ -26,6 +26,7 @@ class Subscription(SQLModel, table=True):
     content_url: Optional[str]
     avatar_url: Optional[str]
     description: Optional[str]
+    total_videos: Optional[int] = Field(default=0)
     is_enable: bool = Field(default=True)
     is_auto_download: bool = Field(default=False)
     is_download_all: bool = Field(default=False)

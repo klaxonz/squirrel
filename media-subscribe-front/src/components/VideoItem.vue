@@ -41,18 +41,21 @@
       <div class="flex items-center justify-between text-2xs text-gray-400 pt-1">
         <div class="relative group">
           <div class="flex items-center">
-            <img 
-              :src="mainChannelInfo.avatar" 
-              alt="Channel Avatar" 
-              class="w-4 h-4 rounded-full mr-1 object-cover flex-shrink-0 cursor-pointer"
-              referrerpolicy="no-referrer"
-              @click.stop="goToChannel(mainChannelInfo.id)"
-            >
-            <span 
-              class="truncate hover:text-blue-400 font-medium transition-colors duration-200 leading-4 cursor-pointer" 
-              @click.stop="goToChannel(mainChannelInfo.id)"
-            >
-              {{ mainChannelInfo.name }}
+            <div class="flex -space-x-2 relative">
+              <template v-for="(avatar, index) in displayAvatars" :key="index">
+                <img 
+                  v-if="index < 3"
+                  :src="avatar.avatar" 
+                  :alt="`${avatar.name} Avatar`" 
+                  class="w-4 h-4 rounded-full object-cover flex-shrink-0 cursor-pointer ring-1 ring-[#212121]"
+                  :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
+                  referrerpolicy="no-referrer"
+                  @click.stop="goToSubscription(avatar.id)"
+                >
+              </template>
+            </div>
+            <span class="text-2xs text-gray-400 ml-2 truncate">
+              {{ displayNames }}
             </span>
           </div>
 
@@ -61,39 +64,22 @@
             v-if="hasActors"
             class="channel-popup opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute left-0 bottom-full mb-2 bg-[#282828] rounded-lg shadow-lg transition-all duration-200 z-50 w-max max-w-[300px] p-3"
           >
-            <!-- 主频道信息 -->
-            <div class="flex items-center mb-2">
-              <img 
-                :src="mainChannelInfo.avatar" 
-                alt="Channel Avatar" 
-                class="w-8 h-8 rounded-full mr-2 object-cover"
-                referrerpolicy="no-referrer"
-              >
-              <div class="flex flex-col">
-                <span class="text-white text-sm font-medium">{{ mainChannelInfo.name }}</span>
-                <span class="text-gray-400 text-xs">主频道</span>
-              </div>
-            </div>
-            
-            <!-- 分割线 -->
-            <div class="h-[1px] bg-gray-700 my-2"></div>
-            
-            <!-- 演员列表 -->
+            <!-- 订阅列表 -->
             <div class="flex flex-col gap-2">
               <div 
-                v-for="actor in actorChannels" 
-                :key="actor.id"
+                v-for="subscription in video.subscriptions"
+                :key="subscription.subscription_id"
                 class="flex items-center group/actor cursor-pointer hover:bg-gray-700/50 p-1 rounded-lg transition-colors duration-150"
-                @click.stop="goToChannel(actor.id)"
+                @click.stop="goToSubscription(subscription.subscription_id)"
               >
                 <img 
-                  :src="actor.avatar" 
+                  :src="subscription.avatar_url"
                   alt="Actor Avatar" 
                   class="w-6 h-6 rounded-full mr-2 object-cover"
                   referrerpolicy="no-referrer"
                 >
                 <span class="text-gray-300 group-hover/actor:text-white transition-colors duration-150">
-                  {{ actor.name }}
+                  {{ subscription.content_name }}
                 </span>
               </div>
             </div>
@@ -151,7 +137,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-  'goToChannel',
+  'goToSubscription',
   'openModal', 
   'downloadVideo',
 ]);
@@ -252,37 +238,10 @@ const handleClick = (event) => {
   emit('openModal', props.video);
 };
 
-// 修改算属来处理逗号分隔的字符串
-const mainChannelInfo = computed(() => {
-  const ids = props.video.channel_id?.toString().split(',') || [];
-  const names = props.video.channel_name?.toString().split(',') || [];
-  const avatars = props.video.channel_avatar?.toString().split(',') || [];
-  
-  return {
-    id: ids[0] || '',
-    name: names[0] || '',
-    avatar: avatars[0] || '',
-  };
-});
+const hasActors = computed(() => props.video.subscriptions.length > 1);
 
-const actorChannels = computed(() => {
-  const ids = props.video.channel_id?.toString().split(',') || [];
-  const names = props.video.channel_name?.toString().split(',') || [];
-  const avatars = props.video.channel_avatar?.toString().split(',') || [];
-  
-  // 跳过第一个元素（主频道），处理剩余的演员信息
-  return ids.slice(1).map((id, index) => ({
-    id: id.trim(),
-    name: names[index + 1]?.trim() || '',
-    avatar: avatars[index + 1]?.trim() || '',
-  })).filter(actor => actor.id && actor.name); // 过滤掉无效的数据
-});
-
-const hasActors = computed(() => actorChannels.value.length > 0);
-
-// 修改 goToChannel 方法以接收 channel_id 参数
-const goToChannel = (channelId) => {
-  emit('goToChannel', channelId);
+const goToSubscription = (subscriptionId) => {
+  emit('goToSubscription', subscriptionId);
 };
 
 onMounted(() => {
@@ -295,6 +254,33 @@ onUnmounted(() => {
   document.removeEventListener('closeAllContextMenus', closeContextMenu);
   document.removeEventListener('click', closeContextMenu);
   window.removeEventListener('scroll', handleScroll, true);
+});
+
+const displayAvatars = computed(() => {
+  // 优先使用 subscriptions
+  let avatars = props.video.subscriptions?.map(sub => ({
+    id: sub.subscription_id,
+    name: sub.content_name,
+    avatar: sub.avatar_url
+  })) || [];
+  
+  // 如果 subscriptions 为空，则使用 actors
+  if (!avatars.length && props.video.actors) {
+    avatars = props.video.actors.map(actor => ({
+      id: actor.creator_id,
+      name: actor.creator_name,
+      avatar: actor.avatar_url
+    }));
+  }
+  
+  return avatars.slice(0, 3);
+});
+
+const displayNames = computed(() => {
+  return displayAvatars.value
+    .slice(0, 2)
+    .map(avatar => avatar.name)
+    .join(', ');
 });
 </script>
 
@@ -444,5 +430,21 @@ onUnmounted(() => {
 .video-thumbnail {
   position: relative;
   z-index: 1;
+}
+
+.ring-1 {
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 0 1px var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.ring-[#212121] {
+  --tw-ring-color: #212121;
+}
+
+.-space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 0;
+  margin-right: calc(-0.5rem * var(--tw-space-x-reverse));
+  margin-left: calc(-0.5rem * calc(1 - var(--tw-space-x-reverse)));
 }
 </style>

@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 
 class SortBy(str, Enum):
-    UPLOADED_AT = "uploaded_at"
+    UPLOADED_AT = "publish_date"
     CREATED_AT = "created_at"
 
 

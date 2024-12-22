@@ -16,6 +16,7 @@ import common.response as response
 from core.database import get_session
 from downloader.downloader import Downloader
 from meta.factory import VideoFactory
+from model import Video
 from model.channel import ChannelVideo
 from schemas.channel_video import MarkReadRequest, MarkReadBatchRequest, DownloadChannelVideoRequest, SortBy, \
     ToggleLikeRequest
@@ -30,35 +31,34 @@ router = APIRouter(
 
 @router.get("/api/channel-video/video/url")
 def get_video_url(
-        channel_id: str = Query(None, description="频道名称"),
-        video_id: str = Query(None, description="视频ID")
+        video_id: int = Query(None, description="视频ID")
 ):
     channel_video_service = ChannelVideoService()
-    video_urls = channel_video_service.get_video_url(channel_id, video_id)
+    video_urls = channel_video_service.get_video_url(video_id)
     return response.success(video_urls)
 
-@router.get("/api/channel-video/video")
+
+@router.get("/api/channel-video/detail")
 def get_video(
         id: int = Query(None, description="视频ID")
 ):
     channel_video_service = ChannelVideoService()
     video = channel_video_service.get_video(id)
-    response_data = video.__dict__
 
-    return response.success(response_data)
+    return response.success(video)
 
 
 @router.get("/api/channel-video/list")
 def get_channel_videos(
         query: str = Query(None, description="搜索关键字"),
-        channel_id: str = Query(None, description="频道ID"),
-        read_status: str = Query(None, description="阅读状态: all, read, unread, preview"),
+        subscription_id: int = Query(None, description="订阅ID"),
+        category: str = Query(None, description="阅读状态: all, read, unread, preview, like"),
         sort_by: SortBy = Query(SortBy.UPLOADED_AT, description="排序字段"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
 ):
     channel_video_service = ChannelVideoService()
-    videos, counts = channel_video_service.list_channel_videos(query, channel_id, read_status, sort_by, page, page_size)
+    videos, counts = channel_video_service.list_channel_videos(query, subscription_id, category, sort_by, page, page_size)
     return response.success({
         "total": len(videos),
         "page": page,
@@ -66,20 +66,6 @@ def get_channel_videos(
         "data": videos,
         "counts": counts
     })
-
-
-@router.post("/api/channel-video/mark-read")
-def mark_video_read(req: MarkReadRequest):
-    channel_video_service = ChannelVideoService()
-    channel_video_service.mark_video_read(req.channel_id, req.video_id, req.is_read)
-    return response.success()
-
-
-@router.post("/api/channel-video/mark-read-batch")
-def mark_videos_read_batch(req: MarkReadBatchRequest):
-    channel_video_service = ChannelVideoService()
-    channel_video_service.mark_videos_read_batch(req.channel_id, req.direction, req.uploaded_at, req.is_read)
-    return response.success()
 
 
 @router.post("/api/channel-video/download")
@@ -99,22 +85,17 @@ def toggle_like_video(
     return response.success()
 
 
-@router.get("/api/channel/video/play/{channel_id}/{video_id}")
-def play_video(request: Request, channel_id: str, video_id: str):
+@router.get("/api/channel/video/play//{video_id}")
+def play_video(request: Request, video_id: int):
     with get_session() as s:
-        channel_video = s.query(ChannelVideo).filter(
-            and_(
-                ChannelVideo.channel_id == channel_id,
-                ChannelVideo.video_id == video_id
-            )
-        ).first()
-        if channel_video:
-            s.expunge(channel_video)
+        video = s.query(Video).filter( ChannelVideo.video_id == video_id).first()
+        if video:
+            s.expunge(video)
         else:
             raise HTTPException(status_code=404, detail="Video not found")
 
-    base_info = Downloader.get_video_info(channel_video.url)
-    video = VideoFactory.create_video(channel_video.url, base_info)
+    base_info = Downloader.get_video_info(video.video_url)
+    video = VideoFactory.create_video(video.video_url, base_info)
     output_dir = video.get_download_full_path()
     filename = video.get_valid_filename() + ".mp4"
     video_path = os.path.join(output_dir, filename)

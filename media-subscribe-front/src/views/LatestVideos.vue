@@ -22,9 +22,9 @@
               :is="Component"
               :active-tab="activeTab"
               :search-query="searchQuery"
-              :selected-channel-id="channelId"
+              :selected-subscription-id="subscriptionId"
               :sort-by="sortBy"
-              @goToChannel="goToChannelDetail"
+              @goToSubscription="goToChannelDetail"
               @openModal="handleOpenModal"
               @update-counts="updateCounts"
           />
@@ -56,7 +56,7 @@ const {
 
 const activeTab = ref('all');
 const route = useRoute();
-const channelId = computed(() => route.params.id);
+const subscriptionId = computed(() => route.params.id);
 
 const tabsWithCounts = ref([
   {
@@ -99,12 +99,11 @@ const handleSearch = (keyword) => {
 };
 
 const handleOpenModal = (video, playlist) => {
-  console.log('handleOpenModal', video, playlist);
-  router.push(`/video/${video.id}`);
+  router.push(`/video/${video.video_id}`);
 };
 
-const goToChannelDetail = (newChannelId) => {
-  router.push(`/channel/${newChannelId}/all`);
+const goToChannelDetail = (subscriptionId) => {
+  router.push(`/subscription/${subscriptionId}/all`);
 };
 
 const handleSortChange = (newSort) => {

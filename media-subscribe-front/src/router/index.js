@@ -57,27 +57,17 @@ const routes = [
     component: Settings
   },
   {
-    path: '/channel/:id',
-    name: 'ChannelDetail',
+    path: '/subscription/:id',
+    name: 'SubscriptionDetail',
     component: LatestVideos,
     children: [
       {
         path: '',
-        redirect: to => ({name: 'ChannelAllVideos', params: {id: to.params.id}})
+        redirect: to => ({name: 'SubscriptionAllVideos', params: {id: to.params.id}})
       },
       {
         path: 'all',
-        name: 'ChannelAllVideos',
-        component: VideoTab,
-      },
-      {
-        path: 'unread',
-        name: 'ChannelUnreadVideos',
-        component: VideoTab,
-      },
-      {
-        path: 'read',
-        name: 'ChannelVideos',
+        name: 'SubscriptionAllVideos',
         component: VideoTab,
       }
     ],

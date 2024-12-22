@@ -1,5 +1,4 @@
 import re
-from datetime import datetime
 from typing import List, Tuple
 from urllib.parse import quote
 
@@ -10,38 +9,40 @@ from bs4 import BeautifulSoup
 from phub import Quality
 from pytubefix import YouTube
 from sqlalchemy import func
-
-from sqlmodel import select, or_, col
+from sqlmodel import select, or_
 
 from core.database import get_session
+from model import Video, SubscriptionVideo, Subscription, VideoCreator, Creator
 from model.channel import ChannelVideo
-from model.video_history import VideoHistory
 from services import download_service
 from utils.cookie import filter_cookies_to_query_string
+from utils.url_helper import extract_top_level_domain
 
 
 class ChannelVideoService:
     def __init__(self):
         pass
 
-    def get_video_url(self, channel_id: str, video_id: str) -> dict:
+    def get_video_url(self, video_id: int) -> dict:
         with get_session() as session:
-            channel_video = session.exec(select(ChannelVideo).where(
-                ChannelVideo.channel_id == channel_id,
-                ChannelVideo.video_id == video_id
+            video = session.exec(select(Video).where(
+                Video.video_id == video_id
             )).first()
 
-            if channel_video.domain == 'bilibili.com':
+            video_domain = extract_top_level_domain(video.video_url)
+
+            if video_domain == 'bilibili.com':
                 # Bilibili video URL fetching logic
                 cookies = filter_cookies_to_query_string("https://www.bilibili.com")
                 headers = {
                     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                     'Cookie': cookies
                 }
-                req_url = f'https://api.bilibili.com/x/web-interface/view?bvid={video_id}'
+                bv_id = video.video_url.split('/')[-1]
+                req_url = f'https://api.bilibili.com/x/web-interface/view?bvid={bv_id}'
                 resp = requests.get(req_url, headers=headers)
                 cid = resp.json()['data']['cid']
-                video_url = f'https://api.bilibili.com/x/player/wbi/playurl?bvid={video_id}&cid={cid}&fnval=144'
+                video_url = f'https://api.bilibili.com/x/player/wbi/playurl?bvid={bv_id}&cid={cid}&fnval=144'
                 resp = requests.get(video_url, headers=headers)
                 data = resp.json()['data']
                 video_urls = data['dash']['video']
@@ -52,26 +53,25 @@ class ChannelVideoService:
                     'video_url': "/api/channel-video/proxy?domain=bilibili.com&url=" + quote(best_video_url),
                     'audio_url': "/api/channel-video/proxy?domain=bilibili.com&url=" + quote(best_audio_url),
                 }
-            elif channel_video.domain == 'youtube.com':
+            elif video_domain == 'youtube.com':
                 # YouTube video URL fetching logic
-                yt = YouTube(f'https://youtube.com/watch?v={video_id}', use_oauth=False)
+                yt = YouTube(video.video_url, use_oauth=False)
                 video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
                 audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
                 return {
                     'video_url': video_stream.url if video_stream else None,
                     'audio_url': audio_stream.url if audio_stream else None,
                 }
-            elif channel_video.domain == 'pornhub.com':
+            elif video_domain == 'pornhub.com':
                 client = phub.Client()
-                video = client.get(channel_video.url)
+                video = client.get(video.video_url)
                 video_url = video.get_direct_url(quality=Quality.BEST)
                 return {
                     'video_url': video_url,
                     'audio_url': None,
                 }
-            elif channel_video.domain == 'javdb.com':
-                title = channel_video.title
-                no = title.split(' ')[0]
+            elif video_domain == 'javdb.com':
+                no = video.video_title.split(' ')[0]
                 url = self.get_jav_video_url(no)
                 return {
                     'video_url': "/api/channel-video/proxy?domain=javdb.com&url=" + quote(url),
@@ -118,105 +118,95 @@ class ChannelVideoService:
                     return parts
         return None
 
-    def list_channel_videos(self, query: str, channel_id: str, read_status: str, sort_by: str, page: int, page_size: int) -> Tuple[
+
+    def list_channel_videos(self, query: str, subscription_id: str, category: str, sort_by: str, page: int, page_size: int) -> Tuple[
         List[dict], dict]:
-        base_query = select(ChannelVideo).where(ChannelVideo.title != '')
+        # Start with Video table and join with SubscriptionVideo
+        base_query = select(Video, SubscriptionVideo).join(
+            SubscriptionVideo, Video.video_id == SubscriptionVideo.video_id
+        ).where(Video.video_id != '')
         
-        if channel_id:
-            base_query = base_query.where(or_(
-                ChannelVideo.channel_id == channel_id,
-                col(ChannelVideo.channel_id).like(f"{channel_id},%"),
-                col(ChannelVideo.channel_id).like(f"%,{channel_id}"),
-                col(ChannelVideo.channel_id).like(f"%,{channel_id},%")
-            ))
+        if subscription_id:
+            base_query = base_query.where(SubscriptionVideo.subscription_id == subscription_id)
+        
         if query:
             base_query = base_query.where(or_(
-                col(ChannelVideo.channel_name).like(f'%{query}%'),
-                col(ChannelVideo.title).like(f'%{query}%')
+                Video.video_title.like(f'%{query}%')
             ))
-        if read_status == 'preview':
-            base_query = base_query.where(ChannelVideo.uploaded_at > datetime.now())
-        else:
-            base_query = base_query.where(ChannelVideo.uploaded_at <= datetime.now())
-
-        if read_status:
-            if read_status == 'read':
-                base_query = base_query.where(ChannelVideo.if_read == 1)
-            elif read_status == 'unread':
-                base_query = base_query.where(ChannelVideo.if_read == 0)
-            elif read_status == 'liked':
-                base_query = base_query.where(ChannelVideo.is_liked == 1)
-            
-        offset = (page - 1) * page_size
         
-        # 根据排序字段进行排序
+        # Sort by appropriate fields from Video table
         if sort_by == 'created_at':
-            base_query = base_query.order_by(col(ChannelVideo.created_at).desc())
+            base_query = base_query.order_by(Video.created_at.desc())
         else:
-            base_query = base_query.order_by(col(ChannelVideo.uploaded_at).desc())
+            base_query = base_query.order_by(Video.publish_date.desc())
+        
+        offset = (page - 1) * page_size
         
         with get_session() as session:
             base_query = base_query.offset(offset).limit(page_size)
             results = session.exec(base_query).all()
 
-            s_query = select(func.count(ChannelVideo.id))
+            # Count query modifications
+            s_query = select(func.count(Video.video_id)).join(
+                SubscriptionVideo, Video.video_id == SubscriptionVideo.video_id
+            )
+            if subscription_id:
+                s_query = s_query.where(SubscriptionVideo.subscription_id == subscription_id)
             if query:
-                s_query = s_query.where(or_(
-                    col(ChannelVideo.channel_name).like(f'%{query}%'),
-                    col(ChannelVideo.title).like(f'%{query}%')
-                ))
-            if channel_id:
-                s_query = s_query.where(or_(
-                    ChannelVideo.channel_id == channel_id,
-                    col(ChannelVideo.channel_id).like(f"{channel_id},%"),
-                    col(ChannelVideo.channel_id).like(f"%,{channel_id}"),
-                    col(ChannelVideo.channel_id).like(f"%,{channel_id},%")
-                ))
-            total_count = session.exec(s_query.where(ChannelVideo.uploaded_at <= datetime.now())).one()
-            read_count = session.exec(s_query.where(ChannelVideo.if_read == 1, ChannelVideo.uploaded_at <= datetime.now())).one()
-            unread_count = total_count - read_count
-            preview_count = session.exec(s_query.where(ChannelVideo.uploaded_at > datetime.now())).one()
-            liked_count = session.exec(s_query.where(ChannelVideo.is_liked == 1)).one()
+                s_query = s_query.where(Video.video_title.like(f'%{query}%'))
 
-            channel_video_convert_list = []
+            total_count = session.exec(s_query).one()
+            # Note: Since we're using Video table now, we'll need to adjust these counts
+            # or implement different logic for read/unread/liked status
 
-            video_ids = [cv.video_id for cv in results]
-            history_list = session.exec(select(VideoHistory).where(VideoHistory.video_id.in_(video_ids))).all()
-            history_dict = {h.video_id: h for h in history_list}
+            # get subscriptions
+            subscription_ids = [subscription_video.subscription_id for _, subscription_video in results]
+            subscriptions = session.exec(select(Subscription).where(Subscription.subscription_id.in_(subscription_ids))).all()
 
-            for cv in results:
-                history = history_dict.get(cv.video_id)
+            # get video related creators
+            video_ids = [video.video_id for video, subscription in results]
+            creators = session.exec(select(Creator, VideoCreator).join(VideoCreator, Creator.creator_id == VideoCreator.creator_id).where(VideoCreator.video_id.in_(video_ids))).all()
+            # group creators by video_id
+            creators_dict = {}
+            for creator, video_creator in creators:
+                if video_creator.video_id not in creators_dict:
+                    creators_dict[video_creator.video_id] = []
+                creators_dict[video_creator.video_id].append(creator)
+
+            video_list = []
+            for video, subscription_video in results:
+                subscription_info = next((sub for sub in subscriptions if sub.subscription_id == subscription_video.subscription_id), None)
                 video_data = {
-                    'id': cv.id,
-                    'channel_id': cv.channel_id,
-                    'channel_name': cv.channel_name,
-                    'channel_avatar': cv.channel_avatar,
-                    'video_id': cv.video_id,
-                    'title': cv.title,
-                    'domain': cv.domain,
-                    'url': cv.url,
-                    'thumbnail': cv.thumbnail,
-                    'duration': cv.duration,
-                    'if_downloaded': cv.if_downloaded,
-                    'if_read': cv.if_read,
-                    'is_liked': cv.is_liked,
-                    'uploaded_at': cv.uploaded_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    'created_at': cv.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    'last_position': history.last_position if history else 0,
-                    'total_duration': history.total_duration if history else cv.duration,
-                    'watch_duration': history.watch_duration if history else 0,
+                    'id': video.video_id,
+                    'video_id': video.video_id,
+                    'title': video.video_title,
+                    'url': video.video_url,
+                    'thumbnail': video.thumbnail_url,
+                    'duration': video.video_duration,
+                    'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
+                    'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'subscriptions': [
+                        {
+                            'subscription_id': subscription_info.subscription_id,
+                            'content_name': subscription_info.content_name,
+                            'content_url': subscription_info.content_url,
+                            'content_type': subscription_info.content_type,
+                            "avatar_url": subscription_info.avatar_url
+                        }
+                    ] if subscription_info else [],
+                    'actors': [creator.dict() for creator in creators_dict.get(video.video_id, [])]
                 }
-                channel_video_convert_list.append(video_data)
+                video_list.append(video_data)
 
             counts = {
                 "all": total_count,
-                "read": read_count,
-                "unread": unread_count,
-                "preview": preview_count,
-                "liked": liked_count
+                "read": 0,
+                "unread": 0,
+                "preview": 0,
+                "liked": 0
             }
 
-            return channel_video_convert_list, counts
+            return video_list, counts
 
     def mark_video_read(self, channel_id: str, video_id: str, is_read: bool):
         with get_session() as session:
@@ -249,20 +239,46 @@ class ChannelVideoService:
                 session.commit()
 
 
-    def download_channel_video(self, channel_id: str, video_id: str):
+    def download_channel_video(self, video_id: int):
         with get_session() as session:
-            channel_video = session.query(ChannelVideo).filter(
-                ChannelVideo.channel_id == channel_id,
-                ChannelVideo.video_id == video_id
+            video = session.query(Video).filter(
+                Video.video_id == video_id
             ).first()
 
-        if not channel_video:
-            raise ValueError("Channel video not found")
+        if not video:
+            raise ValueError("Video not found")
 
-        download_service.start(channel_video.url, if_only_extract=False, if_subscribe=True, if_retry=False,
+        download_service.start(video.url, if_only_extract=False, if_subscribe=True, if_retry=False,
                                if_manual_retry=True)
 
     def get_video(self, id):
         with get_session() as session:
-            video = session.query(ChannelVideo).filter(ChannelVideo.id == id)
-            return video.first()
+            # 获取视频基本信息
+            video = session.exec(select(Video).where(Video.video_id == id)).first()
+            if not video:
+                return None
+
+            # 获取订阅信息
+            subscription_videos = session.exec(
+                select(SubscriptionVideo).where(SubscriptionVideo.video_id == id)
+            ).all()
+            subscription_ids = [sv.subscription_id for sv in subscription_videos]
+            
+            subscriptions = session.exec(
+                select(Subscription).where(Subscription.subscription_id.in_(subscription_ids))
+            ).all()
+
+            # 获取创作者信息
+            creators = session.exec(
+                select(Creator, VideoCreator)
+                .join(VideoCreator, Creator.creator_id == VideoCreator.creator_id)
+                .where(VideoCreator.video_id == id)
+            ).all()
+
+            video_data = {
+                **video.dict(),
+                'subscriptions': [subscription.dict() for subscription in subscriptions],
+                'creators': [creator[0].dict() for creator in creators]  # creator[0] 因为查询返回的是元组 (Creator, VideoCreator)
+            }
+
+            return video_data
