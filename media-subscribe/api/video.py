@@ -15,7 +15,7 @@ import common.response as response
 from core.database import get_session
 from downloader.downloader import Downloader
 from meta.factory import VideoFactory
-from model import Video
+from models import Video
 from schemas.video import DownloadVideoRequest, SortBy
 from services.video_service import VideoService
 

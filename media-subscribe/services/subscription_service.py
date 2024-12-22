@@ -1,11 +1,10 @@
 from typing import Optional, Tuple, List, Dict, Any
-from urllib.parse import urlparse
 
 from sqlmodel import select, or_, and_, func
 
 from core.database import get_session
-from model.subscription import Subscription, ContentType
-from model.links import SubscriptionVideo
+from models.subscription import Subscription
+from models.links import SubscriptionVideo
 
 
 class SubscriptionService:

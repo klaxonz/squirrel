@@ -17,7 +17,6 @@ class VideoHistory(SQLModel, table=True):
         sa_column=Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
     )
 
-    # 添加索引以优化查询性能
     __table_args__ = (
         Index('idx_video_history_video', 'video_id'),
         Index('idx_video_history_updated', 'updated_at'),

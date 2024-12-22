@@ -13,11 +13,9 @@ from sqlmodel import col, or_, and_, select, func
 
 from core.config import settings
 from core.database import get_session
-from downloader.downloader import Downloader
-from meta.factory import VideoFactory
-from model import Subscription, SubscriptionVideo
-from model.download_task import DownloadTask
-from model.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
+from models import Subscription, SubscriptionVideo
+from models.download_task import DownloadTask
+from models.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
 from services.download_service import start
 from subscribe.factory import SubscriptionFactory
 from utils.cookie import json_cookie_to_netscape
@@ -229,31 +227,6 @@ class AutoUpdateChannelVideo(BaseTask):
             for pool in cls._thread_pools.values():
                 pool.shutdown(wait=True)
             cls._thread_pools = None
-
-
-@TaskRegistry.register(interval=60, unit='minutes')
-class RepairDownloadTaskInfo(BaseTask):
-    @classmethod
-    def run(cls):
-        try:
-            with get_session() as session:
-                download_tasks = session.exec(select(DownloadTask).where(col(DownloadTask.channel_name).is_(None)))
-                for download_task in download_tasks:
-                    if download_task.channel_name is not None:
-                        continue
-
-                    base_info = Downloader.get_video_info(download_task.url)
-                    video = VideoFactory.create_video(download_task.url, base_info)
-                    download_task.channel_id = video.uploader.id
-                    download_task.channel_url = video.uploader.url
-                    download_task.channel_name = video.uploader.name
-                    download_task.channel_avatar = video.uploader.avatar
-                    session.commit()
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Error decoding JSON: {e}", exc_info=True)
-        except Exception as e:
-            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
 
 @TaskRegistry.register(interval=30, unit='minutes')

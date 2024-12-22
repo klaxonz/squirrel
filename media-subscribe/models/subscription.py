@@ -19,7 +19,7 @@ class ContentType:
 
 class Subscription(SQLModel, table=True):
     __tablename__ = "subscription"
-    
+
     subscription_id: Optional[int] = Field(default=None, primary_key=True)
     content_type: str
     content_name: str
@@ -31,7 +31,7 @@ class Subscription(SQLModel, table=True):
     is_auto_download: bool = Field(default=False)
     is_download_all: bool = Field(default=False)
     is_extract_all: bool = Field(default=False)
-    is_deleted: bool = Field(default=False) 
+    is_deleted: bool = Field(default=False)
     extra_data: Optional[dict] = Field(default=None, sa_type=JSON)
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(),

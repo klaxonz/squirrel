@@ -6,7 +6,7 @@ from sqlmodel import select, col
 from common import constants
 from core.cache import RedisClient
 from core.database import get_session
-from model.download_task import DownloadTask
+from models.download_task import DownloadTask
 from services import download_service
 
 

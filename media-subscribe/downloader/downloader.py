@@ -15,9 +15,8 @@ from core.config import settings
 from downloader.id_extractor import extract_id_from_url
 from meta.base import Video
 from meta.factory import VideoFactory
-from model.download_task import DownloadTask
+from models.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
-from utils.cookie import filter_cookies_to_query_string
 
 logger = logging.getLogger()
 

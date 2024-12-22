@@ -9,8 +9,8 @@ from consumer import extract_task
 from core.cache import RedisClient
 from core.database import get_session
 from downloader.id_extractor import extract_id_from_url
-from model import Video
-from model.message import Message
+from models import Video
+from models.message import Message
 from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()

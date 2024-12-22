@@ -13,9 +13,9 @@ from core.database import get_session
 from downloader.downloader import Downloader
 from downloader.id_extractor import extract_id_from_url
 from meta.factory import VideoFactory
-from model import Video, SubscriptionVideo, VideoCreator, Creator
-from model.download_task import DownloadTask
-from model.message import Message
+from models import Video, SubscriptionVideo, VideoCreator, Creator
+from models.download_task import DownloadTask
+from models.message import Message
 from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()

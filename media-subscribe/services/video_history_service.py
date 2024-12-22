@@ -4,8 +4,8 @@ from sqlmodel import select, col
 from sqlalchemy.exc import IntegrityError
 
 from core.database import get_session
-from model import Video
-from model.video_history import VideoHistory
+from models import Video
+from models.video_history import VideoHistory
 
 
 class VideoHistoryService:

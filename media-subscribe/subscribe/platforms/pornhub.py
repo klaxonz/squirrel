@@ -2,7 +2,7 @@ import re
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
-from model import Subscription
+from models import Subscription
 from utils.cookie import filter_cookies_to_query_string
 from common.http_wrapper import session
 from meta.channel import SubscriptionMeta

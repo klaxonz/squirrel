@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from core.database import get_session
-from model.podcast import (
+from models.podcast import (
     PodcastChannel,
     PodcastEpisode,
     PodcastSubscription,

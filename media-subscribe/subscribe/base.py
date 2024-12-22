@@ -1,7 +1,7 @@
 import abc
 from typing import List
 
-from model import Subscription
+from models import Subscription
 from meta.channel import SubscriptionMeta
 
 

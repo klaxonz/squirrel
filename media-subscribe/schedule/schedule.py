@@ -14,13 +14,11 @@ class Scheduler:
         """内部方法，循环检查并执行到期的任务"""
         while self.running:
             current_time = time.time()
-            for job in self.jobs[:]:  # 复制列表以允许在循环中安全移除元素
+            for job in self.jobs[:]:
                 if job['next_run'] <= current_time:
                     thread = Thread(target=job['func'])
                     thread.start()
-                    # 重新计算下次运行时间，这里简单地按固定间隔计算
                     job['next_run'] += job['interval']
-            # 避免高CPU占用，休眠一段时间再检查
             time.sleep(1)
 
     def add_job(self, func, interval, unit='seconds', start_immediately=True):
@@ -35,9 +33,7 @@ class Scheduler:
         if unit not in ['seconds', 'minutes']:
             raise ValueError("unit must be 'seconds' or 'minutes'")
 
-        interval *= 60 if unit == 'minutes' else 1  # 转换为秒
-
-        # 计算第一次执行的时间
+        interval *= 60 if unit == 'minutes' else 1
         next_run = time.time() if start_immediately else time.time() + interval
 
         self.jobs.append({

@@ -1,8 +1,6 @@
-import time
-import random
 from pytubefix import Channel as YouTubeChannel
 
-from model import Subscription
+from models import Subscription
 from ..base import BaseSubscription
 from meta.channel import SubscriptionMeta
 

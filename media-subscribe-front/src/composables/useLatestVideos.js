@@ -63,7 +63,7 @@ export default function useLatestVideos() {
     videos.value = currentPage.value === 1 
       ? newVideos 
       : [...videos.value, ...newVideos.filter(video => 
-          !videos.value.some(v => v.id === video.id)
+          !videos.value.some(v => v.video_id === video.video_id)
         )];
     
     currentPage.value++;
