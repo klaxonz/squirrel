@@ -9,4 +9,4 @@ class TimestampMixin:
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now()
-    ) 
+    )

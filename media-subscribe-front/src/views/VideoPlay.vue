@@ -214,7 +214,7 @@ const startTime = computed(() => {
 // 获取视频详情
 const fetchVideoDetails = async () => {
   try {
-    const response = await axios.get(`/api/video/detail?id=${route.params.videoId}`);
+    const response = await axios.get(`/api/video/detail?video_id=${route.params.videoId}`);
     video.value = response.data.data;
   } catch (error) {xxx
     console.error('Failed to fetch video details:', error);

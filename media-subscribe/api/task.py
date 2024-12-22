@@ -7,8 +7,8 @@ import time
 from email.utils import formatdate
 from mimetypes import guess_type
 
-from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session, select, col
+from fastapi import APIRouter, Query
+from sqlmodel import select, col
 from sse_starlette import EventSourceResponse
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
@@ -28,41 +28,35 @@ router = APIRouter(tags=['下载任务接口'])
 
 @router.post("/api/task/download")
 def start_download(req: DownloadRequest):
-    task_service = TaskService()
-    task_service.start_download(req.url)
+    TaskService.start_download(req.url)
     return response.success()
 
 
 @router.post("/api/task/retry")
 def retry_download(req: DownloadChangeStateRequest):
-    task_service = TaskService()
-    success = task_service.retry_download(req.task_id)
-    return response.success() if success else response.error("Task not found")
+    TaskService.retry_download(req.task_id)
+    return response.success()
 
 
 @router.post("/api/task/pause")
 def pause_download(req: DownloadChangeStateRequest):
-    task_service = TaskService()
-    success = task_service.pause_download(req.task_id)
-    return response.success() if success else response.error("Task not found")
+    TaskService.pause_download(req.task_id)
+    return response.success()
 
 
 @router.post("/api/task/delete")
 def delete_download(req: DownloadChangeStateRequest):
-    task_service = TaskService()
-    success = task_service.delete_download(req.task_id)
-    return response.success() if success else response.error("Task not found")
+    TaskService.delete_download(req.task_id)
+    return response.success()
 
 
 @router.get("/api/task/list")
 def get_tasks(
         status: str = Query(None, description="任务状态"),
         page: int = Query(1, ge=1, description="Page number"),
-        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page"),
-        session: Session = Depends(get_session)
+        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
-    task_service = TaskService()
-    task_convert_list, total_tasks = task_service.list_tasks(status, page, page_size)
+    task_convert_list, total_tasks = TaskService.list_tasks(status, page, page_size)
     return response.success({
         "page": page,
         "pageSize": page_size,
@@ -72,7 +66,7 @@ def get_tasks(
 
 
 @router.get("/api/task/progress")
-async def tasks_progress(task_ids: str):
+async def get_tasks_progress(task_ids: str):
     client = RedisClient.get_instance().client
     task_ids_list = task_ids.split(',')
 
@@ -103,7 +97,7 @@ async def tasks_progress(task_ids: str):
                     "event": "message",
                     "data": json.dumps(tasks_progress)
                 }
-                await asyncio.sleep(1)  # 每秒更新一次
+                await asyncio.sleep(1)
 
     return EventSourceResponse(event_generator())
 
@@ -117,7 +111,6 @@ async def new_task_notification(latest_task_id: int = Query(default=0)):
             with get_session() as session:
                 new_tasks = session.exec(select(DownloadTask).where(DownloadTask.task_id > latest_task_id).order_by(
                     col(DownloadTask.task_id).desc()).limit(30)).all()
-                print("new_tasks", new_tasks)
                 if new_tasks:
                     new_task_data = []
                     for task in new_tasks:
@@ -198,7 +191,7 @@ def play_video(request: Request, task_id: str):
     content_length = stat_result.st_size - start_bytes if stat.S_ISREG(stat_result.st_mode) else stat_result.st_size
     # 打开文件从起始位置开始分片读取文件
     return StreamingResponse(
-        file_iterator(video_path, start_bytes, 1024 * 1024 * 1),  # 每次读取 1M
+        file_iterator(video_path, start_bytes, 1024 * 1024 * 1),
         media_type=content_type,
         headers={
             'accept-ranges': 'bytes',

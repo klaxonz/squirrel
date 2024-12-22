@@ -37,11 +37,10 @@ def get_video_url(
 
 @router.get("/api/video/detail")
 def get_video(
-        id: int = Query(None, description="视频ID")
+        video_id: int = Query(None, description="视频ID")
 ):
     video_service = VideoService()
-    video = video_service.get_video(id)
-
+    video = video_service.get_video(video_id)
     return response.success(video)
 
 
@@ -75,7 +74,7 @@ def download_video(req: DownloadVideoRequest):
 @router.get("/api/video/play/{video_id}")
 def play_video(request: Request, video_id: int):
     with get_session() as s:
-        video = s.query(Video).filter( Video.video_id == video_id).first()
+        video = s.query(Video).filter(Video.video_id == video_id).first()
         if video:
             s.expunge(video)
         else:
