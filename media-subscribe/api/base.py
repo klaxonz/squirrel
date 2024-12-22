@@ -46,6 +46,7 @@ FRONTEND_DEV_HOST = os.getenv("FRONTEND_DEV_HOST", "localhost")
 FRONTEND_DEV_PORT = os.getenv("FRONTEND_DEV_PORT", "5173")
 FRONTEND_DEV_URL = f"http://{FRONTEND_DEV_HOST}:{FRONTEND_DEV_PORT}"
 
+
 @app.exception_handler(Exception)
 async def default_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
@@ -78,13 +79,12 @@ async def serve_spa(full_path: str):
             url=f"{FRONTEND_DEV_URL}/{full_path}",
             status_code=status.HTTP_307_TEMPORARY_REDIRECT
         )
-    
+
     # 生产环境下的处理逻辑
     static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
     static_file = Path(static_dir) / full_path
-    
+
     if static_file.exists() and static_file.is_file():
         return FileResponse(static_file)
-    
-    return FileResponse(Path(static_dir) / "index.html")
 
+    return FileResponse(Path(static_dir) / "index.html")
