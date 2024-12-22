@@ -80,11 +80,10 @@ async def serve_spa(full_path: str):
             status_code=status.HTTP_307_TEMPORARY_REDIRECT
         )
 
-    # 生产环境下的处理逻辑
-    static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
-    static_file = Path(static_dir) / full_path
+    file_static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+    static_file = Path(file_static_dir) / full_path
 
     if static_file.exists() and static_file.is_file():
         return FileResponse(static_file)
 
-    return FileResponse(Path(static_dir) / "index.html")
+    return FileResponse(Path(file_static_dir) / "index.html")
