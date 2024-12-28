@@ -61,7 +61,7 @@ const emit = defineEmits(['update:modelValue']);
 const isOpen = ref(false);
 
 const sortOptions = [
-  { value: 'uploaded_at', label: '上传时间' },
+  { value: 'publish_date', label: '上传时间' },
   { value: 'created_at', label: '添加时间' }
 ];
 

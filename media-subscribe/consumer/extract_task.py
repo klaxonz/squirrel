@@ -180,7 +180,6 @@ def _create_channel_video(video_meta, video_info, extract_info):
         # 创建video
         video = session.exec(select(Video).where(Video.video_url == video_meta.url)).first()
         if not video:
-            # 时间戳转datetime
             video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
             video = Video(
                 video_title=video_info['title'],

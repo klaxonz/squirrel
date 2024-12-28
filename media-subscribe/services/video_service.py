@@ -78,7 +78,6 @@ class VideoService:
                 }
             return {}
 
-
     def get_jav_video_url(self, no: str):
         url = f'https://missav.com/search/{no}'
         scraper = cloudscraper.create_scraper()
@@ -94,13 +93,14 @@ class VideoService:
             url_path = r.split("m3u8|")[1].split("|playlist|source")[0]
             url_words = url_path.split('|')
             video_index = url_words.index("video")
-            protocol = url_words[video_index-1]
+            protocol = url_words[video_index - 1]
             video_format = url_words[video_index + 1]
 
             m3u8_url_path = "-".join((url_words[0:5])[::-1])
-            base_url_path = ".".join((url_words[5:video_index-1])[::-1])
+            base_url_path = ".".join((url_words[5:video_index - 1])[::-1])
 
-            formatted_url = "{0}://{1}/{2}/{3}/{4}.m3u8".format(protocol, base_url_path, m3u8_url_path, video_format, url_words[video_index])
+            formatted_url = "{0}://{1}/{2}/{3}/{4}.m3u8".format(protocol, base_url_path, m3u8_url_path, video_format,
+                                                                url_words[video_index])
             return formatted_url
 
     def extract_parts_from_html_content(self, html_content):
@@ -117,30 +117,30 @@ class VideoService:
                     return parts
         return None
 
-
-    def list_videos(self, query: str, subscription_id: int, category: str, sort_by: str, page: int, page_size: int) -> Tuple[
-        List[dict], dict]:
+    def list_videos(self, query: str, subscription_id: int, category: str, sort_by: str, page: int, page_size: int) -> \
+            Tuple[
+                List[dict], dict]:
         # Start with Video table and join with SubscriptionVideo
         base_query = select(Video, SubscriptionVideo).join(
             SubscriptionVideo, Video.video_id == SubscriptionVideo.video_id
         ).where(Video.video_id != '')
-        
+
         if subscription_id:
             base_query = base_query.where(SubscriptionVideo.subscription_id == subscription_id)
-        
+
         if query:
             base_query = base_query.where(or_(
                 Video.video_title.like(f'%{query}%')
             ))
-        
+
         # Sort by appropriate fields from Video table
         if sort_by == 'created_at':
             base_query = base_query.order_by(Video.created_at.desc())
         else:
             base_query = base_query.order_by(Video.publish_date.desc())
-        
+
         offset = (page - 1) * page_size
-        
+
         with get_session() as session:
             base_query = base_query.offset(offset).limit(page_size)
             results = session.exec(base_query).all()
@@ -160,11 +160,14 @@ class VideoService:
 
             # get subscriptions
             subscription_ids = [subscription_video.subscription_id for _, subscription_video in results]
-            subscriptions = session.exec(select(Subscription).where(Subscription.subscription_id.in_(subscription_ids))).all()
+            subscriptions = session.exec(
+                select(Subscription).where(Subscription.subscription_id.in_(subscription_ids))).all()
 
             # get video related creators
             video_ids = [video.video_id for video, subscription in results]
-            creators = session.exec(select(Creator, VideoCreator).join(VideoCreator, Creator.creator_id == VideoCreator.creator_id).where(VideoCreator.video_id.in_(video_ids))).all()
+            creators = session.exec(
+                select(Creator, VideoCreator).join(VideoCreator, Creator.creator_id == VideoCreator.creator_id).where(
+                    VideoCreator.video_id.in_(video_ids))).all()
             # group creators by video_id
             creators_dict = {}
             for creator, video_creator in creators:
@@ -174,7 +177,8 @@ class VideoService:
 
             video_list = []
             for video, subscription_video in results:
-                subscription_info = next((sub for sub in subscriptions if sub.subscription_id == subscription_video.subscription_id), None)
+                subscription_info = next(
+                    (sub for sub in subscriptions if sub.subscription_id == subscription_video.subscription_id), None)
                 video_data = {
                     'id': video.video_id,
                     'video_id': video.video_id,
@@ -207,8 +211,6 @@ class VideoService:
 
             return video_list, counts
 
-
-
     def download_video(self, video_id: int):
         with get_session() as session:
             video = session.query(Video).filter(
@@ -233,7 +235,7 @@ class VideoService:
                 select(SubscriptionVideo).where(SubscriptionVideo.video_id == id)
             ).all()
             subscription_ids = [sv.subscription_id for sv in subscription_videos]
-            
+
             subscriptions = session.exec(
                 select(Subscription).where(Subscription.subscription_id.in_(subscription_ids))
             ).all()
