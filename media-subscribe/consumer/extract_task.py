@@ -196,8 +196,8 @@ def _create_channel_video(video_meta, video_info, extract_info):
             SubscriptionVideo.video_id == video.video_id)).first()
         if not subscription_video:
             subscription_video = SubscriptionVideo(
-                subscription_id = extract_info['subscribe_id'],
-                video_id = video.video_id
+                subscription_id=extract_info['subscribe_id'],
+                video_id=video.video_id
             )
             session.add(subscription_video)
         session.commit()
@@ -217,7 +217,7 @@ def _create_channel_video(video_meta, video_info, extract_info):
                     session.add(creator)
                 video_creator = session.exec(select(VideoCreator).where(
                     VideoCreator.video_id == video.video_id,
-                                    VideoCreator.creator_id == creator.creator_id)).first()
+                    VideoCreator.creator_id == creator.creator_id)).first()
                 if not video_creator:
                     video_creator = VideoCreator(
                         video_id=video.video_id,
@@ -225,7 +225,6 @@ def _create_channel_video(video_meta, video_info, extract_info):
                     )
                     session.add(video_creator)
                 session.commit()
-
 
 
 def _handle_download_task(extract_info, video, domain, video_id):
@@ -253,7 +252,7 @@ def _get_or_create_download_task(video, domain, video_id):
             task = _create_download_task(video, domain, video_id, session)
         else:
             session.refresh(task)
-        
+
         return task
 
 
@@ -279,7 +278,8 @@ def _should_skip_download(extract_info, task):
     with get_session() as session:
         if task:
             task = session.merge(task)
-        if task and not extract_info['if_manual_download'] and not extract_info['if_retry'] and not extract_info['if_manual_retry']:
+        if task and not extract_info['if_manual_download'] and not extract_info['if_retry'] and not extract_info[
+            'if_manual_retry']:
             _update_redis_cache(task.domain, task.video_id, 'if_download')
             logger.info(f"视频已生成任务：channel {task.channel_name}, video: {task.url}")
             return True
@@ -313,5 +313,3 @@ def _create_download_message(task, if_manual):
 def _update_redis_cache(domain, video_id, cache_key):
     key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}"
     RedisClient.get_instance().client.hset(key, cache_key, datetime.now().timestamp())
-
-
