@@ -1,19 +1,19 @@
 # Stage 1: Build the frontend
 FROM node:18-slim AS frontend-builder
 
-WORKDIR /app/frontend
+WORKDIR /app/squirrel-frontend
 
 # Install pnpm
 RUN npm install -g pnpm
 
 # Copy package files first to leverage cache
-COPY media-subscribe-front/package.json media-subscribe-front/pnpm-lock.yaml ./
+COPY squirrel-front/package.json squirrel-front/pnpm-lock.yaml ./
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy source code and build
-COPY media-subscribe-front/ ./
+COPY squirrel-front/ ./
 RUN pnpm run build
 
 # Stage 2: Build the backend
@@ -36,23 +36,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir pipenv
 
-WORKDIR /app/media-subscribe
+WORKDIR /app/squirrel-backend
 
 # Copy Pipfile files first to leverage cache
-COPY media-subscribe/Pipfile media-subscribe/Pipfile.lock ./
+COPY squirrel-backend/Pipfile squirrel-backend/Pipfile.lock ./
 
 # Install dependencies
 RUN pipenv install --deploy --system
 
 # Copy application code
-COPY media-subscribe ./
-COPY media-subscribe/temp/bilibili.py /usr/local/lib/python3.11/site-packages/yt_dlp/extractor/bilibili.py
+COPY squirrel-backend ./
+COPY squirrel-backend/temp/bilibili.py /usr/local/lib/python3.11/site-packages/yt_dlp/extractor/bilibili.py
 
 # Copy frontend build
-COPY --from=frontend-builder /app/frontend/dist ./static
+COPY --from=frontend-builder /app/squirrel-frontend/dist ./static
 
 # Set environment variables
-ENV PYTHONPATH=/app/media-subscribe:$PYTHONPATH \
+ENV PYTHONPATH=/app/squirrel-backend:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
