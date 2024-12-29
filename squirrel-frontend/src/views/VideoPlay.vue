@@ -290,33 +290,7 @@ const handleMoreOptionsClick = (event) => {
   showMoreOptions.value = !showMoreOptions.value;
 };
 
-const mainChannel = computed(() => {
-  if (!video.value) return { id: '', name: '', avatar: '' };
-  
-  const ids = video.value.channel_id.split(',');
-  const names = video.value.channel_name.split(',');
-  const avatars = video.value.channel_avatar.split(',');
-  
-  return {
-    id: ids[0],
-    name: names[0],
-    avatar: avatars[0]
-  };
-});
 
-const otherChannels = computed(() => {
-  if (!video.value) return [];
-  
-  const ids = video.value.channel_id.split(',');
-  const names = video.value.channel_name.split(',');
-  const avatars = video.value.channel_avatar.split(',');
-  
-  return ids.slice(1).map((id, index) => ({
-    id,
-    name: names[index + 1],
-    avatar: avatars[index + 1]
-  }));
-});
 </script>
 
 <style scoped>

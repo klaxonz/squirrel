@@ -1,5 +1,6 @@
 from dramatiq.brokers.redis import RedisBroker
-from dramatiq.middleware import TimeLimit, Prometheus, CurrentMessage
+from dramatiq.middleware import TimeLimit, CurrentMessage
+
 from core.config import settings
 
 # 创建 broker 实例
