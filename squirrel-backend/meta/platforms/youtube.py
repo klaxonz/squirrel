@@ -18,4 +18,3 @@ class YoutubeVideo(Video):
             actor.avatar = video.thumbnail_url
             self._actors.append(actor)
         return self._actors
-

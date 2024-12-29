@@ -2,6 +2,8 @@ import datetime
 import json
 import logging
 
+from sqlmodel import select
+
 from common import constants
 from consumer import extract_task
 from core.cache import RedisClient
@@ -9,20 +11,19 @@ from core.database import get_session
 from downloader.id_extractor import extract_id_from_url
 from models import Video
 from models.message import Message
-from sqlmodel import select
 from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()
 
 
 def start(
-    url: str,
-    if_only_extract: bool = True,
-    if_subscribe: bool = False,
-    if_retry: bool = False,
-    if_manual_retry: bool = False,
-    if_manual_download: bool = False,
-    subscribe_id: int = None,
+        url: str,
+        if_only_extract: bool = True,
+        if_subscribe: bool = False,
+        if_retry: bool = False,
+        if_manual_retry: bool = False,
+        if_manual_download: bool = False,
+        subscribe_id: int = None,
 ):
     video_id = extract_id_from_url(url)
     domain = extract_top_level_domain(url)

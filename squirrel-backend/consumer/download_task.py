@@ -3,6 +3,8 @@ import logging
 from datetime import datetime
 
 import dramatiq
+from sqlmodel import select
+
 from common import constants
 from core.cache import RedisClient
 from core.database import get_session
@@ -10,10 +12,8 @@ from downloader.downloader import Downloader
 from models import Video
 from models.download_task import DownloadTask
 from models.message import Message
-from sqlmodel import select
 
 logger = logging.getLogger()
-
 
 __all__ = ['process_download_message']
 
@@ -35,7 +35,7 @@ def _process_download_message(message: str, queue: str):
         download_task = _prepare_download_task(message_obj)
         status = _download_video(download_task, queue)
         _update_task_status(download_task, status)
-        
+
         logger.info(f"下载视频结束, channel: {download_task.channel_name}, video: {download_task.url}")
     except Exception as e:
         logger.error(f"处理下载任务时发生错误: {e}", exc_info=True)
@@ -87,4 +87,3 @@ def _handle_completed_download(download_task, session):
 def _update_redis_cache(download_task):
     key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{download_task.domain}:{download_task.video_id}"
     RedisClient.get_instance().client.hset(key, 'if_download', datetime.now().timestamp())
-

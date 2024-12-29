@@ -2,11 +2,11 @@ import re
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
+
 from common.http_wrapper import session
 from meta.channel import SubscriptionMeta
 from models import Subscription
 from utils.cookie import filter_cookies_to_query_string
-
 from ..base import BaseSubscription
 
 
@@ -24,7 +24,7 @@ class PornhubSubscription(BaseSubscription):
 
         bs4 = BeautifulSoup(response.text, 'html.parser')
         channel_els = bs4.select('#channelsProfile .title > h1')
-        
+
         if len(channel_els) > 0:
             name = channel_els[0].text.strip()
             subscribe_url = bs4.select('button[data-subscribe-url]')[0].get('data-subscribe-url')
@@ -102,4 +102,4 @@ class PornhubSubscription(BaseSubscription):
                 break
             current_page += 1
 
-        return video_list 
+        return video_list

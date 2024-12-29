@@ -30,7 +30,7 @@ pre-commit = "*"
 sqlalchemy-stubs = "*"
 pydantic-settings = "*"
 sqlmodel = "*"
-dramatiq = {extras = ["watch", "redis"] }
+dramatiq = { extras = ["watch", "redis"] }
 phub = "*"
 cloudscraper = "*"
 feedparser = "*"

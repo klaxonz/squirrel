@@ -1,7 +1,7 @@
-from meta.channel import SubscriptionMeta
-from models import Subscription
 from pytubefix import Channel as YouTubeChannel
 
+from meta.channel import SubscriptionMeta
+from models import Subscription
 from ..base import BaseSubscription
 
 
@@ -31,4 +31,4 @@ class YouTubeSubscription(BaseSubscription):
             for short in self.channel.shorts:
                 if short and short.watch_url:
                     shorts_.append(short.watch_url)
-        return videos_ + shorts_ 
+        return videos_ + shorts_

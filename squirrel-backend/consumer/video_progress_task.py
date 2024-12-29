@@ -2,6 +2,7 @@ import json
 import logging
 
 import dramatiq
+
 from common import constants
 from services.video_history_service import VideoHistoryService
 

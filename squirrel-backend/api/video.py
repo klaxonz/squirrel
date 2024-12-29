@@ -7,16 +7,17 @@ from email.utils import formatdate
 from mimetypes import guess_type
 from urllib.parse import urljoin
 
-import common.response as response
 import httpx
+from fastapi import Query, APIRouter, Request, HTTPException
+from starlette.responses import StreamingResponse
+
+import common.response as response
 from core.database import get_session
 from downloader.downloader import Downloader
-from fastapi import Query, APIRouter, Request, HTTPException
 from meta.factory import VideoFactory
 from models import Video
 from schemas.video import DownloadVideoRequest, SortBy
 from services.video_service import VideoService
-from starlette.responses import StreamingResponse
 
 logger = logging.getLogger()
 
@@ -251,7 +252,3 @@ async def proxy_video(domain: str, url: str, request: Request):
         except Exception as e:
             logger.error(f"Error occurred while proxying {url}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-
-
-

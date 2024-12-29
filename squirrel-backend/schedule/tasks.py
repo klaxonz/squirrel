@@ -8,14 +8,15 @@ from typing import List, Type
 
 import feedparser
 from PyCookieCloud import PyCookieCloud
+from sqlalchemy.sql.functions import count
+from sqlmodel import col, or_, and_, select, func
+
 from core.config import settings
 from core.database import get_session
 from models import Subscription, SubscriptionVideo
 from models.download_task import DownloadTask
 from models.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
 from services.download_service import start
-from sqlalchemy.sql.functions import count
-from sqlmodel import col, or_, and_, select, func
 from subscribe.factory import SubscriptionFactory
 from utils.cookie import json_cookie_to_netscape
 
@@ -106,7 +107,8 @@ class RetryFailedTask(BaseTask):
                     task.retry = task.retry + 1
                     session.commit()
 
-                    subscription_video = session.exec(select(SubscriptionVideo).where(SubscriptionVideo.video_id == task.video_id)).one()
+                    subscription_video = session.exec(
+                        select(SubscriptionVideo).where(SubscriptionVideo.video_id == task.video_id)).one()
                     if_subscribe = subscription_video is not None
                     start(task.url, if_only_extract=False, if_subscribe=if_subscribe, if_retry=True)
 
@@ -152,7 +154,7 @@ class AutoUpdateChannelVideo(BaseTask):
     def get_pool(cls, url):
         if cls._thread_pools is None:
             cls.initialize_pools()
-        
+
         if 'bilibili' in url:
             return cls._thread_pools['bilibili']
         elif 'pornhub' in url:
@@ -167,7 +169,7 @@ class AutoUpdateChannelVideo(BaseTask):
     def run(cls):
         logger.info('auto_update_channel_video start')
         cls.initialize_pools()
-        
+
         subscription_ids = []
         with get_session() as outer_session:
             subscriptions = outer_session.exec(select(Subscription).where(Subscription.is_enable == 1))
@@ -177,11 +179,12 @@ class AutoUpdateChannelVideo(BaseTask):
         for subscription_id in subscription_ids:
             try:
                 with get_session() as inner_session:
-                    subscription = inner_session.exec(select(Subscription).where(Subscription.subscription_id == subscription_id)).one()
+                    subscription = inner_session.exec(
+                        select(Subscription).where(Subscription.subscription_id == subscription_id)).one()
                     pool = cls.get_pool(subscription.content_url)
                     if pool:
                         pool.submit(cls.update_subscription_video, subscription)
-                    
+
             except Exception as e:
                 logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
@@ -241,8 +244,10 @@ class RepairChanelInfoForTotalVideos(BaseTask):
         for subscription_id in subscription_ids:
             try:
                 with get_session() as session:
-                    subscription = session.exec(select(Subscription).where(Subscription.subscription_id == subscription_id)).first()
-                    videos_count = session.exec(select(count(SubscriptionVideo.video_id)).where(SubscriptionVideo.subscription_id == subscription_id)).one()
+                    subscription = session.exec(
+                        select(Subscription).where(Subscription.subscription_id == subscription_id)).first()
+                    videos_count = session.exec(select(count(SubscriptionVideo.video_id)).where(
+                        SubscriptionVideo.subscription_id == subscription_id)).one()
                     if subscription.total_videos is not None and subscription.total_videos >= videos_count and subscription.total_videos > 0:
                         continue
                     subscribe_channel = SubscriptionFactory.create_subscription(subscription.content_url)
@@ -316,21 +321,23 @@ class UpdatePodcastsTask(BaseTask):
                                     )
                                 )
                             ).first()
-                            
+
                             if existing:
                                 continue
 
                             description = entry.description if hasattr(entry, "description") else None
                             if description:
                                 description = re.sub(r'<.*?>', '', description)
-                            
+
                             episode = PodcastEpisode(
                                 channel_id=channel.id,
                                 title=entry.title,
                                 description=description,
                                 audio_url=entry.enclosures[0].href if hasattr(entry, "enclosures") else None,
-                                published_at=datetime(*entry.published_parsed[:6]) if hasattr(entry, "published_parsed") else None,
-                                duration=cls.parse_duration(entry.itunes_duration) if hasattr(entry, "itunes_duration") else None
+                                published_at=datetime(*entry.published_parsed[:6]) if hasattr(entry,
+                                                                                              "published_parsed") else None,
+                                duration=cls.parse_duration(entry.itunes_duration) if hasattr(entry,
+                                                                                              "itunes_duration") else None
                             )
                             session.add(episode)
 
@@ -343,7 +350,6 @@ class UpdatePodcastsTask(BaseTask):
 
         except Exception as e:
             logger.error(f'更新播客任务失败: {str(e)}', exc_info=True)
-
 
     @classmethod
     def parse_duration(cls, duration_str):

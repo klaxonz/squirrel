@@ -7,20 +7,21 @@ import time
 from email.utils import formatdate
 from mimetypes import guess_type
 
+from fastapi import APIRouter, Query
+from sqlmodel import select, col
+from sse_starlette import EventSourceResponse
+from starlette.requests import Request
+from starlette.responses import StreamingResponse
+
 import common.response as response
 from common import constants
 from core.cache import RedisClient
 from core.database import get_session
 from downloader.downloader import Downloader
-from fastapi import APIRouter, Query
 from meta.factory import VideoFactory
 from models.download_task import DownloadTask
 from schemas.task import DownloadRequest, DownloadChangeStateRequest
 from services.task_service import TaskService
-from sqlmodel import select, col
-from sse_starlette import EventSourceResponse
-from starlette.requests import Request
-from starlette.responses import StreamingResponse
 
 router = APIRouter(tags=['下载任务接口'])
 
@@ -219,4 +220,3 @@ def file_iterator(file_path, offset, chunk_size):
                 yield data
             else:
                 break
-

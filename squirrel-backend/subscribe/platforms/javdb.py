@@ -2,11 +2,11 @@ import re
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
+
 from common.http_wrapper import session
 from meta.channel import SubscriptionMeta
 from models import Subscription
 from utils.cookie import filter_cookies_to_query_string
-
 from ..base import BaseSubscription
 
 
@@ -24,16 +24,16 @@ class JavSubscription(BaseSubscription):
         username_el = bs4.select('.actor-section-name')
         if len(username_el) == 0:
             raise Exception(f'Can not find channel name in {self.url}')
-            
+
         name = username_el[0].text.strip()
         if ',' in name:
             name = name.split(',')[0]
-            
+
         avatar_el = bs4.select('.avatar')[0]
         style = avatar_el['style']
         avatar = re.search(r'url\((.*?)\)', style).group(1)
         channel_id = self.url.split('/')[-1]
-        
+
         return SubscriptionMeta(channel_id, name, avatar, self.url)
 
     def get_subscribe_videos(self, subscription: Subscription, update_all: bool):
@@ -63,7 +63,7 @@ class JavSubscription(BaseSubscription):
             video_els.extend(bs4.select('.movie-list .item a.box'))
             for el in video_els:
                 video_list.append(f'{base_url}{el["href"]}')
-            
+
             page_next_list = bs4.select('a.pagination-link[rel="next"]')
             new_page = int(bs4.select('a.pagination-link[rel="next"]')[0].text) if len(page_next_list) > 0 else 1
 
@@ -74,4 +74,4 @@ class JavSubscription(BaseSubscription):
             if not update_all:
                 break
             current_page += 1
-        return video_list 
+        return video_list

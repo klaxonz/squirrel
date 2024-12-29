@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
-from common.http_wrapper import session
 
+from common.http_wrapper import session
 from ..base import Video, Actor
 
 
@@ -44,4 +44,3 @@ class PornhubVideo(Video):
                     self._actors.append(actor)
 
         return self._actors
-

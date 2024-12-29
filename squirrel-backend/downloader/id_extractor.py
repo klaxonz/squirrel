@@ -45,6 +45,7 @@ def extract_bilibili_id(url: str) -> str:
     else:
         raise ValueError("Invalid url")
 
+
 def extract_pornhub_id(url: str) -> str:
     pattern = r"viewkey=([^&]+)"
     match = re.search(pattern, url)

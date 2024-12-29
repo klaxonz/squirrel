@@ -5,6 +5,8 @@ import os
 import requests
 import yt_dlp
 from bs4 import BeautifulSoup
+from yt_dlp import YoutubeDL
+
 from common import constants
 from common.http_wrapper import session
 from core.cache import RedisClient
@@ -15,7 +17,6 @@ from meta.base import Video
 from meta.factory import VideoFactory
 from models.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
-from yt_dlp import YoutubeDL
 
 logger = logging.getLogger()
 
@@ -80,7 +81,8 @@ class Downloader:
                 logger.info(f'{url} is permanent VIP')
                 return None
 
-            video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[1].text.strip()
+            video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[
+                1].text.strip()
             video_info['thumbnail'] = bs4.select('.video-cover')[0]['src']
             duration = bs4.select('.movie-panel-info .panel-block:nth-of-type(3) span')[0].text.split(' ')[0].strip()
             try:
@@ -88,7 +90,9 @@ class Downloader:
             except ValueError:
                 video_info['duration'] = None
             video_info['id'] = extract_id_from_url(url)
-            video_info['timestamp'] = int(datetime.datetime.strptime(bs4.select('.movie-panel-info .panel-block:nth-of-type(2) span')[0].text.strip(), '%Y-%m-%d').timestamp())
+            video_info['timestamp'] = int(datetime.datetime.strptime(
+                bs4.select('.movie-panel-info .panel-block:nth-of-type(2) span')[0].text.strip(),
+                '%Y-%m-%d').timestamp())
             return video_info
         else:
             ydl_opts = {
@@ -121,7 +125,8 @@ class Downloader:
                 logger.info(f'{url} is permanent VIP')
                 return None
 
-            video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[1].text.strip()
+            video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[
+                1].text.strip()
             video_info['thumbnail'] = bs4.select('.video-cover')[0]['src']
             duration = bs4.select('.movie-panel-info .panel-block:nth-of-type(3) span')[0].text.split(' ')[0].strip()
             try:
@@ -129,7 +134,9 @@ class Downloader:
             except ValueError:
                 video_info['duration'] = None
             video_info['id'] = extract_id_from_url(url)
-            video_info['timestamp'] = int(datetime.datetime.strptime(bs4.select('.movie-panel-info .panel-block:nth-of-type(2) span')[0].text.strip(), '%Y-%m-%d').timestamp())
+            video_info['timestamp'] = int(datetime.datetime.strptime(
+                bs4.select('.movie-panel-info .panel-block:nth-of-type(2) span')[0].text.strip(),
+                '%Y-%m-%d').timestamp())
             return video_info
         else:
             ydl_opts = {

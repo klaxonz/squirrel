@@ -6,18 +6,19 @@ from datetime import datetime, timedelta
 from typing import AsyncGenerator, Dict
 
 import feedparser
-from core.database import get_session
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Response, WebSocket
+from pydantic import BaseModel
+from sqlalchemy import func
+from sqlmodel import Session, select, delete
+from sse_starlette.sse import EventSourceResponse
+
+from core.database import get_session
 from models.podcast import (
     PodcastChannel,
     PodcastEpisode,
     PodcastSubscription,
     PodcastPlayHistory
 )
-from pydantic import BaseModel
-from sqlalchemy import func
-from sqlmodel import Session, select, delete
-from sse_starlette.sse import EventSourceResponse
 
 
 class PlayProgressUpdate(BaseModel):

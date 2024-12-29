@@ -3,6 +3,8 @@ import logging
 from datetime import datetime
 
 import dramatiq
+from sqlmodel import select
+
 from common import constants
 from consumer import download_task
 from core.cache import RedisClient
@@ -14,7 +16,6 @@ from meta.factory import VideoFactory
 from models import Video, SubscriptionVideo, VideoCreator, Creator
 from models.download_task import DownloadTask
 from models.message import Message
-from sqlmodel import select
 from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()

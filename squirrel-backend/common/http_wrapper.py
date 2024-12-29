@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
 from utils.rate_limiter import rate_limiter
 
 logger = logging.getLogger(__name__)

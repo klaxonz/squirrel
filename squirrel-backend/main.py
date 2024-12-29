@@ -6,10 +6,10 @@ import signal
 
 import dramatiq
 import uvicorn
-from alembic import command
 from alembic.config import Config as AlembicConfig
 from dramatiq.worker import Worker
 
+from alembic import command
 from common import constants
 from common.log import init_logging
 from consumer.base import redis_broker
@@ -138,7 +138,7 @@ def start_fastapi_server():
 def main():
     # 执行数据库迁移
     upgrade_database()
-    
+
     init_logging()
 
     # 启动 workers

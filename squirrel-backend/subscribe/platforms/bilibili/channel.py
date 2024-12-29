@@ -3,15 +3,16 @@ import re
 
 import requests
 from bs4 import BeautifulSoup
+
 from common.http_wrapper import session
 from meta.channel import SubscriptionMeta
 from models import Subscription
 from utils.cookie import filter_cookies_to_query_string
-
 from .sign import sign
 from ...base import BaseSubscription
 
 logger = logging.getLogger()
+
 
 class BilibiliSubscription(BaseSubscription):
     DOMAIN = 'bilibili.com'
@@ -103,4 +104,4 @@ class BilibiliSubscription(BaseSubscription):
             if not update_all:
                 should_continue = False
 
-        return video_list 
+        return video_list

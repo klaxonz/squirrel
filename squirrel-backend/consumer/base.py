@@ -1,6 +1,7 @@
-from core.config import settings
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.middleware import TimeLimit, CurrentMessage
+
+from core.config import settings
 
 # 创建 broker 实例
 redis_broker = RedisBroker(url=settings.get_redis_url())

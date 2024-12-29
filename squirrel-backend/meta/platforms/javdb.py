@@ -1,9 +1,9 @@
 import re
 
 from bs4 import BeautifulSoup
+
 from common.http_wrapper import session
 from utils.cookie import filter_cookies_to_query_string
-
 from ..base import Video, Actor
 
 
@@ -41,10 +41,9 @@ class JavVideo(Video):
                         avatar_el = bs4.select('.avatar')
                         actor_avatar = None
                         if len(avatar_el) > 0:
-                            actor_avatar = re.search(r'url\((.*?)\)',  avatar_el[0]['style']).group(1)
+                            actor_avatar = re.search(r'url\((.*?)\)', avatar_el[0]['style']).group(1)
                         actor = Actor(actor_url)
                         actor.name = actor_name
                         actor.avatar = actor_avatar
                         self._actors.append(actor)
         return self._actors
-

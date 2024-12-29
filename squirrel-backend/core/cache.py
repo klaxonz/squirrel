@@ -1,7 +1,8 @@
 import redis
-from core.config import settings
 from redis import ConnectionPool
 from redis.exceptions import LockError
+
+from core.config import settings
 
 
 class RedisClient:

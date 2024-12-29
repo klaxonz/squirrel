@@ -8,7 +8,7 @@ from .base import BaseSubscription
 
 class SubscriptionFactory:
     """Factory class for creating subscription instances"""
-    
+
     _subscriptions: Dict[str, Type[BaseSubscription]] = {}
 
     @classmethod
@@ -34,7 +34,7 @@ class SubscriptionFactory:
     def create_subscription(cls, url: str) -> BaseSubscription:
         """Create a subscription instance for the given URL"""
         cls._auto_discover()  # Ensure platforms are registered
-        
+
         for domain, subscription_class in cls._subscriptions.items():
             if domain in url:
                 return subscription_class(url)

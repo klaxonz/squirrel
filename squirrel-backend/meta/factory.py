@@ -15,4 +15,3 @@ class VideoFactory:
             return PornhubVideo(url, video_info)
         elif 'javdb.com' in url:
             return JavVideo(url, video_info)
-

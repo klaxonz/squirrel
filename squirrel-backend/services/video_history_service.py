@@ -1,11 +1,12 @@
 from datetime import datetime
 from typing import List, Optional
 
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import select, col
+
 from core.database import get_session
 from models import Video
 from models.video_history import VideoHistory
-from sqlalchemy.exc import IntegrityError
-from sqlmodel import select, col
 
 
 class VideoHistoryService:
@@ -17,7 +18,7 @@ class VideoHistoryService:
         """更新视频观看历史"""
         max_retries = 3
         retry_count = 0
-        
+
         while retry_count < max_retries:
             try:
                 with get_session() as session:
@@ -45,10 +46,10 @@ class VideoHistoryService:
                             total_duration=total_duration
                         )
                         session.add(history)
-                    
+
                     session.commit()
                     break  # 成功后跳出重试循环
-                    
+
             except IntegrityError:
                 # 如果发生并发冲突，回滚并重试
                 session.rollback()
@@ -56,7 +57,7 @@ class VideoHistoryService:
                 if retry_count >= max_retries:
                     raise Exception("更新观看历史失败：并发冲突无法解决")
                 continue
-            
+
             except Exception as e:
                 # 其他异常直接抛出
                 session.rollback()

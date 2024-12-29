@@ -13,7 +13,8 @@ class Message(SQLModel, table=True):
     send_status: str = Field(sa_column=Column(VARCHAR(32), nullable=False, default='PENDING'))
     retry_count: int = Field(default=0)
     next_retry_time: Optional[datetime.datetime] = Field(default=None)
-    created_at: Optional[datetime.datetime] = Field(sa_column=Column(DateTime, nullable=False, default=datetime.datetime.now))
+    created_at: Optional[datetime.datetime] = Field(
+        sa_column=Column(DateTime, nullable=False, default=datetime.datetime.now))
     updated_at: Optional[datetime.datetime] = Field(
         sa_column=Column(DateTime, nullable=False, default=datetime.datetime.now, onupdate=datetime.datetime.now,
                          index=True))

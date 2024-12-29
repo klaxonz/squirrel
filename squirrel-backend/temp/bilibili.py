@@ -87,22 +87,22 @@ class BilibiliBaseIE(InfoExtractor):
         } for audio in audios]
 
         formats.extend({
-            'url': traverse_obj(video, 'baseUrl', 'base_url', 'url'),
-            'ext': mimetype2ext(traverse_obj(video, 'mimeType', 'mime_type')),
-            'fps': float_or_none(traverse_obj(video, 'frameRate', 'frame_rate')),
-            'width': int_or_none(video.get('width')),
-            'height': int_or_none(video.get('height')),
-            'vcodec': video.get('codecs'),
-            'acodec': 'none' if audios else None,
-            'dynamic_range': {126: 'DV', 125: 'HDR10'}.get(int_or_none(video.get('id'))),
-            'tbr': float_or_none(video.get('bandwidth'), scale=1000),
-            'filesize': int_or_none(video.get('size')),
-            'quality': int_or_none(video.get('id')),
-            'format_id': traverse_obj(
-                video, (('baseUrl', 'base_url'), {self._FORMAT_ID_RE.search}, 1),
-                ('id', {str_or_none}), get_all=False),
-            'format': format_names.get(video.get('id')),
-        } for video in traverse_obj(play_info, ('dash', 'video', ...)))
+                           'url': traverse_obj(video, 'baseUrl', 'base_url', 'url'),
+                           'ext': mimetype2ext(traverse_obj(video, 'mimeType', 'mime_type')),
+                           'fps': float_or_none(traverse_obj(video, 'frameRate', 'frame_rate')),
+                           'width': int_or_none(video.get('width')),
+                           'height': int_or_none(video.get('height')),
+                           'vcodec': video.get('codecs'),
+                           'acodec': 'none' if audios else None,
+                           'dynamic_range': {126: 'DV', 125: 'HDR10'}.get(int_or_none(video.get('id'))),
+                           'tbr': float_or_none(video.get('bandwidth'), scale=1000),
+                           'filesize': int_or_none(video.get('size')),
+                           'quality': int_or_none(video.get('id')),
+                           'format_id': traverse_obj(
+                               video, (('baseUrl', 'base_url'), {self._FORMAT_ID_RE.search}, 1),
+                               ('id', {str_or_none}), get_all=False),
+                           'format': format_names.get(video.get('id')),
+                       } for video in traverse_obj(play_info, ('dash', 'video', ...)))
 
         if formats:
             self._check_missing_formats(play_info, formats)
@@ -117,9 +117,9 @@ class BilibiliBaseIE(InfoExtractor):
                 'url': fragments[0]['url'],
                 'filesize': sum(traverse_obj(fragments, (..., 'filesize'))),
                 **({
-                    'fragments': fragments,
-                    'protocol': 'http_dash_segments',
-                } if len(fragments) > 1 else {}),
+                       'fragments': fragments,
+                       'protocol': 'http_dash_segments',
+                   } if len(fragments) > 1 else {}),
                 **traverse_obj(play_info, {
                     'quality': ('quality', {int_or_none}),
                     'format_id': ('quality', {str_or_none}),
@@ -877,13 +877,13 @@ class BiliBiliBangumiIE(BilibiliBaseIE):
 
         episode_number, episode_info = next((
             (idx, ep) for idx, ep in enumerate(traverse_obj(
-                bangumi_info, (('episodes', ('section', ..., 'episodes')), ..., {dict})), 1)
+            bangumi_info, (('episodes', ('section', ..., 'episodes')), ..., {dict})), 1)
             if str_or_none(ep.get('id')) == episode_id), (1, {}))
 
         season_id = bangumi_info.get('season_id')
         season_number, season_title = season_id and next((
             (idx + 1, e.get('season_title')) for idx, e in enumerate(
-                traverse_obj(bangumi_info, ('seasons', ...)))
+            traverse_obj(bangumi_info, ('seasons', ...)))
             if e.get('season_id') == season_id
         ), (None, None))
 
@@ -2153,10 +2153,12 @@ class BiliIntlIE(BiliIntlBaseIE):
         webpage = self._download_webpage(url, video_id)
         # Bstation layout
         initial_data = (
-            self._search_json(r'window\.__INITIAL_(?:DATA|STATE)__\s*=', webpage, 'preload state', video_id, default={})
-            or self._search_nuxt_data(webpage, video_id, '__initialState', fatal=False, traverse=None))
+                self._search_json(r'window\.__INITIAL_(?:DATA|STATE)__\s*=', webpage, 'preload state', video_id,
+                                  default={})
+                or self._search_nuxt_data(webpage, video_id, '__initialState', fatal=False, traverse=None))
         video_data = traverse_obj(
-            initial_data, ('OgvVideo', 'epDetail'), ('UgcVideo', 'videoData'), ('ugc', 'archive'), expected_type=dict) or {}
+            initial_data, ('OgvVideo', 'epDetail'), ('UgcVideo', 'videoData'), ('ugc', 'archive'),
+            expected_type=dict) or {}
 
         if season_id and not video_data:
             # Non-Bstation layout, read through episode list

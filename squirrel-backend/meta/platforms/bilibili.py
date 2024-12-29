@@ -4,7 +4,6 @@ import re
 
 from common.http_wrapper import session
 from utils.cookie import filter_cookies_to_query_string
-
 from ..base import Video, Actor
 
 logger = logging.getLogger()

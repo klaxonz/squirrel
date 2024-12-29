@@ -19,7 +19,8 @@ class DownloadTask(SQLModel, table=True):
     percent: Optional[str] = Field(sa_column=Column(VARCHAR(32), nullable=True))
     retry: int = Field(sa_column=Column(Integer, nullable=False, default=0))
     error_message: Optional[str] = Field(sa_column=Column(Text, nullable=True))
-    created_at: Optional[datetime.datetime] = Field(sa_column=Column(DateTime, nullable=False, default=datetime.datetime.now))
+    created_at: Optional[datetime.datetime] = Field(
+        sa_column=Column(DateTime, nullable=False, default=datetime.datetime.now))
     updated_at: Optional[datetime.datetime] = Field(
         sa_column=Column(DateTime, nullable=False, default=datetime.datetime.now, onupdate=datetime.datetime.now,
                          index=True))

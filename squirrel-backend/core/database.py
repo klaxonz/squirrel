@@ -1,8 +1,9 @@
 import logging
 
+from sqlmodel import create_engine, Session
+
 from common.log import init_logging
 from core.config import settings
-from sqlmodel import create_engine, Session
 
 init_logging()
 logger = logging.getLogger()

@@ -1,9 +1,11 @@
 import json
 
+from fastapi import APIRouter, Query
+from sqlmodel import select
+
 import common.response as response
 from consumer import subscribe_task
 from core.database import get_session
-from fastapi import APIRouter, Query
 from models import Subscription
 from models.message import Message
 from schemas.subscription import (
@@ -12,7 +14,6 @@ from schemas.subscription import (
     ToggleStatusRequest
 )
 from services.subscription_service import SubscriptionService
-from sqlmodel import select
 
 router = APIRouter(tags=['订阅接口'])
 
@@ -42,7 +43,8 @@ def unsubscribe_content(req: UnsubscribeRequest):
     if req.subscription_id:
         # 通过id取消订阅
         with get_session() as session:
-            subscription = session.exec(select(Subscription).where(Subscription.subscription_id == req.subscription_id)).first()
+            subscription = session.exec(
+                select(Subscription).where(Subscription.subscription_id == req.subscription_id)).first()
             if subscription:
                 subscription.is_deleted = True
                 session.commit()
@@ -58,11 +60,11 @@ def unsubscribe_content(req: UnsubscribeRequest):
 
 @router.get("/api/subscription/list")
 def list_subscriptions(
-    query: str = Query(None, description="搜索关键字"),
-    content_type: str = Query(None, description="内容类型"),
-    status: str = Query(None, description="状态"),
-    page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(10, ge=1, le=100, description="每页数量")
+        query: str = Query(None, description="搜索关键字"),
+        content_type: str = Query(None, description="内容类型"),
+        status: str = Query(None, description="状态"),
+        page: int = Query(1, ge=1, description="页码"),
+        page_size: int = Query(10, ge=1, le=100, description="每页数量")
 ):
     """获取订阅列表"""
     subscription_service = SubscriptionService()
@@ -105,5 +107,3 @@ def toggle_extract_all(req: ToggleStatusRequest):
 
     success = subscription_service.toggle_status(req.subscription_id, req.is_enable, "is_extract_all")
     return response.success({"success": success})
-
-
