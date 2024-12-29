@@ -1,10 +1,9 @@
 from typing import Optional, Tuple, List, Dict, Any
 
-from sqlmodel import select, or_, and_, func
-
 from core.database import get_session
-from models.subscription import Subscription
 from models.links import SubscriptionVideo
+from models.subscription import Subscription
+from sqlmodel import select, or_, and_, func
 
 
 class SubscriptionService:

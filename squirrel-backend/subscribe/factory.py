@@ -2,8 +2,8 @@ import importlib
 import pkgutil
 from typing import Dict, Type
 
-from .base import BaseSubscription
 from . import platforms
+from .base import BaseSubscription
 
 
 class SubscriptionFactory:

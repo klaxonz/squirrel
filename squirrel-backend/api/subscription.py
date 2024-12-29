@@ -1,11 +1,9 @@
 import json
 
-from fastapi import APIRouter, Query
-from sqlmodel import select
-
 import common.response as response
 from consumer import subscribe_task
 from core.database import get_session
+from fastapi import APIRouter, Query
 from models import Subscription
 from models.message import Message
 from schemas.subscription import (
@@ -14,6 +12,7 @@ from schemas.subscription import (
     ToggleStatusRequest
 )
 from services.subscription_service import SubscriptionService
+from sqlmodel import select
 
 router = APIRouter(tags=['订阅接口'])
 

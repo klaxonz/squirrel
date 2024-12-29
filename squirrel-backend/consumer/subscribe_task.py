@@ -2,12 +2,11 @@ import json
 import logging
 
 import dramatiq
-from sqlmodel import select
-
 from common import constants
 from core.database import get_session
 from models import Subscription, ContentType
 from models.message import Message
+from sqlmodel import select
 from subscribe.factory import SubscriptionFactory
 
 logger = logging.getLogger()

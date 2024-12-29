@@ -1,12 +1,14 @@
 import re
 from urllib.parse import urlparse
-from bs4 import BeautifulSoup
 
-from models import Subscription
-from utils.cookie import filter_cookies_to_query_string
+from bs4 import BeautifulSoup
 from common.http_wrapper import session
 from meta.channel import SubscriptionMeta
+from models import Subscription
+from utils.cookie import filter_cookies_to_query_string
+
 from ..base import BaseSubscription
+
 
 class PornhubSubscription(BaseSubscription):
     DOMAIN = 'pornhub.com'

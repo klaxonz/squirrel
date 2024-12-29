@@ -1,8 +1,8 @@
+from meta.channel import SubscriptionMeta
+from models import Subscription
 from pytubefix import Channel as YouTubeChannel
 
-from models import Subscription
 from ..base import BaseSubscription
-from meta.channel import SubscriptionMeta
 
 
 class YouTubeSubscription(BaseSubscription):

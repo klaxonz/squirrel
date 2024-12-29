@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
-from sqlmodel import Field, Relationship, SQLModel
 from sqlalchemy.types import JSON
+from sqlmodel import Field, Relationship, SQLModel
 
 from .links import VideoCreator
 

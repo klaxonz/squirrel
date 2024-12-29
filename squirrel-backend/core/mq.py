@@ -1,9 +1,7 @@
 import dramatiq
-from dramatiq.brokers.redis import RedisBroker
-from dramatiq.middleware import AgeLimit, TimeLimit, ShutdownNotifications, Callbacks, Pipelines, Retries, Prometheus
-
 from core.config import settings
-
+from dramatiq.brokers.redis import RedisBroker
+from dramatiq.middleware import AgeLimit, TimeLimit, ShutdownNotifications, Callbacks, Pipelines, Retries
 
 broker_middleware = [
     AgeLimit, TimeLimit,

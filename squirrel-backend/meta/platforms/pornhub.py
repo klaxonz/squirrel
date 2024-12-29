@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 from common.http_wrapper import session
+
 from ..base import Video, Actor
 
 

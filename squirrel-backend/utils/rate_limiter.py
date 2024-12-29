@@ -1,7 +1,8 @@
-import time
 import random
-from typing import Optional
+import time
 from dataclasses import dataclass
+from typing import Optional
+
 
 @dataclass
 class RateLimit:

@@ -1,9 +1,8 @@
 import json
 
-from fastapi import APIRouter, Query
-
 import common.response as response
 from consumer import video_progress_task
+from fastapi import APIRouter, Query
 from schemas.video_history import ClearHistoryRequest, UpdateHistoryRequest
 from services.video_history_service import VideoHistoryService
 

@@ -1,6 +1,7 @@
 import os
-from pathvalidate import sanitize_filename
+
 from core.config import settings
+from pathvalidate import sanitize_filename
 
 
 class Video:

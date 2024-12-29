@@ -5,18 +5,17 @@ import os
 import requests
 import yt_dlp
 from bs4 import BeautifulSoup
-from yt_dlp import YoutubeDL
-
 from common import constants
 from common.http_wrapper import session
 from core.cache import RedisClient
-from core.database import get_session
 from core.config import settings
+from core.database import get_session
 from downloader.id_extractor import extract_id_from_url
 from meta.base import Video
 from meta.factory import VideoFactory
 from models.download_task import DownloadTask
 from nfo.nfo import NfoGenerator
+from yt_dlp import YoutubeDL
 
 logger = logging.getLogger()
 

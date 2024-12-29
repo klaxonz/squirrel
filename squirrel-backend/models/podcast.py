@@ -1,9 +1,9 @@
-from typing import Optional
 from datetime import datetime
+from typing import List
+from typing import Optional
 
 from sqlalchemy import Column, DateTime, Text
 from sqlmodel import SQLModel, Field, Relationship
-from typing import List
 
 
 class PodcastChannelBase(SQLModel):

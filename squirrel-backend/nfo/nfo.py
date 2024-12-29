@@ -2,7 +2,6 @@ import os
 from contextlib import suppress
 
 from jinja2 import Environment, FileSystemLoader
-
 from models import Video
 
 

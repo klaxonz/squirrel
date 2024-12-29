@@ -1,20 +1,20 @@
+import importlib
 import logging
 import os
-import dramatiq
-import signal
-import importlib
 import pkgutil
+import signal
+
+import dramatiq
+import uvicorn
+from alembic import command
+from alembic.config import Config as AlembicConfig
 from dramatiq.worker import Worker
 
-import uvicorn
-from alembic.config import Config as AlembicConfig
-from alembic import command
-
-from common.log import init_logging
 from common import constants
+from common.log import init_logging
+from consumer.base import redis_broker
 from schedule import TaskRegistry
 from schedule.schedule import Scheduler
-from consumer.base import redis_broker
 
 logger = logging.getLogger(__name__)
 

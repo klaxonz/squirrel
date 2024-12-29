@@ -1,11 +1,11 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlmodel import select, col
-from sqlalchemy.exc import IntegrityError
 
 from core.database import get_session
 from models import Video
 from models.video_history import VideoHistory
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import select, col
 
 
 class VideoHistoryService:

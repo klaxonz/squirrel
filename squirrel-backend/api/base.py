@@ -9,12 +9,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse, RedirectResponse
 from starlette.staticfiles import StaticFiles
 
-from .video import router as video_router
-from .settings import router as settings_router
-from .task import router as task_router
-from .video_history import router as video_history_router
 from .podcast import router as podcast_router
+from .settings import router as settings_router
 from .subscription import router as subscription_router
+from .task import router as task_router
+from .video import router as video_router
+from .video_history import router as video_history_router
 
 logger = logging.getLogger()
 app = FastAPI()

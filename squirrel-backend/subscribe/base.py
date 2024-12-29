@@ -1,8 +1,8 @@
 import abc
 from typing import List
 
-from models import Subscription
 from meta.channel import SubscriptionMeta
+from models import Subscription
 
 
 class BaseSubscription(abc.ABC):
