@@ -1,10 +1,10 @@
 #!/bin/bash
 
-IMAGE_NAME="klaxonz/media-subscribe"
-VERSION=$(grep '__version__' media-subscribe/__init__.py | awk -F "'" '{print $2}')
+IMAGE_NAME="klaxonz/squirrel"
+VERSION=$(grep '__version__'squirrel-backend/__init__.py | awk -F "'" '{print $2}')
 
 if [ -z "$VERSION" ]; then
-    echo "Failed to retrieve version from media-subscribe/__init__.py"
+    echo "Failed to retrieve version from squirrel-backend/__init__.py"
     exit 1
 fi
 

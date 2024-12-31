@@ -13,8 +13,8 @@ from alembic import command
 from common import constants
 from common.log import init_logging
 from consumer.base import redis_broker
-from schedule import TaskRegistry
 from schedule.schedule import Scheduler
+from schedule.tasks import TaskRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ def start_workers():
 
 
 def create_app():
-    from api.base import app
+    from routes.base import app
     return app
 
 

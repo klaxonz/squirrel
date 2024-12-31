@@ -1,7 +1,7 @@
 services:
   squirrel:
-    image: klaxonz/squirrel-backend:latest
-    container_name: squirrel-backend
+    image: klaxonz/squirrel:latest
+    container_name: squirrel
     restart: always
     env_file:
       - .env

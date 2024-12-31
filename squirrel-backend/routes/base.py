@@ -9,12 +9,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse, RedirectResponse
 from starlette.staticfiles import StaticFiles
 
-from .podcast import router as podcast_router
-from .settings import router as settings_router
-from .subscription import router as subscription_router
-from .task import router as task_router
-from .video import router as video_router
-from .video_history import router as video_history_router
+from routes import router
 
 logger = logging.getLogger()
 app = FastAPI()
@@ -25,12 +20,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(video_router)
-app.include_router(task_router)
-app.include_router(settings_router)
-app.include_router(video_history_router)
-app.include_router(podcast_router)
-app.include_router(subscription_router)
+app.include_router(router)
+
 
 # 判断是否为开发环境
 IS_DEV = os.getenv("ENV", "prod").lower() == "dev"
