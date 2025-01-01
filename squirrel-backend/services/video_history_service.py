@@ -74,23 +74,23 @@ class VideoHistoryService:
 
             results = session.exec(stmt).all()
 
-            video_ids = [result.video_id for result in results]
-            videos = session.exec(select(Video).where(Video.video_id.in_(video_ids))).all()
-            video_dict = {video.video_id: video for video in videos}
+            video_ids = [result.id for result in results]
+            videos = session.exec(select(Video).where(Video.id.in_(video_ids))).all()
+            video_dict = {video.id: video for video in videos}
 
             # 组合数据
             history_list = []
             for history in results:
-                if video_dict.get(history.video_id) is None:
+                if video_dict.get(history.id) is None:
                     continue
-                video = video_dict[history.video_id]
+                video = video_dict[history.id]
                 history_list.append({
                     "id": history.id,
-                    "video_id": video.video_id,
-                    "title": video.video_title,
+                    "id": video.id,
+                    "title": video.title,
                     "thumbnail": video.thumbnail,
                     "duration": video.duration,
-                    "url": video.video_url,
+                    "url": video.url,
                     "uploaded_at": video.uploaded_at,
                     "watch_duration": history.watch_duration,
                     "last_position": history.last_position,

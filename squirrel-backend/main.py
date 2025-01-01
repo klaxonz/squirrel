@@ -16,11 +16,10 @@ from consumer.base import redis_broker
 from schedule.schedule import Scheduler
 from schedule.tasks import TaskRegistry
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 def auto_discover_actors(package_name='consumer'):
-    """自动发现和导入所有的 actors"""
     package = importlib.import_module(package_name)
 
     logger.info(f"Discovering actors in package: {package_name}")

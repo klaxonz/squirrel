@@ -17,7 +17,7 @@ def update_watch_history(
         request: UpdateHistoryRequest,
 ):
     data = {
-        'video_id': request.video_id,
+        'id': request.video_id,
         'channel_id': request.channel_id,
         'watch_duration': request.watch_duration,
         'last_position': request.last_position,

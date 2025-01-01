@@ -162,7 +162,7 @@ def _create_video(url, video_info):
 
 def _get_video(url):
     with get_session() as session:
-        video = session.exec(select(Video).where(Video.video_id == url)).first()
+        video = session.exec(select(Video).where(Video.id == url)).first()
         if video:
             session.expunge(video)
     return video
@@ -178,7 +178,7 @@ def _create_channel_video(video_meta, video_info, extract_info):
         logger.info(f"开始创建channel video: {video_meta.url}")
 
         # 创建video
-        video = session.exec(select(Video).where(Video.video_url == video_meta.url)).first()
+        video = session.exec(select(Video).where(Video.url == video_meta.url)).first()
         if not video:
             video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
             video = Video(
@@ -193,11 +193,11 @@ def _create_channel_video(video_meta, video_info, extract_info):
             session.add(video)
         subscription_video = session.exec(select(SubscriptionVideo).where(
             SubscriptionVideo.subscription_id == extract_info['subscribe_id'],
-            SubscriptionVideo.video_id == video.video_id)).first()
+            SubscriptionVideo.video_id == video.id)).first()
         if not subscription_video:
             subscription_video = SubscriptionVideo(
                 subscription_id=extract_info['subscribe_id'],
-                video_id=video.video_id
+                video_id=video.id
             )
             session.add(subscription_video)
         session.commit()
@@ -205,7 +205,7 @@ def _create_channel_video(video_meta, video_info, extract_info):
         actors = video_meta.actors
         if len(actors) > 0:
             for actor_meta in actors:
-                creator = session.exec(select(Creator).where(Creator.creator_url == actor_meta.url)).first()
+                creator = session.exec(select(Creator).where(Creator.url == actor_meta.url)).first()
                 if not creator:
                     creator = Creator(
                         creator_name=actor_meta.name,
@@ -216,12 +216,12 @@ def _create_channel_video(video_meta, video_info, extract_info):
                     )
                     session.add(creator)
                 video_creator = session.exec(select(VideoCreator).where(
-                    VideoCreator.video_id == video.video_id,
-                    VideoCreator.creator_id == creator.creator_id)).first()
+                    VideoCreator.video_id == video.id,
+                    VideoCreator.creator_id == creator.id)).first()
                 if not video_creator:
                     video_creator = VideoCreator(
-                        video_id=video.video_id,
-                        creator_id=creator.creator_id
+                        video_id=video.id,
+                        creator_id=creator.id
                     )
                     session.add(video_creator)
                 session.commit()
@@ -300,7 +300,7 @@ def _create_download_message(task, if_manual):
         session.add(message)
         session.commit()
 
-        message = session.exec(select(Message).where(Message.message_id == message.message_id)).first()
+        message = session.exec(select(Message).where(Message.id == message.id)).first()
         dump_json = message.model_dump_json()
         if if_manual:
             download_task.process_download_message.send(dump_json)

@@ -29,7 +29,7 @@ def subscribe_content(req: SubscribeRequest):
         session.add(message)
         session.commit()
 
-        message = session.exec(select(Message).where(Message.message_id == message.message_id)).first()
+        message = session.exec(select(Message).where(Message.id == message.id)).first()
         dump_json = message.model_dump_json()
         subscribe_task.process_subscribe_message.send(dump_json)
         message.send_status = 'SENDING'
@@ -44,7 +44,7 @@ def unsubscribe_content(req: UnsubscribeRequest):
         # 通过id取消订阅
         with get_session() as session:
             subscription = session.exec(
-                select(Subscription).where(Subscription.subscription_id == req.subscription_id)).first()
+                select(Subscription).where(Subscription.id == req.subscription_id)).first()
             if subscription:
                 subscription.is_deleted = True
                 session.commit()

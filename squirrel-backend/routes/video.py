@@ -74,14 +74,14 @@ def download_video(req: DownloadVideoRequest):
 @router.get("/api/video/play/{video_id}")
 def play_video(request: Request, video_id: int):
     with get_session() as s:
-        video = s.query(Video).filter(Video.video_id == video_id).first()
+        video = s.query(Video).filter(Video.id == video_id).first()
         if video:
             s.expunge(video)
         else:
             raise HTTPException(status_code=404, detail="Video not found")
 
-    base_info = Downloader.get_video_info(video.video_url)
-    video = VideoFactory.create_video(video.video_url, base_info)
+    base_info = Downloader.get_video_info(video.url)
+    video = VideoFactory.create_video(video.url, base_info)
     output_dir = video.get_download_full_path()
     filename = video.get_valid_filename() + ".mp4"
     video_path = os.path.join(output_dir, filename)

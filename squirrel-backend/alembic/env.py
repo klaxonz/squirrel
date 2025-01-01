@@ -6,6 +6,7 @@ from sqlalchemy import pool
 from sqlmodel import SQLModel
 
 from core.config import settings
+from utils.auto_import import ModuleImporter
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -21,6 +22,7 @@ config.set_main_option('sqlalchemy.url', settings.database_url)
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
+ModuleImporter.import_models(directory="models")
 target_metadata = SQLModel.metadata
 
 

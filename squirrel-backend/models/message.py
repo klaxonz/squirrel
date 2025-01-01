@@ -8,7 +8,7 @@ from sqlmodel import Field, SQLModel
 class Message(SQLModel, table=True):
     __tablename__ = 'message'
 
-    message_id: Optional[int] = Field(sa_column=Column(Integer, primary_key=True))
+    id: Optional[int] = Field(sa_column=Column(Integer, primary_key=True))
     body: str = Field(sa_column=Column(Text, nullable=False))
     send_status: str = Field(sa_column=Column(VARCHAR(32), nullable=False, default='PENDING'))
     retry_count: int = Field(default=0)

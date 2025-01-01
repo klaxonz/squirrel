@@ -15,7 +15,7 @@ def process_video_progress_message(message):
     data = json.loads(message)
     video_history_service = VideoHistoryService()
     video_history_service.update_watch_history(
-        data['video_id'],
+        data['id'],
         data['channel_id'],
         data['watch_duration'],
         data['last_position'],

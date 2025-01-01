@@ -67,7 +67,7 @@ watch(() => props.initialTime, (newTime) => {
 
 const initPlayer = () => {
   if (!props.video?.stream_video_url) {
-    console.warn('Cannot initialize player: video_url is missing');
+    console.warn('Cannot initialize player: url is missing');
     return;
   }
   if (props.video.domain === 'javdb.com') {

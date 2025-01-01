@@ -6,5 +6,5 @@
     <thumb aspect="poster">./poster.jpg</thumb>
     {% for tag in tags %}
     <tag>{{ tag }}</tag>
-    {% endfor %}
+    {% end for %}
 </tvshow>

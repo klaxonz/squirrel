@@ -108,7 +108,7 @@ class RetryFailedTask(BaseTask):
                     session.commit()
 
                     subscription_video = session.exec(
-                        select(SubscriptionVideo).where(SubscriptionVideo.video_id == task.video_id)).one()
+                        select(SubscriptionVideo).where(SubscriptionVideo.video_id == task.id)).one()
                     if_subscribe = subscription_video is not None
                     start(task.url, if_only_extract=False, if_subscribe=if_subscribe, if_retry=True)
 
@@ -174,13 +174,13 @@ class AutoUpdateChannelVideo(BaseTask):
         with get_session() as outer_session:
             subscriptions = outer_session.exec(select(Subscription).where(Subscription.is_enable == 1))
             for subscription in subscriptions:
-                subscription_ids.append(subscription.subscription_id)
+                subscription_ids.append(subscription.id)
 
         for subscription_id in subscription_ids:
             try:
                 with get_session() as inner_session:
                     subscription = inner_session.exec(
-                        select(Subscription).where(Subscription.subscription_id == subscription_id)).one()
+                        select(Subscription).where(Subscription.id == subscription_id)).one()
                     pool = cls.get_pool(subscription.content_url)
                     if pool:
                         pool.submit(cls.update_subscription_video, subscription)
@@ -216,9 +216,9 @@ class AutoUpdateChannelVideo(BaseTask):
                     extract_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
 
             for video in extract_video_list:
-                start(video, if_subscribe=True, subscribe_id=subscription.subscription_id)
+                start(video, if_subscribe=True, subscribe_id=subscription.id)
             for video in extract_download_video_list:
-                start(video, if_only_extract=False, if_subscribe=True, subscribe_id=subscription.subscription_id)
+                start(video, if_only_extract=False, if_subscribe=True, subscribe_id=subscription.id)
             logger.debug(f"update {subscription.name} video end")
         except exception as e:
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
@@ -239,13 +239,13 @@ class RepairChanelInfoForTotalVideos(BaseTask):
         with get_session() as session:
             subscriptions = session.exec(select(Subscription)).all()
             for subscription in subscriptions:
-                subscription_ids.append(subscription.subscription_id)
+                subscription_ids.append(subscription.id)
 
         for subscription_id in subscription_ids:
             try:
                 with get_session() as session:
                     subscription = session.exec(
-                        select(Subscription).where(Subscription.subscription_id == subscription_id)).first()
+                        select(Subscription).where(Subscription.id == subscription_id)).first()
                     videos_count = session.exec(select(count(SubscriptionVideo.video_id)).where(
                         SubscriptionVideo.subscription_id == subscription_id)).one()
                     if subscription.total_videos is not None and subscription.total_videos >= videos_count and subscription.total_videos > 0:
@@ -269,7 +269,7 @@ class AutoUpdateSubscriptionExtractAll(BaseTask):
             for subscription in subscriptions:
                 extract_count = session.exec(
                     select(func.count(col(SubscriptionVideo.video_id))).where(
-                        SubscriptionVideo.subscription_id == subscription.subscription_id)).one()
+                        SubscriptionVideo.subscription_id == subscription.id)).one()
                 if subscription.total_videos is not None and subscription.total_videos > extract_count and subscription.total_videos - extract_count > 10:
                     subscription.is_extract_all = 1
                 else:

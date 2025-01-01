@@ -76,7 +76,7 @@ def _handle_completed_download(download_task, session):
     download_task.error_message = ''
     session.commit()
 
-    video = session.exec(select(Video).where(Video.video_id == download_task.video_id)).first()
+    video = session.exec(select(Video).where(Video.id == download_task.id)).first()
     if video:
         video.if_downloaded = True
         session.commit()
@@ -85,5 +85,5 @@ def _handle_completed_download(download_task, session):
 
 
 def _update_redis_cache(download_task):
-    key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{download_task.domain}:{download_task.video_id}"
+    key = f"{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{download_task.domain}:{download_task.id}"
     RedisClient.get_instance().client.hset(key, 'if_download', datetime.now().timestamp())

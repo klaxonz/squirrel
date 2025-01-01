@@ -21,7 +21,7 @@ class ContentType:
 class Subscription(SQLModel, table=True):
     __tablename__ = "subscription"
 
-    subscription_id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     content_type: str
     content_name: str
     content_url: Optional[str]

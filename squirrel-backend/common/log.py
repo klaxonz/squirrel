@@ -1,4 +1,3 @@
-# 定义日志配置字典
 import logging.config
 import os
 

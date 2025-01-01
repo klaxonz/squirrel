@@ -37,7 +37,7 @@ class SubscriptionService:
                 )
                 .outerjoin(
                     video_count_subquery,
-                    Subscription.subscription_id == video_count_subquery.c.subscription_id
+                    Subscription.id == video_count_subquery.c.id
                 )
                 .where(Subscription.is_deleted == 0)
             )
@@ -64,7 +64,7 @@ class SubscriptionService:
 
             # 计算总数
             total = session.exec(
-                select(Subscription.subscription_id)
+                select(Subscription.id)
                 .where(Subscription.is_deleted == 0)
                 .where(*filters)
             ).all()

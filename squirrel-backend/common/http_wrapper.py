@@ -7,7 +7,7 @@ from urllib3.util.retry import Retry
 
 from utils.rate_limiter import rate_limiter
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class RateLimitAdapter(HTTPAdapter):

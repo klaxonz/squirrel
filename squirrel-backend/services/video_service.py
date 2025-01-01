@@ -25,10 +25,10 @@ class VideoService:
     def get_video_url(self, video_id: int) -> dict:
         with get_session() as session:
             video = session.exec(select(Video).where(
-                Video.video_id == video_id
+                Video.id == video_id
             )).first()
 
-            video_domain = extract_top_level_domain(video.video_url)
+            video_domain = extract_top_level_domain(video.url)
 
             if video_domain == 'bilibili.com':
                 # Bilibili video URL fetching logic
@@ -37,7 +37,7 @@ class VideoService:
                     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                     'Cookie': cookies
                 }
-                bv_id = video.video_url.split('/')[-1]
+                bv_id = video.url.split('/')[-1]
                 req_url = f'https://api.bilibili.com/x/web-interface/view?bvid={bv_id}'
                 resp = requests.get(req_url, headers=headers)
                 cid = resp.json()['data']['cid']
@@ -49,31 +49,31 @@ class VideoService:
                 audio_urls = data['dash']['audio']
                 best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
                 return {
-                    'video_url': "/api/video/proxy?domain=bilibili.com&url=" + quote(best_video_url),
+                    'url': "/api/video/proxy?domain=bilibili.com&url=" + quote(best_video_url),
                     'audio_url': "/api/video/proxy?domain=bilibili.com&url=" + quote(best_audio_url),
                 }
             elif video_domain == 'youtube.com':
                 # YouTube video URL fetching logic
-                yt = YouTube(video.video_url, use_oauth=False)
+                yt = YouTube(video.url, use_oauth=False)
                 video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
                 audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
                 return {
-                    'video_url': video_stream.url if video_stream else None,
+                    'url': video_stream.url if video_stream else None,
                     'audio_url': audio_stream.url if audio_stream else None,
                 }
             elif video_domain == 'pornhub.com':
                 client = phub.Client()
-                video = client.get(video.video_url)
+                video = client.get(video.url)
                 video_url = video.get_direct_url(quality=Quality.BEST)
                 return {
-                    'video_url': video_url,
+                    'url': video_url,
                     'audio_url': None,
                 }
             elif video_domain == 'javdb.com':
-                no = video.video_title.split(' ')[0]
+                no = video.title.split(' ')[0]
                 url = self.get_jav_video_url(no)
                 return {
-                    'video_url': "/api/video/proxy?domain=javdb.com&url=" + quote(url),
+                    'url': "/api/video/proxy?domain=javdb.com&url=" + quote(url),
                     'audio_url': None,
                 }
             return {}
@@ -122,15 +122,15 @@ class VideoService:
                 List[dict], dict]:
         # Start with Video table and join with SubscriptionVideo
         base_query = select(Video, SubscriptionVideo).join(
-            SubscriptionVideo, Video.video_id == SubscriptionVideo.video_id
-        ).where(Video.video_id != '')
+            SubscriptionVideo, Video.id == SubscriptionVideo.video_id
+        ).where(Video.id != '')
 
         if subscription_id:
             base_query = base_query.where(SubscriptionVideo.subscription_id == subscription_id)
 
         if query:
             base_query = base_query.where(or_(
-                Video.video_title.like(f'%{query}%')
+                Video.title.like(f'%{query}%')
             ))
 
         # Sort by appropriate fields from Video table
@@ -146,58 +146,58 @@ class VideoService:
             results = session.exec(base_query).all()
 
             # Count query modifications
-            s_query = select(func.count(Video.video_id)).join(
-                SubscriptionVideo, Video.video_id == SubscriptionVideo.video_id
+            s_query = select(func.count(Video.id)).join(
+                SubscriptionVideo, Video.id == SubscriptionVideo.video_id
             )
             if subscription_id:
                 s_query = s_query.where(SubscriptionVideo.subscription_id == subscription_id)
             if query:
-                s_query = s_query.where(Video.video_title.like(f'%{query}%'))
+                s_query = s_query.where(Video.title.like(f'%{query}%'))
 
             total_count = session.exec(s_query).one()
             # Note: Since we're using Video table now, we'll need to adjust these counts
             # or implement different logic for read/unread/liked status
 
             # get subscriptions
-            subscription_ids = [subscription_video.subscription_id for _, subscription_video in results]
+            subscription_ids = [subscription_video.id for _, subscription_video in results]
             subscriptions = session.exec(
-                select(Subscription).where(Subscription.subscription_id.in_(subscription_ids))).all()
+                select(Subscription).where(Subscription.id.in_(subscription_ids))).all()
 
             # get video related creators
-            video_ids = [video.video_id for video, subscription in results]
+            video_ids = [video.id for video, subscription in results]
             creators = session.exec(
-                select(Creator, VideoCreator).join(VideoCreator, Creator.creator_id == VideoCreator.creator_id).where(
+                select(Creator, VideoCreator).join(VideoCreator, Creator.id == VideoCreator.creator_id).where(
                     VideoCreator.video_id.in_(video_ids))).all()
-            # group creators by video_id
+            # group creators by id
             creators_dict = {}
             for creator, video_creator in creators:
-                if video_creator.video_id not in creators_dict:
-                    creators_dict[video_creator.video_id] = []
-                creators_dict[video_creator.video_id].append(creator)
+                if video_creator.id not in creators_dict:
+                    creators_dict[video_creator.id] = []
+                creators_dict[video_creator.id].append(creator)
 
             video_list = []
             for video, subscription_video in results:
                 subscription_info = next(
-                    (sub for sub in subscriptions if sub.subscription_id == subscription_video.subscription_id), None)
+                    (sub for sub in subscriptions if sub.id == subscription_video.id), None)
                 video_data = {
-                    'id': video.video_id,
-                    'video_id': video.video_id,
-                    'title': video.video_title,
-                    'url': video.video_url,
-                    'thumbnail': video.thumbnail_url,
-                    'duration': video.video_duration,
+                    'id': video.id,
+                    'id': video.id,
+                    'title': video.title,
+                    'url': video.url,
+                    'thumbnail': video.thumbnail,
+                    'duration': video.duration,
                     'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
                     'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                     'subscriptions': [
                         {
-                            'subscription_id': subscription_info.subscription_id,
+                            'id': subscription_info.subscription_id,
                             'content_name': subscription_info.content_name,
                             'content_url': subscription_info.content_url,
                             'content_type': subscription_info.content_type,
-                            "avatar_url": subscription_info.avatar_url
+                            "avatar": subscription_info.avatar_url
                         }
                     ] if subscription_info else [],
-                    'actors': [creator.dict() for creator in creators_dict.get(video.video_id, [])]
+                    'actors': [creator.dict() for creator in creators_dict.get(video.id, [])]
                 }
                 video_list.append(video_data)
 
@@ -214,7 +214,7 @@ class VideoService:
     def download_video(self, video_id: int):
         with get_session() as session:
             video = session.query(Video).filter(
-                Video.video_id == video_id
+                Video.id == video_id
             ).first()
 
         if not video:
@@ -226,7 +226,7 @@ class VideoService:
     def get_video(self, id):
         with get_session() as session:
             # 获取视频基本信息
-            video = session.exec(select(Video).where(Video.video_id == id)).first()
+            video = session.exec(select(Video).where(Video.id == id)).first()
             if not video:
                 return None
 
@@ -234,16 +234,16 @@ class VideoService:
             subscription_videos = session.exec(
                 select(SubscriptionVideo).where(SubscriptionVideo.video_id == id)
             ).all()
-            subscription_ids = [sv.subscription_id for sv in subscription_videos]
+            subscription_ids = [sv.id for sv in subscription_videos]
 
             subscriptions = session.exec(
-                select(Subscription).where(Subscription.subscription_id.in_(subscription_ids))
+                select(Subscription).where(Subscription.id.in_(subscription_ids))
             ).all()
 
             # 获取创作者信息
             creators = session.exec(
                 select(Creator, VideoCreator)
-                .join(VideoCreator, Creator.creator_id == VideoCreator.creator_id)
+                .join(VideoCreator, Creator.id == VideoCreator.creator_id)
                 .where(VideoCreator.video_id == id)
             ).all()
 

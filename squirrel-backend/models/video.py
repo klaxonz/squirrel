@@ -14,12 +14,12 @@ if TYPE_CHECKING:
 class Video(SQLModel, table=True):
     __tablename__ = "video"
 
-    video_id: Optional[int] = Field(default=None, primary_key=True)
-    video_title: str
-    video_url: str = Field(sa_column_kwargs={"unique": True})
-    video_description: Optional[str]
-    video_duration: Optional[int]
-    thumbnail_url: Optional[str]
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+    url: str = Field(sa_column_kwargs={"unique": True})
+    description: Optional[str]
+    duration: Optional[int]
+    thumbnail: Optional[str]
     publish_date: Optional[datetime]
     is_deleted: bool = Field(default=False)
     extra_data: Optional[dict] = Field(default=None, sa_type=JSON)

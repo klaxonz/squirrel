@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 class Creator(SQLModel, table=True):
     __tablename__ = "creator"
 
-    creator_id: Optional[int] = Field(default=None, primary_key=True)
-    creator_name: str
-    creator_url: Optional[str] = Field(sa_column_kwargs={"unique": True})
-    avatar_url: Optional[str]
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    url: Optional[str] = Field(sa_column_kwargs={"unique": True})
+    avatar: Optional[str]
     description: Optional[str]
     is_deleted: bool = Field(default=False)
     extra_data: Optional[dict] = Field(default=None, sa_type=JSON)

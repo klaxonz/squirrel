@@ -18,6 +18,6 @@ class VideoHistory(SQLModel, table=True):
     )
 
     __table_args__ = (
-        Index('idx_video_history_video', 'video_id'),
+        Index('idx_video_history_video', 'id'),
         Index('idx_video_history_updated', 'updated_at'),
     )

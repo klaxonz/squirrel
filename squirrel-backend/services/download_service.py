@@ -32,7 +32,7 @@ def start(
     key = f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}'
     if if_only_extract:
         with get_session() as session:
-            video = session.exec(select(Video).where(Video.video_id == url)).first()
+            video = session.exec(select(Video).where(Video.id == url)).first()
             if video:
                 return
 
@@ -44,7 +44,7 @@ def start(
     else:
         if not if_manual_retry:
             with get_session() as session:
-                video = session.exec(select(Video).where(Video.video_id == url)).first()
+                video = session.exec(select(Video).where(Video.id == url)).first()
                 if video and video.is_downloaded:
                     return
             value = client.hget(key, 'if_download')
@@ -70,7 +70,7 @@ def start(
         session.add(message)
         session.commit()
 
-        message = session.exec(select(Message).where(Message.message_id == message.message_id)).first()
+        message = session.exec(select(Message).where(Message.id == message.id)).first()
         dump_json = message.model_dump_json()
         if if_manual_retry or if_manual_download:
             extract_task.process_extract_scheduled_message.send(dump_json)
