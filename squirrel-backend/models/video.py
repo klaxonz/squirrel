@@ -1,26 +1,26 @@
 from datetime import datetime
 from typing import Optional
+from sqlalchemy import Integer, Boolean, JSON, VARCHAR, Text, DateTime
+from sqlalchemy.orm import Mapped, mapped_column
+from models import Base
 
-from sqlalchemy.types import JSON
-from sqlmodel import Field, SQLModel
 
-
-class Video(SQLModel, table=True):
+class Video(Base):
     __tablename__ = "video"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    title: str
-    url: str = Field(sa_column_kwargs={"unique": True})
-    description: Optional[str]
-    duration: Optional[int]
-    thumbnail: Optional[str]
-    publish_date: Optional[datetime]
-    is_deleted: bool = Field(default=False)
-    extra_data: Optional[dict] = Field(default=None, sa_type=JSON)
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(),
-        sa_column_kwargs={"onupdate": lambda: datetime.now()}
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(VARCHAR(128), nullable=False)
+    url: Mapped[str] = mapped_column(VARCHAR(2048), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    thumbnail: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
+    publish_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    extra_data: Mapped[Optional[dict]] = mapped_column(JSON, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now()
     )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now()
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(),
+        onupdate=lambda: datetime.now()
     )

@@ -31,9 +31,6 @@ class ModuleImporter:
             List of imported classes
             
         Examples:
-            >>> from sqlmodel import SQLModel
-            >>> models = ModuleImporter.import_classes("models", SQLModel)
-            
             >>> from fastapi import APIRouter
             >>> routers = ModuleImporter.import_classes("routers", APIRouter)
         """
@@ -81,8 +78,8 @@ class ModuleImporter:
     def import_models(cls, directory: str = "models", **kwargs) -> List[Type]:
         """Helper method for importing SQLModel classes"""
         try:
-            from sqlmodel import SQLModel
-            return cls.import_classes(directory, SQLModel, **kwargs)
+            from models import Base
+            return cls.import_classes(directory, Base, **kwargs)
         except ImportError:
             logger.error("SQLModel not installed")
             return []

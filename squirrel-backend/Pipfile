@@ -24,8 +24,6 @@ pycookiecloud = "*"
 pytubefix = "==8.3.2"
 sse-starlette = "*"
 alembic = "*"
-sqlalchemy-stubs = "*"
-sqlmodel = "*"
 dramatiq = { extras = ["watch", "redis"] }
 phub = "*"
 cloudscraper = "*"

@@ -1,25 +1,26 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy.types import JSON
-from sqlmodel import Field, SQLModel
+from sqlalchemy import Boolean, JSON, VARCHAR, Text
+from sqlalchemy.orm import mapped_column, Mapped
+from models import Base
 
 
-class Creator(SQLModel, table=True):
+class Creator(Base):
     __tablename__ = "creator"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    url: Optional[str] = Field(sa_column_kwargs={"unique": True})
-    avatar: Optional[str]
-    description: Optional[str]
-    is_deleted: bool = Field(default=False)
-    extra_data: Optional[dict] = Field(default=None, sa_type=JSON)
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(),
-        sa_column_kwargs={"onupdate": lambda: datetime.now()}
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[Optional[str]] = mapped_column(VARCHAR(128), nullable=True)
+    url: Mapped[str] = mapped_column(VARCHAR(2048), nullable=False)
+    avatar: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    extra_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now()
     )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now()
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(),
+        onupdate=lambda: datetime.now()
     )
 

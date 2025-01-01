@@ -1,70 +1,74 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, Text
-from sqlmodel import SQLModel, Field
+from sqlalchemy import Integer, Text, Boolean, VARCHAR, DateTime
+from sqlalchemy.orm import Mapped, mapped_column
+
+from models import Base
 
 
-class PodcastChannelBase(SQLModel):
-    title: str = Field(index=True)
-    description: Optional[str] = None
-    author: Optional[str] = None
-    cover_url: Optional[str] = None
-    rss_url: str = Field(unique=True)
-    website_url: Optional[str] = None
-    language: Optional[str] = None
-    categories: Optional[str] = None
-    last_updated: Optional[datetime] = None
-
-
-class PodcastChannel(PodcastChannelBase, table=True):
+class PodcastChannel(Base):
     __tablename__ = "podcast_channels"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(sa_column=Column(DateTime, nullable=False, default=datetime.now))
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(VARCHAR(128), index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    author: Mapped[Optional[str]] = mapped_column(VARCHAR(128), nullable=True)
+    cover_url: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
+    rss_url: Mapped[str] = mapped_column(VARCHAR(2048), nullable=False)
+    website_url: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
+    language: Mapped[Optional[str]] = mapped_column(VARCHAR(32), nullable=True)
+    categories: Mapped[Optional[str]] = mapped_column(VARCHAR(32), nullable=True)
+    last_updated: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(),
+        onupdate=lambda: datetime.now()
     )
 
 
-class PodcastEpisodeBase(SQLModel):
-    channel_id: int = Field(foreign_key="podcast_channels.id")
-    title: str = Field(index=True)
-    description: Optional[str] = Field(sa_column=Column(Text, nullable=True))
-    audio_url: str
-    duration: Optional[int] = None
-    published_at: Optional[datetime] = None
-    cover_url: Optional[str] = None
-    is_read: bool = Field(default=False)
-    last_position: int = Field(default=0)
-
-
-class PodcastEpisode(PodcastEpisodeBase, table=True):
+class PodcastEpisode(Base):
     __tablename__ = "podcast_episodes"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(sa_column=Column(DateTime, nullable=False, default=datetime.now))
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    channel_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(VARCHAR(128), index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    audio_url: Mapped[str] = mapped_column(VARCHAR(2048), nullable=False)
+    duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cover_url: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_position: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(),
+        onupdate=lambda: datetime.now()
     )
 
 
-class PodcastSubscription(SQLModel, table=True):
+class PodcastSubscription(Base):
     __tablename__ = "podcast_subscriptions"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    channel_id: int = Field(foreign_key="podcast_channels.id")
-    created_at: datetime = Field(sa_column=Column(DateTime, nullable=False, default=datetime.now))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    channel_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now()
+    )
 
 
-
-class PodcastPlayHistory(SQLModel, table=True):
+class PodcastPlayHistory(Base):
     __tablename__ = "podcast_play_history"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    episode_id: int = Field(foreign_key="podcast_episodes.id")
-    position: int = Field(default=0)
-    duration: int = Field(default=0)
-    last_played_at: datetime = Field(default_factory=datetime.now)
-    is_finished: bool = Field(default=False)
-
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    episode_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    duration: Mapped[int] = mapped_column(Integer, default=0)
+    last_played_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now()
+    )
+    is_finished: Mapped[bool] = mapped_column(Boolean, default=False)

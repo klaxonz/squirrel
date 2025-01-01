@@ -2,7 +2,10 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.types import JSON
-from sqlmodel import Field, SQLModel
+from sqlalchemy import Integer, VARCHAR, Text, Boolean
+from sqlalchemy.orm import Mapped, mapped_column
+
+from models import Base
 
 
 class ContentType:
@@ -13,26 +16,26 @@ class ContentType:
     ACTOR = "ACTOR"
 
 
-class Subscription(SQLModel, table=True):
+class Subscription(Base):
     __tablename__ = "subscription"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    content_type: str
-    content_name: str
-    content_url: Optional[str]
-    avatar_url: Optional[str]
-    description: Optional[str]
-    total_videos: Optional[int] = Field(default=0)
-    is_enable: bool = Field(default=True)
-    is_auto_download: bool = Field(default=False)
-    is_download_all: bool = Field(default=False)
-    is_extract_all: bool = Field(default=False)
-    is_deleted: bool = Field(default=False)
-    extra_data: Optional[dict] = Field(default=None, sa_type=JSON)
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(),
-        sa_column_kwargs={"onupdate": lambda: datetime.now()}
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    content_type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)
+    content_name: Mapped[str] = mapped_column(VARCHAR(128), nullable=False)
+    content_url: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
+    avatar_url: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    total_videos: Mapped[int] = mapped_column(Integer, default=0)
+    is_enable: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_auto_download: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_download_all: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_extract_all: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    extra_data: Mapped[Optional[dict]] = mapped_column(JSON, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now()
     )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now()
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(),
+        onupdate=lambda: datetime.now()
     )

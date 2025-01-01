@@ -3,9 +3,9 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-from sqlmodel import SQLModel
 
 from core.config import settings
+from models import Base
 from utils.auto_import import ModuleImporter
 
 # this is the Alembic Config object, which provides
@@ -21,9 +21,8 @@ config.set_main_option('sqlalchemy.url', settings.database_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
 ModuleImporter.import_models(directory="models")
-target_metadata = SQLModel.metadata
+target_metadata = Base.metadata
 
 
 # other values from the config, defined by the needs of env.py,

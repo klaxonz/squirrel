@@ -2,8 +2,6 @@ import datetime
 import json
 import logging
 
-from sqlmodel import select
-
 from common import constants
 from consumer import extract_task
 from core.cache import RedisClient
@@ -32,7 +30,7 @@ def start(
     key = f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}'
     if if_only_extract:
         with get_session() as session:
-            video = session.exec(select(Video).where(Video.id == url)).first()
+            video = session.exec(select(Video).where(Video.url == url)).first()
             if video:
                 return
 
