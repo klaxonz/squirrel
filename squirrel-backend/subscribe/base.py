@@ -2,7 +2,7 @@ import abc
 from typing import List
 
 from meta.channel import SubscriptionMeta
-from models import Subscription
+from models.subscription import Subscription
 
 
 class BaseSubscription(abc.ABC):

@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import List
 from typing import Optional
 
 from sqlalchemy import Column, DateTime, Text
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field
 
 
 class PodcastChannelBase(SQLModel):
@@ -27,10 +26,6 @@ class PodcastChannel(PodcastChannelBase, table=True):
         sa_column=Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
     )
 
-    # Relationships
-    episodes: List["PodcastEpisode"] = Relationship(back_populates="channel")
-    subscription: Optional["PodcastSubscription"] = Relationship(back_populates="channel")
-
 
 class PodcastEpisodeBase(SQLModel):
     channel_id: int = Field(foreign_key="podcast_channels.id")
@@ -53,10 +48,6 @@ class PodcastEpisode(PodcastEpisodeBase, table=True):
         sa_column=Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
     )
 
-    # Relationships
-    channel: PodcastChannel = Relationship(back_populates="episodes")
-    play_history: List["PodcastPlayHistory"] = Relationship(back_populates="episode")
-
 
 class PodcastSubscription(SQLModel, table=True):
     __tablename__ = "podcast_subscriptions"
@@ -65,8 +56,6 @@ class PodcastSubscription(SQLModel, table=True):
     channel_id: int = Field(foreign_key="podcast_channels.id")
     created_at: datetime = Field(sa_column=Column(DateTime, nullable=False, default=datetime.now))
 
-    # Relationships
-    channel: PodcastChannel = Relationship(back_populates="subscription")
 
 
 class PodcastPlayHistory(SQLModel, table=True):
@@ -79,5 +68,3 @@ class PodcastPlayHistory(SQLModel, table=True):
     last_played_at: datetime = Field(default_factory=datetime.now)
     is_finished: bool = Field(default=False)
 
-    # Relationships
-    episode: PodcastEpisode = Relationship(back_populates="play_history")

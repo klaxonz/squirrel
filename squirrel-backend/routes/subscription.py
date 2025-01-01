@@ -6,8 +6,8 @@ from sqlmodel import select
 import common.response as response
 from consumer import subscribe_task
 from core.database import get_session
-from models import Subscription
 from models.message import Message
+from models.subscription import Subscription
 from schemas.subscription import (
     SubscribeRequest,
     UnsubscribeRequest,

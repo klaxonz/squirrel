@@ -1,13 +1,8 @@
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 
 from sqlalchemy.types import JSON
-from sqlmodel import Field, Relationship, SQLModel
-
-from .links import VideoCreator
-
-if TYPE_CHECKING:
-    from .video import Video
+from sqlmodel import Field, SQLModel
 
 
 class Creator(SQLModel, table=True):
@@ -27,7 +22,4 @@ class Creator(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now()
     )
-    videos: list["Video"] = Relationship(
-        back_populates="creators",
-        link_model=VideoCreator
-    )
+

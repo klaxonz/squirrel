@@ -13,9 +13,10 @@ from sqlmodel import col, or_, and_, select, func
 
 from core.config import settings
 from core.database import get_session
-from models import Subscription, SubscriptionVideo
 from models.download_task import DownloadTask
+from models.links import SubscriptionVideo
 from models.podcast import PodcastChannel, PodcastSubscription, PodcastEpisode
+from models.subscription import Subscription
 from services.download_service import start
 from subscribe.factory import SubscriptionFactory
 from utils.cookie import json_cookie_to_netscape
@@ -290,7 +291,7 @@ class UpdatePodcastsTask(BaseTask):
                 # 获取所有已订阅的播客
                 channels = session.exec(
                     select(PodcastChannel)
-                    .join(PodcastSubscription)
+                    .join(PodcastSubscription, PodcastSubscription.channel_id == PodcastChannel.id)
                 ).all()
 
                 for channel in channels:

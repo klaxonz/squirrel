@@ -9,9 +9,9 @@ from common import constants
 from core.cache import RedisClient
 from core.database import get_session
 from downloader.downloader import Downloader
-from models import Video
 from models.download_task import DownloadTask
 from models.message import Message
+from models.video import Video
 
 logger = logging.getLogger()
 

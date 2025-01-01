@@ -3,7 +3,7 @@ from contextlib import suppress
 
 from jinja2 import Environment, FileSystemLoader
 
-from models import Video
+from models.video import Video
 
 
 class NfoGenerator:
@@ -44,8 +44,8 @@ class NfoGenerator:
             series_title=uploader.get_name(),
             season=video.season,
             episode_title=video.title,
-            description=video.description(),
-            thumbnail_path=video.thumbnail()
+            description=video.description,
+            thumbnail_path=video.thumbnail
         )
 
         download_path = video.get_download_full_path()

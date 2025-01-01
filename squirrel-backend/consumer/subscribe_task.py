@@ -6,8 +6,8 @@ from sqlmodel import select
 
 from common import constants
 from core.database import get_session
-from models import Subscription, ContentType
 from models.message import Message
+from models.subscription import Subscription, ContentType
 from subscribe.factory import SubscriptionFactory
 
 logger = logging.getLogger()

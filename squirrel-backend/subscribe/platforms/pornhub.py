@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 
 from common.http_wrapper import session
 from meta.channel import SubscriptionMeta
-from models import Subscription
+from models.subscription import Subscription
 from utils.cookie import filter_cookies_to_query_string
 from ..base import BaseSubscription
 

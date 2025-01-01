@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import select, col
 
 from core.database import get_session
-from models import Video
+from models.video import Video
 from models.video_history import VideoHistory
 
 
