@@ -1,8 +1,6 @@
 from typing import List, Tuple
 
-from sqlalchemy import func
-from sqlmodel import select, col
-
+from sqlalchemy import func, select
 from common import constants
 from core.cache import RedisClient
 from core.database import get_session
@@ -19,7 +17,7 @@ class TaskService:
     @staticmethod
     def retry_download(task_id: int):
         with get_session() as session:
-            task = session.exec(select(DownloadTask).where(DownloadTask.task_id == task_id)).first()
+            task = session.scalars(select(DownloadTask).where(DownloadTask.id == task_id)).first()
             if task:
                 task.status = 'PENDING'
                 task.retry = task.retry + 1
@@ -29,7 +27,7 @@ class TaskService:
     @staticmethod
     def pause_download(task_id: int):
         with get_session() as session:
-            task = session.exec(select(DownloadTask).where(DownloadTask.task_id == task_id)).first()
+            task = session.scalars(select(DownloadTask).where(DownloadTask.id == task_id)).first()
             if task:
                 task.status = 'PAUSED'
                 session.commit()
@@ -38,7 +36,7 @@ class TaskService:
     @staticmethod
     def delete_download(task_id: int):
         with get_session() as session:
-            task = session.exec(select(DownloadTask).where(DownloadTask.task_id == task_id)).first()
+            task = session.scalars(select(DownloadTask).where(DownloadTask.id == task_id)).first()
             if task:
                 session.delete(task)
                 session.commit()
@@ -49,21 +47,21 @@ class TaskService:
     @staticmethod
     def list_tasks(status: str, page: int, page_size: int) -> Tuple[List[dict], int]:
         with get_session() as session:
-            base_query = select(DownloadTask).where(DownloadTask.title != '')
-            count_query = select(func.count(DownloadTask.task_id)).where(DownloadTask.title != '')
+            base_query = select(DownloadTask)
+            count_query = select(func.count(DownloadTask.id))
             if status:
                 base_query = base_query.where(DownloadTask.status == status)
                 count_query = count_query.where(DownloadTask.status == status)
-            total_tasks = session.exec(count_query).one()
+            total_tasks = session.scalars(count_query).one()
             offset = (page - 1) * page_size
 
-            base_query = base_query.order_by(col(DownloadTask.created_at).desc()).offset(offset).limit(page_size)
-            tasks = session.exec(base_query).all()
+            base_query = base_query.order_by(DownloadTask.created_at.desc()).offset(offset).limit(page_size)
+            tasks = session.scalars(base_query).all()
 
             client = RedisClient.get_instance().client
             task_convert_list = []
             for task in tasks:
-                task_id = task.task_id
+                task_id = task.id
                 downloaded_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}',
                                               'downloaded_size')
                 total_size = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'total_size')
@@ -72,12 +70,9 @@ class TaskService:
                 percent = client.hget(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'percent')
 
                 task_convert_list.append({
-                    "id": task.task_id,
+                    "id": task.id,
                     "thumbnail": task.thumbnail,
                     "status": task.status,
-                    "title": task.title,
-                    "channel_name": task.channel_name,
-                    "channel_avatar": task.channel_avatar,
                     "downloaded_size": int(downloaded_size) if downloaded_size else 0,
                     "total_size": int(total_size) if total_size else 0,
                     "speed": speed or '未知',
@@ -90,3 +85,6 @@ class TaskService:
                 })
 
             return task_convert_list, total_tasks
+
+
+task_sercice = TaskService()

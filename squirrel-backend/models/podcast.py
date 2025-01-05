@@ -5,9 +5,10 @@ from sqlalchemy import Integer, Text, Boolean, VARCHAR, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
+from models.mixins.serializer import SerializerMixin
 
 
-class PodcastChannel(Base):
+class PodcastChannel(Base, SerializerMixin):
     __tablename__ = "podcast_channels"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -51,7 +52,7 @@ class PodcastEpisode(Base):
     )
 
 
-class PodcastSubscription(Base):
+class PodcastSubscription(Base, SerializerMixin):
     __tablename__ = "podcast_subscriptions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

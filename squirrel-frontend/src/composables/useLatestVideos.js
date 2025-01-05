@@ -1,7 +1,6 @@
 import { ref, computed } from 'vue';
 import { get } from '../utils/request';
 
-// 将状态提升到模块级别
 const videoContainer = ref(null);
 const videos = ref([]);
 const loading = ref(false);
@@ -63,7 +62,7 @@ export default function useLatestVideos() {
     videos.value = currentPage.value === 1 
       ? newVideos 
       : [...videos.value, ...newVideos.filter(video => 
-          !videos.value.some(v => v.video_id === video.video_id)
+          !videos.value.some(v => v.id === video.id)
         )];
     
     currentPage.value++;

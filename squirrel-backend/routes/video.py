@@ -17,20 +17,18 @@ from downloader.downloader import Downloader
 from meta.factory import VideoFactory
 from models.video import Video
 from schemas.video import DownloadVideoRequest, SortBy
-from services.video_service import VideoService
+from services import video_service
+from services.video_service import video_service
 
 logger = logging.getLogger()
 
-router = APIRouter(
-    tags=['频道视频接口']
-)
+router = APIRouter(tags=['频道视频接口'])
 
 
 @router.get("/api/video/url")
 def get_video_url(
         video_id: int = Query(None, description="视频ID")
 ):
-    video_service = VideoService()
     video_urls = video_service.get_video_url(video_id)
     return response.success(video_urls)
 
@@ -39,7 +37,6 @@ def get_video_url(
 def get_video(
         video_id: int = Query(None, description="视频ID")
 ):
-    video_service = VideoService()
     video = video_service.get_video(video_id)
     return response.success(video)
 
@@ -53,10 +50,9 @@ def get_channel_videos(
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
 ):
-    channel_video_service = VideoService()
-    videos, counts = channel_video_service.list_videos(query, subscription_id, category, sort_by, page, page_size)
+    videos, total_counts, counts = video_service.list_videos(query, subscription_id, category, sort_by, page, page_size)
     return response.success({
-        "total": len(videos),
+        "total": total_counts,
         "page": page,
         "pageSize": page_size,
         "data": videos,
@@ -66,7 +62,6 @@ def get_channel_videos(
 
 @router.post("/api/video/download")
 def download_video(req: DownloadVideoRequest):
-    video_service = VideoService()
     video_service.download_video(req.video_id)
     return response.success()
 

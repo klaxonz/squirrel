@@ -8,11 +8,11 @@ from typing import AsyncGenerator, Dict
 import feedparser
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Response, WebSocket
 from pydantic import BaseModel
-from sqlalchemy import func
-from sqlmodel import Session, select, delete
+from sqlalchemy import func, select, delete
+from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
-from core.database import get_session
+from core.database import get_session, get_db
 from models.podcast import (
     PodcastChannel,
     PodcastEpisode,
@@ -150,13 +150,9 @@ async def start_cleanup_task():
 @router.post("/channels/subscribe")
 async def subscribe_podcast(
         request: SubscribePodcastRequest,
-        session: Session = Depends(get_session)
+        session: Session = Depends(get_db)
 ):
-    """订阅新的播客"""
-    # 检查是否已订阅
-    existing = session.exec(
-        select(PodcastChannel).where(PodcastChannel.rss_url == request.rss_url)
-    ).first()
+    existing = session.scalars(select(PodcastChannel).where(PodcastChannel.rss_url == request.rss_url)).first()
     if existing:
         raise HTTPException(status_code=400, detail="已订阅该播客")
 
@@ -174,7 +170,6 @@ async def subscribe_podcast(
     website_url = feed.feed.link if hasattr(feed.feed, "link") else None
     language = feed.feed.language if hasattr(feed.feed, "language") else None
 
-    # 创建频道
     channel = PodcastChannel(
         title=title,
         description=description,
@@ -188,7 +183,6 @@ async def subscribe_podcast(
     session.add(channel)
     session.flush()
 
-    # 创建订阅关系
     subscription = PodcastSubscription(channel_id=channel.id)
     session.add(subscription)
 
@@ -206,7 +200,6 @@ async def subscribe_podcast(
         else:
             return 0
 
-    # 添加剧集
     for entry in feed.entries:
         description = entry.description if hasattr(entry, "description") else None
         if description:
@@ -233,20 +226,19 @@ async def get_subscribed_channels(
 ):
     """获取已订阅的播客列表"""
     # 获取频道和对应的剧集数量
-    channels_with_count = session.exec(
+    channels_with_count = session.scalars(
         select(
             PodcastChannel,
             func.count(PodcastEpisode.id).label('total_count')
         )
         .join(PodcastSubscription)
-        .outerjoin(PodcastEpisode)  # 使用 outerjoin 以包含没有剧集的频道
+        .outerjoin(PodcastEpisode)
         .group_by(PodcastChannel.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()
 
-    # 获取总数
-    total = session.exec(
+    total = session.scalars(
         select(func.count(PodcastChannel.id))
         .join(PodcastSubscription)
     ).one()
@@ -255,7 +247,7 @@ async def get_subscribed_channels(
     result = []
     for channel, total_count in channels_with_count:
         # 获取最新剧集
-        latest_episode = session.exec(
+        latest_episode = session.scalars(
             select(PodcastEpisode)
             .where(PodcastEpisode.channel_id == channel.id)
             .where(PodcastEpisode.audio_url is not None)  # 确保有音频地址
@@ -297,12 +289,8 @@ async def get_channel_episodes(
         sort_order: str = "desc",
         session: Session = Depends(get_session)
 ):
-    """获取频道的剧集列表"""
-    # 确定排序方式
     order_by = PodcastEpisode.published_at.desc() if sort_order == "desc" else PodcastEpisode.published_at.asc()
-
-    # 查询剧集
-    episodes = session.exec(
+    episodes = session.scalars(
         select(PodcastEpisode)
         .where(PodcastEpisode.channel_id == channel_id)
         .order_by(order_by)
@@ -310,8 +298,7 @@ async def get_channel_episodes(
         .limit(page_size)
     ).all()
 
-    # 获取总数
-    total = session.exec(
+    total = session.scalars(
         select(func.count(PodcastEpisode.id))
         .where(PodcastEpisode.channel_id == channel_id)
     ).one()
@@ -328,9 +315,6 @@ async def get_channel_episodes(
 @router.get("/episodes/{episode_id}/progress")
 async def stream_progress(
         episode_id: int,
-        response: Response,
-        background_tasks: BackgroundTasks,
-        session: Session = Depends(get_session)
 ):
     """建立 SSE 连接以流式传输进度更新"""
     play_progress_connections[episode_id] = True
@@ -351,7 +335,6 @@ async def update_progress(
         background_tasks: BackgroundTasks,
         session: Session = Depends(get_session)
 ):
-    """更新播放进度（只更新缓存）"""
     progress_cache[episode_id].update({
         "position": progress.position,
         "duration": progress.duration,
@@ -359,14 +342,12 @@ async def update_progress(
         "is_finished": progress.position >= progress.duration * 0.9
     })
 
-    # 检查是否需要写入数据库
     now = datetime.now()
     last_write = last_write_time.get(episode_id)
 
     should_write = (
-            not last_write or  # 首次写入
-            (now - last_write) > timedelta(minutes=1) or  # 距离上次写入超过1分钟
-            progress.position >= progress.duration * 0.9  # 播放接近结束
+            (now - last_write) > timedelta(minutes=1) or
+            progress.position >= progress.duration * 0.9
     )
 
     if should_write:
@@ -382,7 +363,6 @@ async def mark_episode_read(
         is_read: bool,
         session: Session = Depends(get_session)
 ):
-    """标记剧集已读/未读状态"""
     episode = session.get(PodcastEpisode, episode_id)
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
@@ -398,19 +378,16 @@ async def get_channel_detail(
         channel_id: int,
         session: Session = Depends(get_session)
 ):
-    """获取播客频道详情"""
     channel = session.get(PodcastChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="播客不存在")
 
-    # 检查是否已订阅
-    subscription = session.exec(
+    subscription = session.scalars(
         select(PodcastSubscription)
         .where(PodcastSubscription.channel_id == channel_id)
     ).first()
 
-    # 获取总剧集数量
-    total_count = session.exec(
+    total_count = session.scalars(
         select(func.count(PodcastEpisode.id))
         .where(PodcastEpisode.channel_id == channel_id)
     ).one()
@@ -428,12 +405,11 @@ async def toggle_subscription(
         subscribed: bool,
         session: Session = Depends(get_session)
 ):
-    """订阅或取消订阅播客"""
     channel = session.get(PodcastChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="播客不存在")
 
-    subscription = session.exec(
+    subscription = session.scalars(
         select(PodcastSubscription)
         .where(PodcastSubscription.channel_id == channel_id)
     ).first()
@@ -460,13 +436,11 @@ async def unsubscribe_podcast(
         channel_id: int,
         session: Session = Depends(get_session)
 ):
-    """取消订阅播客并删除相关数据"""
     channel = session.get(PodcastChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="播客不存在")
 
-    # 删除订阅关系
-    subscription = session.exec(
+    subscription = session.scalars(
         select(PodcastSubscription)
         .where(PodcastSubscription.channel_id == channel_id)
     ).first()
@@ -474,15 +448,9 @@ async def unsubscribe_podcast(
     if not subscription:
         raise HTTPException(status_code=404, detail="未订阅该播客")
 
-    # 删除所有剧集
-    session.exec(delete(PodcastEpisode).where(PodcastEpisode.channel_id == channel_id))
-
-    # 删除订阅关系
+    session.scalars(delete(PodcastEpisode).where(PodcastEpisode.channel_id == channel_id))
     session.delete(subscription)
-
-    # 删除频道数据
     session.delete(channel)
-
     session.commit()
 
     return {"message": "已取消订阅并清除相关数据"}
@@ -494,12 +462,7 @@ async def get_latest_episodes(
         page_size: int = 20,
         session: Session = Depends(get_session)
 ):
-    """获取已订阅的频道的最新剧集"""
-    # 先获取已订阅的频道ID
-    subscribed_channels = session.exec(
-        select(PodcastSubscription.channel_id)
-    ).all()
-
+    subscribed_channels = session.scalars(select(PodcastSubscription.channel_id)).all()
     if not subscribed_channels:
         return {
             "items": [],
@@ -509,7 +472,6 @@ async def get_latest_episodes(
             "has_more": False
         }
 
-    # 查询这些频道的最新剧集
     episodes_stmt = (
         select(PodcastEpisode)
         .where(PodcastEpisode.channel_id.in_(subscribed_channels))
@@ -517,7 +479,7 @@ async def get_latest_episodes(
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
-    episodes = session.exec(episodes_stmt).all()
+    episodes = session.scalars(episodes_stmt).all()
 
     if not episodes:
         return {
@@ -528,21 +490,18 @@ async def get_latest_episodes(
             "has_more": False
         }
 
-    # 获取相关的频道信息
     channel_ids = {e.channel_id for e in episodes}
     channels_stmt = (
         select(PodcastChannel)
         .where(PodcastChannel.id.in_(channel_ids))
     )
-    channels = {c.id: c for c in session.exec(channels_stmt).all()}
+    channels = {c.id: c for c in session.scalars(channels_stmt).all()}
 
-    # 获取总数
-    total = session.exec(
+    total = session.scalars(
         select(func.count(PodcastEpisode.id))
         .where(PodcastEpisode.channel_id.in_(subscribed_channels))
     ).one()
 
-    # 组装结果
     result = []
     for episode in episodes:
         channel = channels[episode.channel_id]
@@ -563,15 +522,11 @@ async def get_latest_episodes(
 @router.post("/channels/preview")
 async def preview_podcast(
         request: PreviewPodcastRequest,
-        session: Session = Depends(get_session)
 ):
-    """预览播客信息"""
-    # 解析RSS feed
     feed = feedparser.parse(request.rss_url)
     if hasattr(feed, 'bozo_exception'):
         raise HTTPException(status_code=400, detail="无效的RSS地址")
 
-    # 提取预览信息
     description = feed.feed.description if hasattr(feed.feed, "description") else None
     if description:
         description = re.sub(r'<.*?>', '', description)
@@ -593,7 +548,6 @@ async def preview_podcast(
 async def get_listening_podcasts(
         session: Session = Depends(get_session)
 ):
-    """获取正在收听的播客"""
     stmt = (
         select(PodcastChannel)
         .join(PodcastChannel.episodes)
@@ -603,7 +557,7 @@ async def get_listening_podcasts(
         .limit(6)
     )
 
-    channels = session.exec(stmt).all()
+    channels = session.scalars(stmt).all()
 
     return [
         {
@@ -614,24 +568,6 @@ async def get_listening_podcasts(
         }
         for channel in channels
     ]
-
-
-@router.get("/categories")
-async def get_podcast_categories():
-    """获取播客分类列表"""
-    return {
-        "categories": [
-            {"label": "全部", "value": "all"},
-            {"label": "新闻", "value": "news"},
-            {"label": "科技", "value": "tech"},
-            {"label": "商业", "value": "business"},
-            {"label": "文化", "value": "culture"},
-            {"label": "教育", "value": "education"},
-            {"label": "娱乐", "value": "entertainment"},
-            {"label": "音乐", "value": "music"},
-            {"label": "其他", "value": "others"}
-        ]
-    }
 
 
 @router.websocket("/episodes/{episode_id}/ws")
@@ -645,10 +581,7 @@ async def websocket_endpoint(
 
     try:
         while True:
-            # 等待客户端发送进度更新
             data = await websocket.receive_json()
-
-            # 更新缓存
             progress_cache[episode_id].update({
                 "position": data["position"],
                 "duration": data["duration"],
@@ -656,14 +589,13 @@ async def websocket_endpoint(
                 "is_finished": data["position"] >= data["duration"] * 0.9
             })
 
-            # 检查是否需要写入数据库
             now = datetime.now()
             last_write = last_write_time.get(episode_id)
 
             should_write = (
-                    not last_write or  # 首次写入
-                    (now - last_write) > timedelta(minutes=1) or  # 距离上次写入超过1分钟
-                    data["position"] >= data["duration"] * 0.9  # 播放接近结束
+                    not last_write or
+                    (now - last_write) > timedelta(minutes=1) or
+                    data["position"] >= data["duration"] * 0.9
             )
 
             if should_write:

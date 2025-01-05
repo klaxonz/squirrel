@@ -2,6 +2,8 @@ import datetime
 import json
 import logging
 
+from sqlalchemy import select
+
 from common import constants
 from consumer import extract_task
 from core.cache import RedisClient
@@ -30,7 +32,7 @@ def start(
     key = f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_CACHE}:{domain}:{video_id}'
     if if_only_extract:
         with get_session() as session:
-            video = session.exec(select(Video).where(Video.url == url)).first()
+            video = session.execute(select(Video).where(Video.url == url)).first()
             if video:
                 return
 
@@ -68,8 +70,7 @@ def start(
         session.add(message)
         session.commit()
 
-        message = session.exec(select(Message).where(Message.id == message.id)).first()
-        dump_json = message.model_dump_json()
+        dump_json = message.to_dict()
         if if_manual_retry or if_manual_download:
             extract_task.process_extract_scheduled_message.send(dump_json)
         else:

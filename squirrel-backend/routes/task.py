@@ -8,7 +8,7 @@ from email.utils import formatdate
 from mimetypes import guess_type
 
 from fastapi import APIRouter, Query
-from sqlmodel import select, col
+from sqlalchemy import select
 from sse_starlette import EventSourceResponse
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
@@ -21,32 +21,32 @@ from downloader.downloader import Downloader
 from meta.factory import VideoFactory
 from models.download_task import DownloadTask
 from schemas.task import DownloadRequest, DownloadChangeStateRequest
-from services.task_service import TaskService
+from services.task_service import task_sercice
 
 router = APIRouter(tags=['下载任务接口'])
 
 
 @router.post("/api/task/download")
 def start_download(req: DownloadRequest):
-    TaskService.start_download(req.url)
+    task_sercice.start_download(req.url)
     return response.success()
 
 
 @router.post("/api/task/retry")
 def retry_download(req: DownloadChangeStateRequest):
-    TaskService.retry_download(req.task_id)
+    task_sercice.retry_download(req.task_id)
     return response.success()
 
 
 @router.post("/api/task/pause")
 def pause_download(req: DownloadChangeStateRequest):
-    TaskService.pause_download(req.task_id)
+    task_sercice.pause_download(req.task_id)
     return response.success()
 
 
 @router.post("/api/task/delete")
 def delete_download(req: DownloadChangeStateRequest):
-    TaskService.delete_download(req.task_id)
+    task_sercice.delete_download(req.task_id)
     return response.success()
 
 
@@ -56,7 +56,7 @@ def get_tasks(
         page: int = Query(1, ge=1, description="Page number"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
-    task_convert_list, total_tasks = TaskService.list_tasks(status, page, page_size)
+    task_convert_list, total_tasks = task_sercice.list_tasks(status, page, page_size)
     return response.success({
         "page": page,
         "pageSize": page_size,
@@ -76,13 +76,13 @@ async def get_tasks_progress(task_ids: str):
                 tasks_progress = []
                 for task_id in task_ids_list:
                     progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}')
-                    task = session.exec(select(DownloadTask).where(DownloadTask.task_id == task_id)).first()
+                    task = session.scalars(select(DownloadTask).where(DownloadTask.id == task_id)).first()
                     task_status = task.status if task else None
 
                     if progress:
                         current_type = progress.get('current_type', 'unknown')
                         data = {
-                            "task_id": int(task_id),
+                            "id": int(task_id),
                             "status": task_status,
                             "current_type": current_type,
                             "downloaded_size": int(progress.get('downloaded_size', 0)),
@@ -109,13 +109,13 @@ async def new_task_notification(latest_task_id: int = Query(default=0)):
     async def event_generator():
         while True:
             with get_session() as session:
-                new_tasks = session.exec(select(DownloadTask).where(DownloadTask.task_id > latest_task_id).order_by(
-                    col(DownloadTask.task_id).desc()).limit(30)).all()
+                new_tasks = session.scalars(select(DownloadTask).where(DownloadTask.id > latest_task_id).order_by(
+                    DownloadTask.id.desc()).limit(30)).all()
                 if new_tasks:
                     new_task_data = []
                     for task in new_tasks:
                         # 获取下载进度信息
-                        progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.task_id}')
+                        progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.id}')
                         downloaded_size = int(progress.get('downloaded_size', 0))
                         total_size = int(progress.get('total_size', 0))
                         speed = progress.get('speed', '未知')
@@ -158,9 +158,9 @@ async def new_task_notification(latest_task_id: int = Query(default=0)):
 
 @router.get("/api/task/video/play/{task_id}")
 def play_video(request: Request, task_id: str):
-    with get_session() as s:
-        download_task = s.query(DownloadTask).filter(DownloadTask.task_id == task_id).first()
-        s.expunge(download_task)
+    with get_session() as session:
+        download_task = session.select(DownloadTask).where(DownloadTask.id == task_id).first()
+        session.expunge(download_task)
 
     base_info = Downloader.get_video_info(download_task.url)
     video = VideoFactory.create_video(download_task.url, base_info)
@@ -189,7 +189,6 @@ def play_video(request: Request, task_id: str):
         end_bytes = stat_result.st_size - 1
 
     content_length = stat_result.st_size - start_bytes if stat.S_ISREG(stat_result.st_mode) else stat_result.st_size
-    # 打开文件从起始位置开始分片读取文件
     return StreamingResponse(
         file_iterator(video_path, start_bytes, 1024 * 1024 * 1),
         media_type=content_type,

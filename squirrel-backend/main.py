@@ -13,6 +13,7 @@ from alembic import command
 from common import constants
 from common.log import init_logging
 from consumer.base import redis_broker
+from routes.base import app
 from schedule.schedule import Scheduler
 from schedule.tasks import TaskRegistry
 
@@ -98,11 +99,6 @@ def start_workers():
     return workers
 
 
-def create_app():
-    from routes.base import app
-    return app
-
-
 def upgrade_database():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     alembic_ini_path = os.path.join(current_dir, "alembic.ini")
@@ -130,7 +126,6 @@ def start_scheduler():
 
 
 def start_fastapi_server():
-    app = create_app()
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 

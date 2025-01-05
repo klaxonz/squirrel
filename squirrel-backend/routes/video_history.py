@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query
 import common.response as response
 from consumer import video_progress_task
 from schemas.video_history import ClearHistoryRequest, UpdateHistoryRequest
-from services.video_history_service import VideoHistoryService
+from services.video_history_service import video_history_service
 
 router = APIRouter(
     tags=['视频历史记录']
@@ -32,8 +32,6 @@ def get_watch_history(
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=100)
 ):
-    """获取观看历史列表"""
-    video_history_service = VideoHistoryService()
     history_list, total = video_history_service.get_watch_history(page, page_size)
     return response.success({
         "items": history_list,
@@ -47,7 +45,5 @@ def get_watch_history(
 def clear_history(
         request: ClearHistoryRequest
 ):
-    """清空观看历史"""
-    video_history_service = VideoHistoryService()
     video_history_service.clear_history(request.video_ids)
     return response.success()

@@ -2,7 +2,7 @@ import json
 import logging
 
 import dramatiq
-from sqlmodel import select
+from sqlalchemy import select
 
 from common import constants
 from core.database import get_session
@@ -20,7 +20,7 @@ def process_subscribe_message(message):
         if not message or message == '{}':
             return
         logger.info(f"收到订阅频道消息: {message}")
-        message_obj = Message.model_validate(json.loads(message))
+        message_obj = Message.from_dict(message)
         url = _extract_url(message_obj)
         subscribe_channel = SubscriptionFactory.create_subscription(url)
         channel_info = subscribe_channel.get_subscribe_info()
@@ -52,7 +52,7 @@ def _extract_url(message):
 
 def get_subscription(channel_info):
     with get_session() as session:
-        return session.exec(select(Subscription).where(
+        return session.scalars(select(Subscription).where(
             Subscription.content_url == channel_info.url,
             Subscription.content_name == channel_info.name
         )).first()

@@ -9,7 +9,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse, RedirectResponse
 from starlette.staticfiles import StaticFiles
 
-from routes import router
 
 logger = logging.getLogger()
 app = FastAPI()
@@ -20,8 +19,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(router)
-
 
 # 判断是否为开发环境
 IS_DEV = os.getenv("ENV", "prod").lower() == "dev"
@@ -62,19 +59,19 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-@app.get("/{full_path:path}")
-async def serve_spa(full_path: str):
-    # 开发环境下重定向到前端开发服务器
-    if IS_DEV:
-        return RedirectResponse(
-            url=f"{FRONTEND_DEV_URL}/{full_path}",
-            status_code=status.HTTP_307_TEMPORARY_REDIRECT
-        )
-
-    file_static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
-    static_file = Path(file_static_dir) / full_path
-
-    if static_file.exists() and static_file.is_file():
-        return FileResponse(static_file)
-
-    return FileResponse(Path(file_static_dir) / "index.html")
+# @app.get("/{full_path:path}")
+# async def serve_spa(full_path: str):
+#     # 开发环境下重定向到前端开发服务器
+#     if IS_DEV:
+#         return RedirectResponse(
+#             url=f"{FRONTEND_DEV_URL}/{full_path}",
+#             status_code=status.HTTP_307_TEMPORARY_REDIRECT
+#         )
+#
+#     file_static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+#     static_file = Path(file_static_dir) / full_path
+#
+#     if static_file.exists() and static_file.is_file():
+#         return FileResponse(static_file)
+#
+#     return FileResponse(Path(file_static_dir) / "index.html")

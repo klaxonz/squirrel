@@ -11,7 +11,7 @@ export default function useVideoOperations() {
         } else {
           const response = await axios.get('/api/video/url', {
             params: {
-              video_id: video.video_id
+              video_id: video.id
             }
           });
           if (response.data.code === 0) {

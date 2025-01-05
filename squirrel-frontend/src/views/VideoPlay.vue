@@ -32,7 +32,7 @@
                 <div class="flex -space-x-3">
                   <img 
                     v-for="(sub, index) in video?.subscriptions"
-                    :key="sub.subscription_id"
+                    :key="sub.id"
                     :src="sub.avatar_url" 
                     :alt="sub.content_name"
                     class="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-full object-cover ring-2 ring-[#0f0f0f]"
@@ -44,8 +44,8 @@
                 <div class="ml-3 flex items-center">
                   <router-link 
                     v-for="(sub, index) in video?.subscriptions"
-                    :key="sub.subscription_id"
-                    :to="`/subscription/${sub.subscription_id}/all`"
+                    :key="sub.id"
+                    :to="`/subscription/${sub.id}/all`"
                     class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
                   >
                     {{ sub.content_name }}{{ index < video?.subscriptions.length - 1 ? ',' : '' }}
@@ -98,7 +98,7 @@
                         @click="handleDownload"
                         class="flex items-center w-full px-4 py-2 text-sm text-white hover:bg-[#3f3f3f]"
                       >
-                        <svg v-if="!video?.if_downloaded" 
+                        <svg v-if="!video?.if_downloaded"
                              xmlns="http://www.w3.org/2000/svg" 
                              class="h-5 w-5 mr-4" 
                              fill="none" 
@@ -145,11 +145,11 @@
           <!-- 视频描述 -->
           <div class="mt-4 p-3 bg-[#272727] rounded-xl">
             <div class="flex items-center text-[10px] md:text-xs lg:text-sm text-[#aaaaaa] space-x-4 mb-2">
-              <span>{{ formatDuration(video?.video_duration) }}</span>
+              <span>{{ formatDuration(video?.duration) }}</span>
               <span>{{ formatDate(video?.publish_date) }}</span>
               <span>{{ video?.if_read ? '已观看' : '未观看' }}</span>
             </div>
-            <p class="text-[10px] md:text-xs lg:text-sm text-white whitespace-pre-wrap">{{ video?.video_title }}</p>
+            <p class="text-[10px] md:text-xs lg:text-sm text-white whitespace-pre-wrap">{{ video?.title }}</p>
           </div>
         </div>
       </div>
@@ -216,7 +216,7 @@ const fetchVideoDetails = async () => {
   try {
     const response = await axios.get(`/api/video/detail?video_id=${route.params.videoId}`);
     video.value = response.data.data;
-  } catch (error) {xxx
+  } catch (error) {
     console.error('Failed to fetch video details:', error);
   }
 };

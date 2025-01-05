@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import List, Optional
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import select, col
 
 from core.database import get_session
 from models.video import Video
@@ -27,18 +27,16 @@ class VideoHistoryService:
                         .where(
                             VideoHistory.video_id == video_id,
                         )
-                        .with_for_update()  # 添加行级锁
+                        .with_for_update()
                     )
-                    history = session.exec(history_stmt).first()
+                    history = session.scalars(history_stmt).first()
 
                     if history:
-                        # 更新现有记录
                         history.watch_duration = watch_duration
                         history.last_position = last_position
                         history.total_duration = total_duration
                         history.updated_at = datetime.now()
                     else:
-                        # 创建新记录
                         history = VideoHistory(
                             video_id=video_id,
                             watch_duration=watch_duration,
@@ -46,12 +44,10 @@ class VideoHistoryService:
                             total_duration=total_duration
                         )
                         session.add(history)
-
                     session.commit()
-                    break  # 成功后跳出重试循环
+                    break
 
             except IntegrityError:
-                # 如果发生并发冲突，回滚并重试
                 session.rollback()
                 retry_count += 1
                 if retry_count >= max_retries:
@@ -59,26 +55,23 @@ class VideoHistoryService:
                 continue
 
             except Exception as e:
-                # 其他异常直接抛出
                 session.rollback()
                 raise e
 
     def get_watch_history(self, page: int = 1, page_size: int = 20) -> tuple[List[dict], int]:
-        """获取观看历史列表"""
         # 使用 select 语句查询总数
         with get_session() as session:
-            total = len(session.exec(select(VideoHistory)).all())
+            total = len(session.scalars(select(VideoHistory)).all())
 
-            stmt = select(VideoHistory).order_by(col(VideoHistory.updated_at).desc()).offset(
+            stmt = select(VideoHistory).order_by(VideoHistory.updated_at.desc()).offset(
                 (page - 1) * page_size).limit(page_size)
 
-            results = session.exec(stmt).all()
+            results = session.scalars(stmt).all()
 
             video_ids = [result.id for result in results]
             videos = session.exec(select(Video).where(Video.id.in_(video_ids))).all()
             video_dict = {video.id: video for video in videos}
 
-            # 组合数据
             history_list = []
             for history in results:
                 if video_dict.get(history.id) is None:
@@ -86,7 +79,7 @@ class VideoHistoryService:
                 video = video_dict[history.id]
                 history_list.append({
                     "id": history.id,
-                    "id": video.id,
+                    "video_id": video.id,
                     "title": video.title,
                     "thumbnail": video.thumbnail,
                     "duration": video.duration,
@@ -104,15 +97,16 @@ class VideoHistoryService:
         """清空观看历史"""
         with get_session() as session:
             if video_ids:
-                # 使用 select 语句删除指定视频的历史记录
                 stmt = select(VideoHistory).where(VideoHistory.video_id.in_(video_ids))
-                histories = session.exec(stmt).all()
+                histories = session.scalars(stmt).all()
                 for history in histories:
                     session.delete(history)
             else:
-                # 使用 select 语句删除所有历史记录
                 stmt = select(VideoHistory)
-                histories = session.exec(stmt).all()
+                histories = session.scalars(stmt).all()
                 for history in histories:
                     session.delete(history)
             session.commit()
+
+
+video_history_service = VideoHistoryService()

@@ -4,9 +4,10 @@ from typing import Optional
 from sqlalchemy import Boolean, JSON, VARCHAR, Text
 from sqlalchemy.orm import mapped_column, Mapped
 from models import Base
+from models.mixins.serializer import SerializerMixin
 
 
-class Creator(Base):
+class Creator(Base, SerializerMixin):
     __tablename__ = "creator"
 
     id: Mapped[int] = mapped_column(primary_key=True)

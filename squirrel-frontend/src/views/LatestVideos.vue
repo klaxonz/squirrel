@@ -99,7 +99,7 @@ const handleSearch = (keyword) => {
 };
 
 const handleOpenModal = (video, playlist) => {
-  router.push(`/video/${video.video_id}`);
+  router.push(`/video/${video.id}`);
 };
 
 const goToChannelDetail = (subscriptionId) => {

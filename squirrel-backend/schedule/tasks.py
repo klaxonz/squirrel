@@ -8,8 +8,8 @@ from typing import List, Type
 
 import feedparser
 from PyCookieCloud import PyCookieCloud
-from sqlalchemy.sql.functions import count
-from sqlmodel import col, or_, and_, select, func
+from sqlalchemy import select, or_, and_
+from sqlalchemy.sql.functions import count, func
 
 from core.config import settings
 from core.database import get_session
@@ -90,14 +90,14 @@ class RetryFailedTask(BaseTask):
         try:
             five_minutes_ago = datetime.now() - timedelta(minutes=5)
             with get_session() as session:
-                tasks = session.exec(select(DownloadTask).where(
+                tasks = session.scalars(select(DownloadTask).where(
                     or_(
                         and_(DownloadTask.status == 'FAILED', DownloadTask.retry < 5),
-                        (and_(col(DownloadTask.status).in_(['DOWNLOADING', 'PENDING', 'WAITING']),
+                        (and_(DownloadTask.status.in_(['DOWNLOADING', 'PENDING', 'WAITING']),
                               DownloadTask.updated_at <= five_minutes_ago)))))
                 for task in tasks:
                     ten_minutes_ago = datetime.now() - timedelta(minutes=10)
-                    downloading_tasks = session.exec(select(DownloadTask).where(DownloadTask.status == 'DOWNLOADING',
+                    downloading_tasks = session.scalars(select(DownloadTask).where(DownloadTask.status == 'DOWNLOADING',
                                                                                 DownloadTask.updated_at < ten_minutes_ago)).all()
 
                     if (task.status == 'PENDING' or task.status == 'WAITING') and len(downloading_tasks) > 0:
@@ -108,7 +108,7 @@ class RetryFailedTask(BaseTask):
                     task.retry = task.retry + 1
                     session.commit()
 
-                    subscription_video = session.exec(
+                    subscription_video = session.scalars(
                         select(SubscriptionVideo).where(SubscriptionVideo.video_id == task.id)).one()
                     if_subscribe = subscription_video is not None
                     start(task.url, if_only_extract=False, if_subscribe=if_subscribe, if_retry=True)
@@ -125,7 +125,7 @@ class ChangeStatusTask(BaseTask):
     def run(cls):
         try:
             with get_session() as session:
-                tasks = session.exec(
+                tasks = session.scalars(
                     select(DownloadTask).where(DownloadTask.status == 'PENDING', DownloadTask.retry >= 5))
                 for task in tasks:
                     task.status = 'FAILED'
@@ -173,14 +173,14 @@ class AutoUpdateChannelVideo(BaseTask):
 
         subscription_ids = []
         with get_session() as outer_session:
-            subscriptions = outer_session.exec(select(Subscription).where(Subscription.is_enable == 1))
+            subscriptions = outer_session.scalars(select(Subscription).where(Subscription.is_enable == 1))
             for subscription in subscriptions:
                 subscription_ids.append(subscription.id)
 
         for subscription_id in subscription_ids:
             try:
                 with get_session() as inner_session:
-                    subscription = inner_session.exec(
+                    subscription = inner_session.scalars(
                         select(Subscription).where(Subscription.id == subscription_id)).one()
                     pool = cls.get_pool(subscription.content_url)
                     if pool:
@@ -192,36 +192,38 @@ class AutoUpdateChannelVideo(BaseTask):
     @classmethod
     def update_subscription_video(cls, subscription):
         try:
-            logger.debug(f"update {subscription.content_name} subscription video start")
-            subscribe_channel = SubscriptionFactory.create_subscription(subscription.content_url)
+            with get_session() as session:
+                subscription = session.merge(subscription)
+                logger.debug(f"update {subscription.content_name} subscription video start")
+                subscribe_channel = SubscriptionFactory.create_subscription(subscription.content_url)
 
-            # 下载全部的
-            update_all = subscription.is_download_all or subscription.is_extract_all
-            video_list = subscribe_channel.get_subscribe_videos(subscription=subscription, update_all=update_all)
-            extract_video_list = []
-            extract_download_video_list = []
-            if subscription.is_extract_all:
-                if subscription.is_auto_download:
-                    if subscription.is_download_all:
-                        extract_download_video_list = video_list
+                # 下载全部的
+                update_all = subscription.is_download_all or subscription.is_extract_all
+                video_list = subscribe_channel.get_subscribe_videos(subscription=subscription, update_all=update_all)
+                extract_video_list = []
+                extract_download_video_list = []
+                if subscription.is_extract_all:
+                    if subscription.is_auto_download:
+                        if subscription.is_download_all:
+                            extract_download_video_list = video_list
+                        else:
+                            extract_video_list = video_list[settings.CHANNEL_UPDATE_DEFAULT_SIZE:]
+                            extract_download_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
                     else:
-                        extract_video_list = video_list[settings.CHANNEL_UPDATE_DEFAULT_SIZE:]
+                        extract_video_list = video_list
+
+                else:
+                    if subscription.is_auto_download:
                         extract_download_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
-                else:
-                    extract_video_list = video_list
+                    else:
+                        extract_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
 
-            else:
-                if subscription.is_auto_download:
-                    extract_download_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
-                else:
-                    extract_video_list = video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
-
-            for video in extract_video_list:
-                start(video, if_subscribe=True, subscribe_id=subscription.id)
-            for video in extract_download_video_list:
-                start(video, if_only_extract=False, if_subscribe=True, subscribe_id=subscription.id)
-            logger.debug(f"update {subscription.name} video end")
-        except exception as e:
+                for video in extract_video_list:
+                    start(video, if_subscribe=True, subscribe_id=subscription.id)
+                for video in extract_download_video_list:
+                    start(video, if_only_extract=False, if_subscribe=True, subscribe_id=subscription.id)
+                logger.debug(f"update {subscription.content_name} video end")
+        except Exception as e:
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
     @classmethod
@@ -238,16 +240,16 @@ class RepairChanelInfoForTotalVideos(BaseTask):
     def run(cls):
         subscription_ids = []
         with get_session() as session:
-            subscriptions = session.exec(select(Subscription)).all()
+            subscriptions = session.scalars(select(Subscription)).all()
             for subscription in subscriptions:
                 subscription_ids.append(subscription.id)
 
         for subscription_id in subscription_ids:
             try:
                 with get_session() as session:
-                    subscription = session.exec(
+                    subscription = session.scalars(
                         select(Subscription).where(Subscription.id == subscription_id)).first()
-                    videos_count = session.exec(select(count(SubscriptionVideo.video_id)).where(
+                    videos_count = session.scalars(select(count(SubscriptionVideo.video_id)).where(
                         SubscriptionVideo.subscription_id == subscription_id)).one()
                     if subscription.total_videos is not None and subscription.total_videos >= videos_count and subscription.total_videos > 0:
                         continue
@@ -266,10 +268,10 @@ class AutoUpdateSubscriptionExtractAll(BaseTask):
     @classmethod
     def run(cls):
         with get_session() as session:
-            subscriptions = session.exec(select(Subscription)).all()
+            subscriptions = session.scalars(select(Subscription)).all()
             for subscription in subscriptions:
-                extract_count = session.exec(
-                    select(func.count(col(SubscriptionVideo.video_id))).where(
+                extract_count = session.scalars(
+                    select(func.count(SubscriptionVideo.video_id)).where(
                         SubscriptionVideo.subscription_id == subscription.id)).one()
                 if subscription.total_videos is not None and subscription.total_videos > extract_count and subscription.total_videos - extract_count > 10:
                     subscription.is_extract_all = 1
@@ -284,25 +286,21 @@ class AutoUpdateSubscriptionExtractAll(BaseTask):
 class UpdatePodcastsTask(BaseTask):
     @classmethod
     def run(cls):
-        """定时更新所有订阅的播客内容"""
         logger.info('开始更新播客内容')
         try:
             with get_session() as session:
-                # 获取所有已订阅的播客
-                channels = session.exec(
+                channels = session.scalars(
                     select(PodcastChannel)
                     .join(PodcastSubscription, PodcastSubscription.channel_id == PodcastChannel.id)
                 ).all()
 
                 for channel in channels:
                     try:
-                        # 解析RSS feed
                         feed = feedparser.parse(channel.rss_url)
                         if hasattr(feed, 'bozo_exception'):
                             logger.error(f'解析播客RSS失败: {channel.title}, {feed.bozo_exception}')
                             continue
 
-                        # 更新频道信息
                         if hasattr(feed.feed, "description"):
                             channel.description = re.sub(r'<.*?>', '', feed.feed.description)
                         if hasattr(feed.feed, "image"):
@@ -310,10 +308,9 @@ class UpdatePodcastsTask(BaseTask):
                         channel.last_updated = datetime.now()
                         session.add(channel)
 
-                        # 添加新剧集
                         for entry in feed.entries:
                             # 检查剧集是否已存在
-                            existing = session.exec(
+                            existing = session.scalars(
                                 select(PodcastEpisode)
                                 .where(
                                     and_(
@@ -335,10 +332,8 @@ class UpdatePodcastsTask(BaseTask):
                                 title=entry.title,
                                 description=description,
                                 audio_url=entry.enclosures[0].href if hasattr(entry, "enclosures") else None,
-                                published_at=datetime(*entry.published_parsed[:6]) if hasattr(entry,
-                                                                                              "published_parsed") else None,
-                                duration=cls.parse_duration(entry.itunes_duration) if hasattr(entry,
-                                                                                              "itunes_duration") else None
+                                published_at=datetime(*entry.published_parsed[:6]) if hasattr(entry, "published_parsed") else None,
+                                duration=cls.parse_duration(entry.itunes_duration) if hasattr(entry, "itunes_duration") else None
                             )
                             session.add(episode)
 

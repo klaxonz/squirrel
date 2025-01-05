@@ -3,9 +3,10 @@ from typing import Optional
 from sqlalchemy import Integer, Boolean, JSON, VARCHAR, Text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from models import Base
+from models.mixins.serializer import SerializerMixin
 
 
-class Video(Base):
+class Video(Base, SerializerMixin):
     __tablename__ = "video"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

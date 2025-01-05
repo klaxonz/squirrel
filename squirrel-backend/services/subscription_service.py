@@ -1,6 +1,6 @@
 from typing import Optional, Tuple, List, Dict, Any
 
-from sqlmodel import select, or_, and_, func
+from sqlalchemy import select, func, or_, and_
 
 from core.database import get_session
 from models.links import SubscriptionVideo
@@ -13,13 +13,11 @@ class SubscriptionService:
             self,
             query: Optional[str],
             content_type: Optional[str],
-            status: Optional[str],
             page: int,
             page_size: int
     ) -> Tuple[List[Dict[str, Any]], int]:
         """获取订阅列表"""
         with get_session() as session:
-            # 使用子查询统计每个订阅的视频数量
             video_count_subquery = (
                 select(
                     SubscriptionVideo.subscription_id,
@@ -29,7 +27,6 @@ class SubscriptionService:
                 .subquery()
             )
 
-            # 主查询
             statement = (
                 select(
                     Subscription,
@@ -37,12 +34,11 @@ class SubscriptionService:
                 )
                 .outerjoin(
                     video_count_subquery,
-                    Subscription.id == video_count_subquery.c.id
+                    Subscription.id == video_count_subquery.c.subscription_id
                 )
                 .where(Subscription.is_deleted == 0)
             )
 
-            # 添加过滤条件
             filters = []
             if query:
                 filters.append(
@@ -53,34 +49,26 @@ class SubscriptionService:
                 )
             if content_type:
                 filters.append(Subscription.content_type == content_type)
-            if status:
-                filters.append(Subscription.status == status)
 
             if filters:
                 statement = statement.where(and_(*filters))
 
-            # 添加排序：按创建时间倒序
             statement = statement.order_by(Subscription.created_at.desc())
 
-            # 计算总数
-            total = session.exec(
+            total = session.execute(
                 select(Subscription.id)
                 .where(Subscription.is_deleted == 0)
                 .where(*filters)
             ).all()
             total_count = len(total)
 
-            # 分页
             statement = statement.offset((page - 1) * page_size).limit(page_size)
+            results = session.execute(statement).all()
 
-            # 执行查询
-            results = session.exec(statement).all()
-
-            # 处理结果
             subscriptions = []
-            for result in results:
-                subscription_dict = result[0].dict()
-                subscription_dict["total_extract"] = result[1]
+            for subscription, video_count in results:
+                subscription_dict = subscription.to_dict()
+                subscription_dict["total_extract"] = video_count
                 subscriptions.append(subscription_dict)
 
             return subscriptions, total_count
@@ -96,7 +84,6 @@ class SubscriptionService:
             subscription_id: int,
             update_data: Dict[str, Any]
     ) -> bool:
-        """更新订阅信息"""
         with get_session() as session:
             subscription = session.get(Subscription, subscription_id)
             if not subscription:
@@ -111,7 +98,6 @@ class SubscriptionService:
             return True
 
     def toggle_status(self, subscription_id: int, status: bool, field: str) -> bool:
-        """切换订阅状态"""
         with get_session() as session:
             subscription = session.get(Subscription, subscription_id)
             if not subscription:
@@ -124,3 +110,6 @@ class SubscriptionService:
                 return True
             except ValueError:
                 return False
+
+
+subscription_service = SubscriptionService()

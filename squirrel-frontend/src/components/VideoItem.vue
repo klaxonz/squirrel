@@ -70,7 +70,7 @@
                 v-for="subscription in video.subscriptions"
                 :key="subscription.subscription_id"
                 class="flex items-center group/actor cursor-pointer hover:bg-gray-700/50 p-1 rounded-lg transition-colors duration-150"
-                @click.stop="goToSubscription(subscription.subscription_id)"
+                @click.stop="goToSubscription(subscription.id)"
               >
                 <img 
                   :src="subscription.avatar_url"
@@ -249,17 +249,17 @@ onUnmounted(() => {
 const displayAvatars = computed(() => {
   // 优先使用 subscriptions
   let avatars = props.video.subscriptions?.map(sub => ({
-    id: sub.subscription_id,
+    id: sub.id,
     name: sub.content_name,
-    avatar: sub.avatar_url
+    avatar: sub.avatar
   })) || [];
   
   // 如果 subscriptions 为空，则使用 actors
   if (!avatars.length && props.video.actors) {
     avatars = props.video.actors.map(actor => ({
-      id: actor.creator_id,
-      name: actor.creator_name,
-      avatar: actor.avatar_url
+      id: actor.id,
+      name: actor.name,
+      avatar: actor.avatar
     }));
   }
   

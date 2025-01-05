@@ -40,7 +40,7 @@ function handleDownload(backendHost, data, sendResponse) {
 }
 
 function handleSubscribe(backendHost, data, sendResponse) {
-  fetch(`${backendHost}/api/channel/subscribe`, {
+  fetch(`${backendHost}/api/subscription/subscribe`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -51,7 +51,7 @@ function handleSubscribe(backendHost, data, sendResponse) {
 }
 
 function handleUnsubscribe(backendHost, data, sendResponse) {
-  fetch(`${backendHost}/api/channel/unsubscribe`, {
+  fetch(`${backendHost}/api/subscription/unsubscribe`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -62,14 +62,14 @@ function handleUnsubscribe(backendHost, data, sendResponse) {
 }
 
 function handleCheckSubscription(backendHost, data, sendResponse) {
-  fetch(`${backendHost}/api/channel/subscription-status?channel_url=${data.url}`)
+  fetch(`${backendHost}/api/subscription/status?url=${data.url}`)
     .then(response => response.json())
     .then(data => {
       console.log("API response for subscription status:", data);
       sendResponse({ 
         success: true, 
         data: {
-          isSubscribed: data.data.isSubscribed
+          isSubscribed: data.data.is_subscribed
         }
       });
     })

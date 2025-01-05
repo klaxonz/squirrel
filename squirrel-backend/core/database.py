@@ -1,6 +1,9 @@
 import logging
+from contextlib import contextmanager
+from typing import Generator
 
-from sqlmodel import create_engine, Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 from common.log import init_logging
 from core.config import settings
@@ -25,5 +28,22 @@ engine = create_engine(
 )
 
 
-def get_session() -> Session:
-    return Session(engine)
+@contextmanager
+def get_session() -> Generator[Session, None, None]:
+    """Session context manager"""
+    session = Session(engine)
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+# FastAPI dependency
+def get_db() -> Generator[Session, None, None]:
+    """FastAPI dependency for database sessions"""
+    with get_session() as session:
+        yield session
