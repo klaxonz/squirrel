@@ -16,14 +16,14 @@ from models.video import Video
 logger = logging.getLogger()
 
 
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_DOWNLOAD_TASK)
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_DOWNLOAD)
 def process_download_message(message: str):
-    _process_download_message(message, constants.QUEUE_VIDEO_DOWNLOAD_TASK)
+    _process_download_message(message, constants.QUEUE_VIDEO_DOWNLOAD)
 
 
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED_TASK)
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED)
 def process_download_scheduled_message(message: str):
-    _process_download_message(message, constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED_TASK)
+    _process_download_message(message, constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED)
 
 
 def _process_download_message(message, queue: str):

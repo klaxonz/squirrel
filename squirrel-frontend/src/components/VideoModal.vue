@@ -357,7 +357,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted, ref, computed, inject, watch, nextTick, toRef } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch, nextTick, toRef } from 'vue';
 import VideoPlayer from './VideoPlayer.vue';
 import { useVideoHistory } from '../composables/useVideoHistory';
 import { formatDate, formatDuration } from '../utils/dateFormat';

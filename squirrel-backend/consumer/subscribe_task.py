@@ -13,7 +13,7 @@ from subscribe.factory import SubscriptionFactory
 logger = logging.getLogger()
 
 
-@dramatiq.actor(queue_name=constants.QUEUE_SUBSCRIBE_TASK)
+@dramatiq.actor(queue_name=constants.QUEUE_SUBSCRIBE)
 def process_subscribe_message(message):
     try:
         logger.info(f"开始处理订阅频道消息：{message}")

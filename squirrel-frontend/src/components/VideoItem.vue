@@ -111,7 +111,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted, ref, nextTick, inject, computed, watch, toRef } from 'vue';
+import { onMounted, onUnmounted, ref, nextTick, computed, watch, toRef } from 'vue';
 import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from "../composables/useOptionsMenu.js";
 import { formatDate, formatDuration } from '../utils/dateFormat';

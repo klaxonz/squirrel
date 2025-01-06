@@ -124,7 +124,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { createApp } from 'vue';
 import Toast from './Toast.vue';
 

@@ -33,35 +33,14 @@ def auto_discover_actors(package_name='consumer'):
 
 
 def create_workers():
-    queues = [
-        constants.QUEUE_VIDEO_DOWNLOAD_TASK,
-        constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_SCHEDULED_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_SCHEDULED_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_BILIBILI_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_BILIBILI_SCHEDULED_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_SCHEDULED_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_PORNHUB_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_PORNHUB_SCHEDULED_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_JAVDB_TASK,
-        constants.QUEUE_VIDEO_EXTRACT_JAVDB_SCHEDULED_TASK,
-        constants.QUEUE_VIDEO_DOWNLOAD_TASK,
-        constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED_TASK,
-        constants.QUEUE_SUBSCRIBE_TASK,
-        constants.QUEUE_VIDEO_PROGRESS_TASK,
-    ]
-
-    for queue in queues:
+    for queue in constants.get_all_queues():
         redis_broker.declare_queue(queue)
 
     dramatiq.set_broker(redis_broker)
-
     auto_discover_actors()
 
     workers = []
-    for queue in queues:
+    for queue in constants.get_all_queues():
         worker = Worker(
             redis_broker,
             queues=[queue],

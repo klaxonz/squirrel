@@ -9,7 +9,7 @@ from services.video_history_service import VideoHistoryService
 logger = logging.getLogger()
 
 
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_PROGRESS_TASK)
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_PROGRESS)
 def process_video_progress_message(message):
     logger.info(f"处理视频进度消息：{message}")
     data = json.loads(message)

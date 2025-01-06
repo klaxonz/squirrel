@@ -1,11 +1,13 @@
 import json
 import logging
 from datetime import datetime
+from typing import Callable
 
 import dramatiq
 from sqlalchemy import select
 
 from common import constants
+from common.constants import DOMAIN_QUEUE_MAPPING
 from consumer import download_task
 from core.cache import RedisClient
 from core.config import settings
@@ -23,12 +25,31 @@ from utils.url_helper import extract_top_level_domain
 logger = logging.getLogger()
 
 
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_TASK)
+def create_processor(queue_name: str) -> Callable:
+    actor_name = f"actor_{queue_name}"
+
+    @dramatiq.actor(actor_name=actor_name, queue_name=queue_name)
+    def processor(message):
+        process_extract_task(message, queue_name)
+
+    return processor
+
+
+PROCESSORS = {
+    domain: {
+        'manual': create_processor(queues['manual']),
+        'scheduled': create_processor(queues['scheduled'])
+    }
+    for domain, queues in DOMAIN_QUEUE_MAPPING.items()
+}
+
+
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT)
 def process_extract_message(message):
     _process_extract_message(message)
 
 
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_SCHEDULED_TASK)
+@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_SCHEDULED)
 def process_extract_scheduled_message(message):
     _process_extract_message(message)
 
@@ -42,70 +63,19 @@ def _process_extract_message(message):
         url = extract_info['url']
         domain = extract_top_level_domain(url)
 
-        if if_manual:
-            if domain == 'bilibili.com':
-                process_extract_bilibili_message.send(message)
-            elif domain == 'youtube.com':
-                process_extract_youtube_message.send(message)
-            elif domain == 'pornhub.com':
-                process_extract_pornhub_message.send(message)
-            elif domain == 'javdb.com':
-                process_extract_javdb_message.send(message)
+        # 获取对应的处理器
+        if domain in PROCESSORS:
+            processor_type = 'manual' if if_manual else 'scheduled'
+            processor = PROCESSORS[domain][processor_type]
+            processor.send(message)
         else:
-            if domain == 'bilibili.com':
-                process_extract_bilibili_scheduled_message.send(message)
-            elif domain == 'youtube.com':
-                process_extract_youtube_scheduled_message.send(message)
-            elif domain == 'pornhub.com':
-                process_extract_pornhub_scheduled_message.send(message)
-            elif domain == 'javdb.com':
-                process_extract_javdb_scheduled_message.send(message)
+            logger.error(f"Unsupported domain: {domain}")
 
     except Exception as e:
-        if url:
-            logger.error(f"处理消息时发生错误: url:{url}, error: {e}", exc_info=True)
-        else:
-            logger.error(f"处理消息时发生错误: {e}", exc_info=True)
-
-
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_BILIBILI_TASK)
-def process_extract_bilibili_message(message):
-    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_BILIBILI_TASK)
-
-
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_BILIBILI_SCHEDULED_TASK)
-def process_extract_bilibili_scheduled_message(message):
-    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_BILIBILI_SCHEDULED_TASK)
-
-
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_TASK)
-def process_extract_youtube_message(message):
-    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_TASK)
-
-
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_SCHEDULED_TASK)
-def process_extract_youtube_scheduled_message(message):
-    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_YOUTUBE_SCHEDULED_TASK)
-
-
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_PORNHUB_TASK)
-def process_extract_pornhub_message(message):
-    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_PORNHUB_TASK)
-
-
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_PORNHUB_SCHEDULED_TASK)
-def process_extract_pornhub_scheduled_message(message):
-    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_PORNHUB_SCHEDULED_TASK)
-
-
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_JAVDB_TASK)
-def process_extract_javdb_message(message):
-    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_JAVDB_TASK)
-
-
-@dramatiq.actor(queue_name=constants.QUEUE_VIDEO_EXTRACT_JAVDB_SCHEDULED_TASK)
-def process_extract_javdb_scheduled_message(message):
-    process_extract_task(message, constants.QUEUE_VIDEO_EXTRACT_JAVDB_SCHEDULED_TASK)
+        logger.error(
+            f"处理消息时发生错误: {f'url:{url},' if url else ''} error: {e}",
+            exc_info=True
+        )
 
 
 def process_extract_task(message, queue: str):
