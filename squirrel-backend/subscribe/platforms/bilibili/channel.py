@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 
 from common.http_wrapper import session
 from meta.channel import SubscriptionMeta
-from models.subscription import Subscription
 from utils.cookie import filter_cookies_to_query_string
 from .sign import sign
 from ...base import BaseSubscription
@@ -46,7 +45,7 @@ class BilibiliSubscription(BaseSubscription):
 
         return SubscriptionMeta(mid, channel_name, avatar_url, self.url)
 
-    def get_subscribe_videos(self, subscription: Subscription, update_all: bool):
+    def get_subscribe_videos(self, extract_all: bool):
         cookies = filter_cookies_to_query_string(self.url)
         headers = {
             'Referer': self.url,
@@ -101,7 +100,7 @@ class BilibiliSubscription(BaseSubscription):
             else:
                 should_continue = False
 
-            if not update_all:
+            if not extract_all:
                 should_continue = False
 
         return video_list

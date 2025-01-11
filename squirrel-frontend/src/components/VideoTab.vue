@@ -18,9 +18,8 @@
 import {computed, inject, onMounted} from 'vue';
 import VideoList from "./VideoList.vue";
 import useLatestVideos from "../composables/useLatestVideos.js";
-import useVideoOperations from "../composables/useVideoOperations.js";
 import useOptionsMenu from "../composables/useOptionsMenu.js";
-import {defineEmits, watch} from "vue";
+import {watch} from "vue";
 
 
 const emitter = inject('emitter');

@@ -5,4 +5,3 @@ from core.config import settings
 
 redis_broker = RedisBroker(url=settings.get_redis_url())
 redis_broker.middleware = [TimeLimit(), CurrentMessage()]
-__all__ = ['redis_broker']

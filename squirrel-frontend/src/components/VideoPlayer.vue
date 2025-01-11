@@ -6,7 +6,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, watch, ref, defineExpose } from 'vue';
+import { onMounted, onUnmounted, watch, ref } from 'vue';
 import Player from 'xgplayer';
 import useVideoOperations from "../composables/useVideoOperations.js";
 import {HlsPlugin} from "xgplayer-hls";

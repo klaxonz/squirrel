@@ -31,7 +31,7 @@ engine = create_engine(
 @contextmanager
 def get_session() -> Generator[Session, None, None]:
     """Session context manager"""
-    session = Session(engine)
+    session = Session(engine, expire_on_commit=False)
     try:
         yield session
         session.commit()

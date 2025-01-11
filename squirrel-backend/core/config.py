@@ -43,28 +43,18 @@ class Settings(BaseSettings):
     def database_url(self):
         return f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}?charset=utf8mb4"
 
-    def get_download_root_path(self):
-        download_path = Path(os.path.join(base_dir, '..', 'downloads'))
-        return os.getenv('MEDIA_DOWNLOAD_PATH', download_path)
-
-    def get_cookies_file_path(self):
-        cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies.txt'))
-        return os.path.normpath(cookie_path)
-
-    def get_cookies_file_path_thread(self, queue_thread_name: str):
-        queue_thread_name = queue_thread_name.replace(':', '-')
-        cookie_path = Path(os.path.join(base_dir, '..', 'config', f'cookies-{queue_thread_name}.txt'))
-        with open(cookie_path, 'w') as wf:
-            with open(self.get_cookies_file_path(), 'r') as rf:
-                wf.write(rf.read())
-        return os.path.normpath(cookie_path)
-
-    def get_cookies_http_file_path(self):
-        http_cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies_http.txt'))
-        return os.path.normpath(http_cookie_path)
-
     def get_redis_url(self):
         return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
+
+def get_cookies_file_path():
+    cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies.txt'))
+    return os.path.normpath(cookie_path)
+
+
+def get_cookies_http_file_path():
+    http_cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies_http.txt'))
+    return os.path.normpath(http_cookie_path)
 
 
 @lru_cache()

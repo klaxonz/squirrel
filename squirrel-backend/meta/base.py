@@ -1,4 +1,5 @@
 import os
+from abc import abstractmethod
 
 from pathvalidate import sanitize_filename
 
@@ -19,7 +20,6 @@ class Video:
         self._duration = None
         self._thumbnail = None
         self._upload_date = None
-        self._uploader = None
         self._actors = []
         self._season = None
 
@@ -70,27 +70,13 @@ class Video:
         return self._season
 
     @property
+    @abstractmethod
     def actors(self):
-        if self._uploader is None:
-            from .factory import UploaderFactory
-            self._uploader = UploaderFactory.create_uploader(self.url)
-        return self._uploader
-
-    def get_tv_show_root_path(self):
-        root_path = settings.get_download_root_path()
-        uploader_name = self.get_valid_uploader_name()
-        return os.path.join(root_path, uploader_name)
-
-    def get_download_full_path(self):
-        root_path = settings.get_download_root_path()
-        uploader_name = self.get_valid_uploader_name()
-        return os.path.join(root_path, uploader_name, f"Season {self.season}")
-
-    def get_valid_uploader_name(self):
-        return sanitize_filename(self.uploader.name)
-
-    def get_valid_filename(self):
-        return sanitize_filename(self.title)
+        """
+        Abstract property that must be implemented by subclasses.
+        Returns the actors configuration.
+        """
+        raise NotImplementedError("Subclasses must implement actors property")
 
     def video_exists(self):
         return True

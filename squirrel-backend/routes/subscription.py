@@ -13,7 +13,7 @@ from schemas.subscription import (
     UnsubscribeRequest,
     ToggleStatusRequest
 )
-from services.subscription_service import subscription_service
+from services import subscription_service
 
 router = APIRouter(tags=['订阅接口'])
 
@@ -22,17 +22,11 @@ router = APIRouter(tags=['订阅接口'])
 def subscribe_content(req: SubscribeRequest):
     with get_session() as session:
         task = {"url": req.url}
-        message = Message(
-            body=json.dumps(task),
-        )
+        message = Message(body=json.dumps(task))
         session.add(message)
         session.commit()
-
-        message = session.scalars(select(Message).where(Message.id == message.id)).first()
         dump_json = message.to_dict()
         subscribe_task.process_subscribe_message.send(dump_json)
-        message.send_status = 'SENDING'
-        session.refresh(message)
 
     return response.success()
 

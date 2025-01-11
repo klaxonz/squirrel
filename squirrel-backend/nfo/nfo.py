@@ -3,7 +3,7 @@ from contextlib import suppress
 
 from jinja2 import Environment, FileSystemLoader
 
-from models.video import Video
+from core import download_config
 
 
 class NfoGenerator:
@@ -19,41 +19,32 @@ class NfoGenerator:
                 nfo_file.write(content)
 
     @staticmethod
-    def generate_tv_show_nfo(video: Video):
-        uploader = video.uploader
-        uploader_id = uploader.get_id()
-        uploader_name = uploader.get_name()
-        tags = uploader.get_tags()
-
+    def generate_tv_show_nfo(subscription_name: str):
         template = NfoGenerator.TEMPLATE_ENV.get_template('tv_show_nfo.xml')
         nfo_content = template.render(
-            uploader_id=uploader_id,
-            uploader_name=uploader_name,
-            tags=tags
+            uploader_name=subscription_name,
         )
-
-        download_path = video.get_tv_show_root_path()
+        download_path = download_config.get_tv_show_root_path(subscription_name)
         download_full_path = f"{download_path}/tvshow.nfo"
         NfoGenerator._write_nfo_file(nfo_content, download_full_path)
 
     @staticmethod
-    def generate_episode_nfo(video: Video):
-        uploader = video.uploader
+    def generate_episode_nfo(subscription_name, title, description, thumbnail_path, season):
         template = NfoGenerator.TEMPLATE_ENV.get_template('episode_nfo.xml')
         nfo_content = template.render(
-            series_title=uploader.get_name(),
-            season=video.season,
-            episode_title=video.title,
-            description=video.description,
-            thumbnail_path=video.thumbnail
+            series_title=subscription_name,
+            season=season,
+            episode_title=title,
+            description=description,
+            thumbnail_path=thumbnail_path
         )
 
-        download_path = video.get_download_full_path()
-        filename = video.get_valid_filename()
+        download_path = download_config.get_download_full_path(subscription_name, season)
+        filename = download_config.get_valid_filename(title)
         download_full_path = f"{download_path}/{filename}.nfo"
         NfoGenerator._write_nfo_file(nfo_content, download_full_path)
 
     @staticmethod
-    def generate_nfo(video: Video):
-        NfoGenerator.generate_tv_show_nfo(video)
-        NfoGenerator.generate_episode_nfo(video)
+    def generate_nfo(subscription_name, title, description, thumbnail_path, season):
+        NfoGenerator.generate_tv_show_nfo(subscription_name)
+        NfoGenerator.generate_episode_nfo(subscription_name, title, description, thumbnail_path, season)

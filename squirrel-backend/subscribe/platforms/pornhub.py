@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 
 from common.http_wrapper import session
 from meta.channel import SubscriptionMeta
-from models.subscription import Subscription
 from utils.cookie import filter_cookies_to_query_string
 from ..base import BaseSubscription
 
@@ -56,7 +55,7 @@ class PornhubSubscription(BaseSubscription):
 
         return SubscriptionMeta(channel_id, name, avatar, url)
 
-    def get_subscribe_videos(self, subscription: Subscription, update_all: bool):
+    def get_subscribe_videos(self, extract_all: bool):
         cookies = filter_cookies_to_query_string(self.url)
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -98,7 +97,7 @@ class PornhubSubscription(BaseSubscription):
                 page = new_page
             if current_page == page:
                 break
-            if not update_all:
+            if not extract_all:
                 break
             current_page += 1
 

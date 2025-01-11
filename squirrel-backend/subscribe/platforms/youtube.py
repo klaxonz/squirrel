@@ -1,7 +1,6 @@
 from pytubefix import Channel as YouTubeChannel
 
 from meta.channel import SubscriptionMeta
-from models.subscription import Subscription
 from ..base import BaseSubscription
 
 
@@ -20,7 +19,7 @@ class YouTubeSubscription(BaseSubscription):
             self.url
         )
 
-    def get_subscribe_videos(self, subscription: Subscription, update_all: bool):
+    def get_subscribe_videos(self, extract_all: bool):
         videos_ = []
         if self.channel.videos:
             for video in self.channel.videos:

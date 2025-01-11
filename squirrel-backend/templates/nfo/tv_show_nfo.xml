@@ -2,7 +2,6 @@
 <tvshow>
     <title>{{ uploader_name }}</title>
     <originaltitle>{{ uploader_name }}</originaltitle>
-    <id>{{ uploader_id }}</id>
     <thumb aspect="poster">./poster.jpg</thumb>
     {% for tag in tags %}
     <tag>{{ tag }}</tag>

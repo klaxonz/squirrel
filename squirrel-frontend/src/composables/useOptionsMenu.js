@@ -7,8 +7,7 @@ export default function useOptionsMenu(videoRef) {
   const downloadVideo = async () => {
     try {
       const response = await axios.post('/api/video/download', {
-        channel_id: videoRef.value.channel_id,
-        video_id: videoRef.value.video_id
+        video_id: videoRef.value.id
       });
 
       if (response.data.code === 0) {

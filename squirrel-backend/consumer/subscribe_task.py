@@ -16,46 +16,32 @@ logger = logging.getLogger()
 @dramatiq.actor(queue_name=constants.QUEUE_SUBSCRIBE)
 def process_subscribe_message(message):
     try:
-        logger.info(f"开始处理订阅频道消息：{message}")
-        if not message or message == '{}':
-            return
-        logger.info(f"收到订阅频道消息: {message}")
+        logger.info(f"Received subscription message: {message}")
         message_obj = Message.from_dict(message)
-        url = _extract_url(message_obj)
+        url = json.loads(message_obj.body)['url']
         subscribe_channel = SubscriptionFactory.create_subscription(url)
         channel_info = subscribe_channel.get_subscribe_info()
-
-        subscription = get_subscription(channel_info)
-        if subscription and not subscription.is_deleted:
-            logger.info(f"已订阅过该频道: {subscription.name}")
-            return
-        if subscription and subscription.is_deleted:
-            with get_session() as session:
-                subscription = session.merge(subscription)
-                subscription.is_deleted = False
-                session.commit()
-            logger.info(f"成功订阅: {channel_info.name}")
-            return
+        videos = subscribe_channel.get_subscribe_videos(extract_all=True)
 
         with get_session() as session:
-            subscription = _create_subscription(channel_info)
-            session.add(subscription)
+            subscription = session.scalars(select(Subscription).where(
+                Subscription.content_url == channel_info.url,
+                Subscription.content_name == channel_info.name
+            )).first()
+            if subscription and not subscription.is_deleted:
+                logger.info(f"Already subscribed to this channel: {subscription.name}")
+                return
+            if subscription and subscription.is_deleted:
+                subscription.total_videos = len(videos)
+                subscription.is_deleted = False
+            else:
+                subscription = _create_subscription(channel_info)
+                subscription.total_videos = len(videos)
+                session.add(subscription)
             session.commit()
-            logger.info(f"成功订阅: {subscription.content_name}")
+            logger.info(f"Successfully subscribed: {subscription.content_name}")
     except Exception as e:
-        logger.error(f"添加订阅时发生错误: {e}", exc_info=True)
-
-
-def _extract_url(message):
-    return json.loads(message.body)['url']
-
-
-def get_subscription(channel_info):
-    with get_session() as session:
-        return session.scalars(select(Subscription).where(
-            Subscription.content_url == channel_info.url,
-            Subscription.content_name == channel_info.name
-        )).first()
+        logger.error(f"Error occurred while adding subscription: {e}", exc_info=True)
 
 
 def _create_subscription(channel_info):

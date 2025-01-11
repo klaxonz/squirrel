@@ -20,33 +20,36 @@ from core.database import get_session
 from downloader.downloader import Downloader
 from meta.factory import VideoFactory
 from models.download_task import DownloadTask
+from models.links import SubscriptionVideo
+from models.subscription import Subscription
+from models.video import Video
 from schemas.task import DownloadRequest, DownloadChangeStateRequest
-from services.task_service import task_sercice
+from services import task_service
 
 router = APIRouter(tags=['下载任务接口'])
 
 
 @router.post("/api/task/download")
 def start_download(req: DownloadRequest):
-    task_sercice.start_download(req.url)
+    task_service.start_download(req.url)
     return response.success()
 
 
 @router.post("/api/task/retry")
 def retry_download(req: DownloadChangeStateRequest):
-    task_sercice.retry_download(req.task_id)
+    task_service.retry_download(req.task_id)
     return response.success()
 
 
 @router.post("/api/task/pause")
 def pause_download(req: DownloadChangeStateRequest):
-    task_sercice.pause_download(req.task_id)
+    task_service.pause_download(req.task_id)
     return response.success()
 
 
 @router.post("/api/task/delete")
 def delete_download(req: DownloadChangeStateRequest):
-    task_sercice.delete_download(req.task_id)
+    task_service.delete_download(req.task_id)
     return response.success()
 
 
@@ -56,7 +59,7 @@ def get_tasks(
         page: int = Query(1, ge=1, description="Page number"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Items per page")
 ):
-    task_convert_list, total_tasks = task_sercice.list_tasks(status, page, page_size)
+    task_convert_list, total_tasks = task_service.list_tasks(status, page, page_size)
     return response.success({
         "page": page,
         "pageSize": page_size,
@@ -112,6 +115,29 @@ async def new_task_notification(latest_task_id: int = Query(default=0)):
                 new_tasks = session.scalars(select(DownloadTask).where(DownloadTask.id > latest_task_id).order_by(
                     DownloadTask.id.desc()).limit(30)).all()
                 if new_tasks:
+                    video_ids = []
+                    for task in new_tasks:
+                        video_ids.append(task.video_id)
+                    videos = session.scalars(select(Video).where(
+                        DownloadTask.video_id.in_(video_ids))).all()
+                    videos_map = {}
+                    for video in videos:
+                        videos_map[video.id] = video
+
+                    subscription_videos = session.scalars(select(SubscriptionVideo).where(SubscriptionVideo.video_id.in_(video_ids))).all()
+                    subscription_ids = []
+                    subscription_maps = {}
+                    video_subscription_map = {}
+                    for subscription_video in subscription_videos:
+                        subscription_ids.append(subscription_video.subscription_id)
+
+                    if len(subscription_ids) > 0:
+                        subscriptions = session.scalars(select(Subscription).where(Subscription.id.in_(subscription_ids)))
+                        for subscription in subscriptions:
+                            subscription_maps[subscription.id] = subscription
+                    for subscription_video in subscription_videos:
+                        video_subscription_map[subscription_video.video_id] = subscription_maps[subscription_video.subscription_id]
+
                     new_task_data = []
                     for task in new_tasks:
                         # 获取下载进度信息
@@ -123,12 +149,12 @@ async def new_task_notification(latest_task_id: int = Query(default=0)):
                         percent = progress.get('percent', '未知')
 
                         new_task_data.append({
-                            "id": task.task_id,
-                            "thumbnail": task.thumbnail,
+                            "id": task.id,
+                            "thumbnail": videos_map[task.video_id].thumbnail,
                             "status": task.status,
-                            "title": task.title,
-                            "channel_name": task.channel_name,
-                            "channel_avatar": task.channel_avatar,
+                            "title": videos_map[task.video_id].title,
+                            "channel_name": video_subscription_map[task.video_id].content_name,
+                            "channel_avatar": video_subscription_map[task.video_id].avatar_url,
                             "downloaded_size": downloaded_size,
                             "total_size": total_size,
                             "speed": speed,

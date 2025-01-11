@@ -2,7 +2,6 @@ import abc
 from typing import List
 
 from meta.channel import SubscriptionMeta
-from models.subscription import Subscription
 
 
 class BaseSubscription(abc.ABC):
@@ -17,6 +16,6 @@ class BaseSubscription(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_subscribe_videos(self, subscription: Subscription, update_all: bool) -> List[str]:
+    def get_subscribe_videos(self, extract_all: bool) -> List[str]:
         """Get list of video URLs from the channel"""
         pass

@@ -18,7 +18,6 @@ from meta.factory import VideoFactory
 from models.video import Video
 from schemas.video import DownloadVideoRequest, SortBy
 from services import video_service
-from services.video_service import video_service
 
 logger = logging.getLogger()
 

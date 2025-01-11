@@ -83,27 +83,27 @@
           <div class="flex items-center justify-between">
             <span class="text-sm text-[#fff]">开启监控</span>
             <ToggleSwitch v-model="selectedSubscription.is_enable"
-                          @update:modelValue="(value) => toggleStatus(selectedSubscription.subscription_id, value)"/>
+                          @update:modelValue="(value) => toggleStatus(selectedSubscription.id, value)"/>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-sm text-[#fff]">解析全部视频</span>
             <ToggleSwitch v-model="selectedSubscription.is_extract_all"
-                          @update:modelValue="(value) => toggleExtractAll(selectedSubscription.subscription_id, value)"/>
+                          @update:modelValue="(value) => toggleExtractAll(selectedSubscription.id, value)"/>
           </div>
           <template v-if="selectedSubscription.is_enable">
             <div class="flex items-center justify-between">
               <span class="text-sm text-[#fff]">自动下载视频</span>
               <ToggleSwitch v-model="selectedSubscription.is_auto_download"
-                            @update:modelValue="(value) => toggleAutoDownload(selectedSubscription.subscription_id, value)"/>
+                            @update:modelValue="(value) => toggleAutoDownload(selectedSubscription.id, value)"/>
             </div>
             <div v-if="selectedSubscription.is_auto_download" class="flex items-center justify-between">
               <span class="text-sm text-[#fff]">下载全部视频</span>
               <ToggleSwitch v-model="selectedSubscription.is_download_all"
-                            @update:modelValue="(value) => toggleDownloadAll(selectedSubscription.subscription_id, value)"/>
+                            @update:modelValue="(value) => toggleDownloadAll(selectedSubscription.id, value)"/>
             </div>
           </template>
           <button class="w-full py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] transition-colors duration-200 text-sm"
-                  @click="unsubscribe(selectedSubscription.subscription_id)">
+                  @click="unsubscribe(selectedSubscription.id)">
             取消订阅
           </button>
         </div>
@@ -295,11 +295,11 @@ const toggleExtractAll = async (subscriptionId, status) => {
 };
 
 const updateLocalSubscription = (subscriptionId, updates) => {
-  const index = subscriptions.value.findIndex(c => c.subscription_id === subscriptionId);
+  const index = subscriptions.value.findIndex(c => c.id === subscriptionId);
   if (index !== -1) {
     subscriptions.value[index] = {...subscriptions.value[index], ...updates};
   }
-  if (selectedSubscription.value && selectedSubscription.value.subscription_id === subscriptionId) {
+  if (selectedSubscription.value && selectedSubscription.value.id === subscriptionId) {
     selectedSubscription.value = {...selectedSubscription.value, ...updates};
   }
 };
@@ -311,7 +311,7 @@ const unsubscribe = async (subscriptionId) => {
     try {
       const response = await axios.post('/api/subscription/unsubscribe', {subscription_id: subscriptionId});
       if (response.data.code === 0) {
-        subscriptions.value = subscriptions.value.filter(subscription => subscription.subscription_id !== subscriptionId);
+        subscriptions.value = subscriptions.value.filter(subscription => subscription.id !== subscriptionId);
         displayToast('频道已成功取消订阅');
         closeSettings();
       } else {

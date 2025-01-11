@@ -1,5 +1,6 @@
 import http.cookiejar as cookielib
 
+from core import config
 from core.config import settings
 from utils.url_helper import extract_top_level_domain
 
@@ -11,7 +12,7 @@ def filter_cookies_to_query_string(target_url):
     :param target_url: 目标URL，用于确定需匹配的顶级域名
     :return: 筛选后Cookie的分号分隔格式字符串
     """
-    file_path = settings.get_cookies_http_file_path()
+    file_path = config.get_cookies_http_file_path()
     cj = cookielib.MozillaCookieJar()
     cj.load(file_path, ignore_discard=True, ignore_expires=True)
 
