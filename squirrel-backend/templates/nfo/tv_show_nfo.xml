@@ -3,7 +3,4 @@
     <title>{{ uploader_name }}</title>
     <originaltitle>{{ uploader_name }}</originaltitle>
     <thumb aspect="poster">./poster.jpg</thumb>
-    {% for tag in tags %}
-    <tag>{{ tag }}</tag>
-    {% end for %}
 </tvshow>

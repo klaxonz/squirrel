@@ -52,6 +52,17 @@ def get_cookies_file_path():
     return os.path.normpath(cookie_path)
 
 
+def get_cookies_file_path_thread(queue_thread_name: str):
+    if not queue_thread_name:
+        return get_cookies_file_path()
+    queue_thread_name = queue_thread_name.replace(':', '-')
+    cookie_path = Path(os.path.join(base_dir, '..', 'config', f'cookies-{queue_thread_name}.txt'))
+    with open(cookie_path, 'w') as wf:
+        with open(get_cookies_file_path(), 'r') as rf:
+            wf.write(rf.read())
+    return os.path.normpath(cookie_path)
+
+
 def get_cookies_http_file_path():
     http_cookie_path = Path(os.path.join(base_dir, '..', 'config', 'cookies_http.txt'))
     return os.path.normpath(http_cookie_path)

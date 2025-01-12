@@ -1,10 +1,6 @@
 import asyncio
 import logging
-import os
 import re
-import stat
-from email.utils import formatdate
-from mimetypes import guess_type
 from urllib.parse import urljoin
 
 import httpx
@@ -12,12 +8,12 @@ from fastapi import Query, APIRouter, Request, HTTPException
 from starlette.responses import StreamingResponse
 
 import common.response as response
-from core.database import get_session
-from downloader.downloader import Downloader
+from common.video_stream import VideoStreamHandler
+from core import download_config
+from downloader.factory import DownloaderFactory
 from meta.factory import VideoFactory
-from models.video import Video
 from schemas.video import DownloadVideoRequest, SortBy
-from services import video_service
+from services import video_service, subscription_video_service, subscription_service
 
 logger = logging.getLogger()
 
@@ -67,63 +63,18 @@ def download_video(req: DownloadVideoRequest):
 
 @router.get("/api/video/play/{video_id}")
 def play_video(request: Request, video_id: int):
-    with get_session() as s:
-        video = s.query(Video).filter(Video.id == video_id).first()
-        if video:
-            s.expunge(video)
-        else:
-            raise HTTPException(status_code=404, detail="Video not found")
-
-    base_info = Downloader.get_video_info(video.url)
-    video = VideoFactory.create_video(video.url, base_info)
-    output_dir = video.get_download_full_path()
-    filename = video.get_valid_filename() + ".mp4"
-    video_path = os.path.join(output_dir, filename)
-
-    stat_result = os.stat(video_path)
-    content_type, encoding = guess_type(video_path)
-    content_type = content_type or 'application/octet-stream'
-    range_str = request.headers.get('range', '')
-    range_match = re.search(r'bytes=(\d+)-(\d+)', range_str, re.S) or re.search(r'bytes=(\d+)-', range_str, re.S)
-    if range_match:
-        start_bytes = int(range_match.group(1))
-        end_bytes = int(range_match.group(2)) if range_match.lastindex == 2 else stat_result.st_size - 1
-    else:
-        start_bytes = 0
-        end_bytes = stat_result.st_size - 1
-
-    content_length = stat_result.st_size - start_bytes if stat.S_ISREG(stat_result.st_mode) else stat_result.st_size
-    # 打开文件从起始位置开始分片读取文件
-    return StreamingResponse(
-        file_iterator(video_path, start_bytes, 1024 * 1024 * 1),  # 每次读取 1M
-        media_type=content_type,
-        headers={
-            'accept-ranges': 'bytes',
-            'connection': 'keep-alive',
-            'content-length': str(content_length),
-            'content-range': f'bytes {start_bytes}-{end_bytes}/{stat_result.st_size}',
-            'last-modified': formatdate(stat_result.st_mtime, usegmt=True),
-        },
-        status_code=206 if start_bytes > 0 else 200
-    )
-
-
-def file_iterator(file_path, offset, chunk_size):
-    """
-    文件生成器
-    :param file_path: 文件绝对路径
-    :param offset: 文件读取的起始位置
-    :param chunk_size: 文件读取的块大小
-    :return: yield
-    """
-    with open(file_path, 'rb') as f:
-        f.seek(offset, os.SEEK_SET)
-        while True:
-            data = f.read(chunk_size)
-            if data:
-                yield data
-            else:
-                break
+    video = video_service.get_video_by_id(video_id)
+    downloader = DownloaderFactory.create_downloader(video.url)
+    video_info = downloader.get_video_info(video.url)
+    video = VideoFactory.create_video(video.url, video_info)
+    subscription_video = subscription_video_service.get_subscription_video_by_video_id(video.id)
+    subscription = subscription_service.get_subscription_by_id(subscription_video.subscription_id)
+    output_dir = download_config.get_download_full_path(subscription.content_name, video.season)
+    filename = download_config.get_valid_filename(video.title)
+    video_path = VideoStreamHandler.find_video_file(output_dir, filename)
+    if not video_path:
+        raise HTTPException(status_code=404, detail="Video file not found")
+    return VideoStreamHandler.create_stream_response(request, video_path)
 
 
 @router.get("/api/video/proxy")

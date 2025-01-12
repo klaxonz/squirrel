@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy import BigInteger, Integer, Text
 from sqlalchemy.dialects.mysql import VARCHAR
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
 from models.mixins.serializer import SerializerMixin
+from models.task.task_state import TaskStateTransition
 
 
 class DownloadTask(Base, SerializerMixin):
@@ -29,4 +30,21 @@ class DownloadTask(Base, SerializerMixin):
         default=lambda: datetime.now(),
         onupdate=lambda: datetime.now()
     )
+
+    def transition_to(self, new_state: str) -> bool:
+        """
+        将任务转换到新状态
+        返回是否转换成功
+        """
+        if TaskStateTransition.can_transition(self.status, new_state):
+            self.status = new_state
+            return True
+        return False
+
+    @property
+    def allowed_transitions(self) -> List[str]:
+        """
+        获取当前允许的状态转换列表
+        """
+        return TaskStateTransition.get_allowed_transitions(self.status)
 

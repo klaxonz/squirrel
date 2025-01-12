@@ -1,9 +1,4 @@
-import os
 from abc import abstractmethod
-
-from pathvalidate import sanitize_filename
-
-from core.config import settings
 
 
 class Video:

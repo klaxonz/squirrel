@@ -1,28 +1,14 @@
 import asyncio
 import json
-import os
-import re
-import stat
 import time
-from email.utils import formatdate
-from mimetypes import guess_type
 
 from fastapi import APIRouter, Query
 from sqlalchemy import select
 from sse_starlette import EventSourceResponse
-from starlette.requests import Request
-from starlette.responses import StreamingResponse
 
 import common.response as response
-from common import constants
-from core.cache import RedisClient
 from core.database import get_session
-from downloader.downloader import Downloader
-from meta.factory import VideoFactory
-from models.download_task import DownloadTask
-from models.links import SubscriptionVideo
-from models.subscription import Subscription
-from models.video import Video
+from models.task.download_task import DownloadTask
 from schemas.task import DownloadRequest, DownloadChangeStateRequest
 from services import task_service
 
@@ -49,7 +35,7 @@ def pause_download(req: DownloadChangeStateRequest):
 
 @router.post("/api/task/delete")
 def delete_download(req: DownloadChangeStateRequest):
-    task_service.delete_download(req.task_id)
+    task_service.delete_task(req.task_id)
     return response.success()
 
 
@@ -70,32 +56,19 @@ def get_tasks(
 
 @router.get("/api/task/progress")
 async def get_tasks_progress(task_ids: str):
-    client = RedisClient.get_instance().client
-    task_ids_list = task_ids.split(',')
+    task_ids_split = task_ids.split(',')
+    task_ids = []
+    for task_id in task_ids_split:
+        if task_id != '':
+            task_ids.append(int(task_id))
 
     async def event_generator():
         while True:
             with get_session() as session:
-                tasks_progress = []
-                for task_id in task_ids_list:
-                    progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}')
-                    task = session.scalars(select(DownloadTask).where(DownloadTask.id == task_id)).first()
-                    task_status = task.status if task else None
-
-                    if progress:
-                        current_type = progress.get('current_type', 'unknown')
-                        data = {
-                            "id": int(task_id),
-                            "status": task_status,
-                            "current_type": current_type,
-                            "downloaded_size": int(progress.get('downloaded_size', 0)),
-                            "total_size": int(progress.get('total_size', 0)),
-                            "speed": progress.get('speed', '未知'),
-                            "eta": progress.get('eta', '未知'),
-                            "percent": progress.get('percent', '未知'),
-                        }
-                        tasks_progress.append(data)
-
+                tasks = []
+                if len(task_ids) > 0:
+                    tasks = session.scalars(select(DownloadTask).where(DownloadTask.id.in_(task_ids))).all()
+                tasks_progress = task_service.generate_task_data(tasks)
                 yield {
                     "event": "message",
                     "data": json.dumps(tasks_progress)
@@ -107,141 +80,27 @@ async def get_tasks_progress(task_ids: str):
 
 @router.get("/api/task/new_task_notification")
 async def new_task_notification(latest_task_id: int = Query(default=0)):
-    client = RedisClient.get_instance().client
-
     async def event_generator():
         while True:
             with get_session() as session:
-                new_tasks = session.scalars(select(DownloadTask).where(DownloadTask.id > latest_task_id).order_by(
+                tasks = session.scalars(select(DownloadTask).where(DownloadTask.id > latest_task_id).order_by(
                     DownloadTask.id.desc()).limit(30)).all()
-                if new_tasks:
-                    video_ids = []
-                    for task in new_tasks:
-                        video_ids.append(task.video_id)
-                    videos = session.scalars(select(Video).where(
-                        DownloadTask.video_id.in_(video_ids))).all()
-                    videos_map = {}
-                    for video in videos:
-                        videos_map[video.id] = video
-
-                    subscription_videos = session.scalars(select(SubscriptionVideo).where(SubscriptionVideo.video_id.in_(video_ids))).all()
-                    subscription_ids = []
-                    subscription_maps = {}
-                    video_subscription_map = {}
-                    for subscription_video in subscription_videos:
-                        subscription_ids.append(subscription_video.subscription_id)
-
-                    if len(subscription_ids) > 0:
-                        subscriptions = session.scalars(select(Subscription).where(Subscription.id.in_(subscription_ids)))
-                        for subscription in subscriptions:
-                            subscription_maps[subscription.id] = subscription
-                    for subscription_video in subscription_videos:
-                        video_subscription_map[subscription_video.video_id] = subscription_maps[subscription_video.subscription_id]
-
-                    new_task_data = []
-                    for task in new_tasks:
-                        # 获取下载进度信息
-                        progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.id}')
-                        downloaded_size = int(progress.get('downloaded_size', 0))
-                        total_size = int(progress.get('total_size', 0))
-                        speed = progress.get('speed', '未知')
-                        eta = progress.get('eta', '未知')
-                        percent = progress.get('percent', '未知')
-
-                        new_task_data.append({
-                            "id": task.id,
-                            "thumbnail": videos_map[task.video_id].thumbnail,
-                            "status": task.status,
-                            "title": videos_map[task.video_id].title,
-                            "channel_name": video_subscription_map[task.video_id].content_name,
-                            "channel_avatar": video_subscription_map[task.video_id].avatar_url,
-                            "downloaded_size": downloaded_size,
-                            "total_size": total_size,
-                            "speed": speed,
-                            "eta": eta,
-                            "percent": percent,
-                            "error_message": task.error_message,
-                            "retry": task.retry,
-                            "updated_at": task.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
-                            "created_at": task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                        })
-
+                if len(tasks) > 0:
+                    task_data = task_service.generate_task_data(tasks)
                     yield {
                         "event": "message",
-                        "data": json.dumps(new_task_data)
+                        "data": json.dumps(task_data)
                     }
-                    await asyncio.sleep(1)  # 每秒检查一次
+                    await asyncio.sleep(1)
 
                 else:
                     yield {
                         "event": "heartbeat",
                         "data": json.dumps({"timestamp": time.time()})
                     }
-                    await asyncio.sleep(1)  # 每秒检查一次
+                    await asyncio.sleep(1)
 
     return EventSourceResponse(event_generator())
 
 
-@router.get("/api/task/video/play/{task_id}")
-def play_video(request: Request, task_id: str):
-    with get_session() as session:
-        download_task = session.select(DownloadTask).where(DownloadTask.id == task_id).first()
-        session.expunge(download_task)
 
-    base_info = Downloader.get_video_info(download_task.url)
-    video = VideoFactory.create_video(download_task.url, base_info)
-    output_dir = video.get_download_full_path()
-
-    ext_names = ['.mp4', '.mkv', '.webm']
-    filename = video.get_valid_filename()
-
-    files = os.listdir(output_dir)
-    video_path = None
-    for file in files:
-        if file.startswith(filename) and any(file.endswith(ext) for ext in ext_names):
-            video_path = os.path.join(output_dir, file)
-            break
-
-    stat_result = os.stat(video_path)
-    content_type, encoding = guess_type(video_path)
-    content_type = content_type or 'application/octet-stream'
-    range_str = request.headers.get('range', '')
-    range_match = re.search(r'bytes=(\d+)-(\d+)', range_str, re.S) or re.search(r'bytes=(\d+)-', range_str, re.S)
-    if range_match:
-        start_bytes = int(range_match.group(1))
-        end_bytes = int(range_match.group(2)) if range_match.lastindex == 2 else stat_result.st_size - 1
-    else:
-        start_bytes = 0
-        end_bytes = stat_result.st_size - 1
-
-    content_length = stat_result.st_size - start_bytes if stat.S_ISREG(stat_result.st_mode) else stat_result.st_size
-    return StreamingResponse(
-        file_iterator(video_path, start_bytes, 1024 * 1024 * 1),
-        media_type=content_type,
-        headers={
-            'accept-ranges': 'bytes',
-            'connection': 'keep-alive',
-            'content-length': str(content_length),
-            'content-range': f'bytes {start_bytes}-{end_bytes}/{stat_result.st_size}',
-            'last-modified': formatdate(stat_result.st_mtime, usegmt=True),
-        },
-        status_code=206 if start_bytes > 0 else 200
-    )
-
-
-def file_iterator(file_path, offset, chunk_size):
-    """
-    文件生成器
-    :param file_path: 文件绝对路径
-    :param offset: 文件读取的起始位置
-    :param chunk_size: 文件读取的块大小
-    :return: yield
-    """
-    with open(file_path, 'rb') as f:
-        f.seek(offset, os.SEEK_SET)
-        while True:
-            data = f.read(chunk_size)
-            if data:
-                yield data
-            else:
-                break

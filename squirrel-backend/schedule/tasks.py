@@ -12,9 +12,10 @@ from core import config
 from core.config import settings
 from core.database import get_session
 from dto.video_dto import VideoExtractDto
-from models.download_task import DownloadTask
+from models.task.download_task import DownloadTask
 from models.links import SubscriptionVideo
 from models.subscription import Subscription
+from models.task.task_state import TaskState
 from services import download_service
 from subscribe.factory import SubscriptionFactory
 from utils.cookie import json_cookie_to_netscape
@@ -90,19 +91,19 @@ class RetryFailedTask(BaseTask):
             with get_session() as session:
                 tasks = session.scalars(select(DownloadTask).where(
                     or_(
-                        and_(DownloadTask.status == 'FAILED', DownloadTask.retry < 5),
-                        (and_(DownloadTask.status.in_(['DOWNLOADING', 'PENDING', 'WAITING']),
+                        and_(DownloadTask.status == TaskState.FAILED.value, DownloadTask.retry < 5),
+                        (and_(DownloadTask.status.in_([TaskState.DOWNLOADING.value, TaskState.FAILED.value]),
                               DownloadTask.updated_at <= five_minutes_ago)))))
                 for task in tasks:
                     ten_minutes_ago = datetime.now() - timedelta(minutes=10)
-                    downloading_tasks = session.scalars(select(DownloadTask).where(DownloadTask.status == 'DOWNLOADING',
+                    downloading_tasks = session.scalars(select(DownloadTask).where(DownloadTask.status == TaskState.DOWNLOADING.value,
                                                                                    DownloadTask.updated_at < ten_minutes_ago)).all()
 
-                    if (task.status == 'PENDING' or task.status == 'WAITING') and len(downloading_tasks) > 0:
+                    if (task.status == TaskState.PENDING.value) and len(downloading_tasks) > 0:
                         continue
 
                     task.error_message = ''
-                    task.status = 'PENDING'
+                    task.status = TaskState.PENDING.value
                     task.retry = task.retry + 1
                     session.commit()
 
@@ -123,11 +124,10 @@ class ChangeStatusTask(BaseTask):
     def run(cls):
         try:
             with get_session() as session:
-                tasks = session.scalars(
-                    select(DownloadTask).where(DownloadTask.status == 'PENDING', DownloadTask.retry >= 5))
-                for task in tasks:
-                    task.status = 'FAILED'
-                    session.commit()
+                session.query(DownloadTask).filter(DownloadTask.status == TaskState.PENDING.value, DownloadTask.retry >= 5).update({
+                    DownloadTask.status: TaskState.FAILED.value
+                })
+                session.commit()
 
         except json.JSONDecodeError as e:
             logger.error(f"Error decoding JSON: {e}", exc_info=True)

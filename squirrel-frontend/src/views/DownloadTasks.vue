@@ -51,25 +51,25 @@
               <!-- 状态和大小 -->
               <div class="flex items-center justify-between text-[12px] md:text-[13px] text-[#aaa]">
                 <div class="flex items-center">
-                  <span v-if="task.status === 'DOWNLOADING'" class="flex items-center text-[#aaa]">
+                  <span v-if="task.status === 'downloading'" class="flex items-center text-[#aaa]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
                     正在下载
                   </span>
-                  <span v-else-if="task.status === 'COMPLETED'" class="flex items-center text-[#00c853]">
+                  <span v-else-if="task.status === 'completed'" class="flex items-center text-[#00c853]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                     </svg>
                     已完成
                   </span>
-                  <span v-else-if="task.status === 'FAILED'" class="flex items-center text-[#f44336]">
+                  <span v-else-if="task.status === 'failed'" class="flex items-center text-[#f44336]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                     </svg>
                     下载失败
                   </span>
-                  <span v-else-if="task.status === 'PAUSED'" class="flex items-center text-[#aaa]">
+                  <span v-else-if="task.status === 'paused'" class="flex items-center text-[#aaa]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                     </svg>
@@ -80,7 +80,7 @@
               </div>
 
               <!-- 进度条 -->
-              <div v-if="task.status === 'DOWNLOADING'" class="mt-2">
+              <div v-if="task.status === 'downloading'" class="mt-2">
                 <div class="bg-[#3f3f3f] rounded-full h-1">
                   <div class="bg-[#f00] h-1 rounded-full transition-all duration-300" 
                        :style="{ width: `${task.percent}%` }">
@@ -97,8 +97,8 @@
             <!-- 操作按钮 -->
             <div class="flex items-start ml-2 md:ml-3">
               <button 
-                v-if="task.status === 'COMPLETED'" 
-                @click="playVideo(task.id)"
+                v-if="task.status === 'completed'"
+                @click="playVideo(task.video_id)"
                 class="p-1.5 md:p-2 hover:bg-[#ffffff1a] rounded-full transition-colors duration-200"
                 title="播放"
               >
@@ -204,11 +204,11 @@ const setupEventSource = () => {
     let shouldRefetch = false;
     data.forEach(taskData => {
       console.log('Received task data:', taskData);
-      const taskIndex = tasks.value.findIndex(task => task.id === taskData.task_id);
+      const taskIndex = tasks.value.findIndex(task => task.id === taskData.id);
       if (taskIndex !== -1) {
         const oldStatus = tasks.value[taskIndex].status;
         tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...taskData, percent: parseFloat(taskData.percent) };
-        if (oldStatus === 'DOWNLOADING' && taskData.status === 'COMPLETED') {
+        if (oldStatus === 'downloading' && taskData.status === 'completed') {
           shouldRefetch = true;
         }
       }
@@ -399,6 +399,7 @@ const closeVideoPlayer = () => {
 };
 
 const formatSize = (bytes) => {
+  if (bytes === undefined) return 'N/A';
   if (bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];

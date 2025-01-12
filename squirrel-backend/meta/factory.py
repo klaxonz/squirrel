@@ -1,3 +1,4 @@
+from .base import Video
 from .platforms.bilibili import BilibiliVideo
 from .platforms.javdb import JavVideo
 from .platforms.pornhub import PornhubVideo
@@ -6,7 +7,7 @@ from .platforms.youtube import YoutubeVideo
 
 class VideoFactory:
     @staticmethod
-    def create_video(url, video_info):
+    def create_video(url, video_info) -> Video:
         if 'bilibili.com' in url:
             return BilibiliVideo(url, video_info)
         elif 'youtube.com' in url:

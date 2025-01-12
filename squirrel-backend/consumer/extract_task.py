@@ -8,7 +8,7 @@ from common import constants
 from common.constants import DOMAIN_QUEUE_MAPPING
 from consumer import download_task
 from core.database import get_session
-from downloader.downloader import Downloader
+from downloader.factory import DownloaderFactory
 from dto.video_dto import VideoExtractDto
 from meta.factory import VideoFactory
 from models.message import Message
@@ -87,7 +87,8 @@ def process_extract_task(message, queue: str):
 
 
 def _get_video_info(url, queue_name: str):
-    video_info = Downloader.get_video_info_thread(url, queue_name)
+    downloader = DownloaderFactory.create_downloader(url)
+    video_info = downloader.get_video_info(url, queue_name)
     if video_info is None or ('_type' in video_info and video_info['_type'] == 'playlist'):
         logger.info(f"{url} is not a valid video, skip")
         return None
