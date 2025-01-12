@@ -7,13 +7,13 @@ WORKDIR /app/squirrel-frontend
 RUN npm install -g pnpm
 
 # Copy package files first to leverage cache
-COPY squirrel-front/package.json squirrel-front/pnpm-lock.yaml ./
+COPY squirrel-frontend/package.json squirrel-frontend/pnpm-lock.yaml ./
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy source code and build
-COPY squirrel-front/ ./
+COPY squirrel-frontend/ ./
 RUN pnpm run build
 
 # Stage 2: Build the backend
