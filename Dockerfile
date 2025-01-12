@@ -46,7 +46,6 @@ RUN pipenv install --deploy --system
 
 # Copy application code
 COPY squirrel-backend ./
-COPY squirrel-backend/temp/bilibili.py /usr/local/lib/python3.11/site-packages/yt_dlp/extractor/bilibili.py
 
 # Copy frontend build
 COPY --from=frontend-builder /app/squirrel-frontend/dist ./static
