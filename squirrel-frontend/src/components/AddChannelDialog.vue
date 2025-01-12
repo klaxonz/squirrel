@@ -82,7 +82,7 @@ const handleSubmit = async () => {
   error.value = '';
   
   try {
-    await axios.post('/api/channel/subscribe', {
+    await axios.post('/api/subscription/subscribe', {
       url: channelUrl.value
     });
     emit('added');

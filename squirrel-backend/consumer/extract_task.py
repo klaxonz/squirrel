@@ -13,7 +13,7 @@ from dto.video_dto import VideoExtractDto
 from meta.factory import VideoFactory
 from models.message import Message
 from services import video_service, task_service, message_service, subscription_video_service, creator_service, \
-    video_creator_service
+    video_creator_service, subscription_service
 from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()
@@ -54,6 +54,8 @@ def _process_extract_message(message):
     try:
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
+        if not _check_subscription_enable(params.subscription_id):
+            return
         domain = extract_top_level_domain(params.url)
         if domain in PROCESSORS:
             processor_type = 'scheduled' if params.only_extract else 'for_download'
@@ -130,3 +132,8 @@ def _handle_download_task(video):
     task = task_service.create_task(video.id, video.url)
     message = message_service.create_message(task.to_dict())
     download_task.process_download_message.send(message.to_dict())
+
+
+def _check_subscription_enable(subscription_id: int):
+    subscription = subscription_service.get_subscription_by_id(subscription_id)
+    return subscription.is_enable == 1
