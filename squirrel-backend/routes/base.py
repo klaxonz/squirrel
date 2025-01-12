@@ -58,20 +58,13 @@ async def general_exception_handler(request: Request, exc: Exception):
         content={"code": 500, "msg": "Internal Server Error"}
     )
 
+if not IS_DEV:
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        file_static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+        static_file = Path(file_static_dir) / full_path
 
-# @app.get("/{full_path:path}")
-# async def serve_spa(full_path: str):
-#     # 开发环境下重定向到前端开发服务器
-#     if IS_DEV:
-#         return RedirectResponse(
-#             url=f"{FRONTEND_DEV_URL}/{full_path}",
-#             status_code=status.HTTP_307_TEMPORARY_REDIRECT
-#         )
-#
-#     file_static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
-#     static_file = Path(file_static_dir) / full_path
-#
-#     if static_file.exists() and static_file.is_file():
-#         return FileResponse(static_file)
-#
-#     return FileResponse(Path(file_static_dir) / "index.html")
+        if static_file.exists() and static_file.is_file():
+            return FileResponse(static_file)
+
+        return FileResponse(Path(file_static_dir) / "index.html")
