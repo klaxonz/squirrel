@@ -59,8 +59,8 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 if not IS_DEV:
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
+    @app.get("/{full_path:path}", name="spa")
+    async def serve_spa(full_path: str = Path(..., regex="^(?!api/).+")):
         file_static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
         static_file = Path(file_static_dir) / full_path
 
