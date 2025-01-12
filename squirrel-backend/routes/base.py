@@ -8,6 +8,12 @@ from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse, RedirectResponse
 from starlette.staticfiles import StaticFiles
+from routes.video import router as video_router
+from routes.subscription import router as subscription_router
+from routes.task import router as task_router
+
+
+
 
 
 logger = logging.getLogger()
@@ -19,6 +25,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(video_router)
+app.include_router(task_router)
+app.include_router(subscription_router)
 
 # 判断是否为开发环境
 IS_DEV = os.getenv("ENV", "prod").lower() == "dev"
@@ -60,7 +69,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 if not IS_DEV:
     @app.get("/{full_path:path}", name="spa")
-    async def serve_spa(full_path: str = Path(..., regex="^(?!api/).+")):
+    async def serve_spa(full_path: str):
         file_static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
         static_file = Path(file_static_dir) / full_path
 
