@@ -1,7 +1,7 @@
 #!/bin/bash
 
 IMAGE_NAME="klaxonz/squirrel"
-VERSION=$(grep '__version__'squirrel-backend/__init__.py | awk -F "'" '{print $2}')
+VERSION=$(grep '__version__' squirrel-backend/__init__.py | awk -F "'" '{print $2}')
 
 if [ -z "$VERSION" ]; then
     echo "Failed to retrieve version from squirrel-backend/__init__.py"
