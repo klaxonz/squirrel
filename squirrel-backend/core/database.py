@@ -24,7 +24,6 @@ engine = create_engine(
     pool_size=settings.POOL_SIZE,
     max_overflow=settings.POOL_MAX_SIZE,
     pool_recycle=settings.POOL_RECYCLE,
-    echo=True,
     connect_args={"init_command": "SET time_zone='+08:00'"}
 )
 
