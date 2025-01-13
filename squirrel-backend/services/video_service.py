@@ -148,6 +148,10 @@ def list_videos(query: str, subscription_id: int, category: str, sort_by: str, p
     base_query = select(Video, SubscriptionVideo).join(
         SubscriptionVideo, Video.id == SubscriptionVideo.video_id
     )
+    if category != 'preview':
+        base_query.where(Video.publish_date <= datetime.now())
+    else:
+        base_query.where(Video.publish_date > datetime.now())
     if subscription_id:
         base_query = base_query.where(SubscriptionVideo.subscription_id == subscription_id)
     if query:
@@ -168,6 +172,10 @@ def list_videos(query: str, subscription_id: int, category: str, sort_by: str, p
         count_query = select(func.count(Video.id)).join(
             SubscriptionVideo, Video.id == SubscriptionVideo.video_id
         )
+        if category != 'preview':
+            count_query.where(Video.publish_date <= datetime.now())
+        else:
+            count_query.where(Video.publish_date > datetime.now())
         if subscription_id:
             count_query = count_query.where(SubscriptionVideo.subscription_id == subscription_id)
         if query:

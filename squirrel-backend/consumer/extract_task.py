@@ -4,9 +4,11 @@ from typing import Callable
 
 import dramatiq
 
+from cache import task_cache
 from common import constants
 from common.constants import DOMAIN_QUEUE_MAPPING
 from consumer import download_task
+from core.cache import RedisClient
 from core.database import get_session
 from downloader.factory import DownloaderFactory
 from dto.video_dto import VideoExtractDto
@@ -14,9 +16,10 @@ from meta.factory import VideoFactory
 from models.message import Message
 from services import video_service, task_service, message_service, subscription_video_service, creator_service, \
     video_creator_service, subscription_service
-from utils.url_helper import extract_top_level_domain
+from utils import url_helper
 
 logger = logging.getLogger()
+client = RedisClient.get_instance().client
 
 
 def create_processor(queue_name: str) -> Callable:
@@ -56,7 +59,7 @@ def _process_extract_message(message):
         params = VideoExtractDto.model_validate_json(message_obj.body)
         if not _check_subscription_enable(params.subscription_id):
             return
-        domain = extract_top_level_domain(params.url)
+        domain = url_helper.extract_top_level_domain(params.url)
         if domain in PROCESSORS:
             processor_type = 'scheduled' if params.only_extract else 'for_download'
             processor = PROCESSORS[domain][processor_type]
@@ -82,6 +85,7 @@ def process_extract_task(message, queue: str):
 
         video_meta = VideoFactory.create_video(params.url, video_info)
         video = _handle_video_extraction(params, video_meta, video_info)
+        task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
         if not params.only_extract:
             _handle_download_task(video)
     except Exception as e:
