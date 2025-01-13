@@ -27,16 +27,16 @@ def __check_video_exists(url: str) -> bool:
     return is_extracting
 
 
-def __check_subscription_enable(subscription_id: int):
+def __check_subscription_exist(subscription_id: int):
     subscription = subscription_service.get_subscription_by_id(subscription_id)
-    return subscription.is_enable == 1
+    return subscription.is_deleted == 1
 
 
 def start(params: VideoExtractDto):
     if params.only_extract:
         if __check_video_exists(params.url):
             return
-    if __check_subscription_enable(params.subscription_id) is False:
+    if __check_subscription_exist(params.subscription_id) is False:
         return
     task_cache.set_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
     content = params.model_dump()
