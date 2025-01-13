@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     MYSQL_PORT: int = 3306
     MYSQL_USER: str = 'root'
     MYSQL_PASSWORD: str = 'root'
-    MYSQL_DATABASE: str = 'media_subscribe'
+    MYSQL_DATABASE: str = 'squirrel'
     MEDIA_DOWNLOAD_PATH: str = str(Path(os.path.join(base_dir, '..', 'downloads')))
     COOKIE_TYPE: str = 'file'
     COOKIE_CLOUD_URL: str = ''

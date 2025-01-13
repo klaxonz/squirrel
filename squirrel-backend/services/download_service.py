@@ -49,7 +49,8 @@ def __check_video_exists(url: str) -> bool:
 
 def start(params: VideoExtractDto):
     if params.only_extract:
-        __check_video_exists(params.url)
+        if __check_video_exists(params.url):
+            return
     content = params.model_dump()
     message = message_service.create_message(content)
     extract_task.process_extract_message.send(message.to_dict())

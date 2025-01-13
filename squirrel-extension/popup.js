@@ -24,30 +24,30 @@ function isSupportedUrl(url) {
   return supportedDomains.some(domain => url.includes(domain));
 }
 
-// 获取频道信息
 function getChannelInfo(url) {
+  url = url.split('?')[0];
   if (url.includes('bilibili.com')) {
     const match = url.match(/space\.bilibili\.com\/(\d+)/);
-    return match ? { id: match[1], platform: 'bilibili' } : null;
+    return match ? { id: match[1], url: url, platform: 'bilibili' } : null;
   }
   
   if (url.includes('youtube.com')) {
     // 处理 @handle 格式的频道链接
     const handleMatch = url.match(/\/@([^\/\?]+)/);
     if (handleMatch) {
-      return { id: handleMatch[1], platform: 'youtube', isHandle: true };
+      return { id: handleMatch[1], url: url, platform: 'youtube', isHandle: true };
     }
     
     // 处理传统的 channel/ID 格式链接
     const channelMatch = url.match(/\/channel\/(UC[\w-]+)/);
     if (channelMatch) {
-      return { id: channelMatch[1], platform: 'youtube' };
+      return { id: channelMatch[1], url, url, platform: 'youtube' };
     }
     
     // 处理 c/ 格式的自定义链接
     const customMatch = url.match(/\/c\/([^\/\?]+)/);
     if (customMatch) {
-      return { id: customMatch[1], platform: 'youtube', isCustom: true };
+      return { id: customMatch[1], url: url, platform: 'youtube', isCustom: true };
     }
     
     return null;
@@ -120,7 +120,7 @@ async function initializeButtons() {
       // 检查订阅状态
       chrome.runtime.sendMessage({
         action: "checkSubscription",
-        data: { url: tab.url }
+        data: { url: channelInfo.url }
       }, (response) => {
         if (response.success) {
           const isSubscribed = response.data.isSubscribed;

@@ -25,7 +25,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: false, error: "Unknown action" });
     }
   });
-  return true;  // 保持消息通道开放
+  return true;
 });
 
 function handleDownload(backendHost, data, sendResponse) {
