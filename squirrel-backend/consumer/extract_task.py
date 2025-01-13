@@ -59,6 +59,8 @@ def _process_extract_message(message):
         params = VideoExtractDto.model_validate_json(message_obj.body)
         if not _check_subscription_enable(params.subscription_id):
             return
+        if not _check_subscription_exist(params.subscription_id):
+            return
         domain = url_helper.extract_top_level_domain(params.url)
         if domain in PROCESSORS:
             processor_type = 'scheduled' if params.only_extract else 'for_download'
@@ -141,3 +143,8 @@ def _handle_download_task(video):
 def _check_subscription_enable(subscription_id: int):
     subscription = subscription_service.get_subscription_by_id(subscription_id)
     return subscription.is_enable == 1
+
+
+def _check_subscription_exist(subscription_id: int):
+    subscription = subscription_service.get_subscription_by_id(subscription_id)
+    return subscription.is_deleted == 0
