@@ -12,10 +12,6 @@ from routes.video import router as video_router
 from routes.subscription import router as subscription_router
 from routes.task import router as task_router
 
-
-
-
-
 logger = logging.getLogger()
 app = FastAPI()
 app.add_middleware(
@@ -66,6 +62,7 @@ async def general_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"code": 500, "msg": "Internal Server Error"}
     )
+
 
 if not IS_DEV:
     @app.get("/{full_path:path}", name="spa")

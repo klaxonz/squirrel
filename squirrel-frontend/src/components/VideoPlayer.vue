@@ -70,7 +70,7 @@ const initPlayer = () => {
     console.warn('Cannot initialize player: url is missing');
     return;
   }
-  if ( props.video.url.includes('javdb.com') !== -1) {
+  if (props.video.domain === 'javdb.com') {
     player.value = new Player({
       id: `video-player`,
       url: props.video.stream_video_url,
@@ -98,6 +98,7 @@ const initPlayer = () => {
       plugins: [HlsPlugin]
     });
   } else {
+    console.warn('Cannot initialize player: url is missing');
     player.value = new Player({
       id: `video-player`,
       url: props.video.stream_video_url,

@@ -84,7 +84,7 @@ async def proxy_video(domain: str, url: str, request: Request):
     """
     if domain == "bilibili.com":
         max_retries = 3
-        chunk_size = 256  # 减小 chunk size
+        chunk_size = 256
 
         headers = {
             "Referer": "https://www.bilibili.com",

@@ -18,6 +18,7 @@ from models.links import VideoCreator, SubscriptionVideo
 from models.subscription import Subscription
 from models.video import Video
 from services import download_service, subscription_video_service
+from utils import url_helper
 from utils.cookie import filter_cookies_to_query_string
 from utils.url_helper import extract_top_level_domain
 
@@ -270,6 +271,7 @@ def get_video(video_id):
 
         video_data = {
             **video.to_dict(),
+            'domain': url_helper.extract_top_level_domain(video.url),
             'subscriptions': [subscription.to_dict() for subscription in subscriptions],
             'creators': [creator.to_dict() for creator in creators]
         }
