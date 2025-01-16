@@ -102,7 +102,7 @@ def get_video_url(video_id: int) -> dict:
 
 
 def get_jav_video_url(no: str):
-    url = f'https://missav.com/search/{no}'
+    url = f'https://missav.ws/search/{no}'
     scraper = cloudscraper.create_scraper()
     response = scraper.get(url)
     bs4 = BeautifulSoup(response.text, 'html.parser')

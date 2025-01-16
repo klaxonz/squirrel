@@ -141,8 +141,8 @@ async def proxy_video(domain: str, url: str, request: Request):
                 # 设置请求头
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                    'Referer': 'https://missav.com/',
-                    'Origin': 'https://missav.com'
+                    'Referer': 'https://missav.ws/',
+                    'Origin': 'https://missav.ws'
                 }
 
                 # 获取内容
@@ -184,7 +184,7 @@ async def proxy_video(domain: str, url: str, request: Request):
                 # 修改处理视频分片的部分
                 return StreamingResponse(
                     iter([content]),
-                    media_type=content_type or 'application/octet-stream',  # 确保始终有content-type
+                    media_type=content_type or 'application/octet-stream',
                     headers={
                         'Access-Control-Allow-Origin': '*',
                         'Cache-Control': 'public, max-age=31536000',
