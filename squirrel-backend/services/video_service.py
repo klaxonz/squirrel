@@ -146,8 +146,11 @@ def extract_parts_from_html_content(html_content):
 def list_videos(query: str, subscription_id: int, category: str, sort_by: str, page: int, page_size: int) -> \
         Tuple[
             List[dict], int, dict]:
-    base_query = select(Video, SubscriptionVideo).join(
-        SubscriptionVideo, Video.id == SubscriptionVideo.video_id
+    base_query = (
+        select(Video, SubscriptionVideo)
+        .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
+        .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
+        .where(Subscription.is_deleted == 0)
     )
     if category == 'preview':
         base_query = base_query.where(Video.publish_date > datetime.now())
@@ -165,12 +168,15 @@ def list_videos(query: str, subscription_id: int, category: str, sort_by: str, p
 
     offset = (page - 1) * page_size
 
-    with get_session() as session:
+    with (get_session() as session):
         base_query = base_query.offset(offset).limit(page_size)
         results = session.execute(base_query).all()
         # Count query modifications
-        total_count_query = select(func.count(Video.id)).join(
-            SubscriptionVideo, Video.id == SubscriptionVideo.video_id
+        total_count_query = (
+            select(func.count(Video.id))
+            .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
+            .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
+            .where(Subscription.is_deleted == 0)
         )
         preview_query = total_count_query.where(Video.publish_date > datetime.now())
         if subscription_id:
