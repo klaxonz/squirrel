@@ -15,7 +15,7 @@ REDIS_KEY_VIDEO_EXTRACT_CACHE = 'video:extract:cache'
 VIDEO_EXTRACT_FIELD_NAME = 'is_extract'
 VIDEO_DOWNLOAD_FIELD_NAME = 'is_download'
 
-VIDEO_EXTRACT_EXPIRE = 10 * 60 * 1000
+VIDEO_EXTRACT_EXPIRE = 10 * 60
 
 SUPPORTED_SITES = {
     'bilibili.com': 'bilibili',

@@ -142,9 +142,9 @@ def _handle_download_task(video):
 
 def _check_subscription_enable(subscription_id: int):
     subscription = subscription_service.get_subscription_by_id(subscription_id)
-    return subscription.is_enable == 1
+    return subscription.is_enable
 
 
 def _check_subscription_exist(subscription_id: int):
     subscription = subscription_service.get_subscription_by_id(subscription_id)
-    return subscription.is_deleted == 0
+    return subscription.is_deleted is False

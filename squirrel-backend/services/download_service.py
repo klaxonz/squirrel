@@ -29,7 +29,7 @@ def __check_video_exists(url: str) -> bool:
 
 def __check_subscription_exist(subscription_id: int):
     subscription = subscription_service.get_subscription_by_id(subscription_id)
-    return subscription.is_deleted == 1
+    return subscription.is_deleted is False
 
 
 def start(params: VideoExtractDto):
