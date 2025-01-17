@@ -77,10 +77,12 @@ def _process_extract_message(message):
 
 
 def process_extract_task(message, queue: str):
+    params = None
     try:
         logger.info(f"开始处理视频解析消息：{message}")
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
+        task_cache.set_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
         video_info = _get_video_info(params.url, queue)
         if not video_info:
             return
@@ -92,6 +94,9 @@ def process_extract_task(message, queue: str):
             _handle_download_task(video)
     except Exception as e:
         logger.error(f"处理消息时发生错误: message: {message}, {e}", exc_info=True)
+    finally:
+        if params and params.url:
+            task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
 
 
 def _get_video_info(url, queue_name: str):
