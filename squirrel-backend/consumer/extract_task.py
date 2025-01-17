@@ -54,6 +54,7 @@ def process_extract_scheduled_message(message):
 
 def _process_extract_message(message):
     url = None
+    params = None
     try:
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
@@ -70,10 +71,9 @@ def _process_extract_message(message):
             logger.error(f"Unsupported domain: {domain}")
 
     except Exception as e:
-        logger.error(
-            f"处理消息时发生错误: {f'url:{url},' if url else ''} error: {e}",
-            exc_info=True
-        )
+        logger.error(f"处理消息时发生错误: {f'url:{url},' if url else ''} error: {e}", exc_info=True)
+        if params and params.url:
+            task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
 
 
 def process_extract_task(message, queue: str):
@@ -82,7 +82,6 @@ def process_extract_task(message, queue: str):
         logger.info(f"开始处理视频解析消息：{message}")
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
-        task_cache.set_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
         video_info = _get_video_info(params.url, queue)
         if not video_info:
             return

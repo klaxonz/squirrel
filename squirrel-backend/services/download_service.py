@@ -44,3 +44,5 @@ def start(params: VideoExtractDto):
     content = params.model_dump()
     message = message_service.create_message(content)
     extract_task.process_extract_message.send(message.to_dict())
+    task_cache.set_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
+
