@@ -55,12 +55,12 @@ function getChannelInfo(url) {
   
   if (url.includes('pornhub.com')) {
     const match = url.match(/\/(users|model|channels|pornstar)\/([^\/\?]+)/i);
-    return match ? { id: match[2], platform: 'pornhub' } : null;
+    return match ? { id: match[2], url: url, platform: 'pornhub' } : null;
   }
   
   if (url.includes('javdb.com')) {
     const match = url.match(/\/actors\/([^\/\?]+)/);
-    return match ? { id: match[1], platform: 'javdb' } : null;
+    return match ? { id: match[1], url: url, platform: 'javdb' } : null;
   }
   
   return null;
@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.runtime.sendMessage({
       action: action,
       data: {
-        url: currentTab.url
+        url: channelInfo.url
       }
     }, (response) => {
       if (response.success) {
