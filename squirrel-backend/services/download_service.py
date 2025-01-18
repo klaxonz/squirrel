@@ -19,10 +19,7 @@ def __check_video_exists(url: str) -> bool:
 
 def __check_video_extracting(url: str):
     extract_timestamp = task_cache.get_extract_cache(url)
-    if not extract_timestamp:
-        return False
-    time_elapsed = datetime.datetime.now().timestamp() - float(extract_timestamp)
-    return time_elapsed < constants.VIDEO_EXTRACT_EXPIRE
+    return extract_timestamp is not None
 
 
 def __check_subscription_exist(subscription_id: int):
