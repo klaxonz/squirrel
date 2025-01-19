@@ -1,7 +1,11 @@
 export const formatDate = (dateString) => {
   if (!dateString) return '未知日期';
   const date = new Date(dateString);
+  
+  if (isNaN(date.getTime())) return '未知日期';
+  
   const now = new Date();
+  const hasTimeComponent = dateString.length > 10;
 
   // 获取当前日期和目标日期的年、月、日
   const todayYear = now.getFullYear();
@@ -12,10 +16,28 @@ export const formatDate = (dateString) => {
   const dateMonth = date.getMonth();
   const dateDay = date.getDate();
 
+  const diffTime = Math.abs(now - date);
+  const diffDays = diffTime / (1000 * 60 * 60 * 24);
+  const diffHours = diffTime / (1000 * 60 * 60);
+  const diffMinutes = diffTime / (1000 * 60);
+
   // 比较日期
   if (dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay) {
+    if (!hasTimeComponent) {
+      return '今天';
+    }
+    if (diffMinutes < 60) {
+      if (diffMinutes < 1) {
+        return '刚刚';
+      }
+      return `${Math.floor(diffMinutes)}分钟前`;
+    }
+    if (diffHours < 24) {
+      return `${Math.floor(diffHours)}小时前`;
+    }
     return '今天';
   }
+
   if (dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay - 1) {
     return '昨天';
   }
@@ -26,22 +48,17 @@ export const formatDate = (dateString) => {
     return `${dateDay - todayDay}天后`;
   }
 
-  const diffTime = Math.abs(now - date);
-  const diffDays = diffTime / (1000 * 60 * 60 * 24);
-  const diffHours = diffTime / (1000 * 60 * 60);
-  const diffMinutes = diffTime / (1000 * 60);
-
-  if (diffDays < 1) {
+  // Only process minute/hour level differences if we have time component
+  if (hasTimeComponent && diffDays < 1) {
     if (diffHours < 24) {
       if (diffMinutes < 60) {
         return `${Math.floor(diffMinutes)}分钟前`;
       } else {
         return `${Math.floor(diffHours)}小时前`;
       }
-    } else {
-      return '刚刚';
     }
   }
+
   if (diffDays <= 7) {
     if (date > now) {
       return `${Math.floor(diffDays)}天后`;

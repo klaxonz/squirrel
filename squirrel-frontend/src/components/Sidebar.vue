@@ -64,12 +64,29 @@
         </router-link>
       </div>
     </nav>
+
+    <!-- 底部退出按钮 -->
+    <div class="px-2 py-1 border-t border-[#ffffff1a]">
+      <button
+        @click="handleLogout"
+        class="flex items-center h-10 px-3 text-[#f1f1f1] rounded-lg transition-colors duration-150 w-full"
+        :class="[
+          { 'justify-center': isCollapsed },
+          'hover:bg-[#ffffff1a]'
+        ]"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" :class="[isCollapsed ? '' : 'mr-4']" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span v-if="!isCollapsed" class="text-[13px]">退出登录</span>
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, watch, inject } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
   HomeIcon,
   BookmarkIcon,
@@ -78,11 +95,14 @@ import {
   ArrowDownTrayIcon,
   Cog6ToothIcon as CogIcon
 } from '@heroicons/vue/24/outline';
+import { useUser } from '../composables/useUser';
 
 const route = useRoute();
+const router = useRouter();
 const isCollapsed = ref(false);
 const emit = defineEmits(['collapse']);
 const emitter = inject('emitter');
+const { logout } = useUser();
 
 const menuItems = [
   {
@@ -124,6 +144,11 @@ const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value;
   emit('collapse', isCollapsed.value);
   emitter.emit('sidebarStateChanged');
+};
+
+const handleLogout = () => {
+  logout();
+  router.push('/login');
 };
 
 // 监听路由变化，在移动端自动收起侧边栏

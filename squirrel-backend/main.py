@@ -9,6 +9,7 @@ from alembic.config import Config as AlembicConfig
 from dramatiq.worker import Worker
 
 from common import constants
+from common.global_config import IS_DEV
 from common.log import init_logging
 from consumer.base import redis_broker
 from routes.base import app
@@ -33,7 +34,7 @@ def create_workers():
         logger.info(f"Created worker for queue: {queue}")
     logger.info(f"Registered actors: {redis_broker.actors}")
     dramatiq.set_broker(redis_broker)
-    ModuleImporter.import_models(directory="consumer")
+    ModuleImporter.import_classes(directory="consumer")
 
     return workers
 
@@ -89,7 +90,10 @@ def start_scheduler():
 
 
 def start_fastapi_server():
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    if IS_DEV:
+        uvicorn.run("main:app", host="0.0.0.0", reload=True, port=8000)
+    else:
+        uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 def main():

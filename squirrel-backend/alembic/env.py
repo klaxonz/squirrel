@@ -21,7 +21,7 @@ config.set_main_option('sqlalchemy.url', settings.database_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-ModuleImporter.import_models(directory="models")
+ModuleImporter.import_classes(directory="models", base_class=Base, recursive=True)
 target_metadata = Base.metadata
 
 

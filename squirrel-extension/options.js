@@ -5,18 +5,27 @@ class OptionsManager {
   constructor() {
     this.backendHostInput = document.getElementById('backendHost');
     this.historyList = document.getElementById('historyList');
-    this.saveButton = document.getElementById('saveButton');
+    this.resetButton = document.getElementById('resetButton');
     this.clearHistoryButton = document.getElementById('clearHistoryButton');
+    this.loginButton = document.getElementById('loginButton');
+    this.logoutButton = document.getElementById('logoutButton');
+    this.emailInput = document.getElementById('email');
+    this.passwordInput = document.getElementById('password');
+    this.loginForm = document.getElementById('loginForm');
+    this.settingsContent = document.getElementById('settingsContent');
   }
 
   async initialize() {
     await this.loadSettings();
     this.setupEventListeners();
+    await this.checkLoginStatus();
   }
 
   setupEventListeners() {
-    this.saveButton.addEventListener('click', () => this.handleSave());
+    this.resetButton.addEventListener('click', () => this.handleReset());
     this.clearHistoryButton.addEventListener('click', () => this.handleClearHistory());
+    this.loginButton.addEventListener('click', () => this.handleLogin());
+    this.logoutButton.addEventListener('click', () => this.handleLogout());
   }
 
   async loadSettings() {
@@ -84,7 +93,7 @@ class OptionsManager {
 
   async useHistoryItem(url) {
     this.backendHostInput.value = url;
-    await this.handleSave();
+    await this.handleReset();
   }
 
   async removeHistoryItem(urlToRemove) {
@@ -101,28 +110,20 @@ class OptionsManager {
     UIHelper.showStatus('已删除历史记录');
   }
 
-  async handleSave() {
+  async handleReset() {
     const newBackendHost = this.backendHostInput.value.trim();
     if (!newBackendHost) return;
 
     try {
-      const data = await ChromeAPI.getStorageData([CONFIG.STORAGE_KEYS.BACKEND_HISTORY]);
-      let history = data[CONFIG.STORAGE_KEYS.BACKEND_HISTORY] || [];
-
-      if (!history.includes(newBackendHost)) {
-        history.unshift(newBackendHost);
-        history = history.slice(0, CONFIG.MAX_HISTORY_LENGTH);
-      }
-
+      await ChromeAPI.sendMessage('logout');
       await ChromeAPI.setStorageData({
-        [CONFIG.STORAGE_KEYS.BACKEND_HOST]: newBackendHost,
-        [CONFIG.STORAGE_KEYS.BACKEND_HISTORY]: history
+        [CONFIG.STORAGE_KEYS.BACKEND_HOST]: newBackendHost
       });
-
-      this.updateHistoryList(history, newBackendHost);
-      UIHelper.showStatus('设置已保存');
+      
+      await this.checkLoginStatus();
+      this.resetButton.style.display = 'none';
     } catch (error) {
-      UIHelper.showStatus('保存失败: ' + error.message, true);
+      UIHelper.showStatus('Reset failed: ' + error.message, true);
     }
   }
 
@@ -135,6 +136,59 @@ class OptionsManager {
       UIHelper.showStatus('历史记录已清除');
     } catch (error) {
       UIHelper.showStatus('清除失败: ' + error.message, true);
+    }
+  }
+
+  async checkLoginStatus() {
+    const data = await ChromeAPI.getStorageData(['token']);
+    const isLoggedIn = !!data.token;
+    
+    this.loginForm.style.display = isLoggedIn ? 'none' : 'block';
+    this.settingsContent.style.display = isLoggedIn ? 'block' : 'none';
+    this.resetButton.style.display = isLoggedIn ? 'block' : 'none';
+
+  }
+
+  async handleLogin() {
+    const email = this.emailInput.value.trim();
+    const password = this.passwordInput.value;
+
+    if (!email || !password) {
+      UIHelper.showStatus('请输入邮箱和密码', true);
+      return;
+    }
+
+    try {
+      const response = await ChromeAPI.sendMessage('login', { 
+        email, 
+        password 
+      });
+
+      if (response.success) {
+        UIHelper.showStatus('登录成功');
+        await this.checkLoginStatus();
+        this.emailInput.value = '';
+        this.passwordInput.value = '';
+        await this.loadSettings(); // Reload settings after login
+      } else {
+        throw new Error(response.error);
+      }
+    } catch (error) {
+      UIHelper.showStatus('登录失败: ' + error.message, true);
+    }
+  }
+
+  async handleLogout() {
+    try {
+      const response = await ChromeAPI.sendMessage('logout');
+      if (response.success) {
+        UIHelper.showStatus('已退出登录');
+        await this.checkLoginStatus();
+      } else {
+        throw new Error(response.error);
+      }
+    } catch (error) {
+      UIHelper.showStatus('退出失败: ' + error.message, true);
     }
   }
 }

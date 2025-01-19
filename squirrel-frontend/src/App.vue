@@ -1,5 +1,8 @@
 <template>
-  <div class="flex h-screen overflow-hidden">
+  <div v-if="isAuthPage" class="h-screen overflow-hidden">
+    <router-view />
+  </div>
+  <div v-else class="flex h-screen overflow-hidden">
     <!-- Sidebar for desktop -->
     <Sidebar v-if="!isMobile" :routes="sidebarRoutes" />
     
@@ -42,15 +45,22 @@ import Sidebar from './components/Sidebar.vue';
 import PodcastPlayer from './components/PodcastPlayer.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 import { useWindowSize } from '@vueuse/core'
+import { useRoute } from 'vue-router';
 import './styles/layout.css'
 import { usePodcasts } from './composables/usePodcasts';
+import { useUser } from './composables/useUser';
 
+const route = useRoute();
 const emitter = mitt();
 provide('emitter', emitter);
 
 const { width } = useWindowSize()
 const isMobile = computed(() => width.value < 768)
 
+// 判断是否是认证页面(登录/注册)
+const isAuthPage = computed(() => {
+  return ['/login', '/register'].includes(route.path);
+});
 
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
@@ -107,6 +117,18 @@ const sidebarRoutes = computed(() => {
 const mobileRoutes = computed(() => {
   return routes.value
 })
+
+const { getCurrentUser } = useUser();
+
+onMounted(async () => {
+  if (localStorage.getItem('token')) {
+    try {
+      await getCurrentUser();
+    } catch (error) {
+      console.error('Failed to get user info:', error);
+    }
+  }
+});
 
 </script>
 

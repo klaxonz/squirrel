@@ -12,17 +12,17 @@ class ModuleImporter:
     @staticmethod
     def import_classes(
             directory: Union[str, Path],
-            base_class: Type,
+            base_class: Type = None,
             recursive: bool = False,
             exclude_files: List[str] = None,
             exclude_classes: List[str] = None
     ) -> List[Type]:
         """
-        Import all classes that inherit from base_class in the specified directory
+        Import all classes in the specified directory, optionally filtering by base class
         
         Args:
             directory: Directory path to scan
-            base_class: Base class to filter by
+            base_class: Optional base class to filter by
             recursive: Whether to scan subdirectories
             exclude_files: List of file names to exclude
             exclude_classes: List of class names to exclude
@@ -35,7 +35,7 @@ class ModuleImporter:
             >>> routers = ModuleImporter.import_classes("routers", APIRouter)
         """
         classes = []
-        directory = Path(directory)
+        directory = Path(directory).resolve()
         exclude_files = exclude_files or ["__init__.py"]
         exclude_classes = exclude_classes or []
 
@@ -49,47 +49,47 @@ class ModuleImporter:
             if file.name in exclude_files:
                 continue
 
-            # Convert path to module path
-            # e.g. models/user.py -> models.user
-            module_path = f"{directory.name}.{file.stem}"
-
             try:
+                # Convert path to module path
+                # e.g., 'models/user/account.py' -> 'models.user.account'
+                relative_path = file.relative_to(directory)
+                module_parts = list(relative_path.parent.parts)
+                
+                if module_parts and module_parts[0] == '.':
+                    module_parts.pop(0)
+                    
+                if module_parts:
+                    module_path = f"{directory.name}.{'.'.join(module_parts)}.{file.stem}"
+                else:
+                    module_path = f"{directory.name}.{file.stem}"
+
                 # Import module
                 module = importlib.import_module(module_path)
                 
-                # Get all classes that inherit from base_class
+                # Get all classes
                 for attr_name in dir(module):
                     if attr_name in exclude_classes:
                         continue
                         
                     attr = getattr(module, attr_name)
-                    if (isinstance(attr, type) and 
-                        issubclass(attr, base_class) and 
-                        attr != base_class):
+                    if not isinstance(attr, type):
+                        continue
+                        
+                    # If base_class is specified, filter by it
+                    if base_class is not None:
+                        if issubclass(attr, base_class) and attr != base_class:
+                            classes.append(attr)
+                    else:
+                        # Import all classes if no base_class specified
                         classes.append(attr)
                         
             except ImportError as e:
-                logger.error(f"Failed to import {module_path}: {e}")
+                logger.error(f"Failed to import {file}: {e}")
+                continue
+            except ValueError as e:
+                logger.error(f"Failed to process {file}: {e}")
                 continue
             
         return classes
 
-    @classmethod
-    def import_models(cls, directory: str = "models", **kwargs) -> List[Type]:
-        """Helper method for importing SQLModel classes"""
-        try:
-            from models import Base
-            return cls.import_classes(directory, Base, **kwargs)
-        except ImportError:
-            logger.error("SQLModel not installed")
-            return []
 
-    @classmethod
-    def import_routers(cls, directory: str = "routers", **kwargs) -> List[Type]:
-        """Helper method for importing FastAPI routers"""
-        try:
-            from fastapi import APIRouter
-            return cls.import_classes(directory, APIRouter, **kwargs)
-        except ImportError:
-            logger.error("FastAPI not installed")
-            return []

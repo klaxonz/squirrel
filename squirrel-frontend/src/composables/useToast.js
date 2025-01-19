@@ -6,7 +6,7 @@ export default function useCustomToast() {
 
   const displayToast = (message, options = {}) => {
     toast(message, {
-      position: "bottom-center",
+      position: "top-center",
       timeout: 3000,
       closeOnClick: true,
       pauseOnFocusLoss: true,
