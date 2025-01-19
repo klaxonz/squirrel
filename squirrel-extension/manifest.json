@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Squirrel",
   "version": "3.0",
-  "description": "在B站、YouTube和PH添加视频下载和频道订阅按钮 (v3)",
+  "description": "视频网站频道订阅",
   "permissions": [
     "activeTab",
     "storage",
@@ -33,5 +33,8 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }
 }

@@ -5,7 +5,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  chrome.storage.sync.get('backendHost', (data) => {
+  chrome.storage.sync.get('backendHost', async (data) => {
     const backendHost = data.backendHost;
 
     switch (request.action) {
@@ -62,10 +62,14 @@ function handleUnsubscribe(backendHost, data, sendResponse) {
 }
 
 function handleCheckSubscription(backendHost, data, sendResponse) {
-  fetch(`${backendHost}/api/subscription/status?url=${data.url}`)
-    .then(response => response.json())
+  fetch(`${backendHost}/api/subscription/status?url=${encodeURIComponent(data.url)}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
     .then(data => {
-      console.log("API response for subscription status:", data);
       sendResponse({ 
         success: true, 
         data: {
