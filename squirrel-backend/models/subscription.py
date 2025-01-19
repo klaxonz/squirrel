@@ -21,10 +21,10 @@ class Subscription(Base, SerializerMixin):
     __tablename__ = "subscription"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    content_type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)
-    content_name: Mapped[str] = mapped_column(VARCHAR(128), nullable=False)
-    content_url: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
-    avatar_url: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
+    type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)
+    name: Mapped[str] = mapped_column(VARCHAR(128), nullable=False)
+    url: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
+    avatar: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     total_videos: Mapped[int] = mapped_column(Integer, default=0)
     is_enable: Mapped[bool] = mapped_column(Boolean, default=True)

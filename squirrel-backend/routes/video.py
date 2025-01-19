@@ -66,7 +66,7 @@ def play_video(request: Request, video_id: int):
     video = VideoFactory.create_video(video.url, video_info)
     subscription_video = subscription_video_service.get_subscription_video_by_video_id(video.id)
     subscription = subscription_service.get_subscription_by_id(subscription_video.subscription_id)
-    output_dir = download_config.get_download_full_path(subscription.content_name, video.season)
+    output_dir = download_config.get_download_full_path(subscription.name, video.season)
     filename = download_config.get_valid_filename(video.title)
     video_path = VideoStreamHandler.find_video_file(output_dir, filename)
     if not video_path:

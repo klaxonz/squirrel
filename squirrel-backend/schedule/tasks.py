@@ -178,7 +178,7 @@ class AutoUpdateChannelVideo(BaseTask):
             try:
                 with get_session() as session:
                     subscription = session.scalars(select(Subscription).where(Subscription.id == subscription_id)).one()
-                    pool = cls.get_pool(subscription.content_url)
+                    pool = cls.get_pool(subscription.url)
                     if pool:
                         pool.submit(cls.update_subscription_video, subscription)
 
@@ -190,7 +190,7 @@ class AutoUpdateChannelVideo(BaseTask):
         try:
             with get_session() as session:
                 subscription = session.merge(subscription)
-                subscribe_channel = SubscriptionFactory.create_subscription(subscription.content_url)
+                subscribe_channel = SubscriptionFactory.create_subscription(subscription.url)
                 video_list = subscribe_channel.get_subscribe_videos(extract_all=subscription.is_extract_all)
                 extract_video_list = video_list if subscription.is_extract_all else video_list[
                                                                                     :settings.CHANNEL_UPDATE_DEFAULT_SIZE]
@@ -232,7 +232,7 @@ class RepairChanelInfoForTotalVideos(BaseTask):
                         SubscriptionVideo.subscription_id == subscription_id)).one()
                     if subscription.total_videos is not None and subscription.total_videos >= videos_count and subscription.total_videos > 0:
                         continue
-                    subscribe_channel = SubscriptionFactory.create_subscription(subscription.content_url)
+                    subscribe_channel = SubscriptionFactory.create_subscription(subscription.url)
                     videos = subscribe_channel.get_subscribe_videos(extract_all=True)
                     subscription.total_videos = len(videos)
                     session.commit()

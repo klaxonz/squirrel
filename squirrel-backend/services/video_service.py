@@ -221,10 +221,10 @@ def list_videos(query: str, subscription_id: int, category: str, sort_by: str, p
                 'subscriptions': [
                     {
                         'id': subscription_info.id,
-                        'content_name': subscription_info.content_name,
-                        'content_url': subscription_info.content_url,
-                        'content_type': subscription_info.content_type,
-                        "avatar": subscription_info.avatar_url
+                        'name': subscription_info.name,
+                        'url': subscription_info.url,
+                        'type': subscription_info.type,
+                        "avatar": subscription_info.avatar
                     }
                 ] if subscription_info else [],
                 'actors': [creator.to_dict() for creator in creators_dict.get(video.id, [])]

@@ -73,13 +73,13 @@
                 @click.stop="goToSubscription(subscription.id)"
               >
                 <img 
-                  :src="subscription.avatar_url"
+                  :src="subscription.avatar"
                   alt="Actor Avatar" 
                   class="w-6 h-6 rounded-full mr-2 object-cover"
                   referrerpolicy="no-referrer"
                 >
                 <span class="text-gray-300 group-hover/actor:text-white transition-colors duration-150">
-                  {{ subscription.content_name }}
+                  {{ subscription.name }}
                 </span>
               </div>
             </div>
@@ -250,7 +250,7 @@ const displayAvatars = computed(() => {
   // 优先使用 subscriptions
   let avatars = props.video.subscriptions?.map(sub => ({
     id: sub.id,
-    name: sub.content_name,
+    name: sub.name,
     avatar: sub.avatar
   })) || [];
   

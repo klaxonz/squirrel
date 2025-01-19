@@ -25,8 +25,8 @@ def process_subscribe_message(message):
 
         with get_session() as session:
             subscription = session.scalars(select(Subscription).where(
-                Subscription.content_url == channel_info.url,
-                Subscription.content_name == channel_info.name
+                Subscription.url == channel_info.url,
+                Subscription.name == channel_info.name
             )).first()
             if subscription and not subscription.is_deleted:
                 logger.info(f"Already subscribed to this channel: {subscription.name}")
@@ -39,17 +39,17 @@ def process_subscribe_message(message):
                 subscription.total_videos = len(videos)
                 session.add(subscription)
             session.commit()
-            logger.info(f"Successfully subscribed: {subscription.content_name}")
+            logger.info(f"Successfully subscribed: {subscription.name}")
     except Exception as e:
         logger.error(f"Error occurred while adding subscription: {e}", exc_info=True)
 
 
 def _create_subscription(channel_info):
     subscription = Subscription(
-        content_type=ContentType.CHANNEL,
-        content_name=channel_info.name,
-        content_url=channel_info.url,
-        avatar_url=channel_info.avatar,
+        type=ContentType.CHANNEL,
+        name=channel_info.name,
+        url=channel_info.url,
+        avatar=channel_info.avatar,
         description=None,
         extra_data={}
     )

@@ -24,8 +24,8 @@
             <div class="flex justify-center items-center p-3 bg-[#181818]">
               <div class="relative w-14 h-14">
                 <img 
-                  :alt="subscription.content_name"
-                  :src="subscription.avatar_url"
+                  :alt="subscription.name"
+                  :src="subscription.avatar"
                   class="w-full h-full rounded-full object-cover ring-1 ring-[#303030] transition-transform duration-300 group-hover:scale-105"
                   referrerpolicy="no-referrer"
                   @error="handleImageError($event)"
@@ -35,7 +35,7 @@
             </div>
 
             <div class="p-2 text-center">
-              <h3 class="text-xs font-semibold truncate text-white">{{ subscription.content_name }}</h3>
+              <h3 class="text-xs font-semibold truncate text-white">{{ subscription.name }}</h3>
               <p class="text-[10px] text-[#aaa] mt-0.5">
                 总视频: {{ subscription.total_videos }} | 已解析: {{ subscription.total_extract }}
               </p>
@@ -78,7 +78,7 @@
     <div v-if="showSettings" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
          @click.self="closeSettings">
       <div class="bg-[#212121] rounded-lg p-6 w-full max-w-md">
-        <h2 class="text-xl font-bold mb-4 text-white">{{ selectedSubscription.content_name }} 设置</h2>
+        <h2 class="text-xl font-bold mb-4 text-white">{{ selectedSubscription.name }} 设置</h2>
         <div class="space-y-6">
           <div class="flex items-center justify-between">
             <span class="text-sm text-[#fff]">开启监控</span>

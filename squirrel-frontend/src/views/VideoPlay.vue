@@ -33,8 +33,8 @@
                   <img 
                     v-for="(sub, index) in video?.subscriptions"
                     :key="sub.id"
-                    :src="sub.avatar_url" 
-                    :alt="sub.content_name"
+                    :src="sub.avatar"
+                    :alt="sub.name"
                     class="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-full object-cover ring-2 ring-[#0f0f0f]"
                     :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
                     referrerpolicy="no-referrer"
@@ -48,7 +48,7 @@
                     :to="`/subscription/${sub.id}/all`"
                     class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
                   >
-                    {{ sub.content_name }}{{ index < video?.subscriptions.length - 1 ? ',' : '' }}
+                    {{ sub.name }}{{ index < video?.subscriptions.length - 1 ? ',' : '' }}
                     <span v-if="index < video?.subscriptions.length - 1" class="mx-1 text-[#aaaaaa]"></span>
                   </router-link>
                 </div>

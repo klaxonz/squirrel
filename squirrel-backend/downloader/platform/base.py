@@ -54,7 +54,7 @@ class Downloader:
         video_meta = VideoFactory.create_video(video.url, video_info)
 
         hook = create_progress_hook(task.id)
-        output_dir = download_config.get_download_full_path(subscription.content_name, video_meta.season)
+        output_dir = download_config.get_download_full_path(subscription.name, video_meta.season)
         filename = download_config.get_valid_filename(video.title)
         ydl_opts = {
             'writethumbnail': f'{output_dir}/{filename}.jpg',
@@ -71,8 +71,8 @@ class Downloader:
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 ydl.download([video.url])
-                self.download_avatar(subscription.content_name, subscription.avatar_url)
-                NfoGenerator.generate_nfo(subscription.content_name, video_meta.title, video_meta.description,
+                self.download_avatar(subscription.name, subscription.avatar)
+                NfoGenerator.generate_nfo(subscription.name, video_meta.title, video_meta.description,
                                           video_meta.thumbnail, video_meta.season)
 
                 filepath = VideoStreamHandler.find_video_file(output_dir, filename)

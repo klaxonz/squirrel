@@ -42,7 +42,7 @@ def unsubscribe_content(req: UnsubscribeRequest):
                 session.commit()
     elif req.url:
         with get_session() as session:
-            subscription = session.scalars(select(Subscription).where(Subscription.content_url == req.url)).first()
+            subscription = session.scalars(select(Subscription).where(Subscription.url == req.url)).first()
             if subscription:
                 subscription.is_deleted = True
                 session.commit()
@@ -54,7 +54,7 @@ def subscribe_content(url: str = Query(None)):
     is_subscribed = False
     with get_session() as session:
         if url:
-            subscription = session.scalars(select(Subscription).where(Subscription.content_url == url)).first()
+            subscription = session.scalars(select(Subscription).where(Subscription.url == url)).first()
             if subscription:
                 is_subscribed = True
     return response.success({
@@ -65,11 +65,11 @@ def subscribe_content(url: str = Query(None)):
 @router.get("/api/subscription/list")
 def list_subscriptions(
         query: str = Query(None, description="搜索关键字"),
-        content_type: str = Query(None, description="内容类型"),
+        type: str = Query(None, description="内容类型"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, description="每页数量")
 ):
-    subscriptions, total = subscription_service.list_subscriptions(query, content_type, page, page_size)
+    subscriptions, total = subscription_service.list_subscriptions(query, type, page, page_size)
     return response.success({
         "total": total,
         "page": page,

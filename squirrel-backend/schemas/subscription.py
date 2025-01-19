@@ -14,9 +14,9 @@ class UnsubscribeRequest(BaseModel):
 
 class UpdateSubscriptionRequest(BaseModel):
     subscription_id: int
-    content_name: Optional[str] = None
+    name: Optional[str] = None
     description: Optional[str] = None
-    avatar_url: Optional[str] = None
+    avatar: Optional[str] = None
     status: Optional[str] = None
 
 

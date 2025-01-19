@@ -15,7 +15,7 @@ def get_subscription_by_id(subscription_id: int):
 
 def list_subscriptions(
         query: Optional[str],
-        content_type: Optional[str],
+        type: Optional[str],
         page: int,
         page_size: int
 ) -> Tuple[List[Dict[str, Any]], int]:
@@ -46,12 +46,12 @@ def list_subscriptions(
         if query:
             filters.append(
                 or_(
-                    Subscription.content_name.contains(query),
+                    Subscription.name.contains(query),
                     Subscription.description.contains(query)
                 )
             )
-        if content_type:
-            filters.append(Subscription.content_type == content_type)
+        if type:
+            filters.append(Subscription.type == type)
 
         if filters:
             statement = statement.where(and_(*filters))
