@@ -24,7 +24,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
-        if any(path.startswith(public_path) for public_path in self.public_paths):
+        if not path.startswith('/api') or any(path.startswith(public_path) for public_path in self.public_paths):
             return await call_next(request)
 
         auth = request.headers.get("Authorization")
