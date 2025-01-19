@@ -1,46 +1,28 @@
-import importlib
 import logging
 import os
-import pkgutil
 import signal
 
 import dramatiq
 import uvicorn
+from alembic import command
 from alembic.config import Config as AlembicConfig
 from dramatiq.worker import Worker
 
-from alembic import command
 from common import constants
 from common.log import init_logging
 from consumer.base import redis_broker
 from routes.base import app
 from schedule.schedule import Scheduler
 from schedule.tasks import TaskRegistry
+from utils.auto_import import ModuleImporter
 
 logger = logging.getLogger()
 
 
-def auto_discover_actors(package_name='consumer'):
-    package = importlib.import_module(package_name)
-
-    logger.info(f"Discovering actors in package: {package_name}")
-
-    for _, name, _ in pkgutil.iter_modules([os.path.dirname(package.__file__)]):
-        if name != 'base':
-            module_name = f'{package_name}.{name}'
-            logger.info(f"Importing module: {module_name}")
-            importlib.import_module(module_name)
-
-
 def create_workers():
-    for queue in constants.get_all_queues():
-        redis_broker.declare_queue(queue)
-
-    dramatiq.set_broker(redis_broker)
-    auto_discover_actors()
-
     workers = []
     for queue in constants.get_all_queues():
+        redis_broker.declare_queue(queue)
         worker = Worker(
             redis_broker,
             queues=[queue],
@@ -49,13 +31,14 @@ def create_workers():
         )
         workers.append(worker)
         logger.info(f"Created worker for queue: {queue}")
-
     logger.info(f"Registered actors: {redis_broker.actors}")
+    dramatiq.set_broker(redis_broker)
+    ModuleImporter.import_models(directory="consumer")
+
     return workers
 
 
 def run_workers():
-    workers = create_workers()
 
     def signal_handler(signum, frame):
         logger.info("Stopping workers...")
@@ -66,6 +49,7 @@ def run_workers():
     signal.signal(signal.SIGTERM, signal_handler)
 
     logger.info("Starting workers...")
+    workers = create_workers()
     for worker in workers:
         worker.start()
 
