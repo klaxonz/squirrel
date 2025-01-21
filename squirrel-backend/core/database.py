@@ -23,8 +23,7 @@ engine = create_engine(
     settings.database_url,
     pool_size=settings.POOL_SIZE,
     max_overflow=settings.POOL_MAX_SIZE,
-    pool_recycle=settings.POOL_RECYCLE,
-    connect_args={"init_command": "SET time_zone='+08:00'"}
+    pool_recycle=settings.POOL_RECYCLE
 )
 
 
