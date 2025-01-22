@@ -8,6 +8,28 @@ import logging
 logger = logging.getLogger()
 
 
+class AuthenticationError(Exception):
+    """Base authentication exception"""
+
+    def __init__(self, detail: str):
+        super().__init__()
+        self.detail = detail
+
+
+class TokenMissingError(AuthenticationError):
+    """Raised when authentication token is missing"""
+
+    def __init__(self):
+        super().__init__(detail="请先登录")
+
+
+class TokenExpiredError(AuthenticationError):
+    """Raised when authentication token has expired"""
+
+    def __init__(self):
+        super().__init__(detail="登录已过期，请重新登录")
+
+
 class AuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, public_paths: List[str] = None):
         super().__init__(app)
@@ -29,19 +51,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         auth = request.headers.get("Authorization")
         if not auth or not auth.startswith("Bearer "):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="请先登录",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise TokenMissingError()
 
         token = auth.split(" ")[1]
         try:
             decode_token(token)
             return await call_next(request)
         except Exception:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="登录已过期，请重新登录",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise TokenExpiredError()

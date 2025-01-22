@@ -11,7 +11,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse
 from starlette.staticfiles import StaticFiles
 from common.global_config import IS_DEV
-from routes.middleware.auth import AuthMiddleware
+from routes.middleware.auth import AuthMiddleware, AuthenticationError, TokenMissingError, TokenExpiredError
 from routes.subscription import router as subscription_router
 from routes.task import router as task_router
 from routes.user import router as user_router
@@ -20,6 +20,13 @@ from routes.video import router as video_router
 logger = logging.getLogger()
 
 app = FastAPI(exception_handlers=None)
+
+
+async def authentication_error_handler(request: Request, exc: AuthenticationError):
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={"code": -1, "msg": exc.detail}
+    )
 
 
 async def http_exception_handler(request: Request, exc: Union[StarletteHTTPException, FastAPIHTTPException]):
@@ -51,7 +58,10 @@ app.add_middleware(
     handlers={
         FastAPIHTTPException: http_exception_handler,
         StarletteHTTPException: http_exception_handler,
-        Exception: default_exception_handler
+        Exception: default_exception_handler,
+        AuthenticationError: authentication_error_handler,
+        TokenMissingError: authentication_error_handler,
+        TokenExpiredError: authentication_error_handler,
     }
 )
 
@@ -79,5 +89,3 @@ if not IS_DEV:
             return FileResponse(static_file)
 
         return FileResponse(Path(file_static_dir) / "index.html")
-
-
