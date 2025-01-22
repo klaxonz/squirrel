@@ -23,6 +23,7 @@ app = FastAPI(exception_handlers=None)
 
 
 async def authentication_error_handler(request: Request, exc: AuthenticationError):
+    logger.error(f"AuthenticationError: {exc.detail}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
         content={"code": -1, "msg": exc.detail}
@@ -30,6 +31,7 @@ async def authentication_error_handler(request: Request, exc: AuthenticationErro
 
 
 async def http_exception_handler(request: Request, exc: Union[StarletteHTTPException, FastAPIHTTPException]):
+    logger.error(f"HTTPException: {exc.detail}", exc_info=True)
     return JSONResponse(
         status_code=exc.status_code,
         content={"code": -1, "msg": exc.detail}
@@ -37,6 +39,7 @@ async def http_exception_handler(request: Request, exc: Union[StarletteHTTPExcep
 
 
 async def default_exception_handler(request: Request, exc: Exception):
+    logger.error(f"DefaultException: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"code": -1, "msg": "服务器内部错误"}
