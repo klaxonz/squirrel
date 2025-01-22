@@ -277,6 +277,8 @@ def get_video(video_id):
 
         video_data = {
             **video.to_dict(),
+            'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
+            'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'domain': url_helper.extract_top_level_domain(video.url),
             'subscriptions': [subscription.to_dict() for subscription in subscriptions],
             'creators': [creator.to_dict() for creator in creators]

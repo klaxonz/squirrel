@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
-from typing import Any, Set, Dict, Optional, Type, TypeVar
+from typing import Any, Set, Dict, Type, TypeVar
 from sqlalchemy.orm import class_mapper
 
 T = TypeVar('T', bound='SerializerMixin')
@@ -65,11 +65,9 @@ class SerializerMixin:
         return data
 
     def _serialize_value(self, value: Any) -> Any:
-        """Serialize a single value"""
-        if value is None:
-            return None
-        elif isinstance(value, datetime):
-            return value.isoformat()
+        """Serialize a value based on its type"""
+        if isinstance(value, (datetime, date)):
+            return value.strftime('%Y-%m-%d %H:%M:%S') if value else None
         elif isinstance(value, Decimal):
             return str(value)
         elif isinstance(value, bytes):
