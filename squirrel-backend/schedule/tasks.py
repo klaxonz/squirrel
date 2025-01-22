@@ -213,7 +213,7 @@ class AutoUpdateChannelVideo(BaseTask):
             cls._thread_pools = None
 
 
-@TaskRegistry.register(interval=5, unit='minutes')
+@TaskRegistry.register(interval=60, unit='minutes')
 class RepairChanelInfoForTotalVideos(BaseTask):
     @classmethod
     def run(cls):
