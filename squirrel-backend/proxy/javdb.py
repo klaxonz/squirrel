@@ -3,6 +3,7 @@ import re
 from typing import Dict
 from urllib.parse import urljoin
 import httpx
+from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 from proxy.video_proxy import VideoProxy
 
