@@ -1,14 +1,16 @@
 import json
 import logging
 import time
-from typing import Optional, Union, Any
+from datetime import datetime
+from typing import Optional, Union, Any, Dict
 from urllib.parse import urlparse, parse_qs
+
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-from json.decoder import JSONDecodeError
 from requests.exceptions import RequestException
 from urllib3.exceptions import HTTPError
+from urllib3.util.retry import Retry
+
 from core.database import get_session
 from models.request_log import ExternalRequestLog
 from utils.rate_limiter import rate_limiter
@@ -46,16 +48,11 @@ def log_request(
     """Log external request"""
     try:
         domain = urlparse(url).netloc.replace('www.', '')
-        response_text = None
         status_code = None
         size = 0
 
         if response:
             try:
-                if response.headers.get('content-type', '').startswith('application/json'):
-                    response_text = safe_json_dumps(response.json())
-                else:
-                    response_text = truncate_text(response.text)
                 status_code = response.status_code
                 size = len(response.content)
             except Exception as e:
@@ -65,13 +62,12 @@ def log_request(
             url=truncate_text(url, 1024),
             domain=truncate_text(domain, 255),
             method=truncate_text(method, 10),
-            params=safe_json_dumps(params),
-            body=safe_json_dumps(body),
-            response=response_text,
+            params=safe_json_dumps(params, max_length=60000),
+            body=safe_json_dumps(body, max_length=60000),
             size=size,
             status_code=status_code or 0,
             duration=duration,
-            error=truncate_text(error, 65535) if error else None
+            error=truncate_text(error, 60000) if error else None
         )
 
         with get_session() as db_session:
@@ -82,55 +78,100 @@ def log_request(
 
 
 class RateLimitAdapter(HTTPAdapter):
-    """HTTP adapter that implements rate limiting"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._cache: Dict[str, dict] = {}
+        self._cache_ttl = 3600
+        self._max_cache_size = 1000
 
     def send(self, request, **kwargs):
         """Send request with rate limiting"""
+        force_refresh = kwargs.pop('force_refresh', False)
+        cache_key = request.url
+        cached_data = self._cache.get(cache_key)
+        now = datetime.now()
+        
+        # 检查缓存
+        if (not force_refresh and cached_data and 
+            (now - cached_data['timestamp']).total_seconds() < self._cache_ttl):
+            logger.debug(f"Cache hit for {request.url}")
+            return cached_data['response']
+        
+        # 如果没有缓存或需要刷新，发送实际请求
         start_time = time.time()
         error = None
         response = None
         
         try:
+            # 发送请求
             domain = urlparse(request.url).netloc.replace('www.', '')
             rate_limiter.wait(domain)
             response = super().send(request, **kwargs)
+            
+            if response.status_code == 200:
+                self._update_cache(cache_key, response)
+            
             return response
+            
         except (RequestException, HTTPError) as e:
             error = str(e)
+            if cache_key in self._cache:
+                logger.warning(f"Request failed, using cached response for {request.url}")
+                return self._cache[cache_key]['response']
             raise
         finally:
-            try:
-                duration = (time.time() - start_time) * 1000
-                
-                params = getattr(request, 'params', None)
-                if params is None and hasattr(request, 'prepare'):
-                    parsed = urlparse(request.url)
-                    params = parse_qs(parsed.query)
-                
-                body = None
-                if hasattr(request, 'body') and request.body:
-                    try:
-                        if isinstance(request.body, bytes):
-                            body = request.body.decode('utf-8')
-                        elif isinstance(request.body, str):
-                            body = request.body
-                        else:
-                            body = str(request.body)
-                    except UnicodeDecodeError as e:
-                        logger.warning(f"Failed to decode request body: {str(e)}")
+            # 只有在实际发送请求时才记录日志x
+            if response or error:
+                try:
+                    duration = (time.time() - start_time) * 1000
+                    self._log_request(request, response, duration, error)
+                except Exception as e:
+                    logger.error(f"Failed to log request: {str(e)}")
+
+    def _update_cache(self, url: str, response: requests.Response):
+        """Update the cache with a new response"""
+        if len(self._cache) >= self._max_cache_size:
+            oldest_url = min(self._cache.items(), key=lambda x: x[1]['timestamp'])[0]
+            del self._cache[oldest_url]
+
+        self._cache[url] = {
+            'response': response,
+            'timestamp': datetime.now()
+        }
+
+
+    def _log_request(self, request, response, duration, error):
+        """Log actual HTTP requests only"""
+        try:
+            params = getattr(request, 'params', None)
+            if params is None and hasattr(request, 'prepare'):
+                parsed = urlparse(request.url)
+                params = parse_qs(parsed.query)
+            
+            body = None
+            if hasattr(request, 'body') and request.body:
+                try:
+                    if isinstance(request.body, bytes):
+                        body = request.body.decode('utf-8')
+                    elif isinstance(request.body, str):
+                        body = request.body
+                    else:
                         body = str(request.body)
-                
-                log_request(
-                    url=request.url,
-                    method=request.method,
-                    params=params,
-                    body=body,
-                    response=response,
-                    duration=duration,
-                    error=error
-                )
-            except (IOError, JSONDecodeError) as e:
-                logger.error(f"Failed to log request in adapter: {str(e)}")
+                except UnicodeDecodeError as e:
+                    logger.warning(f"Failed to decode request body: {str(e)}")
+                    body = str(request.body)
+            
+            log_request(
+                url=request.url,
+                method=request.method,
+                params=params,
+                body=body,
+                response=response,
+                duration=duration,
+                error=error
+            )
+        except Exception as e:
+            logger.error(f"Failed to log request in adapter: {str(e)}")
 
 
 class Session(requests.Session):

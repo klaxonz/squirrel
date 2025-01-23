@@ -14,7 +14,6 @@ class ExternalRequestLog(Base, SerializerMixin):
     method = Column(String(10), nullable=False)
     params = Column(Text, nullable=True)
     body = Column(Text, nullable=True)
-    response = Column(Text, nullable=True)
     size = Column(Integer, nullable=False)
     status_code = Column(Integer, nullable=False)
     duration = Column(Float, nullable=False)

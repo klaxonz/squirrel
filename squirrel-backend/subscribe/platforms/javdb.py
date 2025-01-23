@@ -47,30 +47,32 @@ class JavSubscription(BaseSubscription):
 
         parsed_url = urlparse(self.url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-
         video_list = []
+        
         bs4 = BeautifulSoup(response.text, 'html.parser')
+        self._extract_video_urls(bs4, base_url, video_list)
+        
         page_next_list = bs4.select('a.pagination-link[rel="next"]')
         page = int(bs4.select('a.pagination-link[rel="next"]')[0].text) if len(page_next_list) > 0 else 1
         current_page = 1
 
-        while True:
+        while current_page < page and extract_all:
+            current_page += 1
             response = session.get(self.url + f'?page={current_page}&sort_type=0&t=s', headers=headers, timeout=15)
             response.raise_for_status()
             bs4 = BeautifulSoup(response.text, 'html.parser')
-            video_els = []
-            video_els.extend(bs4.select('.movie-list .item a.box'))
-            for el in video_els:
-                video_list.append(f'{base_url}{el["href"]}')
-
+            
+            self._extract_video_urls(bs4, base_url, video_list)
+            
             page_next_list = bs4.select('a.pagination-link[rel="next"]')
             new_page = int(bs4.select('a.pagination-link[rel="next"]')[0].text) if len(page_next_list) > 0 else 1
-
             if new_page > page:
                 page = new_page
-            if current_page == page:
-                break
-            if not extract_all:
-                break
-            current_page += 1
+
         return video_list
+
+    def _extract_video_urls(self, bs4: BeautifulSoup, base_url: str, video_list: list):
+        """Extract video URLs from BeautifulSoup object"""
+        video_els = bs4.select('.movie-list .item a.box')
+        for el in video_els:
+            video_list.append(f'{base_url}{el["href"]}')
