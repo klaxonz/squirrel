@@ -54,7 +54,6 @@ def get_video_url(video_id: int) -> dict:
         video_domain = extract_top_level_domain(video.url)
 
         if video_domain == 'bilibili.com':
-            # Bilibili video URL fetching logic
             cookies = filter_cookies_to_query_string("https://www.bilibili.com")
             headers = {
                 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -95,10 +94,11 @@ def get_video_url(video_id: int) -> dict:
         elif video_domain == 'javdb.com':
             no = video.title.split(' ')[0]
             url = get_jav_video_url(no)
-            return {
-                'video_url': "/api/video/proxy?domain=javdb.com&url=" + quote(url),
-                'audio_url': None,
-            }
+            if url:
+                return {
+                    'video_url': "/api/video/proxy?domain=javdb.com&url=" + quote(url),
+                    'audio_url': None,
+                }
         return {}
 
 
@@ -111,7 +111,8 @@ def get_jav_video_url(no: str):
     if len(items) > 0:
         target = items[0]
         target_url = target.select_one('a')['href']
-
+        if not target_url.startswith('https://'):
+            return None
         response = scraper.get(target_url)
         r = extract_parts_from_html_content(response.text)
         url_path = r.split("m3u8|")[1].split("|playlist|source")[0]

@@ -57,6 +57,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         token = auth.split(" ")[1]
         try:
             decode_token(token)
-            return await call_next(request)
         except Exception:
+            logger.error("Invalid token", exc_info=True)
             raise TokenExpiredError()
+        return await call_next(request)
+

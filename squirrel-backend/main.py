@@ -97,23 +97,14 @@ def start_fastapi_server():
 
 
 def main():
-    # 执行数据库迁移
     upgrade_database()
-
     init_logging()
-
-    # 启动 workers
     workers = start_workers()
-
-    # 启动调度器
     start_scheduler()
-
-    # 启动 FastAPI 服务器
     logger.info('Starting server...')
     try:
         start_fastapi_server()
     finally:
-        # 确保在程序退出时停止 workers
         logger.info("Stopping workers...")
         for worker in workers:
             worker.stop()
