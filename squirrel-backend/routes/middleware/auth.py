@@ -1,9 +1,10 @@
-from typing import List
-from fastapi import Request, status
-from fastapi.exceptions import HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
-from utils.jwt_helper import decode_token
 import logging
+from typing import List
+
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from utils.jwt_helper import decode_token
 
 logger = logging.getLogger()
 

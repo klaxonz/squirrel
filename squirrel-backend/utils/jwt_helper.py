@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -6,6 +7,8 @@ from fastapi.security import OAuth2PasswordBearer
 
 from models.user import User
 from services import user_service
+
+logger = logging.getLogger()
 
 SECRET_KEY = "your-secret-key"
 ALGORITHM = "HS256"
@@ -59,6 +62,7 @@ def decode_token(token: str) -> dict:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError:
+        logger.error("Invalid token", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",

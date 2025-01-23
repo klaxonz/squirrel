@@ -1,7 +1,6 @@
 import http.cookiejar as cookielib
 
 from core import config
-from core.config import settings
 from utils.url_helper import extract_top_level_domain
 
 

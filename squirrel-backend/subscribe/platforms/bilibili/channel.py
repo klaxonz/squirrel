@@ -81,7 +81,7 @@ class BilibiliSubscription(BaseSubscription):
                     continue
 
                 req_url = f'https://api.bilibili.com/x/web-interface/wbi/view?bvid={v["bvid"]}'
-                resp = requests.get(req_url, headers=headers)
+                resp = session.get(req_url, headers=headers)
                 if resp.status_code != 200:
                     raise Exception('Request failed')
 
