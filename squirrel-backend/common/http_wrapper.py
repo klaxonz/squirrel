@@ -82,7 +82,7 @@ class RateLimitAdapter(HTTPAdapter):
         super().__init__(*args, **kwargs)
         self._cache: Dict[str, dict] = {}
         self._cache_ttl = 3600
-        self._max_cache_size = 1000
+        self._max_cache_size = 10000
 
     def send(self, request, **kwargs):
         """Send request with rate limiting"""
