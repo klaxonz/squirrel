@@ -90,29 +90,26 @@ class RateLimitAdapter(HTTPAdapter):
         cache_key = request.url
         cached_data = self._cache.get(cache_key)
         now = datetime.now()
-        
-        # 检查缓存
-        if (not force_refresh and cached_data and 
-            (now - cached_data['timestamp']).total_seconds() < self._cache_ttl):
+
+        if (not force_refresh and cached_data and
+                (now - cached_data['timestamp']).total_seconds() < self._cache_ttl):
             logger.debug(f"Cache hit for {request.url}")
             return cached_data['response']
-        
-        # 如果没有缓存或需要刷新，发送实际请求
+
         start_time = time.time()
         error = None
         response = None
-        
+
         try:
-            # 发送请求
             domain = urlparse(request.url).netloc.replace('www.', '')
             rate_limiter.wait(domain)
             response = super().send(request, **kwargs)
-            
+
             if response.status_code == 200:
                 self._update_cache(cache_key, response)
-            
+
             return response
-            
+
         except (RequestException, HTTPError) as e:
             error = str(e)
             if cache_key in self._cache:
@@ -120,7 +117,6 @@ class RateLimitAdapter(HTTPAdapter):
                 return self._cache[cache_key]['response']
             raise
         finally:
-            # 只有在实际发送请求时才记录日志x
             if response or error:
                 try:
                     duration = (time.time() - start_time) * 1000
@@ -139,7 +135,6 @@ class RateLimitAdapter(HTTPAdapter):
             'timestamp': datetime.now()
         }
 
-
     def _log_request(self, request, response, duration, error):
         """Log actual HTTP requests only"""
         try:
@@ -147,7 +142,7 @@ class RateLimitAdapter(HTTPAdapter):
             if params is None and hasattr(request, 'prepare'):
                 parsed = urlparse(request.url)
                 params = parse_qs(parsed.query)
-            
+
             body = None
             if hasattr(request, 'body') and request.body:
                 try:
@@ -160,7 +155,7 @@ class RateLimitAdapter(HTTPAdapter):
                 except UnicodeDecodeError as e:
                     logger.warning(f"Failed to decode request body: {str(e)}")
                     body = str(request.body)
-            
+
             log_request(
                 url=request.url,
                 method=request.method,
