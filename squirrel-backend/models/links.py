@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Integer
+from sqlalchemy import Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
@@ -26,3 +26,21 @@ class VideoCreator(Base):
         default=lambda: datetime.now()
     )
 
+
+class UserSubscription(Base, SerializerMixin):
+    __tablename__ = "user_subscription"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    subscription_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(),
+        onupdate=lambda: datetime.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'subscription_id', name='uix_user_subscription'),
+    )

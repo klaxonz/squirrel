@@ -32,7 +32,6 @@ yt-dlp = "*"
 pydantic-settings = "*"
 bcrypt = "*"
 python-jose = {extras = ["cryptography"], version = "*"}
-pydantic = {extras = ["email"], version = "*"}
 email-validator = "*"
 
 [dev-packages]

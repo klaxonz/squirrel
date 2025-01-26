@@ -1,10 +1,12 @@
 from typing import Optional, Tuple, List, Dict, Any
 
-from sqlalchemy import select, func, or_, and_
+from sqlalchemy.sql import text
 
 from core.database import get_session
-from models.links import SubscriptionVideo
+from dto.subscription_dto import SubscriptionDto
 from models.subscription import Subscription
+from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql
+from utils.sql_parser import parse_dynamic_sql
 
 
 def get_subscription_by_id(subscription_id: int):
@@ -14,66 +16,38 @@ def get_subscription_by_id(subscription_id: int):
 
 
 def list_subscriptions(
+        user_id: int,
         query: Optional[str],
         type: Optional[str],
         page: int,
         page_size: int
 ) -> Tuple[List[Dict[str, Any]], int]:
-    """获取订阅列表"""
+    """Get subscription list"""
     with get_session() as session:
-        video_count_subquery = (
-            select(
-                SubscriptionVideo.subscription_id,
-                func.count(SubscriptionVideo.video_id).label("video_count")
-            )
-            .group_by(SubscriptionVideo.subscription_id)
-            .subquery()
-        )
-
-        statement = (
-            select(
-                Subscription,
-                func.coalesce(video_count_subquery.c.video_count, 0).label("video_count")
-            )
-            .outerjoin(
-                video_count_subquery,
-                Subscription.id == video_count_subquery.c.subscription_id
-            )
-            .where(Subscription.is_deleted == 0)
-        )
-
-        filters = []
-        if query:
-            filters.append(
-                or_(
-                    Subscription.name.contains(query),
-                    Subscription.description.contains(query)
-                )
-            )
-        if type:
-            filters.append(Subscription.type == type)
-
-        if filters:
-            statement = statement.where(and_(*filters))
-
-        statement = statement.order_by(Subscription.created_at.desc())
-
-        total = session.execute(
-            select(Subscription.id)
-            .where(Subscription.is_deleted == 0)
-            .where(*filters)
-        ).all()
-        total_count = len(total)
-
-        statement = statement.offset((page - 1) * page_size).limit(page_size)
-        results = session.execute(statement).all()
-
-        subscriptions = []
-        for subscription, video_count in results:
-            subscription_dict = subscription.to_dict()
-            subscription_dict["total_extract"] = video_count
-            subscriptions.append(subscription_dict)
-
+        params = {
+            'user_id': user_id,
+            'query': query,
+            'type': type
+        }
+        
+        count_sql = get_subscriptions_count_sql()
+        dynamic_sql = parse_dynamic_sql(count_sql, params)
+        total_count = session.execute(
+            text(dynamic_sql),
+            params
+        ).scalar()
+        
+        sql = get_subscriptions_sql()
+        final_sql = parse_dynamic_sql(sql, params)
+        final_sql += " limit :limit offset :offset"
+        params.update({
+            'limit': page_size,
+            'offset': (page - 1) * page_size
+        })
+        
+        results = session.execute(text(final_sql), params).all()
+        subscriptions = [SubscriptionDto.model_validate(row._mapping).model_dump() for row in results]
+            
         return subscriptions, total_count
 
 
