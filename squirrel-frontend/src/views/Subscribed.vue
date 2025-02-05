@@ -80,18 +80,6 @@
       <div class="bg-[#212121] rounded-lg p-6 w-full max-w-md">
         <h2 class="text-xl font-bold mb-4 text-white">{{ selectedSubscription.name }} 设置</h2>
         <div class="space-y-6">
-          <template v-if="selectedSubscription.is_enable">
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-[#fff]">自动下载视频</span>
-              <ToggleSwitch v-model="selectedSubscription.is_auto_download"
-                            @update:modelValue="(value) => toggleAutoDownload(selectedSubscription.id, value)"/>
-            </div>
-            <div v-if="selectedSubscription.is_auto_download" class="flex items-center justify-between">
-              <span class="text-sm text-[#fff]">下载全部视频</span>
-              <ToggleSwitch v-model="selectedSubscription.is_download_all"
-                            @update:modelValue="(value) => toggleDownloadAll(selectedSubscription.id, value)"/>
-            </div>
-          </template>
           <button class="w-full py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] transition-colors duration-200 text-sm"
                   @click="unsubscribe(selectedSubscription.id)">
             取消订阅
@@ -236,38 +224,6 @@ const openSettings = (subscription) => {
 const closeSettings = () => {
   showSettings.value = false;
   selectedSubscription.value = null;
-};
-
-const toggleAutoDownload = async (subscriptionId, status) => {
-  try {
-    await axios.post('/api/subscription/toggle-auto-download', {subscription_id: subscriptionId, is_enable: status});
-    updateLocalSubscription(subscriptionId, {is_auto_download: status});
-    if (!status) {
-      // 如果关闭自动下载，同时关闭下载全部视频
-      await toggleDownloadAll(subscriptionId, false);
-    }
-  } catch (error) {
-    console.error('更新自动下载状态失败:', error);
-  }
-};
-
-const toggleDownloadAll = async (subscriptionId, status) => {
-  try {
-    await axios.post('/api/subscription/toggle-download-all', {subscription_id: subscriptionId, is_enable: status});
-    updateLocalSubscription(subscriptionId, {is_download_all: status});
-  } catch (error) {
-    console.error('更新下载全部状态失败:', error);
-  }
-};
-
-const updateLocalSubscription = (subscriptionId, updates) => {
-  const index = subscriptions.value.findIndex(c => c.id === subscriptionId);
-  if (index !== -1) {
-    subscriptions.value[index] = {...subscriptions.value[index], ...updates};
-  }
-  if (selectedSubscription.value && selectedSubscription.value.id === subscriptionId) {
-    selectedSubscription.value = {...selectedSubscription.value, ...updates};
-  }
 };
 
 const unsubscribe = async (subscriptionId) => {
