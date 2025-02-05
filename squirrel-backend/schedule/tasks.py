@@ -176,7 +176,7 @@ class AutoUpdateChannelVideo(BaseTask):
         subscription_ids = []
         with get_session() as session:
             subscriptions = session.scalars(
-                select(Subscription).where(Subscription.is_enable == 1, Subscription.is_deleted == 0))
+                select(Subscription).where(Subscription.is_deleted == 0))
             for subscription in subscriptions:
                 subscription_ids.append(subscription.id)
 
@@ -196,7 +196,7 @@ class AutoUpdateChannelVideo(BaseTask):
         if subscription.id not in cls._subscription_locks:
             cls._subscription_locks[subscription.id] = threading.Lock()
         lock = cls._subscription_locks[subscription.id]
-        
+
         # Try to acquire the lock, return if already locked
         if not lock.acquire(blocking=False):
             logger.info(f"Update already in progress for subscription {subscription.id}")
@@ -237,4 +237,3 @@ class AutoUpdateChannelVideo(BaseTask):
             for pool in cls._thread_pools.values():
                 pool.shutdown(wait=True)
             cls._thread_pools = None
-

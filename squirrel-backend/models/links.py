@@ -36,7 +36,6 @@ class UserSubscription(Base, SerializerMixin):
     is_enable: Mapped[bool] = mapped_column(Boolean, default=True)
     is_auto_download: Mapped[bool] = mapped_column(Boolean, default=False)
     is_download_all: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_extract_all: Mapped[bool] = mapped_column(Boolean, default=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now()

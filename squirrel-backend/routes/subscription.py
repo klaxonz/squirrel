@@ -101,12 +101,6 @@ def list_subscriptions(
     })
 
 
-@router.post("/api/subscription/toggle-status")
-def toggle_channel_status(req: ToggleStatusRequest):
-    success = subscription_service.toggle_status(req.subscription_id, req.is_enable, "is_enable")
-    return response.success({"success": success})
-
-
 @router.post("/api/subscription/toggle-auto-download")
 def toggle_auto_download(req: ToggleStatusRequest):
     success = subscription_service.toggle_status(req.subscription_id, req.is_enable, "is_auto_download")
@@ -119,7 +113,3 @@ def toggle_download_all(req: ToggleStatusRequest):
     return response.success({"success": success})
 
 
-@router.post("/api/subscription/toggle-extract-all")
-def toggle_extract_all(req: ToggleStatusRequest):
-    success = subscription_service.toggle_status(req.subscription_id, req.is_enable, "is_extract_all")
-    return response.success({"success": success})

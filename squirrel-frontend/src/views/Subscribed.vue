@@ -80,16 +80,6 @@
       <div class="bg-[#212121] rounded-lg p-6 w-full max-w-md">
         <h2 class="text-xl font-bold mb-4 text-white">{{ selectedSubscription.name }} 设置</h2>
         <div class="space-y-6">
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-[#fff]">开启监控</span>
-            <ToggleSwitch v-model="selectedSubscription.is_enable"
-                          @update:modelValue="(value) => toggleStatus(selectedSubscription.id, value)"/>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-[#fff]">解析全部视频</span>
-            <ToggleSwitch v-model="selectedSubscription.is_extract_all"
-                          @update:modelValue="(value) => toggleExtractAll(selectedSubscription.id, value)"/>
-          </div>
           <template v-if="selectedSubscription.is_enable">
             <div class="flex items-center justify-between">
               <span class="text-sm text-[#fff]">自动下载视频</span>
@@ -248,21 +238,6 @@ const closeSettings = () => {
   selectedSubscription.value = null;
 };
 
-const toggleStatus = async (subscription_id, status) => {
-  try {
-    await axios.post('/api/subscription/toggle-status', {subscription_id: subscription_id, is_enable: status});
-    updateLocalSubscription(subscription_id, {is_enable: status});
-    if (!status) {
-      // 如果关闭监控，同时关闭其他选项
-      await toggleAutoDownload(subscription_id, false);
-      await toggleExtractAll(subscription_id, false);
-      await toggleDownloadAll(subscription_id, false);
-    }
-  } catch (error) {
-    console.error('更新频道状态失败:', error);
-  }
-};
-
 const toggleAutoDownload = async (subscriptionId, status) => {
   try {
     await axios.post('/api/subscription/toggle-auto-download', {subscription_id: subscriptionId, is_enable: status});
@@ -282,15 +257,6 @@ const toggleDownloadAll = async (subscriptionId, status) => {
     updateLocalSubscription(subscriptionId, {is_download_all: status});
   } catch (error) {
     console.error('更新下载全部状态失败:', error);
-  }
-};
-
-const toggleExtractAll = async (subscriptionId, status) => {
-  try {
-    await axios.post('/api/subscription/toggle-extract-all', {subscription_id: subscriptionId, is_enable: status});
-    updateLocalSubscription(subscriptionId, {is_extract_all: status});
-  } catch (error) {
-    console.error('更新提取全部状态失败:', error);
   }
 };
 
@@ -341,12 +307,10 @@ const showToast = (message, type = 'success') => {
   }, 3000);
 };
 
-// 添加图片加载错误处理函数
 const handleImageError = (event) => {
   event.target.src = '/squirrel-icon.svg';
 };
 
-// 处理频道添加成功
 const handleChannelAdded = () => {
   showToast('频道添加成功');
   subscriptions.value = [];
