@@ -22,9 +22,12 @@ router = APIRouter(tags=['订阅接口'])
 
 
 @router.post("/api/subscription/subscribe")
-def subscribe_content(req: SubscribeRequest):
+def subscribe_content(req: SubscribeRequest, current_user: User = Depends(get_current_user)):
     with get_session() as session:
-        task = {"url": req.url}
+        task = {
+            "url": req.url,
+            "user_id": current_user.id
+        }
         message = Message(body=json.dumps(task))
         session.add(message)
         session.commit()
@@ -35,21 +38,31 @@ def subscribe_content(req: SubscribeRequest):
 
 
 @router.post("/api/subscription/unsubscribe")
-def unsubscribe_content(req: UnsubscribeRequest):
-    if req.subscription_id:
-        with get_session() as session:
-            subscription = session.scalars(
-                select(Subscription).where(Subscription.id == req.subscription_id)).first()
-            if subscription:
-                subscription.is_deleted = True
+def unsubscribe_content(req: UnsubscribeRequest, current_user: User = Depends(get_current_user)):
+    with get_session() as session:
+        if req.subscription_id:
+            subscription_filter = Subscription.id == req.subscription_id
+        elif req.url:
+            subscription_filter = Subscription.url == req.url
+        else:
+            return response.error("Invalid request parameters")
+        subscription = session.scalars(
+            select(Subscription).where(subscription_filter)
+        ).first()
+        
+        if subscription:
+            user_subscription = session.scalars(
+                select(UserSubscription).where(
+                    UserSubscription.user_id == current_user.id,
+                    UserSubscription.subscription_id == subscription.id
+                )
+            ).first()
+            
+            if user_subscription:
+                user_subscription.is_deleted = True
                 session.commit()
-    elif req.url:
-        with get_session() as session:
-            subscription = session.scalars(select(Subscription).where(Subscription.url == req.url)).first()
-            if subscription:
-                subscription.is_deleted = True
-                session.commit()
-    return response.success()
+                
+        return response.success()
 
 
 @router.get("/api/subscription/status")
@@ -62,7 +75,8 @@ def subscribe_content(
         if url:
             subscription = session.scalars(select(Subscription).where(Subscription.url == url)).first()
             if subscription:
-                user_subscription = session.scalars(select(UserSubscription)).where(UserSubscription.user_id == current_user.id).first()
+                user_subscription = session.scalars(select(UserSubscription)).where(
+                    UserSubscription.user_id == current_user.id).first()
                 if user_subscription:
                     is_subscribed = True
     return response.success({

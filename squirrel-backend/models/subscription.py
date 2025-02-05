@@ -28,9 +28,6 @@ class Subscription(Base, SerializerMixin):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     total_videos: Mapped[int] = mapped_column(Integer, default=0)
     is_enable: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_auto_download: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_download_all: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_extract_all: Mapped[bool] = mapped_column(Boolean, default=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     extra_data: Mapped[Optional[dict]] = mapped_column(JSON, default=None)
     created_at: Mapped[datetime] = mapped_column(

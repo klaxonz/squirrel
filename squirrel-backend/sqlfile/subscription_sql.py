@@ -12,7 +12,8 @@ def get_subscriptions_sql():
             from subscription_video
             group by subscription_id
         ) vc on vc.subscription_id = s.id
-        where us.user_id = :user_id
+        where us.is_deleted = 0
+        and us.user_id = :user_id
         /*{if query}*/
         and (s.name like concat('%%', :query, '%%') 
              or s.description like concat('%%', :query, '%%'))
@@ -29,7 +30,8 @@ def get_subscriptions_count_sql():
         select count(*) as total
         from user_subscription us
         join subscription s on s.id = us.subscription_id
-        where us.user_id = :user_id
+        where us.is_deleted = 0 
+        and us.user_id = :user_id
         /*{if query}*/
         and (s.name like concat('%%', :query, '%%') 
              or s.description like concat('%%', :query, '%%'))
@@ -37,4 +39,21 @@ def get_subscriptions_count_sql():
         /*{if type}*/
         and s.type = :type
         /*{endif}*/
+    """
+
+
+def get_subscription_sql():
+    return """
+        select 
+            s.*,
+            coalesce(vc.video_count, 0) as total_extract
+        from subscription s
+        left join (
+            select 
+                subscription_id,
+                count(video_id) as video_count
+            from subscription_video
+            group by subscription_id
+        ) vc on vc.subscription_id = s.id
+        where s.id = :subscription_id
     """

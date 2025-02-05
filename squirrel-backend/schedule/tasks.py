@@ -3,6 +3,7 @@ import logging
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import List, Type
+import threading
 
 from PyCookieCloud import PyCookieCloud
 from sqlalchemy import select, or_, and_
@@ -11,12 +12,13 @@ from sqlalchemy.sql.functions import count, func
 from core import config
 from core.config import settings
 from core.database import get_session
+from dto.subscription_dto import SubscriptionDto
 from dto.video_dto import VideoExtractDto
 from models.task.download_task import DownloadTask
 from models.links import SubscriptionVideo
 from models.subscription import Subscription
 from models.task.task_state import TaskState
-from services import download_service
+from services import download_service, subscription_service
 from subscribe.factory import SubscriptionFactory
 from utils.cookie import json_cookie_to_netscape
 
@@ -96,8 +98,9 @@ class RetryFailedTask(BaseTask):
                               DownloadTask.updated_at <= five_minutes_ago)))))
                 for task in tasks:
                     ten_minutes_ago = datetime.now() - timedelta(minutes=10)
-                    downloading_tasks = session.scalars(select(DownloadTask).where(DownloadTask.status == TaskState.DOWNLOADING.value,
-                                                                                   DownloadTask.updated_at < ten_minutes_ago)).all()
+                    downloading_tasks = session.scalars(
+                        select(DownloadTask).where(DownloadTask.status == TaskState.DOWNLOADING.value,
+                                                   DownloadTask.updated_at < ten_minutes_ago)).all()
 
                     if (task.status == TaskState.PENDING.value) and len(downloading_tasks) > 0:
                         continue
@@ -124,7 +127,8 @@ class ChangeStatusTask(BaseTask):
     def run(cls):
         try:
             with get_session() as session:
-                session.query(DownloadTask).filter(DownloadTask.status == TaskState.PENDING.value, DownloadTask.retry >= 5).update({
+                session.query(DownloadTask).filter(DownloadTask.status == TaskState.PENDING.value,
+                                                   DownloadTask.retry >= 5).update({
                     DownloadTask.status: TaskState.FAILED.value
                 })
                 session.commit()
@@ -138,6 +142,7 @@ class ChangeStatusTask(BaseTask):
 @TaskRegistry.register(interval=10, unit='minutes')
 class AutoUpdateChannelVideo(BaseTask):
     _thread_pools = None
+    _subscription_locks = {}
 
     @classmethod
     def initialize_pools(cls):
@@ -170,40 +175,61 @@ class AutoUpdateChannelVideo(BaseTask):
 
         subscription_ids = []
         with get_session() as session:
-            subscriptions = session.scalars(select(Subscription).where(Subscription.is_enable == 1, Subscription.is_deleted == 0))
+            subscriptions = session.scalars(
+                select(Subscription).where(Subscription.is_enable == 1, Subscription.is_deleted == 0))
             for subscription in subscriptions:
                 subscription_ids.append(subscription.id)
 
         for subscription_id in subscription_ids:
             try:
-                with get_session() as session:
-                    subscription = session.scalars(select(Subscription).where(Subscription.id == subscription_id)).one()
-                    pool = cls.get_pool(subscription.url)
-                    if pool:
-                        pool.submit(cls.update_subscription_video, subscription)
+                subscription = subscription_service.get_subscription_detail(subscription_id)
+                pool = cls.get_pool(subscription.url)
+                if pool:
+                    pool.submit(cls.update_subscription_video, subscription)
 
             except Exception as e:
                 logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
     @classmethod
-    def update_subscription_video(cls, subscription):
+    def update_subscription_video(cls, subscription: SubscriptionDto):
+        # Get or create lock for this subscription
+        if subscription.id not in cls._subscription_locks:
+            cls._subscription_locks[subscription.id] = threading.Lock()
+        lock = cls._subscription_locks[subscription.id]
+        
+        # Try to acquire the lock, return if already locked
+        if not lock.acquire(blocking=False):
+            logger.info(f"Update already in progress for subscription {subscription.id}")
+            return
+
         try:
-            with get_session() as session:
-                subscription = session.merge(subscription)
-                subscribe_channel = SubscriptionFactory.create_subscription(subscription.url)
-                video_list = subscribe_channel.get_subscribe_videos(extract_all=subscription.is_extract_all)
-                extract_video_list = video_list if subscription.is_extract_all else video_list[
-                                                                                    :settings.CHANNEL_UPDATE_DEFAULT_SIZE]
-                for video in extract_video_list:
-                    params = VideoExtractDto(
-                        url=video,
-                        subscribed=True,
-                        only_extract=True,
-                        subscription_id=subscription.id
-                    )
-                    download_service.start(params)
+            subscribe_channel = SubscriptionFactory.create_subscription(subscription.url)
+            if subscription.total_videos == 0:
+                is_extract_all = True
+            elif subscription.total_videos - subscription.total_extract > settings.CHANNEL_UPDATE_DEFAULT_SIZE:
+                is_extract_all = False
+            else:
+                is_extract_all = True
+            video_list = subscribe_channel.get_subscribe_videos(extract_all=is_extract_all)
+            if is_extract_all:
+                with get_session() as session:
+                    session.query(Subscription).filter(Subscription.id == subscription.id).update({
+                        Subscription.total_videos: len(video_list)
+                    })
+                    session.commit()
+            extract_video_list = video_list if is_extract_all else video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
+            for video in extract_video_list:
+                params = VideoExtractDto(
+                    url=video,
+                    subscribed=True,
+                    only_extract=True,
+                    subscription_id=subscription.id
+                )
+                download_service.start(params)
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+        finally:
+            lock.release()
 
     @classmethod
     def shutdown(cls):
@@ -212,50 +238,3 @@ class AutoUpdateChannelVideo(BaseTask):
                 pool.shutdown(wait=True)
             cls._thread_pools = None
 
-
-@TaskRegistry.register(interval=60, unit='minutes')
-class RepairChanelInfoForTotalVideos(BaseTask):
-    @classmethod
-    def run(cls):
-        subscription_ids = []
-        with get_session() as session:
-            subscriptions = session.scalars(select(Subscription)).all()
-            for subscription in subscriptions:
-                subscription_ids.append(subscription.id)
-
-        for subscription_id in subscription_ids:
-            try:
-                with get_session() as session:
-                    subscription = session.scalars(
-                        select(Subscription).where(Subscription.id == subscription_id)).first()
-                    videos_count = session.scalars(select(count(SubscriptionVideo.video_id)).where(
-                        SubscriptionVideo.subscription_id == subscription_id)).one()
-                    if subscription.total_videos is not None and subscription.total_videos >= videos_count and subscription.total_videos > 0:
-                        continue
-                    subscribe_channel = SubscriptionFactory.create_subscription(subscription.url)
-                    videos = subscribe_channel.get_subscribe_videos(extract_all=True)
-                    subscription.total_videos = len(videos)
-                    session.commit()
-            except json.JSONDecodeError as e:
-                logger.error(f"Error decoding JSON: {e}", exc_info=True)
-            except Exception as e:
-                logger.error(f"An unexpected error occurred: {e}", exc_info=True)
-
-
-@TaskRegistry.register(interval=1, unit='minutes')
-class AutoUpdateSubscriptionExtractAll(BaseTask):
-    @classmethod
-    def run(cls):
-        with get_session() as session:
-            subscriptions = session.scalars(select(Subscription)).all()
-            for subscription in subscriptions:
-                extract_count = session.scalars(
-                    select(func.count(SubscriptionVideo.video_id)).where(
-                        SubscriptionVideo.subscription_id == subscription.id)).one()
-                if subscription.total_videos is not None and subscription.total_videos > extract_count and subscription.total_videos - extract_count > 10:
-                    subscription.is_extract_all = 1
-                else:
-                    subscription.is_extract_all = 0
-                session.add(subscription)
-                session.commit()
-                session.refresh(subscription)

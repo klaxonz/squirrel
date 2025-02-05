@@ -10,7 +10,7 @@ class Video(Base, SerializerMixin):
     __tablename__ = "video"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    title: Mapped[str] = mapped_column(VARCHAR(128), nullable=False)
+    title: Mapped[str] = mapped_column(VARCHAR(512), nullable=False)
     url: Mapped[str] = mapped_column(VARCHAR(2048), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

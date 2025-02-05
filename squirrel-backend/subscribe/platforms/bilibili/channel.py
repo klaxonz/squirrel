@@ -80,18 +80,18 @@ class BilibiliSubscription(BaseSubscription):
                 if v['is_union_video'] == 1:
                     continue
 
-                req_url = f'https://api.bilibili.com/x/web-interface/wbi/view?bvid={v["bvid"]}'
-                resp = session.get(req_url, headers=headers)
-                if resp.status_code != 200:
-                    raise Exception('Request failed')
-
-                resp_json = resp.json()
-                if 'data' not in resp_json:
-                    logger.error(resp.json())
-                    continue
-                video_info = resp.json()['data']
-                if 'pages' in video_info and len(video_info['pages']) > 1:
-                    continue
+                # req_url = f'https://api.bilibili.com/x/web-interface/wbi/view?bvid={v["bvid"]}'
+                # resp = session.get(req_url, headers=headers)
+                # if resp.status_code != 200:
+                #     raise Exception('Request failed')
+                #
+                # resp_json = resp.json()
+                # if 'data' not in resp_json:
+                #     logger.error(resp.json())
+                #     continue
+                # video_info = resp.json()['data']
+                # if 'pages' in video_info and len(video_info['pages']) > 1:
+                #     continue
 
                 video_list.append(f'https://www.bilibili.com/video/{v["bvid"]}')
 
