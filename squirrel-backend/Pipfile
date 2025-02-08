@@ -33,5 +33,5 @@ pydantic-settings = "*"
 bcrypt = "*"
 python-jose = {extras = ["cryptography"], version = "*"}
 email-validator = "*"
-
+sqlalchemy-to-pydantic= "0.0.8"
 [dev-packages]
