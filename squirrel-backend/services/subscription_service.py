@@ -7,6 +7,7 @@ from dto.subscription_dto import SubscriptionDto
 from meta.channel import SubscriptionMeta
 from models.links import UserSubscription
 from models.subscription import Subscription, ContentType
+from services import user_config_service
 from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql, get_subscription_sql
 from utils.sql_parser import parse_dynamic_sql
 
@@ -42,11 +43,20 @@ def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):
             )
             session.add(subscription)
         user_subscription = session.scalars(
-            select(UserSubscription).where(user_id=user_id, subscription_id=subscription.id)).first()
+            select(UserSubscription).where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.subscription_id == subscription.id
+            )).first()
         if not user_subscription:
+            is_nsfw = False
+            url = subscribe_info.url
+            if 'pornhub.com' in url or 'javdb.com' in url:
+                is_nsfw = True
+
             user_subscription = UserSubscription(
                 user_id=user_id,
-                subscription_id=subscription.id
+                subscription_id=subscription.id,
+                is_nsfw=is_nsfw
             )
             session.add(user_subscription)
         session.commit()
@@ -61,28 +71,27 @@ def list_subscriptions(
         page_size: int
 ) -> Tuple[List[Dict[str, Any]], int]:
     """Get subscription list"""
+
+    user_config = user_config_service.get_config(user_id)
+    show_nsfw = user_config.get('showNsfw', False)
+
     with get_session() as session:
         params = {
             'user_id': user_id,
             'query': query,
-            'type': type
+            'type': type,
+            'show_nsfw': show_nsfw,
+            'limit': page_size,
+            'offset': (page - 1) * page_size
         }
         
         count_sql = get_subscriptions_count_sql()
         dynamic_sql = parse_dynamic_sql(count_sql, params)
-        total_count = session.execute(
-            text(dynamic_sql),
-            params
-        ).scalar()
+        total_count = session.execute(text(dynamic_sql), params).scalar()
         
         sql = get_subscriptions_sql()
         final_sql = parse_dynamic_sql(sql, params)
-        final_sql += " limit :limit offset :offset"
-        params.update({
-            'limit': page_size,
-            'offset': (page - 1) * page_size
-        })
-        
+
         results = session.execute(text(final_sql), params).all()
         subscriptions = [SubscriptionDto.model_validate(row._mapping).model_dump() for row in results]
             
@@ -133,3 +142,21 @@ def toggle_status(subscription_id: int, status: bool, field: str) -> bool:
             return True
         except ValueError:
             return False
+
+
+def toggle_nsfw_status(user_id: int, subscription_id: int, is_nsfw: bool) -> bool:
+    with get_session() as session:
+        user_sub = session.execute(
+            select(UserSubscription)
+            .where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.subscription_id == subscription_id,
+                UserSubscription.is_deleted == 0
+            )
+        ).scalar_one_or_none()
+        if not user_sub:
+            return False
+        
+        user_sub.is_nsfw = is_nsfw
+        session.commit()
+        return True

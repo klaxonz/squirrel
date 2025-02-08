@@ -2,6 +2,7 @@ def get_subscriptions_sql():
     return """
         select 
             s.*,
+            us.is_nsfw,
             coalesce(vc.video_count, 0) as total_extract
         from user_subscription us
         join subscription s on s.id = us.subscription_id
@@ -21,7 +22,11 @@ def get_subscriptions_sql():
         /*{if type}*/
         and s.type = :type
         /*{endif}*/
+        /*{if show_nsfw == False}*/
+            and us.is_nsfw = 0
+        /*{endif}*/
         order by s.created_at desc
+        limit :limit offset :offset
     """
 
 
@@ -39,6 +44,9 @@ def get_subscriptions_count_sql():
         /*{if type}*/
         and s.type = :type
         /*{endif}*/
+        /*{if show_nsfw == False}*/
+            and us.is_nsfw = 0
+        /*{endif}*/
     """
 
 
@@ -46,6 +54,7 @@ def get_subscription_sql():
     return """
         select 
             s.*,
+            0 as is_nsfw,
             coalesce(vc.video_count, 0) as total_extract
         from subscription s
         left join (

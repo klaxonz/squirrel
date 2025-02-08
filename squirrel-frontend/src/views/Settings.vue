@@ -1,27 +1,20 @@
 <template>
   <div class="settings-container bg-[#0f0f0f] text-white min-h-screen p-4 md:p-8">
-    <h1 class="text-2xl font-bold mb-6">设置</h1>
+    <h1 class="text-2xl font-bold mb-6">内容偏好设置</h1>
     
     <div class="settings-section mb-8">
-      <h2 class="text-xl font-semibold mb-4">消费者配置</h2>
-      
-      <div class="setting-item" v-for="(value, key) in settings" :key="key">
-        <div class="flex justify-between items-center mb-2">
-          <label :for="key" class="text-sm font-medium">{{ getLabel(key) }}</label>
-          <span class="text-sm font-medium text-gray-400">{{ settings[key] }}</span>
+      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+        <div>
+          <h3 class="font-medium">{{ getLabel('showNsfw') }}</h3>
+          <p class="text-sm text-gray-400">显示可能包含成人内容的媒体</p>
         </div>
-        <input 
-          type="range" 
-          :id="key" 
-          v-model="settings[key]" 
-          :min="getMin(key)" 
-          :max="getMax(key)" 
-          step="1"
-          class="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-        >
+        <label class="switch">
+          <input type="checkbox" v-model="settings.showNsfw">
+          <span class="slider"></span>
+        </label>
       </div>
     </div>
-    
+
     <button @click="saveSettings" class="save-button bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
       保存设置
     </button>
@@ -36,28 +29,24 @@ import { useToast } from 'vue-toastification';
 const toast = useToast();
 
 const settings = ref({
-  downloadConsumers: 1,
-  extractConsumers: 2,
-  subscribeConsumers: 1
+  showNsfw: false
 });
 
 const getLabel = (key) => {
   const labels = {
-    downloadConsumers: '下载线程数',
-    extractConsumers: '视频更新线程数',
-    subscribeConsumers: '频道订阅线程数'
+    showNsfw: '显示敏感内容'
   };
   return labels[key];
 };
 
-const getMin = (key) => key === 'subscribeConsumers' ? 1 : 1;
-const getMax = (key) => key === 'subscribeConsumers' ? 5 : 10;
-
 onMounted(async () => {
   try {
-    const response = await axios.get('/api/settings');
+    const response = await axios.get('/api/users/me/config');
     if (response.data.code === 0) {
-      settings.value = response.data.data;
+      settings.value = {
+        ...settings.value,
+        ...response.data.data
+      };
     }
   } catch (error) {
     console.error('获取设置失败:', error);
@@ -67,9 +56,14 @@ onMounted(async () => {
 
 const saveSettings = async () => {
   try {
-    const response = await axios.post('/api/settings', settings.value);
+    const response = await axios.put('/api/users/me/config', {
+      settings: settings.value,
+      merge: false
+    });
+    
     if (response.data.code === 0) {
       toast.success('设置保存成功');
+      settings.value = response.data.data;
     } else {
       throw new Error(response.data.msg || '保存设置失败');
     }
@@ -90,33 +84,49 @@ const saveSettings = async () => {
   margin-bottom: 1.5rem;
 }
 
-input[type="range"] {
-  -webkit-appearance: none;
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: #4a4a4a;
-  outline: none;
-  opacity: 0.7;
-  transition: opacity 0.2s;
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
 }
 
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #ff0000;
-  cursor: pointer;
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
-input[type="range"]::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #ff0000;
+.slider {
+  position: absolute;
   cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #4a4a4a;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #ef4444;
+}
+
+input:checked + .slider:before {
+  transform: translateX(24px);
 }
 
 .save-button {

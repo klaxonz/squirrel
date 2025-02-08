@@ -1,22 +1,21 @@
 import json
 import logging
+import threading
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import List, Type
-import threading
 
 from PyCookieCloud import PyCookieCloud
 from sqlalchemy import select, or_, and_
-from sqlalchemy.sql.functions import count, func
 
 from core import config
 from core.config import settings
 from core.database import get_session
 from dto.subscription_dto import SubscriptionDto
 from dto.video_dto import VideoExtractDto
-from models.task.download_task import DownloadTask
 from models.links import SubscriptionVideo
 from models.subscription import Subscription
+from models.task.download_task import DownloadTask
 from models.task.task_state import TaskState
 from services import download_service, subscription_service
 from subscribe.factory import SubscriptionFactory

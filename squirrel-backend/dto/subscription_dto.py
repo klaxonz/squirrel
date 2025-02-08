@@ -35,3 +35,4 @@ class SubscriptionDto(sqlalchemy_to_pydantic(Subscription)):
         return data
 
     total_extract: int = 0
+    is_nsfw: bool

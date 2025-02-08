@@ -80,6 +80,10 @@
       <div class="bg-[#212121] rounded-lg p-6 w-full max-w-md">
         <h2 class="text-xl font-bold mb-4 text-white">{{ selectedSubscription.name }} 设置</h2>
         <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <span class="text-white">标记为敏感内容</span>
+            <ToggleSwitch v-model="selectedSubscription.is_nsfw" @update:modelValue="updateNsfwStatus"/>
+          </div>
           <button class="w-full py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] transition-colors duration-200 text-sm"
                   @click="unsubscribe(selectedSubscription.id)">
             取消订阅
@@ -275,7 +279,27 @@ const handleChannelAdded = () => {
   loadSubscriptions();
 };
 
-onMounted(() => {
+const updateNsfwStatus = async (isNsfw) => {
+  try {
+    const res = await axios.post('/api/subscription/toggle-nsfw', {
+      subscription_id: selectedSubscription.value.id,
+      is_enable: isNsfw
+    });
+    
+    if (res.data.success) {
+      // 立即更新本地状态
+      const index = subscriptions.value.findIndex(s => s.id === selectedSubscription.value.id);
+      if (index !== -1) {
+        subscriptions.value[index].is_nsfw = isNsfw;
+      }
+    }
+  } catch (error) {
+    // 回滚UI状态
+    selectedSubscription.value.is_nsfw = !isNsfw; 
+  }
+};
+
+onMounted(async () => {
   loadSubscriptions();
   nextTick(() => {
     setupIntersectionObserver();

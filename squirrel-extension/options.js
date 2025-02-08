@@ -158,7 +158,14 @@ class OptionsManager {
       return;
     }
 
+    const newBackendHost = this.backendHostInput.value.trim();
+    if (!newBackendHost) return;
+
     try {
+      await ChromeAPI.setStorageData({
+        [CONFIG.STORAGE_KEYS.BACKEND_HOST]: newBackendHost
+      });
+
       const response = await ChromeAPI.sendMessage('login', { 
         email, 
         password 

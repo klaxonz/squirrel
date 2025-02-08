@@ -34,6 +34,7 @@ class UserSubscription(Base, SerializerMixin):
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
     subscription_id: Mapped[int] = mapped_column(Integer, nullable=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_nsfw: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now()
     )

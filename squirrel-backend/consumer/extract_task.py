@@ -58,8 +58,6 @@ def _process_extract_message(message):
     try:
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
-        if not _check_subscription_enable(params.subscription_id):
-            return
         if not _check_subscription_exist(params.subscription_id):
             return
         domain = url_helper.extract_top_level_domain(params.url)
@@ -142,11 +140,6 @@ def _handle_download_task(video):
     task = task_service.create_task(video.id, video.url)
     message = message_service.create_message(task.to_dict())
     download_task.process_download_message.send(message.to_dict())
-
-
-def _check_subscription_enable(subscription_id: int):
-    subscription = subscription_service.get_subscription_by_id(subscription_id)
-    return subscription.is_enable
 
 
 def _check_subscription_exist(subscription_id: int):

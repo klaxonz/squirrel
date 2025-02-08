@@ -1,16 +1,17 @@
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from common import response
-from services import user_service
+from models.user import User
+from services import user_service, user_config_service
 from utils.jwt_helper import create_access_token, get_current_user
+from pydantic import model_validator
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
-# Request Models
 class UserRegisterRequest(BaseModel):
     nickname: str
     email: EmailStr
@@ -25,6 +26,21 @@ class UserLoginRequest(BaseModel):
 class UserUpdateRequest(BaseModel):
     nickname: Optional[str] = None
     avatar: Optional[str] = None
+
+
+class UserConfigUpdate(BaseModel):
+    settings: Dict = Field(..., example={"showNsfw": False})
+    merge: Optional[bool] = False
+
+    @model_validator(mode='after')
+    def validate_settings(self):
+        allowed_keys = {'showNsfw'}
+        for key in self.settings:
+            if key not in allowed_keys:
+                raise ValueError(f"无效的配置项: {key}")
+        if 'showNsfw' in self.settings and not isinstance(self.settings['showNsfw'], bool):
+            raise ValueError("showNsfw必须是布尔值")
+        return self
 
 
 # Response Models
@@ -122,3 +138,24 @@ async def get_user(user_id: int):
     return response.success(
         data=user.to_dict()
     )
+
+
+@router.get("/me/config")
+async def get_user_config(
+    current_user: User = Depends(get_current_user),
+):
+    settings = user_config_service.get_config(current_user.id)
+    return response.success(data=settings)
+
+
+@router.put("/me/config")
+async def update_user_config(
+    config_data: UserConfigUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    updated = user_config_service.update_config(
+        user_id=current_user.id,
+        new_settings=config_data.settings,
+        merge=config_data.merge
+    )
+    return response.success(data=updated, msg="配置更新成功")

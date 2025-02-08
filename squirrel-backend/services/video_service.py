@@ -9,16 +9,17 @@ import requests
 from bs4 import BeautifulSoup
 from phub import Quality
 from pytubefix import YouTube
-from sqlalchemy import func, select, or_
+from sqlalchemy import func, select, or_, text
 
 from core.database import get_session
-from dto.video_dto import VideoExtractDto
+from dto.video_dto import VideoExtractDto, VideoDto, VideoCountDto
 from models.creator import Creator
 from models.links import VideoCreator, SubscriptionVideo
 from models.subscription import Subscription
 from models.video import Video
-from services import download_service, subscription_video_service
-from utils import url_helper
+from services import download_service, subscription_video_service, user_config_service
+from sqlfile.video_sql import get_videos_sql, count_videos_sql
+from utils import url_helper, sql_parser
 from utils.cookie import filter_cookies_to_query_string
 from utils.url_helper import extract_top_level_domain
 
@@ -144,59 +145,47 @@ def extract_parts_from_html_content(html_content):
     return None
 
 
-def list_videos(query: str, subscription_id: int, category: str, sort_by: str, page: int, page_size: int) -> \
-        Tuple[
-            List[dict], int, dict]:
-    base_query = (
-        select(Video, SubscriptionVideo)
-        .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
-        .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
-        .where(Subscription.is_deleted == 0)
-    )
-    if category == 'preview':
-        base_query = base_query.where(Video.publish_date > datetime.now())
-    else:
-        base_query = base_query.where(Video.publish_date <= datetime.now())
-    if subscription_id:
-        base_query = base_query.where(SubscriptionVideo.subscription_id == subscription_id)
-    if query:
-        base_query = base_query.where(or_(Video.title.like(f'%{query}%')))
-    # Sort by appropriate fields from Video table
-    if sort_by == 'created_at':
-        base_query = base_query.order_by(Video.created_at.desc())
-    else:
-        base_query = base_query.order_by(Video.publish_date.desc())
+def list_videos(
+        user_id: int,
+        query: str,
+        subscription_id: int,
+        category: str,
+        sort_by: str,
+        page: int,
+        page_size: int
+) -> Tuple[List[dict], int, dict]:
 
-    offset = (page - 1) * page_size
+    user_config = user_config_service.get_config(user_id)
+    show_nsfw = user_config.get('showNsfw', False)
 
-    with (get_session() as session):
-        base_query = base_query.offset(offset).limit(page_size)
-        results = session.execute(base_query).all()
-        # Count query modifications
-        total_count_query = (
-            select(func.count(Video.id))
-            .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
-            .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
-            .where(Subscription.is_deleted == 0)
-        )
-        preview_query = total_count_query.where(Video.publish_date > datetime.now())
-        if subscription_id:
-            total_count_query = total_count_query.where(SubscriptionVideo.subscription_id == subscription_id)
-            preview_query = preview_query.where(SubscriptionVideo.subscription_id == subscription_id)
-        if query:
-            total_count_query = total_count_query.where(Video.title.like(f'%{query}%'))
+    params = {
+        'user_id': user_id,
+        'query': query,
+        'show_nsfw': show_nsfw,
+        'category': category,
+        'sort_by': sort_by,
+        'limit': page_size,
+        'offset': (page - 1) * page_size,
+        'subscription_id': subscription_id
+    }
 
-        total_count = session.scalar(total_count_query)
-        total_preview_count = session.scalar(preview_query)
-        # Note: Since we're using Video table now, we'll need to adjust these counts
-        # or implement different logic for read/unread/liked status
+    with get_session() as session:
+        videos_sql = sql_parser.parse_dynamic_sql(get_videos_sql(), params)
+        videos_count_sql = sql_parser.parse_dynamic_sql(count_videos_sql(), params)
+        count_result = session.execute(text(videos_count_sql), params).first()
+        video_count = VideoCountDto.model_validate(count_result._mapping)
+        results = session.execute(text(videos_sql), params).all()
+        videos = [VideoDto.model_validate(row._mapping) for row in results]
+
+        total_count = video_count.total
+        total_preview_count = video_count.preview
 
         # get subscriptions
-        subscription_ids = list(set(subscription_video.subscription_id for _, subscription_video in results))
+        subscription_ids = list(set(video.subscription_id for video in videos))
         subscriptions = session.query(Subscription).filter(Subscription.id.in_(subscription_ids)).all()
 
         # get video related creators
-        video_ids = [video.id for video, subscription in results]
+        video_ids = [video.id for video in videos]
         creators = session.execute(select(Creator, VideoCreator)
                                    .join(VideoCreator, Creator.id == VideoCreator.creator_id)
                                    .where(VideoCreator.video_id.in_(video_ids))).all()
@@ -208,9 +197,8 @@ def list_videos(query: str, subscription_id: int, category: str, sort_by: str, p
             creators_dict[video_creator.video_id].append(creator)
 
         video_list = []
-        for video, subscription_video in results:
-            subscription_info = next((sub for sub in subscriptions if sub.id == subscription_video.subscription_id),
-                                     None)
+        for video in videos:
+            subscription_info = next((sub for sub in subscriptions if sub.id == video.subscription_id), None)
             video_data = {
                 'id': video.id,
                 'title': video.title,

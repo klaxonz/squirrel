@@ -34,7 +34,6 @@ def process_subscribe_message(message):
                 subscription = subscription_service.create_subscription(user_id, subscribe_info)
                 session.merge(subscription)
                 subscription.total_videos = len(videos)
-                session.add(subscription)
             session.commit()
             logger.info(f"Successfully subscribed: {subscription.name}")
     except Exception as e:

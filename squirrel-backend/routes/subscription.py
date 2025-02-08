@@ -75,8 +75,8 @@ def subscribe_content(
         if url:
             subscription = session.scalars(select(Subscription).where(Subscription.url == url)).first()
             if subscription:
-                user_subscription = session.scalars(select(UserSubscription)).where(
-                    UserSubscription.user_id == current_user.id).first()
+                user_subscription = session.scalars(select(UserSubscription).where(
+                    UserSubscription.user_id == current_user.id)).first()
                 if user_subscription:
                     is_subscribed = True
     return response.success({
@@ -110,6 +110,19 @@ def toggle_auto_download(req: ToggleStatusRequest):
 @router.post("/api/subscription/toggle-download-all")
 def toggle_download_all(req: ToggleStatusRequest):
     success = subscription_service.toggle_status(req.subscription_id, req.is_enable, "is_download_all")
+    return response.success({"success": success})
+
+
+@router.post("/api/subscription/toggle-nsfw")
+def toggle_nsfw(
+    req: ToggleStatusRequest, 
+    current_user: User = Depends(get_current_user)
+):
+    success = subscription_service.toggle_nsfw_status(
+        current_user.id,
+        req.subscription_id,
+        req.is_enable
+    )
     return response.success({"success": success})
 
 

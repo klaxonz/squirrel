@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import Query, APIRouter, Request, HTTPException
+from fastapi import Query, APIRouter, Request, HTTPException, Depends
 
 import common.response as response
 from common.video_stream import VideoStreamHandler
@@ -11,6 +11,7 @@ from proxy.bilibili import BilibiliProxy
 from proxy.javdb import JavdbProxy
 from schemas.video import DownloadVideoRequest, SortBy
 from services import video_service, subscription_video_service, subscription_service
+from utils.jwt_helper import get_current_user
 
 logger = logging.getLogger()
 
@@ -34,15 +35,16 @@ def get_video(
 
 
 @router.get("/api/video/list")
-def get_channel_videos(
+def get_videos(
         query: str = Query(None, description="搜索关键字"),
         subscription_id: int = Query(None, description="订阅ID"),
         category: str = Query(None, description="阅读状态: all, read, unread, preview, like"),
         sort_by: SortBy = Query(SortBy.UPLOADED_AT, description="排序字段"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
+        current_user = Depends(get_current_user)
 ):
-    videos, total_counts, counts = video_service.list_videos(query, subscription_id, category, sort_by, page, page_size)
+    videos, total_counts, counts = video_service.list_videos(current_user.id, query, subscription_id, category, sort_by, page, page_size)
     return response.success({
         "total": total_counts,
         "page": page,
