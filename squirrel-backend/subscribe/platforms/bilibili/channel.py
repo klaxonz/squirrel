@@ -55,7 +55,7 @@ class BilibiliSubscription(BaseSubscription):
 
         params = {
             'mid': self.get_mid(),
-            'ps': 25,
+            'ps': 50,
             'pn': 1,
             'index': 1,
             'order': 'pubdate',

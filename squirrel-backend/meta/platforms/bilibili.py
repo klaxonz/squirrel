@@ -29,10 +29,10 @@ class BilibiliVideo(Video):
                 data = json.loads(json_str)
                 if 'videoStaffs' in data:
                     logger.info(f"Not a normal video. url: {self.url}")
-                    return
+                    return self._actors
                 if data.get('upData') is None:
                     logger.info(f"Failed to extract data from the response. url: {self.url}")
-                    return
+                    return self._actors
                 actor_url = f"https://space.bilibili.com/{data.get('upData').get('mid')}"
                 actor = Actor(actor_url)
                 actor.name = data.get('upData').get('name')

@@ -17,10 +17,10 @@ class RateLimiter:
 
     # Default rate limits for different domains
     DEFAULT_LIMITS = {
-        'bilibili.com': RateLimit(3.0, 5.0, 'bilibili.com'),
+        'bilibili.com': RateLimit(1.0, 3.0, 'bilibili.com'),
         'youtube.com': RateLimit(2.0, 4.0, 'youtube.com'),
-        'pornhub.com': RateLimit(3.0, 5.0, 'pornhub.com'),
-        'javdb.com': RateLimit(3.0, 5.0, 'javdb.com'),
+        'pornhub.com': RateLimit(1.0, 3.0, 'pornhub.com'),
+        'javdb.com': RateLimit(4.0, 6.0, 'javdb.com'),
     }
 
     # Global default rate limit

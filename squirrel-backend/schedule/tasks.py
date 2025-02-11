@@ -175,7 +175,7 @@ class AutoUpdateChannelVideo(BaseTask):
         subscription_ids = []
         with get_session() as session:
             subscriptions = session.scalars(
-                select(Subscription).where(Subscription.is_deleted == 0))
+                select(Subscription).where(Subscription.is_deleted == 0).order_by(Subscription.id.desc()))
             for subscription in subscriptions:
                 subscription_ids.append(subscription.id)
 

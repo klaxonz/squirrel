@@ -14,7 +14,7 @@ logger = logging.getLogger()
 
 class JavdbDownloader(Downloader):
 
-    def get_video_info(self, url: str, queue_name: str):
+    def get_video_info(self, url: str, queue_name: str = None):
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/124.0.0.0 Safari/537.36',
@@ -27,9 +27,11 @@ class JavdbDownloader(Downloader):
         if '永久VIP' in response.text:
             logger.info(f'{url} is permanent VIP')
             return None
+        if '此內容需要登入' in response.text:
+            logger.info(f'{url} is need to login to pay, skip')
+            return None
 
-        video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[
-            1].text.strip()
+        video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[1].text.strip()
         video_info['thumbnail'] = bs4.select('.video-cover')[0]['src']
         duration = bs4.select('.movie-panel-info .panel-block:nth-of-type(3) span')[0].text.split(' ')[0].strip()
         try:
