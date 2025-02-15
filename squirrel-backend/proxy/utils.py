@@ -6,7 +6,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
-async def stream_with_retry(url: str, headers: Dict[str, str], chunk_size: int = 256, max_retries: int = 3) -> \
+async def stream_with_retry(url: str, headers: Dict[str, str], chunk_size: int = 1024 * 512, max_retries: int = 3) -> \
         AsyncGenerator[bytes, None]:
     for attempt in range(max_retries):
         try:

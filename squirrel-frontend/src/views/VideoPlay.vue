@@ -179,27 +179,21 @@ import { formatDate, formatDuration } from '../utils/dateFormat';
 
 const route = useRoute();
 const video = ref(null);
-const { updateWatchHistory } = useVideoHistory();
 
-// 使用 useOptionsMenu
 const { toggleLikeVideo, downloadVideo, copyVideoLink } = useOptionsMenu(video);
 
-// 处理喜欢操作
 const handleLike = async (targetStatus) => {
   await toggleLikeVideo(targetStatus);
 };
 
-// 处理下载操作
 const handleDownload = async () => {
   await downloadVideo();
 };
 
-// 处理复制链接操作
 const handleCopyLink = () => {
   copyVideoLink();
 };
 
-// 计算起始放时间
 const startTime = computed(() => {
   if (video.value?.last_position) {
     if (video.value.total_duration - video.value.last_position < 10) {
@@ -211,7 +205,6 @@ const startTime = computed(() => {
   return 0;
 });
 
-// 获取视频详情
 const fetchVideoDetails = async () => {
   try {
     const response = await axios.get(`/api/video/detail?video_id=${route.params.videoId}`);
@@ -221,7 +214,6 @@ const fetchVideoDetails = async () => {
   }
 };
 
-// 视频播放控制
 const onVideoPlay = () => {
   video.value.isPlaying = true;
 };
@@ -231,32 +223,18 @@ const onVideoPause = () => {
 };
 
 const onVideoEnded = () => {
-  updateWatchHistory(
-    video.value.video_id,
-    video.value.channel_id,
-    video.value.duration,
-    video.value.duration
-  );
   video.value.if_read = true;
 };
 
 const onVideoTimeUpdate = (currentTime) => {
   if (Math.floor(currentTime) % 5 === 0) {
-    updateWatchHistory(
-      video.value.video_id,
-      video.value.channel_id,
-      currentTime,
-      video.value.duration
-    );
     video.value.last_position = currentTime;
     video.value.progress = (currentTime / video.value.duration) * 100;
   }
 };
 
-// 添加下拉菜单态控制
 const showMoreOptions = ref(false);
 
-// 添加点击外部关闭下拉菜单的处理函数
 const handleClickOutside = (event) => {
   const dropdown = document.querySelector('.relative');
   if (dropdown && !dropdown.contains(event.target)) {
@@ -264,29 +242,25 @@ const handleClickOutside = (event) => {
   }
 };
 
-// 添加 ESC 键关闭下拉菜单的处理函数
 const handleEscKey = (event) => {
   if (event.key === 'Escape') {
     showMoreOptions.value = false;
   }
 };
 
-// 在组件挂载时添加事件监听
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
   document.addEventListener('keydown', handleEscKey);
   fetchVideoDetails();
 });
 
-// 在组件卸载时移除事件监听
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
   document.removeEventListener('keydown', handleEscKey);
 });
 
-// 修改下拉菜单按钮的点击处理函数
 const handleMoreOptionsClick = (event) => {
-  event.stopPropagation(); // 阻止事件冒泡
+  event.stopPropagation();
   showMoreOptions.value = !showMoreOptions.value;
 };
 
@@ -321,7 +295,6 @@ const handleMoreOptionsClick = (event) => {
   height: 100%;
   background: #000;
 }
-
 
 /* 添加滚动条样式 */
 .video-page {

@@ -27,6 +27,10 @@ const {
   playVideo,
 } = useVideoOperations();
 
+const retryCount = ref(0);
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
+
 onMounted(async () => {
   if (!props.video?.stream_video_url) {
     await playVideo(props.video);
@@ -38,6 +42,8 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener('offline', handleDisconnect);
+  window.removeEventListener('online', handleDisconnect);
   if (player.value) {
     player.value.destroy();
   }
@@ -59,9 +65,27 @@ watch(() => props.video?.stream_audio_url, (newAudioUrl) => {
   }
 });
 
-watch(() => props.initialTime, (newTime) => {
-  if (player.value && newTime > 0) {
-    player.value.currentTime = newTime;
+
+const getBasePlayerConfig = () => ({
+  id: `video-player`,
+  poster: props.video.thumbnail,
+  autoplay: true,
+  volume: 1,
+  width: '100%',
+  height: '100%',
+  cssFullscreen: false,
+  startTime: props.initialTime || 0,
+  playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
+  controls: { mode: 'flex' },
+  theme: {
+    background: '#000000',
+    primary: '#00a1d6',
+    progress: '#00a1d6',
+    playedColor: '#00a1d6',
+    progressColor: 'rgba(255, 255, 255, 0.3)',
+    volumeColor: '#00a1d6',
+    controlsBgColor: 'rgba(0, 0, 0, 0.5)',
+    textColor: '#ffffff',
   }
 });
 
@@ -70,74 +94,44 @@ const initPlayer = () => {
     console.warn('Cannot initialize player: url is missing');
     return;
   }
-  if (props.video.domain === 'javdb.com') {
-    player.value = new Player({
-      id: `video-player`,
-      url: props.video.stream_video_url,
-      poster: props.video.thumbnail,
-      autoplay: true,
-      volume: 1,
-      width: '100%',
-      height: '100%',
-      cssFullscreen: false,
-      startTime: props.initialTime || 0,
-      playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
-      controls: {
-        mode: 'flex',
-      },
-      theme: {
-        background: '#000000',
-        primary: '#00a1d6',
-        progress: '#00a1d6',
-        playedColor: '#00a1d6',
-        progressColor: 'rgba(255, 255, 255, 0.3)',
-        volumeColor: '#00a1d6',
-        controlsBgColor: 'rgba(0, 0, 0, 0.5)',
-        textColor: '#ffffff',
-      },
-      plugins: [HlsPlugin]
-    });
-  } else {
-    console.warn('Cannot initialize player: url is missing');
-    player.value = new Player({
-      id: `video-player`,
-      url: props.video.stream_video_url,
-      poster: props.video.thumbnail,
-      autoplay: true,
-      volume: 1,
-      width: '100%',
-      height: '100%',
-      cssFullscreen: false,
-      startTime: props.initialTime || 0,
-      playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
-      controls: {
-        mode: 'flex',
-      },
-      theme: {
-        background: '#000000',
-        primary: '#00a1d6',
-        progress: '#00a1d6',
-        playedColor: '#00a1d6',
-        progressColor: 'rgba(255, 255, 255, 0.3)',
-        volumeColor: '#00a1d6',
-        controlsBgColor: 'rgba(0, 0, 0, 0.5)',
-        textColor: '#ffffff',
-      },
-    });
-  }
 
+  const baseConfig = getBasePlayerConfig();
+  const finalConfig = {
+    ...baseConfig,
+    url: props.video.stream_video_url,
+    plugins: props.video.domain === 'javdb.com' ? [HlsPlugin] : []
+  };
 
-  player.value.on('play', handlePlay);
-  player.value.on('pause', handlePause);
-  player.value.on('seeking', handleSeeking);
-  player.value.on('seeked', handleSeeked);
-  player.value.on('timeupdate', handleTimeUpdate);
-  player.value.on('ended', handleEnded);
-  player.value.on('waiting', handleWaiting);
-  player.value.on('playing', handlePlaying);
-  player.value.on('volumechange', handleVolumechange);
-  player.value.on('fullscreenChange', (isFullscreen) => {
-    emit('fullscreenChange', isFullscreen);
+  player.value = new Player(finalConfig);
+  setupEventListeners();
+
+  window.addEventListener('offline', handleDisconnect);
+  window.addEventListener('online', () => {
+    if (player.value && player.value.paused) {
+      handleError(new Error('Connection restored'));
+    }
+  });
+};
+
+const setupEventListeners = () => {
+  const eventHandlers = {
+    play: handlePlay,
+    pause: handlePause,
+    seeking: handleSeeking,
+    seeked: handleSeeked,
+    ended: handleEnded,
+    waiting: handleWaiting,
+    playing: handlePlaying,
+    timeupdate: handleTimeUpdate,
+    volumechange: handleVolumechange,
+    fullscreenChange: (isFullscreen) => emit('fullscreenChange', isFullscreen),
+    error: handleError,
+    networkError: handleError,
+    stalled: handleError
+  };
+
+  Object.entries(eventHandlers).forEach(([event, handler]) => {
+    player.value.on(event, handler);
   });
 };
 
@@ -223,6 +217,26 @@ const handlePlaying = () => {
 const handleVolumechange = () => {
   if (audioPlayer.value && player.value) {
     audioPlayer.value.volume = player.value.muted ? 0 : player.value.volume;
+  }
+};
+
+const handleError = (error) => {
+  console.error('Player error:', error);
+  if (retryCount.value < MAX_RETRIES) {
+    retryCount.value++;
+    setTimeout(() => {
+      player.value.reload();
+      player.value.play();
+    }, RETRY_DELAY * retryCount.value);
+  } else {
+    console.error('Maximum retry attempts reached');
+  }
+};
+
+const handleDisconnect = () => {
+  if (player.value && !player.value.paused) {
+    console.log('Detected connection loss, attempting to reconnect...');
+    handleError(new Error('Connection lost'));
   }
 };
 
