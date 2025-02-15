@@ -205,7 +205,7 @@ class AutoUpdateChannelVideo(BaseTask):
             subscribe_channel = SubscriptionFactory.create_subscription(subscription.url)
             if subscription.total_videos == 0:
                 is_extract_all = True
-            elif subscription.total_videos - subscription.total_extract > settings.CHANNEL_UPDATE_DEFAULT_SIZE:
+            elif subscription.total_videos - subscription.total_extract <= settings.CHANNEL_UPDATE_DEFAULT_SIZE:
                 is_extract_all = False
             else:
                 is_extract_all = True
