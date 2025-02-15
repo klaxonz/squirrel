@@ -1,6 +1,6 @@
 <template>
   <div class="video-list-container relative" ref="containerRef">
-    <RecycleScroller
+    <VirtualList
         class="scroller"
         :items="props.videos"
         :item-size="computedItemSize"
@@ -10,14 +10,16 @@
         :gridItems="computedGridItems"
         :prerender="30"
         :item-secondary-size="computedItemSecondarySize"
+        ref="virtualList"
     >
-      <template #default="{ item: video }">
+      <template #item="{ item: video, index }">
         <div class="grid-item">
           <VideoItem
               :video="video"
               :showAvatar="showAvatar"
               :showProgress="video.showProgress"
               :progress="video.progress"
+              :index="index"
               @toggleOptions="$emit('toggleOptions', $event, video.id)"
               @goToSubscription="$emit('goToSubscription', $event)"
               @openModal="$emit('openModal', video)"
@@ -25,7 +27,7 @@
           />
         </div>
       </template>
-    </RecycleScroller>
+    </VirtualList>
 
     <!-- 加载更多指示器 -->
     <div v-if="props.loading" class="loading-indicator text-center py-4">
@@ -46,8 +48,7 @@
 
 <script setup>
 import {computed, onMounted, ref, inject, onUnmounted, onActivated} from 'vue';
-import {RecycleScroller} from 'vue-virtual-scroller';
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import VirtualList from './VirtualList.vue';
 import VideoItem from './VideoItem.vue';
 
 const props = defineProps({
@@ -137,13 +138,29 @@ const handleMarkReadBatch = (videoId, isRead, direction) => {
   emit('markReadBatch', videoId, isRead, direction);
 };
 
+const virtualList = ref(null);
+
+
+// 暴露滚动方法
+defineExpose({
+  scrollToTop: () => {
+    virtualList.value?.container.scrollTo({ top: 0 });
+  }
+});
+
 </script>
 
 <style scoped>
 .video-list-container {
-  height: 100%;
-  overflow: hidden;
+  height: 100vh;
+  overflow-y: auto;
   margin: 0 auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.video-list-container::-webkit-scrollbar {
+  display: none;
 }
 
 .scroller {
@@ -158,7 +175,8 @@ const handleMarkReadBatch = (videoId, isRead, direction) => {
 }
 
 .grid-item {
-  padding: 8px;
+  width: 100%;
+  padding: 4px;
   box-sizing: border-box;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }

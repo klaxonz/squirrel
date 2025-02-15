@@ -279,6 +279,7 @@ const displayNames = computed(() => {
   width: 100%;
   height: 100%;
   break-inside: avoid;
+  margin-bottom: 4px;
 }
 
 .video-thumbnail {
@@ -436,5 +437,9 @@ const displayNames = computed(() => {
   --tw-space-x-reverse: 0;
   margin-right: calc(-0.5rem * var(--tw-space-x-reverse));
   margin-left: calc(-0.5rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+.video-info {
+  padding: 8px;
 }
 </style>
