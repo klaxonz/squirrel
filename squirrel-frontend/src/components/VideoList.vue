@@ -39,10 +39,6 @@
       <p class="mt-2">加载更多...</p>
     </div>
 
-    <!-- 加载完成状态 -->
-    <div v-if="props.allLoaded && !props.loading" class="text-center py-4">
-      <p>没有更多视频了</p>
-    </div>
   </div>
 </template>
 
