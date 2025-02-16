@@ -2,17 +2,20 @@
   <div class="relative inline-block">
     <button
       @click="toggleDropdown"
-      class="flex items-center space-x-1 px-2 py-1.5 text-xs text-[#f1f1f1] hover:bg-[#272727] rounded-full transition-colors duration-150"
-      :class="{ 'bg-[#272727]': isOpen }"
+      class="flex items-center px-2 py-1.5 text-[#f1f1f1] hover:bg-[#272727] rounded-full transition-colors duration-150"
+      :class="[{ 'bg-[#272727]': isOpen }, isMobile ? 'p-1.5' : 'space-x-1 px-2 text-xs']"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+      <svg v-if="!isMobile" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
         <path d="M3 3a1 1 0 000 2h11a1 1 0 100-2H3zM3 7a1 1 0 000 2h7a1 1 0 100-2H3zM3 11a1 1 0 100 2h4a1 1 0 100-2H3z" />
       </svg>
-      <span>排序方式</span>
+      <span v-if="!isMobile">排序方式</span>
       <svg 
         xmlns="http://www.w3.org/2000/svg" 
-        class="h-3 w-3 transition-transform duration-200"
-        :class="{ 'transform rotate-180': isOpen }"
+        class="transition-transform duration-200"
+        :class="[
+          isMobile ? 'h-2.5 w-2.5 -mr-0.5' : 'h-3 w-3',
+          { 'transform rotate-180': isOpen }
+        ]"
         viewBox="0 0 20 20" 
         fill="currentColor"
       >
@@ -23,6 +26,11 @@
     <div
       v-if="isOpen"
       class="absolute mt-1 py-0.5 w-24 bg-[#282828] rounded-lg shadow-lg z-50 animate-fade-in"
+      :class="{
+        'right-0': isMobile,
+        'left-0': !isMobile
+      }"
+      :style="isMobile ? { right: '0', left: 'auto' } : {}"
     >
       <button
         v-for="option in sortOptions"
@@ -48,6 +56,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { isMobile } from "../composables/useMobile.js";
 
 const props = defineProps({
   modelValue: {

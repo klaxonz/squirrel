@@ -141,7 +141,6 @@ const handleMarkReadBatch = (videoId, isRead, direction) => {
 const virtualList = ref(null);
 
 
-// 暴露滚动方法
 defineExpose({
   scrollToTop: () => {
     virtualList.value?.container.scrollTo({ top: 0 });

@@ -34,7 +34,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onActivated, onBeforeUnmount, nextTick } from 'vue';
+
+// 添加滚动位置状态
+const scrollPositions = ref(new Map());
+const instanceId = ref(null);
+const currentScrollTop = ref(0);
 
 const props = defineProps({
   items: {
@@ -65,7 +70,6 @@ const props = defineProps({
 
 const container = ref(null);
 const items = ref([]);
-const sizes = ref({});
 const scrollTop = ref(0);
 const heights = ref([]);
 const resizeObserver = ref(null);
@@ -76,13 +80,13 @@ const rowHeights = ref([]);
 
 // 计算可见项
 const visibleItems = computed(() => {
-  const startRow = Math.floor(findNearestItemIndex(scrollTop.value) / columnCount.value);
-  const endRow = Math.ceil(findNearestItemIndex(scrollTop.value + containerHeight.value) / columnCount.value);
-  
-  const startIndex = Math.max(0, (startRow - props.buffer) * columnCount.value);
+  // 基于平均行高的快速计算
+  const startIndex = Math.max(0, 
+    Math.floor(currentScrollTop.value / averageRowHeight.value) * columnCount.value - props.buffer * columnCount.value
+  );
   const endIndex = Math.min(
-    props.items.length, 
-    (endRow + props.buffer + 1) * columnCount.value
+    props.items.length,
+    startIndex + Math.ceil(containerHeight.value / averageRowHeight.value) * columnCount.value + props.buffer * 2 * columnCount.value
   );
 
   return props.items.slice(startIndex, endIndex).map((item, i) => ({
@@ -110,9 +114,9 @@ const offset = computed(() => {
 });
 
 // 容器高度
-const containerHeight = computed(() => 
-  container.value?.clientHeight || 0
-);
+const containerHeight = computed(() => {
+  return container.value?.clientHeight || 0
+});
 
 // 获取项尺寸
 const getItemSize = (index) => {
@@ -122,30 +126,61 @@ const getItemSize = (index) => {
   return props.itemSize;
 };
 
-// 二分查找最近项
-const findNearestItemIndex = (scrollTop) => {
-  let low = 0;
-  let high = props.items.length;
-  let mid;
-  let currentTop = 0;
 
-  while (low < high) {
-    mid = low + Math.floor((high - low) / 2);
-    currentTop = heights.value[mid] || 0;
-    
-    if (currentTop < scrollTop) {
-      low = mid + 1;
-    } else {
-      high = mid;
-    }
+// 添加平均行高计算
+const averageRowHeight = computed(() => {
+  if (rowHeights.value.length === 0) return props.itemSecondarySize;
+  const validHeights = rowHeights.value.filter(h => h > 0);
+  return Math.max(50, validHeights.reduce((a, b) => a + b, 0) / validHeights.length) || props.itemSecondarySize;
+});
+
+// 生成唯一实例ID
+onMounted(() => {
+  instanceId.value = Symbol('virtual-list-instance');
+  initHeights();
+  observeResize();
+  nextTick(() => {
+    restoreScrollPosition();
+  });
+});
+
+// 恢复滚动位置
+const restoreScrollPosition = () => {
+  if (instanceId.value && scrollPositions.value.has(instanceId.value)) {
+    const targetPos = scrollPositions.value.get(instanceId.value);
+    container.value.scrollTop = targetPos;
+    requestAnimationFrame(() => {
+      container.value.scrollTop = targetPos;
+      updateHeights();
+    });
   }
-  return Math.max(0, low - 1);
 };
 
-// 处理滚动事件
+// 生命周期钩子
+onActivated(() => {
+  restoreScrollPosition();
+});
+
+onBeforeUnmount(() => {
+  scrollPositions.value.delete(instanceId.value);
+});
+
+// 处理滚动时自动保存
 const handleScroll = () => {
+  if (!container.value) return;
+  
   scrollTop.value = container.value.scrollTop;
-  updateHeights();
+  currentScrollTop.value = scrollTop.value;
+  
+  scrollPositions.value.set(instanceId.value, scrollTop.value);
+
+  // 使用更精确的防抖时间（100ms）
+  if (!updateHeightsTimeout.value) {
+    updateHeightsTimeout.value = setTimeout(() => {
+      updateHeights();
+      updateHeightsTimeout.value = null;
+    }, 100);
+  }
 };
 
 // 更新高度缓存
@@ -203,21 +238,13 @@ const itemStyle = computed(() => ({
   padding: '0 8px'
 }));
 
+// 添加防抖引用
+const updateHeightsTimeout = ref(null);
+
 watch(() => props.items, () => {
   initHeights();
   requestAnimationFrame(updateHeights);
 }, { deep: true });
-
-onMounted(() => {
-  initHeights();
-  observeResize();
-});
-
-onUnmounted(() => {
-  if (resizeObserver.value) {
-    resizeObserver.value.disconnect();
-  }
-});
 </script>
 
 <style scoped>

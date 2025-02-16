@@ -44,7 +44,7 @@ import MobileNav from './components/MobileNav.vue';
 import Sidebar from './components/Sidebar.vue';
 import PodcastPlayer from './components/PodcastPlayer.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
-import { useWindowSize } from '@vueuse/core'
+import { isMobile } from "./composables/useMobile.js";
 import { useRoute } from 'vue-router';
 import './styles/layout.css'
 import { usePodcasts } from './composables/usePodcasts';
@@ -54,10 +54,6 @@ const route = useRoute();
 const emitter = mitt();
 provide('emitter', emitter);
 
-const { width } = useWindowSize()
-const isMobile = computed(() => width.value < 768)
-
-// 判断是否是认证页面(登录/注册)
 const isAuthPage = computed(() => {
   return ['/login', '/register'].includes(route.path);
 });
