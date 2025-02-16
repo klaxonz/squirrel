@@ -4,15 +4,13 @@
     @contextmenu.prevent="showContextMenu"
     @click="handleClick"
   >
-    <div class="video-thumbnail relative cursor-pointer overflow-hidden group" ref="imageRef">
+    <div class="video-thumbnail relative cursor-pointer overflow-hidden group">
       <img
-        v-if="isImageLoaded"
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
         alt="Video thumbnail"
         class="w-full h-full object-cover absolute top-0 left-0 transition-transform duration-300 group-hover:scale-105"
       >
-      <div v-else class="w-full h-full bg-gray-200 animate-pulse"></div>
       
       <div class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
@@ -142,40 +140,6 @@ const emit = defineEmits([
   'downloadVideo',
 ]);
 
-
-const imageRef = ref(null);
-const isImageLoaded = ref(false);
-
-onMounted(() => {
-  const options = {
-    root: null,
-    rootMargin: '100px',
-    threshold: 0.1
-  };
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting && !isImageLoaded.value) {
-        const img = new Image();
-        img.src = props.video.thumbnail;
-        img.onload = () => {
-          isImageLoaded.value = true;
-        };
-        observer.unobserve(entry.target);
-      }
-    });
-  }, options);
-
-  if (imageRef.value) {
-    observer.observe(imageRef.value);
-  }
-
-  return () => {
-    if (imageRef.value) {
-      observer.unobserve(imageRef.value);
-    }
-  };
-});
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll, true);

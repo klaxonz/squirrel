@@ -167,6 +167,7 @@ onBeforeUnmount(() => {
 
 // 处理滚动时自动保存
 const handleScroll = () => {
+  console.log('handleScroll333');
   if (!container.value) return;
   
   scrollTop.value = container.value.scrollTop;
