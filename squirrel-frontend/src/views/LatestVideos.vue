@@ -51,10 +51,10 @@ const emitter = inject('emitter');
 
 const {
   videoContainer,
+  activeTab,
   error,
 } = useLatestVideos();
 
-const activeTab = ref('all');
 const route = useRoute();
 const subscriptionId = computed(() => route.params.id);
 

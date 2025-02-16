@@ -177,9 +177,6 @@ def list_videos(
         results = session.execute(text(videos_sql), params).all()
         videos = [VideoDto.model_validate(row._mapping) for row in results]
 
-        total_count = video_count.total
-        total_preview_count = video_count.preview
-
         # get subscriptions
         subscription_ids = list(set(video.subscription_id for video in videos))
         subscriptions = session.query(Subscription).filter(Subscription.id.in_(subscription_ids)).all()
@@ -221,14 +218,14 @@ def list_videos(
             video_list.append(video_data)
 
         counts = {
-            "all": total_count,
-            "read": 0,
-            "unread": 0,
-            "preview": total_preview_count,
+            "all": video_count.total,
+            "read": video_count.read,
+            "unread": video_count.unread,
+            "preview": video_count.preview,
             "liked": 0
         }
 
-        return video_list, total_count, counts
+        return video_list, video_count.total, counts
 
 
 def download_video(video_id: int):

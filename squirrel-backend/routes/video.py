@@ -7,6 +7,7 @@ from common.video_stream import VideoStreamHandler
 from core import download_config
 from downloader.factory import DownloaderFactory
 from meta.factory import VideoFactory
+from models.user import User
 from proxy.bilibili import BilibiliProxy
 from proxy.javdb import JavdbProxy
 from schemas.video import DownloadVideoRequest, SortBy
@@ -42,7 +43,7 @@ def get_videos(
         sort_by: SortBy = Query(SortBy.UPLOADED_AT, description="排序字段"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
-        current_user = Depends(get_current_user)
+        current_user: User = Depends(get_current_user)
 ):
     videos, total_counts, counts = video_service.list_videos(current_user.id, query, subscription_id, category, sort_by, page, page_size)
     return response.success({

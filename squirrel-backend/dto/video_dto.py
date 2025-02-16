@@ -30,3 +30,5 @@ class VideoDto(sqlalchemy_to_pydantic(Video)):
 class VideoCountDto(BaseModel):
     total: int
     preview: int
+    read: int
+    unread: int

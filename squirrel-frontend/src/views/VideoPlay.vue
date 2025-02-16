@@ -173,13 +173,13 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from '../utils/axios';
 import VideoPlayer from '../components/VideoPlayer.vue';
-import { useVideoHistory } from '../composables/useVideoHistory';
 import useOptionsMenu from '../composables/useOptionsMenu';
+import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 
 const route = useRoute();
 const video = ref(null);
-
+const { sendReport } = useVideoHistory();
 const { toggleLikeVideo, downloadVideo, copyVideoLink } = useOptionsMenu(video);
 
 const handleLike = async (targetStatus) => {
@@ -226,10 +226,13 @@ const onVideoEnded = () => {
   video.value.if_read = true;
 };
 
+let lastReportedTime = -1;
 const onVideoTimeUpdate = (currentTime) => {
-  if (Math.floor(currentTime) % 5 === 0) {
+  if (Math.floor(currentTime) - lastReportedTime >= 5 || lastReportedTime === -1) {
+    lastReportedTime = Math.floor(currentTime);
     video.value.last_position = currentTime;
     video.value.progress = (currentTime / video.value.duration) * 100;
+    sendReport(video.value.id, currentTime);
   }
 };
 

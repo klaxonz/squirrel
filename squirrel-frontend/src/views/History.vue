@@ -33,7 +33,7 @@
 import {inject, onMounted, ref, computed} from 'vue';
 import {useRouter} from 'vue-router';
 import VideoList from '../components/VideoList.vue';
-import {useVideoHistory} from '../composables/useVideoHistory';
+import useVideoHistory from '../composables/useVideoHistory';
 import useCustomToast from '../composables/useToast';
 
 const router = useRouter();

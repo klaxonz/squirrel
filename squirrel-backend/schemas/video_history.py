@@ -1,15 +1,10 @@
-from typing import List, Optional
-
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-class UpdateHistoryRequest(BaseModel):
-    video_id: str
-    channel_id: str
-    watch_duration: int
-    last_position: int
-    total_duration: int
+class HistoryBase(BaseModel):
+    video_id: int = Field(..., description="视频ID")
+    last_position: float = Field(0.0, description="最后观看位置(秒)")
 
 
-class ClearHistoryRequest(BaseModel):
-    video_ids: Optional[List[str]] = None
+class HistoryCreate(HistoryBase):
+    pass

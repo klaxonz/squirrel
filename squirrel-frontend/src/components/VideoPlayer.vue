@@ -6,10 +6,10 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, watch, ref } from 'vue';
+import { onMounted, watch, ref, onBeforeUnmount } from 'vue';
 import Player from 'xgplayer';
-import useVideoOperations from "../composables/useVideoOperations.js";
 import {HlsPlugin} from "xgplayer-hls";
+import useVideoOperations from "../composables/useVideoOperations";
 
 const props = defineProps({
   video: Object,
@@ -41,7 +41,7 @@ onMounted(async () => {
   initPlayer();
 });
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
   window.removeEventListener('offline', handleDisconnect);
   window.removeEventListener('online', handleDisconnect);
   if (player.value) {
@@ -185,6 +185,7 @@ const handleSeeked = () => {
 };
 
 const handleTimeUpdate = () => {
+  emit('timeupdate', player.value.currentTime)
   if (audioPlayer.value && player.value) {
     const threshold = 0.3;
     const timeDiff = Math.abs(audioPlayer.value.currentTime - player.value.currentTime);
