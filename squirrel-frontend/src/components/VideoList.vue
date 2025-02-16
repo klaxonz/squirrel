@@ -151,7 +151,7 @@ defineExpose({
 
 <style scoped>
 .video-list-container {
-  height: 100vh;
+  height: 100%;
   overflow-y: auto;
   margin: 0 auto;
   scrollbar-width: none;
