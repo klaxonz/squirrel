@@ -92,7 +92,14 @@ export const formatDuration = (seconds) => {
   const minutes = Math.floor((seconds % 3600) / 60);
   const remainingSeconds = seconds % 60;
   return `${hours ? hours + ':' : ''}${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-}; 
+};
+
+// 格式化时间显示
+export const formatTime = (seconds) => {
+  const date = new Date(0);
+  date.setSeconds(seconds);
+  return date.toISOString().substr(11, 8).replace(/^00:/, '');
+};
 
 export const formatLastUpdate = (date) => {
   if (!date) return '未知';

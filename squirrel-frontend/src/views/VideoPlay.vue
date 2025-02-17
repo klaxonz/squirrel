@@ -232,7 +232,14 @@ const onVideoTimeUpdate = (currentTime) => {
     lastReportedTime = Math.floor(currentTime);
     video.value.last_position = currentTime;
     video.value.progress = (currentTime / video.value.duration) * 100;
-    sendReport(video.value.id, currentTime);
+    // Fire-and-forget report without waiting for response
+    (async () => {
+      try {
+        await sendReport(video.value.id, currentTime);
+      } catch (e) {
+        // Silently ignore reporting errors
+      }
+    })();
   }
 };
 

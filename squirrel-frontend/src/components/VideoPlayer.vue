@@ -1,14 +1,25 @@
 <template>
   <div class="video-wrapper bg-[#0f0f0f]">
-    <div :id="`video-player`" class="video-player"></div>
-    <audio ref="audioPlayer" :src="video.stream_audio_url" preload="auto"></audio>
+    <video 
+      ref="videoPlayer"
+      class="video-player"
+      :poster="video.thumbnail"
+      :src="video.video_stream_url"
+      controls
+      @play="handlePlay"
+      @pause="handlePause"
+      @seeked="handleSeeked"
+      @seeking="handleSeeking"
+      @canplay="handleCanplay"
+      @waiting="handleWaiting"
+      @playing="handlePlaying"
+    ></video>
+    <audio ref="audioPlayer" :src="video.audio_stream_url" preload="auto"></audio>
   </div>
 </template>
 
 <script setup>
 import { onMounted, watch, ref, onBeforeUnmount } from 'vue';
-import Player from 'xgplayer';
-import {HlsPlugin} from "xgplayer-hls";
 import useVideoOperations from "../composables/useVideoOperations";
 
 const props = defineProps({
@@ -21,15 +32,12 @@ const props = defineProps({
 
 const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate']);
 
-const player = ref(null);
+const videoPlayer = ref(null);
 const audioPlayer = ref(null);
 const {
   playVideo,
 } = useVideoOperations();
 
-const retryCount = ref(0);
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 2000;
 
 onMounted(async () => {
   if (!props.video?.stream_video_url) {
@@ -38,24 +46,15 @@ onMounted(async () => {
       audioPlayer.value.src = props.video.stream_audio_url;
     }
   }
-  initPlayer();
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('offline', handleDisconnect);
-  window.removeEventListener('online', handleDisconnect);
-  if (player.value) {
-    player.value.destroy();
+  if (videoPlayer.value) {
+    videoPlayer.value.pause();
   }
+
 });
 
 watch(() => props.video?.stream_video_url, async (newVideoUrl) => {
-  if (newVideoUrl) {
-    if (!player.value) {
-      initPlayer();
-    } else {
-      player.value.src = newVideoUrl;
-    }
+  if (newVideoUrl && videoPlayer.value) {
+    videoPlayer.value.src = newVideoUrl;
   }
 });
 
@@ -66,90 +65,54 @@ watch(() => props.video?.stream_audio_url, (newAudioUrl) => {
 });
 
 
-const getBasePlayerConfig = () => ({
-  id: `video-player`,
-  poster: props.video.thumbnail,
-  autoplay: true,
-  volume: 1,
-  width: '100%',
-  height: '100%',
-  cssFullscreen: false,
-  startTime: props.initialTime || 0,
-  playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
-  controls: { mode: 'flex' },
-  theme: {
-    background: '#000000',
-    primary: '#00a1d6',
-    progress: '#00a1d6',
-    playedColor: '#00a1d6',
-    progressColor: 'rgba(255, 255, 255, 0.3)',
-    volumeColor: '#00a1d6',
-    controlsBgColor: 'rgba(0, 0, 0, 0.5)',
-    textColor: '#ffffff',
-  }
-});
-
-const initPlayer = () => {
-  if (!props.video?.stream_video_url) {
-    console.warn('Cannot initialize player: url is missing');
-    return;
-  }
-
-  const baseConfig = getBasePlayerConfig();
-  const finalConfig = {
-    ...baseConfig,
-    url: props.video.stream_video_url,
-    plugins: props.video.domain === 'javdb.com' ? [HlsPlugin] : []
-  };
-
-  player.value = new Player(finalConfig);
-  setupEventListeners();
-
-  window.addEventListener('offline', handleDisconnect);
-  window.addEventListener('online', () => {
-    if (player.value && player.value.paused) {
-      handleError(new Error('Connection restored'));
-    }
-  });
-};
-
-const setupEventListeners = () => {
-  const eventHandlers = {
-    play: handlePlay,
-    pause: handlePause,
-    seeking: handleSeeking,
-    seeked: handleSeeked,
-    ended: handleEnded,
-    waiting: handleWaiting,
-    playing: handlePlaying,
-    timeupdate: handleTimeUpdate,
-    volumechange: handleVolumechange,
-    fullscreenChange: (isFullscreen) => emit('fullscreenChange', isFullscreen),
-    error: handleError,
-    networkError: handleError,
-    stalled: handleError
-  };
-
-  Object.entries(eventHandlers).forEach(([event, handler]) => {
-    player.value.on(event, handler);
-  });
-};
-
 const handlePlay = () => {
-  if (audioPlayer.value && player.value) {
+  if (audioPlayer.value && videoPlayer.value) {
+    // 先同步时间
+    audioPlayer.value.currentTime = videoPlayer.value.currentTime;
+    
+    // 先播放音频
     audioPlayer.value.play();
-    emit('play', props.video);
+    videoPlayer.value.play();
+    
+    // 验证播放状态
+    const verifyPlayState = () => {
+      if (audioPlayer.value.paused || videoPlayer.value.paused) {
+        console.warn('Play state mismatch, retrying...');
+        audioPlayer.value.play();
+        videoPlayer.value.play();
+        requestAnimationFrame(verifyPlayState);
+      }
+    };
+    verifyPlayState();
   }
 };
 
 const handlePause = () => {
-  if (audioPlayer.value && player.value) {
-    audioPlayer.value.pause();
-    emit('pause', props.video);
-    if(document.visibilityState === 'hidden') {
-      player.value.play();
-      audioPlayer.value.play();
+  if (audioPlayer.value && videoPlayer.value) {
+    // 先暂停音频
+    try {
+      audioPlayer.value.pause();
+    } catch (e) {
+      console.error('Error pausing audio:', e);
     }
+    
+    // 再暂停视频
+    try {
+      videoPlayer.value.pause();
+    } catch (e) {
+      console.error('Error pausing video:', e);
+    }
+    
+    // 状态验证
+    const verifyPauseState = () => {
+      if (!videoPlayer.value.paused || !audioPlayer.value.paused) {
+        console.warn('Pause state mismatch, retrying...');
+        audioPlayer.value.pause();
+        videoPlayer.value.pause();
+        requestAnimationFrame(verifyPauseState);
+      }
+    };
+    verifyPauseState();
   }
 };
 
@@ -160,43 +123,35 @@ const handleSeeking = () => {
 };
 
 const handleSeeked = () => {
-  if (!player.value) return;
-  
-  // 如果没有单独的音频轨道，直接播放视频
-  if (!props.video?.stream_audio_url || !audioPlayer.value) {
-    if (!player.value.paused) {
-      player.value.play();
+  if (!videoPlayer.value) return;
+  if (audioPlayer.value) {
+    audioPlayer.value.currentTime = videoPlayer.value.currentTime;
+    if (!videoPlayer.value.paused) {
+      audioPlayer.value.play();
     }
-    return;
   }
-  const syncAndPlay = () => {
-    audioPlayer.value.currentTime = player.value.currentTime;
-    if (!player.value.paused) {
-      audioPlayer.value.play().then(() => {
-        player.value.play();
-      }).catch(error => {
-        console.error('Failed to play audio after seeking:', error);
-        player.value.pause();
-      });
-    }
-  };
-  syncAndPlay();
+};
 
+const handleCanplay = () => {
+  console.log('handleCanplay');
+  if (videoPlayer.value) {
+    videoPlayer.value.play();
+  }
 };
 
 const handleTimeUpdate = () => {
-  emit('timeupdate', player.value.currentTime)
-  if (audioPlayer.value && player.value) {
+  emit('timeupdate', videoPlayer.value?.currentTime);
+  if (audioPlayer.value && videoPlayer.value) {
     const threshold = 0.3;
-    const timeDiff = Math.abs(audioPlayer.value.currentTime - player.value.currentTime);
+    const timeDiff = Math.abs(audioPlayer.value.currentTime - videoPlayer.value.currentTime);
     if (timeDiff > threshold) {
-      audioPlayer.value.currentTime = player.value.currentTime;
+      audioPlayer.value.currentTime = videoPlayer.value.currentTime;
     }
   }
 };
 
 const handleEnded = () => {
-  if (audioPlayer.value && player.value) {
+  if (audioPlayer.value && videoPlayer.value) {
     audioPlayer.value.pause();
     audioPlayer.value.currentTime = 0;  
     emit('ended', props.video);
@@ -206,43 +161,72 @@ const handleEnded = () => {
 const handleWaiting = () => {
   if (audioPlayer.value) {
     audioPlayer.value.pause();
+    // 记录当前播放位置
+    const bufferStartTime = videoPlayer.value.currentTime;
+    
+    // 创建缓冲检查器
+    const bufferChecker = setInterval(() => {
+      if (videoPlayer.value.readyState > 2) { // 当有足够数据恢复播放时
+        clearInterval(bufferChecker);
+        // 同步音频到最新视频时间
+        const currentVideoTime = videoPlayer.value.currentTime;
+        const timeDiff = currentVideoTime - bufferStartTime;
+        
+        // 如果缓冲期间时间差异过大，直接跳转
+        if (timeDiff > 2) {
+          audioPlayer.value.currentTime = currentVideoTime;
+        } else {
+          // 否则渐进式同步
+          audioPlayer.value.currentTime = bufferStartTime + timeDiff * 0.8;
+        }
+        
+        if (!videoPlayer.value.paused) {
+          audioPlayer.value.play().catch(() => {
+            videoPlayer.value.pause();
+          });
+        }
+      }
+    }, 300);
   }
 };
 
 const handlePlaying = () => {
   if (audioPlayer.value) {
     audioPlayer.value.play();
+    
+    // 创建同步补偿器
+    let syncAttempts = 0;
+    const syncCorrector = () => {
+      if (syncAttempts++ > 5) return;
+      
+      const videoTime = videoPlayer.value.currentTime;
+      const audioTime = audioPlayer.value.currentTime;
+      
+      // 渐进式同步策略
+      if (Math.abs(videoTime - audioTime) > 0.3) {
+        audioPlayer.value.currentTime = videoTime;
+      } else if (Math.abs(videoTime - audioTime) > 0.1) {
+        // 微调播放速率
+        const rate = 1 + (videoTime - audioTime) * 0.1;
+        audioPlayer.value.playbackRate = Math.min(Math.max(rate, 0.9), 1.1);
+      }
+      
+      requestAnimationFrame(syncCorrector);
+    };
+    
+    syncCorrector();
   }
 };
 
 const handleVolumechange = () => {
-  if (audioPlayer.value && player.value) {
-    audioPlayer.value.volume = player.value.muted ? 0 : player.value.volume;
+  if (audioPlayer.value && videoPlayer.value) {
+    audioPlayer.value.volume = videoPlayer.value.muted ? 0 : videoPlayer.value.volume;
   }
 };
 
-const handleError = (error) => {
-  console.error('Player error:', error);
-  if (retryCount.value < MAX_RETRIES) {
-    retryCount.value++;
-    setTimeout(() => {
-      player.value.reload();
-      player.value.play();
-    }, RETRY_DELAY * retryCount.value);
-  } else {
-    console.error('Maximum retry attempts reached');
-  }
-};
-
-const handleDisconnect = () => {
-  if (player.value && !player.value.paused) {
-    console.log('Detected connection loss, attempting to reconnect...');
-    handleError(new Error('Connection lost'));
-  }
-};
 
 defineExpose({
-  player
+  videoPlayer
 });
 
 </script>
