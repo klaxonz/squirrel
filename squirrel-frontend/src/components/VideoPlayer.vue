@@ -6,20 +6,23 @@
       :poster="video.thumbnail"
       :src="video.video_stream_url"
       controls
-      @play="handlePlay"
-      @pause="handlePause"
-      @seeked="handleSeeked"
-      @seeking="handleSeeking"
-      @canplay="handleCanplay"
-      @waiting="handleWaiting"
-      @playing="handlePlaying"
+      @play="handleVideoPlay"
+      @pause="handleVideoPause"
+      @seeking="handleVideoSeeking"
+      @canplay="handleVideoCanplay"
+      @waiting="handleVideoWaiting"
     ></video>
-    <audio ref="audioPlayer" :src="video.audio_stream_url" preload="auto"></audio>
+    <audio
+      ref="audioPlayer"
+      :src="video.audio_stream_url"
+      @seeking="handleAudioSeeking"
+      @canplay="handleAudioCanplay"
+      />
   </div>
 </template>
 
 <script setup>
-import { onMounted, watch, ref, onBeforeUnmount } from 'vue';
+import { onMounted, watch, ref } from 'vue';
 import useVideoOperations from "../composables/useVideoOperations";
 
 const props = defineProps({
@@ -46,9 +49,6 @@ onMounted(async () => {
       audioPlayer.value.src = props.video.stream_audio_url;
     }
   }
-  if (videoPlayer.value) {
-    videoPlayer.value.pause();
-  }
 
 });
 
@@ -64,166 +64,81 @@ watch(() => props.video?.stream_audio_url, (newAudioUrl) => {
   }
 });
 
+let firstCome = true;
+let isVideoCanplay = false;
+let isAudioCanplay = false;
+let isAudioSeeking = false;
+let isVideoSeeking = false;
 
-const handlePlay = () => {
-  if (audioPlayer.value && videoPlayer.value) {
-    // 先同步时间
+const isCanplay = () => {
+  return isVideoCanplay && isAudioCanplay;
+};
+
+const isSeeking = () => {
+  return isAudioSeeking || isVideoSeeking;
+};
+
+const handleVideoPlay = () => {
+  firstCome = false;
+  console.log('video play', isVideoCanplay, isAudioCanplay);
+  if (isCanplay()) {
     audioPlayer.value.currentTime = videoPlayer.value.currentTime;
-    
-    // 先播放音频
     audioPlayer.value.play();
-    videoPlayer.value.play();
-    
-    // 验证播放状态
-    const verifyPlayState = () => {
-      if (audioPlayer.value.paused || videoPlayer.value.paused) {
-        console.warn('Play state mismatch, retrying...');
-        audioPlayer.value.play();
-        videoPlayer.value.play();
-        requestAnimationFrame(verifyPlayState);
-      }
-    };
-    verifyPlayState();
-  }
-};
-
-const handlePause = () => {
-  if (audioPlayer.value && videoPlayer.value) {
-    // 先暂停音频
-    try {
-      audioPlayer.value.pause();
-    } catch (e) {
-      console.error('Error pausing audio:', e);
-    }
-    
-    // 再暂停视频
-    try {
-      videoPlayer.value.pause();
-    } catch (e) {
-      console.error('Error pausing video:', e);
-    }
-    
-    // 状态验证
-    const verifyPauseState = () => {
-      if (!videoPlayer.value.paused || !audioPlayer.value.paused) {
-        console.warn('Pause state mismatch, retrying...');
-        audioPlayer.value.pause();
-        videoPlayer.value.pause();
-        requestAnimationFrame(verifyPauseState);
-      }
-    };
-    verifyPauseState();
-  }
-};
-
-const handleSeeking = () => {
-  if (audioPlayer.value) {
-    audioPlayer.value.pause();
-  }
-};
-
-const handleSeeked = () => {
-  if (!videoPlayer.value) return;
-  if (audioPlayer.value) {
+    console.log(videoPlayer.value.currentTime, audioPlayer.value.currentTime);
+  } else {
+    videoPlayer.value.pause();
     audioPlayer.value.currentTime = videoPlayer.value.currentTime;
-    if (!videoPlayer.value.paused) {
-      audioPlayer.value.play();
-    }
   }
 };
 
-const handleCanplay = () => {
-  console.log('handleCanplay');
-  if (videoPlayer.value) {
+const handleVideoPause = () => {
+  console.log('video pause');
+  if (audioPlayer.value) {
+    audioPlayer.value.pause();
+  }
+};
+
+const handleVideoSeeking = () => {
+  console.log('video seeking');
+  audioPlayer.value.pause();
+  videoPlayer.value.pause();
+  isAudioCanplay = false;
+  isVideoCanplay = false;
+  isVideoSeeking = true;
+};
+
+const handleVideoCanplay = () => {
+  console.log('video canplay');
+  isVideoCanplay = true;
+  isVideoSeeking = false;
+  if (!firstCome && !isSeeking() && isCanplay()) {
     videoPlayer.value.play();
-  }
-};
-
-const handleTimeUpdate = () => {
-  emit('timeupdate', videoPlayer.value?.currentTime);
-  if (audioPlayer.value && videoPlayer.value) {
-    const threshold = 0.3;
-    const timeDiff = Math.abs(audioPlayer.value.currentTime - videoPlayer.value.currentTime);
-    if (timeDiff > threshold) {
-      audioPlayer.value.currentTime = videoPlayer.value.currentTime;
-    }
-  }
-};
-
-const handleEnded = () => {
-  if (audioPlayer.value && videoPlayer.value) {
-    audioPlayer.value.pause();
-    audioPlayer.value.currentTime = 0;  
-    emit('ended', props.video);
-  }
-};
-
-const handleWaiting = () => {
-  if (audioPlayer.value) {
-    audioPlayer.value.pause();
-    // 记录当前播放位置
-    const bufferStartTime = videoPlayer.value.currentTime;
-    
-    // 创建缓冲检查器
-    const bufferChecker = setInterval(() => {
-      if (videoPlayer.value.readyState > 2) { // 当有足够数据恢复播放时
-        clearInterval(bufferChecker);
-        // 同步音频到最新视频时间
-        const currentVideoTime = videoPlayer.value.currentTime;
-        const timeDiff = currentVideoTime - bufferStartTime;
-        
-        // 如果缓冲期间时间差异过大，直接跳转
-        if (timeDiff > 2) {
-          audioPlayer.value.currentTime = currentVideoTime;
-        } else {
-          // 否则渐进式同步
-          audioPlayer.value.currentTime = bufferStartTime + timeDiff * 0.8;
-        }
-        
-        if (!videoPlayer.value.paused) {
-          audioPlayer.value.play().catch(() => {
-            videoPlayer.value.pause();
-          });
-        }
-      }
-    }, 300);
-  }
-};
-
-const handlePlaying = () => {
-  if (audioPlayer.value) {
     audioPlayer.value.play();
-    
-    // 创建同步补偿器
-    let syncAttempts = 0;
-    const syncCorrector = () => {
-      if (syncAttempts++ > 5) return;
-      
-      const videoTime = videoPlayer.value.currentTime;
-      const audioTime = audioPlayer.value.currentTime;
-      
-      // 渐进式同步策略
-      if (Math.abs(videoTime - audioTime) > 0.3) {
-        audioPlayer.value.currentTime = videoTime;
-      } else if (Math.abs(videoTime - audioTime) > 0.1) {
-        // 微调播放速率
-        const rate = 1 + (videoTime - audioTime) * 0.1;
-        audioPlayer.value.playbackRate = Math.min(Math.max(rate, 0.9), 1.1);
-      }
-      
-      requestAnimationFrame(syncCorrector);
-    };
-    
-    syncCorrector();
   }
 };
 
-const handleVolumechange = () => {
-  if (audioPlayer.value && videoPlayer.value) {
-    audioPlayer.value.volume = videoPlayer.value.muted ? 0 : videoPlayer.value.volume;
+const handleVideoWaiting = () => {
+  console.log('video waiting');
+  if (audioPlayer.value) {
+    audioPlayer.value.pause();
   }
 };
 
+const handleAudioSeeking = () => {
+  console.log('audio seeking');
+  isAudioSeeking = true;
+};
+
+const handleAudioCanplay = () => {
+  console.log('audio canplay');
+  isAudioCanplay = true;
+  isAudioSeeking = false;
+  console.log('audio canplay', isSeeking(), isCanplay());
+  if (!firstCome && !isSeeking() && isCanplay()) {
+    videoPlayer.value.play();
+    audioPlayer.value.play();
+  }
+};
 
 defineExpose({
   videoPlayer
@@ -240,51 +155,5 @@ defineExpose({
   @apply w-full h-full object-contain;
 }
 
-:deep(.xgplayer) {
-  background-color: #0f0f0f;
-}
 
-:deep(.xgplayer .xgplayer-controls) {
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 100%);
-}
-
-:deep(.xgplayer .xgplayer-slider) {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-:deep(.xgplayer .xgplayer-slider .xgplayer-bar) {
-  background-color: #ff0000;
-}
-
-:deep(.xgplayer .xgplayer-icon) {
-  color: #aaaaaa;
-}
-
-:deep(.xgplayer .xgplayer-time) {
-  color: #aaaaaa;
-}
-
-:deep(.xgplayer .xgplayer-play) {
-  border-color: transparent transparent transparent #aaaaaa;
-}
-
-:deep(.xgplayer .xgplayer-play.xgplayer-pause::before, .xgplayer .xgplayer-play.xgplayer-pause::after) {
-  background-color: #aaaaaa;
-}
-
-:deep(.xgplayer .xgplayer-slider .xgplayer-progress) {
-  background-color: #ff0000;
-}
-
-:deep(.xgplayer .xgplayer-slider .xgplayer-progress-btn) {
-  background-color: #ff0000;
-}
-
-:deep(.xgplayer .xgplayer-volume .xgplayer-volume-bar) {
-  background-color: #aaaaaa;
-}
-
-:deep(.xgplayer .xgplayer-volume .xgplayer-volume-active) {
-  background-color: #ff0000;
-}
 </style>
