@@ -25,6 +25,8 @@
     "xgplayer-hls": "^3.0.20"
   },
   "devDependencies": {
+    "@iconify-json/material-symbols": "^1.2.14",
+    "@iconify/utils": "^2.3.0",
     "@vitejs/plugin-vue": "^5.1.2",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.41",
