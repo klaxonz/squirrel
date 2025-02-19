@@ -4,7 +4,14 @@
       @mouseenter="handleMouseEnter"
       @mouseleave="handleMouseLeave"
     >
-      <!-- 添加一个专门用于点击的遮罩层，不包括控件区域 -->
+      <div v-if="isLoading" class="yt-loading-spinner">
+        <div class="yt-spinner">
+          <svg class="yt-spinner__circle" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45"/>
+          </svg>
+        </div>
+      </div>
+
       <div class="video-click-layer" @click="togglePlay">
         <div class="play-state-indicator" v-if="showPlayIndicator">
           <Icon :icon="isPlaying ? 'material-symbols:pause' : 'material-symbols:play-arrow'" 
@@ -12,8 +19,7 @@
         </div>
       </div>
 
-      <!-- 视频元素和其他内容 -->
-      <video 
+      <video
         ref="videoPlayer"
         class="video-player"
         :poster="video.thumbnail"
@@ -23,6 +29,8 @@
         @seeking="handleVideoSeeking"
         @canplay="handleVideoCanplay"
         @waiting="handleVideoWaiting"
+        @timeupdate="handleVideoTimeupdate"
+        @progress="handleVideoProgress"
       ></video>
       <audio
         ref="audioPlayer"
@@ -31,36 +39,25 @@
         @canplay="handleAudioCanplay"
       />
       
-      <!-- Hover Gradient -->
       <div class="hover-gradient"></div>
       
-      <!-- Custom Video Controls -->
       <div class="video-controls" :class="{ 'controls-visible': isControlsVisible }">
-        <!-- Progress Bar Container -->
         <div class="progress-container">
-          <!-- 预览时间气泡 -->
           <div class="preview-time-tooltip" :style="{ left: hoverPosition + '%' }" v-show="isHoveringProgress">
             {{ formatTime(previewTime) }}
           </div>
           
-          <!-- 进度条 -->
           <div class="progress-bar-container"
             @mousemove="handleProgressHover"
             @mouseleave="handleProgressLeave"
-            @mousedown="handleProgressClick"
+            @mousedown="handleProgressMouseDown"
           >
             <div class="progress-bar">
-              <!-- 缓冲进度 -->
               <div class="progress-bar-loaded" :style="{ width: bufferedProgress + '%' }"></div>
-              <!-- 播放进度 -->
               <div class="progress-bar-filled" :style="{ width: progress + '%' }">
-                <!-- 添加进度小圆点 -->
                 <div class="progress-dot"></div>
               </div>
-              <!-- 预览进度 -->
-              <div class="progress-bar-hover" :style="{ width: hoverPosition + '%' }" v-show="isHoveringProgress"></div>
             </div>
-            <!-- 进度把手 -->
             <div class="progress-handle" :style="{ left: progress + '%' }" v-show="isHoveringProgress"></div>
           </div>
         </div>
@@ -88,7 +85,6 @@
               </div>
             </div>
             
-            <!-- 添加回时间显示 -->
             <div class="time-display">
               {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
             </div>
@@ -141,11 +137,8 @@ const isMuted = ref(false);
 const currentTime = ref(0);
 const duration = ref(0);
 const isFullscreen = ref(false);
-
-// Add new ref for buffered progress
 const bufferedProgress = ref(0);
 
-// Computed properties for dynamic icons
 const volumeIcon = computed(() => {
   if (isMuted.value || volume.value === 0) return 'material-symbols:volume-off';
   if (volume.value < 50) return 'material-symbols:volume-down';
@@ -156,20 +149,17 @@ const fullscreenIcon = computed(() =>
   isFullscreen.value ? 'material-symbols:fullscreen-exit' : 'material-symbols:fullscreen'
 );
 
-const progress = computed(() => 
-  (currentTime.value / duration.value) * 100 || 0
-);
-
 const isHoveringProgress = ref(false);
 const hoverPosition = ref(0);
 const previewTime = ref(0);
 
-// 添加控件显示状态
 const isControlsVisible = ref(false);
 let hideControlsTimer = null;
 
-// 添加播放指示器状态
 const showPlayIndicator = ref(false);
+const isLoading = ref(false);
+const isDragging = ref(false);
+const previewSeekTime = ref(0);
 
 onMounted(async () => {
   if (!props.video?.stream_video_url) {
@@ -182,6 +172,7 @@ onMounted(async () => {
 
 watch(() => props.video?.stream_video_url, async (newVideoUrl) => {
   if (newVideoUrl && videoPlayer.value) {
+    console.log('video url changed');
     videoPlayer.value.src = newVideoUrl;
   }
 });
@@ -225,11 +216,14 @@ const handleVideoPause = () => {
   if (audioPlayer.value) {
     audioPlayer.value.pause();
   }
-  isPlaying.value = false;
+  if (!isSeeking()) {
+    isPlaying.value = false;
+  }
 };
 
 const handleVideoSeeking = () => {
   console.log('video seeking');
+  isLoading.value = true;
   audioPlayer.value.pause();
   videoPlayer.value.pause();
   isAudioCanplay = false;
@@ -238,9 +232,13 @@ const handleVideoSeeking = () => {
 };
 
 const handleVideoCanplay = () => {
-  console.log('video canplay');
+  if (videoPlayer.value) {
+    duration.value = videoPlayer.value.duration;
+  }
+  isLoading.value = false;
   isVideoCanplay = true;
   isVideoSeeking = false;
+  console.log('video canplay', isSeeking(), isCanplay());
   if (!firstCome && !isSeeking() && isCanplay()) {
     videoPlayer.value.play();
     audioPlayer.value.play();
@@ -249,8 +247,22 @@ const handleVideoCanplay = () => {
 
 const handleVideoWaiting = () => {
   console.log('video waiting');
+  isLoading.value = true;
   if (audioPlayer.value) {
     audioPlayer.value.pause();
+  }
+};
+
+const handleVideoTimeupdate = () => {
+  if (videoPlayer.value) {
+    currentTime.value = videoPlayer.value.currentTime;
+    duration.value = videoPlayer.value.duration;
+  }
+};
+
+const handleVideoProgress = () => {
+  if (videoPlayer.value.buffered.length > 0) {
+      bufferedProgress.value = (videoPlayer.value.buffered.end(0) / videoPlayer.value.duration) * 100;
   }
 };
 
@@ -260,17 +272,16 @@ const handleAudioSeeking = () => {
 };
 
 const handleAudioCanplay = () => {
-  console.log('audio canplay');
   isAudioCanplay = true;
   isAudioSeeking = false;
   console.log('audio canplay', isSeeking(), isCanplay());
   if (!firstCome && !isSeeking() && isCanplay()) {
-    videoPlayer.value.play();
-    audioPlayer.value.play();
+    videoPlayer.value.play().then(() => {
+        audioPlayer.value.play();
+    });
   }
 };
 
-// Control functions
 const togglePlay = () => {
   if (videoPlayer.value.paused) {
     videoPlayer.value.play();
@@ -279,11 +290,10 @@ const togglePlay = () => {
   }
   isPlaying.value = !videoPlayer.value.paused;
   
-  // 显示播放状态指示器
   showPlayIndicator.value = true;
   setTimeout(() => {
     showPlayIndicator.value = false;
-  }, 500); // 500ms 后隐藏指示器
+  }, 500);
 };
 
 const toggleMute = () => {
@@ -302,17 +312,6 @@ const toggleFullscreen = async () => {
   }
 };
 
-// Add time update handler
-watch(videoPlayer, (player) => {
-  if (player) {
-    player.addEventListener('timeupdate', () => {
-      currentTime.value = player.currentTime;
-      duration.value = player.duration;
-    });
-  }
-});
-
-// Add volume change handler
 watch(volume, (newVolume) => {
   if (videoPlayer.value) {
     videoPlayer.value.volume = newVolume / 100;
@@ -320,77 +319,86 @@ watch(volume, (newVolume) => {
   }
 });
 
-// Add buffer progress tracking
-watch(videoPlayer, (player) => {
-  if (player) {
-    player.addEventListener('progress', () => {
-      if (player.buffered.length > 0) {
-        bufferedProgress.value = (player.buffered.end(0) / player.duration) * 100;
-      }
-    });
+// 修改进度条处理逻辑
+const handleProgressMouseDown = (e) => {
+  console.log('handleProgressMouseDown')
+  e.preventDefault();
+  isDragging.value = true;
+  const rect = e.currentTarget.getBoundingClientRect();
+  
+  const updatePreview = (clientX) => {
+    console.log('handleProgressMouseDown', clientX)
+    const position = (clientX - rect.left) / rect.width;
+    previewSeekTime.value = duration.value * Math.min(Math.max(position, 0), 1);
+    hoverPosition.value = position * 100;
+    console.log('previewSeekTime', previewSeekTime.value, hoverPosition.value);
+  };
+
+  updatePreview(e.clientX);
+
+  const handleMouseMove = (e) => {
+    console.log('handleProgressMouseDown', isDragging.value)
+    updatePreview(e.clientX);
+  };
+
+  const handleMouseUp = () => {
+    isDragging.value = false;
+    // 只在释放时执行跳转
+    setVideoTime(previewSeekTime.value);
+    
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
+};
+
+// 修改进度显示逻辑
+const progress = computed(() => {
+  if (isDragging.value) {
+    return (previewSeekTime.value / duration.value) * 100 || 0;
   }
+  return (currentTime.value / duration.value) * 100 || 0;
 });
 
-// 处理进度条悬停
+// 修改时间显示逻辑
 const handleProgressHover = (e) => {
+  console.log('handleProgressHover');
   isHoveringProgress.value = true;
   const rect = e.currentTarget.getBoundingClientRect();
   const position = ((e.clientX - rect.left) / rect.width) * 100;
   hoverPosition.value = Math.min(Math.max(position, 0), 100);
-  previewTime.value = (duration.value * position) / 100;
+  previewTime.value = isDragging.value 
+    ? previewSeekTime.value 
+    : (duration.value * position) / 100;
 };
 
 const handleProgressLeave = () => {
   isHoveringProgress.value = false;
 };
 
-// 处理进度条点击和拖动
-const handleProgressClick = (e) => {
-  const rect = e.currentTarget.getBoundingClientRect();
-  const position = (e.clientX - rect.left) / rect.width;
-  const newTime = duration.value * position;
-  
-  videoPlayer.value.currentTime = newTime;
-  audioPlayer.value.currentTime = newTime;
-  
-  // 添加拖动功能
-  const handleMouseMove = (e) => {
-    const position = (e.clientX - rect.left) / rect.width;
-    const newTime = duration.value * Math.min(Math.max(position, 0), 1);
-    videoPlayer.value.currentTime = newTime;
-    audioPlayer.value.currentTime = newTime;
-  };
-  
-  const handleMouseUp = () => {
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  };
-  
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
+const setVideoTime = (time) => {
+  videoPlayer.value.currentTime = time;
+  audioPlayer.value.currentTime = time;
+  currentTime.value = time;
 };
 
-// 修改为 mouseenter 处理函数
 const handleMouseEnter = () => {
   isControlsVisible.value = true;
-  
-  // 清除之前的定时器
   if (hideControlsTimer) {
     clearTimeout(hideControlsTimer);
   }
 };
 
-// 处理鼠标离开
 const handleMouseLeave = () => {
-  // 设置 2 秒后隐藏控件
   hideControlsTimer = setTimeout(() => {
-    if (!isHoveringProgress.value) { // 如果不在拖动进度条，才隐藏
+    if (!isHoveringProgress.value) {
       isControlsVisible.value = false;
     }
   }, 2000);
 };
 
-// 在组件卸载时清理定时器
 onUnmounted(() => {
   if (hideControlsTimer) {
     clearTimeout(hideControlsTimer);
@@ -454,7 +462,7 @@ defineExpose({
 }
 
 .progress-bar-container {
-  @apply absolute bottom-0 left-0 right-0 h-[5px] cursor-pointer;
+  @apply absolute bottom-0 left-0 right-0 h-[5px] cursor-pointer z-30;
 }
 
 .progress-bar {
@@ -580,4 +588,37 @@ defineExpose({
   @apply absolute inset-0 z-10;
   bottom: 84px;
 }
+
+.yt-loading-spinner {
+  @apply absolute inset-0 flex items-center justify-center z-20;
+}
+
+.yt-spinner {
+  @apply w-12 h-12;
+}
+
+.yt-spinner__circle {
+  @apply w-full h-full;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 6;
+  stroke-linecap: round;
+  color: white;
+  animation: yt-spinner 1.4s linear infinite;
+}
+
+.yt-spinner__circle circle {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 800;
+}
+
+@keyframes yt-spinner {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 </style>
