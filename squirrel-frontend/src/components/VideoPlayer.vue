@@ -31,12 +31,14 @@
         @waiting="handleVideoWaiting"
         @timeupdate="handleVideoTimeupdate"
         @progress="handleVideoProgress"
+        @error="handleVideoError"
       ></video>
       <audio
         ref="audioPlayer"
         :src="video.audio_stream_url"
         @seeking="handleAudioSeeking"
         @canplay="handleAudioCanplay"
+        @error="handleAudioError"
       />
       
       <div class="hover-gradient"></div>
@@ -161,6 +163,10 @@ const isLoading = ref(false);
 const isDragging = ref(false);
 const previewSeekTime = ref(0);
 
+const reconnectAttempts = ref(0);
+const MAX_RECONNECT_ATTEMPTS = 3;
+const RECONNECT_INTERVAL = 3000;
+
 onMounted(async () => {
   if (!props.video?.stream_video_url) {
     await playVideo(props.video);
@@ -172,7 +178,7 @@ onMounted(async () => {
 
 watch(() => props.video?.stream_video_url, async (newVideoUrl) => {
   if (newVideoUrl && videoPlayer.value) {
-    console.log('video url changed');
+    console.debug('video url changed');
     videoPlayer.value.src = newVideoUrl;
   }
 });
@@ -189,8 +195,12 @@ let isAudioCanplay = false;
 let isAudioSeeking = false;
 let isVideoSeeking = false;
 
+const hasBeenActive = () => {
+  return navigator.userActivation.hasBeenActive;
+};
+
 const isCanplay = () => {
-  return isVideoCanplay && isAudioCanplay;
+  return isVideoCanplay && isAudioCanplay && hasBeenActive();
 };
 
 const isSeeking = () => {
@@ -199,11 +209,11 @@ const isSeeking = () => {
 
 const handleVideoPlay = () => {
   firstCome = false;
-  console.log('video play', isVideoCanplay, isAudioCanplay);
+  console.debug('video play', isVideoCanplay, isAudioCanplay);
   if (isCanplay()) {
     audioPlayer.value.currentTime = videoPlayer.value.currentTime;
     audioPlayer.value.play();
-    console.log(videoPlayer.value.currentTime, audioPlayer.value.currentTime);
+    console.debug(videoPlayer.value.currentTime, audioPlayer.value.currentTime);
   } else {
     videoPlayer.value.pause();
     audioPlayer.value.currentTime = videoPlayer.value.currentTime;
@@ -212,7 +222,7 @@ const handleVideoPlay = () => {
 };
 
 const handleVideoPause = () => {
-  console.log('video pause');
+  console.debug('video pause');
   if (audioPlayer.value) {
     audioPlayer.value.pause();
   }
@@ -222,7 +232,7 @@ const handleVideoPause = () => {
 };
 
 const handleVideoSeeking = () => {
-  console.log('video seeking');
+  console.debug('video seeking');
   isLoading.value = true;
   audioPlayer.value.pause();
   videoPlayer.value.pause();
@@ -238,15 +248,15 @@ const handleVideoCanplay = () => {
   isLoading.value = false;
   isVideoCanplay = true;
   isVideoSeeking = false;
-  console.log('video canplay', isSeeking(), isCanplay());
-  if (!firstCome && !isSeeking() && isCanplay()) {
+  console.debug('video canplay', firstCome, isSeeking(), isCanplay());
+  if (!isSeeking() && isCanplay()) {
     videoPlayer.value.play();
     audioPlayer.value.play();
   }
 };
 
 const handleVideoWaiting = () => {
-  console.log('video waiting');
+  console.debug('video waiting');
   isLoading.value = true;
   if (audioPlayer.value) {
     audioPlayer.value.pause();
@@ -261,21 +271,21 @@ const handleVideoTimeupdate = () => {
 };
 
 const handleVideoProgress = () => {
-  if (videoPlayer.value.buffered.length > 0) {
+  if ( videoPlayer.value && videoPlayer.value.buffered.length > 0) {
       bufferedProgress.value = (videoPlayer.value.buffered.end(0) / videoPlayer.value.duration) * 100;
   }
 };
 
 const handleAudioSeeking = () => {
-  console.log('audio seeking');
+  console.debug('audio seeking');
   isAudioSeeking = true;
 };
 
 const handleAudioCanplay = () => {
   isAudioCanplay = true;
   isAudioSeeking = false;
-  console.log('audio canplay', isSeeking(), isCanplay());
-  if (!firstCome && !isSeeking() && isCanplay()) {
+  console.debug('audio canplay', firstCome, isSeeking(), isCanplay());
+  if (!isSeeking() && isCanplay()) {
     videoPlayer.value.play().then(() => {
         audioPlayer.value.play();
     });
@@ -284,7 +294,8 @@ const handleAudioCanplay = () => {
 
 const togglePlay = () => {
   if (videoPlayer.value.paused) {
-    videoPlayer.value.play();
+    reconnectAttempts.value = 0;
+    videoPlayer.value.play().catch(handleVideoError);
   } else {
     videoPlayer.value.pause();
   }
@@ -321,29 +332,26 @@ watch(volume, (newVolume) => {
 
 // 修改进度条处理逻辑
 const handleProgressMouseDown = (e) => {
-  console.log('handleProgressMouseDown')
+  console.debug('handleProgressMouseDown')
   e.preventDefault();
   isDragging.value = true;
   const rect = e.currentTarget.getBoundingClientRect();
   
   const updatePreview = (clientX) => {
-    console.log('handleProgressMouseDown', clientX)
     const position = (clientX - rect.left) / rect.width;
     previewSeekTime.value = duration.value * Math.min(Math.max(position, 0), 1);
     hoverPosition.value = position * 100;
-    console.log('previewSeekTime', previewSeekTime.value, hoverPosition.value);
   };
 
   updatePreview(e.clientX);
 
   const handleMouseMove = (e) => {
-    console.log('handleProgressMouseDown', isDragging.value)
+    console.debug('handleProgressMouseDown', isDragging.value)
     updatePreview(e.clientX);
   };
 
   const handleMouseUp = () => {
     isDragging.value = false;
-    // 只在释放时执行跳转
     setVideoTime(previewSeekTime.value);
     
     document.removeEventListener('mousemove', handleMouseMove);
@@ -364,14 +372,12 @@ const progress = computed(() => {
 
 // 修改时间显示逻辑
 const handleProgressHover = (e) => {
-  console.log('handleProgressHover');
+  console.debug('handleProgressHover');
   isHoveringProgress.value = true;
   const rect = e.currentTarget.getBoundingClientRect();
   const position = ((e.clientX - rect.left) / rect.width) * 100;
   hoverPosition.value = Math.min(Math.max(position, 0), 100);
-  previewTime.value = isDragging.value 
-    ? previewSeekTime.value 
-    : (duration.value * position) / 100;
+  previewTime.value = isDragging.value ? previewSeekTime.value : (duration.value * position) / 100;
 };
 
 const handleProgressLeave = () => {
@@ -399,9 +405,48 @@ const handleMouseLeave = () => {
   }, 2000);
 };
 
+// 添加错误处理函数
+const handleVideoError = () => {
+  if (reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS && !videoPlayer.value.paused) {
+    isLoading.value = true;
+    reconnectAttempts.value++;
+    
+    setTimeout(() => {
+      videoPlayer.value.src = props.video.stream_video_url;
+      videoPlayer.value.load();
+      videoPlayer.value.play().catch(() => {
+        handleVideoError();
+      });
+    }, RECONNECT_INTERVAL);
+  } else {
+    console.error('Video playback failed after maximum retries');
+    isLoading.value = false;
+  }
+};
+
+const handleAudioError = () => {
+  if (reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS && !audioPlayer.value.paused) {
+    setTimeout(() => {
+      audioPlayer.value.src = props.video.stream_audio_url;
+      audioPlayer.value.load();
+      audioPlayer.value.play().catch(() => {
+        handleAudioError();
+      });
+    }, RECONNECT_INTERVAL);
+  } else {
+    console.error('Audio playback failed after maximum retries');
+  }
+};
+
 onUnmounted(() => {
   if (hideControlsTimer) {
     clearTimeout(hideControlsTimer);
+  }
+  if (videoPlayer.value) {
+    videoPlayer.value.removeEventListener('error', handleVideoError);
+  }
+  if (audioPlayer.value) {
+    audioPlayer.value.removeEventListener('error', handleAudioError);
   }
 });
 
@@ -478,10 +523,6 @@ defineExpose({
   @apply absolute top-0 left-0 h-full bg-[#FF0000] flex items-center justify-end;
 }
 
-.progress-bar-hover {
-  @apply absolute top-0 left-0 h-full bg-[#FF0000] opacity-40;
-}
-
 .progress-handle {
   @apply absolute bottom-1/2 w-[12px] h-[12px] rounded-full bg-[#FF0000]
     transform translate-y-1/2 -translate-x-1/2
@@ -532,35 +573,29 @@ defineExpose({
   @apply text-white text-sm ml-3 select-none;
 }
 
-/* Add YouTube-style font */
 .video-controls {
   font-family: "YouTube Noto", Roboto, Arial, sans-serif;
 }
 
-/* 确保进度条交互时保持显示 */
 .progress-container:hover ~ .video-controls,
 .video-controls:hover {
   @apply opacity-100;
   transition-delay: 0s;
 }
 
-/* 添加进度小圆点样式 */
 .progress-dot {
   @apply w-[6px] h-[6px] rounded-full bg-[#FF0000] absolute right-0
     transform translate-x-1/2 opacity-0 transition-opacity duration-200;
 }
 
-/* 悬停时显示小圆点 */
 .progress-container:hover .progress-dot {
   @apply opacity-100;
 }
 
-/* 调整进度条悬停时的小圆点大小 */
 .progress-bar:hover .progress-dot {
   @apply w-[8px] h-[8px];
 }
 
-/* 添加播放状态指示器样式 */
 .play-state-indicator {
   @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
     bg-black/50 rounded-full p-4 z-20
