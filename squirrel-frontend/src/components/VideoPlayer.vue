@@ -34,6 +34,7 @@
         @error="handleVideoError"
       ></video>
       <audio
+        v-if="!isHlsStream"
         ref="audioPlayer"
         :src="video.audio_stream_url"
         @seeking="handleAudioSeeking"
@@ -116,6 +117,7 @@ import { onMounted, watch, ref, computed, onUnmounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import useVideoOperations from "../composables/useVideoOperations";
 import { formatTime } from "../utils/dateFormat";
+import Hls from 'hls.js';
 
 const props = defineProps({
   video: Object,
@@ -167,12 +169,39 @@ const reconnectAttempts = ref(0);
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_INTERVAL = 3000;
 
+const hls = ref(null);
+
+const isHlsStream = computed(() => 
+  props.video?.stream_video_url?.includes('.m3u8')
+);
+
 onMounted(async () => {
   if (!props.video?.stream_video_url) {
     await playVideo(props.video);
-    if (props.video.stream_audio_url) {
-      audioPlayer.value.src = props.video.stream_audio_url;
+  }
+  
+  if (props.video?.stream_video_url) {
+    if (props.video.stream_video_url.includes('.m3u8')) {
+      if (Hls.isSupported()) {
+        hls.value = new Hls();
+        hls.value.attachMedia(videoPlayer.value);
+        hls.value.on(Hls.Events.MEDIA_ATTACHED, () => {
+          hls.value.loadSource(props.video.stream_video_url);
+        });
+        
+        hls.value.on(Hls.Events.ERROR, (event, data) => {
+          handleHlsError(data);
+        });
+      } else if (videoPlayer.value.canPlayType('application/vnd.apple.mpegurl')) {
+        videoPlayer.value.src = props.video.stream_video_url;
+      }
+    } else {
+      videoPlayer.value.src = props.video.stream_video_url;
     }
+  }
+
+  if (!isHlsStream.value && props.video.stream_audio_url) {
+    audioPlayer.value.src = props.video.stream_audio_url;
   }
 });
 
@@ -200,7 +229,7 @@ const hasBeenActive = () => {
 };
 
 const isCanplay = () => {
-  return isVideoCanplay && isAudioCanplay && hasBeenActive();
+  return isVideoCanplay && (isHlsStream.value ? true : isAudioCanplay) && hasBeenActive();
 };
 
 const isSeeking = () => {
@@ -294,10 +323,15 @@ const handleAudioCanplay = () => {
 
 const togglePlay = () => {
   if (videoPlayer.value.paused) {
-    reconnectAttempts.value = 0;
     videoPlayer.value.play().catch(handleVideoError);
+    if (!isHlsStream.value && audioPlayer.value) {
+      audioPlayer.value.play();
+    }
   } else {
     videoPlayer.value.pause();
+    if (!isHlsStream.value && audioPlayer.value) {
+      audioPlayer.value.pause();
+    }
   }
   isPlaying.value = !videoPlayer.value.paused;
   
@@ -330,7 +364,6 @@ watch(volume, (newVolume) => {
   }
 });
 
-// 修改进度条处理逻辑
 const handleProgressMouseDown = (e) => {
   console.debug('handleProgressMouseDown')
   e.preventDefault();
@@ -362,7 +395,6 @@ const handleProgressMouseDown = (e) => {
   document.addEventListener('mouseup', handleMouseUp);
 };
 
-// 修改进度显示逻辑
 const progress = computed(() => {
   if (isDragging.value) {
     return (previewSeekTime.value / duration.value) * 100 || 0;
@@ -370,7 +402,6 @@ const progress = computed(() => {
   return (currentTime.value / duration.value) * 100 || 0;
 });
 
-// 修改时间显示逻辑
 const handleProgressHover = (e) => {
   console.debug('handleProgressHover');
   isHoveringProgress.value = true;
@@ -386,7 +417,9 @@ const handleProgressLeave = () => {
 
 const setVideoTime = (time) => {
   videoPlayer.value.currentTime = time;
-  audioPlayer.value.currentTime = time;
+  if (!isHlsStream.value && audioPlayer.value) {
+    audioPlayer.value.currentTime = time;
+  }
   currentTime.value = time;
 };
 
@@ -405,22 +438,52 @@ const handleMouseLeave = () => {
   }, 2000);
 };
 
-// 添加错误处理函数
+const handleHlsError = (data) => {
+  if (data.fatal) {
+    switch (data.type) {
+      case Hls.ErrorTypes.NETWORK_ERROR:
+        console.error('HLS network error, trying to recover');
+        hls.value.startLoad();
+        break;
+      case Hls.ErrorTypes.MEDIA_ERROR:
+        console.error('HLS media error, recovering');
+        hls.value.recoverMediaError();
+        break;
+      default:
+        initHls();
+        break;
+    }
+  }
+};
+
+const initHls = () => {
+  if (hls.value) {
+    hls.value.destroy();
+  }
+  hls.value = new Hls();
+  hls.value.attachMedia(videoPlayer.value);
+  hls.value.loadSource(props.video.stream_video_url);
+};
+
 const handleVideoError = () => {
-  if (reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS && !videoPlayer.value.paused) {
-    isLoading.value = true;
-    reconnectAttempts.value++;
-    
-    setTimeout(() => {
-      videoPlayer.value.src = props.video.stream_video_url;
-      videoPlayer.value.load();
-      videoPlayer.value.play().catch(() => {
-        handleVideoError();
-      });
-    }, RECONNECT_INTERVAL);
+  if (props.video.stream_video_url.includes('.m3u8') && hls.value) {
+    if (reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS) {
+      isLoading.value = true;
+      reconnectAttempts.value++;
+      setTimeout(initHls, RECONNECT_INTERVAL);
+    }
   } else {
-    console.error('Video playback failed after maximum retries');
-    isLoading.value = false;
+    if (reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS && !videoPlayer.value.paused) {
+      isLoading.value = true;
+      reconnectAttempts.value++;
+      setTimeout(() => {
+        videoPlayer.value.src = props.video.stream_video_url;
+        videoPlayer.value.load();
+        videoPlayer.value.play().catch(() => {
+          handleVideoError();
+        });
+      }, RECONNECT_INTERVAL);
+    }
   }
 };
 
@@ -447,6 +510,9 @@ onUnmounted(() => {
   }
   if (audioPlayer.value) {
     audioPlayer.value.removeEventListener('error', handleAudioError);
+  }
+  if (hls.value) {
+    hls.value.destroy();
   }
 });
 

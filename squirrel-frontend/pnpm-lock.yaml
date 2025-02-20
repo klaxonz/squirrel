@@ -16,6 +16,9 @@ dependencies:
   axios:
     specifier: ^1.7.3
     version: 1.7.3
+  hls.js:
+    specifier: ^1.5.20
+    version: 1.5.20
   lodash:
     specifier: ^4.17.21
     version: 4.17.21
@@ -1205,6 +1208,10 @@ packages:
     dependencies:
       function-bind: 1.1.2
     dev: true
+
+  /hls.js@1.5.20:
+    resolution: {integrity: sha512-uu0VXUK52JhihhnN/MVVo1lvqNNuhoxkonqgO3IpjvQiGpJBdIXMGkofjQb/j9zvV7a1SW8U9g1FslWx/1HOiQ==}
+    dev: false
 
   /is-binary-path@2.1.0:
     resolution: {integrity: sha512-ZMERYes6pDydyuGidse7OsHxtbI7WVeUEozgR/g7rd0xUimYNlvZRE/K2MgZTjWy725IfelLeVcEM97mmtRGXw==}
