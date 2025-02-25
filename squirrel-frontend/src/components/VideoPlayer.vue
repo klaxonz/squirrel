@@ -5,6 +5,7 @@
       @mouseleave="handleMouseLeave"
       @dblclick="togglePlay"
       @touchstart="handleTouchStart"
+      @touchmove="handleTouchMove"
       @touchend="handleTouchEnd"
       @keydown="handleKeyDown"
       tabindex="0"
@@ -134,6 +135,17 @@
           重试
         </button>
       </div>
+
+      <!-- 添加快进/快退指示器 -->
+      <div class="seeking-indicator" v-if="playerState.ui.seeking.active">
+        <div class="seeking-icon-container">
+          <Icon :icon="playerState.ui.seeking.direction === 'forward' ? 'material-symbols:fast-forward' : 'material-symbols:fast-rewind'" 
+            class="seeking-icon" />
+        </div>
+        <div class="seeking-time">
+          {{ formatTime(playerState.ui.seeking.seekTime) }}
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -192,7 +204,15 @@ const playerState = reactive({
     showPlayIndicator: false,
     isDragging: false,
     previewSeekTime: 0,
-    errorMessage: null
+    errorMessage: null,
+    seeking: {
+      active: false,
+      startX: 0,
+      currentX: 0,
+      distance: 0,
+      direction: null,
+      seekTime: 0
+    }
   },
   // 网络状态
   network: {
@@ -719,42 +739,109 @@ const handleAudioError = () => {
   }
 };
 
-// 触摸事件
+// 改进触摸事件处理
 const handleProgressTouchStart = (e) => {
+  e.preventDefault(); // 防止滚动
   playerState.ui.isDragging = true;
-  // 转换Touch事件为鼠标事件格式
-  const touchEvent = { 
-    clientX: e.touches[0].clientX,
-    preventDefault: () => e.preventDefault(),
-    currentTarget: e.currentTarget
-  };
-  handleProgressMouseDown(touchEvent);
+  const rect = e.currentTarget.getBoundingClientRect();
+  const position = (e.touches[0].clientX - rect.left) / rect.width;
+  
+  // 保存初始位置和时间
+  playerState.ui.previewSeekTime = playerState.media.duration * Math.min(Math.max(position, 0), 1);
+  playerState.ui.hoverPosition = position * 100;
+  playerState.ui.hoveringProgress = true;
 };
 
 const handleProgressTouchMove = (e) => {
-  e.preventDefault();
-  // 转换Touch事件为鼠标事件格式
-  const touchEvent = { 
-    clientX: e.touches[0].clientX,
-    currentTarget: e.currentTarget
-  };
-  handleProgressHover(touchEvent);
+  e.preventDefault(); // 防止滚动
+  
+  if (playerState.ui.isDragging) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const position = (e.touches[0].clientX - rect.left) / rect.width;
+    const boundedPosition = Math.min(Math.max(position, 0), 1);
+    
+    // 更新预览时间和位置
+    playerState.ui.previewSeekTime = playerState.media.duration * boundedPosition;
+    playerState.ui.hoverPosition = boundedPosition * 100;
+  }
 };
 
-const handleProgressTouchEnd = () => {
+const handleProgressTouchEnd = (e) => {
+  // 设置视频时间
+  if (playerState.ui.isDragging) {
+    setVideoTime(playerState.ui.previewSeekTime);
+  }
+  
+  // 重置拖动状态
   playerState.ui.isDragging = false;
+  playerState.ui.hoveringProgress = false;
 };
 
-const handleTouchStart = () => {
+const handleTouchStart = (e) => {
   touchStartTime.value = Date.now();
+  
+  // 记录开始触摸位置（用于快进/快退）
+  if (e.touches.length === 1) {
+    playerState.ui.seeking.active = false;
+    playerState.ui.seeking.startX = e.touches[0].clientX;
+    playerState.ui.seeking.currentX = e.touches[0].clientX;
+  }
 };
 
-const handleTouchEnd = () => {
-  if (Date.now() - touchStartTime.value < 200) { // 短按
+const handleTouchMove = (e) => {
+  // 确保是单指触摸
+  if (e.touches.length !== 1) return;
+  
+  const touchX = e.touches[0].clientX;
+  playerState.ui.seeking.currentX = touchX;
+  
+  // 计算滑动距离
+  const diffX = touchX - playerState.ui.seeking.startX;
+  const absDiffX = Math.abs(diffX);
+  
+  // 当滑动距离超过阈值时才激活快进/快退
+  if (absDiffX > 50) {
+    playerState.ui.seeking.active = true;
+    playerState.ui.seeking.distance = diffX;
+    playerState.ui.seeking.direction = diffX > 0 ? 'forward' : 'backward';
+    
+    // 根据滑动距离计算快进/快退的秒数
+    // 每50px滑动距离对应5秒的快进/快退
+    const seekSeconds = Math.floor(absDiffX / 50) * 5;
+    
+    // 计算新的时间点
+    if (playerState.ui.seeking.direction === 'forward') {
+      playerState.ui.seeking.seekTime = Math.min(
+        playerState.media.currentTime + seekSeconds,
+        playerState.media.duration
+      );
+    } else {
+      playerState.ui.seeking.seekTime = Math.max(
+        playerState.media.currentTime - seekSeconds,
+        0
+      );
+    }
+  }
+};
+
+const handleTouchEnd = (e) => {
+  // 检查是否是快速点击（短按）用于播放/暂停
+  if (Date.now() - touchStartTime.value < 200 && 
+      !playerState.ui.seeking.active) { 
+    // 短按
     if (Date.now() - lastTap.value < 300) { // 双击
       togglePlay();
     }
     lastTap.value = Date.now();
+  }
+  
+  // 如果是滑动快进/快退，则应用新的时间点
+  if (playerState.ui.seeking.active) {
+    setVideoTime(playerState.ui.seeking.seekTime);
+    // 重置状态
+    playerState.ui.seeking.active = false;
+    playerState.ui.seeking.distance = 0;
+    playerState.ui.seeking.direction = null;
   }
 };
 
@@ -1228,5 +1315,34 @@ const syncMedia = () => {
 /* 确保其他样式保持不变 */
 .volume-track-bg {
   background: rgba(255, 255, 255, 0.2); /* 保持浅灰色背景 */
+}
+
+/* 添加快进/快退指示器样式 */
+.seeking-indicator {
+  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+    bg-black/70 rounded-full p-4 z-30 flex flex-col items-center justify-center;
+  width: 120px;
+  height: 120px;
+}
+
+.seeking-icon-container {
+  @apply flex items-center justify-center;
+}
+
+.seeking-icon {
+  @apply text-white text-4xl;
+}
+
+.seeking-time {
+  @apply text-white text-lg mt-2 font-medium;
+}
+
+/* 可选：添加根据方向变化的不同背景色 */
+.seeking-indicator[data-direction="forward"] {
+  background-color: rgba(33, 150, 243, 0.7);
+}
+
+.seeking-indicator[data-direction="backward"] {
+  background-color: rgba(244, 67, 54, 0.7);
 }
 </style>
