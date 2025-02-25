@@ -3,8 +3,11 @@
     <div class="video-container" 
       @mouseenter="handleMouseEnter"
       @mouseleave="handleMouseLeave"
+      @dblclick="togglePlay"
+      @touchstart="handleTouchStart"
+      @touchend="handleTouchEnd"
     >
-      <div v-if="isLoading" class="yt-loading-spinner">
+      <div v-if="playerState.media.loading" class="yt-loading-spinner">
         <div class="yt-spinner">
           <svg class="yt-spinner__circle" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="45"/>
@@ -13,8 +16,8 @@
       </div>
 
       <div class="video-click-layer" @click="togglePlay">
-        <div class="play-state-indicator" v-if="showPlayIndicator">
-          <Icon :icon="isPlaying ? 'material-symbols:pause' : 'material-symbols:play-arrow'" 
+        <div class="play-state-indicator" v-if="playerState.ui.showPlayIndicator">
+          <Icon :icon="playerState.media.playing ? 'material-symbols:pause' : 'material-symbols:play-arrow'" 
             class="indicator-icon" />
         </div>
       </div>
@@ -44,31 +47,34 @@
       
       <div class="hover-gradient"></div>
       
-      <div class="video-controls" :class="{ 'controls-visible': isControlsVisible }">
+      <div class="video-controls" :class="{ 'controls-visible': playerState.ui.controlsVisible }">
         <div class="progress-container">
-          <div class="preview-time-tooltip" :style="{ left: hoverPosition + '%' }" v-show="isHoveringProgress">
-            {{ formatTime(previewTime) }}
+          <div class="preview-time-tooltip" :style="{ left: playerState.ui.hoverPosition + '%' }" v-show="playerState.ui.hoveringProgress">
+            {{ formatTime(playerState.ui.previewTime) }}
           </div>
           
           <div class="progress-bar-container"
             @mousemove="handleProgressHover"
             @mouseleave="handleProgressLeave"
             @mousedown="handleProgressMouseDown"
+            @touchstart="handleProgressTouchStart"
+            @touchmove="handleProgressTouchMove"
+            @touchend="handleProgressTouchEnd"
           >
             <div class="progress-bar">
-              <div class="progress-bar-loaded" :style="{ width: bufferedProgress + '%' }"></div>
+              <div class="progress-bar-loaded" :style="{ width: playerState.media.bufferedProgress + '%' }"></div>
               <div class="progress-bar-filled" :style="{ width: progress + '%' }">
                 <div class="progress-dot"></div>
               </div>
             </div>
-            <div class="progress-handle" :style="{ left: progress + '%' }" v-show="isHoveringProgress"></div>
+            <div class="progress-handle" :style="{ left: progress + '%' }" v-show="playerState.ui.hoveringProgress"></div>
           </div>
         </div>
         
         <div class="controls-main">
           <div class="controls-left">
             <button @click="togglePlay" class="control-btn">
-              <Icon v-if="isPlaying" icon="material-symbols:pause" class="control-icon" />
+              <Icon v-if="playerState.media.playing" icon="material-symbols:pause" class="control-icon" />
               <Icon v-else icon="material-symbols:play-arrow" class="control-icon" />
             </button>
             
@@ -82,14 +88,14 @@
                   type="range" 
                   min="0" 
                   max="100" 
-                  v-model="volume" 
+                  v-model="playerState.media.volume" 
                   class="volume-range"
                 >
               </div>
             </div>
             
             <div class="time-display">
-              {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
+              {{ formatTime(playerState.media.currentTime) }} / {{ formatTime(playerState.media.duration) }}
             </div>
           </div>
           
@@ -113,7 +119,7 @@
 </template>
 
 <script setup>
-import { onMounted, watch, ref, computed, onUnmounted } from 'vue';
+import { onMounted, watch, ref, computed, onUnmounted, reactive } from 'vue';
 import { Icon } from '@iconify/vue';
 import useVideoOperations from "../composables/useVideoOperations";
 import { formatTime } from "../utils/dateFormat";
@@ -129,72 +135,113 @@ const props = defineProps({
 
 const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate']);
 
+// DOM 引用
 const videoPlayer = ref(null);
 const audioPlayer = ref(null);
 const {
   playVideo,
 } = useVideoOperations();
 
-const isPlaying = ref(false);
-const volume = ref(100);
-const isMuted = ref(false);
-const currentTime = ref(0);
-const duration = ref(0);
-const isFullscreen = ref(false);
-const bufferedProgress = ref(0);
-
-const volumeIcon = computed(() => {
-  if (isMuted.value || volume.value === 0) return 'material-symbols:volume-off';
-  if (volume.value < 50) return 'material-symbols:volume-down';
-  return 'material-symbols:volume-up';
+// 统一状态对象
+const playerState = reactive({
+  // 媒体状态
+  media: {
+    playing: false,
+    canPlay: {
+      video: false,
+      audio: false
+    },
+    seeking: {
+      video: false,
+      audio: false
+    },
+    loading: false,
+    volume: 100,
+    muted: false,
+    currentTime: 0,
+    duration: 0,
+    bufferedProgress: 0
+  },
+  // UI状态
+  ui: {
+    controlsVisible: false,
+    fullscreen: false,
+    hoveringProgress: false,
+    hoverPosition: 0,
+    previewTime: 0,
+    showPlayIndicator: false,
+    isDragging: false,
+    previewSeekTime: 0
+  },
+  // 网络状态
+  network: {
+    reconnectAttempts: 0,
+    firstInteraction: true
+  }
 });
 
-const fullscreenIcon = computed(() => 
-  isFullscreen.value ? 'material-symbols:fullscreen-exit' : 'material-symbols:fullscreen'
-);
-
-const isHoveringProgress = ref(false);
-const hoverPosition = ref(0);
-const previewTime = ref(0);
-
-const isControlsVisible = ref(false);
-let hideControlsTimer = null;
-
-const showPlayIndicator = ref(false);
-const isLoading = ref(false);
-const isDragging = ref(false);
-const previewSeekTime = ref(0);
-
-const reconnectAttempts = ref(0);
-const MAX_RECONNECT_ATTEMPTS = 3;
-const RECONNECT_INTERVAL = 3000;
-
+// HLS 实例
 const hls = ref(null);
 
+// 计算属性
 const isHlsStream = computed(() => 
   props.video?.stream_video_url?.includes('.m3u8')
 );
 
+const isCanplay = computed(() => 
+  playerState.media.canPlay.video && 
+  (isHlsStream.value || playerState.media.canPlay.audio)
+);
+
+const isSeeking = computed(() => 
+  playerState.media.seeking.video || playerState.media.seeking.audio
+);
+
+const volumeIcon = computed(() => {
+  if (playerState.media.muted || playerState.media.volume === 0) 
+    return 'material-symbols:volume-off';
+  if (playerState.media.volume < 50) 
+    return 'material-symbols:volume-down';
+  return 'material-symbols:volume-up';
+});
+
+const fullscreenIcon = computed(() => 
+  playerState.ui.fullscreen ? 'material-symbols:fullscreen-exit' : 'material-symbols:fullscreen'
+);
+
+const progress = computed(() => {
+  if (playerState.ui.isDragging) {
+    return (playerState.ui.previewSeekTime / playerState.media.duration) * 100 || 0;
+  }
+  return (playerState.media.currentTime / playerState.media.duration) * 100 || 0;
+});
+
+// 常量
+const MAX_RECONNECT_ATTEMPTS = 3;
+const RECONNECT_INTERVAL = 3000;
+
+// 触摸状态
+const lastTap = ref(0);
+const touchStartTime = ref(0);
+
+// 计时器
+let hideControlsTimer = null;
+
+// 初始化
 onMounted(async () => {
   if (!props.video?.stream_video_url) {
     await playVideo(props.video);
   }
   
+  initializeMediaSources();
+  screen.orientation?.addEventListener('change', handleOrientationChange);
+});
+
+// 初始化媒体源
+const initializeMediaSources = () => {
   if (props.video?.stream_video_url) {
-    if (props.video.stream_video_url.includes('.m3u8')) {
-      if (Hls.isSupported()) {
-        hls.value = new Hls();
-        hls.value.attachMedia(videoPlayer.value);
-        hls.value.on(Hls.Events.MEDIA_ATTACHED, () => {
-          hls.value.loadSource(props.video.stream_video_url);
-        });
-        
-        hls.value.on(Hls.Events.ERROR, (event, data) => {
-          handleHlsError(data);
-        });
-      } else if (videoPlayer.value.canPlayType('application/vnd.apple.mpegurl')) {
-        videoPlayer.value.src = props.video.stream_video_url;
-      }
+    if (isHlsStream.value) {
+      initializeHlsStream();
     } else {
       videoPlayer.value.src = props.video.stream_video_url;
     }
@@ -203,126 +250,160 @@ onMounted(async () => {
   if (!isHlsStream.value && props.video.stream_audio_url) {
     audioPlayer.value.src = props.video.stream_audio_url;
   }
-});
+};
 
+// 初始化HLS播放
+const initializeHlsStream = () => {
+  if (Hls.isSupported()) {
+    hls.value = new Hls();
+    hls.value.attachMedia(videoPlayer.value);
+    hls.value.on(Hls.Events.MEDIA_ATTACHED, () => {
+      hls.value.loadSource(props.video.stream_video_url);
+    });
+    
+    hls.value.on(Hls.Events.ERROR, (event, data) => {
+      handleHlsError(data);
+    });
+  } else if (videoPlayer.value.canPlayType('application/vnd.apple.mpegurl')) {
+    // Safari原生支持
+    videoPlayer.value.src = props.video.stream_video_url;
+  }
+};
+
+// URL变更监听
 watch(() => props.video?.stream_video_url, async (newVideoUrl) => {
   if (newVideoUrl && videoPlayer.value) {
     console.debug('video url changed');
-    videoPlayer.value.src = newVideoUrl;
+    if (isHlsStream.value) {
+      initializeHlsStream();
+    } else {
+      videoPlayer.value.src = newVideoUrl;
+    }
   }
 });
 
 watch(() => props.video?.stream_audio_url, (newAudioUrl) => {
-  if (audioPlayer.value && newAudioUrl) {
+  if (!isHlsStream.value && audioPlayer.value && newAudioUrl) {
     audioPlayer.value.src = newAudioUrl;
   }
 });
 
-let firstCome = true;
-let isVideoCanplay = false;
-let isAudioCanplay = false;
-let isAudioSeeking = false;
-let isVideoSeeking = false;
+// 音量监听
+watch(() => playerState.media.volume, (newVolume) => {
+  if (videoPlayer.value) {
+    videoPlayer.value.volume = newVolume / 100;
+    if (audioPlayer.value) {
+      audioPlayer.value.volume = newVolume / 100;
+    }
+  }
+});
 
-const hasBeenActive = () => {
-  return navigator.userActivation.hasBeenActive;
-};
-
-const isCanplay = () => {
-  return isVideoCanplay && (isHlsStream.value ? true : isAudioCanplay) && hasBeenActive();
-};
-
-const isSeeking = () => {
-  return isAudioSeeking || isVideoSeeking;
-};
-
+// 视频事件处理
 const handleVideoPlay = () => {
-  firstCome = false;
-  console.debug('video play', isVideoCanplay, isAudioCanplay);
-  if (isCanplay()) {
-    audioPlayer.value.currentTime = videoPlayer.value.currentTime;
-    audioPlayer.value.play();
-    console.debug(videoPlayer.value.currentTime, audioPlayer.value.currentTime);
+  playerState.network.firstInteraction = false;
+  console.debug('video play', playerState.media.canPlay.video, playerState.media.canPlay.audio);
+  
+  if (isCanplay.value) {
+    if (!isHlsStream.value && audioPlayer.value) {
+      audioPlayer.value.currentTime = videoPlayer.value.currentTime;
+      audioPlayer.value.play();
+    }
+    playerState.media.playing = true;
   } else {
     videoPlayer.value.pause();
-    audioPlayer.value.currentTime = videoPlayer.value.currentTime;
+    if (!isHlsStream.value && audioPlayer.value) {
+      audioPlayer.value.currentTime = videoPlayer.value.currentTime;
+    }
   }
-  isPlaying.value = true;
 };
 
 const handleVideoPause = () => {
   console.debug('video pause');
-  if (audioPlayer.value) {
+  if (!isHlsStream.value && audioPlayer.value) {
     audioPlayer.value.pause();
   }
-  if (!isSeeking()) {
-    isPlaying.value = false;
+  if (!isSeeking.value) {
+    playerState.media.playing = false;
   }
 };
 
 const handleVideoSeeking = () => {
   console.debug('video seeking');
-  isLoading.value = true;
-  audioPlayer.value.pause();
+  playerState.media.loading = true;
+  if (!isHlsStream.value && audioPlayer.value) {
+    audioPlayer.value.pause();
+  }
   videoPlayer.value.pause();
-  isAudioCanplay = false;
-  isVideoCanplay = false;
-  isVideoSeeking = true;
+  playerState.media.canPlay.audio = false;
+  playerState.media.canPlay.video = false;
+  playerState.media.seeking.video = true;
 };
 
 const handleVideoCanplay = () => {
   if (videoPlayer.value) {
-    duration.value = videoPlayer.value.duration;
+    playerState.media.duration = videoPlayer.value.duration;
   }
-  isLoading.value = false;
-  isVideoCanplay = true;
-  isVideoSeeking = false;
-  console.debug('video canplay', firstCome, isSeeking(), isCanplay());
-  if (!isSeeking() && isCanplay()) {
+  playerState.media.loading = false;
+  playerState.media.canPlay.video = true;
+  playerState.media.seeking.video = false;
+  
+  console.debug('video canplay', playerState.network.firstInteraction, isSeeking.value, isCanplay.value);
+  
+  if (!isSeeking.value && isCanplay.value) {
     videoPlayer.value.play();
-    audioPlayer.value.play();
+    if (!isHlsStream.value && audioPlayer.value) {
+      audioPlayer.value.play();
+    }
   }
 };
 
 const handleVideoWaiting = () => {
   console.debug('video waiting');
-  isLoading.value = true;
-  if (audioPlayer.value) {
+  playerState.media.loading = true;
+  if (!isHlsStream.value && audioPlayer.value) {
     audioPlayer.value.pause();
   }
 };
 
 const handleVideoTimeupdate = () => {
   if (videoPlayer.value) {
-    currentTime.value = videoPlayer.value.currentTime;
-    duration.value = videoPlayer.value.duration;
+    playerState.media.currentTime = videoPlayer.value.currentTime;
+    playerState.media.duration = videoPlayer.value.duration;
   }
 };
 
 const handleVideoProgress = () => {
-  if ( videoPlayer.value && videoPlayer.value.buffered.length > 0) {
-      bufferedProgress.value = (videoPlayer.value.buffered.end(0) / videoPlayer.value.duration) * 100;
+  if (videoPlayer.value && videoPlayer.value.buffered.length > 0) {
+    playerState.media.bufferedProgress = 
+      (videoPlayer.value.buffered.end(0) / videoPlayer.value.duration) * 100;
   }
 };
 
+// 音频事件处理
 const handleAudioSeeking = () => {
   console.debug('audio seeking');
-  isAudioSeeking = true;
+  playerState.media.seeking.audio = true;
 };
 
 const handleAudioCanplay = () => {
-  isAudioCanplay = true;
-  isAudioSeeking = false;
-  console.debug('audio canplay', firstCome, isSeeking(), isCanplay());
-  if (!isSeeking() && isCanplay()) {
+  playerState.media.canPlay.audio = true;
+  playerState.media.seeking.audio = false;
+  
+  console.debug('audio canplay', playerState.network.firstInteraction, isSeeking.value, isCanplay.value);
+  
+  if (!isSeeking.value && isCanplay.value) {
     videoPlayer.value.play().then(() => {
+      if (!isHlsStream.value && audioPlayer.value) {
         audioPlayer.value.play();
+      }
     });
   }
 };
 
+// 用户交互
 const togglePlay = () => {
   if (videoPlayer.value.paused) {
+    playerState.network.reconnectAttempts = 0; // 重置重连计数
     videoPlayer.value.play().catch(handleVideoError);
     if (!isHlsStream.value && audioPlayer.value) {
       audioPlayer.value.play();
@@ -333,60 +414,63 @@ const togglePlay = () => {
       audioPlayer.value.pause();
     }
   }
-  isPlaying.value = !videoPlayer.value.paused;
+  playerState.media.playing = !videoPlayer.value.paused;
   
-  showPlayIndicator.value = true;
+  playerState.ui.showPlayIndicator = true;
   setTimeout(() => {
-    showPlayIndicator.value = false;
+    playerState.ui.showPlayIndicator = false;
   }, 500);
 };
 
 const toggleMute = () => {
   videoPlayer.value.muted = !videoPlayer.value.muted;
-  audioPlayer.value.muted = videoPlayer.value.muted;
-  isMuted.value = videoPlayer.value.muted;
+  if (!isHlsStream.value && audioPlayer.value) {
+    audioPlayer.value.muted = videoPlayer.value.muted;
+  }
+  playerState.media.muted = videoPlayer.value.muted;
 };
 
 const toggleFullscreen = async () => {
-  if (!document.fullscreenElement) {
-    await videoPlayer.value.parentElement.requestFullscreen();
-    isFullscreen.value = true;
-  } else {
+  if (document.fullscreenElement) {
     await document.exitFullscreen();
-    isFullscreen.value = false;
+  } else {
+    const elem = videoPlayer.value.parentElement;
+    if (elem.requestFullscreen) {
+      await elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) { /* Safari */
+      await elem.webkitRequestFullscreen();
+    } else if (elem.mozRequestFullScreen) { /* Firefox */
+      await elem.mozRequestFullScreen();
+    }
   }
+  playerState.ui.fullscreen = !document.fullscreenElement;
 };
 
-watch(volume, (newVolume) => {
-  if (videoPlayer.value) {
-    videoPlayer.value.volume = newVolume / 100;
-    audioPlayer.value.volume = newVolume / 100;
-  }
-});
-
+// 进度条交互
 const handleProgressMouseDown = (e) => {
-  console.debug('handleProgressMouseDown')
   e.preventDefault();
-  isDragging.value = true;
+  playerState.ui.isDragging = true;
   const rect = e.currentTarget.getBoundingClientRect();
   
   const updatePreview = (clientX) => {
     const position = (clientX - rect.left) / rect.width;
-    previewSeekTime.value = duration.value * Math.min(Math.max(position, 0), 1);
-    hoverPosition.value = position * 100;
+    playerState.ui.previewSeekTime = 
+      playerState.media.duration * Math.min(Math.max(position, 0), 1);
+    playerState.ui.hoverPosition = position * 100;
   };
 
   updatePreview(e.clientX);
 
   const handleMouseMove = (e) => {
-    console.debug('handleProgressMouseDown', isDragging.value)
+    if (!playerState.ui.isDragging) return;
     updatePreview(e.clientX);
   };
 
   const handleMouseUp = () => {
-    isDragging.value = false;
-    setVideoTime(previewSeekTime.value);
+    playerState.ui.isDragging = false;
+    setVideoTime(playerState.ui.previewSeekTime);
     
+    // 清理事件监听
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   };
@@ -395,49 +479,48 @@ const handleProgressMouseDown = (e) => {
   document.addEventListener('mouseup', handleMouseUp);
 };
 
-const progress = computed(() => {
-  if (isDragging.value) {
-    return (previewSeekTime.value / duration.value) * 100 || 0;
-  }
-  return (currentTime.value / duration.value) * 100 || 0;
-});
-
 const handleProgressHover = (e) => {
-  console.debug('handleProgressHover');
-  isHoveringProgress.value = true;
+  playerState.ui.hoveringProgress = true;
   const rect = e.currentTarget.getBoundingClientRect();
   const position = ((e.clientX - rect.left) / rect.width) * 100;
-  hoverPosition.value = Math.min(Math.max(position, 0), 100);
-  previewTime.value = isDragging.value ? previewSeekTime.value : (duration.value * position) / 100;
+  playerState.ui.hoverPosition = Math.min(Math.max(position, 0), 100);
+  playerState.ui.previewTime = 
+    playerState.ui.isDragging 
+      ? playerState.ui.previewSeekTime 
+      : (playerState.media.duration * position) / 100;
 };
 
 const handleProgressLeave = () => {
-  isHoveringProgress.value = false;
+  playerState.ui.hoveringProgress = false;
 };
 
+// 设置视频时间
 const setVideoTime = (time) => {
   videoPlayer.value.currentTime = time;
   if (!isHlsStream.value && audioPlayer.value) {
     audioPlayer.value.currentTime = time;
   }
-  currentTime.value = time;
+  playerState.media.currentTime = time;
 };
 
+// UI交互
 const handleMouseEnter = () => {
-  isControlsVisible.value = true;
+  playerState.ui.controlsVisible = true;
   if (hideControlsTimer) {
     clearTimeout(hideControlsTimer);
+    hideControlsTimer = null;
   }
 };
 
 const handleMouseLeave = () => {
   hideControlsTimer = setTimeout(() => {
-    if (!isHoveringProgress.value) {
-      isControlsVisible.value = false;
+    if (!playerState.ui.hoveringProgress) {
+      playerState.ui.controlsVisible = false;
     }
   }, 2000);
 };
 
+// 错误处理
 const handleHlsError = (data) => {
   if (data.fatal) {
     switch (data.type) {
@@ -460,22 +543,20 @@ const initHls = () => {
   if (hls.value) {
     hls.value.destroy();
   }
-  hls.value = new Hls();
-  hls.value.attachMedia(videoPlayer.value);
-  hls.value.loadSource(props.video.stream_video_url);
+  initializeHlsStream();
 };
 
 const handleVideoError = () => {
-  if (props.video.stream_video_url.includes('.m3u8') && hls.value) {
-    if (reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS) {
-      isLoading.value = true;
-      reconnectAttempts.value++;
+  if (isHlsStream.value && hls.value) {
+    if (playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      playerState.media.loading = true;
+      playerState.network.reconnectAttempts++;
       setTimeout(initHls, RECONNECT_INTERVAL);
     }
   } else {
-    if (reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS && !videoPlayer.value.paused) {
-      isLoading.value = true;
-      reconnectAttempts.value++;
+    if (playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS && !videoPlayer.value.paused) {
+      playerState.media.loading = true;
+      playerState.network.reconnectAttempts++;
       setTimeout(() => {
         videoPlayer.value.src = props.video.stream_video_url;
         videoPlayer.value.load();
@@ -488,7 +569,10 @@ const handleVideoError = () => {
 };
 
 const handleAudioError = () => {
-  if (reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS && !audioPlayer.value.paused) {
+  if (!isHlsStream.value && 
+      playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS && 
+      audioPlayer.value && 
+      !audioPlayer.value.paused) {
     setTimeout(() => {
       audioPlayer.value.src = props.video.stream_audio_url;
       audioPlayer.value.load();
@@ -501,19 +585,67 @@ const handleAudioError = () => {
   }
 };
 
+// 触摸事件
+const handleProgressTouchStart = (e) => {
+  playerState.ui.isDragging = true;
+  // 转换Touch事件为鼠标事件格式
+  const touchEvent = { 
+    clientX: e.touches[0].clientX,
+    preventDefault: () => e.preventDefault(),
+    currentTarget: e.currentTarget
+  };
+  handleProgressMouseDown(touchEvent);
+};
+
+const handleProgressTouchMove = (e) => {
+  e.preventDefault();
+  // 转换Touch事件为鼠标事件格式
+  const touchEvent = { 
+    clientX: e.touches[0].clientX,
+    currentTarget: e.currentTarget
+  };
+  handleProgressHover(touchEvent);
+};
+
+const handleProgressTouchEnd = () => {
+  playerState.ui.isDragging = false;
+};
+
+const handleTouchStart = () => {
+  touchStartTime.value = Date.now();
+};
+
+const handleTouchEnd = () => {
+  if (Date.now() - touchStartTime.value < 200) { // 短按
+    if (Date.now() - lastTap.value < 300) { // 双击
+      togglePlay();
+    }
+    lastTap.value = Date.now();
+  }
+};
+
+// 屏幕方向
+const handleOrientationChange = () => {
+  if (screen.orientation.type.includes('landscape')) {
+    videoPlayer.value.classList.add('landscape-mode');
+  } else {
+    videoPlayer.value.classList.remove('landscape-mode');
+  }
+};
+
+// 资源清理
 onUnmounted(() => {
   if (hideControlsTimer) {
     clearTimeout(hideControlsTimer);
+    hideControlsTimer = null;
   }
-  if (videoPlayer.value) {
-    videoPlayer.value.removeEventListener('error', handleVideoError);
-  }
-  if (audioPlayer.value) {
-    audioPlayer.value.removeEventListener('error', handleAudioError);
-  }
+  
   if (hls.value) {
     hls.value.destroy();
+    hls.value = null;
   }
+  
+  screen.orientation?.removeEventListener('change', handleOrientationChange);
 });
 
 defineExpose({
@@ -573,7 +705,7 @@ defineExpose({
 }
 
 .progress-bar-container {
-  @apply absolute bottom-0 left-0 right-0 h-[5px] cursor-pointer z-30;
+  @apply absolute bottom-0 left-0 right-0 h-[10px] cursor-pointer z-30;
 }
 
 .progress-bar {
@@ -612,7 +744,7 @@ defineExpose({
 }
 
 .control-icon {
-  @apply text-white text-2xl;
+  @apply text-white text-[1.2rem];
 }
 
 .volume-control {
@@ -719,6 +851,21 @@ defineExpose({
   }
   100% {
     transform: rotate(360deg);
+  }
+}
+
+@media (hover: none) {
+  .volume-slider-container {
+    @apply w-20 !important;
+  }
+  .hover-gradient {
+    @apply opacity-100 !important;
+  }
+}
+
+@media (orientation: portrait) {
+  .video-player {
+    object-fit: contain;
   }
 }
 
