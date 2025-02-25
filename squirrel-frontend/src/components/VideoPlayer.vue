@@ -1247,7 +1247,7 @@ const handleVideoLayerClick = (e) => {
   }
   
   .video-controls {
-    @apply pb-2;
+    @apply pb-0;
   }
   
   /* 隐藏部分控件，简化移动端界面 */
@@ -1262,7 +1262,7 @@ const handleVideoLayerClick = (e) => {
   
   /* 增大按钮点击区域 */
   .control-btn {
-    @apply p-2;
+    @apply p-1;
   }
   
   /* 适当调整图标大小 */
