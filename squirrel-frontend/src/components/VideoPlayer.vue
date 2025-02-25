@@ -209,14 +209,24 @@ const isHlsStream = computed(() =>
   props.video?.stream_video_url?.includes('.m3u8')
 );
 
-const isCanplay = computed(() => 
-  playerState.media.canPlay.video && 
-  (isHlsStream.value || playerState.media.canPlay.audio)
-);
+const hasAudioStream = computed(() => {
+  return !!props.video?.audio_stream_url;
+});
 
-const isSeeking = computed(() => 
-  playerState.media.seeking.video || playerState.media.seeking.audio
-);
+const isCanplay = computed(() => {
+  if (!hasAudioStream.value) {
+    return playerState.media.canPlay.video;
+  }
+  return playerState.media.canPlay.video && 
+    (isHlsStream.value || playerState.media.canPlay.audio);
+});
+
+const isSeeking = computed(() => {
+  if (!hasAudioStream.value) {
+    return playerState.media.seeking.video;
+  }
+  return playerState.media.seeking.video || playerState.media.seeking.audio;
+});
 
 const volumeIcon = computed(() => {
   if (playerState.media.muted || playerState.media.volume === 0) 
@@ -510,20 +520,36 @@ const handleAudioCanplay = () => {
 
 // 用户交互
 const togglePlay = () => {
-  if (videoPlayer.value.paused) {
-    playerState.network.reconnectAttempts = 0; // 重置重连计数
-    videoPlayer.value.play().catch(handleVideoError);
-    if (!isHlsStream.value && audioPlayer.value) {
-      audioPlayer.value.play();
-    }
-  } else {
+  if (!videoPlayer.value) return;
+  
+  if (playerState.media.playing) {
+    // 暂停播放
     videoPlayer.value.pause();
-    if (!isHlsStream.value && audioPlayer.value) {
+    if (hasAudioStream.value && audioPlayer.value) {
       audioPlayer.value.pause();
     }
+    playerState.media.playing = false;
+    emit('pause');
+  } else {
+    // 开始播放
+    if (playerState.network.firstInteraction) {
+      playerState.network.firstInteraction = false;
+    }
+    
+    videoPlayer.value.play().then(() => {
+      playerState.media.playing = true;
+      if (hasAudioStream.value && audioPlayer.value) {
+        audioPlayer.value.play().catch(err => {
+          console.error('Failed to play audio:', err);
+        });
+      }
+      emit('play');
+    }).catch(err => {
+      handlePlaybackError(err);
+    });
   }
-  playerState.media.playing = !videoPlayer.value.paused;
   
+  // 显示播放状态指示器
   playerState.ui.showPlayIndicator = true;
   setTimeout(() => {
     playerState.ui.showPlayIndicator = false;
@@ -799,6 +825,20 @@ const retryPlayback = () => {
   } else {
     videoPlayer.value.load();
     videoPlayer.value.play().catch(handleVideoError);
+  }
+};
+
+// 更新同步函数
+const syncMedia = () => {
+  if (!videoPlayer.value || !hasAudioStream.value || !audioPlayer.value) return;
+  
+  // 只有在有音频流的情况下才进行同步
+  const videoCurrent = videoPlayer.value.currentTime;
+  const audioCurrent = audioPlayer.value.currentTime;
+  
+  // 只在差异较大时同步
+  if (Math.abs(videoCurrent - audioCurrent) > 0.1) {
+    audioPlayer.value.currentTime = videoCurrent;
   }
 };
 
