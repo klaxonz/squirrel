@@ -521,7 +521,7 @@ const handleAudioCanplay = () => {
 // 用户交互
 const togglePlay = () => {
   if (!videoPlayer.value) return;
-  
+
   if (playerState.media.playing) {
     // 暂停播放
     videoPlayer.value.pause();
@@ -545,7 +545,7 @@ const togglePlay = () => {
       }
       emit('play');
     }).catch(err => {
-      handlePlaybackError(err);
+
     });
   }
   
@@ -1120,38 +1120,52 @@ const syncMedia = () => {
 /* 响应式调整 */
 @media (max-width: 640px) {
   .controls-main {
-    @apply flex-wrap;
+    @apply flex-nowrap justify-between;
   }
   
   .controls-right {
-    @apply mt-1;
+    @apply mt-0;
   }
   
   .video-controls {
     @apply pb-2;
   }
   
+  /* 隐藏部分控件，简化移动端界面 */
+  .controls-left .volume-control {
+    @apply hidden;
+  }
+  
+  /* 只在播放时显示时间 */
   .time-display {
-    @apply text-xs;
+    @apply text-xs whitespace-nowrap;
+  }
+  
+  /* 增大按钮点击区域 */
+  .control-btn {
+    @apply p-2;
+  }
+  
+  /* 适当调整图标大小 */
+  .control-icon {
+    @apply text-[1.2rem];
+  }
+  
+  /* 减小控件之间的间距 */
+  .controls-left, .controls-right {
+    @apply gap-0;
   }
 }
 
-/* 触摸优化 */
+/* 触摸优化调整 */
 @media (hover: none) {
+  /* 保持其他触摸优化不变 */
   .progress-bar {
     @apply h-[5px];
   }
   
   .progress-bar-container {
     @apply h-[20px];
-  }
-  
-  .control-btn {
-    @apply p-3;
-  }
-  
-  .control-icon {
-    @apply text-[1.4rem];
   }
 }
 
