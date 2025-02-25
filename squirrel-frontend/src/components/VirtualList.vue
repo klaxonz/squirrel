@@ -233,7 +233,7 @@ const observeResize = () => {
 // 添加样式计算
 const itemStyle = computed(() => ({
   display: 'grid',
-  gridTemplateColumns: `repeat(auto-fill, minmax(${props.itemSecondarySize}px, 1fr))`,
+  gridTemplateColumns: `repeat(${columnCount.value}, 1fr)`,
   gap: '8px',
   width: '100%',
   padding: '0 8px'

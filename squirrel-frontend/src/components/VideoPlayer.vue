@@ -1239,15 +1239,19 @@ const handleVideoLayerClick = (e) => {
 /* 响应式调整 */
 @media (max-width: 640px) {
   .controls-main {
-    @apply flex-nowrap justify-between;
+    @apply flex-nowrap justify-between w-full;
   }
   
   .controls-right {
-    @apply mt-0;
+    @apply mt-0 flex justify-end;
+  }
+  
+  .controls-left {
+    @apply flex justify-start;
   }
   
   .video-controls {
-    @apply pb-0;
+    @apply pb-2;
   }
   
   /* 隐藏部分控件，简化移动端界面 */
@@ -1255,24 +1259,18 @@ const handleVideoLayerClick = (e) => {
     @apply hidden;
   }
   
-  /* 只在播放时显示时间 */
+  /* 调整时间显示 */
   .time-display {
     @apply text-xs whitespace-nowrap;
   }
   
-  /* 增大按钮点击区域 */
+  /* 调整按钮大小 */
   .control-btn {
-    @apply p-1;
+    @apply p-1 mx-1;
   }
   
-  /* 适当调整图标大小 */
   .control-icon {
     @apply text-[1.2rem];
-  }
-  
-  /* 减小控件之间的间距 */
-  .controls-left, .controls-right {
-    @apply gap-0;
   }
 }
 

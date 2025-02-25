@@ -406,4 +406,16 @@ const displayNames = computed(() => {
 .video-info {
   padding: 8px;
 }
+
+/* 添加响应式样式以确保在移动端的正确显示 */
+@media (max-width: 500px) {
+  .video-item {
+    width: 100%;
+    margin-bottom: 2px;
+  }
+  
+  .video-thumbnail {
+    padding-top: 56.25%; /* 保持16:9比例 */
+  }
+}
 </style>
