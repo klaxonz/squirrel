@@ -6,6 +6,10 @@
       @dblclick="togglePlay"
       @touchstart="handleTouchStart"
       @touchend="handleTouchEnd"
+      @keydown="handleKeyDown"
+      tabindex="0"
+      role="application"
+      aria-label="视频播放器"
     >
       <div v-if="playerState.media.loading" class="yt-loading-spinner">
         <div class="yt-spinner">
@@ -54,7 +58,7 @@
           </div>
           
           <div class="progress-bar-container"
-            @mousemove="handleProgressHover"
+            @mousemove="debouncedProgressHover"
             @mouseleave="handleProgressLeave"
             @mousedown="handleProgressMouseDown"
             @touchstart="handleProgressTouchStart"
@@ -63,10 +67,9 @@
           >
             <div class="progress-bar">
               <div class="progress-bar-loaded" :style="{ width: playerState.media.bufferedProgress + '%' }"></div>
-              <div class="progress-bar-filled" :style="{ width: progress + '%' }">
-                <div class="progress-dot"></div>
-              </div>
+              <div class="progress-bar-filled" :style="{ width: progress + '%' }"></div>
             </div>
+            <div class="progress-dot" :style="{ left: progress + '%' }" v-show="playerState.ui.hoveringProgress || playerState.ui.isDragging"></div>
             <div class="progress-handle" :style="{ left: progress + '%' }" v-show="playerState.ui.hoveringProgress"></div>
           </div>
         </div>
@@ -78,24 +81,31 @@
               <Icon v-else icon="material-symbols:play-arrow" class="control-icon" />
             </button>
             
+            <div class="time-display">
+              {{ formatTime(playerState.media.currentTime) }} / {{ formatTime(playerState.media.duration) }}
+            </div>
+            
             <div class="volume-control group">
               <button @click="toggleMute" class="control-btn">
                 <Icon :icon="volumeIcon" class="control-icon" />
               </button>
               
               <div class="volume-slider-container">
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  v-model="playerState.media.volume" 
-                  class="volume-range"
-                >
+                <div class="volume-slider-wrapper">
+                  <div class="volume-track-bg"></div>
+                  <div 
+                    class="volume-range-fill" 
+                    :style="{ width: `${playerState.media.muted ? 0 : Math.min(playerState.media.volume, 100)}%` }"
+                  ></div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    v-model="playerState.media.volume" 
+                    class="volume-range"
+                  >
+                </div>
               </div>
-            </div>
-            
-            <div class="time-display">
-              {{ formatTime(playerState.media.currentTime) }} / {{ formatTime(playerState.media.duration) }}
             </div>
           </div>
           
@@ -113,6 +123,16 @@
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- 添加错误消息提示 -->
+      <div v-if="playerState.ui.errorMessage" class="error-message">
+        <Icon icon="material-symbols:error" class="error-icon" />
+        <span>{{ playerState.ui.errorMessage }}</span>
+        <button @click="retryPlayback" class="retry-button">
+          <Icon icon="material-symbols:refresh" />
+          重试
+        </button>
       </div>
     </div>
   </div>
@@ -133,7 +153,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate']);
+const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate', 'error']);
 
 // DOM 引用
 const videoPlayer = ref(null);
@@ -171,7 +191,8 @@ const playerState = reactive({
     previewTime: 0,
     showPlayIndicator: false,
     isDragging: false,
-    previewSeekTime: 0
+    previewSeekTime: 0,
+    errorMessage: null
   },
   // 网络状态
   network: {
@@ -226,6 +247,92 @@ const touchStartTime = ref(0);
 
 // 计时器
 let hideControlsTimer = null;
+
+// 改进防抖函数实现，确保事件对象正确传递
+function debounce(fn, delay) {
+  let timer = null;
+  
+  const debouncedFn = function(e) {
+    // 保存原始事件对象，因为异步操作后可能无法访问
+    if (e && e.type === 'mousemove') {
+      // 对于鼠标事件，我们需要创建一个包含必要属性的对象
+      const eventCopy = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        currentTarget: e.currentTarget,
+        target: e.target
+      };
+      
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        fn.call(this, eventCopy);
+      }, delay);
+    } else {
+      // 其他类型的事件
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        fn.apply(this, arguments);
+      }, delay);
+    }
+  };
+  
+  debouncedFn.cancel = function() {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
+  
+  return debouncedFn;
+}
+
+// 修改进度条处理函数
+const handleProgressHover = (e) => {
+  try {
+    // 检查事件对象
+    if (!e || !e.currentTarget) {
+      console.warn('Missing event properties in handleProgressHover');
+      return;
+    }
+    
+    playerState.ui.hoveringProgress = true;
+    
+    // 获取位置信息
+    const rect = e.currentTarget.getBoundingClientRect();
+    const position = ((e.clientX - rect.left) / rect.width) * 100;
+    playerState.ui.hoverPosition = Math.min(Math.max(position, 0), 100);
+    
+    // 计算预览时间
+    const duration = playerState.media.duration || 0;
+    
+    if (duration > 0) {
+      if (playerState.ui.isDragging) {
+        playerState.ui.previewTime = playerState.ui.previewSeekTime || 0;
+      } else {
+        playerState.ui.previewTime = (duration * position) / 100;
+      }
+    } else {
+      const videoDuration = videoPlayer.value?.duration || 0;
+      playerState.ui.previewTime = (videoDuration * position) / 100;
+    }
+  } catch (error) {
+    console.error('Error in handleProgressHover:', error);
+  }
+};
+
+// 在组件卸载时清理防抖函数
+onUnmounted(() => {
+  if (typeof debouncedProgressHover.cancel === 'function') {
+    debouncedProgressHover.cancel();
+  }
+});
+
+// 在声明函数后创建防抖版本
+const debouncedProgressHover = debounce(handleProgressHover, 5);
+
+const handleProgressLeave = () => {
+  playerState.ui.hoveringProgress = false;
+};
 
 // 初始化
 onMounted(async () => {
@@ -301,7 +408,6 @@ watch(() => playerState.media.volume, (newVolume) => {
 // 视频事件处理
 const handleVideoPlay = () => {
   playerState.network.firstInteraction = false;
-  console.debug('video play', playerState.media.canPlay.video, playerState.media.canPlay.audio);
   
   if (isCanplay.value) {
     if (!isHlsStream.value && audioPlayer.value) {
@@ -347,8 +453,6 @@ const handleVideoCanplay = () => {
   playerState.media.canPlay.video = true;
   playerState.media.seeking.video = false;
   
-  console.debug('video canplay', playerState.network.firstInteraction, isSeeking.value, isCanplay.value);
-  
   if (!isSeeking.value && isCanplay.value) {
     videoPlayer.value.play();
     if (!isHlsStream.value && audioPlayer.value) {
@@ -368,14 +472,20 @@ const handleVideoWaiting = () => {
 const handleVideoTimeupdate = () => {
   if (videoPlayer.value) {
     playerState.media.currentTime = videoPlayer.value.currentTime;
-    playerState.media.duration = videoPlayer.value.duration;
+    
+    // 确保duration被正确设置
+    if (videoPlayer.value.duration && videoPlayer.value.duration !== Infinity) {
+      playerState.media.duration = videoPlayer.value.duration;
+    }
+    
+    emit('timeupdate', playerState.media.currentTime);
   }
 };
 
 const handleVideoProgress = () => {
   if (videoPlayer.value && videoPlayer.value.buffered.length > 0) {
     playerState.media.bufferedProgress = 
-      (videoPlayer.value.buffered.end(0) / videoPlayer.value.duration) * 100;
+      (videoPlayer.value.buffered.end(0) / playerState.media.duration) * 100;
   }
 };
 
@@ -388,8 +498,6 @@ const handleAudioSeeking = () => {
 const handleAudioCanplay = () => {
   playerState.media.canPlay.audio = true;
   playerState.media.seeking.audio = false;
-  
-  console.debug('audio canplay', playerState.network.firstInteraction, isSeeking.value, isCanplay.value);
   
   if (!isSeeking.value && isCanplay.value) {
     videoPlayer.value.play().then(() => {
@@ -457,6 +565,10 @@ const handleProgressMouseDown = (e) => {
     playerState.ui.previewSeekTime = 
       playerState.media.duration * Math.min(Math.max(position, 0), 1);
     playerState.ui.hoverPosition = position * 100;
+    // 使用requestAnimationFrame优化视觉更新
+    requestAnimationFrame(() => {
+      // 视觉更新代码
+    });
   };
 
   updatePreview(e.clientX);
@@ -477,21 +589,6 @@ const handleProgressMouseDown = (e) => {
 
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('mouseup', handleMouseUp);
-};
-
-const handleProgressHover = (e) => {
-  playerState.ui.hoveringProgress = true;
-  const rect = e.currentTarget.getBoundingClientRect();
-  const position = ((e.clientX - rect.left) / rect.width) * 100;
-  playerState.ui.hoverPosition = Math.min(Math.max(position, 0), 100);
-  playerState.ui.previewTime = 
-    playerState.ui.isDragging 
-      ? playerState.ui.previewSeekTime 
-      : (playerState.media.duration * position) / 100;
-};
-
-const handleProgressLeave = () => {
-  playerState.ui.hoveringProgress = false;
 };
 
 // 设置视频时间
@@ -520,20 +617,31 @@ const handleMouseLeave = () => {
   }, 2000);
 };
 
-// 错误处理
+// 改进HLS错误处理
 const handleHlsError = (data) => {
   if (data.fatal) {
     switch (data.type) {
       case Hls.ErrorTypes.NETWORK_ERROR:
-        console.error('HLS network error, trying to recover');
-        hls.value.startLoad();
+        console.warn('HLS network error, trying to recover');
+        if (playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          playerState.network.reconnectAttempts++;
+          hls.value.startLoad();
+        } else {
+          playerState.ui.errorMessage = '网络连接失败，请检查您的网络后重试';
+          emit('error', {type: 'network', message: 'Network connection failed'});
+        }
         break;
       case Hls.ErrorTypes.MEDIA_ERROR:
-        console.error('HLS media error, recovering');
+        console.warn('HLS media error, recovering');
         hls.value.recoverMediaError();
         break;
       default:
-        initHls();
+        if (playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          playerState.network.reconnectAttempts++;
+          initHls();
+        } else {
+          emit('error', {type: 'fatal', message: 'Cannot play video'});
+        }
         break;
     }
   }
@@ -652,6 +760,48 @@ defineExpose({
   videoPlayer
 });
 
+// 添加键盘快捷键支持
+const handleKeyDown = (e) => {
+  // 防止在输入框中触发快捷键
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  
+  switch(e.key) {
+    case ' ':
+    case 'k':
+      togglePlay();
+      e.preventDefault();
+      break;
+    case 'ArrowRight':
+      setVideoTime(Math.min(playerState.media.currentTime + 5, playerState.media.duration));
+      e.preventDefault();
+      break;
+    case 'ArrowLeft':
+      setVideoTime(Math.max(playerState.media.currentTime - 5, 0));
+      e.preventDefault();
+      break;
+    case 'm':
+      toggleMute();
+      e.preventDefault();
+      break;
+    case 'f':
+      toggleFullscreen();
+      e.preventDefault();
+      break;
+  }
+};
+
+// 添加播放重试方法
+const retryPlayback = () => {
+  playerState.ui.errorMessage = null;
+  playerState.network.reconnectAttempts = 0;
+  if (isHlsStream.value) {
+    initHls();
+  } else {
+    videoPlayer.value.load();
+    videoPlayer.value.play().catch(handleVideoError);
+  }
+};
+
 </script>
 
 <style scoped>
@@ -705,20 +855,27 @@ defineExpose({
 }
 
 .progress-bar-container {
-  @apply absolute bottom-0 left-0 right-0 h-[10px] cursor-pointer z-30;
+  @apply absolute bottom-0 left-0 right-0 cursor-pointer z-30;
+  height: 16px;
+  margin-bottom: -6px;
 }
 
 .progress-bar {
-  @apply relative w-full h-[3px] bg-[#FFFFFF33]
-    transition-all duration-200 overflow-hidden;
+  @apply relative w-full bg-[#FFFFFF33] overflow-hidden;
+  height: 3px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .progress-bar-loaded {
-  @apply absolute top-0 left-0 h-full bg-[#FFFFFF26];
+  @apply absolute top-0 left-0 h-full;
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
 .progress-bar-filled {
-  @apply absolute top-0 left-0 h-full bg-[#FF0000] flex items-center justify-end;
+  @apply absolute top-0 left-0 h-full;
+  background-color: #FF0000; /* 恢复为YouTube红色 */
 }
 
 .progress-handle {
@@ -748,23 +905,55 @@ defineExpose({
 }
 
 .volume-control {
-  @apply flex items-center relative;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
 }
 
 .volume-slider-container {
-  @apply w-0 overflow-hidden transition-all duration-200 origin-left;
+  overflow: hidden;
+  transition: width 0.2s;
+  width: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
 }
 
 .volume-control:hover .volume-slider-container {
-  @apply w-20;
+  width: 80px;
 }
 
-.volume-range {
-  @apply w-full h-1 appearance-none bg-white/40 rounded-full cursor-pointer;
+.volume-slider-wrapper {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
 }
 
-.volume-range::-webkit-slider-thumb {
-  @apply appearance-none w-3 h-3 rounded-full bg-white cursor-pointer;
+.volume-track-bg {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  right: 6px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.volume-range-fill {
+  position: absolute;
+  height: 3px;
+  background-color: white; /* 保持白色填充 */
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .time-display {
@@ -782,16 +971,20 @@ defineExpose({
 }
 
 .progress-dot {
-  @apply w-[6px] h-[6px] rounded-full bg-[#FF0000] absolute right-0
-    transform translate-x-1/2 opacity-0 transition-opacity duration-200;
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background-color: #FF0000;
+  border-radius: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  transition: width 0.2s, height 0.2s;
 }
 
-.progress-container:hover .progress-dot {
-  @apply opacity-100;
-}
-
-.progress-bar:hover .progress-dot {
-  @apply w-[8px] h-[8px];
+.progress-bar-container:hover .progress-dot {
+  width: 8px;
+  height: 8px;
 }
 
 .play-state-indicator {
@@ -869,4 +1062,117 @@ defineExpose({
   }
 }
 
+.error-message {
+  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+    bg-black/80 text-white p-4 rounded flex flex-col items-center gap-2 z-50
+    text-center max-w-[80%];
+}
+
+.error-icon {
+  @apply text-red-500 text-3xl;
+}
+
+.retry-button {
+  @apply mt-2 px-4 py-2 bg-red-600 rounded flex items-center gap-2
+    hover:bg-red-700 transition-colors;
+}
+
+/* 响应式调整 */
+@media (max-width: 640px) {
+  .controls-main {
+    @apply flex-wrap;
+  }
+  
+  .controls-right {
+    @apply mt-1;
+  }
+  
+  .video-controls {
+    @apply pb-2;
+  }
+  
+  .time-display {
+    @apply text-xs;
+  }
+}
+
+/* 触摸优化 */
+@media (hover: none) {
+  .progress-bar {
+    @apply h-[5px];
+  }
+  
+  .progress-bar-container {
+    @apply h-[20px];
+  }
+  
+  .control-btn {
+    @apply p-3;
+  }
+  
+  .control-icon {
+    @apply text-[1.4rem];
+  }
+}
+
+/* 无障碍焦点样式 */
+.video-container:focus-visible {
+  @apply outline-white outline-offset-2 outline-2;
+}
+
+/* 将音量控制样式与YouTube保持一致 */
+.volume-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  width: 100%;
+  height: 40px; /* 增大点击区域 */
+  margin: 0;
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+}
+
+/* 修复小圆点位置并与YouTube保持一致 */
+.volume-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
+  margin-top: -4.5px; /* 关键：修复垂直位置 */
+  z-index: 11;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.volume-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* 设置轨道样式 */
+.volume-range::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 3px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.2); /* YouTube的浅灰色 */
+  border-radius: 1.5px;
+}
+
+/* 调整填充颜色 */
+.volume-range-fill {
+  background-color: white; /* 保持音量填充为白色 */
+}
+
+/* 确保其他样式保持不变 */
+.volume-track-bg {
+  background: rgba(255, 255, 255, 0.2); /* 保持浅灰色背景 */
+}
 </style>
