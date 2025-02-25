@@ -20,7 +20,7 @@
         </div>
       </div>
 
-      <div class="video-click-layer" @click="togglePlay">
+      <div class="video-click-layer" @click="handleVideoLayerClick">
         <div class="play-state-indicator" v-if="playerState.ui.showPlayIndicator">
           <Icon :icon="playerState.media.playing ? 'material-symbols:pause' : 'material-symbols:play-arrow'" 
             class="indicator-icon" />
@@ -196,7 +196,7 @@ const playerState = reactive({
   },
   // UI状态
   ui: {
-    controlsVisible: false,
+    controlsVisible: true,
     fullscreen: false,
     hoveringProgress: false,
     hoverPosition: 0,
@@ -571,9 +571,9 @@ const togglePlay = () => {
   
   // 显示播放状态指示器
   playerState.ui.showPlayIndicator = true;
-  setTimeout(() => {
-    playerState.ui.showPlayIndicator = false;
-  }, 500);
+  // setTimeout(() => {
+  //   playerState.ui.showPlayIndicator = false;
+  // }, 500);
 };
 
 const toggleMute = () => {
@@ -825,16 +825,6 @@ const handleTouchMove = (e) => {
 };
 
 const handleTouchEnd = (e) => {
-  // 检查是否是快速点击（短按）用于播放/暂停
-  if (Date.now() - touchStartTime.value < 200 && 
-      !playerState.ui.seeking.active) { 
-    // 短按
-    if (Date.now() - lastTap.value < 300) { // 双击
-      togglePlay();
-    }
-    lastTap.value = Date.now();
-  }
-  
   // 如果是滑动快进/快退，则应用新的时间点
   if (playerState.ui.seeking.active) {
     setVideoTime(playerState.ui.seeking.seekTime);
@@ -842,6 +832,38 @@ const handleTouchEnd = (e) => {
     playerState.ui.seeking.active = false;
     playerState.ui.seeking.distance = 0;
     playerState.ui.seeking.direction = null;
+    return; // 如果是滑动操作，不处理点击逻辑
+  }
+
+  // 计算是否为短按（点击）
+  const isTap = Date.now() - touchStartTime.value < 200;
+  
+  if (isTap) {
+    // 检查是否是双击 (两次点击间隔小于300ms)
+    if (Date.now() - lastTap.value < 300) {
+      // 双击 - 播放/暂停
+      togglePlay();
+      lastTap.value = 0; // 重置，避免连续触发
+      playerState.ui.controlsVisible = true;
+    } else {
+      // 单击 - 显示/隐藏控件
+      playerState.ui.controlsVisible = !playerState.ui.controlsVisible;
+      console.log(playerState.ui.controlsVisible)
+      
+      // 如果显示控件，设置自动隐藏计时器
+      if (playerState.ui.controlsVisible) {
+        if (hideControlsTimer) {
+          clearTimeout(hideControlsTimer);
+        }
+        hideControlsTimer = setTimeout(() => {
+          playerState.ui.controlsVisible = false;
+        }, 3000); // 3秒后自动隐藏
+      } else {
+        playerState.ui.controlsVisible = false
+      }
+      
+      lastTap.value = Date.now(); // 记录本次点击时间
+    }
   }
 };
 
@@ -929,6 +951,20 @@ const syncMedia = () => {
   }
 };
 
+// 添加处理函数，区分设备类型
+const handleVideoLayerClick = (e) => {
+  // 检测是否为触摸设备
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  
+  // 触摸设备由touchend事件处理，不在这里处理
+  if (isTouchDevice) {
+    return;
+  }
+  
+  // PC端直接调用togglePlay
+  togglePlay();
+};
+
 </script>
 
 <style scoped>
@@ -962,10 +998,6 @@ const syncMedia = () => {
 .controls-visible {
   @apply opacity-100;
   transition-delay: 0s;
-}
-
-.video-controls:not(.controls-visible) {
-  transition-delay: 2s;
 }
 
 .progress-container {
