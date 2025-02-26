@@ -172,7 +172,15 @@ class AutoUpdateChannelVideo(BaseTask):
     @classmethod
     def run(cls):
         cls.initialize_pools()
-        # Add periodic lock cleanup
+
+        # First get current subscriptions
+        with get_session() as session:
+            subscriptions = session.scalars(
+                select(Subscription).where(Subscription.is_deleted == 0).order_by(Subscription.id.desc())
+            ).all()
+            subscription_ids = [sub.id for sub in subscriptions]
+
+        # Then perform lock cleanup
         with cls._subscription_locks:
             active_ids = {sub.id for sub in subscriptions}
             stale_ids = set(cls._subscription_locks_map.keys()) - active_ids
@@ -181,20 +189,13 @@ class AutoUpdateChannelVideo(BaseTask):
                 if lock and lock.locked():
                     lock.release()
 
-        subscription_ids = []
-        with get_session() as session:
-            subscriptions = session.scalars(
-                select(Subscription).where(Subscription.is_deleted == 0).order_by(Subscription.id.desc()))
-            for subscription in subscriptions:
-                subscription_ids.append(subscription.id)
-
-        for subscription_id in subscription_ids:
+        # Submit tasks for current subscriptions
+        for sub_id in subscription_ids:
             try:
-                subscription = subscription_service.get_subscription_detail(subscription_id)
+                subscription = subscription_service.get_subscription_detail(sub_id)
                 pool = cls.get_pool(subscription.url)
                 if pool:
                     pool.submit(cls.update_subscription_video, subscription)
-
             except Exception as e:
                 logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
