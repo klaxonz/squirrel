@@ -141,7 +141,8 @@ class ChangeStatusTask(BaseTask):
 @TaskRegistry.register(interval=10, unit='minutes')
 class AutoUpdateChannelVideo(BaseTask):
     _thread_pools = None
-    _subscription_locks = {}
+    _subscription_locks = threading.Lock()  # Use a lock for the lock dictionary
+    _subscription_locks_map = {}
 
     @classmethod
     def initialize_pools(cls):
@@ -171,6 +172,14 @@ class AutoUpdateChannelVideo(BaseTask):
     @classmethod
     def run(cls):
         cls.initialize_pools()
+        # Add periodic lock cleanup
+        with cls._subscription_locks:
+            active_ids = {sub.id for sub in subscriptions}
+            stale_ids = set(cls._subscription_locks_map.keys()) - active_ids
+            for sub_id in stale_ids:
+                lock = cls._subscription_locks_map.pop(sub_id, None)
+                if lock and lock.locked():
+                    lock.release()
 
         subscription_ids = []
         with get_session() as session:
@@ -191,16 +200,17 @@ class AutoUpdateChannelVideo(BaseTask):
 
     @classmethod
     def update_subscription_video(cls, subscription: SubscriptionDto):
-        # Get or create lock for this subscription
-        if subscription.id not in cls._subscription_locks:
-            cls._subscription_locks[subscription.id] = threading.Lock()
-        lock = cls._subscription_locks[subscription.id]
+        # Use a context manager for thread safety when accessing locks map
+        with cls._subscription_locks:
+            if subscription.id not in cls._subscription_locks_map:
+                cls._subscription_locks_map[subscription.id] = threading.Lock()
+            lock = cls._subscription_locks_map[subscription.id]
 
-        # Try to acquire the lock, return if already locked
+        # Use context manager for automatic lock release
         if not lock.acquire(blocking=False):
             logger.info(f"Update already in progress for subscription {subscription.id}")
             return
-
+            
         try:
             subscribe_channel = SubscriptionFactory.create_subscription(subscription.url)
             if subscription.total_videos == 0:
@@ -226,9 +236,14 @@ class AutoUpdateChannelVideo(BaseTask):
                 )
                 download_service.start(params)
         except Exception as e:
-            logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+            logger.error(f"Error processing subscription {subscription.id}: {e}", exc_info=True)
         finally:
             lock.release()
+            # Clean up unused locks
+            with cls._subscription_locks:
+                if lock.locked():
+                    lock.release()
+                del cls._subscription_locks_map[subscription.id]
 
     @classmethod
     def shutdown(cls):
