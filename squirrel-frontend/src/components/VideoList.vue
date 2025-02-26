@@ -125,7 +125,7 @@ const computedItemSize = computed(() => {
 
 const handleScroll = (event) => {
   const {scrollTop, clientHeight, scrollHeight} = event.target;
-  if (scrollHeight - scrollTop - clientHeight < computedItemSize.value * 2 && !props.loading && !props.allLoaded) {
+  if (scrollHeight - scrollTop - clientHeight < computedItemSize.value * computedGridItems.value && !props.loading && !props.allLoaded) {
     emit('loadMore');
   }
 };
