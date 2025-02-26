@@ -97,7 +97,9 @@ const updateContainerWidth = (() => {
     timer = setTimeout(() => {
       if (containerRef.value) {
         requestAnimationFrame(() => {
-          containerWidth.value = containerRef.value.offsetWidth;
+          if (containerRef.value.offsetWidth > 0) {
+            containerWidth.value = containerRef.value.offsetWidth;
+          }
         });
       }
     }, 100);
