@@ -585,10 +585,10 @@ const toggleMute = () => {
 };
 
 const toggleFullscreen = async () => {
+  const elem = videoPlayer.value.parentElement;
   if (document.fullscreenElement) {
     await document.exitFullscreen();
   } else {
-    const elem = videoPlayer.value.parentElement;
     if (elem.requestFullscreen) {
       await elem.requestFullscreen();
     } else if (elem.webkitRequestFullscreen) { /* Safari */
@@ -597,7 +597,8 @@ const toggleFullscreen = async () => {
       await elem.mozRequestFullScreen();
     }
   }
-  playerState.ui.fullscreen = !document.fullscreenElement;
+  // Update fullscreen state after toggling
+  playerState.ui.fullscreen = !!document.fullscreenElement;
 };
 
 // 进度条交互
