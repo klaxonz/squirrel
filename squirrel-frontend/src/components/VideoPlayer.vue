@@ -230,7 +230,7 @@ const isHlsStream = computed(() =>
 );
 
 const hasAudioStream = computed(() => {
-  return !!props.video?.audio_stream_url;
+  return !!props.video?.stream_audio_url;
 });
 
 const isCanplay = computed(() => {
@@ -372,6 +372,14 @@ onMounted(async () => {
   
   initializeMediaSources();
   screen.orientation?.addEventListener('change', handleOrientationChange);
+  
+  // 添加定时器以同步音频和视频
+  const syncInterval = setInterval(syncMedia, 100); // 每100毫秒同步一次
+
+  // 清理定时器
+  onUnmounted(() => {
+    clearInterval(syncInterval);
+  });
 });
 
 // 初始化媒体源
@@ -945,7 +953,7 @@ const syncMedia = () => {
   // 只有在有音频流的情况下才进行同步
   const videoCurrent = videoPlayer.value.currentTime;
   const audioCurrent = audioPlayer.value.currentTime;
-  
+
   // 只在差异较大时同步
   if (Math.abs(videoCurrent - audioCurrent) > 0.1) {
     audioPlayer.value.currentTime = videoCurrent;
