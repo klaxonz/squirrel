@@ -149,6 +149,17 @@
           {{ formatTime(playerState.ui.seeking.seekTime) }}
         </div>
       </div>
+
+      <!-- 添加音量调节指示器 -->
+      <div v-if="playerState.ui.volume.showIndicator" class="volume-adjust-indicator">
+        <div class="volume-control-container">
+          <div class="volume-slider">
+            <div class="volume-slider-fill" :style="{ height: playerState.media.volume + '%' }"></div>
+            <div class="volume-slider-thumb"></div>
+          </div>
+          <div class="volume-value">{{ Math.round(playerState.media.volume) }}</div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -215,6 +226,12 @@ const playerState = reactive({
       distance: 0,
       direction: null,
       seekTime: 0
+    },
+    volume: {
+      adjusting: false,
+      startY: 0,
+      startVolume: 0,
+      showIndicator: false
     }
   },
   // 网络状态
@@ -786,90 +803,125 @@ const handleProgressTouchEnd = (e) => {
 };
 
 const handleTouchStart = (e) => {
+  const touch = e.touches[0];
   touchStartTime.value = Date.now();
   
-  // 记录开始触摸位置（用于快进/快退）
-  if (e.touches.length === 1) {
-    playerState.ui.seeking.active = false;
-    playerState.ui.seeking.startX = e.touches[0].clientX;
-    playerState.ui.seeking.currentX = e.touches[0].clientX;
-  }
+  // 记录初始触摸位置
+  playerState.ui.seeking.startX = touch.clientX;
+  playerState.ui.seeking.currentX = touch.clientX;
+  playerState.ui.volume.startY = touch.clientY;
+  playerState.ui.volume.startVolume = playerState.media.volume;
+  
+  // 重置状态
+  playerState.ui.seeking.active = false;
+  playerState.ui.volume.adjusting = false;
 };
 
 const handleTouchMove = (e) => {
-  // 确保是单指触摸
   if (e.touches.length !== 1) return;
   
-  const touchX = e.touches[0].clientX;
-  playerState.ui.seeking.currentX = touchX;
+  const touch = e.touches[0];
+  const deltaX = Math.abs(touch.clientX - playerState.ui.seeking.startX);
+  const deltaY = Math.abs(touch.clientY - playerState.ui.volume.startY);
   
-  // 计算滑动距离
-  const diffX = touchX - playerState.ui.seeking.startX;
-  const absDiffX = Math.abs(diffX);
+  // 如果还没有确定滑动类型，根据滑动方向判断
+  if (!playerState.ui.seeking.active && !playerState.ui.volume.adjusting) {
+    // 需要有足够的移动距离才触发
+    if (deltaX > 10 || deltaY > 10) {
+      // 如果横向移动距离大于纵向，则为快进快退
+      if (deltaX > deltaY) {
+        playerState.ui.seeking.active = true;
+      } else {
+        playerState.ui.volume.adjusting = true;
+        playerState.ui.volume.showIndicator = true;
+      }
+    }
+  }
   
-  // 当滑动距离超过阈值时才激活快进/快退
-  if (absDiffX > 50) {
-    playerState.ui.seeking.active = true;
-    playerState.ui.seeking.distance = diffX;
-    playerState.ui.seeking.direction = diffX > 0 ? 'forward' : 'backward';
+  // 根据已确定的滑动类型执行相应操作
+  if (playerState.ui.volume.adjusting) {
+    e.preventDefault();
+    const volumeChange = ((playerState.ui.volume.startY - touch.clientY) / 200) * 100;
+    const newVolume = Math.min(Math.max(playerState.ui.volume.startVolume + volumeChange, 0), 100);
+    playerState.media.volume = newVolume;
+  } else if (playerState.ui.seeking.active) {
+    const touchX = touch.clientX;
+    playerState.ui.seeking.currentX = touchX;
     
-    // 根据滑动距离计算快进/快退的秒数
-    // 每50px滑动距离对应5秒的快进/快退
-    const seekSeconds = Math.floor(absDiffX / 50) * 5;
+    const diffX = touchX - playerState.ui.seeking.startX;
+    const absDiffX = Math.abs(diffX);
     
-    // 计算新的时间点
-    if (playerState.ui.seeking.direction === 'forward') {
-      playerState.ui.seeking.seekTime = Math.min(
-        playerState.media.currentTime + seekSeconds,
-        playerState.media.duration
-      );
-    } else {
-      playerState.ui.seeking.seekTime = Math.max(
-        playerState.media.currentTime - seekSeconds,
-        0
-      );
+    if (absDiffX > 50) {
+      playerState.ui.seeking.distance = diffX;
+      playerState.ui.seeking.direction = diffX > 0 ? 'forward' : 'backward';
+      
+      // 非线性加速：使用平方根函数使滑动更自然
+      // 基础速度：每50px对应5秒
+      // 加速部分：超过100px后，每增加50px，速度翻倍
+      let seekSeconds;
+      if (absDiffX <= 100) {
+        // 基础速度区间
+        seekSeconds = Math.floor(absDiffX / 50) * 5;
+      } else {
+        // 加速区间：使用平方根函数实现非线性加速
+        const baseSeconds = 10; // 前100px对应的秒数
+        const acceleratedSeconds = Math.floor(Math.sqrt((absDiffX - 100) / 50) * 10);
+        seekSeconds = baseSeconds + acceleratedSeconds;
+      }
+      
+      if (playerState.ui.seeking.direction === 'forward') {
+        playerState.ui.seeking.seekTime = Math.min(
+          playerState.media.currentTime + seekSeconds,
+          playerState.media.duration
+        );
+      } else {
+        playerState.ui.seeking.seekTime = Math.max(
+          playerState.media.currentTime - seekSeconds,
+          0
+        );
+      }
     }
   }
 };
 
 const handleTouchEnd = (e) => {
-  // 如果是滑动快进/快退，则应用新的时间点
+  if (playerState.ui.volume.adjusting) {
+    playerState.ui.volume.adjusting = false;
+    setTimeout(() => {
+      playerState.ui.volume.showIndicator = false;
+    }, 1000);
+    return;
+  }
+
   if (playerState.ui.seeking.active) {
     setVideoTime(playerState.ui.seeking.seekTime);
-    // 重置状态
     playerState.ui.seeking.active = false;
     playerState.ui.seeking.distance = 0;
     playerState.ui.seeking.direction = null;
-    return; // 如果是滑动操作，不处理点击逻辑
+    return;
   }
 
-  // 计算是否为短按（点击）
+  // 原有点击逻辑
   const isTap = Date.now() - touchStartTime.value < 200;
   
   if (isTap) {
-    // 检查是否是双击 (两次点击间隔小于300ms)
     if (Date.now() - lastTap.value < 300) {
-      // 双击 - 播放/暂停
       togglePlay();
-      lastTap.value = 0; // 重置，避免连续触发
+      lastTap.value = 0;
       playerState.ui.controlsVisible = true;
     } else {
-      // 单击 - 显示/隐藏控件
       playerState.ui.controlsVisible = !playerState.ui.controlsVisible;
-      console.log(playerState.ui.controlsVisible)
       
-      // 如果显示控件，设置自动隐藏计时器
       if (playerState.ui.controlsVisible) {
         if (hideControlsTimer) {
           clearTimeout(hideControlsTimer);
         }
         hideControlsTimer = setTimeout(() => {
           playerState.ui.controlsVisible = false;
-        }, 3000); // 3秒后自动隐藏
+        }, 3000);
       }
-      console.log(playerState.ui.controlsVisible)
       
-      lastTap.value = Date.now(); // 记录本次点击时间
+      lastTap.value = Date.now();
     }
   }
 };
@@ -1045,8 +1097,7 @@ const handleVideoLayerClick = (e) => {
   }
 }
 
-.yt-spinner__circle,
-.seeking-indicator {
+.yt-spinner__circle {
   animation: media-spinner 1.4s linear infinite;
 }
 
@@ -1482,5 +1533,40 @@ const handleVideoLayerClick = (e) => {
 
 .seeking-indicator[data-direction="backward"] {
   background-color: rgba(244, 67, 54, 0.7);
+}
+
+.volume-adjust-indicator {
+  @apply absolute left-1/2 -translate-x-1/2 top-[15%] flex flex-col items-center z-30;
+  width: 8rem;
+}
+
+.volume-control-container {
+  @apply relative flex flex-col items-center gap-1 w-full;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 0.5rem;
+}
+
+.volume-slider {
+  @apply h-0.5 w-full bg-white/20 rounded-full relative overflow-hidden;
+}
+
+.volume-slider-fill {
+  @apply absolute left-0 top-0 h-full bg-white/90 transition-all duration-100;
+}
+
+.volume-slider-thumb {
+  @apply absolute w-2.5 h-2.5 bg-white rounded-full top-1/2 -translate-y-1/2 shadow-md;
+  left: v-bind("playerState.media.volume + '%'");
+  transition: left 0.1s ease-out;
+}
+
+.volume-value {
+  @apply text-white/90 text-xs font-medium mt-1;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>
