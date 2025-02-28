@@ -1,9 +1,12 @@
 <template>
   <div class="video-wrapper bg-[#0f0f0f]">
     <div class="video-container" 
-      @mouseenter="handleMouseEnter"
-      @mouseleave="handleMouseLeave"
-      @dblclick="togglePlay"
+      :class="{'pointer-events-none': isTouchDevice}"
+      v-on="!isTouchDevice ? {
+        mouseenter: handleMouseEnter,
+        mouseleave: handleMouseLeave
+      } : {}"
+      @dblclick="!isTouchDevice && togglePlay()"
       @touchstart="handleTouchStart"
       @touchmove="handleTouchMove"
       @touchend="handleTouchEnd"
@@ -278,6 +281,11 @@ const touchStartTime = ref(0);
 // 计时器
 let hideControlsTimer = null;
 
+// 添加计算属性
+const isTouchDevice = computed(() => 
+  'ontouchstart' in window || navigator.maxTouchPoints > 0
+);
+
 // 改进防抖函数实现，确保事件对象正确传递
 function debounce(fn, delay) {
   let timer = null;
@@ -374,7 +382,7 @@ onMounted(async () => {
   screen.orientation?.addEventListener('change', handleOrientationChange);
   
   // 添加定时器以同步音频和视频
-  const syncInterval = setInterval(syncMedia, 100); // 每100毫秒同步一次
+  const syncInterval = setInterval(syncMedia, 100);
 
   // 清理定时器
   onUnmounted(() => {
@@ -382,7 +390,6 @@ onMounted(async () => {
   });
 });
 
-// 初始化媒体源
 const initializeMediaSources = () => {
   if (props.video?.stream_video_url) {
     if (isHlsStream.value) {
@@ -577,11 +584,7 @@ const togglePlay = () => {
     });
   }
   
-  // 显示播放状态指示器
   playerState.ui.showPlayIndicator = true;
-  // setTimeout(() => {
-  //   playerState.ui.showPlayIndicator = false;
-  // }, 500);
 };
 
 const toggleMute = () => {
@@ -605,7 +608,6 @@ const toggleFullscreen = async () => {
       await elem.mozRequestFullScreen();
     }
   }
-  // Update fullscreen state after toggling
   playerState.ui.fullscreen = !!document.fullscreenElement;
 };
 
@@ -617,13 +619,8 @@ const handleProgressMouseDown = (e) => {
   
   const updatePreview = (clientX) => {
     const position = (clientX - rect.left) / rect.width;
-    playerState.ui.previewSeekTime = 
-      playerState.media.duration * Math.min(Math.max(position, 0), 1);
+    playerState.ui.previewSeekTime = playerState.media.duration * Math.min(Math.max(position, 0), 1);
     playerState.ui.hoverPosition = position * 100;
-    // 使用requestAnimationFrame优化视觉更新
-    requestAnimationFrame(() => {
-      // 视觉更新代码
-    });
   };
 
   updatePreview(e.clientX);
@@ -657,6 +654,7 @@ const setVideoTime = (time) => {
 
 // UI交互
 const handleMouseEnter = () => {
+  if(isTouchDevice.value) return;
   playerState.ui.controlsVisible = true;
   if (hideControlsTimer) {
     clearTimeout(hideControlsTimer);
@@ -665,6 +663,7 @@ const handleMouseEnter = () => {
 };
 
 const handleMouseLeave = () => {
+  if(isTouchDevice.value) return;
   hideControlsTimer = setTimeout(() => {
     if (!playerState.ui.hoveringProgress) {
       playerState.ui.controlsVisible = false;
@@ -867,9 +866,8 @@ const handleTouchEnd = (e) => {
         hideControlsTimer = setTimeout(() => {
           playerState.ui.controlsVisible = false;
         }, 3000); // 3秒后自动隐藏
-      } else {
-        playerState.ui.controlsVisible = false
       }
+      console.log(playerState.ui.controlsVisible)
       
       lastTap.value = Date.now(); // 记录本次点击时间
     }
@@ -977,6 +975,126 @@ const handleVideoLayerClick = (e) => {
 </script>
 
 <style scoped>
+/* 提取公共变量 */
+:root {
+  --primary-red: #FF0000;
+  --control-icon-size: 1.2rem;
+  --progress-bar-height: 0.1875rem;
+  --hover-transition: opacity 0.2s ease-in-out;
+}
+
+/* 合并重复的定位样式 */
+.video-container,
+.yt-loading-spinner,
+.play-state-indicator,
+.error-message,
+.seeking-indicator {
+  @apply absolute;
+}
+
+/* 简化transform写法 */
+.transform-center {
+  @apply top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2;
+}
+
+.play-state-indicator,
+.error-message,
+.seeking-indicator {
+  @apply transform-center;
+}
+
+/* 合并颜色相关样式 */
+.bg-semi-dark {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* 优化媒体查询 */
+@media (hover: none), (pointer: coarse) {
+  .volume-slider-container {
+    width: 1.25rem !important;
+  }
+  .hover-gradient {
+    @apply opacity-100;
+  }
+  .progress-bar {
+    height: 0.3125rem;
+  }
+  .progress-bar-container {
+    height: 1.25rem;
+  }
+}
+
+/* 使用CSS变量优化重复值 */
+.progress-bar-filled,
+.progress-handle,
+.progress-dot {
+  background-color: var(--primary-red);
+}
+
+.control-icon {
+  font-size: var(--control-icon-size);
+}
+
+/* 合并动画相关样式 */
+@keyframes media-spinner {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.yt-spinner__circle,
+.seeking-indicator {
+  animation: media-spinner 1.4s linear infinite;
+}
+
+/* 优化伪类选择器 */
+.volume-range {
+  &::-webkit-slider-thumb,
+  &::-moz-range-thumb {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* 合并过渡效果 */
+.video-controls,
+.hover-gradient,
+.progress-handle {
+  transition: var(--hover-transition);
+}
+
+/* 使用:where()简化选择器 */
+:where(.progress-container:hover, .video-controls:hover) .preview-time-tooltip {
+  @apply opacity-100;
+}
+
+/* 优化flex布局声明 */
+.controls-main,
+.controls-left,
+.controls-right,
+.volume-slider-wrapper {
+  @apply flex items-center;
+}
+
+/* 简化z-index管理 */
+:root {
+  --z-video-layer: 10;
+  --z-controls: 20;
+  --z-spinner: 30;
+  --z-error: 40;
+}
+
+.video-click-layer { z-index: var(--z-video-layer); }
+.video-controls { z-index: var(--z-controls); }
+.yt-loading-spinner { z-index: var(--z-spinner); }
+.error-message { z-index: var(--z-error); }
+
 .video-wrapper {
   @apply absolute top-0 left-0 w-full h-full flex items-center justify-center;
 }
@@ -999,7 +1117,7 @@ const handleVideoLayerClick = (e) => {
 }
 
 .video-controls {
-  @apply absolute bottom-0 left-0 right-0 px-4 pb-1
+  @apply absolute bottom-0 left-0 right-0 px-4
     opacity-0 transition-all duration-200 z-20
     flex flex-col;
 }
@@ -1010,12 +1128,14 @@ const handleVideoLayerClick = (e) => {
 }
 
 .progress-container {
-  @apply relative h-[5px] mb-0;
+  @apply relative mb-0;
+  height: 0.3125rem;
 }
 
 .preview-time-tooltip {
-  @apply absolute bottom-8 bg-black/90 text-white px-2 py-1 rounded text-sm
+  @apply absolute bottom-8 bg-black/90 text-white rounded text-sm
     transform -translate-x-1/2 opacity-0 transition-opacity duration-200;
+  padding: 0.25rem 0.5rem;
 }
 
 .progress-container:hover .preview-time-tooltip {
@@ -1024,13 +1144,13 @@ const handleVideoLayerClick = (e) => {
 
 .progress-bar-container {
   @apply absolute bottom-0 left-0 right-0 cursor-pointer z-30;
-  height: 16px;
-  margin-bottom: -6px;
+  height: 1rem;
+  margin-bottom: -0.375rem;
 }
 
 .progress-bar {
   @apply relative w-full bg-[#FFFFFF33] overflow-hidden;
-  height: 3px;
+  height: 0.1875rem;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -1047,9 +1167,11 @@ const handleVideoLayerClick = (e) => {
 }
 
 .progress-handle {
-  @apply absolute bottom-1/2 w-[12px] h-[12px] rounded-full bg-[#FF0000]
+  @apply absolute bottom-1/2 rounded-full bg-[#FF0000]
     transform translate-y-1/2 -translate-x-1/2
     transition-opacity duration-200 opacity-0;
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 .progress-container:hover .progress-handle {
@@ -1076,37 +1198,37 @@ const handleVideoLayerClick = (e) => {
   position: relative;
   display: flex;
   align-items: center;
-  height: 40px;
+  height: 2.5rem;
 }
 
 .volume-slider-container {
   overflow: hidden;
   transition: width 0.2s;
   width: 0;
-  height: 40px;
+  height: 2.5rem;
   display: flex;
   align-items: center;
 }
 
 .volume-control:hover .volume-slider-container {
-  width: 80px;
+  width: 5rem;
 }
 
 .volume-slider-wrapper {
   position: relative;
   width: 100%;
-  height: 40px;
+  height: 2.5rem;
   display: flex;
   align-items: center;
-  padding: 0 6px;
+  padding: 0 0.375rem;
 }
 
 .volume-track-bg {
   position: absolute;
   top: 50%;
-  left: 6px;
-  right: 6px;
-  height: 3px;
+  left: 0.375rem;
+  right: 0.375rem;
+  height: 0.1875rem;
   background: rgba(255, 255, 255, 0.2);
   transform: translateY(-50%);
   pointer-events: none;
@@ -1115,9 +1237,9 @@ const handleVideoLayerClick = (e) => {
 
 .volume-range-fill {
   position: absolute;
-  height: 3px;
-  background-color: white; /* 保持白色填充 */
-  left: 6px;
+  height: 0.1875rem;
+  background-color: white;
+  left: 0.375rem;
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
@@ -1140,8 +1262,8 @@ const handleVideoLayerClick = (e) => {
 
 .progress-dot {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: 0.375rem;
+  height: 0.375rem;
   background-color: #FF0000;
   border-radius: 50%;
   top: 50%;
@@ -1151,8 +1273,8 @@ const handleVideoLayerClick = (e) => {
 }
 
 .progress-bar-container:hover .progress-dot {
-  width: 8px;
-  height: 8px;
+  width: 0.5rem;
+  height: 0.5rem;
 }
 
 .play-state-indicator {
@@ -1180,7 +1302,7 @@ const handleVideoLayerClick = (e) => {
 
 .video-click-layer {
   @apply absolute inset-0 z-10;
-  bottom: 84px;
+  bottom: 5.25rem;
 }
 
 .yt-loading-spinner {
@@ -1195,15 +1317,15 @@ const handleVideoLayerClick = (e) => {
   @apply w-full h-full;
   fill: none;
   stroke: currentColor;
-  stroke-width: 6;
+  stroke-width: 0.375rem;
   stroke-linecap: round;
   color: white;
   animation: yt-spinner 1.4s linear infinite;
 }
 
 .yt-spinner__circle circle {
-  stroke-dasharray: 200;
-  stroke-dashoffset: 800;
+  stroke-dasharray: 12.5rem;
+  stroke-dashoffset: 50rem;
 }
 
 @keyframes yt-spinner {
@@ -1212,15 +1334,6 @@ const handleVideoLayerClick = (e) => {
   }
   100% {
     transform: rotate(360deg);
-  }
-}
-
-@media (hover: none) {
-  .volume-slider-container {
-    @apply w-20 !important;
-  }
-  .hover-gradient {
-    @apply opacity-100 !important;
   }
 }
 
@@ -1259,10 +1372,6 @@ const handleVideoLayerClick = (e) => {
     @apply flex justify-start;
   }
   
-  .video-controls {
-    @apply pb-2;
-  }
-  
   /* 隐藏部分控件，简化移动端界面 */
   .controls-left .volume-control {
     @apply hidden;
@@ -1275,23 +1384,12 @@ const handleVideoLayerClick = (e) => {
   
   /* 调整按钮大小 */
   .control-btn {
-    @apply p-1 mx-1;
+    @apply mx-1;
+    padding: 0.25rem;
   }
   
   .control-icon {
-    @apply text-[1.2rem];
-  }
-}
-
-/* 触摸优化调整 */
-@media (hover: none) {
-  /* 保持其他触摸优化不变 */
-  .progress-bar {
-    @apply h-[5px];
-  }
-  
-  .progress-bar-container {
-    @apply h-[20px];
+    font-size: 1.2rem;
   }
 }
 
@@ -1306,7 +1404,7 @@ const handleVideoLayerClick = (e) => {
   appearance: none;
   background: transparent;
   width: 100%;
-  height: 40px; /* 增大点击区域 */
+  height: 2.5rem;
   margin: 0;
   cursor: pointer;
   position: relative;
@@ -1316,34 +1414,34 @@ const handleVideoLayerClick = (e) => {
 /* 修复小圆点位置并与YouTube保持一致 */
 .volume-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 0.75rem;
+  height: 0.75rem;
   border-radius: 50%;
   background: white;
   cursor: pointer;
   border: none;
-  margin-top: -4.5px; /* 关键：修复垂直位置 */
+  margin-top: -0.28125rem;
   z-index: 11;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.2);
 }
 
 .volume-range::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
+  width: 0.75rem;
+  height: 0.75rem;
   border-radius: 50%;
   background: white;
   cursor: pointer;
   border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.2);
 }
 
 /* 设置轨道样式 */
 .volume-range::-webkit-slider-runnable-track {
   width: 100%;
-  height: 3px;
+  height: 0.1875rem;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.2); /* YouTube的浅灰色 */
-  border-radius: 1.5px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 0.09375rem;
 }
 
 /* 调整填充颜色 */
@@ -1359,9 +1457,10 @@ const handleVideoLayerClick = (e) => {
 /* 添加快进/快退指示器样式 */
 .seeking-indicator {
   @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
-    bg-black/70 rounded-full p-4 z-30 flex flex-col items-center justify-center;
-  width: 120px;
-  height: 120px;
+    bg-black/70 rounded-full z-30 flex flex-col items-center justify-center;
+  width: 7.5rem;
+  height: 7.5rem;
+  padding: 1rem;
 }
 
 .seeking-icon-container {
