@@ -167,7 +167,6 @@ onBeforeUnmount(() => {
 
 // 处理滚动时自动保存
 const handleScroll = () => {
-  console.log('handleScroll333');
   if (!container.value) return;
   
   scrollTop.value = container.value.scrollTop;
@@ -234,9 +233,7 @@ const observeResize = () => {
 const itemStyle = computed(() => ({
   display: 'grid',
   gridTemplateColumns: `repeat(${columnCount.value}, 1fr)`,
-  gap: '8px',
   width: '100%',
-  padding: '0 8px'
 }));
 
 // 添加防抖引用
