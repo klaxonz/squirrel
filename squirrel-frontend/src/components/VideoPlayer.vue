@@ -170,7 +170,7 @@
 </template>
 
 <script setup>
-import { onMounted, watch, ref, computed, onUnmounted, reactive } from 'vue';
+import {onMounted, watch, ref, computed, onUnmounted, reactive} from 'vue';
 import { Icon } from '@iconify/vue';
 import useVideoOperations from "../composables/useVideoOperations";
 import { formatTime } from "../utils/dateFormat";
@@ -401,10 +401,14 @@ onMounted(async () => {
   initializeMediaSources();
   screen.orientation?.addEventListener('change', handleOrientationChange);
   
-  // 添加定时器以同步音频和视频
   const syncInterval = setInterval(syncMedia, 2000);
+  const showControlsInterval = setInterval(() => {
+    if (playerState.media.playing) {
+      playerState.ui.controlsVisible = false;
+      clearInterval(showControlsInterval);
+    }
+  }, 3000);
 
-  // 清理定时器
   onUnmounted(() => {
     clearInterval(syncInterval);
   });
@@ -1087,9 +1091,6 @@ const handleVideoLayerClick = (e) => {
   .volume-slider-container {
     width: 1.25rem !important;
   }
-  .hover-gradient {
-    @apply opacity-100;
-  }
   .progress-bar {
     height: 0.3125rem;
   }
@@ -1182,11 +1183,7 @@ const handleVideoLayerClick = (e) => {
 
 .hover-gradient {
   @apply absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent 
-    opacity-0 transition-opacity duration-300;
-}
-
-.video-container:hover .hover-gradient {
-  @apply opacity-100;
+    opacity-100 transition-opacity duration-300;
 }
 
 .video-controls {
