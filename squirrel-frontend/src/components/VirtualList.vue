@@ -19,7 +19,7 @@
         v-for="item in visibleItems"
         :key="item[keyField]"
         ref="items"
-        class="list-item3"
+        class="list-item"
       >
         <slot 
           name="item" 
@@ -273,7 +273,7 @@ watch(() => props.items, () => {
   top: 0;
 }
 
-.list-item3 {
+.list-item {
   will-change: transform;
 }
 </style> 
