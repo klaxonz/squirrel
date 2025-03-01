@@ -36,9 +36,9 @@ COPY --from=frontend-builder /app/squirrel-frontend/dist ./static
 ENV PYTHONPATH=/app/squirrel-backend:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    NODE_PATH=/usr/lib/node_modules
+    NODE_PATH=/root/.local/share/pnpm
 
-ENV PNPM_HOME="$HOME/.local/share/pnpm"
+ENV PNPM_HOME="/root/.local/share/pnpm"
 ENV PATH="${PATH}:${PNPM_HOME}"
 
 RUN npm install --global pnpm
