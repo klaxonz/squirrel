@@ -3,12 +3,9 @@ FROM ghcr.io/klaxonz/squirrel-base:latest AS base
 # Stage 1: Build the frontend
 FROM base AS frontend-builder
 
-# 环境变量设置
 ENV SHELL=/bin/bash \
     PNPM_HOME="$HOME/.local/share/pnpm" \
-    PATH="${PATH}:${PNPM_HOME}" \
-    NODE_PATH=/usr/lib/node_modules
-
+    PATH="${PATH}:${PNPM_HOME}"
 WORKDIR /app/squirrel-frontend
 
 RUN pnpm setup && \
@@ -45,7 +42,8 @@ COPY --from=frontend-builder /app/squirrel-frontend/dist ./static
 # Set environment variables
 ENV PYTHONPATH=/app/squirrel-backend:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    NODE_PATH=/usr/lib/node_modules
 
 EXPOSE 8000
 
