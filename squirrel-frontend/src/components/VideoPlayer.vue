@@ -399,7 +399,7 @@ onMounted(async () => {
   screen.orientation?.addEventListener('change', handleOrientationChange);
   
   // 添加定时器以同步音频和视频
-  const syncInterval = setInterval(syncMedia, 100);
+  const syncInterval = setInterval(syncMedia, 2000);
 
   // 清理定时器
   onUnmounted(() => {
@@ -1005,7 +1005,7 @@ const syncMedia = () => {
   const audioCurrent = audioPlayer.value.currentTime;
 
   // 只在差异较大时同步
-  if (Math.abs(videoCurrent - audioCurrent) > 0.1) {
+  if (Math.abs(videoCurrent - audioCurrent) > 0.3) {
     audioPlayer.value.currentTime = videoCurrent;
   }
 };
