@@ -3,8 +3,6 @@ FROM ghcr.io/klaxonz/squirrel-base:latest AS base
 # Stage 1: Build the frontend
 FROM base AS frontend-builder
 
-RUN npm install --global youtube-po-token-generator
-
 WORKDIR /app/squirrel-frontend
 
 # Copy package files first to leverage cache
@@ -39,6 +37,8 @@ ENV PYTHONPATH=/app/squirrel-backend:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     NODE_PATH=/usr/lib/node_modules
+
+RUN npm install --global youtube-po-token-generator
 
 EXPOSE 8000
 
