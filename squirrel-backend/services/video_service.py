@@ -306,4 +306,4 @@ def generate_youtube_token() -> dict:
         )
         return json.loads(result.stdout)
     except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-        raise Exception(f"Failed to generate YouTube token: {str(e)}")
+        raise Exception(f"Failed to generate YouTube token: ", e)
