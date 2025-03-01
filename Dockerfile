@@ -5,12 +5,6 @@ FROM base AS frontend-builder
 
 WORKDIR /app/squirrel-frontend
 
-ENV PNPM_HOME="$HOME/.local/share/pnpm"
-ENV PATH="${PATH}:${PNPM_HOME}"
-
-RUN npm install --global pnpm
-RUN pnpm install -g youtube-po-token-generator
-
 # Copy package files first to leverage cache
 COPY squirrel-frontend/package.json squirrel-frontend/pnpm-lock.yaml ./
 
@@ -43,6 +37,12 @@ ENV PYTHONPATH=/app/squirrel-backend:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     NODE_PATH=/usr/lib/node_modules
+
+ENV PNPM_HOME="$HOME/.local/share/pnpm"
+ENV PATH="${PATH}:${PNPM_HOME}"
+
+RUN npm install --global pnpm
+RUN pnpm install -g youtube-po-token-generator
 
 EXPOSE 8000
 
