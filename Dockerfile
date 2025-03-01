@@ -5,6 +5,8 @@ FROM base AS frontend-builder
 
 WORKDIR /app/squirrel-frontend
 
+RUN pnpm install -g youtube-po-token-generator
+
 # Copy package files first to leverage cache
 COPY squirrel-frontend/package.json squirrel-frontend/pnpm-lock.yaml ./
 

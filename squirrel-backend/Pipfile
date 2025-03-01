@@ -21,7 +21,6 @@ uvicorn = "==0.30.1"
 cryptography = "*"
 sqlalchemy = "*"
 pycookiecloud = "*"
-pytubefix = "==8.3.2"
 sse-starlette = "*"
 alembic = "*"
 dramatiq = { extras = ["watch", "redis"] }
@@ -34,4 +33,6 @@ bcrypt = "*"
 python-jose = {extras = ["cryptography"], version = "*"}
 email-validator = "*"
 sqlalchemy-to-pydantic= "0.0.8"
+pytubefix = "*"
+
 [dev-packages]

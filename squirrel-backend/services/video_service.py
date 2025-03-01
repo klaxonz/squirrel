@@ -23,6 +23,12 @@ from utils import url_helper, sql_parser
 from utils.cookie import filter_cookies_to_query_string
 from utils.url_helper import extract_top_level_domain
 
+import json
+import subprocess
+import tempfile
+from uuid import uuid4
+import os
+
 
 def get_video_by_url(url: str) -> Video:
     with get_session() as session:
@@ -54,6 +60,8 @@ def get_video_url(video_id: int) -> dict:
         video = session.get(Video, video_id)
         video_domain = extract_top_level_domain(video.url)
 
+        proxy_prefix_path = f"/api/video/proxy?domain={video_domain}"
+
         if video_domain == 'bilibili.com':
             cookies = filter_cookies_to_query_string("https://www.bilibili.com")
             headers = {
@@ -67,17 +75,30 @@ def get_video_url(video_id: int) -> dict:
             video_url = f'https://api.bilibili.com/x/player/wbi/playurl?bvid={bv_id}&cid={cid}&fnval=144'
             resp = requests.get(video_url, headers=headers)
             data = resp.json()['data']
-            video_urls = data['dash']['video']
-            best_video_url = max(video_urls, key=lambda x: x['bandwidth'])['baseUrl']
-            audio_urls = data['dash']['audio']
-            best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
+            best_video_url = None
+            best_audio_url = None
+            if 'dash' in data:
+                dash_data = data['dash']
+                if 'video' in dash_data:
+                    video_urls = dash_data['video']
+                    best_video_url = max(video_urls, key=lambda x: x['bandwidth'])['baseUrl']
+                if 'audio' in dash_data:
+                    audio_urls = dash_data['audio']
+                    best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
+            elif 'durl' in data:
+                video_urls = data['durl']
+                best_video_url = video_urls[0]['url']
             return {
-                'video_url': "/api/video/proxy?domain=bilibili.com&url=" + quote(best_video_url),
-                'audio_url': "/api/video/proxy?domain=bilibili.com&url=" + quote(best_audio_url),
+                'video_url': f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,
+                'audio_url': f"{proxy_prefix_path}&url=" + quote(best_audio_url) if best_audio_url else None,
             }
         elif video_domain == 'youtube.com':
-            # YouTube video URL fetching logic
-            yt = YouTube(video.url, use_oauth=False)
+            # YouTube video URL fetching logic with PoToken
+            yt = YouTube(
+                video.url,
+                use_po_token=True,
+                po_token_verifier=po_token_verifier
+            )
             video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
             audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
             return {
@@ -97,7 +118,7 @@ def get_video_url(video_id: int) -> dict:
             url = get_jav_video_url(no)
             if url:
                 return {
-                    'video_url': "/api/video/proxy?domain=javdb.com&url=" + quote(url),
+                    'video_url': f"{proxy_prefix_path}&url=" + quote(url) if url else None,
                     'audio_url': None,
                 }
         return {}
@@ -154,7 +175,6 @@ def list_videos(
         page: int,
         page_size: int
 ) -> Tuple[List[dict], int, dict]:
-
     user_config = user_config_service.get_config(user_id)
     show_nsfw = user_config.get('showNsfw', False)
 
@@ -269,3 +289,21 @@ def get_video(video_id):
         }
 
         return video_data
+
+
+def po_token_verifier() -> Tuple[str, str]:
+    token_object = generate_youtube_token()
+    return token_object["visitorData"], token_object["poToken"]
+
+
+def generate_youtube_token() -> dict:
+    try:
+        result = subprocess.run(
+            ["node", "scripts/youtube-token-generator.js"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return json.loads(result.stdout)
+    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+        raise Exception(f"Failed to generate YouTube token: {str(e)}")
