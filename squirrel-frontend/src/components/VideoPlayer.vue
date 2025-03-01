@@ -140,13 +140,18 @@
       </div>
 
       <!-- 添加快进/快退指示器 -->
-      <div class="seeking-indicator" v-if="playerState.ui.seeking.active">
-        <div class="seeking-icon-container">
-          <Icon :icon="playerState.ui.seeking.direction === 'forward' ? 'material-symbols:fast-forward' : 'material-symbols:fast-rewind'" 
-            class="seeking-icon" />
-        </div>
-        <div class="seeking-time">
-          {{ formatTime(playerState.ui.seeking.seekTime) }}
+      <div class="seeking-indicator" 
+        v-if="playerState.ui.seeking.active"
+        :data-direction="playerState.ui.seeking.direction"
+      >
+        <div class="seeking-content">
+          <div class="seeking-icon-container">
+            <Icon :icon="playerState.ui.seeking.direction === 'forward' ? 'material-symbols:fast-forward-rounded' : 'material-symbols:fast-rewind-rounded'" 
+              class="seeking-icon" />
+            <div class="seeking-seconds">
+              {{ Math.round(Math.abs(playerState.ui.seeking.seekTime - playerState.media.currentTime)) }}秒
+            </div>
+          </div>
         </div>
       </div>
 
@@ -225,7 +230,8 @@ const playerState = reactive({
       currentX: 0,
       distance: 0,
       direction: null,
-      seekTime: 0
+      seekTime: 0,
+      wasPlaying: false
     },
     volume: {
       adjusting: false,
@@ -826,11 +832,17 @@ const handleTouchMove = (e) => {
   
   // 如果还没有确定滑动类型，根据滑动方向判断
   if (!playerState.ui.seeking.active && !playerState.ui.volume.adjusting) {
-    // 需要有足够的移动距离才触发
-    if (deltaX > 10 || deltaY > 10) {
+    // 降低触发阈值，让操作更灵敏
+    if (deltaX > 5 || deltaY > 5) {
       // 如果横向移动距离大于纵向，则为快进快退
       if (deltaX > deltaY) {
         playerState.ui.seeking.active = true;
+        // 记录开始时的播放状态
+        playerState.ui.seeking.wasPlaying = playerState.media.playing;
+        // 暂停播放以避免干扰
+        if (playerState.media.playing) {
+          videoPlayer.value.pause();
+        }
       } else {
         playerState.ui.volume.adjusting = true;
         playerState.ui.volume.showIndicator = true;
@@ -845,29 +857,26 @@ const handleTouchMove = (e) => {
     const newVolume = Math.min(Math.max(playerState.ui.volume.startVolume + volumeChange, 0), 100);
     playerState.media.volume = newVolume;
   } else if (playerState.ui.seeking.active) {
+    e.preventDefault(); // 防止页面滚动
     const touchX = touch.clientX;
     playerState.ui.seeking.currentX = touchX;
     
     const diffX = touchX - playerState.ui.seeking.startX;
     const absDiffX = Math.abs(diffX);
     
-    if (absDiffX > 50) {
+    // 降低触发阈值，提高响应性
+    if (absDiffX > 20) {
       playerState.ui.seeking.distance = diffX;
       playerState.ui.seeking.direction = diffX > 0 ? 'forward' : 'backward';
       
-      // 非线性加速：使用平方根函数使滑动更自然
-      // 基础速度：每50px对应5秒
-      // 加速部分：超过100px后，每增加50px，速度翻倍
-      let seekSeconds;
-      if (absDiffX <= 100) {
-        // 基础速度区间
-        seekSeconds = Math.floor(absDiffX / 50) * 5;
-      } else {
-        // 加速区间：使用平方根函数实现非线性加速
-        const baseSeconds = 10; // 前100px对应的秒数
-        const acceleratedSeconds = Math.floor(Math.sqrt((absDiffX - 100) / 50) * 10);
-        seekSeconds = baseSeconds + acceleratedSeconds;
-      }
+      // 改进的非线性加速算法
+      // 1. 基础速度更低，更容易控制：每30px对应2秒
+      // 2. 使用平滑的指数曲线而不是阶梯式变化
+      // 3. 最大速度限制，避免失控
+      const baseSpeed = 2; // 基础速度：2秒/30px
+      const maxSpeed = 30; // 最大速度限制：30秒
+      const acceleration = Math.pow(absDiffX / 30, 1.5); // 使用指数1.5使加速更平滑
+      const seekSeconds = Math.min(baseSpeed * acceleration, maxSpeed);
       
       if (playerState.ui.seeking.direction === 'forward') {
         playerState.ui.seeking.seekTime = Math.min(
@@ -880,6 +889,9 @@ const handleTouchMove = (e) => {
           0
         );
       }
+      
+      // 实时预览：直接更新视频时间，但不播放
+      videoPlayer.value.currentTime = playerState.ui.seeking.seekTime;
     }
   }
 };
@@ -898,6 +910,11 @@ const handleTouchEnd = (e) => {
     playerState.ui.seeking.active = false;
     playerState.ui.seeking.distance = 0;
     playerState.ui.seeking.direction = null;
+    
+    // 如果之前是播放状态，恢复播放
+    if (playerState.ui.seeking.wasPlaying) {
+      videoPlayer.value.play();
+    }
     return;
   }
 
@@ -1379,13 +1396,8 @@ const handleVideoLayerClick = (e) => {
   stroke-dashoffset: 50rem;
 }
 
-@keyframes yt-spinner {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+.yt-spinner__circle {
+  animation: media-spinner 1.4s linear infinite;
 }
 
 @media (orientation: portrait) {
@@ -1508,31 +1520,110 @@ const handleVideoLayerClick = (e) => {
 /* 添加快进/快退指示器样式 */
 .seeking-indicator {
   @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
-    bg-black/70 rounded-full z-30 flex flex-col items-center justify-center;
-  width: 7.5rem;
-  height: 7.5rem;
-  padding: 1rem;
+    z-30 flex items-center justify-center transition-all duration-300;
+  background: rgba(28, 28, 28, 0.85);
+  backdrop-filter: blur(0.75rem);
+  -webkit-backdrop-filter: blur(0.75rem);
+  border: 0.0625rem solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.2);
+  width: 5rem;
+  height: 5rem;
+  border-radius: 1rem;
+}
+
+.seeking-content {
+  @apply flex flex-col items-center justify-center relative;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -2.5rem;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+    opacity: 0.5;
+    z-index: -1;
+  }
 }
 
 .seeking-icon-container {
-  @apply flex items-center justify-center;
+  @apply flex flex-col items-center;
+  gap: 0.5rem;
 }
 
 .seeking-icon {
-  @apply text-white text-4xl;
+  @apply text-white transition-transform duration-300;
+  font-size: 1.75rem;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
 }
 
-.seeking-time {
-  @apply text-white text-lg mt-2 font-medium;
+.seeking-seconds {
+  @apply text-white/90 font-medium tracking-wide;
+  font-size: 0.875rem;
+  font-family: -apple-system, BlinkMacSystemFont, "YouTube Noto", Roboto, sans-serif;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* 可选：添加根据方向变化的不同背景色 */
-.seeking-indicator[data-direction="forward"] {
-  background-color: rgba(33, 150, 243, 0.7);
+@keyframes seeking-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.98);
+    opacity: 0.95;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.98);
+    opacity: 0.95;
+  }
 }
 
-.seeking-indicator[data-direction="backward"] {
-  background-color: rgba(244, 67, 54, 0.7);
+.seeking-indicator {
+  animation: seeking-pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  
+  &[data-direction="forward"] {
+    .seeking-content::before {
+      content: '';
+      position: absolute;
+      right: -1.25rem;
+      width: 2.5rem;
+      height: 100%;
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 100%);
+      transform: skewX(-15deg);
+      opacity: 0;
+      animation: slide-light 1.5s ease-in-out infinite;
+    }
+  }
+  
+  &[data-direction="backward"] {
+    .seeking-content::before {
+      content: '';
+      position: absolute;
+      left: -1.25rem;
+      width: 2.5rem;
+      height: 100%;
+      background: linear-gradient(-90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 100%);
+      transform: skewX(15deg);
+      opacity: 0;
+      animation: slide-light 1.5s ease-in-out infinite;
+    }
+  }
+}
+
+@keyframes slide-light {
+  0% {
+    opacity: 0;
+    transform: translateX(0) skewX(-15deg);
+  }
+  20% {
+    opacity: 0.4;
+  }
+  80% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%) skewX(-15deg);
+  }
 }
 
 .volume-adjust-indicator {
