@@ -3,11 +3,16 @@ FROM ghcr.io/klaxonz/squirrel-base:latest AS base
 # Stage 1: Build the frontend
 FROM base AS frontend-builder
 
-ENV SHELL=/bin/bash
+# 环境变量设置
+ENV SHELL=/bin/bash \
+    PNPM_HOME="$HOME/.local/share/pnpm" \
+    PATH="${PATH}:${PNPM_HOME}"
 
 WORKDIR /app/squirrel-frontend
 
-RUN pnpm setup && pnpm install -g youtube-po-token-generator
+RUN pnpm setup && \
+    . $HOME/.bashrc && \
+    pnpm install -g youtube-po-token-generator
 
 # Copy package files first to leverage cache
 COPY squirrel-frontend/package.json squirrel-frontend/pnpm-lock.yaml ./
