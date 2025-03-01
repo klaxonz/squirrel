@@ -8,9 +8,21 @@
       <img
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
-        alt="Video thumbnail"
         class="w-full h-full object-cover absolute top-0 left-0 transition-transform duration-300 group-hover:scale-105"
+        @error="handleThumbnailError"
+        :alt="video.title"
       >
+      
+      <!-- 添加默认封面 -->
+      <div 
+        v-if="showDefaultThumbnail" 
+        class="w-full h-full absolute top-0 left-0 bg-[#1a1a1a] flex items-center justify-center"
+      >
+        <div class="text-gray-500 flex flex-col items-center">
+          <Icon icon="material-symbols:image" class="text-4xl mb-2" />
+          <span class="text-xs">暂无封面</span>
+        </div>
+      </div>
       
       <div class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
@@ -44,12 +56,20 @@
                 <img 
                   v-if="index < 3"
                   :src="avatar.avatar" 
-                  :alt="`${avatar.name} Avatar`" 
                   class="w-4 h-4 rounded-full object-cover flex-shrink-0 cursor-pointer ring-1 ring-[#212121]"
                   :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
                   referrerpolicy="no-referrer"
-                  @click.stop="goToSubscription(avatar.id)"
+                  @error="(e) => handleAvatarError(e, index)"
+                  :alt="avatar.name"
                 >
+                <!-- 添加默认头像 -->
+                <div 
+                  v-if="avatarErrors[index]"
+                  class="w-4 h-4 rounded-full flex-shrink-0 cursor-pointer ring-1 ring-[#212121] bg-gray-700 flex items-center justify-center"
+                  :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
+                >
+                  <span class="text-white text-2xs">{{ getInitials(avatar.name) }}</span>
+                </div>
               </template>
             </div>
             <span class="text-2xs text-gray-400 ml-2 truncate">
@@ -113,6 +133,7 @@ import { onMounted, onUnmounted, ref, nextTick, computed, watch, toRef } from 'v
 import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from "../composables/useOptionsMenu.js";
 import { formatDate, formatDuration } from '../utils/dateFormat';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps({
   video: {
@@ -236,6 +257,26 @@ const displayNames = computed(() => {
     .map(avatar => avatar.name)
     .join(', ');
 });
+
+// 添加状态管理
+const showDefaultThumbnail = ref(false);
+const avatarErrors = ref({});
+
+// 处理封面加载失败
+const handleThumbnailError = (e) => {
+  showDefaultThumbnail.value = true;
+};
+
+// 处理头像加载失败
+const handleAvatarError = (e, index) => {
+  avatarErrors.value[index] = true;
+};
+
+// 获取名字首字母
+const getInitials = (name) => {
+  if (!name) return '?';
+  return name.charAt(0).toUpperCase();
+};
 </script>
 
 <style scoped>
@@ -417,5 +458,15 @@ const displayNames = computed(() => {
   .video-thumbnail {
     padding-top: 56.25%; /* 保持16:9比例 */
   }
+}
+
+/* 添加默认封面样式 */
+.default-thumbnail {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+}
+
+/* 添加默认头像样式 */
+.default-avatar {
+  @apply bg-gray-700 text-white flex items-center justify-center text-2xs font-medium;
 }
 </style>
