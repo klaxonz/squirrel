@@ -53,7 +53,7 @@
         @error="handleAudioError"
       />
       
-      <div class="hover-gradient"></div>
+      <div class="hover-gradient" v-if="playerState.ui.controlsVisible"></div>
       
       <div class="video-controls" :class="{ 'controls-visible': playerState.ui.controlsVisible }">
         <div class="progress-container">
