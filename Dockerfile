@@ -6,7 +6,8 @@ FROM base AS frontend-builder
 # 环境变量设置
 ENV SHELL=/bin/bash \
     PNPM_HOME="$HOME/.local/share/pnpm" \
-    PATH="${PATH}:${PNPM_HOME}"
+    PATH="${PATH}:${PNPM_HOME}" \
+    NODE_PATH=/usr/lib/node_modules
 
 WORKDIR /app/squirrel-frontend
 
