@@ -3,6 +3,8 @@ FROM ghcr.io/klaxonz/squirrel-base:latest AS base
 # Stage 1: Build the frontend
 FROM base AS frontend-builder
 
+ENV SHELL=/bin/bash
+
 WORKDIR /app/squirrel-frontend
 
 RUN pnpm setup && pnpm install -g youtube-po-token-generator
