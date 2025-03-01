@@ -19,8 +19,9 @@ from models.creator import Creator
 from models.links import VideoCreator, SubscriptionVideo
 from models.subscription import Subscription
 from models.video import Video
-from services import download_service, subscription_video_service, user_config_service, video_history_service
-from sqlfile.video_sql import get_videos_sql, count_videos_sql
+from services import download_service, subscription_video_service, user_config_service, video_history_service, \
+    video_interaction_service
+from sqlfile.video_sql import get_videos_sql, count_videos_sql, count_like_videos_sql
 from utils import url_helper, sql_parser
 from utils.cookie import filter_cookies_to_query_string
 from utils.url_helper import extract_top_level_domain
@@ -188,7 +189,9 @@ def list_videos(
     with get_session() as session:
         videos_sql = sql_parser.parse_dynamic_sql(get_videos_sql(), params)
         videos_count_sql = sql_parser.parse_dynamic_sql(count_videos_sql(), params)
+        videos_count_like_sql = sql_parser.parse_dynamic_sql(count_like_videos_sql(), params)
         count_result = session.execute(text(videos_count_sql), params).first()
+        like_video_count = session.execute(text(videos_count_like_sql), params).scalar()
         video_count = VideoCountDto.model_validate(count_result._mapping)
         results = session.execute(text(videos_sql), params).all()
         videos = [VideoDto.model_validate(row._mapping) for row in results]
@@ -243,7 +246,7 @@ def list_videos(
             "read": video_count.read,
             "unread": video_count.unread,
             "preview": video_count.preview,
-            "liked": 0
+            "liked": like_video_count
         }
 
         return video_list, video_count.total, counts
@@ -283,9 +286,11 @@ def get_video(user_id, video_id):
         ).all()
 
         video_history = video_history_service.get_video_history(user_id, video_id)
+        video_interaction = video_interaction_service.get_video_interaction(user_id, video_id)
 
         video_data = {
             **video.to_dict(),
+            'interaction_type': video_interaction.interaction_type if video_interaction else None,
             'last_position': video_history.last_position if video_history else 0,
             'domain': url_helper.extract_top_level_domain(video.url),
             'subscriptions': [subscription.to_dict() for subscription in subscriptions],

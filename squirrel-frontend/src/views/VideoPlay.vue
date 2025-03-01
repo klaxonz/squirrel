@@ -58,21 +58,21 @@
               <div class="flex items-center space-x-1">
                 <!-- 主要按钮显示在外面 -->
                 <button 
-                  @click="handleLike(1)"
+                  @click="handleLike(video, INTERACTION_TYPE.LIKE)"
                   class="p-2 rounded-full hover:bg-[#272727] transition-colors"
-                  :class="{ 'text-red-500': video?.is_liked === 1 }"
+                  :class="{ 'text-red-500': video?.interaction_type === INTERACTION_TYPE.LIKE }"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="video?.is_liked === 1 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="video?.interaction_type === INTERACTION_TYPE.LIKE ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                   </svg>
                 </button>
 
                 <button 
-                  @click="handleLike(0)"
+                  @click="handleLike(video, INTERACTION_TYPE.DISLIKE)"
                   class="p-2 rounded-full hover:bg-[#272727] transition-colors"
-                  :class="{ 'text-gray-400': video?.is_liked === 0 }"
+                  :class="{ 'text-gray-400': video?.interaction_type === INTERACTION_TYPE.DISLIKE }"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-180" :fill="video?.is_liked === 0 ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-180" :fill="video?.interaction_type === INTERACTION_TYPE.DISLIKE ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                   </svg>
                 </button>
@@ -176,14 +176,24 @@ import VideoPlayer from '../components/VideoPlayer.vue';
 import useOptionsMenu from '../composables/useOptionsMenu';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
+import useVideoInteraction from "../composables/useVideoInteraction.js";
 
 const route = useRoute();
 const video = ref(null);
 const { sendReport } = useVideoHistory();
-const { toggleLikeVideo, downloadVideo, copyVideoLink } = useOptionsMenu(video);
+const { downloadVideo, copyVideoLink } = useOptionsMenu(video);
+const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 
-const handleLike = async (targetStatus) => {
-  await toggleLikeVideo(targetStatus);
+const handleLike = async (video, interactionType) => {
+  if (video.interaction_type !== interactionType) {
+    await toggleLike(video.id, interactionType).then(() => {
+      video.interaction_type = interactionType;
+    });
+  } else {
+    await deleteInteraction(video.id).then(() => {
+      video.interaction_type = null;
+    })
+  }
 };
 
 const handleDownload = async () => {
@@ -230,7 +240,6 @@ let lastReportedTime = 0;
 const onVideoTimeUpdate = (currentTime) => {
   if (Math.floor(currentTime) - lastReportedTime >= 2) {
     lastReportedTime = Math.floor(currentTime);
-    console.debug('video time updated', currentTime, 'video last position', video.value.last_position);
     video.value.last_position = currentTime;
     video.value.progress = (currentTime / video.value.duration) * 100;
     // Fire-and-forget report without waiting for response
@@ -330,7 +339,6 @@ const handleMoreOptionsClick = (event) => {
   background-color: #909090;
 }
 
-/* 隐藏滚动条但保持可滚动 */
 .no-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
@@ -338,5 +346,11 @@ const handleMoreOptionsClick = (event) => {
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
+}
+
+@media (max-width: 640px) {
+  .video-container {
+    border-radius: 0;
+  }
 }
 </style> 

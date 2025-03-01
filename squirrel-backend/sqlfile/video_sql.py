@@ -13,6 +13,9 @@ def get_videos_sql():
         /*{if category == 'unread'}*/
             left join video_history vh on vh.video_id = v.id and vh.user_id = :user_id
         /*{endif}*/
+        /*{if category == 'liked'}*/
+            inner join video_interaction vi on vi.video_id = v.id and vi.user_id = :user_id and vi.interaction_type = 1
+        /*{endif}*/
         where sp.is_deleted = 0 and us.is_deleted = 0 and v.is_deleted = 0
             and us.user_id = :user_id
         /*{if subscription_id}*/
@@ -54,9 +57,32 @@ def count_videos_sql():
         inner join user_subscription us on sp.id = us.subscription_id
         inner join subscription_video sv on sv.subscription_id = us.subscription_id
         inner join video v on sv.video_id = v.id
-        left join video_history vh 
-            on vh.video_id = v.id 
-            and vh.user_id = :user_id
+        left join video_history vh on vh.video_id = v.id and vh.user_id = :user_id
+        where sp.is_deleted = 0 
+            and us.is_deleted = 0 
+            and v.is_deleted = 0
+            and us.user_id = :user_id
+        /*{if subscription_id}*/
+            and sv.subscription_id = :subscription_id
+        /*{endif}*/
+        /*{if query}*/
+            and v.title like concat('%%', :query, '%%')
+        /*{endif}*/
+        /*{if show_nsfw == False}*/
+            and us.is_nsfw = 0
+        /*{endif}*/
+    """
+
+
+def count_like_videos_sql():
+    return """
+        select
+            count(1) as total
+        from subscription sp
+        inner join user_subscription us on sp.id = us.subscription_id
+        inner join subscription_video sv on sv.subscription_id = us.subscription_id
+        inner join video v on sv.video_id = v.id
+        inner join video_interaction vi on vi.video_id = v.id and vi.user_id = :user_id and vi.interaction_type = 1
         where sp.is_deleted = 0 
             and us.is_deleted = 0 
             and v.is_deleted = 0
