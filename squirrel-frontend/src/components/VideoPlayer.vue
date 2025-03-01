@@ -177,11 +177,7 @@ import { formatTime } from "../utils/dateFormat";
 import Hls from 'hls.js';
 
 const props = defineProps({
-  video: Object,
-  initialTime: {
-    type: Number,
-    default: 0
-  }
+  video: Object
 });
 
 const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate', 'error']);
@@ -211,7 +207,8 @@ const playerState = reactive({
     muted: false,
     currentTime: 0,
     duration: 0,
-    bufferedProgress: 0
+    bufferedProgress: 0,
+    firstInteraction: true
   },
   // UI状态
   ui: {
@@ -516,6 +513,14 @@ const handleVideoSeeking = () => {
 const handleVideoCanplay = () => {
   if (videoPlayer.value) {
     playerState.media.duration = videoPlayer.value.duration;
+    
+    // 如果有上次播放位置且是首次加载，则从该位置继续播放
+    console.debug('video canplay, video last position', props.video, 'playerState.network.firstInteraction', playerState.network.firstInteraction);
+    if (props.video?.last_position > 0 && playerState.media.firstInteraction) {
+      console.debug('video canplay, set video time to', props.video.last_position);
+      setVideoTime(props.video.last_position);
+      playerState.media.firstInteraction = false;
+    }
   }
   playerState.media.loading = false;
   playerState.media.canPlay.video = true;

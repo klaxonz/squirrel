@@ -29,9 +29,10 @@ def get_video_url(
 
 @router.get("/api/video/detail")
 def get_video(
-        video_id: int = Query(None, description="视频ID")
+        video_id: int = Query(None, description="视频ID"),
+        current_user: User = Depends(get_current_user)
 ):
-    video = video_service.get_video(video_id)
+    video = video_service.get_video(current_user.id, video_id)
     return response.success(video)
 
 

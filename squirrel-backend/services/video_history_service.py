@@ -68,6 +68,24 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
         }
 
 
+def get_videos_by_ids(user_id: int, video_ids: List[int]) -> List[VideoHistory]:
+    with get_session() as session:
+        videos = session.query(VideoHistory).filter(
+            VideoHistory.user_id == user_id,
+            VideoHistory.video_id.in_(video_ids)
+        ).all()
+        return videos
+
+
+def get_video_history(user_id: int, video_id: int) -> VideoHistory:
+    with get_session() as session:
+        video_history = session.query(VideoHistory).filter(
+            VideoHistory.user_id == user_id,
+            VideoHistory.video_id == video_id
+        ).first()
+        return video_history
+
+
 def clear_histories(user_id: int, video_ids: List[int] = None):
     """
     清除观看历史（支持批量）

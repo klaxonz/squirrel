@@ -55,7 +55,7 @@ const processedVideos = computed(() => {
   return videos.value.map(video => ({
     ...video,
     showProgress: true,
-    progress: video.last_position / video.total_duration
+    progress: video.last_position / video.duration
   }));
 });
 

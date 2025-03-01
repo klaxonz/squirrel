@@ -1,4 +1,6 @@
+import json
 import re
+import subprocess
 from datetime import datetime
 from typing import List, Tuple
 from urllib.parse import quote
@@ -9,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup
 from phub import Quality
 from pytubefix import YouTube
-from sqlalchemy import func, select, or_, text
+from sqlalchemy import select, text
 
 from core.database import get_session
 from dto.video_dto import VideoExtractDto, VideoDto, VideoCountDto
@@ -17,17 +19,11 @@ from models.creator import Creator
 from models.links import VideoCreator, SubscriptionVideo
 from models.subscription import Subscription
 from models.video import Video
-from services import download_service, subscription_video_service, user_config_service
+from services import download_service, subscription_video_service, user_config_service, video_history_service
 from sqlfile.video_sql import get_videos_sql, count_videos_sql
 from utils import url_helper, sql_parser
 from utils.cookie import filter_cookies_to_query_string
 from utils.url_helper import extract_top_level_domain
-
-import json
-import subprocess
-import tempfile
-from uuid import uuid4
-import os
 
 
 def get_video_by_url(url: str) -> Video:
@@ -213,6 +209,10 @@ def list_videos(
                 creators_dict[video_creator.video_id] = []
             creators_dict[video_creator.video_id].append(creator)
 
+        # get video history
+        video_history = video_history_service.get_videos_by_ids(user_id, video_ids)
+        video_history_dict = {video_history.video_id: video_history for video_history in video_history}
+
         video_list = []
         for video in videos:
             subscription_info = next((sub for sub in subscriptions if sub.id == video.subscription_id), None)
@@ -222,6 +222,7 @@ def list_videos(
                 'url': video.url,
                 'thumbnail': video.thumbnail,
                 'duration': video.duration,
+                'last_position': video_history_dict.get(video.id).last_position if video.id in video_history_dict else 0,
                 'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
                 'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'subscriptions': [
@@ -262,7 +263,7 @@ def download_video(video_id: int):
     download_service.start(params)
 
 
-def get_video(video_id):
+def get_video(user_id, video_id):
     with get_session() as session:
         video = session.scalars(select(Video).where(Video.id == video_id)).first()
         if not video:
@@ -281,8 +282,11 @@ def get_video(video_id):
             .where(VideoCreator.video_id == video_id)
         ).all()
 
+        video_history = video_history_service.get_video_history(user_id, video_id)
+
         video_data = {
             **video.to_dict(),
+            'last_position': video_history.last_position if video_history else 0,
             'domain': url_helper.extract_top_level_domain(video.url),
             'subscriptions': [subscription.to_dict() for subscription in subscriptions],
             'creators': [creator.to_dict() for creator in creators]

@@ -226,10 +226,11 @@ const onVideoEnded = () => {
   video.value.if_read = true;
 };
 
-let lastReportedTime = -1;
+let lastReportedTime = 0;
 const onVideoTimeUpdate = (currentTime) => {
-  if (Math.floor(currentTime) - lastReportedTime >= 5 || lastReportedTime === -1) {
+  if (Math.floor(currentTime) - lastReportedTime >= 2) {
     lastReportedTime = Math.floor(currentTime);
+    console.debug('video time updated', currentTime, 'video last position', video.value.last_position);
     video.value.last_position = currentTime;
     video.value.progress = (currentTime / video.value.duration) * 100;
     // Fire-and-forget report without waiting for response
