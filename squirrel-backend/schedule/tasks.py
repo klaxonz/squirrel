@@ -201,18 +201,18 @@ class AutoUpdateChannelVideo(BaseTask):
 
     @classmethod
     def update_subscription_video(cls, subscription: SubscriptionDto):
-        # Use a context manager for thread safety when accessing locks map
-        with cls._subscription_locks:
-            if subscription.id not in cls._subscription_locks_map:
-                cls._subscription_locks_map[subscription.id] = threading.Lock()
-            lock = cls._subscription_locks_map[subscription.id]
-
-        # Use context manager for automatic lock release
-        if not lock.acquire(blocking=False):
-            logger.info(f"Update already in progress for subscription {subscription.id}")
-            return
-            
+        lock_acquired = False
         try:
+            with cls._subscription_locks:
+                if subscription.id not in cls._subscription_locks_map:
+                    cls._subscription_locks_map[subscription.id] = threading.Lock()
+                lock = cls._subscription_locks_map[subscription.id]
+            
+            lock_acquired = lock.acquire(blocking=False)
+            if not lock_acquired:
+                logger.info(f"Update already in progress for subscription {subscription.id}")
+                return
+            
             subscribe_channel = SubscriptionFactory.create_subscription(subscription.url)
             if subscription.total_videos == 0:
                 is_extract_all = True
@@ -239,12 +239,14 @@ class AutoUpdateChannelVideo(BaseTask):
         except Exception as e:
             logger.error(f"Error processing subscription {subscription.id}: {e}", exc_info=True)
         finally:
-            lock.release()
-            # Clean up unused locks
-            with cls._subscription_locks:
-                if lock.locked():
+            if lock_acquired:
+                try:
                     lock.release()
-                del cls._subscription_locks_map[subscription.id]
+                except RuntimeError:
+                    logger.warning(f"Attempted to release an unlocked lock for subscription {subscription.id}")
+            
+            with cls._subscription_locks:
+                cls._subscription_locks_map.pop(subscription.id, None)
 
     @classmethod
     def shutdown(cls):
