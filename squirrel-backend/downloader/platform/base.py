@@ -34,7 +34,7 @@ class Downloader:
             'ignoreerrors': False,
             'skip_download': True,
         }
-        if cookie_file_path:
+        if cookie_file_path and 'youtube.com' not in url:
             ydl_opts['cookiefile'] = cookie_file_path
 
         with YoutubeDL(ydl_opts) as ydl:
@@ -65,7 +65,7 @@ class Downloader:
         }
 
         cookie_file_path = config.get_cookies_file_path_thread(queue_thread_name)
-        if cookie_file_path:
+        if cookie_file_path and 'youtube.com' not in video.url:
             ydl_opts['cookiefile'] = cookie_file_path
 
         try:
