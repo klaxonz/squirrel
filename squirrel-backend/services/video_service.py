@@ -93,8 +93,8 @@ def get_video_url(video_id: int) -> dict:
             # YouTube video URL fetching logic with PoToken
             yt = YouTube(
                 video.url,
-                use_po_token=True,
-                po_token_verifier=po_token_verifier
+                # use_po_token=True,
+                # po_token_verifier=po_token_verifier
             )
             video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
             audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
