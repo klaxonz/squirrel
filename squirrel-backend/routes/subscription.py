@@ -76,7 +76,10 @@ def subscribe_content(
             subscription = session.scalars(select(Subscription).where(Subscription.url == url)).first()
             if subscription:
                 user_subscription = session.scalars(select(UserSubscription).where(
-                    UserSubscription.user_id == current_user.id)).first()
+                    UserSubscription.user_id == current_user.id,
+                    UserSubscription.subscription_id == subscription.id,
+                    UserSubscription.is_deleted.is_(False))
+                ).first()
                 if user_subscription:
                     is_subscribed = True
     return response.success({
