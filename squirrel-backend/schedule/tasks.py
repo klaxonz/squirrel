@@ -180,15 +180,6 @@ class AutoUpdateChannelVideo(BaseTask):
             ).all()
             subscription_ids = [sub.id for sub in subscriptions]
 
-        # Then perform lock cleanup
-        with cls._subscription_locks:
-            active_ids = {sub.id for sub in subscriptions}
-            stale_ids = set(cls._subscription_locks_map.keys()) - active_ids
-            for sub_id in stale_ids:
-                lock = cls._subscription_locks_map.pop(sub_id, None)
-                if lock and lock.locked():
-                    lock.release()
-
         # Submit tasks for current subscriptions
         for sub_id in subscription_ids:
             try:
