@@ -10,13 +10,13 @@ from proxy.video_proxy import VideoProxy
 logger = logging.getLogger()
 
 
-class JavdbProxy(VideoProxy):
+class PornhubProxy(VideoProxy):
     @property
     def headers(self) -> Dict[str, str]:
         return {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Referer': 'https://missav.ws/',
-            'Origin': 'https://missav.ws'
+            'Referer': 'https://wwww.pornhub.com/',
+            'Origin': 'https://wwww.pornhub.com/'
         }
         
     async def handle_m3u8(self, url: str, content: bytes) -> StreamingResponse:
@@ -27,7 +27,7 @@ class JavdbProxy(VideoProxy):
         def replace_url(match):
             path = match.group(1)
             full_url = path if path.startswith('http') else urljoin(base_url + '/', path)
-            return f"/api/video/proxy?domain=javdb.com&url={full_url}"
+            return f"/api/video/proxy?domain=pornhub.com&url={full_url}"
 
         content_text = re.sub(
             r'([^"\n]+\.(ts|jpeg|jpg|m3u8)[^"\n]*)',

@@ -9,7 +9,6 @@ import cloudscraper
 import phub
 import requests
 from bs4 import BeautifulSoup
-from phub import Quality
 from pytubefix import YouTube
 from sqlalchemy import select, text
 
@@ -105,9 +104,10 @@ def get_video_url(video_id: int) -> dict:
         elif video_domain == 'pornhub.com':
             client = phub.Client()
             video = client.get(video.url)
-            video_url = video.get_M3U_URL(quality=Quality.BEST)
+            video_url = video.get_m3u8_urls
+            url = next(iter(video_url.values()))
             return {
-                'video_url': video_url,
+                'video_url': f"{proxy_prefix_path}&url=" + quote(url) if url else None,
                 'audio_url': None,
             }
         elif video_domain == 'javdb.com':
@@ -122,7 +122,7 @@ def get_video_url(video_id: int) -> dict:
 
 
 def get_jav_video_url(no: str):
-    url = f'https://missav.ai/search/{no}'
+    url = f'https://missav.ws/search/{no}'
     scraper = cloudscraper.create_scraper()
     response = scraper.get(url)
     bs4 = BeautifulSoup(response.text, 'html.parser')

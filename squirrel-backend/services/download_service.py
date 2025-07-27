@@ -29,10 +29,10 @@ def __check_subscription_exist(subscription_id: int):
 def start(params: VideoExtractDto):
     if params.only_extract:
         if __check_video_exists(params.url):
-            logger.info(f"{params.url} is already extracted")
+            logger.debug(f"{params.url} is already extracted")
             return
         if __check_video_extracting(params.url):
-            logger.info(f"{params.url} is currently being extracted")
+            logger.debug(f"{params.url} is currently being extracted")
             return
     if not __check_subscription_exist(params.subscription_id):
         logger.info(f"subscription {params.subscription_id} is not exist")

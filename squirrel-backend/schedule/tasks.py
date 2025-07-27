@@ -138,7 +138,7 @@ class ChangeStatusTask(BaseTask):
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
 
-@TaskRegistry.register(interval=10, unit='minutes')
+@TaskRegistry.register(interval=30, unit='minutes')
 class AutoUpdateChannelVideo(BaseTask):
     _thread_pools = None
     _subscription_locks = threading.Lock()  # Use a lock for the lock dictionary

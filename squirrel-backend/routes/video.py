@@ -10,6 +10,7 @@ from meta.factory import VideoFactory
 from models.user import User
 from proxy.bilibili import BilibiliProxy
 from proxy.javdb import JavdbProxy
+from proxy.pornhub import PornhubProxy
 from schemas.video import DownloadVideoRequest, SortBy
 from services import video_service, subscription_video_service, subscription_service
 from utils.jwt_helper import get_current_user
@@ -83,7 +84,8 @@ async def proxy_video(domain: str, url: str, request: Request):
     """代理视频文件，用于解决跨域问题"""
     proxy_map = {
         "bilibili.com": BilibiliProxy,
-        "javdb.com": JavdbProxy
+        "javdb.com": JavdbProxy,
+        "pornhub.com": PornhubProxy
     }
     
     proxy_class = proxy_map.get(domain)
