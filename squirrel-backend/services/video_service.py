@@ -105,7 +105,7 @@ def get_video_url(video_id: int) -> dict:
         elif video_domain == 'pornhub.com':
             client = phub.Client()
             video = client.get(video.url)
-            video_url = video.get_direct_url(quality=Quality.BEST)
+            video_url = video.get_M3U_URL(quality=Quality.BEST)
             return {
                 'video_url': video_url,
                 'audio_url': None,
