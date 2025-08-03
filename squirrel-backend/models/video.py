@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Integer, Boolean, JSON, VARCHAR, Text, DateTime
+from sqlalchemy import Integer, Boolean, JSON, VARCHAR, Text, DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from models import Base
 from models.mixins.serializer import SerializerMixin
@@ -8,6 +8,12 @@ from models.mixins.serializer import SerializerMixin
 
 class Video(Base, SerializerMixin):
     __tablename__ = "video"
+
+    __table_args__ = (
+        Index('ix_video_title', 'title'),
+        Index('ix_video_publish_date', 'publish_date'),
+        Index('ix_video_is_deleted', 'is_deleted'),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(VARCHAR(512), nullable=False)

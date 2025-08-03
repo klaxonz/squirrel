@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, Float, DateTime
+from sqlalchemy import Integer, Float, DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
@@ -9,6 +9,11 @@ from models.mixins.serializer import SerializerMixin
 
 class VideoHistory(Base, SerializerMixin):
     __tablename__ = "video_history"
+
+    __table_args__ = (
+        Index('ix_video_history_user_video', 'user_id', 'video_id'),
+        Index('ix_video_history_video_id', 'video_id'),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, index=True)

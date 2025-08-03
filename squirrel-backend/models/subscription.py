@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.types import JSON
-from sqlalchemy import Integer, VARCHAR, Text, Boolean
+from sqlalchemy import Integer, VARCHAR, Text, Boolean, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
@@ -19,6 +19,11 @@ class ContentType:
 
 class Subscription(Base, SerializerMixin):
     __tablename__ = "subscription"
+
+    __table_args__ = (
+        Index('ix_subscription_is_deleted', 'is_deleted'),
+        Index('ix_subscription_type', 'type'),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, UniqueConstraint, Boolean
+from sqlalchemy import Integer, UniqueConstraint, Boolean, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
@@ -9,6 +9,11 @@ from models.mixins.serializer import SerializerMixin
 
 class SubscriptionVideo(Base, SerializerMixin):
     __tablename__ = "subscription_video"
+
+    __table_args__ = (
+        Index('ix_subscription_video_subscription_id', 'subscription_id'),
+        Index('ix_subscription_video_video_id', 'video_id'),
+    )
 
     subscription_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     video_id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -45,4 +50,7 @@ class UserSubscription(Base, SerializerMixin):
 
     __table_args__ = (
         UniqueConstraint('user_id', 'subscription_id', name='uix_user_subscription'),
+        Index('ix_user_subscription_user_id', 'user_id'),
+        Index('ix_user_subscription_subscription_id', 'subscription_id'),
+        Index('ix_user_subscription_is_deleted', 'is_deleted'),
     )
