@@ -1,0 +1,84 @@
+from typing import Any, Dict, List, Optional
+import logging
+
+from core.database import get_session
+from models.system_config import SystemConfig
+
+# bool 转换集合
+TRUE_SET = {"true", "1", "yes", "y", "on"}
+FALSE_SET = {"false", "0", "no", "n", "off"}
+
+
+def _to_bool(val: Optional[str], default: bool) -> bool:
+    if val is None:
+        return default
+    v = str(val).strip().lower()
+    if v in TRUE_SET:
+        return True
+    if v in FALSE_SET:
+        return False
+    return default
+
+
+def _from_bool(val: bool) -> str:
+    return "true" if bool(val) else "false"
+
+
+def get_value(key: str, default: Optional[str] = None) -> Optional[str]:
+    """
+    读取指定 key 的值，若不存在返回 default
+    """
+    with get_session() as session:
+        row = session.query(SystemConfig).filter(SystemConfig.key == key).first()
+        if row is None:
+            return default
+        return row.value
+
+
+def set_value(key: str, value: str) -> None:
+    """
+    设置/更新指定 key 的值
+    """
+    with get_session() as session:
+        row = session.query(SystemConfig).filter(SystemConfig.key == key).first()
+        if row is None:
+            row = SystemConfig(key=key, value=value)
+            session.add(row)
+        else:
+            row.value = value
+        session.commit()
+        logging.getLogger(__name__).info(f"[system_config] set %s=%s", key, value)
+
+
+def get_bool(key: str, default: bool) -> bool:
+    """
+    读取布尔配置，使用 'true'/'false' 等字符串解析
+    """
+    return _to_bool(get_value(key, None), default)
+
+
+def set_bool(key: str, value: bool) -> None:
+    """
+    写入布尔配置，统一存储为 'true'/'false'
+    """
+    set_value(key, _from_bool(value))
+
+
+def get_many(keys: List[str], defaults: Dict[str, Any]) -> Dict[str, str]:
+    """
+    批量读取，返回 key->value 字典；不存在的 key 使用 defaults 中的默认字符串或空串
+    """
+    with get_session() as session:
+        if not keys:
+            return {}
+        rows = session.query(SystemConfig).filter(SystemConfig.key.in_(keys)).all()
+        result: Dict[str, str] = {}
+        found_keys = set()
+        for r in rows:
+            result[r.key] = r.value
+            found_keys.add(r.key)
+        for k in keys:
+            if k not in found_keys:
+                dv = defaults.get(k)
+                result[k] = "" if dv is None else str(dv)
+        return result

@@ -2,6 +2,7 @@ import {createRouter, createWebHistory} from 'vue-router'
 import LatestVideos from '../views/LatestVideos.vue'
 import Subscribed from '../views/Subscribed.vue'
 import Settings from '../views/Settings.vue'
+import SystemSettings from '../views/SystemSettings.vue'
 import DownloadTasks from '../views/DownloadTasks.vue'
 import VideoTab from "../components/VideoTab.vue";
 import History from '../views/History.vue';
@@ -59,6 +60,11 @@ const routes = [
     path: '/settings',
     name: 'Settings',
     component: Settings
+  },
+  {
+    path: '/settings/system',
+    name: 'SystemSettings',
+    component: SystemSettings
   },
   {
     path: '/subscription/:id',

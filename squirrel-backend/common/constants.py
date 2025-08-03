@@ -24,6 +24,10 @@ SUPPORTED_SITES = {
     'javdb.com': 'javdb'
 }
 
+# System config keys
+SYS_ENABLE_SCHEDULER = "enable_scheduler"
+SYS_ENABLE_WORKER = "enable_worker"
+
 
 def get_all_queues():
     base_queues = [

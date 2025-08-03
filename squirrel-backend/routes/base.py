@@ -18,6 +18,7 @@ from routes.user import router as user_router
 from routes.video import router as video_router
 from routes.video_history import router as video_history_router
 from routes.video_interaction import router as video_interaction_router
+from routes.system_config import router as system_config_router
 
 logger = logging.getLogger()
 
@@ -76,6 +77,7 @@ app.include_router(subscription_router)
 app.include_router(user_router)
 app.include_router(video_history_router)
 app.include_router(video_interaction_router)
+app.include_router(system_config_router)
 
 if not IS_DEV:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

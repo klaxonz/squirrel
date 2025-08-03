@@ -137,6 +137,11 @@ const bottomItems = [
     name: '设置',
     path: '/settings',
     icon: CogIcon,
+  },
+  {
+    name: '系统配置',
+    path: '/settings/system',
+    icon: CogIcon,
   }
 ];
 
