@@ -10,18 +10,19 @@ import phub
 import requests
 from bs4 import BeautifulSoup
 from pytubefix import YouTube
-from sqlalchemy import select, text
+from sqlalchemy import select, func, and_
 
 from core.database import get_session
-from dto.video_dto import VideoExtractDto, VideoDto, VideoCountDto
+from dto.video_dto import VideoExtractDto, VideoDto
 from models.creator import Creator
-from models.links import VideoCreator, SubscriptionVideo
+from models.links import VideoCreator, SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
 from models.video import Video
+from models.video_history import VideoHistory
+from models.video_interaction import VideoInteraction
 from services import download_service, subscription_video_service, user_config_service, video_history_service, \
     video_interaction_service
-from sqlfile.video_sql import get_videos_sql, count_videos_sql, count_like_videos_sql
-from utils import url_helper, sql_parser
+from utils import url_helper
 from utils.cookie import filter_cookies_to_query_string
 from utils.url_helper import extract_top_level_domain
 
@@ -175,26 +176,192 @@ def list_videos(
     user_config = user_config_service.get_config(user_id)
     show_nsfw = user_config.get('showNsfw', False)
 
-    params = {
-        'user_id': user_id,
-        'query': query,
-        'show_nsfw': show_nsfw,
-        'category': category,
-        'sort_by': sort_by,
-        'limit': page_size,
-        'offset': (page - 1) * page_size,
-        'subscription_id': subscription_id
-    }
-
     with get_session() as session:
-        videos_sql = sql_parser.parse_dynamic_sql(get_videos_sql(), params)
-        videos_count_sql = sql_parser.parse_dynamic_sql(count_videos_sql(), params)
-        videos_count_like_sql = sql_parser.parse_dynamic_sql(count_like_videos_sql(), params)
-        count_result = session.execute(text(videos_count_sql), params).first()
-        like_video_count = session.execute(text(videos_count_like_sql), params).scalar()
-        video_count = VideoCountDto.model_validate(count_result._mapping)
-        results = session.execute(text(videos_sql), params).all()
-        videos = [VideoDto.model_validate(row._mapping) for row in results]
+        # Build base query for videos
+        base_query = (
+            select(Video, Subscription.id.label('subscription_id'))
+            .select_from(Subscription)
+            .join(UserSubscription, Subscription.id == UserSubscription.subscription_id)
+            .join(SubscriptionVideo, SubscriptionVideo.subscription_id == UserSubscription.subscription_id)
+            .join(Video, SubscriptionVideo.video_id == Video.id)
+            .where(
+                and_(
+                    Subscription.is_deleted == False,
+                    UserSubscription.is_deleted == False,
+                    Video.is_deleted == False,
+                    UserSubscription.user_id == user_id
+                )
+            )
+        )
+
+        # Build base count query
+        base_count_query = (
+            select(Video.id)
+            .select_from(Subscription)
+            .join(UserSubscription, Subscription.id == UserSubscription.subscription_id)
+            .join(SubscriptionVideo, SubscriptionVideo.subscription_id == UserSubscription.subscription_id)
+            .join(Video, SubscriptionVideo.video_id == Video.id)
+            .where(
+                and_(
+                    Subscription.is_deleted == False,
+                    UserSubscription.is_deleted == False,
+                    Video.is_deleted == False,
+                    UserSubscription.user_id == user_id
+                )
+            )
+        )
+
+        # Apply category-specific joins and filters
+        if category == 'read':
+            base_query = base_query.join(VideoHistory, and_(
+                VideoHistory.video_id == Video.id,
+                VideoHistory.user_id == user_id
+            ))
+            base_count_query = base_count_query.join(VideoHistory, and_(
+                VideoHistory.video_id == Video.id,
+                VideoHistory.user_id == user_id
+            ))
+        elif category == 'unread':
+            base_query = base_query.outerjoin(VideoHistory, and_(
+                VideoHistory.video_id == Video.id,
+                VideoHistory.user_id == user_id
+            )).where(VideoHistory.video_id.is_(None))
+            base_count_query = base_count_query.outerjoin(VideoHistory, and_(
+                VideoHistory.video_id == Video.id,
+                VideoHistory.user_id == user_id
+            )).where(VideoHistory.video_id.is_(None))
+        elif category == 'liked':
+            base_query = base_query.join(VideoInteraction, and_(
+                VideoInteraction.video_id == Video.id,
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.interaction_type == 1
+            ))
+            base_count_query = base_count_query.join(VideoInteraction, and_(
+                VideoInteraction.video_id == Video.id,
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.interaction_type == 1
+            ))
+
+        # Apply common filters
+        if subscription_id:
+            base_query = base_query.where(SubscriptionVideo.subscription_id == subscription_id)
+            base_count_query = base_count_query.where(SubscriptionVideo.subscription_id == subscription_id)
+
+        if category == 'preview':
+            base_query = base_query.where(Video.publish_date > func.now())
+            base_count_query = base_count_query.where(Video.publish_date > func.now())
+        elif category != 'preview':
+            base_query = base_query.where(Video.publish_date <= func.now())
+            base_count_query = base_count_query.where(Video.publish_date <= func.now())
+
+        if not show_nsfw:
+            base_query = base_query.where(UserSubscription.is_nsfw == False)
+            base_count_query = base_count_query.where(UserSubscription.is_nsfw == False)
+
+        if query:
+            base_query = base_query.where(Video.title.like(f'%{query}%'))
+            base_count_query = base_count_query.where(Video.title.like(f'%{query}%'))
+
+        # Apply sorting
+        if sort_by == 'created_at':
+            base_query = base_query.order_by(Video.created_at.desc())
+        else:
+            base_query = base_query.order_by(Video.publish_date.desc())
+
+        # Apply pagination
+        base_query = base_query.limit(page_size).offset((page - 1) * page_size)
+
+        # Execute main query
+        results = session.execute(base_query).all()
+        videos = []
+        for row in results:
+            video = row[0]  # Video object
+            subscription_id_val = row[1]  # subscription_id
+            video_dto = VideoDto.model_validate({
+                **video.to_dict(),
+                'subscription_id': subscription_id_val
+            })
+            videos.append(video_dto)
+
+        # Get total count
+        total_count = session.execute(select(func.count()).select_from(base_count_query.subquery())).scalar() or 0
+
+        # Get detailed counts for all categories
+        count_query_base = (
+            select(Video.id)
+            .select_from(Subscription)
+            .join(UserSubscription, Subscription.id == UserSubscription.subscription_id)
+            .join(SubscriptionVideo, SubscriptionVideo.subscription_id == UserSubscription.subscription_id)
+            .join(Video, SubscriptionVideo.video_id == Video.id)
+            .outerjoin(VideoHistory, and_(
+                VideoHistory.video_id == Video.id,
+                VideoHistory.user_id == user_id
+            ))
+            .where(
+                and_(
+                    Subscription.is_deleted == False,
+                    UserSubscription.is_deleted == False,
+                    Video.is_deleted == False,
+                    UserSubscription.user_id == user_id
+                )
+            )
+        )
+
+        if subscription_id:
+            count_query_base = count_query_base.where(SubscriptionVideo.subscription_id == subscription_id)
+        if query:
+            count_query_base = count_query_base.where(Video.title.like(f'%{query}%'))
+        if not show_nsfw:
+            count_query_base = count_query_base.where(UserSubscription.is_nsfw == False)
+
+        # Count different categories
+        all_count = session.execute(select(func.count()).select_from(count_query_base.subquery())).scalar() or 0
+
+        preview_count = session.execute(
+            select(func.count())
+            .select_from(count_query_base.where(Video.publish_date > func.now()).subquery())
+        ).scalar() or 0
+
+        read_count = session.execute(
+            select(func.count())
+            .select_from(count_query_base.where(VideoHistory.video_id.is_not(None)).subquery())
+        ).scalar() or 0
+
+        unread_count = session.execute(
+            select(func.count())
+            .select_from(count_query_base.where(VideoHistory.video_id.is_(None)).subquery())
+        ).scalar() or 0
+
+        # Count liked videos
+        like_count_query = (
+            select(func.count())
+            .select_from(Subscription)
+            .join(UserSubscription, Subscription.id == UserSubscription.subscription_id)
+            .join(SubscriptionVideo, SubscriptionVideo.subscription_id == UserSubscription.subscription_id)
+            .join(Video, SubscriptionVideo.video_id == Video.id)
+            .join(VideoInteraction, and_(
+                VideoInteraction.video_id == Video.id,
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.interaction_type == 1
+            ))
+            .where(
+                and_(
+                    Subscription.is_deleted == False,
+                    UserSubscription.is_deleted == False,
+                    Video.is_deleted == False,
+                    UserSubscription.user_id == user_id
+                )
+            )
+        )
+
+        if subscription_id:
+            like_count_query = like_count_query.where(SubscriptionVideo.subscription_id == subscription_id)
+        if query:
+            like_count_query = like_count_query.where(Video.title.like(f'%{query}%'))
+        if not show_nsfw:
+            like_count_query = like_count_query.where(UserSubscription.is_nsfw == False)
+
+        like_video_count = session.execute(like_count_query).scalar() or 0
 
         # get subscriptions
         subscription_ids = list(set(video.subscription_id for video in videos))
@@ -225,7 +392,7 @@ def list_videos(
                 'url': video.url,
                 'thumbnail': video.thumbnail,
                 'duration': video.duration,
-                'last_position': video_history_dict.get(video.id).last_position if video.id in video_history_dict else 0,
+                'last_position': video_history_dict[video.id].last_position if video.id in video_history_dict else 0,
                 'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
                 'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'subscriptions': [
@@ -242,14 +409,14 @@ def list_videos(
             video_list.append(video_data)
 
         counts = {
-            "all": video_count.total,
-            "read": video_count.read,
-            "unread": video_count.unread,
-            "preview": video_count.preview,
+            "all": all_count,
+            "read": read_count,
+            "unread": unread_count,
+            "preview": preview_count,
             "liked": like_video_count
         }
 
-        return video_list, video_count.total, counts
+        return video_list, total_count, counts
 
 
 def download_video(video_id: int):
