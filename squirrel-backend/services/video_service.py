@@ -284,6 +284,64 @@ def _query_liked_videos(user_id: int, show_nsfw: bool, subscription_id: Optional
     return base_query
 
 
+def _get_category_count(user_id: int, show_nsfw: bool, category: str, subscription_id: Optional[int] = None, query: Optional[str] = None) -> int:
+    """获取特定类别的视频数量，优化的count查询"""
+    with get_session() as session:
+        # 基础count查询，只选择Video.id用于计数
+        base_count_query = (
+            select(func.count(Video.id))
+            .select_from(Video)
+            .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
+            .join(UserSubscription, SubscriptionVideo.subscription_id == UserSubscription.subscription_id)
+            .join(Subscription, UserSubscription.subscription_id == Subscription.id)
+            .where(
+                and_(
+                    Video.is_deleted == False,
+                    UserSubscription.is_deleted == False,
+                    Subscription.is_deleted == False,
+                    UserSubscription.user_id == user_id
+                )
+            )
+        )
+
+        # 根据类别添加特定的JOIN和条件
+        if category == 'read':
+            base_count_query = base_count_query.join(VideoHistory, and_(
+                VideoHistory.video_id == Video.id,
+                VideoHistory.user_id == user_id
+            )).where(Video.publish_date <= func.now())
+        elif category == 'unread':
+            base_count_query = base_count_query.outerjoin(VideoHistory, and_(
+                VideoHistory.video_id == Video.id,
+                VideoHistory.user_id == user_id
+            )).where(
+                and_(
+                    VideoHistory.video_id.is_(None),
+                    Video.publish_date <= func.now()
+                )
+            )
+        elif category == 'preview':
+            base_count_query = base_count_query.where(Video.publish_date > func.now())
+        elif category == 'liked':
+            base_count_query = base_count_query.join(VideoInteraction, and_(
+                VideoInteraction.video_id == Video.id,
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.interaction_type == 1
+            )).where(Video.publish_date <= func.now())
+        else:  # 'all' category
+            base_count_query = base_count_query.where(Video.publish_date <= func.now())
+
+        # 添加通用过滤条件
+        if subscription_id:
+            base_count_query = base_count_query.where(SubscriptionVideo.subscription_id == subscription_id)
+        if query:
+            base_count_query = base_count_query.where(Video.title.like(f'%{query}%'))
+        if not show_nsfw:
+            base_count_query = base_count_query.where(UserSubscription.is_nsfw == False)
+
+        return session.execute(base_count_query).scalar() or 0
+
+
 def _get_video_counts(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None, query: Optional[str] = None):
     """获取各类别视频数量"""
     with get_session() as session:
@@ -429,10 +487,8 @@ def list_videos(
             })
             videos.append(video_dto)
 
-        # 获取总数（当前类别）
-        count_query = query_method(user_id, show_nsfw, subscription_id, query, sort_by, 1, 999999)
-        count_query = select(func.count()).select_from(count_query.subquery())
-        total_count = session.execute(count_query).scalar() or 0
+        # 获取总数（当前类别）- 使用优化的count查询
+        total_count = _get_category_count(user_id, show_nsfw, category, subscription_id, query)
 
         # 获取各类别计数
         counts = _get_video_counts(user_id, show_nsfw, subscription_id, query)
