@@ -23,7 +23,8 @@ engine = create_engine(
     settings.database_url,
     pool_size=settings.POOL_SIZE,
     max_overflow=settings.POOL_MAX_SIZE,
-    pool_recycle=settings.POOL_RECYCLE
+    pool_recycle=settings.POOL_RECYCLE,
+    echo=True
 )
 
 
