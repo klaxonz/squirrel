@@ -14,11 +14,11 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     REDIS_PASSWORD: str = ''
-    MYSQL_HOST: str = 'localhost'
-    MYSQL_PORT: int = 3306
-    MYSQL_USER: str = 'root'
-    MYSQL_PASSWORD: str = 'root'
-    MYSQL_DATABASE: str = 'squirrel'
+    POSTGRES_HOST: str = 'localhost'
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = 'postgres'
+    POSTGRES_PASSWORD: str = 'postgres'
+    POSTGRES_DATABASE: str = 'squirrel'
     MEDIA_DOWNLOAD_PATH: str = str(Path(os.path.join(base_dir, '..', 'downloads')))
     COOKIE_TYPE: str = 'file'
     COOKIE_CLOUD_URL: str = ''
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self):
-        return f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}?charset=utf8mb4"
+        return f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DATABASE}"
 
     def get_redis_url(self):
         return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"

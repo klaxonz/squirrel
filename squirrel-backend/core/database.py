@@ -12,11 +12,11 @@ init_logging()
 logger = logging.getLogger()
 
 db_config = {
-    'host': settings.MYSQL_HOST,
-    'port': settings.MYSQL_PORT,
-    'user': settings.MYSQL_USER,
-    'password': settings.MYSQL_PASSWORD,
-    'database': settings.MYSQL_DATABASE,
+    'host': settings.POSTGRES_HOST,
+    'port': settings.POSTGRES_PORT,
+    'user': settings.POSTGRES_USER,
+    'password': settings.POSTGRES_PASSWORD,
+    'database': settings.POSTGRES_DATABASE,
 }
 
 engine = create_engine(
