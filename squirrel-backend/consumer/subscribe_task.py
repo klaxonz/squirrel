@@ -44,7 +44,7 @@ def process_subscribe_message(message):
                     session.add(user_subscription)
                 session.commit()
         else:
-            subscription_service.create_subscription(user_id, subscribe_info)
+            subscription = subscription_service.create_subscription(user_id, subscribe_info)
         logger.info(f"Successfully subscribed: {subscription.name}")
     except Exception as e:
         logger.error(f"Error occurred while adding subscription: {e}", exc_info=True)

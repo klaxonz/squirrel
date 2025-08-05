@@ -176,7 +176,7 @@ class AutoUpdateChannelVideo(BaseTask):
         # First get current subscriptions
         with get_session() as session:
             subscriptions = session.scalars(
-                select(Subscription).where(Subscription.is_deleted == 0).order_by(Subscription.id.desc())
+                select(Subscription).where(Subscription.is_deleted == False).order_by(Subscription.id.desc())
             ).all()
             subscription_ids = [sub.id for sub in subscriptions]
 

@@ -179,7 +179,7 @@ def _build_base_video_query(user_id: int, show_nsfw: bool, subscription_id: Opti
                 Subscription.is_deleted == False,
                 UserSubscription.user_id == user_id
             )
-        ).with_hint(Video, 'FORCE INDEX(ix_video_deleted_publish_date)')
+        )
     )
 
     if subscription_id:
