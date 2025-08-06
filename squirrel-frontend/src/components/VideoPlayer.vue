@@ -46,10 +46,11 @@
         class="video-player"
         :poster="video.thumbnail"
         :src="video.video_stream_url"
-        preload="metadata"
+        preload="auto"
         crossorigin="anonymous"
         playsinline
         webkit-playsinline
+        :muted="playerState.media.muted"
         @play="handleVideoPlay"
         @pause="handleVideoPause"
         @seeking="handleVideoSeeking"
@@ -468,6 +469,7 @@ import { Icon } from '@iconify/vue';
 import useVideoOperations from "../composables/useVideoOperations";
 import useVideoHistory from "../composables/useVideoHistory";
 import useVideoErrorHandler from "../composables/useVideoErrorHandler";
+import useVideoPreload from "../composables/useVideoPreload";
 import { formatTime } from "../utils/dateFormat";
 import Hls from 'hls.js';
 
@@ -491,8 +493,6 @@ const {
   updateLocalHistory,
   setupNetworkListeners,
   startPeriodicSync,
-  syncStatus,
-  pendingUpdates
 } = useVideoHistory();
 
 // 错误处理
@@ -504,6 +504,14 @@ const {
   getErrorInfo,
   reportError
 } = useVideoErrorHandler();
+
+// 预加载优化
+const {
+  detectNetworkCondition,
+  getOptimizedHlsConfig,
+  preloadVideo,
+  setupNetworkListener
+} = useVideoPreload();
 
 // 统一状态对象
 const playerState = reactive({
@@ -850,12 +858,40 @@ const monitorNetworkSpeed = () => {
 
 const optimizeBufferSize = () => {
   if (hls.value && performanceState.bandwidth.average > 0) {
-    // 根据带宽动态调整缓冲大小
+    // 更激进的缓冲策略以减少卡顿
     const bandwidth = performanceState.bandwidth.average;
-    const targetBuffer = Math.min(Math.max(bandwidth / 1000000 * 10, 10), 60);
+    const mbps = bandwidth / 1000000;
 
-    hls.value.config.maxBufferLength = targetBuffer;
-    console.debug('Buffer size optimized to:', targetBuffer);
+    // 根据带宽设置更大的缓冲区
+    let targetBuffer;
+    if (mbps >= 10) {
+      targetBuffer = 120; // 高速网络：2分钟缓冲
+    } else if (mbps >= 5) {
+      targetBuffer = 90;  // 中速网络：1.5分钟缓冲
+    } else if (mbps >= 2) {
+      targetBuffer = 60;  // 低速网络：1分钟缓冲
+    } else {
+      targetBuffer = 30;  // 极慢网络：30秒缓冲
+    }
+
+    // 动态调整HLS配置
+    if (hls.value.config) {
+      hls.value.config.maxBufferLength = targetBuffer;
+      hls.value.config.maxMaxBufferLength = targetBuffer * 1.5;
+
+      // 根据网络状况调整质量切换策略
+      if (mbps < 2) {
+        // 慢网络：更保守的质量切换
+        hls.value.config.abrBandWidthFactor = 0.6;
+        hls.value.config.abrBandWidthUpFactor = 0.4;
+      } else {
+        // 快网络：正常质量切换
+        hls.value.config.abrBandWidthFactor = 0.8;
+        hls.value.config.abrBandWidthUpFactor = 0.6;
+      }
+    }
+
+    console.debug('Buffer size optimized to:', targetBuffer, 'seconds for', mbps.toFixed(1), 'Mbps');
   }
 };
 
@@ -913,8 +949,34 @@ let cleanupPeriodicSync = null;
 let syncInterval = null;
 let showControlsInterval = null;
 
+// 智能预加载函数
+const intelligentPreload = async () => {
+  if (!props.video?.stream_video_url || !videoPlayer.value) return;
+
+  // 使用新的预加载composable
+  const networkCondition = detectNetworkCondition();
+  console.debug('Network condition detected:', networkCondition);
+
+  // 根据网络状况设置预加载策略
+  if (networkCondition === 'fast') {
+    videoPlayer.value.preload = 'auto';
+    // 启动智能预加载
+    await preloadVideo(videoPlayer.value, props.video.stream_video_url);
+  } else if (networkCondition === 'medium') {
+    videoPlayer.value.preload = 'metadata';
+  } else {
+    videoPlayer.value.preload = 'none';
+  }
+};
+
 // 初始化
 onMounted(async () => {
+  // 设置网络监听器
+  setupNetworkListener();
+
+  // 智能预加载
+  await intelligentPreload();
+
   if (!props.video?.stream_video_url) {
     await playVideo(props.video);
   }
@@ -922,14 +984,15 @@ onMounted(async () => {
   initializeMediaSources();
   screen.orientation?.addEventListener('change', handleOrientationChange);
 
-  // 启动性能监控
-  performanceInterval = setInterval(monitorPerformance, 5000);
+  // 启动性能监控 - 减少频率以降低CPU使用
+  performanceInterval = setInterval(monitorPerformance, 10000);
 
-  // 设置网络状态监听和定期同步
+  // 设置网络状态监听和定期同步 - 增加同步间隔
   cleanupNetworkListeners = setupNetworkListeners();
-  cleanupPeriodicSync = startPeriodicSync(30000); // 30秒同步一次
+  cleanupPeriodicSync = startPeriodicSync(60000); // 60秒同步一次
 
-  syncInterval = setInterval(syncMedia, 2000);
+  // 减少媒体同步频率
+  syncInterval = setInterval(syncMedia, 5000);
   showControlsInterval = setInterval(() => {
     if (playerState.media.playing) {
       playerState.ui.controlsVisible = false;
@@ -981,47 +1044,8 @@ const initializeMediaSources = () => {
 // 初始化HLS播放
 const initializeHlsStream = () => {
   if (Hls.isSupported()) {
-    // 优化的HLS配置
-    const hlsConfig = {
-      // 性能优化配置
-      maxBufferLength: 30,        // 最大缓冲长度（秒）
-      maxMaxBufferLength: 60,     // 最大缓冲长度上限
-      maxBufferSize: 60 * 1000 * 1000, // 最大缓冲大小（60MB）
-      maxBufferHole: 0.5,         // 最大缓冲空洞
-
-      // 网络优化
-      manifestLoadingTimeOut: 10000,    // manifest加载超时
-      manifestLoadingMaxRetry: 3,       // manifest最大重试次数
-      manifestLoadingRetryDelay: 1000,  // manifest重试延迟
-
-      // 片段加载优化
-      fragLoadingTimeOut: 20000,        // 片段加载超时
-      fragLoadingMaxRetry: 6,           // 片段最大重试次数
-      fragLoadingRetryDelay: 1000,      // 片段重试延迟
-
-      // 自适应比特率
-      abrEwmaFastLive: 3.0,            // 快速自适应权重
-      abrEwmaSlowLive: 9.0,            // 慢速自适应权重
-      abrEwmaFastVoD: 3.0,             // 点播快速自适应权重
-      abrEwmaSlowVoD: 9.0,             // 点播慢速自适应权重
-      abrEwmaDefaultEstimate: 5e5,     // 默认带宽估计
-      abrBandWidthFactor: 0.95,        // 带宽因子
-      abrBandWidthUpFactor: 0.7,       // 上调带宽因子
-
-      // 启用worker以提升性能
-      enableWorker: true,
-      enableSoftwareAES: true,
-
-      // 调试模式（生产环境应关闭）
-      debug: false,
-
-      // 低延迟优化
-      liveSyncDurationCount: 3,        // 直播同步片段数量
-      liveMaxLatencyDurationCount: 10, // 最大延迟片段数量
-
-      // 启用流式解析以减少内存使用
-      progressive: true,
-    };
+    // 使用智能优化的HLS配置
+    const hlsConfig = getOptimizedHlsConfig();
 
     hls.value = new Hls(hlsConfig);
     hls.value.attachMedia(videoPlayer.value);
@@ -1194,24 +1218,16 @@ let lastSavedTime = 0;
 let saveProgressTimer = null;
 
 const savePlaybackProgress = (currentTime) => {
-  // 防抖保存，避免过于频繁的请求
+  // 更激进的防抖保存，减少网络请求频率
   if (saveProgressTimer) {
     clearTimeout(saveProgressTimer);
   }
 
-  // 只有在时间变化超过2秒时才保存
-  if (Math.abs(currentTime - lastSavedTime) >= 2) {
+  // 增加时间变化阈值到5秒，减少保存频率
+  if (Math.abs(currentTime - lastSavedTime) >= 5) {
     saveProgressTimer = setTimeout(async () => {
       try {
-        // 使用改进的历史管理功能
-        await sendReport(props.video.id, currentTime, {
-          includeMetadata: Math.random() < 0.1, // 10%概率包含元数据
-          retryOnFailure: true
-        });
-
-        lastSavedTime = currentTime;
-
-        // 更新本地缓存
+        // 优先更新本地缓存，减少网络依赖
         updateLocalHistory(props.video.id, {
           last_position: currentTime,
           duration: playerState.media.duration,
@@ -1219,10 +1235,25 @@ const savePlaybackProgress = (currentTime) => {
           lastWatched: Date.now()
         });
 
+        // 减少网络请求频率，只在特定条件下发送
+        const shouldSendReport =
+          Math.random() < 0.05 || // 5%概率发送
+          (currentTime - lastSavedTime) >= 30 || // 或者超过30秒
+          Math.abs(currentTime - playerState.media.duration) < 10; // 或者接近结尾
+
+        if (shouldSendReport) {
+          await sendReport(props.video.id, currentTime, {
+            includeMetadata: false, // 减少数据传输
+            retryOnFailure: false   // 不重试，减少网络负担
+          });
+        }
+
+        lastSavedTime = currentTime;
+
       } catch (error) {
         console.warn('Failed to save progress:', error);
       }
-    }, 1000); // 1秒延迟
+    }, 2000); // 增加延迟到2秒
   }
 };
 
