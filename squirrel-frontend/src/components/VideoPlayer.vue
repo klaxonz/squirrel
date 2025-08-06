@@ -1,11 +1,12 @@
 <template>
   <div class="video-wrapper bg-[#0f0f0f]">
-    <div class="video-container" 
-      :class="{'pointer-events-none': isTouchDevice}"
-      v-on="!isTouchDevice ? {
-        mouseenter: handleMouseEnter,
-        mouseleave: handleMouseLeave
-      } : {}"
+    <div class="video-container"
+      :class="{}"
+      @pointerenter="onPointerEnter"
+      @pointerleave="onPointerLeave"
+      @pointermove="onPointerMove"
+      @mouseenter="handleMouseEnter"
+      @mouseleave="handleMouseLeave"
       @dblclick="!isTouchDevice && togglePlay()"
       @touchstart="handleTouchStart"
       @touchmove="handleTouchMove"
@@ -659,9 +660,25 @@ const touchStartTime = ref(0);
 // 计时器
 let hideControlsTimer = null;
 
-// 添加计算属性
-const isTouchDevice = computed(() => 
-  'ontouchstart' in window || navigator.maxTouchPoints > 0
+/**
+ * 统一的输入能力检测
+ * - isCoarsePointer：使用 CSS 媒体特性检测粗指针（如手指），能区分带触摸的桌面设备，避免误判
+ * - isTouchDevice：保留仅触摸优化使用，不再作为禁用鼠标事件的强约束
+ * - enablePointerUnified：开关，允许在必要时回退到旧的 mouse 逻辑（默认启用统一 Pointer）
+ */
+const enablePointerUnified = true;
+const isCoarsePointer = computed(() => {
+  // SSR/构建时保护
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  try {
+    return window.matchMedia('(pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
+});
+// 添加计算属性（保留）
+const isTouchDevice = computed(() =>
+  (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0))
 );
 
 // 改进防抖函数实现，确保事件对象正确传递
@@ -823,6 +840,13 @@ const handleProgressLeave = () => {
   playerState.ui.hoveringProgress = false;
 };
 
+// 定义需要清理的变量
+let performanceInterval = null;
+let cleanupNetworkListeners = null;
+let cleanupPeriodicSync = null;
+let syncInterval = null;
+let showControlsInterval = null;
+
 // 初始化
 onMounted(async () => {
   if (!props.video?.stream_video_url) {
@@ -833,33 +857,45 @@ onMounted(async () => {
   screen.orientation?.addEventListener('change', handleOrientationChange);
 
   // 启动性能监控
-  const performanceInterval = setInterval(monitorPerformance, 5000);
+  performanceInterval = setInterval(monitorPerformance, 5000);
 
   // 设置网络状态监听和定期同步
-  const cleanupNetworkListeners = setupNetworkListeners();
-  const cleanupPeriodicSync = startPeriodicSync(30000); // 30秒同步一次
+  cleanupNetworkListeners = setupNetworkListeners();
+  cleanupPeriodicSync = startPeriodicSync(30000); // 30秒同步一次
 
-  const syncInterval = setInterval(syncMedia, 2000);
-  const showControlsInterval = setInterval(() => {
+  syncInterval = setInterval(syncMedia, 2000);
+  showControlsInterval = setInterval(() => {
     if (playerState.media.playing) {
       playerState.ui.controlsVisible = false;
       clearInterval(showControlsInterval);
     }
   }, 3000);
+});
 
-  onUnmounted(() => {
+// 清理定时器和监听器
+onUnmounted(() => {
+  if (syncInterval) {
     clearInterval(syncInterval);
+  }
+  if (performanceInterval) {
     clearInterval(performanceInterval);
+  }
+  if (showControlsInterval) {
+    clearInterval(showControlsInterval);
+  }
 
-    // 清理网络监听和定期同步
+  // 清理网络监听和定期同步
+  if (cleanupNetworkListeners) {
     cleanupNetworkListeners();
+  }
+  if (cleanupPeriodicSync) {
     cleanupPeriodicSync();
+  }
 
-    // 清理进度保存定时器
-    if (saveProgressTimer) {
-      clearTimeout(saveProgressTimer);
-    }
-  });
+  // 清理进度保存定时器
+  if (saveProgressTimer) {
+    clearTimeout(saveProgressTimer);
+  }
 });
 
 const initializeMediaSources = () => {
@@ -1337,8 +1373,12 @@ const setVideoTime = (time) => {
 };
 
 // UI交互
+/**
+ * 兼容旧逻辑的鼠标进入处理
+ * - 当启用统一 Pointer 时，不再依赖 isTouchDevice 来整体禁用 hover
+ * - 继续复用核心显隐与定时器清理逻辑
+ */
 const handleMouseEnter = () => {
-  if(isTouchDevice.value) return;
   playerState.ui.controlsVisible = true;
   if (hideControlsTimer) {
     clearTimeout(hideControlsTimer);
@@ -1346,8 +1386,11 @@ const handleMouseEnter = () => {
   }
 };
 
+/**
+ * 兼容旧逻辑的鼠标离开处理
+ * - 当启用统一 Pointer 时，仍按定时器隐藏控制栏，且保持进度条悬停不隐藏的规则
+ */
 const handleMouseLeave = () => {
-  if(isTouchDevice.value) return;
   hideControlsTimer = setTimeout(() => {
     if (!playerState.ui.hoveringProgress) {
       playerState.ui.controlsVisible = false;
@@ -2033,20 +2076,52 @@ const parseTimeCode = (timeStr) => {
   return hours * 3600 + minutes * 60 + seconds;
 };
 
-// 添加处理函数，区分设备类型
+/**
+ * 点击透明层的处理：
+ * - 触摸设备由 touchend 负责；PC 或精细指针直接切换播放
+ * - 不再依赖对父容器设置 pointer-events:none，避免阻断 hover/pointerenter
+ */
 const handleVideoLayerClick = () => {
-  // 检测是否为触摸设备
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
-  // 触摸设备由touchend事件处理，不在这里处理
-  if (isTouchDevice) {
-    return;
-  }
-
-  // PC端直接调用togglePlay
+  const touch = (typeof window !== 'undefined') && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  if (touch) return;
   togglePlay();
 };
 
+/**
+ * Pointer 事件统一入口：
+ * - onPointerEnter/onPointerLeave 基于 handleMouseEnter/handleMouseLeave 复用逻辑
+ * - onPointerMove 作为“保底显隐”，移动时显示控制栏并重置隐藏定时器（与进度条悬停逻辑一致）
+ * - 对 coarse 指针（触摸）不强制禁用，仅在需要时微调阈值
+ */
+const onPointerEnter = (e) => {
+  if (!enablePointerUnified) return; // 可选回退
+  // 对所有指针类型统一处理
+  handleMouseEnter();
+};
+
+const onPointerLeave = (e) => {
+  if (!enablePointerUnified) return; // 可选回退
+  handleMouseLeave();
+};
+
+const onPointerMove = (e) => {
+  if (!enablePointerUnified) return; // 可选回退
+
+  // 保底显隐：移动时显示控制栏，并重置隐藏计时器
+  playerState.ui.controlsVisible = true;
+
+  if (hideControlsTimer) {
+    clearTimeout(hideControlsTimer);
+    hideControlsTimer = null;
+  }
+
+  // 进度条悬停时不隐藏，保持与现有规则一致
+  hideControlsTimer = setTimeout(() => {
+    if (!playerState.ui.hoveringProgress) {
+      playerState.ui.controlsVisible = false;
+    }
+  }, 2000);
+};
 </script>
 
 <style scoped>
@@ -2171,6 +2246,8 @@ const handleVideoLayerClick = () => {
 }
 
 .video-container {
+  /* 保持容器可命中 pointerenter/leave，禁止在此处使用 pointer-events: none
+     如需拦截点击，请在 .video-click-layer 层面控制 pointer-events */
   @apply relative w-full h-full cursor-pointer;
 }
 
@@ -2368,8 +2445,10 @@ const handleVideoLayerClick = () => {
 }
 
 .video-click-layer {
+  /* 点击层仅负责点击，不要影响父容器的 pointerenter/leave 命中 */
   @apply absolute inset-0 z-10;
   bottom: 5.25rem;
+  pointer-events: auto;
 }
 
 .yt-loading-spinner {
