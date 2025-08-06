@@ -654,7 +654,6 @@ const performanceState = reactive({
 });
 
 // 触摸状态
-const lastTap = ref(0);
 const touchStartTime = ref(0);
 
 // 计时器
@@ -1304,7 +1303,7 @@ const togglePlay = () => {
     });
   }
   
-  playerState.ui.showPlayIndicator = true;
+  // 显示播放状态指示器已在 togglePlay 函数中处理
 };
 
 const toggleMute = () => {
@@ -1627,28 +1626,22 @@ const handleTouchEnd = (e) => {
     return;
   }
 
-  // 原有点击逻辑
+  // 简化的触摸点击逻辑 - 只处理控制栏显示
+  // 播放切换现在由 handleVideoLayerClick 统一处理
   const isTap = Date.now() - touchStartTime.value < 200;
-  
+
   if (isTap) {
-    if (Date.now() - lastTap.value < 300) {
-      togglePlay();
-      lastTap.value = 0;
-      playerState.ui.controlsVisible = true;
-    } else {
-      playerState.ui.controlsVisible = !playerState.ui.controlsVisible;
-      
-      if (playerState.ui.controlsVisible) {
-        if (hideControlsTimer) {
-          clearTimeout(hideControlsTimer);
-        }
-        hideControlsTimer = setTimeout(() => {
-          playerState.ui.controlsVisible = false;
-        }, 3000);
-      }
-      
-      lastTap.value = Date.now();
+    // 显示控制栏
+    playerState.ui.controlsVisible = true;
+
+    if (hideControlsTimer) {
+      clearTimeout(hideControlsTimer);
     }
+
+    // 3秒后自动隐藏控制栏
+    hideControlsTimer = setTimeout(() => {
+      playerState.ui.controlsVisible = false;
+    }, 3000);
   }
 };
 
@@ -2078,13 +2071,23 @@ const parseTimeCode = (timeStr) => {
 
 /**
  * 点击透明层的处理：
- * - 触摸设备由 touchend 负责；PC 或精细指针直接切换播放
- * - 不再依赖对父容器设置 pointer-events:none，避免阻断 hover/pointerenter
+ * - 统一处理所有设备的单击播放切换
+ * - 触摸设备也支持单击切换播放状态
  */
 const handleVideoLayerClick = () => {
-  const touch = (typeof window !== 'undefined') && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-  if (touch) return;
+  // 检查是否正在进行触摸手势操作（快进快退或音量调节）
+  if (playerState.ui.seeking.active || playerState.ui.volume.adjusting) {
+    return;
+  }
+
+  // 统一处理播放切换
   togglePlay();
+
+  // 显示播放状态指示器
+  playerState.ui.showPlayIndicator = true;
+  setTimeout(() => {
+    playerState.ui.showPlayIndicator = false;
+  }, 500);
 };
 
 /**
