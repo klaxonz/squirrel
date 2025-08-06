@@ -14,6 +14,7 @@ from proxy.pornhub import PornhubProxy
 from schemas.video import DownloadVideoRequest, SortBy
 from services import video_service, subscription_video_service, subscription_service
 from utils.jwt_helper import get_current_user
+from handlers.video_url.base import UnsupportedDomainError, VideoUrlExtractionError
 
 logger = logging.getLogger()
 

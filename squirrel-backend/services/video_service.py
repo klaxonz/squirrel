@@ -1,19 +1,12 @@
 import json
-import re
 import subprocess
 from datetime import datetime
 from typing import List, Tuple, Optional
-from urllib.parse import quote
 
-import cloudscraper
-import phub
-import requests
-from bs4 import BeautifulSoup
-from pytubefix import YouTube
 from sqlalchemy import select, func, and_
 
 from core.database import get_session
-from dto.video_dto import VideoExtractDto, VideoDto
+from dto.video_dto import VideoExtractDto, VideoDto, VideoUrlDto
 from models.creator import Creator
 from models.links import VideoCreator, SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
@@ -23,8 +16,10 @@ from models.video_interaction import VideoInteraction
 from services import download_service, subscription_video_service, user_config_service, video_history_service, \
     video_interaction_service
 from utils import url_helper
-from utils.cookie import filter_cookies_to_query_string
+
 from utils.url_helper import extract_top_level_domain
+from handlers.video_url.factory import VideoUrlHandlerFactory
+from handlers.video_url.base import UnsupportedDomainError, VideoUrlExtractionError
 
 
 def get_video_by_url(url: str) -> Video:
@@ -52,116 +47,20 @@ def create_video(url: str, title: str, publish_date: datetime, thumbnail: str, d
         return video
 
 
-def get_video_url(video_id: int) -> dict:
+def get_video_url(video_id: int) -> VideoUrlDto:
+    video_domain = None
     with get_session() as session:
         video = session.get(Video, video_id)
+        if not video:
+            raise ValueError(f"Video with ID {video_id} not found")
+
         video_domain = extract_top_level_domain(video.url)
-
-        proxy_prefix_path = f"/api/video/proxy?domain={video_domain}"
-
-        if video_domain == 'bilibili.com':
-            cookies = filter_cookies_to_query_string("https://www.bilibili.com")
-            headers = {
-                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Cookie': cookies
-            }
-            bv_id = video.url.split('/')[-1]
-            req_url = f'https://api.bilibili.com/x/web-interface/view?bvid={bv_id}'
-            resp = requests.get(req_url, headers=headers)
-            cid = resp.json()['data']['cid']
-            video_url = f'https://api.bilibili.com/x/player/wbi/playurl?bvid={bv_id}&cid={cid}&fnval=144'
-            resp = requests.get(video_url, headers=headers)
-            data = resp.json()['data']
-            best_video_url = None
-            best_audio_url = None
-            if 'dash' in data:
-                dash_data = data['dash']
-                if 'video' in dash_data:
-                    video_urls = dash_data['video']
-                    best_video_url = max(video_urls, key=lambda x: x['bandwidth'])['baseUrl']
-                if 'audio' in dash_data:
-                    audio_urls = dash_data['audio']
-                    best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
-            elif 'durl' in data:
-                video_urls = data['durl']
-                best_video_url = video_urls[0]['url']
-            return {
-                'video_url': f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,
-                'audio_url': f"{proxy_prefix_path}&url=" + quote(best_audio_url) if best_audio_url else None,
-            }
-        elif video_domain == 'youtube.com':
-            # YouTube video URL fetching logic with PoToken
-            yt = YouTube(
-                video.url,
-                # use_po_token=True,
-                # po_token_verifier=po_token_verifier
-            )
-            video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
-            audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
-            return {
-                'video_url': video_stream.url if video_stream else None,
-                'audio_url': audio_stream.url if audio_stream else None,
-            }
-        elif video_domain == 'pornhub.com':
-            client = phub.Client()
-            video = client.get(video.url)
-            video_url = video.get_m3u8_urls
-            url = next(iter(video_url.values()))
-            return {
-                'video_url': f"{proxy_prefix_path}&url=" + quote(url) if url else None,
-                'audio_url': None,
-            }
-        elif video_domain == 'javdb.com':
-            no = video.title.split(' ')[0]
-            url = get_jav_video_url(no)
-            if url:
-                return {
-                    'video_url': f"{proxy_prefix_path}&url=" + quote(url) if url else None,
-                    'audio_url': None,
-                }
-        return {}
-
-
-def get_jav_video_url(no: str):
-    url = f'https://missav.ws/search/{no}'
-    scraper = cloudscraper.create_scraper()
-    response = scraper.get(url)
-    bs4 = BeautifulSoup(response.text, 'html.parser')
-    items = bs4.select('div.thumbnail')
-    if len(items) > 0:
-        target = items[0]
-        target_url = target.select_one('a')['href']
-        if not target_url.startswith('https://'):
-            return None
-        response = scraper.get(target_url)
-        r = extract_parts_from_html_content(response.text)
-        url_path = r.split("m3u8|")[1].split("|playlist|source")[0]
-        url_words = url_path.split('|')
-        video_index = url_words.index("video")
-        protocol = url_words[video_index - 1]
-        video_format = url_words[video_index + 1]
-
-        m3u8_url_path = "-".join((url_words[0:5])[::-1])
-        base_url_path = ".".join((url_words[5:video_index - 1])[::-1])
-
-        formatted_url = "{0}://{1}/{2}/{3}/{4}.m3u8".format(protocol, base_url_path, m3u8_url_path, video_format,
-                                                            url_words[video_index])
-        return formatted_url
-
-
-def extract_parts_from_html_content(html_content):
-    soup = BeautifulSoup(html_content, 'html.parser')
-
-    # 查找所有script标签
-    for script in soup.find_all('script'):
-        if script.string and 'm3u8|' in script.string:
-            # 找到包含目标字符串的部分
-            pattern = r"'([^']*m3u8\|[^']*)'"
-            match = re.search(pattern, script.string)
-            if match:
-                parts = match.group(1)
-                return parts
-    return None
+    
+    if video_domain is None:
+        raise ValueError(f"Invalid video URL: {video.url}")
+    
+    handler = VideoUrlHandlerFactory.get_handler(video_domain)
+    return handler.get_video_url(video)
 
 
 def _build_base_video_query(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None, query: Optional[str] = None):
