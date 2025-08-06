@@ -1,5 +1,3 @@
-import json
-import subprocess
 from datetime import datetime
 from typing import List, Tuple, Optional
 
@@ -7,6 +5,7 @@ from sqlalchemy import select, func, and_
 
 from core.database import get_session
 from dto.video_dto import VideoExtractDto, VideoDto, VideoUrlDto
+from handlers.video_url.factory import VideoUrlHandlerFactory
 from models.creator import Creator
 from models.links import VideoCreator, SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
@@ -16,10 +15,7 @@ from models.video_interaction import VideoInteraction
 from services import download_service, subscription_video_service, user_config_service, video_history_service, \
     video_interaction_service
 from utils import url_helper
-
 from utils.url_helper import extract_top_level_domain
-from handlers.video_url.factory import VideoUrlHandlerFactory
-from handlers.video_url.base import UnsupportedDomainError, VideoUrlExtractionError
 
 
 def get_video_by_url(url: str) -> Video:
@@ -55,15 +51,16 @@ def get_video_url(video_id: int) -> VideoUrlDto:
             raise ValueError(f"Video with ID {video_id} not found")
 
         video_domain = extract_top_level_domain(video.url)
-    
+
     if video_domain is None:
         raise ValueError(f"Invalid video URL: {video.url}")
-    
+
     handler = VideoUrlHandlerFactory.get_handler(video_domain)
     return handler.get_video_url(video)
 
 
-def _build_base_video_query(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None, query: Optional[str] = None):
+def _build_base_video_query(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
+                            query: Optional[str] = None):
     """构建基础视频查询，以Video为主表"""
     base_query = (
         select(Video, SubscriptionVideo.subscription_id.label('subscription_id'))
@@ -94,7 +91,7 @@ def _build_base_video_query(user_id: int, show_nsfw: bool, subscription_id: Opti
 
 
 def _query_all_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None, query: Optional[str] = None,
-                     sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
+                      sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
     """查询所有视频（排除预览视频）"""
     base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query)
     base_query = base_query.where(Video.publish_date <= func.now())
@@ -108,8 +105,9 @@ def _query_all_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[i
     return base_query
 
 
-def _query_read_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None, query: Optional[str] = None,
-                      sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
+def _query_read_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
+                       query: Optional[str] = None,
+                       sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
     """查询已读视频"""
     base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query)
     base_query = base_query.join(VideoHistory, and_(
@@ -126,8 +124,9 @@ def _query_read_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[
     return base_query
 
 
-def _query_unread_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None, query: Optional[str] = None,
-                        sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
+def _query_unread_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
+                         query: Optional[str] = None,
+                         sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
     """查询未读视频"""
     base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query)
     base_query = base_query.outerjoin(VideoHistory, and_(
@@ -149,8 +148,9 @@ def _query_unread_videos(user_id: int, show_nsfw: bool, subscription_id: Optiona
     return base_query
 
 
-def _query_preview_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None, query: Optional[str] = None,
-                         sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
+def _query_preview_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
+                          query: Optional[str] = None,
+                          sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
     """查询预览视频"""
     base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query)
     base_query = base_query.where(Video.publish_date > func.now())
@@ -164,8 +164,9 @@ def _query_preview_videos(user_id: int, show_nsfw: bool, subscription_id: Option
     return base_query
 
 
-def _query_liked_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None, query: Optional[str] = None,
-                       sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
+def _query_liked_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
+                        query: Optional[str] = None,
+                        sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
     """查询点赞视频"""
     base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query)
     base_query = base_query.join(VideoInteraction, and_(
@@ -183,7 +184,8 @@ def _query_liked_videos(user_id: int, show_nsfw: bool, subscription_id: Optional
     return base_query
 
 
-def _get_category_count(user_id: int, show_nsfw: bool, category: str, subscription_id: Optional[int] = None, query: Optional[str] = None) -> int:
+def _get_category_count(user_id: int, show_nsfw: bool, category: str, subscription_id: Optional[int] = None,
+                        query: Optional[str] = None) -> int:
     """获取特定类别的视频数量，优化的count查询"""
     with get_session() as session:
         # 基础count查询，只选择Video.id用于计数
@@ -241,7 +243,8 @@ def _get_category_count(user_id: int, show_nsfw: bool, category: str, subscripti
         return session.execute(base_count_query).scalar() or 0
 
 
-def _get_video_counts(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None, query: Optional[str] = None):
+def _get_video_counts(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
+                      query: Optional[str] = None):
     """获取各类别视频数量"""
     with get_session() as session:
         # 基础计数查询
@@ -488,20 +491,3 @@ def get_video(user_id, video_id):
 
         return video_data
 
-
-def po_token_verifier() -> Tuple[str, str]:
-    token_object = generate_youtube_token()
-    return token_object["visitorData"], token_object["poToken"]
-
-
-def generate_youtube_token() -> dict:
-    try:
-        result = subprocess.run(
-            ["node", "scripts/youtube-token-generator.js"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        return json.loads(result.stdout)
-    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-        raise Exception(f"Failed to generate YouTube token: ", e)
