@@ -16,12 +16,22 @@
       role="application"
       aria-label="视频播放器"
     >
+      <!-- 优化的加载状态显示 -->
       <div v-if="playerState.media.loading" class="yt-loading-spinner">
         <div class="yt-spinner">
           <svg class="yt-spinner__circle" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="45"/>
           </svg>
         </div>
+        <!-- 中央加载速度信息 -->
+        <div class="loading-speed-info">
+          <div class="loading-speed-text">{{ formatNetworkSpeed(performanceState.bandwidth.current) }}</div>
+        </div>
+      </div>
+
+      <!-- 左下角加载状态提示 -->
+      <div v-if="playerState.media.loading && !playerState.media.playing" class="loading-status-indicator">
+        <div class="loading-status-text">{{ loadingStatusText }}</div>
       </div>
 
       <div class="video-click-layer" @click="handleVideoLayerClick">
@@ -509,6 +519,7 @@ const playerState = reactive({
       audio: false
     },
     loading: false,
+    loadingStage: 'idle', // 'idle', 'fetching', 'buffering', 'ready'
     volume: 100,
     muted: false,
     currentTime: 0,
@@ -612,6 +623,36 @@ const progress = computed(() => {
 const supportsPiP = computed(() =>
   document.pictureInPictureEnabled && videoPlayer.value
 );
+
+// 加载状态文本
+const loadingStatusText = computed(() => {
+  switch (playerState.media.loadingStage) {
+    case 'fetching':
+      return '获取视频链接中...';
+    case 'buffering':
+      return '缓冲中...';
+    case 'ready':
+      return '准备就绪';
+    default:
+      return '加载中...';
+  }
+});
+
+// 格式化网络速度
+const formatNetworkSpeed = (bytesPerSecond) => {
+  if (!bytesPerSecond || bytesPerSecond === 0) {
+    return '--';
+  }
+
+  const mbps = (bytesPerSecond / 1024 / 1024).toFixed(1);
+  const kbps = (bytesPerSecond / 1024).toFixed(0);
+
+  if (mbps >= 1) {
+    return `${mbps} MB/s`;
+  } else {
+    return `${kbps} KB/s`;
+  }
+};
 
 // 播放速度选项
 const playbackRates = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -778,6 +819,32 @@ const updateBandwidth = (bytesLoaded, duration) => {
     performanceState.bandwidth.average =
       performanceState.bandwidth.samples.reduce((a, b) => a + b, 0) /
       performanceState.bandwidth.samples.length;
+  }
+};
+
+// 监控网络加载速度
+const monitorNetworkSpeed = () => {
+  if (videoPlayer.value && videoPlayer.value.buffered.length > 0) {
+    const buffered = videoPlayer.value.buffered;
+    const currentTime = videoPlayer.value.currentTime;
+
+    // 计算当前缓冲区的字节数（估算）
+    let totalBufferedBytes = 0;
+    for (let i = 0; i < buffered.length; i++) {
+      const start = buffered.start(i);
+      const end = buffered.end(i);
+      const duration = end - start;
+
+      // 估算比特率（假设视频质量为1080p，约5Mbps）
+      const estimatedBitrate = 5 * 1024 * 1024; // 5Mbps in bps
+      totalBufferedBytes += (duration * estimatedBitrate) / 8; // 转换为字节
+    }
+
+    // 更新带宽信息
+    const loadingDuration = (Date.now() - performanceState.loading.startTime) / 1000;
+    if (loadingDuration > 0) {
+      updateBandwidth(totalBufferedBytes, loadingDuration);
+    }
   }
 };
 
@@ -986,10 +1053,12 @@ const initializeHlsStream = () => {
     // 监听缓冲事件
     hls.value.on(Hls.Events.BUFFER_APPENDING, () => {
       playerState.media.loading = true;
+      playerState.media.loadingStage = 'buffering';
     });
 
     hls.value.on(Hls.Events.BUFFER_APPENDED, () => {
       playerState.media.loading = false;
+      playerState.media.loadingStage = 'ready';
     });
 
   } else if (videoPlayer.value.canPlayType('application/vnd.apple.mpegurl')) {
@@ -1057,6 +1126,7 @@ const handleVideoPause = () => {
 const handleVideoSeeking = () => {
   console.debug('video seeking');
   playerState.media.loading = true;
+  playerState.media.loadingStage = 'buffering';
   if (!isHlsStream.value && audioPlayer.value) {
     audioPlayer.value.pause();
   }
@@ -1081,6 +1151,7 @@ const handleVideoCanplay = () => {
     }
   }
   playerState.media.loading = false;
+  playerState.media.loadingStage = 'ready';
   playerState.media.canPlay.video = true;
   playerState.media.seeking.video = false;
 
@@ -1095,6 +1166,7 @@ const handleVideoCanplay = () => {
 const handleVideoWaiting = () => {
   console.debug('video waiting');
   playerState.media.loading = true;
+  playerState.media.loadingStage = 'buffering';
   if (!isHlsStream.value && audioPlayer.value) {
     audioPlayer.value.pause();
   }
@@ -1206,6 +1278,9 @@ const handleVideoProgress = () => {
 
     playerState.media.bufferedProgress =
       (bufferedEnd / playerState.media.duration) * 100;
+
+    // 监控网络加载速度
+    monitorNetworkSpeed();
   }
 };
 
@@ -1213,10 +1288,14 @@ const handleVideoProgress = () => {
 const handleVideoLoadstart = () => {
   console.debug('Video load started');
   playerState.media.loading = true;
+  playerState.media.loadingStage = 'fetching';
+  performanceState.loading.startTime = Date.now();
+  performanceState.loading.bytesLoaded = 0;
 };
 
 const handleVideoLoadedmetadata = () => {
   console.debug('Video metadata loaded');
+  playerState.media.loadingStage = 'buffering';
   if (videoPlayer.value) {
     playerState.media.duration = videoPlayer.value.duration;
   }
@@ -1224,23 +1303,27 @@ const handleVideoLoadedmetadata = () => {
 
 const handleVideoLoadeddata = () => {
   console.debug('Video data loaded');
+  playerState.media.loadingStage = 'ready';
   playerState.media.loading = false;
 };
 
 const handleVideoSeeked = () => {
   console.debug('Video seeked');
   playerState.media.loading = false;
+  playerState.media.loadingStage = 'ready';
   playerState.media.seeking.video = false;
 };
 
 const handleVideoCanplaythrough = () => {
   console.debug('Video can play through');
   playerState.media.loading = false;
+  playerState.media.loadingStage = 'ready';
 };
 
 const handleVideoStalled = () => {
   console.debug('Video stalled');
   playerState.media.loading = true;
+  playerState.media.loadingStage = 'buffering';
 };
 
 const handleVideoSuspend = () => {
@@ -2455,11 +2538,11 @@ const onPointerMove = (e) => {
 }
 
 .yt-loading-spinner {
-  @apply absolute inset-0 flex items-center justify-center z-20;
+  @apply absolute inset-0 flex flex-col items-center justify-center z-20;
 }
 
 .yt-spinner {
-  @apply w-12 h-12;
+  @apply w-12 h-12 mb-4;
 }
 
 .yt-spinner__circle {
@@ -2479,6 +2562,33 @@ const onPointerMove = (e) => {
 
 .yt-spinner__circle {
   animation: media-spinner 1.4s linear infinite;
+}
+
+/* 中央加载速度信息 */
+.loading-speed-info {
+  @apply text-center;
+}
+
+.loading-speed-text {
+  @apply text-white text-sm font-medium;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* 左下角加载状态指示器 */
+.loading-status-indicator {
+  position: absolute;
+  bottom: 4rem;
+  left: 1rem;
+  z-index: 30;
+}
+
+.loading-status-text {
+  color: white;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  font-family: -apple-system, BlinkMacSystemFont, "YouTube Noto", Roboto, sans-serif;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
 }
 
 @media (orientation: portrait) {
@@ -3075,11 +3185,27 @@ const onPointerMove = (e) => {
   .play-btn {
     margin-right: 0.25rem;
   }
+
+  /* 移动端加载状态指示器调整 */
+  .loading-status-indicator {
+    bottom: 3.5rem;
+    left: 0.75rem;
+  }
+
+  .loading-status-text {
+    font-size: 0.75rem;
+  }
+
+  /* 移动端中央加载速度信息调整 */
+  .loading-speed-text {
+    font-size: 0.8125rem;
+  }
 }
 
 /* 无障碍焦点样式 */
 .video-container:focus-visible {
-  @apply outline-white outline-offset-2 outline-2;
+  outline: 2px solid white;
+  outline-offset: 2px;
 }
 
 /* 将音量控制样式与YouTube保持一致 */
@@ -3140,8 +3266,15 @@ const onPointerMove = (e) => {
 
 /* 添加快进/快退指示器样式 */
 .seeking-indicator {
-  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
-    z-30 flex items-center justify-center transition-all duration-300;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
   background: rgba(28, 28, 28, 0.85);
   backdrop-filter: blur(0.75rem);
   -webkit-backdrop-filter: blur(0.75rem);
@@ -3153,30 +3286,40 @@ const onPointerMove = (e) => {
 }
 
 .seeking-content {
-  @apply flex flex-col items-center justify-center relative;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: -2.5rem;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
-    opacity: 0.5;
-    z-index: -1;
-  }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.seeking-content::after {
+  content: '';
+  position: absolute;
+  inset: -2.5rem;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+  opacity: 0.5;
+  z-index: -1;
 }
 
 .seeking-icon-container {
-  @apply flex flex-col items-center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
 }
 
 .seeking-icon {
-  @apply text-white transition-transform duration-300;
+  color: white;
+  transition: transform 0.3s;
   font-size: 1.75rem;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
 }
 
 .seeking-seconds {
-  @apply text-white/90 font-medium tracking-wide;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  letter-spacing: 0.025em;
   font-size: 0.875rem;
   font-family: -apple-system, BlinkMacSystemFont, "YouTube Noto", Roboto, sans-serif;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -3248,33 +3391,64 @@ const onPointerMove = (e) => {
 }
 
 .volume-adjust-indicator {
-  @apply absolute left-1/2 -translate-x-1/2 top-[15%] flex flex-col items-center z-30;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 15%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 30;
   width: 8rem;
 }
 
 .volume-control-container {
-  @apply relative flex flex-col items-center gap-1 w-full;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
   padding: 0.5rem 0.75rem;
   background: rgba(0, 0, 0, 0.6);
   border-radius: 0.5rem;
 }
 
 .volume-slider {
-  @apply h-0.5 w-full bg-white/20 rounded-full relative overflow-hidden;
+  height: 0.125rem;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  position: relative;
+  overflow: hidden;
 }
 
 .volume-slider-fill {
-  @apply absolute left-0 top-0 h-full bg-white/90 transition-all duration-100;
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  transition: all 0.1s;
 }
 
 .volume-slider-thumb {
-  @apply absolute w-2.5 h-2.5 bg-white rounded-full top-1/2 -translate-y-1/2 shadow-md;
-  left: v-bind("playerState.media.volume + '%'");
+  position: absolute;
+  width: 0.625rem;
+  height: 0.625rem;
+  background: white;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   transition: left 0.1s ease-out;
 }
 
 .volume-value {
-  @apply text-white/90 text-xs font-medium mt-1;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
 }
 
 @keyframes fade-in {
