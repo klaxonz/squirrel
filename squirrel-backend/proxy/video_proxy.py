@@ -1,11 +1,15 @@
 import asyncio
 import logging
-from typing import Dict, AsyncGenerator
+import time
+from typing import Dict, AsyncGenerator, Optional
 from urllib.parse import urlparse
 
 import httpx
 from fastapi import Request, HTTPException
 from starlette.responses import StreamingResponse
+
+from proxy.network_utils import NetworkOptimizer, AdaptiveRetryStrategy, get_health_monitor
+from proxy.config import get_domain_config, get_network_config
 
 logger = logging.getLogger()
 
@@ -14,11 +18,12 @@ async def stream_with_retry(
         url: str,
         headers: Dict[str, str],
         chunk_size: int = 1024 * 512,
-        max_retries: int = 3,
-        timeout: float = 60.0
+        max_retries: Optional[int] = None,
+        timeout: float = 120.0,
+        range_start: Optional[int] = None
 ) -> AsyncGenerator[bytes, None]:
     """
-    Stream content with retry mechanism
+    Stream content with enhanced retry mechanism and resume capability
 
     Args:
         url: Target URL
@@ -26,9 +31,18 @@ async def stream_with_retry(
         chunk_size: Streaming chunk size
         max_retries: Maximum retry attempts
         timeout: Request timeout in seconds
+        range_start: Starting byte position for range requests
     """
     if timeout <= 0:
         raise ValueError("Timeout must be positive")
+
+    # Extract domain for optimization
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc.replace('www.', '')
+
+    # Initialize adaptive retry strategy
+    retry_strategy = AdaptiveRetryStrategy(domain)
+    health_monitor = get_health_monitor()
 
     # Define non-retryable errors
     NON_RETRYABLE_ERRORS = (
@@ -36,56 +50,111 @@ async def stream_with_retry(
         ValueError,
         TypeError
     )
-    
-    # Define retryable errors
-    RETRYABLE_ERRORS = (
-        httpx.NetworkError,
-        httpx.TimeoutException,
-        httpx.StreamClosed,
-        httpx.RequestError,
-        asyncio.TimeoutError
-    )
 
     last_exception = None
-    for attempt in range(max_retries):
+    bytes_received = range_start or 0
+
+    # Get optimal timeout configuration
+    connect_timeout, read_timeout, _ = NetworkOptimizer.get_optimal_timeout(
+        domain, 0  # We don't know content length yet
+    )
+
+    # Enhanced timeout configuration
+    timeout_config = httpx.Timeout(
+        connect=connect_timeout,
+        read=read_timeout,
+        write=30.0,
+        pool=10.0
+    )
+
+    # Enhanced client configuration for better network resilience
+    client_config = {
+        "timeout": timeout_config,
+        "limits": httpx.Limits(
+            max_keepalive_connections=20,
+            max_connections=100,
+            keepalive_expiry=30.0
+        ),
+        "follow_redirects": True,
+        "http2": True  # Enable HTTP/2 for better performance
+    }
+
+    for attempt in range(retry_strategy.max_retries):
+        request_start_time = time.time()
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(timeout)) as client:
-                async with client.stream("GET", url, headers=headers) as resp:
+            # Prepare headers with range support for resume
+            request_headers = headers.copy()
+            if bytes_received > 0:
+                request_headers['Range'] = f'bytes={bytes_received}-'
+                logger.info(f"Resuming download from byte {bytes_received}")
+
+            async with httpx.AsyncClient(**client_config) as client:
+                async with client.stream("GET", url, headers=request_headers) as resp:
                     resp.raise_for_status()
+
                     total_size = int(resp.headers.get('content-length', 0))
-                    bytes_received = 0
+                    if resp.status_code == 206:  # Partial content
+                        content_range = resp.headers.get('content-range', '')
+                        if content_range:
+                            # Parse content-range: bytes start-end/total
+                            parts = content_range.split('/')
+                            if len(parts) == 2:
+                                total_size = int(parts[1])
 
-                    # Optimize chunk size for video/audio content
+                    # Optimize chunk size using NetworkOptimizer
                     content_type = resp.headers.get('content-type', '')
-                    if 'video' in content_type or 'audio' in content_type:
-                        chunk_size = max(chunk_size, 1024 * 1024)  # Use larger chunks for media
+                    optimal_chunk_size = NetworkOptimizer.get_optimal_chunk_size(
+                        total_size, content_type
+                    )
+                    chunk_size = max(chunk_size, optimal_chunk_size)
 
+                    chunk_count = 0
+                    last_progress_log = 0
                     async for chunk in resp.aiter_bytes(chunk_size=chunk_size):
+                        chunk_count += 1
                         bytes_received += len(chunk)
-                        if total_size:
+
+                        # Less frequent progress logging to reduce overhead
+                        if total_size and bytes_received - last_progress_log > 10 * 1024 * 1024:  # Every 10MB
                             progress = (bytes_received / total_size) * 100
-                            logger.debug(f"Download progress: {progress:.2f}%")
+                            logger.debug(f"Download progress: {progress:.1f}% ({bytes_received}/{total_size} bytes)")
+                            last_progress_log = bytes_received
+
                         yield chunk
 
-                    logger.info(f"Stream completed: {bytes_received} bytes transferred")
+                    # Record successful request
+                    request_duration = time.time() - request_start_time
+                    health_monitor.record_request(domain, True, request_duration)
+                    retry_strategy.record_success()
+
+                    logger.info(f"Stream completed: {bytes_received} bytes transferred in {request_duration:.2f}s")
                     return
 
         except NON_RETRYABLE_ERRORS as e:
+            request_duration = time.time() - request_start_time
+            health_monitor.record_request(domain, False, request_duration)
+            retry_strategy.record_failure()
             logger.error(f"Non-retryable error occurred: {str(e)}")
             raise
 
-        except RETRYABLE_ERRORS as e:
+        except Exception as e:
+            request_duration = time.time() - request_start_time
+            health_monitor.record_request(domain, False, request_duration)
+            retry_strategy.record_failure()
+
             last_exception = e
-            if attempt == max_retries - 1:
+            if not retry_strategy.should_retry(e, attempt) or attempt == retry_strategy.max_retries - 1:
                 logger.error(
-                    f"Failed after {max_retries} attempts: {str(e)}, "
-                    f"URL: {url}, Status: {getattr(e, 'response', {}).get('status_code')}"
+                    f"Failed after {attempt + 1} attempts: {str(e)}, "
+                    f"URL: {url}, Bytes received: {bytes_received}"
                 )
                 raise last_exception
 
-            retry_delay = min(2 ** attempt, 10)
+            # Use adaptive retry delay
+            retry_delay = retry_strategy.get_delay(attempt)
+
             logger.warning(
-                f"Attempt {attempt + 1}/{max_retries} failed, retrying in {retry_delay}s: {str(e)}"
+                f"Attempt {attempt + 1}/{retry_strategy.max_retries} failed, retrying in {retry_delay:.1f}s: {str(e)}"
             )
             await asyncio.sleep(retry_delay)
 
@@ -105,44 +174,129 @@ def _get_response_headers(resp: httpx.Response) -> Dict[str, str]:
 class VideoProxy:
     def __init__(self, request: Request):
         self.request = request
-        self._chunk_size = 1024 * 1024 * 5
-        self._timeout = 60.0
+
+        # 从URL中提取域名以获取配置
+        self._domain = self._extract_domain_from_request()
+        domain_config = get_domain_config(self._domain)
+        network_config = get_network_config()
+
+        # 使用配置或默认值
+        if domain_config:
+            self._chunk_size = domain_config.chunk_size
+            self._timeout = domain_config.read_timeout
+            self._max_retries = domain_config.max_retries
+            self._connect_timeout = domain_config.connect_timeout
+        else:
+            self._chunk_size = network_config.default_chunk_size
+            self._timeout = network_config.default_read_timeout
+            self._max_retries = network_config.default_max_retries
+            self._connect_timeout = network_config.default_connect_timeout
+
+    def _extract_domain_from_request(self) -> str:
+        """从请求中提取域名"""
+        # 这里可以从请求参数或其他方式获取域名
+        # 暂时返回空字符串，子类可以重写
+        return ""
 
     @property
     def headers(self) -> Dict[str, str]:
         raise NotImplementedError
 
+    def _extract_range_info(self) -> Optional[int]:
+        """Extract range start position from request headers"""
+        range_header = next(
+            (self.request.headers[key] for key in self.request.headers
+             if key.lower() == 'range'),
+            None
+        )
+        if range_header and range_header.startswith('bytes='):
+            try:
+                range_part = range_header[6:]  # Remove 'bytes='
+                if '-' in range_part:
+                    start_str = range_part.split('-')[0]
+                    if start_str:
+                        return int(start_str)
+            except (ValueError, IndexError):
+                logger.warning(f"Invalid range header: {range_header}")
+        return None
+
     async def handle_stream(self, url: str) -> StreamingResponse:
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(self._timeout)) as client:
-                headers = self.headers
-                
-                # Improved range request handling
-                range_header = next(
-                    (self.request.headers[key] for key in self.request.headers 
-                     if key.lower() == 'range'),
-                    None
-                )
-                if range_header:
-                    headers['range'] = range_header
+            # Extract domain for optimization
+            parsed_url = urlparse(url)
+            domain = parsed_url.netloc.replace('www.', '')
 
+            # Get optimal configuration
+            connect_timeout, read_timeout, _ = NetworkOptimizer.get_optimal_timeout(domain)
+
+            # Enhanced timeout configuration
+            timeout_config = httpx.Timeout(
+                connect=connect_timeout,
+                read=read_timeout,
+                write=30.0,
+                pool=10.0
+            )
+
+            # Enhanced client configuration
+            client_config = {
+                "timeout": timeout_config,
+                "limits": httpx.Limits(
+                    max_keepalive_connections=20,
+                    max_connections=100,
+                    keepalive_expiry=30.0
+                ),
+                "follow_redirects": True,
+                "http2": True
+            }
+
+            async with httpx.AsyncClient(**client_config) as client:
+                headers = self.headers.copy()
+
+                # Handle range requests for resume capability
+                range_start = self._extract_range_info()
+                if range_start is not None:
+                    headers['Range'] = f'bytes={range_start}-'
+
+                # First, make a HEAD request to get content info
+                content_length = 0
+                content_type = ''
+                try:
+                    head_resp = await client.head(url, headers=headers, timeout=30.0)
+                    content_length = int(head_resp.headers.get('content-length', 0))
+                    content_type = head_resp.headers.get('content-type', '')
+
+                    # Use NetworkOptimizer for optimal chunk size
+                    self._chunk_size = NetworkOptimizer.get_optimal_chunk_size(
+                        content_length, content_type
+                    )
+
+                except Exception as e:
+                    logger.debug(f"HEAD request failed, proceeding with GET: {e}")
+
+                # Now stream the actual content
                 async with client.stream("GET", url, headers=headers) as resp:
                     resp.raise_for_status()
-                    
-                    # Optimize chunk size based on content length
-                    content_length = int(resp.headers.get('content-length', 0))
-                    if content_length > 10 * 1024 * 1024:  # If file is larger than 10MB
-                        self._chunk_size = 1024 * 1024  # Use 1MB chunks
-                    
+
+                    # Enhanced response headers
+                    response_headers = _get_response_headers(resp)
+
+                    # Add caching headers for better performance
+                    if resp.status_code == 200:
+                        response_headers.update({
+                            'Cache-Control': 'public, max-age=3600',
+                            'Accept-Ranges': 'bytes'
+                        })
+
                     return StreamingResponse(
                         stream_with_retry(
-                            url, 
+                            url,
                             headers,
                             chunk_size=self._chunk_size,
-                            timeout=self._timeout
+                            timeout=self._timeout,
+                            range_start=range_start
                         ),
                         status_code=resp.status_code,
-                        headers=_get_response_headers(resp),
+                        headers=response_headers,
                         media_type=resp.headers.get('Content-Type')
                     )
 
@@ -152,7 +306,7 @@ class VideoProxy:
                 f"{exc.response.reason_phrase} for URL: {url}"
             )
             raise HTTPException(
-                status_code=exc.response.status_code, 
+                status_code=exc.response.status_code,
                 detail=exc.response.reason_phrase
             )
         except Exception as e:
@@ -161,6 +315,6 @@ class VideoProxy:
                 exc_info=True
             )
             raise HTTPException(
-                status_code=500, 
+                status_code=500,
                 detail="Internal server error while streaming video"
             )
