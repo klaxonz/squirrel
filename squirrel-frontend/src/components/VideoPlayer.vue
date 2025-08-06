@@ -35,14 +35,26 @@
         class="video-player"
         :poster="video.thumbnail"
         :src="video.video_stream_url"
+        preload="metadata"
+        crossorigin="anonymous"
+        playsinline
+        webkit-playsinline
         @play="handleVideoPlay"
         @pause="handleVideoPause"
         @seeking="handleVideoSeeking"
+        @seeked="handleVideoSeeked"
         @canplay="handleVideoCanplay"
+        @canplaythrough="handleVideoCanplaythrough"
         @waiting="handleVideoWaiting"
         @timeupdate="handleVideoTimeupdate"
         @progress="handleVideoProgress"
+        @loadstart="handleVideoLoadstart"
+        @loadedmetadata="handleVideoLoadedmetadata"
+        @loadeddata="handleVideoLoadeddata"
         @error="handleVideoError"
+        @stalled="handleVideoStalled"
+        @suspend="handleVideoSuspend"
+        @abort="handleVideoAbort"
       ></video>
       <audio
         v-if="!isHlsStream"
@@ -56,11 +68,30 @@
       <div class="hover-gradient" v-if="playerState.ui.controlsVisible"></div>
       
       <div class="video-controls" :class="{ 'controls-visible': playerState.ui.controlsVisible }">
+        <!-- 改进的进度条容器 -->
         <div class="progress-container">
-          <div class="preview-time-tooltip" :style="{ left: playerState.ui.hoverPosition + '%' }" v-show="playerState.ui.hoveringProgress">
-            {{ formatTime(playerState.ui.previewTime) }}
+          <!-- 预览时间提示 -->
+          <div class="preview-time-tooltip"
+            :style="{ left: playerState.ui.hoverPosition + '%' }"
+            v-show="playerState.ui.hoveringProgress"
+          >
+            <div class="tooltip-content">
+              {{ formatTime(playerState.ui.previewTime) }}
+            </div>
+            <div class="tooltip-arrow"></div>
           </div>
-          
+
+          <!-- 章节标记（如果有的话） -->
+          <div class="chapter-markers" v-if="video.chapters && video.chapters.length > 0">
+            <div
+              v-for="chapter in video.chapters"
+              :key="chapter.id"
+              class="chapter-marker"
+              :style="{ left: (chapter.time / playerState.media.duration) * 100 + '%' }"
+              :title="chapter.title"
+            ></div>
+          </div>
+
           <div class="progress-bar-container"
             @mousemove="debouncedProgressHover"
             @mouseleave="handleProgressLeave"
@@ -70,73 +101,236 @@
             @touchend="handleProgressTouchEnd"
           >
             <div class="progress-bar">
+              <!-- 缓冲进度 -->
               <div class="progress-bar-loaded" :style="{ width: playerState.media.bufferedProgress + '%' }"></div>
+              <!-- 播放进度 -->
               <div class="progress-bar-filled" :style="{ width: progress + '%' }"></div>
+              <!-- 悬停预览线 -->
+              <div class="progress-bar-hover"
+                :style="{ left: playerState.ui.hoverPosition + '%' }"
+                v-show="playerState.ui.hoveringProgress"
+              ></div>
             </div>
-            <div class="progress-dot" :style="{ left: progress + '%' }" v-show="playerState.ui.hoveringProgress || playerState.ui.isDragging"></div>
-            <div class="progress-handle" :style="{ left: progress + '%' }" v-show="playerState.ui.hoveringProgress"></div>
+            <!-- 进度点 -->
+            <div class="progress-dot"
+              :style="{ left: progress + '%' }"
+              v-show="playerState.ui.hoveringProgress || playerState.ui.isDragging"
+            ></div>
+            <!-- 进度手柄 -->
+            <div class="progress-handle"
+              :style="{ left: progress + '%' }"
+              v-show="playerState.ui.hoveringProgress"
+            ></div>
           </div>
         </div>
         
+        <!-- 改进的控制栏 -->
         <div class="controls-main">
           <div class="controls-left">
-            <button @click="togglePlay" class="control-btn">
+            <!-- 播放/暂停按钮 -->
+            <button @click="togglePlay" class="control-btn play-btn" :aria-label="playerState.media.playing ? '暂停' : '播放'">
               <Icon v-if="playerState.media.playing" icon="material-symbols:pause" class="control-icon" />
               <Icon v-else icon="material-symbols:play-arrow" class="control-icon" />
             </button>
-            
-            <div class="time-display">
-              {{ formatTime(playerState.media.currentTime) }} / {{ formatTime(playerState.media.duration) }}
+
+            <!-- 跳过按钮组 -->
+            <div class="skip-controls">
+              <button @click="skipBackward" class="control-btn skip-btn" aria-label="后退10秒">
+                <Icon icon="material-symbols:replay-10" class="control-icon" />
+              </button>
+              <button @click="skipForward" class="control-btn skip-btn" aria-label="前进10秒">
+                <Icon icon="material-symbols:forward-10" class="control-icon" />
+              </button>
             </div>
-            
+
+            <!-- 音量控制 -->
             <div class="volume-control group">
-              <button @click="toggleMute" class="control-btn">
+              <button @click="toggleMute" class="control-btn" :aria-label="playerState.media.muted ? '取消静音' : '静音'">
                 <Icon :icon="volumeIcon" class="control-icon" />
               </button>
-              
+
               <div class="volume-slider-container">
                 <div class="volume-slider-wrapper">
                   <div class="volume-track-bg"></div>
-                  <div 
-                    class="volume-range-fill" 
+                  <div
+                    class="volume-range-fill"
                     :style="{ width: `${playerState.media.muted ? 0 : Math.min(playerState.media.volume, 100)}%` }"
                   ></div>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    v-model="playerState.media.volume" 
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    v-model="playerState.media.volume"
                     class="volume-range"
+                    aria-label="音量"
                   >
                 </div>
               </div>
             </div>
+
+            <!-- 时间显示 -->
+            <div class="time-display">
+              <span class="current-time">{{ formatTime(playerState.media.currentTime) }}</span>
+              <span class="time-separator">/</span>
+              <span class="total-time">{{ formatTime(playerState.media.duration) }}</span>
+            </div>
           </div>
-          
+
           <div class="controls-right">
-            <button class="control-btn">
-              <Icon icon="material-symbols:subtitles" class="control-icon" />
+            <!-- 播放速度控制 -->
+            <div class="playback-rate-control" v-if="!isTouchDevice">
+              <button @click="togglePlaybackRateMenu" class="control-btn" aria-label="播放速度">
+                <span class="playback-rate-text">{{ playerState.media.playbackRate }}x</span>
+              </button>
+
+              <!-- 播放速度菜单 -->
+              <div v-if="playerState.ui.showPlaybackRateMenu" class="playback-rate-menu">
+                <button
+                  v-for="rate in playbackRates"
+                  :key="rate"
+                  @click="setPlaybackRate(rate)"
+                  class="rate-option"
+                  :class="{ active: playerState.media.playbackRate === rate }"
+                >
+                  {{ rate }}x
+                </button>
+              </div>
+            </div>
+
+            <!-- 画中画按钮 -->
+            <button
+              v-if="supportsPiP"
+              @click="togglePictureInPicture"
+              class="control-btn"
+              aria-label="画中画"
+            >
+              <Icon icon="material-symbols:picture-in-picture-alt" class="control-icon" />
             </button>
-            
-            <button class="control-btn">
-              <Icon icon="material-symbols:settings" class="control-icon" />
+
+            <!-- 字幕按钮 -->
+            <button @click="toggleSubtitles" class="control-btn" aria-label="字幕">
+              <Icon icon="material-symbols:subtitles" class="control-icon"
+                :class="{ 'text-blue-400': playerState.media.subtitlesEnabled }" />
             </button>
-            
-            <button @click="toggleFullscreen" class="control-btn">
+
+            <!-- 设置按钮 -->
+            <div class="settings-control" v-if="!isTouchDevice">
+              <button @click="toggleSettingsMenu" class="control-btn" aria-label="设置">
+                <Icon icon="material-symbols:settings" class="control-icon" />
+              </button>
+
+              <!-- 设置菜单 -->
+              <div v-if="playerState.ui.showSettingsMenu" class="settings-menu">
+                <div class="settings-section">
+                  <div class="settings-title">播放质量</div>
+                  <div class="quality-options">
+                    <button
+                      v-for="quality in availableQualities"
+                      :key="quality.value"
+                      @click="setQuality(quality.value)"
+                      class="quality-option"
+                      :class="{ active: playerState.media.currentQuality === quality.value }"
+                    >
+                      {{ quality.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="settings-section" v-if="video.subtitles && video.subtitles.length > 0">
+                  <div class="settings-title">字幕</div>
+                  <div class="subtitle-options">
+                    <button
+                      @click="setSubtitle(null)"
+                      class="subtitle-option"
+                      :class="{ active: !playerState.media.currentSubtitle }"
+                    >
+                      关闭
+                    </button>
+                    <button
+                      v-for="subtitle in video.subtitles"
+                      :key="subtitle.id"
+                      @click="setSubtitle(subtitle)"
+                      class="subtitle-option"
+                      :class="{ active: playerState.media.currentSubtitle?.id === subtitle.id }"
+                    >
+                      {{ subtitle.language }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="settings-section">
+                  <div class="settings-title">其他设置</div>
+                  <div class="setting-item">
+                    <label class="setting-label">
+                      <input
+                        type="checkbox"
+                        v-model="playerState.media.autoplay"
+                        class="setting-checkbox"
+                      >
+                      自动播放
+                    </label>
+                  </div>
+                  <div class="setting-item">
+                    <label class="setting-label">
+                      <input
+                        type="checkbox"
+                        v-model="playerState.media.loop"
+                        class="setting-checkbox"
+                      >
+                      循环播放
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 全屏按钮 -->
+            <button @click="toggleFullscreen" class="control-btn" aria-label="全屏">
               <Icon :icon="fullscreenIcon" class="control-icon" />
             </button>
           </div>
         </div>
       </div>
 
-      <!-- 添加错误消息提示 -->
-      <div v-if="playerState.ui.errorMessage" class="error-message">
-        <Icon icon="material-symbols:error" class="error-icon" />
-        <span>{{ playerState.ui.errorMessage }}</span>
-        <button @click="retryPlayback" class="retry-button">
-          <Icon icon="material-symbols:refresh" />
-          重试
-        </button>
+      <!-- 改进的错误消息提示 -->
+      <div v-if="errorState.hasError" class="error-message">
+        <div class="error-content">
+          <Icon icon="material-symbols:error" class="error-icon" />
+          <div class="error-text">
+            <h3 class="error-title">{{ getErrorInfo()?.title }}</h3>
+            <p class="error-description">{{ getErrorInfo()?.message }}</p>
+            <div v-if="getErrorInfo()?.suggestions" class="error-suggestions">
+              <p class="suggestions-title">建议解决方案：</p>
+              <ul class="suggestions-list">
+                <li v-for="suggestion in getErrorInfo().suggestions" :key="suggestion">
+                  {{ suggestion }}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="error-actions">
+          <button
+            v-if="errorState.canRetry"
+            @click="handleRetry"
+            class="retry-button"
+            :disabled="errorState.retryCount >= errorState.maxRetries"
+          >
+            <Icon icon="material-symbols:refresh" />
+            重试 ({{ errorState.retryCount }}/{{ errorState.maxRetries }})
+          </button>
+
+          <button @click="reportErrorToSupport" class="report-button">
+            <Icon icon="material-symbols:bug-report" />
+            报告问题
+          </button>
+
+          <button @click="dismissError" class="dismiss-button">
+            <Icon icon="material-symbols:close" />
+            关闭
+          </button>
+        </div>
       </div>
 
       <!-- 添加快进/快退指示器 -->
@@ -165,6 +359,94 @@
           <div class="volume-value">{{ Math.round(playerState.media.volume) }}</div>
         </div>
       </div>
+
+      <!-- 键盘操作反馈 -->
+      <div v-if="playerState.ui.showKeyboardFeedback" class="keyboard-feedback">
+        <Icon icon="material-symbols:keyboard" class="keyboard-icon" />
+        <span>{{ playerState.ui.keyboardFeedback }}</span>
+      </div>
+
+      <!-- 键盘快捷键帮助 -->
+      <div v-if="playerState.ui.showKeyboardHelp" class="keyboard-help-overlay" @click="toggleKeyboardHelp">
+        <div class="keyboard-help-modal" @click.stop>
+          <div class="keyboard-help-header">
+            <h3>键盘快捷键</h3>
+            <button @click="toggleKeyboardHelp" class="close-help-btn">
+              <Icon icon="material-symbols:close" />
+            </button>
+          </div>
+
+          <div class="keyboard-help-content">
+            <div class="shortcut-section">
+              <h4>播放控制</h4>
+              <div class="shortcut-list">
+                <div class="shortcut-item">
+                  <kbd>空格</kbd> 或 <kbd>K</kbd>
+                  <span>播放/暂停</span>
+                </div>
+                <div class="shortcut-item">
+                  <kbd>←</kbd> / <kbd>→</kbd>
+                  <span>快退/快进 5秒</span>
+                </div>
+                <div class="shortcut-item">
+                  <kbd>J</kbd> / <kbd>L</kbd>
+                  <span>快退/快进 10秒</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="shortcut-section">
+              <h4>音量控制</h4>
+              <div class="shortcut-list">
+                <div class="shortcut-item">
+                  <kbd>M</kbd>
+                  <span>静音/取消静音</span>
+                </div>
+                <div class="shortcut-item">
+                  <kbd>↑</kbd> / <kbd>↓</kbd>
+                  <span>音量 +5% / -5%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="shortcut-section">
+              <h4>播放速度</h4>
+              <div class="shortcut-list">
+                <div class="shortcut-item">
+                  <kbd>&lt;</kbd> / <kbd>&gt;</kbd>
+                  <span>减慢/加快播放速度</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="shortcut-section">
+              <h4>其他功能</h4>
+              <div class="shortcut-list">
+                <div class="shortcut-item">
+                  <kbd>F</kbd>
+                  <span>全屏/退出全屏</span>
+                </div>
+                <div class="shortcut-item">
+                  <kbd>I</kbd>
+                  <span>画中画</span>
+                </div>
+                <div class="shortcut-item">
+                  <kbd>C</kbd>
+                  <span>字幕开/关</span>
+                </div>
+                <div class="shortcut-item">
+                  <kbd>0-9</kbd>
+                  <span>跳转到 0%-90%</span>
+                </div>
+                <div class="shortcut-item">
+                  <kbd>?</kbd>
+                  <span>显示此帮助</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -173,6 +455,8 @@
 import {onMounted, watch, ref, computed, onUnmounted, reactive} from 'vue';
 import { Icon } from '@iconify/vue';
 import useVideoOperations from "../composables/useVideoOperations";
+import useVideoHistory from "../composables/useVideoHistory";
+import useVideoErrorHandler from "../composables/useVideoErrorHandler";
 import { formatTime } from "../utils/dateFormat";
 import Hls from 'hls.js';
 
@@ -188,6 +472,27 @@ const audioPlayer = ref(null);
 const {
   playVideo,
 } = useVideoOperations();
+
+// 改进的历史管理
+const {
+  sendReport,
+  getLocalHistory,
+  updateLocalHistory,
+  setupNetworkListeners,
+  startPeriodicSync,
+  syncStatus,
+  pendingUpdates
+} = useVideoHistory();
+
+// 错误处理
+const {
+  errorState,
+  handleError,
+  manualRetry,
+  clearError,
+  getErrorInfo,
+  reportError
+} = useVideoErrorHandler();
 
 // 统一状态对象
 const playerState = reactive({
@@ -208,7 +513,14 @@ const playerState = reactive({
     currentTime: 0,
     duration: 0,
     bufferedProgress: 0,
-    firstInteraction: true
+    firstInteraction: true,
+    playbackRate: 1,
+    subtitlesEnabled: false,
+    pictureInPicture: false,
+    currentQuality: 'auto',
+    currentSubtitle: null,
+    autoplay: false,
+    loop: false
   },
   // UI状态
   ui: {
@@ -221,6 +533,11 @@ const playerState = reactive({
     isDragging: false,
     previewSeekTime: 0,
     errorMessage: null,
+    showPlaybackRateMenu: false,
+    showSettingsMenu: false,
+    showKeyboardHelp: false,
+    showKeyboardFeedback: false,
+    keyboardFeedback: '',
     seeking: {
       active: false,
       startX: 0,
@@ -290,9 +607,50 @@ const progress = computed(() => {
   return (playerState.media.currentTime / playerState.media.duration) * 100 || 0;
 });
 
+// 新增计算属性
+const supportsPiP = computed(() =>
+  document.pictureInPictureEnabled && videoPlayer.value
+);
+
+// 播放速度选项
+const playbackRates = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
+// 质量选项
+const availableQualities = ref([
+  { value: 'auto', label: '自动' },
+  { value: '1080p', label: '1080p' },
+  { value: '720p', label: '720p' },
+  { value: '480p', label: '480p' },
+  { value: '360p', label: '360p' }
+]);
+
 // 常量
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_INTERVAL = 3000;
+
+// 性能优化相关常量
+const PRELOAD_BUFFER_SIZE = 10; // 预加载缓冲大小（秒）
+const MEMORY_CLEANUP_INTERVAL = 30000; // 内存清理间隔（毫秒）
+const BANDWIDTH_SAMPLE_SIZE = 5; // 带宽采样大小
+
+// 性能监控状态
+const performanceState = reactive({
+  bandwidth: {
+    samples: [],
+    average: 0,
+    current: 0
+  },
+  memory: {
+    used: 0,
+    peak: 0,
+    lastCleanup: 0
+  },
+  loading: {
+    startTime: 0,
+    duration: 0,
+    bytesLoaded: 0
+  }
+});
 
 // 触摸状态
 const lastTap = ref(0);
@@ -388,6 +746,79 @@ onUnmounted(() => {
 // 在声明函数后创建防抖版本
 const debouncedProgressHover = debounce(handleProgressHover, 5);
 
+// 性能优化函数
+const updateBandwidth = (bytesLoaded, duration) => {
+  if (duration > 0) {
+    const bandwidth = (bytesLoaded * 8) / duration; // bps
+    performanceState.bandwidth.current = bandwidth;
+
+    // 保持最近的带宽样本
+    performanceState.bandwidth.samples.push(bandwidth);
+    if (performanceState.bandwidth.samples.length > BANDWIDTH_SAMPLE_SIZE) {
+      performanceState.bandwidth.samples.shift();
+    }
+
+    // 计算平均带宽
+    performanceState.bandwidth.average =
+      performanceState.bandwidth.samples.reduce((a, b) => a + b, 0) /
+      performanceState.bandwidth.samples.length;
+  }
+};
+
+const optimizeBufferSize = () => {
+  if (hls.value && performanceState.bandwidth.average > 0) {
+    // 根据带宽动态调整缓冲大小
+    const bandwidth = performanceState.bandwidth.average;
+    const targetBuffer = Math.min(Math.max(bandwidth / 1000000 * 10, 10), 60);
+
+    hls.value.config.maxBufferLength = targetBuffer;
+    console.debug('Buffer size optimized to:', targetBuffer);
+  }
+};
+
+const cleanupMemory = () => {
+  const now = Date.now();
+  if (now - performanceState.memory.lastCleanup > MEMORY_CLEANUP_INTERVAL) {
+    // 清理不必要的缓冲区
+    if (videoPlayer.value && videoPlayer.value.buffered.length > 0) {
+      const currentTime = videoPlayer.value.currentTime;
+      const buffered = videoPlayer.value.buffered;
+
+      // 如果缓冲区太大，建议浏览器清理旧数据
+      for (let i = 0; i < buffered.length; i++) {
+        if (buffered.end(i) < currentTime - 30) {
+          // 30秒前的数据可以清理
+          console.debug('Suggesting cleanup of old buffer data');
+        }
+      }
+    }
+
+    performanceState.memory.lastCleanup = now;
+
+    // 强制垃圾回收（如果可用）
+    if (window.gc) {
+      window.gc();
+    }
+  }
+};
+
+const monitorPerformance = () => {
+  if (videoPlayer.value) {
+    // 监控内存使用
+    if (performance.memory) {
+      performanceState.memory.used = performance.memory.usedJSHeapSize;
+      performanceState.memory.peak = Math.max(
+        performanceState.memory.peak,
+        performanceState.memory.used
+      );
+    }
+
+    // 定期优化
+    optimizeBufferSize();
+    cleanupMemory();
+  }
+};
+
 const handleProgressLeave = () => {
   playerState.ui.hoveringProgress = false;
 };
@@ -397,10 +828,17 @@ onMounted(async () => {
   if (!props.video?.stream_video_url) {
     await playVideo(props.video);
   }
-  
+
   initializeMediaSources();
   screen.orientation?.addEventListener('change', handleOrientationChange);
-  
+
+  // 启动性能监控
+  const performanceInterval = setInterval(monitorPerformance, 5000);
+
+  // 设置网络状态监听和定期同步
+  const cleanupNetworkListeners = setupNetworkListeners();
+  const cleanupPeriodicSync = startPeriodicSync(30000); // 30秒同步一次
+
   const syncInterval = setInterval(syncMedia, 2000);
   const showControlsInterval = setInterval(() => {
     if (playerState.media.playing) {
@@ -411,6 +849,16 @@ onMounted(async () => {
 
   onUnmounted(() => {
     clearInterval(syncInterval);
+    clearInterval(performanceInterval);
+
+    // 清理网络监听和定期同步
+    cleanupNetworkListeners();
+    cleanupPeriodicSync();
+
+    // 清理进度保存定时器
+    if (saveProgressTimer) {
+      clearTimeout(saveProgressTimer);
+    }
   });
 });
 
@@ -431,15 +879,84 @@ const initializeMediaSources = () => {
 // 初始化HLS播放
 const initializeHlsStream = () => {
   if (Hls.isSupported()) {
-    hls.value = new Hls();
+    // 优化的HLS配置
+    const hlsConfig = {
+      // 性能优化配置
+      maxBufferLength: 30,        // 最大缓冲长度（秒）
+      maxMaxBufferLength: 60,     // 最大缓冲长度上限
+      maxBufferSize: 60 * 1000 * 1000, // 最大缓冲大小（60MB）
+      maxBufferHole: 0.5,         // 最大缓冲空洞
+
+      // 网络优化
+      manifestLoadingTimeOut: 10000,    // manifest加载超时
+      manifestLoadingMaxRetry: 3,       // manifest最大重试次数
+      manifestLoadingRetryDelay: 1000,  // manifest重试延迟
+
+      // 片段加载优化
+      fragLoadingTimeOut: 20000,        // 片段加载超时
+      fragLoadingMaxRetry: 6,           // 片段最大重试次数
+      fragLoadingRetryDelay: 1000,      // 片段重试延迟
+
+      // 自适应比特率
+      abrEwmaFastLive: 3.0,            // 快速自适应权重
+      abrEwmaSlowLive: 9.0,            // 慢速自适应权重
+      abrEwmaFastVoD: 3.0,             // 点播快速自适应权重
+      abrEwmaSlowVoD: 9.0,             // 点播慢速自适应权重
+      abrEwmaDefaultEstimate: 5e5,     // 默认带宽估计
+      abrBandWidthFactor: 0.95,        // 带宽因子
+      abrBandWidthUpFactor: 0.7,       // 上调带宽因子
+
+      // 启用worker以提升性能
+      enableWorker: true,
+      enableSoftwareAES: true,
+
+      // 调试模式（生产环境应关闭）
+      debug: false,
+
+      // 低延迟优化
+      liveSyncDurationCount: 3,        // 直播同步片段数量
+      liveMaxLatencyDurationCount: 10, // 最大延迟片段数量
+
+      // 启用流式解析以减少内存使用
+      progressive: true,
+    };
+
+    hls.value = new Hls(hlsConfig);
     hls.value.attachMedia(videoPlayer.value);
+
+    // 监听更多事件以优化性能
     hls.value.on(Hls.Events.MEDIA_ATTACHED, () => {
+      console.debug('HLS media attached');
       hls.value.loadSource(props.video.stream_video_url);
     });
-    
+
+    hls.value.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+      console.debug('HLS manifest parsed', data);
+      // 可以在这里根据网络状况选择初始质量
+    });
+
+    hls.value.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+      console.debug('HLS level switched to', data.level);
+    });
+
+    hls.value.on(Hls.Events.FRAG_BUFFERED, () => {
+      // 片段缓冲完成，更新缓冲进度
+      handleVideoProgress();
+    });
+
     hls.value.on(Hls.Events.ERROR, (event, data) => {
       handleHlsError(data);
     });
+
+    // 监听缓冲事件
+    hls.value.on(Hls.Events.BUFFER_APPENDING, () => {
+      playerState.media.loading = true;
+    });
+
+    hls.value.on(Hls.Events.BUFFER_APPENDED, () => {
+      playerState.media.loading = false;
+    });
+
   } else if (videoPlayer.value.canPlayType('application/vnd.apple.mpegurl')) {
     // Safari原生支持
     videoPlayer.value.src = props.video.stream_video_url;
@@ -517,19 +1034,21 @@ const handleVideoSeeking = () => {
 const handleVideoCanplay = () => {
   if (videoPlayer.value) {
     playerState.media.duration = videoPlayer.value.duration;
-    
-    // 如果有上次播放位置且是首次加载，则从该位置继续播放
-    console.debug('video canplay, video last position', props.video, 'playerState.network.firstInteraction', playerState.network.firstInteraction);
-    if (props.video?.last_position > 0 && playerState.media.firstInteraction) {
-      console.debug('video canplay, set video time to', props.video.last_position);
-      setVideoTime(props.video.last_position);
+
+    // 使用改进的进度恢复逻辑
+    if (playerState.media.firstInteraction) {
+      const restoredPosition = restorePlaybackProgress();
+      if (restoredPosition > 0) {
+        console.debug('Restoring video position to:', restoredPosition);
+        setVideoTime(restoredPosition);
+      }
       playerState.media.firstInteraction = false;
     }
   }
   playerState.media.loading = false;
   playerState.media.canPlay.video = true;
   playerState.media.seeking.video = false;
-  
+
   if (!isSeeking.value && isCanplay.value) {
     videoPlayer.value.play();
     if (!isHlsStream.value && audioPlayer.value) {
@@ -548,22 +1067,155 @@ const handleVideoWaiting = () => {
 
 const handleVideoTimeupdate = () => {
   if (videoPlayer.value) {
-    playerState.media.currentTime = videoPlayer.value.currentTime;
-    
+    const currentTime = videoPlayer.value.currentTime;
+    playerState.media.currentTime = currentTime;
+
     // 确保duration被正确设置
     if (videoPlayer.value.duration && videoPlayer.value.duration !== Infinity) {
       playerState.media.duration = videoPlayer.value.duration;
     }
-    
-    emit('timeupdate', playerState.media.currentTime);
+
+    // 改进的进度保存逻辑
+    savePlaybackProgress(currentTime);
+
+    emit('timeupdate', currentTime);
   }
+};
+
+// 播放进度保存逻辑
+let lastSavedTime = 0;
+let saveProgressTimer = null;
+
+const savePlaybackProgress = (currentTime) => {
+  // 防抖保存，避免过于频繁的请求
+  if (saveProgressTimer) {
+    clearTimeout(saveProgressTimer);
+  }
+
+  // 只有在时间变化超过2秒时才保存
+  if (Math.abs(currentTime - lastSavedTime) >= 2) {
+    saveProgressTimer = setTimeout(async () => {
+      try {
+        // 使用改进的历史管理功能
+        await sendReport(props.video.id, currentTime, {
+          includeMetadata: Math.random() < 0.1, // 10%概率包含元数据
+          retryOnFailure: true
+        });
+
+        lastSavedTime = currentTime;
+
+        // 更新本地缓存
+        updateLocalHistory(props.video.id, {
+          last_position: currentTime,
+          duration: playerState.media.duration,
+          progress: (currentTime / playerState.media.duration) * 100,
+          lastWatched: Date.now()
+        });
+
+      } catch (error) {
+        console.warn('Failed to save progress:', error);
+      }
+    }, 1000); // 1秒延迟
+  }
+};
+
+// 恢复播放进度
+const restorePlaybackProgress = () => {
+  // 首先检查本地缓存
+  const localHistory = getLocalHistory(props.video.id);
+
+  if (localHistory && localHistory.last_position > 0) {
+    const { last_position, duration } = localHistory;
+
+    // 如果接近结尾（最后10秒），从头开始
+    if (duration && (duration - last_position) < 10) {
+      return 0;
+    }
+
+    console.debug('Restored progress from local cache:', last_position);
+    return last_position;
+  }
+
+  // 回退到props中的位置
+  if (props.video?.last_position > 0) {
+    const { last_position, total_duration } = props.video;
+
+    if (total_duration && (total_duration - last_position) < 10) {
+      return 0;
+    }
+
+    console.debug('Restored progress from props:', last_position);
+    return last_position;
+  }
+
+  return 0;
 };
 
 const handleVideoProgress = () => {
   if (videoPlayer.value && videoPlayer.value.buffered.length > 0) {
-    playerState.media.bufferedProgress = 
-      (videoPlayer.value.buffered.end(0) / playerState.media.duration) * 100;
+    const buffered = videoPlayer.value.buffered;
+    let bufferedEnd = 0;
+
+    // 找到包含当前播放时间的缓冲区间
+    for (let i = 0; i < buffered.length; i++) {
+      if (buffered.start(i) <= playerState.media.currentTime &&
+          buffered.end(i) >= playerState.media.currentTime) {
+        bufferedEnd = buffered.end(i);
+        break;
+      }
+      // 如果没有找到包含当前时间的区间，使用最大的缓冲区间
+      if (buffered.end(i) > bufferedEnd) {
+        bufferedEnd = buffered.end(i);
+      }
+    }
+
+    playerState.media.bufferedProgress =
+      (bufferedEnd / playerState.media.duration) * 100;
   }
+};
+
+// 新增的性能优化事件处理函数
+const handleVideoLoadstart = () => {
+  console.debug('Video load started');
+  playerState.media.loading = true;
+};
+
+const handleVideoLoadedmetadata = () => {
+  console.debug('Video metadata loaded');
+  if (videoPlayer.value) {
+    playerState.media.duration = videoPlayer.value.duration;
+  }
+};
+
+const handleVideoLoadeddata = () => {
+  console.debug('Video data loaded');
+  playerState.media.loading = false;
+};
+
+const handleVideoSeeked = () => {
+  console.debug('Video seeked');
+  playerState.media.loading = false;
+  playerState.media.seeking.video = false;
+};
+
+const handleVideoCanplaythrough = () => {
+  console.debug('Video can play through');
+  playerState.media.loading = false;
+};
+
+const handleVideoStalled = () => {
+  console.debug('Video stalled');
+  playerState.media.loading = true;
+};
+
+const handleVideoSuspend = () => {
+  console.debug('Video suspended');
+  // 网络空闲时暂停下载
+};
+
+const handleVideoAbort = () => {
+  console.debug('Video aborted');
+  playerState.media.loading = false;
 };
 
 // 音频事件处理
@@ -740,26 +1392,31 @@ const initHls = () => {
   initializeHlsStream();
 };
 
-const handleVideoError = () => {
-  if (isHlsStream.value && hls.value) {
-    if (playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      playerState.media.loading = true;
-      playerState.network.reconnectAttempts++;
-      setTimeout(initHls, RECONNECT_INTERVAL);
+const handleVideoError = (error) => {
+  console.error('Video error:', error);
+
+  // 使用新的错误处理系统
+  const errorInfo = handleError(error || videoPlayer.value?.error, {
+    videoId: props.video?.id,
+    isHlsStream: isHlsStream.value,
+    reconnectAttempts: playerState.network.reconnectAttempts,
+    retryCallback: () => {
+      if (isHlsStream.value && hls.value) {
+        playerState.media.loading = true;
+        setTimeout(initHls, RECONNECT_INTERVAL);
+      } else {
+        playerState.media.loading = true;
+        setTimeout(() => {
+          videoPlayer.value.src = props.video.stream_video_url;
+          videoPlayer.value.load();
+          videoPlayer.value.play().catch(handleVideoError);
+        }, RECONNECT_INTERVAL);
+      }
     }
-  } else {
-    if (playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS && !videoPlayer.value.paused) {
-      playerState.media.loading = true;
-      playerState.network.reconnectAttempts++;
-      setTimeout(() => {
-        videoPlayer.value.src = props.video.stream_video_url;
-        videoPlayer.value.load();
-        videoPlayer.value.play().catch(() => {
-          handleVideoError();
-        });
-      }, RECONNECT_INTERVAL);
-    }
-  }
+  });
+
+  playerState.media.loading = false;
+  emit('error', { type: 'video', error, errorInfo });
 };
 
 const handleAudioError = () => {
@@ -980,46 +1637,223 @@ defineExpose({
   videoPlayer
 });
 
-// 添加键盘快捷键支持
+// 改进的键盘快捷键支持
+const keyboardShortcuts = {
+  // 播放控制
+  ' ': { action: 'togglePlay', description: '播放/暂停' },
+  'k': { action: 'togglePlay', description: '播放/暂停' },
+  'ArrowRight': { action: 'skipForward', description: '快进5秒' },
+  'ArrowLeft': { action: 'skipBackward', description: '快退5秒' },
+  'j': { action: 'skipBackward10', description: '快退10秒' },
+  'l': { action: 'skipForward10', description: '快进10秒' },
+
+  // 音量控制
+  'm': { action: 'toggleMute', description: '静音/取消静音' },
+  'ArrowUp': { action: 'volumeUp', description: '音量+5%' },
+  'ArrowDown': { action: 'volumeDown', description: '音量-5%' },
+
+  // 播放速度
+  '<': { action: 'decreaseSpeed', description: '减慢播放速度' },
+  '>': { action: 'increaseSpeed', description: '加快播放速度' },
+
+  // 全屏和画中画
+  'f': { action: 'toggleFullscreen', description: '全屏/退出全屏' },
+  'i': { action: 'togglePictureInPicture', description: '画中画' },
+
+  // 字幕
+  'c': { action: 'toggleSubtitles', description: '字幕开/关' },
+
+  // 跳转
+  'Home': { action: 'jumpToStart', description: '跳转到开始' },
+  'End': { action: 'jumpToEnd', description: '跳转到结束' },
+  '0': { action: 'jumpToPercent', args: [0], description: '跳转到0%' },
+  '1': { action: 'jumpToPercent', args: [10], description: '跳转到10%' },
+  '2': { action: 'jumpToPercent', args: [20], description: '跳转到20%' },
+  '3': { action: 'jumpToPercent', args: [30], description: '跳转到30%' },
+  '4': { action: 'jumpToPercent', args: [40], description: '跳转到40%' },
+  '5': { action: 'jumpToPercent', args: [50], description: '跳转到50%' },
+  '6': { action: 'jumpToPercent', args: [60], description: '跳转到60%' },
+  '7': { action: 'jumpToPercent', args: [70], description: '跳转到70%' },
+  '8': { action: 'jumpToPercent', args: [80], description: '跳转到80%' },
+  '9': { action: 'jumpToPercent', args: [90], description: '跳转到90%' },
+
+  // 帮助
+  '?': { action: 'showKeyboardHelp', description: '显示快捷键帮助' },
+  'Escape': { action: 'handleEscape', description: '退出菜单/全屏' }
+};
+
 const handleKeyDown = (e) => {
   // 防止在输入框中触发快捷键
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  
-  switch(e.key) {
-    case ' ':
-    case 'k':
+
+  // 检查是否有修饰键（除了Shift，因为某些快捷键需要Shift）
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+  const shortcut = keyboardShortcuts[e.key];
+  if (shortcut) {
+    e.preventDefault();
+    executeKeyboardAction(shortcut.action, shortcut.args);
+
+    // 显示快捷键提示
+    showKeyboardFeedback(shortcut.description);
+  }
+};
+
+// 执行键盘动作
+const executeKeyboardAction = (action, args = []) => {
+  switch (action) {
+    case 'togglePlay':
       togglePlay();
-      e.preventDefault();
       break;
-    case 'ArrowRight':
-      setVideoTime(Math.min(playerState.media.currentTime + 5, playerState.media.duration));
-      e.preventDefault();
+    case 'skipForward':
+      skipForward();
       break;
-    case 'ArrowLeft':
-      setVideoTime(Math.max(playerState.media.currentTime - 5, 0));
-      e.preventDefault();
+    case 'skipBackward':
+      skipBackward();
       break;
-    case 'm':
+    case 'skipForward10':
+      setVideoTime(Math.min(playerState.media.currentTime + 10, playerState.media.duration));
+      break;
+    case 'skipBackward10':
+      setVideoTime(Math.max(playerState.media.currentTime - 10, 0));
+      break;
+    case 'toggleMute':
       toggleMute();
-      e.preventDefault();
       break;
-    case 'f':
+    case 'volumeUp':
+      adjustVolume(5);
+      break;
+    case 'volumeDown':
+      adjustVolume(-5);
+      break;
+    case 'decreaseSpeed':
+      adjustPlaybackRate(-0.25);
+      break;
+    case 'increaseSpeed':
+      adjustPlaybackRate(0.25);
+      break;
+    case 'toggleFullscreen':
       toggleFullscreen();
-      e.preventDefault();
+      break;
+    case 'togglePictureInPicture':
+      togglePictureInPicture();
+      break;
+    case 'toggleSubtitles':
+      toggleSubtitles();
+      break;
+    case 'jumpToStart':
+      setVideoTime(0);
+      break;
+    case 'jumpToEnd':
+      setVideoTime(playerState.media.duration);
+      break;
+    case 'jumpToPercent':
+      const percent = args[0] || 0;
+      setVideoTime((playerState.media.duration * percent) / 100);
+      break;
+    case 'showKeyboardHelp':
+      toggleKeyboardHelp();
+      break;
+    case 'handleEscape':
+      handleEscapeKey();
       break;
   }
 };
 
-// 添加播放重试方法
-const retryPlayback = () => {
-  playerState.ui.errorMessage = null;
-  playerState.network.reconnectAttempts = 0;
-  if (isHlsStream.value) {
-    initHls();
-  } else {
-    videoPlayer.value.load();
-    videoPlayer.value.play().catch(handleVideoError);
+// 新增的辅助函数
+const adjustVolume = (delta) => {
+  const newVolume = Math.min(Math.max(playerState.media.volume + delta, 0), 100);
+  playerState.media.volume = newVolume;
+
+  // 显示音量指示器
+  playerState.ui.volume.showIndicator = true;
+  setTimeout(() => {
+    playerState.ui.volume.showIndicator = false;
+  }, 1000);
+};
+
+const adjustPlaybackRate = (delta) => {
+  const currentRate = playerState.media.playbackRate;
+  const newRate = Math.min(Math.max(currentRate + delta, 0.25), 2);
+  setPlaybackRate(newRate);
+};
+
+const toggleKeyboardHelp = () => {
+  playerState.ui.showKeyboardHelp = !playerState.ui.showKeyboardHelp;
+};
+
+const handleEscapeKey = () => {
+  // 按优先级关闭各种菜单和模式
+  if (playerState.ui.showKeyboardHelp) {
+    playerState.ui.showKeyboardHelp = false;
+  } else if (playerState.ui.showSettingsMenu) {
+    playerState.ui.showSettingsMenu = false;
+  } else if (playerState.ui.showPlaybackRateMenu) {
+    playerState.ui.showPlaybackRateMenu = false;
+  } else if (playerState.ui.fullscreen) {
+    toggleFullscreen();
   }
+};
+
+// 显示键盘操作反馈
+let keyboardFeedbackTimer = null;
+const showKeyboardFeedback = (message) => {
+  playerState.ui.keyboardFeedback = message;
+  playerState.ui.showKeyboardFeedback = true;
+
+  if (keyboardFeedbackTimer) {
+    clearTimeout(keyboardFeedbackTimer);
+  }
+
+  keyboardFeedbackTimer = setTimeout(() => {
+    playerState.ui.showKeyboardFeedback = false;
+  }, 1500);
+};
+
+// 改进的错误处理函数
+const handleRetry = () => {
+  const success = manualRetry(() => {
+    playerState.network.reconnectAttempts = 0;
+    if (isHlsStream.value) {
+      initHls();
+    } else {
+      videoPlayer.value.load();
+      videoPlayer.value.play().catch((error) => {
+        handleVideoError(error);
+      });
+    }
+  });
+
+  if (!success) {
+    console.warn('Retry failed or not allowed');
+  }
+};
+
+const reportErrorToSupport = async () => {
+  try {
+    await reportError({
+      videoId: props.video?.id,
+      videoUrl: props.video?.stream_video_url,
+      userAction: 'manual_report',
+      additionalContext: {
+        playerState: {
+          currentTime: playerState.media.currentTime,
+          duration: playerState.media.duration,
+          volume: playerState.media.volume,
+          playbackRate: playerState.media.playbackRate
+        }
+      }
+    });
+
+    // 显示成功消息
+    console.log('错误报告已发送');
+  } catch (error) {
+    console.error('Failed to report error:', error);
+  }
+};
+
+const dismissError = () => {
+  clearError();
 };
 
 // 更新同步函数
@@ -1036,16 +1870,179 @@ const syncMedia = () => {
   }
 };
 
+// 新增的UI功能函数
+const skipForward = () => {
+  const newTime = Math.min(playerState.media.currentTime + 10, playerState.media.duration);
+  setVideoTime(newTime);
+};
+
+const skipBackward = () => {
+  const newTime = Math.max(playerState.media.currentTime - 10, 0);
+  setVideoTime(newTime);
+};
+
+const togglePlaybackRateMenu = () => {
+  playerState.ui.showPlaybackRateMenu = !playerState.ui.showPlaybackRateMenu;
+  playerState.ui.showSettingsMenu = false;
+};
+
+const setPlaybackRate = (rate) => {
+  playerState.media.playbackRate = rate;
+  if (videoPlayer.value) {
+    videoPlayer.value.playbackRate = rate;
+  }
+  if (audioPlayer.value) {
+    audioPlayer.value.playbackRate = rate;
+  }
+  playerState.ui.showPlaybackRateMenu = false;
+};
+
+const toggleSubtitles = () => {
+  playerState.media.subtitlesEnabled = !playerState.media.subtitlesEnabled;
+  // 这里可以添加字幕显示/隐藏逻辑
+};
+
+const toggleSettingsMenu = () => {
+  playerState.ui.showSettingsMenu = !playerState.ui.showSettingsMenu;
+  playerState.ui.showPlaybackRateMenu = false;
+};
+
+const togglePictureInPicture = async () => {
+  if (!supportsPiP.value) return;
+
+  try {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+      playerState.media.pictureInPicture = false;
+    } else {
+      await videoPlayer.value.requestPictureInPicture();
+      playerState.media.pictureInPicture = true;
+    }
+  } catch (error) {
+    console.error('Picture-in-Picture error:', error);
+  }
+};
+
+// 高级功能函数
+const setQuality = (quality) => {
+  playerState.media.currentQuality = quality;
+
+  if (hls.value) {
+    if (quality === 'auto') {
+      hls.value.currentLevel = -1; // 自动选择
+    } else {
+      // 根据质量标签找到对应的level
+      const levels = hls.value.levels;
+      const targetLevel = levels.findIndex(level =>
+        level.height === parseInt(quality) ||
+        level.name === quality
+      );
+      if (targetLevel !== -1) {
+        hls.value.currentLevel = targetLevel;
+      }
+    }
+  }
+
+  playerState.ui.showSettingsMenu = false;
+  console.debug('Quality changed to:', quality);
+};
+
+const setSubtitle = (subtitle) => {
+  playerState.media.currentSubtitle = subtitle;
+  playerState.media.subtitlesEnabled = !!subtitle;
+
+  // 这里可以添加字幕显示逻辑
+  if (subtitle) {
+    console.debug('Subtitle enabled:', subtitle.language);
+    // 加载字幕文件
+    loadSubtitle(subtitle);
+  } else {
+    console.debug('Subtitles disabled');
+    // 隐藏字幕
+    hideSubtitles();
+  }
+
+  playerState.ui.showSettingsMenu = false;
+};
+
+const loadSubtitle = async (subtitle) => {
+  try {
+    // 这里可以实现字幕加载逻辑
+    // 例如加载 WebVTT 文件
+    if (subtitle.url) {
+      const response = await fetch(subtitle.url);
+      const vttText = await response.text();
+
+      // 创建或更新字幕轨道
+      const track = videoPlayer.value.textTracks[0] ||
+        videoPlayer.value.addTextTrack('subtitles', subtitle.language, subtitle.language);
+
+      // 解析并添加字幕
+      parseVTT(vttText, track);
+      track.mode = 'showing';
+    }
+  } catch (error) {
+    console.error('Failed to load subtitle:', error);
+  }
+};
+
+const hideSubtitles = () => {
+  // 隐藏所有字幕轨道
+  for (let i = 0; i < videoPlayer.value.textTracks.length; i++) {
+    videoPlayer.value.textTracks[i].mode = 'hidden';
+  }
+};
+
+const parseVTT = (vttText, track) => {
+  // 简单的VTT解析器
+  const lines = vttText.split('\n');
+  let i = 0;
+
+  // 跳过头部
+  while (i < lines.length && !lines[i].includes('-->')) {
+    i++;
+  }
+
+  while (i < lines.length) {
+    const timeLine = lines[i];
+    if (timeLine.includes('-->')) {
+      const [start, end] = timeLine.split('-->').map(t => parseTimeCode(t.trim()));
+      i++;
+
+      let text = '';
+      while (i < lines.length && lines[i].trim() !== '') {
+        text += lines[i] + '\n';
+        i++;
+      }
+
+      if (text.trim()) {
+        const cue = new VTTCue(start, end, text.trim());
+        track.addCue(cue);
+      }
+    }
+    i++;
+  }
+};
+
+const parseTimeCode = (timeStr) => {
+  const parts = timeStr.split(':');
+  const seconds = parseFloat(parts.pop());
+  const minutes = parseInt(parts.pop() || 0);
+  const hours = parseInt(parts.pop() || 0);
+
+  return hours * 3600 + minutes * 60 + seconds;
+};
+
 // 添加处理函数，区分设备类型
-const handleVideoLayerClick = (e) => {
+const handleVideoLayerClick = () => {
   // 检测是否为触摸设备
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  
+
   // 触摸设备由touchend事件处理，不在这里处理
   if (isTouchDevice) {
     return;
   }
-  
+
   // PC端直接调用togglePlay
   togglePlay();
 };
@@ -1408,53 +2405,593 @@ const handleVideoLayerClick = (e) => {
   }
 }
 
+/* 改进的错误消息样式 */
 .error-message {
-  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
-    bg-black/80 text-white p-4 rounded flex flex-col items-center gap-2 z-50
-    text-center max-w-[80%];
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(28, 28, 28, 0.95);
+  backdrop-filter: blur(10px);
+  color: white;
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+  max-width: 90%;
+  min-width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.error-content {
+  padding: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
 .error-icon {
-  @apply text-red-500 text-3xl;
+  color: #ef4444;
+  font-size: 2rem;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.error-text {
+  flex: 1;
+}
+
+.error-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: white;
+}
+
+.error-description {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.error-suggestions {
+  margin-top: 1rem;
+}
+
+.suggestions-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.5rem;
+}
+
+.suggestions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.suggestions-list li {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0.25rem 0;
+  position: relative;
+  padding-left: 1rem;
+}
+
+.suggestions-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #3ea6ff;
+}
+
+.error-actions {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.retry-button,
+.report-button,
+.dismiss-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .retry-button {
-  @apply mt-2 px-4 py-2 bg-red-600 rounded flex items-center gap-2
-    hover:bg-red-700 transition-colors;
+  background: #3ea6ff;
+  color: white;
+}
+
+.retry-button:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.retry-button:disabled {
+  background: rgba(62, 166, 255, 0.5);
+  cursor: not-allowed;
+}
+
+.report-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.report-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dismiss-button {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dismiss-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* 键盘操作反馈样式 */
+.keyboard-feedback {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(28, 28, 28, 0.9);
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  z-index: 40;
+  animation: fadeInOut 1.5s ease-in-out;
+}
+
+.keyboard-icon {
+  font-size: 1rem;
+  color: #3ea6ff;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  20%, 80% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+}
+
+/* 键盘帮助覆盖层样式 */
+.keyboard-help-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.keyboard-help-modal {
+  background: rgba(28, 28, 28, 0.95);
+  border-radius: 1rem;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.keyboard-help-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.keyboard-help-header h3 {
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.close-help-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+}
+
+.close-help-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.keyboard-help-content {
+  padding: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.shortcut-section h4 {
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.shortcut-item kbd {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  min-width: fit-content;
+}
+
+.shortcut-item span {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+/* 响应式调整 */
+@media (max-width: 640px) {
+  .keyboard-help-overlay {
+    padding: 1rem;
+  }
+
+  .keyboard-help-content {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .shortcut-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .shortcut-item span {
+    text-align: left;
+  }
+}
+
+/* 新增UI元素样式 */
+.skip-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+.skip-btn {
+  padding: 0.375rem;
+}
+
+.play-btn {
+  padding: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.time-display {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 1rem;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.time-separator {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.current-time, .total-time {
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.playback-rate-control {
+  position: relative;
+}
+
+.playback-rate-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  min-width: 2rem;
+  text-align: center;
+}
+
+.playback-rate-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: rgba(28, 28, 28, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+}
+
+.rate-option {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  color: white;
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.875rem;
+}
+
+.rate-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.rate-option.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #3ea6ff;
+}
+
+/* 设置菜单样式 */
+.settings-control {
+  position: relative;
+}
+
+.settings-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: rgba(28, 28, 28, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.settings-section {
+  margin-bottom: 1rem;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-title {
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quality-options,
+.subtitle-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.quality-option,
+.subtitle-option {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  color: white;
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.875rem;
+}
+
+.quality-option:hover,
+.subtitle-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.quality-option.active,
+.subtitle-option.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #3ea6ff;
+}
+
+.setting-item {
+  margin-bottom: 0.5rem;
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+}
+
+.setting-label {
+  display: flex;
+  align-items: center;
+  color: white;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+
+.setting-checkbox {
+  margin-right: 0.5rem;
+  accent-color: #3ea6ff;
+}
+
+/* 章节标记样式 */
+.chapter-markers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.chapter-marker {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.6);
+  transform: translateX(-50%);
+}
+
+/* 预览悬停线 */
+.progress-bar-hover {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+/* 改进的提示框样式 */
+.preview-time-tooltip {
+  position: absolute;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 0.5rem;
+  z-index: 10;
+}
+
+.tooltip-content {
+  background: rgba(28, 28, 28, 0.9);
+  color: white;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.tooltip-arrow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid rgba(28, 28, 28, 0.9);
 }
 
 /* 响应式调整 */
 @media (max-width: 640px) {
   .controls-main {
-    @apply flex-nowrap justify-between w-full;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    width: 100%;
   }
-  
+
   .controls-right {
-    @apply mt-0 flex justify-end;
+    margin-top: 0;
+    display: flex;
+    justify-content: flex-end;
   }
-  
+
   .controls-left {
-    @apply flex justify-start;
+    display: flex;
+    justify-content: flex-start;
   }
-  
+
   /* 隐藏部分控件，简化移动端界面 */
-  .controls-left .volume-control {
-    @apply hidden;
+  .controls-left .volume-control,
+  .skip-controls,
+  .playback-rate-control {
+    display: none;
   }
-  
+
   /* 调整时间显示 */
   .time-display {
-    @apply text-xs whitespace-nowrap;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    margin-left: 0.5rem;
   }
-  
+
   /* 调整按钮大小 */
   .control-btn {
-    @apply mx-1;
+    margin: 0 0.125rem;
     padding: 0.25rem;
   }
-  
+
   .control-icon {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+  }
+
+  .play-btn {
+    margin-right: 0.25rem;
   }
 }
 
