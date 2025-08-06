@@ -8,11 +8,10 @@ from core import download_config
 from downloader.factory import DownloaderFactory
 from meta.factory import VideoFactory
 from models.user import User
-from proxy.bilibili import BilibiliProxy
-from proxy.javdb import JavdbProxy
-from proxy.pornhub import PornhubProxy
 from schemas.video import DownloadVideoRequest, SortBy
+from schemas.proxy import VideoProxyRequest
 from services import video_service, subscription_video_service, subscription_service
+from services.proxy_service import ProxyServiceFactory
 from utils.jwt_helper import get_current_user
 from handlers.video_url.base import UnsupportedDomainError, VideoUrlExtractionError
 
@@ -83,15 +82,28 @@ def play_video(request: Request, video_id: int):
 @router.get("/api/video/proxy")
 async def proxy_video(domain: str, url: str, request: Request):
     """代理视频文件，用于解决跨域问题"""
-    proxy_map = {
-        "bilibili.com": BilibiliProxy,
-        "javdb.com": JavdbProxy,
-        "pornhub.com": PornhubProxy
-    }
-    
-    proxy_class = proxy_map.get(domain)
-    if not proxy_class:
-        raise HTTPException(status_code=400, detail=f"Unsupported domain: {domain}")
-        
-    proxy = proxy_class(request)
-    return await proxy.handle_stream(url)
+    proxy_request = VideoProxyRequest(domain=domain, url=url)
+    proxy_service = ProxyServiceFactory.get_proxy_service()
+    return await proxy_service.handle_proxy_request(proxy_request, request)
+
+
+@router.get("/api/video/proxy/domains")
+def get_supported_domains():
+    """获取支持的代理域名列表"""
+    proxy_service = ProxyServiceFactory.get_proxy_service()
+    domains = proxy_service.get_supported_domains()
+    return response.success({
+        "domains": domains,
+        "count": len(domains)
+    })
+
+
+@router.get("/api/video/proxy/health")
+async def get_proxy_health():
+    """获取代理服务健康状态"""
+    proxy_service = ProxyServiceFactory.get_proxy_service()
+    health_status = await proxy_service.get_proxy_health_status()
+    return response.success({
+        "health_status": health_status,
+        "overall_healthy": all(health_status.values())
+    })
