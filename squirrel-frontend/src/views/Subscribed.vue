@@ -13,7 +13,11 @@
       </button>
     </div>
 
-    <div class="channel-container pt-4 flex-grow overflow-y-auto">
+    <div
+      ref="scrollContainer"
+      class="channel-container pt-4 flex-grow overflow-y-auto"
+      @scroll="handleScrollPosition"
+    >
       <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
         <!-- 频道列表 -->
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
@@ -123,8 +127,12 @@ import useCustomToast from '../composables/useToast';
 import AddChannelDialog from '../components/AddChannelDialog.vue';
 import Toast from '../components/Toast.vue';
 import {formatDate} from '../utils/dateFormat';
+import {useScrollPosition} from '../composables/useScrollPosition';
 
 const router = useRouter();
+
+// 滚动位置保持
+const { scrollContainer, handleScroll: handleScrollPosition, restoreScrollPosition } = useScrollPosition('subscribed-page');
 
 const subscriptions = ref([]);
 const loading = ref(false);
@@ -156,7 +164,7 @@ const setupIntersectionObserver = () => {
         }
       },
       {
-        root: document.querySelector('.channel-container'),
+        root: scrollContainer.value,
         rootMargin: '100px',
         threshold: 0
       }
@@ -196,6 +204,8 @@ const loadSubscriptions = async () => {
         if (loadingTrigger.value && observer.value) {
           observer.value.observe(loadingTrigger.value);
         }
+        // 数据加载完成后恢复滚动位置
+        restoreScrollPosition();
       });
     }
   } catch (error) {
@@ -213,7 +223,12 @@ const handleSearch = (query) => {
   subscriptions.value = [];
   currentPage.value = 1;
   allLoaded.value = false;
-  loadSubscriptions();
+  loadSubscriptions().then(() => {
+    // 搜索后恢复滚动位置
+    nextTick(() => {
+      restoreScrollPosition();
+    });
+  });
 };
 
 const loadMore = () => {
