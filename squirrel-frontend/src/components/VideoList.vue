@@ -5,10 +5,10 @@
         :items="props.videos"
         :item-size="computedItemSize"
         key-field="id"
-        :buffer="200"
+        :buffer="400"
         @scroll="handleScroll"
         :gridItems="computedGridItems"
-        :prerender="30"
+        :prerender="50"
         :item-secondary-size="computedItemSecondarySize"
         ref="virtualList"
     >
@@ -127,7 +127,9 @@ const computedItemSize = computed(() => {
 
 const handleScroll = (event) => {
   const {scrollTop, clientHeight, scrollHeight} = event.target;
-  if (scrollHeight - scrollTop - clientHeight < computedItemSize.value * computedGridItems.value && !props.loading && !props.allLoaded) {
+  // 增加预加载触发阈值，提前3行的高度开始加载，确保用户滚动时不需要等待
+  const triggerThreshold = computedItemSize.value * computedGridItems.value * 3;
+  if (scrollHeight - scrollTop - clientHeight < triggerThreshold && !props.loading && !props.allLoaded) {
     emit('loadMore');
   }
 };

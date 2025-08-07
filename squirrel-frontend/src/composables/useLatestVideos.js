@@ -77,7 +77,8 @@ export default function useLatestVideos() {
 
   const handleScroll = (event) => {
     const { scrollTop, clientHeight, scrollHeight } = event.target;
-    if (scrollHeight - (scrollTop + clientHeight) <= 300 && !loading.value && !allLoaded.value) {
+    // 增加预加载阈值，从300px增加到800px，让用户提前加载更多内容
+    if (scrollHeight - (scrollTop + clientHeight) <= 800 && !loading.value && !allLoaded.value) {
       loadMore();
     }
   };
