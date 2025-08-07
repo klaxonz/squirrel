@@ -1239,7 +1239,7 @@ const savePlaybackProgress = (currentTime) => {
         const shouldSendReport =
           Math.random() < 0.05 || // 5%概率发送
           (currentTime - lastSavedTime) >= 30 || // 或者超过30秒
-          Math.abs(currentTime - playerState.media.duration) < 10; // 或者接近结尾
+          isVideoNearEnd(currentTime, playerState.media.duration); // 或者接近结尾
 
         if (shouldSendReport) {
           await sendReport(props.video.id, currentTime, {
@@ -1257,6 +1257,29 @@ const savePlaybackProgress = (currentTime) => {
   }
 };
 
+// 判断视频是否接近结尾（已基本看完）
+const isVideoNearEnd = (lastPosition, duration) => {
+  if (!duration || duration <= 0 || !lastPosition || lastPosition <= 0) {
+    return false;
+  }
+
+  const progress = (lastPosition / duration) * 100;
+  const remainingTime = duration - lastPosition;
+
+  // 对于短视频（少于5分钟），85%就算看完
+  if (duration < 300) {
+    return progress >= 85;
+  }
+
+  // 对于中等长度视频（5-30分钟），90%或剩余时间少于2分钟就算看完
+  if (duration < 1800) {
+    return progress >= 90 || remainingTime < 120;
+  }
+
+  // 对于长视频（超过30分钟），95%或剩余时间少于3分钟就算看完
+  return progress >= 95 || remainingTime < 180;
+};
+
 // 恢复播放进度
 const restorePlaybackProgress = () => {
   // 首先检查本地缓存
@@ -1265,8 +1288,8 @@ const restorePlaybackProgress = () => {
   if (localHistory && localHistory.last_position > 0) {
     const { last_position, duration } = localHistory;
 
-    // 如果接近结尾（最后10秒），从头开始
-    if (duration && (duration - last_position) < 10) {
+    if (isVideoNearEnd(last_position, duration)) {
+      console.debug('Video near end, starting from beginning');
       return 0;
     }
 
@@ -1278,7 +1301,8 @@ const restorePlaybackProgress = () => {
   if (props.video?.last_position > 0) {
     const { last_position, total_duration } = props.video;
 
-    if (total_duration && (total_duration - last_position) < 10) {
+    if (isVideoNearEnd(last_position, total_duration)) {
+      console.debug('Video near end, starting from beginning');
       return 0;
     }
 
