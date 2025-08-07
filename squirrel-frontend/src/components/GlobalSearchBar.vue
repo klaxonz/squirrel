@@ -5,10 +5,11 @@
         <input
           v-model="searchQuery"
           @keyup.enter="handleSearch"
+          @keyup.esc="clearSearch"
           @input="handleInput"
           type="text"
           :placeholder="currentPlaceholder"
-          class="w-full h-10 pl-10 pr-4 text-sm bg-[#222222] border border-[#303030] rounded-full focus:outline-none focus:border-[#4a4a4c] text-white placeholder-gray-400"
+          class="w-full h-10 pl-10 pr-12 text-sm bg-[#222222] border border-[#303030] rounded-full focus:outline-none focus:border-[#4a4a4c] text-white placeholder-gray-400"
         >
         <button
           @click="handleSearch"
@@ -23,7 +24,8 @@
         <button
           v-if="searchQuery"
           @click="clearSearch"
-          class="absolute right-3 top-1/2 transform -translate-y-1/2 focus:outline-none hover:text-white text-gray-400"
+          title="清除搜索 (ESC)"
+          class="absolute right-3 top-1/2 transform -translate-y-1/2 focus:outline-none hover:text-white hover:bg-white/10 text-gray-400 rounded-full p-1 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -40,6 +42,23 @@ import { useRoute } from 'vue-router';
 
 const route = useRoute();
 const emitter = inject('emitter');
+
+// 为每个页面单独保存搜索状态
+const searchStates = ref({
+  'Subscribed': '',
+  'LatestVideos': '',
+  'AllVideos': '',
+  'UnreadVideos': '',
+  'ReadVideos': '',
+  'PreviewVideos': '',
+  'LikedVideos': '',
+  'SubscriptionDetail': '',
+  'SubscriptionAllVideos': '',
+  'Podcasts': '',
+  'History': '',
+  'Downloads': ''
+});
+
 const searchQuery = ref('');
 
 // 根据当前路由确定占位符文本
@@ -119,12 +138,33 @@ const handleInput = () => {
 // 清除搜索
 const clearSearch = () => {
   searchQuery.value = '';
+  // 立即触发搜索以显示全部结果
   handleSearch();
+
+  // 可选：给用户一个视觉反馈
+  const input = document.querySelector('.global-search-bar input');
+  if (input) {
+    input.focus();
+  }
 };
 
-// 监听路由变化，清除搜索内容
-watch(route, () => {
-  searchQuery.value = '';
+// 监听路由变化，恢复对应页面的搜索状态
+watch(route, (newRoute) => {
+  // 保存当前页面的搜索状态
+  const currentRouteName = newRoute.name;
+  if (currentRouteName && searchStates.value.hasOwnProperty(currentRouteName)) {
+    searchQuery.value = searchStates.value[currentRouteName];
+  } else {
+    searchQuery.value = '';
+  }
+}, { immediate: true });
+
+// 监听搜索内容变化，保存到对应页面状态
+watch(searchQuery, (newQuery) => {
+  const currentRouteName = route.name;
+  if (currentRouteName && searchStates.value.hasOwnProperty(currentRouteName)) {
+    searchStates.value[currentRouteName] = newQuery;
+  }
 });
 
 // 监听来自页面的搜索查询更新
