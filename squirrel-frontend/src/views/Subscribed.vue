@@ -1,15 +1,15 @@
 <template>
   <div class="subscribed-page flex flex-col h-full bg-[#0f0f0f] text-white">
     <!-- 顶部操作栏 - 只保留添加订阅按钮 -->
-    <div class="flex items-center justify-end pt-4 px-4">
+    <div class="flex items-center justify-end py-3 px-4">
       <button
-        class="h-9 px-6 min-w-[120px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap"
+        class="px-3 py-1.5 min-w-[100px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
         @click="showAddDialog = true"
       >
-        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" fill-rule="evenodd" />
         </svg>
-        <span class="ml-2 text-sm font-medium">添加订阅</span>
+        <span class="ml-1">添加订阅</span>
       </button>
     </div>
 

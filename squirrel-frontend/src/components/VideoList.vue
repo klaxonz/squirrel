@@ -1,5 +1,5 @@
 <template>
-  <div class="video-list-container relative" ref="containerRef">
+  <div class="video-list-container relative max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8" ref="containerRef">
     <VirtualList
         class="scroller"
         :items="props.videos"

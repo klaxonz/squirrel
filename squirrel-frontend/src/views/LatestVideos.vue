@@ -1,18 +1,20 @@
 <template>
   <div class="latest-videos flex flex-col h-full">
     <!-- 顶部操作栏 - TabBar 和 SortButton -->
-    <div class="flex items-center justify-between py-3 px-4">
+    <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between py-3">
       <TabBar
           v-model="activeTab"
           :tabs="tabsWithCounts"
           class="custom-tab-bar flex-grow"
           @tab-dblclick="handleTabDoubleClick"
       />
-      <SortButton
-          v-model="sortBy"
-          class="ml-2"
-          @update:modelValue="handleSortChange"
-      />
+        <SortButton
+            v-model="sortBy"
+            class="ml-2"
+            @update:modelValue="handleSortChange"
+        />
+      </div>
     </div>
 
     <div class="video-container flex-grow">
