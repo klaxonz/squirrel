@@ -13,6 +13,20 @@ router = APIRouter(prefix="/api/system/config", tags=["system-config"])
 _logger = logging.getLogger(__name__)
 
 
+def to_bool(val: Optional[str]) -> Optional[bool]:
+    """
+    将字符串值转换为布尔值
+    """
+    if val is None:
+        return None
+    s = str(val).strip().lower()
+    if s in ("true", "1", "yes", "y", "on"):
+        return True
+    if s in ("false", "0", "no", "n", "off"):
+        return False
+    return None
+
+
 def _apply_side_effects(new_enable_scheduler: Optional[bool], new_enable_worker: Optional[bool]) -> None:
     try:
         if new_enable_scheduler is not None:
@@ -33,14 +47,31 @@ def _apply_side_effects(new_enable_scheduler: Optional[bool], new_enable_worker:
         _logger.exception("[system-config] apply worker change failed")
 
 
+def _convert_config_types(config_dict: dict) -> dict:
+    """
+    将配置字典中的特定键转换为正确的数据类型
+    """
+    # 定义需要转换为布尔值的配置项
+    boolean_configs = {SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER}
+
+    result = {}
+    for key, value in config_dict.items():
+        if key in boolean_configs:
+            result[key] = to_bool(value)
+        else:
+            result[key] = value
+    return result
+
+
 @router.get("")
 def get_system_config():
     """
-    返回数据库中已有的所有系统配置（纯 KV，完全按照 DB 存储返回，不做硬编码和类型转换）。
+    返回数据库中已有的所有系统配置，并将特定配置项转换为正确的数据类型。
     """
     with get_session() as session:
         rows = session.query(SystemConfig).all()
-        return {row.key: row.value for row in rows}
+        config_dict = {row.key: row.value for row in rows}
+        return _convert_config_types(config_dict)
 
 
 @router.post("")
@@ -54,16 +85,6 @@ async def update_system_config(payload: dict = Body(...)):
     for k, v in payload.items():
         set_value(k, str(v))
 
-    def to_bool(val: Optional[str]) -> Optional[bool]:
-        if val is None:
-            return None
-        s = str(val).strip().lower()
-        if s in ("true", "1", "yes", "y", "on"):
-            return True
-        if s in ("false", "0", "no", "n", "off"):
-            return False
-        return None
-
     _apply_side_effects(
         to_bool(str(payload.get(SYS_ENABLE_SCHEDULER))) if SYS_ENABLE_SCHEDULER in payload else None,
         to_bool(str(payload.get(SYS_ENABLE_WORKER))) if SYS_ENABLE_WORKER in payload else None,
@@ -71,4 +92,5 @@ async def update_system_config(payload: dict = Body(...)):
 
     with get_session() as session:
         rows = session.query(SystemConfig).all()
-        return {row.key: row.value for row in rows}
+        config_dict = {row.key: row.value for row in rows}
+        return _convert_config_types(config_dict)

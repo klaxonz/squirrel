@@ -31,7 +31,7 @@
         <label class="switch">
           <input
             type="checkbox"
-            :checked="(systemConfig && systemConfig.enable_scheduler === 'true') || systemConfig?.enable_scheduler === true"
+            :checked="systemConfig?.enable_scheduler"
             :disabled="systemLoading || systemSaving"
             @change="onSystemToggle('enable_scheduler', $event.target.checked)"
           >
@@ -47,7 +47,7 @@
         <label class="switch">
           <input
             type="checkbox"
-            :checked="(systemConfig && systemConfig.enable_worker === 'true') || systemConfig?.enable_worker === true"
+            :checked="systemConfig?.enable_worker"
             :disabled="systemLoading || systemSaving"
             @change="onSystemToggle('enable_worker', $event.target.checked)"
           >
