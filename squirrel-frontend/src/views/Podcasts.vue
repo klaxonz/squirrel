@@ -1,15 +1,8 @@
 <template>
   <div class="podcasts-page flex flex-col sm:flex-row h-full bg-[#0f0f0f] text-white">
-    <!-- 移动端顶部搜索栏 -->
+    <!-- 移动端顶部操作栏 -->
     <div class="sm:hidden p-4 border-b border-[#272727]">
-      <div class="flex items-center gap-4">
-        <div class="flex-1">
-          <SearchBar 
-            @search="handleSearch" 
-            ref="searchBar"
-            placeholder="搜索播客..."
-          />
-        </div>
+      <div class="flex items-center justify-end">
         <button
           @click="showAddDialog = true"
           class="p-2 text-[#aaaaaa] hover:text-white flex-shrink-0"
@@ -44,14 +37,7 @@
         </div>
       </nav>
 
-      <!-- 桌面端搜索栏 -->
-      <div class="hidden sm:block p-4 border-t border-b border-[#272727]">
-        <SearchBar 
-          @search="handleSearch" 
-          ref="searchBar"
-          placeholder="搜索播客..."
-        />
-      </div>
+
 
       <!-- 添加按钮 - 在桌面端显示 -->
       <div class="hidden sm:block p-4 border-t border-[#272727]">
@@ -135,8 +121,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, defineComponent, markRaw, inject } from 'vue';
-import SearchBar from '../components/SearchBar.vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, defineComponent, markRaw, inject } from 'vue';
 import PodcastCard from '../components/PodcastCard.vue';
 import AddPodcastDialog from '../components/AddPodcastDialog.vue';
 import PodcastDrawer from '../components/PodcastDrawer.vue';
@@ -147,7 +132,7 @@ import GridIcon from '../components/icons/GridIcon.vue';
 import PlayingIcon from '../components/icons/PlayingIcon.vue';
 import ClockIcon from '../components/icons/ClockIcon.vue';
 
-const searchBar = ref(null);
+const emitter = inject('emitter');
 const currentPodcast = inject('currentPodcast');
 const currentEpisode = inject('currentEpisode');
 const isPlaying = inject('isPlaying');
@@ -179,7 +164,8 @@ const recentlyUpdated = computed(() => {
     .slice(0, 6);
 });
 
-const handleSearch = (keyword) => {
+// 处理全局搜索事件
+const handleGlobalSearch = (keyword) => {
   searchQuery.value = keyword;
   resetPodcasts();
   fetchPodcasts(keyword);
@@ -242,6 +228,14 @@ const formatDate = (date) => {
 onMounted(async () => {
   fetchPodcasts();
   listening.value = await fetchListening();
+
+  // 监听全局搜索事件
+  emitter.on('search:podcasts', handleGlobalSearch);
+});
+
+onUnmounted(() => {
+  // 移除全局搜索事件监听
+  emitter.off('search:podcasts', handleGlobalSearch);
 });
 
 // 导航项定义

@@ -5,11 +5,15 @@
   <div v-else class="flex h-screen overflow-hidden">
     <!-- Sidebar for desktop -->
     <Sidebar v-if="!isMobile" :routes="sidebarRoutes" />
-    
+
     <!-- Main content area -->
-    <main class="flex-1 relative">
-      <div class="page-container absolute inset-0">
-        <div class="content-container scrollbar-hide">
+    <main class="flex-1 relative flex flex-col">
+      <!-- 全局搜索框 -->
+      <GlobalSearchBar v-if="showGlobalSearch" ref="globalSearchBar" />
+
+      <!-- 页面内容容器 -->
+      <div class="page-container flex-1 relative">
+        <div class="content-container absolute inset-0 scrollbar-hide">
           <router-view v-slot="{ Component }">
             <keep-alive :include="['LatestVideos', 'Subscribed']">
               <component :is="Component" />
@@ -43,6 +47,7 @@ import mitt from 'mitt';
 import MobileNav from './components/MobileNav.vue';
 import Sidebar from './components/Sidebar.vue';
 import PodcastPlayer from './components/PodcastPlayer.vue';
+import GlobalSearchBar from './components/GlobalSearchBar.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 import { isMobile } from "./composables/useMobile.js";
 import { useRoute } from 'vue-router';
@@ -57,6 +62,14 @@ provide('emitter', emitter);
 const isAuthPage = computed(() => {
   return ['/login', '/register'].includes(route.path);
 });
+
+// 控制全局搜索框显示
+const showGlobalSearch = computed(() => {
+  // 在认证页面和设置页面不显示搜索框
+  return !isAuthPage.value && !route.path.startsWith('/settings') && !route.path.startsWith('/video/');
+});
+
+const globalSearchBar = ref(null);
 
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },

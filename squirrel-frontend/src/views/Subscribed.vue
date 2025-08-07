@@ -1,9 +1,9 @@
 <template>
   <div class="subscribed-page flex flex-col h-full bg-[#0f0f0f] text-white">
-    <div class="flex items-center pt-4 px-4">
-      <SearchBar ref="searchBar" class="flex-grow" @search="handleSearch"/>
-      <button 
-        class="ml-4 h-9 px-6 min-w-[120px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap"
+    <!-- 顶部操作栏 - 只保留添加订阅按钮 -->
+    <div class="flex items-center justify-end pt-4 px-4">
+      <button
+        class="h-9 px-6 min-w-[120px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap"
         @click="showAddDialog = true"
       >
         <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
@@ -118,9 +118,8 @@
 </template>
 
 <script setup>
-import {nextTick, onMounted, onUnmounted, ref, watch} from 'vue';
+import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';
 import axios from '../utils/axios';
-import SearchBar from '../components/SearchBar.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
 import useCustomToast from '../composables/useToast';
@@ -130,6 +129,7 @@ import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
 
 const router = useRouter();
+const emitter = inject('emitter');
 
 // 滚动位置保持
 const { scrollContainer, handleScroll: handleScrollPosition, restoreScrollPosition } = useScrollPosition('subscribed-page');
@@ -139,7 +139,6 @@ const loading = ref(false);
 const allLoaded = ref(false);
 const currentPage = ref(1);
 const searchQuery = ref('');
-const searchBar = ref(null);
 
 const showSettings = ref(false);
 const selectedSubscription = ref(null);
@@ -215,7 +214,8 @@ const loadSubscriptions = async () => {
   }
 };
 
-const handleSearch = (query) => {
+// 处理全局搜索事件
+const handleGlobalSearch = (query) => {
   if (observer.value && loadingTrigger.value) {
     observer.value.unobserve(loadingTrigger.value);
   }
@@ -319,6 +319,9 @@ onMounted(async () => {
   nextTick(() => {
     setupIntersectionObserver();
   });
+
+  // 监听全局搜索事件
+  emitter.on('search:subscribed', handleGlobalSearch);
 });
 
 // 添加监听器以在内容变化时重新设置observer
@@ -335,6 +338,9 @@ onUnmounted(() => {
   if (observer.value) {
     observer.value.disconnect();
   }
+
+  // 移除全局搜索事件监听
+  emitter.off('search:subscribed', handleGlobalSearch);
 });
 </script>
 

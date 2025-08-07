@@ -161,12 +161,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick, inject } from 'vue';
 import axios from '../utils/axios';
-import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
 import { createApp } from 'vue';
 import Toast from '../components/Toast.vue';
+
+const emitter = inject('emitter');
 
 const tasks = ref([]);
 const page = ref(1);
@@ -271,6 +272,9 @@ onMounted(() => {
   fetchTasks();
   setupEventSource();
   setupNewTaskEventSource();
+
+  // 监听全局搜索事件
+  emitter.on('search:downloads', handleGlobalSearch);
 });
 
 onUnmounted(() => {
@@ -280,6 +284,9 @@ onUnmounted(() => {
   if (newTaskEventSource.value) {
     newTaskEventSource.value.close();
   }
+
+  // 移除全局搜索事件监听
+  emitter.off('search:downloads', handleGlobalSearch);
 });
 
 const fetchTasks = async () => {
@@ -437,9 +444,11 @@ const getStatusText = (task) => {
   return statusMap[task.status] || task.status;
 };
 
-const handleSearch = (query) => {
+// 处理全局搜索事件
+const handleGlobalSearch = (query) => {
   console.log('Search query:', query);
   // 实现搜索逻辑
+  // TODO: 根据查询过滤任务列表
 };
 
 watch(activeTab, (newTab) => {

@@ -1,16 +1,16 @@
 <template>
   <div class="latest-videos flex flex-col h-full">
-    <SearchBar ref="searchBar" class="pt-4 px-4" @search="handleSearch"/>
-    <div class="flex items-center justify-between py-1">
+    <!-- 顶部操作栏 - TabBar 和 SortButton -->
+    <div class="flex items-center justify-between py-3 px-4">
       <TabBar
           v-model="activeTab"
           :tabs="tabsWithCounts"
-          class="custom-tab-bar flex-grow pl-4"
+          class="custom-tab-bar flex-grow"
           @tab-dblclick="handleTabDoubleClick"
       />
       <SortButton
           v-model="sortBy"
-          class="ml-2 pr-4"
+          class="ml-2"
           @update:modelValue="handleSortChange"
       />
     </div>
@@ -42,7 +42,6 @@
 import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
-import SearchBar from '../components/SearchBar.vue';
 import TabBar from '../components/TabBar.vue';
 import SortButton from '../components/SortButton.vue';
 
@@ -94,11 +93,12 @@ const updateCounts = (counts) => {
   tabsWithCounts.value = counts;
 };
 
-const handleSearch = (keyword) => {
+// 处理全局搜索事件
+const handleGlobalSearch = (keyword) => {
   searchQuery.value = keyword;
 };
 
-const handleOpenModal = (video, playlist) => {
+const handleOpenModal = (video) => {
   router.push(`/video/${video.id}`);
 };
 
@@ -126,10 +126,14 @@ onMounted(() => {
       videoContainer.value.dispatchEvent(new Event('resize'));
     }
   });
+
+  // 监听全局搜索事件
+  emitter.on('search:home', handleGlobalSearch);
 });
 
 onUnmounted(() => {
   emitter.off('sidebarStateChanged');
+  emitter.off('search:home', handleGlobalSearch);
 });
 </script>
 
