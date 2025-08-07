@@ -94,7 +94,6 @@ onMounted(async () => {
     }
   } catch (error) {
     console.error('获取用户设置失败:', error);
-    toast.error('加载用户设置失败');
   }
 
   // 加载系统配置
@@ -102,7 +101,6 @@ onMounted(async () => {
     await loadSystemConfig();
   } catch (error) {
     console.error('获取系统配置失败:', error);
-    toast.error('加载系统配置失败');
   }
 });
 
@@ -129,7 +127,7 @@ const onSystemToggle = async (key, val) => {
   systemSaving.value = true;
   try {
     await updateSystemConfig({ [key]: val });
-    toast.success('系统配置已应用');
+    // 系统配置是即时生效的，不需要成功提示
   } catch (e) {
     console.error('系统配置操作失败:', e);
     toast.error('系统配置操作失败');
