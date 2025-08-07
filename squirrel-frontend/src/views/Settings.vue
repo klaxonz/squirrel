@@ -1,8 +1,10 @@
 <template>
   <div class="settings-container bg-[#0f0f0f] text-white min-h-screen p-4 md:p-8">
-    <h1 class="text-2xl font-bold mb-6">内容偏好设置</h1>
-    
+    <h1 class="text-2xl font-bold mb-6">设置</h1>
+
+    <!-- 用户偏好设置 -->
     <div class="settings-section mb-8">
+      <h2 class="text-lg font-semibold mb-4 text-gray-300">内容偏好</h2>
       <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
         <div>
           <h3 class="font-medium">{{ getLabel('showNsfw') }}</h3>
@@ -13,11 +15,46 @@
           <span class="slider"></span>
         </label>
       </div>
+      <button @click="saveSettings" class="save-button bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-4">
+        保存用户设置
+      </button>
     </div>
 
-    <button @click="saveSettings" class="save-button bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-      保存设置
-    </button>
+    <!-- 系统配置 -->
+    <div class="settings-section mb-8">
+      <h2 class="text-lg font-semibold mb-4 text-gray-300">系统配置</h2>
+      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+        <div>
+          <h3 class="font-medium">启用调度器（Scheduler）</h3>
+          <p class="text-sm text-gray-400">按计划任务周期性执行订阅同步、重试等任务</p>
+        </div>
+        <label class="switch">
+          <input
+            type="checkbox"
+            :checked="(systemConfig && systemConfig.enable_scheduler === 'true') || systemConfig?.enable_scheduler === true"
+            :disabled="systemLoading || systemSaving"
+            @change="onSystemToggle('enable_scheduler', $event.target.checked)"
+          >
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+        <div>
+          <h3 class="font-medium">启用 Worker（队列消费）</h3>
+          <p class="text-sm text-gray-400">开启后启动 Dramatiq Worker 进行队列消费</p>
+        </div>
+        <label class="switch">
+          <input
+            type="checkbox"
+            :checked="(systemConfig && systemConfig.enable_worker === 'true') || systemConfig?.enable_worker === true"
+            :disabled="systemLoading || systemSaving"
+            @change="onSystemToggle('enable_worker', $event.target.checked)"
+          >
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -25,12 +62,18 @@
 import { ref, onMounted } from 'vue';
 import axios from '../utils/axios';
 import { useToast } from 'vue-toastification';
+import { useSystemConfig } from '../composables/useSystemConfig';
 
 const toast = useToast();
 
+// 用户设置
 const settings = ref({
   showNsfw: false
 });
+
+// 系统配置
+const { config: systemConfig, loading: systemLoading, loadSystemConfig, updateSystemConfig } = useSystemConfig();
+const systemSaving = ref(false);
 
 const getLabel = (key) => {
   const labels = {
@@ -40,6 +83,7 @@ const getLabel = (key) => {
 };
 
 onMounted(async () => {
+  // 加载用户设置
   try {
     const response = await axios.get('/api/users/me/config');
     if (response.data.code === 0) {
@@ -49,8 +93,16 @@ onMounted(async () => {
       };
     }
   } catch (error) {
-    console.error('获取设置失败:', error);
-    toast.error('加载设置失败');
+    console.error('获取用户设置失败:', error);
+    toast.error('加载用户设置失败');
+  }
+
+  // 加载系统配置
+  try {
+    await loadSystemConfig();
+  } catch (error) {
+    console.error('获取系统配置失败:', error);
+    toast.error('加载系统配置失败');
   }
 });
 
@@ -60,16 +112,29 @@ const saveSettings = async () => {
       settings: settings.value,
       merge: false
     });
-    
+
     if (response.data.code === 0) {
-      toast.success('设置保存成功');
+      toast.success('用户设置保存成功');
       settings.value = response.data.data;
     } else {
-      throw new Error(response.data.msg || '保存设置失败');
+      throw new Error(response.data.msg || '保存用户设置失败');
     }
   } catch (error) {
-    console.error('保存设置失败:', error);
-    toast.error('保存设置失败: ' + (error.message || '未知错误'));
+    console.error('保存用户设置失败:', error);
+    toast.error('保存用户设置失败: ' + (error.message || '未知错误'));
+  }
+};
+
+const onSystemToggle = async (key, val) => {
+  systemSaving.value = true;
+  try {
+    await updateSystemConfig({ [key]: val });
+    toast.success('系统配置已应用');
+  } catch (e) {
+    console.error('系统配置操作失败:', e);
+    toast.error('系统配置操作失败');
+  } finally {
+    systemSaving.value = false;
   }
 };
 </script>
