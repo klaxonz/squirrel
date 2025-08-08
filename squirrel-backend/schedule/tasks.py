@@ -140,108 +140,38 @@ class ChangeStatusTask(BaseTask):
 
 @TaskRegistry.register(interval=30, unit='minutes')
 class AutoUpdateChannelVideo(BaseTask):
-    _thread_pools = None
-    _subscription_locks = threading.Lock()  # Use a lock for the lock dictionary
-    _subscription_locks_map = {}
-
-    @classmethod
-    def initialize_pools(cls):
-        if cls._thread_pools is None:
-            cls._thread_pools = {
-                'bilibili': ThreadPoolExecutor(max_workers=1, thread_name_prefix='bilibili'),
-                'pornhub': ThreadPoolExecutor(max_workers=1, thread_name_prefix='pornhub'),
-                'youtube': ThreadPoolExecutor(max_workers=1, thread_name_prefix='youtube'),
-                'javdb': ThreadPoolExecutor(max_workers=1, thread_name_prefix='javdb')
-            }
-
-    @classmethod
-    def get_pool(cls, url):
-        if cls._thread_pools is None:
-            cls.initialize_pools()
-
-        if 'bilibili' in url:
-            return cls._thread_pools['bilibili']
-        elif 'pornhub' in url:
-            return cls._thread_pools['pornhub']
-        elif 'youtube' in url:
-            return cls._thread_pools['youtube']
-        elif 'javdb' in url:
-            return cls._thread_pools['javdb']
-        return None
+    """
+    Refactored: scheduler now only scans subscriptions and enqueues update messages.
+    Concurrency and locking are handled by the update consumer.
+    """
 
     @classmethod
     def run(cls):
-        cls.initialize_pools()
-
-        # First get current subscriptions
-        with get_session() as session:
-            subscriptions = session.scalars(
-                select(Subscription).where(Subscription.is_deleted == False).order_by(Subscription.id.desc())
-            ).all()
-            subscription_ids = [sub.id for sub in subscriptions]
-
-        # Submit tasks for current subscriptions
-        for sub_id in subscription_ids:
-            try:
-                subscription = subscription_service.get_subscription_detail(sub_id)
-                pool = cls.get_pool(subscription.url)
-                if pool:
-                    pool.submit(cls.update_subscription_video, subscription)
-            except Exception as e:
-                logger.error(f"An unexpected error occurred: {e}", exc_info=True)
-
-    @classmethod
-    def update_subscription_video(cls, subscription: SubscriptionDto):
-        lock_acquired = False
         try:
-            with cls._subscription_locks:
-                if subscription.id not in cls._subscription_locks_map:
-                    cls._subscription_locks_map[subscription.id] = threading.Lock()
-                lock = cls._subscription_locks_map[subscription.id]
-            
-            lock_acquired = lock.acquire(blocking=False)
-            if not lock_acquired:
-                logger.info(f"Update already in progress for subscription {subscription.id}")
-                return
-            
-            subscribe_channel = SubscriptionFactory.create_subscription(subscription.url)
-            if subscription.total_videos == 0:
-                is_extract_all = True
-            elif subscription.total_videos - subscription.total_extract <= settings.CHANNEL_UPDATE_DEFAULT_SIZE:
-                is_extract_all = False
-            else:
-                is_extract_all = True
-            video_list = subscribe_channel.get_subscribe_videos(extract_all=is_extract_all)
-            if is_extract_all:
-                with get_session() as session:
-                    session.query(Subscription).filter(Subscription.id == subscription.id).update({
-                        Subscription.total_videos: len(video_list)
-                    })
-                    session.commit()
-            extract_video_list = video_list if is_extract_all else video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
-            for video in extract_video_list:
-                params = VideoExtractDto(
-                    url=video,
-                    subscribed=True,
-                    only_extract=True,
-                    subscription_id=subscription.id
-                )
-                download_service.start(params)
-        except Exception as e:
-            logger.error(f"Error processing subscription {subscription.id}: {e}", exc_info=True)
-        finally:
-            if lock_acquired:
+            with get_session() as session:
+                subscriptions = session.scalars(
+                    select(Subscription).where(Subscription.is_deleted == False).order_by(Subscription.id.desc())
+                ).all()
+
+            from services import message_service
+            from consumer import update_subscription_task
+            for sub in subscriptions:
                 try:
-                    lock.release()
-                except RuntimeError:
-                    logger.warning(f"Attempted to release an unlocked lock for subscription {subscription.id}")
-            
-            with cls._subscription_locks:
-                cls._subscription_locks_map.pop(subscription.id, None)
+                    sub_detail = subscription_service.get_subscription_detail(sub.id)
+                    content = {
+                        "subscription_id": sub_detail.id,
+                        "url": sub_detail.url,
+                        "total_videos": sub_detail.total_videos,
+                        "total_extract": sub_detail.total_extract,
+                        "is_nsfw": sub_detail.is_nsfw,
+                    }
+                    message = message_service.create_message(content)
+                    update_subscription_task.process_subscription_update.send(message.to_dict())
+                except Exception as e:
+                    logger.error(f"Failed to enqueue update for subscription {sub.id}: {e}", exc_info=True)
+        except Exception as e:
+            logger.error(f"AutoUpdateChannelVideo.run unexpected error: {e}", exc_info=True)
 
     @classmethod
     def shutdown(cls):
-        if cls._thread_pools:
-            for pool in cls._thread_pools.values():
-                pool.shutdown(wait=True)
-            cls._thread_pools = None
+        pass

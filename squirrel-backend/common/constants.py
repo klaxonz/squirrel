@@ -5,6 +5,8 @@ QUEUE_VIDEO_EXTRACT = 'video_extract_queue'
 QUEUE_VIDEO_EXTRACT_SCHEDULED = 'video_extract_scheduled_queue'
 QUEUE_SUBSCRIBE = 'video_subscribe_queue'
 QUEUE_VIDEO_PROGRESS = 'video_progress_queue'
+# New: subscription update queue
+QUEUE_SUBSCRIPTION_UPDATE = 'subscription_update_queue'
 
 # Redis keys
 REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS = 'video:download:progress'
@@ -37,6 +39,7 @@ def get_all_queues():
         QUEUE_VIDEO_EXTRACT_SCHEDULED,
         QUEUE_SUBSCRIBE,
         QUEUE_VIDEO_PROGRESS,
+        QUEUE_SUBSCRIPTION_UPDATE,
     ]
 
     site_queues = []
