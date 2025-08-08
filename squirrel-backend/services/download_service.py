@@ -14,6 +14,7 @@ client = RedisClient.get_instance().client
 def __check_video_exists(url: str) -> bool:
     if video_service.get_video_by_url(url):
         return True
+    return False
 
 
 def __check_video_extracting(url: str):
@@ -23,7 +24,7 @@ def __check_video_extracting(url: str):
 
 def __check_subscription_exist(subscription_id: int):
     subscription = subscription_service.get_subscription_by_id(subscription_id)
-    return subscription.is_deleted is False
+    return subscription is not None and subscription.is_deleted is False
 
 
 def start(params: VideoExtractDto):
