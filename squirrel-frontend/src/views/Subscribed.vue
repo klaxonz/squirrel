@@ -88,10 +88,11 @@
             <span class="text-white">标记为敏感内容</span>
             <ToggleSwitch v-model="selectedSubscription.is_nsfw" @update:modelValue="updateNsfwStatus"/>
           </div>
-          <button class="w-full py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] transition-colors duration-200 text-sm"
+                  <button class="w-full py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] transition-colors duration-200 text-sm"
                   @click="unsubscribe(selectedSubscription.id)">
             取消订阅
           </button>
+          <p v-if="unsubscribeError" class="mt-2 text-xs text-red-400">{{ unsubscribeError }}</p>
         </div>
         <button class="mt-6 w-full py-2 bg-[#606060] text-white rounded-lg hover:bg-[#808080] transition-colors duration-200 text-sm font-medium"
                 @click="closeSettings">
@@ -107,13 +108,7 @@
       @close="showAddDialog = false"
     />
 
-    <!-- Toast 提示 -->
-    <Toast 
-      v-if="toast.show"
-      :duration="3000"
-      :message="toast.message"
-      :type="toast.type"
-    />
+
   </div>
 </template>
 
@@ -124,7 +119,7 @@ import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
 import useCustomToast from '../composables/useToast';
 import AddChannelDialog from '../components/AddChannelDialog.vue';
-import Toast from '../components/Toast.vue';
+
 import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
 
@@ -146,14 +141,11 @@ const selectedSubscription = ref(null);
 const observer = ref(null);
 const loadingTrigger = ref(null);
 
-const { displayToast, confirm } = useCustomToast();
+const { confirm } = useCustomToast();
 
 const showAddDialog = ref(false);
-const toast = ref({
-  show: false,
-  message: '',
-  type: 'success'
-});
+const unsubscribeError = ref('');
+
 
 const setupIntersectionObserver = () => {
   observer.value = new IntersectionObserver(
@@ -243,24 +235,25 @@ const openSettings = (subscription) => {
 const closeSettings = () => {
   showSettings.value = false;
   selectedSubscription.value = null;
+  unsubscribeError.value = '';
 };
 
 const unsubscribe = async (subscriptionId) => {
   const confirmed = await confirm('确定要取消订阅这个频道吗？这将删除所有相关的视频记录。');
   
   if (confirmed) {
+    unsubscribeError.value = '';
     try {
       const response = await axios.post('/api/subscription/unsubscribe', {subscription_id: subscriptionId});
       if (response.data.code === 0) {
         subscriptions.value = subscriptions.value.filter(subscription => subscription.id !== subscriptionId);
-        displayToast('频道已成功取消订阅');
         closeSettings();
       } else {
         throw new Error(response.data.msg || '取消订阅失败');
       }
     } catch (error) {
       console.error('取消订阅失败:', error);
-      displayToast(error.message || '取消订阅失败', { type: 'error' });
+      unsubscribeError.value = error.message || '取消订阅失败';
     }
   }
 };
@@ -269,25 +262,13 @@ const getSubscriptionVideos = (subscriptionId) => {
   router.push(`/subscription/${subscriptionId}/all`);
 }
 
-const showToast = (message, type = 'success') => {
-  toast.value = {
-    show: true,
-    message,
-    type
-  };
-  
-  // 3秒后隐藏
-  setTimeout(() => {
-    toast.value.show = false;
-  }, 3000);
-};
+
 
 const handleImageError = (event) => {
   event.target.src = '/squirrel-icon.svg';
 };
 
 const handleChannelAdded = () => {
-  showToast('频道添加成功');
   subscriptions.value = [];
   currentPage.value = 1;
   allLoaded.value = false;
