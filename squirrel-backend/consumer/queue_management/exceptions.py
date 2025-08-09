@@ -169,8 +169,6 @@ class ConfigurationError(QueueManagementError):
         self.expected_type = expected_type
 
 
-# 异常处理工具函数
-
 def handle_queue_error(func):
     """队列操作错误处理装饰器
     

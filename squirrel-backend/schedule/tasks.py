@@ -1,25 +1,19 @@
 import json
 import logging
-import threading
-from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import List, Type
-
 from PyCookieCloud import PyCookieCloud
 from sqlalchemy import select, or_, and_
-
 from common import constants
+from consumer.queue_management.manager import QueueManager
 from core import config
 from core.config import settings
 from core.database import get_session
-from dto.subscription_dto import SubscriptionDto
-from dto.video_dto import VideoExtractDto
 from models.links import SubscriptionVideo
 from models.subscription import Subscription
 from models.task.download_task import DownloadTask
 from models.task.task_state import TaskState
-from services import download_service, subscription_service
-from subscribe.factory import SubscriptionFactory
+from services import subscription_service
 from utils.cookie import json_cookie_to_netscape
 
 logger = logging.getLogger()
@@ -157,7 +151,7 @@ class AutoUpdateChannelVideo(BaseTask):
             from services import message_service
             for sub in subscriptions:
                 try:
-                    sub_detail = subscription_service.get_subscription_detail(sub.id)
+                    sub_detail = subscription_service.get_subscription_by_id(sub.id)
                     content = {
                         "subscription_id": getattr(sub_detail, 'id', sub.id),
                         "url": getattr(sub_detail, 'url', ''),
@@ -166,8 +160,6 @@ class AutoUpdateChannelVideo(BaseTask):
                         "is_nsfw": getattr(sub_detail, 'is_nsfw', False),
                     }
                     message = message_service.create_message(content)
-                    # 使用新的队列管理系统发送消息
-                    from consumer.queue_management.manager import QueueManager
                     QueueManager.send_message(constants.QUEUE_SUBSCRIPTION_UPDATE, message.to_dict())
                 except Exception as e:
                     logger.error(f"Failed to enqueue update for subscription {sub.id}: {e}", exc_info=True)
