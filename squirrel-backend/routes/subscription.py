@@ -1,10 +1,13 @@
 import json
+from datetime import datetime
 
 from fastapi import APIRouter, Query, Depends
 from sqlalchemy import select
+from typing import Dict, Any, cast
 
 import common.response as response
 from core.database import get_session
+from core.cache import RedisClient
 from models.links import UserSubscription
 from models.message import Message
 from models.subscription import Subscription
@@ -14,12 +17,13 @@ from schemas.subscription import (
     UnsubscribeRequest,
     ToggleStatusRequest
 )
-from services import subscription_service
+from services import subscription_service, message_service
 from utils.jwt_helper import get_current_user
 from consumer.queue_management.manager import QueueManager
 from common import constants
 
 router = APIRouter(tags=['订阅接口'])
+client = RedisClient.get_instance().get_client()
 
 
 @router.post("/api/subscription/subscribe")
@@ -50,7 +54,7 @@ def unsubscribe_content(req: UnsubscribeRequest, current_user: User = Depends(ge
         subscription = session.scalars(
             select(Subscription).where(subscription_filter)
         ).first()
-        
+
         if subscription:
             user_subscription = session.scalars(
                 select(UserSubscription).where(
@@ -58,16 +62,16 @@ def unsubscribe_content(req: UnsubscribeRequest, current_user: User = Depends(ge
                     UserSubscription.subscription_id == subscription.id
                 )
             ).first()
-            
+
             if user_subscription:
                 user_subscription.is_deleted = True
                 session.commit()
-                
+
         return response.success()
 
 
 @router.get("/api/subscription/status")
-def subscribe_content(
+def get_subscription_status(
         url: str = Query(None),
         current_user: User = Depends(get_current_user)
 ):
@@ -105,6 +109,92 @@ def list_subscriptions(
     })
 
 
+@router.post("/api/subscription/{subscription_id}/refresh")
+def refresh_subscription(subscription_id: int, current_user: User = Depends(get_current_user)):
+    with get_session() as session:
+        subscription = session.get(Subscription, subscription_id)
+        if not subscription or subscription.is_deleted:
+            return response.not_found("订阅不存在")
+        user_subscription = session.scalars(
+            select(UserSubscription).where(
+                UserSubscription.user_id == current_user.id,
+                UserSubscription.subscription_id == subscription_id,
+                UserSubscription.is_deleted.is_(False)
+            )
+        ).first()
+        if not user_subscription:
+            return response.forbidden("无权操作该订阅")
+
+    # 若当前正在更新中，直接返回 in_progress（基于进度键）
+    progress_key = f"{constants.REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX}{subscription_id}"
+    status = client.hget(progress_key, "status")
+    if status == "in_progress":
+        return response.success({
+            "status": "in_progress",
+            "inProgress": True
+        })
+
+    # 组装消息体，使用 DB 最新数据
+    sub_detail = subscription_service.get_subscription_detail(subscription_id)
+    if not sub_detail:
+        return response.not_found("订阅不存在")
+
+    content = {
+        "subscription_id": getattr(sub_detail, 'id', subscription_id),
+        "url": getattr(sub_detail, 'url', ''),
+        "total_videos": getattr(sub_detail, 'total_videos', 0),
+        "total_extract": getattr(sub_detail, 'total_extract', 0),
+        "is_nsfw": getattr(sub_detail, 'is_nsfw', False),
+    }
+    message = message_service.create_message(content)
+
+    # 设置手动占用标记，减少与定时的竞争（短 TTL）
+    client.set(f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{subscription_id}", 1, ex=120)
+
+    progress_key = f"{constants.REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX}{subscription_id}"
+    client.hset(progress_key, mapping={
+        "subscriptionId": subscription_id,
+        "status": "queued",
+        "phase": "queued",
+        "source": "manual",
+        "updatedAt": datetime.utcnow().isoformat()
+    })
+    client.expire(progress_key, 24 * 3600)
+    
+    QueueManager.send_message(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, message.to_dict())
+
+
+@router.get("/api/subscription/{subscription_id}/refresh/status")
+def refresh_subscription_status(subscription_id: int, current_user: User = Depends(get_current_user)):
+    with get_session() as session:
+        user_subscription = session.scalars(
+            select(UserSubscription).where(
+                UserSubscription.user_id == current_user.id,
+                UserSubscription.subscription_id == subscription_id,
+                UserSubscription.is_deleted.is_(False)
+            )
+        ).first()
+        if not user_subscription:
+            return response.forbidden("无权查看该订阅进度")
+
+    progress_key = f"{constants.REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX}{subscription_id}"
+    raw = client.hgetall(progress_key) or {}
+    data = cast(Dict[str, Any], raw)
+
+    return response.success({
+        "status": data.get("status", "queued") if data else "queued",
+        "phase": data.get("phase"),
+        "processed": int(data.get("processed", 0)) if data.get("processed") else 0,
+        "total": int(data.get("total", 0)) if data.get("total") else 0,
+        "source": data.get("source"),
+        "startedAt": data.get("startedAt"),
+        "updatedAt": data.get("updatedAt"),
+        "finishedAt": data.get("finishedAt"),
+        "requestId": data.get("requestId"),
+        "lastError": data.get("lastError"),
+    })
+
+
 @router.post("/api/subscription/toggle-auto-download")
 def toggle_auto_download(req: ToggleStatusRequest):
     success = subscription_service.toggle_status(req.subscription_id, req.is_enable, "is_auto_download")
@@ -119,8 +209,8 @@ def toggle_download_all(req: ToggleStatusRequest):
 
 @router.post("/api/subscription/toggle-nsfw")
 def toggle_nsfw(
-    req: ToggleStatusRequest, 
-    current_user: User = Depends(get_current_user)
+        req: ToggleStatusRequest,
+        current_user: User = Depends(get_current_user)
 ):
     success = subscription_service.toggle_nsfw_status(
         current_user.id,
@@ -128,5 +218,3 @@ def toggle_nsfw(
         req.is_enable
     )
     return response.success({"success": success})
-
-

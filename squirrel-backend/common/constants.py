@@ -6,12 +6,16 @@ QUEUE_VIDEO_EXTRACT_SCHEDULED = 'video_extract_scheduled_queue'
 QUEUE_SUBSCRIBE = 'video_subscribe_queue'
 QUEUE_VIDEO_PROGRESS = 'video_progress_queue'
 QUEUE_SUBSCRIPTION_UPDATE = 'subscription_update_queue'
+QUEUE_SUBSCRIPTION_UPDATE_MANUAL = 'subscription_update_manual_queue'
 
 # Redis keys
 REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS = 'video:download:progress'
 REDIS_KEY_VIDEO_DOWNLOAD_STATUS = 'video:download:status'
 REDIS_KEY_VIDEO_DOWNLOAD_CACHE = 'video:download:cache'
 REDIS_KEY_VIDEO_EXTRACT_CACHE = 'video:extract:cache'
+# Subscription update progress and flags
+REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX = 'subscription:update:progress:'
+REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX = 'subscription:update:manual_pending:'
 
 VIDEO_EXTRACT_FIELD_NAME = 'is_extract'
 VIDEO_DOWNLOAD_FIELD_NAME = 'is_download'
@@ -39,6 +43,7 @@ def get_all_queues():
         QUEUE_SUBSCRIBE,
         QUEUE_VIDEO_PROGRESS,
         QUEUE_SUBSCRIPTION_UPDATE,
+        QUEUE_SUBSCRIPTION_UPDATE_MANUAL,
     ]
 
     site_queues = []

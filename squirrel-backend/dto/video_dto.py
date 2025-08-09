@@ -12,6 +12,7 @@ class VideoExtractDto(BaseModel):
     subscribed: bool
     only_extract: bool
     subscription_id: int
+    is_manual: bool = False
 
 
 class VideoDto(sqlalchemy_to_pydantic(Video)):

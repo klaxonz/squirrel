@@ -1,9 +1,10 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 from cache import task_cache
 from common import constants
 from core.database import get_session
+from core.cache import RedisClient
 from downloader.factory import DownloaderFactory
 from dto.video_dto import VideoExtractDto
 from meta.factory import VideoFactory
@@ -21,10 +22,26 @@ from common.types.queues import ExtractQueueType
 
 
 logger = logging.getLogger(__name__)
+client = RedisClient.get_instance().get_client()
+
+
+def _progress_key(sub_id: int) -> str:
+    return f"{constants.REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX}{sub_id}"
+
+
+def _tick_progress(sub_id: int) -> None:
+    key = _progress_key(sub_id)
+    try:
+        client.hincrby(key, "processed", 1)
+        client.hset(key, mapping={"updatedAt": datetime.now(timezone.utc).isoformat()})
+    except Exception as ignored:
+        pass
 
 
 def get_queue_type(params: VideoExtractDto) -> ExtractQueueType:
-    return ExtractQueueType.SCHEDULED if params.only_extract else ExtractQueueType.FOR_DOWNLOAD
+    if params.only_extract:
+        return ExtractQueueType.MANUAL if params.is_manual else ExtractQueueType.SCHEDULED
+    return ExtractQueueType.FOR_DOWNLOAD
 
 
 def _resolve_extract_queue(params: VideoExtractDto) -> str:
@@ -128,6 +145,9 @@ def process_video_extract(message: Dict[str, Any], queue_name: str):
         if not params.only_extract and video:
             _handle_download_task(video)
 
+        # 提取成功后，订阅级 processed++
+        _tick_progress(params.subscription_id)
+
         logger.info(f"视频提取完成: {video.title if video else 'N/A'} (platform: {platform}, type: {queue_type})")
 
     except Exception as e:
@@ -197,6 +217,3 @@ def _check_subscription_exist(subscription_id: int) -> bool:
     except Exception as e:
         logger.error(f"检查订阅存在性失败: subscription_id={subscription_id}, error={e}")
         return False
-
-
-

@@ -55,6 +55,13 @@
                       fill-rule="evenodd"/>
               </svg>
             </button>
+
+            <!-- YouTube风格的更新状态指示器 -->
+            <div v-if="getRefreshState(subscription.id).isRefreshing"
+                 class="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
+              <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <span>{{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}</span>
+            </div>
           </div>
         </div>
 
@@ -88,7 +95,55 @@
             <span class="text-white">标记为敏感内容</span>
             <ToggleSwitch v-model="selectedSubscription.is_nsfw" @update:modelValue="updateNsfwStatus"/>
           </div>
-                  <button class="w-full py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] transition-colors duration-200 text-sm"
+
+          <!-- 手动更新按钮 -->
+          <div class="space-y-3">
+            <button
+              class="w-full py-2 bg-[#404040] text-white rounded-lg hover:bg-[#505050] disabled:bg-[#303030] disabled:cursor-not-allowed transition-colors duration-200 text-sm"
+              :disabled="getRefreshState(selectedSubscription.id).isRefreshing"
+              @click="handleRefreshSubscription(selectedSubscription.id)"
+            >
+              <span v-if="getRefreshState(selectedSubscription.id).isRefreshing">
+                {{ getStatusText(getRefreshState(selectedSubscription.id).status, getRefreshState(selectedSubscription.id).phase) }}
+              </span>
+              <span v-else>手动更新</span>
+            </button>
+
+            <!-- YouTube风格的进度显示 -->
+            <div v-if="getRefreshState(selectedSubscription.id).isRefreshing" class="bg-red-50 border-l-4 border-red-500 p-3 rounded">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-red-800">正在更新频道</span>
+                <span class="text-xs text-red-600">{{ getRefreshState(selectedSubscription.id).startedAt ? formatTimeAgo(getRefreshState(selectedSubscription.id).startedAt) : '' }}</span>
+              </div>
+
+              <div v-if="getRefreshState(selectedSubscription.id).total > 0" class="w-full bg-red-200 rounded-full h-2">
+                <div class="bg-red-600 h-2 rounded-full transition-all duration-500"
+                     :style="{ width: getProgressPercentage(getRefreshState(selectedSubscription.id).processed, getRefreshState(selectedSubscription.id).total) + '%' }"></div>
+              </div>
+
+              <div v-if="getRefreshState(selectedSubscription.id).total > 0" class="flex justify-between text-xs text-red-600 mt-1">
+                <span>已处理 {{ getRefreshState(selectedSubscription.id).processed }}/{{ getRefreshState(selectedSubscription.id).total }} 个视频</span>
+                <span>{{ getProgressPercentage(getRefreshState(selectedSubscription.id).processed, getRefreshState(selectedSubscription.id).total) }}%</span>
+              </div>
+
+              <div v-else class="text-xs text-red-600 mt-1">
+                {{ getYouTubeStyleStatusText(getRefreshState(selectedSubscription.id).status, getRefreshState(selectedSubscription.id).phase) }}
+              </div>
+            </div>
+
+            <!-- 错误状态和重试 -->
+            <div v-if="getRefreshState(selectedSubscription.id).status === 'failed'" class="text-xs">
+              <p class="text-red-400 mb-2">{{ getRefreshState(selectedSubscription.id).lastError || '更新失败' }}</p>
+              <button
+                class="w-full py-1.5 bg-[#505050] text-white rounded hover:bg-[#606060] transition-colors duration-200"
+                @click="handleRetryRefresh(selectedSubscription.id)"
+              >
+                重试更新
+              </button>
+            </div>
+          </div>
+
+          <button class="w-full py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] transition-colors duration-200 text-sm"
                   @click="unsubscribe(selectedSubscription.id)">
             取消订阅
           </button>
@@ -114,14 +169,14 @@
 
 <script setup>
 import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';
-import axios from '../utils/axios';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
-import useCustomToast from '../composables/useToast';
 import AddChannelDialog from '../components/AddChannelDialog.vue';
 
 import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
+import {useSubscriptionRefresh} from '../composables/useSubscriptionRefresh';
+import {useSubscriptionApi} from '../composables/useSubscriptionApi';
 
 const router = useRouter();
 const emitter = inject('emitter');
@@ -141,10 +196,27 @@ const selectedSubscription = ref(null);
 const observer = ref(null);
 const loadingTrigger = ref(null);
 
-const { confirm } = useCustomToast();
+
 
 const showAddDialog = ref(false);
 const unsubscribeError = ref('');
+
+// API功能
+const {
+  getSubscriptions: apiGetSubscriptions,
+  unsubscribe: apiUnsubscribe,
+  updateNsfwStatus: apiUpdateNsfwStatus
+} = useSubscriptionApi();
+
+// 订阅更新功能
+const {
+  getRefreshState,
+  triggerRefresh,
+  retryRefresh,
+  getStatusText,
+  getProgressPercentage,
+  cleanup: cleanupRefresh
+} = useSubscriptionRefresh();
 
 
 const setupIntersectionObserver = () => {
@@ -171,39 +243,35 @@ const loadSubscriptions = async () => {
   if (loading.value || allLoaded.value) return;
 
   loading.value = true;
-  try {
-    const response = await axios.get('/api/subscription/list', {
-      params: {
-        query: searchQuery.value,
-        page: currentPage.value,
-        page_size: 100
-      }
-    });
-    if (response.data.code === 0) {
-      const newSubscriptions = response.data.data.data;
-      subscriptions.value = [...subscriptions.value, ...newSubscriptions.map(subscription => ({
-        ...subscription,
-        total_videos: subscription.total_videos || 0,
-        total_extract: subscription.total_extract || 0
-      }))];
-      currentPage.value++;
-      if (newSubscriptions.length < 20) {
-        allLoaded.value = true;
-      }
 
-      nextTick(() => {
-        if (loadingTrigger.value && observer.value) {
-          observer.value.observe(loadingTrigger.value);
-        }
-        // 数据加载完成后恢复滚动位置
-        restoreScrollPosition();
-      });
+  const result = await apiGetSubscriptions({
+    query: searchQuery.value,
+    page: currentPage.value,
+    page_size: 100
+  });
+
+  if (result.success) {
+    const newSubscriptions = result.data.data;
+    subscriptions.value = [...subscriptions.value, ...newSubscriptions.map(subscription => ({
+      ...subscription,
+      total_videos: subscription.total_videos || 0,
+      total_extract: subscription.total_extract || 0
+    }))];
+    currentPage.value++;
+    if (newSubscriptions.length < 20) {
+      allLoaded.value = true;
     }
-  } catch (error) {
-    console.error('获取频道列表失败:', error);
-  } finally {
-    loading.value = false;
+
+    nextTick(() => {
+      if (loadingTrigger.value && observer.value) {
+        observer.value.observe(loadingTrigger.value);
+      }
+      // 数据加载完成后恢复滚动位置
+      restoreScrollPosition();
+    });
   }
+
+  loading.value = false;
 };
 
 // 处理全局搜索事件
@@ -239,22 +307,15 @@ const closeSettings = () => {
 };
 
 const unsubscribe = async (subscriptionId) => {
-  const confirmed = await confirm('确定要取消订阅这个频道吗？这将删除所有相关的视频记录。');
-  
-  if (confirmed) {
-    unsubscribeError.value = '';
-    try {
-      const response = await axios.post('/api/subscription/unsubscribe', {subscription_id: subscriptionId});
-      if (response.data.code === 0) {
-        subscriptions.value = subscriptions.value.filter(subscription => subscription.id !== subscriptionId);
-        closeSettings();
-      } else {
-        throw new Error(response.data.msg || '取消订阅失败');
-      }
-    } catch (error) {
-      console.error('取消订阅失败:', error);
-      unsubscribeError.value = error.message || '取消订阅失败';
-    }
+  unsubscribeError.value = '';
+
+  const result = await apiUnsubscribe(subscriptionId);
+
+  if (result.success) {
+    subscriptions.value = subscriptions.value.filter(subscription => subscription.id !== subscriptionId);
+    closeSettings();
+  } else if (!result.cancelled) {
+    unsubscribeError.value = result.error || '取消订阅失败';
   }
 };
 
@@ -276,23 +337,60 @@ const handleChannelAdded = () => {
 };
 
 const updateNsfwStatus = async (isNsfw) => {
-  try {
-    const res = await axios.post('/api/subscription/toggle-nsfw', {
-      subscription_id: selectedSubscription.value.id,
-      is_enable: isNsfw
-    });
-    
-    if (res.data.success) {
-      // 立即更新本地状态
-      const index = subscriptions.value.findIndex(s => s.id === selectedSubscription.value.id);
-      if (index !== -1) {
-        subscriptions.value[index].is_nsfw = isNsfw;
-      }
+  const result = await apiUpdateNsfwStatus(selectedSubscription.value.id, isNsfw);
+
+  if (result.success) {
+    // 立即更新本地状态
+    const index = subscriptions.value.findIndex(s => s.id === selectedSubscription.value.id);
+    if (index !== -1) {
+      subscriptions.value[index].is_nsfw = isNsfw;
     }
-  } catch (error) {
+  } else {
     // 回滚UI状态
-    selectedSubscription.value.is_nsfw = !isNsfw; 
+    selectedSubscription.value.is_nsfw = !isNsfw;
   }
+};
+
+// 处理手动更新订阅
+const handleRefreshSubscription = async (subscriptionId) => {
+  await triggerRefresh(subscriptionId);
+};
+
+// 处理重试更新
+const handleRetryRefresh = async (subscriptionId) => {
+  await retryRefresh(subscriptionId);
+};
+
+// YouTube风格的状态文案
+const getYouTubeStyleStatusText = (status, phase) => {
+  if (status === 'queued') return '排队中';
+  if (status === 'in_progress') {
+    switch (phase) {
+      case 'init': return '准备中';
+      case 'fetching_feed': return '检查新内容';
+      case 'calculating_delta': return '分析更新';
+      case 'extracting': return '处理新视频';
+      case 'finalizing': return '即将完成';
+      default: return '更新中';
+    }
+  }
+  if (status === 'completed') return '已完成';
+  if (status === 'failed') return '更新失败';
+  return '更新中';
+};
+
+// 格式化时间为"X分钟前开始"
+const formatTimeAgo = (timeString) => {
+  if (!timeString) return '';
+  const now = new Date();
+  const time = new Date(timeString);
+  const diffInMinutes = Math.floor((now - time) / (1000 * 60));
+
+  if (diffInMinutes < 1) return '刚刚开始';
+  if (diffInMinutes < 60) return `${diffInMinutes}分钟前开始`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}小时前开始`;
+  return `${Math.floor(diffInHours / 24)}天前开始`;
 };
 
 onMounted(async () => {
@@ -322,6 +420,9 @@ onUnmounted(() => {
 
   // 移除全局搜索事件监听
   emitter.off('search:subscribed', handleGlobalSearch);
+
+  // 清理订阅更新相关资源
+  cleanupRefresh();
 });
 </script>
 
