@@ -17,8 +17,14 @@ from consumer.queue_management.decorators import queue_handler, routing_rule
 from consumer.queue_management.router import MessageRouter
 from consumer.queue_management.manager import QueueManager
 from consumer.queue_management.exceptions import RoutingError
+from common.types.queues import ExtractQueueType
+
 
 logger = logging.getLogger(__name__)
+
+
+def get_queue_type(params: VideoExtractDto) -> ExtractQueueType:
+    return ExtractQueueType.SCHEDULED if params.only_extract else ExtractQueueType.FOR_DOWNLOAD
 
 
 def _resolve_extract_queue(params: VideoExtractDto) -> str:
@@ -30,11 +36,11 @@ def _resolve_extract_queue(params: VideoExtractDto) -> str:
             rule_name="video_extract",
         )
 
-    queue_type = 'scheduled' if params.only_extract else 'for_download'
-    queue_name = mapping.get(queue_type)
+    queue_type = get_queue_type(params)
+    queue_name = mapping.get(queue_type.value)
     if not queue_name:
         raise RoutingError(
-            f"No queue mapping for domain {domain} and type {queue_type}",
+            f"No queue mapping for domain {domain} and type {queue_type.value}",
             rule_name="video_extract",
         )
     return queue_name
@@ -99,7 +105,7 @@ def process_video_extract(message: Dict[str, Any], queue_name: str):
 
         queue_parts = queue_name.split('_')
         platform = queue_parts[2] if len(queue_parts) > 2 else 'unknown'
-        queue_type = 'scheduled' if 'scheduled' in queue_name else 'for_download'
+        queue_type = ExtractQueueType.SCHEDULED if 'scheduled' in queue_name else ExtractQueueType.FOR_DOWNLOAD
 
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
