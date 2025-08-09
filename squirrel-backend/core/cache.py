@@ -41,14 +41,33 @@ class DistributedLock:
         self.lock_key = lock_key
         self.lock = None
 
-    def acquire(self, timeout=10):
-        """尝试获取锁，超时则放弃"""
+    def acquire(self, timeout=10, blocking_timeout=None):
+        """尝试获取锁。timeout 为租约时长（秒），blocking_timeout 为等待时长（秒）。"""
+        if blocking_timeout is None:
+            blocking_timeout = timeout
         self.lock = self.redis_client.lock(self.lock_key, timeout=timeout)
         try:
-            self.lock.acquire(blocking=True, blocking_timeout=timeout)
+            self.lock.acquire(blocking=True, blocking_timeout=blocking_timeout)
             return True
         except LockError:
             return False
+
+    def is_locked(self) -> bool:
+        """直接检查锁键是否存在。"""
+        try:
+            return bool(self.redis_client.exists(self.lock_key))
+        except Exception:
+            return False
+
+    def extend(self, additional_time: int) -> bool:
+        """在持有锁的情况下延长租约时间。"""
+        try:
+            if self.lock is not None and self.lock.locked():
+                self.lock.extend(additional_time)
+                return True
+        except Exception:
+            return False
+        return False
 
     def release(self):
         """释放锁"""

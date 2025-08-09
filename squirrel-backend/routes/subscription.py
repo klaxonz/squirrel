@@ -18,6 +18,7 @@ from schemas.subscription import (
     ToggleStatusRequest
 )
 from services import subscription_service, message_service
+from core.cache import DistributedLock
 from utils.jwt_helper import get_current_user
 from mq.producer import RedisStreamProducer
 from common import constants
@@ -125,10 +126,10 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
         if not user_subscription:
             return response.forbidden("无权操作该订阅")
 
-    # 若当前正在更新中，直接返回 in_progress（基于进度键）
-    progress_key = f"{constants.REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX}{subscription_id}"
-    status = client.hget(progress_key, "status")
-    if status == "in_progress":
+    # 使用分布式锁作为“是否进行中”的唯一来源，避免仅依赖缓存状态
+    lock_key = f"lock:subscription:update:{subscription_id}"
+    lock = DistributedLock(lock_key)
+    if lock.is_locked():
         return response.success({
             "status": "in_progress",
             "inProgress": True
@@ -192,6 +193,7 @@ def refresh_subscription_status(subscription_id: int, current_user: User = Depen
 
     return response.success({
         "status": data.get("status", "queued") if data else "queued",
+        "inProgress": data.get("status") == "in_progress",
         "phase": data.get("phase"),
         "processed": int(data.get("processed", 0)) if data.get("processed") else 0,
         "total": int(data.get("total", 0)) if data.get("total") else 0,
