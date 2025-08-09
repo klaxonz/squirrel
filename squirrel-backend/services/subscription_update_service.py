@@ -1,14 +1,13 @@
 import logging
-from typing import List
 
 from core.cache import DistributedLock
-from core.database import get_session
 from core.config import settings
+from core.database import get_session
 from dto.subscription_dto import SubscriptionDto
 from dto.video_dto import VideoExtractDto
-from services import subscription_service, download_service
-from subscribe.factory import SubscriptionFactory
 from models.subscription import Subscription
+from services import download_service
+from subscribe.factory import SubscriptionFactory
 
 logger = logging.getLogger()
 
