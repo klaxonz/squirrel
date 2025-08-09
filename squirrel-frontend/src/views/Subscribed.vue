@@ -109,27 +109,7 @@
               <span v-else>手动更新</span>
             </button>
 
-            <!-- YouTube风格的进度显示 -->
-            <div v-if="getRefreshState(selectedSubscription.id).isRefreshing" class="bg-red-50 border-l-4 border-red-500 p-3 rounded">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-sm font-medium text-red-800">正在更新频道</span>
-                <span class="text-xs text-red-600">{{ getRefreshState(selectedSubscription.id).startedAt ? formatTimeAgo(getRefreshState(selectedSubscription.id).startedAt) : '' }}</span>
-              </div>
-
-              <div v-if="getRefreshState(selectedSubscription.id).total > 0" class="w-full bg-red-200 rounded-full h-2">
-                <div class="bg-red-600 h-2 rounded-full transition-all duration-500"
-                     :style="{ width: getProgressPercentage(getRefreshState(selectedSubscription.id).processed, getRefreshState(selectedSubscription.id).total) + '%' }"></div>
-              </div>
-
-              <div v-if="getRefreshState(selectedSubscription.id).total > 0" class="flex justify-between text-xs text-red-600 mt-1">
-                <span>已处理 {{ getRefreshState(selectedSubscription.id).processed }}/{{ getRefreshState(selectedSubscription.id).total }} 个视频</span>
-                <span>{{ getProgressPercentage(getRefreshState(selectedSubscription.id).processed, getRefreshState(selectedSubscription.id).total) }}%</span>
-              </div>
-
-              <div v-else class="text-xs text-red-600 mt-1">
-                {{ getYouTubeStyleStatusText(getRefreshState(selectedSubscription.id).status, getRefreshState(selectedSubscription.id).phase) }}
-              </div>
-            </div>
+            <!-- 进度不再内嵌，转移到全局“同步中心”与卡片角标展示 -->
 
             <!-- 错误状态和重试 -->
             <div v-if="getRefreshState(selectedSubscription.id).status === 'failed'" class="text-xs">
@@ -143,8 +123,16 @@
             </div>
           </div>
 
-          <button class="w-full py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] transition-colors duration-200 text-sm"
-                  @click="unsubscribe(selectedSubscription.id)">
+          <button
+            :disabled="getRefreshState(selectedSubscription.id).isRefreshing"
+            :class="[
+              'w-full py-2 text-white rounded-lg transition-colors duration-200 text-sm',
+              getRefreshState(selectedSubscription.id).isRefreshing
+                ? 'bg-[#303030] cursor-not-allowed'
+                : 'bg-[#cc0000] hover:bg-[#990000]'
+            ]"
+            @click="unsubscribe(selectedSubscription.id)"
+          >
             取消订阅
           </button>
           <p v-if="unsubscribeError" class="mt-2 text-xs text-red-400">{{ unsubscribeError }}</p>
@@ -297,6 +285,11 @@ const loadMore = () => {
 
 const openSettings = (subscription) => {
   selectedSubscription.value = {...subscription};
+  // 向全局刷新中心补充元数据
+  try {
+    const { setSubscriptionMeta } = useSubscriptionRefresh();
+    setSubscriptionMeta(subscription.id, { name: subscription.name, avatar: subscription.avatar });
+  } catch (e) {}
   showSettings.value = true;
 };
 
@@ -394,6 +387,10 @@ const formatTimeAgo = (timeString) => {
 };
 
 onMounted(async () => {
+  try {
+    const api = useSubscriptionRefresh();
+    await api.rehydrateFromServer();
+  } catch (e) {}
   loadSubscriptions();
   nextTick(() => {
     setupIntersectionObserver();

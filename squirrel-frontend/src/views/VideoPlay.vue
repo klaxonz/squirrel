@@ -1,5 +1,5 @@
 <template>
-  <div class="video-page bg-[#0f0f0f] min-h-screen">
+  <div class="video-page bg-[#0f0f0f] min-h-screen scrollbar">
     <div class="max-w-[1720px] mx-auto lg:px-6 pt-6 flex">
       <!-- 左侧主内容区域 -->
       <div class="flex-1 max-w-[1280px]">
@@ -335,28 +335,7 @@ const handleMoreOptionsClick = (event) => {
   background: #000;
 }
 
-/* 添加滚动条样式 */
-.video-page {
-  scrollbar-width: thin;
-  scrollbar-color: #606060 #0f0f0f;
-}
-
-.video-page::-webkit-scrollbar {
-  width: 8px;
-}
-
-.video-page::-webkit-scrollbar-track {
-  background: #0f0f0f;
-}
-
-.video-page::-webkit-scrollbar-thumb {
-  background-color: #606060;
-  border-radius: 4px;
-}
-
-.video-page::-webkit-scrollbar-thumb:hover {
-  background-color: #909090;
-}
+/* 滚动条样式统一到全局 .scrollbar */
 
 .no-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */

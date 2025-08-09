@@ -55,12 +55,6 @@ def _process_subscription_update(message: Dict[str, Any], is_manual: bool) -> No
         SubscriptionUpdateService.update_subscription_videos(sub, is_manual=is_manual)
         sub_name = getattr(sub, 'name', f'subscription_{params.subscription_id}')
         logger.info(f"订阅更新消息已分发: {sub_name}, subscription_id={params.subscription_id}")
-        # 不在此处标记 completed，因为解析任务通过 MQ 异步执行
-        set_progress(sub.id, {
-            "status": "in_progress",
-            "phase": "extracting",
-            "dispatchedAt": datetime.now(timezone.utc).isoformat()
-        })
     except Exception as e:
         logger.error(f"订阅更新失败: subscription_id={params.subscription_id}, error={e}", exc_info=True)
         set_progress(sub.id, {"status": "failed", "lastError": str(e)})

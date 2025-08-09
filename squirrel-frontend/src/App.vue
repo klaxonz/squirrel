@@ -13,13 +13,15 @@
 
       <!-- 页面内容容器 -->
       <div class="page-container flex-1 relative">
-        <div class="content-container absolute inset-0 scrollbar-hide">
+        <div class="content-container absolute inset-0 scrollbar">
           <router-view v-slot="{ Component }">
             <keep-alive :include="['LatestVideos', 'Subscribed']">
               <component :is="Component" />
             </keep-alive>
           </router-view>
         </div>
+        <!-- 全局同步中心 -->
+        <RefreshCenter />
       </div>
     </main>
 
@@ -48,6 +50,7 @@ import MobileNav from './components/MobileNav.vue';
 import Sidebar from './components/Sidebar.vue';
 import PodcastPlayer from './components/PodcastPlayer.vue';
 import GlobalSearchBar from './components/GlobalSearchBar.vue';
+import RefreshCenter from './components/RefreshCenter.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 import { isMobile } from "./composables/useMobile.js";
 import { useRoute } from 'vue-router';

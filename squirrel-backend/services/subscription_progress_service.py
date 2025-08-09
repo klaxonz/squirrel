@@ -37,13 +37,12 @@ def maybe_complete(sub_id: int) -> None:
         processed = int(data.get("processed", 0) or 0)
         phase = data.get("phase", "")
         status = data.get("status", "")
-        if total > 0 and processed >= total and phase == "extracting" and status == "in_progress":
+        if 0 < total <= processed and phase == "extracting" and status == "in_progress":
             now_iso = datetime.now(timezone.utc).isoformat()
-            client.hset(key, mapping={
+            set_progress(sub_id, {
                 "status": "completed",
                 "phase": "finalizing",
                 "finishedAt": now_iso,
-                "updatedAt": now_iso,
             })
     except Exception:
         pass

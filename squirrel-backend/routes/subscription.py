@@ -19,6 +19,7 @@ from schemas.subscription import (
 )
 from services import subscription_service, message_service
 from core.cache import DistributedLock
+from services.subscription_progress_service import set_progress
 from utils.jwt_helper import get_current_user
 from mq.producer import RedisStreamProducer
 from common import constants
@@ -152,15 +153,12 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
     # 设置手动占用标记，减少与定时的竞争（短 TTL）
     client.set(f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{subscription_id}", 1, ex=120)
 
-    progress_key = f"{constants.REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX}{subscription_id}"
-    client.hset(progress_key, mapping={
-        "subscriptionId": subscription_id,
+    set_progress(subscription_id, {
         "status": "queued",
         "phase": "queued",
         "source": "manual",
-        "updatedAt": datetime.utcnow().isoformat()
+        "requestId": getattr(message, 'id', None),
     })
-    client.expire(progress_key, 24 * 3600)
     
     RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, message.to_dict())
 
@@ -203,6 +201,48 @@ def refresh_subscription_status(subscription_id: int, current_user: User = Depen
         "finishedAt": data.get("finishedAt"),
         "requestId": data.get("requestId"),
         "lastError": data.get("lastError"),
+    })
+
+
+@router.get("/api/subscription/refresh/active")
+def list_active_refresh_tasks(current_user: User = Depends(get_current_user)):
+    # 获取当前用户的所有有效订阅
+    with get_session() as session:
+        subs = session.scalars(
+            select(Subscription).join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
+            .where(
+                UserSubscription.user_id == current_user.id,
+                UserSubscription.is_deleted.is_(False)
+            )
+        ).all()
+
+    items = []
+    for sub in subs:
+        progress_key = f"{constants.REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX}{sub.id}"
+        raw = client.hgetall(progress_key) or {}
+        if not raw:
+            continue
+        status = raw.get("status")
+
+        item = {
+            "subscriptionId": sub.id,
+            "status": status,
+            "phase": raw.get("phase"),
+            "processed": int(raw.get("processed", 0)) if raw.get("processed") else 0,
+            "total": int(raw.get("total", 0)) if raw.get("total") else 0,
+            "source": raw.get("source"),
+            "startedAt": raw.get("startedAt"),
+            "updatedAt": raw.get("updatedAt"),
+            "requestId": raw.get("requestId"),
+            "meta": {
+                "name": getattr(sub, 'name', ''),
+                "avatar": getattr(sub, 'avatar', ''),
+            }
+        }
+        items.append(item)
+
+    return response.success({
+        "items": items
     })
 
 

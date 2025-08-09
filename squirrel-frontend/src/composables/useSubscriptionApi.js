@@ -84,13 +84,6 @@ export function useSubscriptionApi() {
       
       if (response.data.code === 0) {
         const data = response.data.data;
-        
-        if (data.status === 'queued') {
-          displayToast('正在检查频道更新...');
-        } else if (data.status === 'in_progress') {
-          displayToast('频道更新进行中');
-        }
-        
         return {
           success: true,
           data: data
@@ -140,11 +133,26 @@ export function useSubscriptionApi() {
     }
   };
 
+  // 获取当前用户的所有进行中刷新任务（用于页面刷新后的恢复）
+  const getActiveRefreshTasks = async () => {
+    try {
+      const response = await axios.get(`/api/subscription/refresh/active`);
+      if (response.data.code === 0) {
+        return { success: true, data: response.data.data.items || [] };
+      }
+      throw new Error(response.data.msg || '获取进行中任务失败');
+    } catch (error) {
+      console.error('获取进行中任务失败:', error);
+      return { success: false, error: error.message || '获取进行中任务失败' };
+    }
+  }
+
   return {
     getSubscriptions,
     unsubscribe,
     updateNsfwStatus,
     triggerRefresh,
-    getRefreshStatus
+    getRefreshStatus,
+    getActiveRefreshTasks
   };
 }

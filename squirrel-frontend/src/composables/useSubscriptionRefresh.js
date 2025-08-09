@@ -1,14 +1,14 @@
-import { ref, reactive } from 'vue';
+import { reactive } from 'vue';
 import { useSubscriptionApi } from './useSubscriptionApi';
 
+// 单例状态：多个组件共享
+const refreshStates = reactive(new Map());
+const pollingTimers = reactive(new Map());
+let globalPollingTimer = null; // 单一全局轮询，降低请求量
+const subscriptionMeta = reactive(new Map()); // { id: { name, avatar } }
+
 export function useSubscriptionRefresh() {
-  const { triggerRefresh: apiTriggerRefresh, getRefreshStatus: apiGetRefreshStatus } = useSubscriptionApi();
-  
-  // 存储每个订阅的刷新状态
-  const refreshStates = reactive(new Map());
-  
-  // 轮询定时器
-  const pollingTimers = reactive(new Map());
+  const { triggerRefresh: apiTriggerRefresh, getRefreshStatus: apiGetRefreshStatus, getActiveRefreshTasks } = useSubscriptionApi();
   
   // 获取订阅的刷新状态
   const getRefreshState = (subscriptionId) => {
@@ -29,6 +29,81 @@ export function useSubscriptionRefresh() {
     }
     return refreshStates.get(subscriptionId);
   };
+  
+  // 记录订阅的展示信息（可选）
+  const setSubscriptionMeta = (subscriptionId, meta) => {
+    const prev = subscriptionMeta.get(subscriptionId) || {};
+    subscriptionMeta.set(subscriptionId, { ...prev, ...meta });
+  };
+
+  // 本地不做持久化，所有状态以服务端为准
+
+  // 启动全局轮询：统一从服务端批量获取活跃任务，避免每个订阅独立轮询
+  const startGlobalPolling = () => {
+    if (globalPollingTimer) return;
+    globalPollingTimer = setInterval(async () => {
+      try {
+        const result = await getActiveRefreshTasks();
+        if (!result.success) return;
+        const items = result.data || [];
+        const activeIds = new Set(items.map(i => i.subscriptionId));
+
+        for (const item of items) {
+          const state = getRefreshState(item.subscriptionId);
+          state.status = item.status;
+          state.phase = item.phase;
+          state.processed = item.processed || 0;
+          state.total = item.total || 0;
+          state.requestId = item.requestId || null;
+          state.startedAt = item.startedAt || null;
+          state.updatedAt = item.updatedAt || null;
+          state.isRefreshing = item.status === 'queued' || item.status === 'in_progress';
+          if (item.meta) subscriptionMeta.set(item.subscriptionId, item.meta);
+        }
+
+        // 不在活跃列表但之前标记为刷新中的任务，置为静默
+        refreshStates.forEach((state, id) => {
+          if (!activeIds.has(id) && (state.isRefreshing || state.status === 'queued' || state.status === 'in_progress')) {
+            state.isRefreshing = false;
+          }
+        });
+
+        // 没有活跃任务自动停止轮询
+        if (items.length === 0) {
+          stopGlobalPolling();
+        }
+      } catch (_) {}
+    }, 3000);
+  };
+
+  const stopGlobalPolling = () => {
+    if (globalPollingTimer) {
+      clearInterval(globalPollingTimer);
+      globalPollingTimer = null;
+    }
+  };
+
+  // 从服务端恢复进行中的任务
+  const rehydrateFromServer = async () => {
+    try {
+      const result = await getActiveRefreshTasks();
+      if (!result.success) return;
+      for (const item of result.data) {
+        const state = getRefreshState(item.subscriptionId);
+        state.status = item.status;
+        state.phase = item.phase;
+        state.processed = item.processed || 0;
+        state.total = item.total || 0;
+        state.requestId = item.requestId || null;
+        state.startedAt = item.startedAt || null;
+        state.updatedAt = item.updatedAt || null;
+        state.isRefreshing = item.status === 'queued' || item.status === 'in_progress';
+        if (item.meta) subscriptionMeta.set(item.subscriptionId, item.meta);
+        if (state.isRefreshing) startPolling(item.subscriptionId);
+      }
+      persistActiveTasks();
+    } catch (_) {}
+  }
   
   // 触发手动更新
   const triggerRefresh = async (subscriptionId) => {
@@ -54,7 +129,6 @@ export function useSubscriptionRefresh() {
       if (data.status === 'queued' || data.status === 'in_progress') {
         startPolling(subscriptionId);
       }
-
       return true;
     } else {
       state.isRefreshing = false;
@@ -89,7 +163,6 @@ export function useSubscriptionRefresh() {
       if (data.status === 'completed' || data.status === 'failed') {
         stopPolling(subscriptionId);
       }
-
       return data;
     }
 
@@ -97,23 +170,17 @@ export function useSubscriptionRefresh() {
   };
   
   // 开始轮询
-  const startPolling = (subscriptionId) => {
-    // 清除现有定时器
-    stopPolling(subscriptionId);
-    
-    const timer = setInterval(async () => {
-      await fetchRefreshStatus(subscriptionId);
-    }, 3000); // 每3秒轮询一次
-    
-    pollingTimers.set(subscriptionId, timer);
+  const startPolling = (_subscriptionId) => {
+    // 改为全局轮询，避免多路请求
+    startGlobalPolling();
   };
   
   // 停止轮询
-  const stopPolling = (subscriptionId) => {
-    const timer = pollingTimers.get(subscriptionId);
-    if (timer) {
-      clearInterval(timer);
-      pollingTimers.delete(subscriptionId);
+  const stopPolling = (_subscriptionId) => {
+    // 当没有活跃任务时停止全局轮询
+    const hasActive = Array.from(refreshStates.values()).some(s => s.isRefreshing || s.status === 'queued' || s.status === 'in_progress');
+    if (!hasActive) {
+      stopGlobalPolling();
     }
   };
   
@@ -135,16 +202,16 @@ export function useSubscriptionRefresh() {
     if (status === 'queued') return '排队中';
     if (status === 'in_progress') {
       switch (phase) {
-        case 'init': return '初始化';
-        case 'fetching_feed': return '获取订阅源';
-        case 'calculating_delta': return '计算差异';
-        case 'extracting': return '解析视频';
-        case 'finalizing': return '完成中';
-        default: return '更新中';
+        case 'init': return '准备中';
+        case 'fetching_feed': return '检查新内容';
+        case 'calculating_delta': return '分析更新';
+        case 'extracting': return '处理新视频';
+        case 'finalizing': return '即将完成';
+        default: return '同步中';
       }
     }
     if (status === 'completed') return '已完成';
-    if (status === 'failed') return '更新失败';
+    if (status === 'failed') return '同步失败';
     return '';
   };
   
@@ -156,20 +223,23 @@ export function useSubscriptionRefresh() {
   
   // 清理所有轮询定时器
   const cleanup = () => {
-    pollingTimers.forEach((timer) => {
-      clearInterval(timer);
-    });
+    pollingTimers.forEach((timer) => { try { clearInterval(timer); } catch (_) {} });
     pollingTimers.clear();
+    stopGlobalPolling();
   };
   
   return {
     refreshStates,
+    subscriptionMeta,
     getRefreshState,
     triggerRefresh,
     fetchRefreshStatus,
     retryRefresh,
     getStatusText,
     getProgressPercentage,
-    cleanup
+    cleanup,
+    setSubscriptionMeta,
+    rehydrateFromServer
+    ,startGlobalPolling
   };
 }

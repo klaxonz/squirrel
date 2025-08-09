@@ -69,7 +69,7 @@ def process_extract_scheduled_message(message: Dict[str, Any]):
 def _process_extract_message_compat(message: Dict[str, Any]):
     params = None
     try:
-        logger.info(f"收到视频解析消息: {message}")
+        logger.debug(f"收到视频解析消息: {message}")
 
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
