@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from core.cache import RedisClient
 from common import constants
-from consumer.queue_management.decorators import queue_handler
+from mq import mq_consumer
 from dto.subscription_update_dto import SubscriptionUpdateDto
 from models.message import Message
 from services import subscription_service
@@ -70,7 +70,7 @@ def _process_subscription_update(message: Dict[str, Any], is_manual: bool) -> No
             _clear_manual_flag(sub.id)
 
 
-@queue_handler(constants.QUEUE_SUBSCRIPTION_UPDATE)
+@mq_consumer(constants.QUEUE_SUBSCRIPTION_UPDATE, group="subscription", consumer_name="sub-update")
 def process_subscription_update(message: Dict[str, Any]):
     try:
         _process_subscription_update(message, is_manual=False)
@@ -80,7 +80,7 @@ def process_subscription_update(message: Dict[str, Any]):
         raise
 
 
-@queue_handler(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL)
+@mq_consumer(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, group="subscription", consumer_name="sub-update-manual")
 def process_subscription_update_manual(message: Dict[str, Any]):
     try:
         _process_subscription_update(message, is_manual=True)

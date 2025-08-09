@@ -19,7 +19,7 @@ from schemas.subscription import (
 )
 from services import subscription_service, message_service
 from utils.jwt_helper import get_current_user
-from consumer.queue_management.manager import QueueManager
+from mq.producer import RedisStreamProducer
 from common import constants
 
 router = APIRouter(tags=['订阅接口'])
@@ -37,7 +37,7 @@ def subscribe_content(req: SubscribeRequest, current_user: User = Depends(get_cu
         session.add(message)
         session.commit()
         dump_json = message.to_dict()
-        QueueManager.send_message(constants.QUEUE_SUBSCRIBE, dump_json)
+        RedisStreamProducer().send(constants.QUEUE_SUBSCRIBE, dump_json)
 
     return response.success()
 
@@ -161,7 +161,7 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
     })
     client.expire(progress_key, 24 * 3600)
     
-    QueueManager.send_message(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, message.to_dict())
+    RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, message.to_dict())
 
 
 @router.get("/api/subscription/{subscription_id}/refresh/status")

@@ -1,12 +1,12 @@
 # Base queues
-QUEUE_VIDEO_DOWNLOAD = 'video_download_queue'
-QUEUE_VIDEO_DOWNLOAD_SCHEDULED = 'video_download_scheduled_queue'
-QUEUE_VIDEO_EXTRACT = 'video_extract_queue'
-QUEUE_VIDEO_EXTRACT_SCHEDULED = 'video_extract_scheduled_queue'
-QUEUE_SUBSCRIBE = 'video_subscribe_queue'
-QUEUE_VIDEO_PROGRESS = 'video_progress_queue'
-QUEUE_SUBSCRIPTION_UPDATE = 'subscription_update_queue'
-QUEUE_SUBSCRIPTION_UPDATE_MANUAL = 'subscription_update_manual_queue'
+QUEUE_VIDEO_DOWNLOAD = 'queue::video::download::manual'
+QUEUE_VIDEO_DOWNLOAD_SCHEDULED = 'queue::video::download::scheduled'
+QUEUE_VIDEO_EXTRACT = 'queue::video::extract::manual'
+QUEUE_VIDEO_EXTRACT_SCHEDULED = 'queue::video::extract::scheduled'
+QUEUE_SUBSCRIBE = 'queue::video::subscribe'
+QUEUE_VIDEO_PROGRESS = 'queue::video::progress'
+QUEUE_SUBSCRIPTION_UPDATE = 'queue::subscription::update::scheduled'
+QUEUE_SUBSCRIPTION_UPDATE_MANUAL = 'queue::subscription::update::manual'
 
 # Redis keys
 REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS = 'video:download:progress'
@@ -49,9 +49,8 @@ def get_all_queues():
     site_queues = []
     for site_name in SUPPORTED_SITES.values():
         site_queues.extend([
-            f'video_extract_{site_name}_queue',
-            f'video_extract_{site_name}_scheduled_queue',
-            f'video_extract_for_download_{site_name}_queue',
+            f'queue::video::extract::{site_name}::manual',
+            f'queue::video::extract::{site_name}::scheduled'
         ])
 
     return base_queues + site_queues
@@ -59,9 +58,8 @@ def get_all_queues():
 
 DOMAIN_QUEUE_MAPPING = {
     domain: {
-        'manual': f'video_extract_{site_name}_queue',
-        'scheduled': f'video_extract_{site_name}_scheduled_queue',
-        'for_download': f'video_extract_for_download_{site_name}_queue'
+        'manual': f'queue::video::extract::{site_name}::manual',
+        'scheduled': f'queue::video::extract::{site_name}::scheduled'
     }
     for domain, site_name in SUPPORTED_SITES.items()
 }

@@ -9,12 +9,12 @@ from models.message import Message
 from models.subscription import Subscription
 from services import subscription_service
 from subscribe.factory import SubscriptionFactory
-from consumer.queue_management.decorators import queue_handler
+from mq import mq_consumer
 
 logger = logging.getLogger(__name__)
 
 
-@queue_handler(constants.QUEUE_SUBSCRIBE)
+@mq_consumer(constants.QUEUE_SUBSCRIBE, group="subscription", consumer_name="subscribe")
 def process_subscribe_message(message: Dict[str, Any]):
     try:
         logger.info(f"收到订阅消息: {message}")

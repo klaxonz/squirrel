@@ -5,7 +5,7 @@ from typing import List, Type
 from PyCookieCloud import PyCookieCloud
 from sqlalchemy import select, or_, and_
 from common import constants
-from consumer.queue_management.manager import QueueManager
+from mq.producer import RedisStreamProducer
 from core import config
 from core.config import settings
 from core.database import get_session
@@ -160,7 +160,7 @@ class AutoUpdateChannelVideo(BaseTask):
                         "is_nsfw": getattr(sub_detail, 'is_nsfw', False),
                     }
                     message = message_service.create_message(content)
-                    QueueManager.send_message(constants.QUEUE_SUBSCRIPTION_UPDATE, message.to_dict())
+                    RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE, message.to_dict())
                 except Exception as e:
                     logger.error(f"Failed to enqueue update for subscription {sub.id}: {e}", exc_info=True)
         except Exception as e:

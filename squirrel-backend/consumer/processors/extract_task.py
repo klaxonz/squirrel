@@ -14,12 +14,9 @@ from services import (
     creator_service, video_creator_service, subscription_service
 )
 from utils import url_helper
-from consumer.queue_management.decorators import queue_handler, routing_rule
-from consumer.queue_management.router import MessageRouter
-from consumer.queue_management.manager import QueueManager
-from consumer.queue_management.exceptions import RoutingError
+from mq import mq_consumer
+from mq.producer import RedisStreamProducer
 from common.types.queues import ExtractQueueType
-
 
 logger = logging.getLogger(__name__)
 client = RedisClient.get_instance().get_client()
@@ -48,22 +45,15 @@ def _resolve_extract_queue(params: VideoExtractDto) -> str:
     domain = url_helper.extract_top_level_domain(params.url)
     mapping = constants.DOMAIN_QUEUE_MAPPING.get(domain)
     if not mapping:
-        raise RoutingError(
-            f"Unsupported domain for extract: {domain}",
-            rule_name="video_extract",
-        )
+        raise ValueError(f"Unsupported domain for extract: {domain}", )
 
     queue_type = get_queue_type(params)
     queue_name = mapping.get(queue_type.value)
     if not queue_name:
-        raise RoutingError(
-            f"No queue mapping for domain {domain} and type {queue_type.value}",
-            rule_name="video_extract",
-        )
+        raise ValueError(f"No queue mapping for domain {domain} and type {queue_type.value}")
     return queue_name
 
 
-@routing_rule("video_extract")
 def route_video_extract(message: Dict[str, Any]) -> str:
     try:
         message_obj = Message.from_dict(message)
@@ -75,20 +65,15 @@ def route_video_extract(message: Dict[str, Any]) -> str:
 
     except Exception as e:
         logger.error(f"Error in video extract routing: {e}", exc_info=True)
-        raise RoutingError(
-            "Error in video extract routing",
-            rule_name="video_extract",
-            original_message=message,
-            cause=e
-        )
+        raise ValueError("Error in video extract routing")
 
 
-@queue_handler(constants.QUEUE_VIDEO_EXTRACT)
+@mq_consumer(constants.QUEUE_VIDEO_EXTRACT, group="extract", consumer_name="extract-entry")
 def process_extract_message(message: Dict[str, Any]):
     _process_extract_message_compat(message)
 
 
-@queue_handler(constants.QUEUE_VIDEO_EXTRACT_SCHEDULED)
+@mq_consumer(constants.QUEUE_VIDEO_EXTRACT_SCHEDULED, group="extract", consumer_name="extract-entry-scheduled")
 def process_extract_scheduled_message(message: Dict[str, Any]):
     _process_extract_message_compat(message)
 
@@ -105,7 +90,8 @@ def _process_extract_message_compat(message: Dict[str, Any]):
             logger.warning(f"Subscription {params.subscription_id} not found or deleted")
             return
 
-        MessageRouter.send_with_routing("video_extract", message)
+        queue_name = _resolve_extract_queue(params)
+        RedisStreamProducer().send(queue_name, message)
 
     except Exception as e:
         logger.error(f"路由失败，严格失败: {e}", exc_info=True)
@@ -114,16 +100,21 @@ def _process_extract_message_compat(message: Dict[str, Any]):
         raise
 
 
-@queue_handler("video_extract_*")
-def process_video_extract(message: Dict[str, Any], queue_name: str):
+@mq_consumer("queue::video::extract::bilibili::manual", group="extract-site")
+@mq_consumer("queue::video::extract::bilibili::scheduled", group="extract-site")
+@mq_consumer("queue::video::extract::youtube::manual", group="extract-site")
+@mq_consumer("queue::video::extract::youtube::scheduled", group="extract-site")
+@mq_consumer("queue::video::extract::pornhub::manual", group="extract-site")
+@mq_consumer("queue::video::extract::pornhub::scheduled", group="extract-site")
+@mq_consumer("queue::video::extract::javdb::manual", group="extract-site")
+@mq_consumer("queue::video::extract::javdb::scheduled", group="extract-site")
+def process_video_extract(message: Dict[str, Any]):
     params = None
     try:
-        logger.info(f"开始处理视频解析消息：{message} (queue: {queue_name})")
+        logger.info(f"开始处理视频解析消息：{message}")
 
-        queue_parts = queue_name.split('_')
-        platform = queue_parts[2] if len(queue_parts) > 2 else 'unknown'
-        queue_type = ExtractQueueType.SCHEDULED if 'scheduled' in queue_name else ExtractQueueType.FOR_DOWNLOAD
-
+        platform = url_helper.extract_top_level_domain(message.get('url', '')) if isinstance(message,
+                                                                                             dict) else 'unknown'
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
 
@@ -131,7 +122,7 @@ def process_video_extract(message: Dict[str, Any], queue_name: str):
             logger.warning(f"Subscription {params.subscription_id} not found or deleted")
             return
 
-        video_info = _get_video_info(params.url, queue_name)
+        video_info = _get_video_info(params.url, f"extract-{platform}")
         if not video_info:
             logger.info(f"{params.url} is not a valid video, skip")
             return
@@ -145,13 +136,12 @@ def process_video_extract(message: Dict[str, Any], queue_name: str):
         if not params.only_extract and video:
             _handle_download_task(video)
 
-        # 提取成功后，订阅级 processed++
         _tick_progress(params.subscription_id)
 
-        logger.info(f"视频提取完成: {video.title if video else 'N/A'} (platform: {platform}, type: {queue_type})")
+        logger.info(f"视频提取完成: {video.title if video else 'N/A'} (platform: {platform})")
 
     except Exception as e:
-        logger.error(f"处理消息时发生错误: message: {message}, queue: {queue_name}, error: {e}", exc_info=True)
+        logger.error(f"处理消息时发生错误: message: {message}, error: {e}", exc_info=True)
     finally:
         if params and params.url:
             task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
@@ -202,7 +192,7 @@ def _handle_download_task(video):
         task = task_service.create_task(video.id, video.url)
         message = message_service.create_message(task.to_dict())
 
-        QueueManager.send_message(constants.QUEUE_VIDEO_DOWNLOAD, message.to_dict())
+        RedisStreamProducer().send(constants.QUEUE_VIDEO_DOWNLOAD, message.to_dict())
 
         logger.info(f"下载任务已发送: video_id={video.id}")
 

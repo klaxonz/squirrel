@@ -5,7 +5,7 @@ from common import constants
 from core.cache import RedisClient
 from dto.video_dto import VideoExtractDto
 from services import video_service, message_service, subscription_service
-from consumer.queue_management.manager import QueueManager
+from mq.producer import RedisStreamProducer
 
 logger = logging.getLogger()
 client = RedisClient.get_instance().client
@@ -40,6 +40,10 @@ def start(params: VideoExtractDto):
         return
     content = params.model_dump()
     message = message_service.create_message(content)
-    QueueManager.send_message(constants.QUEUE_VIDEO_EXTRACT, message.to_dict())
+    if params.is_manual:
+        RedisStreamProducer().send(constants.QUEUE_VIDEO_EXTRACT, message.to_dict())
+    else:
+        RedisStreamProducer().send(constants.QUEUE_VIDEO_EXTRACT_SCHEDULED, message.to_dict())
+
     task_cache.set_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
 

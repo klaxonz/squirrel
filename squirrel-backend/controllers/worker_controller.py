@@ -3,9 +3,7 @@ import threading
 from threading import Lock
 from typing import List
 
-from common.constants import get_all_queues
-from consumer.queue_management.manager import QueueManager
-from utils.auto_import import ModuleImporter
+from mq.runner import WorkerRunner
 
 _logger = logging.getLogger(__name__)
 
@@ -13,6 +11,7 @@ _logger = logging.getLogger(__name__)
 _worker_threads: List[threading.Thread] = []
 _workers_running: bool = False
 _workers_lock = Lock()
+_runner: WorkerRunner | None = None
 
 
 def worker_start() -> None:
@@ -23,27 +22,13 @@ def worker_start() -> None:
             return
 
         _logger.info("[worker] starting...")
-
-        # 确保处理器被注册（递归导入consumer目录下的所有模块）
-        ModuleImporter.import_classes(directory="consumer", recursive=True)
-
-        # 为每个队列创建工作线程
-        worker_threads: List[threading.Thread] = []
-        queues = get_all_queues()
-
-        for queue in queues:
-            thread = threading.Thread(
-                target=QueueManager.start_worker,
-                args=([queue], f"worker-{queue}"),
-                daemon=True,
-                name=f"worker-{queue}"
-            )
-            worker_threads.append(thread)
-            thread.start()
-
-        _worker_threads = worker_threads
+        runner = WorkerRunner()
+        runner.start()
+        global _runner
+        _runner = runner
+        _worker_threads = runner.threads()
         _workers_running = True
-        _logger.info("[worker] started %d worker threads", len(worker_threads))
+        _logger.info("[worker] started %d worker threads", len(_worker_threads))
 
 
 def worker_stop() -> None:
