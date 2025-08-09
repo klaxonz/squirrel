@@ -16,37 +16,48 @@ from utils import url_helper
 from consumer.queue_management.decorators import queue_handler, routing_rule
 from consumer.queue_management.router import MessageRouter
 from consumer.queue_management.manager import QueueManager
+from consumer.queue_management.exceptions import RoutingError
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_extract_queue(params: VideoExtractDto) -> str:
+    domain = url_helper.extract_top_level_domain(params.url)
+    mapping = constants.DOMAIN_QUEUE_MAPPING.get(domain)
+    if not mapping:
+        raise RoutingError(
+            f"Unsupported domain for extract: {domain}",
+            rule_name="video_extract",
+        )
+
+    queue_type = 'scheduled' if params.only_extract else 'for_download'
+    queue_name = mapping.get(queue_type)
+    if not queue_name:
+        raise RoutingError(
+            f"No queue mapping for domain {domain} and type {queue_type}",
+            rule_name="video_extract",
+        )
+    return queue_name
 
 
 @routing_rule("video_extract")
 def route_video_extract(message: Dict[str, Any]) -> str:
     try:
-        # 解析消息
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
 
-        domain = url_helper.extract_top_level_domain(params.url)
-        site_name = constants.SUPPORTED_SITES.get(domain, domain.split('.')[-2] if '.' in domain else domain)
-
-        if params.only_extract:
-            queue_type = 'scheduled'
-        else:
-            queue_type = 'for_download'
-
-        if queue_type == 'scheduled':
-            queue_name = f"video_extract_{site_name}_scheduled_queue"
-        else:
-            queue_name = f"video_extract_for_download_{site_name}_queue"
-
+        queue_name = _resolve_extract_queue(params)
         logger.debug(f"Routed video extract: {params.url} -> {queue_name}")
         return queue_name
 
     except Exception as e:
-        logger.error(f"Error in video extract routing: {e}")
-        # 返回默认队列
-        return "video_extract_default_queue"
+        logger.error(f"Error in video extract routing: {e}", exc_info=True)
+        raise RoutingError(
+            "Error in video extract routing",
+            rule_name="video_extract",
+            original_message=message,
+            cause=e
+        )
 
 
 @queue_handler(constants.QUEUE_VIDEO_EXTRACT)
@@ -62,7 +73,7 @@ def process_extract_scheduled_message(message: Dict[str, Any]):
 def _process_extract_message_compat(message: Dict[str, Any]):
     params = None
     try:
-        logger.info(f"收到兼容模式的提取消息: {message}")
+        logger.info(f"收到视频解析消息: {message}")
 
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
@@ -74,33 +85,10 @@ def _process_extract_message_compat(message: Dict[str, Any]):
         MessageRouter.send_with_routing("video_extract", message)
 
     except Exception as e:
-
-        # 如果路由失败，尝试直接处理
-        try:
-            if not params:
-                message_obj = Message.from_dict(message)
-                params = VideoExtractDto.model_validate_json(message_obj.body)
-
-            # 构造默认队列名称（映射域名为站点名）
-            domain = url_helper.extract_top_level_domain(params.url)
-            site_name = constants.SUPPORTED_SITES.get(domain, domain.split('.')[-2] if '.' in domain else domain)
-            queue_type = 'scheduled' if params.only_extract else 'for_download'
-
-            if queue_type == 'scheduled':
-                queue_name = f"video_extract_{site_name}_scheduled_queue"
-            else:
-                queue_name = f"video_extract_for_download_{site_name}_queue"
-
-            # 直接调用处理器
-            process_video_extract(message, queue_name)
-
-        except Exception as fallback_error:
-            logger.error(f"兼容模式回退处理也失败: {fallback_error}", exc_info=True)
-            raise
-        finally:
-            # 清理缓存
-            if params and hasattr(params, 'url') and params.url:
-                task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
+        logger.error(f"路由失败，严格失败: {e}", exc_info=True)
+        if params and hasattr(params, 'url') and params.url:
+            task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
+        raise
 
 
 @queue_handler("video_extract_*")
