@@ -23,7 +23,11 @@ class RedisClient:
                 db=settings.REDIS_DB,
                 password=settings.REDIS_PASSWORD,
                 decode_responses=True,
-                max_connections=20
+                max_connections=100,  # 增加连接池大小
+                retry_on_timeout=True,
+                socket_keepalive=True,
+                socket_keepalive_options={},
+                health_check_interval=30
             )
         self.client = redis.Redis(connection_pool=self._pool)
 
