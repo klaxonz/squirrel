@@ -1,10 +1,11 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, Any
 from cache import task_cache
 from common import constants
 from core.database import get_session
 from core.cache import RedisClient
+from services.subscription_progress_service import tick_progress, maybe_complete
 from downloader.factory import DownloaderFactory
 from dto.video_dto import VideoExtractDto
 from meta.factory import VideoFactory
@@ -20,19 +21,6 @@ from common.types.queues import ExtractQueueType
 
 logger = logging.getLogger(__name__)
 client = RedisClient.get_instance().get_client()
-
-
-def _progress_key(sub_id: int) -> str:
-    return f"{constants.REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX}{sub_id}"
-
-
-def _tick_progress(sub_id: int) -> None:
-    key = _progress_key(sub_id)
-    try:
-        client.hincrby(key, "processed", 1)
-        client.hset(key, mapping={"updatedAt": datetime.now(timezone.utc).isoformat()})
-    except Exception as ignored:
-        pass
 
 
 def get_queue_type(params: VideoExtractDto) -> ExtractQueueType:
@@ -125,6 +113,8 @@ def process_video_extract(message: Dict[str, Any]):
         video_info = _get_video_info(params.url, f"extract-{platform}")
         if not video_info:
             logger.info(f"{params.url} is not a valid video, skip")
+            tick_progress(params.subscription_id)
+            maybe_complete(params.subscription_id)
             return
 
         video_meta = VideoFactory.create_video(params.url, video_info)
@@ -136,7 +126,8 @@ def process_video_extract(message: Dict[str, Any]):
         if not params.only_extract and video:
             _handle_download_task(video)
 
-        _tick_progress(params.subscription_id)
+        tick_progress(params.subscription_id)
+        maybe_complete(params.subscription_id)
 
         logger.info(f"视频提取完成: {video.title if video else 'N/A'} (platform: {platform})")
 

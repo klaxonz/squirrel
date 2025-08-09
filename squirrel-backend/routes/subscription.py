@@ -163,6 +163,15 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
     
     RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, message.to_dict())
 
+    # 返回入队成功结果
+    return response.success({
+        "status": "queued",
+        "inProgress": False,
+        "subscriptionId": subscription_id,
+        "requestId": getattr(message, 'id', None),
+        "queuedAt": datetime.utcnow().isoformat()
+    })
+
 
 @router.get("/api/subscription/{subscription_id}/refresh/status")
 def refresh_subscription_status(subscription_id: int, current_user: User = Depends(get_current_user)):

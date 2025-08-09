@@ -3,6 +3,7 @@ from typing import Dict, Any
 from datetime import datetime, timezone
 
 from core.cache import RedisClient
+from services.subscription_progress_service import set_progress
 from common import constants
 from mq import mq_consumer
 from dto.subscription_update_dto import SubscriptionUpdateDto
@@ -20,12 +21,6 @@ def _progress_key(sub_id: int) -> str:
 
 def _manual_flag_key(sub_id: int) -> str:
     return f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{sub_id}"
-
-
-def _set_progress(sub_id: int, data: Dict[str, Any]) -> None:
-    base = {"subscriptionId": sub_id, "updatedAt": datetime.now(timezone.utc).isoformat()}
-    client.hset(_progress_key(sub_id), mapping={**base, **data})
-    client.expire(_progress_key(sub_id), 24 * 3600)
 
 
 def _clear_manual_flag(sub_id: int) -> None:
@@ -50,7 +45,7 @@ def _process_subscription_update(message: Dict[str, Any], is_manual: bool) -> No
         return
 
     # 进度 - 入场
-    _set_progress(sub.id, {"status": "in_progress", "phase": "init", "source": source, "startedAt": datetime.now(timezone.utc).isoformat()})
+    set_progress(sub.id, {"status": "in_progress", "phase": "init", "source": source, "startedAt": datetime.now(timezone.utc).isoformat()})
 
     # manual 占用标记（短 TTL）
     if is_manual:
@@ -59,11 +54,16 @@ def _process_subscription_update(message: Dict[str, Any], is_manual: bool) -> No
     try:
         SubscriptionUpdateService.update_subscription_videos(sub, is_manual=is_manual)
         sub_name = getattr(sub, 'name', f'subscription_{params.subscription_id}')
-        logger.info(f"订阅更新完成: {sub_name}, subscription_id={params.subscription_id}")
-        _set_progress(sub.id, {"status": "completed", "phase": "finalizing", "finishedAt": datetime.utcnow().isoformat()})
+        logger.info(f"订阅更新消息已分发: {sub_name}, subscription_id={params.subscription_id}")
+        # 不在此处标记 completed，因为解析任务通过 MQ 异步执行
+        set_progress(sub.id, {
+            "status": "in_progress",
+            "phase": "extracting",
+            "dispatchedAt": datetime.now(timezone.utc).isoformat()
+        })
     except Exception as e:
         logger.error(f"订阅更新失败: subscription_id={params.subscription_id}, error={e}", exc_info=True)
-        _set_progress(sub.id, {"status": "failed", "lastError": str(e)})
+        set_progress(sub.id, {"status": "failed", "lastError": str(e)})
         raise
     finally:
         if is_manual:

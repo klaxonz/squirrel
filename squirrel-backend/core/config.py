@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     POOL_SIZE: int = 30
     POOL_MAX_SIZE: int = 60
     POOL_RECYCLE: int = 300
-    CHANNEL_UPDATE_DEFAULT_SIZE: int = 10
+    CHANNEL_UPDATE_DEFAULT_SIZE: int = 30
     DOWNLOAD_RETRY_THRESHOLD: int = 5
     DOWNLOAD_CONSUMERS: int = 1
     EXTRACT_CONSUMERS: int = 2
