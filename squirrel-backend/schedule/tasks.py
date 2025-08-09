@@ -8,6 +8,7 @@ from typing import List, Type
 from PyCookieCloud import PyCookieCloud
 from sqlalchemy import select, or_, and_
 
+from common import constants
 from core import config
 from core.config import settings
 from core.database import get_session
@@ -154,19 +155,20 @@ class AutoUpdateChannelVideo(BaseTask):
                 ).all()
 
             from services import message_service
-            from consumer import update_subscription_task
             for sub in subscriptions:
                 try:
                     sub_detail = subscription_service.get_subscription_detail(sub.id)
                     content = {
-                        "subscription_id": sub_detail.id,
-                        "url": sub_detail.url,
-                        "total_videos": sub_detail.total_videos,
-                        "total_extract": sub_detail.total_extract,
-                        "is_nsfw": sub_detail.is_nsfw,
+                        "subscription_id": getattr(sub_detail, 'id', sub.id),
+                        "url": getattr(sub_detail, 'url', ''),
+                        "total_videos": getattr(sub_detail, 'total_videos', 0),
+                        "total_extract": getattr(sub_detail, 'total_extract', 0),
+                        "is_nsfw": getattr(sub_detail, 'is_nsfw', False),
                     }
                     message = message_service.create_message(content)
-                    update_subscription_task.process_subscription_update.send(message.to_dict())
+                    # 使用新的队列管理系统发送消息
+                    from consumer.queue_management.manager import QueueManager
+                    QueueManager.send_message(constants.QUEUE_SUBSCRIPTION_UPDATE, message.to_dict())
                 except Exception as e:
                     logger.error(f"Failed to enqueue update for subscription {sub.id}: {e}", exc_info=True)
         except Exception as e:

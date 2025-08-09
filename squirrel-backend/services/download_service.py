@@ -2,10 +2,10 @@ import logging
 
 from cache import task_cache
 from common import constants
-from consumer import extract_task
 from core.cache import RedisClient
 from dto.video_dto import VideoExtractDto
 from services import video_service, message_service, subscription_service
+from consumer.queue_management.manager import QueueManager
 
 logger = logging.getLogger()
 client = RedisClient.get_instance().client
@@ -40,6 +40,6 @@ def start(params: VideoExtractDto):
         return
     content = params.model_dump()
     message = message_service.create_message(content)
-    extract_task.process_extract_message.send(message.to_dict())
+    QueueManager.send_message(constants.QUEUE_VIDEO_EXTRACT, message.to_dict())
     task_cache.set_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
 

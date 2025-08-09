@@ -4,7 +4,6 @@ from fastapi import APIRouter, Query, Depends
 from sqlalchemy import select
 
 import common.response as response
-from consumer import subscribe_task
 from core.database import get_session
 from models.links import UserSubscription
 from models.message import Message
@@ -17,6 +16,8 @@ from schemas.subscription import (
 )
 from services import subscription_service
 from utils.jwt_helper import get_current_user
+from consumer.queue_management.manager import QueueManager
+from common import constants
 
 router = APIRouter(tags=['订阅接口'])
 
@@ -32,7 +33,7 @@ def subscribe_content(req: SubscribeRequest, current_user: User = Depends(get_cu
         session.add(message)
         session.commit()
         dump_json = message.to_dict()
-        subscribe_task.process_subscribe_message.send(dump_json)
+        QueueManager.send_message(constants.QUEUE_SUBSCRIBE, dump_json)
 
     return response.success()
 

@@ -29,8 +29,8 @@ def worker_start() -> None:
         for q in get_all_queues():
             redis_broker.declare_queue(q)
         dramatiq.set_broker(redis_broker)
-        # Ensure actors are registered
-        ModuleImporter.import_classes(directory="consumer")
+        # Ensure actors are registered (import recursively so subpackages like consumer/processors are loaded)
+        ModuleImporter.import_classes(directory="consumer", recursive=True)
 
         workers: List[Worker] = []
         for queue in get_all_queues():
