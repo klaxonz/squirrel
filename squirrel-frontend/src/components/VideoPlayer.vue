@@ -45,7 +45,7 @@
         ref="videoPlayer"
         class="video-player"
         :poster="video.thumbnail"
-        :src="video.video_stream_url"
+        :src="video.stream_video_url"
         preload="auto"
         crossorigin="anonymous"
         playsinline
@@ -71,7 +71,7 @@
       <audio
         v-if="!isHlsStream"
         ref="audioPlayer"
-        :src="video.audio_stream_url"
+        :src="video.stream_audio_url"
         @seeking="handleAudioSeeking"
         @canplay="handleAudioCanplay"
         @error="handleAudioError"
@@ -1320,7 +1320,7 @@ const handleVideoError = (error) => {
     retryCallback: () => {
       if (isHlsStream.value && hls.value) {
         playerState.media.loading = true;
-        setTimeout(initHls, RECONNECT_INTERVAL);
+        setTimeout(reinitializeHls, RECONNECT_INTERVAL);
       } else {
         playerState.media.loading = true;
         setTimeout(() => {
