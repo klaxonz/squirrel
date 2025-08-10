@@ -480,9 +480,9 @@ import useVideoHistory from "../composables/useVideoHistory";
 import useVideoErrorHandler from "../composables/useVideoErrorHandler";
 import useVideoPreload from "../composables/useVideoPreload";
 import { formatTime } from "../utils/dateFormat";
-import Hls from 'hls.js';
-import { getCueClass, parseVTT, parseSRT } from "../utils/subtitles";
-import { debounce } from "../utils/debounce";
+import useSubtitles from "../composables/useSubtitles";
+import useHlsPlayer from "../composables/useHlsPlayer";
+import usePerformanceMonitor from "../composables/usePerformanceMonitor";
 import useKeyboardShortcuts from "../composables/useKeyboardShortcuts";
 import useProgressBar from "../composables/useProgressBar";
 import useTouchSeek from "../composables/useTouchSeek";
@@ -595,8 +595,15 @@ const playerState = reactive({
   }
 });
 
-// HLS 实例
-const hls = ref(null);
+// 性能监控由组合函数提供（先初始化，避免 TDZ）
+const performanceState = reactive({
+  bandwidth: { samples: [], average: 0, current: 0 },
+  memory: { used: 0, peak: 0, lastCleanup: 0 },
+  loading: { startTime: 0, duration: 0, bytesLoaded: 0 },
+});
+
+// 通过组合函数管理 HLS 实例
+let hls; // 将在 useHlsPlayer 返回后赋值为 hlsRef
 
 // 计算属性
 const isHlsStream = computed(() => 
@@ -691,33 +698,44 @@ const availableQualities = ref([
   { value: '360p', label: '360p' }
 ]);
 
-// 常量
-const MAX_RECONNECT_ATTEMPTS = 3;
-const RECONNECT_INTERVAL = 3000;
+// 这里重复定义的性能状态移除，保持顶部唯一初始化
 
-// 性能优化相关常量
-const PRELOAD_BUFFER_SIZE = 10; // 预加载缓冲大小（秒）
-const MEMORY_CLEANUP_INTERVAL = 30000; // 内存清理间隔（毫秒）
-const BANDWIDTH_SAMPLE_SIZE = 5; // 带宽采样大小
-
-// 性能监控状态
-const performanceState = reactive({
-  bandwidth: {
-    samples: [],
-    average: 0,
-    current: 0
-  },
-  memory: {
-    used: 0,
-    peak: 0,
-    lastCleanup: 0
-  },
-  loading: {
-    startTime: 0,
-    duration: 0,
-    bytesLoaded: 0
-  }
+// 接入字幕组合函数
+const { toggleSubtitles: toggleSubtitlesFn, setSubtitle: setSubtitleFn, ensureSubtitlesOnMetadata } = useSubtitles({
+  playerState,
+  videoRef: videoPlayer,
+  props,
 });
+
+// 接入 HLS 播放与错误处理
+const {
+  hlsRef,
+  initializeHls,
+  reinitializeHls,
+  destroyHls,
+  setQuality: setHlsQuality,
+  MAX_RECONNECT_ATTEMPTS,
+  RECONNECT_INTERVAL,
+} = useHlsPlayer({
+  playerState,
+  videoRef: videoPlayer,
+  props,
+  getOptimizedHlsConfig,
+  onProgress: () => handleVideoProgress(),
+  onError: (info) => {
+    playerState.ui.errorMessage = '网络连接失败，请检查您的网络后重试';
+    emit('error', info);
+  },
+});
+hls = hlsRef;
+
+// 接入性能监控
+const {
+  performanceState: perfState,
+  monitorNetworkSpeed,
+  monitorPerformance,
+  updateBandwidth,
+} = usePerformanceMonitor({ hlsRef, videoRef: videoPlayer, externalPerformanceState: performanceState });
 
 // 触摸状态已封装至 useTouchSeek
 
@@ -761,132 +779,7 @@ const {
   { setVideoTime: (t) => setVideoTime?.(t) }
 );
 
-// 性能优化函数
-const updateBandwidth = (bytesLoaded, duration) => {
-  if (duration > 0) {
-    const bandwidth = (bytesLoaded * 8) / duration; // bps
-    performanceState.bandwidth.current = bandwidth;
-
-    // 保持最近的带宽样本
-    performanceState.bandwidth.samples.push(bandwidth);
-    if (performanceState.bandwidth.samples.length > BANDWIDTH_SAMPLE_SIZE) {
-      performanceState.bandwidth.samples.shift();
-    }
-
-    // 计算平均带宽
-    performanceState.bandwidth.average =
-      performanceState.bandwidth.samples.reduce((a, b) => a + b, 0) /
-      performanceState.bandwidth.samples.length;
-  }
-};
-
-// 监控网络加载速度
-const monitorNetworkSpeed = () => {
-  if (videoPlayer.value && videoPlayer.value.buffered.length > 0) {
-    const buffered = videoPlayer.value.buffered;
-    const currentTime = videoPlayer.value.currentTime;
-
-    // 计算当前缓冲区的字节数（估算）
-    let totalBufferedBytes = 0;
-    for (let i = 0; i < buffered.length; i++) {
-      const start = buffered.start(i);
-      const end = buffered.end(i);
-      const duration = end - start;
-
-      // 估算比特率（假设视频质量为1080p，约5Mbps）
-      const estimatedBitrate = 5 * 1024 * 1024; // 5Mbps in bps
-      totalBufferedBytes += (duration * estimatedBitrate) / 8; // 转换为字节
-    }
-
-    // 更新带宽信息
-    const loadingDuration = (Date.now() - performanceState.loading.startTime) / 1000;
-    if (loadingDuration > 0) {
-      updateBandwidth(totalBufferedBytes, loadingDuration);
-    }
-  }
-};
-
-const optimizeBufferSize = () => {
-  if (hls.value && performanceState.bandwidth.average > 0) {
-    // 更激进的缓冲策略以减少卡顿
-    const bandwidth = performanceState.bandwidth.average;
-    const mbps = bandwidth / 1000000;
-
-    // 根据带宽设置更大的缓冲区
-    let targetBuffer;
-    if (mbps >= 10) {
-      targetBuffer = 120; // 高速网络：2分钟缓冲
-    } else if (mbps >= 5) {
-      targetBuffer = 90;  // 中速网络：1.5分钟缓冲
-    } else if (mbps >= 2) {
-      targetBuffer = 60;  // 低速网络：1分钟缓冲
-    } else {
-      targetBuffer = 30;  // 极慢网络：30秒缓冲
-    }
-
-    // 动态调整HLS配置
-    if (hls.value.config) {
-      hls.value.config.maxBufferLength = targetBuffer;
-      hls.value.config.maxMaxBufferLength = targetBuffer * 1.5;
-
-      // 根据网络状况调整质量切换策略
-      if (mbps < 2) {
-        // 慢网络：更保守的质量切换
-        hls.value.config.abrBandWidthFactor = 0.6;
-        hls.value.config.abrBandWidthUpFactor = 0.4;
-      } else {
-        // 快网络：正常质量切换
-        hls.value.config.abrBandWidthFactor = 0.8;
-        hls.value.config.abrBandWidthUpFactor = 0.6;
-      }
-    }
-
-    console.debug('Buffer size optimized to:', targetBuffer, 'seconds for', mbps.toFixed(1), 'Mbps');
-  }
-};
-
-const cleanupMemory = () => {
-  const now = Date.now();
-  if (now - performanceState.memory.lastCleanup > MEMORY_CLEANUP_INTERVAL) {
-    // 清理不必要的缓冲区
-    if (videoPlayer.value && videoPlayer.value.buffered.length > 0) {
-      const currentTime = videoPlayer.value.currentTime;
-      const buffered = videoPlayer.value.buffered;
-
-      // 如果缓冲区太大，建议浏览器清理旧数据
-      for (let i = 0; i < buffered.length; i++) {
-        if (buffered.end(i) < currentTime - 30) {
-          // 30秒前的数据可以清理
-          console.debug('Suggesting cleanup of old buffer data');
-        }
-      }
-    }
-
-    performanceState.memory.lastCleanup = now;
-
-    // 强制垃圾回收（如果可用）
-    if (window.gc) {
-      window.gc();
-    }
-  }
-};
-
-const monitorPerformance = () => {
-  if (videoPlayer.value) {
-    // 监控内存使用
-    if (performance.memory) {
-      performanceState.memory.used = performance.memory.usedJSHeapSize;
-      performanceState.memory.peak = Math.max(
-        performanceState.memory.peak,
-        performanceState.memory.used
-      );
-    }
-
-    // 定期优化
-    optimizeBufferSize();
-    cleanupMemory();
-  }
-};
+// monitorNetworkSpeed 与 monitorPerformance 将由组合函数提供
 
 
 // 定义需要清理的变量
@@ -970,7 +863,7 @@ onUnmounted(() => {
   if (cleanupPeriodicSync) cleanupPeriodicSync();
 
   // 销毁 HLS 实例
-  if (hls.value) {
+  if (hls && hls.value) {
     hls.value.destroy();
     hls.value = null;
   }
@@ -986,7 +879,7 @@ onUnmounted(() => {
 const initializeMediaSources = () => {
   if (props.video?.stream_video_url) {
     if (isHlsStream.value) {
-      initializeHlsStream();
+      initializeHls();
     } else {
       videoPlayer.value.src = props.video.stream_video_url;
     }
@@ -997,62 +890,14 @@ const initializeMediaSources = () => {
   }
 };
 
-// 初始化HLS播放
-const initializeHlsStream = () => {
-  if (Hls.isSupported()) {
-    // 使用智能优化的HLS配置
-    const hlsConfig = getOptimizedHlsConfig();
-
-    hls.value = new Hls(hlsConfig);
-    hls.value.attachMedia(videoPlayer.value);
-
-    // 监听更多事件以优化性能
-    hls.value.on(Hls.Events.MEDIA_ATTACHED, () => {
-      console.debug('HLS media attached');
-      hls.value.loadSource(props.video.stream_video_url);
-    });
-
-    hls.value.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-      console.debug('HLS manifest parsed', data);
-      // 可以在这里根据网络状况选择初始质量
-    });
-
-    hls.value.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
-      console.debug('HLS level switched to', data.level);
-    });
-
-    hls.value.on(Hls.Events.FRAG_BUFFERED, () => {
-      // 片段缓冲完成，更新缓冲进度
-      handleVideoProgress();
-    });
-
-    hls.value.on(Hls.Events.ERROR, (event, data) => {
-      handleHlsError(data);
-    });
-
-    // 监听缓冲事件
-    hls.value.on(Hls.Events.BUFFER_APPENDING, () => {
-      playerState.media.loading = true;
-      playerState.media.loadingStage = 'buffering';
-    });
-
-    hls.value.on(Hls.Events.BUFFER_APPENDED, () => {
-      playerState.media.loading = false;
-      playerState.media.loadingStage = 'ready';
-    });
-
-  } else if (videoPlayer.value.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari原生支持
-    videoPlayer.value.src = props.video.stream_video_url;
-  }
-};
+// 初始化HLS播放由组合函数提供
 
 // URL变更监听
 watch(() => props.video?.stream_video_url, async (newVideoUrl) => {
   if (newVideoUrl && videoPlayer.value) {
     console.debug('video url changed');
     if (isHlsStream.value) {
-      initializeHlsStream();
+      initializeHls();
     } else {
       videoPlayer.value.src = newVideoUrl;
     }
@@ -1310,16 +1155,8 @@ const handleVideoLoadedmetadata = () => {
   if (videoPlayer.value) {
     playerState.media.duration = videoPlayer.value.duration;
   }
-  // 确保字幕在元数据就绪后被加载展示
-  if (playerState.media.subtitlesEnabled && playerState.media.currentSubtitle) {
-    // 若 track 无 cues，重新加载字幕
-    const track = videoPlayer.value?.textTracks?.[0];
-    if (!track || !track.cues || track.cues.length === 0) {
-      loadSubtitle(playerState.media.currentSubtitle);
-    } else {
-      track.mode = 'showing';
-    }
-  }
+  // 通过组合函数保证字幕状态
+  ensureSubtitlesOnMetadata();
 };
 
 const handleVideoLoadeddata = () => {
@@ -1470,42 +1307,7 @@ const handleMouseLeave = () => {
   }, 2000);
 };
 
-// 改进HLS错误处理
-const handleHlsError = (data) => {
-  if (data.fatal) {
-    switch (data.type) {
-      case Hls.ErrorTypes.NETWORK_ERROR:
-        console.warn('HLS network error, trying to recover');
-        if (playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-          playerState.network.reconnectAttempts++;
-          hls.value.startLoad();
-        } else {
-          playerState.ui.errorMessage = '网络连接失败，请检查您的网络后重试';
-          emit('error', {type: 'network', message: 'Network connection failed'});
-        }
-        break;
-      case Hls.ErrorTypes.MEDIA_ERROR:
-        console.warn('HLS media error, recovering');
-        hls.value.recoverMediaError();
-        break;
-      default:
-        if (playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-          playerState.network.reconnectAttempts++;
-          initHls();
-        } else {
-          emit('error', {type: 'fatal', message: 'Cannot play video'});
-        }
-        break;
-    }
-  }
-};
-
-const initHls = () => {
-  if (hls.value) {
-    hls.value.destroy();
-  }
-  initializeHlsStream();
-};
+// 旧的 HLS 错误处理与初始化已由 useHlsPlayer 接管
 
 const handleVideoError = (error) => {
   console.error('Video error:', error);
@@ -1612,7 +1414,7 @@ const handleRetry = () => {
   const success = manualRetry(() => {
     playerState.network.reconnectAttempts = 0;
     if (isHlsStream.value) {
-      initHls();
+      reinitializeHls();
     } else {
       videoPlayer.value.load();
       videoPlayer.value.play().catch((error) => {
@@ -1695,21 +1497,7 @@ const setPlaybackRate = (rate) => {
   playerState.ui.showPlaybackRateMenu = false;
 };
 
-const toggleSubtitles = () => {
-  const willEnable = !playerState.media.subtitlesEnabled;
-  playerState.media.subtitlesEnabled = willEnable;
-
-  if (willEnable) {
-    // 优先当前所选字幕，否则自动选择第一个
-    const current = playerState.media.currentSubtitle || (props.video?.subtitles?.[0] || null);
-    if (current) {
-      playerState.media.currentSubtitle = current;
-      loadSubtitle(current);
-    }
-  } else {
-    hideSubtitles();
-  }
-};
+const toggleSubtitles = () => toggleSubtitlesFn();
 
 const toggleSettingsMenu = () => {
   playerState.ui.showSettingsMenu = !playerState.ui.showSettingsMenu;
@@ -1753,97 +1541,18 @@ const { handleKeyDown, cleanup: cleanupKeyboard } = useKeyboardShortcuts(playerS
 // 高级功能函数
 const setQuality = (quality) => {
   playerState.media.currentQuality = quality;
-
-  if (hls.value) {
-    if (quality === 'auto') {
-      hls.value.currentLevel = -1; // 自动选择
-    } else {
-      // 根据质量标签找到对应的level
-      const levels = hls.value.levels;
-      const targetLevel = levels.findIndex(level =>
-        level.height === parseInt(quality) ||
-        level.name === quality
-      );
-      if (targetLevel !== -1) {
-        hls.value.currentLevel = targetLevel;
-      }
-    }
-  }
-
+  if (hls && hls.value) setHlsQuality(quality);
   playerState.ui.showSettingsMenu = false;
   console.debug('Quality changed to:', quality);
 };
 
-const setSubtitle = (subtitle) => {
-  playerState.media.currentSubtitle = subtitle;
-  playerState.media.subtitlesEnabled = !!subtitle;
+const setSubtitle = (subtitle) => setSubtitleFn(subtitle);
 
-  // 这里可以添加字幕显示逻辑
-  if (subtitle) {
-    console.debug('Subtitle enabled:', subtitle.language);
-    // 加载字幕文件
-    loadSubtitle(subtitle);
-  } else {
-    console.debug('Subtitles disabled');
-    // 隐藏字幕
-    hideSubtitles();
-  }
-
-  playerState.ui.showSettingsMenu = false;
-};
-
-const loadSubtitle = async (subtitle) => {
-  try {
-    // 这里可以实现字幕加载逻辑
-    // 例如加载 WebVTT 文件
-    if (subtitle.url) {
-      const response = await fetch(subtitle.url);
-      const text = await response.text();
-
-      // 创建或更新字幕轨道
-      let track = videoPlayer.value.textTracks[0];
-      if (!track) {
-        const label = subtitle.label || subtitle.language || 'Subtitles';
-        const langCode = subtitle.srclang || 'zh';
-        track = videoPlayer.value.addTextTrack('subtitles', label, langCode);
-      }
-
-      // 清空旧的 cues
-      for (let i = track.cues?.length - 1; i >= 0; i--) {
-        track.removeCue(track.cues[i]);
-      }
-
-      // 自动识别 SRT/VTT
-      const isVtt = text.trimStart().startsWith('WEBVTT');
-      if (isVtt) {
-        parseVTT(text, track);
-      } else {
-        parseSRT(text, track);
-      }
-      track.mode = 'showing';
-    }
-  } catch (error) {
-    console.error('Failed to load subtitle:', error);
-  }
-};
-
-const hideSubtitles = () => {
-  // 隐藏所有字幕轨道
-  for (let i = 0; i < videoPlayer.value.textTracks.length; i++) {
-    videoPlayer.value.textTracks[i].mode = 'hidden';
-  }
-};
+// 字幕加载/隐藏交由 useSubtitles 处理
 
 
 // 当视频的字幕列表变为可用时，自动选择并加载第一条（仅在未手动选择时）
-watch(() => props.video?.subtitles, (newSubs) => {
-  if (Array.isArray(newSubs) && newSubs.length > 0 && !playerState.media.currentSubtitle) {
-    const first = newSubs[0];
-    playerState.media.currentSubtitle = first;
-    playerState.media.subtitlesEnabled = true;
-    loadSubtitle(first);
-  }
-});
+// 自动选择与加载字幕的监听已在 useSubtitles 内部实现
 
 /**
  * 点击透明层的处理：
