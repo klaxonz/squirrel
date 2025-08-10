@@ -481,6 +481,11 @@ import useVideoErrorHandler from "../composables/useVideoErrorHandler";
 import useVideoPreload from "../composables/useVideoPreload";
 import { formatTime } from "../utils/dateFormat";
 import Hls from 'hls.js';
+import { getCueClass, parseVTT, parseSRT } from "../utils/subtitles";
+import { debounce } from "../utils/debounce";
+import useKeyboardShortcuts from "../composables/useKeyboardShortcuts";
+import useProgressBar from "../composables/useProgressBar";
+import useTouchSeek from "../composables/useTouchSeek";
 
 const props = defineProps({
   video: Object
@@ -641,6 +646,9 @@ const supportsPiP = computed(() =>
   document.pictureInPictureEnabled && videoPlayer.value
 );
 
+// 提前声明 setVideoTime，具体实现位于下方唯一实现
+let setVideoTime;
+
 // 加载状态文本
 const loadingStatusText = computed(() => {
   switch (playerState.media.loadingStage) {
@@ -711,8 +719,7 @@ const performanceState = reactive({
   }
 });
 
-// 触摸状态
-const touchStartTime = ref(0);
+// 触摸状态已封装至 useTouchSeek
 
 // 计时器
 let hideControlsTimer = null;
@@ -738,87 +745,21 @@ const isTouchDevice = computed(() =>
   (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0))
 );
 
-// 改进防抖函数实现，确保事件对象正确传递
-function debounce(fn, delay) {
-  let timer = null;
-  
-  const debouncedFn = function(e) {
-    // 保存原始事件对象，因为异步操作后可能无法访问
-    if (e && e.type === 'mousemove') {
-      // 对于鼠标事件，我们需要创建一个包含必要属性的对象
-      const eventCopy = {
-        clientX: e.clientX,
-        clientY: e.clientY,
-        currentTarget: e.currentTarget,
-        target: e.target
-      };
-      
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        fn.call(this, eventCopy);
-      }, delay);
-    } else {
-      // 其他类型的事件
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        fn.apply(this, arguments);
-      }, delay);
-    }
-  };
-  
-  debouncedFn.cancel = function() {
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-    }
-  };
-  
-  return debouncedFn;
-}
 
-// 修改进度条处理函数
-const handleProgressHover = (e) => {
-  try {
-    // 检查事件对象
-    if (!e || !e.currentTarget) {
-      console.warn('Missing event properties in handleProgressHover');
-      return;
-    }
-    
-    playerState.ui.hoveringProgress = true;
-    
-    // 获取位置信息
-    const rect = e.currentTarget.getBoundingClientRect();
-    const position = ((e.clientX - rect.left) / rect.width) * 100;
-    playerState.ui.hoverPosition = Math.min(Math.max(position, 0), 100);
-    
-    // 计算预览时间
-    const duration = playerState.media.duration || 0;
-    
-    if (duration > 0) {
-      if (playerState.ui.isDragging) {
-        playerState.ui.previewTime = playerState.ui.previewSeekTime || 0;
-      } else {
-        playerState.ui.previewTime = (duration * position) / 100;
-      }
-    } else {
-      const videoDuration = videoPlayer.value?.duration || 0;
-      playerState.ui.previewTime = (videoDuration * position) / 100;
-    }
-  } catch (error) {
-    console.error('Error in handleProgressHover:', error);
-  }
-};
-
-// 在组件卸载时清理防抖函数
-onUnmounted(() => {
-  if (typeof debouncedProgressHover.cancel === 'function') {
-    debouncedProgressHover.cancel();
-  }
-});
-
-// 在声明函数后创建防抖版本
-const debouncedProgressHover = debounce(handleProgressHover, 5);
+// 使用组合函数封装进度条交互
+const {
+  debouncedProgressHover,
+  handleProgressLeave,
+  handleProgressMouseDown,
+  handleProgressTouchStart,
+  handleProgressTouchMove,
+  handleProgressTouchEnd,
+  cleanup: cleanupProgressBar
+} = useProgressBar(
+  playerState,
+  { getDuration: () => videoPlayer.value?.duration || playerState.media.duration || 0 },
+  { setVideoTime: (t) => setVideoTime?.(t) }
+);
 
 // 性能优化函数
 const updateBandwidth = (bytesLoaded, duration) => {
@@ -947,9 +888,6 @@ const monitorPerformance = () => {
   }
 };
 
-const handleProgressLeave = () => {
-  playerState.ui.hoveringProgress = false;
-};
 
 // 定义需要清理的变量
 let performanceInterval = null;
@@ -1012,28 +950,37 @@ onMounted(async () => {
 
 // 清理定时器和监听器
 onUnmounted(() => {
-  if (syncInterval) {
-    clearInterval(syncInterval);
+  // 取消进度条 hover 防抖
+  if (typeof debouncedProgressHover?.cancel === 'function') {
+    debouncedProgressHover.cancel();
   }
-  if (performanceInterval) {
-    clearInterval(performanceInterval);
+
+  // 清理定时器
+  if (syncInterval) clearInterval(syncInterval);
+  if (performanceInterval) clearInterval(performanceInterval);
+  if (showControlsInterval) clearInterval(showControlsInterval);
+  if (hideControlsTimer) {
+    clearTimeout(hideControlsTimer);
+    hideControlsTimer = null;
   }
-  if (showControlsInterval) {
-    clearInterval(showControlsInterval);
-  }
+  if (saveProgressTimer) clearTimeout(saveProgressTimer);
 
   // 清理网络监听和定期同步
-  if (cleanupNetworkListeners) {
-    cleanupNetworkListeners();
-  }
-  if (cleanupPeriodicSync) {
-    cleanupPeriodicSync();
+  if (cleanupNetworkListeners) cleanupNetworkListeners();
+  if (cleanupPeriodicSync) cleanupPeriodicSync();
+
+  // 销毁 HLS 实例
+  if (hls.value) {
+    hls.value.destroy();
+    hls.value = null;
   }
 
-  // 清理进度保存定时器
-  if (saveProgressTimer) {
-    clearTimeout(saveProgressTimer);
-  }
+  // 组合函数清理
+  if (typeof cleanupProgressBar === 'function') cleanupProgressBar();
+  if (typeof cleanupKeyboard === 'function') cleanupKeyboard();
+
+  // 移除方向监听
+  screen.orientation?.removeEventListener('change', handleOrientationChange);
 });
 
 const initializeMediaSources = () => {
@@ -1487,40 +1434,9 @@ const toggleFullscreen = async () => {
   playerState.ui.fullscreen = !!document.fullscreenElement;
 };
 
-// 进度条交互
-const handleProgressMouseDown = (e) => {
-  e.preventDefault();
-  playerState.ui.isDragging = true;
-  const rect = e.currentTarget.getBoundingClientRect();
-  
-  const updatePreview = (clientX) => {
-    const position = (clientX - rect.left) / rect.width;
-    playerState.ui.previewSeekTime = playerState.media.duration * Math.min(Math.max(position, 0), 1);
-    playerState.ui.hoverPosition = position * 100;
-  };
-
-  updatePreview(e.clientX);
-
-  const handleMouseMove = (e) => {
-    if (!playerState.ui.isDragging) return;
-    updatePreview(e.clientX);
-  };
-
-  const handleMouseUp = () => {
-    playerState.ui.isDragging = false;
-    setVideoTime(playerState.ui.previewSeekTime);
-    
-    // 清理事件监听
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  };
-
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
-};
-
-// 设置视频时间
-const setVideoTime = (time) => {
+// 设置视频时间（唯一实现）
+setVideoTime = (time) => {
+  if (!videoPlayer.value) return;
   videoPlayer.value.currentTime = time;
   if (!isHlsStream.value && audioPlayer.value) {
     audioPlayer.value.currentTime = time;
@@ -1635,172 +1551,26 @@ const handleAudioError = () => {
   }
 };
 
-// 改进触摸事件处理
-const handleProgressTouchStart = (e) => {
-  e.preventDefault(); // 防止滚动
-  playerState.ui.isDragging = true;
-  const rect = e.currentTarget.getBoundingClientRect();
-  const position = (e.touches[0].clientX - rect.left) / rect.width;
-  
-  // 保存初始位置和时间
-  playerState.ui.previewSeekTime = playerState.media.duration * Math.min(Math.max(position, 0), 1);
-  playerState.ui.hoverPosition = position * 100;
-  playerState.ui.hoveringProgress = true;
-};
 
-const handleProgressTouchMove = (e) => {
-  e.preventDefault(); // 防止滚动
-  
-  if (playerState.ui.isDragging) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const position = (e.touches[0].clientX - rect.left) / rect.width;
-    const boundedPosition = Math.min(Math.max(position, 0), 1);
-    
-    // 更新预览时间和位置
-    playerState.ui.previewSeekTime = playerState.media.duration * boundedPosition;
-    playerState.ui.hoverPosition = boundedPosition * 100;
+// 使用组合函数封装触摸手势
+const showControls = () => {
+  playerState.ui.controlsVisible = true;
+  if (hideControlsTimer) {
+    clearTimeout(hideControlsTimer);
   }
 };
-
-const handleProgressTouchEnd = (e) => {
-  // 设置视频时间
-  if (playerState.ui.isDragging) {
-    setVideoTime(playerState.ui.previewSeekTime);
-  }
-  
-  // 重置拖动状态
-  playerState.ui.isDragging = false;
-  playerState.ui.hoveringProgress = false;
+const scheduleHideControls = (delay = 3000) => {
+  if (hideControlsTimer) clearTimeout(hideControlsTimer);
+  hideControlsTimer = setTimeout(() => {
+    playerState.ui.controlsVisible = false;
+  }, delay);
 };
-
-const handleTouchStart = (e) => {
-  const touch = e.touches[0];
-  touchStartTime.value = Date.now();
-  
-  // 记录初始触摸位置
-  playerState.ui.seeking.startX = touch.clientX;
-  playerState.ui.seeking.currentX = touch.clientX;
-  playerState.ui.volume.startY = touch.clientY;
-  playerState.ui.volume.startVolume = playerState.media.volume;
-  
-  // 重置状态
-  playerState.ui.seeking.active = false;
-  playerState.ui.volume.adjusting = false;
-};
-
-const handleTouchMove = (e) => {
-  if (e.touches.length !== 1) return;
-  
-  const touch = e.touches[0];
-  const deltaX = Math.abs(touch.clientX - playerState.ui.seeking.startX);
-  const deltaY = Math.abs(touch.clientY - playerState.ui.volume.startY);
-  
-  // 如果还没有确定滑动类型，根据滑动方向判断
-  if (!playerState.ui.seeking.active && !playerState.ui.volume.adjusting) {
-    // 降低触发阈值，让操作更灵敏
-    if (deltaX > 5 || deltaY > 5) {
-      // 如果横向移动距离大于纵向，则为快进快退
-      if (deltaX > deltaY) {
-        playerState.ui.seeking.active = true;
-        // 记录开始时的播放状态
-        playerState.ui.seeking.wasPlaying = playerState.media.playing;
-        // 暂停播放以避免干扰
-        if (playerState.media.playing) {
-          videoPlayer.value.pause();
-        }
-      } else {
-        playerState.ui.volume.adjusting = true;
-        playerState.ui.volume.showIndicator = true;
-      }
-    }
-  }
-  
-  // 根据已确定的滑动类型执行相应操作
-  if (playerState.ui.volume.adjusting) {
-    e.preventDefault();
-    const volumeChange = ((playerState.ui.volume.startY - touch.clientY) / 200) * 100;
-    const newVolume = Math.min(Math.max(playerState.ui.volume.startVolume + volumeChange, 0), 100);
-    playerState.media.volume = newVolume;
-  } else if (playerState.ui.seeking.active) {
-    e.preventDefault(); // 防止页面滚动
-    const touchX = touch.clientX;
-    playerState.ui.seeking.currentX = touchX;
-    
-    const diffX = touchX - playerState.ui.seeking.startX;
-    const absDiffX = Math.abs(diffX);
-    
-    // 降低触发阈值，提高响应性
-    if (absDiffX > 20) {
-      playerState.ui.seeking.distance = diffX;
-      playerState.ui.seeking.direction = diffX > 0 ? 'forward' : 'backward';
-      
-      // 改进的非线性加速算法
-      // 1. 基础速度更低，更容易控制：每30px对应2秒
-      // 2. 使用平滑的指数曲线而不是阶梯式变化
-      // 3. 最大速度限制，避免失控
-      const baseSpeed = 2; // 基础速度：2秒/30px
-      const maxSpeed = 30; // 最大速度限制：30秒
-      const acceleration = Math.pow(absDiffX / 30, 1.5); // 使用指数1.5使加速更平滑
-      const seekSeconds = Math.min(baseSpeed * acceleration, maxSpeed);
-      
-      if (playerState.ui.seeking.direction === 'forward') {
-        playerState.ui.seeking.seekTime = Math.min(
-          playerState.media.currentTime + seekSeconds,
-          playerState.media.duration
-        );
-      } else {
-        playerState.ui.seeking.seekTime = Math.max(
-          playerState.media.currentTime - seekSeconds,
-          0
-        );
-      }
-      
-      // 实时预览：直接更新视频时间，但不播放
-      videoPlayer.value.currentTime = playerState.ui.seeking.seekTime;
-    }
-  }
-};
-
-const handleTouchEnd = (e) => {
-  if (playerState.ui.volume.adjusting) {
-    playerState.ui.volume.adjusting = false;
-    setTimeout(() => {
-      playerState.ui.volume.showIndicator = false;
-    }, 1000);
-    return;
-  }
-
-  if (playerState.ui.seeking.active) {
-    setVideoTime(playerState.ui.seeking.seekTime);
-    playerState.ui.seeking.active = false;
-    playerState.ui.seeking.distance = 0;
-    playerState.ui.seeking.direction = null;
-    
-    // 如果之前是播放状态，恢复播放
-    if (playerState.ui.seeking.wasPlaying) {
-      videoPlayer.value.play();
-    }
-    return;
-  }
-
-  // 简化的触摸点击逻辑 - 只处理控制栏显示
-  // 播放切换现在由 handleVideoLayerClick 统一处理
-  const isTap = Date.now() - touchStartTime.value < 200;
-
-  if (isTap) {
-    // 显示控制栏
-    playerState.ui.controlsVisible = true;
-
-    if (hideControlsTimer) {
-      clearTimeout(hideControlsTimer);
-    }
-
-    // 3秒后自动隐藏控制栏
-    hideControlsTimer = setTimeout(() => {
-      playerState.ui.controlsVisible = false;
-    }, 3000);
-  }
-};
+const { handleTouchStart, handleTouchMove, handleTouchEnd } = useTouchSeek(
+  playerState,
+  { videoRef: videoPlayer },
+  { setVideoTime },
+  { showControls, scheduleHideControls }
+);
 
 // 屏幕方向
 const handleOrientationChange = () => {
@@ -1811,197 +1581,31 @@ const handleOrientationChange = () => {
   }
 };
 
-// 资源清理
-onUnmounted(() => {
-  if (hideControlsTimer) {
-    clearTimeout(hideControlsTimer);
-    hideControlsTimer = null;
-  }
-  
-  if (hls.value) {
-    hls.value.destroy();
-    hls.value = null;
-  }
-  
-  screen.orientation?.removeEventListener('change', handleOrientationChange);
-});
 
 defineExpose({
   videoPlayer
 });
 
-// 改进的键盘快捷键支持
-const keyboardShortcuts = {
-  // 播放控制
-  ' ': { action: 'togglePlay', description: '播放/暂停' },
-  'k': { action: 'togglePlay', description: '播放/暂停' },
-  'ArrowRight': { action: 'skipForward', description: '快进5秒' },
-  'ArrowLeft': { action: 'skipBackward', description: '快退5秒' },
-  'j': { action: 'skipBackward10', description: '快退10秒' },
-  'l': { action: 'skipForward10', description: '快进10秒' },
-
-  // 音量控制
-  'm': { action: 'toggleMute', description: '静音/取消静音' },
-  'ArrowUp': { action: 'volumeUp', description: '音量+5%' },
-  'ArrowDown': { action: 'volumeDown', description: '音量-5%' },
-
-  // 播放速度
-  '<': { action: 'decreaseSpeed', description: '减慢播放速度' },
-  '>': { action: 'increaseSpeed', description: '加快播放速度' },
-
-  // 全屏和画中画
-  'f': { action: 'toggleFullscreen', description: '全屏/退出全屏' },
-  'i': { action: 'togglePictureInPicture', description: '画中画' },
-
-  // 字幕
-  'c': { action: 'toggleSubtitles', description: '字幕开/关' },
-
-  // 跳转
-  'Home': { action: 'jumpToStart', description: '跳转到开始' },
-  'End': { action: 'jumpToEnd', description: '跳转到结束' },
-  '0': { action: 'jumpToPercent', args: [0], description: '跳转到0%' },
-  '1': { action: 'jumpToPercent', args: [10], description: '跳转到10%' },
-  '2': { action: 'jumpToPercent', args: [20], description: '跳转到20%' },
-  '3': { action: 'jumpToPercent', args: [30], description: '跳转到30%' },
-  '4': { action: 'jumpToPercent', args: [40], description: '跳转到40%' },
-  '5': { action: 'jumpToPercent', args: [50], description: '跳转到50%' },
-  '6': { action: 'jumpToPercent', args: [60], description: '跳转到60%' },
-  '7': { action: 'jumpToPercent', args: [70], description: '跳转到70%' },
-  '8': { action: 'jumpToPercent', args: [80], description: '跳转到80%' },
-  '9': { action: 'jumpToPercent', args: [90], description: '跳转到90%' },
-
-  // 帮助
-  '?': { action: 'showKeyboardHelp', description: '显示快捷键帮助' },
-  'Escape': { action: 'handleEscape', description: '退出菜单/全屏' }
-};
-
-const handleKeyDown = (e) => {
-  // 防止在输入框中触发快捷键
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-  // 检查是否有修饰键（除了Shift，因为某些快捷键需要Shift）
-  if (e.ctrlKey || e.altKey || e.metaKey) return;
-
-  const shortcut = keyboardShortcuts[e.key];
-  if (shortcut) {
-    e.preventDefault();
-    executeKeyboardAction(shortcut.action, shortcut.args);
-
-    // 显示快捷键提示
-    showKeyboardFeedback(shortcut.description);
-  }
-};
-
-// 执行键盘动作
-const executeKeyboardAction = (action, args = []) => {
-  switch (action) {
-    case 'togglePlay':
-      togglePlay();
-      break;
-    case 'skipForward':
-      skipForward();
-      break;
-    case 'skipBackward':
-      skipBackward();
-      break;
-    case 'skipForward10':
-      setVideoTime(Math.min(playerState.media.currentTime + 10, playerState.media.duration));
-      break;
-    case 'skipBackward10':
-      setVideoTime(Math.max(playerState.media.currentTime - 10, 0));
-      break;
-    case 'toggleMute':
-      toggleMute();
-      break;
-    case 'volumeUp':
-      adjustVolume(5);
-      break;
-    case 'volumeDown':
-      adjustVolume(-5);
-      break;
-    case 'decreaseSpeed':
-      adjustPlaybackRate(-0.25);
-      break;
-    case 'increaseSpeed':
-      adjustPlaybackRate(0.25);
-      break;
-    case 'toggleFullscreen':
-      toggleFullscreen();
-      break;
-    case 'togglePictureInPicture':
-      togglePictureInPicture();
-      break;
-    case 'toggleSubtitles':
-      toggleSubtitles();
-      break;
-    case 'jumpToStart':
-      setVideoTime(0);
-      break;
-    case 'jumpToEnd':
-      setVideoTime(playerState.media.duration);
-      break;
-    case 'jumpToPercent':
-      const percent = args[0] || 0;
-      setVideoTime((playerState.media.duration * percent) / 100);
-      break;
-    case 'showKeyboardHelp':
-      toggleKeyboardHelp();
-      break;
-    case 'handleEscape':
-      handleEscapeKey();
-      break;
-  }
-};
-
-// 新增的辅助函数
+// 键盘快捷键封装
 const adjustVolume = (delta) => {
   const newVolume = Math.min(Math.max(playerState.media.volume + delta, 0), 100);
   playerState.media.volume = newVolume;
-
-  // 显示音量指示器
   playerState.ui.volume.showIndicator = true;
-  setTimeout(() => {
-    playerState.ui.volume.showIndicator = false;
-  }, 1000);
+  setTimeout(() => { playerState.ui.volume.showIndicator = false; }, 1000);
 };
-
 const adjustPlaybackRate = (delta) => {
   const currentRate = playerState.media.playbackRate;
   const newRate = Math.min(Math.max(currentRate + delta, 0.25), 2);
   setPlaybackRate(newRate);
 };
-
-const toggleKeyboardHelp = () => {
-  playerState.ui.showKeyboardHelp = !playerState.ui.showKeyboardHelp;
-};
-
+const toggleKeyboardHelp = () => { playerState.ui.showKeyboardHelp = !playerState.ui.showKeyboardHelp; };
 const handleEscapeKey = () => {
-  // 按优先级关闭各种菜单和模式
-  if (playerState.ui.showKeyboardHelp) {
-    playerState.ui.showKeyboardHelp = false;
-  } else if (playerState.ui.showSettingsMenu) {
-    playerState.ui.showSettingsMenu = false;
-  } else if (playerState.ui.showPlaybackRateMenu) {
-    playerState.ui.showPlaybackRateMenu = false;
-  } else if (playerState.ui.fullscreen) {
-    toggleFullscreen();
-  }
+  if (playerState.ui.showKeyboardHelp) playerState.ui.showKeyboardHelp = false;
+  else if (playerState.ui.showSettingsMenu) playerState.ui.showSettingsMenu = false;
+  else if (playerState.ui.showPlaybackRateMenu) playerState.ui.showPlaybackRateMenu = false;
+  else if (playerState.ui.fullscreen) toggleFullscreen();
 };
 
-// 显示键盘操作反馈
-let keyboardFeedbackTimer = null;
-const showKeyboardFeedback = (message) => {
-  playerState.ui.keyboardFeedback = message;
-  playerState.ui.showKeyboardFeedback = true;
-
-  if (keyboardFeedbackTimer) {
-    clearTimeout(keyboardFeedbackTimer);
-  }
-
-  keyboardFeedbackTimer = setTimeout(() => {
-    playerState.ui.showKeyboardFeedback = false;
-  }, 1500);
-};
 
 // 改进的错误处理函数
 const handleRetry = () => {
@@ -2074,6 +1678,7 @@ const skipBackward = () => {
   setVideoTime(newTime);
 };
 
+
 const togglePlaybackRateMenu = () => {
   playerState.ui.showPlaybackRateMenu = !playerState.ui.showPlaybackRateMenu;
   playerState.ui.showSettingsMenu = false;
@@ -2126,6 +1731,24 @@ const togglePictureInPicture = async () => {
     console.error('Picture-in-Picture error:', error);
   }
 };
+
+// 现在初始化键盘快捷键（确保所需依赖均已声明）
+const { handleKeyDown, cleanup: cleanupKeyboard } = useKeyboardShortcuts(playerState, {
+  togglePlay,
+  skipForward,
+  skipBackward,
+  setVideoTime,
+  toggleMute,
+  adjustVolume,
+  adjustPlaybackRate,
+  toggleFullscreen,
+  togglePictureInPicture,
+  toggleSubtitles,
+  toggleKeyboardHelp,
+  handleEscapeKey,
+  getDuration: () => playerState.media.duration,
+  getCurrentTime: () => playerState.media.currentTime,
+});
 
 // 高级功能函数
 const setQuality = (quality) => {
@@ -2211,88 +1834,6 @@ const hideSubtitles = () => {
   }
 };
 
-const getCueClass = () => {
-  if (typeof window === 'undefined') return null;
-  return window.VTTCue || window.TextTrackCue || window.WebKitTextTrackCue || null;
-};
-
-const parseVTT = (vttText, track) => {
-  // 简单的VTT解析器
-  const lines = vttText.split('\n');
-  let i = 0;
-
-  // 跳过头部
-  while (i < lines.length && !lines[i].includes('-->')) {
-    i++;
-  }
-
-  while (i < lines.length) {
-    const timeLine = lines[i];
-    if (timeLine.includes('-->')) {
-      const [start, end] = timeLine.split('-->').map(t => parseTimeCode(t.trim()));
-      i++;
-
-      let text = '';
-      while (i < lines.length && lines[i].trim() !== '') {
-        text += lines[i] + '\n';
-        i++;
-      }
-
-      if (text.trim()) {
-        const Cue = getCueClass();
-        if (!Cue) return;
-        const cue = new Cue(start, end, text.trim());
-        track.addCue(cue);
-      }
-    }
-    i++;
-  }
-};
-
-const parseTimeCode = (timeStr) => {
-  const parts = timeStr.split(':');
-  const seconds = parseFloat(parts.pop());
-  const minutes = parseInt(parts.pop() || 0);
-  const hours = parseInt(parts.pop() || 0);
-
-  return hours * 3600 + minutes * 60 + seconds;
-};
-
-const parseSRT = (srtText, track) => {
-  // 朴素 SRT 解析：块由空行分隔
-  const blocks = srtText.replace(/\r/g, '').split(/\n\s*\n/);
-  const timeRegex = /(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})/;
-
-  const toSeconds = (h, m, s, ms) => {
-    return parseInt(h) * 3600 + parseInt(m) * 60 + parseInt(s) + parseInt(ms) / 1000;
-  };
-
-  const Cue = getCueClass();
-  if (!Cue) return;
-
-  for (const block of blocks) {
-    const lines = block.split('\n').filter(l => l.trim().length > 0);
-    if (lines.length < 2) continue;
-
-    // 可选的序号在第一行
-    let cursor = 0;
-    if (/^\d+$/.test(lines[0].trim())) {
-      cursor = 1;
-    }
-
-    const timeLine = lines[cursor]?.trim();
-    const match = timeRegex.exec(timeLine || '');
-    if (!match) continue;
-
-    const start = toSeconds(match[1], match[2], match[3], match[4]);
-    const end = toSeconds(match[5], match[6], match[7], match[8]);
-    const text = lines.slice(cursor + 1).join('\n').trim();
-    if (!text) continue;
-
-    const cue = new Cue(start, end, text);
-    track.addCue(cue);
-  }
-};
 
 // 当视频的字幕列表变为可用时，自动选择并加载第一条（仅在未手动选择时）
 watch(() => props.video?.subtitles, (newSubs) => {
@@ -2430,9 +1971,7 @@ const onPointerMove = (e) => {
   }
 }
 
-.yt-spinner__circle {
-  animation: media-spinner 1.4s linear infinite;
-}
+/* 合并到下方统一定义 */
 
 /* 优化伪类选择器 */
 .volume-range {
@@ -2704,7 +2243,7 @@ const onPointerMove = (e) => {
   stroke-width: 0.375rem;
   stroke-linecap: round;
   color: white;
-  animation: yt-spinner 1.4s linear infinite;
+  animation: media-spinner 1.4s linear infinite;
 }
 
 .yt-spinner__circle circle {
@@ -2712,9 +2251,7 @@ const onPointerMove = (e) => {
   stroke-dashoffset: 50rem;
 }
 
-.yt-spinner__circle {
-  animation: media-spinner 1.4s linear infinite;
-}
+/* 上方已设置 animation: media-spinner */
 
 /* 中央加载速度信息 */
 .loading-speed-info {
