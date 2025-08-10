@@ -172,7 +172,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from '../utils/axios';
-import VideoPlayer from '../components/VideoPlayer.vue';
+import VideoPlayer from '../components/video-player/VideoPlayer.vue';
 import useOptionsMenu from '../composables/useOptionsMenu';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
