@@ -58,8 +58,7 @@
 
             <!-- YouTube风格的更新状态指示器 -->
             <div v-if="getRefreshState(subscription.id).isRefreshing"
-                 class="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
-              <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                 class="absolute top-1.5 left-1.5 bg-white/10 text-white/80 text-[10px] px-1.5 py-0.5 rounded-md">
               <span>{{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}</span>
             </div>
           </div>
@@ -362,7 +361,7 @@ const getYouTubeStyleStatusText = (status, phase) => {
       case 'init': return '准备中';
       case 'fetching_feed': return '检查新内容';
       case 'calculating_delta': return '分析更新';
-      case 'extracting': return '处理新视频';
+      case 'extracting': return '解析中';
       case 'finalizing': return '即将完成';
       default: return '更新中';
     }

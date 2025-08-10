@@ -205,7 +205,7 @@ export function useSubscriptionRefresh() {
         case 'init': return '准备中';
         case 'fetching_feed': return '检查新内容';
         case 'calculating_delta': return '分析更新';
-        case 'extracting': return '处理新视频';
+        case 'extracting': return '解析中';
         case 'finalizing': return '即将完成';
         default: return '同步中';
       }
