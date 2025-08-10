@@ -2101,10 +2101,8 @@ const toggleSubtitles = () => {
       playerState.media.currentSubtitle = current;
       loadSubtitle(current);
     }
-    showKeyboardFeedback('字幕已开启');
   } else {
     hideSubtitles();
-    showKeyboardFeedback('字幕已关闭');
   }
 };
 
