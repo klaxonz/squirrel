@@ -290,7 +290,29 @@ const handleEscKey = (event) => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
   document.addEventListener('keydown', handleEscKey);
-  fetchVideoDetails();
+    fetchVideoDetails().then(async () => {
+      try {
+        // 注入字幕：仅对 bilibili 视频尝试获取 ai-zh SRT
+        if (video.value && /bilibili\.com/.test(video.value.url)) {
+          const subResp = await axios.get(`/api/video/subtitles`, {
+            params: { video_id: route.params.videoId, lang: 'ai-zh', fmt: 'srt' },
+            responseType: 'text'
+          });
+
+          if (subResp && typeof subResp.data === 'string' && subResp.data.length > 0) {
+            // 生成一个 blob URL 供播放器拉取，避免跨域问题
+            const blob = new Blob([subResp.data], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const subtitle = { id: 'bili-ai-zh', language: '简体中文(AI)', url };
+            if (!video.value.subtitles) video.value.subtitles = [];
+            // 置顶并作为默认
+            video.value.subtitles = [subtitle, ...video.value.subtitles];
+          }
+        }
+      } catch (e) {
+        // 静默失败，不影响播放
+      }
+    });
 });
 
 onUnmounted(() => {

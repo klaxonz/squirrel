@@ -77,7 +77,7 @@
         @error="handleAudioError"
       />
       
-      <div class="hover-gradient" v-if="playerState.ui.controlsVisible"></div>
+      <div class="hover-gradient" v-if="playerState.ui.controlsVisible && !playerState.media.subtitlesEnabled"></div>
       
       <div class="video-controls" :class="{ 'controls-visible': playerState.ui.controlsVisible }">
         <!-- 改进的进度条容器 -->
@@ -219,10 +219,19 @@
               <Icon icon="material-symbols:picture-in-picture-alt" class="control-icon" />
             </button>
 
-            <!-- 字幕按钮 -->
-            <button @click="toggleSubtitles" class="control-btn" aria-label="字幕">
-              <Icon icon="material-symbols:subtitles" class="control-icon"
-                :class="{ 'text-blue-400': playerState.media.subtitlesEnabled }" />
+            <!-- 字幕按钮（开启时高亮） -->
+            <button 
+              @click="toggleSubtitles"
+              class="control-btn"
+              :class="{ 'bg-white/20 ring-1 ring-white/30': playerState.media.subtitlesEnabled }"
+              :aria-label="playerState.media.subtitlesEnabled ? '关闭字幕' : '开启字幕'"
+              :aria-pressed="playerState.media.subtitlesEnabled"
+              :title="playerState.media.subtitlesEnabled ? '字幕已开启' : '字幕已关闭'"
+            >
+              <Icon 
+                icon="material-symbols:subtitles"
+                class="control-icon"
+              />
             </button>
 
             <!-- 设置按钮 -->
@@ -1354,6 +1363,16 @@ const handleVideoLoadedmetadata = () => {
   if (videoPlayer.value) {
     playerState.media.duration = videoPlayer.value.duration;
   }
+  // 确保字幕在元数据就绪后被加载展示
+  if (playerState.media.subtitlesEnabled && playerState.media.currentSubtitle) {
+    // 若 track 无 cues，重新加载字幕
+    const track = videoPlayer.value?.textTracks?.[0];
+    if (!track || !track.cues || track.cues.length === 0) {
+      loadSubtitle(playerState.media.currentSubtitle);
+    } else {
+      track.mode = 'showing';
+    }
+  }
 };
 
 const handleVideoLoadeddata = () => {
@@ -2072,8 +2091,21 @@ const setPlaybackRate = (rate) => {
 };
 
 const toggleSubtitles = () => {
-  playerState.media.subtitlesEnabled = !playerState.media.subtitlesEnabled;
-  // 这里可以添加字幕显示/隐藏逻辑
+  const willEnable = !playerState.media.subtitlesEnabled;
+  playerState.media.subtitlesEnabled = willEnable;
+
+  if (willEnable) {
+    // 优先当前所选字幕，否则自动选择第一个
+    const current = playerState.media.currentSubtitle || (props.video?.subtitles?.[0] || null);
+    if (current) {
+      playerState.media.currentSubtitle = current;
+      loadSubtitle(current);
+    }
+    showKeyboardFeedback('字幕已开启');
+  } else {
+    hideSubtitles();
+    showKeyboardFeedback('字幕已关闭');
+  }
 };
 
 const toggleSettingsMenu = () => {
@@ -2145,14 +2177,28 @@ const loadSubtitle = async (subtitle) => {
     // 例如加载 WebVTT 文件
     if (subtitle.url) {
       const response = await fetch(subtitle.url);
-      const vttText = await response.text();
+      const text = await response.text();
 
       // 创建或更新字幕轨道
-      const track = videoPlayer.value.textTracks[0] ||
-        videoPlayer.value.addTextTrack('subtitles', subtitle.language, subtitle.language);
+      let track = videoPlayer.value.textTracks[0];
+      if (!track) {
+        const label = subtitle.label || subtitle.language || 'Subtitles';
+        const langCode = subtitle.srclang || 'zh';
+        track = videoPlayer.value.addTextTrack('subtitles', label, langCode);
+      }
 
-      // 解析并添加字幕
-      parseVTT(vttText, track);
+      // 清空旧的 cues
+      for (let i = track.cues?.length - 1; i >= 0; i--) {
+        track.removeCue(track.cues[i]);
+      }
+
+      // 自动识别 SRT/VTT
+      const isVtt = text.trimStart().startsWith('WEBVTT');
+      if (isVtt) {
+        parseVTT(text, track);
+      } else {
+        parseSRT(text, track);
+      }
       track.mode = 'showing';
     }
   } catch (error) {
@@ -2165,6 +2211,11 @@ const hideSubtitles = () => {
   for (let i = 0; i < videoPlayer.value.textTracks.length; i++) {
     videoPlayer.value.textTracks[i].mode = 'hidden';
   }
+};
+
+const getCueClass = () => {
+  if (typeof window === 'undefined') return null;
+  return window.VTTCue || window.TextTrackCue || window.WebKitTextTrackCue || null;
 };
 
 const parseVTT = (vttText, track) => {
@@ -2190,7 +2241,9 @@ const parseVTT = (vttText, track) => {
       }
 
       if (text.trim()) {
-        const cue = new VTTCue(start, end, text.trim());
+        const Cue = getCueClass();
+        if (!Cue) return;
+        const cue = new Cue(start, end, text.trim());
         track.addCue(cue);
       }
     }
@@ -2206,6 +2259,52 @@ const parseTimeCode = (timeStr) => {
 
   return hours * 3600 + minutes * 60 + seconds;
 };
+
+const parseSRT = (srtText, track) => {
+  // 朴素 SRT 解析：块由空行分隔
+  const blocks = srtText.replace(/\r/g, '').split(/\n\s*\n/);
+  const timeRegex = /(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})/;
+
+  const toSeconds = (h, m, s, ms) => {
+    return parseInt(h) * 3600 + parseInt(m) * 60 + parseInt(s) + parseInt(ms) / 1000;
+  };
+
+  const Cue = getCueClass();
+  if (!Cue) return;
+
+  for (const block of blocks) {
+    const lines = block.split('\n').filter(l => l.trim().length > 0);
+    if (lines.length < 2) continue;
+
+    // 可选的序号在第一行
+    let cursor = 0;
+    if (/^\d+$/.test(lines[0].trim())) {
+      cursor = 1;
+    }
+
+    const timeLine = lines[cursor]?.trim();
+    const match = timeRegex.exec(timeLine || '');
+    if (!match) continue;
+
+    const start = toSeconds(match[1], match[2], match[3], match[4]);
+    const end = toSeconds(match[5], match[6], match[7], match[8]);
+    const text = lines.slice(cursor + 1).join('\n').trim();
+    if (!text) continue;
+
+    const cue = new Cue(start, end, text);
+    track.addCue(cue);
+  }
+};
+
+// 当视频的字幕列表变为可用时，自动选择并加载第一条（仅在未手动选择时）
+watch(() => props.video?.subtitles, (newSubs) => {
+  if (Array.isArray(newSubs) && newSubs.length > 0 && !playerState.media.currentSubtitle) {
+    const first = newSubs[0];
+    playerState.media.currentSubtitle = first;
+    playerState.media.subtitlesEnabled = true;
+    loadSubtitle(first);
+  }
+});
 
 /**
  * 点击透明层的处理：
