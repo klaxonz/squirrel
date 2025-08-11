@@ -1,7 +1,7 @@
 <template>
   <div class="video-wrapper bg-[#0f0f0f]">
     <div
-      class="video-container"
+      class="video-player-container"
       @pointerenter="onPointerEnter"
       @pointerleave="onPointerLeave"
       @pointermove="onPointerMove"
@@ -168,6 +168,11 @@ defineExpose({
 </script>
 
 <style scoped>
+.video-wrapper {
+  @apply absolute inset-0;
+}
 
-
+.video-player-container {
+  @apply relative w-full h-full;
+}
 </style>

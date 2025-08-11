@@ -152,7 +152,7 @@ export default function useVideoPlayer(props, emit) {
   })
 
   const supportsPiP = computed(() =>
-    document.pictureInPictureEnabled && videoCore.value?.videoElement
+    !!(document.pictureInPictureEnabled && videoCore.value?.videoElement)
   )
 
   const loadingStatusText = computed(() => {
