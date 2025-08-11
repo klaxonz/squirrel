@@ -276,4 +276,28 @@ const updateLoop = (value) => {
 .video-controls.controls-visible::before {
   opacity: 1;
 }
+
+/* 全屏状态下的样式修复 */
+.video-player-container:fullscreen .video-controls,
+.video-player-container:-webkit-full-screen .video-controls,
+.video-player-container:-moz-full-screen .video-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2147483647; /* 最高 z-index 值 */
+  width: 100%;
+}
+
+.video-player-container:fullscreen .video-controls .progress-container,
+.video-player-container:-webkit-full-screen .video-controls .progress-container,
+.video-player-container:-moz-full-screen .video-controls .progress-container {
+  z-index: 2147483647;
+}
+
+.video-player-container:fullscreen .video-controls .controls-main,
+.video-player-container:-webkit-full-screen .video-controls .controls-main,
+.video-player-container:-moz-full-screen .video-controls .controls-main {
+  z-index: 2147483647;
+}
 </style>

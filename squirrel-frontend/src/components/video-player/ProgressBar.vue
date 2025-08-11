@@ -287,4 +287,18 @@ const handleTouchEnd = () => {
     display: none;
   }
 }
+
+/* 全屏状态下的样式修复 */
+:fullscreen .progress-container,
+:-webkit-full-screen .progress-container,
+:-moz-full-screen .progress-container {
+  z-index: 2147483647; /* 最高 z-index 值 */
+  position: relative;
+}
+
+:fullscreen .time-preview,
+:-webkit-full-screen .time-preview,
+:-moz-full-screen .time-preview {
+  z-index: 2147483648; /* 比进度条更高 */
+}
 </style>

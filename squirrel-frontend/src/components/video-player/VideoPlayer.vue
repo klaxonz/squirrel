@@ -206,4 +206,26 @@ defineExpose({
 .video-player-container:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.5);
 }
+
+/* 全屏状态下的样式修复 */
+.video-player-container:fullscreen,
+.video-player-container:-webkit-full-screen,
+.video-player-container:-moz-full-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 2147483647;
+  background: #000000;
+}
+
+/* 确保全屏状态下视频元素正确填充 */
+.video-player-container:fullscreen .video-player,
+.video-player-container:-webkit-full-screen .video-player,
+.video-player-container:-moz-full-screen .video-player {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
 </style>

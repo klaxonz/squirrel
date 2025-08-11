@@ -88,7 +88,16 @@ export default function useVideoControls(playerState, videoCore) {
 
   // 全屏控制
   const toggleFullscreen = async () => {
-    const container = videoCore.value?.videoElement?.parentElement
+    // 找到包含整个视频播放器的容器（包括控件）
+    const videoElement = videoCore.value?.videoElement
+    if (!videoElement) return
+
+    // 向上查找到 video-player-container
+    let container = videoElement.parentElement
+    while (container && !container.classList.contains('video-player-container')) {
+      container = container.parentElement
+    }
+
     if (!container) return
 
     try {
