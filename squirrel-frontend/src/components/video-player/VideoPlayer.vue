@@ -159,6 +159,9 @@ const {
   toggleSubtitles,
   toggleTheaterMode,
   togglePictureInPicture,
+  toggleKeyboardHelp,
+  adjustVolume,
+  adjustPlaybackRate,
   setQuality,
   setPlaybackRate,
   setSubtitle
@@ -171,9 +174,21 @@ const { handleKeyDown } = useKeyboardShortcuts(playerState, {
   skipBackward,
   setVideoTime,
   toggleMute,
+  adjustVolume,
+  adjustPlaybackRate,
   toggleFullscreen,
   togglePictureInPicture,
   toggleSubtitles,
+  toggleKeyboardHelp,
+  handleEscapeKey: () => {
+    if (playerState.ui.showKeyboardHelp) {
+      playerState.ui.showKeyboardHelp = false
+    } else if (playerState.ui.fullscreen) {
+      toggleFullscreen()
+    }
+  },
+  getDuration: () => playerState.media.duration,
+  getCurrentTime: () => playerState.media.currentTime
 })
 
 defineExpose({

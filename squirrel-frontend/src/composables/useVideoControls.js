@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 export default function useVideoControls(playerState, videoCore) {
   // 播放速度选项
@@ -18,20 +18,18 @@ export default function useVideoControls(playerState, videoCore) {
     if (!videoCore.value?.videoElement) return
 
     if (playerState.media.playing) {
-      // 暂停播放
+      // 暂停播放 - 状态由事件处理器更新
       videoCore.value.videoElement.pause()
       if (videoCore.value.audioElement) {
         videoCore.value.audioElement.pause()
       }
-      playerState.media.playing = false
     } else {
-      // 开始播放
+      // 开始播放 - 状态由事件处理器更新
       if (playerState.network.firstInteraction) {
         playerState.network.firstInteraction = false
       }
-      
+
       videoCore.value.videoElement.play().then(() => {
-        playerState.media.playing = true
         if (videoCore.value.audioElement) {
           videoCore.value.audioElement.play().catch(err => {
             console.error('Failed to play audio:', err)
@@ -41,7 +39,7 @@ export default function useVideoControls(playerState, videoCore) {
         console.error('Failed to play video:', err)
       })
     }
-    
+
     // 显示播放状态指示器
     playerState.ui.showPlayIndicator = true
     setTimeout(() => {
@@ -203,35 +201,41 @@ export default function useVideoControls(playerState, videoCore) {
     playerState.ui.theaterMode = !playerState.ui.theaterMode
   }
 
+  // 键盘帮助控制
+  const toggleKeyboardHelp = () => {
+    playerState.ui.showKeyboardHelp = !playerState.ui.showKeyboardHelp
+  }
+
   return {
     // 配置
     availableQualities,
     playbackRates,
-    
+
     // 播放控制
     togglePlay,
     skipForward,
     skipBackward,
     setVideoTime,
-    
+
     // 音量控制
     toggleMute,
     adjustVolume,
-    
+
     // 显示控制
     toggleFullscreen,
     toggleTheaterMode,
     togglePictureInPicture,
-    
+    toggleKeyboardHelp,
+
     // 字幕控制
     toggleSubtitles,
     setSubtitle,
-    
+
     // 播放设置
     setPlaybackRate,
     adjustPlaybackRate,
     setQuality,
-    
+
     // 导航
     seekToPercentage
   }

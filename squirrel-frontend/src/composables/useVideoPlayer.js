@@ -176,13 +176,13 @@ export default function useVideoPlayer(props, emit) {
   // 事件处理函数
   const handleVideoPlay = () => {
     playerState.network.firstInteraction = false
-    if (isCanplay.value) {
-      playerState.media.playing = true
-    }
+    // 视频实际开始播放时，无条件更新状态
+    playerState.media.playing = true
     emit('play')
   }
 
   const handleVideoPause = () => {
+    // 视频实际暂停时，无条件更新状态（除非正在seeking）
     if (!playerState.media.seeking.video) {
       playerState.media.playing = false
     }
@@ -218,14 +218,38 @@ export default function useVideoPlayer(props, emit) {
   }
 
   const handleVideoLayerClick = () => {
+    // 重置可能卡住的状态
     if (playerState.ui.seeking.active || playerState.ui.volume.adjusting) {
+      playerState.ui.seeking.active = false
+      playerState.ui.volume.adjusting = false
+      playerState.ui.volume.showIndicator = false
       return
     }
-    
-    // 这里需要调用 togglePlay，但它在 useVideoControls 中定义
-    // 可以通过事件或者回调来处理
-    emit('toggle-play')
-    
+
+    // 直接控制视频播放
+    if (!videoCore.value?.videoElement) return
+
+    if (playerState.media.playing) {
+      videoCore.value.videoElement.pause()
+      if (videoCore.value.audioElement) {
+        videoCore.value.audioElement.pause()
+      }
+    } else {
+      if (playerState.network.firstInteraction) {
+        playerState.network.firstInteraction = false
+      }
+
+      videoCore.value.videoElement.play().then(() => {
+        if (videoCore.value.audioElement) {
+          videoCore.value.audioElement.play().catch(err => {
+            console.error('Failed to play audio:', err)
+          })
+        }
+      }).catch(err => {
+        console.error('Failed to play video:', err)
+      })
+    }
+
     playerState.ui.showPlayIndicator = true
     setTimeout(() => {
       playerState.ui.showPlayIndicator = false
