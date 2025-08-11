@@ -44,7 +44,7 @@ const props = defineProps({
 }
 
 .yt-spinner {
-  @apply relative w-16 h-16;
+  @apply relative w-12 h-12;
 }
 
 .yt-spinner__circle {

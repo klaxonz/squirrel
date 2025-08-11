@@ -12,7 +12,7 @@
     >
       <!-- 加载状态 -->
       <LoadingSpinner
-        v-if="playerState.media.loading"
+        v-if="playerState.media.loading && playerState.media.loadingStage !== 'buffering'"
         :loading-text="loadingStatusText"
         :network-speed="formatNetworkSpeed(performanceState.bandwidth.current)"
       />
