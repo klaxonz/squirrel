@@ -368,7 +368,7 @@ defineExpose({
 
 .play-state-indicator {
   @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
-    rounded-full p-6 pointer-events-none;
+    rounded-full p-3 pointer-events-none;
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(8px);
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -378,7 +378,7 @@ defineExpose({
 
 .indicator-icon {
   @apply text-white;
-  font-size: 48px;
+  font-size: 28px;
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
 }
 

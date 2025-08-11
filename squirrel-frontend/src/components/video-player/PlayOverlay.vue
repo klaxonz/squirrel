@@ -49,8 +49,8 @@ const emit = defineEmits(['play'])
 .play-button {
   @apply relative z-10 rounded-full
     flex items-center justify-center;
-  width: 80px;
-  height: 80px;
+  width: 56px;
+  height: 56px;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(8px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -58,9 +58,9 @@ const emit = defineEmits(['play'])
 }
 
 .play-icon {
-  font-size: 36px;
+  font-size: 24px;
   color: #000000;
-  margin-left: 4px; /* 视觉居中调整 */
+  margin-left: 2px; /* 视觉居中调整 */
 }
 
 .overlay-gradient {
@@ -77,12 +77,12 @@ const emit = defineEmits(['play'])
 /* 移动端优化 */
 @media (max-width: 768px) {
   .play-button {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
   }
-  
+
   .play-icon {
-    font-size: 28px;
+    font-size: 20px;
   }
 }
 </style>
