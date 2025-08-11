@@ -51,36 +51,78 @@ const emit = defineEmits(['toggle-play', 'skip-forward', 'skip-backward'])
 
 <style scoped>
 .playback-controls {
-  @apply flex items-center gap-1;
+  @apply flex items-center;
+  gap: 4px;
 }
 
 .control-btn {
-  @apply p-2 rounded-lg bg-black/20 hover:bg-black/40 
-    transition-colors duration-200 text-white
-    focus:outline-none focus:ring-2 focus:ring-white/50;
+  @apply rounded-full bg-transparent hover:bg-white/10
+    transition-all duration-200 text-white
+    focus:outline-none focus:ring-2 focus:ring-white/30
+    flex items-center justify-center;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.control-btn:hover {
+  transform: scale(1.05);
+}
+
+.control-btn:active {
+  transform: scale(0.95);
 }
 
 .play-btn {
-  @apply p-3;
+  @apply p-2;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.play-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: scale(1.08);
 }
 
 .skip-controls {
-  @apply flex items-center gap-1;
+  @apply flex items-center;
+  gap: 2px;
 }
 
 .skip-btn {
-  @apply p-1.5;
+  @apply p-2;
+  min-width: 36px;
+  min-height: 36px;
 }
 
 .control-icon {
   @apply text-lg;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
 .play-btn .control-icon {
-  @apply text-xl;
+  @apply text-2xl;
 }
 
 .skip-btn .control-icon {
-  @apply text-base;
+  @apply text-lg;
+}
+
+/* YouTube风格的播放按钮特殊效果 */
+.play-btn {
+  position: relative;
+}
+
+.play-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.play-btn:hover::before {
+  opacity: 1;
 }
 </style>

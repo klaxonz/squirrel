@@ -54,11 +54,22 @@
           @set-rate="$emit('set-playback-rate', $event)"
         />
 
+        <!-- 质量选择器 -->
+        <QualitySelector
+          v-if="!isTouchDevice && availableQualities.length > 1"
+          :current-quality="playerState.media.currentQuality"
+          :available-qualities="availableQualities"
+          :show-menu="playerState.ui.showQualityMenu"
+          @toggle-menu="toggleQualityMenu"
+          @set-quality="$emit('set-quality', $event)"
+        />
+
         <!-- 画中画按钮 -->
         <button
           v-if="supportsPip"
           @click="$emit('toggle-pip')"
           class="control-btn"
+          :class="{ 'active-control': playerState.media.pictureInPicture }"
           aria-label="画中画"
         >
           <Icon icon="material-symbols:picture-in-picture-alt" class="control-icon" />
@@ -68,10 +79,20 @@
         <button
           @click="$emit('toggle-subtitles')"
           class="control-btn"
-          :class="{ 'bg-white/20 ring-1 ring-white/30': playerState.media.subtitlesEnabled }"
+          :class="{ 'active-control': playerState.media.subtitlesEnabled }"
           :aria-label="playerState.media.subtitlesEnabled ? '关闭字幕' : '开启字幕'"
         >
           <Icon icon="material-symbols:subtitles" class="control-icon" />
+        </button>
+
+        <!-- 剧场模式按钮 -->
+        <button
+          @click="$emit('toggle-theater')"
+          class="control-btn"
+          :class="{ 'active-control': playerState.ui.theaterMode }"
+          aria-label="剧场模式"
+        >
+          <Icon icon="material-symbols:fit-screen" class="control-icon" />
         </button>
 
         <!-- 设置菜单 -->
@@ -113,6 +134,8 @@ import VolumeControl from './VolumeControl.vue'
 import TimeDisplay from './TimeDisplay.vue'
 import PlaybackRateControl from './PlaybackRateControl.vue'
 import SettingsMenu from './SettingsMenu.vue'
+import QualitySelector from './QualitySelector.vue'
+import BufferingIndicator from './BufferingIndicator.vue'
 
 const props = defineProps({
   playerState: Object,
@@ -127,11 +150,12 @@ const props = defineProps({
 
 const emit = defineEmits([
   'toggle-play',
-  'skip-forward', 
+  'skip-forward',
   'skip-backward',
   'toggle-mute',
   'toggle-fullscreen',
   'toggle-subtitles',
+  'toggle-theater',
   'toggle-pip',
   'set-quality',
   'set-playback-rate',
@@ -150,11 +174,19 @@ const handleVolumeChange = (volume) => {
 const togglePlaybackRateMenu = () => {
   props.playerState.ui.showPlaybackRateMenu = !props.playerState.ui.showPlaybackRateMenu
   props.playerState.ui.showSettingsMenu = false
+  props.playerState.ui.showQualityMenu = false
+}
+
+const toggleQualityMenu = () => {
+  props.playerState.ui.showQualityMenu = !props.playerState.ui.showQualityMenu
+  props.playerState.ui.showSettingsMenu = false
+  props.playerState.ui.showPlaybackRateMenu = false
 }
 
 const toggleSettingsMenu = () => {
   props.playerState.ui.showSettingsMenu = !props.playerState.ui.showSettingsMenu
   props.playerState.ui.showPlaybackRateMenu = false
+  props.playerState.ui.showQualityMenu = false
 }
 
 const updateAutoplay = (value) => {
@@ -183,32 +215,84 @@ const handleProgressHoverMove = ({ previewTime, position, hovering }) => {
 
 <style scoped>
 .video-controls {
-  @apply absolute bottom-0 left-0 right-0 px-4
-    opacity-0 transition-all duration-200 z-20
+  @apply absolute bottom-0 left-0 right-0 px-3
+    opacity-0 z-20
     flex flex-col;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
+  padding-bottom: 8px;
+  padding-top: 24px;
+  transition: all var(--yt-transition-medium) ease;
 }
 
 .controls-main {
-  @apply flex items-center justify-between py-2;
+  @apply flex items-center justify-between py-1;
+  height: 40px;
 }
 
 .controls-left,
 .controls-right {
-  @apply flex items-center gap-2;
+  @apply flex items-center;
+  gap: 8px;
 }
 
 .control-btn {
-  @apply p-2 rounded-lg bg-black/20 hover:bg-black/40 
-    transition-colors duration-200 text-white
-    focus:outline-none focus:ring-2 focus:ring-white/50;
+  @apply p-2 rounded-full bg-transparent text-white
+    focus:outline-none focus:ring-2 focus:ring-white/30
+    flex items-center justify-center;
+  min-width: 40px;
+  min-height: 40px;
+  transition: all var(--yt-transition-fast) ease;
+}
+
+.control-btn:hover {
+  background-color: var(--yt-control-bg-hover);
+  transform: scale(1.05);
+}
+
+.control-btn:active {
+  transform: scale(0.95);
+}
+
+.control-btn.active-control {
+  background-color: var(--yt-red-light);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+}
+
+.control-btn.active-control:hover {
+  background-color: rgba(255, 0, 0, 0.3);
 }
 
 .control-icon {
-  @apply text-lg;
+  @apply text-xl;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
 /* 控制栏可见状态 */
 .video-controls.controls-visible {
   @apply opacity-100;
+}
+
+/* YouTube风格的渐变遮罩 */
+.video-controls::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,0.8) 0%,
+    rgba(0,0,0,0.6) 30%,
+    rgba(0,0,0,0.3) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+  transition: opacity var(--yt-transition-medium) ease;
+}
+
+.video-controls.controls-visible::before {
+  opacity: 1;
 }
 </style>

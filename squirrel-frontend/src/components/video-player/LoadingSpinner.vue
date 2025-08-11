@@ -65,15 +65,24 @@ const props = defineProps({
 }
 
 .loading-speed-text {
-  @apply text-white text-sm font-medium bg-black/50 px-3 py-1 rounded-full;
+  @apply text-white text-sm font-medium px-3 py-1 rounded-full;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: 'Roboto', sans-serif;
 }
 
 .loading-status-indicator {
-  @apply absolute bottom-4 left-4;
+  @apply absolute bottom-6 left-6;
 }
 
 .loading-status-text {
-  @apply text-white text-sm bg-black/50 px-3 py-1 rounded-full;
+  @apply text-white text-sm px-3 py-2 rounded-lg;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: 'Roboto', sans-serif;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes media-spinner {

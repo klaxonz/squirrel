@@ -116,8 +116,11 @@ const emit = defineEmits(['close'])
 }
 
 .keyboard-help-modal {
-  @apply bg-black/90 backdrop-blur-sm rounded-lg p-6 max-w-2xl w-full
-    border border-white/10 shadow-xl max-h-[80vh] overflow-y-auto;
+  @apply rounded-xl p-6 max-w-2xl w-full
+    border border-white/10 shadow-2xl max-h-[80vh] overflow-y-auto;
+  background: rgba(40, 40, 40, 0.95);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .keyboard-help-header {
@@ -126,11 +129,12 @@ const emit = defineEmits(['close'])
 
 .keyboard-help-header h3 {
   @apply text-white text-xl font-semibold;
+  font-family: 'Roboto', 'YouTube Noto', sans-serif;
 }
 
 .close-help-btn {
-  @apply p-2 rounded-lg bg-white/10 hover:bg-white/20 
-    transition-colors duration-200 text-white;
+  @apply p-2 rounded-full bg-transparent hover:bg-white/10
+    transition-all duration-200 text-white;
 }
 
 .keyboard-help-content {
@@ -143,28 +147,39 @@ const emit = defineEmits(['close'])
 
 .shortcut-section h4 {
   @apply text-white font-medium text-lg mb-3;
+  font-family: 'Roboto', sans-serif;
 }
 
 .shortcut-list {
-  @apply space-y-2;
+  @apply space-y-3;
 }
 
 .shortcut-item {
-  @apply flex items-center justify-between gap-4;
+  @apply flex items-center justify-between gap-4 p-2 rounded-lg
+    hover:bg-white/5 transition-colors duration-200;
 }
 
 .shortcut-keys {
-  @apply flex items-center gap-1 flex-shrink-0;
+  @apply flex items-center gap-2 flex-shrink-0;
 }
 
 .shortcut-item kbd {
-  @apply inline-block px-2 py-1 text-xs font-mono
-    bg-white/10 border border-white/20 rounded
-    text-white min-w-6 text-center;
+  @apply inline-block px-3 py-1.5 text-xs font-mono
+    rounded-lg text-white min-w-8 text-center
+    transition-all duration-200;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.shortcut-item:hover kbd {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .shortcut-item span {
   @apply text-white/80 text-sm;
+  font-family: 'Roboto', sans-serif;
 }
 
 /* 动画效果 */

@@ -333,8 +333,11 @@ const handleMoreOptionsClick = (event) => {
 .video-section {
   position: relative;
   width: 100%;
-  background: #000;
+  background: #000000;
   margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 .video-container {
@@ -343,7 +346,7 @@ const handleMoreOptionsClick = (event) => {
   height: 0;
   padding-bottom: 56.25%; /* 16:9 比例 */
   overflow: hidden;
-  border-radius: 4px;
+  background: #000000;
 }
 
 .video-container :deep(iframe),
@@ -369,6 +372,11 @@ const handleMoreOptionsClick = (event) => {
 }
 
 @media (max-width: 640px) {
+  .video-section {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
   .video-container {
     border-radius: 0;
   }

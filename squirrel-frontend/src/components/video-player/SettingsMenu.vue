@@ -109,27 +109,43 @@ const emit = defineEmits([
 }
 
 .control-btn {
-  @apply p-2 rounded-lg bg-black/20 hover:bg-black/40 
-    transition-colors duration-200 text-white
-    focus:outline-none focus:ring-2 focus:ring-white/50;
+  @apply p-2 rounded-full bg-transparent hover:bg-white/10
+    transition-all duration-200 text-white
+    focus:outline-none focus:ring-2 focus:ring-white/30
+    flex items-center justify-center;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.control-btn:hover {
+  transform: scale(1.05);
+}
+
+.control-btn:active {
+  transform: scale(0.95);
 }
 
 .control-icon {
-  @apply text-lg;
+  @apply text-xl;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
 .settings-menu {
-  @apply absolute bottom-full right-0 mb-2 w-64
-    bg-black/90 backdrop-blur-sm rounded-lg p-4
-    border border-white/10 shadow-xl;
+  @apply absolute bottom-full right-0 mb-3 w-72
+    rounded-xl p-0
+    border border-white/10 shadow-2xl;
+  background: rgba(40, 40, 40, 0.95);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .settings-section {
-  @apply mb-4 last:mb-0;
+  @apply p-4 border-b border-white/10 last:border-b-0;
 }
 
 .settings-title {
-  @apply text-white font-medium text-sm mb-2;
+  @apply text-white font-medium text-sm mb-3;
+  font-family: 'Roboto', 'YouTube Noto', sans-serif;
 }
 
 .quality-options,
@@ -139,27 +155,43 @@ const emit = defineEmits([
 
 .quality-option,
 .subtitle-option {
-  @apply w-full text-left px-3 py-2 rounded text-sm
+  @apply w-full text-left px-3 py-2 rounded-lg text-sm
     text-white/80 hover:text-white hover:bg-white/10
-    transition-colors duration-200;
+    transition-all duration-200;
+  font-family: 'Roboto', sans-serif;
+}
+
+.quality-option:hover,
+.subtitle-option:hover {
+  transform: translateX(2px);
 }
 
 .quality-option.active,
 .subtitle-option.active {
-  @apply text-white bg-white/20;
+  @apply text-white;
+  background: rgba(255, 0, 0, 0.15);
+  border-left: 3px solid #ff0000;
 }
 
 .setting-item {
-  @apply mb-2 last:mb-0;
+  @apply mb-3 last:mb-0;
 }
 
 .setting-label {
-  @apply flex items-center gap-2 text-sm text-white/80
-    hover:text-white cursor-pointer;
+  @apply flex items-center gap-3 text-sm text-white/80
+    hover:text-white cursor-pointer transition-colors duration-200;
+  font-family: 'Roboto', sans-serif;
 }
 
 .setting-checkbox {
-  @apply w-4 h-4 rounded border-white/20 bg-transparent
-    text-red-500 focus:ring-red-500 focus:ring-offset-0;
+  @apply w-4 h-4 rounded border-white/30 bg-transparent
+    focus:ring-2 focus:ring-white/30 focus:ring-offset-0
+    transition-all duration-200;
+  accent-color: #ff0000;
+}
+
+.setting-checkbox:checked {
+  background-color: #ff0000;
+  border-color: #ff0000;
 }
 </style>

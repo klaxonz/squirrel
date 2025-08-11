@@ -28,6 +28,20 @@
         @timeupdate="handleVideoTimeupdate"
         @error="handleVideoError"
         @click="handleVideoLayerClick"
+        @skip-forward="skipForward"
+        @skip-backward="skipBackward"
+      />
+
+      <!-- 缓冲指示器 -->
+      <BufferingIndicator
+        :is-buffering="playerState.media.loading && playerState.media.loadingStage === 'buffering'"
+      />
+
+      <!-- 播放覆盖层 -->
+      <PlayOverlay
+        :playing="playerState.media.playing"
+        :loading="playerState.media.loading"
+        @play="togglePlay"
       />
 
       <!-- 控制栏 -->
@@ -47,6 +61,7 @@
         @toggle-mute="toggleMute"
         @toggle-fullscreen="toggleFullscreen"
         @toggle-subtitles="toggleSubtitles"
+        @toggle-theater="toggleTheaterMode"
         @toggle-pip="togglePictureInPicture"
         @set-quality="setQuality"
         @set-playback-rate="setPlaybackRate"
@@ -92,6 +107,8 @@ import ErrorMessage from './ErrorMessage.vue'
 import SeekingIndicator from './SeekingIndicator.vue'
 import VolumeIndicator from './VolumeIndicator.vue'
 import KeyboardHelp from './KeyboardHelp.vue'
+import BufferingIndicator from './BufferingIndicator.vue'
+import PlayOverlay from './PlayOverlay.vue'
 
 import useVideoPlayer from '../../composables/useVideoPlayer.js'
 import useVideoControls from '../../composables/useVideoControls.js'
@@ -140,6 +157,7 @@ const {
   toggleMute,
   toggleFullscreen,
   toggleSubtitles,
+  toggleTheaterMode,
   togglePictureInPicture,
   setQuality,
   setPlaybackRate,
@@ -170,9 +188,22 @@ defineExpose({
 <style scoped>
 .video-wrapper {
   @apply absolute inset-0;
+  background: #000000;
 }
 
 .video-player-container {
   @apply relative w-full h-full;
+  background: #000000;
+  overflow: hidden;
+}
+
+/* YouTube风格的焦点状态 */
+.video-player-container:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 2px;
+}
+
+.video-player-container:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
 }
 </style>

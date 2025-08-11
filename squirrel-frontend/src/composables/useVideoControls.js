@@ -189,6 +189,11 @@ export default function useVideoControls(playerState, videoCore) {
     setVideoTime(seekTime)
   }
 
+  // 剧场模式控制
+  const toggleTheaterMode = () => {
+    playerState.ui.theaterMode = !playerState.ui.theaterMode
+  }
+
   return {
     // 配置
     availableQualities,
@@ -206,6 +211,7 @@ export default function useVideoControls(playerState, videoCore) {
     
     // 显示控制
     toggleFullscreen,
+    toggleTheaterMode,
     togglePictureInPicture,
     
     // 字幕控制

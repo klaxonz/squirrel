@@ -48,65 +48,118 @@ const handleVolumeChange = (event) => {
 
 <style scoped>
 .volume-control {
-  @apply flex items-center gap-2;
+  @apply flex items-center;
+  gap: 4px;
 }
 
 .control-btn {
-  @apply p-2 rounded-lg bg-black/20 hover:bg-black/40 
-    transition-colors duration-200 text-white
-    focus:outline-none focus:ring-2 focus:ring-white/50;
+  @apply p-2 rounded-full bg-transparent hover:bg-white/10
+    transition-all duration-200 text-white
+    focus:outline-none focus:ring-2 focus:ring-white/30
+    flex items-center justify-center;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.control-btn:hover {
+  transform: scale(1.05);
+}
+
+.control-btn:active {
+  transform: scale(0.95);
 }
 
 .control-icon {
-  @apply text-lg;
+  @apply text-xl;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
 .volume-slider-container {
-  @apply w-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200;
+  @apply opacity-0 group-hover:opacity-100 transition-all duration-300;
+  width: 80px;
+  transform: translateX(-4px);
 }
 
 .volume-slider-wrapper {
-  @apply relative flex items-center h-6;
+  @apply relative flex items-center;
+  height: 32px;
+  padding: 8px 0;
 }
 
 .volume-track-bg {
-  @apply absolute w-full h-1 bg-white/20 rounded-full;
+  @apply absolute w-full rounded-full;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .volume-range-fill {
-  @apply absolute h-1 bg-white rounded-full transition-all duration-200;
+  @apply absolute rounded-full transition-all duration-200;
+  height: 3px;
+  background: #ffffff;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
 }
 
 .volume-range {
-  @apply absolute w-full h-6 opacity-0 cursor-pointer;
+  @apply absolute w-full opacity-0 cursor-pointer;
+  height: 32px;
+  background: transparent;
   -webkit-appearance: none;
   appearance: none;
 }
 
 .volume-range::-webkit-slider-thumb {
-  @apply w-3 h-3 rounded-full bg-white border-0 cursor-pointer;
+  @apply rounded-full cursor-pointer;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border: none;
   -webkit-appearance: none;
   appearance: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.volume-range::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
 .volume-range::-moz-range-thumb {
-  @apply w-3 h-3 rounded-full bg-white border-0 cursor-pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  @apply rounded-full cursor-pointer;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.volume-range::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* 悬停时显示音量滑块的动画 */
+.volume-control:hover .volume-slider-container {
+  @apply opacity-100;
+  transform: translateX(0);
 }
 
 /* 触摸设备优化 */
 @media (hover: none), (pointer: coarse) {
   .volume-slider-container {
-    @apply w-5 opacity-100;
+    @apply opacity-100;
+    width: 60px;
   }
-  
+
   .volume-range::-webkit-slider-thumb {
-    @apply w-4 h-4;
+    width: 16px;
+    height: 16px;
   }
-  
+
   .volume-range::-moz-range-thumb {
-    @apply w-4 h-4;
+    width: 16px;
+    height: 16px;
   }
 }
 </style>

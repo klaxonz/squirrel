@@ -36,6 +36,7 @@ export default function useVideoPlayer(props, emit) {
     ui: {
       controlsVisible: true,
       fullscreen: false,
+      theaterMode: false,
       hoveringProgress: false,
       hoverPosition: 0,
       previewTime: 0,
@@ -44,6 +45,7 @@ export default function useVideoPlayer(props, emit) {
       previewSeekTime: 0,
       errorMessage: null,
       showPlaybackRateMenu: false,
+      showQualityMenu: false,
       showSettingsMenu: false,
       showKeyboardHelp: false,
       showKeyboardFeedback: false,

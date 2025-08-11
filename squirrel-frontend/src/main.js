@@ -11,6 +11,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import VueVirtualScroller from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import './styles/toast.css'
+import './styles/youtube-player.css'
 
 // 阻止默认的右键菜单
 document.addEventListener('contextmenu', (event) => {

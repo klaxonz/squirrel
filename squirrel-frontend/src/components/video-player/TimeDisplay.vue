@@ -23,19 +23,25 @@ const props = defineProps({
 
 <style scoped>
 .time-display {
-  @apply flex items-center gap-1 text-white text-sm font-mono
-    bg-black/20 px-2 py-1 rounded;
+  @apply flex items-center text-white text-sm font-medium
+    px-2 py-1;
+  font-family: 'Roboto', 'YouTube Noto', sans-serif;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  min-width: 80px;
 }
 
 .current-time {
   @apply text-white;
+  font-weight: 500;
 }
 
 .time-separator {
-  @apply text-white/60;
+  @apply text-white/70 mx-1;
 }
 
 .total-time {
-  @apply text-white/80;
+  @apply text-white/90;
+  font-weight: 400;
 }
 </style>

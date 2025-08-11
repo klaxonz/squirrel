@@ -1,0 +1,156 @@
+/* YouTube风格的视频播放器样式变量和全局样式 */
+
+:root {
+  /* YouTube主题色 */
+  --yt-red: #ff0000;
+  --yt-red-hover: #cc0000;
+  --yt-red-light: rgba(255, 0, 0, 0.1);
+  --yt-red-glow: rgba(255, 0, 0, 0.3);
+  
+  /* YouTube背景色 */
+  --yt-bg-primary: #0f0f0f;
+  --yt-bg-secondary: #181818;
+  --yt-bg-tertiary: #272727;
+  --yt-bg-overlay: rgba(40, 40, 40, 0.95);
+  
+  /* YouTube文字色 */
+  --yt-text-primary: #ffffff;
+  --yt-text-secondary: rgba(255, 255, 255, 0.8);
+  --yt-text-tertiary: rgba(255, 255, 255, 0.6);
+  
+  /* YouTube控制元素 */
+  --yt-control-bg: rgba(255, 255, 255, 0.1);
+  --yt-control-bg-hover: rgba(255, 255, 255, 0.15);
+  --yt-control-border: rgba(255, 255, 255, 0.1);
+  
+  /* YouTube阴影 */
+  --yt-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --yt-shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --yt-shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.6);
+  
+  /* YouTube字体 */
+  --yt-font-family: 'Roboto', 'YouTube Noto', -apple-system, BlinkMacSystemFont, sans-serif;
+  
+  /* YouTube动画时长 */
+  --yt-transition-fast: 0.2s;
+  --yt-transition-medium: 0.3s;
+  --yt-transition-slow: 0.5s;
+  
+  /* YouTube圆角 */
+  --yt-radius-small: 4px;
+  --yt-radius-medium: 8px;
+  --yt-radius-large: 12px;
+  --yt-radius-xl: 16px;
+}
+
+/* YouTube风格的滚动条 */
+.yt-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.yt-scrollbar::-webkit-scrollbar-track {
+  background: var(--yt-bg-secondary);
+  border-radius: 4px;
+}
+
+.yt-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--yt-text-tertiary);
+  border-radius: 4px;
+  transition: background var(--yt-transition-fast) ease;
+}
+
+.yt-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--yt-text-secondary);
+}
+
+/* YouTube风格的焦点状态 */
+.yt-focus:focus-visible {
+  outline: 2px solid var(--yt-text-secondary);
+  outline-offset: 2px;
+}
+
+/* YouTube风格的按钮基础样式 */
+.yt-button {
+  font-family: var(--yt-font-family);
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--yt-text-primary);
+  transition: all var(--yt-transition-fast) ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px;
+}
+
+.yt-button:hover {
+  background: var(--yt-control-bg-hover);
+  transform: scale(1.05);
+}
+
+.yt-button:active {
+  transform: scale(0.95);
+}
+
+/* YouTube风格的菜单 */
+.yt-menu {
+  background: var(--yt-bg-overlay);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--yt-control-border);
+  border-radius: var(--yt-radius-xl);
+  box-shadow: var(--yt-shadow-heavy);
+  font-family: var(--yt-font-family);
+}
+
+/* YouTube风格的进度条 */
+.yt-progress {
+  background: var(--yt-red);
+  box-shadow: 0 0 8px var(--yt-red-glow);
+}
+
+/* YouTube风格的文字阴影 */
+.yt-text-shadow {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* YouTube风格的图标阴影 */
+.yt-icon-shadow {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* YouTube风格的动画 */
+@keyframes yt-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes yt-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes yt-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

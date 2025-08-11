@@ -1,27 +1,18 @@
 <template>
   <div class="progress-container">
-    <!-- 预览时间提示 -->
-    <div 
-      class="preview-time-tooltip"
-      :style="{ left: hoverPosition + '%' }"
-      v-show="hovering"
-    >
-      <div class="tooltip-content">
-        {{ formatTime(previewTime) }}
-      </div>
-      <div class="tooltip-arrow"></div>
-    </div>
+    <!-- YouTube风格的预览 -->
+    <ProgressPreview
+      :visible="hovering"
+      :position="hoverPosition"
+      :preview-time="previewTime"
+    />
 
     <!-- 章节标记 -->
-    <div class="chapter-markers" v-if="chapters && chapters.length > 0">
-      <div
-        v-for="chapter in chapters"
-        :key="chapter.id"
-        class="chapter-marker"
-        :style="{ left: (chapter.time / duration) * 100 + '%' }"
-        :title="chapter.title"
-      ></div>
-    </div>
+    <ChapterMarkers
+      :chapters="chapters"
+      :duration="duration"
+      @seek-to-chapter="handleChapterSeek"
+    />
 
     <!-- 进度条容器 -->
     <div
@@ -76,6 +67,8 @@
 import { ref, computed } from 'vue'
 import { formatTime } from '../../utils/dateFormat'
 import { debounce } from 'lodash-es'
+import ProgressPreview from './ProgressPreview.vue'
+import ChapterMarkers from './ChapterMarkers.vue'
 
 const props = defineProps({
   progress: Number,
@@ -89,6 +82,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['seek', 'hover-start', 'hover-end', 'hover-move'])
+
+const handleChapterSeek = (time) => {
+  emit('seek', time)
+}
 
 const isDragging = ref(false)
 const progressContainer = ref(null)
@@ -190,85 +187,96 @@ const handleTouchEnd = () => {
 
 <style scoped>
 .progress-container {
-  @apply relative mb-2;
+  @apply relative mb-3;
+  padding: 0 12px;
 }
 
-.preview-time-tooltip {
-  @apply absolute bottom-full mb-2 transform -translate-x-1/2
-    bg-black/80 text-white text-xs px-2 py-1 rounded
-    pointer-events-none z-10;
-}
 
-.tooltip-content {
-  @apply whitespace-nowrap;
-}
 
-.tooltip-arrow {
-  @apply absolute top-full left-1/2 transform -translate-x-1/2
-    w-0 h-0 border-l-4 border-r-4 border-t-4
-    border-l-transparent border-r-transparent border-t-black/80;
-}
 
-.chapter-markers {
-  @apply absolute top-0 left-0 right-0 h-full pointer-events-none;
-}
-
-.chapter-marker {
-  @apply absolute top-0 w-0.5 h-full bg-white/60;
-}
 
 .progress-bar-container {
-  @apply relative h-3 cursor-pointer flex items-center;
+  @apply relative h-5 cursor-pointer flex items-center;
+  padding: 8px 0;
 }
 
 .progress-bar {
-  @apply relative w-full h-1 bg-white/20 rounded-full overflow-hidden;
+  @apply relative w-full bg-white/30 rounded-full overflow-hidden
+    transition-all duration-200;
+  height: 3px;
 }
 
 .progress-bar-loaded {
-  @apply absolute top-0 left-0 h-full bg-white/40 transition-all duration-200;
+  @apply absolute top-0 left-0 h-full transition-all duration-300;
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .progress-bar-filled {
-  @apply absolute top-0 left-0 h-full bg-red-500 transition-all duration-200;
+  @apply absolute top-0 left-0 h-full;
+  background: var(--yt-red);
+  box-shadow: 0 0 8px var(--yt-red-glow);
+  transition: all var(--yt-transition-fast) ease;
 }
 
 .progress-bar-hover {
-  @apply absolute top-0 w-0.5 h-full bg-white/80;
+  @apply absolute top-0 w-0.5 h-full bg-white/90;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
 }
 
 .progress-dot {
   @apply absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2
-    w-3 h-3 bg-red-500 rounded-full border-2 border-white
-    transition-all duration-200;
+    rounded-full border-2 border-white
+    opacity-0;
+  width: 12px;
+  height: 12px;
+  background: var(--yt-red);
+  box-shadow: var(--yt-shadow-light);
+  transition: all var(--yt-transition-fast) ease;
 }
 
 .progress-handle {
   @apply absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2
-    w-4 h-4 bg-red-500 rounded-full border-2 border-white
-    opacity-0 transition-all duration-200;
+    rounded-full border-2 border-white
+    opacity-0;
+  width: 14px;
+  height: 14px;
+  background: var(--yt-red);
+  box-shadow: var(--yt-shadow-medium);
+  transition: all var(--yt-transition-fast) ease;
 }
 
 .progress-bar-container:hover .progress-handle {
   @apply opacity-100;
 }
 
+.progress-bar-container:hover .progress-dot {
+  @apply opacity-100;
+}
+
 .progress-bar-container:hover .progress-bar {
-  @apply h-1.5;
+  height: 5px;
 }
 
 /* 触摸设备优化 */
 @media (hover: none), (pointer: coarse) {
   .progress-bar {
-    @apply h-2;
+    height: 4px;
   }
-  
+
   .progress-bar-container {
-    @apply h-6;
+    @apply h-8;
+    padding: 12px 0;
   }
-  
+
   .progress-dot {
-    @apply w-4 h-4;
+    @apply opacity-100;
+    width: 16px;
+    height: 16px;
+  }
+
+  .progress-handle {
+    width: 18px;
+    height: 18px;
   }
 }
 </style>

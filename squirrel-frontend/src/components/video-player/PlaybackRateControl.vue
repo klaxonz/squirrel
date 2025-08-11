@@ -39,28 +39,52 @@ const emit = defineEmits(['toggle-menu', 'set-rate'])
 }
 
 .control-btn {
-  @apply p-2 rounded-lg bg-black/20 hover:bg-black/40 
-    transition-colors duration-200 text-white
-    focus:outline-none focus:ring-2 focus:ring-white/50;
+  @apply p-2 rounded-full bg-transparent hover:bg-white/10
+    transition-all duration-200 text-white
+    focus:outline-none focus:ring-2 focus:ring-white/30
+    flex items-center justify-center;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.control-btn:hover {
+  transform: scale(1.05);
+}
+
+.control-btn:active {
+  transform: scale(0.95);
 }
 
 .playback-rate-text {
-  @apply text-sm font-medium min-w-8 text-center;
+  @apply text-sm font-medium text-center;
+  font-family: 'Roboto', sans-serif;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  min-width: 24px;
 }
 
 .playback-rate-menu {
-  @apply absolute bottom-full right-0 mb-2 w-20
-    bg-black/90 backdrop-blur-sm rounded-lg p-2
-    border border-white/10 shadow-xl;
+  @apply absolute bottom-full right-0 mb-3 w-24
+    rounded-xl p-2
+    border border-white/10 shadow-2xl;
+  background: rgba(40, 40, 40, 0.95);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .rate-option {
-  @apply w-full text-center px-2 py-1 rounded text-sm
+  @apply w-full text-center px-3 py-2 rounded-lg text-sm
     text-white/80 hover:text-white hover:bg-white/10
-    transition-colors duration-200;
+    transition-all duration-200;
+  font-family: 'Roboto', sans-serif;
+}
+
+.rate-option:hover {
+  transform: translateX(1px);
 }
 
 .rate-option.active {
-  @apply text-white bg-white/20;
+  @apply text-white;
+  background: rgba(255, 0, 0, 0.15);
+  border-left: 3px solid #ff0000;
 }
 </style>
