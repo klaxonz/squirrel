@@ -7,13 +7,7 @@
       :duration="playerState.media.duration"
       :current-time="playerState.media.currentTime"
       :chapters="video.chapters"
-      :hovering="playerState.ui.hoveringProgress"
-      :hover-position="playerState.ui.hoverPosition"
-      :preview-time="playerState.ui.previewTime"
       @seek="$emit('progress-seek', $event)"
-      @hover-start="handleProgressHoverStart"
-      @hover-end="handleProgressHoverEnd"
-      @hover-move="handleProgressHoverMove"
     />
 
     <!-- 主控制栏 -->
@@ -197,20 +191,7 @@ const updateLoop = (value) => {
   props.playerState.media.loop = value
 }
 
-// 进度条悬停处理
-const handleProgressHoverStart = () => {
-  props.playerState.ui.hoveringProgress = true
-}
 
-const handleProgressHoverEnd = () => {
-  props.playerState.ui.hoveringProgress = false
-}
-
-const handleProgressHoverMove = ({ previewTime, position, hovering }) => {
-  props.playerState.ui.previewTime = previewTime
-  props.playerState.ui.hoverPosition = position
-  props.playerState.ui.hoveringProgress = hovering
-}
 </script>
 
 <style scoped>

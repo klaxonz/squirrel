@@ -64,12 +64,8 @@ export interface MediaState {
 export interface UIState {
   controlsVisible: boolean
   fullscreen: boolean
-  hoveringProgress: boolean
-  hoverPosition: number
-  previewTime: number
   showPlayIndicator: boolean
   isDragging: boolean
-  previewSeekTime: number
   errorMessage: string | null
   showPlaybackRateMenu: boolean
   showSettingsMenu: boolean
@@ -176,13 +172,6 @@ export interface PlayerEvents {
 // 进度条事件
 export interface ProgressBarEvents {
   seek: (time: number) => void
-  'hover-start': () => void
-  'hover-end': () => void
-  'hover-move': (data: {
-    previewTime: number
-    position: number
-    hovering: boolean
-  }) => void
 }
 
 // 控制按钮事件

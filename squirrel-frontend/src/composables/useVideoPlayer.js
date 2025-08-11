@@ -37,12 +37,8 @@ export default function useVideoPlayer(props, emit) {
       controlsVisible: true,
       fullscreen: false,
       theaterMode: false,
-      hoveringProgress: false,
-      hoverPosition: 0,
-      previewTime: 0,
       showPlayIndicator: false,
       isDragging: false,
-      previewSeekTime: 0,
       errorMessage: null,
       showPlaybackRateMenu: false,
       showQualityMenu: false,
@@ -147,9 +143,6 @@ export default function useVideoPlayer(props, emit) {
   )
 
   const progress = computed(() => {
-    if (playerState.ui.isDragging) {
-      return (playerState.ui.previewSeekTime / playerState.media.duration) * 100 || 0
-    }
     return (playerState.media.currentTime / playerState.media.duration) * 100 || 0
   })
 
@@ -361,9 +354,7 @@ export default function useVideoPlayer(props, emit) {
 
   const onPointerLeave = () => {
     hideControlsTimer = setTimeout(() => {
-      if (!playerState.ui.hoveringProgress) {
-        playerState.ui.controlsVisible = false
-      }
+      playerState.ui.controlsVisible = false
     }, 2000)
   }
 
@@ -376,9 +367,7 @@ export default function useVideoPlayer(props, emit) {
     }
 
     hideControlsTimer = setTimeout(() => {
-      if (!playerState.ui.hoveringProgress) {
-        playerState.ui.controlsVisible = false
-      }
+      playerState.ui.controlsVisible = false
     }, 2000)
   }
 

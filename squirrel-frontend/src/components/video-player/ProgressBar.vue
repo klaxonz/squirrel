@@ -1,12 +1,5 @@
 <template>
   <div class="progress-container">
-    <!-- YouTube风格的预览 -->
-    <ProgressPreview
-      :visible="hovering"
-      :position="hoverPosition"
-      :preview-time="previewTime"
-    />
-
     <!-- 章节标记 -->
     <ChapterMarkers
       :chapters="chapters"
@@ -38,36 +31,28 @@
           :style="{ width: progress + '%' }"
         ></div>
         
-        <!-- 悬停预览线 -->
-        <div 
-          class="progress-bar-hover"
-          :style="{ left: hoverPosition + '%' }"
-          v-show="hovering"
-        ></div>
+
       </div>
       
       <!-- 进度点 -->
-      <div 
+      <div
         class="progress-dot"
         :style="{ left: progress + '%' }"
-        v-show="hovering || isDragging"
+        v-show="isDragging"
       ></div>
       
       <!-- 进度手柄 -->
-      <div 
+      <div
         class="progress-handle"
         :style="{ left: progress + '%' }"
-        v-show="hovering"
+        v-show="isDragging"
       ></div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { formatTime } from '../../utils/dateFormat'
-import { debounce } from 'lodash-es'
-import ProgressPreview from './ProgressPreview.vue'
+import { ref } from 'vue'
 import ChapterMarkers from './ChapterMarkers.vue'
 
 const props = defineProps({
@@ -75,85 +60,57 @@ const props = defineProps({
   bufferedProgress: Number,
   duration: Number,
   currentTime: Number,
-  chapters: Array,
-  hovering: Boolean,
-  hoverPosition: Number,
-  previewTime: Number
+  chapters: Array
 })
 
-const emit = defineEmits(['seek', 'hover-start', 'hover-end', 'hover-move'])
+const emit = defineEmits(['seek'])
 
 const handleChapterSeek = (time) => {
   emit('seek', time)
 }
 
 const isDragging = ref(false)
-const progressContainer = ref(null)
-const isHovering = ref(false)
 
-// 计算预览时间
-const calculatePreviewTime = (clientX, rect) => {
+// 计算跳转时间
+const calculateSeekTime = (clientX, rect) => {
   const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
   return percentage * props.duration
 }
 
-// 计算位置百分比
-const calculatePosition = (clientX, rect) => {
-  return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
-}
-
 // 鼠标事件处理
 const handleMouseEnter = () => {
-  isHovering.value = true
-  emit('hover-start')
+  // 进入进度条区域时不需要特殊处理
 }
 
-const handleMouseMove = debounce((event) => {
-  if (!isHovering.value) {
-    isHovering.value = true
-    emit('hover-start')
-  }
-
-  const rect = event.currentTarget.getBoundingClientRect()
-  const previewTime = calculatePreviewTime(event.clientX, rect)
-  const position = calculatePosition(event.clientX, rect)
-
-  emit('hover-move', {
-    previewTime,
-    position,
-    hovering: true
-  })
-}, 16) // 约60fps
+const handleMouseMove = (event) => {
+  // 鼠标移动时不需要预览功能
+}
 
 const handleMouseLeave = () => {
-  if (!isDragging.value) {
-    isHovering.value = false
-    emit('hover-end')
-  }
+  // 离开进度条区域时不需要特殊处理
 }
 
 const handleMouseDown = (event) => {
   isDragging.value = true
   const rect = event.currentTarget.getBoundingClientRect()
-  const seekTime = calculatePreviewTime(event.clientX, rect)
-  
+  const seekTime = calculateSeekTime(event.clientX, rect)
+
   emit('seek', seekTime)
-  
+
   const handleMouseMove = (moveEvent) => {
-    const newSeekTime = calculatePreviewTime(moveEvent.clientX, rect)
+    const newSeekTime = calculateSeekTime(moveEvent.clientX, rect)
     emit('seek', newSeekTime)
   }
-  
+
   const handleMouseUp = () => {
     isDragging.value = false
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)
-    emit('hover-end')
   }
-  
+
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
-  
+
   event.preventDefault()
 }
 
@@ -162,26 +119,25 @@ const handleTouchStart = (event) => {
   isDragging.value = true
   const touch = event.touches[0]
   const rect = event.currentTarget.getBoundingClientRect()
-  const seekTime = calculatePreviewTime(touch.clientX, rect)
-  
+  const seekTime = calculateSeekTime(touch.clientX, rect)
+
   emit('seek', seekTime)
   event.preventDefault()
 }
 
 const handleTouchMove = (event) => {
   if (!isDragging.value) return
-  
+
   const touch = event.touches[0]
   const rect = event.currentTarget.getBoundingClientRect()
-  const seekTime = calculatePreviewTime(touch.clientX, rect)
-  
+  const seekTime = calculateSeekTime(touch.clientX, rect)
+
   emit('seek', seekTime)
   event.preventDefault()
 }
 
 const handleTouchEnd = () => {
   isDragging.value = false
-  emit('hover-end')
 }
 </script>
 
