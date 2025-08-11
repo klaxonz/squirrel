@@ -163,7 +163,7 @@ const handleTouchEnd = () => {
 
 <style scoped>
 .progress-container {
-  @apply relative mb-3;
+  @apply relative mb-1;
   padding: 0 12px;
 }
 
