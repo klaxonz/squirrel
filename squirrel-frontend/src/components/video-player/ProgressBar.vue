@@ -201,7 +201,7 @@ const handleTouchEnd = () => {
 
 .progress-dot {
   @apply absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2
-    rounded-full border-2 border-white
+    rounded-full
     opacity-0;
   width: 12px;
   height: 12px;
@@ -212,7 +212,7 @@ const handleTouchEnd = () => {
 
 .progress-handle {
   @apply absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2
-    rounded-full border-2 border-white
+    rounded-full
     opacity-0;
   width: 14px;
   height: 14px;
