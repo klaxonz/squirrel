@@ -76,8 +76,12 @@ const handleVolumeChange = (event) => {
 
 .volume-slider-container {
   @apply opacity-0 group-hover:opacity-100 transition-all duration-300;
-  width: 80px;
+  width: 0;
   transform: translateX(-4px);
+}
+
+.group:hover .volume-slider-container {
+  width: 80px;
 }
 
 .volume-slider-wrapper {

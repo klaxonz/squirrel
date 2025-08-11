@@ -47,6 +47,15 @@
         :style="{ left: progress + '%' }"
         v-show="isDragging"
       ></div>
+
+      <!-- 时间预览 -->
+      <div
+        v-if="showPreview && !isDragging"
+        class="time-preview"
+        :style="{ left: previewPosition + '%' }"
+      >
+        {{ formatTime(previewTime) }}
+      </div>
     </div>
   </div>
 </template>
@@ -54,6 +63,7 @@
 <script setup>
 import { ref } from 'vue'
 import ChapterMarkers from './ChapterMarkers.vue'
+import { formatTime } from '../../utils/dateFormat'
 
 const props = defineProps({
   progress: Number,
@@ -70,6 +80,9 @@ const handleChapterSeek = (time) => {
 }
 
 const isDragging = ref(false)
+const showPreview = ref(false)
+const previewPosition = ref(0)
+const previewTime = ref(0)
 
 // 计算跳转时间
 const calculateSeekTime = (clientX, rect) => {
@@ -83,11 +96,18 @@ const handleMouseEnter = () => {
 }
 
 const handleMouseMove = (event) => {
-  // 鼠标移动时不需要预览功能
+  if (isDragging.value) return
+
+  const rect = event.currentTarget.getBoundingClientRect()
+  const percentage = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+
+  previewPosition.value = percentage * 100
+  previewTime.value = percentage * props.duration
+  showPreview.value = true
 }
 
 const handleMouseLeave = () => {
-  // 离开进度条区域时不需要特殊处理
+  showPreview.value = false
 }
 
 const handleMouseDown = (event) => {
@@ -213,6 +233,34 @@ const handleTouchEnd = () => {
   height: 5px;
 }
 
+.time-preview {
+  @apply absolute bottom-full mb-2 transform -translate-x-1/2
+    text-white text-xs font-medium px-2 py-1 rounded-md
+    pointer-events-none z-30;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: 'Roboto', sans-serif;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  white-space: nowrap;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.time-preview::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* 触摸设备优化 */
 @media (hover: none), (pointer: coarse) {
   .progress-bar {
@@ -233,6 +281,10 @@ const handleTouchEnd = () => {
   .progress-handle {
     width: 18px;
     height: 18px;
+  }
+
+  .time-preview {
+    display: none;
   }
 }
 </style>
