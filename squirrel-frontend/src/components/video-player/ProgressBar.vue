@@ -73,7 +73,7 @@ const props = defineProps({
   chapters: Array
 })
 
-const emit = defineEmits(['seek'])
+const emit = defineEmits(['seek', 'seek-start', 'seek-end'])
 
 const handleChapterSeek = (time) => {
   emit('seek', time)
@@ -112,6 +112,8 @@ const handleMouseLeave = () => {
 
 const handleMouseDown = (event) => {
   isDragging.value = true
+  emit('seek-start')
+
   const rect = event.currentTarget.getBoundingClientRect()
   const seekTime = calculateSeekTime(event.clientX, rect)
 
@@ -124,6 +126,7 @@ const handleMouseDown = (event) => {
 
   const handleMouseUp = () => {
     isDragging.value = false
+    emit('seek-end')
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)
   }
@@ -137,6 +140,8 @@ const handleMouseDown = (event) => {
 // 触摸事件处理
 const handleTouchStart = (event) => {
   isDragging.value = true
+  emit('seek-start')
+
   const touch = event.touches[0]
   const rect = event.currentTarget.getBoundingClientRect()
   const seekTime = calculateSeekTime(touch.clientX, rect)
@@ -158,6 +163,7 @@ const handleTouchMove = (event) => {
 
 const handleTouchEnd = () => {
   isDragging.value = false
+  emit('seek-end')
 }
 </script>
 

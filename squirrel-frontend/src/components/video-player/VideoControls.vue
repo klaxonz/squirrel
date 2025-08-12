@@ -7,7 +7,9 @@
       :duration="playerState.media.duration"
       :current-time="playerState.media.currentTime"
       :chapters="video.chapters"
+      @seek-start="$emit('seek-start')"
       @seek="$emit('progress-seek', $event)"
+      @seek-end="$emit('seek-end')"
     />
 
     <!-- 主控制栏 -->
@@ -154,7 +156,9 @@ const emit = defineEmits([
   'set-quality',
   'set-playback-rate',
   'set-subtitle',
-  'progress-seek'
+  'seek-start',
+  'progress-seek',
+  'seek-end'
 ])
 
 const isTouchDevice = computed(() =>

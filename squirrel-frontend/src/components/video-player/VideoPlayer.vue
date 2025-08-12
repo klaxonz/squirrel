@@ -68,7 +68,9 @@
         @set-quality="setQuality"
         @set-playback-rate="setPlaybackRate"
         @set-subtitle="setSubtitle"
+        @seek-start="onSeekStart"
         @progress-seek="setVideoTime"
+        @seek-end="onSeekEnd"
       />
       <!-- 错误消息 -->
       <ErrorMessage
@@ -169,6 +171,34 @@ const {
   setPlaybackRate,
   setSubtitle
 } = useVideoControls(playerState, videoCore)
+
+// 拖动进度条时的暂停/恢复
+const onSeekStart = () => {
+  if (!videoCore.value?.videoElement) return
+  playerState.ui.isDragging = true
+  // 记录是否在播放
+  playerState.ui.seeking.wasPlaying = !!playerState.media.playing
+  // 暂停视频和音频，避免拖动时继续播放导致不同步
+  try { videoCore.value.videoElement.pause() } catch (e) {}
+  if (videoCore.value.audioElement) {
+    try { videoCore.value.audioElement.pause() } catch (e) {}
+  }
+}
+
+const onSeekEnd = async () => {
+  playerState.ui.isDragging = false
+  // 拖动结束，如之前在播放则恢复
+  if (playerState.ui.seeking.wasPlaying) {
+    try {
+      await videoCore.value?.videoElement?.play()
+      if (videoCore.value?.audioElement) {
+        try { await videoCore.value.audioElement.play() } catch (e) { console.warn('Audio resume failed:', e) }
+      }
+    } catch (e) {
+      console.warn('Video resume failed:', e)
+    }
+  }
+}
 
 // 键盘快捷键
 const { handleKeyDown } = useKeyboardShortcuts(playerState, {

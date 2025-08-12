@@ -139,6 +139,10 @@ const handleVideoSeeking = () => {
   props.playerState.media.loading = true
   props.playerState.media.loadingStage = 'buffering'
   props.playerState.media.seeking.video = true
+  // 在非HLS模式下，视频开始seek时暂停独立音频，避免继续播放造成不同步
+  if (!props.isHlsStream && audioElement.value && !audioElement.value.paused) {
+    try { audioElement.value.pause() } catch (e) {}
+  }
 }
 
 const handleVideoSeeked = () => {
@@ -160,11 +164,19 @@ const handleVideoCanplay = () => {
 const handleVideoCanplaythrough = () => {
   props.playerState.media.loading = false
   props.playerState.media.loadingStage = 'ready'
+  // 缓冲结束后，如需要，恢复音频播放
+  if (!props.isHlsStream && audioElement.value && props.playerState.media.playing) {
+    try { audioElement.value.play().catch(() => {}) } catch (e) {}
+  }
 }
 
 const handleVideoWaiting = () => {
   props.playerState.media.loading = true
   props.playerState.media.loadingStage = 'buffering'
+  // 缓冲时暂停独立音频，避免音画不同步（非HLS）
+  if (!props.isHlsStream && audioElement.value && !audioElement.value.paused) {
+    try { audioElement.value.pause() } catch (e) {}
+  }
 }
 
 const handleVideoProgress = () => {

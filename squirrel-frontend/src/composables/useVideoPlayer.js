@@ -204,16 +204,33 @@ export default function useVideoPlayer(props, emit) {
     emit('pause')
   }
 
+  // 音画同步纠偏（仅非HLS且存在独立音频时）
+  const syncAvIfNeeded = () => {
+    if (isHlsStream.value) return
+    const v = videoCore.value?.videoElement
+    const a = videoCore.value?.audioElement
+    if (!v || !a) return
+    if (playerState.media.seeking.video || playerState.media.seeking.audio || playerState.ui.isDragging) return
+    const drift = a.currentTime - v.currentTime
+    // 超过100ms则硬同步
+    if (Math.abs(drift) > 0.1) {
+      try { a.currentTime = v.currentTime } catch (e) {}
+    }
+  }
+
   const handleVideoTimeupdate = () => {
     if (videoCore.value?.videoElement) {
       const currentTime = videoCore.value.videoElement.currentTime
       playerState.media.currentTime = currentTime
-      
-      if (videoCore.value.videoElement.duration && 
+
+      if (videoCore.value.videoElement.duration &&
           videoCore.value.videoElement.duration !== Infinity) {
         playerState.media.duration = videoCore.value.videoElement.duration
       }
-      
+
+      // 在正常播放时做一次轻量纠偏
+      syncAvIfNeeded()
+
       savePlaybackProgress(currentTime)
       emit('timeupdate', currentTime)
     }
@@ -271,12 +288,14 @@ export default function useVideoPlayer(props, emit) {
     }, 500)
   }
 
-  // 设置视频时间
+  // 设置视频时间（包含A/V同步）
   const setVideoTime = (time) => {
     if (!videoCore.value?.videoElement) return
-    videoCore.value.videoElement.currentTime = time
-    if (videoCore.value?.audioElement) {
-      videoCore.value.audioElement.currentTime = time
+    const v = videoCore.value.videoElement
+    v.currentTime = time
+    const a = videoCore.value?.audioElement
+    if (a) {
+      a.currentTime = time
     }
     playerState.media.currentTime = time
   }
