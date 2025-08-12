@@ -73,15 +73,9 @@ export default function useVideoControls(playerState, videoCore) {
   // 音量控制
   const toggleMute = () => {
     if (!videoCore.value?.videoElement) return
-    
-    const newMutedState = !videoCore.value.videoElement.muted
-    videoCore.value.videoElement.muted = newMutedState
-    
-    if (videoCore.value.audioElement) {
-      videoCore.value.audioElement.muted = newMutedState
-    }
-    
-    playerState.media.muted = newMutedState
+
+    // 只修改状态，让watch处理DOM更新
+    playerState.media.muted = !playerState.media.muted
   }
 
   // 全屏控制

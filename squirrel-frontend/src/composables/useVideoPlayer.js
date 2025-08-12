@@ -6,6 +6,7 @@ import useVideoPreload from './useVideoPreload'
 import useHlsPlayer from './useHlsPlayer'
 import usePerformanceMonitor from './usePerformanceMonitor'
 import { formatTime } from '../utils/dateFormat'
+import axios from '../utils/axios'
 
 export default function useVideoPlayer(props, emit) {
   // DOM 引用
@@ -178,6 +179,14 @@ export default function useVideoPlayer(props, emit) {
     playerState.network.firstInteraction = false
     // 视频实际开始播放时，无条件更新状态
     playerState.media.playing = true
+
+    // 确保音频也在播放（非HLS情况下）
+    if (!isHlsStream.value && videoCore.value?.audioElement) {
+      videoCore.value.audioElement.play().catch(err => {
+        console.warn('Failed to sync audio play:', err)
+      })
+    }
+
     emit('play')
   }
 
@@ -186,6 +195,12 @@ export default function useVideoPlayer(props, emit) {
     if (!playerState.media.seeking.video) {
       playerState.media.playing = false
     }
+
+    // 确保音频也暂停（非HLS情况下）
+    if (!isHlsStream.value && videoCore.value?.audioElement) {
+      videoCore.value.audioElement.pause()
+    }
+
     emit('pause')
   }
 
@@ -395,6 +410,95 @@ export default function useVideoPlayer(props, emit) {
     }, 2000)
   }
 
+  // 自动播放逻辑
+  const attemptAutoplay = async () => {
+    if (!videoCore.value?.videoElement) {
+      console.log('No video element for autoplay')
+      return
+    }
+
+    if (!playerState.media.autoplay) {
+      console.log('Autoplay disabled')
+      return
+    }
+
+    if (playerState.media.playing) {
+      console.log('Already playing')
+      return
+    }
+
+    console.log('Attempting autoplay...', {
+      isHlsStream: isHlsStream.value,
+      hasAudioElement: !!videoCore.value.audioElement,
+      videoMuted: videoCore.value.videoElement.muted,
+      audioMuted: videoCore.value.audioElement?.muted,
+      playerMuted: playerState.media.muted,
+      volume: playerState.media.volume
+    })
+
+    const wasFirstInteraction = playerState.network.firstInteraction
+    const originalMuted = playerState.media.muted
+
+    try {
+      // 如果是首次交互且未静音，先尝试正常播放
+      playerState.network.firstInteraction = false
+
+      await videoCore.value.videoElement.play()
+      console.log('Video play successful')
+
+      if (!isHlsStream.value && videoCore.value.audioElement) {
+        try {
+          await videoCore.value.audioElement.play()
+          console.log('Audio play successful')
+        } catch (audioError) {
+          console.warn('Audio autoplay failed:', audioError)
+        }
+      }
+
+    } catch (error) {
+      console.warn('Video autoplay failed:', error)
+      // 如果正常播放失败且是首次交互，尝试静音播放
+      if (wasFirstInteraction && !originalMuted) {
+        try {
+          console.log('Trying muted autoplay')
+          playerState.media.muted = true
+
+          await videoCore.value.videoElement.play()
+          console.log('Muted video play successful')
+
+          if (!isHlsStream.value && videoCore.value.audioElement) {
+            try {
+              await videoCore.value.audioElement.play()
+              console.log('Muted audio play successful')
+            } catch (audioError) {
+              console.warn('Muted audio autoplay failed:', audioError)
+            }
+          }
+
+          // 播放成功后，延迟恢复音量
+          setTimeout(() => {
+            console.log('Restoring original muted state:', originalMuted)
+            playerState.media.muted = originalMuted
+          }, 1000)
+
+        } catch (mutedError) {
+          console.warn('Muted autoplay also failed:', mutedError)
+          playerState.media.muted = originalMuted
+        }
+      }
+    }
+  }
+
+  // 监听自动播放条件
+  watch([isCanplay, () => playerState.media.autoplay], ([canPlay, autoplay]) => {
+    if (canPlay && autoplay && !playerState.media.playing) {
+      // 延迟一小段时间确保所有媒体元素都准备好
+      setTimeout(() => {
+        attemptAutoplay()
+      }, 100)
+    }
+  }, { immediate: true })
+
   // 生命周期
   // 非 HLS 的加载速度（吞吐采样：小范围 Range 请求统计真实字节/耗时）
   let probeTimer = null
@@ -481,11 +585,113 @@ export default function useVideoPlayer(props, emit) {
     }
   })
 
+  // 加载用户配置
+  const loadUserConfig = async () => {
+    try {
+      const response = await axios.get('/api/users/me/config')
+      if (response.data.code === 0) {
+        const config = response.data.data
+
+        // 设置自动播放，默认为true以提供更好的用户体验
+        if (config.autoplay !== undefined) {
+          playerState.media.autoplay = config.autoplay
+        } else {
+          playerState.media.autoplay = true
+          // 保存默认设置到后端
+          saveUserConfig({ autoplay: true })
+        }
+
+        if (config.loop !== undefined) {
+          playerState.media.loop = config.loop
+        }
+      } else {
+        // 如果获取配置失败，使用默认值
+        playerState.media.autoplay = true
+        saveUserConfig({ autoplay: true })
+      }
+    } catch (error) {
+      console.warn('Failed to load user config:', error)
+      // 如果加载失败，使用默认值
+      playerState.media.autoplay = true
+    }
+  }
+
+  // 保存用户配置
+  const saveUserConfig = async (settings) => {
+    try {
+      await axios.put('/api/users/me/config', {
+        settings,
+        merge: true
+      })
+    } catch (error) {
+      console.warn('Failed to save user config:', error)
+    }
+  }
+
+  // 监听自动播放设置变化并保存
+  watch(() => playerState.media.autoplay, (newValue) => {
+    saveUserConfig({ autoplay: newValue })
+  })
+
+  // 监听循环播放设置变化并保存
+  watch(() => playerState.media.loop, (newValue) => {
+    saveUserConfig({ loop: newValue })
+  })
+
   onMounted(async () => {
     setupNetworkListener()
+    await loadUserConfig()
 
     if (!props.video?.stream_video_url) {
       await playVideo(props.video)
+    }
+
+    // 调试函数
+    if (typeof window !== 'undefined') {
+      window.debugVideoPlayer = () => {
+        console.log('Video Player Debug Info:', {
+          playerState: {
+            playing: playerState.media.playing,
+            muted: playerState.media.muted,
+            volume: playerState.media.volume,
+            autoplay: playerState.media.autoplay,
+            canPlay: playerState.media.canPlay
+          },
+          elements: {
+            hasVideoElement: !!videoCore.value?.videoElement,
+            hasAudioElement: !!videoCore.value?.audioElement,
+            videoMuted: videoCore.value?.videoElement?.muted,
+            audioMuted: videoCore.value?.audioElement?.muted,
+            videoVolume: videoCore.value?.videoElement?.volume,
+            audioVolume: videoCore.value?.audioElement?.volume,
+            videoPaused: videoCore.value?.videoElement?.paused,
+            audioPaused: videoCore.value?.audioElement?.paused
+          },
+          stream: {
+            isHlsStream: isHlsStream.value,
+            hasAudioStream: hasAudioStream.value,
+            videoUrl: props.video?.stream_video_url,
+            audioUrl: props.video?.stream_audio_url
+          }
+        })
+      }
+    }
+  })
+
+  // 监听视频变化，支持自动播放新视频
+  watch(() => props.video?.id, (newId, oldId) => {
+    if (newId && newId !== oldId && playerState.media.autoplay) {
+      // 重置播放状态
+      playerState.media.playing = false
+      playerState.media.canPlay.video = false
+      playerState.media.canPlay.audio = false
+
+      // 等待新视频加载完成后尝试自动播放
+      setTimeout(() => {
+        if (isCanplay.value) {
+          attemptAutoplay()
+        }
+      }, 200)
     }
   })
 

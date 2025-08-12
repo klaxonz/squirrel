@@ -49,6 +49,7 @@
       playsinline
       webkit-playsinline
       :muted="playerState.media.muted"
+      :autoplay="playerState.media.autoplay"
       @play="$emit('play')"
       @pause="$emit('pause')"
       @seeking="handleVideoSeeking"
@@ -72,6 +73,9 @@
       v-if="!isHlsStream && video.stream_audio_url"
       ref="audioElement"
       :src="video.stream_audio_url"
+      :muted="playerState.media.muted"
+      :autoplay="playerState.media.autoplay"
+      preload="auto"
       @seeking="handleAudioSeeking"
       @canplay="handleAudioCanplay"
       @error="handleAudioError"
@@ -241,6 +245,17 @@ const initializeMediaSources = () => {
   if (!props.isHlsStream && props.video.stream_audio_url && audioElement.value) {
     audioElement.value.src = props.video.stream_audio_url
   }
+
+  // 确保媒体元素的音量和静音状态与playerState同步
+  if (videoElement.value) {
+    videoElement.value.volume = props.playerState.media.volume / 100
+    videoElement.value.muted = props.playerState.media.muted
+  }
+
+  if (audioElement.value) {
+    audioElement.value.volume = props.playerState.media.volume / 100
+    audioElement.value.muted = props.playerState.media.muted
+  }
 }
 
 // 监听视频URL变化
@@ -256,6 +271,16 @@ watch(() => props.playerState.media.volume, (newVolume) => {
     videoElement.value.volume = newVolume / 100
     if (audioElement.value) {
       audioElement.value.volume = newVolume / 100
+    }
+  }
+})
+
+// 监听静音状态变化
+watch(() => props.playerState.media.muted, (newMuted) => {
+  if (videoElement.value) {
+    videoElement.value.muted = newMuted
+    if (audioElement.value) {
+      audioElement.value.muted = newMuted
     }
   }
 })
@@ -318,6 +343,17 @@ const handleRightDoubleClick = () => {
 
 onMounted(() => {
   initializeMediaSources()
+
+  // 确保初始音量和静音状态正确设置
+  if (videoElement.value) {
+    videoElement.value.volume = props.playerState.media.volume / 100
+    videoElement.value.muted = props.playerState.media.muted
+
+    if (audioElement.value) {
+      audioElement.value.volume = props.playerState.media.volume / 100
+      audioElement.value.muted = props.playerState.media.muted
+    }
+  }
 })
 
 defineExpose({
