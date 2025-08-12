@@ -1,4 +1,4 @@
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import useVideoOperations from './useVideoOperations'
 import useVideoHistory from './useVideoHistory'
 import useVideoErrorHandler from './useVideoErrorHandler'
@@ -159,18 +159,18 @@ export default function useVideoPlayer(props, emit) {
     }
   })
 
-  // 格式化网络速度
-  const formatNetworkSpeed = (bytesPerSecond) => {
-    if (!bytesPerSecond || bytesPerSecond === 0) return '--'
-    
-    const mbps = (bytesPerSecond / 1024 / 1024).toFixed(1)
-    const kbps = (bytesPerSecond / 1024).toFixed(0)
-    
-    if (mbps >= 1) {
-      return `${mbps} MB/s`
-    } else {
-      return `${kbps} KB/s`
+  // 格式化网络速度（输入为 bps -> 显示为 MB/s 或 KB/s）
+  const formatNetworkSpeed = (bps) => {
+    if (!bps || bps <= 0) return '--'
+
+    const bytesPerSecond = bps / 8
+    const mBps = bytesPerSecond / 1024 / 1024
+    const kBps = bytesPerSecond / 1024
+
+    if (mBps >= 1) {
+      return `${mBps.toFixed(1)} MB/s`
     }
+    return `${Math.round(kBps)} KB/s`
   }
 
   // 事件处理函数
@@ -396,9 +396,94 @@ export default function useVideoPlayer(props, emit) {
   }
 
   // 生命周期
+  // 非 HLS 的加载速度（吞吐采样：小范围 Range 请求统计真实字节/耗时）
+  let probeTimer = null
+  let probeAbort = null
+  let probeInFlight = false
+  const PROBE_INTERVAL_MS = 1000
+  const PROBE_CHUNK_BYTES = 128 * 1024
+  const PROBE_TIMEOUT_MS = 4000
+
+  const runThroughputProbe = async () => {
+    if (probeInFlight) return
+    const url = props.video?.stream_video_url
+    if (!url) return
+    if (navigator?.connection?.saveData) return
+
+    probeInFlight = true
+    const controller = new AbortController()
+    probeAbort = controller
+    const timeoutId = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS)
+
+    try {
+      const t0 = performance.now()
+      const resp = await fetch(url, {
+        method: 'GET',
+        headers: { Range: `bytes=0-${PROBE_CHUNK_BYTES - 1}` },
+        cache: 'no-store',
+        mode: 'cors',
+        credentials: 'omit',
+        signal: controller.signal
+      })
+
+      if (!(resp.ok || resp.status === 206 || resp.status === 200)) return
+      if (!resp.body) return
+
+      const reader = resp.body.getReader()
+      let loaded = 0
+      while (loaded < PROBE_CHUNK_BYTES) {
+        const { done, value } = await reader.read()
+        if (done) break
+        if (value && value.length) loaded += value.length
+      }
+
+      // 尽快结束本次探测
+      try { controller.abort() } catch (e) {}
+
+      const durationSec = Math.max(0.001, (performance.now() - t0) / 1000)
+      if (loaded > 0 && durationSec > 0) {
+        updateBandwidth(loaded, durationSec)
+      }
+    } catch (e) {
+      // 忽略单次失败，下一轮重试
+    } finally {
+      clearTimeout(timeoutId)
+      probeInFlight = false
+      probeAbort = null
+    }
+  }
+
+  const startProbeMonitor = () => {
+    if (probeTimer) return
+    // 立即采样一次
+    runThroughputProbe()
+    probeTimer = setInterval(() => {
+      if (playerState.media.loading && !isHlsStream.value) runThroughputProbe()
+    }, PROBE_INTERVAL_MS)
+  }
+
+  const stopProbeMonitor = () => {
+    if (probeTimer) {
+      clearInterval(probeTimer)
+      probeTimer = null
+    }
+    if (probeAbort) {
+      try { probeAbort.abort() } catch (e) {}
+      probeAbort = null
+    }
+    probeInFlight = false
+  }
+
+  watch(() => playerState.media.loading, (loading) => {
+    if (!isHlsStream.value) {
+      if (loading) startProbeMonitor()
+      else stopProbeMonitor()
+    }
+  })
+
   onMounted(async () => {
     setupNetworkListener()
-    
+
     if (!props.video?.stream_video_url) {
       await playVideo(props.video)
     }
@@ -407,6 +492,7 @@ export default function useVideoPlayer(props, emit) {
   onUnmounted(() => {
     if (saveProgressTimer) clearTimeout(saveProgressTimer)
     if (hideControlsTimer) clearTimeout(hideControlsTimer)
+    stopProbeMonitor()
   })
 
   return {
@@ -429,6 +515,7 @@ export default function useVideoPlayer(props, emit) {
     loadingStatusText,
     
     // 方法
+    updateBandwidth,
     formatNetworkSpeed,
     handleVideoPlay,
     handleVideoPause,

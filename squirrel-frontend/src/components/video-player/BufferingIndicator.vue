@@ -5,6 +5,7 @@
       <div class="spinner-ring"></div>
       <div class="spinner-ring"></div>
     </div>
+    <div v-if="networkSpeed" class="buffering-speed">{{ networkSpeed }}</div>
   </div>
 </template>
 
@@ -13,6 +14,10 @@ const props = defineProps({
   isBuffering: {
     type: Boolean,
     default: false
+  },
+  networkSpeed: {
+    type: String,
+    default: ''
   }
 })
 </script>
@@ -57,6 +62,11 @@ const props = defineProps({
   top: 8px;
   left: 8px;
   border-top-color: rgba(255, 255, 255, 0.4);
+}
+
+.buffering-speed {
+  @apply mt-3 text-white text-sm text-center;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
 @keyframes bufferingRotate {

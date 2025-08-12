@@ -23,6 +23,7 @@
         :video="video"
         :player-state="playerState"
         :is-hls-stream="isHlsStream"
+        :on-bandwidth-sample="updateBandwidth"
         @play="handleVideoPlay"
         @pause="handleVideoPause"
         @timeupdate="handleVideoTimeupdate"
@@ -35,6 +36,7 @@
       <!-- 缓冲指示器 -->
       <BufferingIndicator
         :is-buffering="playerState.media.loading && playerState.media.loadingStage === 'buffering'"
+        :network-speed="formatNetworkSpeed(performanceState.bandwidth.current)"
       />
 
       <!-- 播放覆盖层 -->
@@ -132,6 +134,7 @@ const {
   supportsPiP,
   loadingStatusText,
   formatNetworkSpeed,
+  updateBandwidth,
   handleVideoPlay,
   handleVideoPause,
   handleVideoTimeupdate,

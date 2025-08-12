@@ -22,7 +22,7 @@ export default function useHlsPlayer({
       return;
     }
 
-    const hlsConfig = getOptimizedHlsConfig();
+    const hlsConfig = typeof getOptimizedHlsConfig === 'function' ? getOptimizedHlsConfig() : {};
     hlsRef.value = new Hls(hlsConfig);
     hlsRef.value.attachMedia(videoRef.value);
 
@@ -32,6 +32,22 @@ export default function useHlsPlayer({
 
     hlsRef.value.on(Hls.Events.FRAG_BUFFERED, () => {
       onProgress?.();
+    });
+
+    // 片段已加载，报告带宽样本
+    hlsRef.value.on(Hls.Events.FRAG_LOADED, (event, data) => {
+      try {
+        const stats = data?.stats || {};
+        const loadedBytes = stats.loaded ?? 0;
+        const tfirst = stats.tfirst ?? stats.trequest ?? stats.loading?.first ?? 0;
+        const tload = stats.tload ?? stats.tend ?? stats.loading?.end ?? 0;
+        const durationSec = Math.max(0.001, (tload - tfirst) / 1000);
+        if (loadedBytes > 0 && durationSec > 0) {
+          onProgress?.({ loaded: loadedBytes, durationSec });
+        }
+      } catch (e) {
+        // ignore single sample errors
+      }
     });
 
     hlsRef.value.on(Hls.Events.ERROR, (event, data) => {

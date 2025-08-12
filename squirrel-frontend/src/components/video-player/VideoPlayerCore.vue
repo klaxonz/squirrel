@@ -93,7 +93,8 @@ import useHlsPlayer from '../../composables/useHlsPlayer'
 const props = defineProps({
   video: Object,
   playerState: Object,
-  isHlsStream: Boolean
+  isHlsStream: Boolean,
+  onBandwidthSample: Function
 })
 
 const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'click', 'skip-forward', 'skip-backward'])
@@ -116,6 +117,16 @@ const {
   playerState: props.playerState,
   videoRef: videoElement,
   props,
+  onProgress: (sample) => {
+    try {
+      console.log('Bandwidth sample:', sample)
+      const loaded = sample?.loaded ?? 0
+      const duration = sample?.durationSec ?? 0
+      if (props.onBandwidthSample && loaded > 0 && duration > 0) {
+        props.onBandwidthSample(loaded, duration)
+      }
+    } catch (e) {}
+  },
   onError: (info) => emit('error', info)
 })
 
