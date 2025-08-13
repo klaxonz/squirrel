@@ -162,7 +162,7 @@ export default function useVideoPlayer(props, emit) {
 
   // 格式化网络速度（输入为 bps -> 显示为 MB/s 或 KB/s）
   const formatNetworkSpeed = (bps) => {
-    if (!bps || bps <= 0) return '--'
+    if (!bps || bps <= 0) return ''
 
     const bytesPerSecond = bps / 8
     const mBps = bytesPerSecond / 1024 / 1024
