@@ -73,16 +73,16 @@ const props = defineProps({
 }
 
 .loading-status-indicator {
-  @apply absolute bottom-6 left-6;
+  @apply absolute left-6;
+  bottom: 72px; /* 再提高一些，避免遮挡进度条 */
+  pointer-events: none; /* 不阻挡底部控件交互 */
 }
 
 .loading-status-text {
-  @apply text-white text-sm px-3 py-2 rounded-lg;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-family: 'Roboto', sans-serif;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  @apply text-sm;
+  color: var(--yt-text-secondary);
+  font-family: var(--yt-font-family);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
 @keyframes media-spinner {
