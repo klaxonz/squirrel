@@ -1,11 +1,11 @@
 <template>
   <div class="volume-control group">
-    <button 
-      @click="$emit('toggle-mute')" 
-      class="control-btn" 
+    <button
+      @click="$emit('toggle-mute')"
+      class="vp-control-btn"
       :aria-label="muted ? '取消静音' : '静音'"
     >
-      <Icon :icon="volumeIcon" class="control-icon" />
+      <Icon :icon="volumeIcon" class="vp-control-icon" />
     </button>
 
     <div class="volume-slider-container">
@@ -52,24 +52,22 @@ const handleVolumeChange = (event) => {
   gap: 4px;
 }
 
-.control-btn {
-  @apply p-2 rounded-full bg-transparent hover:bg-white/10
-    transition-all duration-200 text-white
-    focus:outline-none focus:ring-2 focus:ring-white/30
-    flex items-center justify-center;
+/* 使用全局按钮样式，补充尺寸与动效 */
+.vp-control-btn {
+  @apply p-2 flex items-center justify-center;
   min-width: 40px;
   min-height: 40px;
 }
 
-.control-btn:hover {
+.vp-control-btn:hover {
   transform: scale(1.05);
 }
 
-.control-btn:active {
-  transform: scale(0.95);
+.vp-control-btn:active {
+  transform: scale(0.98);
 }
 
-.control-icon {
+.vp-control-icon {
   @apply text-xl;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }

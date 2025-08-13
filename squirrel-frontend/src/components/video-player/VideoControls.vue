@@ -64,31 +64,31 @@
         <button
           v-if="supportsPip"
           @click="$emit('toggle-pip')"
-          class="control-btn"
+          class="vp-control-btn"
           :class="{ 'active-control': playerState.media.pictureInPicture }"
           aria-label="画中画"
         >
-          <Icon icon="material-symbols:picture-in-picture-alt" class="control-icon" />
+          <Icon icon="material-symbols:picture-in-picture-alt" class="vp-control-icon" />
         </button>
 
         <!-- 字幕按钮 -->
         <button
           @click="$emit('toggle-subtitles')"
-          class="control-btn"
+          class="vp-control-btn"
           :class="{ 'active-control': playerState.media.subtitlesEnabled }"
           :aria-label="playerState.media.subtitlesEnabled ? '关闭字幕' : '开启字幕'"
         >
-          <Icon icon="material-symbols:subtitles" class="control-icon" />
+          <Icon icon="material-symbols:subtitles" class="vp-control-icon" />
         </button>
 
         <!-- 剧场模式按钮 -->
         <button
           @click="$emit('toggle-theater')"
-          class="control-btn"
+          class="vp-control-btn"
           :class="{ 'active-control': playerState.ui.theaterMode }"
           aria-label="剧场模式"
         >
-          <Icon icon="material-symbols:fit-screen" class="control-icon" />
+          <Icon icon="material-symbols:fit-screen" class="vp-control-icon" />
         </button>
 
         <!-- 设置菜单 -->
@@ -111,10 +111,10 @@
         <!-- 全屏按钮 -->
         <button
           @click="$emit('toggle-fullscreen')"
-          class="control-btn"
+          class="vp-control-btn"
           aria-label="全屏"
         >
-          <Icon :icon="fullscreenIcon" class="control-icon" />
+          <Icon :icon="fullscreenIcon" class="vp-control-icon" />
         </button>
       </div>
     </div>
@@ -220,34 +220,36 @@ const updateLoop = (value) => {
   gap: 8px;
 }
 
-.control-btn {
-  @apply p-2 rounded-full bg-transparent text-white
+.vp-control-btn {
+  @apply p-2 rounded-full text-white
     focus:outline-none focus:ring-2 focus:ring-white/30
     flex items-center justify-center;
+  background-color: var(--vp-bg-control);
   min-width: 40px;
   min-height: 40px;
-  transition: all var(--yt-transition-fast) ease;
+  transition: all var(--vp-transition-normal);
 }
 
-.control-btn:hover {
-  background-color: var(--yt-control-bg-hover);
-  transform: scale(1.05);
+.vp-control-btn:hover {
+  background-color: var(--vp-bg-control-hover);
+  transform: scale(1.04);
 }
 
-.control-btn:active {
-  transform: scale(0.95);
+.vp-control-btn:active {
+  transform: scale(0.98);
 }
 
-.control-btn.active-control {
-  background-color: var(--yt-red-light);
-  border: 1px solid rgba(255, 0, 0, 0.3);
+/* 激活态：YouTube 风格为中性高亮而非红色 */
+.vp-control-btn.active-control {
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
-.control-btn.active-control:hover {
-  background-color: rgba(255, 0, 0, 0.3);
+.vp-control-btn.active-control:hover {
+  background-color: rgba(255, 255, 255, 0.18);
 }
 
-.control-icon {
+.vp-control-icon {
   @apply text-xl;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }

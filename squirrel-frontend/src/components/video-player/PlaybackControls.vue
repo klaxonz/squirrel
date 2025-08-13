@@ -1,39 +1,39 @@
 <template>
   <div class="playback-controls">
     <!-- 播放/暂停按钮 -->
-    <button 
-      @click="$emit('toggle-play')" 
-      class="control-btn play-btn" 
+    <button
+      @click="$emit('toggle-play')"
+      class="vp-control-btn play-btn"
       :aria-label="playing ? '暂停' : '播放'"
     >
-      <Icon 
-        v-if="playing" 
-        icon="material-symbols:pause" 
-        class="control-icon" 
+      <Icon
+        v-if="playing"
+        icon="material-symbols:pause"
+        class="vp-control-icon"
       />
-      <Icon 
-        v-else 
-        icon="material-symbols:play-arrow" 
-        class="control-icon" 
+      <Icon
+        v-else
+        icon="material-symbols:play-arrow"
+        class="vp-control-icon"
       />
     </button>
 
     <!-- 跳过按钮组 -->
     <div class="skip-controls">
-      <button 
-        @click="$emit('skip-backward')" 
-        class="control-btn skip-btn" 
+      <button
+        @click="$emit('skip-backward')"
+        class="vp-control-btn skip-btn"
         aria-label="后退10秒"
       >
-        <Icon icon="material-symbols:replay-10" class="control-icon" />
+        <Icon icon="material-symbols:replay-10" class="vp-control-icon" />
       </button>
       
-      <button 
-        @click="$emit('skip-forward')" 
-        class="control-btn skip-btn" 
+      <button
+        @click="$emit('skip-forward')"
+        class="vp-control-btn skip-btn"
         aria-label="前进10秒"
       >
-        <Icon icon="material-symbols:forward-10" class="control-icon" />
+        <Icon icon="material-symbols:forward-10" class="vp-control-icon" />
       </button>
     </div>
   </div>
@@ -55,32 +55,25 @@ const emit = defineEmits(['toggle-play', 'skip-forward', 'skip-backward'])
   gap: 4px;
 }
 
-.control-btn {
-  @apply rounded-full bg-transparent hover:bg-white/10
-    transition-all duration-200 text-white
-    focus:outline-none focus:ring-2 focus:ring-white/30
-    flex items-center justify-center;
+/* 统一使用全局样式的按钮外观 */
+.vp-control-btn {
+  @apply flex items-center justify-center;
   min-width: 40px;
   min-height: 40px;
 }
 
-.control-btn:hover {
+.vp-control-btn:hover {
   transform: scale(1.05);
 }
 
-.control-btn:active {
-  transform: scale(0.95);
+.vp-control-btn:active {
+  transform: scale(0.98);
 }
 
 .play-btn {
   @apply p-2;
   min-width: 48px;
   min-height: 48px;
-}
-
-.play-btn:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  transform: scale(1.08);
 }
 
 .skip-controls {
@@ -94,20 +87,20 @@ const emit = defineEmits(['toggle-play', 'skip-forward', 'skip-backward'])
   min-height: 36px;
 }
 
-.control-icon {
+.vp-control-icon {
   @apply text-lg;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
-.play-btn .control-icon {
+.play-btn .vp-control-icon {
   @apply text-2xl;
 }
 
-.skip-btn .control-icon {
+.skip-btn .vp-control-icon {
   @apply text-lg;
 }
 
-/* YouTube风格的播放按钮特殊效果 */
+/* YouTube风格的播放按钮柔和光晕 */
 .play-btn {
   position: relative;
 }
@@ -119,7 +112,7 @@ const emit = defineEmits(['toggle-play', 'skip-forward', 'skip-backward'])
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--yt-transition-fast) ease;
 }
 
 .play-btn:hover::before {
