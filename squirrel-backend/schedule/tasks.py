@@ -9,6 +9,7 @@ from mq.producer import RedisStreamProducer
 from core import config
 from core.config import settings
 from core.database import get_session
+from core.cache import DistributedLock
 from models.links import SubscriptionVideo
 from models.subscription import Subscription
 from models.task.download_task import DownloadTask
@@ -151,6 +152,11 @@ class AutoUpdateChannelVideo(BaseTask):
             from services import message_service
             for sub in subscriptions:
                 try:
+                    lock = DistributedLock(f"lock:subscription:update:{sub.id}")
+                    if lock.is_locked():
+                        logger.info(f"Update in progress, skip scheduled enqueue: subscription_id={sub.id}")
+                        continue
+
                     sub_detail = subscription_service.get_subscription_by_id(sub.id)
                     content = {
                         "subscription_id": getattr(sub_detail, 'id', sub.id),

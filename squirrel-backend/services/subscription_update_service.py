@@ -1,4 +1,5 @@
 import logging
+import threading
 from datetime import datetime, timezone
 
 from core.cache import DistributedLock, RedisClient
@@ -31,12 +32,27 @@ class SubscriptionUpdateService:
     def update_subscription_videos(sub: SubscriptionDto, is_manual: bool = False) -> None:
         lock_key = f"lock:subscription:update:{sub.id}"
         lock = DistributedLock(lock_key)
-        acquired = lock.acquire(timeout=30)
+        acquired = lock.acquire(timeout=180)
         if not acquired:
             logger.info(f"Update already in progress for subscription {sub.id}")
             return
+
+        renew_stop = threading.Event()
+        renewer = None
+
+        def _renew_loop():
+            while not renew_stop.wait(60):
+                try:
+                    ok = lock.extend(120)
+                    if not ok:
+                        logger.warning(f"Failed to extend lock lease for subscription {sub.id}")
+                except Exception as e:
+                    logger.error(f"Error extending lock lease for subscription {sub.id}: {e}", exc_info=True)
+
         try:
-            # 进度：准备抓取订阅列表
+            renewer = threading.Thread(target=_renew_loop, name=f"sub-update-lock-renew-{sub.id}", daemon=True)
+            renewer.start()
+
             set_progress(sub.id, {"status": "in_progress", "phase": "fetching_feed", "source": "manual" if is_manual else "scheduled"})
 
             subscribe_channel = SubscriptionFactory.create_subscription(sub.url)
@@ -51,10 +67,8 @@ class SubscriptionUpdateService:
 
             extract_list = video_list if is_extract_all else video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
 
-            # 进度：进入解析阶段，设置总数与 processed=0
             set_progress(sub.id, {"phase": "extracting", "total": len(extract_list), "processed": 0})
 
-            # 若没有任何可解析的视频，立即标记完成
             if len(extract_list) == 0:
                 set_progress(sub.id, {
                     "status": "completed",
@@ -73,5 +87,11 @@ class SubscriptionUpdateService:
                 )
                 download_service.start(params)
         finally:
+            renew_stop.set()
+            if renewer is not None:
+                try:
+                    renewer.join(timeout=2)
+                except Exception:
+                    pass
             lock.release()
 

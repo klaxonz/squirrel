@@ -82,10 +82,16 @@ def _process_extract_message_compat(message: Dict[str, Any]):
         RedisStreamProducer().send(queue_name, message)
 
     except Exception as e:
-        logger.error(f"路由失败，严格失败: {e}", exc_info=True)
+        logger.error(f"路由失败: {e}", exc_info=True)
         if params and hasattr(params, 'url') and params.url:
             task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
-        raise
+            try:
+                tick_progress(params.subscription_id)
+                maybe_complete(params.subscription_id)
+            except Exception:
+                pass
+        # 吞掉异常，避免重复重试导致进度计数异常
+        return
 
 
 @mq_consumer("queue::video::extract::bilibili::manual", group="extract-site")
@@ -133,6 +139,12 @@ def process_video_extract(message: Dict[str, Any]):
 
     except Exception as e:
         logger.error(f"处理消息时发生错误: message: {message}, error: {e}", exc_info=True)
+        try:
+            if params and hasattr(params, 'subscription_id'):
+                tick_progress(params.subscription_id)
+                maybe_complete(params.subscription_id)
+        except Exception:
+            pass
     finally:
         if params and params.url:
             task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)

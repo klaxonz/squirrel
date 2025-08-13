@@ -16,12 +16,28 @@ def build_video_key(url: str):
 
 def get_extract_cache(url: str):
     key = build_video_key(url)
-    return client.hget(key, constants.VIDEO_EXTRACT_FIELD_NAME)
+    ts = client.hget(key, constants.VIDEO_EXTRACT_FIELD_NAME)
+    if not ts:
+        return None
+    try:
+        tsf = float(ts)
+    except Exception:
+        # 非法时间戳，清理并视为不存在
+        client.hdel(key, constants.VIDEO_EXTRACT_FIELD_NAME)
+        return None
+    now = datetime.datetime.now().timestamp()
+    # 过期则清理并视为不存在，避免长时间卡住
+    if now - tsf > constants.VIDEO_EXTRACT_EXPIRE:
+        client.hdel(key, constants.VIDEO_EXTRACT_FIELD_NAME)
+        return None
+    return ts
 
 
 def set_extract_cache(url: str, field_name: str):
     key = build_video_key(url)
     client.hset(key, field_name, datetime.datetime.now().timestamp())
+    # 为键设置过期时间，避免异常情况下长期占用
+    client.expire(key, constants.VIDEO_EXTRACT_EXPIRE)
 
 
 def delete_extract_cache(url: str, field_name: str):

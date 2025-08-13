@@ -37,6 +37,8 @@ def start(params: VideoExtractDto):
             return
         if __check_video_extracting(params.url):
             logger.debug(f"{params.url} is currently being extracted")
+            # 如果标记存在但已过期，get_extract_cache 会自动清理并返回 None；
+            # 若确实仍在解析，先不推进 processed，避免重复计数。
             return
     if not __check_subscription_exist(params.subscription_id):
         logger.info(f"subscription {params.subscription_id} is not exist")
