@@ -34,5 +34,6 @@ email-validator = "*"
 sqlalchemy-to-pydantic= "0.0.8"
 pytubefix = "*"
 httpx = {extras = ["http2"], version = "*"}
+botasaurus = "*"
 
 [dev-packages]
