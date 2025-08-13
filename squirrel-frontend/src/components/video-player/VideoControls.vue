@@ -93,7 +93,6 @@
 
         <!-- 设置菜单 -->
         <SettingsMenu
-          v-if="!isTouchDevice"
           :show-menu="playerState.ui.showSettingsMenu"
           :current-quality="playerState.media.currentQuality"
           :available-qualities="availableQualities"

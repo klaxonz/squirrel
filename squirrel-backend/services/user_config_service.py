@@ -8,9 +8,10 @@ def get_config(user_id: int) -> Dict:
     with get_session() as session:
         config = session.query(UserConfig).filter(UserConfig.user_id == user_id).first()
         if not config:
-            default_config = UserConfig(user_id=user_id)
-            session.add(default_config)
+            config = UserConfig(user_id=user_id, settings={})
+            session.add(config)
             session.commit()
+            session.refresh(config)
         return config.settings
 
 
@@ -20,10 +21,14 @@ def update_config(
         merge: bool = False
 ) -> Dict:
     sanitized_settings = new_settings
-    
+
     # 添加类型验证
     if 'showNsfw' in sanitized_settings and not isinstance(sanitized_settings['showNsfw'], bool):
         raise ValueError("showNsfw必须是布尔值")
+    if 'autoplay' in sanitized_settings and not isinstance(sanitized_settings['autoplay'], bool):
+        raise ValueError("autoplay必须是布尔值")
+    if 'loop' in sanitized_settings and not isinstance(sanitized_settings['loop'], bool):
+        raise ValueError("loop必须是布尔值")
     
     with get_session() as session:
         config = session.query(UserConfig).filter(UserConfig.user_id == user_id).first()
