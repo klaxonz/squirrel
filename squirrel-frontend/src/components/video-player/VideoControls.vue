@@ -221,7 +221,7 @@ const updateLoop = (value) => {
 
 .vp-control-btn {
   @apply p-2 rounded-full text-white
-    focus:outline-none focus:ring-2 focus:ring-white/30
+    focus:outline-none
     flex items-center justify-center;
   background-color: var(--vp-bg-control);
   min-width: 40px;
@@ -238,14 +238,14 @@ const updateLoop = (value) => {
   transform: scale(0.98);
 }
 
-/* 激活态：YouTube 风格为中性高亮而非红色 */
+/* 激活态：与 YouTube 一致，不保留持久的选中底色，仅在悬停时出现 */
 .vp-control-btn.active-control {
-  background-color: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background-color: transparent;
+  border: none;
 }
 
 .vp-control-btn.active-control:hover {
-  background-color: rgba(255, 255, 255, 0.18);
+  background-color: var(--vp-bg-control-hover);
 }
 
 .vp-control-icon {
