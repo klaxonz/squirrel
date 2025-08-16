@@ -72,15 +72,7 @@
         @progress-seek="setVideoTime"
         @seek-end="onSeekEnd"
       />
-      <!-- 错误消息 -->
-      <ErrorMessage
-        v-if="errorState.hasError"
-        :error-state="errorState"
-        :error-info="getErrorInfo()"
-        @retry="handleRetry"
-        @report="reportErrorToSupport"
-        @dismiss="dismissError"
-      />
+
 
       <!-- 快进/快退指示器 -->
       <SeekingIndicator
@@ -107,7 +99,6 @@
 import VideoPlayerCore from './VideoPlayerCore.vue'
 import VideoControls from './VideoControls.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
-import ErrorMessage from './ErrorMessage.vue'
 import SeekingIndicator from './SeekingIndicator.vue'
 import VolumeIndicator from './VolumeIndicator.vue'
 import KeyboardHelp from './KeyboardHelp.vue'
@@ -127,7 +118,6 @@ const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupd
 const {
   playerState,
   performanceState,
-  errorState,
   videoCore,
   isHlsStream,
   progress,
@@ -143,10 +133,6 @@ const {
   handleVideoError,
   handleVideoLayerClick,
   setVideoTime,
-  getErrorInfo,
-  handleRetry,
-  reportErrorToSupport,
-  dismissError,
   onPointerEnter,
   onPointerLeave,
   onPointerMove

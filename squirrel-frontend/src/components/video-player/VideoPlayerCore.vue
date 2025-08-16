@@ -62,11 +62,28 @@
       @loadstart="handleVideoLoadstart"
       @loadedmetadata="handleVideoLoadedmetadata"
       @loadeddata="handleVideoLoadeddata"
-      @error="$emit('error', $event)"
+      @error="handleVideoElementError"
       @stalled="handleVideoStalled"
       @suspend="handleVideoSuspend"
       @abort="handleVideoAbort"
     />
+
+    <!-- 内联错误覆盖层（YouTube风格） -->
+    <div v-if="errorState.show" class="error-overlay" aria-live="polite">
+      <div class="error-box">
+        <div class="error-title">{{ errorState.title }}</div>
+        <div class="error-message">{{ errorState.message }}</div>
+        <div class="error-meta">
+          <span v-if="errorState.code">错误码：{{ errorState.code }}</span>
+          <span v-if="errorState.detail" class="sep">|</span>
+          <span v-if="errorState.detail">{{ errorState.detail }}</span>
+        </div>
+        <div class="error-actions">
+          <button v-if="errorState.retryable" class="btn btn-primary" @click="handleRetry">重试</button>
+          <a v-if="props.helpUrl" class="btn btn-link" :href="props.helpUrl" target="_blank" rel="noopener">获取帮助</a>
+        </div>
+      </div>
+    </div>
 
     <!-- 音频元素（非HLS时） -->
     <audio
@@ -82,8 +99,8 @@
     />
 
     <!-- 悬停渐变 -->
-    <div 
-      class="hover-gradient" 
+    <div
+      class="hover-gradient"
       v-if="playerState.ui.controlsVisible && !playerState.media.subtitlesEnabled"
     />
   </div>
@@ -98,7 +115,8 @@ const props = defineProps({
   video: Object,
   playerState: Object,
   isHlsStream: Boolean,
-  onBandwidthSample: Function
+  onBandwidthSample: Function,
+  helpUrl: String
 })
 
 const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'click', 'skip-forward', 'skip-backward'])
@@ -112,10 +130,64 @@ let rightClickTimer = null
 const videoElement = ref(null)
 const audioElement = ref(null)
 
+
+// 内联错误状态与逻辑（YouTube风格）
+const errorState = ref({ show: false, title: '', message: '', code: '', detail: '', retryable: true })
+
+const mapErrorToUi = (err) => {
+  const e = err || {}
+  const type = e.type || (e.name || '').toLowerCase()
+  // HLS/自定义错误类型
+  if (type === 'network') {
+    return { title: '网络连接错误', message: '无法连接到服务器，请检查网络或稍后重试。', code: e.code || 'NETWORK', detail: e.message || '', retryable: true }
+  }
+  if (type === 'media') {
+    return { title: '媒体播放错误', message: '视频无法播放，可能是格式不支持或文件损坏。', code: e.code || 'MEDIA', detail: e.message || '', retryable: true }
+  }
+  if (type === 'fatal') {
+    return { title: '播放失败', message: '发生致命错误，暂时无法播放。', code: e.code || 'FATAL', detail: e.message || '', retryable: true }
+  }
+  // HTMLMediaElement error
+  const mediaErr = e?.target?.error || e.error || {}
+  switch (mediaErr.code) {
+    case 1: return { title: '已中止', message: '播放被中止。', code: 'MEDIA_ERR_ABORTED', detail: '', retryable: false }
+    case 2: return { title: '网络错误', message: '网络连接异常，请检查网络。', code: 'MEDIA_ERR_NETWORK', detail: '', retryable: true }
+    case 3: return { title: '解码错误', message: '媒体解码失败。', code: 'MEDIA_ERR_DECODE', detail: '', retryable: true }
+    case 4: return { title: '不支持的资源', message: '当前媒体资源不受支持。', code: 'MEDIA_ERR_SRC_NOT_SUPPORTED', detail: '', retryable: false }
+    default: return { title: '播放出现问题', message: '请稍后重试。', code: e.code || 'UNKNOWN', detail: e.message || '', retryable: true }
+  }
+}
+
+const showInlineError = (err) => {
+  const ui = mapErrorToUi(err)
+  errorState.value = { show: true, ...ui }
+  emit('error', err)
+}
+
+const clearInlineError = () => { errorState.value.show = false }
+
+const handleRetry = () => {
+  clearInlineError()
+  try {
+    if (props.isHlsStream) {
+      // 重新初始化 HLS
+      reinitializeHls()
+    } else if (videoElement.value) {
+      // 重新加载并尝试播放
+      videoElement.value.load()
+      const p = videoElement.value.play()
+      if (p && typeof p.then === 'function') p.catch(() => {})
+    }
+  } catch (e) {}
+}
+
+const handleVideoElementError = (evt) => {
+  showInlineError(evt)
+}
+
 // HLS播放器管理
 const {
   initializeHls,
-  destroyHls,
   reinitializeHls
 } = useHlsPlayer({
   playerState: props.playerState,
@@ -131,7 +203,9 @@ const {
       }
     } catch (e) {}
   },
-  onError: (info) => emit('error', info)
+  onError: (info) => {
+    showInlineError(info)
+  }
 })
 
 // 视频事件处理
@@ -159,6 +233,8 @@ const handleVideoCanplay = () => {
   props.playerState.media.loadingStage = 'ready'
   props.playerState.media.canPlay.video = true
   props.playerState.media.seeking.video = false
+  // 一旦可播放，隐藏错误覆盖层
+  if (errorState.value.show) errorState.value.show = false
 }
 
 const handleVideoCanplaythrough = () => {
@@ -183,7 +259,7 @@ const handleVideoProgress = () => {
   if (videoElement.value && videoElement.value.buffered.length > 0) {
     const buffered = videoElement.value.buffered
     let bufferedEnd = 0
-    
+
     for (let i = 0; i < buffered.length; i++) {
       if (buffered.start(i) <= props.playerState.media.currentTime &&
           buffered.end(i) >= props.playerState.media.currentTime) {
@@ -194,8 +270,8 @@ const handleVideoProgress = () => {
         bufferedEnd = buffered.end(i)
       }
     }
-    
-    props.playerState.media.bufferedProgress = 
+
+    props.playerState.media.bufferedProgress =
       (bufferedEnd / props.playerState.media.duration) * 100
   }
 }
@@ -356,7 +432,6 @@ const handleRightDoubleClick = () => {
 onMounted(() => {
   initializeMediaSources()
 
-  // 确保初始音量和静音状态正确设置
   if (videoElement.value) {
     videoElement.value.volume = props.playerState.media.volume / 100
     videoElement.value.muted = props.playerState.media.muted
@@ -424,6 +499,34 @@ defineExpose({
 .video-player {
   @apply w-full h-full object-contain;
 }
+
+/* YouTube 风格错误覆盖层 */
+.error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 20;
+}
+.error-box {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  padding: 14px 16px;
+  border-radius: 10px;
+  max-width: 84%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+.error-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.error-message { font-size: 14px; opacity: .95; }
+.error-meta { margin-top: 8px; font-size: 12px; opacity: .8; }
+.error-meta .sep { margin: 0 8px; opacity: .6; }
+.error-actions { margin-top: 12px; display: flex; gap: 12px; align-items: center; }
+.btn { cursor: pointer; border: none; }
+.btn-primary { color: #111; background: #fff; border-radius: 18px; padding: 6px 12px; font-weight: 600; }
+.btn-link { color: #9ecbff; text-decoration: none; font-size: 13px; }
 
 .play-state-indicator {
   @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
