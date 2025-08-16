@@ -21,7 +21,12 @@
             class="quality-option"
             :class="{ active: currentQuality === quality.value }"
           >
-            {{ quality.label }}
+            <span>{{ quality.label }}</span>
+            <Icon
+              v-if="currentQuality === quality.value"
+              icon="material-symbols:check"
+              class="check-icon"
+            />
           </button>
         </div>
       </div>
@@ -131,67 +136,107 @@ const emit = defineEmits([
 }
 
 .settings-menu {
-  @apply absolute bottom-full right-0 mb-3 w-72
+  @apply absolute bottom-full right-0 mb-3 w-36
     rounded-xl p-0
     border border-white/10 shadow-2xl;
   background: rgba(40, 40, 40, 0.95);
   backdrop-filter: blur(12px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  transform-origin: bottom right;
+  animation: menu-appear 160ms ease-out;
+}
+
+@keyframes menu-appear {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .settings-section {
-  @apply p-4 border-b border-white/10 last:border-b-0;
+  @apply p-2 last:border-b-0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .settings-title {
-  @apply text-white font-medium text-sm mb-3;
+  @apply text-white font-medium text-xs mb-2;
   font-family: 'Roboto', 'YouTube Noto', sans-serif;
 }
 
 .quality-options,
 .subtitle-options {
-  @apply space-y-1;
+  @apply space-y-0.5;
 }
 
 .quality-option,
 .subtitle-option {
-  @apply w-full text-left px-3 py-2 rounded-lg text-sm
-    text-white/80 hover:text-white hover:bg-white/10
-    transition-all duration-200;
+  @apply w-full text-left px-2 py-1 rounded-lg text-xs
+    text-white/90 hover:text-white hover:bg-white/10
+    transition-colors duration-200;
   font-family: 'Roboto', sans-serif;
 }
 
+.quality-option { @apply flex items-center justify-between; }
+
+.check-icon { color: #fff; font-size: 16px; }
+
 .quality-option:hover,
 .subtitle-option:hover {
-  transform: translateX(2px);
+  transform: none;
 }
 
 .quality-option.active,
 .subtitle-option.active {
   @apply text-white;
-  background: rgba(255, 0, 0, 0.15);
-  border-left: 3px solid #ff0000;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .setting-item {
-  @apply mb-3 last:mb-0;
+  @apply mb-2 last:mb-0;
 }
 
 .setting-label {
-  @apply flex items-center gap-3 text-sm text-white/80
+  @apply flex items-center gap-2 text-xs text-white/80
     hover:text-white cursor-pointer transition-colors duration-200;
   font-family: 'Roboto', sans-serif;
 }
 
 .setting-checkbox {
-  @apply w-4 h-4 rounded border-white/30 bg-transparent
-    focus:ring-2 focus:ring-white/30 focus:ring-offset-0
-    transition-all duration-200;
-  accent-color: #ff0000;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: transparent;
+  display: inline-block;
+  position: relative;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.setting-checkbox:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.setting-checkbox:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 2px;
 }
 
 .setting-checkbox:checked {
-  background-color: #ff0000;
-  border-color: #ff0000;
+  background-color: #cc0000;
+  border-color: #cc0000;
 }
+
+.setting-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 6px;
+  height: 10px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg);
+}
+
+
 </style>
