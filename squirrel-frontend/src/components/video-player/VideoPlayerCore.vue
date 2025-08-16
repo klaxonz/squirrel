@@ -43,7 +43,7 @@
       ref="videoElement"
       class="video-player"
       :poster="video.thumbnail"
-      :src="video.stream_video_url"
+      :src="!isHlsStream ? video.stream_video_url : undefined"
       preload="auto"
       crossorigin="anonymous"
       playsinline
