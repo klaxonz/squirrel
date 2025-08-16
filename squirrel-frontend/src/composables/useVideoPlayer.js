@@ -139,9 +139,46 @@ export default function useVideoPlayer(props, emit) {
     return 'material-symbols:volume-up'
   })
 
-  const fullscreenIcon = computed(() => 
+  const fullscreenIcon = computed(() =>
     playerState.ui.fullscreen ? 'material-symbols:fullscreen-exit' : 'material-symbols:fullscreen'
   )
+
+  // 同步全屏状态：监听浏览器的 fullscreenchange 事件，确保图标与真实状态一致
+  const getPlayerContainer = () => {
+    const videoEl = videoCore.value?.videoElement
+    if (!videoEl) return null
+    let container = videoEl.parentElement
+    while (container && !container.classList?.contains('video-player-container')) {
+      container = container.parentElement
+    }
+    return container || null
+  }
+
+  const getDocFullscreenElement = () => {
+    return (
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement ||
+      null
+    )
+  }
+
+  const updateFullscreenState = () => {
+    try {
+      const container = getPlayerContainer()
+      const fsEl = getDocFullscreenElement()
+      const isFs = !!(container && fsEl === container)
+      if (playerState.ui.fullscreen !== isFs) {
+        playerState.ui.fullscreen = isFs
+        try { emit && emit('fullscreenChange', isFs) } catch (e) {}
+      }
+    } catch (e) {
+      // 忽略单次同步失败
+    }
+  }
+
+  const fullscreenEventNames = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']
 
   const progress = computed(() => {
     return (playerState.media.currentTime / playerState.media.duration) * 100 || 0
@@ -659,6 +696,12 @@ export default function useVideoPlayer(props, emit) {
     setupNetworkListener()
     await loadUserConfig()
 
+    // 初始化全屏状态并监听系统全屏变更（Esc/系统菜单等）
+    try {
+      updateFullscreenState()
+      fullscreenEventNames.forEach(evt => document.addEventListener(evt, updateFullscreenState))
+    } catch (e) {}
+
     // 获取播放链接阶段：设置fetching并添加超时保护
     if (!props.video?.stream_video_url) {
       playerState.media.loading = true
@@ -729,6 +772,9 @@ export default function useVideoPlayer(props, emit) {
     if (saveProgressTimer) clearTimeout(saveProgressTimer)
     if (hideControlsTimer) clearTimeout(hideControlsTimer)
     stopProbeMonitor()
+    try {
+      fullscreenEventNames.forEach(evt => document.removeEventListener(evt, updateFullscreenState))
+    } catch (e) {}
   })
 
   return {
