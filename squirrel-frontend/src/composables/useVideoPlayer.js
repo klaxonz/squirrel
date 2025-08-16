@@ -411,6 +411,10 @@ export default function useVideoPlayer(props, emit) {
   const onPointerLeave = () => {
     hideControlsTimer = setTimeout(() => {
       playerState.ui.controlsVisible = false
+      // 关闭所有弹出菜单，避免重新进入时又自动出现
+      playerState.ui.showSettingsMenu = false
+      playerState.ui.showQualityMenu = false
+      playerState.ui.showPlaybackRateMenu = false
     }, 2000)
   }
 
@@ -424,6 +428,10 @@ export default function useVideoPlayer(props, emit) {
 
     hideControlsTimer = setTimeout(() => {
       playerState.ui.controlsVisible = false
+      // 关闭所有弹出菜单，避免重新进入时又自动出现
+      playerState.ui.showSettingsMenu = false
+      playerState.ui.showQualityMenu = false
+      playerState.ui.showPlaybackRateMenu = false
     }, 2000)
   }
 
