@@ -425,14 +425,6 @@ export default function useVideoPlayer(props, emit) {
       clearTimeout(hideControlsTimer)
       hideControlsTimer = null
     }
-
-    hideControlsTimer = setTimeout(() => {
-      playerState.ui.controlsVisible = false
-      // 关闭所有弹出菜单，避免重新进入时又自动出现
-      playerState.ui.showSettingsMenu = false
-      playerState.ui.showQualityMenu = false
-      playerState.ui.showPlaybackRateMenu = false
-    }, 2000)
   }
 
   // 自动播放逻辑
