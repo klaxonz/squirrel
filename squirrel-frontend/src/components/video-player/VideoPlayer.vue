@@ -17,6 +17,7 @@
         :network-speed="formatNetworkSpeed(performanceState.bandwidth.current)"
       />
 
+
       <!-- 视频核心 -->
       <VideoPlayerCore
         ref="videoCore"
@@ -24,6 +25,7 @@
         :player-state="playerState"
         :is-hls-stream="isHlsStream"
         :on-bandwidth-sample="updateBandwidth"
+        :external-error="getErrorInfo()"
         @play="handleVideoPlay"
         @pause="handleVideoPause"
         @timeupdate="handleVideoTimeupdate"
@@ -133,9 +135,10 @@ const {
   handleVideoError,
   handleVideoLayerClick,
   setVideoTime,
+  getErrorInfo,
   onPointerEnter,
   onPointerLeave,
-  onPointerMove
+  onPointerMove,
 } = useVideoPlayer(props, emit)
 
 // 使用控制相关的组合函数

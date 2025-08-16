@@ -68,22 +68,13 @@
       @abort="handleVideoAbort"
     />
 
-    <!-- 内联错误覆盖层（YouTube风格） -->
-    <div v-if="errorState.show" class="error-overlay" aria-live="polite">
-      <div class="error-box">
-        <div class="error-title">{{ errorState.title }}</div>
-        <div class="error-message">{{ errorState.message }}</div>
-        <div class="error-meta">
-          <span v-if="errorState.code">错误码：{{ errorState.code }}</span>
-          <span v-if="errorState.detail" class="sep">|</span>
-          <span v-if="errorState.detail">{{ errorState.detail }}</span>
-        </div>
-        <div class="error-actions">
-          <button v-if="errorState.retryable" class="btn btn-primary" @click="handleRetry">重试</button>
-          <a v-if="props.helpUrl" class="btn btn-link" :href="props.helpUrl" target="_blank" rel="noopener">获取帮助</a>
-        </div>
-      </div>
-    </div>
+    <!-- 错误提示（非阻断，底部左侧） -->
+    <LoadingSpinner
+      v-if="errorState.show"
+      :status-only="true"
+      :loading-text="`${errorState.title} · ${errorState.message}${errorState.code ? `（${errorState.code}）` : ''}`"
+    />
+
 
     <!-- 音频元素（非HLS时） -->
     <audio
@@ -109,6 +100,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
+import LoadingSpinner from './LoadingSpinner.vue'
 import useHlsPlayer from '../../composables/useHlsPlayer'
 
 const props = defineProps({
@@ -116,7 +108,8 @@ const props = defineProps({
   playerState: Object,
   isHlsStream: Boolean,
   onBandwidthSample: Function,
-  helpUrl: String
+  helpUrl: String,
+  externalError: Object
 })
 
 const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'click', 'skip-forward', 'skip-backward'])
@@ -132,6 +125,15 @@ const audioElement = ref(null)
 
 
 // 内联错误状态与逻辑（YouTube风格）
+// 自动消隐计时器与方法（错误提示 6 秒后淡出）
+let hideTimer = null
+const scheduleAutoHide = () => {
+  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null }
+  hideTimer = setTimeout(() => {
+    errorState.value.show = false
+  }, 6000)
+}
+
 const errorState = ref({ show: false, title: '', message: '', code: '', detail: '', retryable: true })
 
 const mapErrorToUi = (err) => {
@@ -161,8 +163,32 @@ const mapErrorToUi = (err) => {
 const showInlineError = (err) => {
   const ui = mapErrorToUi(err)
   errorState.value = { show: true, ...ui }
+  scheduleAutoHide()
   emit('error', err)
 }
+// 外部错误（例如获取链接失败/超时）进入时，复用内联覆盖层展示
+watch(() => props.externalError, (info) => {
+  if (!info) return
+  try {
+    const CODE_TEXT = {
+      EXTRACT_FAILED: { title: '播放失败', message: '播放链接提取失败，请重试' },
+      NO_STREAM_URL: { title: '无法播放', message: '没有获取到播放链接' },
+      URL_FETCH_TIMEOUT: { title: '获取超时', message: '获取播放链接超时' },
+      FAILED: { title: info.title || '播放失败', message: info.message || '播放出现问题，请稍后重试' }
+    }
+    const mappedCode = info.code && CODE_TEXT[info.code] ? CODE_TEXT[info.code] : null
+    const mapped = {
+      title: mappedCode?.title || info.title || '播放失败',
+      message: mappedCode?.message || info.message || '',
+      code: info.code || '',
+      detail: '',
+      retryable: info.canRetry !== false
+    }
+    errorState.value = { show: true, ...mapped }
+    scheduleAutoHide()
+  } catch (_) {}
+})
+
 
 const clearInlineError = () => { errorState.value.show = false }
 
@@ -495,6 +521,27 @@ defineExpose({
   filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
   animation: skipIconPulse 0.5s ease-out;
 }
+
+/* 内联错误提示（非阻断） */
+.inline-error {
+  position: absolute;
+  left: 24px;
+  bottom: 72px;
+  z-index: 24;
+  color: #fff;
+  background: rgba(0,0,0,.6);
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  pointer-events: auto;
+}
+.inline-text { font-size: 13px; opacity: .95; }
+.inline-text .sep { margin: 0 6px; opacity: .7; }
+.inline-text .code { opacity: .75; }
+.link-btn { background: transparent; color: #9ecbff; border: none; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
+.link-btn.help { color: #b0f0ff; }
 
 .video-player {
   @apply w-full h-full object-contain;

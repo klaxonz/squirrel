@@ -237,14 +237,12 @@ export default function useVideoPlayer(props, emit) {
   }
 
   const handleVideoError = (error) => {
-    console.error('Video error:', error)
-    
     const errorInfo = handleError(error, {
       videoId: props.video?.id,
       isHlsStream: isHlsStream.value,
       reconnectAttempts: playerState.network.reconnectAttempts
     })
-    
+
     playerState.media.loading = false
     emit('error', { type: 'video', error, errorInfo })
   }
@@ -661,8 +659,21 @@ export default function useVideoPlayer(props, emit) {
     setupNetworkListener()
     await loadUserConfig()
 
+    // 获取播放链接阶段：设置fetching并添加超时保护
     if (!props.video?.stream_video_url) {
-      await playVideo(props.video)
+      playerState.media.loading = true
+      playerState.media.loadingStage = 'fetching'
+      let urlFetchTimer = setTimeout(() => {
+        handleVideoError({ name: 'TimeoutError', message: '获取播放链接超时', code: 'URL_FETCH_TIMEOUT' })
+      }, 15000)
+
+      try {
+        await playVideo(props.video)
+      } catch (e) {
+        handleVideoError(e)
+      } finally {
+        clearTimeout(urlFetchTimer)
+      }
     }
 
     // 调试函数

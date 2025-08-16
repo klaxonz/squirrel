@@ -1,55 +1,73 @@
 import axios from '../utils/axios';
 
 export default function useVideoOperations() {
+  const extractErrorCode = (msg) => {
+    if (!msg || typeof msg !== 'string') return null
+    const match = msg.match(/\(([^)]+)\)\s*$/)
+    return match ? match[1] : null
+  }
+
   const getVideoUrl = async (video) => {
-    if (!video.stream_video_url) {
-      try {
-        if (video.if_downloaded) {
-          video.stream_video_url = `/api/video/play/${video.video_id}`;
-        } else {
-          const response = await axios.get('/api/video/url', {
-            params: {
-              video_id: video.id
-            }
-          });
-          if (response.data.code === 0) {
-            video.stream_video_url = response.data.data.video_url;
-            video.stream_audio_url = response.data.data.audio_url;
-          }
-        }
-      } catch (err) {
-        console.error('获取视频地址失败:', err);
-        return false;
-      }
+    if (video.stream_video_url) return true
+
+    if (!video || !video.id) {
+      const err = Object.assign(new Error('无效的视频对象'), { code: 'BAD_REQUEST' })
+      throw err
     }
-    return true;
-  };
+
+    try {
+      if (video.if_downloaded) {
+        video.stream_video_url = `/api/video/play/${video.video_id}`
+        return true
+      }
+
+      const response = await axios.get('/api/video/url', {
+        params: { video_id: video.id }
+      })
+
+      const { code, msg, data } = response?.data || {}
+      if (code !== 0) {
+        const errCode = extractErrorCode(msg) || code || 'UNKNOWN'
+        const err = Object.assign(new Error(msg || '无法获取播放链接'), { code: errCode })
+        throw err
+      }
+
+      const videoUrl = data?.video_url
+      const audioUrl = data?.audio_url
+      if (!videoUrl && !audioUrl) {
+        const err = Object.assign(new Error('无法获取播放链接'), { code: 'NO_STREAM_URL' })
+        throw err
+      }
+
+      video.stream_video_url = videoUrl || ''
+      video.stream_audio_url = audioUrl || ''
+      return true
+    } catch (err) {
+      throw err
+    }
+  }
 
   const playVideo = async (video) => {
-    if (!(await getVideoUrl(video))) {
-      return;
-    }
-    video.isPlaying = true;
-  };
+    await getVideoUrl(video)
+    video.isPlaying = true
+  }
 
   const changeVideo = async (newVideo) => {
-    if (!(await getVideoUrl(newVideo))) {
-      return;
-    }
-    return newVideo;
-  };
+    await getVideoUrl(newVideo)
+    return newVideo
+  }
 
   const onVideoPlay = (video) => {
-    video.isPlaying = true;
-  };
+    video.isPlaying = true
+  }
 
   const onVideoPause = (video) => {
-    video.isPlaying = false;
-  };
+    video.isPlaying = false
+  }
 
   const onVideoEnded = (video) => {
-    video.isPlaying = false;
-  };
+    video.isPlaying = false
+  }
 
   return {
     playVideo,
@@ -57,5 +75,5 @@ export default function useVideoOperations() {
     onVideoPlay,
     onVideoPause,
     onVideoEnded,
-  };
+  }
 }

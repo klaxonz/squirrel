@@ -32,8 +32,32 @@ router = APIRouter(tags=['频道视频接口'])
 def get_video_url(
         video_id: int = Query(None, description="视频ID")
 ):
-    video_urls = video_service.get_video_url(video_id)
-    return response.success(video_urls)
+    try:
+        if video_id is None:
+            return response.param_error("参数错误 (VIDEO_ID_REQUIRED)")
+
+        video_urls = video_service.get_video_url(video_id)
+        # 校验是否成功提取到可播放链接
+        if not video_urls or (not getattr(video_urls, 'video_url', None) and not getattr(video_urls, 'audio_url', None)):
+            return response.not_found("无法获取播放链接 (NO_STREAM_URL)")
+        return response.success(video_urls)
+
+    except UnsupportedDomainError as e:
+        logger.warning(f"Unsupported domain for video {video_id}: {e}")
+        return response.param_error("不支持的域名 (UNSUPPORTED_DOMAIN)")
+    except VideoUrlExtractionError as e:
+        logger.error(f"Video URL extraction failed for {video_id}: {e}")
+        return response.server_error("播放链接提取失败 (EXTRACT_FAILED)")
+    except ValueError as e:
+        # 包括视频不存在等
+        msg = str(e)
+        if 'not found' in msg.lower():
+            return response.not_found("视频不存在 (VIDEO_NOT_FOUND)")
+        logger.error(f"Invalid request for get_video_url: {e}")
+        return response.param_error("请求不合法 (BAD_REQUEST)")
+    except Exception as e:
+        logger.exception(f"Unexpected error in get_video_url for video_id={video_id}: {e}")
+        return response.server_error("服务器内部错误 (SERVER_ERROR)")
 
 
 @router.get("/api/video/detail")

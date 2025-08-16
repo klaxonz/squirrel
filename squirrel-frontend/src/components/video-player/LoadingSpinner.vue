@@ -1,19 +1,19 @@
 <template>
-  <div class="loading-spinner-container">
-    <div class="yt-loading-spinner">
+  <div class="loading-spinner-container" :style="{ pointerEvents: statusOnly ? 'none' : undefined }">
+    <div class="yt-loading-spinner" v-if="!statusOnly">
       <div class="yt-spinner">
         <svg class="yt-spinner__circle" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="45"/>
         </svg>
       </div>
-      
+
       <!-- 中央加载速度信息 -->
       <div class="loading-speed-info" v-if="networkSpeed">
         <div class="loading-speed-text">{{ networkSpeed }}</div>
       </div>
     </div>
 
-    <!-- 左下角加载状态提示 -->
+    <!-- 左下角加载状态提示（共用） -->
     <div class="loading-status-indicator">
       <div class="loading-status-text">{{ loadingText }}</div>
     </div>
@@ -29,6 +29,10 @@ const props = defineProps({
   networkSpeed: {
     type: String,
     default: ''
+  },
+  statusOnly: {
+    type: Boolean,
+    default: false
   }
 })
 </script>
