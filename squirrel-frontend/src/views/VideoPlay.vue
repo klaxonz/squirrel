@@ -40,17 +40,27 @@
                     referrerpolicy="no-referrer"
                   >
                 </div>
-                <!-- 订阅名称 -->
-                <div class="ml-3 flex items-center">
-                  <router-link
-                    v-for="(sub, index) in video?.subscriptions"
-                    :key="sub.id"
-                    :to="`/subscription/${sub.id}/all`"
-                    class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
-                  >
-                    {{ sub.name }}{{ index < video?.subscriptions.length - 1 ? ',' : '' }}
-                    <span v-if="index < video?.subscriptions.length - 1" class="mx-1 text-[#aaaaaa]"></span>
-                  </router-link>
+                <!-- 订阅名称与操作 -->
+                <div class="ml-3 flex flex-wrap items-start gap-x-4 gap-y-1">
+                  <div v-for="sub in video?.subscriptions" :key="sub.id" class="flex flex-col">
+                    <div class="flex items-center space-x-2">
+                      <router-link
+                        :to="`/subscription/${sub.id}/all`"
+                        class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
+                      >
+                        {{ sub.name }}
+                      </router-link>
+                      <button
+                        class="px-2 py-0.5 text-[10px] bg-white/10 hover:bg-white/15 text-white rounded-full transition-colors"
+                        @click.stop="handleUnsubscribe(sub.id)"
+                        title="取消订阅"
+                        aria-label="取消订阅"
+                      >取消订阅</button>
+                    </div>
+                    <div class="text-[10px] text-[#aaaaaa] mt-0.5">
+                      总视频: {{ sub.total_videos || 0 }} | 已解析: {{ sub.total_extract || 0 }}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -180,10 +190,19 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import axios from '../utils/axios';
 import VideoPlayer from '../components/video-player/VideoPlayer.vue';
 import useOptionsMenu from '../composables/useOptionsMenu';
 import useVideoHistory from "../composables/useVideoHistory";
+const { unsubscribe: apiUnsubscribe } = useSubscriptionApi();
+
+const handleUnsubscribe = async (subscriptionId) => {
+  if (!subscriptionId) return;
+  try {
+    await apiUnsubscribe(subscriptionId);
+  } catch (e) {}
+};
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import useVideoInteraction from "../composables/useVideoInteraction.js";
 

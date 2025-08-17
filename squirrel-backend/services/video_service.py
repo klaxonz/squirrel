@@ -493,9 +493,28 @@ def get_video(user_id, video_id):
         subscription_videos = session.scalars(
             select(SubscriptionVideo).where(SubscriptionVideo.video_id == video_id)
         ).all()
+        subscription_ids = [sv.subscription_id for sv in subscription_videos] or []
+
         subscriptions = session.scalars(
-            select(Subscription).where(Subscription.id.in_([sv.subscription_id for sv in subscription_videos]))
-        ).all()
+            select(Subscription).where(Subscription.id.in_(subscription_ids))
+        ).all() if subscription_ids else []
+
+        # 计算每个订阅的已解析视频数（total_extract）
+        counts_map = {}
+        if subscription_ids:
+            rows = session.execute(
+                select(SubscriptionVideo.subscription_id, func.count(SubscriptionVideo.video_id).label('video_count'))
+                .where(SubscriptionVideo.subscription_id.in_(subscription_ids))
+                .group_by(SubscriptionVideo.subscription_id)
+            ).all()
+            counts_map = {row[0]: row[1] for row in rows}
+
+        # 构造包含 total_extract 的订阅信息
+        subscriptions_data = []
+        for subscription in subscriptions:
+            s_dict = subscription.to_dict()
+            s_dict['total_extract'] = counts_map.get(subscription.id, 0)
+            subscriptions_data.append(s_dict)
 
         creators = session.scalars(
             select(Creator, VideoCreator)
@@ -511,7 +530,7 @@ def get_video(user_id, video_id):
             'interaction_type': video_interaction.interaction_type if video_interaction else None,
             'last_position': video_history.last_position if video_history else 0,
             'domain': url_helper.extract_top_level_domain(video.url),
-            'subscriptions': [subscription.to_dict() for subscription in subscriptions],
+            'subscriptions': subscriptions_data,
             'creators': [creator.to_dict() for creator in creators]
         }
 
