@@ -66,7 +66,9 @@ class RedisStreamConsumer:
                 # 推送到 DLQ
                 self._redis.xadd(self.options.retry_dlq, MqMessage(body={"body": body, "message_id": message_id}).to_stream_fields())
                 # ACK 原消息
-                self._redis.xack(self.stream, self.options.group, message_id)
+                acked = self._redis.xack(self.stream, self.options.group, message_id)
+                if acked:
+                    self._redis.xdel(self.stream, message_id)
         except Exception:
             pass
 
@@ -91,7 +93,9 @@ class RedisStreamConsumer:
                         else:
                             self.handler(msg.body)
                         if self.options.auto_ack:
-                            self._redis.xack(self.stream, self.options.group, message_id)
+                            acked = self._redis.xack(self.stream, self.options.group, message_id)
+                            if acked:
+                                self._redis.xdel(self.stream, message_id)
                     except Exception:
                         # 失败时尝试 DLQ
                         self._nack_or_dlq(message_id, msg.body)
