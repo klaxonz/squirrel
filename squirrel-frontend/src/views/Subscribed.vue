@@ -35,6 +35,7 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
           <div v-for="subscription in subscriptions" :key="subscription.id"
                class="channel-item bg-[#202020] rounded-lg overflow-hidden hover:bg-[#303030] transition-all duration-200 relative group"
+               :class="{ 'is-refreshing': isResetting }"
                @click="getSubscriptionVideos(subscription.id)"
           >
             <div class="flex justify-center items-center p-3 bg-[#181818]">
@@ -183,6 +184,7 @@ import {useSubscriptionApi} from '../composables/useSubscriptionApi';
 const router = useRouter();
 
 const isRefreshing = ref(false);
+const isResetting = ref(false);
 
 const emitter = inject('emitter');
 
@@ -259,11 +261,22 @@ const loadSubscriptions = async () => {
 
   if (result.success) {
     const newSubscriptions = result.data.data;
-    subscriptions.value = [...subscriptions.value, ...newSubscriptions.map(subscription => ({
+    const mapped = newSubscriptions.map(subscription => ({
       ...subscription,
       total_videos: subscription.total_videos || 0,
       total_extract: subscription.total_extract || 0
-    }))];
+    }));
+
+    if (currentPage.value === 1) {
+      // 首次页刷新：保留旧DOM，数据返回后整体替换
+      subscriptions.value = mapped;
+    } else {
+      // 分页：追加且去重
+      const existingIds = new Set(subscriptions.value.map(s => s.id));
+      const deduped = mapped.filter(s => !existingIds.has(s.id));
+      subscriptions.value = [...subscriptions.value, ...deduped];
+    }
+
     currentPage.value++;
     if (newSubscriptions.length < 20) {
       allLoaded.value = true;
@@ -323,8 +336,8 @@ const refreshList = async () => {
   }
   clearSpinTimer();
   isRefreshing.value = true;
+  isResetting.value = true;
   spinStartAt.value = Date.now();
-  subscriptions.value = [];
   currentPage.value = 1;
   allLoaded.value = false;
   try {
@@ -335,6 +348,7 @@ const refreshList = async () => {
     clearSpinTimer();
     spinTimer.value = setTimeout(() => {
       isRefreshing.value = false;
+      isResetting.value = false;
       lastRefreshedAt.value = Date.now();
       clearSpinTimer();
     }, remain);
@@ -576,4 +590,16 @@ onUnmounted(() => {
   /* 刷新图标旋转 */
   @keyframes spin { to { transform: rotate(360deg); } }
   .spin-anim { animation: spin 0.8s linear infinite; }
+
+  /* 刷新蒙层，保留旧卡片 DOM，降低突变感 */
+  .channel-item.is-refreshing::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.06), rgba(255,255,255,0));
+    animation: shimmer 1.2s infinite;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  @keyframes shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
 </style>
