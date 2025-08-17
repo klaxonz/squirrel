@@ -98,11 +98,12 @@ def get_subscription_status(
 def list_subscriptions(
         query: str = Query(None, description="搜索关键字"),
         type: str = Query(None, description="内容类型"),
+        nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, description="每页数量"),
         current_user: User = Depends(get_current_user)
 ):
-    subscriptions, total = subscription_service.list_subscriptions(current_user.id, query, type, page, page_size)
+    subscriptions, total = subscription_service.list_subscriptions(current_user.id, query, type, nsfw, page, page_size)
     return response.success({
         "total": total,
         "page": page,

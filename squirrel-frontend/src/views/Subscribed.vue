@@ -1,7 +1,10 @@
 <template>
   <div class="subscribed-page flex flex-col h-full bg-[#0f0f0f] text-white">
-    <!-- 顶部操作栏 - 只保留添加订阅按钮 -->
-    <div class="flex items-center justify-end py-3 px-4">
+    <!-- 顶部操作栏 -->
+    <div class="flex items-center justify-between py-3 px-4">
+      <div class="flex items-center">
+        <NsfwFilter v-model="nsfw" @update:modelValue="handleNsfwChange" />
+      </div>
       <button
         class="px-3 py-1.5 min-w-[100px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
         @click="showAddDialog = true"
@@ -27,7 +30,7 @@
           >
             <div class="flex justify-center items-center p-3 bg-[#181818]">
               <div class="relative w-14 h-14">
-                <img 
+                <img
                   :alt="subscription.name"
                   :src="subscription.avatar"
                   class="w-full h-full rounded-full object-cover ring-1 ring-[#303030] transition-transform duration-300 group-hover:scale-105"
@@ -144,7 +147,7 @@
     </div>
 
     <!-- 添加频道对话框 -->
-    <AddChannelDialog 
+    <AddChannelDialog
       :show="showAddDialog"
       @added="handleChannelAdded"
       @close="showAddDialog = false"
@@ -159,6 +162,7 @@ import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
 import AddChannelDialog from '../components/AddChannelDialog.vue';
+import NsfwFilter from '../components/NsfwFilter.vue';
 
 import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
@@ -176,6 +180,7 @@ const loading = ref(false);
 const allLoaded = ref(false);
 const currentPage = ref(1);
 const searchQuery = ref('');
+const nsfw = ref('all');
 
 const showSettings = ref(false);
 const selectedSubscription = ref(null);
@@ -233,6 +238,7 @@ const loadSubscriptions = async () => {
 
   const result = await apiGetSubscriptions({
     query: searchQuery.value,
+    nsfw: nsfw.value,
     page: currentPage.value,
     page_size: 100
   });
@@ -276,6 +282,17 @@ const handleGlobalSearch = (query) => {
       restoreScrollPosition();
     });
   });
+};
+
+// NSFW 筛选变更：重置并重新加载
+const handleNsfwChange = () => {
+  if (observer.value && loadingTrigger.value) {
+    observer.value.unobserve(loadingTrigger.value);
+  }
+  subscriptions.value = [];
+  currentPage.value = 1;
+  allLoaded.value = false;
+  loadSubscriptions();
 };
 
 const loadMore = () => {

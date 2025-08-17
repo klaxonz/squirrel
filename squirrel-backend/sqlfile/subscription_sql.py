@@ -22,8 +22,16 @@ def get_subscriptions_sql():
         /*{if type}*/
         and s.type = :type
         /*{endif}*/
-        /*{if show_nsfw == False}*/
+        /*{if nsfw == 'yes'}*/
+            and us.is_nsfw is true
+        /*{endif}*/
+        /*{if nsfw == 'no'}*/
             and us.is_nsfw is false
+        /*{endif}*/
+        /*{if nsfw == 'all'}*/
+            /*{if show_nsfw == False}*/
+                and us.is_nsfw is false
+            /*{endif}*/
         /*{endif}*/
         order by s.created_at desc
         limit :limit offset :offset
@@ -44,7 +52,13 @@ def get_subscriptions_count_sql():
         /*{if type}*/
         and s.type = :type
         /*{endif}*/
-        /*{if show_nsfw == False}*/
+        /*{if nsfw == 'yes'}*/
+            and us.is_nsfw is true
+        /*{endif}*/
+        /*{if nsfw == 'no'}*/
+            and us.is_nsfw is false
+        /*{endif}*/
+        /*{if nsfw == 'all' and show_nsfw == False}*/
             and us.is_nsfw is false
         /*{endif}*/
     """

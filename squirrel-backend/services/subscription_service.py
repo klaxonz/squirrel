@@ -67,6 +67,7 @@ def list_subscriptions(
         user_id: int,
         query: Optional[str],
         type: Optional[str],
+        nsfw: str,
         page: int,
         page_size: int
 ) -> Tuple[List[Dict[str, Any]], int]:
@@ -80,6 +81,7 @@ def list_subscriptions(
             'user_id': user_id,
             'query': query,
             'type': type,
+            'nsfw': nsfw,
             'show_nsfw': show_nsfw,
             'limit': page_size,
             'offset': (page - 1) * page_size
