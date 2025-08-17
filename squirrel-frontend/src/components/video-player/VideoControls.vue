@@ -168,6 +168,7 @@
           @update-loop="updateLoop"
         />
 
+
         <!-- 全屏按钮 -->
         <button
           @click="$emit('toggle-fullscreen')"
@@ -269,6 +270,7 @@ const updateAutoplay = (value) => {
 const updateLoop = (value) => {
   props.playerState.media.loop = value
 }
+
 
 
 </script>

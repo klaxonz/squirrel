@@ -22,7 +22,7 @@
         <div class="mt-3 px-4">
           <!-- 视频标题 -->
           <h1 class="text-xs md:text-sm lg:text-base lg:font-medium text-white">{{ video?.video_title }}</h1>
-          
+
           <!-- 频道信息和操作按钮区域 -->
           <div class="mt-3 pb-3 border-b border-[#272727]">
             <div class="flex items-center justify-between">
@@ -30,7 +30,7 @@
               <div class="flex items-center">
                 <!-- 层叠的头像 -->
                 <div class="flex -space-x-3">
-                  <img 
+                  <img
                     v-for="(sub, index) in video?.subscriptions"
                     :key="sub.id"
                     :src="sub.avatar"
@@ -42,7 +42,7 @@
                 </div>
                 <!-- 订阅名称 -->
                 <div class="ml-3 flex items-center">
-                  <router-link 
+                  <router-link
                     v-for="(sub, index) in video?.subscriptions"
                     :key="sub.id"
                     :to="`/subscription/${sub.id}/all`"
@@ -57,7 +57,7 @@
               <!-- 操作按钮组 -->
               <div class="flex items-center space-x-1">
                 <!-- 主要按钮显示在外面 -->
-                <button 
+                <button
                   @click="handleLike(video, INTERACTION_TYPE.LIKE)"
                   class="p-2 rounded-full hover:bg-[#272727] transition-colors"
                   :class="{ 'text-red-500': video?.interaction_type === INTERACTION_TYPE.LIKE }"
@@ -67,7 +67,7 @@
                   </svg>
                 </button>
 
-                <button 
+                <button
                   @click="handleLike(video, INTERACTION_TYPE.DISLIKE)"
                   class="p-2 rounded-full hover:bg-[#272727] transition-colors"
                   :class="{ 'text-gray-400': video?.interaction_type === INTERACTION_TYPE.DISLIKE }"
@@ -77,9 +77,26 @@
                   </svg>
                 </button>
 
+	                <!-- 原视频页按钮 -->
+	                <a
+	                  v-if="video && video.url"
+	                  :href="video.url"
+	                  target="_blank"
+	                  rel="noopener noreferrer"
+	                  class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+	                  aria-label="打开原视频页"
+	                  title="打开原视频页"
+	                >
+	                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+	                    <path d="M14 3h7v7h-2V6.414l-9.293 9.293-1.414-1.414L17.586 5H14V3z" />
+	                    <path d="M5 5h6v2H7v10h10v-4h2v6H5V5z" />
+	                  </svg>
+	                </a>
+
+
                 <!-- 更多按钮 - 点击显示下拉菜单 -->
                 <div class="relative">
-                  <button 
+                  <button
                     @click="handleMoreOptionsClick"
                     class="p-2 rounded-full hover:bg-[#272727] transition-colors"
                   >
@@ -89,7 +106,7 @@
                   </button>
 
                   <!-- 下拉菜单 -->
-                  <div v-if="showMoreOptions" 
+                  <div v-if="showMoreOptions"
                        class="absolute right-0 mt-2 py-2 min-w-[40px] rounded-lg shadow-lg bg-[#282828] z-50"
                        @click.stop
                   >
@@ -99,42 +116,34 @@
                         class="flex items-center w-full px-4 py-2 text-sm text-white hover:bg-[#3f3f3f]"
                       >
                         <svg v-if="!video?.if_downloaded"
-                             xmlns="http://www.w3.org/2000/svg" 
-                             class="h-5 w-5 mr-4" 
-                             fill="none" 
-                             viewBox="0 0 24 24" 
+                             xmlns="http://www.w3.org/2000/svg"
+                             class="h-5 w-5 mr-4"
+                             fill="none"
+                             viewBox="0 0 24 24"
                              stroke="currentColor"
                         >
-                          <path stroke-linecap="round" 
-                                stroke-linejoin="round" 
-                                stroke-width="2" 
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" 
+                          <path stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                           />
                         </svg>
 
                         <svg v-else
-                             xmlns="http://www.w3.org/2000/svg" 
-                             class="h-5 w-5 mr-4" 
-                             viewBox="0 0 24 24" 
+                             xmlns="http://www.w3.org/2000/svg"
+                             class="h-5 w-5 mr-4"
+                             viewBox="0 0 24 24"
                              fill="currentColor"
                         >
-                          <path fill-rule="evenodd" 
-                                d="M12 2a1 1 0 011 1v10.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L11 13.586V3a1 1 0 011-1zM4.5 19A1.5 1.5 0 003 20.5v.5a2 2 0 002 2h14a2 2 0 002-2v-.5a1.5 1.5 0 00-1.5-1.5h-15z" 
+                          <path fill-rule="evenodd"
+                                d="M12 2a1 1 0 011 1v10.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L11 13.586V3a1 1 0 011-1zM4.5 19A1.5 1.5 0 003 20.5v.5a2 2 0 002 2h14a2 2 0 002-2v-.5a1.5 1.5 0 00-1.5-1.5h-15z"
                                 clip-rule="evenodd"
                           />
                         </svg>
 
                         <span class="whitespace-nowrap">下载</span>
                       </button>
-                      <button
-                        @click="handleCopyLink"
-                        class="flex items-center w-full px-4 py-2 text-sm text-white hover:bg-[#3f3f3f]"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        <span class="whitespace-nowrap">分享</span>
-                      </button>
+
                     </div>
                   </div>
                 </div>
@@ -181,7 +190,7 @@ import useVideoInteraction from "../composables/useVideoInteraction.js";
 const route = useRoute();
 const video = ref(null);
 const { sendReport } = useVideoHistory();
-const { downloadVideo, copyVideoLink } = useOptionsMenu(video);
+const { downloadVideo } = useOptionsMenu(video);
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 
 const handleLike = async (video, interactionType) => {
@@ -200,9 +209,9 @@ const handleDownload = async () => {
   await downloadVideo();
 };
 
-const handleCopyLink = () => {
-  copyVideoLink();
-};
+
+
+
 
 const startTime = computed(() => {
   if (video.value?.last_position) {
@@ -312,6 +321,7 @@ onMounted(() => {
       } catch (e) {
         // 静默失败，不影响播放
       }
+
     });
 });
 
@@ -381,4 +391,4 @@ const handleMoreOptionsClick = (event) => {
     border-radius: 0;
   }
 }
-</style> 
+</style>
