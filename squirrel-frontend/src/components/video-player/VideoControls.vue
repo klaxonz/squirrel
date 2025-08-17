@@ -71,15 +71,70 @@
           <Icon icon="material-symbols:picture-in-picture-alt" class="vp-control-icon" />
         </button>
 
-        <!-- 字幕按钮 -->
-        <button
-          @click="$emit('toggle-subtitles')"
-          class="vp-control-btn"
-          :class="{ 'active-control': playerState.media.subtitlesEnabled }"
-          :aria-label="playerState.media.subtitlesEnabled ? '关闭字幕' : '开启字幕'"
-        >
-          <Icon icon="material-symbols:subtitles" class="vp-control-icon" />
-        </button>
+        <!-- 字幕按钮 + 弹出菜单 -->
+        <div class="vp-subtitles-control">
+          <button
+            @click.stop="toggleSubtitlesMenu"
+            class="vp-control-btn"
+            :class="{ 'active-control': playerState.media.subtitlesEnabled }"
+            :aria-label="playerState.media.subtitlesEnabled ? '字幕设置' : '字幕设置'"
+          >
+            <Icon icon="material-symbols:subtitles" class="vp-control-icon" />
+          </button>
+
+          <div v-if="playerState.ui.showSubtitlesMenu" class="subtitle-menu" @click.stop>
+            <div class="settings-section">
+              <div class="settings-title">字幕</div>
+              <div class="subtitle-options">
+                <button @click="$emit('set-subtitle', null)" class="subtitle-option" :class="{ active: !playerState.media.currentSubtitle }">关闭</button>
+                <button
+                  v-for="subtitle in video.subtitles"
+                  :key="subtitle.id"
+                  @click="$emit('set-subtitle', subtitle)"
+                  class="subtitle-option"
+                  :class="{ active: playerState.media.currentSubtitle?.id === subtitle.id }"
+                >{{ subtitle.language }}</button>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-title">样式</div>
+              <div class="setting-item-row">
+                <span class="setting-label">字号</span>
+                <div class="btn-group">
+                  <button class="btn-chip" :class="{ active: playerState.media.subtitleSettings.fontSize==='small' }" @click="props.playerState.media.subtitleSettings.fontSize='small'">小</button>
+                  <button class="btn-chip" :class="{ active: playerState.media.subtitleSettings.fontSize==='medium' }" @click="props.playerState.media.subtitleSettings.fontSize='medium'">中</button>
+                  <button class="btn-chip" :class="{ active: playerState.media.subtitleSettings.fontSize==='large' }" @click="props.playerState.media.subtitleSettings.fontSize='large'">大</button>
+                  <button class="btn-chip" :class="{ active: playerState.media.subtitleSettings.fontSize==='xlarge' }" @click="props.playerState.media.subtitleSettings.fontSize='xlarge'">特大</button>
+                </div>
+              </div>
+              <div class="setting-item-row">
+                <span class="setting-label">颜色</span>
+                <div class="btn-group">
+                  <button class="btn-chip" :class="{ active: props.playerState.media.subtitleSettings.color==='white' }" @click="props.playerState.media.subtitleSettings.color='white'">白色</button>
+                  <button class="btn-chip" :class="{ active: props.playerState.media.subtitleSettings.color==='yellow' }" @click="props.playerState.media.subtitleSettings.color='yellow'">黄色</button>
+                </div>
+              </div>
+              <div class="setting-item-row">
+                <span class="setting-label">背景</span>
+                <input class="range" type="range" min="0" max="1" step="0.1" :value="props.playerState.media.subtitleSettings.bgOpacity" @input="e => props.playerState.media.subtitleSettings.bgOpacity = Number(e.target.value)" />
+              </div>
+              <div class="setting-item-row">
+                <span class="setting-label">位置</span>
+                <div class="btn-group">
+                  <button class="btn-chip" :class="{ active: props.playerState.media.subtitleSettings.position==='bottom' }" @click="props.playerState.media.subtitleSettings.position='bottom'">底部</button>
+                  <button class="btn-chip" :class="{ active: props.playerState.media.subtitleSettings.position==='top' }" @click="props.playerState.media.subtitleSettings.position='top'">顶部</button>
+                </div>
+              </div>
+              <div class="setting-item-row">
+                <label class="setting-label">
+                  <input type="checkbox" :checked="props.playerState.media.subtitleSettings.shadow" @change="e => props.playerState.media.subtitleSettings.shadow = e.target.checked" class="setting-checkbox" />
+                  阴影
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- 剧场模式按钮 -->
         <button
@@ -98,11 +153,17 @@
           :available-qualities="availableQualities"
           :current-subtitle="playerState.media.currentSubtitle"
           :subtitles="video.subtitles"
+          :subtitle-settings="playerState.media.subtitleSettings"
           :autoplay="playerState.media.autoplay"
           :loop="playerState.media.loop"
           @toggle-menu="toggleSettingsMenu"
           @set-quality="$emit('set-quality', $event)"
           @set-subtitle="$emit('set-subtitle', $event)"
+          @update-subtitle-font-size="v => props.playerState.media.subtitleSettings.fontSize = v"
+          @update-subtitle-color="v => props.playerState.media.subtitleSettings.color = v"
+          @update-subtitle-bg-opacity="v => props.playerState.media.subtitleSettings.bgOpacity = v"
+          @update-subtitle-position="v => props.playerState.media.subtitleSettings.position = v"
+          @update-subtitle-shadow="v => props.playerState.media.subtitleSettings.shadow = v"
           @update-autoplay="updateAutoplay"
           @update-loop="updateLoop"
         />
@@ -182,8 +243,23 @@ const toggleQualityMenu = () => {
 
 const toggleSettingsMenu = () => {
   props.playerState.ui.showSettingsMenu = !props.playerState.ui.showSettingsMenu
+  props.playerState.ui.showSubtitlesMenu = false
   props.playerState.ui.showPlaybackRateMenu = false
   props.playerState.ui.showQualityMenu = false
+}
+
+const toggleSubtitlesMenu = () => {
+  props.playerState.ui.showSubtitlesMenu = !props.playerState.ui.showSubtitlesMenu
+  props.playerState.ui.showSettingsMenu = false
+  props.playerState.ui.showPlaybackRateMenu = false
+  props.playerState.ui.showQualityMenu = false
+}
+
+// 点击空白处关闭字幕菜单
+if (typeof window !== 'undefined') {
+  window.addEventListener('click', () => {
+    props.playerState.ui.showSubtitlesMenu = false
+  })
 }
 
 const updateAutoplay = (value) => {
@@ -198,111 +274,41 @@ const updateLoop = (value) => {
 </script>
 
 <style scoped>
-.video-controls {
-  @apply absolute bottom-0 left-0 right-0 px-3
-    opacity-0 z-20
-    flex flex-col;
-  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
-  padding-bottom: 8px;
-  padding-top: 24px;
-  transition: all var(--yt-transition-medium) ease;
-}
-
-.controls-main {
-  @apply flex items-center justify-between py-1;
-  height: 40px;
-}
-
-.controls-left,
-.controls-right {
-  @apply flex items-center;
-  gap: 8px;
-}
-
-.vp-control-btn {
-  @apply p-2 rounded-full text-white
-    focus:outline-none
-    flex items-center justify-center;
-  background-color: var(--vp-bg-control);
-  min-width: 40px;
-  min-height: 40px;
-  transition: all var(--vp-transition-normal);
-}
-
-.vp-control-btn:hover {
-  background-color: var(--vp-bg-control-hover);
-  transform: scale(1.04);
-}
-
-.vp-control-btn:active {
-  transform: scale(0.98);
-}
-
-/* 激活态：与 YouTube 一致，不保留持久的选中底色，仅在悬停时出现 */
-.vp-control-btn.active-control {
-  background-color: transparent;
-  border: none;
-}
-
-.vp-control-btn.active-control:hover {
-  background-color: var(--vp-bg-control-hover);
-}
-
-.vp-control-icon {
-  @apply text-xl;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
-}
-
-/* 控制栏可见状态 */
-.video-controls.controls-visible {
-  @apply opacity-100;
-}
-
-/* YouTube风格的渐变遮罩 */
-.video-controls::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 120px;
-  background: linear-gradient(
-    to top,
-    rgba(0,0,0,0.8) 0%,
-    rgba(0,0,0,0.6) 30%,
-    rgba(0,0,0,0.3) 60%,
-    transparent 100%
-  );
-  pointer-events: none;
-  z-index: -1;
-  transition: opacity var(--yt-transition-medium) ease;
-}
-
-.video-controls.controls-visible::before {
-  opacity: 1;
-}
-
-/* 全屏状态下的样式修复 */
+.video-controls { position: absolute; left: 0; right: 0; bottom: 0; padding-left: 0.75rem; padding-right: 0.75rem; opacity: 0; z-index: 20; display: flex; flex-direction: column; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%); padding-bottom: 8px; padding-top: 24px; transition: all var(--yt-transition-medium) ease; }
+.controls-main { display: flex; align-items: center; justify-content: space-between; padding-top: 0.25rem; padding-bottom: 0.25rem; height: 40px; }
+.controls-left, .controls-right { display: flex; align-items: center; gap: 8px; }
+.vp-control-btn { padding: 0.5rem; border-radius: 9999px; color: #fff; display: flex; align-items: center; justify-content: center; background-color: var(--vp-bg-control); min-width: 40px; min-height: 40px; transition: all var(--vp-transition-normal); }
+.vp-control-btn:hover { background-color: var(--vp-bg-control-hover); transform: scale(1.04); }
+.vp-control-btn:active { transform: scale(0.98); }
+.vp-control-btn.active-control { background-color: transparent; border: none; }
+.vp-control-btn.active-control:hover { background-color: var(--vp-bg-control-hover); }
+.vp-control-icon { font-size: 1.25rem; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+.video-controls.controls-visible { opacity: 1; }
+.video-controls::before { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0.3) 60%, transparent 100%); pointer-events: none; z-index: -1; transition: opacity var(--yt-transition-medium) ease; }
+.video-controls.controls-visible::before { opacity: 1; }
 .video-player-container:fullscreen .video-controls,
 .video-player-container:-webkit-full-screen .video-controls,
-.video-player-container:-moz-full-screen .video-controls {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 2147483647; /* 最高 z-index 值 */
-  width: 100%;
-}
-
+.video-player-container:-moz-full-screen .video-controls { position: fixed; bottom: 0; left: 0; right: 0; z-index: 2147483647; width: 100%; }
 .video-player-container:fullscreen .video-controls .progress-container,
 .video-player-container:-webkit-full-screen .video-controls .progress-container,
-.video-player-container:-moz-full-screen .video-controls .progress-container {
-  z-index: 2147483647;
-}
-
+.video-player-container:-moz-full-screen .video-controls .progress-container { z-index: 2147483647; }
 .video-player-container:fullscreen .video-controls .controls-main,
 .video-player-container:-webkit-full-screen .video-controls .controls-main,
-.video-player-container:-moz-full-screen .video-controls .controls-main {
-  z-index: 2147483647;
-}
+.video-player-container:-moz-full-screen .video-controls .controls-main { z-index: 2147483647; }
+
+/* 字幕弹出菜单样式 */
+.vp-subtitles-control { position: relative; }
+.subtitle-menu { position: absolute; bottom: 100%; right: 0; margin-bottom: 0.5rem; width: 16rem; border-radius: 0.75rem; padding: 0.5rem; border: 1px solid rgba(255,255,255,.1); background: rgba(40,40,40,.95); backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0,0,0,.6); z-index: 60; }
+.settings-section { padding: 0.25rem 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+.settings-section:last-child { border-bottom: none; }
+.settings-title { color: #fff; font-weight: 500; font-size: 12px; margin-bottom: 0.5rem; }
+.subtitle-options { display: grid; gap: 6px; }
+.subtitle-option { width: 100%; text-align: left; padding: 6px 8px; border-radius: 8px; color: #eaeaea; background: transparent; border: none; cursor: pointer; }
+.subtitle-option.active, .subtitle-option:hover { background: rgba(255,255,255,.08); }
+.setting-item-row { margin: 6px 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.setting-label { color: #eaeaea; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+.btn-group { display: flex; gap: 6px; }
+.btn-chip { padding: 4px 8px; border-radius: 9999px; border: 1px solid rgba(255,255,255,.14); background: transparent; color: #eaeaea; font-size: 12px; cursor: pointer; }
+.btn-chip.active, .btn-chip:hover { background: rgba(255,255,255,.08); }
+.range { width: 100%; }
 </style>

@@ -98,6 +98,7 @@
 </template>
 
 <script setup>
+import { computed, watch } from 'vue'
 import VideoPlayerCore from './VideoPlayerCore.vue'
 import VideoControls from './VideoControls.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
@@ -110,6 +111,7 @@ import PlayOverlay from './PlayOverlay.vue'
 import useVideoPlayer from '../../composables/useVideoPlayer.js'
 import useVideoControls from '../../composables/useVideoControls.js'
 import useKeyboardShortcuts from '../../composables/useKeyboardShortcuts.js'
+import useSubtitles from '../../composables/useSubtitles.js'
 
 const props = defineProps({
   video: Object
@@ -141,6 +143,21 @@ const {
   onPointerMove,
 } = useVideoPlayer(props, emit)
 
+// 字幕集成：将 VideoCore 的 videoElement 作为字幕的 videoRef
+const videoElRef = computed(() => videoCore.value?.videoElement || null)
+const { toggleSubtitles, setSubtitle, ensureSubtitlesOnMetadata } = useSubtitles({
+  playerState,
+  videoRef: videoElRef,
+  props
+})
+
+// 元数据就绪时确保字幕加载
+watch(() => playerState.media.canPlay.video, (val) => {
+  if (val) {
+    try { ensureSubtitlesOnMetadata() } catch (e) {}
+  }
+})
+
 // 使用控制相关的组合函数
 const {
   availableQualities,
@@ -150,15 +167,13 @@ const {
   skipBackward,
   toggleMute,
   toggleFullscreen,
-  toggleSubtitles,
   toggleTheaterMode,
   togglePictureInPicture,
   toggleKeyboardHelp,
   adjustVolume,
   adjustPlaybackRate,
   setQuality,
-  setPlaybackRate,
-  setSubtitle
+  setPlaybackRate
 } = useVideoControls(playerState, videoCore)
 
 // 拖动进度条时的暂停/恢复
@@ -224,12 +239,11 @@ defineExpose({
 
 <style scoped>
 .video-wrapper {
-  @apply absolute inset-0;
-  background: #000000;
+  position: absolute; inset: 0; background: #000;
 }
 
 .video-player-container {
-  @apply relative w-full h-full;
+  position: relative; width: 100%; height: 100%;
   background: #000000;
   overflow: hidden;
 }

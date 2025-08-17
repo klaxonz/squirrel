@@ -2,6 +2,64 @@ import { watch } from 'vue';
 import { parseVTT, parseSRT } from '../utils/subtitles';
 
 export default function useSubtitles({ playerState, videoRef, props }) {
+  const getTrack = () => videoRef?.value?.textTracks?.[0] || null;
+
+  const applyCuePosition = (track) => {
+    try {
+      const pos = playerState?.media?.subtitleSettings?.position || 'bottom';
+      if (!track?.cues) return;
+      for (let i = 0; i < track.cues.length; i++) {
+        const cue = track.cues[i];
+        try {
+          cue.snapToLines = false;
+          cue.line = pos === 'top' ? 10 : 90; // 百分比位置，顶部/底部
+          cue.align = 'center';
+        } catch (_) {}
+      }
+    } catch (_) {}
+  };
+
+  const ensureVideoCssClass = () => {
+    if (!videoRef?.value) return;
+    try {
+      videoRef.value.classList.add('subtitle-customized');
+    } catch (_) {}
+  };
+
+  const updateSubtitleCss = () => {
+    if (!videoRef?.value) return;
+    ensureVideoCssClass();
+
+    const settings = playerState?.media?.subtitleSettings || {};
+    const fontMap = { small: '14px', medium: '18px', large: '24px', xlarge: '32px' };
+    const color = settings.color === 'yellow' ? '#ffd54a' : '#ffffff';
+    const bg = `rgba(0,0,0,${Math.max(0, Math.min(1, settings.bgOpacity ?? 0.4))})`;
+    const fontSize = fontMap[settings.fontSize] || fontMap.medium;
+    const shadow = settings.shadow !== false ? '0 2px 4px rgba(0,0,0,0.8)' : 'none';
+
+    const styleId = 'subtitle-style';
+    const css = `
+      video.subtitle-customized::cue {
+        color: ${color};
+        background-color: ${bg};
+        font-size: ${fontSize};
+        text-shadow: ${shadow};
+        line-height: 1.35;
+        font-weight: 500;
+        padding: 0.15em 0.4em;
+        border-radius: 0.25em;
+      }
+    `;
+
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = css;
+  };
+
   const loadSubtitle = async (subtitle) => {
     try {
       if (!subtitle?.url || !videoRef?.value) return;
@@ -10,7 +68,7 @@ export default function useSubtitles({ playerState, videoRef, props }) {
       const text = await response.text();
 
       // 创建或获取字幕轨道
-      let track = videoRef.value.textTracks?.[0];
+      let track = getTrack();
       if (!track) {
         const label = subtitle.label || subtitle.language || 'Subtitles';
         const langCode = subtitle.srclang || 'zh';
@@ -26,11 +84,14 @@ export default function useSubtitles({ playerState, videoRef, props }) {
 
       // 自动识别 SRT/VTT
       const isVtt = text.trimStart().startsWith('WEBVTT');
+      const opts = { position: playerState?.media?.subtitleSettings?.position || 'bottom' };
       if (isVtt) {
-        parseVTT(text, track);
+        parseVTT(text, track, opts);
       } else {
-        parseSRT(text, track);
+        parseSRT(text, track, opts);
       }
+      applyCuePosition(track);
+      updateSubtitleCss();
       track.mode = 'showing';
     } catch (error) {
       console.error('Failed to load subtitle:', error);
@@ -74,10 +135,12 @@ export default function useSubtitles({ playerState, videoRef, props }) {
   const ensureSubtitlesOnMetadata = () => {
     if (!videoRef?.value) return;
     if (playerState.media.subtitlesEnabled && playerState.media.currentSubtitle) {
-      const track = videoRef.value?.textTracks?.[0];
+      const track = getTrack();
       if (!track || !track.cues || track.cues.length === 0) {
         loadSubtitle(playerState.media.currentSubtitle);
       } else {
+        applyCuePosition(track);
+        updateSubtitleCss();
         track.mode = 'showing';
       }
     }
@@ -93,11 +156,18 @@ export default function useSubtitles({ playerState, videoRef, props }) {
     }
   });
 
+  // 监听样式设置变更，动态更新渲染
+  watch(() => playerState.media.subtitleSettings, () => {
+    try {
+      const track = getTrack();
+      if (track) applyCuePosition(track);
+      updateSubtitleCss();
+    } catch (_) {}
+  }, { deep: true })
+
   return {
     toggleSubtitles,
     setSubtitle,
     ensureSubtitlesOnMetadata,
   };
 }
-
-

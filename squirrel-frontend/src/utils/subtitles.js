@@ -13,15 +13,16 @@ function parseTimeCode(timeStr) {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
-export function parseVTT(vttText, track) {
+export function parseVTT(vttText, track, options = {}) {
   if (!vttText || !track) return;
   const lines = vttText.split('\n');
   let i = 0;
-  // 跳过头部直到第一条时间线
   while (i < lines.length && !lines[i].includes('-->')) i++;
 
   const Cue = getCueClass();
   if (!Cue) return;
+
+  const pos = options.position || 'bottom';
 
   while (i < lines.length) {
     const timeLine = lines[i];
@@ -38,6 +39,11 @@ export function parseVTT(vttText, track) {
       }
       if (text.trim()) {
         const cue = new Cue(start, end, text.trim());
+        try {
+          cue.snapToLines = false;
+          cue.line = pos === 'top' ? 10 : 90;
+          cue.align = 'center';
+        } catch (_) {}
         track.addCue(cue);
       }
     }
@@ -45,7 +51,7 @@ export function parseVTT(vttText, track) {
   }
 }
 
-export function parseSRT(srtText, track) {
+export function parseSRT(srtText, track, options = {}) {
   if (!srtText || !track) return;
   const blocks = srtText.replace(/\r/g, '').split(/\n\s*\n/);
   const timeRegex = /(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})/;
@@ -56,6 +62,8 @@ export function parseSRT(srtText, track) {
 
   const Cue = getCueClass();
   if (!Cue) return;
+
+  const pos = options.position || 'bottom';
 
   for (const block of blocks) {
     const lines = block.split('\n').filter((l) => l.trim().length > 0);
@@ -75,6 +83,11 @@ export function parseSRT(srtText, track) {
     if (!text) continue;
 
     const cue = new Cue(start, end, text);
+    try {
+      cue.snapToLines = false;
+      cue.line = pos === 'top' ? 10 : 90;
+      cue.align = 'center';
+    } catch (_) {}
     track.addCue(cue);
   }
 }

@@ -31,7 +31,7 @@
         </div>
       </div>
 
-      <!-- 字幕设置 -->
+      <!-- 字幕选择 -->
       <div class="settings-section" v-if="subtitles && subtitles.length > 0">
         <div class="settings-title">字幕</div>
         <div class="subtitle-options">
@@ -54,10 +54,48 @@
         </div>
       </div>
 
+      <!-- 字幕样式 -->
+      <div class="settings-section">
+        <div class="settings-title">字幕样式</div>
+        <div class="setting-item-row">
+          <span class="setting-label">字号</span>
+          <div class="btn-group">
+            <button class="btn-chip" :class="{ active: subtitleSettings?.fontSize==='small' }" @click="$emit('update-subtitle-font-size','small')">小</button>
+            <button class="btn-chip" :class="{ active: subtitleSettings?.fontSize==='medium' }" @click="$emit('update-subtitle-font-size','medium')">中</button>
+            <button class="btn-chip" :class="{ active: subtitleSettings?.fontSize==='large' }" @click="$emit('update-subtitle-font-size','large')">大</button>
+            <button class="btn-chip" :class="{ active: subtitleSettings?.fontSize==='xlarge' }" @click="$emit('update-subtitle-font-size','xlarge')">特大</button>
+          </div>
+        </div>
+        <div class="setting-item-row">
+          <span class="setting-label">颜色</span>
+          <div class="btn-group">
+            <button class="btn-chip" :class="{ active: subtitleSettings?.color==='white' }" @click="$emit('update-subtitle-color','white')">白色</button>
+            <button class="btn-chip" :class="{ active: subtitleSettings?.color==='yellow' }" @click="$emit('update-subtitle-color','yellow')">黄色</button>
+          </div>
+        </div>
+        <div class="setting-item-row">
+          <span class="setting-label">背景</span>
+          <input class="range" type="range" min="0" max="1" step="0.1" :value="subtitleSettings?.bgOpacity ?? 0.4" @input="$emit('update-subtitle-bg-opacity', Number($event.target.value))" />
+        </div>
+        <div class="setting-item-row">
+          <span class="setting-label">位置</span>
+          <div class="btn-group">
+            <button class="btn-chip" :class="{ active: subtitleSettings?.position==='bottom' }" @click="$emit('update-subtitle-position','bottom')">底部</button>
+            <button class="btn-chip" :class="{ active: subtitleSettings?.position==='top' }" @click="$emit('update-subtitle-position','top')">顶部</button>
+          </div>
+        </div>
+        <div class="setting-item-row">
+          <label class="setting-label">
+            <input type="checkbox" :checked="subtitleSettings?.shadow" @change="$emit('update-subtitle-shadow', $event.target.checked)" class="setting-checkbox" />
+            阴影
+          </label>
+        </div>
+      </div>
+
       <!-- 其他设置 -->
       <div class="settings-section">
         <div class="settings-title">其他设置</div>
-        
+
         <div class="setting-item">
           <label class="setting-label">
             <input
@@ -69,7 +107,7 @@
             自动播放
           </label>
         </div>
-        
+
         <div class="setting-item">
           <label class="setting-label">
             <input
@@ -95,6 +133,7 @@ const props = defineProps({
   availableQualities: Array,
   currentSubtitle: Object,
   subtitles: Array,
+  subtitleSettings: Object,
   autoplay: Boolean,
   loop: Boolean
 })
@@ -103,68 +142,38 @@ const emit = defineEmits([
   'toggle-menu',
   'set-quality',
   'set-subtitle',
+  'update-subtitle-font-size',
+  'update-subtitle-color',
+  'update-subtitle-bg-opacity',
+  'update-subtitle-position',
+  'update-subtitle-shadow',
   'update-autoplay',
   'update-loop'
 ])
 </script>
 
 <style scoped>
-.settings-control {
-  @apply relative;
-}
+.settings-control { position: relative; }
+.control-btn { padding: 0.5rem; border-radius: 9999px; background: transparent; color: #fff; min-width: 40px; min-height: 40px; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+.control-btn:hover { transform: scale(1.05); background: rgba(255,255,255,.1); }
+.control-btn:active { transform: scale(0.95); }
+.control-icon { font-size: 1.25rem; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+.settings-menu { position: absolute; bottom: 100%; right: 0; margin-bottom: 0.75rem; width: 14rem; border-radius: 0.75rem; padding: 0; border: 1px solid rgba(255,255,255,.1); background: rgba(40,40,40,.95); backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0,0,0,.6); transform-origin: bottom right; animation: menu-appear 160ms ease-out; }
+@keyframes menu-appear { from { opacity: 0; transform: translateY(8px) scale(0.98);} to { opacity: 1; transform: translateY(0) scale(1);} }
+.settings-section { padding: 0.5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+.settings-title { color: #fff; font-weight: 500; font-size: 12px; margin-bottom: 0.5rem; font-family: 'Roboto', 'YouTube Noto', sans-serif; }
+.quality-options, .subtitle-options { display: grid; grid-auto-rows: minmax(28px,auto); gap: 6px; }
+.subtitle-option { width: 100%; text-align: left; padding: 6px 8px; border-radius: 8px; color: #eaeaea; background: transparent; border: none; cursor: pointer; }
+.subtitle-option.active, .subtitle-option:hover { background: rgba(255,255,255,.08); }
 
-.control-btn {
-  @apply p-2 rounded-full bg-transparent hover:bg-white/10
-    transition-all duration-200 text-white
-    focus:outline-none focus:ring-2 focus:ring-white/30
-    flex items-center justify-center;
-  min-width: 40px;
-  min-height: 40px;
-}
-
-.control-btn:hover {
-  transform: scale(1.05);
-}
-
-.control-btn:active {
-  transform: scale(0.95);
-}
-
-.control-icon {
-  @apply text-xl;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
-}
-
-.settings-menu {
-  @apply absolute bottom-full right-0 mb-3 w-36
-    rounded-xl p-0
-    border border-white/10 shadow-2xl;
-  background: rgba(40, 40, 40, 0.95);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-  transform-origin: bottom right;
-  animation: menu-appear 160ms ease-out;
-}
-
-@keyframes menu-appear {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.settings-section {
-  @apply p-2 last:border-b-0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.settings-title {
-  @apply text-white font-medium text-xs mb-2;
-  font-family: 'Roboto', 'YouTube Noto', sans-serif;
-}
-
-.quality-options,
-.subtitle-options {
-  @apply space-y-0.5;
-}
+.setting-item { margin: 6px 0; }
+.setting-item-row { margin: 6px 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.setting-label { color: #eaeaea; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+.setting-checkbox { width: 14px; height: 14px; }
+.btn-group { display: flex; gap: 6px; }
+.btn-chip { padding: 4px 8px; border-radius: 9999px; border: 1px solid rgba(255,255,255,.14); background: transparent; color: #eaeaea; font-size: 12px; cursor: pointer; }
+.btn-chip.active, .btn-chip:hover { background: rgba(255,255,255,.08); }
+.range { width: 100%; }
 
 .quality-option,
 .subtitle-option {

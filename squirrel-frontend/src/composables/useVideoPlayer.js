@@ -32,7 +32,14 @@ export default function useVideoPlayer(props, emit) {
       currentQuality: 'auto',
       currentSubtitle: null,
       autoplay: false,
-      loop: false
+      loop: false,
+      subtitleSettings: {
+        fontSize: 'medium', // small | medium | large | xlarge
+        color: 'white',     // white | yellow
+        bgOpacity: 0.4,     // 0 ~ 1
+        position: 'bottom', // top | bottom
+        shadow: true        // text shadow on/off
+      }
     },
     ui: {
       controlsVisible: true,
@@ -44,6 +51,7 @@ export default function useVideoPlayer(props, emit) {
       showPlaybackRateMenu: false,
       showQualityMenu: false,
       showSettingsMenu: false,
+      showSubtitlesMenu: false,
       showKeyboardHelp: false,
       showKeyboardFeedback: false,
       keyboardFeedback: '',

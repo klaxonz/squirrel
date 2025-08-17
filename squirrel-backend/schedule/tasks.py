@@ -134,7 +134,7 @@ class ChangeStatusTask(BaseTask):
             logger.error(f"An unexpected error occurred: {e}", exc_info=True)
 
 
-@TaskRegistry.register(interval=30, unit='minutes')
+@TaskRegistry.register(interval=10, unit='minutes')
 class AutoUpdateChannelVideo(BaseTask):
     """
     Refactored: scheduler now only scans subscriptions and enqueues update messages.
