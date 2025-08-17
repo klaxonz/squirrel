@@ -19,11 +19,17 @@ class SubscriptionUpdateService:
 
     @staticmethod
     def _should_extract_all(sub: SubscriptionDto) -> bool:
-        if sub.total_videos == 0:
+        # Full fetch when:
+        # - Unknown total yet
+        # - Already fully extracted (to detect new videos and refresh total)
+        # - Backlog is small enough to process in one go (<= default window)
+        if sub.total_videos <= 0:
             return True
-        if sub.total_videos - sub.total_extract <= settings.CHANNEL_UPDATE_DEFAULT_SIZE:
-            return False
-        return True
+        if sub.total_extract >= sub.total_videos:
+            return True
+        if (sub.total_videos - sub.total_extract) <= settings.CHANNEL_UPDATE_DEFAULT_SIZE:
+            return True
+        return False
 
     @staticmethod
     def update_subscription_videos(sub: SubscriptionDto, is_manual: bool = False) -> None:
