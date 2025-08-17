@@ -5,15 +5,24 @@
       <div class="flex items-center">
         <NsfwFilter v-model="nsfw" @update:modelValue="handleNsfwChange" />
       </div>
-      <button
-        class="px-3 py-1.5 min-w-[100px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
-        @click="showAddDialog = true"
-      >
-        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" fill-rule="evenodd" />
-        </svg>
-        <span class="ml-1">添加订阅</span>
-      </button>
+      <div class="flex items-center">
+        <RefreshButton
+          class="mr-2"
+          :loading="isRefreshing"
+          title="刷新"
+          aria-label="刷新"
+          @click="refreshList"
+        />
+        <button
+          class="px-3 py-1.5 min-w-[100px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
+          @click="showAddDialog = true"
+        >
+          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" fill-rule="evenodd" />
+          </svg>
+          <span class="ml-1">添加订阅</span>
+        </button>
+      </div>
     </div>
 
     <div
@@ -155,10 +164,12 @@
 
 
   </div>
+
 </template>
 
 <script setup>
 import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';
+import RefreshButton from '../components/RefreshButton.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
 import AddChannelDialog from '../components/AddChannelDialog.vue';
@@ -170,6 +181,9 @@ import {useSubscriptionRefresh} from '../composables/useSubscriptionRefresh';
 import {useSubscriptionApi} from '../composables/useSubscriptionApi';
 
 const router = useRouter();
+
+const isRefreshing = ref(false);
+
 const emitter = inject('emitter');
 
 // 滚动位置保持
@@ -267,7 +281,66 @@ const loadSubscriptions = async () => {
   loading.value = false;
 };
 
+
+// 订阅页：键盘 R 刷新 + 页面切回自动刷新
+const lastRefreshedAt = ref(Date.now());
+const VISIBILITY_REFRESH_THRESHOLD_MS = 5 * 60 * 1000;
+
+const MIN_SPIN_MS = 800;
+const spinTimer = ref(null);
+const spinStartAt = ref(0);
+const clearSpinTimer = () => {
+  if (spinTimer.value) {
+    clearTimeout(spinTimer.value);
+    spinTimer.value = null;
+  }
+};
+
+
+const handleKeyDown = (e) => {
+  const target = e.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if ((e.key === 'r' || e.key === 'R') && !e.repeat) {
+    e.preventDefault();
+    refreshList();
+  }
+};
+
+const handleVisibilityChange = () => {
+  if (!document.hidden) {
+    if (Date.now() - lastRefreshedAt.value > VISIBILITY_REFRESH_THRESHOLD_MS) {
+      refreshList();
+    }
+  }
+};
+
 // 处理全局搜索事件
+
+const refreshList = async () => {
+  if (observer.value && loadingTrigger.value) {
+    observer.value.unobserve(loadingTrigger.value);
+  }
+  clearSpinTimer();
+  isRefreshing.value = true;
+  spinStartAt.value = Date.now();
+  subscriptions.value = [];
+  currentPage.value = 1;
+  allLoaded.value = false;
+  try {
+    await loadSubscriptions();
+  } finally {
+    const elapsed = Date.now() - spinStartAt.value;
+    const remain = Math.max(0, MIN_SPIN_MS - elapsed);
+    clearSpinTimer();
+    spinTimer.value = setTimeout(() => {
+      isRefreshing.value = false;
+      lastRefreshedAt.value = Date.now();
+      clearSpinTimer();
+    }, remain);
+  }
+};
+
 const handleGlobalSearch = (query) => {
   if (observer.value && loadingTrigger.value) {
     observer.value.unobserve(loadingTrigger.value);
@@ -281,6 +354,8 @@ const handleGlobalSearch = (query) => {
     nextTick(() => {
       restoreScrollPosition();
     });
+    isRefreshing.value = false;
+
   });
 };
 
@@ -414,6 +489,11 @@ onMounted(async () => {
 
   // 监听全局搜索事件
   emitter.on('search:subscribed', handleGlobalSearch);
+
+  // 键盘快捷键：R 刷新订阅列表
+  window.addEventListener('keydown', handleKeyDown);
+  // 页面可见性变化：切回且超过阈值时自动刷新
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 });
 
 // 添加监听器以在内容变化时重新设置observer
@@ -436,6 +516,9 @@ onUnmounted(() => {
 
   // 清理订阅更新相关资源
   cleanupRefresh();
+
+  window.removeEventListener('keydown', handleKeyDown);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
 
@@ -490,4 +573,7 @@ onUnmounted(() => {
 .channel-item .w-24 {
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
 }
+  /* 刷新图标旋转 */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin-anim { animation: spin 0.8s linear infinite; }
 </style>

@@ -16,14 +16,13 @@
               class="ml-2"
               @update:modelValue="handleSortChange"
           />
-          <button
-              class="ml-2 px-3 py-1 text-xs rounded-full bg-[#0f0f0f] text-[#f1f1f1] hover:bg-[#272727] flex items-center justify-center"
-              @click="refreshCurrentList"
-              title="刷新 (R)"
-              aria-label="刷新"
-          >
-            <ArrowPathIcon :class="['h-4 w-4', { 'spin-anim': isRefreshing }]" />
-          </button>
+          <RefreshButton
+            class="ml-2"
+            :loading="isRefreshing"
+            title="刷新 (R)"
+            aria-label="刷新"
+            @click="refreshCurrentList"
+          />
         </div>
       </div>
     </div>
@@ -59,7 +58,7 @@ import useLatestVideos from '../composables/useLatestVideos';
 import TabBar from '../components/TabBar.vue';
 import SortButton from '../components/SortButton.vue';
 import NsfwFilter from '../components/NsfwFilter.vue';
-import { ArrowPathIcon } from '@heroicons/vue/24/outline';
+import RefreshButton from '../components/RefreshButton.vue';
 
 const router = useRouter();
 const emitter = inject('emitter');
