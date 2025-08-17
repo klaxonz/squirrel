@@ -43,6 +43,16 @@ LOGGING_CONFIG = {
             'encoding': 'utf-8',
         },
     },
+    'loggers': {
+        'httpx': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
+        'httpcore': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
+    },
     'root': {
         'handlers': ['console', 'file'],
         'level': 'INFO',

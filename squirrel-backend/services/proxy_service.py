@@ -49,7 +49,7 @@ class VideoProxyService(ProxyServiceInterface):
     async def handle_proxy_request(self, request: VideoProxyRequest, http_request: Request) -> StreamingResponse:
         """处理代理请求"""
         try:
-            logger.info(f"Processing proxy request for domain: {request.domain}, url: {request.url}")
+            logger.debug(f"Processing proxy request for domain: {request.domain}, url: {request.url}")
 
             proxy_class = self._get_proxy_class(request.domain)
             proxy_instance = self._create_proxy_instance(proxy_class, http_request)
