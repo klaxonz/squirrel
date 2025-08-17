@@ -23,7 +23,7 @@ import {watch} from "vue";
 
 
 const emitter = inject('emitter');
-const emit = defineEmits(['openModal', 'update-counts', 'goToSubscription']);
+const emit = defineEmits(['openModal', 'update-counts', 'goToSubscription', 'loading-change']);
 
 const props = defineProps({
   searchQuery: {
@@ -42,6 +42,7 @@ const {
   videos,
   loading,
   allLoaded,
+
   loadMore,
   searchQuery,
   handleSearch,
@@ -85,6 +86,11 @@ watch(() => props.sortBy, () => {
 const {
   toggleOptions,
 } = useOptionsMenu(videos);
+
+watch(() => loading.value, (val) => {
+  emit('loading-change', val);
+});
+
 
 onMounted(async () => {
   subscriptionId.value = props.selectedSubscriptionId;

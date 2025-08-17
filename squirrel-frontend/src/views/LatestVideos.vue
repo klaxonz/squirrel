@@ -16,6 +16,14 @@
               class="ml-2"
               @update:modelValue="handleSortChange"
           />
+          <button
+              class="ml-2 px-3 py-1 text-xs rounded-full bg-[#0f0f0f] text-[#f1f1f1] hover:bg-[#272727] flex items-center justify-center"
+              @click="refreshCurrentList"
+              title="刷新 (R)"
+              aria-label="刷新"
+          >
+            <ArrowPathIcon :class="['h-4 w-4', { 'spin-anim': isRefreshing }]" />
+          </button>
         </div>
       </div>
     </div>
@@ -23,7 +31,7 @@
     <div class="video-container flex-grow">
       <router-view v-slot="{ Component }">
         <keep-alive :max="10">
-          <component 
+          <component
               :is="Component"
               :active-tab="activeTab"
               :search-query="searchQuery"
@@ -32,6 +40,7 @@
               @goToSubscription="goToChannelDetail"
               @openModal="handleOpenModal"
               @update-counts="updateCounts"
+              @loading-change="(val) => (isRefreshing = !!val)"
           />
         </keep-alive>
       </router-view>
@@ -50,6 +59,7 @@ import useLatestVideos from '../composables/useLatestVideos';
 import TabBar from '../components/TabBar.vue';
 import SortButton from '../components/SortButton.vue';
 import NsfwFilter from '../components/NsfwFilter.vue';
+import { ArrowPathIcon } from '@heroicons/vue/24/outline';
 
 const router = useRouter();
 const emitter = inject('emitter');
@@ -93,6 +103,37 @@ const tabsWithCounts = ref([
   }
 ]);
 
+const isRefreshing = ref(false);
+
+
+const lastRefreshedAt = ref(Date.now());
+const VISIBILITY_REFRESH_THRESHOLD_MS = 5 * 60 * 1000;
+
+const refreshCurrentList = () => {
+  isRefreshing.value = true;
+  emitter.emit('reloadContent', activeTab.value);
+  lastRefreshedAt.value = Date.now();
+};
+
+const handleKeyDown = (e) => {
+  const target = e.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if ((e.key === 'r' || e.key === 'R') && !e.repeat) {
+    e.preventDefault();
+    refreshCurrentList();
+  }
+};
+
+const handleVisibilityChange = () => {
+  if (!document.hidden) {
+    if (Date.now() - lastRefreshedAt.value > VISIBILITY_REFRESH_THRESHOLD_MS) {
+      refreshCurrentList();
+    }
+  }
+};
+
+
 const searchQuery = ref('');
 
 const sortBy = ref('publish_date');
@@ -110,6 +151,9 @@ const handleOpenModal = (video) => {
   router.push(`/video/${video.id}`);
 };
 
+
+
+
 const goToChannelDetail = (subscriptionId) => {
   router.push(`/subscription/${subscriptionId}/all`);
 };
@@ -122,8 +166,10 @@ const handleNsfwChange = () => {
   handleSearch();
 };
 
+
 const handleTabDoubleClick = (tab) => {
   if (tab === activeTab.value) {
+    isRefreshing.value = true;
     emitter.emit('reloadContent', activeTab.value);
   }
 };
@@ -141,12 +187,24 @@ onMounted(() => {
 
   // 监听全局搜索事件
   emitter.on('search:home', handleGlobalSearch);
+
+
+  // 键盘快捷键：R 刷新当前列表
+  window.addEventListener('keydown', handleKeyDown);
+  // 页面可见性变化：切回且超过阈值时自动刷新
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 });
 
 onUnmounted(() => {
+  emitter.off('reloadContent');
+
   emitter.off('sidebarStateChanged');
   emitter.off('search:home', handleGlobalSearch);
+  window.removeEventListener('keydown', handleKeyDown);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
+  emitter.off('reloadContent');
+
 </script>
 
 <style scoped src="../styles/components/LatestVideos.css"></style>
@@ -162,5 +220,8 @@ onUnmounted(() => {
   flex: 1;
   overflow: hidden;
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin-anim { animation: spin 0.8s linear infinite; }
 </style>
 
