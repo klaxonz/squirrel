@@ -9,11 +9,14 @@
           class="custom-tab-bar flex-grow"
           @tab-dblclick="handleTabDoubleClick"
       />
-        <SortButton
-            v-model="sortBy"
-            class="ml-2"
-            @update:modelValue="handleSortChange"
-        />
+        <div class="flex items-center">
+          <NsfwFilter v-model="nsfw" class="ml-2" @update:modelValue="handleNsfwChange" />
+          <SortButton
+              v-model="sortBy"
+              class="ml-2"
+              @update:modelValue="handleSortChange"
+          />
+        </div>
       </div>
     </div>
 
@@ -46,6 +49,7 @@ import {useRoute, useRouter} from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import TabBar from '../components/TabBar.vue';
 import SortButton from '../components/SortButton.vue';
+import NsfwFilter from '../components/NsfwFilter.vue';
 
 const router = useRouter();
 const emitter = inject('emitter');
@@ -54,6 +58,8 @@ const {
   videoContainer,
   activeTab,
   error,
+  nsfw,
+  handleSearch
 } = useLatestVideos();
 
 const route = useRoute();
@@ -110,6 +116,10 @@ const goToChannelDetail = (subscriptionId) => {
 
 const handleSortChange = (newSort) => {
   sortBy.value = newSort;
+};
+
+const handleNsfwChange = () => {
+  handleSearch();
 };
 
 const handleTabDoubleClick = (tab) => {

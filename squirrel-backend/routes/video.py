@@ -75,11 +75,14 @@ def get_videos(
         subscription_id: int = Query(None, description="订阅ID"),
         category: str = Query(None, description="阅读状态: all, read, unread, preview, like"),
         sort_by: SortBy = Query(SortBy.UPLOADED_AT, description="排序字段"),
+        nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
         current_user: User = Depends(get_current_user)
 ):
-    videos, total_counts, counts = video_service.list_videos(current_user.id, query, subscription_id, category, sort_by, page, page_size)
+    videos, total_counts, counts = video_service.list_videos(
+        current_user.id, query, subscription_id, category, sort_by, nsfw, page, page_size
+    )
     return response.success({
         "total": total_counts,
         "page": page,

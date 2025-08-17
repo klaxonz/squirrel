@@ -13,6 +13,7 @@ const searchQuery = ref('');
 const isResetting = ref(false);
 const subscriptionId = ref(null);
 const sortBy = ref('publish_date');
+const nsfw = ref('all');
 
 export default function useLatestVideos() {
   const tabs = [
@@ -43,7 +44,8 @@ export default function useLatestVideos() {
       query: searchQuery.value,
       subscription_id: subscriptionId.value,
       category: category.value,
-      sort_by: sortBy.value
+      sort_by: sortBy.value,
+      nsfw: nsfw.value
     });
 
     if (requestError) {
@@ -109,6 +111,7 @@ export default function useLatestVideos() {
     handleScroll,
     searchQuery,
     subscriptionId,
-    sortBy
+    sortBy,
+    nsfw
   };
 }

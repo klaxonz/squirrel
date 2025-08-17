@@ -60,7 +60,7 @@ def get_video_url(video_id: int) -> VideoUrlDto:
 
 
 def _build_base_video_query(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
-                            query: Optional[str] = None):
+                            query: Optional[str] = None, nsfw: str = 'all'):
     """构建基础视频查询，以Video为主表"""
     base_query = (
         select(Video, SubscriptionVideo.subscription_id.label('subscription_id'))
@@ -81,19 +81,26 @@ def _build_base_video_query(user_id: int, show_nsfw: bool, subscription_id: Opti
     if subscription_id:
         base_query = base_query.where(SubscriptionVideo.subscription_id == subscription_id)
 
-    if not show_nsfw:
+    # NSFW 过滤逻辑（方案A）
+    if nsfw == 'yes':
+        base_query = base_query.where(UserSubscription.is_nsfw == True)
+    elif nsfw == 'no':
         base_query = base_query.where(UserSubscription.is_nsfw == False)
+    else:
+        # nsfw == 'all' 且遵循用户偏好
+        if not show_nsfw:
+            base_query = base_query.where(UserSubscription.is_nsfw == False)
 
     if query:
-        base_query = base_query.where(Video.title.like(f'%{query}%'))
+        base_query = base_query.where(Video.title.like(f"%{query}%"))
 
     return base_query
 
 
 def _query_all_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None, query: Optional[str] = None,
-                      sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
+                      sort_by: str = 'publish_date', page: int = 1, page_size: int = 20, nsfw: str = 'all'):
     """查询所有视频（排除预览视频）"""
-    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query)
+    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw)
     base_query = base_query.where(Video.publish_date <= func.now())
 
     if sort_by == 'created_at':
@@ -107,9 +114,9 @@ def _query_all_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[i
 
 def _query_read_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
                        query: Optional[str] = None,
-                       sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
+                       sort_by: str = 'publish_date', page: int = 1, page_size: int = 20, nsfw: str = 'all'):
     """查询已读视频"""
-    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query)
+    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw)
     base_query = base_query.join(VideoHistory, and_(
         VideoHistory.video_id == Video.id,
         VideoHistory.user_id == user_id
@@ -126,9 +133,9 @@ def _query_read_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[
 
 def _query_unread_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
                          query: Optional[str] = None,
-                         sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
+                         sort_by: str = 'publish_date', page: int = 1, page_size: int = 20, nsfw: str = 'all'):
     """查询未读视频"""
-    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query)
+    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw)
     base_query = base_query.outerjoin(VideoHistory, and_(
         VideoHistory.video_id == Video.id,
         VideoHistory.user_id == user_id
@@ -150,9 +157,9 @@ def _query_unread_videos(user_id: int, show_nsfw: bool, subscription_id: Optiona
 
 def _query_preview_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
                           query: Optional[str] = None,
-                          sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
+                          sort_by: str = 'publish_date', page: int = 1, page_size: int = 20, nsfw: str = 'all'):
     """查询预览视频"""
-    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query)
+    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw)
     base_query = base_query.where(Video.publish_date > func.now())
 
     if sort_by == 'created_at':
@@ -166,9 +173,9 @@ def _query_preview_videos(user_id: int, show_nsfw: bool, subscription_id: Option
 
 def _query_liked_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
                         query: Optional[str] = None,
-                        sort_by: str = 'publish_date', page: int = 1, page_size: int = 20):
+                        sort_by: str = 'publish_date', page: int = 1, page_size: int = 20, nsfw: str = 'all'):
     """查询点赞视频"""
-    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query)
+    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw)
     base_query = base_query.join(VideoInteraction, and_(
         VideoInteraction.video_id == Video.id,
         VideoInteraction.user_id == user_id,
@@ -185,7 +192,7 @@ def _query_liked_videos(user_id: int, show_nsfw: bool, subscription_id: Optional
 
 
 def _get_category_count(user_id: int, show_nsfw: bool, category: str, subscription_id: Optional[int] = None,
-                        query: Optional[str] = None) -> int:
+                        query: Optional[str] = None, nsfw: str = 'all') -> int:
     """获取特定类别的视频数量，优化的count查询"""
     with get_session() as session:
         # 基础count查询，只选择Video.id用于计数
@@ -237,14 +244,20 @@ def _get_category_count(user_id: int, show_nsfw: bool, category: str, subscripti
             base_count_query = base_count_query.where(SubscriptionVideo.subscription_id == subscription_id)
         if query:
             base_count_query = base_count_query.where(Video.title.like(f'%{query}%'))
-        if not show_nsfw:
+        # NSFW 过滤（方案A）
+        if nsfw == 'yes':
+            base_count_query = base_count_query.where(UserSubscription.is_nsfw == True)
+        elif nsfw == 'no':
             base_count_query = base_count_query.where(UserSubscription.is_nsfw == False)
+        else:
+            if not show_nsfw:
+                base_count_query = base_count_query.where(UserSubscription.is_nsfw == False)
 
         return session.execute(base_count_query).scalar() or 0
 
 
 def _get_video_counts(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
-                      query: Optional[str] = None):
+                      query: Optional[str] = None, nsfw: str = 'all'):
     """获取各类别视频数量"""
     with get_session() as session:
         # 基础计数查询
@@ -271,9 +284,15 @@ def _get_video_counts(user_id: int, show_nsfw: bool, subscription_id: Optional[i
         if subscription_id:
             base_count_query = base_count_query.where(SubscriptionVideo.subscription_id == subscription_id)
         if query:
-            base_count_query = base_count_query.where(Video.title.like(f'%{query}%'))
-        if not show_nsfw:
+            base_count_query = base_count_query.where(Video.title.like(f"%{query}%"))
+        # NSFW 过滤（方案A）
+        if nsfw == 'yes':
+            base_count_query = base_count_query.where(UserSubscription.is_nsfw == True)
+        elif nsfw == 'no':
             base_count_query = base_count_query.where(UserSubscription.is_nsfw == False)
+        else:
+            if not show_nsfw:
+                base_count_query = base_count_query.where(UserSubscription.is_nsfw == False)
 
         # 各类别计数
         all_count = session.execute(
@@ -336,9 +355,15 @@ def _get_video_counts(user_id: int, show_nsfw: bool, subscription_id: Optional[i
         if subscription_id:
             like_count_query = like_count_query.where(SubscriptionVideo.subscription_id == subscription_id)
         if query:
-            like_count_query = like_count_query.where(Video.title.like(f'%{query}%'))
-        if not show_nsfw:
+            like_count_query = like_count_query.where(Video.title.like(f"%{query}%"))
+        # NSFW 过滤（方案A）
+        if nsfw == 'yes':
+            like_count_query = like_count_query.where(UserSubscription.is_nsfw == True)
+        elif nsfw == 'no':
             like_count_query = like_count_query.where(UserSubscription.is_nsfw == False)
+        else:
+            if not show_nsfw:
+                like_count_query = like_count_query.where(UserSubscription.is_nsfw == False)
 
         like_video_count = session.execute(like_count_query).scalar() or 0
 
@@ -357,6 +382,7 @@ def list_videos(
         subscription_id: int,
         category: str,
         sort_by: str,
+        nsfw: str,
         page: int,
         page_size: int
 ) -> Tuple[List[dict], int, dict]:
@@ -376,7 +402,7 @@ def list_videos(
 
     with get_session() as session:
         # 执行主查询
-        main_query = query_method(user_id, show_nsfw, subscription_id, query, sort_by, page, page_size)
+        main_query = query_method(user_id, show_nsfw, subscription_id, query, sort_by, page, page_size, nsfw=nsfw)
         results = session.execute(main_query).all()
 
         videos = []
@@ -390,10 +416,10 @@ def list_videos(
             videos.append(video_dto)
 
         # 获取总数（当前类别）- 使用优化的count查询
-        total_count = _get_category_count(user_id, show_nsfw, category, subscription_id, query)
+        total_count = _get_category_count(user_id, show_nsfw, category, subscription_id, query, nsfw=nsfw)
 
         # 获取各类别计数
-        counts = _get_video_counts(user_id, show_nsfw, subscription_id, query)
+        counts = _get_video_counts(user_id, show_nsfw, subscription_id, query, nsfw=nsfw)
 
         # 获取订阅信息
         subscription_ids = list(set(video.subscription_id for video in videos))
