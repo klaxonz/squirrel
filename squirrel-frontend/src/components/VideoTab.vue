@@ -6,6 +6,7 @@
         :loading="loading"
         :allLoaded="allLoaded"
         :showAvatar="false"
+        :refreshing="isResetting"
         @loadMore="loadMore"
         @toggleOptions="toggleOptions"
         @openModal="(video) => emit('openModal', video, videos)"
@@ -49,7 +50,8 @@ const {
   activeTab,
   tabsWithCounts,
   subscriptionId,
-  sortBy
+  sortBy,
+  isResetting
 } = useLatestVideos();
 
 const processedVideos = computed(() => {

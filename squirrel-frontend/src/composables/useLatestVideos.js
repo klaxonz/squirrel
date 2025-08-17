@@ -87,7 +87,6 @@ export default function useLatestVideos() {
 
   const resetAndReload = () => {
     isResetting.value = true;
-    videos.value = [];
     currentPage.value = 1;
     allLoaded.value = false;
     error.value = null;
@@ -112,6 +111,7 @@ export default function useLatestVideos() {
     searchQuery,
     subscriptionId,
     sortBy,
-    nsfw
+    nsfw,
+    isResetting
   };
 }

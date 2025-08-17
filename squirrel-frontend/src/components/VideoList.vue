@@ -20,6 +20,7 @@
               :showProgress="video.showProgress"
               :progress="video.progress"
               :index="index"
+              :class="{ 'is-refreshing': refreshing }"
               @toggleOptions="$emit('toggleOptions', $event, video.id)"
               @goToSubscription="$emit('goToSubscription', $event)"
               @openModal="$emit('openModal', video)"
@@ -52,6 +53,10 @@ const props = defineProps({
   loading: Boolean,
   allLoaded: Boolean,
   showAvatar: Boolean,
+  refreshing: {
+    type: Boolean,
+    default: false
+  },
 });
 
 const emit = defineEmits([
@@ -202,6 +207,21 @@ defineExpose({
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* 刷新时对卡片添加轻量蒙层，避免闪白与突变感 */
+.grid-item :deep(.video-item.is-refreshing)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.06), rgba(255,255,255,0));
+  animation: shimmer 1.2s infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .loading-indicator, .text-center {
