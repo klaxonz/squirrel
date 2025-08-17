@@ -28,10 +28,8 @@ def get_subscriptions_sql():
         /*{if nsfw == 'no'}*/
             and us.is_nsfw is false
         /*{endif}*/
-        /*{if nsfw == 'all'}*/
-            /*{if show_nsfw == False}*/
-                and us.is_nsfw is false
-            /*{endif}*/
+        /*{if filter_nsfw_when_all}*/
+            and us.is_nsfw is false
         /*{endif}*/
         order by s.created_at desc
         limit :limit offset :offset
@@ -58,7 +56,7 @@ def get_subscriptions_count_sql():
         /*{if nsfw == 'no'}*/
             and us.is_nsfw is false
         /*{endif}*/
-        /*{if nsfw == 'all' and show_nsfw == False}*/
+        /*{if filter_nsfw_when_all}*/
             and us.is_nsfw is false
         /*{endif}*/
     """

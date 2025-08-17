@@ -83,6 +83,7 @@ def list_subscriptions(
             'type': type,
             'nsfw': nsfw,
             'show_nsfw': show_nsfw,
+            'filter_nsfw_when_all': (nsfw == 'all' and not show_nsfw),
             'limit': page_size,
             'offset': (page - 1) * page_size
         }
