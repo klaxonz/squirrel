@@ -8,15 +8,16 @@
       <svg v-if="!isMobile" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
         <path d="M3 3a1 1 0 000 2h11a1 1 0 100-2H3zM3 7a1 1 0 000 2h7a1 1 0 100-2H3zM3 11a1 1 0 100 2h4a1 1 0 100-2H3z" />
       </svg>
-      <span v-if="!isMobile">排序方式</span>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
+      <span v-if="!isMobile">排序</span>
+      <span v-if="!isMobile" class="opacity-70">· {{ currentLabel }}</span>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
         class="transition-transform duration-200"
         :class="[
           isMobile ? 'h-2.5 w-2.5 -mr-0.5' : 'h-3 w-3',
           { 'transform rotate-180': isOpen }
         ]"
-        viewBox="0 0 20 20" 
+        viewBox="0 0 20 20"
         fill="currentColor"
       >
         <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -55,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { isMobile } from "../composables/useMobile.js";
 
 const props = defineProps({
@@ -73,6 +74,8 @@ const sortOptions = [
   { value: 'publish_date', label: '上传时间' },
   { value: 'created_at', label: '添加时间' }
 ];
+
+const currentLabel = computed(() => (sortOptions.find(o => o.value === props.modelValue)?.label) || sortOptions[0].label);
 
 const toggleDropdown = () => {
   isOpen.value = !isOpen.value;
