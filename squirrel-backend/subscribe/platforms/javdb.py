@@ -58,7 +58,7 @@ class JavSubscription(BaseSubscription):
 
         while current_page < page and extract_all:
             current_page += 1
-            response = session.get(self.url + f'?page={current_page}&sort_type=0&t=s', headers=headers, timeout=15)
+            response = session.get(self.url + f'?page={current_page}&sort_type=0', headers=headers, timeout=15)
             response.raise_for_status()
             bs4 = BeautifulSoup(response.text, 'html.parser')
             
