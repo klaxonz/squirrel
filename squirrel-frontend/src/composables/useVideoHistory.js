@@ -97,6 +97,44 @@ export default function useVideoHistory() {
       return false;
     }
   };
+  // 获取观看历史（分页，返回视频详情）
+  const getWatchHistory = async (page = 1, pageSize = 20) => {
+    try {
+      const res = await axios.get('/api/video-history/list', {
+        params: { page, page_size: pageSize }
+      });
+      const resp = res?.data || {};
+      if (resp.code !== 0) {
+        throw new Error(resp.msg || '加载历史失败');
+      }
+      const payload = resp.data || {};
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      return {
+        items,
+        total: payload.total ?? 0,
+        page: payload.page ?? page,
+        page_size: payload.page_size ?? pageSize
+      };
+    } catch (error) {
+      throw new Error(error.message || '加载历史失败');
+    }
+  };
+
+  // 清空观看历史（可选传入部分视频ID）
+  const clearHistory = async (videoIds = null) => {
+    try {
+      const body = Array.isArray(videoIds) && videoIds.length ? videoIds : null;
+      const res = await axios.post('/api/video-history/clear', body);
+      const resp = res?.data || {};
+      if (resp.code !== 0) {
+        throw new Error(resp.msg || '清空历史失败');
+      }
+      return true;
+    } catch (error) {
+      throw new Error(error.message || '清空历史失败');
+    }
+  };
+
 
   // 获取本地播放历史
   const getLocalHistory = (video_id) => {
@@ -234,6 +272,10 @@ export default function useVideoHistory() {
     // 基础功能
     sendReport,
     sendBatchReport,
+
+    // 历史记录 API
+    getWatchHistory,
+    clearHistory,
 
     // 本地历史管理
     getLocalHistory,

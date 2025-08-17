@@ -13,8 +13,8 @@
       </button>
     </div>
 
-    <div class="flex-1 overflow-y-auto scrollbar-hide">
-      <div class="max-w-[1800px] mx-auto px-4">
+    <div class="flex-1 h-full">
+      <div class="max-w-[1800px] mx-auto px-4 h-full">
         <VideoList
           :videos="processedVideos"
           :loading="loading"
@@ -22,7 +22,7 @@
           :showAvatar="true"
           @loadMore="loadMore"
           @openModal="handleOpenModal"
-          @goToChannel="handleGoToChannel"
+          @goToSubscription="handleGoToSubscription"
         />
       </div>
     </div>
@@ -78,8 +78,8 @@ const handleOpenModal = (video) => {
   emitter.emit('openVideoModal', {video});
 };
 
-const handleGoToChannel = (channelId) => {
-  router.push(`/channel/${channelId}/all`);
+const handleGoToSubscription = (subscriptionId) => {
+  router.push(`/subscription/${subscriptionId}/all`);
 };
 
 // 添加计算属性来处理视频进度
@@ -87,7 +87,7 @@ const processedVideos = computed(() => {
   return videos.value.map(video => ({
     ...video,
     showProgress: true,
-    progress: video.last_position / video.total_duration
+    progress: video.duration ? (video.last_position / video.duration) : 0
   }));
 });
 

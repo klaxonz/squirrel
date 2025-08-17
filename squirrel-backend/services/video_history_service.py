@@ -2,6 +2,9 @@ from typing import List
 from sqlalchemy import func
 from core.database import get_session
 from models.video_history import VideoHistory
+from models.video import Video
+from models.subscription import Subscription
+from models.links import SubscriptionVideo
 from schemas.video_history import HistoryCreate
 
 
@@ -36,32 +39,91 @@ def update_history(user_id: int, data: HistoryCreate):
 
 
 def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> dict:
+    """
+    返回包含视频详情的历史记录列表，字段适配前端视频卡片：
+    - id, title, url, thumbnail, duration, uploaded_at, created_at
+    - subscriptions: [{ id, name, url, type, avatar }]
+    - last_position
+    """
     with get_session() as session:
-        query = session.query(VideoHistory).filter(
+        # 基础历史记录查询（先取 video_id 和 last_position + 排序/分页）
+        base_query = session.query(VideoHistory).filter(
             VideoHistory.user_id == user_id
         )
 
-        # 应用过滤器
         if filters.get('video_id'):
-            query = query.filter(VideoHistory.video_id == filters['video_id'])
+            base_query = base_query.filter(VideoHistory.video_id == filters['video_id'])
         if filters.get('min_duration'):
-            query = query.filter(VideoHistory.duration >= filters['min_duration'])
+            base_query = base_query.filter(VideoHistory.duration >= filters['min_duration'])
         if filters.get('start_date'):
-            query = query.filter(VideoHistory.created_at >= filters['start_date'])
+            base_query = base_query.filter(VideoHistory.created_at >= filters['start_date'])
         if filters.get('end_date'):
-            query = query.filter(VideoHistory.created_at <= filters['end_date'])
+            base_query = base_query.filter(VideoHistory.created_at <= filters['end_date'])
 
-        # 计算总数
-        total = query.count()
+        total = base_query.count()
 
-        # 分页和排序
-        items = query.order_by(VideoHistory.end_time.desc()) \
+        histories = base_query.order_by(VideoHistory.end_time.desc()) \
             .offset((page - 1) * page_size) \
             .limit(page_size) \
             .all()
 
+        if not histories:
+            return {
+                "items": [],
+                "total": total,
+                "page": page,
+                "page_size": page_size
+            }
+
+        # 收集 video_id 集合
+        video_ids = [h.video_id for h in histories]
+
+        # 批量查视频详情
+        videos = session.query(Video).filter(Video.id.in_(video_ids)).all()
+        video_map = {v.id: v for v in videos}
+
+        # 查订阅关系并汇总对应订阅信息
+        subs_links = session.query(SubscriptionVideo).filter(SubscriptionVideo.video_id.in_(video_ids)).all()
+        sub_ids = list(set(link.subscription_id for link in subs_links))
+        subs = session.query(Subscription).filter(Subscription.id.in_(sub_ids)).all()
+        sub_map = {s.id: s for s in subs}
+        # 为每个 video_id 组织订阅列表（多数情况下一个）
+        video_subs = {}
+        for link in subs_links:
+            video_subs.setdefault(link.video_id, []).append(sub_map.get(link.subscription_id))
+
+        # 组装返回
+        items = []
+        for h in histories:
+            v = video_map.get(h.video_id)
+            if not v:
+                # 若视频已被删除或未找到，跳过
+                continue
+            subs_for_video = [
+                {
+                    'id': s.id,
+                    'name': s.name,
+                    'url': s.url,
+                    'type': s.type,
+                    'avatar': s.avatar
+                }
+                for s in (video_subs.get(v.id) or []) if s is not None
+            ]
+            item = {
+                'id': v.id,
+                'title': v.title,
+                'url': v.url,
+                'thumbnail': v.thumbnail,
+                'duration': v.duration,
+                'last_position': h.last_position or 0,
+                'uploaded_at': v.publish_date.strftime('%Y-%m-%d %H:%M:%S') if v.publish_date else None,
+                'created_at': v.created_at.strftime('%Y-%m-%d %H:%M:%S') if v.created_at else None,
+                'subscriptions': subs_for_video,
+            }
+            items.append(item)
+
         return {
-            "items": [item.to_dict() for item in items],
+            "items": items,
             "total": total,
             "page": page,
             "page_size": page_size
