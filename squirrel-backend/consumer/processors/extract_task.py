@@ -100,8 +100,8 @@ def _process_extract_message_compat(message: Dict[str, Any]):
 @mq_consumer("queue::video::extract::youtube::scheduled", group="extract-site")
 @mq_consumer("queue::video::extract::pornhub::manual", group="extract-site")
 @mq_consumer("queue::video::extract::pornhub::scheduled", group="extract-site")
-@mq_consumer("queue::video::extract::javdb::manual", group="extract-site")
-@mq_consumer("queue::video::extract::javdb::scheduled", group="extract-site")
+@mq_consumer("queue::video::extract::javdb::manual", group="extract-site", consumer_count=1)
+@mq_consumer("queue::video::extract::javdb::scheduled", group="extract-site", consumer_count=10)
 def process_video_extract(message: Dict[str, Any]):
     params = None
     try:

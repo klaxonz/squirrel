@@ -27,7 +27,8 @@ class WorkerRunner:
             consumers.append(RedisStreamConsumer(spec.stream, spec.handler, options))
 
         for c in consumers:
-            t = threading.Thread(target=c.start_loop, daemon=True, name=f"mq-{c.stream}")
+            thread_name = f"mq-{c.stream}-{c.options.group}-{c.options.consumer_name}"
+            t = threading.Thread(target=c.start_loop, daemon=True, name=thread_name)
             t.start()
             self._threads.append(t)
 
