@@ -34,7 +34,7 @@ const props = defineProps({
   selectedSubscriptionId: Number,
   sortBy: {
     type: String,
-    default: 'uploaded_at'
+    default: 'publish_date'
   }
 });
 

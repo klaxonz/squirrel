@@ -95,7 +95,7 @@ const tabsWithCounts = ref([
 
 const searchQuery = ref('');
 
-const sortBy = ref('uploaded_at');
+const sortBy = ref('publish_date');
 
 const updateCounts = (counts) => {
   tabsWithCounts.value = counts;
