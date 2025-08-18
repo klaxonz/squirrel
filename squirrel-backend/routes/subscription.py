@@ -160,7 +160,8 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
         "source": "manual",
         "requestId": getattr(message, 'id', None),
     })
-    
+
+    # 将手动更新投递到入口队列，随后由消费者按 domain 路由
     RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, message.to_dict())
 
     # 返回入队成功结果

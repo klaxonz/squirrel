@@ -55,7 +55,9 @@ def get_all_queues():
     for site_name in SUPPORTED_SITES.values():
         site_queues.extend([
             f'queue::video::extract::{site_name}::manual',
-            f'queue::video::extract::{site_name}::scheduled'
+            f'queue::video::extract::{site_name}::scheduled',
+            f'queue::subscription::update::{site_name}::manual',
+            f'queue::subscription::update::{site_name}::scheduled',
         ])
 
     return base_queues + site_queues
@@ -65,6 +67,15 @@ DOMAIN_QUEUE_MAPPING = {
     domain: {
         'manual': f'queue::video::extract::{site_name}::manual',
         'scheduled': f'queue::video::extract::{site_name}::scheduled'
+    }
+    for domain, site_name in SUPPORTED_SITES.items()
+}
+
+# New: subscription update domain queues mapping
+SUBSCRIPTION_UPDATE_DOMAIN_QUEUE_MAPPING = {
+    domain: {
+        'manual': f'queue::subscription::update::{site_name}::manual',
+        'scheduled': f'queue::subscription::update::{site_name}::scheduled',
     }
     for domain, site_name in SUPPORTED_SITES.items()
 }

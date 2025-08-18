@@ -183,11 +183,6 @@ class AutoUpdateChannelVideo(BaseTask):
             enqueued = 0
             for sub in batch:
                 try:
-                    # Enqueue dedupe flag for scheduled
-                    flag = f"{constants.REDIS_KEY_SUBSCRIPTION_ENQUEUED_SCHEDULED_PREFIX}{sub.id}"
-                    if not client.set(flag, 1, nx=True, ex=settings.SUB_ENQUEUED_TTL_SECONDS):
-                        continue
-
                     sub_detail = subscription_service.get_subscription_by_id(sub.id)
                     content = {
                         "subscription_id": getattr(sub_detail, 'id', sub.id),
@@ -197,6 +192,7 @@ class AutoUpdateChannelVideo(BaseTask):
                         "is_nsfw": getattr(sub_detail, 'is_nsfw', False),
                     }
                     message = message_service.create_message(content)
+                    # Send to scheduled entry queue; entry consumer will route & dedupe
                     RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE, message.to_dict())
                     enqueued += 1
                 except Exception as e:
