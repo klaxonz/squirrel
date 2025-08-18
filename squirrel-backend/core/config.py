@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     EXTRACT_CONSUMERS: int = 2
     SUBSCRIBE_CONSUMERS: int = 1
 
+    # 新增：订阅更新反压与批大小，以及去重标记 TTL
+    SUB_UPDATE_BACKLOG_MAX: int = 5000
+    SUB_UPDATE_BATCH_SIZE: int = 100
+    SUB_ENQUEUED_TTL_SECONDS: int = 2 * 24 * 3600
+    VIDEO_EXTRACT_ENQUEUED_TTL_SECONDS: int = 2 * 24 * 3600
+
     class Config:
         env_file = f".env.{os.getenv('ENV')}" if os.getenv("ENV") else ".env"
         env_file_encoding = "utf-8"

@@ -9,7 +9,7 @@ from mq.producer import RedisStreamProducer
 from core import config
 from core.config import settings
 from core.database import get_session
-from core.cache import DistributedLock
+from core.cache import RedisClient
 from models.links import SubscriptionVideo
 from models.subscription import Subscription
 from models.task.download_task import DownloadTask
@@ -18,6 +18,7 @@ from services import subscription_service
 from utils.cookie import json_cookie_to_netscape
 
 logger = logging.getLogger()
+client = RedisClient.get_instance().get_client()
 
 
 class BaseTask:
@@ -137,24 +138,54 @@ class ChangeStatusTask(BaseTask):
 @TaskRegistry.register(interval=10, unit='minutes')
 class AutoUpdateChannelVideo(BaseTask):
     """
-    Refactored: scheduler now only scans subscriptions and enqueues update messages.
-    Concurrency and locking are handled by the update consumer.
+    Scheduler scans subscriptions and enqueues update messages with backlog guard,
+    subscription-level enqueue dedupe, and simple cursor-based batching.
     """
 
     @classmethod
     def run(cls):
         try:
+            # Backpressure: skip when backlog high
+            try:
+                qlen_raw = client.xlen(constants.QUEUE_SUBSCRIPTION_UPDATE)
+                qlen = int(qlen_raw) if isinstance(qlen_raw, (int, str)) else 0
+            except Exception:
+                qlen = 0
+            if qlen > settings.SUB_UPDATE_BACKLOG_MAX:
+                logger.warning(f"Backlog high ({qlen}), skip this tick")
+                return
+
+            # Cursor-based batching
+            cursor_key = "subscription:schedule:cursor"
+            try:
+                last_id_raw = client.get(cursor_key)
+                last_id = int(last_id_raw) if isinstance(last_id_raw, (int, str)) else 0
+            except Exception:
+                last_id = 0
+
             with get_session() as session:
-                subscriptions = session.scalars(
-                    select(Subscription).where(Subscription.is_deleted == False).order_by(Subscription.id.desc())
+                batch = session.scalars(
+                    select(Subscription)
+                    .where(Subscription.is_deleted == False, Subscription.id > last_id)
+                    .order_by(Subscription.id.asc())
+                    .limit(settings.SUB_UPDATE_BATCH_SIZE)
                 ).all()
+                # If reached end, wrap around from beginning
+                if not batch:
+                    batch = session.scalars(
+                        select(Subscription)
+                        .where(Subscription.is_deleted == False)
+                        .order_by(Subscription.id.asc())
+                        .limit(settings.SUB_UPDATE_BATCH_SIZE)
+                    ).all()
 
             from services import message_service
-            for sub in subscriptions:
+            enqueued = 0
+            for sub in batch:
                 try:
-                    lock = DistributedLock(f"lock:subscription:update:{sub.id}")
-                    if lock.is_locked():
-                        logger.info(f"Update in progress, skip scheduled enqueue: subscription_id={sub.id}")
+                    # Enqueue dedupe flag for scheduled
+                    flag = f"{constants.REDIS_KEY_SUBSCRIPTION_ENQUEUED_SCHEDULED_PREFIX}{sub.id}"
+                    if not client.set(flag, 1, nx=True, ex=settings.SUB_ENQUEUED_TTL_SECONDS):
                         continue
 
                     sub_detail = subscription_service.get_subscription_by_id(sub.id)
@@ -167,8 +198,17 @@ class AutoUpdateChannelVideo(BaseTask):
                     }
                     message = message_service.create_message(content)
                     RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE, message.to_dict())
+                    enqueued += 1
                 except Exception as e:
                     logger.error(f"Failed to enqueue update for subscription {sub.id}: {e}", exc_info=True)
+
+            # Advance cursor
+            if batch:
+                try:
+                    client.set(cursor_key, batch[-1].id)
+                except Exception:
+                    pass
+            logger.info(f"AutoUpdateChannelVideo: enqueued {enqueued} subscriptions")
         except Exception as e:
             logger.error(f"AutoUpdateChannelVideo.run unexpected error: {e}", exc_info=True)
 

@@ -78,6 +78,12 @@ def _process_extract_message_compat(message: Dict[str, Any]):
             logger.warning(f"Subscription {params.subscription_id} not found or deleted")
             return
 
+        # Refresh extracting cache TTL to avoid premature expiry during long waits
+        try:
+            task_cache.set_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
+        except Exception:
+            pass
+
         queue_name = _resolve_extract_queue(params)
         RedisStreamProducer().send(queue_name, message)
 
@@ -148,6 +154,11 @@ def process_video_extract(message: Dict[str, Any]):
     finally:
         if params and params.url:
             task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
+            # Clear per-video enqueued flag after processing
+            try:
+                task_cache.delete_video_enqueued(params.url)
+            except Exception:
+                pass
 
 
 def _get_video_info(url, queue_name: str):

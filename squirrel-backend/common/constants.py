@@ -16,6 +16,11 @@ REDIS_KEY_VIDEO_EXTRACT_CACHE = 'video:extract:cache'
 # Subscription update progress and flags
 REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX = 'subscription:update:progress:'
 REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX = 'subscription:update:manual_pending:'
+# New: subscription enqueued flags (separate for scheduled/manual)
+REDIS_KEY_SUBSCRIPTION_ENQUEUED_SCHEDULED_PREFIX = 'subscription:update:enqueued:scheduled:'
+REDIS_KEY_SUBSCRIPTION_ENQUEUED_MANUAL_PREFIX = 'subscription:update:enqueued:manual:'
+# New: per-video enqueued flag prefix
+REDIS_KEY_VIDEO_EXTRACT_ENQUEUED_PREFIX = 'video:extract:enqueued:'
 
 VIDEO_EXTRACT_FIELD_NAME = 'is_extract'
 VIDEO_DOWNLOAD_FIELD_NAME = 'is_download'

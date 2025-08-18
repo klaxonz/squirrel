@@ -7,6 +7,7 @@ from services.subscription_progress_service import tick_progress, maybe_complete
 from dto.video_dto import VideoExtractDto
 from services import video_service, message_service, subscription_service
 from mq.producer import RedisStreamProducer
+from core.config import settings
 
 logger = logging.getLogger()
 client = RedisClient.get_instance().client
@@ -35,16 +36,25 @@ def start(params: VideoExtractDto):
             tick_progress(params.subscription_id)
             maybe_complete(params.subscription_id)
             return
+        # Per-video enqueued guard (48h TTL)
+        if task_cache.is_video_enqueued(params.url):
+            logger.debug(f"{params.url} is already enqueued for extract")
+            return
         if __check_video_extracting(params.url):
             logger.debug(f"{params.url} is currently being extracted")
-            # 如果标记存在但已过期，get_extract_cache 会自动清理并返回 None；
-            # 若确实仍在解析，先不推进 processed，避免重复计数。
             return
     if not __check_subscription_exist(params.subscription_id):
         logger.info(f"subscription {params.subscription_id} is not exist")
         tick_progress(params.subscription_id)
         maybe_complete(params.subscription_id)
         return
+
+    # Set video enqueued flag before enqueue
+    if params.only_extract:
+        if not task_cache.set_video_enqueued(params.url, settings.VIDEO_EXTRACT_ENQUEUED_TTL_SECONDS):
+            logger.debug(f"{params.url} enqueue race detected, skip")
+            return
+
     content = params.model_dump()
     message = message_service.create_message(content)
     if params.is_manual:
@@ -52,5 +62,6 @@ def start(params: VideoExtractDto):
     else:
         RedisStreamProducer().send(constants.QUEUE_VIDEO_EXTRACT_SCHEDULED, message.to_dict())
 
+    # Keep legacy extracting cache to avoid duplicate processing counts
     task_cache.set_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
 

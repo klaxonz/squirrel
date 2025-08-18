@@ -10,6 +10,7 @@ from dto.subscription_update_dto import SubscriptionUpdateDto
 from models.message import Message
 from services import subscription_service
 from services.subscription_update_service import SubscriptionUpdateService
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 client = RedisClient.get_instance().get_client()
@@ -51,6 +52,13 @@ def _process_subscription_update(message: Dict[str, Any], is_manual: bool) -> No
     if is_manual:
         client.set(_manual_flag_key(sub.id), 1, ex=120)
 
+    # Ensure scheduled/manual enqueued flag exists and refresh TTL (48h)
+    enq_flag = (
+        f"{constants.REDIS_KEY_SUBSCRIPTION_ENQUEUED_MANUAL_PREFIX}{sub.id}" if is_manual
+        else f"{constants.REDIS_KEY_SUBSCRIPTION_ENQUEUED_SCHEDULED_PREFIX}{sub.id}"
+    )
+    client.set(enq_flag, 1, ex=settings.SUB_ENQUEUED_TTL_SECONDS)
+
     try:
         SubscriptionUpdateService.update_subscription_videos(sub, is_manual=is_manual)
         sub_name = getattr(sub, 'name', f'subscription_{params.subscription_id}')
@@ -60,6 +68,11 @@ def _process_subscription_update(message: Dict[str, Any], is_manual: bool) -> No
         set_progress(sub.id, {"status": "failed", "lastError": str(e)})
         raise
     finally:
+        # Clear enqueued flag on completion
+        try:
+            client.delete(enq_flag)
+        except Exception:
+            pass
         if is_manual:
             _clear_manual_flag(sub.id)
 
