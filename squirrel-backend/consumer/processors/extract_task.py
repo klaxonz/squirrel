@@ -103,7 +103,7 @@ def _process_extract_message_compat(message: Dict[str, Any]):
 @mq_consumer("queue::video::extract::bilibili::manual", group="extract-site")
 @mq_consumer("queue::video::extract::bilibili::scheduled", group="extract-site")
 @mq_consumer("queue::video::extract::youtube::manual", group="extract-site")
-@mq_consumer("queue::video::extract::youtube::scheduled", group="extract-site")
+@mq_consumer("queue::video::extract::youtube::scheduled", group="extract-site", consumer_count=20)
 @mq_consumer("queue::video::extract::pornhub::manual", group="extract-site")
 @mq_consumer("queue::video::extract::pornhub::scheduled", group="extract-site")
 @mq_consumer("queue::video::extract::javdb::manual", group="extract-site", consumer_count=1)
