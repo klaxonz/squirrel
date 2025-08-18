@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # 新增：订阅更新反压与批大小，以及去重标记 TTL
     SUB_UPDATE_BACKLOG_MAX: int = 5000
-    SUB_UPDATE_BATCH_SIZE: int = 100
+    SUB_UPDATE_BATCH_SIZE: int = 1000
     SUB_ENQUEUED_TTL_SECONDS: int = 2 * 24 * 3600
     VIDEO_EXTRACT_ENQUEUED_TTL_SECONDS: int = 2 * 24 * 3600
 
