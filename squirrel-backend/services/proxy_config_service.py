@@ -57,6 +57,17 @@ class ProxyConfigService:
                 max_connections=40,
                 keepalive_expiry=60.0,
                 enable_http2=True
+            ),
+            "youtube.com": ProxyConfig(
+                domain="youtube.com",
+                timeout=180.0,
+                chunk_size=2 * 1024 * 1024,
+                max_retries=6,
+                connect_timeout=30.0,
+                read_timeout=180.0,
+                max_connections=60,
+                keepalive_expiry=45.0,
+                enable_http2=True
             )
         }
     

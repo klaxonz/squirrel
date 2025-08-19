@@ -3,6 +3,7 @@ import subprocess
 from typing import Tuple
 
 from pytubefix import YouTube
+from urllib.parse import quote
 
 from dto.video_dto import VideoUrlDto
 from handlers.video_url.base import VideoUrlHandler, VideoUrlExtractionError
@@ -26,9 +27,13 @@ class YouTubeHandler(VideoUrlHandler):
             video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
             audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
 
+            proxy_prefix_path = f"/api/video/proxy?domain=youtube.com"
+            v_url = video_stream.url if video_stream else None
+            a_url = audio_stream.url if audio_stream else None
+
             return VideoUrlDto(
-                video_url=video_stream.url if video_stream else None,
-                audio_url=audio_stream.url if audio_stream else None,
+                video_url=(f"{proxy_prefix_path}&url=" + quote(v_url)) if v_url else None,
+                audio_url=(f"{proxy_prefix_path}&url=" + quote(a_url)) if a_url else None,
             )
 
         except Exception as e:

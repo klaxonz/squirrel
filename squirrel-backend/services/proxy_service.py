@@ -11,6 +11,7 @@ from proxy.pornhub import PornhubProxy
 from proxy.video_proxy import VideoProxy
 from services.proxy_config_service import ProxyConfigFactory
 from exceptions.proxy_exceptions import UnsupportedDomainException, ProxyException
+from proxy.youtube import YouTubeProxy
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,8 @@ class VideoProxyService(ProxyServiceInterface):
         self._proxy_registry: Dict[str, Type[VideoProxy]] = {
             "bilibili.com": BilibiliProxy,
             "javdb.com": JavdbProxy,
-            "pornhub.com": PornhubProxy
+            "pornhub.com": PornhubProxy,
+            "youtube.com": YouTubeProxy,
         }
         self._config_service = ProxyConfigFactory.get_config_service()
     
