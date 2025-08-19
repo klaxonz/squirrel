@@ -1,7 +1,7 @@
 import logging
 import re
 from typing import Dict
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 import httpx
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
@@ -81,14 +81,18 @@ class PornhubProxy(VideoProxy):
                 # Use enhanced headers with retry logic
                 headers = self.headers.copy()
 
+                # Parse URL to handle query parameters when detecting m3u8 resources
+                parsed = urlparse(url)
+                path_lower = parsed.path.lower()
+
                 # For small files (like m3u8), use direct download
-                if url.endswith('.m3u8') or 'playlist' in url.lower():
+                if path_lower.endswith('.m3u8') or 'playlist' in url.lower():
                     response = await client.get(url, headers=headers)
                     response.raise_for_status()
                     content = response.content
                     content_type = response.headers.get('content-type', '')
 
-                    if url.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
+                    if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
                         return await self.handle_m3u8(url, content)
 
                     return StreamingResponse(
