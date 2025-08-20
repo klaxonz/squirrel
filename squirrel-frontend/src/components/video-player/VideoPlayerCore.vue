@@ -189,24 +189,6 @@ watch(() => props.externalError, (info) => {
   } catch (_) {}
 })
 
-
-const clearInlineError = () => { errorState.value.show = false }
-
-const handleRetry = () => {
-  clearInlineError()
-  try {
-    if (props.isHlsStream) {
-      // 重新初始化 HLS
-      reinitializeHls()
-    } else if (videoElement.value) {
-      // 重新加载并尝试播放
-      videoElement.value.load()
-      const p = videoElement.value.play()
-      if (p && typeof p.then === 'function') p.catch(() => {})
-    }
-  } catch (e) {}
-}
-
 const handleVideoElementError = (evt) => {
   showInlineError(evt)
 }
@@ -214,24 +196,10 @@ const handleVideoElementError = (evt) => {
 // HLS播放器管理
 const {
   initializeHls,
-  reinitializeHls
 } = useHlsPlayer({
   playerState: props.playerState,
   videoRef: videoElement,
-  props,
-  onProgress: (sample) => {
-    try {
-      console.log('Bandwidth sample:', sample)
-      const loaded = sample?.loaded ?? 0
-      const duration = sample?.durationSec ?? 0
-      if (props.onBandwidthSample && loaded > 0 && duration > 0) {
-        props.onBandwidthSample(loaded, duration)
-      }
-    } catch (e) {}
-  },
-  onError: (info) => {
-    showInlineError(info)
-  }
+  props
 })
 
 // 视频事件处理
@@ -481,6 +449,19 @@ defineExpose({
   background: #000000;
 }
 
+.video-core-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.1) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.video-core-container:hover .hover-gradient {
+  @apply opacity-100;
+}
+
 .video-click-layer {
   @apply absolute inset-0 z-10 flex;
 }
@@ -522,58 +503,9 @@ defineExpose({
   animation: skipIconPulse 0.5s ease-out;
 }
 
-/* 内联错误提示（非阻断） */
-.inline-error {
-  position: absolute;
-  left: 24px;
-  bottom: 72px;
-  z-index: 24;
-  color: #fff;
-  background: rgba(0,0,0,.6);
-  border-radius: 12px;
-  padding: 8px 12px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  pointer-events: auto;
-}
-.inline-text { font-size: 13px; opacity: .95; }
-.inline-text .sep { margin: 0 6px; opacity: .7; }
-.inline-text .code { opacity: .75; }
-.link-btn { background: transparent; color: #9ecbff; border: none; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
-.link-btn.help { color: #b0f0ff; }
-
 .video-player {
   @apply w-full h-full object-contain;
 }
-
-/* YouTube 风格错误覆盖层 */
-.error-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: 20;
-}
-.error-box {
-  color: #fff;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  padding: 14px 16px;
-  border-radius: 10px;
-  max-width: 84%;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-}
-.error-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-.error-message { font-size: 14px; opacity: .95; }
-.error-meta { margin-top: 8px; font-size: 12px; opacity: .8; }
-.error-meta .sep { margin: 0 8px; opacity: .6; }
-.error-actions { margin-top: 12px; display: flex; gap: 12px; align-items: center; }
-.btn { cursor: pointer; border: none; }
-.btn-primary { color: #111; background: #fff; border-radius: 18px; padding: 6px 12px; font-weight: 600; }
-.btn-link { color: #9ecbff; text-decoration: none; font-size: 13px; }
 
 .play-state-indicator {
   @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
@@ -599,10 +531,6 @@ defineExpose({
     rgba(0,0,0,0.3) 30%,
     transparent 60%
   );
-}
-
-.video-core-container:hover .hover-gradient {
-  @apply opacity-100;
 }
 
 @keyframes playIndicatorPulse {
@@ -635,13 +563,4 @@ defineExpose({
   }
 }
 
-/* YouTube风格的视频容器 */
-.video-core-container::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.1) 100%);
-  pointer-events: none;
-  z-index: 1;
-}
 </style>
