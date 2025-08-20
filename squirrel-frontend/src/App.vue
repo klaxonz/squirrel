@@ -54,7 +54,6 @@ import RefreshCenter from './components/RefreshCenter.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 import { isMobile } from "./composables/useMobile.js";
 import { useRoute } from 'vue-router';
-import './styles/layout.css'
 import { usePodcasts } from './composables/usePodcasts';
 import { useUser } from './composables/useUser';
 
