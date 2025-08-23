@@ -4,11 +4,9 @@ from sites.subscription_registry import SubscriptionRegistry
 
 
 class SubscriptionFactory:
-    """Factory class for creating subscription instances"""
 
     @classmethod
     def create_subscription(cls, url: str) -> BaseSubscription:
-        """Create a subscription instance for the given URL"""
         parsed_url = urlparse(url)
         domain_parts = parsed_url.netloc.split('.')
 
@@ -22,5 +20,4 @@ class SubscriptionFactory:
 
     @classmethod
     def get_supported_domains(cls) -> list[str]:
-        """Get list of supported platform domains"""
         return SubscriptionRegistry.get_supported_domains()

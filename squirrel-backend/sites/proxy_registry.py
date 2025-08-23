@@ -1,15 +1,14 @@
 import logging
 from typing import Dict, Type, Optional
-from sites.proxy import VideoProxy
 
 logger = logging.getLogger(__name__)
 
 
 class ProxyRegistry:
-    _proxies: Dict[str, Type[VideoProxy]] = {}
+    _proxies: Dict[str, Type] = {}
 
     @classmethod
-    def register(cls, proxy_class: Type[VideoProxy]):
+    def register(cls, proxy_class: Type):
         if not hasattr(proxy_class, 'domain') or not getattr(proxy_class, 'domain'):
             raise AttributeError(
                 f"Proxy class '{proxy_class.__name__}' must have a non-empty 'domain' class attribute to be registered."
@@ -29,7 +28,7 @@ class ProxyRegistry:
         return proxy_class
 
     @classmethod
-    def get_proxy_class(cls, domain: str) -> Optional[Type[VideoProxy]]:
+    def get_proxy_class(cls, domain: str) -> Optional[Type]:
         return cls._proxies.get(domain)
 
 

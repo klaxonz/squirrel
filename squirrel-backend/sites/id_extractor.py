@@ -30,6 +30,3 @@ class IdExtractorFactory:
         raise ValueError(f"No suitable ID extractor found for URL: {url}")
 
 
-def extract_id_from_url(url: str) -> str:
-    extractor = IdExtractorFactory.get(url)
-    return extractor.extract_id()

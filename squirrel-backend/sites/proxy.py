@@ -1,9 +1,9 @@
 import logging
+from typing import Optional
 import httpx
-from typing import Optional, Dict
 from fastapi import Request, HTTPException
 from starlette.responses import StreamingResponse
-from sites.proxy_manager import ProxyManager
+from sites.proxy_config import ProxyConfigFactory
 from sites.proxy_registry import ProxyRegistry
 
 logger = logging.getLogger(__name__)
@@ -14,14 +14,7 @@ class VideoProxy:
 
     def __init__(self, request: Request):
         self.request = request
-        self.proxy_manager = ProxyManager()
-
-        if not self.domain:
-            raise ValueError("Proxy class must have a 'domain' attribute.")
-
-    @property
-    def headers(self) -> Dict[str, str]:
-        raise NotImplementedError
+        self.proxy_config = ProxyConfigFactory.create_proxy_config(self.domain)
 
     def _get_raw_range_header(self) -> Optional[str]:
         """Return the raw Range header (preserve start-end) if present"""
@@ -39,8 +32,7 @@ class VideoProxy:
             http2=True
         )
 
-        # 优先站点/域名配置的 headers；没有再回退到子类定义
-        upstream_headers = self.proxy_manager.get_headers_for_url(url, fallback=self.headers.copy())
+        upstream_headers = ProxyConfigFactory.create_proxy_config(self.domain).get_site_headers()
 
         range_header = self._get_raw_range_header()
         if range_header:
@@ -91,4 +83,3 @@ class ProxyFactory:
             return proxy_class(request)
 
         raise ValueError(f"No proxy registered for domain: {domain}")
-

@@ -3,7 +3,6 @@ import os
 import re
 import glob
 import tempfile
-
 import requests
 from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response
 from fastapi.responses import PlainTextResponse
@@ -18,7 +17,6 @@ from sites.meta import VideoFactory
 from models.user import User
 from schemas.video import DownloadVideoRequest, SortBy
 from services import video_service, subscription_video_service, subscription_service
-from services.proxy_service import ProxyServiceFactory
 from utils.jwt_helper import get_current_user
 
 logger = logging.getLogger()
@@ -121,28 +119,6 @@ async def proxy_video(domain: str, url: str, request: Request):
     from sites.proxy import ProxyFactory
     proxy = ProxyFactory.create_proxy(domain, request)
     return await proxy.handle_stream(url)
-
-
-@router.get("/api/video/proxy/domains")
-def get_supported_domains():
-    """获取支持的代理域名列表"""
-    proxy_service = ProxyServiceFactory.get_proxy_service()
-    domains = proxy_service.get_supported_domains()
-    return response.success({
-        "domains": domains,
-        "count": len(domains)
-    })
-
-
-@router.get("/api/video/proxy/health")
-async def get_proxy_health():
-    """获取代理服务健康状态"""
-    proxy_service = ProxyServiceFactory.get_proxy_service()
-    health_status = await proxy_service.get_proxy_health_status()
-    return response.success({
-        "health_status": health_status,
-        "overall_healthy": all(health_status.values())
-    })
 
 
 @router.get("/api/video/subtitles")

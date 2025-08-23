@@ -31,28 +31,7 @@ class HandlerRegistry:
     @classmethod
     def get_handler(cls, domain: str) -> Optional[Type]:
         return cls._handlers.get(domain)
-    
-    @classmethod
-    def get_all_handlers(cls) -> Dict[str, Type]:
-        return cls._handlers.copy()
-    
-    @classmethod
-    def is_registered(cls, domain: str) -> bool:
-        return domain in cls._handlers
-    
-    @classmethod
-    def unregister(cls, domain: str) -> bool:
-        if domain in cls._handlers:
-            del cls._handlers[domain]
-            logger.info(f"Unregistered handler for domain '{domain}'")
-            return True
-        return False
-    
-    @classmethod
-    def clear_all(cls):
-        cls._handlers.clear()
-        logger.info("Cleared all registered handlers")
-    
+
     @classmethod
     def get_supported_domains(cls) -> list:
         return list(cls._handlers.keys())

@@ -1,13 +1,11 @@
 import logging
 import re
-from typing import Dict
 from urllib.parse import urljoin, urlparse
 import httpx
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 from sites.proxy import VideoProxy
 from sites.proxy_registry import register_proxy
-from sites.proxy_config import get_domain_config
 
 logger = logging.getLogger()
 
@@ -15,20 +13,6 @@ logger = logging.getLogger()
 @register_proxy
 class PornhubProxy(VideoProxy):
     domain = 'pornhub.com'
-
-    @property
-    def headers(self) -> Dict[str, str]:
-        # 使用配置中的自定义headers，如果有的话
-        domain_config = get_domain_config(self.domain)
-        if domain_config and domain_config.custom_headers:
-            return domain_config.custom_headers.copy()
-
-        # 默认headers
-        return {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Referer': 'https://www.pornhub.com/',
-            'Origin': 'https://www.pornhub.com/'
-        }
 
     async def handle_m3u8(self, url: str, content: bytes) -> StreamingResponse:
         """处理m3u8文件"""
@@ -79,7 +63,7 @@ class PornhubProxy(VideoProxy):
 
             async with httpx.AsyncClient(**client_config) as client:
                 # Use enhanced headers with retry logic
-                headers = self.headers.copy()
+                headers = self.proxy_config.get_site_headers()
 
                 # Parse URL to handle query parameters when detecting m3u8 resources
                 parsed = urlparse(url)
