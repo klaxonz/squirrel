@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "4d0308dfe689c479d1fbd2cc6b6913b9d9848870b11ae0f52d174cab1ffa97f0"
+            "sha256": "a2e4da1bfffe3145a7282be3d8891ae79605eef21afa655b29f174fbce8973bf"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -1167,6 +1167,14 @@
             "markers": "python_version >= '3.9'",
             "version": "==1.5.1"
         },
+        "js2py": {
+            "hashes": [
+                "sha256:39f3a6aa8469180efba3c8677271df27c31332fd1b471df1af2af58b87b8972f",
+                "sha256:40a508a79e2f8d624e3f2e604f90a1e6f46ac75b416d7f4745939ff4a2e95e09"
+            ],
+            "index": "pypi",
+            "version": "==0.74"
+        },
         "lxml": {
             "hashes": [
                 "sha256:01dab65641201e00c69338c9c2b8a0f2f484b6b3a22d10779bb417599fae32b5",
@@ -2131,6 +2139,13 @@
             "markers": "python_version >= '3.8'",
             "version": "==2.19.2"
         },
+        "pyjsparser": {
+            "hashes": [
+                "sha256:2b12842df98d83f65934e0772fa4a5d8b123b3bc79f1af1789172ac70265dd21",
+                "sha256:be60da6b778cc5a5296a69d8e7d614f1f870faf94e1b1b6ac591f2ad5d729579"
+            ],
+            "version": "==2.7.1"
+        },
         "pyparsing": {
             "hashes": [
                 "sha256:a749938e02d6fd0b59b356ca504a24982314bb090c383e3cf201c95ef7e2bfcf",
@@ -2464,6 +2479,22 @@
             ],
             "markers": "python_version >= '3.9'",
             "version": "==0.4.1"
+        },
+        "tzdata": {
+            "hashes": [
+                "sha256:1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8",
+                "sha256:b60a638fcc0daffadf82fe0f57e53d06bdec2f36c4df66280ae79bce6bd6f2b9"
+            ],
+            "markers": "platform_system == 'Windows'",
+            "version": "==2025.2"
+        },
+        "tzlocal": {
+            "hashes": [
+                "sha256:cceffc7edecefea1f595541dbd6e990cb1ea3d19bf01b2809f362a03dd7921fd",
+                "sha256:eb1a66c3ef5847adf7a834f1be0800581b683b5608e74f86ecbcef8ab91bb85d"
+            ],
+            "markers": "python_version >= '3.9'",
+            "version": "==5.3.1"
         },
         "ujson": {
             "hashes": [

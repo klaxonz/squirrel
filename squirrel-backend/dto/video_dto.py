@@ -39,6 +39,7 @@ class VideoUrlDto(BaseModel):
     """DTO for video URL response"""
     video_url: Optional[str] = None
     audio_url: Optional[str] = None
+    mpd_url: Optional[str] = None
 
     class Config:
         from_attributes = True

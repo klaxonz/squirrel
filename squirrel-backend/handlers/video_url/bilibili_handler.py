@@ -1,11 +1,46 @@
 from urllib.parse import quote
+
+
 import requests
+from botasaurus_requests import Request
+
 from dto.video_dto import VideoUrlDto
 from handlers.video_url.base import VideoUrlHandler, VideoUrlExtractionError
 from models.video import Video
 from utils.cookie import filter_cookies_to_query_string
 from downloader.id_extractor import extract_bilibili_id
 from subscribe.platforms.bilibili.sign import sign
+from botasaurus.request import request as brequest, Request
+import json
+import re
+
+
+
+@brequest(output=None, raise_exception=True, close_on_crash=True, create_error_logs=False, max_retry=10)
+def _fetch_html(req: Request, link: str) -> str:
+    resp = req.get(link, timeout=20)
+    resp.raise_for_status()
+    return resp.text
+
+
+def fetch_html(link: str) -> str:
+    return _fetch_html(link)  # type: ignore
+
+
+def extract_playinfo_from_html(html_content):
+    match = re.search(r'window\.__playinfo__=(.*?)</script>', html_content)
+    if not match:
+        return None
+
+    json_str = match.group(1).strip()
+    if json_str.endswith(';'):
+        json_str = json_str[:-1]
+
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError as e:
+        print(f"JSON parsing error: {e}")
+        return None
 
 
 class BilibiliHandler(VideoUrlHandler):
@@ -18,35 +53,16 @@ class BilibiliHandler(VideoUrlHandler):
         try:
             proxy_prefix_path = f"/api/video/proxy?domain=bilibili.com"
 
-            cookies = filter_cookies_to_query_string("https://www.bilibili.com")
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Referer': 'https://www.bilibili.com',
-                'Origin': 'https://www.bilibili.com',
-                'Accept-Language': 'zh-CN,zh;q=0.9',
-                'Cookie': cookies
-            }
+            html = fetch_html(video.url)
 
-            bv_id = extract_bilibili_id(video.url)
-            req_url = f'https://api.bilibili.com/x/web-interface/view?bvid={bv_id}'
-            resp = requests.get(req_url, headers=headers)
-            resp.raise_for_status()
+            data = extract_playinfo_from_html(html)
+            if not data:
+                raise VideoUrlExtractionError("Failed to extract playinfo data from HTML.")
 
-            response_data = resp.json()
-            if 'data' not in response_data:
-                raise VideoUrlExtractionError(f"Invalid response from Bilibili API: {response_data}")
-
-            cid = response_data['data']['cid']
-            query = sign({'bvid': bv_id, 'cid': cid, 'fnval': 144})
-            video_url = f'https://api.bilibili.com/x/player/wbi/playurl?{query}'
-            resp = requests.get(video_url, headers=headers)
-            resp.raise_for_status()
-
-            data = resp.json()['data']
             best_video_url = None
             best_audio_url = None
 
-            if 'dash' in data:
+            if 'dash' in data.get('data', {}):
                 dash_data = data['dash']
                 if 'video' in dash_data:
                     video_urls = dash_data['video']
@@ -54,13 +70,14 @@ class BilibiliHandler(VideoUrlHandler):
                 if 'audio' in dash_data:
                     audio_urls = dash_data['audio']
                     best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
-            elif 'durl' in data:
+            elif 'durl' in data.get('data', {}):
                 video_urls = data['durl']
                 best_video_url = video_urls[0]['url']
 
             return VideoUrlDto(
                 video_url=f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,
                 audio_url=f"{proxy_prefix_path}&url=" + quote(best_audio_url) if best_audio_url else None,
+                mpd_url=f"{proxy_prefix_path}&mpd="
             )
 
         except requests.RequestException as e:

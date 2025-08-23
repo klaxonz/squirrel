@@ -21,9 +21,16 @@ export default function useVideoOperations() {
         return true
       }
 
-      const response = await axios.get('/api/video/url', {
-        params: { video_id: video.id }
-      })
+      if (video.url.indexOf('bilibili.com') !== -1) {
+        const response = await axios.get('/api/video/mpd', {
+          params: { video_id: video.id }
+        })
+      } else {
+        const response = await axios.get('/api/video/url', {
+          params: { video_id: video.id }
+        })
+      }
+      
 
       const { code, msg, data } = response?.data || {}
       if (code !== 0) {

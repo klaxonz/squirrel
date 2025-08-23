@@ -6,14 +6,16 @@ import tempfile
 from typing import Optional
 
 import requests
-from fastapi import Query, APIRouter, Request, HTTPException, Depends
+from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response
 from fastapi.responses import PlainTextResponse
 from yt_dlp import YoutubeDL
+from xml.etree import ElementTree as ET
 
 import common.response as response
 from common.video_stream import VideoStreamHandler
 from core import download_config, config
 from downloader.factory import DownloaderFactory
+from handlers.video_url import bilibili_handler
 from meta.factory import VideoFactory
 from models.user import User
 from schemas.video import DownloadVideoRequest, SortBy
@@ -217,4 +219,81 @@ def get_video_subtitles(
     except Exception:
         logger.info('yt-dlp 字幕抓取失败，尝试使用备用方案 (bilibili API)')
 
+
+@router.get("/api/video/mpd")
+def get_video_mpd(
+        video_id: int = Query(..., description="视频ID"),
+):
+    """
+    获取 Bilibili 视频的 DASH MPD 文件。
+    """
+    if video_id is None:
+        raise HTTPException(status_code=400, detail="video_id is required")
+
+    video = video_service.get_video_by_id(video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    html = bilibili_handler.fetch_html(video.url)
+    if html is None:
+        raise HTTPException(status_code=500, detail="Failed to fetch video page")
+
+    play_info = bilibili_handler.extract_playinfo_from_html(html)
+    if not play_info or 'data' not in play_info or 'dash' not in play_info['data']:
+        raise HTTPException(status_code=500, detail="Failed to extract play info")
+
+    dash_data = play_info['data']['dash']
+    duration = dash_data.get('duration')
+    min_buffer_time = dash_data.get('minBufferTime')
+
+    mpd = ET.Element("MPD", xmlns="urn:mpeg:dash:schema:mpd:2011")
+    if min_buffer_time:
+        mpd.set("minBufferTime", f"PT{min_buffer_time}S")
+    if duration:
+        mpd.set("mediaPresentationDuration", f"PT{duration}S")
+    mpd.set("type", "static")
+    mpd.set("profiles", "urn:mpeg:dash:profile:isoff-on-demand:2011")
+
+    period = ET.SubElement(mpd, "Period")
+
+    # Video streams
+    if 'video' in dash_data:
+        video_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="video/mp4", mimeType="video/mp4")
+        for video_stream in dash_data['video']:
+            representation = ET.SubElement(video_adaptation_set, "Representation")
+            representation.set("id", str(video_stream['id']))
+            representation.set("codecs", video_stream['codecs'])
+            representation.set("width", str(video_stream['width']))
+            representation.set("height", str(video_stream['height']))
+            representation.set("frameRate", video_stream['frameRate'])
+            representation.set("bandwidth", str(video_stream['bandwidth']))
+            
+            base_url = ET.SubElement(representation, "BaseURL")
+            base_url.text = video_stream['baseUrl']
+            
+            segment_base = ET.SubElement(representation, "SegmentBase")
+            segment_base.set("indexRange", video_stream['SegmentBase']['indexRange'])
+            initialization = ET.SubElement(segment_base, "Initialization")
+            initialization.set("range", video_stream['SegmentBase']['Initialization'])
+
+    # Audio streams
+    if 'audio' in dash_data:
+        audio_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="audio/mp4", mimeType="audio/mp4")
+        for audio_stream in dash_data['audio']:
+            representation = ET.SubElement(audio_adaptation_set, "Representation")
+            representation.set("id", str(audio_stream['id']))
+            representation.set("codecs", audio_stream['codecs'])
+            representation.set("bandwidth", str(audio_stream['bandwidth']))
+
+            base_url = ET.SubElement(representation, "BaseURL")
+            base_url.text = audio_stream['baseUrl']
+
+            segment_base = ET.SubElement(representation, "SegmentBase")
+            segment_base.set("indexRange", audio_stream['SegmentBase']['indexRange'])
+            initialization = ET.SubElement(segment_base, "Initialization")
+            initialization.set("range", audio_stream['SegmentBase']['Initialization'])
+    
+    mpd_xml_string = ET.tostring(mpd, encoding='unicode')
+    
+    return Response(content=mpd_xml_string, media_type="application/dash+xml")
 
