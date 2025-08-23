@@ -6,12 +6,12 @@ import logging
 
 from schemas.proxy import VideoProxyRequest
 from sites.bilibili.proxy import BilibiliProxy
-from proxy.javdb import JavdbProxy
-from proxy.pornhub import PornhubProxy
+from sites.javdb.proxy import JavdbProxy
+from sites.pornhub.proxy import PornhubProxy
 from proxy.video_proxy import VideoProxy
 from services.proxy_config_service import ProxyConfigFactory
 from exceptions.proxy_exceptions import UnsupportedDomainException, ProxyException
-from proxy.youtube import YouTubeProxy
+from sites.youtube.proxy import YouTubeProxy
 
 logger = logging.getLogger(__name__)
 

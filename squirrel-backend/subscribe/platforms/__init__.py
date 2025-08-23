@@ -1,7 +1,7 @@
 from .bilibili import BilibiliSubscription
-from .javdb import JavSubscription
-from .pornhub import PornhubSubscription
-from .youtube import YouTubeSubscription
+from sites.javdb.channel import JavSubscription
+from sites.pornhub.channel import PornhubSubscription
+from sites.youtube.channel import YouTubeSubscription
 
 __all__ = [
     'YouTubeSubscription',

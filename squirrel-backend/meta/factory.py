@@ -1,8 +1,8 @@
 from .base import Video
 from sites.bilibili.meta import BilibiliVideo
-from .platforms.javdb import JavVideo
-from .platforms.pornhub import PornhubVideo
-from .platforms.youtube import YoutubeVideo
+from sites.javdb.meta import JavVideo
+from sites.pornhub.meta import PornhubVideo
+from sites.youtube.meta import YoutubeVideo
 
 
 class VideoFactory:

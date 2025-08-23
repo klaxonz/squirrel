@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 from common.http_wrapper import session
 from utils.cookie import filter_cookies_to_query_string
-from ..base import Video, Actor
+from meta.base import Video, Actor
 
 
 class JavVideo(Video):

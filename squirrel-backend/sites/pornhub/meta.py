@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 
 from common.http_wrapper import session
-from ..base import Video, Actor
+from meta.base import Video, Actor
 
 
 class PornhubVideo(Video):

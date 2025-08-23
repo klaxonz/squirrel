@@ -1,6 +1,6 @@
 from pytubefix import YouTube
 
-from ..base import Video, Actor
+from meta.base import Video, Actor
 
 
 class YoutubeVideo(Video):

@@ -1,7 +1,7 @@
 from pytubefix import Channel as YouTubeChannel
 
 from meta.channel import SubscriptionMeta
-from ..base import BaseSubscription
+from subscribe.base import BaseSubscription
 
 
 class YouTubeSubscription(BaseSubscription):
