@@ -74,7 +74,7 @@ class BilibiliHandler(VideoUrlHandler, ABC):
 
             return VideoUrlDto(
                 video_url=f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,
-                audio_url=f"{proxy_prefix_path}&url" + quote(best_audio_url) if best_audio_url else None,
+                audio_url=f"{proxy_prefix_path}&url=" + quote(best_audio_url) if best_audio_url else None,
                 mpd_url=f"/api/video/mpd?video_id={video.id}" if 'dash' in data else None
             )
 

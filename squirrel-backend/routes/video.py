@@ -200,7 +200,7 @@ def get_video_mpd(
         video_id: int = Query(..., description="视频ID"),
 ):
     """
-    获取 Bilibili 视频的 DASH MPD 文件。
+    根据不同站点生成 MPD（站点适配在 sites/* 中实现）
     """
     if video_id is None:
         raise HTTPException(status_code=400, detail="video_id is required")
@@ -209,78 +209,16 @@ def get_video_mpd(
     if video is None:
         raise HTTPException(status_code=404, detail="Video not found")
 
-    from sites.bilibili.handler import fetch_html, extract_playinfo_from_html
-    html = fetch_html(video.url)
-    if html is None:
-        raise HTTPException(status_code=500, detail="Failed to fetch video page")
-
-    play_info = extract_playinfo_from_html(html)
-    if not play_info or 'data' not in play_info or 'dash' not in play_info['data']:
-        raise HTTPException(status_code=500, detail="Failed to extract play info")
-
-    dash_data = play_info['data']['dash']
-    duration = dash_data.get('duration')
-    min_buffer_time = dash_data.get('minBufferTime')
-
-    mpd = ET.Element("MPD", xmlns="urn:mpeg:dash:schema:mpd:2011")
-    if min_buffer_time:
-        mpd.set("minBufferTime", f"PT{min_buffer_time}S")
-    if duration:
-        mpd.set("mediaPresentationDuration", f"PT{duration}S")
-    mpd.set("type", "static")
-    mpd.set("profiles", "urn:mpeg:dash:profile:isoff-on-demand:2011")
-
-    period = ET.SubElement(mpd, "Period")
-
-    # Video streams
-    if 'video' in dash_data:
-        # 仅选择浏览器常见可播放的 H.264/AVC 轨道，避免选中 HEVC/AV1 导致下载很多却无法解码
-        video_streams = [v for v in dash_data['video'] if 'codecs' in v and ('avc' in v['codecs'] or 'avc1' in v['codecs'] or 'h264' in v['codecs'])]
-        if not video_streams:
-            video_streams = dash_data['video']  # 兜底：若没有 avc，则放开（由 dash.js 自行选择）
-
-        video_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="video", mimeType="video/mp4")
-        for video_stream in video_streams:
-            representation = ET.SubElement(video_adaptation_set, "Representation")
-            representation.set("id", str(video_stream['id']))
-            representation.set("codecs", video_stream['codecs'])
-            representation.set("width", str(video_stream['width']))
-            representation.set("height", str(video_stream['height']))
-            if 'frameRate' in video_stream:
-                representation.set("frameRate", str(video_stream['frameRate']))
-            representation.set("bandwidth", str(video_stream['bandwidth']))
-
-            base_url = ET.SubElement(representation, "BaseURL")
-            # 通过后端代理避免跨域问题
-            proxied_video_url = f"/api/video/proxy?domain=bilibili.com&url=" + requests.utils.quote(video_stream['baseUrl'], safe='')
-            base_url.text = proxied_video_url
-
-            segment_base = ET.SubElement(representation, "SegmentBase")
-            segment_base.set("indexRange", video_stream['SegmentBase']['indexRange'])
-            initialization = ET.SubElement(segment_base, "Initialization")
-            initialization.set("range", video_stream['SegmentBase']['Initialization'])
-
-    # Audio streams
-    if 'audio' in dash_data:
-        # 音频一般为 AAC（mp4a），保持全部
-        audio_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="audio", mimeType="audio/mp4")
-        for audio_stream in dash_data['audio']:
-            representation = ET.SubElement(audio_adaptation_set, "Representation")
-            representation.set("id", str(audio_stream['id']))
-            representation.set("codecs", audio_stream['codecs'])
-            representation.set("bandwidth", str(audio_stream['bandwidth']))
-
-            base_url = ET.SubElement(representation, "BaseURL")
-            # 通过后端代理避免跨域问题
-            proxied_audio_url = f"/api/video/proxy?domain=bilibili.com&url=" + requests.utils.quote(audio_stream['baseUrl'], safe='')
-            base_url.text = proxied_audio_url
-
-            segment_base = ET.SubElement(representation, "SegmentBase")
-            segment_base.set("indexRange", audio_stream['SegmentBase']['indexRange'])
-            initialization = ET.SubElement(segment_base, "Initialization")
-            initialization.set("range", audio_stream['SegmentBase']['Initialization'])
-
-    mpd_xml_string = ET.tostring(mpd, encoding='unicode')
-    
-    return Response(content=mpd_xml_string, media_type="application/dash+xml")
+    try:
+        from sites.mpd import MpdFactory
+        mpd_xml = MpdFactory.build_mpd_for_video(video)
+        if not mpd_xml:
+            raise HTTPException(status_code=500, detail="Failed to build MPD")
+        return Response(content=mpd_xml, media_type="application/dash+xml")
+    except ValueError as e:
+        # 未注册对应站点的 MPD 构建器
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Failed to build MPD")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 

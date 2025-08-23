@@ -4,7 +4,6 @@ from datetime import datetime
 from fastapi import APIRouter, Query, Depends
 from sqlalchemy import select
 from typing import Dict, Any, cast
-
 import common.response as response
 from core.database import get_session
 from core.cache import RedisClient
@@ -12,11 +11,7 @@ from models.links import UserSubscription
 from models.message import Message
 from models.subscription import Subscription
 from models.user import User
-from schemas.subscription import (
-    SubscribeRequest,
-    UnsubscribeRequest,
-    ToggleStatusRequest
-)
+from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest
 from services import subscription_service, message_service
 from core.cache import DistributedLock
 from services.subscription_progress_service import set_progress

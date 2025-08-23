@@ -1,8 +1,9 @@
 from abc import ABC
 from urllib.parse import quote
 import phub
+from core.exceptions.video_exceptions import VideoUrlExtractionError
 from schemas.video.dto.video_dto import VideoUrlDto
-from sites.handler import VideoUrlExtractionError, VideoUrlHandler
+from sites.handler import VideoUrlHandler
 from sites.handler_registry import register_handler
 from models.video import Video
 
