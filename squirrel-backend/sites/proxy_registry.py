@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Type, Optional
-from sites.video_proxy import VideoProxy
+from sites.proxy import VideoProxy
 
 logger = logging.getLogger(__name__)
 

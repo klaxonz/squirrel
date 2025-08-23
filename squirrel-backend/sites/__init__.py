@@ -1,4 +1,4 @@
-from .bilibili import downloader, handler, id_extractor, subscription, meta
-from .youtube import downloader, handler, id_extractor, subscription, meta
-from .pornhub import downloader, handler, id_extractor, subscription, meta
-from .javdb import downloader, handler, id_extractor, subscription, meta
+from .bilibili import downloader, handler, id_extractor, subscription, meta, config
+from .youtube import downloader, handler, id_extractor, subscription, meta, config
+from .pornhub import downloader, handler, id_extractor, subscription, meta, config
+from .javdb import downloader, handler, id_extractor, subscription, meta, config

@@ -5,9 +5,8 @@ from urllib.parse import urljoin, urlparse
 import httpx
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
-
+from sites.proxy import VideoProxy
 from sites.proxy_registry import register_proxy
-from sites.video_proxy import VideoProxy
 from sites.proxy_config import get_domain_config
 
 logger = logging.getLogger()

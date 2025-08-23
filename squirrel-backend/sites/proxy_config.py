@@ -1,9 +1,3 @@
-"""
-代理配置模块
-
-集中管理代理相关的配置参数，支持环境变量覆盖
-"""
-
 import os
 from dataclasses import dataclass
 from typing import Dict, Optional
@@ -17,26 +11,26 @@ class NetworkConfig:
     default_read_timeout: float = 120.0
     default_write_timeout: float = 30.0
     default_pool_timeout: float = 10.0
-    
+
     # 连接池设置
     max_connections: int = 100
     max_keepalive_connections: int = 20
     keepalive_expiry: float = 30.0
-    
+
     # 重试设置
     default_max_retries: int = 5
     max_retry_delay: float = 30.0
     retry_backoff_factor: float = 2.0
-    
+
     # 块大小设置
     min_chunk_size: int = 256 * 1024  # 256KB
     default_chunk_size: int = 1024 * 1024  # 1MB
     max_chunk_size: int = 8 * 1024 * 1024  # 8MB
-    
+
     # 性能优化
     enable_http2: bool = True
     enable_compression: bool = True
-    
+
     @classmethod
     def from_env(cls) -> 'NetworkConfig':
         """从环境变量创建配置"""
@@ -45,19 +39,19 @@ class NetworkConfig:
             default_read_timeout=float(os.getenv('PROXY_READ_TIMEOUT', cls.default_read_timeout)),
             default_write_timeout=float(os.getenv('PROXY_WRITE_TIMEOUT', cls.default_write_timeout)),
             default_pool_timeout=float(os.getenv('PROXY_POOL_TIMEOUT', cls.default_pool_timeout)),
-            
+
             max_connections=int(os.getenv('PROXY_MAX_CONNECTIONS', cls.max_connections)),
             max_keepalive_connections=int(os.getenv('PROXY_MAX_KEEPALIVE', cls.max_keepalive_connections)),
             keepalive_expiry=float(os.getenv('PROXY_KEEPALIVE_EXPIRY', cls.keepalive_expiry)),
-            
+
             default_max_retries=int(os.getenv('PROXY_MAX_RETRIES', cls.default_max_retries)),
             max_retry_delay=float(os.getenv('PROXY_MAX_RETRY_DELAY', cls.max_retry_delay)),
             retry_backoff_factor=float(os.getenv('PROXY_RETRY_BACKOFF', cls.retry_backoff_factor)),
-            
+
             min_chunk_size=int(os.getenv('PROXY_MIN_CHUNK_SIZE', cls.min_chunk_size)),
             default_chunk_size=int(os.getenv('PROXY_DEFAULT_CHUNK_SIZE', cls.default_chunk_size)),
             max_chunk_size=int(os.getenv('PROXY_MAX_CHUNK_SIZE', cls.max_chunk_size)),
-            
+
             enable_http2=os.getenv('PROXY_ENABLE_HTTP2', 'true').lower() == 'true',
             enable_compression=os.getenv('PROXY_ENABLE_COMPRESSION', 'true').lower() == 'true'
         )
@@ -78,99 +72,58 @@ class DomainConfig:
 
 
 class ProxyConfigManager:
-    """代理配置管理器"""
-    
+    """代理配置管理器
+
+    变更：不再在此类中硬编码站点/域名的默认配置。
+    各站点应在各自包内（如 sites/youtube/config.py）调用注册函数完成配置注入。
+    """
+
     def __init__(self):
         self.network_config = NetworkConfig.from_env()
+        # 域名 -> DomainConfig
         self._domain_configs: Dict[str, DomainConfig] = {}
-        self._initialize_default_configs()
-    
-    def _initialize_default_configs(self):
-        """初始化默认域名配置"""
-        # Bilibili 配置 - 相对稳定的服务
-        self._domain_configs['bilibili.com'] = DomainConfig(
-            domain='bilibili.com',
-            connect_timeout=30.0,
-            read_timeout=120.0,
-            max_retries=5,
-            chunk_size=2 * 1024 * 1024,  # 2MB
-            max_connections=50,
-            keepalive_expiry=30.0,
-            enable_http2=True,
-            custom_headers={
-                'Referer': 'https://www.bilibili.com',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-        )
-        
-        # Javdb 配置 - 可能较慢的服务
-        self._domain_configs['javdb.com'] = DomainConfig(
-            domain='javdb.com',
-            connect_timeout=45.0,
-            read_timeout=150.0,
-            max_retries=6,
-            chunk_size=3 * 1024 * 1024,  # 3MB
-            max_connections=30,
-            keepalive_expiry=45.0,
-            enable_http2=True,
-            custom_headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': 'https://missav.ws/'
-            }
-        )
-        
-        # Pornhub 配置 - 大文件流媒体
-        self._domain_configs['pornhub.com'] = DomainConfig(
-            domain='pornhub.com',
-            connect_timeout=30.0,
-            read_timeout=180.0,
-            max_retries=7,
-            chunk_size=4 * 1024 * 1024,  # 4MB
-            max_connections=40,
-            keepalive_expiry=60.0,
-            enable_http2=True,
-            custom_headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': 'https://www.pornhub.com/'
-            }
-        )
+        # 站点 -> 站点级默认 headers
+        self._site_headers: Dict[str, Dict[str, str]] = {}
+        # 域名 -> 站点标识
+        self._domain_to_site: Dict[str, str] = {}
 
-        # YouTube 配置 - googlevideo 流地址需要正确的来源头
-        self._domain_configs['youtube.com'] = DomainConfig(
-            domain='youtube.com',
-            connect_timeout=30.0,
-            read_timeout=180.0,
-            max_retries=6,
-            chunk_size=2 * 1024 * 1024,  # 2MB
-            max_connections=60,
-            keepalive_expiry=45.0,
-            enable_http2=True,
-            custom_headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': 'https://www.youtube.com/',
-                'Origin': 'https://www.youtube.com'
-            }
-        )
-    
-    def get_domain_config(self, domain: str) -> Optional[DomainConfig]:
-        """获取域名配置"""
-        return self._domain_configs.get(domain)
-    
-    def set_domain_config(self, config: DomainConfig):
-        """设置域名配置"""
+    # ---------------- 注册接口：供各站点模块调用 ----------------
+    def register_site(self, site: str, site_headers: Optional[Dict[str, str]] = None):
+        self._site_headers[site] = dict(site_headers or {})
+
+    def register_domain(self, site: str, config: DomainConfig):
         self._domain_configs[config.domain] = config
-    
-    def get_all_domains(self) -> list[str]:
-        """获取所有支持的域名"""
-        return list(self._domain_configs.keys())
-    
-    def update_domain_config(self, domain: str, **kwargs):
-        """更新域名配置"""
-        if domain in self._domain_configs:
-            config = self._domain_configs[domain]
-            for key, value in kwargs.items():
-                if hasattr(config, key):
-                    setattr(config, key, value)
+        self._domain_to_site[config.domain] = site
+
+    # ---------------- 查询接口 ----------------
+    def get_domain_config(self, domain: str) -> Optional[DomainConfig]:
+        """精确域名配置（兼容旧接口）"""
+        return self._domain_configs.get(domain)
+
+    def _suffix_lookup(self, host: str) -> Optional[str]:
+        if not host:
+            return None
+        parts = host.split('.')
+        candidates = ['.'.join(parts[i:]) for i in range(len(parts))]
+        for cand in candidates:
+            if cand in self._domain_configs:
+                return cand
+        return None
+
+    def get_domain_config_by_host(self, host: str) -> Optional[DomainConfig]:
+        key = self._suffix_lookup(host)
+        return self._domain_configs.get(key) if key else None
+
+    def get_effective_headers_by_host(self, host: str) -> Dict[str, str]:
+        key = self._suffix_lookup(host)
+        if not key:
+            return {}
+        site = self._domain_to_site.get(key)
+        base = dict(self._site_headers.get(site, {})) if site else {}
+        dom = self._domain_configs.get(key)
+        if dom and dom.custom_headers:
+            base.update(dom.custom_headers)
+        return base
 
 
 # 全局配置实例
@@ -185,11 +138,10 @@ def get_config_manager() -> ProxyConfigManager:
     return _config_manager
 
 
-def get_network_config() -> NetworkConfig:
-    """获取网络配置"""
-    return get_config_manager().network_config
-
-
 def get_domain_config(domain: str) -> Optional[DomainConfig]:
-    """获取域名配置"""
+    """精确获取域名配置（兼容旧接口）"""
     return get_config_manager().get_domain_config(domain)
+
+
+register_site = lambda site, headers=None: get_config_manager().register_site(site, headers)
+register_domain = lambda site, cfg: get_config_manager().register_domain(site, cfg)
