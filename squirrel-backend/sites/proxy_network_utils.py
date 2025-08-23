@@ -1,8 +1,8 @@
 import asyncio
 import logging
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
+
 import httpx
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 

@@ -1,19 +1,19 @@
 from typing import Dict
 from starlette.responses import StreamingResponse
 
-from proxy.video_proxy import VideoProxy
-from proxy.config import get_domain_config
+from sites.proxy_registry import register_proxy
+from sites.video_proxy import VideoProxy
+from sites.proxy_config import get_domain_config
 
 
+@register_proxy
 class YouTubeProxy(VideoProxy):
-    def _extract_domain_from_request(self) -> str:
-        """返回 YouTube 域名（用于选择域级配置）"""
-        return "youtube.com"
+    domain = 'youtube.com'
 
     @property
     def headers(self) -> Dict[str, str]:
         # 优先使用配置中的自定义 headers
-        domain_config = get_domain_config("youtube.com")
+        domain_config = get_domain_config(self.domain)
         if domain_config and domain_config.custom_headers:
             return domain_config.custom_headers.copy()
 
@@ -37,4 +37,3 @@ class YouTubeProxy(VideoProxy):
     async def handle_stream(self, url: str) -> StreamingResponse:
         # 复用父类的增强流式传输逻辑
         return await super().handle_stream(url)
-

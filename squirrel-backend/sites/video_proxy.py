@@ -8,8 +8,8 @@ import httpx
 from fastapi import Request, HTTPException
 from starlette.responses import StreamingResponse
 
-from proxy.network_utils import NetworkOptimizer, AdaptiveRetryStrategy, get_health_monitor
-from proxy.config import get_domain_config, get_network_config
+from sites.proxy_network_utils import NetworkOptimizer, AdaptiveRetryStrategy, get_health_monitor
+from sites.proxy_config import get_domain_config, get_network_config
 
 logger = logging.getLogger()
 
@@ -172,12 +172,15 @@ def _get_response_headers(resp: httpx.Response) -> Dict[str, str]:
 
 
 class VideoProxy:
+    domain: Optional[str] = None
+
     def __init__(self, request: Request):
         self.request = request
 
-        # 从URL中提取域名以获取配置
-        self._domain = self._extract_domain_from_request()
-        domain_config = get_domain_config(self._domain)
+        if not self.domain:
+            raise ValueError("Proxy class must have a 'domain' attribute.")
+
+        domain_config = get_domain_config(self.domain)
         network_config = get_network_config()
 
         # 使用配置或默认值
@@ -191,12 +194,6 @@ class VideoProxy:
             self._timeout = network_config.default_read_timeout
             self._max_retries = network_config.default_max_retries
             self._connect_timeout = network_config.default_connect_timeout
-
-    def _extract_domain_from_request(self) -> str:
-        """从请求中提取域名"""
-        # 这里可以从请求参数或其他方式获取域名
-        # 暂时返回空字符串，子类可以重写
-        return ""
 
     @property
     def headers(self) -> Dict[str, str]:

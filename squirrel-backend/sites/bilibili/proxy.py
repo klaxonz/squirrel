@@ -2,22 +2,19 @@ from typing import Dict
 import httpx
 from starlette.responses import StreamingResponse
 
-from proxy.video_proxy import VideoProxy
-from proxy.config import get_domain_config
+from sites.proxy_registry import register_proxy
+from sites.video_proxy import VideoProxy
+from sites.proxy_config import get_domain_config
 
 
+@register_proxy
 class BilibiliProxy(VideoProxy):
-    def __init__(self, request):
-        super().__init__(request)
-
-    def _extract_domain_from_request(self) -> str:
-        """返回Bilibili域名"""
-        return "bilibili.com"
+    domain = 'bilibili.com'
 
     @property
     def headers(self) -> Dict[str, str]:
         # 使用配置中的自定义headers，如果有的话
-        domain_config = get_domain_config("bilibili.com")
+        domain_config = get_domain_config(self.domain)
         if domain_config and domain_config.custom_headers:
             return domain_config.custom_headers.copy()
 

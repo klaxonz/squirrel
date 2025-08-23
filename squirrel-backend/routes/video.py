@@ -17,7 +17,6 @@ from sites.handler import UnsupportedDomainError, VideoUrlExtractionError
 from sites.meta import VideoFactory
 from models.user import User
 from schemas.video import DownloadVideoRequest, SortBy
-from schemas.proxy import VideoProxyRequest
 from services import video_service, subscription_video_service, subscription_service
 from services.proxy_service import ProxyServiceFactory
 from utils.jwt_helper import get_current_user
@@ -119,9 +118,9 @@ def play_video(request: Request, video_id: int):
 @router.get("/api/video/proxy")
 async def proxy_video(domain: str, url: str, request: Request):
     """代理视频文件，用于解决跨域问题"""
-    proxy_request = VideoProxyRequest(domain=domain, url=url)
-    proxy_service = ProxyServiceFactory.get_proxy_service()
-    return await proxy_service.handle_proxy_request(proxy_request, request)
+    from sites.proxy import ProxyFactory
+    proxy = ProxyFactory.create_proxy(domain, request)
+    return await proxy.handle_stream(url)
 
 
 @router.get("/api/video/proxy/domains")

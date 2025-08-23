@@ -5,21 +5,22 @@ from urllib.parse import urljoin, urlparse
 import httpx
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
-from proxy.video_proxy import VideoProxy
-from proxy.config import get_domain_config
+
+from sites.proxy_registry import register_proxy
+from sites.video_proxy import VideoProxy
+from sites.proxy_config import get_domain_config
 
 logger = logging.getLogger()
 
 
+@register_proxy
 class PornhubProxy(VideoProxy):
-    def _extract_domain_from_request(self) -> str:
-        """返回Pornhub域名"""
-        return "pornhub.com"
+    domain = 'pornhub.com'
 
     @property
     def headers(self) -> Dict[str, str]:
         # 使用配置中的自定义headers，如果有的话
-        domain_config = get_domain_config("pornhub.com")
+        domain_config = get_domain_config(self.domain)
         if domain_config and domain_config.custom_headers:
             return domain_config.custom_headers.copy()
 
@@ -29,7 +30,7 @@ class PornhubProxy(VideoProxy):
             'Referer': 'https://www.pornhub.com/',
             'Origin': 'https://www.pornhub.com/'
         }
-        
+
     async def handle_m3u8(self, url: str, content: bytes) -> StreamingResponse:
         """处理m3u8文件"""
         content_text = content.decode()
@@ -38,7 +39,7 @@ class PornhubProxy(VideoProxy):
         def replace_url(match):
             path = match.group(1)
             full_url = path if path.startswith('http') else urljoin(base_url + '/', path)
-            return f"/api/video/proxy?domain=pornhub.com&url={full_url}"
+            return f"/api/video/proxy?domain={self.domain}&url={full_url}"
 
         content_text = re.sub(
             r'([^"\n]+\.(ts|jpeg|jpg|m3u8)[^"\n]*)',
@@ -54,7 +55,7 @@ class PornhubProxy(VideoProxy):
                 'Cache-Control': 'no-cache',
             }
         )
-        
+
     async def handle_stream(self, url: str) -> StreamingResponse:
         try:
             # Enhanced timeout configuration for better network resilience
