@@ -2,7 +2,7 @@ import datetime
 
 from common import constants
 from core.cache import RedisClient
-from downloader import id_extractor
+from sites import id_extractor
 from utils import url_helper
 
 client = RedisClient.get_instance().client
