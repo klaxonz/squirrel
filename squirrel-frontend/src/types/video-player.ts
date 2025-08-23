@@ -9,6 +9,7 @@ export interface VideoInfo {
   thumbnail?: string
   stream_video_url: string
   stream_audio_url?: string
+  mpd_url?: string
   total_duration?: number
   last_position?: number
   chapters?: VideoChapter[]

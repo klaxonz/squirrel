@@ -266,6 +266,7 @@ const fetchVideoDetails = async () => {
   try {
     const response = await axios.get(`/api/video/detail?video_id=${route.params.videoId}`);
     video.value = response.data.data;
+    console.log('[Debug] 2. VideoPlay.vue: fetchVideoDetails completed, video.value.mpd_url is now:', video.value?.mpd_url);
   } catch (error) {
     console.error('Failed to fetch video details:', error);
   }

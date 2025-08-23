@@ -61,8 +61,8 @@ class BilibiliHandler(VideoUrlHandler):
 
             best_video_url = None
             best_audio_url = None
-
-            if 'dash' in data.get('data', {}):
+            data = data.get('data', {})
+            if 'dash' in data:
                 dash_data = data['dash']
                 if 'video' in dash_data:
                     video_urls = dash_data['video']
@@ -70,14 +70,14 @@ class BilibiliHandler(VideoUrlHandler):
                 if 'audio' in dash_data:
                     audio_urls = dash_data['audio']
                     best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
-            elif 'durl' in data.get('data', {}):
+            elif 'durl' in data:
                 video_urls = data['durl']
                 best_video_url = video_urls[0]['url']
 
             return VideoUrlDto(
                 video_url=f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,
                 audio_url=f"{proxy_prefix_path}&url=" + quote(best_audio_url) if best_audio_url else None,
-                mpd_url=f"{proxy_prefix_path}&mpd="
+                mpd_url=f"/api/video/mpd?video_id={video.id}" if 'dash' in data else None
             )
 
         except requests.RequestException as e:

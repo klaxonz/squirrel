@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import useVideoOperations from './useVideoOperations'
 import useVideoHistory from './useVideoHistory'
 import useVideoErrorHandler from './useVideoErrorHandler'
@@ -11,7 +11,7 @@ import axios from '../utils/axios'
 export default function useVideoPlayer(props, emit) {
   // DOM 引用
   const videoCore = ref(null)
-  
+
   // 统一状态管理
   const playerState = reactive({
     media: {
@@ -86,7 +86,7 @@ export default function useVideoPlayer(props, emit) {
 
   // 组合函数
   const { playVideo } = useVideoOperations()
-  
+
   const {
     sendReport,
     getLocalHistory,
@@ -116,15 +116,18 @@ export default function useVideoPlayer(props, emit) {
     monitorNetworkSpeed,
     monitorPerformance,
     updateBandwidth
-  } = usePerformanceMonitor({ 
-    hlsRef: null, 
-    videoRef: () => videoCore.value?.videoElement, 
-    externalPerformanceState: performanceState 
+  } = usePerformanceMonitor({
+    hlsRef: null,
+    videoRef: () => videoCore.value?.videoElement,
+    externalPerformanceState: performanceState
   })
 
   // 计算属性
-  const isHlsStream = computed(() => 
-    props.video?.stream_video_url?.includes('.m3u8')
+  const isHlsStream = computed(() =>
+    !!props.video?.stream_video_url && props.video.stream_video_url.includes('.m3u8')
+  )
+  const isDashStream = computed(() =>
+    !!props.video?.mpd_url || (!!props.video?.stream_video_url && props.video.stream_video_url.endsWith('.mpd'))
   )
 
   const hasAudioStream = computed(() => {
@@ -135,14 +138,14 @@ export default function useVideoPlayer(props, emit) {
     if (!hasAudioStream.value) {
       return playerState.media.canPlay.video
     }
-    return playerState.media.canPlay.video && 
+    return playerState.media.canPlay.video &&
       (isHlsStream.value || playerState.media.canPlay.audio)
   })
 
   const volumeIcon = computed(() => {
-    if (playerState.media.muted || playerState.media.volume === 0) 
+    if (playerState.media.muted || playerState.media.volume === 0)
       return 'material-symbols:volume-off'
-    if (playerState.media.volume < 50) 
+    if (playerState.media.volume < 50)
       return 'material-symbols:volume-down'
     return 'material-symbols:volume-up'
   })
@@ -557,6 +560,15 @@ export default function useVideoPlayer(props, emit) {
       // 延迟一小段时间确保所有媒体元素都准备好
       setTimeout(() => {
         attemptAutoplay()
+  // 当 mpd_url 就绪时，要求核心重新初始化媒体源（用于 DASH）
+  watch(() => props.video?.mpd_url, (newUrl) => {
+    if (newUrl) {
+      try {
+        videoCore.value?.reinitSources?.()
+      } catch (e) {}
+    }
+  })
+
       }, 100)
     }
   }, { immediate: true })
@@ -720,6 +732,10 @@ export default function useVideoPlayer(props, emit) {
 
       try {
         await playVideo(props.video)
+        // 若为 DASH，playVideo 返回后 mpd_url 已就绪，立即请求核心重新初始化媒体源
+        if (props.video?.mpd_url) {
+          try { videoCore.value?.reinitSources?.() } catch (_) {}
+        }
       } catch (e) {
         handleVideoError(e)
       } finally {
@@ -763,6 +779,16 @@ export default function useVideoPlayer(props, emit) {
   watch(() => props.video?.id, (newId, oldId) => {
     if (newId && newId !== oldId && playerState.media.autoplay) {
       // 重置播放状态
+  // 再次在顶层监听 mpd_url，确保任何时刻就绪都能触发
+  watch(() => props.video?.mpd_url, async (newUrl, oldUrl) => {
+    if (newUrl && newUrl !== oldUrl) {
+      try {
+        await nextTick()
+        videoCore.value?.reinitSources?.()
+      } catch (e) {}
+    }
+  })
+
       playerState.media.playing = false
       playerState.media.canPlay.video = false
       playerState.media.canPlay.audio = false
@@ -790,12 +816,13 @@ export default function useVideoPlayer(props, emit) {
     playerState,
     performanceState,
     errorState,
-    
+
     // 引用
     videoCore,
-    
+
     // 计算属性
     isHlsStream,
+    isDashStream,
     hasAudioStream,
     isCanplay,
     volumeIcon,
@@ -803,7 +830,7 @@ export default function useVideoPlayer(props, emit) {
     progress,
     supportsPiP,
     loadingStatusText,
-    
+
     // 方法
     updateBandwidth,
     formatNetworkSpeed,

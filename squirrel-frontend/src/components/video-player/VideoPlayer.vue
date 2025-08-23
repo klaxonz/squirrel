@@ -24,6 +24,7 @@
         :video="video"
         :player-state="playerState"
         :is-hls-stream="isHlsStream"
+        :is-dash-stream="isDashStream"
         :on-bandwidth-sample="updateBandwidth"
         :external-error="getErrorInfo()"
         @play="handleVideoPlay"
@@ -124,6 +125,7 @@ const {
   performanceState,
   videoCore,
   isHlsStream,
+  isDashStream,
   progress,
   volumeIcon,
   fullscreenIcon,

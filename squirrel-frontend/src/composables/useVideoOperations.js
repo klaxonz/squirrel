@@ -21,33 +21,40 @@ export default function useVideoOperations() {
         return true
       }
 
-      if (video.url.indexOf('bilibili.com') !== -1) {
-        const response = await axios.get('/api/video/mpd', {
-          params: { video_id: video.id }
-        })
-      } else {
-        const response = await axios.get('/api/video/url', {
-          params: { video_id: video.id }
-        })
-      }
-      
+      // 统一通过后端获取播放链接（VideoUrlDto），后端会在 bilibili 情况下返回 mpd_url
+      const response = await axios.get('/api/video/url', {
+        params: { video_id: video.id }
+      })
+
 
       const { code, msg, data } = response?.data || {}
+      console.log('[Debug] 1. useVideoOperations: Received data from /api/video/url', data);
+
       if (code !== 0) {
         const errCode = extractErrorCode(msg) || code || 'UNKNOWN'
         const err = Object.assign(new Error(msg || '无法获取播放链接'), { code: errCode })
         throw err
       }
 
+      const mpdUrl = data?.mpd_url
       const videoUrl = data?.video_url
       const audioUrl = data?.audio_url
+
+      if (mpdUrl) {
+        console.log('[Debug] 1.1. useVideoOperations: DASH mode detected. Setting video.mpd_url =', mpdUrl);
+        video.mpd_url = mpdUrl
+        return true
+      }
+
       if (!videoUrl && !audioUrl) {
         const err = Object.assign(new Error('无法获取播放链接'), { code: 'NO_STREAM_URL' })
         throw err
       }
 
+      console.log('[Debug] 1.2. useVideoOperations: Non-DASH mode. Setting stream URLs.');
       video.stream_video_url = videoUrl || ''
       video.stream_audio_url = audioUrl || ''
+      video.mpd_url = ''
       return true
     } catch (err) {
       throw err

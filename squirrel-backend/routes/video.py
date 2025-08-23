@@ -39,8 +39,11 @@ def get_video_url(
             return response.param_error("参数错误 (VIDEO_ID_REQUIRED)")
 
         video_urls = video_service.get_video_url(video_id)
-        # 校验是否成功提取到可播放链接
-        if not video_urls or (not getattr(video_urls, 'video_url', None) and not getattr(video_urls, 'audio_url', None)):
+        # 校验是否成功提取到可播放链接（支持 DASH 的 mpd_url 返回）
+        has_video = getattr(video_urls, 'video_url', None)
+        has_audio = getattr(video_urls, 'audio_url', None)
+        has_mpd = getattr(video_urls, 'mpd_url', None)
+        if not video_urls or (not has_video and not has_audio and not has_mpd):
             return response.not_found("无法获取播放链接 (NO_STREAM_URL)")
         return response.success(video_urls)
 
@@ -258,19 +261,27 @@ def get_video_mpd(
 
     # Video streams
     if 'video' in dash_data:
-        video_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="video/mp4", mimeType="video/mp4")
-        for video_stream in dash_data['video']:
+        # 仅选择浏览器常见可播放的 H.264/AVC 轨道，避免选中 HEVC/AV1 导致下载很多却无法解码
+        video_streams = [v for v in dash_data['video'] if 'codecs' in v and ('avc' in v['codecs'] or 'avc1' in v['codecs'] or 'h264' in v['codecs'])]
+        if not video_streams:
+            video_streams = dash_data['video']  # 兜底：若没有 avc，则放开（由 dash.js 自行选择）
+
+        video_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="video", mimeType="video/mp4")
+        for video_stream in video_streams:
             representation = ET.SubElement(video_adaptation_set, "Representation")
             representation.set("id", str(video_stream['id']))
             representation.set("codecs", video_stream['codecs'])
             representation.set("width", str(video_stream['width']))
             representation.set("height", str(video_stream['height']))
-            representation.set("frameRate", video_stream['frameRate'])
+            if 'frameRate' in video_stream:
+                representation.set("frameRate", str(video_stream['frameRate']))
             representation.set("bandwidth", str(video_stream['bandwidth']))
-            
+
             base_url = ET.SubElement(representation, "BaseURL")
-            base_url.text = video_stream['baseUrl']
-            
+            # 通过后端代理避免跨域问题
+            proxied_video_url = f"/api/video/proxy?domain=bilibili.com&url=" + requests.utils.quote(video_stream['baseUrl'], safe='')
+            base_url.text = proxied_video_url
+
             segment_base = ET.SubElement(representation, "SegmentBase")
             segment_base.set("indexRange", video_stream['SegmentBase']['indexRange'])
             initialization = ET.SubElement(segment_base, "Initialization")
@@ -278,7 +289,8 @@ def get_video_mpd(
 
     # Audio streams
     if 'audio' in dash_data:
-        audio_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="audio/mp4", mimeType="audio/mp4")
+        # 音频一般为 AAC（mp4a），保持全部
+        audio_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="audio", mimeType="audio/mp4")
         for audio_stream in dash_data['audio']:
             representation = ET.SubElement(audio_adaptation_set, "Representation")
             representation.set("id", str(audio_stream['id']))
@@ -286,13 +298,15 @@ def get_video_mpd(
             representation.set("bandwidth", str(audio_stream['bandwidth']))
 
             base_url = ET.SubElement(representation, "BaseURL")
-            base_url.text = audio_stream['baseUrl']
+            # 通过后端代理避免跨域问题
+            proxied_audio_url = f"/api/video/proxy?domain=bilibili.com&url=" + requests.utils.quote(audio_stream['baseUrl'], safe='')
+            base_url.text = proxied_audio_url
 
             segment_base = ET.SubElement(representation, "SegmentBase")
             segment_base.set("indexRange", audio_stream['SegmentBase']['indexRange'])
             initialization = ET.SubElement(segment_base, "Initialization")
             initialization.set("range", audio_stream['SegmentBase']['Initialization'])
-    
+
     mpd_xml_string = ET.tostring(mpd, encoding='unicode')
     
     return Response(content=mpd_xml_string, media_type="application/dash+xml")

@@ -43,7 +43,7 @@
       ref="videoElement"
       class="video-player"
       :poster="video.thumbnail"
-      :src="!isHlsStream ? video.stream_video_url : undefined"
+      :src="!isHlsStream && !isDashStream ? video.stream_video_url : undefined"
       preload="auto"
       crossorigin="anonymous"
       playsinline
@@ -76,9 +76,9 @@
     />
 
 
-    <!-- 音频元素（非HLS时） -->
+    <!-- 音频元素（仅非HLS/非DASH时） -->
     <audio
-      v-if="!isHlsStream && video.stream_audio_url"
+      v-if="!isHlsStream && !isDashStream && video.stream_audio_url"
       ref="audioElement"
       :src="video.stream_audio_url"
       :muted="playerState.media.muted"
@@ -98,15 +98,17 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { Icon } from '@iconify/vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import useHlsPlayer from '../../composables/useHlsPlayer'
+import useDashPlayer from '../../composables/useDashPlayer'
 
 const props = defineProps({
   video: Object,
   playerState: Object,
   isHlsStream: Boolean,
+  isDashStream: Boolean,
   onBandwidthSample: Function,
   helpUrl: String,
   externalError: Object
@@ -196,10 +198,42 @@ const handleVideoElementError = (evt) => {
 // HLS播放器管理
 const {
   initializeHls,
+  destroyHls,
+  setQuality: setHlsQuality
 } = useHlsPlayer({
   playerState: props.playerState,
   videoRef: videoElement,
-  props
+  props,
+  onProgress: (sample) => {
+    try {
+      if (!props.onBandwidthSample) return
+      if (sample && typeof sample.loaded === 'number' && typeof sample.durationSec === 'number') {
+        props.onBandwidthSample(sample.loaded, sample.durationSec)
+      }
+    } catch (_) {}
+  },
+  onError: (err) => showInlineError(err)
+})
+
+// DASH 播放器管理
+const {
+  initializeDash,
+  destroyDash,
+  setQuality: setDashQuality
+} = useDashPlayer({
+  playerState: props.playerState,
+  videoRef: videoElement,
+  props,
+  onProgress: (sample) => {
+    try {
+      const loaded = sample?.loaded || 0
+      const durationSec = sample?.durationSec || 0
+      if (loaded > 0 && durationSec > 0) {
+        props.onBandwidthSample && props.onBandwidthSample(loaded, durationSec)
+      }
+    } catch (_) {}
+  },
+  onError: (err) => showInlineError(err)
 })
 
 // 视频事件处理
@@ -316,15 +350,36 @@ const handleAudioError = () => {
 
 // 初始化媒体源
 const initializeMediaSources = () => {
-  if (props.video?.stream_video_url) {
-    if (props.isHlsStream) {
-      initializeHls()
-    } else {
-      videoElement.value.src = props.video.stream_video_url
-    }
+  const hasVideoUrl = !!props.video?.stream_video_url
+  const hasMpd = !!props.video?.mpd_url || (hasVideoUrl && props.video.stream_video_url.endsWith('.mpd'))
+  console.log('[Debug] 3. VideoPlayerCore.initializeMediaSources', {
+    hasVideoUrl,
+    hasMpd,
+    isHlsStream: props.isHlsStream,
+    isDashStream: props.isDashStream,
+    urls: { stream: props.video?.stream_video_url, mpd: props.video?.mpd_url }
+  })
+
+  if (props.isHlsStream && hasVideoUrl) {
+    console.log('[Debug] 3.1 Using HLS via hls.js')
+    try { destroyDash() } catch (_) {}
+    initializeHls()
+  } else if (hasMpd) {
+    console.log('[Debug] 3.2 Using DASH via dash.js with MPD', props.video?.mpd_url || props.video?.stream_video_url)
+    try { destroyHls() } catch (_) {}
+    initializeDash()
+  } else if (hasVideoUrl) {
+    console.log('[Debug] 3.3 Using native video src', props.video?.stream_video_url)
+    try { destroyHls() } catch (_) {}
+    try { destroyDash() } catch (_) {}
+    videoElement.value.src = props.video.stream_video_url
+  } else {
+    console.log('[Debug] 3.4 No playable source yet')
   }
 
-  if (!props.isHlsStream && props.video.stream_audio_url && audioElement.value) {
+  // 非 HLS/DASH 才需要独立音频
+  if (!props.isHlsStream && !props.isDashStream && props.video.stream_audio_url && audioElement.value) {
+    console.log('[Debug] 3.A Attach separate audio', props.video.stream_audio_url)
     audioElement.value.src = props.video.stream_audio_url
   }
 
@@ -364,6 +419,25 @@ watch(() => props.playerState.media.muted, (newMuted) => {
     if (audioElement.value) {
       audioElement.value.muted = newMuted
     }
+
+// 监听 MPD URL 变化（DASH）
+watch(() => props.video?.mpd_url, (newUrl) => {
+  if (newUrl) {
+    initializeMediaSources()
+  }
+})
+
+// 监听清晰度变更，转发到具体播放器
+watch(() => props.playerState.media.currentQuality, (q) => {
+  try {
+    if (props.isHlsStream) {
+      setHlsQuality?.(q)
+    } else if (props.isDashStream) {
+      setDashQuality?.(q)
+    }
+  } catch (_) {}
+})
+
   }
 })
 
@@ -437,9 +511,16 @@ onMounted(() => {
   }
 })
 
+onUnmounted(() => {
+  try { destroyHls() } catch (_) {}
+  try { destroyDash() } catch (_) {}
+})
+
+
 defineExpose({
   videoElement,
-  audioElement
+  audioElement,
+  reinitSources: () => { console.log('[Debug] 3.0 VideoPlayerCore.reinitSources invoked'); initializeMediaSources() }
 })
 </script>
 
