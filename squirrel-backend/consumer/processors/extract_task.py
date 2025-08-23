@@ -6,7 +6,7 @@ from common import constants
 from core.database import get_session
 from core.cache import RedisClient
 from services.subscription_progress_service import tick_progress, maybe_complete
-from downloader.factory import DownloaderFactory
+from sites.downloader import DownloaderFactory
 from dto.video_dto import VideoExtractDto
 from meta.factory import VideoFactory
 from models.message import Message

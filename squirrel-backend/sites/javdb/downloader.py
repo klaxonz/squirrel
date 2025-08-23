@@ -3,17 +3,19 @@ import logging
 
 import requests
 from bs4 import BeautifulSoup
-from common.http_wrapper import session as http_session
 
-from downloader.platform.base import Downloader
+from sites.downloader import Downloader
 from models.task.download_task import DownloadTask
 from models.subscription import Subscription
 from models.video import Video
+from sites.downloader_registry import register_downloader
 
 logger = logging.getLogger()
 
 
+@register_downloader
 class JavdbDownloader(Downloader):
+    domain = 'javdb.com'
 
     def get_video_info(self, url: str, queue_name: str = None):
         headers = {

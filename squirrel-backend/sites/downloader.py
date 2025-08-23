@@ -1,5 +1,6 @@
 import logging
 import os
+from urllib.parse import urlparse
 
 import requests
 from yt_dlp import YoutubeDL
@@ -15,6 +16,7 @@ from models.task.download_task import DownloadTask
 from models.task.task_state import TaskState
 from models.video import Video
 from nfo.nfo import NfoGenerator
+from sites.downloader_registry import DownloaderRegistry
 
 logger = logging.getLogger()
 
@@ -49,7 +51,8 @@ class Downloader:
         with open(download_fullpath, 'wb') as file:
             file.write(response.content)
 
-    def download(self, subscription: Subscription, video: Video, task: DownloadTask, queue_thread_name: str) -> TaskState:
+    def download(self, subscription: Subscription, video: Video, task: DownloadTask,
+                 queue_thread_name: str) -> TaskState:
         video_info = self.get_video_info(video.url, queue_thread_name)
         video_meta = VideoFactory.create_video(video.url, video_info)
 
@@ -84,7 +87,7 @@ class Downloader:
 
                     with get_session() as session:
                         session.query(DownloadTask).filter_by(id=task.id).update({
-                           DownloadTask.total_size: file_size
+                            DownloadTask.total_size: file_size
                         })
                         session.commit()
 
@@ -132,3 +135,37 @@ def create_progress_hook(task_id: int):
                 client.hset(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task_id}', 'percent', percent)
 
     return on_progress_hook
+
+
+class DownloaderFactory:
+
+    @staticmethod
+    def create_downloader(url: str) -> Downloader:
+
+        if not url or not isinstance(url, str):
+            raise ValueError("A valid URL string must be provided.")
+
+        try:
+            parsed_url = urlparse(url)
+            domain_parts = parsed_url.netloc.split('.')
+
+            # Iterate from the full domain down to the base domain
+            # e.g., ['music', 'youtube', 'com'] -> 'music.youtube.com', then 'youtube.com'
+            for i in range(len(domain_parts) - 1):
+                current_domain = '.'.join(domain_parts[i:])
+
+                downloader_class = DownloaderRegistry.get_downloader(current_domain)
+                if downloader_class:
+                    logger.info(f"Found downloader '{downloader_class.__name__}' for domain '{current_domain}'")
+                    return downloader_class(url)
+
+            # If no match was found after checking all subdomains
+            supported = DownloaderRegistry.get_supported_domains()
+            raise ValueError(
+                f"No downloader registered for domain '{parsed_url.netloc}' or its parent domains. "
+                f"Supported domains are: {supported}"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to create downloader for URL '{url}': {e}")
+            raise ValueError(f"Could not create downloader for '{url}'. Reason: {e}") from e

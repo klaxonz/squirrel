@@ -13,7 +13,7 @@ from xml.etree import ElementTree as ET
 import common.response as response
 from common.video_stream import VideoStreamHandler
 from core import download_config, config
-from downloader.factory import DownloaderFactory
+from sites.downloader import DownloaderFactory
 from meta.factory import VideoFactory
 from models.user import User
 from schemas.video import DownloadVideoRequest, SortBy

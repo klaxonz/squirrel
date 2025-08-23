@@ -1,6 +1,8 @@
-from downloader.platform.base import Downloader
+from sites.downloader import Downloader
+from sites.downloader_registry import register_downloader
 
 
+@register_downloader
 class BilibiliDownloader(Downloader):
-    pass  # Using default implementation from base class
+    domain = 'bilibili.com'
 

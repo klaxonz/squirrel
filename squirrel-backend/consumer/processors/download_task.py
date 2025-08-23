@@ -4,7 +4,7 @@ from typing import Dict, Any
 
 from common import constants
 from core.database import get_session
-from downloader.factory import DownloaderFactory
+from sites.downloader import DownloaderFactory
 from models.task.download_task import DownloadTask
 from models.message import Message
 from models.task.task_state import TaskState
