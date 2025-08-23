@@ -3,9 +3,9 @@ from threading import Lock
 from typing import Optional
 
 from schedule.schedule import Scheduler
-from schedule.tasks import TaskRegistry, AutoUpdateChannelVideo
+from schedule.task import TaskRegistry
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 # module-scope state
 _scheduler: Optional[Scheduler] = None
@@ -17,13 +17,13 @@ def scheduler_start() -> None:
     global _scheduler, _scheduler_running
     with _scheduler_lock:
         if _scheduler_running:
-            _logger.info("[scheduler] already running, skip start()")
+            logger.info("[scheduler] already running, skip start()")
             return
 
-        _logger.info("[scheduler] starting...")
+        logger.info("[scheduler] starting...")
         scheduler = Scheduler()
         for task_cls in TaskRegistry.tasks:
-            _logger.info(
+            logger.info(
                 "[scheduler] register task %s interval=%s unit=%s start_immediately=%s",
                 task_cls.__name__, task_cls.interval, task_cls.unit, task_cls.start_immediately,
             )
@@ -36,27 +36,24 @@ def scheduler_start() -> None:
         scheduler.start()
         _scheduler = scheduler
         _scheduler_running = True
-        _logger.info("[scheduler] started")
+        logger.info("[scheduler] started")
 
 
 def scheduler_stop() -> None:
     global _scheduler, _scheduler_running
     with _scheduler_lock:
         if not _scheduler_running:
-            _logger.info("[scheduler] not running, skip stop()")
+            logger.info("[scheduler] not running, skip stop()")
             return
-        _logger.info("[scheduler] stopping...")
+        logger.info("[scheduler] stopping...")
         try:
             if _scheduler:
                 _scheduler.stop()
-            try:
-                AutoUpdateChannelVideo.shutdown()
-            except Exception:
-                _logger.exception("[scheduler] shutdown task pools failed (ignored)")
+
         finally:
             _scheduler = None
             _scheduler_running = False
-            _logger.info("[scheduler] stopped")
+            logger.info("[scheduler] stopped")
 
 
 def scheduler_status() -> dict:
