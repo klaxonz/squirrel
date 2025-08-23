@@ -1,7 +1,9 @@
+from abc import ABC
 from urllib.parse import quote
 import requests
 from dto.video_dto import VideoUrlDto
 from handlers.video_url.base import VideoUrlHandler, VideoUrlExtractionError
+from sites.handler_registry import register_handler
 from models.video import Video
 from botasaurus.request import request as brequest, Request
 import json
@@ -35,8 +37,11 @@ def extract_playinfo_from_html(html_content):
         return None
 
 
-class BilibiliHandler(VideoUrlHandler):
+@register_handler
+class BilibiliHandler(VideoUrlHandler, ABC):
     """Handler for Bilibili video URLs"""
+
+    domain = 'bilibili.com'
 
     def supports_domain(self, domain: str) -> bool:
         return domain == 'bilibili.com'
@@ -68,7 +73,7 @@ class BilibiliHandler(VideoUrlHandler):
 
             return VideoUrlDto(
                 video_url=f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,
-                audio_url=f"{proxy_prefix_path}&url=" + quote(best_audio_url) if best_audio_url else None,
+                audio_url=f"{proxy_prefix_path}&url" + quote(best_audio_url) if best_audio_url else None,
                 mpd_url=f"/api/video/mpd?video_id={video.id}" if 'dash' in data else None
             )
 

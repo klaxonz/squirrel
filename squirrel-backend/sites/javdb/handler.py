@@ -1,8 +1,10 @@
 import re
+from abc import ABC
 from urllib.parse import quote
 from bs4 import BeautifulSoup
 from dto.video_dto import VideoUrlDto
 from handlers.video_url.base import VideoUrlHandler, VideoUrlExtractionError
+from sites.handler_registry import register_handler
 from models.video import Video
 from botasaurus.request import request as brequest, Request
 from typing import Optional
@@ -14,13 +16,16 @@ def _fetch_html(req: Request, link: str) -> str:
     resp.raise_for_status()
     return resp.text
 
+
 def fetch_html(link: str) -> str:
     return _fetch_html(link)  # type: ignore
 
 
-
-class JavdbHandler(VideoUrlHandler):
+@register_handler
+class JavdbHandler(VideoUrlHandler, ABC):
     """Handler for Javdb video URLs"""
+
+    domain = 'javdb.com'
 
     def supports_domain(self, domain: str) -> bool:
         return domain == 'javdb.com'

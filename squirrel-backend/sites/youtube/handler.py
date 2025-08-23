@@ -1,5 +1,6 @@
 import json
 import subprocess
+from abc import ABC
 from typing import Tuple
 
 from pytubefix import YouTube
@@ -7,14 +8,15 @@ from urllib.parse import quote
 
 from dto.video_dto import VideoUrlDto
 from handlers.video_url.base import VideoUrlHandler, VideoUrlExtractionError
+from sites.handler_registry import register_handler
 from models.video import Video
 
 
-class YouTubeHandler(VideoUrlHandler):
+@register_handler
+class YouTubeHandler(VideoUrlHandler, ABC):
     """Handler for YouTube video URLs"""
 
-    def supports_domain(self, domain: str) -> bool:
-        return domain == 'youtube.com'
+    domain = 'youtube.com'
 
     def get_video_url(self, video: Video) -> VideoUrlDto:
         try:
