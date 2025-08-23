@@ -2,14 +2,15 @@ import datetime
 
 from common import constants
 from core.cache import RedisClient
-from sites import id_extractor
+from sites.id_extractor import IdExtractorFactory
 from utils import url_helper
 
 client = RedisClient.get_instance().client
 
 
 def _extract_domain_and_id(url: str):
-    origin_video_id = id_extractor.extract_id_from_url(url)
+    id_extractor = IdExtractorFactory.get(url)
+    origin_video_id = id_extractor.extract_id()
     domain = url_helper.extract_top_level_domain(url)
     return domain, origin_video_id
 

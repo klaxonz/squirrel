@@ -1,15 +1,14 @@
 import re
 
 from sites.id_extractor import IdExtractor
+from sites.id_extractor_registry import register_extractor
 
 
+@register_extractor
 class BilibiliIdExtractor(IdExtractor):
+    domain = 'bilibili.com'
 
-    @classmethod
-    def is_suitable(cls, url):
-        return "bilibili.com" in url
-
-    def extract_id(self):
+    def extract_id(self, url):
         pattern = r'BV[0-9A-Za-z]+'
         match = re.search(pattern, self.url)
         if match:

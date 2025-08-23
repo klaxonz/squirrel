@@ -1,13 +1,12 @@
 import re
 
 from sites.id_extractor import IdExtractor
+from sites.id_extractor_registry import register_extractor
 
 
-class PornhubExtractor(IdExtractor):
-
-    @classmethod
-    def is_suitable(cls, url):
-        return "pornhub.com" in url
+@register_extractor
+class PornhubIdExtractor(IdExtractor):
+    domain = 'pornhub.com'
 
     def extract_id(self):
         pattern = r"viewkey=([^&]+)"

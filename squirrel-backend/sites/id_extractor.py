@@ -1,24 +1,13 @@
 from abc import ABC, abstractmethod
-
-_extractors = []
-
-
-def _register_extractor(extractor):
-    _extractors.append(extractor)
+from urllib.parse import urlparse
+from sites.id_extractor_registry import IdExtractorRegistry
 
 
 class IdExtractor(ABC):
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        _register_extractor(cls)
+    domain: str | None = None
 
     def __init__(self, url):
         self.url = url
-
-    @classmethod
-    @abstractmethod
-    def is_suitable(cls, url) -> bool:
-        raise NotImplementedError
 
     @abstractmethod
     def extract_id(self) -> str:
@@ -29,13 +18,18 @@ class IdExtractorFactory:
 
     @classmethod
     def get(cls, url) -> IdExtractor:
-        for extractor in _extractors:
-            if extractor.is_suitable(url):
-                return extractor(url)
-        raise ValueError("Invalid url")
+        parsed_url = urlparse(url)
+        domain_parts = parsed_url.netloc.split('.')
+
+        for i in range(len(domain_parts) - 1):
+            current_domain = '.'.join(domain_parts[i:])
+            extractor_class = IdExtractorRegistry.get_extractor(current_domain)
+            if extractor_class:
+                return extractor_class(url)
+
+        raise ValueError(f"No suitable ID extractor found for URL: {url}")
 
 
 def extract_id_from_url(url: str) -> str:
     extractor = IdExtractorFactory.get(url)
     return extractor.extract_id()
-

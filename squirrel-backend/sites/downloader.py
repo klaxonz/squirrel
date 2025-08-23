@@ -1,10 +1,8 @@
 import logging
 import os
 from urllib.parse import urlparse
-
 import requests
 from yt_dlp import YoutubeDL
-
 from common import constants
 from common.video_stream import VideoStreamHandler
 from core import download_config, config
@@ -28,7 +26,10 @@ class DownloadStoppedError(Exception):
 
 class Downloader:
 
-    def get_video_info(self, url, queue_name: str = None):
+    def __init__(self, url):
+        self.url = url
+
+    def get_video_info(self, queue_name: str = None):
         cookie_file_path = config.get_cookies_file_path_thread(queue_name)
         ydl_opts = {
             'quiet': True,
@@ -36,11 +37,11 @@ class Downloader:
             'ignoreerrors': False,
             'skip_download': True,
         }
-        if cookie_file_path and 'youtube.com' not in url:
+        if cookie_file_path and 'youtube.com' not in self.url:
             ydl_opts['cookiefile'] = cookie_file_path
 
         with YoutubeDL(ydl_opts) as ydl:
-            video_info = ydl.extract_info(url, download=False)
+            video_info = ydl.extract_info(self.url, download=False)
             return video_info
 
     def download_avatar(self, subscription_name: str, subscription_avatar: str):
@@ -53,7 +54,7 @@ class Downloader:
 
     def download(self, subscription: Subscription, video: Video, task: DownloadTask,
                  queue_thread_name: str) -> TaskState:
-        video_info = self.get_video_info(video.url, queue_thread_name)
+        video_info = self.get_video_info(queue_thread_name)
         video_meta = VideoFactory.create_video(video.url, video_info)
 
         hook = create_progress_hook(task.id)
@@ -156,7 +157,6 @@ class DownloaderFactory:
 
                 downloader_class = DownloaderRegistry.get_downloader(current_domain)
                 if downloader_class:
-                    logger.info(f"Found downloader '{downloader_class.__name__}' for domain '{current_domain}'")
                     return downloader_class(url)
 
             # If no match was found after checking all subdomains

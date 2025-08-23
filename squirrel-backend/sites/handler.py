@@ -11,6 +11,9 @@ class VideoUrlHandler(ABC):
     # Optional domain attribute; subclasses can set this for registry use
     domain: str | None = None
 
+    def __init__(self, url):
+        self.url = url
+
     @abstractmethod
     def get_video_url(self, video: Video) -> VideoUrlDto:
         """

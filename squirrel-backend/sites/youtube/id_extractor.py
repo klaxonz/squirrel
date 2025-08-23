@@ -1,13 +1,12 @@
 import re
 
 from sites.id_extractor import IdExtractor
+from sites.id_extractor_registry import register_extractor
 
 
+@register_extractor
 class YoutubeIdExtractor(IdExtractor):
-
-    @classmethod
-    def is_suitable(cls, url):
-        return "youtube.com" in url
+    domain = 'youtube.com'
 
     def extract_id(self):
         pattern = r"(?:v=|/)([0-9A-Za-z_-]{11})"

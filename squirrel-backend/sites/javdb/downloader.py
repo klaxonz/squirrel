@@ -17,21 +17,21 @@ logger = logging.getLogger()
 class JavdbDownloader(Downloader):
     domain = 'javdb.com'
 
-    def get_video_info(self, url: str, queue_name: str = None):
+    def get_video_info(self, queue_name: str = None):
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/124.0.0.0 Safari/537.36',
         }
-        response = requests.get(url, headers=headers, timeout=15)
+        response = requests.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
         bs4 = BeautifulSoup(response.text, 'html.parser')
         video_info = {}
 
         if '永久VIP' in response.text:
-            logger.info(f'{url} is permanent VIP')
+            logger.info(f'{self.url} is permanent VIP')
             return None
         if '此內容需要登入' in response.text:
-            logger.info(f'{url} is need to login to pay, skip')
+            logger.info(f'{self.url} is need to login to pay, skip')
             return None
 
         video_info['title'] = bs4.select('.title strong')[0].text.strip() + ' ' + bs4.select('.title strong')[1].text.strip()
@@ -48,7 +48,7 @@ class JavdbDownloader(Downloader):
 
     def download(self, subscription: Subscription, video: Video, task: DownloadTask, queue_thread_name: str):
         # First get video info using our custom method
-        video_info = self.get_video_info(video.url, queue_thread_name)
+        video_info = self.get_video_info(queue_thread_name)
         if not video_info:
             logging.error(f"Failed to parse video info: {video.url}")
             return 1

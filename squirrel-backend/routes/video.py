@@ -105,7 +105,7 @@ def download_video(req: DownloadVideoRequest):
 def play_video(request: Request, video_id: int):
     video = video_service.get_video_by_id(video_id)
     downloader = DownloaderFactory.create_downloader(video.url)
-    video_info = downloader.get_video_info(video.url)
+    video_info = downloader.get_video_info()
     video = VideoFactory.create_video(video.url, video_info)
     subscription_video = subscription_video_service.get_subscription_video_by_video_id(video.id)
     subscription = subscription_service.get_subscription_by_id(subscription_video.subscription_id)

@@ -163,7 +163,7 @@ def process_video_extract(message: Dict[str, Any]):
 
 def _get_video_info(url, queue_name: str):
     downloader = DownloaderFactory.create_downloader(url)
-    video_info = downloader.get_video_info(url, queue_name)
+    video_info = downloader.get_video_info(queue_name)
     if video_info is None or ('_type' in video_info and video_info['_type'] == 'playlist'):
         logger.info(f"{url} is not a valid video, skip")
         return None
