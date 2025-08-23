@@ -5,7 +5,7 @@ from starlette.responses import StreamingResponse
 import logging
 
 from schemas.proxy import VideoProxyRequest
-from proxy.bilibili import BilibiliProxy
+from sites.bilibili.proxy import BilibiliProxy
 from proxy.javdb import JavdbProxy
 from proxy.pornhub import PornhubProxy
 from proxy.video_proxy import VideoProxy

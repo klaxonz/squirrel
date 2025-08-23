@@ -3,7 +3,6 @@ import os
 import re
 import glob
 import tempfile
-from typing import Optional
 
 import requests
 from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response
@@ -15,7 +14,6 @@ import common.response as response
 from common.video_stream import VideoStreamHandler
 from core import download_config, config
 from downloader.factory import DownloaderFactory
-from handlers.video_url import bilibili_handler
 from meta.factory import VideoFactory
 from models.user import User
 from schemas.video import DownloadVideoRequest, SortBy
@@ -237,11 +235,12 @@ def get_video_mpd(
     if video is None:
         raise HTTPException(status_code=404, detail="Video not found")
 
-    html = bilibili_handler.fetch_html(video.url)
+    from sites.bilibili.handler import fetch_html, extract_playinfo_from_html
+    html = fetch_html(video.url)
     if html is None:
         raise HTTPException(status_code=500, detail="Failed to fetch video page")
 
-    play_info = bilibili_handler.extract_playinfo_from_html(html)
+    play_info = extract_playinfo_from_html(html)
     if not play_info or 'data' not in play_info or 'dash' not in play_info['data']:
         raise HTTPException(status_code=500, detail="Failed to extract play info")
 

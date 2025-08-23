@@ -1,5 +1,5 @@
 from downloader.platform.base import Downloader
-from downloader.platform.bilibili import BilibiliDownloader
+from sites.bilibili.downloader import BilibiliDownloader
 from downloader.platform.javdb import JavdbDownloader
 from downloader.platform.pornhub import PornhubDownloader
 from downloader.platform.youtube import YoutubeDownloader

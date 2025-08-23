@@ -1,19 +1,11 @@
 from urllib.parse import quote
-
-
 import requests
-from botasaurus_requests import Request
-
 from dto.video_dto import VideoUrlDto
 from handlers.video_url.base import VideoUrlHandler, VideoUrlExtractionError
 from models.video import Video
-from utils.cookie import filter_cookies_to_query_string
-from downloader.id_extractor import extract_bilibili_id
-from subscribe.platforms.bilibili.sign import sign
 from botasaurus.request import request as brequest, Request
 import json
 import re
-
 
 
 @brequest(output=None, raise_exception=True, close_on_crash=True, create_error_logs=False, max_retry=10)

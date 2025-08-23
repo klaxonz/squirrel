@@ -1,5 +1,5 @@
 from .base import Video
-from .platforms.bilibili import BilibiliVideo
+from sites.bilibili.meta import BilibiliVideo
 from .platforms.javdb import JavVideo
 from .platforms.pornhub import PornhubVideo
 from .platforms.youtube import YoutubeVideo

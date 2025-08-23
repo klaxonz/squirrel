@@ -1,5 +1,5 @@
 from handlers.video_url.base import VideoUrlHandler, UnsupportedDomainError
-from handlers.video_url.bilibili_handler import BilibiliHandler
+from sites.bilibili.handler import BilibiliHandler
 from handlers.video_url.youtube_handler import YouTubeHandler
 from handlers.video_url.pornhub_handler import PornhubHandler
 from handlers.video_url.javdb_handler import JavdbHandler
