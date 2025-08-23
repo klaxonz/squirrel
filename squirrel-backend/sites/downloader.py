@@ -8,7 +8,7 @@ from common.video_stream import VideoStreamHandler
 from core import download_config, config
 from core.cache import RedisClient
 from core.database import get_session
-from meta.factory import VideoFactory
+from sites.meta import VideoFactory
 from models.subscription import Subscription
 from models.task.download_task import DownloadTask
 from models.task.task_state import TaskState

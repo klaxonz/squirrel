@@ -1,10 +1,12 @@
 from pytubefix import YouTube
 
-from meta.base import Video, Actor
+from sites.meta_origin import Video, Actor
+from sites.meta_registry import register_meta
 
 
+@register_meta
 class YoutubeVideo(Video):
-    DOMAIN = 'youtube.com'
+    domain = 'youtube.com'
 
     def __init__(self, url, base_info):
         super().__init__(url, base_info)

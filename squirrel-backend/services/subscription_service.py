@@ -4,10 +4,10 @@ from sqlalchemy import select
 from sqlalchemy.sql import text
 from core.database import get_session
 from dto.subscription_dto import SubscriptionDto
-from meta.channel import SubscriptionMeta
 from models.links import UserSubscription
 from models.subscription import Subscription, ContentType
 from services import user_config_service
+from sites.meta_origin import SubscriptionMeta
 from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql, get_subscription_sql
 from utils.sql_parser import parse_dynamic_sql
 

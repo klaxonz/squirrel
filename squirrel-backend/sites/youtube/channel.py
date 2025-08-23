@@ -1,6 +1,6 @@
 from pytubefix import Channel as YouTubeChannel
 
-from meta.channel import SubscriptionMeta
+from sites.meta_origin import SubscriptionMeta
 from subscribe.base import BaseSubscription
 
 

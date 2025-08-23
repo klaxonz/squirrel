@@ -4,7 +4,7 @@ import re
 from bs4 import BeautifulSoup
 
 from common.http_wrapper import session
-from meta.channel import SubscriptionMeta
+from sites.meta_origin import SubscriptionMeta
 from utils.cookie import filter_cookies_to_query_string
 from sites.bilibili.sign import sign
 from subscribe.base import BaseSubscription

@@ -9,19 +9,18 @@ from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response
 from fastapi.responses import PlainTextResponse
 from yt_dlp import YoutubeDL
 from xml.etree import ElementTree as ET
-
 import common.response as response
 from common.video_stream import VideoStreamHandler
 from core import download_config, config
 from sites.downloader import DownloaderFactory
-from meta.factory import VideoFactory
+from sites.handler import UnsupportedDomainError, VideoUrlExtractionError
+from sites.meta import VideoFactory
 from models.user import User
 from schemas.video import DownloadVideoRequest, SortBy
 from schemas.proxy import VideoProxyRequest
 from services import video_service, subscription_video_service, subscription_service
 from services.proxy_service import ProxyServiceFactory
 from utils.jwt_helper import get_current_user
-from handlers.video_url.base import UnsupportedDomainError, VideoUrlExtractionError
 
 logger = logging.getLogger()
 

@@ -3,14 +3,16 @@ import logging
 import re
 
 from common.http_wrapper import session
+from sites.meta_origin import Actor, Video
+from sites.meta_registry import register_meta
 from utils.cookie import filter_cookies_to_query_string
-from meta.base import Video, Actor
 
 logger = logging.getLogger()
 
 
+@register_meta
 class BilibiliVideo(Video):
-    DOMAIN = 'bilibili.com'
+    domain = 'bilibili.com'
 
     @property
     def actors(self):

@@ -1,6 +1,15 @@
 from abc import abstractmethod
 
 
+class SubscriptionMeta:
+
+    def __init__(self, id, name, avatar, url):
+        self.id = id
+        self.name = name
+        self.avatar = avatar
+        self.url = url
+
+
 class Video:
     """Base class for video metadata"""
     DOMAIN = None

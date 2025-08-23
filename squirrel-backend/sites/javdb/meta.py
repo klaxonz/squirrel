@@ -3,12 +3,14 @@ import re
 from bs4 import BeautifulSoup
 
 from common.http_wrapper import session
+from sites.meta_origin import Video, Actor
+from sites.meta_registry import register_meta
 from utils.cookie import filter_cookies_to_query_string
-from meta.base import Video, Actor
 
 
+@register_meta
 class JavVideo(Video):
-    DOMAIN = 'javdb.com'
+    domain = 'javdb.com'
 
     def __init__(self, url, base_info):
         super().__init__(url, base_info)

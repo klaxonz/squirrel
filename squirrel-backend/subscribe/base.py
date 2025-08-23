@@ -1,7 +1,6 @@
 import abc
 from typing import List
-
-from meta.channel import SubscriptionMeta
+from sites.meta_origin import SubscriptionMeta
 
 
 class BaseSubscription(abc.ABC):

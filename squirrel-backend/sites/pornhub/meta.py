@@ -1,11 +1,13 @@
 from bs4 import BeautifulSoup
 
 from common.http_wrapper import session
-from meta.base import Video, Actor
+from sites.meta_origin import Video, Actor
+from sites.meta_registry import register_meta
 
 
+@register_meta
 class PornhubVideo(Video):
-    DOMAIN = 'pornhub.com'
+    domain = 'pornhub.com'
 
     def __init__(self, url, base_info):
         super().__init__(url, base_info)
