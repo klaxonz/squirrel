@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from core.exceptions.video_exceptions import UnsupportedDomainError
 from schemas.video.dto.video_dto import VideoUrlDto
 from sites.handler_registry import HandlerRegistry
 from models.video import Video
@@ -15,18 +16,6 @@ class VideoUrlHandler(ABC):
 
     def supports_domain(self, domain: str) -> bool:
         return getattr(self, "domain", None) == domain
-
-
-class VideoUrlHandlerError(Exception):
-    pass
-
-
-class UnsupportedDomainError(VideoUrlHandlerError):
-    pass
-
-
-class VideoUrlExtractionError(VideoUrlHandlerError):
-    pass
 
 
 class VideoUrlHandlerFactory:
