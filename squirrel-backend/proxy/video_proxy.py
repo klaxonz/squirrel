@@ -203,12 +203,8 @@ class VideoProxy:
         raise NotImplementedError
 
     def _extract_range_info(self) -> Optional[int]:
-        """Extract range start position from request headers"""
-        range_header = next(
-            (self.request.headers[key] for key in self.request.headers
-             if key.lower() == 'range'),
-            None
-        )
+        """Extract range start position from request headers (legacy helper)"""
+        range_header = self._get_raw_range_header()
         if range_header and range_header.startswith('bytes='):
             try:
                 range_part = range_header[6:]  # Remove 'bytes='
@@ -220,101 +216,61 @@ class VideoProxy:
                 logger.warning(f"Invalid range header: {range_header}")
         return None
 
+    def _get_raw_range_header(self) -> Optional[str]:
+        """Return the raw Range header (preserve start-end) if present"""
+        return next(
+            (self.request.headers[key] for key in self.request.headers
+             if key.lower() == 'range'),
+            None
+        )
+
     async def handle_stream(self, url: str) -> StreamingResponse:
+        client = httpx.AsyncClient(
+            timeout=httpx.Timeout(120.0, connect=30.0),
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=100),
+            follow_redirects=True,
+            http2=True
+        )
+
+        upstream_headers = self.headers.copy()
+        range_header = self._get_raw_range_header()
+        if range_header:
+            upstream_headers['Range'] = range_header
+
+        async def stream_generator():
+            try:
+                async with client.stream("GET", url, headers=upstream_headers) as resp:
+                    # First yield the status code and headers
+                    yield {
+                        "status_code": resp.status_code,
+                        "headers": {
+                            "Content-Type": resp.headers.get('Content-Type', 'application/octet-stream'),
+                            "Content-Length": resp.headers.get('Content-Length'),
+                            "Content-Range": resp.headers.get('Content-Range'),
+                            "Accept-Ranges": "bytes",
+                        }
+                    }
+                    # Then yield the content chunks
+                    async for chunk in resp.aiter_bytes():
+                        yield chunk
+            except httpx.RequestError as exc:
+                logger.error(f"An error occurred while requesting {exc.request.url!r}: {exc}")
+                yield {"error": "Bad Gateway"}
+            finally:
+                await client.aclose()
+
         try:
-            # Extract domain for optimization
-            parsed_url = urlparse(url)
-            domain = parsed_url.netloc.replace('www.', '')
+            streamer = stream_generator()
+            # The first item yielded is the header dict
+            first_item = await streamer.__anext__()
+            if "error" in first_item:
+                raise HTTPException(status_code=502, detail=first_item["error"])
 
-            # Get optimal configuration
-            connect_timeout, read_timeout, _ = NetworkOptimizer.get_optimal_timeout(domain)
+            status_code = first_item["status_code"]
+            headers = {k: v for k, v in first_item["headers"].items() if v is not None}
 
-            # Enhanced timeout configuration
-            timeout_config = httpx.Timeout(
-                connect=connect_timeout,
-                read=read_timeout,
-                write=30.0,
-                pool=10.0
-            )
+            return StreamingResponse(streamer, status_code=status_code, headers=headers)
 
-            # Enhanced client configuration
-            client_config = {
-                "timeout": timeout_config,
-                "limits": httpx.Limits(
-                    max_keepalive_connections=20,
-                    max_connections=100,
-                    keepalive_expiry=30.0
-                ),
-                "follow_redirects": True,
-                "http2": True
-            }
-
-            async with httpx.AsyncClient(**client_config) as client:
-                headers = self.headers.copy()
-
-                # Handle range requests for resume capability
-                range_start = self._extract_range_info()
-                if range_start is not None:
-                    headers['Range'] = f'bytes={range_start}-'
-
-                # First, make a HEAD request to get content info
-                content_length = 0
-                content_type = ''
-                try:
-                    head_resp = await client.head(url, headers=headers, timeout=30.0)
-                    content_length = int(head_resp.headers.get('content-length', 0))
-                    content_type = head_resp.headers.get('content-type', '')
-
-                    # Use NetworkOptimizer for optimal chunk size
-                    self._chunk_size = NetworkOptimizer.get_optimal_chunk_size(
-                        content_length, content_type
-                    )
-
-                except Exception as e:
-                    logger.debug(f"HEAD request failed, proceeding with GET: {e}")
-
-                # Now stream the actual content
-                async with client.stream("GET", url, headers=headers) as resp:
-                    resp.raise_for_status()
-
-                    # Enhanced response headers
-                    response_headers = _get_response_headers(resp)
-
-                    # Add caching headers for better performance
-                    if resp.status_code == 200:
-                        response_headers.update({
-                            'Cache-Control': 'public, max-age=3600',
-                            'Accept-Ranges': 'bytes'
-                        })
-
-                    return StreamingResponse(
-                        stream_with_retry(
-                            url,
-                            headers,
-                            chunk_size=self._chunk_size,
-                            timeout=self._timeout,
-                            range_start=range_start
-                        ),
-                        status_code=resp.status_code,
-                        headers=response_headers,
-                        media_type=resp.headers.get('Content-Type')
-                    )
-
-        except httpx.HTTPStatusError as exc:
-            logger.error(
-                f"HTTP error occurred: {exc.response.status_code} "
-                f"{exc.response.reason_phrase} for URL: {url}"
-            )
-            raise HTTPException(
-                status_code=exc.response.status_code,
-                detail=exc.response.reason_phrase
-            )
         except Exception as e:
-            logger.error(
-                f"Unexpected error while streaming {url}: {str(e)}",
-                exc_info=True
-            )
-            raise HTTPException(
-                status_code=500,
-                detail="Internal server error while streaming video"
-            )
+            logger.error(f"Unexpected error in proxy for {url}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal Server Error")
