@@ -1,19 +1,27 @@
+import re
+import json
+import requests
 from abc import ABC
 from urllib.parse import quote
-import requests
 from core.exceptions.video_exceptions import VideoUrlExtractionError
 from schemas.video.dto.video_dto import VideoUrlDto
 from sites.handler import VideoUrlHandler
 from sites.handler_registry import register_handler
 from models.video import Video
 from botasaurus.request import request as brequest, Request
-import json
-import re
+from utils.cookie import filter_cookies_to_query_string
 
 
 @brequest(output=None, raise_exception=True, close_on_crash=True, create_error_logs=False, max_retry=10)
 def _fetch_html(req: Request, link: str) -> str:
-    resp = req.get(link, timeout=20)
+    cookies = filter_cookies_to_query_string(link)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+        'Referer': link,
+        'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
+        'Cookie': cookies
+    }
+    resp = req.get(link, headers=headers, timeout=20)
     resp.raise_for_status()
     return resp.text
 
