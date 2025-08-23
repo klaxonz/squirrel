@@ -6,8 +6,8 @@ from core.cache import DistributedLock
 from services.subscription_progress_service import set_progress
 from core.config import settings
 from core.database import get_session
-from dto.subscription_dto import SubscriptionDto
-from dto.video_dto import VideoExtractDto
+from schemas.subscription.dto.subscription_dto import SubscriptionDto
+from schemas.video.dto.video_dto import VideoExtractDto
 from models.subscription import Subscription
 from services import download_service
 from sites.subscription import SubscriptionFactory

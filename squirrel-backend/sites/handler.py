@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from dto.video_dto import VideoUrlDto
+from schemas.video.dto.video_dto import VideoUrlDto
 from sites.handler_registry import HandlerRegistry
 from models.video import Video
 

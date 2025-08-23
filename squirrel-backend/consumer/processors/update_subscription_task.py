@@ -7,7 +7,7 @@ from services.subscription_progress_service import set_progress
 from common import constants
 from mq import mq_consumer
 from mq.producer import RedisStreamProducer
-from dto.subscription_update_dto import SubscriptionUpdateDto
+from schemas.subscription.dto.subscription_update_dto import SubscriptionUpdateDto
 from models.message import Message
 from services import subscription_service
 from services.subscription_update_service import SubscriptionUpdateService

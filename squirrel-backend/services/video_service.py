@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 from sqlalchemy import select, func, and_
 
 from core.database import get_session
-from dto.video_dto import VideoExtractDto, VideoDto, VideoUrlDto
+from schemas.video.dto.video_dto import VideoExtractDto, VideoDto, VideoUrlDto
 from sites.handler import VideoUrlHandlerFactory
 from models.creator import Creator
 from models.links import VideoCreator, SubscriptionVideo, UserSubscription

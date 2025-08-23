@@ -7,7 +7,7 @@ from core.database import get_session
 from core.cache import RedisClient
 from services.subscription_progress_service import tick_progress, maybe_complete
 from sites.downloader import DownloaderFactory
-from dto.video_dto import VideoExtractDto
+from schemas.video.dto.video_dto import VideoExtractDto
 from sites.meta import VideoFactory
 from models.message import Message
 from services import (

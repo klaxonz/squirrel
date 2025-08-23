@@ -3,7 +3,7 @@ from typing import Optional, Tuple, List, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.sql import text
 from core.database import get_session
-from dto.subscription_dto import SubscriptionDto
+from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from models.links import UserSubscription
 from models.subscription import Subscription, ContentType
 from services import user_config_service

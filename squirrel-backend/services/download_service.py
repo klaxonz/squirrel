@@ -4,7 +4,7 @@ from cache import task_cache
 from common import constants
 from core.cache import RedisClient
 from services.subscription_progress_service import tick_progress, maybe_complete
-from dto.video_dto import VideoExtractDto
+from schemas.video.dto.video_dto import VideoExtractDto
 from services import video_service, message_service, subscription_service
 from mq.producer import RedisStreamProducer
 from core.config import settings

@@ -6,7 +6,7 @@ from typing import Tuple
 from pytubefix import YouTube
 from urllib.parse import quote
 
-from dto.video_dto import VideoUrlDto
+from schemas.video.dto.video_dto import VideoUrlDto
 from sites.handler import VideoUrlHandler, VideoUrlExtractionError
 from sites.handler_registry import register_handler
 from models.video import Video

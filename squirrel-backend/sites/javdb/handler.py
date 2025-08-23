@@ -2,7 +2,7 @@ import re
 from abc import ABC
 from urllib.parse import quote
 from bs4 import BeautifulSoup
-from dto.video_dto import VideoUrlDto
+from schemas.video.dto.video_dto import VideoUrlDto
 from sites.handler import VideoUrlExtractionError, VideoUrlHandler
 from sites.handler_registry import register_handler
 from models.video import Video
