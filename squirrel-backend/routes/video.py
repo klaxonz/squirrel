@@ -1,22 +1,15 @@
 import logging
-import os
-import re
-import glob
-import tempfile
-import requests
 from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response
 from fastapi.responses import PlainTextResponse
-from yt_dlp import YoutubeDL
-from xml.etree import ElementTree as ET
 import common.response as response
 from common.video_stream import VideoStreamHandler
-from core import download_config, config
+from core import download_config
 from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExtractionError
+from models.user import User
 from schemas.video.request.video import SortBy, DownloadVideoRequest
+from services import video_service, subscription_video_service, subscription_service
 from sites.downloader import DownloaderFactory
 from sites.meta import VideoFactory
-from models.user import User
-from services import video_service, subscription_video_service, subscription_service
 from utils.jwt_helper import get_current_user
 
 logger = logging.getLogger()
@@ -128,71 +121,31 @@ def get_video_subtitles(
         fmt: str = Query("srt", description="返回格式：目前仅支持 srt"),
         current_user: User = Depends(get_current_user)
 ):
-    """获取视频字幕。
-
-    仅支持 bilibili.com：优先返回 AI 中文（ai-zh），将 B站字幕JSON转换为SRT 纯文本返回。
-    """
     if fmt.lower() != "srt":
         raise HTTPException(status_code=400, detail="Only srt format is supported")
 
-    # 读取视频信息
     video = video_service.get_video_by_id(video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
 
-    if 'bilibili.com' not in video.url:
-        raise HTTPException(status_code=400, detail="Subtitles not supported for this domain")
-
-    # 优先尝试：使用 yt-dlp 直接拉取并转换字幕为 SRT
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            ydl_opts = {
-                'quiet': True,
-                'no_warnings': True,
-                'ignoreerrors': False,
-                'skip_download': True,
-                'writesubtitles': True,
-                'writeautomaticsub': True,
-                'subtitleslangs': [lang],
-                'subtitlesformat': 'srt',
-                'postprocessors': [{
-                    'key': 'FFmpegSubtitlesConvertor',
-                    'format': 'srt'
-                }],
-                'outtmpl': os.path.join(tmpdir, '%(id)s.%(ext)s'),
+        from sites.subtitles import SubtitlesFactory
+        srt_text, filename = SubtitlesFactory.get_subtitles_for_video(video, lang, fmt)
+        return PlainTextResponse(
+            content=srt_text,
+            media_type="text/plain; charset=utf-8",
+            headers={
+                "Content-Disposition": f"inline; filename=\"{filename}\""
             }
-
-            cookie_file_path = config.get_cookies_file_path()
-            if cookie_file_path and 'youtube.com' not in video.url:
-                ydl_opts['cookiefile'] = cookie_file_path
-
-            with YoutubeDL(ydl_opts) as ydl:
-                ydl.download([video.url])
-
-            # 查找生成的 SRT 文件
-            srt_files = glob.glob(os.path.join(tmpdir, '*.srt'))
-            preferred = None
-            for path in srt_files:
-                filename = os.path.basename(path)
-                if f'.{lang}.' in filename or filename.endswith(f'.{lang}.srt'):
-                    preferred = path
-                    break
-            target_path = preferred or (srt_files[0] if srt_files else None)
-
-            if target_path:
-                with open(target_path, 'r', encoding='utf-8', errors='ignore') as rf:
-                    srt_text = rf.read()
-                bvid_match = re.search(r'(BV[\w-]+)', video.url) if 'bilibili.com' in video.url else None
-                filename = f"{(bvid_match.group(1) if bvid_match else video.id)}.{lang}.srt"
-                return PlainTextResponse(
-                    content=srt_text,
-                    media_type="text/plain; charset=utf-8",
-                    headers={
-                        "Content-Disposition": f"inline; filename=\"{filename}\""
-                    }
-                )
+        )
+    except ValueError as e:
+        detail = str(e)
+        if 'No subtitles available' in detail:
+            raise HTTPException(status_code=404, detail="No subtitles available")
+        raise HTTPException(status_code=400, detail=detail)
     except Exception:
-        logger.info('yt-dlp 字幕抓取失败，尝试使用备用方案 (bilibili API)')
+        logger.exception('Subtitles fetch failed')
+        raise HTTPException(status_code=500, detail="Server error")
 
 
 @router.get("/api/video/mpd")
