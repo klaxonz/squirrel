@@ -112,7 +112,7 @@ const emit = defineEmits(['toggle-play', 'skip-forward', 'skip-backward'])
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
   opacity: 0;
-  transition: opacity var(--yt-transition-fast) ease;
+  transition: opacity 0.15s ease;
 }
 
 .play-btn:hover::before {

@@ -195,9 +195,9 @@ const handleTouchEnd = () => {
 
 .progress-bar-filled {
   @apply absolute top-0 left-0 h-full;
-  background: var(--yt-red);
-  box-shadow: 0 0 8px var(--yt-red-glow);
-  transition: all var(--yt-transition-fast) ease;
+  background: #FF0000;
+  box-shadow: 0 0 8px rgba(255, 0, 0, 0.3);
+  transition: all 0.15s ease;
 }
 
 .progress-bar-hover {
@@ -211,9 +211,9 @@ const handleTouchEnd = () => {
     opacity-0;
   width: 12px;
   height: 12px;
-  background: var(--yt-red);
-  box-shadow: var(--yt-shadow-light);
-  transition: all var(--yt-transition-fast) ease;
+  background: #FF0000;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  transition: all 0.15s ease;
 }
 
 .progress-handle {
@@ -222,9 +222,9 @@ const handleTouchEnd = () => {
     opacity-0;
   width: 14px;
   height: 14px;
-  background: var(--yt-red);
-  box-shadow: var(--yt-shadow-medium);
-  transition: all var(--yt-transition-fast) ease;
+  background: #FF0000;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.15s ease;
 }
 
 .progress-bar-container:hover .progress-handle {
