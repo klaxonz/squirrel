@@ -43,6 +43,7 @@ export default function useKeyboardShortcuts(playerState, callbacks) {
 
     // 字幕
     'c': { action: 'toggleSubtitles', description: '字幕开/关' },
+    'C': { action: 'nextSubtitle', description: '切换下一条字幕' },
 
     // 跳转
     'Home': { action: 'jumpToStart', description: '跳转到开始' },

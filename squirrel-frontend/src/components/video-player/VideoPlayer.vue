@@ -252,10 +252,10 @@ defineExpose({
 
 /* YouTube风格的焦点状态 */
 .video-player-container:focus {
-  outline: 2px solid rgba(255, 255, 255, 0.3);
-  outline-offset: 2px;
+  outline: none;
 }
 
+/* 键盘导航时才显示可见焦点 */
 .video-player-container:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.5);
 }
