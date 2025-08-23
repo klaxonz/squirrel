@@ -1,7 +1,7 @@
 <template>
   <div class="settings-control">
     <button
-        @click="$emit('toggle-menu')"
+        @click.stop="$emit('toggle-menu')"
         class="control-btn"
         aria-label="设置"
     >
