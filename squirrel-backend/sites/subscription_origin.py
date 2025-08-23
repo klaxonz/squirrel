@@ -18,3 +18,4 @@ class BaseSubscription(abc.ABC):
     def get_subscribe_videos(self, extract_all: bool) -> List[str]:
         """Get list of video URLs from the channel"""
         pass
+

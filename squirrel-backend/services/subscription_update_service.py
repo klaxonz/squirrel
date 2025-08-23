@@ -10,7 +10,7 @@ from dto.subscription_dto import SubscriptionDto
 from dto.video_dto import VideoExtractDto
 from models.subscription import Subscription
 from services import download_service
-from subscribe.factory import SubscriptionFactory
+from sites.subscription import SubscriptionFactory
 
 logger = logging.getLogger()
 

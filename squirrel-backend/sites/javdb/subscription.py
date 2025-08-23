@@ -1,16 +1,16 @@
 import re
-from urllib.parse import urlparse
-
 import requests
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-
 from sites.meta_origin import SubscriptionMeta
+from sites.subscription import BaseSubscription
+from sites.subscription_registry import subscription_channel
 from utils.cookie import filter_cookies_to_query_string
-from subscribe.base import BaseSubscription
 
 
-class JavSubscription(BaseSubscription):
-    DOMAIN = 'javdb.com'
+@subscription_channel
+class JavdbSubscription(BaseSubscription):
+    domain = 'javdb.com'
 
     def get_subscribe_info(self):
         headers = {
@@ -48,10 +48,10 @@ class JavSubscription(BaseSubscription):
         parsed_url = urlparse(self.url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         video_list = []
-        
+
         bs4 = BeautifulSoup(response.text, 'html.parser')
         self._extract_video_urls(bs4, base_url, video_list)
-        
+
         page_next_list = bs4.select('a.pagination-link[rel="next"]')
         page = int(bs4.select('a.pagination-link[rel="next"]')[0].text) if len(page_next_list) > 0 else 1
         current_page = 1
@@ -61,9 +61,9 @@ class JavSubscription(BaseSubscription):
             response = requests.get(self.url + f'?page={current_page}&sort_type=0', headers=headers, timeout=15)
             response.raise_for_status()
             bs4 = BeautifulSoup(response.text, 'html.parser')
-            
+
             self._extract_video_urls(bs4, base_url, video_list)
-            
+
             page_next_list = bs4.select('a.pagination-link[rel="next"]')
             new_page = int(bs4.select('a.pagination-link[rel="next"]')[0].text) if len(page_next_list) > 0 else 1
             if new_page > page:

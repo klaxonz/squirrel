@@ -1,19 +1,19 @@
 import logging
 import re
-
 from bs4 import BeautifulSoup
-
 from common.http_wrapper import session
 from sites.meta_origin import SubscriptionMeta
+from sites.subscription import BaseSubscription
+from sites.subscription_registry import subscription_channel
 from utils.cookie import filter_cookies_to_query_string
 from sites.bilibili.sign import sign
-from subscribe.base import BaseSubscription
 
 logger = logging.getLogger()
 
 
+@subscription_channel
 class BilibiliSubscription(BaseSubscription):
-    DOMAIN = 'bilibili.com'
+    domain = 'bilibili.com'
 
     def get_mid(self):
         match = re.search(r'/(\d+)(?:\?.*)?', self.url)

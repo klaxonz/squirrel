@@ -1,11 +1,12 @@
 from pytubefix import Channel as YouTubeChannel
-
 from sites.meta_origin import SubscriptionMeta
-from subscribe.base import BaseSubscription
+from sites.subscription import BaseSubscription
+from sites.subscription_registry import subscription_channel
 
 
-class YouTubeSubscription(BaseSubscription):
-    DOMAIN = 'youtube.com'
+@subscription_channel
+class YoutubeSubscription(BaseSubscription):
+    domain = 'youtube.com'
 
     def __init__(self, url):
         super().__init__(url)

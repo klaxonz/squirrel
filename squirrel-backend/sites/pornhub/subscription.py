@@ -1,16 +1,16 @@
 import re
 from urllib.parse import urlparse
-
 from bs4 import BeautifulSoup
-
 from common.http_wrapper import session
 from sites.meta_origin import SubscriptionMeta
+from sites.subscription import BaseSubscription
+from sites.subscription_registry import subscription_channel
 from utils.cookie import filter_cookies_to_query_string
-from subscribe.base import BaseSubscription
 
 
+@subscription_channel
 class PornhubSubscription(BaseSubscription):
-    DOMAIN = 'pornhub.com'
+    domain = 'pornhub.com'
 
     def get_subscribe_info(self):
         cookies = filter_cookies_to_query_string(self.url)
@@ -74,10 +74,10 @@ class PornhubSubscription(BaseSubscription):
         parsed_url = urlparse(self.url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         video_list = []
-        
+
         bs4 = BeautifulSoup(response.text, 'html.parser')
         self._extract_video_urls(bs4, base_url, video_list)
-        
+
         page_next_list = bs4.select('.page_next')
         page = int(bs4.select('.page_next')[0].find_previous().text) if len(page_next_list) > 0 else 1
         current_page = 1
@@ -88,7 +88,7 @@ class PornhubSubscription(BaseSubscription):
             response.raise_for_status()
             bs4 = BeautifulSoup(response.text, 'html.parser')
             self._extract_video_urls(bs4, base_url, video_list)
-            
+
             new_page = int(bs4.select('.page_next')[0].find_previous().text) if len(page_next_list) > 0 else 1
             if new_page > page:
                 page = new_page
