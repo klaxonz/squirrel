@@ -1,7 +1,7 @@
 import json
 import subprocess
 from abc import ABC
-from typing import Tuple
+from typing import Tuple, Optional
 from pytubefix import YouTube
 from urllib.parse import quote
 from core.exceptions.video_exceptions import VideoUrlExtractionError
@@ -19,20 +19,23 @@ class YouTubeHandler(VideoUrlHandler, ABC):
 
     def get_video_url(self, video: Video) -> VideoUrlDto:
         try:
+            # Keep extraction to verify availability, but we will prefer DASH (MPD) like Bilibili
             yt = YouTube(
-                video.url,
+                video.url, 'WEB'
                 # use_po_token=True,
                 # po_token_verifier=po_token_verifier
             )
 
-            video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
-            audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
+            # video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
+            # audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
 
             proxy_prefix_path = f"/api/video/proxy?domain=youtube.com"
-            v_url = video_stream.url if video_stream else None
-            a_url = audio_stream.url if audio_stream else None
+            v_url = None
+            a_url = None
 
+            # Primary: return MPD endpoint so frontend uses DASH like bilibili
             return VideoUrlDto(
+                mpd_url=f"/api/video/mpd?video_id={video.id}",
                 video_url=(f"{proxy_prefix_path}&url=" + quote(v_url)) if v_url else None,
                 audio_url=(f"{proxy_prefix_path}&url=" + quote(a_url)) if a_url else None,
             )
@@ -41,7 +44,7 @@ class YouTubeHandler(VideoUrlHandler, ABC):
             raise VideoUrlExtractionError(f"Failed to extract YouTube video URL: {str(e)}")
 
 
-def po_token_verifier() -> Tuple[str, str]:
+def po_token_verifier(_: None = None) -> Optional[Tuple[str, str]]:
     token_object = generate_youtube_token()
     return token_object["visitorData"], token_object["poToken"]
 
