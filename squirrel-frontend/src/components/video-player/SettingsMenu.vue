@@ -307,6 +307,8 @@ const currentQualityLabel = computed(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, .6);
   transform-origin: bottom right;
   animation: menu-appear 160ms ease-out;
+  font-size: 12px;
+  line-height: 1.25;
 }
 
 @keyframes menu-appear {
@@ -428,7 +430,7 @@ const currentQualityLabel = computed(() => {
 
 .header-title {
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -481,7 +483,7 @@ const currentQualityLabel = computed(() => {
   align-items: center;
   gap: 4px;
   color: #9aa0a6;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .item-icon {
