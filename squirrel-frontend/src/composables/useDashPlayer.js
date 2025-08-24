@@ -22,7 +22,17 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
       streaming: {
         abr: {
           autoSwitchBitrate: { video: true, audio: true },
-        }
+          fastSwitchEnabled: true
+        },
+        buffer: {
+          stableBufferTime: 3,
+          bufferTimeAtTopQuality: 6,
+          bufferTimeAtTopQualityLongForm: 10,
+          longFormContentDurationThreshold: 1200,
+          bufferToKeep: 1.5
+        },
+        jumpGaps: true,
+        allowLowLatency: false
       }
     })
 
