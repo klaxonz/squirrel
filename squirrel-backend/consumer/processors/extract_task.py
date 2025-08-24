@@ -14,6 +14,7 @@ from services import (
     video_service, task_service, message_service, subscription_video_service,
     creator_service, video_creator_service, subscription_service
 )
+from models.subscription import Subscription
 from utils import url_helper
 from mq import mq_consumer
 from mq.producer import RedisStreamProducer
@@ -177,9 +178,18 @@ def _create_video(params: VideoExtractDto, video_meta, video_info):
             video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
             video = video_service.create_video(video_meta.url, video_info['title'], video_info['publish_date'],
                                                video_info['thumbnail'], video_info['duration'])
-        subscription_video = subscription_video_service.get_subscription_video(params.subscription_id, video.id)
-        if not subscription_video:
-            subscription_video_service.create_subscription_video(params.subscription_id, video.id)
+        _, created_new_link = subscription_video_service.create_subscription_video(params.subscription_id, video.id)
+
+        # 在增量更新时（非全量提取）且确实新增了订阅-视频关联时，原子自增 total_videos
+        if params.only_extract and not params.is_extract_all and created_new_link:
+            try:
+                with get_session() as session:
+                    session.query(Subscription).filter(Subscription.id == params.subscription_id).update({
+                        Subscription.total_videos: Subscription.total_videos + 1
+                    })
+                    session.commit()
+            except Exception:
+                pass
 
         actors = video_meta.actors
         if len(actors) > 0:

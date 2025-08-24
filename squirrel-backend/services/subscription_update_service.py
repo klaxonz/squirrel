@@ -73,7 +73,8 @@ class SubscriptionUpdateService:
                         subscribed=True,
                         only_extract=True,
                         subscription_id=sub.id,
-                        is_manual=is_manual
+                        is_manual=is_manual,
+                        is_extract_all=is_extract_all
                     )
                     download_service.start(params)
         except LockError:
