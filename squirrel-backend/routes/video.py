@@ -167,7 +167,14 @@ def get_video_mpd(
         mpd_xml = MpdFactory.build_mpd_for_video(video)
         if not mpd_xml:
             raise HTTPException(status_code=500, detail="Failed to build MPD")
-        return Response(content=mpd_xml, media_type="application/dash+xml")
+        return Response(
+            content=mpd_xml,
+            media_type="application/dash+xml",
+            headers={
+                "Cache-Control": "no-store, max-age=0",
+                "Pragma": "no-cache"
+            }
+        )
     except ValueError as e:
         # 未注册对应站点的 MPD 构建器
         raise HTTPException(status_code=400, detail=str(e))

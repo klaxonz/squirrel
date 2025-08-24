@@ -153,12 +153,7 @@ class YouTubeMpdBuilder(BaseMpdBuilder):
         # Collect meta for ranges/bitrate/audio params
         by_itag_meta = _collect_adaptive_meta(yt)
 
-        # Filter streams: adaptive only, skip OTF
-        all_streams = yt.streams
-        try:
-            all_streams = all_streams.filter(adaptive=True)
-        except Exception:
-            pass
+        all_streams = yt.streams.filter(adaptive=True)
 
         kept_by_itag = {}
         for s in all_streams:
@@ -320,14 +315,14 @@ class YouTubeMpdBuilder(BaseMpdBuilder):
             else:
                 # Fallback probe if no ranges provided
                 if r.get('url') and (r['mime'].startswith('video/mp4') or r['mime'].startswith('audio/mp4')):
-                    probed_init, probed_index = _probe_ranges(r['url'])
-                    if probed_init or probed_index:
+                    init_probe, index_probe = _probe_ranges(r['url'])
+                    if init_probe or index_probe:
                         seg = ET.SubElement(rep_el, 'SegmentBase')
-                        if probed_index:
-                            seg.set('indexRange', probed_index)
+                        if index_probe:
+                            seg.set('indexRange', index_probe)
                         init = ET.SubElement(seg, 'Initialization')
-                        if probed_init:
-                            init.set('range', probed_init)
+                        if init_probe:
+                            init.set('range', init_probe)
 
         # 仅保留带完整 range 的 MP4（稳定性更好）
         def has_ranges(r):
@@ -349,12 +344,35 @@ class YouTubeMpdBuilder(BaseMpdBuilder):
         video_final = [r for r in video_mp4 if has_ranges(r)]
         audio_final = [r for r in audio_mp4 if has_ranges(r)]
 
+        # 仅选择单一视频编解码族，避免跨编解码自动切换导致 SourceBuffer 码流不匹配
+        def codec_family(r):
+            cs = (r.get('codecs') or '').lower()
+            if 'av01' in cs:
+                return 'av1'
+            if 'vp9' in cs:
+                return 'vp9'
+            if 'avc' in cs or 'h264' in cs:
+                return 'avc'
+            return 'unknown'
+
+        preferred_order = ['avc', 'vp9', 'av1', 'unknown']
+        family_groups = {}
+        for v in video_final:
+            fam = codec_family(v)
+            family_groups.setdefault(fam, []).append(v)
+        selected_family = None
+        for fam in preferred_order:
+            if fam in family_groups and family_groups[fam]:
+                selected_family = fam
+                break
+        if selected_family:
+            video_final = family_groups[selected_family]
+
         if video_final:
-            # 仅保留最高的 2-3 个档位，减少初始化网络风暴
+            # 保留所选编解码族下的所有 MP4 视频 itag，前端可按 itag 精确切换
             video_sorted = sorted(video_final, key=lambda r: (r.get('height') or 0, r.get('bandwidth') or 0), reverse=True)
-            video_kept = video_sorted[:3]
             video_as = ET.SubElement(period, 'AdaptationSet', contentType='video', segmentAlignment='true')
-            for v in video_kept:
+            for v in video_sorted:
                 add_rep(video_as, v, 'video')
         if audio_final:
             # 默认音轨优先；若没有默认标记，只保留码率最高的一个

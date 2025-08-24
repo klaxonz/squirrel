@@ -21,8 +21,7 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     player.updateSettings({
       streaming: {
         abr: {
-          autoSwitchBitrate: { video: true, audio: true },
-          fastSwitchEnabled: true
+          autoSwitchBitrate: { video: true, audio: true }
         },
         buffer: {
           stableBufferTime: 3,
@@ -30,9 +29,7 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
           bufferTimeAtTopQualityLongForm: 10,
           longFormContentDurationThreshold: 1200,
           bufferToKeep: 1.5
-        },
-        jumpGaps: true,
-        allowLowLatency: false
+        }
       }
     })
 
@@ -88,15 +85,50 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
       dashRef.value.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: true } } } })
       return
     }
-    // try match by height label like '1080p'
-    const list = dashRef.value.getBitrateInfoListFor('video') || []
-    const targetHeight = parseInt(String(quality).replace(/[^0-9]/g, ''), 10)
+
+    const player = dashRef.value
+
+    // 1) 尝试按 itag 精确切换（通过 dash.js tracks）
+    const qStr = String(quality)
+    if (/^\d+$/.test(qStr) && typeof player.getTracksFor === 'function') {
+      try {
+        const tracks = player.getTracksFor('video') || []
+        let targetTrack = null
+        for (const t of tracks) {
+          const tid = String(t?.id ?? t?.Id ?? t?.representationId ?? '')
+          if (tid && tid === qStr) { targetTrack = t; break }
+        }
+        if (targetTrack) {
+          const qi = targetTrack.qualityIndex ?? targetTrack.quality ?? targetTrack.index
+          if (Number.isInteger(qi)) {
+            player.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: false } } } })
+            player.setQualityFor('video', qi)
+            return
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2) 退化为按高度匹配（兼容无 track id 暴露的情况）
+    const list = player.getBitrateInfoListFor('video') || []
+
+    // map itag -> height from props.video.qualities
+    let targetHeight = NaN
+    if (/^\d+$/.test(qStr)) {
+      const fromQualities = (props?.video?.qualities || []).find(q => String(q.id) === qStr)
+      if (fromQualities && fromQualities.height) targetHeight = parseInt(fromQualities.height, 10)
+    }
+    // fallback: parse like '1080p'
+    if (!Number.isFinite(targetHeight)) {
+      targetHeight = parseInt(qStr.replace(/[^0-9]/g, ''), 10)
+    }
+
     let targetIndex = -1
     for (let i = 0; i < list.length; i++) {
       const h = list[i]?.height || 0
       if (h === targetHeight) { targetIndex = i; break }
     }
-    if (targetIndex === -1 && list.length) {
+    if (targetIndex === -1 && list.length && Number.isFinite(targetHeight)) {
       // fallback to closest lower height
       let closest = null
       for (let i = 0; i < list.length; i++) {
@@ -106,8 +138,8 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
       if (closest) targetIndex = closest.i
     }
     if (targetIndex >= 0) {
-      dashRef.value.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: false } } } })
-      dashRef.value.setQualityFor('video', targetIndex)
+      player.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: false } } } })
+      player.setQualityFor('video', targetIndex)
     }
   }
 
