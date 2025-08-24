@@ -1,9 +1,7 @@
 import datetime
 import logging
-
-import requests
 from bs4 import BeautifulSoup
-
+from common.http_wrapper import session
 from sites.downloader import Downloader
 from models.task.download_task import DownloadTask
 from models.subscription import Subscription
@@ -22,7 +20,7 @@ class JavdbDownloader(Downloader):
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/124.0.0.0 Safari/537.36',
         }
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = session.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
         bs4 = BeautifulSoup(response.text, 'html.parser')
         video_info = {}

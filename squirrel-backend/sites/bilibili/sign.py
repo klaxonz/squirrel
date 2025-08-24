@@ -2,8 +2,7 @@ import time
 import urllib.parse
 from functools import reduce
 from hashlib import md5
-
-import requests
+from common.http_wrapper import session
 
 mixinKeyEncTab = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
@@ -43,7 +42,7 @@ def get_wbi_keys() -> tuple[str, str]:
                       'Chrome/58.0.3029.110 Safari/537.3',
         'Referer': 'https://www.bilibili.com/'
     }
-    resp = requests.get('https://api.bilibili.com/x/web-interface/nav', headers=headers)
+    resp = session.get('https://api.bilibili.com/x/web-interface/nav', headers=headers)
     resp.raise_for_status()
     json_content = resp.json()
     img_url: str = json_content['data']['wbi_img']['img_url']
