@@ -5,7 +5,7 @@ from typing import Tuple, Optional
 from pytubefix import YouTube
 from urllib.parse import quote
 from core.exceptions.video_exceptions import VideoUrlExtractionError
-from schemas.video.dto.video_dto import VideoUrlDto
+from schemas.video.dto.video_dto import VideoUrlDto, QualityOptionDto
 from sites.handler import VideoUrlHandler
 from sites.handler_registry import register_handler
 from models.video import Video
@@ -19,25 +19,43 @@ class YouTubeHandler(VideoUrlHandler, ABC):
 
     def get_video_url(self, video: Video) -> VideoUrlDto:
         try:
-            # Keep extraction to verify availability, but we will prefer DASH (MPD) like Bilibili
-            yt = YouTube(
-                video.url, 'WEB'
-                # use_po_token=True,
-                # po_token_verifier=po_token_verifier
-            )
+            # Extract with pytube to build qualities list; prefer DASH via MPD
+            yt = YouTube(video.url, 'WEB')
 
-            # video_stream = yt.streams.filter(progressive=False, type="video").order_by('resolution').desc().first()
-            # audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
+            qualities: list[QualityOptionDto] = []
+            try:
+                adaptive = yt.streams.filter(adaptive=True)
+                seen = set()
+                for s in adaptive:
+                    height = getattr(s, 'height', None)
+                    abr = getattr(s, 'abr', None)
+                    # only collect video heights for UI; audio will be auto-selected in MPD
+                    if height and height not in seen:
+                        seen.add(height)
+                        qualities.append(QualityOptionDto(
+                            value=f"{height}p",
+                            label=f"{height}p",
+                            height=height,
+                            bandwidth=None,
+                            id=str(getattr(s, 'itag', ''))
+                        ))
+                # sort high -> low and add 'auto' on top
+                qualities = sorted(qualities, key=lambda q: (q.height or 0), reverse=True)
+                if not any(q.value == 'auto' for q in qualities):
+                    qualities.insert(0, QualityOptionDto(value='auto', label='自动'))
+            except Exception:
+                qualities = [QualityOptionDto(value='auto', label='自动')]
 
             proxy_prefix_path = f"/api/video/proxy?domain=youtube.com"
             v_url = None
             a_url = None
 
-            # Primary: return MPD endpoint so frontend uses DASH like bilibili
+            # Primary: return MPD endpoint so frontend uses DASH
             return VideoUrlDto(
                 mpd_url=f"/api/video/mpd?video_id={video.id}",
                 video_url=(f"{proxy_prefix_path}&url=" + quote(v_url)) if v_url else None,
                 audio_url=(f"{proxy_prefix_path}&url=" + quote(a_url)) if a_url else None,
+                qualities=qualities or None,
             )
 
         except Exception as e:

@@ -4,7 +4,7 @@ import requests
 from abc import ABC
 from urllib.parse import quote
 from core.exceptions.video_exceptions import VideoUrlExtractionError
-from schemas.video.dto.video_dto import VideoUrlDto
+from schemas.video.dto.video_dto import VideoUrlDto, QualityOptionDto
 from sites.handler import VideoUrlHandler
 from sites.handler_registry import register_handler
 from models.video import Video
@@ -67,23 +67,97 @@ class BilibiliHandler(VideoUrlHandler, ABC):
 
             best_video_url = None
             best_audio_url = None
+            qualities: list[QualityOptionDto] = []
             data = data.get('data', {})
             if 'dash' in data:
                 dash_data = data['dash']
                 if 'video' in dash_data:
                     video_urls = dash_data['video']
-                    best_video_url = max(video_urls, key=lambda x: x['bandwidth'])['baseUrl']
+                    # Map Bilibili qn(id) to standard heights to avoid mis-reading width as height
+                    QN_TO_HEIGHT = {
+                        16: 360,
+                        32: 480,
+                        48: 400,   # legacy low bitrate
+                        64: 720,
+                        74: 720,   # 720P60
+                        80: 1080,
+                        112: 1080, # 1080P+ (higher bitrate)
+                        116: 1080, # 1080P60
+                        120: 2160, # 4K
+                        125: 2160, # 4K HDR (if available)
+                        126: 2160,
+                        127: 4320, # 8K
+                    }
+                    for v in video_urls:
+                        bw = v.get('bandwidth')
+                        vid = v.get('id')
+                        h = None
+                        try:
+                            qn = int(vid)
+                            h = QN_TO_HEIGHT.get(qn)
+                        except Exception:
+                            h = None
+                        # fallback to explicit height if mapping is missing
+                        if not h:
+                            try:
+                                h = int(v.get('height') or 0) or None
+                            except Exception:
+                                h = None
+                        label = f"{h}p" if h else (f"{int(bw/1000)}kbps" if bw else 'unknown')
+                        # For frontend switching, use height label as value; keep qn in id
+                        value = f"{h}p" if h else (f"{int(bw/1000)}kbps" if bw else 'auto')
+                        qualities.append(QualityOptionDto(
+                            value=value,
+                            label=label,
+                            height=h,
+                            bandwidth=bw,
+                            id=str(vid) if vid is not None else None
+                        ))
+                    # Pick best by bandwidth
+                    if video_urls:
+                        best_video_url = max(video_urls, key=lambda x: x.get('bandwidth', 0)).get('baseUrl')
                 if 'audio' in dash_data:
                     audio_urls = dash_data['audio']
-                    best_audio_url = max(audio_urls, key=lambda x: x['bandwidth'])['baseUrl']
-            elif 'durl' in data:
-                video_urls = data['durl']
-                best_video_url = video_urls[0]['url']
+                    if audio_urls:
+                        best_audio_url = max(audio_urls, key=lambda x: x.get('bandwidth', 0)).get('baseUrl')
+            elif 'durl' in data or 'accept_quality' in data:
+                # Handle non-DASH streams (durl) which may still have quality options
+                if 'accept_quality' in data and 'accept_description' in data:
+                    for quality_val, desc in zip(data['accept_quality'], data['accept_description']):
+                        height_match = re.search(r'(\d+)P', desc)
+                        height = int(height_match.group(1)) if height_match else None
+                        qualities.append(QualityOptionDto(
+                            value=str(quality_val),
+                            label=desc,
+                            height=height,
+                            id=str(quality_val)
+                        ))
+
+                if 'durl' in data:
+                    video_urls = data['durl']
+                    best_video_url = video_urls[0]['url']
+
+                if not qualities:
+                    qualities = [QualityOptionDto(value='auto', label='自动')]
+
+            # 去重并按分辨率从高到低排序，前端会在 DASH 模式用 auto
+            if qualities:
+                def key_fn(q: QualityOptionDto):
+                    return (q.height or 0, q.bandwidth or 0)
+                # unique by height label
+                uniq = {}
+                for q in qualities:
+                    uniq[q.label] = q
+                qualities = sorted(uniq.values(), key=key_fn, reverse=True)
+                # 加上自动选项
+                if not any(q.value == 'auto' for q in qualities):
+                    qualities.insert(0, QualityOptionDto(value='auto', label='自动'))
 
             return VideoUrlDto(
                 video_url=f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,
                 audio_url=f"{proxy_prefix_path}&url=" + quote(best_audio_url) if best_audio_url else None,
-                mpd_url=f"/api/video/mpd?video_id={video.id}" if 'dash' in data else None
+                mpd_url=f"/api/video/mpd?video_id={video.id}" if 'dash' in data else None,
+                qualities=qualities or None
             )
 
         except requests.RequestException as e:

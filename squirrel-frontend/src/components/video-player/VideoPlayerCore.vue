@@ -419,6 +419,9 @@ watch(() => props.playerState.media.muted, (newMuted) => {
     if (audioElement.value) {
       audioElement.value.muted = newMuted
     }
+  }
+})
+
 
 // 监听 MPD URL 变化（DASH）
 watch(() => props.video?.mpd_url, (newUrl) => {
@@ -429,17 +432,19 @@ watch(() => props.video?.mpd_url, (newUrl) => {
 
 // 监听清晰度变更，转发到具体播放器
 watch(() => props.playerState.media.currentQuality, (q) => {
+  console.log('[Debug] Quality changed:', q, 'isHls=', props.isHlsStream, 'isDash=', props.isDashStream)
   try {
     if (props.isHlsStream) {
       setHlsQuality?.(q)
     } else if (props.isDashStream) {
       setDashQuality?.(q)
     }
-  } catch (_) {}
-})
-
+  } catch (e) {
+    console.warn('[Debug] setQuality failed', e)
   }
 })
+
+
 
 // 双击处理函数
 const handleLeftClick = () => {

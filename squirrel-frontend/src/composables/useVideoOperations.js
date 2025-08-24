@@ -8,7 +8,7 @@ export default function useVideoOperations() {
   }
 
   const getVideoUrl = async (video) => {
-    if (video.stream_video_url) return true
+    if (video.stream_video_url || video.mpd_url) return true
 
     if (!video || !video.id) {
       const err = Object.assign(new Error('无效的视频对象'), { code: 'BAD_REQUEST' })
@@ -21,11 +21,10 @@ export default function useVideoOperations() {
         return true
       }
 
-      // 统一通过后端获取播放链接（VideoUrlDto），后端会在 bilibili 情况下返回 mpd_url
+      // 统一通过后端获取播放链接（VideoUrlDto），后端会在 bilibili/YouTube 情况下返回 mpd_url 与可选清晰度
       const response = await axios.get('/api/video/url', {
         params: { video_id: video.id }
       })
-
 
       const { code, msg, data } = response?.data || {}
       console.log('[Debug] 1. useVideoOperations: Received data from /api/video/url', data);
@@ -39,6 +38,14 @@ export default function useVideoOperations() {
       const mpdUrl = data?.mpd_url
       const videoUrl = data?.video_url
       const audioUrl = data?.audio_url
+      const qualities = Array.isArray(data?.qualities) ? data.qualities : []
+
+      // 将清晰度选项透传给前端播放器用于显示
+      if (qualities.length) {
+        video.qualities = qualities.map(q => ({ value: q.value, label: q.label, height: q.height, bandwidth: q.bandwidth, id: q.id }))
+      } else {
+        video.qualities = undefined
+      }
 
       if (mpdUrl) {
         console.log('[Debug] 1.1. useVideoOperations: DASH mode detected. Setting video.mpd_url =', mpdUrl);

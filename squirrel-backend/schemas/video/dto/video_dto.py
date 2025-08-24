@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, field_serializer
 from sqlalchemy_to_pydantic import sqlalchemy_to_pydantic
@@ -35,11 +35,21 @@ class VideoCountDto(BaseModel):
     unread: int
 
 
+class QualityOptionDto(BaseModel):
+    """Single quality option for manual selection on frontend"""
+    value: str  # e.g. '1080p' | '720p' | 'audio-128k'
+    label: str  # display label
+    height: Optional[int] = None  # for video tracks
+    bandwidth: Optional[int] = None  # bps
+    id: Optional[str] = None  # representation id / itag etc.
+
+
 class VideoUrlDto(BaseModel):
     """DTO for video URL response"""
     video_url: Optional[str] = None
     audio_url: Optional[str] = None
     mpd_url: Optional[str] = None
+    qualities: Optional[List[QualityOptionDto]] = None
 
     class Config:
         from_attributes = True

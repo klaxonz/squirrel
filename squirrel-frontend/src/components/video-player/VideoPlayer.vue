@@ -176,7 +176,7 @@ const {
   adjustPlaybackRate,
   setQuality,
   setPlaybackRate
-} = useVideoControls(playerState, videoCore)
+} = useVideoControls(playerState, videoCore, props.video)
 
 // 拖动进度条时的暂停/恢复
 const onSeekStart = () => {

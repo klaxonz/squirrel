@@ -1,17 +1,57 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
-export default function useVideoControls(playerState, videoCore) {
+// videoParam: reactive video object (e.g., props.video)
+export default function useVideoControls(playerState, videoCore, videoParam) {
   // 播放速度选项
   const playbackRates = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
-  
-  // 质量选项
-  const availableQualities = ref([
+
+  // 质量选项（默认仅含自动；当后端返回 qualities 时覆盖）
+  const availableQualities = ref([{ value: 'auto', label: '自动' }])
+
+  const DEFAULT_FALLBACK = [
     { value: 'auto', label: '自动' },
     { value: '1080p', label: '1080p' },
     { value: '720p', label: '720p' },
     { value: '480p', label: '480p' },
     { value: '360p', label: '360p' }
-  ])
+  ]
+
+  // 根据视频对象的 qualities 动态更新可选清晰度
+  const applyQualitiesFromVideo = (v) => {
+    try {
+      const list = Array.isArray(v?.qualities) ? v.qualities : []
+      if (list.length > 0) {
+        // 规范化数据结构
+        const mapped = list.map(q => ({
+          value: q.value || (q.height ? `${q.height}p` : 'auto'),
+          label: q.label || (q.height ? `${q.height}p` : '自动'),
+          height: q.height || undefined,
+          bandwidth: q.bandwidth || undefined,
+          id: q.id || undefined
+        }))
+        // 去重并排序（高到低），确保 auto 在首位
+        const uniq = {}
+        mapped.forEach(q => { uniq[q.value] = q })
+        const arr = Object.values(uniq)
+        arr.sort((a, b) => (b.height || 0) - (a.height || 0))
+        if (!arr.find(q => q.value === 'auto')) arr.unshift({ value: 'auto', label: '自动' })
+        availableQualities.value = arr
+      } else {
+        // 如果后端未提供且非 DASH/HLS，则回退到常见档位
+        availableQualities.value = DEFAULT_FALLBACK
+      }
+    } catch (_) {
+      availableQualities.value = DEFAULT_FALLBACK
+    }
+  }
+
+  // 初始应用一次
+  applyQualitiesFromVideo(videoParam)
+
+  // 监听视频对象变化
+  watch(() => videoParam && [videoParam.id, videoParam?.qualities], () => {
+    applyQualitiesFromVideo(videoParam)
+  }, { deep: false })
 
   // 播放控制
   const togglePlay = () => {
@@ -49,7 +89,7 @@ export default function useVideoControls(playerState, videoCore) {
 
   const skipForward = () => {
     const newTime = Math.min(
-      playerState.media.currentTime + 10, 
+      playerState.media.currentTime + 10,
       playerState.media.duration
     )
     setVideoTime(newTime)
@@ -62,7 +102,7 @@ export default function useVideoControls(playerState, videoCore) {
 
   const setVideoTime = (time) => {
     if (!videoCore.value?.videoElement) return
-    
+
     videoCore.value.videoElement.currentTime = time
     if (videoCore.value.audioElement) {
       videoCore.value.audioElement.currentTime = time
@@ -137,22 +177,21 @@ export default function useVideoControls(playerState, videoCore) {
   // 播放速度控制
   const setPlaybackRate = (rate) => {
     playerState.media.playbackRate = rate
-    
+
     if (videoCore.value?.videoElement) {
       videoCore.value.videoElement.playbackRate = rate
     }
-    
+
     if (videoCore.value?.audioElement) {
       videoCore.value.audioElement.playbackRate = rate
     }
-    
+
     playerState.ui.showPlaybackRateMenu = false
   }
 
   // 质量控制
   const setQuality = (quality) => {
     playerState.media.currentQuality = quality
-    // 这里需要与HLS播放器集成
     playerState.ui.showSettingsMenu = false
     console.debug('Quality changed to:', quality)
   }
@@ -169,7 +208,7 @@ export default function useVideoControls(playerState, videoCore) {
   const adjustVolume = (delta) => {
     const newVolume = Math.min(Math.max(playerState.media.volume + delta, 0), 100)
     playerState.media.volume = newVolume
-    
+
     // 显示音量指示器
     playerState.ui.volume.showIndicator = true
     setTimeout(() => {
