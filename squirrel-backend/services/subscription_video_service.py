@@ -28,9 +28,9 @@ def create_subscription_video(subscription_id, video_id):
             .returning(SubscriptionVideo.subscription_id, SubscriptionVideo.video_id)
         )
         result = session.execute(stmt)
-        created = result.rowcount and result.rowcount > 0
+        row = result.first()
         session.commit()
-        if created:
+        if row is not None:
             # 新建时直接返回对象
             return session.scalars(select(SubscriptionVideo).where(
                 SubscriptionVideo.subscription_id == subscription_id,
