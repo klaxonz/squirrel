@@ -58,3 +58,4 @@ dist/
 *.rar
 *.7z
 Thumbs.db
+.qoder/
