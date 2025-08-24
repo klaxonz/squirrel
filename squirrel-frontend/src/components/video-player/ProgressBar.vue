@@ -143,13 +143,13 @@ const handleTouchEnd = () => {
 
 <style scoped>
 .progress-container {
-  @apply relative mb-1;
-  padding: 0 12px;
+  @apply relative ;
+  padding: 0 4px;
 }
 
 .progress-bar-container {
   @apply relative h-5 cursor-pointer flex items-center;
-  padding: 8px 0;
+  padding: 4px 0;
 }
 
 .progress-bar {

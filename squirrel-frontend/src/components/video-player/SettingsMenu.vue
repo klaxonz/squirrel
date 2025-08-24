@@ -17,7 +17,7 @@
               <Icon icon="material-symbols:subtitles" class="item-icon"/>
               <span>字幕</span>
             </span>
-            <span class="item-right">{{ currentSubtitleLabel }}</span>
+            <span class="item-right"><span>{{ currentSubtitleLabel }}</span><Icon icon="material-symbols:chevron-right"/></span>
           </button>
 
           <button v-if="availableQualities && availableQualities.length>0" class="menu-item"
@@ -26,7 +26,16 @@
               <Icon icon="material-symbols:high-quality" class="item-icon"/>
               <span>播放质量</span>
             </span>
-            <span class="item-right">{{ currentQualityLabel }}</span>
+            <span class="item-right"><span>{{ currentQualityLabel }}</span><Icon icon="material-symbols:chevron-right"/></span>
+          </button>
+
+
+          <button class="menu-item" @click="activePanel='playback-rate'">
+            <span class="item-left">
+              <Icon icon="material-symbols:speed" class="item-icon"/>
+              <span>播放速度</span>
+            </span>
+            <span class="item-right"><span>{{ currentRateLabel }}</span><Icon icon="material-symbols:chevron-right"/></span>
           </button>
 
           <div class="menu-item toggled">
@@ -162,6 +171,29 @@
           </button>
         </div>
       </div>
+
+      <!-- 播放速度子菜单 -->
+      <div v-else-if="activePanel==='playback-rate'" class="menu-panel">
+        <div class="menu-header">
+          <button class="back-btn" @click="activePanel='main'">
+            <Icon icon="material-symbols:arrow-back-ios-new"/>
+          </button>
+          <span class="header-title">播放速度</span>
+        </div>
+        <div class="menu-list">
+          <button
+            v-for="rate in (availableRates || [])"
+            :key="String(rate)"
+            class="menu-item"
+            :class="{ active: Number(currentRate) === Number(rate) }"
+            @click="$emit('set-playback-rate', rate)"
+          >
+            <span class="item-left">{{ Number(rate) === 1 ? '正常' : rate + 'x' }}</span>
+            <Icon v-if="Number(currentRate) === Number(rate)" icon="material-symbols:check" class="check-icon"/>
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -179,7 +211,9 @@ const props = defineProps({
   subtitles: Array,
   subtitleSettings: Object,
   autoplay: Boolean,
-  loop: Boolean
+  loop: Boolean,
+  currentRate: [Number, String],
+  availableRates: Array
 })
 
 const emit = defineEmits([
@@ -192,8 +226,15 @@ const emit = defineEmits([
   'update-subtitle-position',
   'update-subtitle-shadow',
   'update-autoplay',
-  'update-loop'
+  'update-loop',
+  'set-playback-rate'
 ])
+
+const currentRateLabel = computed(() => {
+  const r = Number(props.currentRate)
+  if (!r || isNaN(r)) return '正常'
+  return r === 1 ? '正常' : r + 'x'
+})
 
 // 分级菜单状态
 const activePanel = ref('main')
@@ -436,6 +477,9 @@ const currentQualityLabel = computed(() => {
 }
 
 .item-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: #9aa0a6;
   font-size: 12px;
 }
