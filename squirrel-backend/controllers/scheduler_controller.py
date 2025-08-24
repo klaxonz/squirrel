@@ -1,9 +1,9 @@
 import logging
 from threading import Lock
 from typing import Optional
-
 from schedule.schedule import Scheduler
-from schedule.task import TaskRegistry
+from schedule.task import TaskRegistry, BaseTask
+from utils import module_discovery
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +14,8 @@ _scheduler_lock = Lock()
 
 
 def scheduler_start() -> None:
+    module_discovery.import_classes_from_package("schedule.tasks", base_class=BaseTask)
+
     global _scheduler, _scheduler_running
     with _scheduler_lock:
         if _scheduler_running:

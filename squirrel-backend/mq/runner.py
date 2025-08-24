@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import threading
 from typing import List
-
+from utils import module_discovery
 from .consumer import RedisStreamConsumer, ConsumerOptions
 from .registry import ConsumerRegistry
-from utils.auto_import import ModuleImporter
 
 
 class WorkerRunner:
@@ -13,8 +12,7 @@ class WorkerRunner:
         self._threads: List[threading.Thread] = []
 
     def start(self) -> None:
-        # 自动导入 consumer 包（包含 processors），触发装饰器注册
-        ModuleImporter.import_classes(directory="consumer", recursive=True)
+        module_discovery.import_classes_from_package(package="consumer", recursive=True)
 
         consumers: List[RedisStreamConsumer] = []
         for spec in ConsumerRegistry.all():
@@ -34,5 +32,3 @@ class WorkerRunner:
 
     def threads(self) -> List[threading.Thread]:
         return self._threads
-
-
