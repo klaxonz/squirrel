@@ -17,14 +17,14 @@ class RateLimiter:
 
     # Default rate limits for different domains
     DEFAULT_LIMITS = {
-        'bilibili.com': RateLimit(1.0, 3.0, 'bilibili.com'),
-        'youtube.com': RateLimit(2.0, 4.0, 'youtube.com'),
-        'pornhub.com': RateLimit(1.0, 3.0, 'pornhub.com'),
-        'javdb.com': RateLimit(4.0, 6.0, 'javdb.com'),
+        'bilibili.com': RateLimit(1, 1.5, 'bilibili.com'),
+        'youtube.com': RateLimit(1, 1.5, 'youtube.com'),
+        'pornhub.com': RateLimit(1, 1.5, 'pornhub.com'),
+        'javdb.com': RateLimit(1, 1.5, 'javdb.com'),
     }
 
     # Global default rate limit
-    DEFAULT_RATE_LIMIT = RateLimit(2.0, 4.0, '*')
+    DEFAULT_RATE_LIMIT = RateLimit(1, 1.5, '*')
 
     def __init__(self):
         self._last_request_time: dict[str, float] = {}

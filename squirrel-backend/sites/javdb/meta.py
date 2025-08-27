@@ -1,5 +1,6 @@
 import re
 
+import requests
 from bs4 import BeautifulSoup
 
 from common.http_wrapper import session
@@ -25,7 +26,7 @@ class JavVideo(Video):
                               'Chrome/124.0.0.0 Safari/537.36',
                 'Cookie': cookies
             }
-            response = session.get(self.url, headers=headers, timeout=20)
+            response = requests.get(self.url, headers=headers, timeout=20)
             response.raise_for_status()
             bs4 = BeautifulSoup(response.text, 'html.parser')
 
@@ -35,7 +36,7 @@ class JavVideo(Video):
                     actor_els = el.select('a')
                     for actor_el in actor_els:
                         actor_url = 'https://javdb.com' + actor_el.get('href')
-                        response = session.get(actor_url, headers=headers, timeout=20)
+                        response = requests.get(actor_url, headers=headers, timeout=20)
                         response.raise_for_status()
                         bs4 = BeautifulSoup(response.text, 'html.parser')
                         username_el = bs4.select('.actor-section-name')
