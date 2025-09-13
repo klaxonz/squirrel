@@ -36,9 +36,23 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
         arr.sort((a, b) => (b.height || 0) - (a.height || 0))
         if (!arr.find(q => q.value === 'auto')) arr.unshift({ value: 'auto', label: '自动' })
         availableQualities.value = arr
+        // 默认使用最高清晰度（非 auto）
+        try {
+          if (playerState?.media?.currentQuality === 'auto') {
+            const firstNonAuto = arr.find(q => q.value !== 'auto')
+            if (firstNonAuto) playerState.media.currentQuality = firstNonAuto.value
+          }
+        } catch (_) {}
       } else {
         // 如果后端未提供且非 DASH/HLS，则回退到常见档位
         availableQualities.value = DEFAULT_FALLBACK
+        // 默认使用最高清晰度（非 auto）
+        try {
+          if (playerState?.media?.currentQuality === 'auto') {
+            const firstNonAuto = DEFAULT_FALLBACK.find(q => q.value !== 'auto')
+            if (firstNonAuto) playerState.media.currentQuality = firstNonAuto.value
+          }
+        } catch (_) {}
       }
     } catch (_) {
       availableQualities.value = DEFAULT_FALLBACK

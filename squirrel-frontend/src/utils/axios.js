@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useUser } from '../composables/useUser';
 
 const instance = axios.create({
-  timeout: 30000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },

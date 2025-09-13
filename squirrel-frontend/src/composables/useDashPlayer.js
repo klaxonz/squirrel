@@ -64,7 +64,14 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     const on = (evt, handler) => { try { player.on(evt, handler) } catch (e) { console.warn('[Debug] dash on failed', evt, e) } }
     on('manifestLoadingStarted', (e) => console.log('[Debug] 4.1 MANIFEST_LOADING_STARTED', e?.url || resolvedMpdUrl))
     on('manifestLoaded', (e) => console.log('[Debug] 4.2 MANIFEST_LOADED', { periods: e?.data?.Period?.length }))
-    on('streamInitialized', () => console.log('[Debug] 4.3 STREAM_INITIALIZED'))
+    on('streamInitialized', () => {
+      console.log('[Debug] 4.3 STREAM_INITIALIZED')
+      // 初始化后如果设置了非 auto 的清晰度，强制应用
+      try {
+        const q = playerState?.media?.currentQuality
+        if (q && q !== 'auto') setQuality(q)
+      } catch (_) {}
+    })
     on('sourceInitialized', () => console.log('[Debug] 4.4 SOURCE_INITIALIZED'))
     player.initialize(videoRef.value, resolvedMpdUrl, !!props.playerState?.media?.autoplay)
 
