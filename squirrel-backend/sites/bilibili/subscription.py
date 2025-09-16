@@ -31,7 +31,7 @@ class BilibiliSubscription(BaseSubscription):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
             'Cookie': cookies
         }
-        resp = requests.get(self.url, headers=headers)
+        resp = session.get(self.url, headers=headers)
         soup = BeautifulSoup(resp.text, 'html.parser')
 
         title_tag = soup.find('title')
@@ -69,7 +69,7 @@ class BilibiliSubscription(BaseSubscription):
         while should_continue:
             query = sign(params)
             req_url = f'https://api.bilibili.com/x/space/wbi/arc/search?{query}'
-            resp = requests.get(req_url, headers=headers)
+            resp = session.get(req_url, headers=headers)
             if resp.status_code != 200:
                 raise Exception('Request failed')
 
