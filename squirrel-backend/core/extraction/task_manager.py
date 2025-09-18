@@ -8,7 +8,7 @@ from datetime import datetime
 
 from .interfaces import (
     ExtractionTask, ExtractionResult, TaskStatus, TaskPriority,
-    ITaskProcessor, ICacheManager, IProgressTracker
+    ITaskProcessor, ICacheManager
 )
 from .factory import get_extractor_factory
 
@@ -98,7 +98,7 @@ class TaskManager:
     
     def __init__(self, 
                  cache_manager: ICacheManager,
-                 progress_tracker: IProgressTracker,
+                 progress_tracker: Optional[Any],
                  queue_mapping: Dict[str, Dict[str, str]]):
         self.cache_manager = cache_manager
         self.progress_tracker = progress_tracker
@@ -149,7 +149,8 @@ class TaskManager:
             self.validator.mark_processing(task)
             
             # 开始进度跟踪
-            self.progress_tracker.start_task(task.task_id)
+            if self.progress_tracker:
+                self.progress_tracker.start_task(task.task_id)
             
             logger.info(f"任务提交成功: {task.task_id}, queue: {queue_name}")
             return True, queue_name
@@ -162,7 +163,8 @@ class TaskManager:
         """处理任务"""
         try:
             # 更新进度
-            self.progress_tracker.update_progress(task.task_id, 1, "开始处理任务")
+            if self.progress_tracker:
+                self.progress_tracker.update_progress(task.task_id, 1, "开始处理任务")
             
             # 寻找合适的处理器
             processor = None
@@ -180,7 +182,8 @@ class TaskManager:
                 result = processor.process(task)
             
             # 完成进度跟踪
-            self.progress_tracker.complete_task(task.task_id, result.success)
+            if self.progress_tracker:
+                self.progress_tracker.complete_task(task.task_id, result.success)
             
             # 取消处理中标记
             self.validator.unmark_processing(task)
@@ -192,11 +195,14 @@ class TaskManager:
             logger.error(error_msg, exc_info=True)
             
             # 清理状态
-            self.progress_tracker.complete_task(task.task_id, False)
+            if self.progress_tracker:
+                self.progress_tracker.complete_task(task.task_id, False)
             self.validator.unmark_processing(task)
             
             return ExtractionResult(success=False, error=error_msg)
     
     def get_task_status(self, task_id: str) -> Optional[Dict[str, Any]]:
         """获取任务状态"""
-        return self.progress_tracker.get_progress(task_id)
+        if self.progress_tracker:
+            return self.progress_tracker.get_progress(task_id)
+        return None

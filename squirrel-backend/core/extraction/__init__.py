@@ -9,13 +9,12 @@
 - factory: 提取器工厂和注册表
 - task_manager: 任务管理器
 - cache: 缓存管理器
-- progress: 进度跟踪器
 - extractors: 各网站提取器实现
 - handlers: 结果处理器
 """
 
 from .interfaces import (
-    IExtractor, ITaskProcessor, IResultHandler, ICacheManager, IProgressTracker,
+    IExtractor, ITaskProcessor, IResultHandler, ICacheManager,
     ExtractionTask, ExtractionResult, TaskStatus, TaskPriority
 )
 
@@ -30,7 +29,6 @@ from .task_manager import TaskManager, TaskRouter, TaskValidator
 
 from .cache import RedisCacheManager, MemoryCacheManager, CacheKeys
 
-from .progress import RedisProgressTracker, MemoryProgressTracker, CompositeProgressTracker
 
 # 导入所有提取器以确保注册
 from .extractors import (
@@ -44,7 +42,7 @@ from .handlers.video_handler import VideoExtractionHandler
 
 __all__ = [
     # 接口
-    'IExtractor', 'ITaskProcessor', 'IResultHandler', 'ICacheManager', 'IProgressTracker',
+    'IExtractor', 'ITaskProcessor', 'IResultHandler', 'ICacheManager',
     'ExtractionTask', 'ExtractionResult', 'TaskStatus', 'TaskPriority',
     
     # 基础类
@@ -60,8 +58,6 @@ __all__ = [
     # 缓存
     'RedisCacheManager', 'MemoryCacheManager', 'CacheKeys',
     
-    # 进度跟踪
-    'RedisProgressTracker', 'MemoryProgressTracker', 'CompositeProgressTracker',
     
     # 处理器
     'VideoExtractionHandler',

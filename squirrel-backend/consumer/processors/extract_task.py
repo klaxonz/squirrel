@@ -14,7 +14,6 @@ from utils import url_helper
 # 导入新的提取框架
 from core.extraction.task_manager import TaskManager
 from core.extraction.cache import RedisCacheManager
-from core.extraction.progress import RedisProgressTracker
 from core.extraction.handlers.video_handler import VideoExtractionHandler
 from core.extraction.base import BaseTaskProcessor
 from core.extraction.factory import get_extractor_factory
@@ -24,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 # 初始化组件
 cache_manager = RedisCacheManager("video_extract")
-progress_tracker = RedisProgressTracker(cache_manager)
 video_handler = VideoExtractionHandler()
 
 # 队列映射配置
@@ -48,7 +46,7 @@ QUEUE_MAPPING = {
 }
 
 # 初始化任务管理器
-task_manager = TaskManager(cache_manager, progress_tracker, QUEUE_MAPPING)
+task_manager = TaskManager(cache_manager, None, QUEUE_MAPPING)
 
 # 创建任务处理器
 class VideoTaskProcessor(BaseTaskProcessor):
@@ -185,9 +183,6 @@ def _process_extract_message_compat(message: Dict[str, Any]):
             params = VideoExtractDto.model_validate_json(message_obj.body)
             from cache import task_cache
             task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
-            from services.subscription_progress_service import tick_progress, maybe_complete
-            tick_progress(params.subscription_id)
-            maybe_complete(params.subscription_id)
         except Exception:
             pass
 
@@ -230,9 +225,6 @@ def process_video_extract_v2(message: Dict[str, Any]):
             message_obj = Message.from_dict(message)
             params = VideoExtractDto.model_validate_json(message_obj.body)
             _cleanup_task_cache(params)
-            from services.subscription_progress_service import tick_progress, maybe_complete
-            tick_progress(params.subscription_id)
-            maybe_complete(params.subscription_id)
         except Exception:
             pass
 

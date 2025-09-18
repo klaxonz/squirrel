@@ -3,7 +3,6 @@ from typing import Dict, Any
 from datetime import datetime, timezone
 
 from core.cache import RedisClient
-from services.subscription_progress_service import set_progress
 from common import constants
 from mq import mq_consumer
 from mq.producer import RedisStreamProducer
@@ -58,9 +57,6 @@ def _process_subscription_update(message: Dict[str, Any], is_manual: bool) -> No
         logger.info(f"订阅不存在或已删除: subscription_id={params.subscription_id}")
         return
 
-    # 进度 - 入场
-    set_progress(sub.id, {"status": "in_progress", "phase": "init", "source": source, "startedAt": datetime.now(timezone.utc).isoformat()})
-
     # manual 占用标记（短 TTL）
     if is_manual:
         client.set(_manual_flag_key(sub.id), 1, ex=120)
@@ -78,7 +74,6 @@ def _process_subscription_update(message: Dict[str, Any], is_manual: bool) -> No
         logger.info(f"订阅更新消息已分发: {sub_name}, subscription_id={params.subscription_id}")
     except Exception as e:
         logger.error(f"订阅更新失败: subscription_id={params.subscription_id}, error={e}", exc_info=True)
-        set_progress(sub.id, {"status": "failed", "lastError": str(e)})
         raise
     finally:
         # Clear enqueued flag on completion

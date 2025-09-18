@@ -14,7 +14,6 @@ from models.user import User
 from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest
 from services import subscription_service, message_service
 from core.cache import DistributedLock
-from services.subscription_progress_service import set_progress
 from utils.jwt_helper import get_current_user
 from mq.producer import RedisStreamProducer
 from common import constants
@@ -149,13 +148,6 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
     # 设置手动占用标记，减少与定时的竞争（短 TTL）
     client.set(f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{subscription_id}", 1, ex=120)
 
-    set_progress(subscription_id, {
-        "status": "queued",
-        "phase": "queued",
-        "source": "manual",
-        "requestId": getattr(message, 'id', None),
-    })
-
     # 将手动更新投递到入口队列，随后由消费者按 domain 路由
     RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, message.to_dict())
 
@@ -166,80 +158,6 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
         "subscriptionId": subscription_id,
         "requestId": getattr(message, 'id', None),
         "queuedAt": datetime.utcnow().isoformat()
-    })
-
-
-@router.get("/api/subscription/{subscription_id}/refresh/status")
-def refresh_subscription_status(subscription_id: int, current_user: User = Depends(get_current_user)):
-    with get_session() as session:
-        user_subscription = session.scalars(
-            select(UserSubscription).where(
-                UserSubscription.user_id == current_user.id,
-                UserSubscription.subscription_id == subscription_id,
-                UserSubscription.is_deleted.is_(False)
-            )
-        ).first()
-        if not user_subscription:
-            return response.forbidden("无权查看该订阅进度")
-
-    progress_key = f"{constants.REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX}{subscription_id}"
-    raw = client.hgetall(progress_key) or {}
-    data = cast(Dict[str, Any], raw)
-
-    return response.success({
-        "status": data.get("status", "queued") if data else "queued",
-        "inProgress": data.get("status") == "in_progress",
-        "phase": data.get("phase"),
-        "processed": int(data.get("processed", 0)) if data.get("processed") else 0,
-        "total": int(data.get("total", 0)) if data.get("total") else 0,
-        "source": data.get("source"),
-        "startedAt": data.get("startedAt"),
-        "updatedAt": data.get("updatedAt"),
-        "finishedAt": data.get("finishedAt"),
-        "requestId": data.get("requestId"),
-        "lastError": data.get("lastError"),
-    })
-
-
-@router.get("/api/subscription/refresh/active")
-def list_active_refresh_tasks(current_user: User = Depends(get_current_user)):
-    # 获取当前用户的所有有效订阅
-    with get_session() as session:
-        subs = session.scalars(
-            select(Subscription).join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
-            .where(
-                UserSubscription.user_id == current_user.id,
-                UserSubscription.is_deleted.is_(False)
-            )
-        ).all()
-
-    items = []
-    for sub in subs:
-        progress_key = f"{constants.REDIS_KEY_SUBSCRIPTION_UPDATE_PROGRESS_PREFIX}{sub.id}"
-        raw = client.hgetall(progress_key) or {}
-        if not raw:
-            continue
-        status = raw.get("status")
-
-        item = {
-            "subscriptionId": sub.id,
-            "status": status,
-            "phase": raw.get("phase"),
-            "processed": int(raw.get("processed", 0)) if raw.get("processed") else 0,
-            "total": int(raw.get("total", 0)) if raw.get("total") else 0,
-            "source": raw.get("source"),
-            "startedAt": raw.get("startedAt"),
-            "updatedAt": raw.get("updatedAt"),
-            "requestId": raw.get("requestId"),
-            "meta": {
-                "name": getattr(sub, 'name', ''),
-                "avatar": getattr(sub, 'avatar', ''),
-            }
-        }
-        items.append(item)
-
-    return response.success({
-        "items": items
     })
 
 

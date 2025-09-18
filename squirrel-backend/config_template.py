@@ -7,15 +7,13 @@
 from core.extraction import (
     get_extractor_factory, 
     TaskManager, 
-    RedisCacheManager, 
-    RedisProgressTracker,
+    RedisCacheManager,
     VideoExtractionHandler
 )
 
 # 初始化组件
 def setup_extraction_system():
     cache_manager = RedisCacheManager("video_extract")
-    progress_tracker = RedisProgressTracker(cache_manager)
     video_handler = VideoExtractionHandler()
     
     # 队列映射配置
@@ -39,7 +37,7 @@ def setup_extraction_system():
     }
     
     # 创建任务管理器
-    task_manager = TaskManager(cache_manager, progress_tracker, queue_mapping)
+    task_manager = TaskManager(cache_manager, None, queue_mapping)
     
     return task_manager
 

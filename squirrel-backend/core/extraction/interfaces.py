@@ -126,25 +126,3 @@ class ICacheManager(ABC):
         pass
 
 
-class IProgressTracker(ABC):
-    """进度跟踪器接口"""
-    
-    @abstractmethod
-    def start_task(self, task_id: str, total_steps: int = 1) -> None:
-        """开始任务"""
-        pass
-    
-    @abstractmethod
-    def update_progress(self, task_id: str, current_step: int, message: str = "") -> None:
-        """更新进度"""
-        pass
-    
-    @abstractmethod
-    def complete_task(self, task_id: str, success: bool = True) -> None:
-        """完成任务"""
-        pass
-    
-    @abstractmethod
-    def get_progress(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """获取进度信息"""
-        pass

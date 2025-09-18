@@ -11,7 +11,6 @@ from services import (
     video_service, subscription_video_service, creator_service, 
     video_creator_service, task_service, message_service
 )
-from services.subscription_progress_service import tick_progress, maybe_complete
 from mq.producer import RedisStreamProducer
 from common import constants
 from models.message import Message
@@ -67,27 +66,16 @@ class VideoExtractionHandler(BaseResultHandler):
             if not only_extract and video:
                 self._create_download_task(video)
             
-            # 更新进度
-            self._update_progress(subscription_id)
             
             logger.info(f"视频提取结果处理完成: {task.task_id}")
             
         except Exception as e:
             logger.error(f"处理成功结果失败: {task.task_id}, error: {e}", exc_info=True)
-            # 仍然需要更新进度
-            subscription_id = task.metadata.get('subscription_id')
-            if subscription_id:
-                self._update_progress(subscription_id)
     
     def handle_failure(self, task: ExtractionTask, result: ExtractionResult) -> None:
         """处理失败结果"""
         try:
             logger.error(f"处理视频提取失败结果: {task.task_id}, error: {result.error}")
-            
-            # 更新进度
-            subscription_id = task.metadata.get('subscription_id')
-            if subscription_id:
-                self._update_progress(subscription_id)
                 
         except Exception as e:
             logger.error(f"处理失败结果异常: {task.task_id}, error: {e}")
@@ -178,13 +166,6 @@ class VideoExtractionHandler(BaseResultHandler):
         except Exception as e:
             logger.error(f"创建下载任务失败: video_id={video.id}, error: {e}")
     
-    def _update_progress(self, subscription_id: int):
-        """更新订阅进度"""
-        try:
-            tick_progress(subscription_id)
-            maybe_complete(subscription_id)
-        except Exception as e:
-            logger.warning(f"更新进度失败: subscription_id={subscription_id}, error: {e}")
     
     def _check_subscription_exist(self, subscription_id: int) -> bool:
         """检查订阅是否存在"""

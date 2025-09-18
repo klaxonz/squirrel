@@ -3,7 +3,6 @@ import logging
 from cache import task_cache
 from common import constants
 from core.cache import RedisClient
-from services.subscription_progress_service import tick_progress, maybe_complete
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import video_service, message_service, subscription_service
 from mq.producer import RedisStreamProducer
@@ -33,8 +32,6 @@ def start(params: VideoExtractDto):
     if params.only_extract:
         if __check_video_exists(params.url):
             logger.debug(f"{params.url} is already extracted")
-            tick_progress(params.subscription_id)
-            maybe_complete(params.subscription_id)
             return
         # Per-video enqueued guard (48h TTL)
         if task_cache.is_video_enqueued(params.url):
@@ -45,8 +42,6 @@ def start(params: VideoExtractDto):
             return
     if not __check_subscription_exist(params.subscription_id):
         logger.info(f"subscription {params.subscription_id} is not exist")
-        tick_progress(params.subscription_id)
-        maybe_complete(params.subscription_id)
         return
 
     # Set video enqueued flag before enqueue

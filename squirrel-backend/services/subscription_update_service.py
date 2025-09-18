@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from redis.exceptions import LockError
 
 from core.cache import DistributedLock
-from services.subscription_progress_service import set_progress
 from core.config import settings
 from core.database import get_session
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
@@ -13,6 +12,7 @@ from services import download_service
 from sites.subscription import SubscriptionFactory
 
 logger = logging.getLogger()
+
 
 class SubscriptionUpdateService:
     """Encapsulate subscription video update strategy and side effects."""
@@ -36,15 +36,13 @@ class SubscriptionUpdateService:
         lock_key = f"lock:subscription:update:{sub.id}"
         try:
             with DistributedLock(
-                lock_key,
-                timeout=180,
-                blocking_timeout=180,
-                auto_renew=True,
-                renew_interval=60,
-                renew_extend=120,
+                    lock_key,
+                    timeout=180,
+                    blocking_timeout=180,
+                    auto_renew=True,
+                    renew_interval=60,
+                    renew_extend=120,
             ):
-                set_progress(sub.id, {"status": "in_progress", "phase": "fetching_feed", "source": "manual" if is_manual else "scheduled"})
-
                 subscribe_channel = SubscriptionFactory.create_subscription(sub.url)
                 is_extract_all = SubscriptionUpdateService._should_extract_all(sub)
                 video_list = subscribe_channel.get_subscribe_videos(extract_all=is_extract_all)
@@ -57,14 +55,7 @@ class SubscriptionUpdateService:
 
                 extract_list = video_list if is_extract_all else video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
 
-                set_progress(sub.id, {"phase": "extracting", "total": len(extract_list), "processed": 0})
-
                 if len(extract_list) == 0:
-                    set_progress(sub.id, {
-                        "status": "completed",
-                        "phase": "finalizing",
-                        "finishedAt": datetime.now(timezone.utc).isoformat()
-                    })
                     return
 
                 for video in extract_list:
@@ -83,4 +74,3 @@ class SubscriptionUpdateService:
         except Exception as e:
             logger.error(f"Unexpected error while updating subscription {sub.id}: {e}", exc_info=True)
             return
-
