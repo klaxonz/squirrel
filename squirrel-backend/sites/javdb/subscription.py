@@ -20,7 +20,7 @@ class JavdbSubscription(BaseSubscription):
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Cookie': cookies
         }
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = session.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
 
         bs4 = BeautifulSoup(response.text, 'html.parser')
@@ -46,7 +46,7 @@ class JavdbSubscription(BaseSubscription):
             'Cookie': cookies
         }
 
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = session.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
 
         parsed_url = urlparse(self.url)
@@ -62,7 +62,7 @@ class JavdbSubscription(BaseSubscription):
 
         while current_page < page and extract_all:
             current_page += 1
-            response = requests.get(self.url + f'?page={current_page}&sort_type=0', headers=headers, timeout=15)
+            response = session.get(self.url + f'?page={current_page}&sort_type=0', headers=headers, timeout=15)
             response.raise_for_status()
             bs4 = BeautifulSoup(response.text, 'html.parser')
 

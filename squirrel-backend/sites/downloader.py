@@ -45,7 +45,7 @@ class Downloader:
             return video_info
 
     def download_avatar(self, subscription_name: str, subscription_avatar: str):
-        response = requests.get(subscription_avatar, timeout=15)
+        response = session.get(subscription_avatar, timeout=15)
         response.raise_for_status()
         download_path = download_config.get_tv_show_root_path(subscription_name)
         download_fullpath = f'{download_path}/poster.jpg'

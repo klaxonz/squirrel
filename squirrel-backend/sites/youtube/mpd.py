@@ -4,6 +4,7 @@ import re
 import struct
 import requests
 from pytubefix import YouTube
+from common.http_wrapper import session
 from sites.mpd_origin import BaseMpdBuilder
 from sites.mpd_registry import register_mpd
 from models.video import Video
@@ -69,7 +70,7 @@ def _probe_ranges(url: str, max_tries: int = 2, chunk_sizes=(1024 * 1024, 4 * 10
     for i in range(min(max_tries, len(chunk_sizes))):
         end = chunk_sizes[i] - 1
         try:
-            resp = requests.get(url, headers={**headers, 'Range': f'bytes=0-{end}'}, timeout=15)
+            resp = session.get(url, headers={**headers, 'Range': f'bytes=0-{end}'}, timeout=15)
             if resp.status_code not in (200, 206):
                 continue
             data = resp.content or b''

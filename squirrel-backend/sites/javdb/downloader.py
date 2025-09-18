@@ -22,7 +22,7 @@ class JavdbDownloader(Downloader):
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/124.0.0.0 Safari/537.36',
         }
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = session.get(self.url, headers=headers, timeout=15)
         response.raise_for_status()
         bs4 = BeautifulSoup(response.text, 'html.parser')
         video_info = {}
