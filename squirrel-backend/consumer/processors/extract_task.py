@@ -1,233 +1,256 @@
+"""
+重构后的视频提取任务处理器
+"""
 import logging
-from datetime import datetime
 from typing import Dict, Any
-from cache import task_cache
-from common import constants
-from core.database import get_session
-from core.cache import RedisClient
-from services.subscription_progress_service import tick_progress, maybe_complete
-from sites.downloader import DownloaderFactory
+
 from schemas.video.dto.video_dto import VideoExtractDto
-from sites.meta import VideoFactory
 from models.message import Message
-from services import (
-    video_service, task_service, message_service, subscription_video_service,
-    creator_service, video_creator_service, subscription_service
-)
-from models.subscription import Subscription
-from utils import url_helper
 from mq import mq_consumer
-from mq.producer import RedisStreamProducer
+from common import constants
 from common.types.queues import ExtractQueueType
+from utils import url_helper
+
+# 导入新的提取框架
+from core.extraction.task_manager import TaskManager
+from core.extraction.cache import RedisCacheManager
+from core.extraction.progress import RedisProgressTracker
+from core.extraction.handlers.video_handler import VideoExtractionHandler
+from core.extraction.base import BaseTaskProcessor
+from core.extraction.factory import get_extractor_factory
+from core.extraction.interfaces import ExtractionTask, TaskPriority
 
 logger = logging.getLogger(__name__)
-client = RedisClient.get_instance().get_client()
+
+# 初始化组件
+cache_manager = RedisCacheManager("video_extract")
+progress_tracker = RedisProgressTracker(cache_manager)
+video_handler = VideoExtractionHandler()
+
+# 队列映射配置
+QUEUE_MAPPING = {
+    'bilibili': {
+        'manual': 'queue::video::extract::bilibili::manual',
+        'scheduled': 'queue::video::extract::bilibili::scheduled'
+    },
+    'youtube': {
+        'manual': 'queue::video::extract::youtube::manual',
+        'scheduled': 'queue::video::extract::youtube::scheduled'
+    },
+    'pornhub': {
+        'manual': 'queue::video::extract::pornhub::manual',
+        'scheduled': 'queue::video::extract::pornhub::scheduled'
+    },
+    'javdb': {
+        'manual': 'queue::video::extract::javdb::manual',
+        'scheduled': 'queue::video::extract::javdb::scheduled'
+    }
+}
+
+# 初始化任务管理器
+task_manager = TaskManager(cache_manager, progress_tracker, QUEUE_MAPPING)
+
+# 创建任务处理器
+class VideoTaskProcessor(BaseTaskProcessor):
+    """视频任务处理器"""
+    
+    def __init__(self):
+        extractor_factory = get_extractor_factory()
+        # 这里我们需要一个通用的提取器来处理任务
+        super().__init__(None, video_handler)
+        self.extractor_factory = extractor_factory
+    
+    def can_process(self, task: ExtractionTask) -> bool:
+        """检查是否可以处理任务"""
+        extractor = self.extractor_factory.create_extractor(task.url)
+        return extractor is not None
+    
+    def process(self, task: ExtractionTask):
+        """处理任务"""
+        # 获取合适的提取器
+        extractor = self.extractor_factory.create_extractor(task.url)
+        if not extractor:
+            from core.extraction.interfaces import ExtractionResult
+            result = ExtractionResult(
+                success=False,
+                error=f"未找到合适的提取器: {task.url}"
+            )
+            self.result_handler.handle_failure(task, result)
+            return result
+        
+        # 设置提取器并执行
+        self.extractor = extractor
+        return super().process(task)
+
+# 添加处理器到任务管理器
+video_processor = VideoTaskProcessor()
+task_manager.add_processor(video_processor)
 
 
 def get_queue_type(params: VideoExtractDto) -> ExtractQueueType:
+    """获取队列类型"""
     if params.only_extract:
         return ExtractQueueType.MANUAL if params.is_manual else ExtractQueueType.SCHEDULED
     return ExtractQueueType.FOR_DOWNLOAD
 
 
-def _resolve_extract_queue(params: VideoExtractDto) -> str:
-    domain = url_helper.extract_top_level_domain(params.url)
-    mapping = constants.DOMAIN_QUEUE_MAPPING.get(domain)
-    if not mapping:
-        raise ValueError(f"Unsupported domain for extract: {domain}", )
-
-    queue_type = get_queue_type(params)
-    queue_name = mapping.get(queue_type.value)
-    if not queue_name:
-        raise ValueError(f"No queue mapping for domain {domain} and type {queue_type.value}")
-    return queue_name
-
-
 def route_video_extract(message: Dict[str, Any]) -> str:
+    """路由视频提取任务"""
     try:
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
-
-        queue_name = _resolve_extract_queue(params)
-        logger.debug(f"Routed video extract: {params.url} -> {queue_name}")
-        return queue_name
-
+        
+        # 创建提取任务
+        task = _create_extraction_task(params)
+        
+        # 提交任务并获取队列名
+        is_manual = params.is_manual if hasattr(params, 'is_manual') else True
+        success, result = task_manager.submit_task(task, is_manual)
+        
+        if not success:
+            raise ValueError(f"任务提交失败: {result}")
+        
+        logger.debug(f"路由视频提取: {params.url} -> {result}")
+        return result
+        
     except Exception as e:
-        logger.error(f"Error in video extract routing: {e}", exc_info=True)
-        raise ValueError("Error in video extract routing")
+        logger.error(f"视频提取路由错误: {e}", exc_info=True)
+        raise ValueError("视频提取路由错误")
 
 
+def _create_extraction_task(params: VideoExtractDto) -> ExtractionTask:
+    """创建提取任务"""
+    # 确定优先级
+    priority = TaskPriority.HIGH if getattr(params, 'is_manual', True) else TaskPriority.NORMAL
+    
+    # 构建元数据
+    metadata = {
+        'subscription_id': params.subscription_id,
+        'only_extract': params.only_extract,
+        'subscribed': getattr(params, 'subscribed', False),
+        'is_extract_all': getattr(params, 'is_extract_all', False),
+        'is_manual': getattr(params, 'is_manual', True)
+    }
+    
+    return task_manager.create_task(
+        url=params.url,
+        priority=priority,
+        metadata=metadata
+    )
+
+
+# 兼容性处理器 - 保持原有的消息队列接口
 @mq_consumer(constants.QUEUE_VIDEO_EXTRACT, group="extract", consumer_name="extract-entry")
 def process_extract_message(message: Dict[str, Any]):
+    """处理提取消息（入口队列）"""
     _process_extract_message_compat(message)
 
 
 @mq_consumer(constants.QUEUE_VIDEO_EXTRACT_SCHEDULED, group="extract", consumer_name="extract-entry-scheduled")
 def process_extract_scheduled_message(message: Dict[str, Any]):
+    """处理定时提取消息（入口队列）"""
     _process_extract_message_compat(message)
 
 
 def _process_extract_message_compat(message: Dict[str, Any]):
-    params = None
+    """兼容性消息处理"""
     try:
         logger.debug(f"收到视频解析消息: {message}")
-
+        
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
-
-        if not _check_subscription_exist(params.subscription_id):
-            logger.warning(f"Subscription {params.subscription_id} not found or deleted")
-            return
-
-        # Refresh extracting cache TTL to avoid premature expiry during long waits
+        
+        # 创建提取任务
+        task = _create_extraction_task(params)
+        
+        # 设置缓存标记
         try:
+            from cache import task_cache
             task_cache.set_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
         except Exception:
             pass
-
-        queue_name = _resolve_extract_queue(params)
+        
+        # 路由到具体队列
+        queue_name = route_video_extract(message)
+        
+        # 发送到具体队列
+        from mq.producer import RedisStreamProducer
         RedisStreamProducer().send(queue_name, message)
-
+        
     except Exception as e:
         logger.error(f"路由失败: {e}", exc_info=True)
-        if params and hasattr(params, 'url') and params.url:
+        # 清理缓存
+        try:
+            message_obj = Message.from_dict(message)
+            params = VideoExtractDto.model_validate_json(message_obj.body)
+            from cache import task_cache
             task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
-            try:
-                tick_progress(params.subscription_id)
-                maybe_complete(params.subscription_id)
-            except Exception:
-                pass
-        # 吞掉异常，避免重复重试导致进度计数异常
-        return
+            from services.subscription_progress_service import tick_progress, maybe_complete
+            tick_progress(params.subscription_id)
+            maybe_complete(params.subscription_id)
+        except Exception:
+            pass
 
 
+# 具体网站队列处理器
 @mq_consumer("queue::video::extract::bilibili::manual", group="extract-site")
 @mq_consumer("queue::video::extract::bilibili::scheduled", group="extract-site")
 @mq_consumer("queue::video::extract::youtube::manual", group="extract-site")
-@mq_consumer("queue::video::extract::youtube::scheduled", group="extract-site", consumer_count=20)
+@mq_consumer("queue::video::extract::youtube::scheduled", group="extract-site")
 @mq_consumer("queue::video::extract::pornhub::manual", group="extract-site")
 @mq_consumer("queue::video::extract::pornhub::scheduled", group="extract-site")
-@mq_consumer("queue::video::extract::javdb::manual", group="extract-site", consumer_count=1)
-@mq_consumer("queue::video::extract::javdb::scheduled", group="extract-site", consumer_count=10)
-def process_video_extract(message: Dict[str, Any]):
-    params = None
+@mq_consumer("queue::video::extract::javdb::manual", group="extract-site")
+@mq_consumer("queue::video::extract::javdb::scheduled", group="extract-site")
+def process_video_extract_v2(message: Dict[str, Any]):
+    """处理视频提取（新版本）"""
     try:
         logger.info(f"开始处理视频解析消息：{message}")
-
-        platform = url_helper.extract_top_level_domain(message.get('url', '')) if isinstance(message,
-                                                                                             dict) else 'unknown'
+        
+        # 解析消息
         message_obj = Message.from_dict(message)
         params = VideoExtractDto.model_validate_json(message_obj.body)
-
-        if not _check_subscription_exist(params.subscription_id):
-            logger.warning(f"Subscription {params.subscription_id} not found or deleted")
-            return
-
-        video_info = _get_video_info(params.url, f"extract-{platform}")
-        if not video_info:
-            logger.info(f"{params.url} is not a valid video, skip")
-            tick_progress(params.subscription_id)
-            maybe_complete(params.subscription_id)
-            return
-
-        video_meta = VideoFactory.create_video(params.url, video_info)
-
-        video = _handle_video_extraction(params, video_meta, video_info)
-
-        task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
-
-        if not params.only_extract and video:
-            _handle_download_task(video)
-
-        tick_progress(params.subscription_id)
-        maybe_complete(params.subscription_id)
-
-        logger.info(f"视频提取完成: {video.title if video else 'N/A'} (platform: {platform})")
-
+        
+        # 创建提取任务
+        task = _create_extraction_task(params)
+        
+        # 处理任务
+        result = task_manager.process_task(task)
+        
+        # 清理缓存
+        _cleanup_task_cache(params)
+        
+        platform = url_helper.extract_top_level_domain(params.url)
+        logger.info(f"视频提取完成: {result.success} (platform: {platform})")
+        
     except Exception as e:
         logger.error(f"处理消息时发生错误: message: {message}, error: {e}", exc_info=True)
+        
+        # 清理和更新进度
         try:
-            if params and hasattr(params, 'subscription_id'):
-                tick_progress(params.subscription_id)
-                maybe_complete(params.subscription_id)
+            message_obj = Message.from_dict(message)
+            params = VideoExtractDto.model_validate_json(message_obj.body)
+            _cleanup_task_cache(params)
+            from services.subscription_progress_service import tick_progress, maybe_complete
+            tick_progress(params.subscription_id)
+            maybe_complete(params.subscription_id)
         except Exception:
             pass
-    finally:
-        if params and params.url:
-            task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
-            # Clear per-video enqueued flag after processing
-            try:
-                task_cache.delete_video_enqueued(params.url)
-            except Exception:
-                pass
 
 
-def _get_video_info(url, queue_name: str):
-    downloader = DownloaderFactory.create_downloader(url)
-    video_info = downloader.get_video_info(queue_name)
-    if video_info is None or ('_type' in video_info and video_info['_type'] == 'playlist'):
-        logger.info(f"{url} is not a valid video, skip")
-        return None
-    return video_info
-
-
-def _create_video(params: VideoExtractDto, video_meta, video_info):
-    with get_session():
-        video = video_service.get_video_by_url(video_meta.url)
-        if not video:
-            video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
-            video = video_service.create_video(video_meta.url, video_info['title'], video_info['publish_date'],
-                                               video_info['thumbnail'], video_info['duration'])
-        _, created_new_link = subscription_video_service.create_subscription_video(params.subscription_id, video.id)
-
-        # 在增量更新时（非全量提取）且确实新增了订阅-视频关联时，原子自增 total_videos
-        if params.only_extract and not params.is_extract_all and created_new_link:
-            try:
-                with get_session() as session:
-                    session.query(Subscription).filter(Subscription.id == params.subscription_id).update({
-                        Subscription.total_videos: Subscription.total_videos + 1
-                    })
-                    session.commit()
-            except Exception:
-                pass
-
-        actors = video_meta.actors
-        if len(actors) > 0:
-            for actor_meta in actors:
-                creator = creator_service.get_creator_by_url(actor_meta.url)
-                if not creator:
-                    creator = creator_service.create_creator(actor_meta.url, actor_meta.name, actor_meta.avatar)
-                video_creator = video_creator_service.get_video_creator(video.id, creator.id)
-                if not video_creator:
-                    video_creator_service.create_video_creator(video.id, creator.id)
-
-        return video
-
-
-def _handle_video_extraction(params, video_meta, video_info):
-    video = video_service.get_video_by_url(params.url)
-    if params.subscribed and not video:
-        video = _create_video(params, video_meta, video_info)
-    return video
-
-
-def _handle_download_task(video):
+def _cleanup_task_cache(params: VideoExtractDto):
+    """清理任务缓存"""
     try:
-        task = task_service.create_task(video.id, video.url)
-        message = message_service.create_message(task.to_dict())
-
-        RedisStreamProducer().send(constants.QUEUE_VIDEO_DOWNLOAD, message.to_dict())
-
-        logger.info(f"下载任务已发送: video_id={video.id}")
-
+        from cache import task_cache
+        task_cache.delete_extract_cache(params.url, constants.VIDEO_EXTRACT_FIELD_NAME)
+        task_cache.delete_video_enqueued(params.url)
     except Exception as e:
-        logger.error(f"发送下载任务失败: {e}", exc_info=True)
+        logger.warning(f"清理缓存失败: {e}")
 
 
-def _check_subscription_exist(subscription_id: int) -> bool:
-    try:
-        subscription = subscription_service.get_subscription_by_id(subscription_id)
-        return subscription is not None and not subscription.is_deleted
-    except Exception as e:
-        logger.error(f"检查订阅存在性失败: subscription_id={subscription_id}, error={e}")
-        return False
+# 导出兼容性函数
+__all__ = [
+    'process_extract_message',
+    'process_extract_scheduled_message', 
+    'process_video_extract_v2',
+    'route_video_extract'
+]
