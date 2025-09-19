@@ -1,6 +1,6 @@
 import dashjs from 'dashjs'
 
-export default function useDashPlayer({ playerState, videoRef, props, onProgress, onError }) {
+export default function useDashPlayer({ playerState, videoRef, props, onProgress, onError, onQualitiesUpdate }) {
   const dashRef = { value: null }
 
   const initializeDash = () => {
@@ -21,7 +21,11 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     player.updateSettings({
       streaming: {
         abr: {
-          autoSwitchBitrate: { video: true, audio: true }
+          autoSwitchBitrate: { video: true, audio: true },
+          initialBitrate: { video: 50000, audio: 320 },
+          maxBitrate: { video: -1, audio: -1 },
+          bandwidthSafetyFactor: 0.95,
+          usePixelRatioInLimitBitrateByPortal: false
         },
         buffer: {
           stableBufferTime: 3,
@@ -66,10 +70,43 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     on('manifestLoaded', (e) => console.log('[Debug] 4.2 MANIFEST_LOADED', { periods: e?.data?.Period?.length }))
     on('streamInitialized', () => {
       console.log('[Debug] 4.3 STREAM_INITIALIZED')
-      // 初始化后如果设置了非 auto 的清晰度，强制应用
       try {
-        const q = playerState?.media?.currentQuality
-        if (q && q !== 'auto') setQuality(q)
+        const list = player.getBitrateInfoListFor('video') || []
+        if (list.length > 0) {
+          // 构建清晰度选项列表
+          const mapped = list
+            .map((bitrate, index) => ({
+              value: bitrate.height ? `${bitrate.height}p` : `level_${index}`,
+              label: bitrate.height ? `${bitrate.height}p` : `Level ${index}`,
+              height: bitrate.height || 0,
+              bandwidth: bitrate.bitrate || 0,
+              index: index
+            }))
+          
+          // 去重并排序（高到低）
+          const uniq = {}
+          mapped.forEach(q => { uniq[q.value] = q })
+          const qualities = Object.values(uniq)
+          qualities.sort((a, b) => b.height - a.height)
+          
+          // 通知外部更新可用清晰度
+          if (typeof onQualitiesUpdate === 'function') {
+            onQualitiesUpdate(qualities)
+          }
+          
+          // 自动选择最高清晰度
+          const currentQuality = playerState?.media?.currentQuality
+          if (!currentQuality) {
+            const highestQuality = qualities[0]
+            if (highestQuality) {
+              playerState.media.currentQuality = highestQuality.value
+              setQuality(highestQuality.value)
+            }
+          } else {
+            // 初始化后如果设置了清晰度，强制应用
+            setQuality(currentQuality)
+          }
+        }
       } catch (_) {}
     })
     on('sourceInitialized', () => console.log('[Debug] 4.4 SOURCE_INITIALIZED'))
@@ -87,11 +124,6 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
 
   const setQuality = (quality) => {
     if (!dashRef.value) return
-    // auto
-    if (quality === 'auto') {
-      dashRef.value.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: true } } } })
-      return
-    }
 
     const player = dashRef.value
 

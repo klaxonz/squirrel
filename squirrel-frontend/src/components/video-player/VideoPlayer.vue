@@ -26,6 +26,7 @@
         :is-hls-stream="isHlsStream"
         :is-dash-stream="isDashStream"
         :on-bandwidth-sample="updateBandwidth"
+        :on-qualities-update="updateAvailableQualities"
         :external-error="getErrorInfo()"
         @play="handleVideoPlay"
         @pause="handleVideoPause"
@@ -175,16 +176,15 @@ const {
   adjustVolume,
   adjustPlaybackRate,
   setQuality,
-  setPlaybackRate
+  setPlaybackRate,
+  updateAvailableQualities
 } = useVideoControls(playerState, videoCore, props.video)
 
 // 拖动进度条时的暂停/恢复
 const onSeekStart = () => {
   if (!videoCore.value?.videoElement) return
   playerState.ui.isDragging = true
-  // 记录是否在播放
   playerState.ui.seeking.wasPlaying = !!playerState.media.playing
-  // 暂停视频和音频，避免拖动时继续播放导致不同步
   try { videoCore.value.videoElement.pause() } catch (e) {}
   if (videoCore.value.audioElement) {
     try { videoCore.value.audioElement.pause() } catch (e) {}

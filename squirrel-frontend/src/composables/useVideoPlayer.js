@@ -29,7 +29,7 @@ export default function useVideoPlayer(props, emit) {
       playbackRate: 1,
       subtitlesEnabled: false,
       pictureInPicture: false,
-      currentQuality: 'auto',
+      currentQuality: null,
       currentSubtitle: null,
       autoplay: false,
       loop: false,

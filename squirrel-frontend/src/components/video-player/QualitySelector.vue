@@ -48,7 +48,7 @@ const emit = defineEmits(['toggle-menu', 'set-quality'])
 
 const currentQualityLabel = computed(() => {
   const quality = props.availableQualities?.find(q => q.value === props.currentQuality)
-  return quality?.label || 'Auto'
+  return quality?.label || (props.availableQualities?.[0]?.label || 'HD')
 })
 </script>
 

@@ -110,6 +110,7 @@ const props = defineProps({
   isHlsStream: Boolean,
   isDashStream: Boolean,
   onBandwidthSample: Function,
+  onQualitiesUpdate: Function,
   helpUrl: String,
   externalError: Object
 })
@@ -212,7 +213,8 @@ const {
       }
     } catch (_) {}
   },
-  onError: (err) => showInlineError(err)
+  onError: (err) => showInlineError(err),
+  onQualitiesUpdate: props.onQualitiesUpdate
 })
 
 // DASH 播放器管理
@@ -233,7 +235,8 @@ const {
       }
     } catch (_) {}
   },
-  onError: (err) => showInlineError(err)
+  onError: (err) => showInlineError(err),
+  onQualitiesUpdate: props.onQualitiesUpdate
 })
 
 // 视频事件处理

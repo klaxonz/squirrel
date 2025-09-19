@@ -251,7 +251,7 @@ const currentSubtitleLabel = computed(() => {
 
 const currentQualityLabel = computed(() => {
   const found = (props.availableQualities || []).find(q => q.value === props.currentQuality)
-  return found?.label || '自动'
+  return found?.label || (props.availableQualities?.[0]?.label)
 })
 </script>
 

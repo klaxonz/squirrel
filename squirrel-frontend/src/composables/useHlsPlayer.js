@@ -7,6 +7,7 @@ export default function useHlsPlayer({
   getOptimizedHlsConfig,
   onProgress,
   onError,
+  onQualitiesUpdate,
 }) {
   const hlsRef = { value: null };
 
@@ -30,13 +31,45 @@ export default function useHlsPlayer({
       hlsRef.value.loadSource(props.video.stream_video_url);
     });
 
-    // 当清单解析完成后，如果当前清晰度不是 auto，则强制切换到指定清晰度（找不到则退回最高清晰度）
+    // 当清单解析完成后，更新可用清晰度列表并设置默认为最高清晰度
     hlsRef.value.on(Hls.Events.MANIFEST_PARSED, () => {
       try {
-        const q = playerState?.media?.currentQuality
-        if (!q || q === 'auto') return
-        // 复用 setQuality 内的回退逻辑
-        setQuality(q)
+        const levels = hlsRef.value.levels || []
+        if (levels.length > 0) {
+          // 构建清晰度选项列表
+          const mapped = levels
+            .map((level, index) => ({
+              value: level.height ? `${level.height}p` : `level_${index}`,
+              label: level.height ? `${level.height}p` : `Level ${index}`,
+              height: level.height || 0,
+              bandwidth: level.bitrate || 0,
+              index: index
+            }))
+          
+          // 去重并排序（高到低）
+          const uniq = {}
+          mapped.forEach(q => { uniq[q.value] = q })
+          const qualities = Object.values(uniq)
+          qualities.sort((a, b) => b.height - a.height)
+          
+          // 通知外部更新可用清晰度
+          if (typeof onQualitiesUpdate === 'function') {
+            onQualitiesUpdate(qualities)
+          }
+          
+          // 自动选择最高清晰度
+          const currentQuality = playerState?.media?.currentQuality
+          if (!currentQuality) {
+            const highestQuality = qualities[0]
+            if (highestQuality) {
+              playerState.media.currentQuality = highestQuality.value
+              setQuality(highestQuality.value)
+            }
+          } else {
+            // 复用 setQuality 内的回退逻辑
+            setQuality(currentQuality)
+          }
+        }
       } catch (_) {}
     });
 
@@ -114,10 +147,7 @@ export default function useHlsPlayer({
   const setQuality = (quality) => {
     playerState.media.currentQuality = quality;
     if (!hlsRef.value) return;
-    if (quality === 'auto') {
-      hlsRef.value.currentLevel = -1;
-      return;
-    }
+    
     const levels = hlsRef.value.levels || []
     let target = levels.findIndex(level =>
       level.height === parseInt(quality) || level.name === quality || (String(level.height) + 'p' === String(quality))
