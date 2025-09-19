@@ -1,5 +1,5 @@
 <template>
-  <div class="video-controls" :class="{ 'controls-visible': playerState.ui.controlsVisible }">
+  <div ref="controlsRoot" class="video-controls" :class="{ 'controls-visible': playerState.ui.controlsVisible }">
     <!-- 进度条容器 -->
     <ProgressBar
         :progress="progress"
@@ -137,7 +137,7 @@
 </template>
 
 <script setup>
-import {computed, ref} from 'vue'
+import {computed, ref, onMounted, onUnmounted} from 'vue'
 import {Icon} from '@iconify/vue'
 import ProgressBar from './ProgressBar.vue'
 import PlaybackControls from './PlaybackControls.vue'
@@ -184,6 +184,7 @@ const handleVolumeChange = (volume) => {
 }
 
 const settingsInitialPanel = ref('main')
+const controlsRoot = ref(null)
 
 const togglePlaybackRateMenu = () => {
   props.playerState.ui.showPlaybackRateMenu = !props.playerState.ui.showPlaybackRateMenu
@@ -238,13 +239,24 @@ const onCcClick = () => {
   emit('toggle-subtitles')
 }
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('click', () => {
+const onWindowClick = (evt) => {
+  const root = controlsRoot.value
+  if (!root) return
+  const target = evt?.target
+  if (target && !root.contains(target)) {
     props.playerState.ui.showSettingsMenu = false
     props.playerState.ui.showPlaybackRateMenu = false
     props.playerState.ui.showQualityMenu = false
-  })
+  }
 }
+
+onMounted(() => {
+  try { window.addEventListener('click', onWindowClick, { passive: true }) } catch (_) {}
+})
+
+onUnmounted(() => {
+  try { window.removeEventListener('click', onWindowClick) } catch (_) {}
+})
 
 
 const updateAutoplay = (value) => {

@@ -206,6 +206,7 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
   // 质量控制
   const setQuality = (quality) => {
     playerState.media.currentQuality = quality
+    playerState.ui.showQualityMenu = false
     playerState.ui.showSettingsMenu = false
     console.debug('Quality changed to:', quality)
   }

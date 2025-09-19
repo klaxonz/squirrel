@@ -1,7 +1,7 @@
 <template>
   <div class="quality-selector">
     <button 
-      @click="$emit('toggle-menu')" 
+      @click.stop="$emit('toggle-menu')" 
       class="control-btn quality-btn" 
       aria-label="视频质量"
     >
@@ -10,7 +10,7 @@
     </button>
 
     <!-- 质量选择菜单 -->
-    <div v-if="showMenu" class="quality-menu">
+    <div v-if="showMenu" class="quality-menu" @click.stop>
       <div class="menu-header">
         <span class="menu-title">质量</span>
       </div>
