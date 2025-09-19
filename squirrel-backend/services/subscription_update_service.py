@@ -1,7 +1,5 @@
 import logging
-from datetime import datetime, timezone
 from redis.exceptions import LockError
-
 from core.cache import DistributedLock
 from core.config import settings
 from core.database import get_session
@@ -27,7 +25,7 @@ class SubscriptionUpdateService:
             return True
         if sub.total_extract >= sub.total_videos:
             return True
-        if (sub.total_videos - sub.total_extract) <= settings.CHANNEL_UPDATE_DEFAULT_SIZE:
+        if (sub.total_videos - sub.total_extract) >= settings.CHANNEL_UPDATE_DEFAULT_SIZE:
             return True
         return False
 

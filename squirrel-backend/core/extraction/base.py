@@ -2,12 +2,12 @@
 数据提取基础实现类
 """
 import logging
-from typing import Dict, Any, Optional, List
+from typing import List
 from urllib.parse import urlparse
 
 from .interfaces import (
-    IExtractor, ITaskProcessor, IResultHandler, 
-    ExtractionTask, ExtractionResult, TaskStatus
+    IExtractor, ITaskProcessor, IResultHandler,
+    ExtractionTask, ExtractionResult
 )
 
 logger = logging.getLogger(__name__)

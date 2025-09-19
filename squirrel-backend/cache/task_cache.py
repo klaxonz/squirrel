@@ -20,11 +20,6 @@ def build_video_key(url: str):
     return f'{constants.REDIS_KEY_VIDEO_EXTRACT_CACHE}:{domain}:{origin_video_id}'
 
 
-def build_video_enqueued_key(url: str):
-    domain, origin_video_id = _extract_domain_and_id(url)
-    return f"{constants.REDIS_KEY_VIDEO_EXTRACT_ENQUEUED_PREFIX}{domain}:{origin_video_id}"
-
-
 def get_extract_cache(url: str):
     key = build_video_key(url)
     ts = client.hget(key, constants.VIDEO_EXTRACT_FIELD_NAME)
@@ -55,23 +50,3 @@ def delete_extract_cache(url: str, field_name: str):
     key = build_video_key(url)
     client.hdel(key, field_name)
 
-
-def is_video_enqueued(url: str) -> bool:
-    key = build_video_enqueued_key(url)
-    try:
-        return bool(client.exists(key))
-    except Exception:
-        return False
-
-
-def set_video_enqueued(url: str, ttl_seconds: int) -> bool:
-    key = build_video_enqueued_key(url)
-    return bool(client.set(key, 1, nx=True, ex=ttl_seconds))
-
-
-def delete_video_enqueued(url: str) -> None:
-    key = build_video_enqueued_key(url)
-    try:
-        client.delete(key)
-    except Exception:
-        pass
