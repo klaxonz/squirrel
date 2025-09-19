@@ -39,7 +39,7 @@ class PornhubProxy(VideoProxy):
             }
         )
 
-    async def handle_stream(self, url: str) -> StreamingResponse:
+    async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:
         try:
             # Enhanced timeout configuration for better network resilience
             timeout_config = httpx.Timeout(
@@ -89,7 +89,7 @@ class PornhubProxy(VideoProxy):
                     )
                 else:
                     # For large files, use the parent class's enhanced streaming
-                    return await super().handle_stream(url)
+                    return await super().handle_stream(url, **kwargs)
 
         except httpx.HTTPError as e:
             logger.error(f"HTTP error occurred while proxying {url}: {str(e)}")

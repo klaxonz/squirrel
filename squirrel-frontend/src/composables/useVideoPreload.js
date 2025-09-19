@@ -177,6 +177,10 @@ export default function useVideoPreload() {
       enableWorker: true,
       enableSoftwareAES: true,
       progressive: true,
+      // 增加超时配置以避免10秒超时问题
+      fragLoadingTimeOut: 60000,        // 片段加载超时：60秒
+      manifestLoadingTimeOut: 30000,    // 清单加载超时：30秒
+      levelLoadingTimeOut: 30000,       // 级别加载超时：30秒
     };
 
     // 根据网络状况调整配置
@@ -198,6 +202,9 @@ export default function useVideoPreload() {
           maxMaxBufferLength: 60,
           abrBandWidthFactor: 0.7,
           abrBandWidthUpFactor: 0.5,
+          fragLoadingTimeOut: 45000,        // 中等网络：45秒
+          manifestLoadingTimeOut: 20000,    // 清单加载：20秒
+          levelLoadingTimeOut: 20000,       // 级别加载：20秒
         };
       case 'fast':
         return {
@@ -208,6 +215,9 @@ export default function useVideoPreload() {
           abrBandWidthUpFactor: 0.6,
           startFragPrefetch: true,
           testBandwidth: true,
+          fragLoadingTimeOut: 30000,        // 快速网络：30秒
+          manifestLoadingTimeOut: 15000,    // 清单加载：15秒
+          levelLoadingTimeOut: 15000,       // 级别加载：15秒
         };
       default:
         return baseConfig;
