@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional, List
 from yt_dlp import YoutubeDL
 
 from core import config
+from utils.yt_dlp_helper import build_ydl_opts
 from sites.downloader import DownloaderFactory
 from sites.meta import VideoFactory
 from ..interfaces import ExtractionTask, ExtractionResult
@@ -104,18 +105,7 @@ class YoutubeDLExtractor(VideoExtractor):
     def _get_video_info(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
         """使用yt-dlp获取视频信息"""
         try:
-            cookie_file_path = self._get_cookie_file(queue_name)
-            
-            ydl_opts = {
-                'quiet': True,
-                'no_warnings': True,
-                'ignoreerrors': False,
-                'skip_download': True,
-            }
-            
-            # 为非YouTube网站添加Cookie支持
-            if cookie_file_path and 'youtube.com' not in url:
-                ydl_opts['cookiefile'] = cookie_file_path
+            ydl_opts = build_ydl_opts(url, queue_name, skip_download=True)
             
             with YoutubeDL(ydl_opts) as ydl:
                 video_info = ydl.extract_info(url, download=False)

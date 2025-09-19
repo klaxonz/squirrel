@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+import threading
 from datetime import datetime
 from typing import Optional, Union, Any, Dict
 from urllib.parse import urlparse, parse_qs
@@ -80,22 +81,9 @@ def log_request(
 class RateLimitAdapter(HTTPAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._cache: Dict[str, dict] = {}
-        self._cache_ttl = 3600
-        self._max_cache_size = 10000
 
     def send(self, request, **kwargs):
-        """Send request with rate limiting"""
-        force_refresh = kwargs.pop('force_refresh', False)
-        cache_key = request.url
-        cached_data = self._cache.get(cache_key)
-        now = datetime.now()
-
-        if (not force_refresh and cached_data and
-                (now - cached_data['timestamp']).total_seconds() < self._cache_ttl):
-            logger.debug(f"Cache hit for {request.url}")
-            return cached_data['response']
-
+        """Send request with rate limiting and logging"""
         start_time = time.time()
         error = None
         response = None
@@ -105,16 +93,10 @@ class RateLimitAdapter(HTTPAdapter):
             rate_limiter.wait(domain)
             response = super().send(request, **kwargs)
 
-            if response.status_code == 200:
-                self._update_cache(cache_key, response)
-
             return response
 
         except (RequestException, HTTPError) as e:
             error = str(e)
-            if cache_key in self._cache:
-                logger.warning(f"Request failed, using cached response for {request.url}")
-                return self._cache[cache_key]['response']
             raise
         finally:
             if response or error:
@@ -123,17 +105,6 @@ class RateLimitAdapter(HTTPAdapter):
                     self._log_request(request, response, duration, error)
                 except Exception as e:
                     logger.error(f"Failed to log request: {str(e)}")
-
-    def _update_cache(self, url: str, response: requests.Response):
-        """Update the cache with a new response"""
-        if len(self._cache) >= self._max_cache_size:
-            oldest_url = min(self._cache.items(), key=lambda x: x[1]['timestamp'])[0]
-            del self._cache[oldest_url]
-
-        self._cache[url] = {
-            'response': response,
-            'timestamp': datetime.now()
-        }
 
     def _log_request(self, request, response, duration, error):
         """Log actual HTTP requests only"""

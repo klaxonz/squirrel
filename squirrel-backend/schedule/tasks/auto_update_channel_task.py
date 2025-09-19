@@ -12,7 +12,7 @@ logger = logging.getLogger()
 client = RedisClient.get_instance().get_client()
 
 
-@TaskRegistry.register(interval=30, unit='minutes')
+@TaskRegistry.register(interval=300, unit='minutes')
 class AutoUpdateChannelVideo(BaseTask):
     """
     Scheduler scans subscriptions and enqueues update messages with backlog guard,

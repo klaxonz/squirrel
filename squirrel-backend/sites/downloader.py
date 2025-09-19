@@ -1,6 +1,7 @@
 import logging
 import os
 from urllib.parse import urlparse
+from typing import Optional, Dict, Any
 import requests
 from yt_dlp import YoutubeDL
 from common import constants
@@ -16,6 +17,7 @@ from models.video import Video
 from nfo.nfo import NfoGenerator
 from sites.downloader_registry import DownloaderRegistry
 from utils.rate_limiter import rate_limiter
+from utils.yt_dlp_helper import build_ydl_opts
 
 logger = logging.getLogger()
 
@@ -35,15 +37,7 @@ class Downloader:
         domain = urlparse(self.url).netloc.replace('www.', '')
         rate_limiter.wait(domain)
         
-        cookie_file_path = config.get_cookies_file_path_thread(queue_name)
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'ignoreerrors': False,
-            'skip_download': True,
-        }
-        if cookie_file_path and 'youtube.com' not in self.url:
-            ydl_opts['cookiefile'] = cookie_file_path
+        ydl_opts = build_ydl_opts(self.url, queue_name, skip_download=True)
 
         with YoutubeDL(ydl_opts) as ydl:
             video_info = ydl.extract_info(self.url, download=False)
@@ -59,24 +53,23 @@ class Downloader:
             file.write(response.content)
 
     def download(self, subscription: Subscription, video: Video, task: DownloadTask,
-                 queue_thread_name: str) -> TaskState:
-        video_info = self.get_video_info(queue_thread_name)
+                 queue_thread_name: str, video_info: Optional[Dict[str, Any]] = None) -> TaskState:
+        if video_info is None:
+            video_info = self.get_video_info(queue_thread_name)
         video_meta = VideoFactory.create_video(video.url, video_info)
 
         hook = create_progress_hook(task.id)
         output_dir = download_config.get_download_full_path(subscription.name, video_meta.season)
         filename = download_config.get_valid_filename(video.title)
-        ydl_opts = {
+        ydl_opts = build_ydl_opts(video.url, queue_thread_name, skip_download=False)
+        # 叠加下载相关配置
+        ydl_opts.update({
             'writethumbnail': f'{output_dir}/{filename}.jpg',
             'outtmpl': f'{output_dir}/{filename}.%(ext)s',
             'progress_hooks': [hook],
             'writesubtitles': True,
             'subtitleslangs': ['zh-Hans', 'zh-Hant', 'en']
-        }
-
-        cookie_file_path = config.get_cookies_file_path_thread(queue_thread_name)
-        if cookie_file_path and 'youtube.com' not in video.url:
-            ydl_opts['cookiefile'] = cookie_file_path
+        })
 
         try:
             with YoutubeDL(ydl_opts) as ydl:
