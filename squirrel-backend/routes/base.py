@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from pathlib import Path
 from typing import Union
 from fastapi import FastAPI, status
@@ -78,6 +79,22 @@ app.include_router(user_router)
 app.include_router(video_history_router)
 app.include_router(video_interaction_router)
 app.include_router(system_config_router)
+
+# 统一慢请求日志，便于定位 pending 接口（默认阈值 2 秒）
+SLOW_REQUEST_THRESHOLD_MS = 2000
+
+@app.middleware("http")
+async def log_slow_requests(request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        cost_ms = (time.perf_counter() - start) * 1000
+        if cost_ms >= SLOW_REQUEST_THRESHOLD_MS:
+            logger.warning(
+                "[slow] %s %s took %.1fms", request.method, request.url.path, cost_ms
+            )
 
 if not IS_DEV:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

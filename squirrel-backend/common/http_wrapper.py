@@ -19,6 +19,9 @@ from utils.rate_limiter import rate_limiter
 logger = logging.getLogger()
 
 
+DEFAULT_TIMEOUT_SECONDS = 20
+
+
 def truncate_text(text: str, max_length: int = 65535) -> str:
     """Safely truncate text to maximum length"""
     if text and len(text) > max_length:
@@ -80,6 +83,7 @@ def log_request(
 
 class RateLimitAdapter(HTTPAdapter):
     def __init__(self, *args, **kwargs):
+        # 允许外部传入 pool_connections、pool_maxsize 等参数
         super().__init__(*args, **kwargs)
 
     def send(self, request, **kwargs):
@@ -91,6 +95,9 @@ class RateLimitAdapter(HTTPAdapter):
         try:
             domain = urlparse(request.url).netloc.replace('www.', '')
             rate_limiter.wait(domain)
+            # 统一默认超时（显式传入的超时优先生效）
+            if 'timeout' not in kwargs or kwargs.get('timeout') is None:
+                kwargs['timeout'] = DEFAULT_TIMEOUT_SECONDS
             response = super().send(request, **kwargs)
 
             return response
@@ -152,9 +159,15 @@ class Session(requests.Session):
             status_forcelist=(500, 502, 504),
         )
 
-        adapter = RateLimitAdapter(max_retries=retry)
+        # 扩大连接池，提升并发场景下的复用能力
+        adapter = RateLimitAdapter(max_retries=retry, pool_connections=100, pool_maxsize=100)
         self.mount("http://", adapter)
         self.mount("https://", adapter)
+
+    def request(self, method: str, url: str, **kwargs):
+        # 兜底默认超时，个别调用点仍可通过传参覆盖
+        kwargs.setdefault('timeout', DEFAULT_TIMEOUT_SECONDS)
+        return super().request(method, url, **kwargs)
 
 
 session = Session()
