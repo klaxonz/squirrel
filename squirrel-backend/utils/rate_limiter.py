@@ -1,7 +1,40 @@
+import logging
 import random
 import time
 from dataclasses import dataclass
 from typing import Optional
+from urllib.parse import urlparse
+
+logger = logging.getLogger()
+
+
+def extract_second_level_domain(domain_or_url: str) -> str:
+    """Extract second level domain from URL or domain string
+    
+    Examples:
+        'https://www.example.com/path' -> 'example.com'
+        'api.example.com' -> 'example.com'
+        'example.com' -> 'example.com'
+        'sub.domain.example.com' -> 'example.com'
+    """
+    if not domain_or_url:
+        return domain_or_url
+    
+    # Handle URLs by extracting hostname first
+    if '://' in domain_or_url:
+        parsed = urlparse(domain_or_url)
+        domain = parsed.hostname or domain_or_url
+    else:
+        domain = domain_or_url
+    
+    # Split domain parts
+    parts = domain.lower().split('.')
+    
+    # Return last two parts for second level domain
+    if len(parts) >= 2:
+        return '.'.join(parts[-2:])
+    
+    return domain
 
 
 @dataclass
@@ -17,14 +50,14 @@ class RateLimiter:
 
     # Default rate limits for different domains
     DEFAULT_LIMITS = {
-        'bilibili.com': RateLimit(5, 10, 'bilibili.com'),
-        'youtube.com': RateLimit(5, 105, 'youtube.com'),
-        'pornhub.com': RateLimit(5, 10, 'pornhub.com'),
-        'javdb.com': RateLimit(5, 10, 'javdb.com'),
+        'bilibili.com': RateLimit(3, 5, 'bilibili.com'),
+        'youtube.com': RateLimit(2, 5, 'youtube.com'),
+        'pornhub.com': RateLimit(3, 8, 'pornhub.com'),
+        'javdb.com': RateLimit(5, 8, 'javdb.com'),  # javdb 需要更长的间隔避免风控
     }
 
     # Global default rate limit
-    DEFAULT_RATE_LIMIT = RateLimit(1, 1.5, '*')
+    DEFAULT_RATE_LIMIT = RateLimit(3, 5, '*')
 
     def __init__(self):
         self._last_request_time: dict[str, float] = {}
@@ -36,6 +69,9 @@ class RateLimiter:
 
     def wait(self, domain: Optional[str] = None):
         """Wait according to rate limit"""
+        if domain:
+            domain = extract_second_level_domain(domain)
+        
         rate_limit = self._rate_limits.get(domain, self.DEFAULT_RATE_LIMIT)
         last_time = self._last_request_time.get(rate_limit.domain, 0)
 

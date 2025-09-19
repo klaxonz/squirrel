@@ -15,6 +15,7 @@ from models.task.task_state import TaskState
 from models.video import Video
 from nfo.nfo import NfoGenerator
 from sites.downloader_registry import DownloaderRegistry
+from utils.rate_limiter import rate_limiter
 
 logger = logging.getLogger()
 
@@ -30,6 +31,10 @@ class Downloader:
         self.url = url
 
     def get_video_info(self, queue_name: str = None):
+        # 在方法开始时进行限流
+        domain = urlparse(self.url).netloc.replace('www.', '')
+        rate_limiter.wait(domain)
+        
         cookie_file_path = config.get_cookies_file_path_thread(queue_name)
         ydl_opts = {
             'quiet': True,
@@ -45,6 +50,7 @@ class Downloader:
             return video_info
 
     def download_avatar(self, subscription_name: str, subscription_avatar: str):
+        from common.http_wrapper import session
         response = session.get(subscription_avatar, timeout=15)
         response.raise_for_status()
         download_path = download_config.get_tv_show_root_path(subscription_name)

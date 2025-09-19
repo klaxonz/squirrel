@@ -2,16 +2,18 @@
 JavDB视频提取器
 """
 import logging
-from typing import List
+from typing import List, Dict, Any, Optional
 
 from ..factory import register_extractor
-from .base_extractor import YoutubeDLExtractor
+from .base_extractor import VideoExtractor
+from ..interfaces import ExtractionTask, ExtractionResult
+from sites.javdb.downloader import JavdbDownloader
 
 logger = logging.getLogger(__name__)
 
 
 @register_extractor('javdb', ['javdb.com'])
-class JavdbExtractor(YoutubeDLExtractor):
+class JavdbExtractor(VideoExtractor):
     """JavDB视频提取器"""
     
     def __init__(self):
@@ -28,20 +30,32 @@ class JavdbExtractor(YoutubeDLExtractor):
             'javdb.com/video/'
         ])
     
-    def _get_video_info(self, url: str, queue_name: str = None):
+    def _get_video_info(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
         """获取JavDB视频信息"""
         try:
             logger.debug(f"开始提取JavDB视频信息: {url}")
-            video_info = super()._get_video_info(url, queue_name)
             
-            if video_info:
-                # JavDB特定的信息处理
-                self._process_javdb_info(video_info)
+            # 使用JavDB专用下载器
+            javdb_downloader = JavdbDownloader(url)
+            video_info = javdb_downloader.get_video_info(queue_name)
+            
+            if not video_info:
+                logger.warning(f"JavDB视频信息提取失败: {url} - 可能需要登录或VIP权限")
+                return None
+            
+            # JavDB特定的信息处理
+            self._process_javdb_info(video_info)
             
             return video_info
             
         except Exception as e:
-            logger.error(f"JavDB视频信息提取失败: {url}, error: {e}")
+            error_msg = str(e).lower()
+            if 'login' in error_msg or '登入' in error_msg:
+                logger.warning(f"JavDB视频需要登录访问: {url}")
+            elif 'vip' in error_msg:
+                logger.warning(f"JavDB视频需要VIP权限: {url}")
+            else:
+                logger.error(f"JavDB视频信息提取失败: {url}, error: {e}")
             return None
     
     def _process_javdb_info(self, video_info: dict) -> None:
