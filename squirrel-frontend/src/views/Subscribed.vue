@@ -1,27 +1,33 @@
 <template>
   <div class="subscribed-page flex flex-col h-full bg-[#0f0f0f] text-white">
-    <!-- 顶部操作栏 -->
-    <div class="flex items-center justify-between py-3 px-4">
-      <div class="flex items-center">
-        <NsfwFilter v-model="nsfw" @update:modelValue="handleNsfwChange" />
-      </div>
-      <div class="flex items-center">
-        <RefreshButton
-          class="mr-2"
-          :loading="isRefreshing"
-          title="刷新"
-          aria-label="刷新"
-          @click="refreshList"
+    <!-- 顶部操作栏 - 对齐全部视频页的标签样式 -->
+    <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between py-3">
+        <TabBar
+          v-model="activeTab"
+          :tabs="tabsWithCounts"
+          class="custom-tab-bar flex-grow"
+          @tab-dblclick="handleTabDoubleClick"
         />
-        <button
-          class="px-3 py-1.5 min-w-[100px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
-          @click="showAddDialog = true"
-        >
-          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <path clip-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" fill-rule="evenodd" />
-          </svg>
-          <span class="ml-1">添加订阅</span>
-        </button>
+        <div class="flex items-center">
+          <NsfwFilter v-model="nsfw" class="ml-2" @update:modelValue="handleNsfwChange" />
+          <RefreshButton
+            class="ml-2"
+            :loading="isRefreshing"
+            title="刷新"
+            aria-label="刷新"
+            @click="refreshList"
+          />
+          <button
+            class="ml-2 px-3 py-1.5 min-w-[100px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
+            @click="showAddDialog = true"
+          >
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path clip-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a 1 1 0 110 2h-5v5a 1 1 0 11-2 0v-5H4a 1 1 0 110-2h5V4a 1 1 0 011-1z" fill-rule="evenodd" />
+            </svg>
+            <span class="ml-1">添加订阅</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -175,6 +181,7 @@ import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
 import AddChannelDialog from '../components/AddChannelDialog.vue';
 import NsfwFilter from '../components/NsfwFilter.vue';
+import TabBar from '../components/TabBar.vue';
 
 import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
@@ -197,6 +204,14 @@ const allLoaded = ref(false);
 const currentPage = ref(1);
 const searchQuery = ref('');
 const nsfw = ref('all');
+const activeTab = ref('all');
+const tabsWithCounts = ref([
+  { value: 'all', label: '全部', count: 0 },
+  { value: 'unread', label: '未读', count: 0 },
+  { value: 'read', label: '已读', count: 0 },
+  { value: 'preview', label: '预告', count: 0 },
+  { value: 'liked', label: '喜欢', count: 0 }
+]);
 
 const showSettings = ref(false);
 const selectedSubscription = ref(null);
@@ -387,6 +402,21 @@ const handleNsfwChange = () => {
 const loadMore = () => {
   loadSubscriptions();
 };
+
+// 顶部标签：双击刷新订阅列表
+const handleTabDoubleClick = (tab) => {
+  if (tab === activeTab.value) {
+    refreshList();
+  }
+};
+
+// 切换顶部标签时，跳转到对应的全部视频页
+watch(() => activeTab.value, (newVal) => {
+  const target = `/videos/${newVal}`;
+  if (router.currentRoute.value.fullPath !== target) {
+    router.push(target);
+  }
+});
 
 const openSettings = (subscription) => {
   selectedSubscription.value = {...subscription};
