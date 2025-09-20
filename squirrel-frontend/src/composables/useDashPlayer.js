@@ -6,7 +6,6 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
   const initializeDash = () => {
     const mpdUrl = props.video?.mpd_url || props.video?.stream_video_url
     const resolvedMpdUrl = (() => { try { return new URL(mpdUrl, window.location.origin).toString() } catch (_) { return mpdUrl } })()
-    console.log('[Debug] 4. useDashPlayer.initializeDash called.', { mpdUrl, resolvedMpdUrl, videoRefReady: !!videoRef.value })
     if (!resolvedMpdUrl) { console.warn('[Debug] 4.X No MPD URL provided to dash'); return }
     if (!videoRef.value) { console.warn('[Debug] 4.X videoRef is not ready, skip init'); return }
 
@@ -17,7 +16,6 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     }
 
     const player = dashjs.MediaPlayer().create()
-    // Basic VOD config (only supported keys)
     player.updateSettings({
       streaming: {
         abr: {
@@ -52,7 +50,6 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
       playerState.media.loadingStage = 'ready'
     })
 
-    // Basic bandwidth sampling using fragment loading events
     player.on('fragmentLoadingCompleted', (data) => {
       try {
         const loaded = data?.request?.bytesLoaded || 0
@@ -63,53 +60,6 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
       } catch (_) {}
     })
 
-    // Initialize in one step (recommended)
-    console.log('[Debug] 4.0 Using one-step initialize')
-    const on = (evt, handler) => { try { player.on(evt, handler) } catch (e) { console.warn('[Debug] dash on failed', evt, e) } }
-    on('manifestLoadingStarted', (e) => console.log('[Debug] 4.1 MANIFEST_LOADING_STARTED', e?.url || resolvedMpdUrl))
-    on('manifestLoaded', (e) => console.log('[Debug] 4.2 MANIFEST_LOADED', { periods: e?.data?.Period?.length }))
-    on('streamInitialized', () => {
-      console.log('[Debug] 4.3 STREAM_INITIALIZED')
-      try {
-        const list = player.getBitrateInfoListFor('video') || []
-        if (list.length > 0) {
-          // 构建清晰度选项列表
-          const mapped = list
-            .map((bitrate, index) => ({
-              value: bitrate.height ? `${bitrate.height}p` : `level_${index}`,
-              label: bitrate.height ? `${bitrate.height}p` : `Level ${index}`,
-              height: bitrate.height || 0,
-              bandwidth: bitrate.bitrate || 0,
-              index: index
-            }))
-          
-          // 去重并排序（高到低）
-          const uniq = {}
-          mapped.forEach(q => { uniq[q.value] = q })
-          const qualities = Object.values(uniq)
-          qualities.sort((a, b) => b.height - a.height)
-          
-          // 通知外部更新可用清晰度
-          if (typeof onQualitiesUpdate === 'function') {
-            onQualitiesUpdate(qualities)
-          }
-          
-          // 自动选择最高清晰度
-          const currentQuality = playerState?.media?.currentQuality
-          if (!currentQuality) {
-            const highestQuality = qualities[0]
-            if (highestQuality) {
-              playerState.media.currentQuality = highestQuality.value
-              setQuality(highestQuality.value)
-            }
-          } else {
-            // 初始化后如果设置了清晰度，强制应用
-            setQuality(currentQuality)
-          }
-        }
-      } catch (_) {}
-    })
-    on('sourceInitialized', () => console.log('[Debug] 4.4 SOURCE_INITIALIZED'))
     player.initialize(videoRef.value, resolvedMpdUrl, !!props.playerState?.media?.autoplay)
 
     dashRef.value = player

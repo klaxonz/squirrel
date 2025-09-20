@@ -41,7 +41,13 @@ class PornhubSubscription(BaseSubscription):
             if channel_id is None:
                 subscribe_btn = bs4.select('.subscribeButton button[data-subscribe-url]')
                 if len(subscribe_btn) > 0:
-                    channel_id = re.search(r"id=([^&]+)", subscribe_btn[0].get('data-subscribe-url')).group(1)
+                    match = re.search(r"id=([^&]+)", subscribe_btn[0].get('data-subscribe-url'))
+                    if match:
+                        channel_id = match.group(1)
+                    else:
+                        channel_id = subscribe_btn[0].get('data-id')
+                        if channel_id is None:
+                            raise Exception(f'Can not find channel id in {self.url}')
 
         url = re.search(r"^(.*?)(\?.*)?$", self.url).group(1)
         avatar = None

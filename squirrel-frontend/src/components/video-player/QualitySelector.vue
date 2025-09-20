@@ -12,7 +12,7 @@
     <!-- 质量选择菜单 -->
     <div v-if="showMenu" class="quality-menu" @click.stop>
       <div class="menu-header">
-        <span class="menu-title">质量</span>
+        <span class="menu-title">清晰度</span>
       </div>
       <div class="quality-options">
         <button
@@ -23,11 +23,13 @@
           :class="{ active: currentQuality === quality.value }"
         >
           <span class="quality-label">{{ quality.label }}</span>
-          <Icon 
-            v-if="currentQuality === quality.value" 
-            icon="material-symbols:check" 
-            class="check-icon" 
-          />
+          <span class="check-icon-container">
+            <Icon 
+              v-if="currentQuality === quality.value" 
+              icon="material-symbols:check" 
+              class="check-icon" 
+            />
+          </span>
         </button>
       </div>
     </div>
@@ -91,49 +93,102 @@ const currentQualityLabel = computed(() => {
 }
 
 .quality-menu {
-  @apply absolute bottom-full right-0 mb-3 w-48
-    rounded-xl p-0
-    border border-white/10 shadow-2xl;
-  background: rgba(40, 40, 40, 0.95);
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 0.75rem;
+  min-width: 8rem;
+  width: auto;
+  border-radius: 0.75rem;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: rgba(40, 40, 40, .95);
   backdrop-filter: blur(12px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .6);
+  transform-origin: bottom right;
+  animation: menu-appear 160ms ease-out;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+@keyframes menu-appear {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .menu-header {
-  @apply p-4 border-b border-white/10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
 }
 
 .menu-title {
-  @apply text-white font-medium text-sm;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
   font-family: 'Roboto', 'YouTube Noto', sans-serif;
 }
 
 .quality-options {
-  @apply p-2;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 4px;
 }
 
 .quality-option {
-  @apply w-full text-left px-3 py-2 rounded-lg text-sm
-    text-white/80 hover:text-white hover:bg-white/10
-    transition-all duration-200 flex items-center justify-between;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #eaeaea;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
   font-family: 'Roboto', sans-serif;
+  font-size: 12px;
+  min-height: 32px;
 }
 
 .quality-option:hover {
-  transform: translateX(2px);
+  background: rgba(255, 255, 255, .08);
 }
 
 .quality-option.active {
-  @apply text-white;
-  background: rgba(255, 0, 0, 0.15);
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
 }
 
 .quality-label {
-  @apply flex-1;
+  flex: 1;
+  text-align: left;
+}
+
+.check-icon-container {
+  width: 20px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .check-icon {
-  @apply text-base;
-  color: #ff0000;
+  font-size: 16px;
+  color: #fff;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
