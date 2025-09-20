@@ -167,37 +167,39 @@
       </div>
 
       <!-- 右侧区域 - 相关视频 -->
-      <div class="hidden lg:block w-[400px] ml-6">
+      <div class="hidden md:block md:w-[320px] lg:w-[400px] md:ml-6">
         <div class="sticky top-4">
-          <div class="bg-[#272727] rounded-xl p-4">
+          <div class="bg-[#272727] rounded-xl p-4 flex flex-col">
             <h2 class="text-white text-lg mb-4">相关视频</h2>
-            <div v-if="loadingRelated" class="text-gray-400 text-sm">加载中...</div>
-            <div v-else>
-              <div v-if="!relatedVideos.length" class="text-gray-400 text-sm">暂无推荐</div>
-              <div v-else class="space-y-3">
-                <div
-                  v-for="relatedVideo in relatedVideos"
-                  :key="relatedVideo.id"
-                  class="flex space-x-3 cursor-pointer group"
-                  @click="goToVideo(relatedVideo.id)"
-                >
-                  <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-black/60">
-                    <img
-                      :src="relatedVideo.thumbnail"
-                      referrerpolicy="no-referrer"
-                      class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                      :alt="relatedVideo.title"
-                    >
-                    <div class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 py-0.5 rounded">
-                      {{ formatDuration(relatedVideo.duration) }}
+            <div class="max-h-[70vh] overflow-y-auto no-scrollbar">
+              <div v-if="loadingRelated" class="text-gray-400 text-sm">加载中...</div>
+              <div v-else>
+                <div v-if="!relatedVideos.length" class="text-gray-400 text-sm">暂无推荐</div>
+                <div v-else class="space-y-3">
+                  <div
+                    v-for="relatedVideo in relatedVideos"
+                    :key="relatedVideo.id"
+                    class="flex space-x-3 cursor-pointer group"
+                    @click="goToVideo(relatedVideo.id)"
+                  >
+                    <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-black/60">
+                      <img
+                        :src="relatedVideo.thumbnail"
+                        referrerpolicy="no-referrer"
+                        class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        :alt="relatedVideo.title"
+                      >
+                      <div class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 py-0.5 rounded">
+                        {{ formatDuration(relatedVideo.duration) }}
+                      </div>
                     </div>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="text-white text-xs leading-5 max-h-10 overflow-hidden group-hover:text-[#3ea6ff] transition-colors">
-                      {{ relatedVideo.title }}
-                    </div>
-                    <div class="text-[#aaaaaa] text-[10px] mt-1 truncate">
-                      {{ relatedVideo.subscriptions?.[0]?.name || relatedVideo.site }}
+                    <div class="flex-1 min-w-0">
+                      <div class="text-white text-xs leading-5 max-h-10 overflow-hidden group-hover:text-[#3ea6ff] transition-colors">
+                        {{ relatedVideo.title }}
+                      </div>
+                      <div class="text-[#aaaaaa] text-[10px] mt-1 truncate">
+                        {{ relatedVideo.subscriptions?.[0]?.name || relatedVideo.site }}
+                      </div>
                     </div>
                   </div>
                 </div>
