@@ -87,7 +87,7 @@
         </div>
       </div>
 
-      <!-- 字幕样式子菜单 -->
+      <!-- 字幕样式（仿 YouTube：列表 + 子菜单） -->
       <div v-else-if="activePanel==='subtitle-style'" class="menu-panel">
         <div class="menu-header">
           <button class="back-btn" @click="activePanel='subtitles'">
@@ -95,58 +95,134 @@
           </button>
           <span class="header-title">字幕选项</span>
         </div>
-        <div class="menu-content">
-          <div class="setting-item-row">
-            <span class="setting-label">字号</span>
-            <div class="btn-group">
-              <button class="btn-chip" :class="{ active: subtitleSettings?.fontSize==='small' }"
-                      @click="$emit('update-subtitle-font-size','small')">小
-              </button>
-              <button class="btn-chip" :class="{ active: subtitleSettings?.fontSize==='medium' }"
-                      @click="$emit('update-subtitle-font-size','medium')">中
-              </button>
-              <button class="btn-chip" :class="{ active: subtitleSettings?.fontSize==='large' }"
-                      @click="$emit('update-subtitle-font-size','large')">大
-              </button>
-              <button class="btn-chip" :class="{ active: subtitleSettings?.fontSize==='xlarge' }"
-                      @click="$emit('update-subtitle-font-size','xlarge')">特大
-              </button>
-            </div>
-          </div>
-          <div class="setting-item-row">
-            <span class="setting-label">颜色</span>
-            <div class="btn-group">
-              <button class="btn-chip" :class="{ active: subtitleSettings?.color==='white' }"
-                      @click="$emit('update-subtitle-color','white')">白色
-              </button>
-              <button class="btn-chip" :class="{ active: subtitleSettings?.color==='yellow' }"
-                      @click="$emit('update-subtitle-color','yellow')">黄色
-              </button>
-            </div>
-          </div>
-          <div class="setting-item-row">
-            <span class="setting-label">背景</span>
-            <input class="range" type="range" min="0" max="1" step="0.1" :value="subtitleSettings?.bgOpacity ?? 0.4"
-                   @input="$emit('update-subtitle-bg-opacity', Number($event.target.value))"/>
-          </div>
-          <div class="setting-item-row">
-            <span class="setting-label">位置</span>
-            <div class="btn-group">
-              <button class="btn-chip" :class="{ active: subtitleSettings?.position==='bottom' }"
-                      @click="$emit('update-subtitle-position','bottom')">底部
-              </button>
-              <button class="btn-chip" :class="{ active: subtitleSettings?.position==='top' }"
-                      @click="$emit('update-subtitle-position','top')">顶部
-              </button>
-            </div>
-          </div>
-          <div class="setting-item-row">
-            <label class="setting-label">
-              <input type="checkbox" :checked="subtitleSettings?.shadow"
-                     @change="$emit('update-subtitle-shadow', $event.target.checked)" class="setting-checkbox"/>
-              阴影
+        <div class="menu-list">
+          <button class="menu-item" @click="activePanel='subtitle-style-font-size'">
+            <span class="item-left">字号</span>
+            <span class="item-right"><span>{{ fontSizeLabel }}</span><Icon icon="material-symbols:chevron-right"/></span>
+          </button>
+
+          <button class="menu-item" @click="activePanel='subtitle-style-color'">
+            <span class="item-left">字体颜色</span>
+            <span class="item-right"><span>{{ colorLabel }}</span><Icon icon="material-symbols:chevron-right"/></span>
+          </button>
+
+          <button class="menu-item" @click="activePanel='subtitle-style-bg'">
+            <span class="item-left">背景不透明度</span>
+            <span class="item-right"><span>{{ bgOpacityLabel }}</span><Icon icon="material-symbols:chevron-right"/></span>
+          </button>
+
+          <button class="menu-item" @click="activePanel='subtitle-style-position'">
+            <span class="item-left">位置</span>
+            <span class="item-right"><span>{{ positionLabel }}</span><Icon icon="material-symbols:chevron-right"/></span>
+          </button>
+
+          <div class="menu-item toggled">
+            <span class="item-left">阴影</span>
+            <label class="yt-switch">
+              <input type="checkbox" :checked="subtitleSettings?.shadow" @change="$emit('update-subtitle-shadow', $event.target.checked)"/>
+              <span class="slider"></span>
             </label>
           </div>
+        </div>
+      </div>
+
+      <!-- 子菜单：字号 -->
+      <div v-else-if="activePanel==='subtitle-style-font-size'" class="menu-panel">
+        <div class="menu-header">
+          <button class="back-btn" @click="activePanel='subtitle-style'">
+            <Icon icon="material-symbols:arrow-back-ios-new"/>
+          </button>
+          <span class="header-title">字号</span>
+        </div>
+        <div class="menu-list">
+          <button class="menu-item" :class="{ active: subtitleSettings?.fontSize==='small' }" @click="$emit('update-subtitle-font-size','small')">
+            <span class="item-left">75%</span>
+            <Icon v-if="subtitleSettings?.fontSize==='small'" icon="material-symbols:check" class="check-icon"/>
+          </button>
+          <button class="menu-item" :class="{ active: subtitleSettings?.fontSize==='medium' }" @click="$emit('update-subtitle-font-size','medium')">
+            <span class="item-left">100%</span>
+            <Icon v-if="subtitleSettings?.fontSize==='medium'" icon="material-symbols:check" class="check-icon"/>
+          </button>
+          <button class="menu-item" :class="{ active: subtitleSettings?.fontSize==='large' }" @click="$emit('update-subtitle-font-size','large')">
+            <span class="item-left">125%</span>
+            <Icon v-if="subtitleSettings?.fontSize==='large'" icon="material-symbols:check" class="check-icon"/>
+          </button>
+          <button class="menu-item" :class="{ active: subtitleSettings?.fontSize==='xlarge' }" @click="$emit('update-subtitle-font-size','xlarge')">
+            <span class="item-left">150%</span>
+            <Icon v-if="subtitleSettings?.fontSize==='xlarge'" icon="material-symbols:check" class="check-icon"/>
+          </button>
+        </div>
+      </div>
+
+      <!-- 子菜单：字体颜色 -->
+      <div v-else-if="activePanel==='subtitle-style-color'" class="menu-panel">
+        <div class="menu-header">
+          <button class="back-btn" @click="activePanel='subtitle-style'">
+            <Icon icon="material-symbols:arrow-back-ios-new"/>
+          </button>
+          <span class="header-title">字体颜色</span>
+        </div>
+        <div class="menu-list">
+          <button class="menu-item" :class="{ active: subtitleSettings?.color==='white' }" @click="$emit('update-subtitle-color','white')">
+            <span class="item-left">白色</span>
+            <Icon v-if="subtitleSettings?.color==='white'" icon="material-symbols:check" class="check-icon"/>
+          </button>
+          <button class="menu-item" :class="{ active: subtitleSettings?.color==='yellow' }" @click="$emit('update-subtitle-color','yellow')">
+            <span class="item-left">黄色</span>
+            <Icon v-if="subtitleSettings?.color==='yellow'" icon="material-symbols:check" class="check-icon"/>
+          </button>
+        </div>
+      </div>
+
+      <!-- 子菜单：背景不透明度 -->
+      <div v-else-if="activePanel==='subtitle-style-bg'" class="menu-panel">
+        <div class="menu-header">
+          <button class="back-btn" @click="activePanel='subtitle-style'">
+            <Icon icon="material-symbols:arrow-back-ios-new"/>
+          </button>
+          <span class="header-title">背景不透明度</span>
+        </div>
+        <div class="menu-list">
+          <button class="menu-item" :class="{ active: (subtitleSettings?.bgOpacity ?? 0) === 0 }" @click="$emit('update-subtitle-bg-opacity', 0)">
+            <span class="item-left">0%</span>
+            <Icon v-if="(subtitleSettings?.bgOpacity ?? 0) === 0" icon="material-symbols:check" class="check-icon"/>
+          </button>
+          <button class="menu-item" :class="{ active: (subtitleSettings?.bgOpacity ?? 0) === 0.25 }" @click="$emit('update-subtitle-bg-opacity', 0.25)">
+            <span class="item-left">25%</span>
+            <Icon v-if="(subtitleSettings?.bgOpacity ?? 0) === 0.25" icon="material-symbols:check" class="check-icon"/>
+          </button>
+          <button class="menu-item" :class="{ active: (subtitleSettings?.bgOpacity ?? 0) === 0.5 }" @click="$emit('update-subtitle-bg-opacity', 0.5)">
+            <span class="item-left">50%</span>
+            <Icon v-if="(subtitleSettings?.bgOpacity ?? 0) === 0.5" icon="material-symbols:check" class="check-icon"/>
+          </button>
+          <button class="menu-item" :class="{ active: (subtitleSettings?.bgOpacity ?? 0) === 0.75 }" @click="$emit('update-subtitle-bg-opacity', 0.75)">
+            <span class="item-left">75%</span>
+            <Icon v-if="(subtitleSettings?.bgOpacity ?? 0) === 0.75" icon="material-symbols:check" class="check-icon"/>
+          </button>
+          <button class="menu-item" :class="{ active: (subtitleSettings?.bgOpacity ?? 0) === 1 }" @click="$emit('update-subtitle-bg-opacity', 1)">
+            <span class="item-left">100%</span>
+            <Icon v-if="(subtitleSettings?.bgOpacity ?? 0) === 1" icon="material-symbols:check" class="check-icon"/>
+          </button>
+        </div>
+      </div>
+
+      <!-- 子菜单：位置 -->
+      <div v-else-if="activePanel==='subtitle-style-position'" class="menu-panel">
+        <div class="menu-header">
+          <button class="back-btn" @click="activePanel='subtitle-style'">
+            <Icon icon="material-symbols:arrow-back-ios-new"/>
+          </button>
+          <span class="header-title">位置</span>
+        </div>
+        <div class="menu-list">
+          <button class="menu-item" :class="{ active: subtitleSettings?.position==='bottom' }" @click="$emit('update-subtitle-position','bottom')">
+            <span class="item-left">底部</span>
+            <Icon v-if="subtitleSettings?.position==='bottom'" icon="material-symbols:check" class="check-icon"/>
+          </button>
+          <button class="menu-item" :class="{ active: subtitleSettings?.position==='top' }" @click="$emit('update-subtitle-position','top')">
+            <span class="item-left">顶部</span>
+            <Icon v-if="subtitleSettings?.position==='top'" icon="material-symbols:check" class="check-icon"/>
+          </button>
         </div>
       </div>
 
@@ -253,6 +329,21 @@ const currentQualityLabel = computed(() => {
   const found = (props.availableQualities || []).find(q => q.value === props.currentQuality)
   return found?.label || (props.availableQualities?.[0]?.label)
 })
+
+// Labels for YouTube-like rows
+const fontSizeLabel = computed(() => {
+  const map = { small: '75%', medium: '100%', large: '125%', xlarge: '150%' }
+  return map[props.subtitleSettings?.fontSize] || '100%'
+})
+
+const colorLabel = computed(() => props.subtitleSettings?.color === 'yellow' ? '黄色' : '白色')
+
+const bgOpacityLabel = computed(() => {
+  const v = Number(props.subtitleSettings?.bgOpacity ?? 0)
+  return Math.round(v * 100) + '%'
+})
+
+const positionLabel = computed(() => props.subtitleSettings?.position === 'top' ? '顶部' : '底部')
 </script>
 
 <style scoped>
@@ -298,7 +389,7 @@ const currentQualityLabel = computed(() => {
   bottom: 100%;
   right: 0;
   margin-bottom: 0.75rem;
-  width: 16rem;
+  width: 15.5rem;
   border-radius: 0.75rem;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, .1);
@@ -309,6 +400,8 @@ const currentQualityLabel = computed(() => {
   animation: menu-appear 160ms ease-out;
   font-size: 12px;
   line-height: 1.25;
+  max-height: min(70vh, 440px);
+  overflow-y: auto;
 }
 
 @keyframes menu-appear {
@@ -349,21 +442,63 @@ const currentQualityLabel = computed(() => {
 }
 
 .btn-chip {
-  padding: 4px 8px;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, .14);
-  background: transparent;
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .24);
+  background: rgba(255, 255, 255, .06);
   color: #eaeaea;
   font-size: 12px;
   cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 
-.btn-chip.active, .btn-chip:hover {
+.btn-chip:hover {
+  background: rgba(255, 255, 255, .12);
+}
+
+.btn-chip.active {
   background: rgba(255, 255, 255, .08);
+  border-color: #cc0000;
+  box-shadow: inset 0 0 0 1px #cc0000;
 }
 
 .range {
   width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 9999px;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -5px; /* center against 3px track */
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #cc0000;
+}
+
+.range::-moz-range-track {
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #cc0000;
 }
 
 
@@ -439,6 +574,11 @@ const currentQualityLabel = computed(() => {
   flex-direction: column;
   padding: 6px;
   gap: 4px;
+}
+
+/* subtle separators between rows like YouTube */
+.menu-list .menu-item + .menu-item {
+  border-top: 1px solid rgba(255, 255, 255, .06);
 }
 
 .menu-item {
