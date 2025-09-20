@@ -1,6 +1,6 @@
 import logging
 import re
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlencode
 import httpx
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
@@ -23,7 +23,11 @@ class PornhubProxy(VideoProxy):
         def replace_url(match):
             path = match.group(1)
             full_url = path if path.startswith('http') else urljoin(base_url + '/', path)
-            return f"/api/video/proxy?domain={self.domain}&url={full_url}"
+            query = urlencode({
+                'domain': self.domain,
+                'url': full_url,
+            })
+            return f"/api/video/proxy?{query}"
 
         content_text = re.sub(
             r'([^"\n]+\.(ts|jpeg|jpg|m3u8)[^"\n]*)',
