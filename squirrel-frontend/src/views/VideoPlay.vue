@@ -27,39 +27,32 @@
           <div class="mt-3 pb-3 border-b border-[#272727]">
             <div class="flex items-center justify-between">
               <!-- 订阅信息 -->
-              <div class="flex items-center">
-                <!-- 层叠的头像 -->
-                <div class="flex -space-x-3">
-                  <img
-                    v-for="(sub, index) in video?.subscriptions"
-                    :key="sub.id"
-                    :src="sub.avatar"
-                    :alt="sub.name"
-                    class="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-full object-cover ring-2 ring-[#0f0f0f]"
-                    :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
-                    referrerpolicy="no-referrer"
-                  >
-                </div>
-                <!-- 订阅名称与操作 -->
-                <div class="ml-3 flex flex-wrap items-start gap-x-4 gap-y-1">
-                  <div v-for="sub in video?.subscriptions" :key="sub.id" class="flex flex-col">
-                    <div class="flex items-center space-x-2">
-                      <router-link
-                        :to="`/subscription/${sub.id}/all`"
-                        class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
-                      >
-                        {{ sub.name }}
-                      </router-link>
-                      <button
-                        class="px-2 py-0.5 text-[10px] bg-white/10 hover:bg-white/15 text-white rounded-full transition-colors"
-                        @click.stop="handleUnsubscribe(sub.id)"
-                        title="取消订阅"
-                        aria-label="取消订阅"
-                      >取消订阅</button>
-                    </div>
-                    <div class="text-[10px] text-[#aaaaaa] mt-0.5">
-                      总视频: {{ sub.total_videos || 0 }} | 已解析: {{ sub.total_extract || 0 }}
-                    </div>
+              <div class="flex flex-col space-y-3">
+                <div v-for="sub in video?.subscriptions" :key="sub.id" class="flex flex-col">
+                  <!-- 头像、频道名称、取消订阅按钮在同一行 -->
+                  <div class="flex items-center space-x-3">
+                    <img
+                      :src="sub.avatar"
+                      :alt="sub.name"
+                      class="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-full object-cover"
+                      referrerpolicy="no-referrer"
+                    >
+                    <router-link
+                      :to="`/subscription/${sub.id}/all`"
+                      class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors flex-1"
+                    >
+                      {{ sub.name }}
+                    </router-link>
+                    <button
+                      class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/15 text-white rounded-full transition-colors font-medium"
+                      @click.stop="handleUnsubscribe(sub.id)"
+                      :title="`取消订阅 ${sub.name}`"
+                      :aria-label="`取消订阅 ${sub.name}`"
+                    >取消订阅</button>
+                  </div>
+                  <!-- 统计信息单独一行 -->
+                  <div class="ml-11 md:ml-12 lg:ml-13 text-[10px] text-[#aaaaaa] mt-1">
+                    总视频: {{ sub.total_videos || 0 }} | 已解析: {{ sub.total_extract || 0 }}
                   </div>
                 </div>
               </div>
