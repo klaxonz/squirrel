@@ -40,13 +40,19 @@
       <p class="mt-2">加载更多...</p>
     </div>
 
+    <!-- 空状态提示 -->
+    <div v-else-if="!props.loading && (!props.videos || props.videos.length === 0)" class="text-center py-8 text-sm text-gray-500">
+      暂无内容
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import {computed, onMounted, ref, inject, onUnmounted, onActivated} from 'vue';
+import {computed, ref} from 'vue';
 import VirtualList from './VirtualList.vue';
 import VideoItem from './VideoItem.vue';
+import { useElementSize } from '../composables/useElementSize.js';
 
 const props = defineProps({
   videos: Array,
@@ -69,47 +75,7 @@ const emit = defineEmits([
 ]);
 
 const containerRef = ref(null);
-const containerWidth = ref(0);
-
-const emitter = inject('emitter');
-
-onMounted(() => {
-  updateContainerWidth();
-  
-  // 监听侧边栏状态变化
-  emitter.on('sidebarStateChanged', updateContainerWidth);
-  // 监听窗口大小变化
-  window.addEventListener('resize', updateContainerWidth);
-
-});
-
-// 在组件卸载时清理事件监听
-onUnmounted(() => {
-  emitter.off('sidebarStateChanged', updateContainerWidth);
-  emitter.off('reloadContent');
-  window.removeEventListener('resize', updateContainerWidth);
-});
-
-onActivated(() => {
-    updateContainerWidth();
-})
-
-// 优化 updateContainerWidth，添加防抖
-const updateContainerWidth = (() => {
-  let timer = null;
-  return () => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
-      if (containerRef.value) {
-        requestAnimationFrame(() => {
-          if (containerRef.value.offsetWidth > 0) {
-            containerWidth.value = containerRef.value.offsetWidth;
-          }
-        });
-      }
-    }, 100);
-  };
-})();
+const { width: containerWidth } = useElementSize(containerRef);
 
 const computedGridItems = computed(() => {
   const width = containerWidth.value;

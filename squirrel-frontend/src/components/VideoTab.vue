@@ -16,31 +16,26 @@
 </template>
 
 <script setup>
-import {computed, inject, onMounted} from 'vue';
+import {computed, watch} from 'vue';
 import VideoList from "./VideoList.vue";
 import useLatestVideos from "../composables/useLatestVideos.js";
 import useOptionsMenu from "../composables/useOptionsMenu.js";
-import {watch} from "vue";
 
-
-const emitter = inject('emitter');
 const emit = defineEmits(['openModal', 'update-counts', 'goToSubscription', 'loading-change']);
 
 const props = defineProps({
-  searchQuery: {
-    type: String,
-    default: ''
+  // New unified filters prop (preferred)
+  filters: {
+    type: Object,
+    default: null
   },
-  activeTab: String,
-  selectedSubscriptionId: Number,
-  sortBy: {
-    type: String,
-    default: 'publish_date'
-  },
-  site: {
-    type: String,
-    default: undefined
-  }
+  // Back-compat individual props (will be derived if filters missing)
+  searchQuery: { type: String, default: '' },
+  activeTab: { type: String, default: 'all' },
+  selectedSubscriptionId: { type: Number, default: null },
+  sortBy: { type: String, default: 'publish_date' },
+  site: { type: String, default: undefined },
+  nsfw: { type: String, default: 'all' }
 });
 
 const {
@@ -51,49 +46,59 @@ const {
   searchQuery,
   handleSearch,
   activeTab,
-  tabsWithCounts,
   subscriptionId,
   sortBy,
   isResetting,
-  site
-} = useLatestVideos();
+  site,
+  nsfw,
+  videoCounts,
+  error
+} = useLatestVideos({
+  activeTab: (props.filters?.tab ?? props.activeTab) || 'all',
+  searchQuery: (props.filters?.q ?? props.searchQuery) || '',
+  subscriptionId: props.filters?.sid ?? props.selectedSubscriptionId ?? null,
+  sortBy: (props.filters?.sort ?? props.sortBy) || 'publish_date',
+  site: props.filters?.site ?? props.site,
+  nsfw: (props.filters?.nsfw ?? props.nsfw) || 'all',
+});
 
 const processedVideos = computed(() => {
   return videos.value.map(video => ({
     ...video,
     showProgress: true,
-    progress: video.last_position / video.duration
+    progress: video.duration > 0 ? (video.last_position / video.duration) : 0
   }));
 });
 
-watch(() => props.activeTab, (newTab) => {
-  activeTab.value = newTab;
-  handleSearch();
-})
+watch(() => videoCounts.value, (counts) => {
+  emit('update-counts', counts);
+}, { immediate: true });
 
-watch(() => props.searchQuery, (newQuery) => {
-  searchQuery.value = newQuery;
-  handleSearch()
+watch(() => error.value, (err) => {
+  emit('error', err);
 });
 
-watch(() => tabsWithCounts.value, (newCounts) => {
-  emit('update-counts', newCounts);
-});
-
-watch(() => props.selectedSubscriptionId, (newSubscriptionId) => {
-  subscriptionId.value = newSubscriptionId;
-  handleSearch();
-})
-
-watch(() => props.sortBy, () => {
-  sortBy.value = props.sortBy;
-  handleSearch();
-});
-
-watch(() => props.site, (newSite) => {
-  site.value = newSite;
-  handleSearch();
-});
+watch(
+  () => ({
+    // Prefer filters prop when provided
+    tab: props.filters?.tab ?? props.activeTab,
+    q: props.filters?.q ?? props.searchQuery,
+    sid: props.filters?.sid ?? props.selectedSubscriptionId,
+    sort: props.filters?.sort ?? props.sortBy,
+    st: props.filters?.site ?? props.site,
+    ns: props.filters?.nsfw ?? props.nsfw,
+  }),
+  (next) => {
+    activeTab.value = typeof next.tab === 'string' ? next.tab : 'all';
+    searchQuery.value = next.q || '';
+    subscriptionId.value = next.sid ?? null;
+    sortBy.value = next.sort || 'publish_date';
+    site.value = next.st;
+    nsfw.value = next.ns || 'all';
+    handleSearch();
+  },
+  { immediate: true }
+);
 const {
   toggleOptions,
 } = useOptionsMenu(videos);
@@ -102,17 +107,9 @@ watch(() => loading.value, (val) => {
   emit('loading-change', val);
 });
 
-
-onMounted(async () => {
-  subscriptionId.value = props.selectedSubscriptionId;
-  site.value = props.site;
-  emitter.on('reloadContent', (tab) => {
-    handleSearch();
-  });
-  await loadMore();
-
-
-})
+defineExpose({
+  refresh: () => handleSearch(),
+});
 
 </script>
 

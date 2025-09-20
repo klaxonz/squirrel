@@ -1,7 +1,7 @@
 <template>
-  <div class="relative inline-block">
+  <div class="relative inline-block" ref="rootRef">
     <button
-      @click="toggleDropdown"
+      @click="toggle"
       class="flex items-center px-2 py-1.5 text-[#f1f1f1] hover:bg-[#272727] rounded-full transition-colors duration-150"
       :class="[{ 'bg-[#272727]': isOpen }, isMobile ? 'p-1.5' : 'space-x-1 px-2 text-xs']"
     >
@@ -56,8 +56,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed } from 'vue';
 import { isMobile } from "../composables/useMobile.js";
+import { useDropdown } from "../composables/useDropdown.js";
 
 const props = defineProps({
   modelValue: {
@@ -68,7 +69,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
-const isOpen = ref(false);
+const { isOpen, rootRef, toggle, close } = useDropdown();
 
 const sortOptions = [
   { value: 'publish_date', label: '上传时间' },
@@ -77,28 +78,10 @@ const sortOptions = [
 
 const currentLabel = computed(() => (sortOptions.find(o => o.value === props.modelValue)?.label) || sortOptions[0].label);
 
-const toggleDropdown = () => {
-  isOpen.value = !isOpen.value;
-};
-
 const selectOption = (value) => {
   emit('update:modelValue', value);
-  isOpen.value = false;
+  close();
 };
-
-const handleClickOutside = (event) => {
-  if (!event.target.closest('.relative')) {
-    isOpen.value = false;
-  }
-};
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
-});
 </script>
 
 <style scoped>

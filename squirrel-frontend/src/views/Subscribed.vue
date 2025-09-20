@@ -2,32 +2,26 @@
   <div class="subscribed-page flex flex-col h-full bg-[#0f0f0f] text-white">
     <!-- 顶部操作栏 - 对齐全部视频页的标签样式 -->
     <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-end py-3">
-        <div class="flex items-center">
-          <SiteFilter
-            v-model="site"
-            class="ml-2"
-            @update:modelValue="handleSiteChange"
-          />
-          <NsfwFilter v-model="nsfw" class="ml-2" @update:modelValue="handleNsfwChange" />
-          <RefreshButton
-            class="ml-2"
-            :loading="isRefreshing"
-            title="刷新"
-            aria-label="刷新"
-            @click="refreshList"
-          />
-          <button
-            class="ml-2 px-3 py-1.5 min-w-[100px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
-            @click="showAddDialog = true"
-          >
-            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-              <path clip-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a 1 1 0 110 2h-5v5a 1 1 0 11-2 0v-5H4a 1 1 0 110-2h5V4a 1 1 0 011-1z" fill-rule="evenodd" />
-            </svg>
-            <span class="ml-1">添加订阅</span>
-          </button>
-        </div>
-      </div>
+      <FeedToolbar
+        :show-tabs="false"
+        :tabs-with-counts="[]"
+        :nsfw="nsfw"
+        :site="site"
+        :is-refreshing="isRefreshing"
+        @update:nsfw="(v) => { nsfw = v; }"
+        @update:site="(v) => { site = v; }"
+        @refresh="refreshList"
+      >
+        <button
+          class="ml-2 px-3 py-1.5 min-w-[100px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
+          @click="showAddDialog = true"
+        >
+          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a 1 1 0 110 2h-5v5a 1 1 0 11-2 0v-5H4a 1 1 0 110-2h5V4a 1 1 0 011-1z" fill-rule="evenodd" />
+          </svg>
+          <span class="ml-1">添加订阅</span>
+        </button>
+      </FeedToolbar>
     </div>
 
     <div
@@ -35,6 +29,12 @@
       class="channel-container pt-4 flex-grow overflow-y-auto"
       @scroll="handleScrollPosition"
     >
+      <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8" v-if="loadError">
+        <div class="mt-2 mb-2 px-3 py-2 rounded bg-rose-500/10 text-rose-300 text-sm flex items-center justify-between">
+          <span>加载失败：{{ loadError?.message || loadError }}</span>
+          <button class="ml-3 px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30" @click="refreshList">重试</button>
+        </div>
+      </div>
       <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
         <!-- 频道列表 -->
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
@@ -175,18 +175,17 @@
 
 <script setup>
 import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';
-import RefreshButton from '../components/RefreshButton.vue';
+import FeedToolbar from '../components/feed/FeedToolbar.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
+import { useRefreshTriggers } from '../composables/useRefreshTriggers';
 import AddChannelDialog from '../components/AddChannelDialog.vue';
-import NsfwFilter from '../components/NsfwFilter.vue';
-// Removed TabBar on Subscribed page per requirements
-import SiteFilter from '../components/SiteFilter.vue';
 
 import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
 import {useSubscriptionRefresh} from '../composables/useSubscriptionRefresh';
 import {useSubscriptionApi} from '../composables/useSubscriptionApi';
+import { useFeedFilters } from '../composables/useFeedFilters';
 
 const router = useRouter();
 
@@ -199,12 +198,12 @@ const emitter = inject('emitter');
 const { scrollContainer, handleScroll: handleScrollPosition, restoreScrollPosition } = useScrollPosition('subscribed-page');
 
 const subscriptions = ref([]);
+const loadError = ref(null);
 const loading = ref(false);
 const allLoaded = ref(false);
 const currentPage = ref(1);
 const searchQuery = ref('');
-const nsfw = ref('all');
-const site = ref();
+const { nsfw, site } = useFeedFilters();
 // Removed tabs on Subscribed page
 
 const showSettings = ref(false);
@@ -231,7 +230,6 @@ const {
   triggerRefresh,
   retryRefresh,
   getStatusText,
-  getProgressPercentage,
   cleanup: cleanupRefresh
 } = useSubscriptionRefresh();
 
@@ -299,6 +297,8 @@ const loadSubscriptions = async () => {
       // 数据加载完成后恢复滚动位置
       restoreScrollPosition();
     });
+  } else if (!result.cancelled) {
+    loadError.value = result.error || '获取订阅列表失败';
   }
 
   loading.value = false;
@@ -306,9 +306,6 @@ const loadSubscriptions = async () => {
 
 
 // 订阅页：键盘 R 刷新 + 页面切回自动刷新
-const lastRefreshedAt = ref(Date.now());
-const VISIBILITY_REFRESH_THRESHOLD_MS = 5 * 60 * 1000;
-
 const MIN_SPIN_MS = 800;
 const spinTimer = ref(null);
 const spinStartAt = ref(0);
@@ -320,23 +317,7 @@ const clearSpinTimer = () => {
 };
 
 
-const handleKeyDown = (e) => {
-  const target = e.target;
-  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if ((e.key === 'r' || e.key === 'R') && !e.repeat) {
-    e.preventDefault();
-    refreshList();
-  }
-};
-
-const handleVisibilityChange = () => {
-  if (!document.hidden) {
-    if (Date.now() - lastRefreshedAt.value > VISIBILITY_REFRESH_THRESHOLD_MS) {
-      refreshList();
-    }
-  }
-};
+useRefreshTriggers({ onRefresh: () => refreshList() });
 
 // 处理全局搜索事件
 
@@ -347,6 +328,7 @@ const refreshList = async () => {
   clearSpinTimer();
   isRefreshing.value = true;
   isResetting.value = true;
+  loadError.value = null;
   spinStartAt.value = Date.now();
   currentPage.value = 1;
   allLoaded.value = false;
@@ -359,7 +341,6 @@ const refreshList = async () => {
     spinTimer.value = setTimeout(() => {
       isRefreshing.value = false;
       isResetting.value = false;
-      lastRefreshedAt.value = Date.now();
       clearSpinTimer();
     }, remain);
   }
@@ -374,33 +355,23 @@ const handleGlobalSearch = (query) => {
   currentPage.value = 1;
   allLoaded.value = false;
   loadSubscriptions().then(() => {
-    // 搜索后恢复滚动位置
     nextTick(() => {
       restoreScrollPosition();
     });
     isRefreshing.value = false;
-
   });
 };
 
-// NSFW 筛选变更：重置并重新加载
-const handleNsfwChange = () => {
+// 监听筛选变化：重置并重新加载
+watch([nsfw, site], async () => {
   if (observer.value && loadingTrigger.value) {
     observer.value.unobserve(loadingTrigger.value);
   }
   subscriptions.value = [];
   currentPage.value = 1;
   allLoaded.value = false;
-  loadSubscriptions();
-};
-
-const handleSiteChange = async () => {
-  await nextTick();
-  subscriptions.value = [];
-  currentPage.value = 1;
-  allLoaded.value = false;
-  loadSubscriptions();
-};
+  await loadSubscriptions();
+});
 
 const loadMore = () => {
   loadSubscriptions();
@@ -524,10 +495,7 @@ onMounted(async () => {
   // 监听全局搜索事件
   emitter.on('search:subscribed', handleGlobalSearch);
 
-  // 键盘快捷键：R 刷新订阅列表
-  window.addEventListener('keydown', handleKeyDown);
-  // 页面可见性变化：切回且超过阈值时自动刷新
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+  // 键盘/可见性刷新改为 composable 统一管理
 });
 
 // 添加监听器以在内容变化时重新设置observer
@@ -551,8 +519,7 @@ onUnmounted(() => {
   // 清理订阅更新相关资源
   cleanupRefresh();
 
-  window.removeEventListener('keydown', handleKeyDown);
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  // 键盘/可见性刷新由 composable 自动清理
 });
 </script>
 

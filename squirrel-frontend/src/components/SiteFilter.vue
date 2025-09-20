@@ -1,7 +1,7 @@
 <template>
-  <div class="relative inline-block">
+  <div class="relative inline-block" ref="rootRef">
     <button
-      @click="toggleDropdown"
+      @click="toggle"
       class="flex items-center px-2 py-1.5 text-[#f1f1f1] hover:bg-[#272727] rounded-full transition-colors duration-150"
       :class="[{ 'bg-[#272727]': isOpen }, isMobile ? 'p-1.5' : 'space-x-1 px-2 text-xs']"
     >
@@ -56,9 +56,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { get } from '../utils/request';
+import { ref, computed, onMounted } from 'vue';
 import { isMobile } from "../composables/useMobile.js";
+import { useDropdown } from "../composables/useDropdown.js";
+import { useSites } from "../composables/useSites.js";
 
 const props = defineProps({
   modelValue: {
@@ -69,44 +70,26 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
-const isOpen = ref(false);
+const { isOpen, rootRef, toggle, close } = useDropdown();
 const options = ref([{ value: undefined, label: '全部站点' }]);
+const { options: cachedOptions, fetchSites } = useSites();
 
 const currentLabel = computed(() => {
   const found = options.value.find(o => o.value === props.modelValue);
   return found ? found.label : options.value[0]?.label || '全部站点';
 });
 
-const toggleDropdown = () => {
-  isOpen.value = !isOpen.value;
-};
-
 const selectOption = (value) => {
   emit('update:modelValue', value);
-  isOpen.value = false;
+  close();
 };
-
-const handleClickOutside = (event) => {
-  if (!event.target.closest('.relative')) {
-    isOpen.value = false;
-  }
-};
-
 onMounted(async () => {
-  document.addEventListener('click', handleClickOutside);
-  const { data } = await get('/api/sites');
-  const items = data ? Object.entries(data) : [];
-  const opts = [{ value: undefined, label: '全部站点' }];
-  for (const [slug, info] of items) {
-    if (info && info.enabled !== false) {
-      opts.push({ value: slug, label: info.label || slug });
-    }
+  if (cachedOptions.value) {
+    options.value = cachedOptions.value;
+  } else {
+    const { data } = await fetchSites();
+    if (data) options.value = data;
   }
-  options.value = opts;
-});
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
 });
 </script>
 

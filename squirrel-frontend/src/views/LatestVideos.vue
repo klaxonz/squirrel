@@ -3,54 +3,43 @@
     <ChannelHeader
       v-if="subscriptionId"
       :subscription-id="subscriptionId"
-      @refresh="refreshCurrentList"
     />
     <!-- 顶部操作栏 - TabBar 和 SortButton -->
     <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between py-3">
-      <TabBar
-          v-model="activeTab"
-          :tabs="tabsWithCounts"
-          class="custom-tab-bar flex-grow"
-          @tab-dblclick="handleTabDoubleClick"
+      <FeedToolbar
+        :active-tab="activeTab"
+        :nsfw="nsfw"
+        :sort-by="sortBy"
+        :site="site"
+        :subscription-id="subscriptionId"
+        :tabs-with-counts="tabsWithCounts"
+        :is-refreshing="isRefreshing"
+        @update:activeTab="(v) => activeTab = v"
+        @update:nsfw="(v) => nsfw = v"
+        @update:sortBy="(v) => sortBy = v"
+        @update:site="(v) => site = v"
+        @tab-dblclick="handleTabDoubleClick"
+        @refresh="refreshCurrentList"
       />
-        <div class="flex items-center">
-          <NsfwFilter v-model="nsfw" class="ml-2" @update:modelValue="handleNsfwChange" />
-          <SiteFilter
-              v-model="site"
-              class="ml-2"
-              @update:modelValue="handleSiteChange"
-              v-if="!subscriptionId"
-          />
-          <SortButton
-              v-model="sortBy"
-              class="ml-2"
-              @update:modelValue="handleSortChange"
-          />
-          <RefreshButton
-            class="ml-2"
-            :loading="isRefreshing"
-            title="刷新 (R)"
-            aria-label="刷新"
-            @click="refreshCurrentList"
-          />
-        </div>
-      </div>
     </div>
 
     <div class="video-container flex-grow">
+      <div v-if="loadError" class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+        <div class="mt-2 mb-2 px-3 py-2 rounded bg-rose-500/10 text-rose-300 text-sm flex items-center justify-between">
+          <span>加载失败：{{ loadError?.message || loadError }}</span>
+          <button class="ml-3 px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30" @click="refreshCurrentList">重试</button>
+        </div>
+      </div>
       <router-view v-slot="{ Component }">
         <keep-alive :max="10">
           <component
               :is="Component"
-              :active-tab="activeTab"
-              :search-query="searchQuery"
-              :selected-subscription-id="subscriptionId"
-              :sort-by="sortBy"
-              :site="subscriptionId ? undefined : site"
+              :filters="childFilters"
+              ref="videoChildRef"
               @goToSubscription="goToChannelDetail"
               @openModal="handleOpenModal"
               @update-counts="updateCounts"
+              @error="(e) => (loadError = e)"
               @loading-change="(val) => (isRefreshing = !!val)"
           />
         </keep-alive>
@@ -58,102 +47,46 @@
     </div>
   </div>
 
-  <div v-if="error" class="text-center py-4 text-red-500">
-    {{ error }}
-  </div>
+  
 </template>
 
 <script setup>
-import {computed, inject, onMounted, onUnmounted, ref, watch, nextTick} from 'vue';
+import {computed, inject, onMounted, onUnmounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
-import useLatestVideos from '../composables/useLatestVideos';
-import TabBar from '../components/TabBar.vue';
-import SortButton from '../components/SortButton.vue';
-import NsfwFilter from '../components/NsfwFilter.vue';
-import RefreshButton from '../components/RefreshButton.vue';
+import { useRouteTabSync } from '../composables/useRouteTabSync';
+import { useFeedFilters } from '../composables/useFeedFilters';
+import { useRefreshTriggers } from '../composables/useRefreshTriggers';
+import FeedToolbar from '../components/feed/FeedToolbar.vue';
 import ChannelHeader from '../components/ChannelHeader.vue';
-import SiteFilter from '../components/SiteFilter.vue';
+import { buildTabsWithCounts } from '../utils/feed';
 
 const router = useRouter();
 const emitter = inject('emitter');
 
-const {
-  videoContainer,
-  activeTab,
-  error,
-  nsfw,
-  handleSearch
-} = useLatestVideos();
-
+// Page-scoped filter state
 const route = useRoute();
 const subscriptionId = computed(() => route.params.id);
+const { activeTab, nsfw, sortBy, site, searchQuery, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId });
+const childFilters = computed(() => filters.value);
 
-const tabsWithCounts = ref([
-  {
-    value: 'all',
-    count: 0,
-    label: '全部'
-  },
-  {
-    value: 'unread',
-    count: 0,
-    label: '未读'
-  },
-  {
-    value: 'read',
-    count: 0,
-    label: '已读'
-  },
-  {
-    value: 'preview',
-    count: 0,
-    label: '预告'
-  },
-  {
-    value: 'liked',
-    count: 0,
-    label: '喜欢'
-  }
-]);
+const tabsWithCounts = ref(buildTabsWithCounts({}));
 
 const isRefreshing = ref(false);
+const loadError = ref(null);
 
-
-const lastRefreshedAt = ref(Date.now());
-const VISIBILITY_REFRESH_THRESHOLD_MS = 5 * 60 * 1000;
+const videoChildRef = ref(null);
 
 const refreshCurrentList = () => {
   isRefreshing.value = true;
-  emitter.emit('reloadContent', activeTab.value);
-  lastRefreshedAt.value = Date.now();
+  loadError.value = null;
+  videoChildRef.value?.refresh?.();
 };
 
-const handleKeyDown = (e) => {
-  const target = e.target;
-  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if ((e.key === 'r' || e.key === 'R') && !e.repeat) {
-    e.preventDefault();
-    refreshCurrentList();
-  }
-};
+useRefreshTriggers({ onRefresh: () => refreshCurrentList() });
 
-const handleVisibilityChange = () => {
-  if (!document.hidden) {
-    if (Date.now() - lastRefreshedAt.value > VISIBILITY_REFRESH_THRESHOLD_MS) {
-      refreshCurrentList();
-    }
-  }
-};
-
-
-const searchQuery = ref('');
-
-const sortBy = ref('publish_date');
-const site = ref();
 
 const updateCounts = (counts) => {
-  tabsWithCounts.value = counts;
+  tabsWithCounts.value = buildTabsWithCounts(counts);
 };
 
 // 处理全局搜索事件
@@ -172,72 +105,26 @@ const goToChannelDetail = (subscriptionId) => {
   router.push(`/subscription/${subscriptionId}/all`);
 };
 
-const handleSortChange = (newSort) => {
-  sortBy.value = newSort;
-};
-
-const handleNsfwChange = () => {
-  handleSearch();
-};
-
-const handleSiteChange = async () => {
-  // 等待 v-model 将新 site 传递给子组件后再刷新，避免使用上一次的站点
-  await nextTick();
-  emitter.emit('reloadContent', activeTab.value);
-};
-
 
 const handleTabDoubleClick = (tab) => {
   if (tab === activeTab.value) {
     isRefreshing.value = true;
-    emitter.emit('reloadContent', activeTab.value);
+    videoChildRef.value?.refresh?.();
   }
 };
 
-watch(() => activeTab.value, (newVal) => {
-  const target = subscriptionId.value
-    ? `/subscription/${subscriptionId.value}/${newVal}`
-    : `/videos/${newVal}`;
-  if (router.currentRoute.value.fullPath !== target) {
-    router.push(target);
-  }
-});
+useRouteTabSync(router, route, activeTab, subscriptionId);
 
 onMounted(() => {
-  emitter.on('sidebarStateChanged', () => {
-    if (videoContainer.value) {
-      videoContainer.value.dispatchEvent(new Event('resize'));
-    }
-  });
-
   // 监听全局搜索事件
   emitter.on('search:home', handleGlobalSearch);
-
-
-  // 键盘快捷键：R 刷新当前列表
-  window.addEventListener('keydown', handleKeyDown);
-  // 页面可见性变化：切回且超过阈值时自动刷新
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  // 首次根据路由同步 tab
-  const segs = router.currentRoute.value.path.split('/');
-  const last = segs[segs.length - 1];
-  const valid = ['all','unread','read','preview','liked'];
-  if (valid.includes(last)) {
-    activeTab.value = last;
-  } else {
-    activeTab.value = 'all';
-  }
 });
 
 onUnmounted(() => {
-  emitter.off('reloadContent');
-
-  emitter.off('sidebarStateChanged');
   emitter.off('search:home', handleGlobalSearch);
-  window.removeEventListener('keydown', handleKeyDown);
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
-  emitter.off('reloadContent');
+
+// Tab-route sync moved to composable
 
 </script>
 
