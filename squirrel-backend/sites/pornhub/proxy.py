@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 from sites.proxy import VideoProxy
 from sites.proxy_registry import register_proxy
+from utils.cookie import filter_cookies_to_query_string_by_domain
 
 logger = logging.getLogger()
 
@@ -62,14 +63,15 @@ class PornhubProxy(VideoProxy):
             }
 
             async with httpx.AsyncClient(**client_config) as client:
-                # Use enhanced headers with retry logic
                 headers = self.proxy_config.get_site_headers()
+                # 设置cookie
+                headers.update({
+                    "Cookie": filter_cookies_to_query_string_by_domain(url),
+                })
 
-                # Parse URL to handle query parameters when detecting m3u8 resources
                 parsed = urlparse(url)
                 path_lower = parsed.path.lower()
 
-                # For small files (like m3u8), use direct download
                 if path_lower.endswith('.m3u8') or 'playlist' in url.lower():
                     response = await client.get(url, headers=headers)
                     response.raise_for_status()
