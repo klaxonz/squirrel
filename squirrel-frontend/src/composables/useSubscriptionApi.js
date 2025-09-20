@@ -25,6 +25,21 @@ export function useSubscriptionApi() {
     }
   };
 
+  // 获取订阅详情
+  const getSubscriptionDetail = async (subscriptionId) => {
+    try {
+      const response = await axios.get(`/api/subscription/detail/${subscriptionId}`);
+      if (response.data.code === 0) {
+        return { success: true, data: response.data.data };
+      } else {
+        throw new Error(response.data.msg || '获取订阅详情失败');
+      }
+    } catch (error) {
+      console.error('获取订阅详情失败:', error);
+      return { success: false, error: error.message || '获取订阅详情失败' };
+    }
+  };
+
   // 取消订阅
   const unsubscribe = async (subscriptionId) => {
     const confirmed = await confirm('确定要取消订阅这个频道吗？这将删除所有相关的视频记录。');
@@ -149,6 +164,7 @@ export function useSubscriptionApi() {
 
   return {
     getSubscriptions,
+    getSubscriptionDetail,
     unsubscribe,
     updateNsfwStatus,
     triggerRefresh,

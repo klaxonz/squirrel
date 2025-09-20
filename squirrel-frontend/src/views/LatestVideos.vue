@@ -1,5 +1,10 @@
 <template>
   <div class="latest-videos flex flex-col h-full">
+    <ChannelHeader
+      v-if="subscriptionId"
+      :subscription-id="subscriptionId"
+      @refresh="refreshCurrentList"
+    />
     <!-- 顶部操作栏 - TabBar 和 SortButton -->
     <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between py-3">
@@ -59,6 +64,7 @@ import TabBar from '../components/TabBar.vue';
 import SortButton from '../components/SortButton.vue';
 import NsfwFilter from '../components/NsfwFilter.vue';
 import RefreshButton from '../components/RefreshButton.vue';
+import ChannelHeader from '../components/ChannelHeader.vue';
 
 const router = useRouter();
 const emitter = inject('emitter');
@@ -174,7 +180,12 @@ const handleTabDoubleClick = (tab) => {
 };
 
 watch(() => activeTab.value, (newVal) => {
-  router.push(`/videos/${newVal}`);
+  const target = subscriptionId.value
+    ? `/subscription/${subscriptionId.value}/${newVal}`
+    : `/videos/${newVal}`;
+  if (router.currentRoute.value.fullPath !== target) {
+    router.push(target);
+  }
 });
 
 onMounted(() => {
@@ -192,6 +203,15 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
   // 页面可见性变化：切回且超过阈值时自动刷新
   document.addEventListener('visibilitychange', handleVisibilityChange);
+  // 首次根据路由同步 tab
+  const segs = router.currentRoute.value.path.split('/');
+  const last = segs[segs.length - 1];
+  const valid = ['all','unread','read','preview','liked'];
+  if (valid.includes(last)) {
+    activeTab.value = last;
+  } else {
+    activeTab.value = 'all';
+  }
 });
 
 onUnmounted(() => {

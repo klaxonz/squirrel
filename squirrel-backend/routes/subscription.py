@@ -88,6 +88,28 @@ def get_subscription_status(
     })
 
 
+@router.get("/api/subscription/detail/{subscription_id}")
+def get_subscription_detail(subscription_id: int, current_user: User = Depends(get_current_user)):
+    """获取订阅（频道）详情，附带当前用户的 is_nsfw 状态和统计字段"""
+    sub = subscription_service.get_subscription_detail(subscription_id)
+    if not sub:
+        return response.not_found("订阅不存在")
+
+    # 查询当前用户在该订阅下的 NSFW 设置
+    with get_session() as session:
+        user_sub = session.scalars(
+            select(UserSubscription).where(
+                UserSubscription.user_id == current_user.id,
+                UserSubscription.subscription_id == subscription_id,
+                UserSubscription.is_deleted.is_(False)
+            )
+        ).first()
+
+    data = sub.model_dump() if hasattr(sub, 'model_dump') else dict(sub)
+    data["is_nsfw"] = bool(getattr(user_sub, 'is_nsfw', False))
+    return response.success(data)
+
+
 @router.get("/api/subscription/list")
 def list_subscriptions(
         query: str = Query(None, description="搜索关键字"),

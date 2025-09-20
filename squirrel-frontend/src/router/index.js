@@ -74,6 +74,27 @@ const routes = [
         name: 'SubscriptionAllVideos',
         component: VideoTab,
       }
+      ,
+      {
+        path: 'unread',
+        name: 'SubscriptionUnreadVideos',
+        component: VideoTab,
+      },
+      {
+        path: 'read',
+        name: 'SubscriptionReadVideos',
+        component: VideoTab,
+      },
+      {
+        path: 'preview',
+        name: 'SubscriptionPreviewVideos',
+        component: VideoTab,
+      },
+      {
+        path: 'liked',
+        name: 'SubscriptionLikedVideos',
+        component: VideoTab,
+      }
     ],
   },
   {
