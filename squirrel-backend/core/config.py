@@ -30,16 +30,6 @@ class Settings(BaseSettings):
     POOL_MAX_SIZE: int = 60
     POOL_RECYCLE: int = 300
     CHANNEL_UPDATE_DEFAULT_SIZE: int = 30
-    DOWNLOAD_RETRY_THRESHOLD: int = 5
-    DOWNLOAD_CONSUMERS: int = 1
-    EXTRACT_CONSUMERS: int = 2
-    SUBSCRIBE_CONSUMERS: int = 1
-
-    # 新增：订阅更新反压与批大小，以及去重标记 TTL
-    SUB_UPDATE_BACKLOG_MAX: int = 5000
-    SUB_UPDATE_BATCH_SIZE: int = 1000
-    SUB_ENQUEUED_TTL_SECONDS: int = 2 * 24 * 3600
-    VIDEO_EXTRACT_ENQUEUED_TTL_SECONDS: int = 2 * 24 * 3600
 
     class Config:
         env_file = f".env.{os.getenv('ENV')}" if os.getenv("ENV") else ".env"

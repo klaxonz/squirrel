@@ -47,7 +47,7 @@ class PornhubProxy(VideoProxy):
                 connect=30.0,
                 read=180.0,  # Long read timeout for large video files
                 write=30.0,
-                pool=10.0
+                pool=30.0
             )
 
             # Enhanced client configuration

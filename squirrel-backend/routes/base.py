@@ -83,6 +83,7 @@ app.include_router(system_config_router)
 # 统一慢请求日志，便于定位 pending 接口（默认阈值 2 秒）
 SLOW_REQUEST_THRESHOLD_MS = 2000
 
+
 @app.middleware("http")
 async def log_slow_requests(request, call_next):
     start = time.perf_counter()
@@ -95,6 +96,7 @@ async def log_slow_requests(request, call_next):
             logger.warning(
                 "[slow] %s %s took %.1fms", request.method, request.url.path, cost_ms
             )
+
 
 if not IS_DEV:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

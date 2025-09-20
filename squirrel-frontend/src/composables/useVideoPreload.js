@@ -25,15 +25,30 @@ export default function useVideoPreload() {
       levelLoadingTimeOut: 20000,
       abrBandWidthFactor: 0.7,
       abrBandWidthUpFactor: 0.5,
+
+      maxBufferLength: 30,
+
+      manifestLoadingTimeOut: 60000,
+      manifestLoadingMaxRetry: 3,
+      manifestLoadingRetryDelay: 1000,
+    
+      levelLoadingTimeOut: 60000,
+      levelLoadingMaxRetry: 3,
+      levelLoadingRetryDelay: 1000,
+    
+      fragLoadingTimeOut: 60000,
+      fragLoadingMaxRetry: 3,
+      fragLoadingRetryDelay: 1000,
+
+      xhrSetup: function(xhr, url) {
+        xhr.timeout = 20000;
+      }
     };
   };
 
-  // 监听网络变化
-  const setupNetworkListener = () => {};
 
   return {
     preloadState,
     getOptimizedHlsConfig,
-    setupNetworkListener
   };
 }
