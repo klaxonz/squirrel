@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-between py-3">
+  <div :class="['flex items-center py-3', showTabs ? 'justify-between' : 'justify-end']">
     <TabBar
         v-if="showTabs"
         v-model="localActiveTab"
