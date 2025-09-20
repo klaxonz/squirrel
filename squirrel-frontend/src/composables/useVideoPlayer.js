@@ -2,10 +2,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from
 import useVideoOperations from './useVideoOperations'
 import useVideoHistory from './useVideoHistory'
 import useVideoErrorHandler from './useVideoErrorHandler'
-import useVideoPreload from './useVideoPreload'
-import useHlsPlayer from './useHlsPlayer'
 import usePerformanceMonitor from './usePerformanceMonitor'
-import { formatTime } from '../utils/dateFormat'
 import axios from '../utils/axios'
 
 export default function useVideoPlayer(props, emit) {
@@ -89,10 +86,7 @@ export default function useVideoPlayer(props, emit) {
 
   const {
     sendReport,
-    getLocalHistory,
     updateLocalHistory,
-    setupNetworkListeners,
-    startPeriodicSync
   } = useVideoHistory()
 
   const {
@@ -103,10 +97,6 @@ export default function useVideoPlayer(props, emit) {
     getErrorInfo,
     reportError
   } = useVideoErrorHandler()
-
-  const {
-    setupNetworkListener
-  } = useVideoPreload()
 
   const {
     performanceState: perfState,
@@ -708,7 +698,6 @@ export default function useVideoPlayer(props, emit) {
   })
 
   onMounted(async () => {
-    setupNetworkListener()
     await loadUserConfig()
 
     // 初始化全屏状态并监听系统全屏变更（Esc/系统菜单等）
