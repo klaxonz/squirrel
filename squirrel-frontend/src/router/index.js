@@ -17,31 +17,37 @@ const routes = [
     path: '/videos',
     name: 'LatestVideos',
     component: LatestVideos,
+    meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
     children: [
       {
         path: 'all',
         name: 'AllVideos',
         component: VideoTab,
+        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       },
       {
         path: 'unread',
         name: 'UnreadVideos',
         component: VideoTab,
+        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       },
       {
         path: 'read',
         name: 'ReadVideos',
         component: VideoTab,
+        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       },
       {
         path: 'preview',
         name: 'PreviewVideos',
         component: VideoTab,
+        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       },
       {
         path: 'liked',
         name: 'LikedVideos',
         component: VideoTab,
+        meta: { showSearch: true, search: 'home' },
       }
     ],
     redirect: {name: 'AllVideos'},
@@ -54,6 +60,7 @@ const routes = [
     path: '/subscribed',
     name: 'Subscribed',
     component: Subscribed,
+    meta: { showSearch: true, search: 'subscribed', searchEvent: 'search:subscribed', searchPlaceholder: '搜索频道...' },
   },
   {
     path: '/settings',
@@ -64,58 +71,69 @@ const routes = [
     path: '/subscription/:id',
     name: 'SubscriptionDetail',
     component: LatestVideos,
+    meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
     children: [
       {
         path: '',
+        name: 'SubscriptionDetail',
         redirect: to => ({name: 'SubscriptionAllVideos', params: {id: to.params.id}})
       },
       {
         path: 'all',
         name: 'SubscriptionAllVideos',
         component: VideoTab,
+        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       }
       ,
       {
         path: 'unread',
         name: 'SubscriptionUnreadVideos',
         component: VideoTab,
+        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       },
       {
         path: 'read',
         name: 'SubscriptionReadVideos',
         component: VideoTab,
+        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       },
       {
         path: 'preview',
         name: 'SubscriptionPreviewVideos',
         component: VideoTab,
+        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       },
       {
         path: 'liked',
         name: 'SubscriptionLikedVideos',
         component: VideoTab,
+        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       }
     ],
   },
   {
     path: '/downloads',
     name: 'Downloads',
-    component: DownloadTasks
+    component: DownloadTasks,
+    meta: { showSearch: true, search: 'downloads', searchEvent: 'search:downloads', searchPlaceholder: '搜索下载任务...' },
   },
   {
     path: '/history',
     name: 'History',
     component: History,
+    meta: { showSearch: true, search: 'history', searchEvent: 'search:history', searchPlaceholder: '搜索历史记录...' },
   },
   {
     path: '/podcasts',
     name: 'Podcasts',
-    component: Podcasts
+    component: Podcasts,
+    meta: { showSearch: true, search: 'podcasts', searchEvent: 'search:podcasts', searchPlaceholder: '搜索播客...' },
   },
   {
     path: '/video/:videoId',
     name: 'VideoPlay',
-    component: VideoPlay
+    component: VideoPlay,
+    meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...', searchRedirectName: 'AllVideos', searchPersistKey: 'LatestVideos' },
   },
   {
     path: '/login',

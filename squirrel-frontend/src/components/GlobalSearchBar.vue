@@ -3,12 +3,12 @@
     <div class="max-w-2xl mx-auto">
       <div class="relative flex items-center w-full">
         <input
-          v-model="searchQuery"
+          v-model="inputValue"
           @keyup.enter="handleSearch"
           @keyup.esc="clearSearch"
           @input="handleInput"
           type="text"
-          :placeholder="currentPlaceholder"
+          :placeholder="placeholder"
           class="w-full h-10 pl-10 pr-12 text-sm bg-[#222222] border border-[#303030] rounded-full focus:outline-none focus:border-[#4a4a4c] text-white placeholder-gray-400"
         >
         <button
@@ -37,151 +37,54 @@
 </template>
 
 <script setup>
-import { computed, inject, ref, watch, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 
-const route = useRoute();
-const emitter = inject('emitter');
-
-// 为每个页面单独保存搜索状态
-const searchStates = ref({
-  'Subscribed': '',
-  'LatestVideos': '',
-  'AllVideos': '',
-  'UnreadVideos': '',
-  'ReadVideos': '',
-  'PreviewVideos': '',
-  'LikedVideos': '',
-  'SubscriptionDetail': '',
-  'SubscriptionAllVideos': '',
-  'Podcasts': '',
-  'History': '',
-  'Downloads': ''
-});
-
-const searchQuery = ref('');
-
-// 根据当前路由确定占位符文本
-const currentPlaceholder = computed(() => {
-  const routeName = route.name;
-
-  switch (routeName) {
-    case 'Subscribed':
-      return '搜索频道...';
-    case 'LatestVideos':
-    case 'AllVideos':
-    case 'UnreadVideos':
-    case 'ReadVideos':
-    case 'PreviewVideos':
-    case 'LikedVideos':
-    case 'SubscriptionDetail':
-    case 'SubscriptionAllVideos':
-      return '搜索视频...';
-    case 'Podcasts':
-      return '搜索播客...';
-    case 'History':
-      return '搜索历史记录...';
-    case 'Downloads':
-      return '搜索下载任务...';
-    default:
-      return '搜索...';
+// Props: presentational component only
+const props = defineProps({
+  modelValue: {
+    type: String,
+    default: ''
+  },
+  placeholder: {
+    type: String,
+    default: '搜索...'
+  },
+  debounceMs: {
+    type: Number,
+    default: 300
   }
 });
 
-// 根据当前路由确定搜索事件名称
-const getSearchEventName = () => {
-  const routeName = route.name;
+const emit = defineEmits(['update:modelValue', 'search', 'clear']);
 
-  switch (routeName) {
-    case 'Subscribed':
-      return 'search:subscribed';
-    case 'LatestVideos':
-    case 'AllVideos':
-    case 'UnreadVideos':
-    case 'ReadVideos':
-    case 'PreviewVideos':
-    case 'LikedVideos':
-    case 'SubscriptionDetail':
-    case 'SubscriptionAllVideos':
-      return 'search:home';
-    case 'Podcasts':
-      return 'search:podcasts';
-    case 'History':
-      return 'search:history';
-    case 'Downloads':
-      return 'search:downloads';
-    default:
-      return 'search:global';
+const inputValue = ref(props.modelValue);
+
+watch(() => props.modelValue, (val) => {
+  if (val !== inputValue.value) {
+    inputValue.value = val || '';
   }
-};
+});
 
-// 处理搜索
-const handleSearch = () => {
-  const eventName = getSearchEventName();
-  emitter.emit(eventName, searchQuery.value);
-};
-
-// 处理输入变化（防抖搜索）
 let searchTimeout = null;
 const handleInput = () => {
-  // 清除之前的定时器
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
-  }
-
-  // 设置新的定时器，300ms 后触发搜索
+  emit('update:modelValue', inputValue.value);
+  if (searchTimeout) clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
-    handleSearch();
-  }, 300);
+    emit('search');
+  }, props.debounceMs);
 };
 
-// 清除搜索
+const handleSearch = () => {
+  emit('search');
+};
+
 const clearSearch = () => {
-  searchQuery.value = '';
-  // 立即触发搜索以显示全部结果
-  handleSearch();
-
-  // 可选：给用户一个视觉反馈
-  const input = document.querySelector('.global-search-bar input');
-  if (input) {
-    input.focus();
-  }
+  inputValue.value = '';
+  emit('update:modelValue', '');
+  emit('clear');
 };
 
-// 监听路由变化，恢复对应页面的搜索状态
-watch(route, (newRoute) => {
-  // 保存当前页面的搜索状态
-  const currentRouteName = newRoute.name;
-  if (currentRouteName && searchStates.value.hasOwnProperty(currentRouteName)) {
-    searchQuery.value = searchStates.value[currentRouteName];
-  } else {
-    searchQuery.value = '';
-  }
-}, { immediate: true });
-
-// 监听搜索内容变化，保存到对应页面状态
-watch(searchQuery, (newQuery) => {
-  const currentRouteName = route.name;
-  if (currentRouteName && searchStates.value.hasOwnProperty(currentRouteName)) {
-    searchStates.value[currentRouteName] = newQuery;
-  }
-});
-
-// 监听来自页面的搜索查询更新
-const handleSearchQueryUpdate = (query) => {
-  searchQuery.value = query;
-};
-
-onMounted(() => {
-  // 监听来自页面的搜索查询更新事件
-  emitter.on('updateSearchQuery', handleSearchQueryUpdate);
-});
-
-onUnmounted(() => {
-  emitter.off('updateSearchQuery', handleSearchQueryUpdate);
-});
-
-// 暴露方法给父组件
+// Expose helpers
 defineExpose({
   focus: () => {
     const input = document.querySelector('.global-search-bar input');
@@ -189,7 +92,8 @@ defineExpose({
   },
   clear: clearSearch,
   setQuery: (query) => {
-    searchQuery.value = query;
+    inputValue.value = query || '';
+    emit('update:modelValue', inputValue.value);
   }
 });
 </script>

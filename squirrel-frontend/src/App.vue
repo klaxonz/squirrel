@@ -9,7 +9,14 @@
     <!-- Main content area -->
     <main class="flex-1 relative flex flex-col">
       <!-- 全局搜索框 -->
-      <GlobalSearchBar v-if="showGlobalSearch" ref="globalSearchBar" />
+      <GlobalSearchBar
+        v-if="showGlobalSearch"
+        ref="globalSearchBar"
+        v-model="searchQuery"
+        :placeholder="searchPlaceholder"
+        @search="handleGlobalSearch"
+        @clear="handleGlobalSearchClear"
+      />
 
       <!-- 页面内容容器 -->
       <div class="page-container flex-1 relative">
@@ -56,6 +63,7 @@ import { isMobile } from "./composables/useMobile.js";
 import { useRoute } from 'vue-router';
 import { usePodcasts } from './composables/usePodcasts';
 import { useUser } from './composables/useUser';
+import { useGlobalSearch } from './composables/useGlobalSearch';
 
 const route = useRoute();
 const emitter = mitt();
@@ -65,13 +73,13 @@ const isAuthPage = computed(() => {
   return ['/login', '/register'].includes(route.path);
 });
 
-// 控制全局搜索框显示
+// 控制全局搜索框显示：由路由 meta 控制
 const showGlobalSearch = computed(() => {
-  // 在认证页面和设置页面不显示搜索框
-  return !isAuthPage.value && !route.path.startsWith('/settings') && !route.path.startsWith('/video/');
+  return !isAuthPage.value && !!route.meta?.showSearch;
 });
 
 const globalSearchBar = ref(null);
+const { searchQuery, searchPlaceholder, handleSearch: handleGlobalSearch, handleClear: handleGlobalSearchClear } = useGlobalSearch(emitter);
 
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
