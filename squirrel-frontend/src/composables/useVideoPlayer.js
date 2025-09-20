@@ -105,16 +105,11 @@ export default function useVideoPlayer(props, emit) {
   } = useVideoErrorHandler()
 
   const {
-    detectNetworkCondition,
-    getOptimizedHlsConfig,
-    preloadVideo,
     setupNetworkListener
   } = useVideoPreload()
 
   const {
     performanceState: perfState,
-    monitorNetworkSpeed,
-    monitorPerformance,
     updateBandwidth
   } = usePerformanceMonitor({
     hlsRef: null,

@@ -10,7 +10,6 @@ export default function useHlsPlayer({
   onQualitiesUpdate,
 }) {
   const hlsRef = { value: null };
-
   const MAX_RECONNECT_ATTEMPTS = 3;
   const RECONNECT_INTERVAL = 3000;
 
