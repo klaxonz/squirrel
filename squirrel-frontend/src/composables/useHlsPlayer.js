@@ -117,16 +117,6 @@ export default function useHlsPlayer({
         }
       }
     });
-
-    // 缓冲提示
-    hlsRef.value.on(Hls.Events.BUFFER_APPENDING, () => {
-      playerState.media.loading = true;
-      playerState.media.loadingStage = 'buffering';
-    });
-    hlsRef.value.on(Hls.Events.BUFFER_APPENDED, () => {
-      playerState.media.loading = false;
-      playerState.media.loadingStage = 'ready';
-    });
   };
 
   const reinitializeHls = () => {
