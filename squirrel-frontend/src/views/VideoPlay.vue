@@ -227,26 +227,24 @@ const handleDownload = async () => {
 
 const startTime = computed(() => {
   if (video.value?.last_position) {
-    const { last_position, total_duration } = video.value;
+    const { last_position } = video.value;
+    const total = Number(video.value?.duration) || 0;
 
-    if (!total_duration || total_duration <= 0 || !last_position || last_position <= 0) {
+    if (!total || total <= 0 || !last_position || last_position <= 0) {
       return 0;
     }
 
-    const progress = (last_position / total_duration) * 100;
-    const remainingTime = total_duration - last_position;
+    const progress = (last_position / total) * 100;
+    const remainingTime = total - last_position;
 
     // 判断是否接近结尾，如果是则从头开始
     let isNearEnd = false;
 
-    if (total_duration < 300) {
-      // 短视频（少于5分钟），85%就算看完
+    if (total < 300) {
       isNearEnd = progress >= 85;
-    } else if (total_duration < 1800) {
-      // 中等长度视频（5-30分钟），90%或剩余时间少于2分钟就算看完
+    } else if (total < 1800) {
       isNearEnd = progress >= 90 || remainingTime < 120;
     } else {
-      // 长视频（超过30分钟），95%或剩余时间少于3分钟就算看完
       isNearEnd = progress >= 95 || remainingTime < 180;
     }
 

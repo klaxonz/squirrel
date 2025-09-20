@@ -125,7 +125,8 @@ import useKeyboardShortcuts from '../../composables/useKeyboardShortcuts.js'
 import useSubtitles from '../../composables/useSubtitles.js'
 
 const props = defineProps({
-  video: Object
+  video: Object,
+  initialTime: { type: Number, default: 0 }
 })
 
 const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate', 'error'])
@@ -169,6 +170,21 @@ watch(() => playerState.media.canPlay.video, (val) => {
     try { ensureSubtitlesOnMetadata() } catch (e) {}
   }
 })
+
+// 恢复播放：在媒体可播放后，跳转到 initialTime（仅一次）
+let appliedInitialTime = false
+watch(() => playerState.media.canPlay.video, (val) => {
+  if (!val) return
+  try {
+    if (!appliedInitialTime && typeof props.initialTime === 'number' && props.initialTime > 0) {
+      setVideoTime(props.initialTime)
+      appliedInitialTime = true
+    }
+  } catch (e) {}
+})
+
+// 切换新视频时重置一次性标记
+watch(() => props.video?.id, () => { appliedInitialTime = false })
 
 // 使用控制相关的组合函数
 const {

@@ -57,7 +57,7 @@
       @canplay="handleVideoCanplay"
       @canplaythrough="handleVideoCanplaythrough"
       @waiting="handleVideoWaiting"
-      @timeupdate="$emit('timeupdate')"
+      @timeupdate="$emit('timeupdate', $event?.target?.currentTime)"
       @progress="handleVideoProgress"
       @loadstart="handleVideoLoadstart"
       @loadedmetadata="handleVideoLoadedmetadata"
