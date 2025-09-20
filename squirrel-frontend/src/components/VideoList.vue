@@ -6,9 +6,12 @@
         :item-size="computedItemSize"
         key-field="id"
         :buffer="400"
+        buffer-mode="px"
         @scroll="handleScroll"
         :gridItems="computedGridItems"
         :prerender="50"
+        anchor-mode="element"
+        :range-change-throttle-ms="60"
         :item-secondary-size="computedItemSecondarySize"
         ref="virtualList"
     >
