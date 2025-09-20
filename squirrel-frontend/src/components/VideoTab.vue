@@ -36,6 +36,10 @@ const props = defineProps({
   sortBy: {
     type: String,
     default: 'publish_date'
+  },
+  site: {
+    type: String,
+    default: undefined
   }
 });
 
@@ -43,7 +47,6 @@ const {
   videos,
   loading,
   allLoaded,
-
   loadMore,
   searchQuery,
   handleSearch,
@@ -51,7 +54,8 @@ const {
   tabsWithCounts,
   subscriptionId,
   sortBy,
-  isResetting
+  isResetting,
+  site
 } = useLatestVideos();
 
 const processedVideos = computed(() => {
@@ -85,6 +89,11 @@ watch(() => props.sortBy, () => {
   sortBy.value = props.sortBy;
   handleSearch();
 });
+
+watch(() => props.site, (newSite) => {
+  site.value = newSite;
+  handleSearch();
+});
 const {
   toggleOptions,
 } = useOptionsMenu(videos);
@@ -96,6 +105,7 @@ watch(() => loading.value, (val) => {
 
 onMounted(async () => {
   subscriptionId.value = props.selectedSubscriptionId;
+  site.value = props.site;
   emitter.on('reloadContent', (tab) => {
     handleSearch();
   });

@@ -75,7 +75,7 @@ const routes = [
     children: [
       {
         path: '',
-        name: 'SubscriptionDetail',
+        name: 'SubscriptionIndex',
         redirect: to => ({name: 'SubscriptionAllVideos', params: {id: to.params.id}})
       },
       {

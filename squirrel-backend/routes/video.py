@@ -8,6 +8,8 @@ from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExt
 from models.user import User
 from schemas.video.request.video import SortBy, DownloadVideoRequest
 from services import video_service, subscription_video_service, subscription_service
+from typing import List
+from core.site_catalog import SiteCatalog
 from sites.downloader import DownloaderFactory
 from sites.meta import VideoFactory
 from utils.jwt_helper import get_current_user
@@ -68,12 +70,18 @@ def get_videos(
         category: str = Query(None, description="阅读状态: all, read, unread, preview, like"),
         sort_by: SortBy = Query(SortBy.UPLOADED_AT, description="排序字段"),
         nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
+        site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
         current_user: User = Depends(get_current_user)
 ):
+    domains_list: List[str] | None = None
+    if site:
+        resolved = SiteCatalog.resolve_domains(site)
+        domains_list = resolved if resolved else None
+
     videos, total_counts, counts = video_service.list_videos(
-        current_user.id, query, subscription_id, category, sort_by, nsfw, page, page_size
+        current_user.id, query, subscription_id, category, sort_by, nsfw, domains_list, page, page_size
     )
     return response.success({
         "total": total_counts,
@@ -182,3 +190,8 @@ def get_video_mpd(
         logger.exception("Failed to build MPD")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
+
+@router.get("/api/sites")
+def get_sites_catalog():
+    """返回完整站点配置（label, domains, aliases, enabled）。"""
+    return response.success(SiteCatalog.get_catalog())

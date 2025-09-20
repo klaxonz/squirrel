@@ -14,6 +14,7 @@ const isResetting = ref(false);
 const subscriptionId = ref(null);
 const sortBy = ref('publish_date');
 const nsfw = ref('all');
+const site = ref();
 
 export default function useLatestVideos() {
   const tabs = [
@@ -38,14 +39,18 @@ export default function useLatestVideos() {
     loading.value = true;
 
     const pageSize = 50;
+    const siteParam = site.value;
+    const queryParam = searchQuery.value || '';
+
     const { data, error: requestError } = await get('/api/video/list', {
       page: currentPage.value,
       pageSize,
-      query: searchQuery.value,
+      query: queryParam,
       subscription_id: subscriptionId.value,
       category: category.value,
       sort_by: sortBy.value,
-      nsfw: nsfw.value
+      nsfw: nsfw.value,
+      site: siteParam
     });
 
     if (requestError) {
@@ -112,6 +117,7 @@ export default function useLatestVideos() {
     subscriptionId,
     sortBy,
     nsfw,
+    site,
     isResetting
   };
 }

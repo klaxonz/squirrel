@@ -16,6 +16,11 @@
       />
         <div class="flex items-center">
           <NsfwFilter v-model="nsfw" class="ml-2" @update:modelValue="handleNsfwChange" />
+          <SiteFilter
+              v-model="site"
+              class="ml-2"
+              @update:modelValue="handleSiteChange"
+          />
           <SortButton
               v-model="sortBy"
               class="ml-2"
@@ -41,6 +46,7 @@
               :search-query="searchQuery"
               :selected-subscription-id="subscriptionId"
               :sort-by="sortBy"
+              :site="site"
               @goToSubscription="goToChannelDetail"
               @openModal="handleOpenModal"
               @update-counts="updateCounts"
@@ -57,7 +63,7 @@
 </template>
 
 <script setup>
-import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, inject, onMounted, onUnmounted, ref, watch, nextTick} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import useLatestVideos from '../composables/useLatestVideos';
 import TabBar from '../components/TabBar.vue';
@@ -65,6 +71,7 @@ import SortButton from '../components/SortButton.vue';
 import NsfwFilter from '../components/NsfwFilter.vue';
 import RefreshButton from '../components/RefreshButton.vue';
 import ChannelHeader from '../components/ChannelHeader.vue';
+import SiteFilter from '../components/SiteFilter.vue';
 
 const router = useRouter();
 const emitter = inject('emitter');
@@ -142,6 +149,7 @@ const handleVisibilityChange = () => {
 const searchQuery = ref('');
 
 const sortBy = ref('publish_date');
+const site = ref();
 
 const updateCounts = (counts) => {
   tabsWithCounts.value = counts;
@@ -169,6 +177,12 @@ const handleSortChange = (newSort) => {
 
 const handleNsfwChange = () => {
   handleSearch();
+};
+
+const handleSiteChange = async () => {
+  // 等待 v-model 将新 site 传递给子组件后再刷新，避免使用上一次的站点
+  await nextTick();
+  emitter.emit('reloadContent', activeTab.value);
 };
 
 

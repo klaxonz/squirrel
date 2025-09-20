@@ -22,7 +22,7 @@
         
         <!-- 清除按钮 -->
         <button
-          v-if="searchQuery"
+          v-if="inputValue"
           @click="clearSearch"
           title="清除搜索 (ESC)"
           class="absolute right-3 top-1/2 transform -translate-y-1/2 focus:outline-none hover:text-white hover:bg-white/10 text-gray-400 rounded-full p-1 transition-colors"
