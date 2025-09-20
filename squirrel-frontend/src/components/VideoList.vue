@@ -3,16 +3,16 @@
     <VirtualList
         class="scroller"
         :items="props.videos"
-        :item-size="computedItemSize"
+        :item-size="layout.itemSize"
         key-field="id"
-        :buffer="400"
+        :buffer="BUFFER_PX"
         buffer-mode="px"
         @scroll="handleScroll"
-        :gridItems="computedGridItems"
-        :prerender="50"
+        :gridItems="layout.gridItems"
+        :prerender="PRERENDER_COUNT"
         anchor-mode="element"
-        :range-change-throttle-ms="60"
-        :item-secondary-size="computedItemSecondarySize"
+        :range-change-throttle-ms="RANGE_CHANGE_THROTTLE_MS"
+        :item-secondary-size="layout.itemSecondarySize"
         ref="virtualList"
     >
       <template #item="{ item: video, index }">
@@ -57,6 +57,14 @@ import VirtualList from './VirtualList.vue';
 import VideoItem from './VideoItem.vue';
 import { useElementSize } from '../composables/useElementSize.js';
 
+// Display/layout constants
+const ASPECT_RATIO = 9 / 16;
+const CARD_VERTICAL_EXTRA = 76; // non-thumbnail vertical space (title, paddings, etc.)
+const BUFFER_PX = 400;
+const PRERENDER_COUNT = 50;
+const RANGE_CHANGE_THROTTLE_MS = 60;
+const PRELOAD_ROWS = 3; // rows ahead of bottom to trigger loading
+
 const props = defineProps({
   videos: Array,
   loading: Boolean,
@@ -80,30 +88,35 @@ const emit = defineEmits([
 const containerRef = ref(null);
 const { width: containerWidth } = useElementSize(containerRef);
 
-const computedGridItems = computed(() => {
-  const width = containerWidth.value;
+const calculateGridItems = (width) => {
   if (width >= 1600) return 7;
   if (width >= 1400) return 6;
   if (width >= 1100) return 5;
   if (width >= 800) return 4;
   if (width >= 500) return 3;
   return 2;
+};
+
+// Unified layout computed to keep related values in sync
+const layout = computed(() => {
+  const width = containerWidth.value || 0;
+  const gridItems = calculateGridItems(width);
+  const itemSecondarySize = Math.floor(width / gridItems);
+  const itemSize = Math.floor(itemSecondarySize * ASPECT_RATIO) + CARD_VERTICAL_EXTRA;
+  return { gridItems, itemSecondarySize, itemSize };
 });
 
-const computedItemSecondarySize = computed(() => {
-  const availableWidth = containerWidth.value;
-  return Math.floor((availableWidth) / computedGridItems.value);
-});
+const triggerThreshold = computed(() => layout.value.itemSize * layout.value.gridItems * PRELOAD_ROWS);
 
-const computedItemSize = computed(() => {
-  return Math.floor(computedItemSecondarySize.value * (9 / 16)) + 76;
-});
+const shouldLoadMore = (scrollTop, clientHeight, scrollHeight) => {
+  if (props.loading || props.allLoaded) return false;
+  return (scrollHeight - scrollTop - clientHeight) < triggerThreshold.value;
+};
 
 const handleScroll = (event) => {
   const {scrollTop, clientHeight, scrollHeight} = event.target;
   // 增加预加载触发阈值，提前3行的高度开始加载，确保用户滚动时不需要等待
-  const triggerThreshold = computedItemSize.value * computedGridItems.value * 3;
-  if (scrollHeight - scrollTop - clientHeight < triggerThreshold && !props.loading && !props.allLoaded) {
+  if (shouldLoadMore(scrollTop, clientHeight, scrollHeight)) {
     emit('loadMore');
   }
 };
