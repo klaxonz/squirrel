@@ -13,6 +13,8 @@ from models.subscription import Subscription
 from models.user import User
 from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest
 from services import subscription_service, message_service
+from typing import List
+from core.site_catalog import SiteCatalog
 from core.cache import DistributedLock
 from utils.jwt_helper import get_current_user
 from mq.producer import RedisStreamProducer
@@ -115,11 +117,19 @@ def list_subscriptions(
         query: str = Query(None, description="搜索关键字"),
         type: str = Query(None, description="内容类型"),
         nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
+        site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, description="每页数量"),
         current_user: User = Depends(get_current_user)
 ):
-    subscriptions, total = subscription_service.list_subscriptions(current_user.id, query, type, nsfw, page, page_size)
+    domains: List[str] | None = None
+    if site:
+        resolved = SiteCatalog.resolve_domains(site)
+        domains = resolved if resolved else None
+
+    subscriptions, total = subscription_service.list_subscriptions(
+        current_user.id, query, type, nsfw, page, page_size, domains
+    )
     return response.success({
         "total": total,
         "page": page,

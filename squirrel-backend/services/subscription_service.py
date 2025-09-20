@@ -69,7 +69,8 @@ def list_subscriptions(
         type: Optional[str],
         nsfw: str,
         page: int,
-        page_size: int
+        page_size: int,
+        domains: Optional[List[str]] = None
 ) -> Tuple[List[Dict[str, Any]], int]:
     """Get subscription list"""
 
@@ -87,13 +88,25 @@ def list_subscriptions(
             'limit': page_size,
             'offset': (page - 1) * page_size
         }
+        domain_filters = []
+        if domains:
+            for idx, d in enumerate(domains):
+                key = f"domain_like_{idx}"
+                params[key] = f"%{d}%"
+                domain_filters.append(f"s.url like :{key}")
         
         count_sql = get_subscriptions_count_sql()
         dynamic_sql = parse_dynamic_sql(count_sql, params)
+        if domain_filters:
+            where_inject = " and (" + " or ".join(domain_filters) + ")"
+            dynamic_sql = dynamic_sql.replace("order by", where_inject + "\norder by") if "order by" in dynamic_sql else dynamic_sql + where_inject
         total_count = session.execute(text(dynamic_sql), params).scalar()
         
         sql = get_subscriptions_sql()
         final_sql = parse_dynamic_sql(sql, params)
+        if domain_filters:
+            where_inject = " and (" + " or ".join(domain_filters) + ")"
+            final_sql = final_sql.replace("order by", where_inject + "\norder by") if "order by" in final_sql else final_sql + where_inject
 
         results = session.execute(text(final_sql), params).all()
         subscriptions = [SubscriptionDto.model_validate(row._mapping).model_dump() for row in results]

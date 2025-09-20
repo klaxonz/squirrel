@@ -2,14 +2,13 @@
   <div class="subscribed-page flex flex-col h-full bg-[#0f0f0f] text-white">
     <!-- 顶部操作栏 - 对齐全部视频页的标签样式 -->
     <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between py-3">
-        <TabBar
-          v-model="activeTab"
-          :tabs="tabsWithCounts"
-          class="custom-tab-bar flex-grow"
-          @tab-dblclick="handleTabDoubleClick"
-        />
+      <div class="flex items-center justify-end py-3">
         <div class="flex items-center">
+          <SiteFilter
+            v-model="site"
+            class="ml-2"
+            @update:modelValue="handleSiteChange"
+          />
           <NsfwFilter v-model="nsfw" class="ml-2" @update:modelValue="handleNsfwChange" />
           <RefreshButton
             class="ml-2"
@@ -181,7 +180,8 @@ import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
 import AddChannelDialog from '../components/AddChannelDialog.vue';
 import NsfwFilter from '../components/NsfwFilter.vue';
-import TabBar from '../components/TabBar.vue';
+// Removed TabBar on Subscribed page per requirements
+import SiteFilter from '../components/SiteFilter.vue';
 
 import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
@@ -204,14 +204,8 @@ const allLoaded = ref(false);
 const currentPage = ref(1);
 const searchQuery = ref('');
 const nsfw = ref('all');
-const activeTab = ref('all');
-const tabsWithCounts = ref([
-  { value: 'all', label: '全部', count: 0 },
-  { value: 'unread', label: '未读', count: 0 },
-  { value: 'read', label: '已读', count: 0 },
-  { value: 'preview', label: '预告', count: 0 },
-  { value: 'liked', label: '喜欢', count: 0 }
-]);
+const site = ref();
+// Removed tabs on Subscribed page
 
 const showSettings = ref(false);
 const selectedSubscription = ref(null);
@@ -270,6 +264,7 @@ const loadSubscriptions = async () => {
   const result = await apiGetSubscriptions({
     query: searchQuery.value,
     nsfw: nsfw.value,
+    site: site.value,
     page: currentPage.value,
     page_size: 100
   });
@@ -399,24 +394,19 @@ const handleNsfwChange = () => {
   loadSubscriptions();
 };
 
+const handleSiteChange = async () => {
+  await nextTick();
+  subscriptions.value = [];
+  currentPage.value = 1;
+  allLoaded.value = false;
+  loadSubscriptions();
+};
+
 const loadMore = () => {
   loadSubscriptions();
 };
 
-// 顶部标签：双击刷新订阅列表
-const handleTabDoubleClick = (tab) => {
-  if (tab === activeTab.value) {
-    refreshList();
-  }
-};
-
-// 切换顶部标签时，跳转到对应的全部视频页
-watch(() => activeTab.value, (newVal) => {
-  const target = `/videos/${newVal}`;
-  if (router.currentRoute.value.fullPath !== target) {
-    router.push(target);
-  }
-});
+// Removed tab interactions
 
 const openSettings = (subscription) => {
   selectedSubscription.value = {...subscription};
