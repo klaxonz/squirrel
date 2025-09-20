@@ -166,13 +166,43 @@
         </div>
       </div>
 
-      <!-- 右侧区域 - 可以加相关视频列表等内容 -->
+      <!-- 右侧区域 - 相关视频 -->
       <div class="hidden lg:block w-[400px] ml-6">
         <div class="sticky top-4">
-          <!-- 这里可以添加相关视频列表或其他内容 -->
           <div class="bg-[#272727] rounded-xl p-4">
             <h2 class="text-white text-lg mb-4">相关视频</h2>
-            <!-- 相关视频列表将在这里添加 -->
+            <div v-if="loadingRelated" class="text-gray-400 text-sm">加载中...</div>
+            <div v-else>
+              <div v-if="!relatedVideos.length" class="text-gray-400 text-sm">暂无推荐</div>
+              <div v-else class="space-y-3">
+                <div
+                  v-for="relatedVideo in relatedVideos"
+                  :key="relatedVideo.id"
+                  class="flex space-x-3 cursor-pointer group"
+                  @click="goToVideo(relatedVideo.id)"
+                >
+                  <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-black/60">
+                    <img
+                      :src="relatedVideo.thumbnail"
+                      referrerpolicy="no-referrer"
+                      class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                      :alt="relatedVideo.title"
+                    >
+                    <div class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 py-0.5 rounded">
+                      {{ formatDuration(relatedVideo.duration) }}
+                    </div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-white text-xs leading-5 max-h-10 overflow-hidden group-hover:text-[#3ea6ff] transition-colors">
+                      {{ relatedVideo.title }}
+                    </div>
+                    <div class="text-[#aaaaaa] text-[10px] mt-1 truncate">
+                      {{ relatedVideo.subscriptions?.[0]?.name || relatedVideo.site }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -181,14 +211,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
-import axios from '../utils/axios';
+import useVideoDetail from '../composables/useVideoDetail';
+import useRelatedVideos from '../composables/useRelatedVideos';
+import usePlaybackReporting from '../composables/usePlaybackReporting';
+import useOptionsDropdown from '../composables/useOptionsDropdown';
 import VideoPlayer from '../components/video-player/VideoPlayer.vue';
 import useOptionsMenu from '../composables/useOptionsMenu';
 import useVideoHistory from "../composables/useVideoHistory";
 const { unsubscribe: apiUnsubscribe } = useSubscriptionApi();
+const { video, startTime, fetchVideoDetails, maybeInjectSubtitles } = useVideoDetail();
+const { relatedVideos, loadingRelated, fetchRelatedVideos } = useRelatedVideos(video);
 
 const handleUnsubscribe = async (subscriptionId) => {
   if (!subscriptionId) return;
@@ -200,10 +235,12 @@ import { formatDate, formatDuration } from '../utils/dateFormat';
 import useVideoInteraction from "../composables/useVideoInteraction.js";
 
 const route = useRoute();
-const video = ref(null);
+const router = useRouter();
 const { sendReport } = useVideoHistory();
 const { downloadVideo } = useOptionsMenu(video);
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
+const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
+const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
 
 const handleLike = async (video, interactionType) => {
   if (video.interaction_type !== interactionType) {
@@ -222,130 +259,29 @@ const handleDownload = async () => {
 };
 
 
-
-
-
-const startTime = computed(() => {
-  if (video.value?.last_position) {
-    const { last_position } = video.value;
-    const total = Number(video.value?.duration) || 0;
-
-    if (!total || total <= 0 || !last_position || last_position <= 0) {
-      return 0;
-    }
-
-    const progress = (last_position / total) * 100;
-    const remainingTime = total - last_position;
-
-    // 判断是否接近结尾，如果是则从头开始
-    let isNearEnd = false;
-
-    if (total < 300) {
-      isNearEnd = progress >= 85;
-    } else if (total < 1800) {
-      isNearEnd = progress >= 90 || remainingTime < 120;
-    } else {
-      isNearEnd = progress >= 95 || remainingTime < 180;
-    }
-
-    return isNearEnd ? 0 : last_position;
-  }
-  return 0;
-});
-
-const fetchVideoDetails = async () => {
-  try {
-    const response = await axios.get(`/api/video/detail?video_id=${route.params.videoId}`);
-    video.value = response.data.data;
-    console.log('[Debug] 2. VideoPlay.vue: fetchVideoDetails completed, video.value.mpd_url is now:', video.value?.mpd_url);
-  } catch (error) {
-    console.error('Failed to fetch video details:', error);
-  }
+const goToVideo = (id) => {
+  if (!id) return;
+  router.push(`/video/${id}`);
 };
 
-const onVideoPlay = () => {
-  video.value.isPlaying = true;
-};
-
-const onVideoPause = () => {
-  video.value.isPlaying = false;
-};
-
-const onVideoEnded = () => {
-  video.value.if_read = true;
-};
-
-let lastReportedTime = 0;
-const onVideoTimeUpdate = (currentTime) => {
-  if (Math.floor(currentTime) - lastReportedTime >= 2) {
-    lastReportedTime = Math.floor(currentTime);
-    video.value.last_position = currentTime;
-    video.value.progress = (currentTime / video.value.duration) * 100;
-    // Fire-and-forget report without waiting for response
-    (async () => {
-      try {
-        await sendReport(video.value.id, currentTime);
-      } catch (e) {
-        // Silently ignore reporting errors
-      }
-    })();
-  }
-};
-
-const showMoreOptions = ref(false);
-
-const handleClickOutside = (event) => {
-  const dropdown = document.querySelector('.relative');
-  if (dropdown && !dropdown.contains(event.target)) {
-    showMoreOptions.value = false;
-  }
-};
-
-const handleEscKey = (event) => {
-  if (event.key === 'Escape') {
-    showMoreOptions.value = false;
-  }
-};
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
-  document.addEventListener('keydown', handleEscKey);
-    fetchVideoDetails().then(async () => {
+    fetchVideoDetails(route.params.videoId).then(async () => {
       try {
-        // 注入字幕：仅对 bilibili 视频尝试获取 ai-zh SRT
-        if (video.value && /bilibili\.com/.test(video.value.url)) {
-          const subResp = await axios.get(`/api/video/subtitles`, {
-            params: { video_id: route.params.videoId, lang: 'ai-zh', fmt: 'srt' },
-            responseType: 'text'
-          });
-
-          if (subResp && typeof subResp.data === 'string' && subResp.data.length > 0) {
-            // 生成一个 blob URL 供播放器拉取，避免跨域问题
-            const blob = new Blob([subResp.data], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const subtitle = { id: 'bili-ai-zh', language: '简体中文(AI)', url };
-            if (!video.value.subtitles) video.value.subtitles = [];
-            // 置顶并作为默认
-            video.value.subtitles = [subtitle, ...video.value.subtitles];
-          }
-        }
+        await maybeInjectSubtitles(route.params.videoId);
       } catch (e) {
         // 静默失败，不影响播放
       }
-
+      await fetchRelatedVideos();
     });
 });
 
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
-  document.removeEventListener('keydown', handleEscKey);
+// 路由参数变化时，复用组件需手动刷新数据
+watch(() => route.params.videoId, async () => {
+  await fetchVideoDetails(route.params.videoId);
+  await maybeInjectSubtitles(route.params.videoId);
+  await fetchRelatedVideos();
 });
-
-const handleMoreOptionsClick = (event) => {
-  event.stopPropagation();
-  showMoreOptions.value = !showMoreOptions.value;
-};
-
 
 </script>
 
