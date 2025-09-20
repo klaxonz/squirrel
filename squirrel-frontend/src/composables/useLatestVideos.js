@@ -82,7 +82,6 @@ export default function useLatestVideos(initial = {}) {
     currentPage.value = 1;
     allLoaded.value = false;
     error.value = null;
-    videos.value = [];
     try {
       await loadMore();
     } finally {
