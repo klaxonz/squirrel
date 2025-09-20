@@ -1,5 +1,13 @@
 <template>
-  <div ref="controlsRoot" class="video-controls" :class="{ 'controls-visible': playerState.ui.controlsVisible }">
+  <Transition
+    name="video-controls" 
+    appear
+  >
+    <div 
+      v-show="playerState.ui.controlsVisible"
+      ref="controlsRoot" 
+      class="video-controls"
+    >
     <!-- 进度条容器 -->
     <ProgressBar
         :progress="progress"
@@ -133,7 +141,8 @@
         </button>
       </div>
     </div>
-  </div>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
@@ -275,13 +284,11 @@ const updateLoop = (value) => {
   left: 0;
   right: 0;
   bottom: 0;
-  opacity: 0;
   z-index: 20;
   display: flex;
   flex-direction: column;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
   padding: 24px 0.75rem 8px;
-  transition: all 200ms ease;
 }
 
 .controls-main {
@@ -336,31 +343,33 @@ const updateLoop = (value) => {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
-.video-controls.controls-visible {
+/* Vue Transition 动画类 - 阻尼效果 */
+.video-controls-enter-active {
+  transition: all 450ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.video-controls-leave-active {
+  transition: all 320ms cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+.video-controls-enter-from {
+  opacity: 0;
+  transform: translateY(100%);
+}
+
+.video-controls-leave-to {
+  opacity: 0;
+  transform: translateY(100%);
+}
+
+.video-controls-enter-to,
+.video-controls-leave-from {
   opacity: 1;
+  transform: translateY(0);
 }
 
 .video-controls::before {
   content: '';
-
-  .cc-icon-wrap {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-  }
-
-  .cc-btn::after {
-    left: 50%;
-    transform: translateX(-50%);
-  }
-
-  .cc-btn.active-control::after {
-    width: 18px;
-    bottom: 7px;
-  }
-
   position: absolute;
   bottom: 0;
   left: 0;
@@ -369,11 +378,25 @@ const updateLoop = (value) => {
   background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 30%, rgba(0, 0, 0, 0.3) 60%, transparent 100%);
   pointer-events: none;
   z-index: -1;
-  transition: opacity 200ms ease;
+  opacity: 1;
 }
 
-.video-controls.controls-visible::before {
-  opacity: 1;
+.cc-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.cc-btn::after {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.cc-btn.active-control::after {
+  width: 18px;
+  bottom: 7px;
 }
 
 .video-player-container:fullscreen .video-controls,
@@ -414,4 +437,5 @@ const updateLoop = (value) => {
   width: 20px;
   background: #cc0000;
 }
+
 </style>

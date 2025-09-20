@@ -50,6 +50,15 @@
         @play="togglePlay"
       />
 
+      <!-- 加载状态指示器 -->
+      <div 
+        v-if="playerState.media.loading" 
+        class="loading-status-indicator"
+        :class="{ 'with-controls': playerState.ui.controlsVisible }"
+      >
+        <div class="loading-status-text">{{ loadingStatusText }}</div>
+      </div>
+
       <!-- 控制栏 -->
       <VideoControls
         v-show="playerState.ui.controlsVisible"
@@ -280,5 +289,25 @@ defineExpose({
   width: 100% !important;
   height: 100% !important;
   object-fit: contain;
+}
+
+/* 加载状态指示器 */
+.loading-status-indicator {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  pointer-events: none;
+  z-index: 25;
+  transition: bottom 320ms cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+.loading-status-indicator.with-controls {
+  bottom: 5rem;
+}
+
+.loading-status-text {
+  font-size: 0.875rem;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 </style>

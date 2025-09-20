@@ -8,10 +8,6 @@
       </div>
     </div>
 
-    <!-- 左下角加载状态提示（共用） -->
-    <div class="loading-status-indicator">
-      <div class="loading-status-text">{{ loadingText }}</div>
-    </div>
   </div>
 </template>
 
@@ -59,16 +55,6 @@ const props = defineProps({
   animation: spinner-dash 1.4s ease-in-out infinite;
 }
 
-.loading-status-indicator {
-  @apply absolute left-6;
-  bottom: 72px;
-  pointer-events: none;
-}
-
-.loading-status-text {
-  @apply text-sm;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-}
 
 @keyframes media-spinner {
   0% {
