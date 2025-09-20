@@ -20,6 +20,7 @@
               v-model="site"
               class="ml-2"
               @update:modelValue="handleSiteChange"
+              v-if="!subscriptionId"
           />
           <SortButton
               v-model="sortBy"
@@ -46,7 +47,7 @@
               :search-query="searchQuery"
               :selected-subscription-id="subscriptionId"
               :sort-by="sortBy"
-              :site="site"
+              :site="subscriptionId ? undefined : site"
               @goToSubscription="goToChannelDetail"
               @openModal="handleOpenModal"
               @update-counts="updateCounts"
