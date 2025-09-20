@@ -7,6 +7,7 @@
         <div class="video-section">
           <div class="video-container">
             <VideoPlayer
+              :key="video?.id"
               v-if="video"
               :video="video"
               :initialTime="startTime"
@@ -169,7 +170,7 @@
       <!-- 右侧区域 - 相关视频 -->
       <div class="hidden md:block md:w-[320px] lg:w-[400px] md:ml-6">
         <div class="sticky top-4">
-          <div class="bg-[#272727] rounded-xl p-4 flex flex-col">
+          <div class="rounded-xl p-4 flex flex-col">
             <h2 class="text-white text-lg mb-4">相关视频</h2>
             <div class="max-h-[70vh] overflow-y-auto no-scrollbar">
               <div v-if="loadingRelated" class="text-gray-400 text-sm">加载中...</div>
@@ -186,7 +187,8 @@
                       <img
                         :src="relatedVideo.thumbnail"
                         referrerpolicy="no-referrer"
-                        class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105 pointer-events-none select-none"
+                        draggable="false"
                         :alt="relatedVideo.title"
                       >
                       <div class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 py-0.5 rounded">
@@ -213,19 +215,30 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
-import useVideoDetail from '../composables/useVideoDetail';
-import useRelatedVideos from '../composables/useRelatedVideos';
+import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
 import useOptionsDropdown from '../composables/useOptionsDropdown';
 import VideoPlayer from '../components/video-player/VideoPlayer.vue';
 import useOptionsMenu from '../composables/useOptionsMenu';
 import useVideoHistory from "../composables/useVideoHistory";
+import { formatDate, formatDuration } from '../utils/dateFormat';
+import useVideoInteraction from "../composables/useVideoInteraction.js";
+
+
+
+const route = useRoute();
+const router = useRouter();
+const { video, startTime, relatedVideos, loadingRelated, loadAndPlayById } = usePlaybackOrchestrator();
+const { sendReport } = useVideoHistory();
+const { downloadVideo } = useOptionsMenu(video);
+const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
+const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
+const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
 const { unsubscribe: apiUnsubscribe } = useSubscriptionApi();
-const { video, startTime, fetchVideoDetails, maybeInjectSubtitles } = useVideoDetail();
-const { relatedVideos, loadingRelated, fetchRelatedVideos } = useRelatedVideos(video);
+
 
 const handleUnsubscribe = async (subscriptionId) => {
   if (!subscriptionId) return;
@@ -233,16 +246,6 @@ const handleUnsubscribe = async (subscriptionId) => {
     await apiUnsubscribe(subscriptionId);
   } catch (e) {}
 };
-import { formatDate, formatDuration } from '../utils/dateFormat';
-import useVideoInteraction from "../composables/useVideoInteraction.js";
-
-const route = useRoute();
-const router = useRouter();
-const { sendReport } = useVideoHistory();
-const { downloadVideo } = useOptionsMenu(video);
-const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
-const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
-const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
 
 const handleLike = async (video, interactionType) => {
   if (video.interaction_type !== interactionType) {
@@ -261,28 +264,20 @@ const handleDownload = async () => {
 };
 
 
-const goToVideo = (id) => {
+const goToVideo = async (id) => {
   if (!id) return;
-  router.push(`/video/${id}`);
+  if (video.value?.id === id) return;
+  await router.replace(`/video/${id}`);
+  await loadAndPlayById(id);
 };
 
 
 onMounted(() => {
-    fetchVideoDetails(route.params.videoId).then(async () => {
-      try {
-        await maybeInjectSubtitles(route.params.videoId);
-      } catch (e) {
-        // 静默失败，不影响播放
-      }
-      await fetchRelatedVideos();
-    });
+  loadAndPlayById(route.params.videoId);
 });
 
-// 路由参数变化时，复用组件需手动刷新数据
 watch(() => route.params.videoId, async () => {
-  await fetchVideoDetails(route.params.videoId);
-  await maybeInjectSubtitles(route.params.videoId);
-  await fetchRelatedVideos();
+  await loadAndPlayById(route.params.videoId);
 });
 
 </script>
