@@ -450,6 +450,11 @@ onMounted(() => {
 
 onActivated(() => {
   restoreScrollPosition();
+  // 组件在 keep-alive 场景下被激活时，重新测量以避免隐藏期尺寸为 0 导致的空白
+  nextTick(() => {
+    updateItemObservers();
+    updateHeights();
+  });
 });
 
 onBeforeUnmount(() => {
@@ -484,8 +489,23 @@ watch(() => props.items, (newItems, oldItems) => {
   
   if (!appended) {
     rowHeights.value = [];
+    // 当数据源发生替换（非尾部追加）时，重置滚动，避免切换标签后出现顶部空白
+    if (container.value) {
+      container.value.scrollTop = 0;
+    }
+    currentScrollTop.value = 0;
+    scrollTop.value = 0;
   }
   
+  requestAnimationFrame(() => {
+    updateItemObservers();
+    updateHeights();
+  });
+});
+
+// 列数变化通常意味着布局变化（窗口/容器尺寸变化），需要丢弃旧的行高并重新测量
+watch(() => columnCount.value, () => {
+  rowHeights.value = [];
   requestAnimationFrame(() => {
     updateItemObservers();
     updateHeights();
