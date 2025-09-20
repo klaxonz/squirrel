@@ -48,15 +48,6 @@
       </div>
 
       <div class="controls-right">
-        <!-- 播放速度控制 -->
-        <PlaybackRateControl
-            v-if="!isTouchDevice"
-            :current-rate="playerState.media.playbackRate"
-            :rates="playbackRates"
-            :show-menu="playerState.ui.showPlaybackRateMenu"
-            @toggle-menu="togglePlaybackRateMenu"
-            @set-rate="$emit('set-playback-rate', $event)"
-        />
 
         <!-- 质量选择器 -->
         <QualitySelector
@@ -152,7 +143,6 @@ import ProgressBar from './ProgressBar.vue'
 import PlaybackControls from './PlaybackControls.vue'
 import VolumeControl from './VolumeControl.vue'
 import TimeDisplay from './TimeDisplay.vue'
-import PlaybackRateControl from './PlaybackRateControl.vue'
 import SettingsMenu from './SettingsMenu.vue'
 import QualitySelector from './QualitySelector.vue'
 
@@ -194,12 +184,6 @@ const handleVolumeChange = (volume) => {
 
 const settingsInitialPanel = ref('main')
 const controlsRoot = ref(null)
-
-const togglePlaybackRateMenu = () => {
-  props.playerState.ui.showPlaybackRateMenu = !props.playerState.ui.showPlaybackRateMenu
-  props.playerState.ui.showSettingsMenu = false
-  props.playerState.ui.showQualityMenu = false
-}
 
 const toggleQualityMenu = () => {
   props.playerState.ui.showQualityMenu = !props.playerState.ui.showQualityMenu
