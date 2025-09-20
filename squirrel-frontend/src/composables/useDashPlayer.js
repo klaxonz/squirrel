@@ -19,8 +19,11 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     player.updateSettings({
       streaming: {
         abr: {
-          autoSwitchBitrate: { video: true, audio: true },
+          // 固定使用最高清晰度起播
+          autoSwitchBitrate: { video: false, audio: true },
           initialBitrate: { video: 50000, audio: 320 },
+          initialRepresentationRatio: 1,
+          limitBitrateByPortal: false,
           maxBitrate: { video: -1, audio: -1 },
           bandwidthSafetyFactor: 0.95,
           usePixelRatioInLimitBitrateByPortal: false
