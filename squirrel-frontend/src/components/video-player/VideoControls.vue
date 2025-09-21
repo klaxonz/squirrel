@@ -271,7 +271,7 @@ const updateLoop = (value) => {
   z-index: 20;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+  background: none;
   padding: 24px 0.75rem 8px;
 }
 
@@ -352,18 +352,7 @@ const updateLoop = (value) => {
   transform: translateY(0);
 }
 
-.video-controls::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 120px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 30%, rgba(0, 0, 0, 0.3) 60%, transparent 100%);
-  pointer-events: none;
-  z-index: -1;
-  opacity: 1;
-}
+.video-controls::before { display: none; }
 
 .cc-icon-wrap {
   display: inline-flex;

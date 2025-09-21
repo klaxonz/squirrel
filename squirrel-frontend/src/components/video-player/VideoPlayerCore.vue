@@ -542,7 +542,7 @@ defineExpose({
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.1) 100%);
+  background: none;
   pointer-events: none;
   z-index: 1;
 }
@@ -614,12 +614,7 @@ defineExpose({
 
 .hover-gradient {
   @apply absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none;
-  background: linear-gradient(
-    to top,
-    rgba(0,0,0,0.7) 0%,
-    rgba(0,0,0,0.3) 30%,
-    transparent 60%
-  );
+  background: none;
 }
 
 @keyframes playIndicatorPulse {
