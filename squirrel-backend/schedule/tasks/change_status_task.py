@@ -5,7 +5,7 @@ from models.task.download_task import DownloadTask
 from models.task.task_state import TaskState
 from schedule.task import TaskRegistry, BaseTask
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 @TaskRegistry.register(interval=1, unit='minutes')

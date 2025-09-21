@@ -12,7 +12,7 @@ from .interfaces import (
 )
 from .factory import get_extractor_factory
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class TaskRouter:

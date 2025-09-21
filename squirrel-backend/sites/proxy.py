@@ -19,7 +19,7 @@ from core.exceptions.proxy_exceptions import (
 from sites.proxy_config import ProxyConfigFactory
 from sites.proxy_registry import ProxyRegistry
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 @dataclass

@@ -3,7 +3,7 @@ from typing import Dict, Optional
 
 from core import config
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 def build_ydl_opts(url: str, queue_name: Optional[str] = None, *, skip_download: bool = True) -> Dict:

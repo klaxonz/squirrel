@@ -11,7 +11,7 @@ from services import subscription_service
 from sites.subscription import SubscriptionFactory
 from mq import mq_consumer
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 @mq_consumer(constants.QUEUE_SUBSCRIBE, group="subscription", consumer_name="subscribe")

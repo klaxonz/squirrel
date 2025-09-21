@@ -10,7 +10,7 @@ from services import subscription_service
 from services.subscription_update_service import SubscriptionUpdateService
 from utils import url_helper
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 client = RedisClient.get_instance().get_client()
 
 

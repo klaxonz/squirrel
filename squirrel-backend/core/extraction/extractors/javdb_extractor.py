@@ -9,7 +9,7 @@ from .base_extractor import VideoExtractor
 from ..interfaces import ExtractionTask, ExtractionResult
 from sites.javdb.downloader import JavdbDownloader
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 @register_extractor('javdb', ['javdb.com'])

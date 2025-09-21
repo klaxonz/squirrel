@@ -18,7 +18,7 @@ from models.message import Message
 from ..interfaces import ExtractionTask, ExtractionResult, IResultHandler
 from ..base import BaseResultHandler
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class VideoExtractionHandler(BaseResultHandler):

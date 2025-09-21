@@ -47,7 +47,7 @@ def set_value(key: str, value: str) -> None:
         else:
             row.value = value
         session.commit()
-        logging.getLogger(__name__).info(f"[system_config] set %s=%s", key, value)
+        logging.getLogger().info(f"[system_config] set %s=%s", key, value)
 
 
 def get_bool(key: str, default: bool) -> bool:

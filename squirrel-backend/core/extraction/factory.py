@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from .interfaces import IExtractor, ExtractionTask
 from .base import BaseExtractor
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class ExtractorRegistry:

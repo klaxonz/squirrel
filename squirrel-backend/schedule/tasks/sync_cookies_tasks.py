@@ -6,7 +6,7 @@ from core.config import settings
 from schedule.task import TaskRegistry, BaseTask
 from utils.cookie import json_cookie_to_netscape
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 @TaskRegistry.register(interval=60, unit='minutes')

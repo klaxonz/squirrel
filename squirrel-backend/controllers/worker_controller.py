@@ -5,7 +5,7 @@ from typing import List
 
 from mq.runner import WorkerRunner
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger()
 
 # module-scope state
 _worker_threads: List[threading.Thread] = []

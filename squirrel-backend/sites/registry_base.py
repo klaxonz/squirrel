@@ -2,7 +2,7 @@ from typing import Dict, Type, Optional, Generic, TypeVar
 import logging
 
 T = TypeVar('T')
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class DomainRegistryBase(Generic[T]):

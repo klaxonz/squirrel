@@ -16,7 +16,7 @@ from core.extraction.base import BaseTaskProcessor
 from core.extraction.factory import get_extractor_factory
 from core.extraction.interfaces import ExtractionTask, TaskPriority
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 cache_manager = RedisCacheManager("video_extract")

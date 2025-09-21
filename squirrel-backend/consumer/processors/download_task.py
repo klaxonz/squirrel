@@ -12,7 +12,7 @@ from services import video_service, subscription_video_service, task_service
 from services import subscription_service
 from mq import mq_consumer
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 @mq_consumer(constants.QUEUE_VIDEO_DOWNLOAD, group="download", consumer_name="download")

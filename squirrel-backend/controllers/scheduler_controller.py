@@ -5,7 +5,7 @@ from schedule.schedule import Scheduler
 from schedule.task import TaskRegistry, BaseTask
 from utils import module_discovery
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 # module-scope state
 _scheduler: Optional[Scheduler] = None

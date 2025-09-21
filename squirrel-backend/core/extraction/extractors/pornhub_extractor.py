@@ -7,7 +7,7 @@ from typing import List
 from ..factory import register_extractor
 from .base_extractor import YoutubeDLExtractor
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 @register_extractor('pornhub', ['pornhub.com'])

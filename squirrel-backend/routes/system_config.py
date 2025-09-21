@@ -10,7 +10,7 @@ from core.database import get_session
 from models.system_config import SystemConfig
 
 router = APIRouter(prefix="/api/system/config", tags=["system-config"])
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger()
 
 
 def to_bool(val: Optional[str]) -> Optional[bool]:

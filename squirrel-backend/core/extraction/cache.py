@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from core.cache import RedisClient
 from .interfaces import ICacheManager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class RedisCacheManager(ICacheManager):

@@ -51,7 +51,7 @@ class DistributedLock:
         self.redis_client = RedisClient.get_instance().client
         self.lock_key = lock_key
         self.lock = None
-        self._logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger()
         self._renew_thread: Optional[threading.Thread] = None
         self._renew_stop: Optional[threading.Event] = None
         # context manager configs
