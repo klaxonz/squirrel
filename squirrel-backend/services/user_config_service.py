@@ -27,6 +27,8 @@ def update_config(
         raise ValueError("showNsfw必须是布尔值")
     if 'autoplay' in sanitized_settings and not isinstance(sanitized_settings['autoplay'], bool):
         raise ValueError("autoplay必须是布尔值")
+    if 'autoplayNext' in sanitized_settings and not isinstance(sanitized_settings['autoplayNext'], bool):
+        raise ValueError("autoplayNext必须是布尔值")
     if 'loop' in sanitized_settings and not isinstance(sanitized_settings['loop'], bool):
         raise ValueError("loop必须是布尔值")
     

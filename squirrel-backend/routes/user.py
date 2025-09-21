@@ -34,7 +34,7 @@ class UserConfigUpdate(BaseModel):
 
     @model_validator(mode='after')
     def validate_settings(self):
-        allowed_keys = {'showNsfw', 'autoplay', 'loop'}
+        allowed_keys = {'showNsfw', 'autoplay', 'autoplayNext', 'loop'}
         for key in self.settings:
             if key not in allowed_keys:
                 raise ValueError(f"无效的配置项: {key}")
@@ -42,6 +42,8 @@ class UserConfigUpdate(BaseModel):
             raise ValueError("showNsfw必须是布尔值")
         if 'autoplay' in self.settings and not isinstance(self.settings['autoplay'], bool):
             raise ValueError("autoplay必须是布尔值")
+        if 'autoplayNext' in self.settings and not isinstance(self.settings['autoplayNext'], bool):
+            raise ValueError("autoplayNext必须是布尔值")
         if 'loop' in self.settings and not isinstance(self.settings['loop'], bool):
             raise ValueError("loop必须是布尔值")
         return self
