@@ -145,7 +145,7 @@ const routes = [
     path: '/video/:videoId',
     name: 'VideoPlay',
     component: VideoPlay,
-    meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...', searchRedirectName: 'AllVideos', searchPersistKey: 'LatestVideos' },
+    meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...', searchRedirectName: 'AllVideos', searchPersistKey: 'LatestVideos', scrollable: true },
   },
   {
     path: '/login',

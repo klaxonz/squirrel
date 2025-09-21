@@ -5,7 +5,7 @@
       <div class="flex-1 max-w-[1280px]">
         <!-- 视频播放区域 -->
         <div class="video-section">
-          <div class="video-container" ref="videoContainerRef">
+          <div class="video-container">
             <VideoPlayer
               :key="video?.id"
               v-if="video"
@@ -182,9 +182,9 @@
       <!-- 右侧区域 - 相关视频 -->
       <div class="hidden md:block md:w-[320px] lg:w-[400px] md:ml-6">
         <div class="sticky top-4">
-          <div class="rounded-xl px-4 pb-4 pt-0 flex flex-col" ref="relatedCardRef">
-            <h2 class="text-white text-lg mb-4" ref="relatedTitleRef">相关视频</h2>
-            <div class="max-h-[70vh] overflow-y-auto no-scrollbar" :style="{ maxHeight: relatedListMaxHeight + 'px' }">
+          <div class="rounded-xl px-4 pb-4 pt-0 flex flex-col">
+            <h2 class="text-white text-lg mb-4">相关视频</h2>
+            <div>
               <div v-if="!relatedVideos.length && !loadingRelated" class="text-gray-400 text-sm">暂无推荐</div>
               <div v-if="relatedVideos.length" class="space-y-3">
                 <div
@@ -224,8 +224,7 @@
 </template>
 
 <script setup>
-import { onMounted, watch, ref } from 'vue';
-import useSyncedMaxHeight from '../composables/useSyncedMaxHeight';
+import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
@@ -255,16 +254,6 @@ const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlayba
 const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
 const { unsubscribe: apiUnsubscribe } = useSubscriptionApi();
 const { getRandomVideo } = useVideoApi();
-
-// Align related list height with video player height
-const videoContainerRef = ref(null);
-const relatedCardRef = ref(null);
-const relatedTitleRef = ref(null);
-const { maxHeight: relatedListMaxHeight, recalc: recalcRelatedHeight } = useSyncedMaxHeight(
-  videoContainerRef,
-  { excludeHeights: [relatedTitleRef], excludePaddingsFrom: relatedCardRef }
-);
-
 
 const handleUnsubscribe = async (subscriptionId) => {
   if (!subscriptionId) return;
@@ -327,7 +316,6 @@ onMounted(() => {
 
 watch(() => route.params.videoId, async () => {
   await loadAndPlayById(route.params.videoId);
-  recalcRelatedHeight();
 });
 
 </script>

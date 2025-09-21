@@ -44,15 +44,15 @@
 
   /* 内容区域基础样式 */
   .content-container {
-    @apply flex-grow overflow-y-auto;
-    height: 100vh;
+    @apply flex-grow;
+    height: 100%;
     pointer-events: auto;
   }
 
   /* 移动端内容区域高度调整 */
   @media (max-width: 768px) {
     .content-container {
-      height: calc(100vh - var(--mobile-nav-height));
+      height: calc(100% - var(--mobile-nav-height));
       padding-bottom: 0;
     }
   }

@@ -2,12 +2,12 @@
   <div v-if="isAuthPage" class="h-screen overflow-hidden">
     <router-view />
   </div>
-  <div v-else class="flex h-screen overflow-hidden">
+  <div v-else :class="['flex h-screen min-h-0', { 'overflow-hidden': !isScrollablePage }]">
     <!-- Sidebar for desktop -->
     <Sidebar v-if="!isMobile" :routes="sidebarRoutes" />
 
     <!-- Main content area -->
-    <main class="flex-1 relative flex flex-col">
+    <main class="flex-1 relative flex flex-col min-h-0">
       <!-- 全局搜索框 -->
       <GlobalSearchBar
         v-if="showGlobalSearch"
@@ -19,8 +19,8 @@
       />
 
       <!-- 页面内容容器 -->
-      <div class="page-container flex-1 relative">
-        <div class="content-container absolute inset-0 scrollbar">
+      <div class="page-container flex-1 relative min-h-0">
+        <div class="content-container absolute inset-0" :class="isScrollablePage ? 'scrollbar-hide overflow-y-auto' : 'overflow-hidden'">
           <router-view v-slot="{ Component }">
             <keep-alive :include="['LatestVideos', 'Subscribed']">
               <component :is="Component" />
@@ -138,6 +138,11 @@ const mobileRoutes = computed(() => {
 })
 
 const { getCurrentUser } = useUser();
+
+// 是否允许当前页面滚动（如视频播放页）
+const isScrollablePage = computed(() => {
+  return !!route.meta?.scrollable;
+});
 
 onMounted(async () => {
   if (localStorage.getItem('token')) {
