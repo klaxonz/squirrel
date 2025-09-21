@@ -67,10 +67,7 @@
                   title="随机播放"
                   aria-label="随机播放"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M14.59 7.41L13.17 6l-4.58 4.59L7 9v6h6l-1.59-1.59L14.59 7.41z"/>
-                    <path d="M15 3h6v6l-2.29-2.29-3.88 3.88-1.41-1.41 3.88-3.88L15 3z"/>
-                  </svg>
+                  <IconShuffle class="h-5 w-5" />
                 </button>
                 <!-- 主要按钮显示在外面 -->
                 <button
@@ -78,9 +75,7 @@
                   class="p-2 rounded-full hover:bg-[#272727] transition-colors"
                   :class="{ 'text-red-500': video?.interaction_type === INTERACTION_TYPE.LIKE }"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="video?.interaction_type === INTERACTION_TYPE.LIKE ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                  </svg>
+                  <IconThumbUp class="h-5 w-5" :filled="video?.interaction_type === INTERACTION_TYPE.LIKE" />
                 </button>
 
                 <button
@@ -88,9 +83,7 @@
                   class="p-2 rounded-full hover:bg-[#272727] transition-colors"
                   :class="{ 'text-gray-400': video?.interaction_type === INTERACTION_TYPE.DISLIKE }"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-180" :fill="video?.interaction_type === INTERACTION_TYPE.DISLIKE ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                  </svg>
+                  <IconThumbDown class="h-5 w-5" :filled="video?.interaction_type === INTERACTION_TYPE.DISLIKE" />
                 </button>
 
                 <button
@@ -100,9 +93,7 @@
                   title="稍后看"
                   aria-label="稍后看"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="video?.interaction_type === INTERACTION_TYPE.LATER ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <IconClock class="h-5 w-5" :filled="video?.interaction_type === INTERACTION_TYPE.LATER" />
                 </button>
 
 	                <!-- 原视频页按钮 -->
@@ -115,10 +106,7 @@
 	                  aria-label="打开原视频页"
 	                  title="打开原视频页"
 	                >
-	                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-	                    <path d="M14 3h7v7h-2V6.414l-9.293 9.293-1.414-1.414L17.586 5H14V3z" />
-	                    <path d="M5 5h6v2H7v10h10v-4h2v6H5V5z" />
-	                  </svg>
+                  <IconExternal class="h-5 w-5" />
 	                </a>
 
 
@@ -194,10 +182,9 @@
       <!-- 右侧区域 - 相关视频 -->
       <div class="hidden md:block md:w-[320px] lg:w-[400px] md:ml-6">
         <div class="sticky top-4">
-          <div class="rounded-xl p-4 flex flex-col" ref="relatedCardRef">
+          <div class="rounded-xl px-4 pb-4 pt-0 flex flex-col" ref="relatedCardRef">
             <h2 class="text-white text-lg mb-4" ref="relatedTitleRef">相关视频</h2>
             <div class="max-h-[70vh] overflow-y-auto no-scrollbar" :style="{ maxHeight: relatedListMaxHeight + 'px' }">
-              <div v-if="loadingRelated" class="text-gray-400 text-xs mb-2">加载中...</div>
               <div v-if="!relatedVideos.length && !loadingRelated" class="text-gray-400 text-sm">暂无推荐</div>
               <div v-if="relatedVideos.length" class="space-y-3">
                 <div
@@ -237,13 +224,19 @@
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount, watch, ref, nextTick } from 'vue';
+import { onMounted, watch, ref } from 'vue';
+import useSyncedMaxHeight from '../composables/useSyncedMaxHeight';
 import { useRoute, useRouter } from 'vue-router';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
 import useOptionsDropdown from '../composables/useOptionsDropdown';
 import VideoPlayer from '../components/video-player/VideoPlayer.vue';
+import IconShuffle from '../components/icons/IconShuffle.vue';
+import IconThumbUp from '../components/icons/IconThumbUp.vue';
+import IconThumbDown from '../components/icons/IconThumbDown.vue';
+import IconClock from '../components/icons/IconClock.vue';
+import IconExternal from '../components/icons/IconExternal.vue';
 import useOptionsMenu from '../composables/useOptionsMenu';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
@@ -267,24 +260,10 @@ const { getRandomVideo } = useVideoApi();
 const videoContainerRef = ref(null);
 const relatedCardRef = ref(null);
 const relatedTitleRef = ref(null);
-const relatedListMaxHeight = ref(0);
-
-const recalcRelatedHeight = () => {
-  const videoEl = videoContainerRef.value;
-  const cardEl = relatedCardRef.value;
-  const titleEl = relatedTitleRef.value;
-  if (!videoEl || !cardEl) return;
-
-  const videoHeight = videoEl.clientHeight || 0;
-  const style = window.getComputedStyle(cardEl);
-  const padTop = parseFloat(style.paddingTop) || 0;
-  const padBottom = parseFloat(style.paddingBottom) || 0;
-  const titleHeight = (titleEl?.offsetHeight) || 0;
-  const titleMarginBottom = parseFloat(window.getComputedStyle(titleEl || cardEl).marginBottom) || 0;
-
-  const available = videoHeight - padTop - padBottom - titleHeight - titleMarginBottom;
-  relatedListMaxHeight.value = available > 0 ? available : 0;
-};
+const { maxHeight: relatedListMaxHeight, recalc: recalcRelatedHeight } = useSyncedMaxHeight(
+  videoContainerRef,
+  { excludeHeights: [relatedTitleRef], excludePaddingsFrom: relatedCardRef }
+);
 
 
 const handleUnsubscribe = async (subscriptionId) => {
@@ -344,17 +323,11 @@ const goToVideo = async (id) => {
 
 onMounted(() => {
   loadAndPlayById(route.params.videoId);
-  nextTick(recalcRelatedHeight);
-  window.addEventListener('resize', recalcRelatedHeight, { passive: true });
 });
 
 watch(() => route.params.videoId, async () => {
   await loadAndPlayById(route.params.videoId);
-  nextTick(recalcRelatedHeight);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', recalcRelatedHeight);
+  recalcRelatedHeight();
 });
 
 </script>
