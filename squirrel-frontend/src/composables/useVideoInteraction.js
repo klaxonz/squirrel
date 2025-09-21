@@ -5,7 +5,8 @@ export default function useVideoInteraction() {
 
     const INTERACTION_TYPE = {
         LIKE: 1,
-        DISLIKE: 2
+        DISLIKE: 2,
+        LATER: 3,
     }
 
     const toggleLike = async (video_id, interaction_type) => {

@@ -48,6 +48,12 @@ const routes = [
         name: 'LikedVideos',
         component: VideoTab,
         meta: { showSearch: true, search: 'home' },
+      },
+      {
+        path: 'later',
+        name: 'LaterVideos',
+        component: VideoTab,
+        meta: { showSearch: true, search: 'home' },
       }
     ],
     redirect: {name: 'AllVideos'},
@@ -106,6 +112,12 @@ const routes = [
       {
         path: 'liked',
         name: 'SubscriptionLikedVideos',
+        component: VideoTab,
+        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+      },
+      {
+        path: 'later',
+        name: 'SubscriptionLaterVideos',
         component: VideoTab,
         meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       }

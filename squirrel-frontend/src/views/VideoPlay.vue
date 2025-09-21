@@ -81,6 +81,18 @@
                   </svg>
                 </button>
 
+                <button
+                  @click="handleLater(video)"
+                  class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+                  :class="{ 'text-blue-400': video?.interaction_type === INTERACTION_TYPE.LATER }"
+                  title="稍后看"
+                  aria-label="稍后看"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="video?.interaction_type === INTERACTION_TYPE.LATER ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+
 	                <!-- 原视频页按钮 -->
 	                <a
 	                  v-if="video && video.url"
@@ -256,6 +268,18 @@ const handleLike = async (video, interactionType) => {
     await deleteInteraction(video.id).then(() => {
       video.interaction_type = null;
     })
+  }
+};
+
+const handleLater = async (video) => {
+  if (video.interaction_type !== INTERACTION_TYPE.LATER) {
+    await toggleLike(video.id, INTERACTION_TYPE.LATER).then(() => {
+      video.interaction_type = INTERACTION_TYPE.LATER;
+    });
+  } else {
+    await deleteInteraction(video.id).then(() => {
+      video.interaction_type = null;
+    });
   }
 };
 

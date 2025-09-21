@@ -4,6 +4,7 @@ export const VIDEO_TABS = [
   { label: '已读', value: 'read' },
   { label: '预告', value: 'preview' },
   { label: '喜欢', value: 'liked' },
+  { label: '稍后看', value: 'later' },
 ];
 
 

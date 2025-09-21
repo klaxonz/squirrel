@@ -197,6 +197,25 @@ def _query_liked_videos(user_id: int, show_nsfw: bool, subscription_id: Optional
     return base_query
 
 
+def _query_later_videos(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
+                       query: Optional[str] = None,
+                       sort_by: str = 'publish_date', page: int = 1, page_size: int = 20, nsfw: str = 'all', domains: Optional[List[str]] = None):
+    """查询稍后观看视频（interaction_type=3）"""
+    base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw, domains)
+    base_query = base_query.join(VideoInteraction, and_(
+        VideoInteraction.video_id == Video.id,
+        VideoInteraction.user_id == user_id,
+        VideoInteraction.interaction_type == 3
+    )).where(Video.publish_date <= func.now())
+
+    if sort_by == 'created_at':
+        base_query = base_query.order_by(Video.created_at.desc())
+    else:
+        base_query = base_query.order_by(Video.publish_date.desc())
+
+    base_query = base_query.limit(page_size).offset((page - 1) * page_size)
+    return base_query
+
 def _get_category_count(user_id: int, show_nsfw: bool, category: str, subscription_id: Optional[int] = None,
                        query: Optional[str] = None, nsfw: str = 'all', domains: Optional[List[str]] = None) -> int:
     """获取特定类别的视频数量，优化的count查询"""
@@ -241,6 +260,12 @@ def _get_category_count(user_id: int, show_nsfw: bool, category: str, subscripti
                 VideoInteraction.video_id == Video.id,
                 VideoInteraction.user_id == user_id,
                 VideoInteraction.interaction_type == 1
+            )).where(Video.publish_date <= func.now())
+        elif category == 'later':
+            base_count_query = base_count_query.join(VideoInteraction, and_(
+                VideoInteraction.video_id == Video.id,
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.interaction_type == 3
             )).where(Video.publish_date <= func.now())
         else:  # 'all' category
             base_count_query = base_count_query.where(Video.publish_date <= func.now())
@@ -385,12 +410,55 @@ def _get_video_counts(user_id: int, show_nsfw: bool, subscription_id: Optional[i
 
         like_video_count = session.execute(like_count_query).scalar() or 0
 
+        # 稍后观看视频计数
+        later_count_query = (
+            select(func.count())
+            .select_from(Video)
+            .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
+            .join(UserSubscription, SubscriptionVideo.subscription_id == UserSubscription.subscription_id)
+            .join(Subscription, UserSubscription.subscription_id == Subscription.id)
+            .join(VideoInteraction, and_(
+                VideoInteraction.video_id == Video.id,
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.interaction_type == 3
+            ))
+            .where(
+                and_(
+                    Video.is_deleted == False,
+                    UserSubscription.is_deleted == False,
+                    Subscription.is_deleted == False,
+                    UserSubscription.user_id == user_id,
+                    Video.publish_date <= func.now()
+                )
+            )
+        )
+
+        if subscription_id:
+            later_count_query = later_count_query.where(SubscriptionVideo.subscription_id == subscription_id)
+        if query:
+            later_count_query = later_count_query.where(Video.title.like(f"%{query}%"))
+        if domains:
+            like_clauses = [Video.url.like(f"%{d}%") for d in domains if d]
+            if like_clauses:
+                later_count_query = later_count_query.where(or_(*like_clauses))
+        # NSFW 过滤（方案A）
+        if nsfw == 'yes':
+            later_count_query = later_count_query.where(UserSubscription.is_nsfw == True)
+        elif nsfw == 'no':
+            later_count_query = later_count_query.where(UserSubscription.is_nsfw == False)
+        else:
+            if not show_nsfw:
+                later_count_query = later_count_query.where(UserSubscription.is_nsfw == False)
+
+        later_video_count = session.execute(later_count_query).scalar() or 0
+
         return {
             "all": all_count,
             "read": read_count,
             "unread": unread_count,
             "preview": preview_count,
-            "liked": like_video_count
+            "liked": like_video_count,
+            "later": later_video_count
         }
 
 
@@ -414,7 +482,8 @@ def list_videos(
         'read': _query_read_videos,
         'unread': _query_unread_videos,
         'preview': _query_preview_videos,
-        'liked': _query_liked_videos
+        'liked': _query_liked_videos,
+        'later': _query_later_videos
     }
 
     query_method = query_methods.get(category, _query_all_videos)
