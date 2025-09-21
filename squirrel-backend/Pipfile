@@ -36,5 +36,6 @@ pytubefix = "*"
 httpx = {extras = ["http2"], version = "*"}
 botasaurus = "*"
 js2py = "*"
+fastapi-radar = "*"
 
 [dev-packages]

@@ -6,12 +6,14 @@ from typing import Union
 from fastapi import FastAPI, status
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_radar import Radar
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse
 from starlette.staticfiles import StaticFiles
 from common.global_config import IS_DEV
+from core.database import engine
 from routes.middleware.auth import AuthMiddleware, AuthenticationError, TokenMissingError, TokenExpiredError
 from routes.subscription import router as subscription_router
 from routes.task import router as task_router
@@ -80,23 +82,8 @@ app.include_router(video_history_router)
 app.include_router(video_interaction_router)
 app.include_router(system_config_router)
 
-# 统一慢请求日志，便于定位 pending 接口（默认阈值 2 秒）
-SLOW_REQUEST_THRESHOLD_MS = 2000
-
-
-@app.middleware("http")
-async def log_slow_requests(request, call_next):
-    start = time.perf_counter()
-    try:
-        response = await call_next(request)
-        return response
-    finally:
-        cost_ms = (time.perf_counter() - start) * 1000
-        if cost_ms >= SLOW_REQUEST_THRESHOLD_MS:
-            logger.warning(
-                "[slow] %s %s took %.1fms", request.method, request.url.path, cost_ms
-            )
-
+radar = Radar(app, db_engine=engine)
+radar.create_tables()
 
 if not IS_DEV:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
