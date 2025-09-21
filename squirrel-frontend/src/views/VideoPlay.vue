@@ -1,11 +1,11 @@
 <template>
-  <div class="video-page bg-[#0f0f0f] min-h-screen scrollbar">
-    <div class="max-w-[1720px] mx-auto lg:px-6 pt-6 flex">
+  <div class="video-page bg-[#0f0f0f] min-h-screen scrollbar min-w-[1200px]">
+    <div class="max-w-[1720px] mx-auto lg:px-6 pt-6 flex min-w-[1200px]">
       <!-- 左侧主内容区域 -->
       <div class="flex-1 max-w-[1280px]">
         <!-- 视频播放区域 -->
         <div class="video-section">
-          <div class="video-container">
+          <div class="video-container" ref="videoContainerRef">
             <VideoPlayer
               :key="video?.id"
               v-if="video"
@@ -194,38 +194,36 @@
       <!-- 右侧区域 - 相关视频 -->
       <div class="hidden md:block md:w-[320px] lg:w-[400px] md:ml-6">
         <div class="sticky top-4">
-          <div class="rounded-xl p-4 flex flex-col">
-            <h2 class="text-white text-lg mb-4">相关视频</h2>
-            <div class="max-h-[70vh] overflow-y-auto no-scrollbar">
-              <div v-if="loadingRelated" class="text-gray-400 text-sm">加载中...</div>
-              <div v-else>
-                <div v-if="!relatedVideos.length" class="text-gray-400 text-sm">暂无推荐</div>
-                <div v-else class="space-y-3">
-                  <div
-                    v-for="relatedVideo in relatedVideos"
-                    :key="relatedVideo.id"
-                    class="flex space-x-3 cursor-pointer group"
-                    @click="goToVideo(relatedVideo.id)"
-                  >
-                    <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-black/60">
-                      <img
-                        :src="relatedVideo.thumbnail"
-                        referrerpolicy="no-referrer"
-                        class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105 pointer-events-none select-none"
-                        draggable="false"
-                        :alt="relatedVideo.title"
-                      >
-                      <div class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 py-0.5 rounded">
-                        {{ formatDuration(relatedVideo.duration) }}
-                      </div>
+          <div class="rounded-xl p-4 flex flex-col" ref="relatedCardRef">
+            <h2 class="text-white text-lg mb-4" ref="relatedTitleRef">相关视频</h2>
+            <div class="max-h-[70vh] overflow-y-auto no-scrollbar" :style="{ maxHeight: relatedListMaxHeight + 'px' }">
+              <div v-if="loadingRelated" class="text-gray-400 text-xs mb-2">加载中...</div>
+              <div v-if="!relatedVideos.length && !loadingRelated" class="text-gray-400 text-sm">暂无推荐</div>
+              <div v-if="relatedVideos.length" class="space-y-3">
+                <div
+                  v-for="relatedVideo in relatedVideos"
+                  :key="relatedVideo.id"
+                  class="flex space-x-3 cursor-pointer group"
+                  @click="goToVideo(relatedVideo.id)"
+                >
+                  <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-black/60">
+                    <img
+                      :src="relatedVideo.thumbnail"
+                      referrerpolicy="no-referrer"
+                      class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105 pointer-events-none select-none"
+                      draggable="false"
+                      :alt="relatedVideo.title"
+                    >
+                    <div class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 py-0.5 rounded">
+                      {{ formatDuration(relatedVideo.duration) }}
                     </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="text-white text-xs leading-5 max-h-10 overflow-hidden group-hover:text-[#3ea6ff] transition-colors">
-                        {{ relatedVideo.title }}
-                      </div>
-                      <div class="text-[#aaaaaa] text-[10px] mt-1 truncate">
-                        {{ relatedVideo.subscriptions?.[0]?.name || relatedVideo.site }}
-                      </div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-white text-xs leading-5 max-h-10 overflow-hidden group-hover:text-[#3ea6ff] transition-colors">
+                      {{ relatedVideo.title }}
+                    </div>
+                    <div class="text-[#aaaaaa] text-[10px] mt-1 truncate">
+                      {{ relatedVideo.subscriptions?.[0]?.name || relatedVideo.site }}
                     </div>
                   </div>
                 </div>
@@ -239,7 +237,7 @@
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue';
+import { onMounted, onBeforeUnmount, watch, ref, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
@@ -264,6 +262,29 @@ const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlayba
 const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
 const { unsubscribe: apiUnsubscribe } = useSubscriptionApi();
 const { getRandomVideo } = useVideoApi();
+
+// Align related list height with video player height
+const videoContainerRef = ref(null);
+const relatedCardRef = ref(null);
+const relatedTitleRef = ref(null);
+const relatedListMaxHeight = ref(0);
+
+const recalcRelatedHeight = () => {
+  const videoEl = videoContainerRef.value;
+  const cardEl = relatedCardRef.value;
+  const titleEl = relatedTitleRef.value;
+  if (!videoEl || !cardEl) return;
+
+  const videoHeight = videoEl.clientHeight || 0;
+  const style = window.getComputedStyle(cardEl);
+  const padTop = parseFloat(style.paddingTop) || 0;
+  const padBottom = parseFloat(style.paddingBottom) || 0;
+  const titleHeight = (titleEl?.offsetHeight) || 0;
+  const titleMarginBottom = parseFloat(window.getComputedStyle(titleEl || cardEl).marginBottom) || 0;
+
+  const available = videoHeight - padTop - padBottom - titleHeight - titleMarginBottom;
+  relatedListMaxHeight.value = available > 0 ? available : 0;
+};
 
 
 const handleUnsubscribe = async (subscriptionId) => {
@@ -323,10 +344,17 @@ const goToVideo = async (id) => {
 
 onMounted(() => {
   loadAndPlayById(route.params.videoId);
+  nextTick(recalcRelatedHeight);
+  window.addEventListener('resize', recalcRelatedHeight, { passive: true });
 });
 
 watch(() => route.params.videoId, async () => {
   await loadAndPlayById(route.params.videoId);
+  nextTick(recalcRelatedHeight);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', recalcRelatedHeight);
 });
 
 </script>
