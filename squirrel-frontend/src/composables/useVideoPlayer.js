@@ -221,6 +221,8 @@ export default function useVideoPlayer(props, emit) {
     }
 
     emit('play')
+    // 播放开始后，若鼠标不在播放器上，安排自动隐藏
+    scheduleHideControls(2000)
   }
 
   const handleVideoPause = () => {
@@ -235,6 +237,8 @@ export default function useVideoPlayer(props, emit) {
     }
 
     emit('pause')
+    // 暂停时显示控制条，便于继续操作
+    playerState.ui.controlsVisible = true
   }
 
   // 音画同步纠偏（仅非HLS且存在独立音频时）
@@ -430,34 +434,38 @@ export default function useVideoPlayer(props, emit) {
     clearError()
   }
 
-  // Pointer 事件处理
+  // Pointer 事件与自动隐藏控制条
   let hideControlsTimer = null
+
+  const scheduleHideControls = (delay = 2000) => {
+    if (hideControlsTimer) clearTimeout(hideControlsTimer)
+    hideControlsTimer = setTimeout(() => {
+      // 交互中或菜单展开时不隐藏，延迟重试
+      if (
+        playerState.ui.isDragging ||
+        playerState.ui.showSettingsMenu ||
+        playerState.ui.showQualityMenu ||
+        playerState.ui.showPlaybackRateMenu
+      ) {
+        scheduleHideControls(1500)
+        return
+      }
+      playerState.ui.controlsVisible = false
+    }, delay)
+  }
 
   const onPointerEnter = () => {
     playerState.ui.controlsVisible = true
-    if (hideControlsTimer) {
-      clearTimeout(hideControlsTimer)
-      hideControlsTimer = null
-    }
+    scheduleHideControls(2000)
   }
 
   const onPointerLeave = () => {
-    hideControlsTimer = setTimeout(() => {
-      playerState.ui.controlsVisible = false
-      // 关闭所有弹出菜单，避免重新进入时又自动出现
-      playerState.ui.showSettingsMenu = false
-      playerState.ui.showQualityMenu = false
-      playerState.ui.showPlaybackRateMenu = false
-    }, 2000)
+    scheduleHideControls(1500)
   }
 
   const onPointerMove = () => {
     playerState.ui.controlsVisible = true
-
-    if (hideControlsTimer) {
-      clearTimeout(hideControlsTimer)
-      hideControlsTimer = null
-    }
+    scheduleHideControls(2000)
   }
 
   // 自动播放逻辑
