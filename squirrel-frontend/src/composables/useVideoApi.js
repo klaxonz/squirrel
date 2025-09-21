@@ -75,11 +75,24 @@ export function useVideoApi() {
     return { success: true, data: unique };
   };
 
+  const getRandomVideo = async (params = {}) => {
+    try {
+      const response = await axios.get('/api/video/random', { params });
+      if (response.data?.code === 0 && response.data?.data) {
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data?.msg || '获取随机视频失败');
+    } catch (error) {
+      return { success: false, error: error.message || '获取随机视频失败' };
+    }
+  };
+
   return {
     getVideoDetail,
     listVideos,
     getSubtitles,
     getRelatedVideos,
+    getRandomVideo,
   };
 }
 

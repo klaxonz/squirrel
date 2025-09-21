@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Tuple, Optional
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, text
 
 from core.database import get_session
 from schemas.video.dto.video_dto import VideoExtractDto, VideoDto, VideoUrlDto
@@ -41,6 +41,74 @@ def create_video(url: str, title: str, publish_date: datetime, thumbnail: str, d
         session.add(video)
         session.commit()
         return video
+
+
+def get_random_video(
+    user_id: int,
+    category: Optional[str] = None,
+    subscription_id: Optional[int] = None,
+    nsfw: str = 'all',
+    domains: Optional[List[str]] = None,
+    query: Optional[str] = None,
+) -> Optional[Video]:
+    """返回符合过滤条件的一个随机视频（已发布）。
+
+    - 遵循用户 NSFW 偏好（通过 user_config）
+    - 支持分类：all/read/unread/preview/liked/later（与列表页一致）
+    - 支持 subscription/site(query by domains)/keyword 过滤
+    """
+    user_config = user_config_service.get_config(user_id)
+    show_nsfw = user_config.get('showNsfw', False)
+
+    # 基础可重用查询
+    base = _build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw, domains)
+
+    # 类别条件
+    if category == 'read':
+        base = base.join(VideoHistory, and_(
+            VideoHistory.video_id == Video.id,
+            VideoHistory.user_id == user_id
+        )).where(Video.publish_date <= func.now())
+    elif category == 'unread':
+        base = base.outerjoin(VideoHistory, and_(
+            VideoHistory.video_id == Video.id,
+            VideoHistory.user_id == user_id
+        )).where(and_(VideoHistory.video_id.is_(None), Video.publish_date <= func.now()))
+    elif category == 'preview':
+        base = base.where(Video.publish_date > func.now())
+    elif category == 'liked':
+        base = base.join(VideoInteraction, and_(
+            VideoInteraction.video_id == Video.id,
+            VideoInteraction.user_id == user_id,
+            VideoInteraction.interaction_type == 1
+        )).where(Video.publish_date <= func.now())
+    elif category == 'later':
+        base = base.join(VideoInteraction, and_(
+            VideoInteraction.video_id == Video.id,
+            VideoInteraction.user_id == user_id,
+            VideoInteraction.interaction_type == 3
+        )).where(Video.publish_date <= func.now())
+    else:
+        base = base.where(Video.publish_date <= func.now())
+
+    # 随机选择一条。使用 database 随机函数，尽量不影响兼容性（MySQL RAND()）。
+    # 注：Alembic/SQLAlchemy 随机函数可用 func.rand()；为兼容性这里用 text('rand()').
+    with get_session() as session:
+        bind = session.get_bind()
+        dialect_name = getattr(getattr(bind, 'dialect', None), 'name', '') or ''
+
+        # Choose DB-specific random function
+        if dialect_name in ('postgresql', 'sqlite'):
+            order_random = func.random()
+        elif dialect_name in ('mysql', 'mariadb'):
+            order_random = func.rand()
+        else:
+            order_random = func.random()
+
+        random_row = session.execute(
+            base.order_by(order_random).limit(1)
+        ).first()
+        return random_row[0] if random_row else None
 
 
 def get_video_url(video_id: int) -> VideoUrlDto:

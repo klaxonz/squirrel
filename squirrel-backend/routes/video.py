@@ -98,6 +98,36 @@ def download_video(req: DownloadVideoRequest):
     return response.success()
 
 
+@router.get("/api/video/random")
+def get_random_video(
+        category: str = Query('all', description="类别：all|read|unread|preview|liked|later"),
+        subscription_id: int = Query(None, description="订阅ID"),
+        nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
+        site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
+        query: str = Query(None, description="搜索关键字"),
+        current_user: User = Depends(get_current_user)
+):
+    domains_list: List[str] | None = None
+    if site:
+        resolved = SiteCatalog.resolve_domains(site)
+        domains_list = resolved if resolved else None
+
+    video = video_service.get_random_video(
+        current_user.id,
+        category=category,
+        subscription_id=subscription_id,
+        nsfw=nsfw,
+        domains=domains_list,
+        query=query
+    )
+    if not video:
+        return response.not_found("未找到符合条件的视频")
+
+    # 返回完整视频详情，便于前端直接播放
+    detail = video_service.get_video(current_user.id, video.id)
+    return response.success(detail)
+
+
 @router.get("/api/video/play/{video_id}")
 def play_video(request: Request, video_id: int):
     video = video_service.get_video_by_id(video_id)

@@ -60,6 +60,18 @@
 
               <!-- 操作按钮组 -->
               <div class="flex items-center space-x-1">
+                <!-- 随机播放按钮 -->
+                <button
+                  @click="handlePlayRandom"
+                  class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+                  title="随机播放"
+                  aria-label="随机播放"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14.59 7.41L13.17 6l-4.58 4.59L7 9v6h6l-1.59-1.59L14.59 7.41z"/>
+                    <path d="M15 3h6v6l-2.29-2.29-3.88 3.88-1.41-1.41 3.88-3.88L15 3z"/>
+                  </svg>
+                </button>
                 <!-- 主要按钮显示在外面 -->
                 <button
                   @click="handleLike(video, INTERACTION_TYPE.LIKE)"
@@ -238,6 +250,7 @@ import useOptionsMenu from '../composables/useOptionsMenu';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import useVideoInteraction from "../composables/useVideoInteraction.js";
+import { useVideoApi } from '../composables/useVideoApi';
 
 
 
@@ -250,6 +263,7 @@ const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction(
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
 const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
 const { unsubscribe: apiUnsubscribe } = useSubscriptionApi();
+const { getRandomVideo } = useVideoApi();
 
 
 const handleUnsubscribe = async (subscriptionId) => {
@@ -285,6 +299,17 @@ const handleLater = async (video) => {
 
 const handleDownload = async () => {
   await downloadVideo();
+};
+
+const handlePlayRandom = async () => {
+  const params = {};
+  // 可以考虑带上当前视频的 site 或订阅优先
+  const site = video.value?.domain || video.value?.site;
+  if (site) params.site = site;
+  const res = await getRandomVideo(params);
+  if (res.success && res.data?.id) {
+    await goToVideo(res.data.id);
+  }
 };
 
 
