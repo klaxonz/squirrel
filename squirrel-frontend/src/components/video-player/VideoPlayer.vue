@@ -159,7 +159,7 @@ const {
 
 // 字幕集成：将 VideoCore 的 videoElement 作为字幕的 videoRef
 const videoElRef = computed(() => videoCore.value?.videoElement || null)
-const { toggleSubtitles, setSubtitle, ensureSubtitlesOnMetadata } = useSubtitles({
+const { toggleSubtitles, setSubtitle, ensureSubtitlesOnMetadata, nextSubtitle } = useSubtitles({
   playerState,
   videoRef: videoElRef,
   props
@@ -244,6 +244,7 @@ const { handleKeyDown } = useKeyboardShortcuts(playerState, {
   toggleFullscreen,
   togglePictureInPicture,
   toggleSubtitles,
+  nextSubtitle,
   toggleKeyboardHelp,
   handleEscapeKey: () => {
     if (playerState.ui.showKeyboardHelp) {

@@ -117,6 +117,19 @@ export default function useSubtitles({ playerState, videoRef, props }) {
     playerState.ui.showSettingsMenu = false;
   };
 
+  // 切换下一条字幕（循环）
+  const nextSubtitle = () => {
+    try {
+      const list = Array.isArray(props.video?.subtitles) ? props.video.subtitles : [];
+      if (!list.length) return;
+      const current = playerState.media.currentSubtitle;
+      let idx = list.findIndex(s => (s?.url && current?.url && s.url === current.url) || (s === current));
+      if (idx === -1) idx = 0; else idx = (idx + 1) % list.length;
+      const next = list[idx];
+      setSubtitle(next);
+    } catch (_) {}
+  };
+
   const toggleSubtitles = () => {
     const willEnable = !playerState.media.subtitlesEnabled;
     playerState.media.subtitlesEnabled = willEnable;
@@ -169,5 +182,6 @@ export default function useSubtitles({ playerState, videoRef, props }) {
     toggleSubtitles,
     setSubtitle,
     ensureSubtitlesOnMetadata,
+    nextSubtitle,
   };
 }

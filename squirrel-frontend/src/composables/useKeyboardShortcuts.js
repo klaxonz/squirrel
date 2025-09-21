@@ -23,8 +23,9 @@ export default function useKeyboardShortcuts(playerState, callbacks) {
     // 播放控制
     ' ': { action: 'togglePlay', description: '播放/暂停' },
     'k': { action: 'togglePlay', description: '播放/暂停' },
-    'ArrowRight': { action: 'skipForward', description: '快进5秒' },
-    'ArrowLeft': { action: 'skipBackward', description: '快退5秒' },
+
+    'ArrowRight': { action: 'skipForward5', description: '快进5秒' },
+    'ArrowLeft': { action: 'skipBackward5', description: '快退5秒' },
     'j': { action: 'skipBackward10', description: '快退10秒' },
     'l': { action: 'skipForward10', description: '快进10秒' },
 
@@ -76,6 +77,7 @@ export default function useKeyboardShortcuts(playerState, callbacks) {
       toggleFullscreen,
       togglePictureInPicture,
       toggleSubtitles,
+      nextSubtitle,
       toggleKeyboardHelp,
       handleEscapeKey,
       getDuration,
@@ -92,6 +94,17 @@ export default function useKeyboardShortcuts(playerState, callbacks) {
       case 'skipBackward':
         skipBackward();
         break;
+      case 'skipForward5': {
+        const current = getCurrentTime();
+        const duration = getDuration();
+        setVideoTime(Math.min(current + 5, duration));
+        break;
+      }
+      case 'skipBackward5': {
+        const current = getCurrentTime();
+        setVideoTime(Math.max(current - 5, 0));
+        break;
+      }
       case 'skipForward10': {
         const current = getCurrentTime();
         const duration = getDuration();
@@ -126,6 +139,9 @@ export default function useKeyboardShortcuts(playerState, callbacks) {
         break;
       case 'toggleSubtitles':
         toggleSubtitles();
+        break;
+      case 'nextSubtitle':
+        if (typeof nextSubtitle === 'function') nextSubtitle();
         break;
       case 'jumpToStart':
         setVideoTime(0);
