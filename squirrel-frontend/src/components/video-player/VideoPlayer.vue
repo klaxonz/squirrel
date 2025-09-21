@@ -35,6 +35,7 @@
         @click="handleVideoLayerClick"
         @skip-forward="skipForward"
         @skip-backward="skipBackward"
+        @ended="onEnded"
       />
 
       <!-- 缓冲指示器 -->
@@ -261,6 +262,18 @@ defineExpose({
 
 
 
+
+const onEnded = () => {
+  try {
+    emit('ended', {
+      autoplay: !!playerState?.media?.autoplay,
+      autoplayNext: !!playerState?.media?.autoplayNext,
+      loop: !!playerState?.media?.loop
+    })
+  } catch (e) {
+    emit('ended')
+  }
+}
 
 </script>
 

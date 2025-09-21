@@ -13,7 +13,7 @@
               :initialTime="startTime"
               @play="onVideoPlay"
               @pause="onVideoPause"
-              @ended="onVideoEnded"
+              @ended="handleAutoplayNext"
               @timeupdate="onVideoTimeUpdate"
             />
           </div>
@@ -282,7 +282,6 @@ const handleDownload = async () => {
 
 const handlePlayRandom = async () => {
   const params = {};
-  // 可以考虑带上当前视频的 site 或订阅优先
   const site = video.value?.domain || video.value?.site;
   if (site) params.site = site;
   const res = await getRandomVideo(params);
@@ -297,6 +296,23 @@ const goToVideo = async (id) => {
   if (video.value?.id === id) return;
   await router.replace(`/video/${id}`);
   await loadAndPlayById(id);
+};
+
+const handleAutoplayNext = async (evt) => {
+  try {
+    try { onVideoEnded(); } catch (_) {}
+    const autoplayEnabled = evt?.autoplay !== undefined ? evt.autoplay : true;
+    const autoplayNextEnabled = evt?.autoplayNext !== undefined ? evt.autoplayNext : true;
+    const loopEnabled = evt?.loop !== undefined ? evt.loop : false;
+    if (!autoplayEnabled || !autoplayNextEnabled || loopEnabled) return;
+
+    const next = relatedVideos.value?.[0];
+    if (next?.id) {
+      await goToVideo(next.id);
+      return;
+    }
+    await handlePlayRandom();
+  } catch (_) {}
 };
 
 

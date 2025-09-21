@@ -50,6 +50,8 @@
       webkit-playsinline
       :muted="playerState.media.muted"
       :autoplay="playerState.media.autoplay"
+      :loop="playerState.media.loop"
+      @ended="$emit('ended')"
       @play="$emit('play')"
       @pause="$emit('pause')"
       @seeking="handleVideoSeeking"
@@ -115,7 +117,7 @@ const props = defineProps({
   externalError: Object
 })
 
-const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'click', 'skip-forward', 'skip-backward'])
+const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'click', 'skip-forward', 'skip-backward', 'ended'])
 
 // 双击跳跃状态
 const showLeftSkip = ref(false)

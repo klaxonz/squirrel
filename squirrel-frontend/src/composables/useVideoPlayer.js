@@ -29,6 +29,7 @@ export default function useVideoPlayer(props, emit) {
       currentQuality: null,
       currentSubtitle: null,
       autoplay: false,
+      autoplayNext: true,
       loop: false,
       subtitleSettings: {
         fontSize: 'medium', // small | medium | large | xlarge
@@ -668,18 +669,28 @@ export default function useVideoPlayer(props, emit) {
           saveUserConfig({ autoplay: true })
         }
 
+        // 设置自动播放下一个，默认为true
+        if (config.autoplayNext !== undefined) {
+          playerState.media.autoplayNext = config.autoplayNext
+        } else {
+          playerState.media.autoplayNext = true
+          saveUserConfig({ autoplayNext: true })
+        }
+
         if (config.loop !== undefined) {
           playerState.media.loop = config.loop
         }
       } else {
         // 如果获取配置失败，使用默认值
         playerState.media.autoplay = true
-        saveUserConfig({ autoplay: true })
+        playerState.media.autoplayNext = true
+        saveUserConfig({ autoplay: true, autoplayNext: true })
       }
     } catch (error) {
       console.warn('Failed to load user config:', error)
       // 如果加载失败，使用默认值
       playerState.media.autoplay = true
+      playerState.media.autoplayNext = true
     }
   }
 
@@ -698,6 +709,11 @@ export default function useVideoPlayer(props, emit) {
   // 监听自动播放设置变化并保存
   watch(() => playerState.media.autoplay, (newValue) => {
     saveUserConfig({ autoplay: newValue })
+  })
+
+  // 监听自动播放下一个设置变化并保存
+  watch(() => playerState.media.autoplayNext, (newValue) => {
+    saveUserConfig({ autoplayNext: newValue })
   })
 
   // 监听循环播放设置变化并保存

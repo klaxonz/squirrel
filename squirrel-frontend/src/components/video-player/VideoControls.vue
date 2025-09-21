@@ -106,6 +106,7 @@
             :subtitles="video.subtitles"
             :subtitle-settings="playerState.media.subtitleSettings"
             :autoplay="playerState.media.autoplay"
+            :autoplay-next="playerState.media.autoplayNext"
             :loop="playerState.media.loop"
             :current-rate="playerState.media.playbackRate"
             :available-rates="playbackRates"
@@ -119,6 +120,7 @@
             @update-subtitle-position="v => props.playerState.media.subtitleSettings.position = v"
             @update-subtitle-shadow="v => props.playerState.media.subtitleSettings.shadow = v"
             @update-autoplay="updateAutoplay"
+            @update-autoplay-next="updateAutoplayNext"
             @update-loop="updateLoop"
         />
 
@@ -254,6 +256,10 @@ onUnmounted(() => {
 
 const updateAutoplay = (value) => {
   props.playerState.media.autoplay = value
+}
+
+const updateAutoplayNext = (value) => {
+  props.playerState.media.autoplayNext = value
 }
 
 const updateLoop = (value) => {

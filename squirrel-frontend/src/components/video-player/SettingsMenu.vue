@@ -47,6 +47,14 @@
           </div>
 
           <div class="menu-item toggled">
+            <span class="item-left">自动播放下一个</span>
+            <label class="yt-switch">
+              <input type="checkbox" :checked="autoplayNext" @change="$emit('update-autoplay-next', $event.target.checked)"/>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="menu-item toggled">
             <span class="item-left">循环播放</span>
             <label class="yt-switch">
               <input type="checkbox" :checked="loop" @change="$emit('update-loop', $event.target.checked)"/>
@@ -287,6 +295,7 @@ const props = defineProps({
   subtitles: Array,
   subtitleSettings: Object,
   autoplay: Boolean,
+  autoplayNext: Boolean,
   loop: Boolean,
   currentRate: [Number, String],
   availableRates: Array
@@ -302,6 +311,7 @@ const emit = defineEmits([
   'update-subtitle-position',
   'update-subtitle-shadow',
   'update-autoplay',
+  'update-autoplay-next',
   'update-loop',
   'set-playback-rate'
 ])
