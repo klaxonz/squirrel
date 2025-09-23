@@ -1,6 +1,6 @@
 import abc
 from typing import List
-from squirrel_sdk.crawl import SubscriptionMeta
+from crawl import SubscriptionMeta
 
 
 class BaseSubscription(abc.ABC):
