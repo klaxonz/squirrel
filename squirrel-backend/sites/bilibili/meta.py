@@ -1,11 +1,8 @@
 import json
 import logging
 import re
-
-import requests
-
 from common.http_wrapper import session
-from sites.meta_origin import Actor, Video
+from crawl import Video, Actor
 from sites.meta_registry import register_meta
 from utils.cookie import filter_cookies_to_query_string
 
