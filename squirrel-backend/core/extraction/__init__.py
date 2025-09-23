@@ -13,10 +13,6 @@
 - handlers: 结果处理器
 """
 
-from .interfaces import (
-    IExtractor, ITaskProcessor, IResultHandler, ICacheManager,
-    ExtractionTask, ExtractionResult, TaskStatus, TaskPriority
-)
 
 from .base import BaseExtractor, BaseTaskProcessor, BaseResultHandler
 
@@ -41,10 +37,6 @@ from .extractors import (
 from .handlers.video_handler import VideoExtractionHandler
 
 __all__ = [
-    # 接口
-    'IExtractor', 'ITaskProcessor', 'IResultHandler', 'ICacheManager',
-    'ExtractionTask', 'ExtractionResult', 'TaskStatus', 'TaskPriority',
-    
     # 基础类
     'BaseExtractor', 'BaseTaskProcessor', 'BaseResultHandler',
     

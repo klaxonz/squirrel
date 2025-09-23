@@ -13,6 +13,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse
 from starlette.staticfiles import StaticFiles
 from common.global_config import IS_DEV
+from plugins.loader import init_plugins, app_start
 from core.database import engine
 from routes.middleware.auth import AuthMiddleware, AuthenticationError, TokenMissingError, TokenExpiredError
 from routes.subscription import router as subscription_router
@@ -22,6 +23,7 @@ from routes.video import router as video_router
 from routes.video_history import router as video_history_router
 from routes.video_interaction import router as video_interaction_router
 from routes.system_config import router as system_config_router
+from routes.plugins import router as plugins_router
 
 logger = logging.getLogger()
 
@@ -81,9 +83,17 @@ app.include_router(user_router)
 app.include_router(video_history_router)
 app.include_router(video_interaction_router)
 app.include_router(system_config_router)
+app.include_router(plugins_router)
 
 radar = Radar(app, db_engine=engine)
 radar.create_tables()
+
+# Initialize plugins and trigger app start hooks
+init_plugins()
+try:
+    app_start()
+except Exception:
+    logger.exception("[plugins] app_start hook failed (ignored)")
 
 if not IS_DEV:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

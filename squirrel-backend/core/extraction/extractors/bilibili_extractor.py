@@ -2,8 +2,6 @@
 Bilibili视频提取器
 """
 import logging
-from typing import List
-
 from ..factory import register_extractor
 from .base_extractor import YoutubeDLExtractor
 

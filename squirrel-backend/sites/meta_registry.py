@@ -1,5 +1,6 @@
 from typing import Dict, Type, Optional
-from sites.meta_origin import Video
+
+from crawl import Video
 from sites.registry_base import DomainRegistryBase
 
 

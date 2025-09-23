@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 from common.http_wrapper import session
-from sites.meta_origin import SubscriptionMeta
+from squirrel_sdk.crawl import SubscriptionMeta
 from sites.subscription import BaseSubscription
 from sites.subscription_registry import subscription_channel
 from utils.cookie import filter_cookies_to_query_string

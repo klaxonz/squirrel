@@ -1,6 +1,6 @@
 from pytubefix import YouTube
 
-from sites.meta_origin import Video, Actor
+from crawl import Actor, Video
 from sites.meta_registry import register_meta
 
 

@@ -3,13 +3,13 @@
 """
 import logging
 from typing import Dict, Any, Optional, List
+from crawl import ExtractionTask, ExtractionResult
 from yt_dlp import YoutubeDL
 
 from core import config
 from utils.yt_dlp_helper import build_ydl_opts
 from sites.downloader import DownloaderFactory
 from sites.meta import VideoFactory
-from ..interfaces import ExtractionTask, ExtractionResult
 from ..base import BaseExtractor
 
 logger = logging.getLogger()

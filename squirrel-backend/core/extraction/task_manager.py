@@ -2,17 +2,36 @@
 任务管理器
 """
 import logging
-import uuid
+from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
-from datetime import datetime
-
-from .interfaces import (
-    ExtractionTask, ExtractionResult, TaskStatus, TaskPriority,
-    ITaskProcessor, ICacheManager
-)
+from crawl import ExtractionTask, ITaskProcessor, TaskPriority, ExtractionResult
 from .factory import get_extractor_factory
 
 logger = logging.getLogger()
+
+
+class ICacheManager(ABC):
+    """缓存管理器接口"""
+
+    @abstractmethod
+    def get(self, key: str) -> Optional[Any]:
+        """获取缓存"""
+        pass
+
+    @abstractmethod
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+        """设置缓存"""
+        pass
+
+    @abstractmethod
+    def delete(self, key: str) -> None:
+        """删除缓存"""
+        pass
+
+    @abstractmethod
+    def exists(self, key: str) -> bool:
+        """检查缓存是否存在"""
+        pass
 
 
 class TaskRouter:
@@ -114,7 +133,6 @@ class TaskManager:
                     priority: TaskPriority = TaskPriority.NORMAL,
                     metadata: Optional[Dict[str, Any]] = None) -> ExtractionTask:
         """创建提取任务"""
-        task_id = str(uuid.uuid4())
 
         # 如果没有指定网站名，尝试从URL推断
         if not site_name:
@@ -123,7 +141,6 @@ class TaskManager:
                 site_name = extractor.supported_sites[0]
 
         return ExtractionTask(
-            task_id=task_id,
             url=url,
             site_name=site_name or "unknown",
             priority=priority,

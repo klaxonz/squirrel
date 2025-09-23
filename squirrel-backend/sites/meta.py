@@ -1,6 +1,6 @@
 from urllib.parse import urlparse
 
-from sites.meta_origin import Video
+from squirrel_sdk.crawl import Video
 from sites.meta_registry import MetaRegistry
 
 

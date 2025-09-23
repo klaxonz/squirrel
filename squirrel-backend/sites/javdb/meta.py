@@ -1,10 +1,8 @@
 import re
 
-import requests
 from bs4 import BeautifulSoup
-
 from common.http_wrapper import session
-from sites.meta_origin import Video, Actor
+from crawl import Video, Actor
 from sites.meta_registry import register_meta
 from utils.cookie import filter_cookies_to_query_string
 

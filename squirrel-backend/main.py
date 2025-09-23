@@ -10,6 +10,7 @@ from controllers.scheduler_controller import scheduler_start, scheduler_stop
 from controllers.worker_controller import worker_start, worker_stop
 from routes.base import app
 from services.system_config_service import get_bool
+from plugins.loader import app_stop
 
 logger = logging.getLogger()
 
@@ -53,6 +54,10 @@ def main():
             scheduler_stop()
         except Exception:
             logger.exception("Error when stopping scheduler (ignored)")
+        try:
+            app_stop()
+        except Exception:
+            logger.exception("Error when stopping plugins (ignored)")
         try:
             worker_stop()
         except Exception:
