@@ -9,6 +9,7 @@ import Podcasts from '../views/Podcasts.vue'
 import VideoPlay from '../views/VideoPlay.vue'
 import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
+import PluginManager from '../views/PluginManager.vue';
 import { useUser } from '../composables/useUser';
 
 
@@ -72,6 +73,12 @@ const routes = [
     path: '/settings',
     name: 'Settings',
     component: Settings
+  },
+  {
+    path: '/plugins',
+    name: 'Plugins',
+    component: PluginManager,
+    meta: { showSearch: false }
   },
   {
     path: '/subscription/:id',

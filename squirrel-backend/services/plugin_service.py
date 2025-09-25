@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-import requests
+# Type alias for clarity
+InstallResult = Tuple[bool, Optional[Dict]]
 CONFIG_FILE = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CONFIG_FILE = (CONFIG_FILE.parent / "config" / "plugins.json")
 
@@ -50,22 +52,26 @@ class PluginService:
         return True
 
     @staticmethod
-    def install_from_zip(url: str) -> Tuple[bool, Optional[Dict]]:
-        """Download a zip package and extract to plugins_ext; record in DB.
-        Expect the zip contains a top-level python package folder.
-        """
+    def install_from_zip(url: str) -> InstallResult:
+        """Deprecated: kept for backward compatibility."""
+        return False, "installing from remote URL is disabled"
+
+    @staticmethod
+    def install_from_upload(file) -> InstallResult:
+        """Handle uploaded zip file and extract to plugins_ext."""
         base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         ext_dir = base_dir / "plugins_ext"
         ext_dir.mkdir(parents=True, exist_ok=True)
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
-                tmp_zip = Path(tmpdir) / "plugin.zip"
-                with requests.get(url, timeout=60, stream=True) as r:
-                    r.raise_for_status()
-                    with open(tmp_zip, "wb") as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            if chunk:
-                                f.write(chunk)
+                tmp_zip = Path(tmpdir) / (Path(file.filename or "plugin.zip").name)
+                file_obj = getattr(file, "file", None) or file
+                try:
+                    file_obj.seek(0)
+                except Exception:
+                    pass
+                with open(tmp_zip, "wb") as f:
+                    shutil.copyfileobj(file_obj, f)
                 # extract
                 import zipfile
                 with zipfile.ZipFile(tmp_zip, 'r') as zf:
@@ -90,6 +96,56 @@ class PluginService:
         except Exception as e:
             logger.error("install plugin failed: %s", e, exc_info=True)
             return False, str(e)
+
+    @staticmethod
+    def list_plugins() -> List[Dict[str, Any]]:
+        from plugins.registry import all_plugin_classes
+
+        enabled_names = _read_enabled()
+        items: List[Dict[str, Any]] = []
+        registered = all_plugin_classes()
+        base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        internal_root = base_dir / "plugins"
+        external_root = base_dir / "plugins_ext"
+
+        for name, cls in registered.items():
+            info: Dict[str, Any] = {
+                "name": name,
+                "version": getattr(cls, "version", None),
+                "description": getattr(cls, "description", None),
+                "enabled": name in enabled_names,
+                "module": getattr(cls, "__module__", None),
+                "state": "registered",
+            }
+            try:
+                source_file = inspect.getfile(cls)
+                info["path"] = source_file
+                resolved = Path(source_file).resolve()
+                if internal_root in resolved.parents:
+                    info["source"] = "internal"
+                elif external_root in resolved.parents:
+                    info["source"] = "external"
+                else:
+                    info["source"] = "package"
+            except Exception:
+                info["path"] = None
+                info["source"] = "unknown"
+            items.append(info)
+
+        registered_names = {item["name"] for item in items}
+        for missing_name in sorted(enabled_names - registered_names):
+            items.append({
+                "name": missing_name,
+                "version": None,
+                "description": None,
+                "enabled": True,
+                "module": None,
+                "path": None,
+                "source": "missing",
+                "state": "missing",
+            })
+
+        return sorted(items, key=lambda x: x["name"].lower())
 
     @staticmethod
     def uninstall_by_name(name: str) -> bool:

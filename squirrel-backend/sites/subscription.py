@@ -3,21 +3,31 @@ from sites.subscription_origin import BaseSubscription
 from sites.subscription_registry import SubscriptionRegistry
 
 
-class SubscriptionFactory:
+class SubscriptionFactory:  # deprecated shim
 
     @classmethod
     def create_subscription(cls, url: str) -> BaseSubscription:
-        parsed_url = urlparse(url)
-        domain_parts = parsed_url.netloc.split('.')
+        from crawl import SubscriptionFactory as SdkSubscriptionFactory  # type: ignore
 
-        for i in range(len(domain_parts) - 1):
-            current_domain = '.'.join(domain_parts[i:])
-            channel_class = SubscriptionRegistry.get_channel_class(current_domain)
-            if channel_class:
-                return channel_class(url)
+        # Fallback to legacy registry if SDK cannot resolve
+        try:
+            return SdkSubscriptionFactory.create_subscription(url)  # type: ignore[return-value]
+        except Exception:
+            parsed_url = urlparse(url)
+            domain_parts = parsed_url.netloc.split('.')
 
-        raise ValueError(f"Unsupported url: {url}")
+            for i in range(len(domain_parts) - 1):
+                current_domain = '.'.join(domain_parts[i:])
+                channel_class = SubscriptionRegistry.get_channel_class(current_domain)
+                if channel_class:
+                    return channel_class(url)
+
+            raise ValueError(f"Unsupported url: {url}")
 
     @classmethod
     def get_supported_domains(cls) -> list[str]:
-        return SubscriptionRegistry.get_supported_domains()
+        try:
+            from crawl import SubscriptionFactory as SdkSubscriptionFactory  # type: ignore
+            return SdkSubscriptionFactory.get_supported_domains()  # type: ignore[return-value]
+        except Exception:
+            return SubscriptionRegistry.get_supported_domains()

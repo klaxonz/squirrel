@@ -10,8 +10,7 @@ from schemas.video.request.video import SortBy, DownloadVideoRequest
 from services import video_service, subscription_video_service, subscription_service
 from typing import List
 from core.site_catalog import SiteCatalog
-from sites.downloader import DownloaderFactory
-from sites.meta import VideoFactory
+from crawl import VideoFactory, DownloaderFactory, ProxyRegistry, SubtitlesRegistry, MpdRegistry
 from utils.jwt_helper import get_current_user
 
 logger = logging.getLogger()
@@ -147,8 +146,10 @@ def play_video(request: Request, video_id: int):
 @router.get("/api/video/proxy")
 async def proxy_video(domain: str, url: str, request: Request):
     """代理视频文件，用于解决跨域问题"""
-    from sites.proxy import ProxyFactory
-    proxy = ProxyFactory.create_proxy(domain, request)
+    proxy_cls = ProxyRegistry.get_proxy_class(domain)
+    if not proxy_cls:
+        raise HTTPException(status_code=400, detail=f"Unsupported proxy domain: {domain}")
+    proxy = proxy_cls(request)
     return await proxy.handle_stream(url)
 
 
@@ -167,8 +168,11 @@ def get_video_subtitles(
         raise HTTPException(status_code=404, detail="Video not found")
 
     try:
-        from sites.subtitles import SubtitlesFactory
-        srt_text, filename = SubtitlesFactory.get_subtitles_for_video(video, lang, fmt)
+        subtitles_provider_cls = SubtitlesRegistry.get_provider_class(extract_top_level_domain(video.url))
+        if not subtitles_provider_cls:
+            raise HTTPException(status_code=400, detail="Subtitles provider not available for this domain")
+        provider = subtitles_provider_cls()
+        srt_text, filename = provider.get_subtitles(video, lang, fmt)
         return PlainTextResponse(
             content=srt_text,
             media_type="text/plain; charset=utf-8",
@@ -201,8 +205,10 @@ def get_video_mpd(
         raise HTTPException(status_code=404, detail="Video not found")
 
     try:
-        from sites.mpd import MpdFactory
-        mpd_xml = MpdFactory.build_mpd_for_video(video)
+        mpd_builder_cls = MpdRegistry.get_mpd_builder_class(extract_top_level_domain(video.url))
+        if not mpd_builder_cls:
+            raise HTTPException(status_code=400, detail="MPD builder not available for this domain")
+        mpd_xml = mpd_builder_cls().build_mpd(video)
         if not mpd_xml:
             raise HTTPException(status_code=500, detail="Failed to build MPD")
         return Response(

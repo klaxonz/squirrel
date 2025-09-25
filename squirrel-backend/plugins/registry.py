@@ -27,7 +27,7 @@ def register_plugin(cls: Type[Plugin]) -> Type[Plugin]:
 
 
 def all_plugin_classes() -> Dict[str, Type[Plugin]]:
-    return _registry.copy()
+    return dict(sorted(_registry.items(), key=lambda item: item[0]))
 
 
 def instantiate_all() -> List[Plugin]:

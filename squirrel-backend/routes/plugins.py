@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, File, UploadFile
 
 from services.plugin_service import PluginService
 from plugins.loader import reload_plugins
@@ -9,14 +9,19 @@ router = APIRouter(prefix="/api/plugins", tags=["plugins"])
 
 
 @router.post("/install")
-def install_plugin(payload: dict = Body(...)):
-    url = payload.get("url", "")
-    if not isinstance(url, str) or not url.strip():
-        return param_error("url is required")
-    ok, data_or_err = PluginService.install_from_zip(url)
+def install_plugin(file: UploadFile = File(...)):
+    filename = (file.filename or "plugin.zip").lower()
+    if not filename.endswith(".zip"):
+        return param_error("file must be a zip archive")
+    ok, data_or_err = PluginService.install_from_upload(file)
     if ok:
         return success(data_or_err, msg="installed")
     return error(data_or_err or "install failed")
+
+
+@router.get("/")
+def list_plugins():
+    return success(PluginService.list_plugins())
 
 
 @router.post("/{name}/enable")

@@ -36,13 +36,119 @@ def _iter_namespace_packages(package_names: List[str]) -> None:
                     logger.debug("[plugins] skip import %s", m.name)
 
 
-def _extend_sys_path_for_external(external_dir: Path) -> None:
+def _extend_sys_path_for_external(external_dir: Path) -> List[Path]:
     import sys
+
+    added_roots: List[Path] = []
     if not external_dir.exists():
+        return added_roots
+
+    def _ensure(path: Path) -> None:
+        path_str = str(path)
+        if path_str not in sys.path:
+            sys.path.append(path_str)
+
+    for child in external_dir.iterdir():
+        if not child.is_dir():
+            continue
+        if child not in added_roots:
+            added_roots.append(child)
+        src_path = child / "src"
+        if src_path.is_dir():
+            _ensure(src_path)
+            added_roots.append(src_path)
+        else:
+            _ensure(child)
+            added_roots.append(child)
+
+    return added_roots
+
+
+def _auto_register_plugin(module) -> None:
+    try:
+        from plugins.registry import register_plugin
+    except Exception:
         return
-    path_str = str(external_dir)
-    if path_str not in sys.path:
-        sys.path.append(path_str)
+
+    name = getattr(module, "PLUGIN_NAME", None)
+    if not isinstance(name, str) or not name:
+        return
+
+    if hasattr(module, "PLUGIN_REGISTERED"):
+        return
+
+    version = getattr(module, "PLUGIN_VERSION", "0.0.0")
+    description = getattr(module, "PLUGIN_DESCRIPTION", "")
+
+    plugin_cls = type(
+        f"{name.title().replace('-', '_')}Plugin",
+        (),
+        {
+            "name": name,
+            "version": version,
+            "description": description,
+        }
+    )
+
+    try:
+        register_plugin(plugin_cls)
+    except Exception as exc:
+        logger.error("[plugins] auto-register failed for %s: %s", name, exc)
+        return
+
+    setattr(module, "PLUGIN_REGISTERED", True)
+
+
+def _import_external_modules(search_roots: List[Path]) -> None:
+    for root in search_roots:
+        try:
+            for module_info in pkgutil.iter_modules([str(root)]):
+                name = module_info.name
+                try:
+                    logger.info("[plugins] importing external module: %s", name)
+                    module = importlib.import_module(name)
+                    logger.info("[plugins] imported external module: %s", name)
+                    _auto_register_plugin(module)
+                except Exception:
+                    logger.exception("[plugins] failed to import external module: %s", name)
+        except Exception:
+            logger.exception("[plugins] failed to scan %s", root)
+
+
+def _import_entrypoint_modules(group_names: List[str]) -> None:
+    """Import modules advertised via package entry points.
+
+    This is how external packages (installed via pip) make their plugins known.
+    Importing the modules is sufficient to trigger class registration in SDK
+    registries.
+    """
+    try:
+        from importlib.metadata import entry_points
+    except Exception:
+        try:
+            # Python <3.10 backport
+            from importlib_metadata import entry_points  # type: ignore
+        except Exception:
+            return
+
+    try:
+        eps = entry_points()
+        for group in group_names:
+            # Both new and old APIs are handled by .select if available
+            items = getattr(eps, "select", None)
+            if callable(items):
+                matches = eps.select(group=group)
+            else:
+                matches = eps.get(group, [])  # type: ignore[attr-defined]
+            for ep in matches:
+                try:
+                    ep.load()
+                except Exception:
+                    logger.debug("[plugins] skip entry point load %s", getattr(ep, "name", ep))
+    except Exception:
+        logger.debug("[plugins] entry point discovery failed", exc_info=True)
+
+
 
 
 def init_plugins() -> None:
@@ -62,10 +168,19 @@ def init_plugins() -> None:
     external_dir = base_dir / "plugins_ext"
 
     # add external dir to sys.path and import modules if it contains any packages
-    _extend_sys_path_for_external(external_dir)
+    external_roots = _extend_sys_path_for_external(external_dir)
 
     # import packages to trigger registrations
     _iter_namespace_packages([builtin_pkg, internal_pkg])
+    # import external plugin entry points (both app and crawl/site plugins)
+    _import_entrypoint_modules([
+        "squirrel.plugins",          # app-level plugins (lifecycle)
+        "squirrel.crawl.plugins",    # crawl/site extractor & subscription
+    ])
+
+    # import external packages (non-installed) to trigger registrations
+    if external_roots:
+        _import_external_modules(external_roots)
 
     # Instantiate and run lifecycle hooks
     global _loaded_plugins

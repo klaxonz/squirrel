@@ -52,38 +52,25 @@ class SiteCatalog:
         # best-effort fallback: aggregate domains from various registries
         registries = []
         try:
-            from sites.handler_registry import HandlerRegistry  # type: ignore
-            registries.append(HandlerRegistry)
-        except Exception:
-            pass
-        try:
-            from sites.mpd_registry import MpdRegistry  # type: ignore
-            registries.append(MpdRegistry)
-        except Exception:
-            pass
-        try:
-            from sites.proxy_registry import ProxyRegistry  # type: ignore
-            registries.append(ProxyRegistry)
-        except Exception:
-            pass
-        try:
-            from sites.meta_registry import MetaRegistry  # type: ignore
-            registries.append(MetaRegistry)
-        except Exception:
-            pass
-        try:
-            from sites.subtitles_registry import SubtitlesRegistry  # type: ignore
-            registries.append(SubtitlesRegistry)
-        except Exception:
-            pass
-        try:
-            from sites.subscription_registry import SubscriptionRegistry  # type: ignore
-            registries.append(SubscriptionRegistry)
-        except Exception:
-            pass
-        try:
-            from sites.id_extractor_registry import IdExtractorRegistry  # type: ignore
-            registries.append(IdExtractorRegistry)
+            from crawl import (
+                HandlerRegistry,
+                MpdRegistry,
+                ProxyRegistry,
+                MetaRegistry,
+                SubtitlesRegistry,
+                SubscriptionRegistry,
+                IdExtractorRegistry,
+            )
+
+            registries.extend([
+                HandlerRegistry,
+                MpdRegistry,
+                ProxyRegistry,
+                MetaRegistry,
+                SubtitlesRegistry,
+                SubscriptionRegistry,
+                IdExtractorRegistry,
+            ])
         except Exception:
             pass
 

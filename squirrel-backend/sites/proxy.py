@@ -16,8 +16,7 @@ from core.exceptions.proxy_exceptions import (
     ProxyConfigurationException,
     UnsupportedDomainException
 )
-from sites.proxy_config import ProxyConfigFactory
-from sites.proxy_registry import ProxyRegistry
+from crawl import ProxyConfigProvider, ProxyRegistry, VideoProxyBase
 
 logger = logging.getLogger()
 
@@ -125,7 +124,7 @@ class ConnectionManager:
         return not client.is_closed
 
 
-class VideoProxy:
+class VideoProxy(VideoProxyBase):
     """视频代理基类 - 重构版本"""
 
     domain: Optional[str] = None
@@ -138,8 +137,11 @@ class VideoProxy:
         if not self.domain:
             raise UnsupportedDomainException("unknown")
 
+        provider_cls = ProxyConfigProvider.get(self.domain)  # type: ignore[attr-defined]
+        if not provider_cls:
+            raise ProxyConfigurationException(self.domain, "no proxy config provider")
         try:
-            self.proxy_config = ProxyConfigFactory.create_proxy_config(self.domain)
+            self.proxy_config = provider_cls()
         except Exception as e:
             raise ProxyConfigurationException(self.domain, str(e))
 

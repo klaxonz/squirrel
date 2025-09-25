@@ -93,7 +93,8 @@ import {
   SpeakerWaveIcon,
   ClockIcon,
   ArrowDownTrayIcon,
-  Cog6ToothIcon as CogIcon
+  Cog6ToothIcon as CogIcon,
+  PuzzlePieceIcon,
 } from '@heroicons/vue/24/outline';
 import { useUser } from '../composables/useUser';
 
@@ -137,7 +138,12 @@ const bottomItems = [
     name: '设置',
     path: '/settings',
     icon: CogIcon,
-  }
+  },
+  {
+    name: '插件',
+    path: '/plugins',
+    icon: PuzzlePieceIcon,
+  },
 ];
 
 const toggleCollapse = () => {

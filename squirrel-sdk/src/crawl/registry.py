@@ -4,7 +4,7 @@ from __future__ import annotations
 from threading import RLock
 from typing import Dict, List, Optional, Type
 
-from .interfaces import IExtractor
+from .interfaces import IExtractor, ISubscription
 
 
 class ExtractorRegistry:
@@ -96,6 +96,77 @@ def register_extractor(site_name: str, domains: List[str]):
 
     def decorator(cls: Type[IExtractor]):
         get_extractor_registry().register(site_name, cls, domains)
+        return cls
+
+    return decorator
+
+
+# ---------------- Subscription registry -----------------
+
+
+class SubscriptionRegistry:
+    """Keep track of registered subscription classes by domain and site name."""
+
+    def __init__(self) -> None:
+        self._by_domain: Dict[str, Type[ISubscription]] = {}
+        self._by_site: Dict[str, Type[ISubscription]] = {}
+        self._lock = RLock()
+
+    def register(self, site_name: str, domains: List[str], cls: Type[ISubscription]) -> None:
+        with self._lock:
+            if site_name in self._by_site:
+                raise ValueError(f"Subscription already registered for site: {site_name}")
+            self._by_site[site_name] = cls
+            for d in domains:
+                self._by_domain[d] = cls
+
+    def get_by_domain(self, domain: str) -> Optional[Type[ISubscription]]:
+        return self._by_domain.get(domain)
+
+    def get_by_site(self, site_name: str) -> Optional[Type[ISubscription]]:
+        return self._by_site.get(site_name)
+
+    def get_supported_domains(self) -> List[str]:
+        return list(self._by_domain.keys())
+
+
+_subscription_registry_singleton: Optional[SubscriptionRegistry] = None
+
+
+def get_subscription_registry() -> SubscriptionRegistry:
+    global _subscription_registry_singleton
+    if _subscription_registry_singleton is None:
+        _subscription_registry_singleton = SubscriptionRegistry()
+    return _subscription_registry_singleton
+
+
+class SubscriptionFactory:
+    """Create subscription instances by URL (domain) or site name."""
+
+    @staticmethod
+    def create_subscription(url: str) -> ISubscription:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        # try most specific to least specific by splitting dots
+        parts = domain.split('.')
+        reg = get_subscription_registry()
+        for i in range(len(parts) - 1):
+            d = '.'.join(parts[i:])
+            cls = reg.get_by_domain(d)
+            if cls:
+                return cls(url)  # type: ignore[call-arg]
+        raise ValueError(f"Unsupported url: {url}")
+
+    @staticmethod
+    def get_supported_domains() -> List[str]:
+        return get_subscription_registry().get_supported_domains()
+
+
+def register_subscription(site_name: str, domains: List[str]):
+    def decorator(cls: Type[ISubscription]):
+        get_subscription_registry().register(site_name, domains, cls)
         return cls
 
     return decorator

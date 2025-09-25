@@ -5,7 +5,8 @@ from sqlalchemy import select, func, and_, or_, text
 
 from core.database import get_session
 from schemas.video.dto.video_dto import VideoExtractDto, VideoDto, VideoUrlDto
-from sites.handler import VideoUrlHandlerFactory
+from crawl import VideoUrlHandler, HandlerRegistry
+from core.exceptions.video_exceptions import UnsupportedDomainError
 from models.creator import Creator
 from models.links import VideoCreator, SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
@@ -123,7 +124,10 @@ def get_video_url(video_id: int) -> VideoUrlDto:
     if video_domain is None:
         raise ValueError(f"Invalid video URL: {video.url}")
 
-    handler = VideoUrlHandlerFactory.get_handler(video_domain)
+    handler_cls = HandlerRegistry.get_handler(video_domain)
+    if not handler_cls:
+        raise UnsupportedDomainError(f"No handler found for domain: {video_domain}")
+    handler: VideoUrlHandler = handler_cls()
     return handler.get_video_url(video)
 
 

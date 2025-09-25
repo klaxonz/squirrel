@@ -162,6 +162,31 @@ class IResultHandler(abc.ABC):
     def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:
         ...
 
+
+# ---------------- Subscription (Channel) -----------------
+
+
+class ISubscription(abc.ABC):
+    """Interface for channel/actor subscriptions.
+
+    Implementations should be lightweight and rely only on stdlib and the
+    SDK's pure-Python utilities. Network and heavy logic should live in the
+    plugin package itself.
+    """
+
+    url: str
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+
+    @abc.abstractmethod
+    def get_subscribe_info(self) -> Any:
+        """Return channel metadata; typically a SubscriptionMeta instance."""
+
+    @abc.abstractmethod
+    def get_subscribe_videos(self, extract_all: bool) -> List[str]:
+        """Return a list of video URLs to extract for this subscription."""
+
     @abc.abstractmethod
     def handle_failure(self, task: ExtractionTask, result: ExtractionResult) -> None:
         ...

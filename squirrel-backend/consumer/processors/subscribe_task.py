@@ -8,7 +8,7 @@ from models.links import UserSubscription
 from models.message import Message
 from models.subscription import Subscription
 from services import subscription_service
-from sites.subscription import SubscriptionFactory
+from crawl import SubscriptionFactory
 from mq import mq_consumer
 
 logger = logging.getLogger()

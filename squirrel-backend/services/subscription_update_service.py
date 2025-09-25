@@ -7,7 +7,7 @@ from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from schemas.video.dto.video_dto import VideoExtractDto
 from models.subscription import Subscription
 from services import download_service
-from sites.subscription import SubscriptionFactory
+from crawl import SubscriptionFactory
 
 logger = logging.getLogger()
 
