@@ -4,22 +4,20 @@
 import logging
 from typing import Dict, Any
 
+from crawl import ExtractionTask, ExtractionResult, TaskPriority
 from schemas.video.dto.video_dto import VideoExtractDto
 from models.message import Message
 from mq import mq_consumer
 from common import constants
 from utils import url_helper
 from core.extraction.task_manager import TaskManager
-from core.extraction.cache import RedisCacheManager
 from core.extraction.handlers.video_handler import VideoExtractionHandler
 from core.extraction.base import BaseTaskProcessor
 from core.extraction.factory import get_extractor_factory
-from core.extraction.interfaces import ExtractionTask, TaskPriority
 
 logger = logging.getLogger()
 
 
-cache_manager = RedisCacheManager("video_extract")
 video_handler = VideoExtractionHandler()
 
 # 队列映射配置
@@ -43,7 +41,7 @@ QUEUE_MAPPING = {
 }
 
 # 初始化任务管理器
-task_manager = TaskManager(cache_manager, QUEUE_MAPPING)
+task_manager = TaskManager(QUEUE_MAPPING)
 
 
 # 创建任务处理器
@@ -64,7 +62,6 @@ class VideoTaskProcessor(BaseTaskProcessor):
         """处理任务"""
         extractor = self.extractor_factory.create_extractor(task.url)
         if not extractor:
-            from core.extraction.interfaces import ExtractionResult
             result = ExtractionResult(
                 success=False,
                 error=f"未找到合适的提取器: {task.url}"

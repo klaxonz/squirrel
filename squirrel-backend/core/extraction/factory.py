@@ -4,9 +4,7 @@
 import logging
 from typing import Dict, Optional, List, Type
 from urllib.parse import urlparse
-
-from .interfaces import IExtractor, ExtractionTask
-from .base import BaseExtractor
+from crawl import IExtractor
 
 logger = logging.getLogger()
 

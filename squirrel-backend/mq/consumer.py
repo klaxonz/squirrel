@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
-from typing import Callable, Optional, Dict, Any, List
+from typing import Callable, Optional, Dict, Any
 import inspect
 
 from core.cache import RedisClient
 from .message import MqMessage
+
+
+logger = logging.getLogger()
 
 
 @dataclass
@@ -44,11 +48,26 @@ class RedisStreamConsumer:
         try:
             # MKSTREAM 确保创建 stream
             self._redis.xgroup_create(name=self.stream, groupname=self.options.group, id="$", mkstream=True)
+            logger.info(
+                "已创建 Redis Stream 消费者组 stream=%s group=%s",
+                self.stream,
+                self.options.group,
+            )
         except Exception as e:
             # BUSYGROUP 表示已存在
             if "BUSYGROUP" in str(e):
+                logger.debug(
+                    "Redis Stream 消费者组已存在 stream=%s group=%s",
+                    self.stream,
+                    self.options.group,
+                )
                 return
             # 其他错误抛出
+            logger.exception(
+                "创建 Redis Stream 消费者组失败 stream=%s group=%s",
+                self.stream,
+                self.options.group,
+            )
             raise
 
     def _nack_or_dlq(self, message_id: str, body: Dict[str, Any]) -> None:
@@ -69,8 +88,19 @@ class RedisStreamConsumer:
                 acked = self._redis.xack(self.stream, self.options.group, message_id)
                 if acked:
                     self._redis.xdel(self.stream, message_id)
+                logger.warning(
+                    "消息已发送至 DLQ stream=%s message_id=%s delivery_count=%s dlq=%s",
+                    self.stream,
+                    message_id,
+                    deliveries,
+                    self.options.retry_dlq,
+                )
         except Exception:
-            pass
+            logger.exception(
+                "处理 DLQ 逻辑异常 stream=%s message_id=%s",
+                self.stream,
+                message_id,
+            )
 
     def poll_once(self) -> bool:
         try:
@@ -85,9 +115,19 @@ class RedisStreamConsumer:
                 return False
             # results: List[ (stream, [ (id, fields), ... ]) ]
             for _, messages in results:
+                logger.debug(
+                    "从 stream=%s 读取到 %d 条消息",
+                    self.stream,
+                    len(messages),
+                )
                 for message_id, fields in messages:
                     msg = MqMessage.from_stream_fields(fields)
                     try:
+                        logger.debug(
+                            "开始处理消息 stream=%s message_id=%s",
+                            self.stream,
+                            message_id,
+                        )
                         if self._pass_stream:
                             self.handler(msg.body, self.stream)
                         else:
@@ -96,11 +136,27 @@ class RedisStreamConsumer:
                             acked = self._redis.xack(self.stream, self.options.group, message_id)
                             if acked:
                                 self._redis.xdel(self.stream, message_id)
+                                logger.debug(
+                                    "消息已 ACK 并删除 stream=%s message_id=%s",
+                                    self.stream,
+                                    message_id,
+                                )
                     except Exception:
+                        logger.exception(
+                            "处理消息失败 stream=%s message_id=%s",
+                            self.stream,
+                            message_id,
+                        )
                         # 失败时尝试 DLQ
                         self._nack_or_dlq(message_id, msg.body)
             return True
         except Exception:
+            logger.exception(
+                "轮询消息失败 stream=%s group=%s consumer=%s",
+                self.stream,
+                self.options.group,
+                self.options.consumer_name,
+            )
             time.sleep(0.2)
             return False
 

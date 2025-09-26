@@ -1,39 +1,46 @@
-import http.cookiejar as cookielib
+import os
+from typing import Optional
 
+from crawl import (
+    filter_cookies_to_query_string as sdk_filter_cookies_to_query_string,
+    configure_cookie_file_resolver,
+)
 from core import config
-from utils.url_helper import extract_top_level_domain
+
+
+def resolve_cookie_file_for_url(target_url: str) -> Optional[str]:
+    try:
+        file_path = config.get_cookies_http_file_path()
+    except Exception:
+        return None
+
+    if not file_path:
+        return None
+
+    normalized_path = os.path.normpath(file_path)
+
+    if not os.path.exists(normalized_path):
+        return None
+
+    return normalized_path
+
+
+configure_cookie_file_resolver(resolve_cookie_file_for_url)
 
 
 def filter_cookies_to_query_string(target_url):
-    file_path = config.get_cookies_http_file_path()
-    cj = cookielib.MozillaCookieJar()
-    cj.load(file_path, ignore_discard=True, ignore_expires=True)
-
-    domain = extract_top_level_domain(target_url)
-    filtered_cj = cookielib.CookieJar()
-
-    for cookie in cj:
-        if cookie.domain.endswith(domain):
-            filtered_cj.set_cookie(cookie)
-
-    cookie_strings = [f"{cookie.name}={cookie.value}" for cookie in filtered_cj]
-    cookie_semicolon_string = '; '.join(cookie_strings)
-    return cookie_semicolon_string
+    return sdk_filter_cookies_to_query_string(target_url)
 
 
-def filter_cookies_to_query_string_by_domain(domain):
-    file_path = config.get_cookies_http_file_path()
-    cj = cookielib.MozillaCookieJar()
-    cj.load(file_path, ignore_discard=True, ignore_expires=True)
-    filtered_cj = cookielib.CookieJar()
+def filter_cookies_to_query_string_by_domain(domain_or_url):
+    if not domain_or_url:
+        return ""
 
-    for cookie in cj:
-        if cookie.domain.endswith(domain):
-            filtered_cj.set_cookie(cookie)
+    target_url = domain_or_url
+    if "://" not in target_url:
+        target_url = f"https://{domain_or_url.lstrip('.')}"
 
-    cookie_strings = [f"{cookie.name}={cookie.value}" for cookie in filtered_cj]
-    cookie_semicolon_string = '; '.join(cookie_strings)
-    return cookie_semicolon_string
+    return sdk_filter_cookies_to_query_string(target_url)
 
 
 def json_cookie_to_netscape(cookies: dict, domain_list: list, output_file):

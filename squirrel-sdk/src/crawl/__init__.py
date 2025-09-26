@@ -43,7 +43,7 @@ from .registry import (
     register_subscription,
 )
 from .meta_origin import Video, Actor, SubscriptionMeta
-from .utils import filter_cookies_to_query_string
+from .utils import filter_cookies_to_query_string, configure_cookie_file_resolver
 from .meta_registry import MetaRegistry, register_meta, VideoFactory
 from .handler_interfaces import VideoUrlHandler, HandlerRegistry, register_handler
 from .mpd_interfaces import BaseMpdBuilder, MpdRegistry, register_mpd
@@ -102,6 +102,7 @@ __all__ = [
     "register_subscription",
     # utils
     "filter_cookies_to_query_string",
+    "configure_cookie_file_resolver",
     # meta & factory
     "MetaRegistry",
     "register_meta",

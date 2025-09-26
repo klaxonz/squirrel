@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import http.cookiejar as cookielib
-import os
-from typing import Optional
+from pathlib import Path
+from typing import Callable, Optional
 from urllib.parse import urlparse
 
 
@@ -16,26 +16,64 @@ def _extract_top_level_domain_from_url(target_url: str) -> str:
     return host
 
 
+CookieFileResolver = Callable[[str], Optional[str]]
+
+_cookie_file_resolver: Optional[CookieFileResolver] = None
+
+
+def configure_cookie_file_resolver(resolver: CookieFileResolver) -> None:
+    """Register a callback used to resolve cookie files at runtime."""
+
+    global _cookie_file_resolver
+    _cookie_file_resolver = resolver
+
+
+def _resolve_cookie_file(target_url: str, cookies_file: Optional[str]) -> Optional[Path]:
+    if cookies_file:
+        try:
+            return Path(cookies_file).expanduser()
+        except Exception:
+            return None
+
+    if _cookie_file_resolver is None:
+        return None
+
+    try:
+        resolved_path = _cookie_file_resolver(target_url)
+    except Exception:
+        return None
+
+    if not resolved_path:
+        return None
+
+    try:
+        return Path(resolved_path).expanduser()
+    except Exception:
+        return None
+
+
 def filter_cookies_to_query_string(target_url: str, cookies_file: Optional[str] = None) -> str:
     """Read a Netscape cookie file and return cookies for target domain as a header string.
 
-    The cookie file path is taken from the `SQUIRREL_COOKIES_FILE` environment
-    variable if not explicitly provided.
+    The caller is responsible for providing the cookie file path, either directly
+    or via :func:`configure_cookie_file_resolver`.
     """
-    file_path = cookies_file or os.environ.get("SQUIRREL_COOKIES_FILE")
-    if not file_path or not os.path.exists(file_path):
+    cookie_path = _resolve_cookie_file(target_url, cookies_file)
+
+    if not cookie_path or not cookie_path.is_file():
         return ""
 
-    cj = cookielib.MozillaCookieJar()
+    jar = cookielib.MozillaCookieJar()
+
     try:
-        cj.load(file_path, ignore_discard=True, ignore_expires=True)
+        jar.load(str(cookie_path), ignore_discard=True, ignore_expires=True)
     except Exception:
         return ""
 
     domain = _extract_top_level_domain_from_url(target_url)
     filtered_cj = cookielib.CookieJar()
 
-    for cookie in cj:
+    for cookie in jar:
         try:
             if cookie.domain.endswith(domain):
                 filtered_cj.set_cookie(cookie)

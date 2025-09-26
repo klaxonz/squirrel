@@ -74,53 +74,12 @@ class TaskRouter:
             return None
 
 
-class TaskValidator:
-    """任务验证器"""
-
-    def __init__(self, cache_manager: ICacheManager):
-        self.cache_manager = cache_manager
-
-    def validate_task(self, task: ExtractionTask) -> tuple[bool, Optional[str]]:
-        """验证任务"""
-        # 检查URL格式
-        if not task.url or not task.url.strip():
-            return False, "URL不能为空"
-
-        # 检查是否支持该URL
-        extractor = get_extractor_factory().create_extractor(task.url)
-        if not extractor:
-            return False, f"不支持的URL: {task.url}"
-
-        if not extractor.validate_url(task.url):
-            return False, f"无效的URL格式: {task.url}"
-
-        # 检查是否正在处理
-        cache_key = f"task:processing:{task.url}"
-        if self.cache_manager.exists(cache_key):
-            return False, f"任务正在处理中: {task.url}"
-
-        return True, None
-
-    def mark_processing(self, task: ExtractionTask, ttl: int = 600) -> None:
-        """标记任务为处理中"""
-        cache_key = f"task:processing:{task.url}"
-        self.cache_manager.set(cache_key, task.task_id, ttl)
-
-    def unmark_processing(self, task: ExtractionTask) -> None:
-        """取消处理中标记"""
-        cache_key = f"task:processing:{task.url}"
-        self.cache_manager.delete(cache_key)
-
-
 class TaskManager:
     """任务管理器"""
 
     def __init__(self,
-                 cache_manager: ICacheManager,
                  queue_mapping: Dict[str, Dict[str, str]]):
-        self.cache_manager = cache_manager
         self.router = TaskRouter(queue_mapping)
-        self.validator = TaskValidator(cache_manager)
         self._processors: List[ITaskProcessor] = []
 
     def add_processor(self, processor: ITaskProcessor) -> None:
@@ -150,12 +109,6 @@ class TaskManager:
     def submit_task(self, task: ExtractionTask, is_manual: bool = True) -> tuple[bool, Optional[str]]:
         """提交任务"""
         try:
-            # 验证任务
-            is_valid, error_msg = self.validator.validate_task(task)
-            if not is_valid:
-                return False, error_msg
-
-            # 路由任务
             queue_name = self.router.route_task(task, is_manual)
             if not queue_name:
                 return False, "任务路由失败"
@@ -188,4 +141,3 @@ class TaskManager:
             error_msg = f"处理任务异常: {task.task_id}, error: {str(e)}"
             logger.error(error_msg, exc_info=True)
             return ExtractionResult(success=False, error=error_msg)
-

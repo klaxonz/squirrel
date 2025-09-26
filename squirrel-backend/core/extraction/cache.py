@@ -7,7 +7,7 @@ from typing import Any, Optional
 from datetime import datetime, timedelta
 
 from core.cache import RedisClient
-from .interfaces import ICacheManager
+from core.extraction.task_manager import ICacheManager
 
 logger = logging.getLogger()
 
@@ -88,98 +88,4 @@ class RedisCacheManager(ICacheManager):
         except Exception as e:
             logger.error(f"设置缓存过期时间失败: {key}, error: {e}")
     
-    def get_ttl(self, key: str) -> int:
-        """获取缓存剩余时间"""
-        try:
-            full_key = self._make_key(key)
-            return self.client.ttl(full_key)
-        except Exception as e:
-            logger.error(f"获取缓存TTL失败: {key}, error: {e}")
-            return -1
-    
-    def clear_pattern(self, pattern: str) -> int:
-        """根据模式清除缓存"""
-        try:
-            full_pattern = self._make_key(pattern)
-            keys = self.client.keys(full_pattern)
-            if keys:
-                deleted = self.client.delete(*keys)
-                logger.info(f"清除缓存: {pattern}, 删除数量: {deleted}")
-                return deleted
-            return 0
-        except Exception as e:
-            logger.error(f"清除缓存失败: {pattern}, error: {e}")
-            return 0
 
-
-class MemoryCacheManager(ICacheManager):
-    """基于内存的缓存管理器（用于测试）"""
-    
-    def __init__(self, default_ttl: int = 3600):
-        self._cache = {}
-        self._expire_times = {}
-        self.default_ttl = default_ttl
-    
-    def _is_expired(self, key: str) -> bool:
-        """检查是否过期"""
-        if key not in self._expire_times:
-            return False
-        return datetime.now() > self._expire_times[key]
-    
-    def _cleanup_expired(self, key: str) -> None:
-        """清理过期缓存"""
-        if self._is_expired(key):
-            self._cache.pop(key, None)
-            self._expire_times.pop(key, None)
-    
-    def get(self, key: str) -> Optional[Any]:
-        """获取缓存"""
-        self._cleanup_expired(key)
-        return self._cache.get(key)
-    
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
-        """设置缓存"""
-        self._cache[key] = value
-        ttl = ttl or self.default_ttl
-        self._expire_times[key] = datetime.now() + timedelta(seconds=ttl)
-    
-    def delete(self, key: str) -> None:
-        """删除缓存"""
-        self._cache.pop(key, None)
-        self._expire_times.pop(key, None)
-    
-    def exists(self, key: str) -> bool:
-        """检查缓存是否存在"""
-        self._cleanup_expired(key)
-        return key in self._cache
-    
-    def clear(self) -> None:
-        """清空所有缓存"""
-        self._cache.clear()
-        self._expire_times.clear()
-
-
-# 缓存键常量
-class CacheKeys:
-    """缓存键常量"""
-    
-    # 任务相关
-    TASK_PROCESSING = "task:processing:{url}"
-    TASK_RESULT = "task:result:{task_id}"
-    TASK_PROGRESS = "task:progress:{task_id}"
-    
-    # 提取相关
-    EXTRACT_RESULT = "extract:result:{url}"
-    EXTRACT_METADATA = "extract:metadata:{url}"
-    
-    # 网站相关
-    SITE_CONFIG = "site:config:{site_name}"
-    SITE_COOKIES = "site:cookies:{site_name}"
-    
-    # 限流相关
-    RATE_LIMIT = "rate_limit:{site_name}:{identifier}"
-    
-    @classmethod
-    def format_key(cls, template: str, **kwargs) -> str:
-        """格式化缓存键"""
-        return template.format(**kwargs)

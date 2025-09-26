@@ -3,9 +3,7 @@ from __future__ import annotations
 import re
 from typing import List
 from urllib.parse import urlparse
-
 from bs4 import BeautifulSoup
-
 from crawl import register_subscription, SubscriptionMeta, filter_cookies_to_query_string, request
 
 
@@ -47,7 +45,7 @@ class JavdbSubscription:
             'Cookie': cookies
         }
 
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = request('GET', self.url, headers=headers, timeout=15)
         response.raise_for_status()
 
         parsed_url = urlparse(self.url)

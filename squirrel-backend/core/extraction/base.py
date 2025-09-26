@@ -4,11 +4,7 @@
 import logging
 from typing import List
 from urllib.parse import urlparse
-
-from .interfaces import (
-    IExtractor, ITaskProcessor, IResultHandler,
-    ExtractionTask, ExtractionResult
-)
+from crawl import IExtractor, ExtractionTask, ExtractionResult, ITaskProcessor, IResultHandler
 
 logger = logging.getLogger()
 

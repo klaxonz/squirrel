@@ -21,18 +21,10 @@ from .factory import (
     get_extractor_factory, get_extractor_registry
 )
 
-from .task_manager import TaskManager, TaskRouter, TaskValidator
+from .task_manager import TaskManager, TaskRouter
 
-from .cache import RedisCacheManager, MemoryCacheManager, CacheKeys
+from .cache import RedisCacheManager
 
-
-# 导入所有提取器以确保注册
-from .extractors import (
-    bilibili_extractor,
-    youtube_extractor,
-    pornhub_extractor,
-    javdb_extractor
-)
 
 from .handlers.video_handler import VideoExtractionHandler
 
@@ -45,10 +37,10 @@ __all__ = [
     'get_extractor_factory', 'get_extractor_registry',
     
     # 任务管理
-    'TaskManager', 'TaskRouter', 'TaskValidator',
+    'TaskManager', 'TaskRouter',
     
     # 缓存
-    'RedisCacheManager', 'MemoryCacheManager', 'CacheKeys',
+    'RedisCacheManager',
     
     
     # 处理器

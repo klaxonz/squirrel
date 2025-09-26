@@ -21,8 +21,7 @@ from __future__ import annotations
 
 import abc
 from typing import List
-
-from .interfaces import ExtractionResult, ExtractionTask, IExtractor
+from .interfaces import IExtractor
 from .registry import register_extractor
 
 __all__ = [
