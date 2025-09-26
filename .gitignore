@@ -60,4 +60,4 @@ dist/
 Thumbs.db
 .qoder/
 squirrel-backend/radar.db
-squirrel-backend/plugins_ext/
+/squirrel-backend/plugins_ext/
