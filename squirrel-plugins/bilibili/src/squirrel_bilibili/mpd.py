@@ -3,8 +3,6 @@ from __future__ import annotations
 from xml.etree import ElementTree as ET
 from urllib.parse import quote
 
-import requests
-
 from crawl import BaseMpdBuilder, register_mpd
 from .handler import fetch_html, extract_playinfo_from_html
 

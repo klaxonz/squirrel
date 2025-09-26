@@ -4,13 +4,13 @@ import logging
 import re
 from typing import List
 
-import requests
 from bs4 import BeautifulSoup
 
 from crawl import (
     register_subscription,
     SubscriptionMeta,
     filter_cookies_to_query_string,
+    request,
 )
 from .sign import sign
 
@@ -36,7 +36,7 @@ class BilibiliSubscription:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
             'Cookie': cookies
         }
-        resp = requests.get(self.url, headers=headers, timeout=15)
+        resp = request('GET', self.url, headers=headers, timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, 'html.parser')
 
@@ -75,7 +75,7 @@ class BilibiliSubscription:
         while should_continue:
             query = sign(params)
             req_url = f'https://api.bilibili.com/x/space/wbi/arc/search?{query}'
-            resp = requests.get(req_url, headers=headers, timeout=15)
+            resp = request('GET', req_url, headers=headers, timeout=15)
             if resp.status_code != 200:
                 raise RuntimeError('Request failed')
 

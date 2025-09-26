@@ -5,13 +5,12 @@ from urllib.parse import quote
 import re
 import struct
 
-import requests
 from pytubefix import YouTube
 
-from crawl import BaseMpdBuilder, register_mpd
+from crawl import BaseMpdBuilder, register_mpd, get_http_session
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115 Safari/537.36'
-SESSION = requests.Session()
+SESSION = get_http_session()
 
 
 def _be32(b: bytes, pos: int) -> int:

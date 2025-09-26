@@ -3,10 +3,9 @@ from __future__ import annotations
 import datetime
 from typing import Dict, Optional, Any
 
-import requests
 from bs4 import BeautifulSoup
 
-from crawl import BaseDownloader, register_downloader
+from crawl import BaseDownloader, register_downloader, request
 
 
 @register_downloader
@@ -17,7 +16,7 @@ class JavdbDownloader(BaseDownloader):
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         }
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = request('GET', self.url, headers=headers, timeout=15)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         video_info: Dict[str, Any] = {}

@@ -4,10 +4,9 @@ import re
 from typing import List
 from urllib.parse import urlparse
 
-import requests
 from bs4 import BeautifulSoup
 
-from crawl import register_subscription, SubscriptionMeta, filter_cookies_to_query_string
+from crawl import register_subscription, SubscriptionMeta, filter_cookies_to_query_string, request
 
 
 @register_subscription("javdb", ["javdb.com"])
@@ -21,7 +20,7 @@ class JavdbSubscription:
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Cookie': cookies
         }
-        response = requests.get(self.url, headers=headers, timeout=15)
+        response = request('GET', self.url, headers=headers, timeout=15)
         response.raise_for_status()
 
         bs4 = BeautifulSoup(response.text, 'html.parser')
@@ -64,7 +63,7 @@ class JavdbSubscription:
 
         while current_page < page and extract_all:
             current_page += 1
-            response = requests.get(self.url + f'?page={current_page}&sort_type=0', headers=headers, timeout=15)
+            response = request('GET', self.url + f'?page={current_page}&sort_type=0', headers=headers, timeout=15)
             response.raise_for_status()
             bs4 = BeautifulSoup(response.text, 'html.parser')
 

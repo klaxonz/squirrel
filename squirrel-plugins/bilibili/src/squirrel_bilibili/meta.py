@@ -5,9 +5,7 @@ import logging
 import re
 from typing import Optional
 
-import requests
-
-from crawl import register_meta, Video, Actor, filter_cookies_to_query_string
+from crawl import register_meta, Video, Actor, filter_cookies_to_query_string, request
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +24,7 @@ class BilibiliVideo(Video):
                 'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
             }
 
-            response = requests.get(self.url, headers=headers, timeout=20)
+            response = request('GET', self.url, headers=headers, timeout=20)
             response.raise_for_status()
             match = re.search(r'window\.__INITIAL_STATE__=(\{.*?\});', response.text)
             if match:
@@ -54,7 +52,7 @@ class BilibiliVideo(Video):
                           '(KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
             'Cookie': cookies,
         }
-        response = requests.get(self.url, headers=headers, timeout=20)
+        response = request('GET', self.url, headers=headers, timeout=20)
         return '视频去哪了' not in response.text
 
 

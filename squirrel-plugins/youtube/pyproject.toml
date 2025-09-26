@@ -13,7 +13,6 @@ authors = [{ name = "Squirrel" }]
 dependencies = [
   "squirrel-sdk>=0.1.0",
   "pytubefix>=7.3.0",
-  "requests>=2.31.0",
   "yt-dlp>=2024.3.10",
 ]
 

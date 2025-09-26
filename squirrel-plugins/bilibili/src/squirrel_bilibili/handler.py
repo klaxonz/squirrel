@@ -6,7 +6,6 @@ from abc import ABC
 from typing import List, Optional
 from urllib.parse import quote
 
-import requests
 from botasaurus.request import request as brequest, Request
 
 from crawl import (
@@ -28,6 +27,7 @@ def _fetch_html(req: Request, link: str) -> str:
         'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
         'Cookie': cookies,
     }
+    # botasaurus handles its own throttling; still cap via SDK session for consistency
     resp = req.get(link, headers=headers, timeout=20)
     resp.raise_for_status()
     return resp.text

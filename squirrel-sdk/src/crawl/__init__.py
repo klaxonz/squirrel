@@ -49,6 +49,17 @@ from .handler_interfaces import VideoUrlHandler, HandlerRegistry, register_handl
 from .mpd_interfaces import BaseMpdBuilder, MpdRegistry, register_mpd
 from .subtitles_interfaces import BaseSubtitlesProvider, SubtitlesRegistry, register_subtitles
 from .id_extractor_interfaces import IdExtractor, IdExtractorRegistry, register_extractor as register_id_extractor
+from .http import (
+    RateLimit,
+    RateLimitedSession,
+    RateLimiter,
+    configure_rate_limit,
+    get_http_session,
+    get_rate_limiter,
+    request,
+    get,
+    post,
+)
 from .proxy_interfaces import (
     VideoProxyBase,
     ProxyRegistry,
@@ -121,6 +132,16 @@ __all__ = [
     "DownloaderFactory",
     "get_downloader_factory",
     "register_downloader",
+    # http helpers
+    "RateLimit",
+    "RateLimiter",
+    "RateLimitedSession",
+    "configure_rate_limit",
+    "get_rate_limiter",
+    "get_http_session",
+    "request",
+    "get",
+    "post",
 ]
 
 # Re-export for convenience
