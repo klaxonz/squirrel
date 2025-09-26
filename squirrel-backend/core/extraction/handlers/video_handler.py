@@ -77,19 +77,26 @@ class VideoExtractionHandler(BaseResultHandler):
         """创建或更新视频记录"""
         try:
             data = result.data
+            metadata = result.metadata or {}
+            raw_info = metadata.get('raw_info', {}) if isinstance(metadata, dict) else {}
+
+            if not isinstance(data, Video):
+                logger.error(f"提取结果返回的 data 类型不是 Video: {type(data)}")
+                return None
+
             with get_session():
                 # 检查视频是否已存在
                 video = video_service.get_video_by_url(task.url)
 
                 if not video:
                     # 创建新视频
-                    publish_date = datetime.fromtimestamp(data.publish_date)
+                    publish_date = self._resolve_publish_date(data, raw_info)
                     video = video_service.create_video(
                         task.url,
-                        data.title,
+                        data.title or raw_info.get('title') or task.url,
                         publish_date,
-                        data.thumbnail,
-                        data.duration
+                        data.thumbnail or raw_info.get('thumbnail'),
+                        data.duration or raw_info.get('duration')
                     )
 
                 # 创建订阅-视频关联
@@ -102,7 +109,7 @@ class VideoExtractionHandler(BaseResultHandler):
                     self._increment_subscription_total_videos(subscription_id)
 
                 # 处理演员信息
-                self._process_actors(video, video_meta)
+                self._process_actors(video, data)
 
                 return video
 
@@ -145,6 +152,34 @@ class VideoExtractionHandler(BaseResultHandler):
                 session.commit()
         except Exception as e:
             logger.warning(f"更新订阅总视频数失败: {subscription_id}, error: {e}")
+
+    def _resolve_publish_date(self, video_meta: Video, raw_info: Dict[str, Any]):
+        """根据 Video 对象和原始信息推断发布时间"""
+        try:
+            timestamp = raw_info.get('timestamp')
+            if isinstance(timestamp, (int, float)):
+                return datetime.fromtimestamp(int(timestamp))
+
+            upload_date = getattr(video_meta, 'upload_date', None) or raw_info.get('upload_date')
+            if upload_date:
+                for fmt in ('%Y%m%d', '%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d'):
+                    try:
+                        return datetime.strptime(upload_date, fmt)
+                    except ValueError:
+                        continue
+
+            release_date = raw_info.get('release_date') or raw_info.get('publish_date')
+            if release_date:
+                for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d'):
+                    try:
+                        return datetime.strptime(release_date, fmt)
+                    except ValueError:
+                        continue
+
+        except Exception as e:
+            logger.debug(f"解析发布时间失败，使用当前时间: {e}")
+
+        return datetime.utcnow()
 
     def _create_download_task(self, video):
         """创建下载任务"""

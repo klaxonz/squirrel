@@ -39,26 +39,19 @@ class VideoExtractor(BaseExtractor):
                     error="不支持播放列表URL"
                 )
             
-            # 创建视频元数据
+            # 创建视频元数据（Video 对象）
             video_meta = self._create_video_meta(task.url, video_info)
-            
-            # 构建结果
-            result_data = {
-                'video_info': video_info,
-                'video_meta': video_meta.__dict__ if hasattr(video_meta, '__dict__') else video_meta,
+
+            metadata = {
                 'site_name': self.site_name,
-                'url': task.url
+                'raw_info': video_info,
+                'url': task.url,
             }
-            
+
             return ExtractionResult(
                 success=True,
-                data=result_data,
-                metadata={
-                    'duration': video_info.get('duration'),
-                    'title': video_info.get('title'),
-                    'uploader': video_info.get('uploader'),
-                    'upload_date': video_info.get('upload_date')
-                }
+                data=video_meta,
+                metadata=metadata,
             )
             
         except Exception as e:

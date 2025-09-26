@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import abc
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 # Public API of this module is stable – add to __all__ in parent __init__.
 
@@ -49,8 +49,6 @@ class VideoMeta:
     extra_data: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        from dataclasses import asdict
-
         return asdict(self)
 
     @classmethod
@@ -61,29 +59,66 @@ class VideoMeta:
 # ---------------- Result / Task -----------------
 
 
+VideoData = Union[VideoMeta, "Video", Dict[str, Any]]
+
+
 @dataclass
 class ExtractionResult:
     """Outcome of a task (either success or failure)."""
 
     success: bool
-    data: Optional[VideoMeta] = None
+    data: Optional[VideoData] = None
     error: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
     # -------------------- convenience --------------------
     def to_dict(self) -> Dict[str, Any]:
-        from dataclasses import asdict
+        payload: Dict[str, Any] = {
+            "success": self.success,
+            "data": None,
+            "error": self.error,
+            "metadata": self.metadata,
+        }
 
-        d = asdict(self)
-        if isinstance(self.data, VideoMeta):
-            d["data"] = self.data.to_dict()
-        return d
+        data_obj = self.data
+        if data_obj is None:
+            payload["data"] = None
+        elif isinstance(data_obj, VideoMeta):
+            payload["data"] = data_obj.to_dict()
+            payload.setdefault("metadata", {})
+            payload["metadata"]["data_type"] = "VideoMeta"
+        elif hasattr(data_obj, "to_dict") and callable(getattr(data_obj, "to_dict")):
+            payload["data"] = data_obj.to_dict()
+            payload.setdefault("metadata", {})
+            payload["metadata"].setdefault("data_type", data_obj.__class__.__name__)
+        elif hasattr(data_obj, "__dict__"):
+            payload["data"] = dict(data_obj.__dict__)
+            payload.setdefault("metadata", {})
+            payload["metadata"].setdefault("data_type", data_obj.__class__.__name__)
+        else:
+            payload["data"] = data_obj
+
+        return payload
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ExtractionResult":
-        if "data" in data and isinstance(data["data"], dict):
-            data["data"] = VideoMeta.from_dict(data["data"])
-        return cls(**data)
+        data_payload = data.get("data")
+        metadata = data.get("metadata") or {}
+        data_type = metadata.get("data_type")
+
+        if data_payload is None:
+            resolved_data = None
+        elif data_type == "VideoMeta" and isinstance(data_payload, dict):
+            resolved_data = VideoMeta.from_dict(data_payload)
+        else:
+            resolved_data = data_payload
+
+        return cls(
+            success=data.get("success", False),
+            data=resolved_data,
+            error=data.get("error"),
+            metadata=metadata if metadata else None,
+        )
 
 
 @dataclass
