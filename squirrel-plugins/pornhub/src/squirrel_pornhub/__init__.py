@@ -4,6 +4,7 @@ from .handler import PornhubHandler  # noqa: F401
 from .subscription import PornhubSubscription  # noqa: F401
 from .id_extractor import PornhubIdExtractor  # noqa: F401
 from .meta import PornhubVideo  # noqa: F401
+from .extractor import PornhubExtractor  # noqa: F401
 
 
 PLUGIN_NAME = "pornhub"

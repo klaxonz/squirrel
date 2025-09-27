@@ -2,24 +2,29 @@
 YouTube视频提取器
 """
 import logging
-from typing import List
+from typing import Optional, Dict, Any
+from yt_dlp import YoutubeDL
 
-from ..factory import register_extractor
-from .base_extractor import YoutubeDLExtractor
+from crawl import (
+    YoutubeDLExtractorBase,
+    register_extractor,
+    ExtractionTask,
+    ExtractionResult,
+)
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @register_extractor('youtube', ['youtube.com', 'youtu.be'])
-class YoutubeExtractor(YoutubeDLExtractor):
+class YoutubeExtractor(YoutubeDLExtractorBase):
     """YouTube视频提取器"""
     
     def __init__(self):
         super().__init__('youtube', ['youtube.com', 'youtu.be'])
     
-    def validate_url(self, url: str) -> bool:
-        """验证YouTube URL格式"""
-        if not super().validate_url(url):
+    def can_handle(self, url: str) -> bool:
+        """检查是否可以处理该URL"""
+        if not self.validate_url(url):
             return False
         
         # YouTube特定的URL验证
@@ -30,23 +35,39 @@ class YoutubeExtractor(YoutubeDLExtractor):
             'm.youtube.com'
         ])
     
-    def _get_video_info(self, url: str, queue_name: str = None):
-        """获取YouTube视频信息"""
+    def extract(self, task: ExtractionTask) -> ExtractionResult:
+        """执行提取任务"""
+        return self.extract_video_info(task)
+    
+    def _extract_with_ytdlp(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
+        """使用yt-dlp获取YouTube视频信息"""
         try:
             logger.debug(f"开始提取YouTube视频信息: {url}")
             
             # YouTube不使用Cookie文件
-            video_info = super()._get_video_info(url, None)
+            ydl_opts = self._build_ytdlp_opts(url, None)
             
-            if video_info:
-                # YouTube特定的信息处理
-                self._process_youtube_info(video_info)
-            
-            return video_info
-            
+            with YoutubeDL(ydl_opts) as ydl:
+                video_info = ydl.extract_info(url, download=False)
+                
+                if video_info:
+                    # YouTube特定的信息处理
+                    self._process_youtube_info(video_info)
+                
+                return video_info
+                
         except Exception as e:
             logger.error(f"YouTube视频信息提取失败: {url}, error: {e}")
             return None
+    
+    def _build_ytdlp_opts(self, url: str, queue_name: str = None) -> Dict[str, Any]:
+        """构建yt-dlp选项"""
+        ydl_opts: Dict[str, Any] = {
+            'quiet': True,
+            'skip_download': True,
+        }
+        # YouTube通常不需要额外的配置
+        return ydl_opts
     
     def _process_youtube_info(self, video_info: dict) -> None:
         """处理YouTube特定信息"""
@@ -81,6 +102,3 @@ class YoutubeExtractor(YoutubeDLExtractor):
             
         except Exception as e:
             logger.warning(f"处理YouTube特定信息失败: {e}")
-
-
-# 自动注册提取器（通过装饰器已经完成）

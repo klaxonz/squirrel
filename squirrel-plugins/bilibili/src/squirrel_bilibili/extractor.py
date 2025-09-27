@@ -2,22 +2,31 @@
 Bilibili视频提取器
 """
 import logging
-from ..factory import register_extractor
-from .base_extractor import YoutubeDLExtractor
+from typing import Optional, Dict, Any
+from yt_dlp import YoutubeDL
 
-logger = logging.getLogger()
+from crawl import (
+    VideoExtractorBase, 
+    YoutubeDLExtractorBase,
+    register_extractor,
+    ExtractionTask,
+    ExtractionResult,
+    filter_cookies_to_query_string
+)
+
+logger = logging.getLogger(__name__)
 
 
 @register_extractor('bilibili', ['bilibili.com'])
-class BilibiliExtractor(YoutubeDLExtractor):
+class BilibiliExtractor(YoutubeDLExtractorBase):
     """Bilibili视频提取器"""
     
     def __init__(self):
         super().__init__('bilibili', ['bilibili.com'])
     
-    def validate_url(self, url: str) -> bool:
-        """验证Bilibili URL格式"""
-        if not super().validate_url(url):
+    def can_handle(self, url: str) -> bool:
+        """检查是否可以处理该URL"""
+        if not self.validate_url(url):
             return False
         
         # Bilibili特定的URL验证
@@ -28,21 +37,42 @@ class BilibiliExtractor(YoutubeDLExtractor):
             'b23.tv'
         ])
     
-    def _get_video_info(self, url: str, queue_name: str = None):
-        """获取Bilibili视频信息"""
+    def extract(self, task: ExtractionTask) -> ExtractionResult:
+        """执行提取任务"""
+        return self.extract_video_info(task)
+    
+    def _extract_with_ytdlp(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
+        """使用yt-dlp获取Bilibili视频信息"""
         try:
             logger.debug(f"开始提取Bilibili视频信息: {url}")
-            video_info = super()._get_video_info(url, queue_name)
             
-            if video_info:
-                # Bilibili特定的信息处理
-                self._process_bilibili_info(video_info)
+            ydl_opts = self._build_ytdlp_opts(url, queue_name)
             
-            return video_info
-            
+            with YoutubeDL(ydl_opts) as ydl:
+                video_info = ydl.extract_info(url, download=False)
+                
+                if video_info:
+                    # Bilibili特定的信息处理
+                    self._process_bilibili_info(video_info)
+                
+                return video_info
+                
         except Exception as e:
             logger.error(f"Bilibili视频信息提取失败: {url}, error: {e}")
             return None
+    
+    def _build_ytdlp_opts(self, url: str, queue_name: str = None) -> Dict[str, Any]:
+        """构建yt-dlp选项"""
+        cookies = filter_cookies_to_query_string(url)
+        ydl_opts: Dict[str, Any] = {
+            'quiet': True,
+            'skip_download': True,
+        }
+        
+        if cookies:
+            ydl_opts['cookie'] = cookies
+            
+        return ydl_opts
     
     def _process_bilibili_info(self, video_info: dict) -> None:
         """处理Bilibili特定信息"""
@@ -67,6 +97,3 @@ class BilibiliExtractor(YoutubeDLExtractor):
             
         except Exception as e:
             logger.warning(f"处理Bilibili特定信息失败: {e}")
-
-
-# 自动注册提取器（通过装饰器已经完成）

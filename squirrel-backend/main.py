@@ -11,6 +11,7 @@ from controllers.worker_controller import worker_start, worker_stop
 from routes.base import app
 from services.system_config_service import get_bool
 from plugins.loader import app_stop
+from core.extraction import initialize_plugin_bridge
 
 logger = logging.getLogger()
 
@@ -33,6 +34,10 @@ def start_fastapi_server():
 def main():
     upgrade_database()
     init_logging()
+    
+    # 初始化插件桥接器
+    logger.info('Initializing plugin bridge...')
+    initialize_plugin_bridge()
     enable_worker = get_bool(SYS_ENABLE_WORKER, True)
     enable_scheduler = get_bool(SYS_ENABLE_SCHEDULER, True)
     if enable_worker:

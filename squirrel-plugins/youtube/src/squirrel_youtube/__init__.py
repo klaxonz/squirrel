@@ -8,6 +8,7 @@ from .id_extractor import YoutubeIdExtractor  # noqa: F401
 from .meta import YoutubeVideo  # noqa: F401
 from .mpd import YouTubeMpdBuilder  # noqa: F401
 from .subtitles import YoutubeSubtitlesProvider  # noqa: F401
+from .extractor import YoutubeExtractor  # noqa: F401
 
 
 PLUGIN_NAME = "youtube"

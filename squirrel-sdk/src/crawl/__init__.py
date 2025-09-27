@@ -38,6 +38,7 @@ from .registry import (
     ExtractorRegistry,
     register_extractor,
     get_extractor_factory,
+    get_extractor_registry,
     SubscriptionRegistry,
     SubscriptionFactory,
     register_subscription,
@@ -75,6 +76,10 @@ from .downloader_interfaces import (
     get_downloader_factory,
     register_downloader,
 )
+from .video_extractor_base import (
+    VideoExtractorBase,
+    YoutubeDLExtractorBase,
+)
 
 __all__ = [
     "__version__",
@@ -95,6 +100,7 @@ __all__ = [
     "ExtractorRegistry",
     "register_extractor",
     "get_extractor_factory",
+    "get_extractor_registry",
     "BaseExtractor",
     # subscription
     "SubscriptionRegistry",
@@ -133,6 +139,9 @@ __all__ = [
     "DownloaderFactory",
     "get_downloader_factory",
     "register_downloader",
+    # video extractor bases
+    "VideoExtractorBase",
+    "YoutubeDLExtractorBase",
     # http helpers
     "RateLimit",
     "RateLimiter",

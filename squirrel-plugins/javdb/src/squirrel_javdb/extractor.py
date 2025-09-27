@@ -2,26 +2,29 @@
 JavDB视频提取器
 """
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 
-from ..factory import register_extractor
-from .base_extractor import VideoExtractor
-from ..interfaces import ExtractionTask, ExtractionResult
-from sites.javdb.downloader import JavdbDownloader
+from crawl import (
+    VideoExtractorBase,
+    register_extractor,
+    ExtractionTask,
+    ExtractionResult,
+)
+from .downloader import JavdbDownloader
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @register_extractor('javdb', ['javdb.com'])
-class JavdbExtractor(VideoExtractor):
+class JavdbExtractor(VideoExtractorBase):
     """JavDB视频提取器"""
     
     def __init__(self):
         super().__init__('javdb', ['javdb.com'])
     
-    def validate_url(self, url: str) -> bool:
-        """验证JavDB URL格式"""
-        if not super().validate_url(url):
+    def can_handle(self, url: str) -> bool:
+        """检查是否可以处理该URL"""
+        if not self.validate_url(url):
             return False
         
         # JavDB特定的URL验证
@@ -29,6 +32,10 @@ class JavdbExtractor(VideoExtractor):
             'javdb.com/v/',
             'javdb.com/video/'
         ])
+    
+    def extract(self, task: ExtractionTask) -> ExtractionResult:
+        """执行提取任务"""
+        return self.extract_video_info(task)
     
     def _get_video_info(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
         """获取JavDB视频信息"""
@@ -95,6 +102,3 @@ class JavdbExtractor(VideoExtractor):
             
         except Exception as e:
             logger.warning(f"处理JavDB特定信息失败: {e}")
-
-
-# 自动注册提取器（通过装饰器已经完成）
