@@ -5,12 +5,13 @@ import logging
 from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
 
-from .interfaces import ExtractionTask, ExtractionResult, VideoMeta
+from .interfaces import ExtractionTask, ExtractionResult, VideoMeta, IExtractor
+from .meta_registry import VideoFactory
 
 logger = logging.getLogger(__name__)
 
 
-class VideoExtractorBase(ABC):
+class VideoExtractorBase(IExtractor, ABC):
     """视频提取器基类，提供通用的视频提取功能"""
     
     def __init__(self, site_name: str, supported_domains: List[str]):
@@ -20,6 +21,14 @@ class VideoExtractorBase(ABC):
     def validate_url(self, url: str) -> bool:
         """验证URL是否受支持"""
         return any(domain in url.lower() for domain in self.supported_domains)
+    
+    def can_handle(self, url: str) -> bool:
+        """检查是否可以处理该URL - 基础实现使用validate_url"""
+        return self.validate_url(url)
+    
+    def extract(self, task: ExtractionTask) -> ExtractionResult:
+        """实现IExtractor接口的extract方法"""
+        return self.extract_video_info(task)
     
     def extract_video_info(self, task: ExtractionTask) -> ExtractionResult:
         """执行视频信息提取"""
@@ -39,12 +48,12 @@ class VideoExtractorBase(ABC):
                     error="不支持播放列表URL"
                 )
             
-            # 创建视频元数据
-            video_meta = self._create_video_meta(task.url, video_info)
+            # 创建视频实例
+            video = self._create_video(task.url, video_info)
 
             return ExtractionResult(
                 success=True,
-                data=video_meta,
+                data=video,
             )
             
         except Exception as e:
@@ -59,30 +68,12 @@ class VideoExtractorBase(ABC):
         """获取视频信息 - 子类必须实现"""
         pass
     
-    def _create_video_meta(self, url: str, video_info: Dict[str, Any]) -> VideoMeta:
-        """创建视频元数据"""
+    def _create_video(self, url: str, video_info: Dict[str, Any]):
+        """创建视频实例，使用VideoFactory根据URL域名创建对应的Video子类"""
         try:
-            title = video_info.get('title', 'Unknown')
-            thumbnail = video_info.get('thumbnail')
-            duration = video_info.get('duration')
-            
-            # 处理发布日期
-            publish_date = None
-            if 'upload_date' in video_info:
-                publish_date = video_info['upload_date']
-            elif 'timestamp' in video_info:
-                publish_date = video_info['timestamp']
-            
-            return VideoMeta(
-                title=title,
-                url=url,
-                thumbnail=thumbnail,
-                duration=duration,
-                publish_date=publish_date,
-                extra_data=video_info
-            )
+            return VideoFactory.create_video(url, video_info)
         except Exception as e:
-            logger.error(f"创建视频元数据失败: {url}, error: {e}")
+            logger.error(f"创建视频实例失败: {url}, error: {e}")
             raise
     
     def _is_playlist(self, video_info: Dict[str, Any]) -> bool:

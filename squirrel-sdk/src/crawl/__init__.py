@@ -29,6 +29,8 @@ from .interfaces import (
     ExtractionTask,
     ExtractionResult,
     VideoMeta,
+    Video,
+    Actor,
     IExtractor,
     ITaskProcessor,
     IResultHandler,
@@ -43,7 +45,7 @@ from .registry import (
     SubscriptionFactory,
     register_subscription,
 )
-from .meta_origin import Video, Actor, SubscriptionMeta
+from .meta_origin import SubscriptionMeta
 from .utils import filter_cookies_to_query_string, configure_cookie_file_resolver
 from .meta_registry import MetaRegistry, register_meta, VideoFactory
 from .handler_interfaces import VideoUrlHandler, HandlerRegistry, register_handler

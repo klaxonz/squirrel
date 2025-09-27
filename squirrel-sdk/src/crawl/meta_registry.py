@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Optional, Type
 
-from .meta_origin import Video
+from .interfaces import Video
 
 
 class MetaRegistry:
