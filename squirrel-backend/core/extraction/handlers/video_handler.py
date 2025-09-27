@@ -77,8 +77,6 @@ class VideoExtractionHandler(BaseResultHandler):
         """创建或更新视频记录"""
         try:
             data = result.data
-            metadata = result.metadata or {}
-            raw_info = metadata.get('raw_info', {}) if isinstance(metadata, dict) else {}
 
             if not isinstance(data, Video):
                 logger.error(f"提取结果返回的 data 类型不是 Video: {type(data)}")
@@ -90,13 +88,13 @@ class VideoExtractionHandler(BaseResultHandler):
 
                 if not video:
                     # 创建新视频
-                    publish_date = self._resolve_publish_date(data, raw_info)
+                    publish_date = self._resolve_publish_date(data)
                     video = video_service.create_video(
                         task.url,
-                        data.title or raw_info.get('title') or task.url,
+                        data.title or task.url,
                         publish_date,
-                        data.thumbnail or raw_info.get('thumbnail'),
-                        data.duration or raw_info.get('duration')
+                        data.thumbnail,
+                        data.duration
                     )
 
                 # 创建订阅-视频关联
@@ -153,26 +151,19 @@ class VideoExtractionHandler(BaseResultHandler):
         except Exception as e:
             logger.warning(f"更新订阅总视频数失败: {subscription_id}, error: {e}")
 
-    def _resolve_publish_date(self, video_meta: Video, raw_info: Dict[str, Any]):
-        """根据 Video 对象和原始信息推断发布时间"""
+    def _resolve_publish_date(self, video_meta: Video):
+        """根据 Video 对象推断发布时间"""
         try:
-            timestamp = raw_info.get('timestamp')
-            if isinstance(timestamp, (int, float)):
-                return datetime.fromtimestamp(int(timestamp))
-
-            upload_date = getattr(video_meta, 'upload_date', None) or raw_info.get('upload_date')
+            # 直接使用 Video 对象的 publish_date，如果没有则使用当前时间
+            publish_date = getattr(video_meta, 'publish_date', None)
+            if publish_date:
+                return publish_date
+                
+            upload_date = getattr(video_meta, 'upload_date', None)
             if upload_date:
                 for fmt in ('%Y%m%d', '%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d'):
                     try:
-                        return datetime.strptime(upload_date, fmt)
-                    except ValueError:
-                        continue
-
-            release_date = raw_info.get('release_date') or raw_info.get('publish_date')
-            if release_date:
-                for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d'):
-                    try:
-                        return datetime.strptime(release_date, fmt)
+                        return datetime.strptime(str(upload_date), fmt)
                     except ValueError:
                         continue
 

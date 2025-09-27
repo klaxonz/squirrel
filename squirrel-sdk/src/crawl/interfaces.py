@@ -69,7 +69,6 @@ class ExtractionResult:
     success: bool
     data: Optional[VideoData] = None
     error: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
 
     # -------------------- convenience --------------------
     def to_dict(self) -> Dict[str, Any]:
@@ -77,7 +76,6 @@ class ExtractionResult:
             "success": self.success,
             "data": None,
             "error": self.error,
-            "metadata": self.metadata,
         }
 
         data_obj = self.data
@@ -85,16 +83,10 @@ class ExtractionResult:
             payload["data"] = None
         elif isinstance(data_obj, VideoMeta):
             payload["data"] = data_obj.to_dict()
-            payload.setdefault("metadata", {})
-            payload["metadata"]["data_type"] = "VideoMeta"
         elif hasattr(data_obj, "to_dict") and callable(getattr(data_obj, "to_dict")):
             payload["data"] = data_obj.to_dict()
-            payload.setdefault("metadata", {})
-            payload["metadata"].setdefault("data_type", data_obj.__class__.__name__)
         elif hasattr(data_obj, "__dict__"):
             payload["data"] = dict(data_obj.__dict__)
-            payload.setdefault("metadata", {})
-            payload["metadata"].setdefault("data_type", data_obj.__class__.__name__)
         else:
             payload["data"] = data_obj
 
@@ -117,7 +109,6 @@ class ExtractionResult:
             success=data.get("success", False),
             data=resolved_data,
             error=data.get("error"),
-            metadata=metadata if metadata else None,
         )
 
 

@@ -42,16 +42,9 @@ class VideoExtractor(BaseExtractor):
             # 创建视频元数据（Video 对象）
             video_meta = self._create_video_meta(task.url, video_info)
 
-            metadata = {
-                'site_name': self.site_name,
-                'raw_info': video_info,
-                'url': task.url,
-            }
-
             return ExtractionResult(
                 success=True,
                 data=video_meta,
-                metadata=metadata,
             )
             
         except Exception as e:
