@@ -113,7 +113,7 @@ class TaskManager:
             if not queue_name:
                 return False, "任务路由失败"
 
-            logger.info(f"任务提交成功: {task.task_id}, queue: {queue_name}")
+            logger.debug(f"任务提交成功: {task.task_id}, queue: {queue_name}")
             return True, queue_name
 
         except Exception as e:

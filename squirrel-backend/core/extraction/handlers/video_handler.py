@@ -41,12 +41,12 @@ class VideoExtractionHandler(BaseResultHandler):
             is_extract_all = task.metadata.get('is_extract_all', False)
 
             if not subscription_id:
-                logger.warning(f"任务缺少subscription_id: {task.task_id}")
+                logger.info(f"任务缺少subscription_id: {task.task_id}")
                 return
 
             # 检查订阅是否存在
             if not self._check_subscription_exist(subscription_id):
-                logger.warning(f"订阅不存在或已删除: {subscription_id}")
+                logger.info(f"订阅不存在或已删除: {subscription_id}")
                 return
 
             # 创建或更新视频记录
