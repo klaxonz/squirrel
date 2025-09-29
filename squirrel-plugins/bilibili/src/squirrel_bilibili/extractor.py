@@ -7,12 +7,13 @@ from typing import Optional, Dict, Any
 from yt_dlp import YoutubeDL
 
 from crawl import (
-    VideoExtractorBase, 
+    VideoExtractorBase,
     YoutubeDLExtractorBase,
     register_extractor,
     ExtractionTask,
     ExtractionResult,
-    filter_cookies_to_query_string
+    filter_cookies_to_query_string,
+    resolve_cookie_file_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,14 +65,18 @@ class BilibiliExtractor(YoutubeDLExtractorBase):
     
     def _build_ytdlp_opts(self, url: str, queue_name: str = None) -> Dict[str, Any]:
         """构建yt-dlp选项"""
-        cookies = filter_cookies_to_query_string(url)
+        cookie_file = resolve_cookie_file_path(url)
         ydl_opts: Dict[str, Any] = {
             'quiet': True,
             'skip_download': True,
         }
-        
-        if cookies:
-            ydl_opts['cookie'] = cookies
+
+        if cookie_file:
+            ydl_opts['cookiefile'] = cookie_file
+        else:
+            cookies = filter_cookies_to_query_string(url)
+            if cookies:
+                ydl_opts['cookie'] = cookies
             
         return ydl_opts
     

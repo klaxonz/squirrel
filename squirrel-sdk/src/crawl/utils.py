@@ -52,6 +52,19 @@ def _resolve_cookie_file(target_url: str, cookies_file: Optional[str]) -> Option
         return None
 
 
+def resolve_cookie_file_path(target_url: str, cookies_file: Optional[str] = None) -> Optional[str]:
+    """Return the cookie file path if available for the given URL.
+
+    This leverages either a user-provided ``cookies_file`` argument or the
+    resolver configured via :func:`configure_cookie_file_resolver`.
+    """
+
+    cookie_path = _resolve_cookie_file(target_url, cookies_file)
+    if not cookie_path or not cookie_path.is_file():
+        return None
+    return str(cookie_path)
+
+
 def filter_cookies_to_query_string(target_url: str, cookies_file: Optional[str] = None) -> str:
     """Read a Netscape cookie file and return cookies for target domain as a header string.
 
