@@ -35,7 +35,6 @@ class VideoCountDto(BaseModel):
     read: int
     unread: int
 
-
 class QualityOptionDto(BaseModel):
     """Single quality option for manual selection on frontend"""
     value: str  # e.g. '1080p' | '720p' | 'audio-128k'
@@ -54,3 +53,4 @@ class VideoUrlDto(BaseModel):
 
     class Config:
         from_attributes = True
+

@@ -2,6 +2,7 @@
 Pornhub视频提取器
 """
 import logging
+from datetime import datetime
 from typing import Optional, Dict, Any
 from yt_dlp import YoutubeDL
 
@@ -76,30 +77,11 @@ class PornhubExtractor(YoutubeDLExtractorBase):
         """处理Pornhub特定信息"""
         try:
             # 处理上传者信息
-            if 'uploader' in video_info:
-                video_info['creator'] = {
-                    'name': video_info['uploader'],
-                    'id': video_info.get('uploader_id', ''),
-                    'url': video_info.get('uploader_url', '')
-                }
-            
-            # 处理分类信息
-            if 'categories' in video_info:
-                video_info['pornhub_categories'] = video_info['categories']
-            
-            # 处理标签
-            if 'tags' in video_info:
-                video_info['pornhub_tags'] = video_info['tags']
-            
-            # 处理演员信息
-            if 'cast' in video_info:
-                video_info['pornhub_cast'] = video_info['cast']
-            
-            # 处理观看次数
-            if 'view_count' in video_info:
-                video_info['pornhub_views'] = video_info['view_count']
-            
-            logger.debug(f"Pornhub信息处理完成: {video_info.get('title', 'Unknown')}")
+            if 'timestamp' in video_info:
+                # 转成datetime
+                video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
+
+            logger.info(f"Pornhub信息处理完成: {video_info.get('title', 'Unknown')}")
             
         except Exception as e:
             logger.warning(f"处理Pornhub特定信息失败: {e}")

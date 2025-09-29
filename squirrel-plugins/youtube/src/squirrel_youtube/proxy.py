@@ -12,13 +12,13 @@ _BaseProxy = _BackendVideoProxy or VideoProxyBase
 
 
 @register_proxy
-class BilibiliProxy(_BaseProxy):
-    domain = 'bilibili.com'
+class YoutubeProxy(_BaseProxy):
+    domain = 'youtube.com'
 
     if _BackendVideoProxy is None:  # pragma: no cover - 仅在 SDK 环境触发
         async def handle_stream(self, url: str, **kwargs):  # type: ignore[override]
             raise NotImplementedError(
-                "BilibiliProxy 仅在后端运行环境可用，请在后端项目中加载插件"
+                "YoutubeProxy 仅在后端运行环境可用，请在后端项目中加载插件"
             )
 
 

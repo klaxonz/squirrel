@@ -2,6 +2,7 @@
 Bilibili视频提取器
 """
 import logging
+from datetime import datetime
 from typing import Optional, Dict, Any
 from yt_dlp import YoutubeDL
 
@@ -77,23 +78,11 @@ class BilibiliExtractor(YoutubeDLExtractorBase):
     def _process_bilibili_info(self, video_info: dict) -> None:
         """处理Bilibili特定信息"""
         try:
-            # 处理UP主信息
-            if 'uploader' in video_info and 'uploader_id' in video_info:
-                video_info['creator'] = {
-                    'name': video_info['uploader'],
-                    'id': video_info['uploader_id'],
-                    'url': f"https://space.bilibili.com/{video_info['uploader_id']}"
-                }
-            
-            # 处理分区信息
-            if 'categories' in video_info:
-                video_info['bilibili_category'] = video_info['categories'][0] if video_info['categories'] else None
-            
-            # 处理标签
-            if 'tags' in video_info:
-                video_info['bilibili_tags'] = video_info['tags']
-            
-            logger.debug(f"Bilibili信息处理完成: {video_info.get('title', 'Unknown')}")
+            if 'timestamp' in video_info:
+                # 转换成datetime
+                video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
+
+            logger.info(f"Bilibili信息处理完成: {video_info.get('title', 'Unknown')}")
             
         except Exception as e:
             logger.warning(f"处理Bilibili特定信息失败: {e}")

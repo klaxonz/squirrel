@@ -2,7 +2,7 @@
 数据提取基础实现类
 """
 import logging
-from typing import List
+from typing import List, Optional
 from urllib.parse import urlparse
 from crawl import IExtractor, ExtractionTask, ExtractionResult, ITaskProcessor, IResultHandler
 
@@ -74,16 +74,31 @@ class BaseTaskProcessor(ITaskProcessor):
     
     def can_process(self, task: ExtractionTask) -> bool:
         """检查是否可以处理任务"""
-        return self.extractor.can_handle(task.url)
+        extractor = self._get_extractor_for_task(task)
+        return extractor.can_handle(task.url) if extractor else False
     
     def process(self, task: ExtractionTask) -> ExtractionResult:
         """处理任务"""
+        extractor = self._get_extractor_for_task(task)
+        if extractor is None:
+            raise ValueError("未找到可用提取器")
+        return self._process_with_extractor(extractor, task)
+
+    def _get_extractor_for_task(self, task: ExtractionTask) -> Optional[IExtractor]:
+        """获取当前任务要使用的提取器，默认返回初始化时的提取器"""
+        return self.extractor
+
+    def _process_with_extractor(self, extractor: IExtractor, task: ExtractionTask) -> ExtractionResult:
+        """使用指定提取器处理任务"""
+        if extractor is None:
+            raise ValueError("未配置提取器")
+
         try:
             logger.info(f"开始处理任务: {task.task_id}, URL: {task.url}")
-            
+
             # 执行提取
-            result = self.extractor.extract(task)
-            
+            result = extractor.extract(task)
+
             # 处理结果
             if result.success:
                 self.result_handler.handle_success(task, result)
@@ -91,18 +106,18 @@ class BaseTaskProcessor(ITaskProcessor):
             else:
                 self.result_handler.handle_failure(task, result)
                 logger.error(f"任务处理失败: {task.task_id}, error: {result.error}")
-            
+
             return result
-            
+
         except Exception as e:
             error_msg = f"任务处理异常: {task.task_id}, error: {str(e)}"
             logger.error(error_msg, exc_info=True)
-            
+
             result = ExtractionResult(
                 success=False,
                 error=error_msg
             )
-            
+
             self.result_handler.handle_failure(task, result)
             return result
 

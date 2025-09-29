@@ -227,6 +227,7 @@ class Video:
         self._duration = None
         self._thumbnail = None
         self._upload_date = None
+        self._publish_date = None
         self._actors = []
         self._season = None
 
@@ -257,6 +258,12 @@ class Video:
         if self._upload_date is None:
             self._upload_date = self._base_info.get("upload_date")
         return self._upload_date
+
+    @property
+    def publish_date(self):
+        if self._publish_date is None:
+            self._publish_date = self._base_info.get("publish_date")
+        return self._publish_date
 
     @property
     def tags(self):

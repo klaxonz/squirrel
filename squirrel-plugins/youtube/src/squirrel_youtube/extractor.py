@@ -2,6 +2,7 @@
 YouTube视频提取器
 """
 import logging
+from datetime import datetime
 from typing import Optional, Dict, Any
 from yt_dlp import YoutubeDL
 
@@ -72,33 +73,11 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
     def _process_youtube_info(self, video_info: dict) -> None:
         """处理YouTube特定信息"""
         try:
-            # 处理频道信息
-            if 'channel' in video_info and 'channel_id' in video_info:
-                video_info['creator'] = {
-                    'name': video_info.get('channel', video_info.get('uploader')),
-                    'id': video_info['channel_id'],
-                    'url': f"https://www.youtube.com/channel/{video_info['channel_id']}"
-                }
-            elif 'uploader' in video_info and 'uploader_id' in video_info:
-                video_info['creator'] = {
-                    'name': video_info['uploader'],
-                    'id': video_info['uploader_id'],
-                    'url': f"https://www.youtube.com/user/{video_info['uploader_id']}"
-                }
+            if 'timestamp' in video_info:
+                # 转成datetime
+                video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
             
-            # 处理分类信息
-            if 'categories' in video_info:
-                video_info['youtube_category'] = video_info['categories'][0] if video_info['categories'] else None
-            
-            # 处理标签
-            if 'tags' in video_info:
-                video_info['youtube_tags'] = video_info['tags']
-            
-            # 处理章节信息
-            if 'chapters' in video_info:
-                video_info['youtube_chapters'] = video_info['chapters']
-            
-            logger.debug(f"YouTube信息处理完成: {video_info.get('title', 'Unknown')}")
+            logger.info(f"YouTube信息处理完成: {video_info.get('title', 'Unknown')}")
             
         except Exception as e:
             logger.warning(f"处理YouTube特定信息失败: {e}")

@@ -92,8 +92,6 @@ def get_random_video(
     else:
         base = base.where(Video.publish_date <= func.now())
 
-    # 随机选择一条。使用 database 随机函数，尽量不影响兼容性（MySQL RAND()）。
-    # 注：Alembic/SQLAlchemy 随机函数可用 func.rand()；为兼容性这里用 text('rand()').
     with get_session() as session:
         bind = session.get_bind()
         dialect_name = getattr(getattr(bind, 'dialect', None), 'name', '') or ''
@@ -128,7 +126,13 @@ def get_video_url(video_id: int) -> VideoUrlDto:
     if not handler_cls:
         raise UnsupportedDomainError(f"No handler found for domain: {video_domain}")
     handler: VideoUrlHandler = handler_cls()
-    return handler.get_video_url(video)
+    result = handler.get_video_url(video)
+
+    if not isinstance(result, dict):
+        raise TypeError("Handler.get_video_url must return a dict")
+
+    # Convert dict payload to VideoUrlDto (nested 'qualities' will be coerced)
+    return VideoUrlDto.model_validate(result)
 
 
 def _build_base_video_query(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,

@@ -12,6 +12,7 @@ from typing import List
 from core.site_catalog import SiteCatalog
 from crawl import VideoFactory, DownloaderFactory, ProxyRegistry, SubtitlesRegistry, MpdRegistry
 from utils.jwt_helper import get_current_user
+from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()
 

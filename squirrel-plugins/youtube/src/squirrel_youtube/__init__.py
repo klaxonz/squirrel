@@ -9,6 +9,8 @@ from .meta import YoutubeVideo  # noqa: F401
 from .mpd import YouTubeMpdBuilder  # noqa: F401
 from .subtitles import YoutubeSubtitlesProvider  # noqa: F401
 from .extractor import YoutubeExtractor  # noqa: F401
+from .config import YoutubeProxyConfig  # noqa: F401
+from .proxy import YoutubeProxy # noqa: F401
 
 
 PLUGIN_NAME = "youtube"

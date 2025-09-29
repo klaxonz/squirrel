@@ -53,6 +53,9 @@ class VideoTaskProcessor(BaseTaskProcessor):
         super().__init__(None, video_handler)
         self.extractor_factory = extractor_factory
 
+    def _get_extractor_for_task(self, task: ExtractionTask):
+        return self.extractor_factory.create_extractor(task.url)
+
     def can_process(self, task: ExtractionTask) -> bool:
         """检查是否可以处理任务"""
         extractor = self.extractor_factory.create_extractor(task.url)
@@ -60,7 +63,7 @@ class VideoTaskProcessor(BaseTaskProcessor):
 
     def process(self, task: ExtractionTask):
         """处理任务"""
-        extractor = self.extractor_factory.create_extractor(task.url)
+        extractor = self._get_extractor_for_task(task)
         if not extractor:
             result = ExtractionResult(
                 success=False,
@@ -69,8 +72,7 @@ class VideoTaskProcessor(BaseTaskProcessor):
             self.result_handler.handle_failure(task, result)
             return result
 
-        self.extractor = extractor
-        return super().process(task)
+        return super()._process_with_extractor(extractor, task)
 
 
 video_processor = VideoTaskProcessor()

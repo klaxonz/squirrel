@@ -4,6 +4,8 @@ from xml.etree import ElementTree as ET
 from urllib.parse import quote
 import re
 import struct
+import json
+import subprocess
 
 from pytubefix import YouTube
 
@@ -142,12 +144,32 @@ def _collect_adaptive_meta(yt: YouTube):
     return meta
 
 
+def po_token_verifier() -> tuple[str, str]:
+    token_object = generate_youtube_token()
+    return token_object["visitorData"], token_object["poToken"]
+
+def generate_youtube_token() -> dict:
+    result = cmd("npx youtube-po-token-generator")
+    data = json.loads(result.stdout)
+    return data
+
+def cmd(command, check=True, shell=True, capture_output=True, text=True):
+    """
+    Runs a command in a shell, and throws an exception if the return code is non-zero.
+    :param command: any shell command.
+    :return:
+    """
+    try:
+        return subprocess.run(command, check=check, shell=shell, capture_output=capture_output, text=text)
+    except subprocess.CalledProcessError as error:
+        return ('0','0')
+
 @register_mpd
 class YouTubeMpdBuilder(BaseMpdBuilder):
     domain = 'youtube.com'
 
     def build_mpd(self, video) -> str:
-        yt = YouTube(video.url)
+        yt = YouTube(video.url, use_po_token=True, po_token_verifier=po_token_verifier)
         by_itag_meta = _collect_adaptive_meta(yt)
         all_streams = yt.streams.filter(adaptive=True)
         kept_by_itag = {}

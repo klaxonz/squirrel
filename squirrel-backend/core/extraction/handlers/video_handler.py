@@ -3,7 +3,6 @@
 """
 import logging
 from datetime import datetime
-from typing import Dict, Any
 
 from core.database import get_session
 from crawl import ExtractionTask, ExtractionResult, Video
@@ -169,8 +168,8 @@ class VideoExtractionHandler(BaseResultHandler):
 
         except Exception as e:
             logger.debug(f"解析发布时间失败，使用当前时间: {e}")
+            raise  # 抛出异常
 
-        return datetime.utcnow()
 
     def _create_download_task(self, video):
         """创建下载任务"""
