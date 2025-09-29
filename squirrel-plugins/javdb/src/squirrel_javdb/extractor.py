@@ -68,35 +68,9 @@ class JavdbExtractor(VideoExtractorBase):
     def _process_javdb_info(self, video_info: dict) -> None:
         """处理JavDB特定信息"""
         try:
-            # 处理制作商信息
-            if 'uploader' in video_info:
-                video_info['creator'] = {
-                    'name': video_info['uploader'],
-                    'id': video_info.get('uploader_id', ''),
-                    'url': video_info.get('uploader_url', '')
-                }
-            
-            # 处理分类信息
-            if 'categories' in video_info:
-                video_info['javdb_categories'] = video_info['categories']
-            
-            # 处理标签
-            if 'tags' in video_info:
-                video_info['javdb_tags'] = video_info['tags']
-            
-            # 处理演员信息
-            if 'cast' in video_info:
-                video_info['javdb_cast'] = video_info['cast']
-            elif 'actors' in video_info:
-                video_info['javdb_cast'] = video_info['actors']
-            
-            # 处理番号信息
-            if 'series' in video_info:
-                video_info['javdb_series'] = video_info['series']
-            
             # 处理发行日期
-            if 'release_date' in video_info:
-                video_info['javdb_release_date'] = video_info['release_date']
+            if 'timestamp' in video_info:
+                video_info['upload_date'] = video_info['timestamp']
             
             logger.debug(f"JavDB信息处理完成: {video_info.get('title', 'Unknown')}")
             

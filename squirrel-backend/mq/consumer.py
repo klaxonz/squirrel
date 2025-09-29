@@ -157,12 +157,12 @@ class RedisStreamConsumer:
                 self.options.group,
                 self.options.consumer_name,
             )
-            time.sleep(0.2)
+            time.sleep(0.01)
             return False
 
     def start_loop(self) -> None:
         while True:
             self.poll_once()
-            time.sleep(0.05)
+            time.sleep(0.01)
 
 
