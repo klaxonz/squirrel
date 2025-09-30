@@ -18,6 +18,11 @@ RUN pnpm run build
 # Stage 2: Build the backend
 FROM base AS backend
 
+WORKDIR /app
+
+# Copy squirrel-sdk first (required by squirrel-backend)
+COPY squirrel-sdk ./squirrel-sdk
+
 WORKDIR /app/squirrel-backend
 
 # Copy Pipfile files first to leverage cache

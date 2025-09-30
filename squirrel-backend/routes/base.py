@@ -98,7 +98,11 @@ except Exception:
 if not IS_DEV:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     static_dir = os.path.join(base_dir, "static")
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    # 只在目录存在时才挂载静态文件
+    if os.path.exists(static_dir):
+        app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    else:
+        logger.warning(f"Static directory not found: {static_dir}, skipping static files mounting")
 
 FRONTEND_DEV_HOST = os.getenv("FRONTEND_DEV_HOST", "localhost")
 FRONTEND_DEV_PORT = os.getenv("FRONTEND_DEV_PORT", "5173")
@@ -113,4 +117,12 @@ if not IS_DEV:
         if static_file.exists() and static_file.is_file():
             return FileResponse(static_file)
 
-        return FileResponse(Path(file_static_dir) / "index.html")
+        index_file = Path(file_static_dir) / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        
+        # 如果静态文件目录不存在，返回友好提示
+        return JSONResponse(
+            status_code=404,
+            content={"code": -1, "msg": "Frontend static files not found"}
+        )

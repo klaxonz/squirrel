@@ -37,6 +37,6 @@ httpx = {extras = ["http2"], version = "*"}
 botasaurus = "*"
 js2py = "*"
 fastapi-radar = "*"
-squirrel-sdk = "*"
+squirrel-sdk = {path = "../squirrel-sdk", editable = true}
 
 [dev-packages]
