@@ -28,15 +28,6 @@ def _parse_message(message: Dict[str, Any]) -> VideoExtractDto:
         raise
 
 
-def _process_video_extract(message: Dict[str, Any]) -> None:
-    """
-    处理视频提取任务
-    职责：解析消息并调度到服务层
-    """
-    params = _parse_message(message)
-    video_extractor.extract(params)
-
-
 @mq_consumer(constants.QUEUE_VIDEO_EXTRACT, group="extract", consumer_name="extract-entry")
 def process_extract_message(message: Dict[str, Any]) -> None:
     """处理手动视频提取消息（入口队列）"""
@@ -60,32 +51,10 @@ def process_extract_scheduled_message(message: Dict[str, Any]) -> None:
 def process_domain_video_extract(message: Dict[str, Any]) -> None:
     """
     处理域特定队列的视频提取任务
-    职责：调度到服务层处理
-    """
-    try:
-        _process_video_extract(message)
-    except Exception as e:
-        logger.error(f"Failed to process video extract: {e}", exc_info=True)
-        raise
-
-
-def _register_domain_consumers():
-    """
-    动态注册所有域特定队列的消费者
+    职责：解析消息并调度到服务层处理
     
-    基于插件注册表自动识别支持的站点，完全消除硬编码
-    新增站点只需注册插件即可，无需修改任何配置
+    注意：此 handler 由消费者配置管理器自动注册
+    配置位置：consumer/consumers_setup.py
     """
-    count = DomainConsumerRegistrar.register_all(
-        queue_type=QueueType.VIDEO_EXTRACT,
-        group='extract-domain',
-        consumer_prefix='extract',
-        handler=process_domain_video_extract,
-        block_ms=1000,
-        read_count=1
-    )
-    logger.info(f"Video extract: registered {count} domain consumers")
-
-
-# 模块加载时自动注册
-_register_domain_consumers()
+    params = _parse_message(message)
+    video_extractor.extract(params)
