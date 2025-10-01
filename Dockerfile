@@ -28,6 +28,9 @@ WORKDIR /app/squirrel-backend
 # Copy Pipfile files first to leverage cache
 COPY squirrel-backend/Pipfile squirrel-backend/Pipfile.lock ./
 
+# Install squirrel-sdk first (local dependency)
+RUN pip install /app/squirrel-sdk
+
 # Install dependencies
 RUN pipenv install --deploy --system
 

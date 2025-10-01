@@ -11,8 +11,36 @@ corresponding plugins are installed for the domains you need.
 Install dependencies
 --------------------
 
-- Ensure `squirrel-sdk` is installed in the backend environment (see Pipfile entry).
-- Install plugin packages, e.g. `pip install squirrel-plugin-bilibili`.
+### 1. Install Python dependencies
+
+```bash
+# Install all dependencies from Pipfile
+pipenv install
+
+# Install squirrel-sdk in editable mode (for development)
+pipenv run pip install -e ../squirrel-sdk
+```
+
+**Note**: `squirrel-sdk` is installed separately because it's a local dependency 
+not available on PyPI. The `-e` flag enables editable mode, so changes to the SDK 
+will be reflected immediately without reinstalling.
+
+### 2. Install plugin packages
+
+```bash
+# Install from plugin packages (if built)
+pipenv run pip install ../plugin_packages/bilibili_plugin.zip
+pipenv run pip install ../plugin_packages/youtube_plugin.zip
+# ... other plugins
+```
+
+### For Production/Docker
+
+In production environments, install the SDK directly from the local path:
+
+```bash
+pip install /path/to/squirrel-sdk
+```
 
 
 
