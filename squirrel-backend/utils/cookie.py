@@ -1,28 +1,25 @@
-import os
 from typing import Optional
 
 from crawl import (
     filter_cookies_to_query_string as sdk_filter_cookies_to_query_string,
     configure_cookie_file_resolver,
 )
-from core import config
+from core.cookie_config import get_cookies_http_file_path
 
 
 def resolve_cookie_file_for_url(target_url: str) -> Optional[str]:
     try:
-        file_path = config.get_cookies_http_file_path()
+        file_path = get_cookies_http_file_path()
     except Exception:
         return None
 
     if not file_path:
         return None
 
-    normalized_path = os.path.normpath(file_path)
-
-    if not os.path.exists(normalized_path):
+    if not file_path.exists():
         return None
 
-    return normalized_path
+    return str(file_path)
 
 
 configure_cookie_file_resolver(resolve_cookie_file_for_url)

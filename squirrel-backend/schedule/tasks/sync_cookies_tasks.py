@@ -1,8 +1,8 @@
 import json
 import logging
 from PyCookieCloud import PyCookieCloud
-from core import config
 from core.config import settings
+from core.cookie_config import get_cookies_file_path, get_cookies_http_file_path
 from schedule.task import TaskRegistry, BaseTask
 from utils.cookie import json_cookie_to_netscape
 
@@ -34,8 +34,8 @@ class SyncCookies(BaseTask):
             else:
                 expect_domains = []
 
-            json_cookie_to_netscape(decrypted_data, expect_domains, config.get_cookies_file_path())
-            json_cookie_to_netscape(decrypted_data, expect_domains, config.get_cookies_http_file_path())
+            json_cookie_to_netscape(decrypted_data, expect_domains, get_cookies_file_path())
+            json_cookie_to_netscape(decrypted_data, expect_domains, get_cookies_http_file_path())
 
         except json.JSONDecodeError as e:
             logger.error(f"Error decoding JSON: {e}", exc_info=True)
