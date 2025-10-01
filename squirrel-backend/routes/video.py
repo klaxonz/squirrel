@@ -147,10 +147,13 @@ def play_video(request: Request, video_id: int):
 @router.get("/api/video/proxy")
 async def proxy_video(domain: str, url: str, request: Request):
     """代理视频文件，用于解决跨域问题"""
+    from core.streaming.proxy import VideoProxy
+    
     proxy_cls = ProxyRegistry.get_proxy_class(domain)
     if not proxy_cls:
-        raise HTTPException(status_code=400, detail=f"Unsupported proxy domain: {domain}")
-    proxy = proxy_cls(request)
+        proxy = VideoProxy(request, domain=domain)
+    else:
+        proxy = proxy_cls(request)
     return await proxy.handle_stream(url)
 
 

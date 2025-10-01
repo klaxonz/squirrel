@@ -7,7 +7,6 @@ from .mpd import BilibiliMpdBuilder  # noqa: F401
 from .subtitles import BilibiliSubtitlesProvider  # noqa: F401
 from .id_extractor import BilibiliIdExtractor  # noqa: F401
 from .downloader import BilibiliDownloader  # noqa: F401
-from .proxy import BilibiliProxy  # noqa: F401
 from .config import BilibiliProxyConfig  # noqa: F401
 from .extractor import BilibiliExtractor  # noqa: F401
 
