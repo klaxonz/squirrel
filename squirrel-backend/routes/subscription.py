@@ -137,6 +137,10 @@ def list_subscriptions(
 
 @router.post("/api/subscription/{subscription_id}/refresh")
 def refresh_subscription(subscription_id: int, current_user: User = Depends(get_current_user)):
+    """
+    手动刷新订阅
+    职责：验证权限后调用调度器，具体更新逻辑由调度器和编排器处理
+    """
     with get_session() as session:
         subscription = session.get(Subscription, subscription_id)
         if not subscription or subscription.is_deleted:
@@ -159,24 +163,29 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
             "inProgress": True
         })
 
-    sub_detail = subscription_service.get_subscription_detail(subscription_id)
-    if not sub_detail:
-        return response.not_found("订阅不存在")
-
-    content = {
-        "subscription_id": sub_detail.id,
-        "url": sub_detail.url,
-    }
-    message = message_service.create_message(content)
-
-    redis_client.set(f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{subscription_id}", 1, ex=120)
-    RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, message.to_dict())
+    from services.subscription_update import scheduler, UpdateTrigger, UpdateMode
+    
+    success = scheduler.schedule_one(
+        subscription_id=subscription.id,
+        url=subscription.url,
+        trigger=UpdateTrigger.MANUAL,
+        mode=UpdateMode.SMART,
+        user_id=current_user.id
+    )
+    
+    if not success:
+        return response.server_error("刷新请求失败")
+    
+    redis_client.set(
+        f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{subscription_id}",
+        1,
+        ex=120
+    )
 
     return response.success({
         "status": "queued",
         "inProgress": False,
         "subscriptionId": subscription_id,
-        "requestId": message.id,
         "queuedAt": datetime.utcnow().isoformat()
     })
 
