@@ -1,11 +1,11 @@
 """
-视频提取任务处理器
+视频提取任务消费者
+职责：接收视频提取消息，路由和调度到服务层处理
 """
 import logging
 from typing import Dict, Any
 from pydantic import ValidationError
 
-from crawl import ExtractionTask, ExtractionResult, TaskPriority
 from schemas.video.dto.video_dto import VideoExtractDto
 from models.message import Message
 from mq import mq_consumer
@@ -13,57 +13,14 @@ from mq.message_router import video_extract_router
 from mq.consumer_registrar import DomainConsumerRegistrar
 from mq.queue_config import QueueType
 from common import constants
-from utils import url_helper
-from core.extraction.task_manager import TaskManager
-from core.extraction.handlers.video_handler import VideoExtractionHandler
-from core.extraction.base import BaseTaskProcessor
-from core.extraction.factory import get_extractor_factory
+from services.video_extraction import video_extractor
 
 logger = logging.getLogger()
-
-video_handler = VideoExtractionHandler()
-task_manager = TaskManager()  # Router 功能未使用，移除 queue_mapping 参数
-
-
-# 创建任务处理器
-class VideoTaskProcessor(BaseTaskProcessor):
-    """视频任务处理器"""
-
-    def __init__(self):
-        extractor_factory = get_extractor_factory()
-        super().__init__(None, video_handler)
-        self.extractor_factory = extractor_factory
-
-    def _get_extractor_for_task(self, task: ExtractionTask):
-        return self.extractor_factory.create_extractor(task.url)
-
-    def can_process(self, task: ExtractionTask) -> bool:
-        """检查是否可以处理任务"""
-        extractor = self.extractor_factory.create_extractor(task.url)
-        return extractor is not None
-
-    def process(self, task: ExtractionTask):
-        """处理任务"""
-        extractor = self._get_extractor_for_task(task)
-        if not extractor:
-            result = ExtractionResult(
-                success=False,
-                error=f"未找到合适的提取器: {task.url}"
-            )
-            self.result_handler.handle_failure(task, result)
-            return result
-
-        return super()._process_with_extractor(extractor, task)
-
-
-video_processor = VideoTaskProcessor()
-task_manager.add_processor(video_processor)
 
 
 def _parse_message(message: Dict[str, Any]) -> VideoExtractDto:
     """解析消息为 DTO"""
     try:
-        # 从 Message 对象解析
         message_obj = Message.from_dict(message)
         return VideoExtractDto.model_validate_json(message_obj.body)
     except ValidationError as e:
@@ -71,41 +28,15 @@ def _parse_message(message: Dict[str, Any]) -> VideoExtractDto:
         raise
 
 
-def _create_extraction_task(params: VideoExtractDto) -> ExtractionTask:
-    """创建提取任务"""
-    priority = TaskPriority.HIGH if params.is_manual else TaskPriority.NORMAL
-
-    metadata = {
-        'subscription_id': params.subscription_id,
-        'only_extract': params.only_extract,
-        'subscribed': params.subscribed,
-        'is_extract_all': params.is_extract_all,
-        'is_manual': params.is_manual
-    }
-
-    return task_manager.create_task(
-        url=params.url,
-        priority=priority,
-        metadata=metadata
-    )
-
-
-
-
 def _process_video_extract(message: Dict[str, Any]) -> None:
-    """处理视频提取任务"""
+    """
+    处理视频提取任务
+    职责：解析消息并调度到服务层
+    """
     params = _parse_message(message)
-    
-    logger.info(f"Processing video extract: {params.url}")
-    
-    task = _create_extraction_task(params)
-    result = task_manager.process_task(task)
-    
-    platform = url_helper.extract_top_level_domain(params.url)
-    logger.info(f"Video extract completed: {result.success} (platform: {platform})")
+    video_extractor.extract(params)
 
 
-# 入口队列消费者：路由到域特定队列
 @mq_consumer(constants.QUEUE_VIDEO_EXTRACT, group="extract", consumer_name="extract-entry")
 def process_extract_message(message: Dict[str, Any]) -> None:
     """处理手动视频提取消息（入口队列）"""
@@ -126,9 +57,11 @@ def process_extract_scheduled_message(message: Dict[str, Any]) -> None:
         logger.error(f"Failed to route scheduled video extract: {e}", exc_info=True)
 
 
-# 域队列消费者：实际处理视频提取
 def process_domain_video_extract(message: Dict[str, Any]) -> None:
-    """处理域特定队列的视频提取任务"""
+    """
+    处理域特定队列的视频提取任务
+    职责：调度到服务层处理
+    """
     try:
         _process_video_extract(message)
     except Exception as e:
@@ -136,7 +69,6 @@ def process_domain_video_extract(message: Dict[str, Any]) -> None:
         raise
 
 
-# 动态注册所有域队列消费者
 def _register_domain_consumers():
     """
     动态注册所有域特定队列的消费者
@@ -156,5 +88,4 @@ def _register_domain_consumers():
 
 
 # 模块加载时自动注册
-# 注意：此代码在模块被导入时执行，由 mq/runner.py 的 module_discovery 触发
 _register_domain_consumers()

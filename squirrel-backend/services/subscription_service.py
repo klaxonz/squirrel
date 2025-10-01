@@ -176,3 +176,67 @@ def toggle_nsfw_status(user_id: int, subscription_id: int, is_nsfw: bool) -> boo
         user_sub.is_nsfw = is_nsfw
         session.commit()
         return True
+
+
+def handle_subscribe_request(url: str, user_id: int) -> Subscription:
+    """
+    处理订阅请求（用于消息队列消费者）
+    
+    Args:
+        url: 订阅URL
+        user_id: 用户ID
+        
+    Returns:
+        订阅对象
+    """
+    from crawl import SubscriptionFactory
+    
+    subscribe_channel = SubscriptionFactory.create_subscription(url)
+    subscribe_info = subscribe_channel.get_subscribe_info()
+    
+    subscription = get_subscription_by_url_and_name(url, subscribe_info.name)
+    
+    if subscription:
+        if not subscription.is_deleted:
+            return subscription
+        
+        restore_subscription(subscription.id, user_id)
+        return get_subscription_by_id(subscription.id)
+    
+    subscription = create_subscription(user_id, subscribe_info)
+    return subscription
+
+
+def restore_subscription(subscription_id: int, user_id: int) -> None:
+    """
+    恢复已删除的订阅
+    
+    Args:
+        subscription_id: 订阅ID
+        user_id: 用户ID
+    """
+    with get_session() as session:
+        subscription = session.get(Subscription, subscription_id)
+        if not subscription:
+            return
+        
+        subscription.is_deleted = False
+        
+        user_subscription = session.scalars(
+            select(UserSubscription).where(
+                UserSubscription.subscription_id == subscription_id,
+                UserSubscription.user_id == user_id
+            )
+        ).first()
+        
+        if user_subscription and user_subscription.is_deleted:
+            user_subscription.is_deleted = False
+        elif not user_subscription:
+            user_subscription = UserSubscription(
+                subscription_id=subscription_id,
+                user_id=user_id,
+                is_deleted=False
+            )
+            session.add(user_subscription)
+        
+        session.commit()
