@@ -9,6 +9,8 @@ from .producer import RedisStreamProducer
 from .consumer import RedisStreamConsumer, ConsumerOptions
 from .registry import ConsumerRegistry, ConsumerSpec
 from .decorators import mq_consumer
+from .message_router import MessageRouter, video_extract_router, subscription_update_router
+from .consumer_registrar import DomainConsumerRegistrar
 
 __all__ = [
     "MqMessage",
@@ -18,6 +20,10 @@ __all__ = [
     "ConsumerRegistry",
     "ConsumerSpec",
     "mq_consumer",
+    "MessageRouter",
+    "video_extract_router",
+    "subscription_update_router",
+    "DomainConsumerRegistrar",
 ]
 
 

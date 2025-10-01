@@ -3,11 +3,14 @@
 """
 import logging
 from typing import Dict, Any
+from pydantic import ValidationError
 
 from crawl import ExtractionTask, ExtractionResult, TaskPriority
 from schemas.video.dto.video_dto import VideoExtractDto
 from models.message import Message
 from mq import mq_consumer
+from mq.message_router import video_extract_router
+from mq.consumer_registrar import DomainConsumerRegistrar
 from common import constants
 from utils import url_helper
 from core.extraction.task_manager import TaskManager
@@ -18,8 +21,6 @@ from core.extraction.factory import get_extractor_factory
 logger = logging.getLogger()
 
 video_handler = VideoExtractionHandler()
-
-# 使用 constants 中已有的映射，避免重复定义
 task_manager = TaskManager(constants.DOMAIN_QUEUE_MAPPING)
 
 
@@ -59,22 +60,14 @@ task_manager.add_processor(video_processor)
 
 
 def _parse_message(message: Dict[str, Any]) -> VideoExtractDto:
-    """解析消息"""
-    message_obj = Message.from_dict(message)
-    return VideoExtractDto.model_validate_json(message_obj.body)
-
-
-def _resolve_domain_queue(url: str, is_manual: bool) -> str:
-    """解析视频 URL 对应的域队列"""
-    domain = url_helper.extract_top_level_domain(url)
-    mapping = constants.DOMAIN_QUEUE_MAPPING.get(domain)
-    if not mapping:
-        raise ValueError(f"Unsupported domain for video extract: {domain}")
-    
-    queue_name = mapping.get('manual' if is_manual else 'scheduled')
-    if not queue_name:
-        raise ValueError(f"No queue mapping for domain {domain}")
-    return queue_name
+    """解析消息为 DTO"""
+    try:
+        # 从 Message 对象解析
+        message_obj = Message.from_dict(message)
+        return VideoExtractDto.model_validate_json(message_obj.body)
+    except ValidationError as e:
+        logger.error(f"Failed to parse message: {e}")
+        raise
 
 
 def _create_extraction_task(params: VideoExtractDto) -> ExtractionTask:
@@ -96,13 +89,6 @@ def _create_extraction_task(params: VideoExtractDto) -> ExtractionTask:
     )
 
 
-def _route_to_domain_queue(message: Dict[str, Any], is_manual: bool) -> None:
-    """将消息路由到域特定队列"""
-    params = _parse_message(message)
-    queue_name = _resolve_domain_queue(params.url, is_manual)
-    
-    from mq.producer import RedisStreamProducer
-    RedisStreamProducer().send(queue_name, message)
 
 
 def _process_video_extract(message: Dict[str, Any]) -> None:
@@ -123,7 +109,8 @@ def _process_video_extract(message: Dict[str, Any]) -> None:
 def process_extract_message(message: Dict[str, Any]) -> None:
     """处理手动视频提取消息（入口队列）"""
     try:
-        _route_to_domain_queue(message, is_manual=True)
+        params = _parse_message(message)
+        video_extract_router.route(message, params.url, is_manual=True)
     except Exception as e:
         logger.error(f"Failed to route manual video extract: {e}", exc_info=True)
 
@@ -132,7 +119,8 @@ def process_extract_message(message: Dict[str, Any]) -> None:
 def process_extract_scheduled_message(message: Dict[str, Any]) -> None:
     """处理定时视频提取消息（入口队列）"""
     try:
-        _route_to_domain_queue(message, is_manual=False)
+        params = _parse_message(message)
+        video_extract_router.route(message, params.url, is_manual=False)
     except Exception as e:
         logger.error(f"Failed to route scheduled video extract: {e}", exc_info=True)
 
@@ -152,35 +140,18 @@ def _register_domain_consumers():
     """
     动态注册所有域特定队列的消费者
     
-    此函数会在模块加载时自动执行，从 constants.SUPPORTED_SITES 读取配置，
-    为每个站点的 manual 和 scheduled 队列注册消费者。
-    
-    优点：
-    - 新增站点只需在 constants.SUPPORTED_SITES 添加配置
-    - 避免硬编码队列名称
-    - 确保所有站点的队列都被正确注册
+    使用统一的 DomainConsumerRegistrar 简化注册逻辑
+    新增站点只需在 constants.SUPPORTED_SITES 添加配置即可
     """
-    from mq.registry import ConsumerRegistry
-    
-    registered_count = 0
-    for site_name in constants.SUPPORTED_SITES.values():
-        for mode in ['manual', 'scheduled']:
-            queue_name = f'queue::video::extract::{site_name}::{mode}'
-            try:
-                ConsumerRegistry.register(
-                    stream=queue_name,
-                    group="extract-domain",
-                    consumer_name=f"extract-{site_name}-{mode}",
-                    handler=process_domain_video_extract,
-                    block_ms=1000,
-                    read_count=1
-                )
-                registered_count += 1
-                logger.debug(f"Registered consumer for queue: {queue_name}")
-            except Exception as e:
-                logger.error(f"Failed to register consumer for {queue_name}: {e}")
-    
-    logger.info(f"Video extract: registered {registered_count} domain consumers")
+    count = DomainConsumerRegistrar.register_all(
+        queue_template='queue::video::extract::{site}::{mode}',
+        group='extract-domain',
+        consumer_prefix='extract',
+        handler=process_domain_video_extract,
+        block_ms=1000,
+        read_count=1
+    )
+    logger.info(f"Video extract: registered {count} domain consumers")
 
 
 # 模块加载时自动注册
