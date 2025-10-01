@@ -1,9 +1,8 @@
 import asyncio
 import logging
-import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Optional, Dict, AsyncIterator, Tuple, Any
+from typing import Optional, Dict, AsyncIterator, Any
 from urllib.parse import urlparse
 import httpx
 from fastapi import Request
@@ -20,37 +19,6 @@ from crawl import VideoProxyBase
 from crawl.proxy_interfaces import ProxyConfigRegistry
 
 logger = logging.getLogger()
-
-
-@dataclass
-class ProxyMetrics:
-    request_count: int = 0
-    total_bytes: int = 0
-    total_duration: float = 0.0
-    error_count: int = 0
-    last_request_time: Optional[float] = None
-    _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
-
-    async def record_request(self, bytes_transferred: int, duration: float, success: bool = True):
-        async with self._lock:
-            self.request_count += 1
-            self.total_bytes += bytes_transferred
-            self.total_duration += duration
-            self.last_request_time = time.time()
-            if not success:
-                self.error_count += 1
-
-    @property
-    def success_rate(self) -> float:
-        if self.request_count == 0:
-            return 0.0
-        return (self.request_count - self.error_count) / self.request_count
-
-    @property
-    def average_speed(self) -> float:
-        if self.total_duration == 0:
-            return 0.0
-        return self.total_bytes / self.total_duration
 
 
 @dataclass
@@ -91,7 +59,7 @@ class RetryStrategy:
 
 
 class HeaderBuilder:
-    FORWARDED_HEADERS = ['user-agent', 'accept', 'accept-encoding', 'referer']
+    FORWARDED_HEADERS = ('user-agent', 'accept', 'accept-encoding', 'referer')
 
     @staticmethod
     def build_headers(
@@ -99,14 +67,18 @@ class HeaderBuilder:
         site_headers: Optional[Dict[str, str]],
         custom_headers: Optional[Dict[str, str]] = None
     ) -> Dict[str, str]:
-        headers = (site_headers or {}).copy()
+        headers = {}
+        
+        if site_headers:
+            headers.update(site_headers)
 
         if 'range' in request.headers:
             headers['Range'] = request.headers['range']
 
         for header_name in HeaderBuilder.FORWARDED_HEADERS:
-            if header_name in request.headers:
-                headers[header_name] = request.headers[header_name]
+            value = request.headers.get(header_name)
+            if value:
+                headers[header_name] = value
 
         if custom_headers:
             headers.update(custom_headers)
@@ -134,7 +106,8 @@ class ResponseBuilder:
 class ConnectionManager:
     def __init__(self):
         self._clients: Dict[str, httpx.AsyncClient] = {}
-        self._lock = asyncio.Lock()
+        self._locks: Dict[str, asyncio.Lock] = {}
+        self._main_lock = asyncio.Lock()
 
     def _extract_domain_config(self, provider_cls: Any, domain: str) -> Optional[Any]:
         configs = provider_cls.get_domain_configs() or []
@@ -144,11 +117,18 @@ class ConnectionManager:
         return None
 
     def _build_client_config(self, domain_config: Optional[Any]) -> Dict[str, Any]:
-        connect_timeout = getattr(domain_config, "connect_timeout", 10.0) if domain_config else 10.0
-        read_timeout = getattr(domain_config, "read_timeout", 60.0) if domain_config else 60.0
-        max_connections = getattr(domain_config, "max_connections", 20) if domain_config else 20
-        keepalive_expiry = getattr(domain_config, "keepalive_expiry", 15.0) if domain_config else 15.0
-        enable_http2 = getattr(domain_config, "enable_http2", True) if domain_config else True
+        if domain_config:
+            connect_timeout = getattr(domain_config, "connect_timeout", 10.0)
+            read_timeout = getattr(domain_config, "read_timeout", 60.0)
+            max_connections = getattr(domain_config, "max_connections", 20)
+            keepalive_expiry = getattr(domain_config, "keepalive_expiry", 15.0)
+            enable_http2 = getattr(domain_config, "enable_http2", True)
+        else:
+            connect_timeout = 10.0
+            read_timeout = 60.0
+            max_connections = 20
+            keepalive_expiry = 15.0
+            enable_http2 = True
 
         return {
             "http2": enable_http2,
@@ -166,35 +146,47 @@ class ConnectionManager:
         }
 
     async def get_client(self, domain: str, provider_cls: Any) -> httpx.AsyncClient:
-        async with self._lock:
-            if domain not in self._clients:
-                try:
-                    domain_config = self._extract_domain_config(provider_cls, domain)
-                    client_config = self._build_client_config(domain_config)
-                    self._clients[domain] = httpx.AsyncClient(**client_config)
-                    logger.debug(f"Created new HTTP client for domain: {domain}")
-                except Exception as e:
-                    logger.error(f"Failed to create HTTP client for {domain}: {e}")
-                    raise ProxyConfigurationException(domain, str(e))
+        if domain in self._clients:
+            return self._clients[domain]
+
+        async with self._main_lock:
+            if domain not in self._locks:
+                self._locks[domain] = asyncio.Lock()
+
+        async with self._locks[domain]:
+            if domain in self._clients:
+                return self._clients[domain]
+
+            try:
+                domain_config = self._extract_domain_config(provider_cls, domain)
+                client_config = self._build_client_config(domain_config)
+                self._clients[domain] = httpx.AsyncClient(**client_config)
+                logger.info(f"Created new HTTP client for domain: {domain}")
+            except Exception as e:
+                logger.error(f"Failed to create HTTP client for {domain}: {e}")
+                raise ProxyConfigurationException(domain, str(e))
 
             return self._clients[domain]
 
     async def close_client(self, domain: str):
-        async with self._lock:
+        async with self._main_lock:
             if domain in self._clients:
                 await self._clients[domain].aclose()
                 del self._clients[domain]
+                if domain in self._locks:
+                    del self._locks[domain]
                 logger.debug(f"Closed HTTP client for domain: {domain}")
 
     async def close_all(self):
-        async with self._lock:
-            for domain, client in self._clients.items():
+        async with self._main_lock:
+            for domain, client in list(self._clients.items()):
                 try:
                     await client.aclose()
                     logger.debug(f"Closed HTTP client for domain: {domain}")
                 except Exception as e:
                     logger.warning(f"Error closing client for {domain}: {e}")
             self._clients.clear()
+            self._locks.clear()
 
     async def health_check(self, domain: str) -> bool:
         if domain not in self._clients:
@@ -218,8 +210,6 @@ class HttpRequester:
 
         for attempt in range(proxy_request.max_retries + 1):
             try:
-                logger.debug(f"Attempting request to {proxy_request.url} (attempt {attempt + 1})")
-
                 response = await client.get(
                     proxy_request.url,
                     headers=headers,
@@ -238,15 +228,16 @@ class HttpRequester:
 
                     response.raise_for_status()
 
-                logger.debug(f"Successful request to {proxy_request.url} with status {response.status_code}")
                 return response
 
             except httpx.TimeoutException as e:
                 last_exception = ProxyTimeoutException(self.domain, proxy_request.timeout)
-                logger.warning(f"Timeout on attempt {attempt + 1}: {e}")
+                if attempt == proxy_request.max_retries:
+                    logger.warning(f"Timeout after {attempt + 1} attempts: {e}")
             except httpx.NetworkError as e:
                 last_exception = ProxyNetworkException(self.domain, str(e))
-                logger.warning(f"Network error on attempt {attempt + 1}: {e}")
+                if attempt == proxy_request.max_retries:
+                    logger.warning(f"Network error after {attempt + 1} attempts: {e}")
             except httpx.HTTPStatusError as e:
                 raise ProxyNetworkException(self.domain, f"HTTP {e.response.status_code}: {e.response.text}")
             except Exception as e:
@@ -254,9 +245,7 @@ class HttpRequester:
                 logger.error(f"Unexpected error on attempt {attempt + 1}: {e}", exc_info=True)
 
             if self.retry_strategy.should_retry(attempt):
-                wait_time = self.retry_strategy.get_wait_time(attempt)
-                logger.info(f"Retrying in {wait_time} seconds...")
-                await asyncio.sleep(wait_time)
+                await asyncio.sleep(self.retry_strategy.get_wait_time(attempt))
 
         if last_exception:
             raise last_exception
@@ -266,7 +255,6 @@ class HttpRequester:
 class VideoProxy(VideoProxyBase):
     domain: Optional[str] = None
     _connection_manager = ConnectionManager()
-    _metrics: Dict[str, ProxyMetrics] = {}
 
     def __init__(self, request: Request, domain: Optional[str] = None):
         self.request = request
@@ -279,29 +267,15 @@ class VideoProxy(VideoProxyBase):
             raise ProxyConfigurationException(self.domain, "no proxy config provider")
         self.provider_cls = provider_cls
 
-        if self.domain not in self._metrics:
-            self._metrics[self.domain] = ProxyMetrics()
-
     def _extract_domain_from_request(self, request: Request) -> Optional[str]:
         return None
 
     async def _stream_response(self, response: httpx.Response, chunk_size: int) -> AsyncIterator[bytes]:
-        bytes_transferred = 0
-        start_time = time.time()
-
         try:
             async for chunk in response.aiter_bytes(chunk_size):
                 if chunk:
-                    bytes_transferred += len(chunk)
                     yield chunk
-
-            duration = time.time() - start_time
-            await self._metrics[self.domain].record_request(bytes_transferred, duration, True)
-            logger.debug(f"Streamed {bytes_transferred} bytes in {duration:.2f}s")
-
         except Exception as e:
-            duration = time.time() - start_time
-            await self._metrics[self.domain].record_request(bytes_transferred, duration, False)
             logger.error(f"Error during streaming: {e}")
             raise
 
@@ -326,8 +300,6 @@ class VideoProxy(VideoProxyBase):
                 follow_redirects=kwargs.get('follow_redirects', True),
             )
 
-            logger.info(f"Starting proxy request: {self.domain} -> {url}")
-
             retry_strategy = RetryStrategy(max_retries=proxy_request.max_retries)
             requester = HttpRequester(self.domain, retry_strategy)
 
@@ -338,8 +310,6 @@ class VideoProxy(VideoProxyBase):
                 response = await requester.execute_request(client, proxy_request, headers)
                 response_headers = ResponseBuilder.build_response_headers(response)
                 stream = self._stream_response(response, proxy_request.chunk_size)
-
-                logger.info(f"Proxy request successful: {response.status_code} for {url}")
 
                 return StreamingResponse(
                     stream,

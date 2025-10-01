@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from crawl import VideoProxyBase, register_proxy
+from fastapi import Request
 
 try:  # 后端环境可用：复用默认实现
     from core.streaming.proxy import VideoProxy as _BackendVideoProxy
@@ -14,6 +15,9 @@ _BaseProxy = _BackendVideoProxy or VideoProxyBase
 @register_proxy
 class YoutubeProxy(_BaseProxy):
     domain = 'youtube.com'
+
+    def __init__(self, request: Request):
+        super().__init__()
 
     if _BackendVideoProxy is None:  # pragma: no cover - 仅在 SDK 环境触发
         async def handle_stream(self, url: str, **kwargs):  # type: ignore[override]
