@@ -6,7 +6,6 @@ from typing import Union
 from fastapi import FastAPI, status
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi_radar import Radar
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.requests import Request
@@ -95,10 +94,6 @@ def create_app() -> FastAPI:
     app.include_router(video_interaction_router)
     app.include_router(system_config_router)
     app.include_router(plugins_router)
-
-    # 初始化 Radar（API 监控）
-    radar = Radar(app, db_engine=engine)
-    radar.create_tables()
 
     # 生产环境：挂载静态文件和 SPA 路由
     if not settings.is_dev:
