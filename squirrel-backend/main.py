@@ -34,8 +34,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     FastAPI 应用生命周期管理
     
     启动时按顺序执行：
-    1. 初始化插件桥接器
-    2. 加载插件
+    1. 加载插件（注册到 SDK 注册表）
+    2. 初始化插件桥接器（同步插件到后端提取器工厂）
     3. 触发插件启动钩子
     4. 启动消息队列 Worker
     5. 启动任务调度器
@@ -47,22 +47,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Application startup sequence begin")
     logger.info("=" * 60)
     
-    # 1. 初始化插件桥接器
-    logger.info("[1/5] Initializing plugin bridge...")
-    try:
-        initialize_plugin_bridge()
-        logger.info("[1/5] ✓ Plugin bridge initialized")
-    except Exception as e:
-        logger.exception(f"[1/5] ✗ Failed to initialize plugin bridge: {e}")
-        raise
-    
-    # 2. 加载插件
-    logger.info("[2/5] Loading plugins...")
+    # 1. 加载插件（必须先加载，注册到 SDK 注册表）
+    logger.info("[1/5] Loading plugins...")
     try:
         init_plugins()
-        logger.info("[2/5] ✓ Plugins loaded")
+        logger.info("[1/5] ✓ Plugins loaded")
     except Exception as e:
-        logger.exception(f"[2/5] ✗ Failed to load plugins: {e}")
+        logger.exception(f"[1/5] ✗ Failed to load plugins: {e}")
+        raise
+    
+    # 2. 初始化插件桥接器（从 SDK 注册表同步到后端工厂）
+    logger.info("[2/5] Initializing plugin bridge...")
+    try:
+        initialize_plugin_bridge()
+        logger.info("[2/5] ✓ Plugin bridge initialized")
+    except Exception as e:
+        logger.exception(f"[2/5] ✗ Failed to initialize plugin bridge: {e}")
         raise
     
     # 3. 触发插件启动钩子
