@@ -1,13 +1,11 @@
 import logging
 
 from common import constants
-from core.cache import RedisClient
+from mq.producer import RedisStreamProducer
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import video_service, message_service, subscription_service
-from mq.producer import RedisStreamProducer
 
 logger = logging.getLogger()
-client = RedisClient.get_instance().client
 
 
 def __check_video_exists(url: str) -> bool:

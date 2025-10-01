@@ -3,10 +3,9 @@ from datetime import datetime
 
 from fastapi import APIRouter, Query, Depends
 from sqlalchemy import select
-from typing import Dict, Any, cast
 import common.response as response
 from core.database import get_session
-from core.cache import RedisClient
+from core.cache import redis_client
 from models.links import UserSubscription
 from models.message import Message
 from models.subscription import Subscription
@@ -15,13 +14,11 @@ from schemas.subscription.request.subscription import SubscribeRequest, Unsubscr
 from services import subscription_service, message_service
 from typing import List
 from core.site_catalog import SiteCatalog
-from core.cache import DistributedLock
 from utils.jwt_helper import get_current_user
 from mq.producer import RedisStreamProducer
 from common import constants
 
 router = APIRouter(tags=['订阅接口'])
-client = RedisClient.get_instance().get_client()
 
 
 @router.post("/api/subscription/subscribe")
@@ -154,10 +151,10 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
         if not user_subscription:
             return response.forbidden("无权操作该订阅")
 
-    # 使用分布式锁作为“是否进行中”的唯一来源，避免仅依赖缓存状态
+    # 使用分布式锁作为"是否进行中"的唯一来源，避免仅依赖缓存状态
     lock_key = f"lock:subscription:update:{subscription_id}"
-    lock = DistributedLock(lock_key)
-    if lock.is_locked():
+    # 检查锁是否被持有（直接查询 Redis）
+    if redis_client.exists(lock_key):
         return response.success({
             "status": "in_progress",
             "inProgress": True
@@ -178,7 +175,7 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
     message = message_service.create_message(content)
 
     # 设置手动占用标记，减少与定时的竞争（短 TTL）
-    client.set(f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{subscription_id}", 1, ex=120)
+    redis_client.set(f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{subscription_id}", 1, ex=120)
 
     # 将手动更新投递到入口队列，随后由消费者按 domain 路由
     RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, message.to_dict())

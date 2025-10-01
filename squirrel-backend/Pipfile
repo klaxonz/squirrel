@@ -38,5 +38,6 @@ botasaurus = "*"
 js2py = "*"
 fastapi-radar = "*"
 squirrel-sdk = {path = "../squirrel-sdk", editable = true}
+python-redis-lock = "*"
 
 [dev-packages]

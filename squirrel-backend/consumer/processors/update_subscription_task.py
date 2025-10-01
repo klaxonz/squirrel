@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, Any
-from core.cache import RedisClient
 from common import constants
 from mq import mq_consumer
 from mq.producer import RedisStreamProducer
@@ -11,7 +10,6 @@ from services.subscription_update_service import SubscriptionUpdateService
 from utils import url_helper
 
 logger = logging.getLogger()
-client = RedisClient.get_instance().get_client()
 
 
 def _resolve_update_queue(params: SubscriptionUpdateDto, is_manual: bool) -> str:

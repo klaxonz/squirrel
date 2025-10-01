@@ -3,7 +3,7 @@ from typing import List, Tuple
 from sqlalchemy import func, select
 
 from common import constants
-from core.cache import RedisClient
+from core.cache import redis_client
 from core.database import get_session
 from models.links import SubscriptionVideo
 from models.subscription import Subscription
@@ -85,7 +85,6 @@ def list_tasks(status: str, page: int, page_size: int) -> Tuple[List[dict], int]
 
 
 def generate_task_data(tasks: List[DownloadTask]):
-    client = RedisClient.get_instance().client
     task_data = []
 
     with get_session() as session:
@@ -115,7 +114,7 @@ def generate_task_data(tasks: List[DownloadTask]):
                     subscription_video.subscription_id]
 
             for task in tasks:
-                progress = client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.id}')
+                progress = redis_client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.id}')
                 downloaded_size = int(progress.get('downloaded_size', 0))
                 total_size = int(progress.get('total_size', 0))
                 speed = progress.get('speed', '')

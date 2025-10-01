@@ -26,9 +26,6 @@ from .plugin_bridge import (
 
 from .task_manager import TaskManager, TaskRouter
 
-from .cache import RedisCacheManager
-
-
 from .handlers.video_handler import VideoExtractionHandler
 
 __all__ = [
@@ -44,10 +41,6 @@ __all__ = [
     
     # 任务管理
     'TaskManager', 'TaskRouter',
-    
-    # 缓存
-    'RedisCacheManager',
-    
     
     # 处理器
     'VideoExtractionHandler',

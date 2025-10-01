@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional, Dict, Any
 import inspect
 
-from core.cache import RedisClient
+from core.cache import redis_client
 from .message import MqMessage
 
 
@@ -34,7 +34,6 @@ class RedisStreamConsumer:
         self.stream = stream
         self.handler = handler
         self.options = options
-        self._redis = redis_client or RedisClient.get_instance().get_client()
         # 如果处理函数签名为 (message, stream)，则在回调时同时传入 stream
         try:
             sig = inspect.signature(handler)
@@ -47,7 +46,7 @@ class RedisStreamConsumer:
     def _ensure_group(self) -> None:
         try:
             # MKSTREAM 确保创建 stream
-            self._redis.xgroup_create(name=self.stream, groupname=self.options.group, id="$", mkstream=True)
+            redis_client.xgroup_create(name=self.stream, groupname=self.options.group, id="$", mkstream=True)
             logger.info(
                 "已创建 Redis Stream 消费者组 stream=%s group=%s",
                 self.stream,
@@ -75,7 +74,7 @@ class RedisStreamConsumer:
             return
         try:
             # 读取 pending 次数
-            info = self._redis.xpending_range(self.stream, self.options.group, min="-", max="+", count=1, consumername=self.options.consumer_name)
+            info = redis_client.xpending_range(self.stream, self.options.group, min="-", max="+", count=1, consumername=self.options.consumer_name)
             deliveries = 0
             for entry in info:
                 if getattr(entry, "message_id", None) == message_id:
@@ -83,11 +82,11 @@ class RedisStreamConsumer:
                     break
             if deliveries >= self.options.max_delivery:
                 # 推送到 DLQ
-                self._redis.xadd(self.options.retry_dlq, MqMessage(body={"body": body, "message_id": message_id}).to_stream_fields())
+                redis_client.xadd(self.options.retry_dlq, MqMessage(body={"body": body, "message_id": message_id}).to_stream_fields())
                 # ACK 原消息
-                acked = self._redis.xack(self.stream, self.options.group, message_id)
+                acked = redis_client.xack(self.stream, self.options.group, message_id)
                 if acked:
-                    self._redis.xdel(self.stream, message_id)
+                    redis_client.xdel(self.stream, message_id)
                 logger.warning(
                     "消息已发送至 DLQ stream=%s message_id=%s delivery_count=%s dlq=%s",
                     self.stream,
@@ -104,7 +103,7 @@ class RedisStreamConsumer:
 
     def poll_once(self) -> bool:
         try:
-            results = self._redis.xreadgroup(
+            results = redis_client.xreadgroup(
                 groupname=self.options.group,
                 consumername=self.options.consumer_name,
                 streams={self.stream: ">"},
@@ -133,9 +132,9 @@ class RedisStreamConsumer:
                         else:
                             self.handler(msg.body)
                         if self.options.auto_ack:
-                            acked = self._redis.xack(self.stream, self.options.group, message_id)
+                            acked = redis_client.xack(self.stream, self.options.group, message_id)
                             if acked:
-                                self._redis.xdel(self.stream, message_id)
+                                redis_client.xdel(self.stream, message_id)
                                 logger.debug(
                                     "消息已 ACK 并删除 stream=%s message_id=%s",
                                     self.stream,

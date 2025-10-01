@@ -1,7 +1,6 @@
 import logging
 from sqlalchemy import select
 from common import constants
-from core.cache import RedisClient
 from core.database import get_session
 from models.subscription import Subscription
 from mq import RedisStreamProducer
@@ -9,7 +8,6 @@ from schedule.task import TaskRegistry, BaseTask
 from services import subscription_service
 
 logger = logging.getLogger()
-client = RedisClient.get_instance().get_client()
 
 
 @TaskRegistry.register(interval=300, unit='minutes')
