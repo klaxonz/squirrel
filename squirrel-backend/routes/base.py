@@ -12,7 +12,7 @@ from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse
 from starlette.staticfiles import StaticFiles
-from common.global_config import IS_DEV
+from core.config import settings
 from plugins.loader import init_plugins, app_start
 from core.database import engine
 from routes.middleware.auth import AuthMiddleware, AuthenticationError, TokenMissingError, TokenExpiredError
@@ -95,7 +95,7 @@ try:
 except Exception:
     logger.exception("[plugins] app_start hook failed (ignored)")
 
-if not IS_DEV:
+if not settings.is_dev:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     static_dir = os.path.join(base_dir, "static")
     # 只在目录存在时才挂载静态文件
@@ -108,7 +108,7 @@ FRONTEND_DEV_HOST = os.getenv("FRONTEND_DEV_HOST", "localhost")
 FRONTEND_DEV_PORT = os.getenv("FRONTEND_DEV_PORT", "5173")
 FRONTEND_DEV_URL = f"http://{FRONTEND_DEV_HOST}:{FRONTEND_DEV_PORT}"
 
-if not IS_DEV:
+if not settings.is_dev:
     @app.get("/{full_path:path}", name="spa")
     async def serve_spa(full_path: str):
         file_static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")

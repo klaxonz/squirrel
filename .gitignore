@@ -63,3 +63,4 @@ squirrel-backend/radar.db
 squirrel-backend/plugins_ext
 squirrel-backend/plugins_ext/*
 /squirrel-backend/radar.duckdb
+/.cursor/

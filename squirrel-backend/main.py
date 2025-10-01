@@ -4,8 +4,8 @@ import uvicorn
 from alembic.config import Config as AlembicConfig
 from alembic import command
 from common.constants import SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER
-from common.global_config import IS_DEV
 from common.log import init_logging
+from core.config import settings
 from controllers.scheduler_controller import scheduler_start, scheduler_stop
 from controllers.worker_controller import worker_start, worker_stop
 from routes.base import app
@@ -25,7 +25,7 @@ def upgrade_database():
 
 
 def start_fastapi_server():
-    if IS_DEV:
+    if settings.is_dev:
         uvicorn.run("main:app", host="0.0.0.0", reload=True, port=8000)
     else:
         uvicorn.run(app, host="0.0.0.0", port=8000)

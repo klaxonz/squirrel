@@ -37,6 +37,21 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
 
     @property
+    def environment(self) -> str:
+        """获取当前环境名称"""
+        return os.getenv("ENV", "prod").lower()
+
+    @property
+    def is_dev(self) -> bool:
+        """判断是否为开发环境"""
+        return self.environment == "dev"
+
+    @property
+    def is_prod(self) -> bool:
+        """判断是否为生产环境"""
+        return self.environment == "prod"
+
+    @property
     def database_url(self):
         return f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DATABASE}"
 
