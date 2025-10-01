@@ -9,7 +9,7 @@ from models.user import User
 from schemas.video.request.video import SortBy, DownloadVideoRequest
 from services import video_service, subscription_video_service, subscription_service
 from typing import List
-from core.site_catalog import SiteCatalog
+from utils.site_catalog import SiteCatalog
 from crawl import VideoFactory, DownloaderFactory, ProxyRegistry, SubtitlesRegistry, MpdRegistry
 from utils.jwt_helper import get_current_user
 from utils.url_helper import extract_top_level_domain

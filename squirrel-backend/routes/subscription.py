@@ -13,7 +13,7 @@ from models.user import User
 from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest
 from services import subscription_service, message_service
 from typing import List
-from core.site_catalog import SiteCatalog
+from utils.site_catalog import SiteCatalog
 from utils.jwt_helper import get_current_user
 from mq.producer import RedisStreamProducer
 from common import constants
