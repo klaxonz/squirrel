@@ -3,7 +3,7 @@ from __future__ import annotations
 from crawl import VideoProxyBase, register_proxy
 
 try:  # 后端环境可用：复用默认实现
-    from core.proxy import VideoProxy as _BackendVideoProxy
+    from core.streaming.proxy import VideoProxy as _BackendVideoProxy
 except Exception:  # pragma: no cover - SDK / 非后端环境
     _BackendVideoProxy = None
 

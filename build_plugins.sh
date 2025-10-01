@@ -17,11 +17,41 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGINS_DIR="$SCRIPT_DIR/squirrel-plugins"
 BUILD_DIR="$SCRIPT_DIR/plugin_builds"
 DIST_DIR="$SCRIPT_DIR/plugin_packages"
+PLUGINS_EXT_DIR="$SCRIPT_DIR/squirrel-backend/plugins_ext"
+
+# 开发模式标志
+DEV_MODE=false
+
+# 解析命令行参数
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -d|--dev)
+            DEV_MODE=true
+            shift
+            ;;
+        -h|--help)
+            echo "用法: $0 [选项]"
+            echo "选项:"
+            echo "  -d, --dev    开发模式，自动解压插件到 squirrel-backend/plugins_ext 目录"
+            echo "  -h, --help   显示此帮助信息"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}未知选项: $1${NC}"
+            echo "使用 -h 或 --help 查看帮助"
+            exit 1
+            ;;
+    esac
+done
 
 echo -e "${BLUE}=== Squirrel 插件一键打包工具 ===${NC}"
 echo "插件目录: $PLUGINS_DIR"
 echo "构建目录: $BUILD_DIR"
 echo "输出目录: $DIST_DIR"
+if [ "$DEV_MODE" = true ]; then
+    echo -e "${YELLOW}开发模式: 已启用 (将自动部署到 plugins_ext)${NC}"
+    echo "部署目录: $PLUGINS_EXT_DIR"
+fi
 echo
 
 # 检查插件目录是否存在
@@ -38,6 +68,16 @@ mkdir -p "$DIST_DIR"
 echo -e "${YELLOW}清理之前的构建文件...${NC}"
 rm -rf "$BUILD_DIR"/*
 rm -rf "$DIST_DIR"/*
+
+# 如果是开发模式，清理 plugins_ext 目录
+if [ "$DEV_MODE" = true ]; then
+    if [ -d "$PLUGINS_EXT_DIR" ]; then
+        echo -e "${YELLOW}清理 plugins_ext 目录...${NC}"
+        rm -rf "$PLUGINS_EXT_DIR"/*
+    else
+        mkdir -p "$PLUGINS_EXT_DIR"
+    fi
+fi
 
 # 获取所有插件目录
 PLUGINS=($(find "$PLUGINS_DIR" -maxdepth 1 -type d -not -path "$PLUGINS_DIR" -exec basename {} \; | grep -v "^\."))
@@ -119,6 +159,15 @@ for plugin in "${PLUGINS[@]}"; do
             zip_file="${plugin}_plugin.zip"
             zip -r "$zip_file" "$plugin" > /dev/null
             
+            # 如果是开发模式，解压到 plugins_ext 目录
+            if [ "$DEV_MODE" = true ]; then
+                echo -e "${BLUE}  → 部署到 plugins_ext/$plugin${NC}"
+                plugin_deploy_dir="$PLUGINS_EXT_DIR/$plugin"
+                mkdir -p "$plugin_deploy_dir"
+                unzip -q "$zip_file" -d "$PLUGINS_EXT_DIR"
+                echo -e "${GREEN}  ✓ 已部署到开发环境${NC}"
+            fi
+            
             # 删除临时目录
             rm -rf "$plugin"
             
@@ -160,6 +209,15 @@ if [ -d "$DIST_DIR" ] && [ "$(ls -A "$DIST_DIR")" ]; then
     ls -la "$DIST_DIR"/*.zip 2>/dev/null || echo "没有生成 zip 文件"
 else
     echo -e "${YELLOW}警告: 没有生成任何插件包${NC}"
+fi
+
+# 如果是开发模式，显示部署信息
+if [ "$DEV_MODE" = true ] && [ -d "$PLUGINS_EXT_DIR" ] && [ "$(ls -A "$PLUGINS_EXT_DIR")" ]; then
+    echo
+    echo -e "${BLUE}已部署的插件:${NC}"
+    ls -la "$PLUGINS_EXT_DIR"
+    echo
+    echo -e "${GREEN}✓ 开发模式部署完成！插件已自动安装到 plugins_ext 目录${NC}"
 fi
 
 echo -e "${GREEN}完成!${NC}"

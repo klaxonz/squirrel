@@ -42,6 +42,43 @@ Squirrel 是一个视频订阅和下载工具，下载时可以生成nfo文件�
 1. 安装浏览器插件
 2. 打开浏览器，找到扩展管理，将 squirrel-extension 目录导入到浏览器拓展中
 
+### 插件开发与构建
+
+Squirrel 支持通过插件系统扩展更多视频平台。
+
+#### 构建插件
+
+使用 `build_plugins.sh` 脚本可以一键构建所有插件：
+
+**生产模式**（仅打包插件）：
+```bash
+./build_plugins.sh
+```
+生成的插件包将保存在 `plugin_packages/` 目录，可通过 Web 界面上传安装。
+
+**开发模式**（打包 + 自动部署）：
+```bash
+./build_plugins.sh -d
+# 或
+./build_plugins.sh --dev
+```
+开发模式下会自动将插件解压到 `squirrel-backend/plugins_ext/` 目录，无需手动上传。
+
+**查看帮助**：
+```bash
+./build_plugins.sh -h
+```
+
+#### 插件目录
+
+- `squirrel-plugins/` - 插件源码目录
+  - `bilibili/` - Bilibili 插件
+  - `youtube/` - YouTube 插件
+  - `javdb/` - JavDB 插件
+  - `pornhub/` - PornHub 插件
+- `plugin_packages/` - 构建产物（zip 包）
+- `squirrel-backend/plugins_ext/` - 插件运行时目录
+
 ## 贡献
 
 欢迎提交问题报告、功能请求和代码贡献。请查看 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解更多信息。
