@@ -77,9 +77,12 @@ class TaskRouter:
 class TaskManager:
     """任务管理器"""
 
-    def __init__(self,
-                 queue_mapping: Dict[str, Dict[str, str]]):
-        self.router = TaskRouter(queue_mapping)
+    def __init__(self, queue_mapping: Optional[Dict[str, Dict[str, str]]] = None):
+        """
+        Args:
+            queue_mapping: 队列映射（已废弃，保留用于兼容性）
+        """
+        self.router = TaskRouter(queue_mapping or {})
         self._processors: List[ITaskProcessor] = []
 
     def add_processor(self, processor: ITaskProcessor) -> None:

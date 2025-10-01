@@ -1,22 +1,22 @@
 """
 消费者注册器
 
-提供统一的动态消费者注册功能，避免硬编码队列名称
+基于插件注册表动态注册消费者，完全消除硬编码
 """
 import logging
 from typing import Callable, Dict, Any
-from common import constants
 from mq.registry import ConsumerRegistry
+from mq.queue_config import get_queue_config, QueueType, QueueMode
 
 logger = logging.getLogger()
 
 
 class DomainConsumerRegistrar:
-    """域队列消费者注册器"""
+    """域队列消费者注册器 - 基于插件注册表动态注册"""
     
     @staticmethod
     def register_all(
-        queue_template: str,
+        queue_type: QueueType,
         group: str,
         consumer_prefix: str,
         handler: Callable[[Dict[str, Any]], None],
@@ -27,7 +27,7 @@ class DomainConsumerRegistrar:
         为所有支持的站点注册域队列消费者
         
         Args:
-            queue_template: 队列名称模板，如 'queue::video::extract::{site}::{mode}'
+            queue_type: 队列类型枚举
             group: 消费者组名
             consumer_prefix: 消费者名称前缀
             handler: 消息处理函数
@@ -37,12 +37,13 @@ class DomainConsumerRegistrar:
         Returns:
             注册的消费者数量
         """
+        config = get_queue_config()
         registered_count = 0
         
-        for site_name in constants.SUPPORTED_SITES.values():
-            for mode in ['manual', 'scheduled']:
-                queue_name = queue_template.format(site=site_name, mode=mode)
-                consumer_name = f"{consumer_prefix}-{site_name}-{mode}"
+        for site in config.get_supported_sites():
+            for mode in QueueMode:
+                queue_name = config.build_queue_name(queue_type, site, mode)
+                consumer_name = f"{consumer_prefix}-{site}-{mode.value}"
                 
                 try:
                     ConsumerRegistry.register(
@@ -62,7 +63,7 @@ class DomainConsumerRegistrar:
     
     @staticmethod
     def register_with_stream_param(
-        queue_template: str,
+        queue_type: QueueType,
         group: str,
         consumer_prefix: str,
         handler_factory: Callable[[str], Callable[[Dict[str, Any]], None]],
@@ -73,7 +74,7 @@ class DomainConsumerRegistrar:
         注册需要 stream 参数的消费者（使用工厂函数）
         
         Args:
-            queue_template: 队列名称模板
+            queue_type: 队列类型枚举
             group: 消费者组名
             consumer_prefix: 消费者名称前缀
             handler_factory: 接收 queue_name 返回 handler 的工厂函数
@@ -83,12 +84,13 @@ class DomainConsumerRegistrar:
         Returns:
             注册的消费者数量
         """
+        config = get_queue_config()
         registered_count = 0
         
-        for site_name in constants.SUPPORTED_SITES.values():
-            for mode in ['manual', 'scheduled']:
-                queue_name = queue_template.format(site=site_name, mode=mode)
-                consumer_name = f"{consumer_prefix}-{site_name}-{mode}"
+        for site in config.get_supported_sites():
+            for mode in QueueMode:
+                queue_name = config.build_queue_name(queue_type, site, mode)
+                consumer_name = f"{consumer_prefix}-{site}-{mode.value}"
                 
                 try:
                     handler = handler_factory(queue_name)

@@ -11,6 +11,7 @@ from models.message import Message
 from mq import mq_consumer
 from mq.message_router import video_extract_router
 from mq.consumer_registrar import DomainConsumerRegistrar
+from mq.queue_config import QueueType
 from common import constants
 from utils import url_helper
 from core.extraction.task_manager import TaskManager
@@ -21,7 +22,7 @@ from core.extraction.factory import get_extractor_factory
 logger = logging.getLogger()
 
 video_handler = VideoExtractionHandler()
-task_manager = TaskManager(constants.DOMAIN_QUEUE_MAPPING)
+task_manager = TaskManager()  # Router 功能未使用，移除 queue_mapping 参数
 
 
 # 创建任务处理器
@@ -140,11 +141,11 @@ def _register_domain_consumers():
     """
     动态注册所有域特定队列的消费者
     
-    使用统一的 DomainConsumerRegistrar 简化注册逻辑
-    新增站点只需在 constants.SUPPORTED_SITES 添加配置即可
+    基于插件注册表自动识别支持的站点，完全消除硬编码
+    新增站点只需注册插件即可，无需修改任何配置
     """
     count = DomainConsumerRegistrar.register_all(
-        queue_template='queue::video::extract::{site}::{mode}',
+        queue_type=QueueType.VIDEO_EXTRACT,
         group='extract-domain',
         consumer_prefix='extract',
         handler=process_domain_video_extract,

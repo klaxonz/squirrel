@@ -11,6 +11,13 @@ from .registry import ConsumerRegistry, ConsumerSpec
 from .decorators import mq_consumer
 from .message_router import MessageRouter, video_extract_router, subscription_update_router
 from .consumer_registrar import DomainConsumerRegistrar
+from .queue_config import (
+    QueueConfigManager,
+    get_queue_config,
+    ensure_queue_config_initialized,
+    QueueType,
+    QueueMode
+)
 
 __all__ = [
     "MqMessage",
@@ -24,6 +31,11 @@ __all__ = [
     "video_extract_router",
     "subscription_update_router",
     "DomainConsumerRegistrar",
+    "QueueConfigManager",
+    "get_queue_config",
+    "ensure_queue_config_initialized",
+    "QueueType",
+    "QueueMode",
 ]
 
 

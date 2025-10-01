@@ -1,33 +1,29 @@
 """
 消息队列路由器
 
-提供统一的消息路由功能，支持：
-- 基于域名的路由
-- 手动/定时模式区分
-- 统一的消息格式处理
+基于插件注册表动态路由，消除硬编码
 """
 import logging
 from typing import Dict, Any
 from pydantic import BaseModel
-from common import constants
 from utils import url_helper
 from mq.producer import RedisStreamProducer
+from mq.queue_config import get_queue_config, QueueType, QueueMode
 
 logger = logging.getLogger()
 
 
 class MessageRouter:
-    """消息路由器基类"""
+    """消息路由器 - 基于插件注册表动态路由"""
     
-    def __init__(self, queue_prefix: str, queue_mapping: Dict[str, Dict[str, str]]):
+    def __init__(self, queue_type: QueueType):
         """
         Args:
-            queue_prefix: 队列前缀，如 'video::extract' 或 'subscription::update'
-            queue_mapping: 域名到队列的映射
+            queue_type: 队列类型枚举
         """
-        self.queue_prefix = queue_prefix
-        self.queue_mapping = queue_mapping
+        self.queue_type = queue_type
         self.producer = RedisStreamProducer()
+        self.config = get_queue_config()
     
     def route(self, message: Dict[str, Any], url: str, is_manual: bool) -> None:
         """
@@ -45,16 +41,12 @@ class MessageRouter:
     def _resolve_queue(self, url: str, is_manual: bool) -> str:
         """解析队列名称"""
         domain = url_helper.extract_top_level_domain(url)
-        mapping = self.queue_mapping.get(domain)
-        if not mapping:
+        site = self.config.get_site_by_domain(domain)
+        if not site:
             raise ValueError(f"Unsupported domain: {domain}")
         
-        mode = 'manual' if is_manual else 'scheduled'
-        queue_name = mapping.get(mode)
-        if not queue_name:
-            raise ValueError(f"No queue mapping for domain {domain}, mode {mode}")
-        
-        return queue_name
+        mode = QueueMode.MANUAL if is_manual else QueueMode.SCHEDULED
+        return self.config.build_queue_name(self.queue_type, site, mode)
 
 
 class DirectMessageSender:
@@ -76,14 +68,7 @@ class DirectMessageSender:
         logger.debug(f"Sent message to {queue}")
 
 
-# 预定义路由器
-video_extract_router = MessageRouter(
-    queue_prefix='video::extract',
-    queue_mapping=constants.DOMAIN_QUEUE_MAPPING
-)
-
-subscription_update_router = MessageRouter(
-    queue_prefix='subscription::update',
-    queue_mapping=constants.SUBSCRIPTION_UPDATE_DOMAIN_QUEUE_MAPPING
-)
+# 预定义路由器（延迟初始化，在插件加载后调用 ensure_queue_config_initialized）
+video_extract_router = MessageRouter(QueueType.VIDEO_EXTRACT)
+subscription_update_router = MessageRouter(QueueType.SUBSCRIPTION_UPDATE)
 

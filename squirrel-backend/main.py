@@ -65,6 +65,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.exception(f"[2/5] ✗ Failed to initialize plugin bridge: {e}")
         raise
     
+    # 2.1 初始化队列配置（基于插件注册表）
+    logger.info("[2.1/5] Initializing queue configuration...")
+    try:
+        from mq.queue_config import ensure_queue_config_initialized
+        ensure_queue_config_initialized()
+        logger.info("[2.1/5] ✓ Queue configuration initialized")
+    except Exception as e:
+        logger.exception(f"[2.1/5] ✗ Failed to initialize queue config: {e}")
+        raise
+    
     # 3. 触发插件启动钩子
     logger.info("[3/5] Triggering plugin startup hooks...")
     try:

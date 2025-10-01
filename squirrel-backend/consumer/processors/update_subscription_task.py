@@ -6,6 +6,7 @@ from common import constants
 from mq import mq_consumer
 from mq.message_router import subscription_update_router
 from mq.consumer_registrar import DomainConsumerRegistrar
+from mq.queue_config import QueueType
 from schemas.subscription.dto.subscription_update_dto import SubscriptionUpdateDto
 from models.message import Message
 from services import subscription_service
@@ -83,11 +84,11 @@ def _register_domain_consumers():
     """
     动态注册所有域队列消费者
     
-    使用统一的 DomainConsumerRegistrar 简化注册逻辑
-    新增站点只需在 constants.SUPPORTED_SITES 添加配置即可
+    基于插件注册表自动识别支持的站点，完全消除硬编码
+    新增站点只需注册插件即可，无需修改任何配置
     """
     count = DomainConsumerRegistrar.register_with_stream_param(
-        queue_template='queue::subscription::update::{site}::{mode}',
+        queue_type=QueueType.SUBSCRIPTION_UPDATE,
         group='subscription-domain',
         consumer_prefix='sub-update',
         handler_factory=_create_domain_handler,
