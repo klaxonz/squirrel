@@ -2,9 +2,7 @@ from pydantic import BaseModel
 
 
 class SubscriptionUpdateDto(BaseModel):
+    """订阅更新消息 DTO"""
     subscription_id: int
     url: str
-    total_videos: int
-    total_extract: int
-    is_nsfw: bool | None = None
 

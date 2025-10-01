@@ -141,6 +141,7 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
         subscription = session.get(Subscription, subscription_id)
         if not subscription or subscription.is_deleted:
             return response.not_found("订阅不存在")
+        
         user_subscription = session.scalars(
             select(UserSubscription).where(
                 UserSubscription.user_id == current_user.id,
@@ -151,41 +152,31 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
         if not user_subscription:
             return response.forbidden("无权操作该订阅")
 
-    # 使用分布式锁作为"是否进行中"的唯一来源，避免仅依赖缓存状态
     lock_key = f"lock:subscription:update:{subscription_id}"
-    # 检查锁是否被持有（直接查询 Redis）
     if redis_client.exists(lock_key):
         return response.success({
             "status": "in_progress",
             "inProgress": True
         })
 
-    # 组装消息体，使用 DB 最新数据
     sub_detail = subscription_service.get_subscription_detail(subscription_id)
     if not sub_detail:
         return response.not_found("订阅不存在")
 
     content = {
-        "subscription_id": getattr(sub_detail, 'id', subscription_id),
-        "url": getattr(sub_detail, 'url', ''),
-        "total_videos": getattr(sub_detail, 'total_videos', 0),
-        "total_extract": getattr(sub_detail, 'total_extract', 0),
-        "is_nsfw": getattr(sub_detail, 'is_nsfw', False),
+        "subscription_id": sub_detail.id,
+        "url": sub_detail.url,
     }
     message = message_service.create_message(content)
 
-    # 设置手动占用标记，减少与定时的竞争（短 TTL）
     redis_client.set(f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{subscription_id}", 1, ex=120)
-
-    # 将手动更新投递到入口队列，随后由消费者按 domain 路由
     RedisStreamProducer().send(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, message.to_dict())
 
-    # 返回入队成功结果
     return response.success({
         "status": "queued",
         "inProgress": False,
         "subscriptionId": subscription_id,
-        "requestId": getattr(message, 'id', None),
+        "requestId": message.id,
         "queuedAt": datetime.utcnow().isoformat()
     })
 
