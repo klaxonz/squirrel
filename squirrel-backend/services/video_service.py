@@ -587,7 +587,9 @@ def list_videos(
 
         # 获取订阅信息
         subscription_ids = list(set(video.subscription_id for video in videos))
-        subscriptions = session.query(Subscription).filter(Subscription.id.in_(subscription_ids)).all()
+        subscriptions = session.scalars(
+            select(Subscription).where(Subscription.id.in_(subscription_ids))
+        ).all()
 
         # 获取视频相关创作者
         video_ids = [video.id for video in videos]

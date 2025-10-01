@@ -70,30 +70,61 @@ def process_subscription_update_entry_manual(message: Dict[str, Any]) -> None:
         logger.error(f"Failed to route manual subscription update: {e}", exc_info=True)
 
 
-def _register_domain_consumers():
-    for domain, site_name in constants.SUPPORTED_SITES.items():
-        for mode in ['manual', 'scheduled']:
-            queue_name = f'queue::subscription::update::{site_name}::{mode}'
-            mq_consumer(
-                queue_name, 
-                group="subscription-domain", 
-                consumer_name="sub-update-domain"
-            )(process_subscription_update_domain)
-
-
-@mq_consumer("queue::subscription::update::bilibili::manual", group="subscription-domain", consumer_name="sub-update-domain")
-@mq_consumer("queue::subscription::update::bilibili::scheduled", group="subscription-domain", consumer_name="sub-update-domain")
-@mq_consumer("queue::subscription::update::youtube::manual", group="subscription-domain", consumer_name="sub-update-domain")
-@mq_consumer("queue::subscription::update::youtube::scheduled", group="subscription-domain", consumer_name="sub-update-domain")
-@mq_consumer("queue::subscription::update::pornhub::manual", group="subscription-domain", consumer_name="sub-update-domain")
-@mq_consumer("queue::subscription::update::pornhub::scheduled", group="subscription-domain", consumer_name="sub-update-domain")
-@mq_consumer("queue::subscription::update::javdb::manual", group="subscription-domain", consumer_name="sub-update-domain")
-@mq_consumer("queue::subscription::update::javdb::scheduled", group="subscription-domain", consumer_name="sub-update-domain")
-def process_subscription_update_domain(message: Dict[str, Any], stream: str) -> None:
+def process_subscription_update_domain(message: Dict[str, Any], stream: str = '') -> None:
+    """处理域特定队列的订阅更新任务"""
     try:
         is_manual = 'manual' in stream
         _process_subscription_update(message, is_manual=is_manual)
     except Exception as e:
         logger.error(f"Error processing subscription update: {e}", exc_info=True)
         raise
+
+
+def _register_domain_consumers():
+    """
+    动态注册所有域队列消费者
+    
+    此函数会在模块加载时自动执行，从 constants.SUPPORTED_SITES 读取配置，
+    为每个站点的 manual 和 scheduled 队列注册消费者。
+    
+    使用闭包来捕获 queue_name，确保每个 handler 都能接收到正确的 stream 参数。
+    
+    优点：
+    - 新增站点只需在 constants.SUPPORTED_SITES 添加配置
+    - 避免硬编码队列名称
+    - 确保所有站点的队列都被正确注册
+    """
+    from mq.registry import ConsumerRegistry
+    
+    registered_count = 0
+    for site_name in constants.SUPPORTED_SITES.values():
+        for mode in ['manual', 'scheduled']:
+            queue_name = f'queue::subscription::update::{site_name}::{mode}'
+            
+            # 创建闭包来捕获 queue_name（避免闭包陷阱）
+            def create_handler(q_name):
+                def handler(message: Dict[str, Any]) -> None:
+                    process_subscription_update_domain(message, stream=q_name)
+                return handler
+            
+            try:
+                ConsumerRegistry.register(
+                    stream=queue_name,
+                    group="subscription-domain",
+                    consumer_name=f"sub-update-{site_name}-{mode}",
+                    handler=create_handler(queue_name),
+                    block_ms=1000,
+                    read_count=1
+                )
+                registered_count += 1
+                logger.debug(f"Registered consumer for queue: {queue_name}")
+            except Exception as e:
+                logger.error(f"Failed to register consumer for {queue_name}: {e}")
+    
+    logger.info(f"Subscription update: registered {registered_count} domain consumers")
+
+
+# 模块加载时自动注册
+# 注意：此代码在模块被导入时执行，由 mq/runner.py 的 module_discovery 触发
+_register_domain_consumers()
 

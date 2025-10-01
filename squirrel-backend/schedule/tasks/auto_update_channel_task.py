@@ -3,7 +3,6 @@ from sqlalchemy import select, func
 from common import constants
 from core.database import get_session
 from models.subscription import Subscription
-from models.links import SubscriptionVideo
 from mq import RedisStreamProducer
 from schedule.task import TaskRegistry, BaseTask
 from services import message_service
