@@ -15,11 +15,20 @@ from mq import mq_consumer
 logger = logging.getLogger()
 
 
-@mq_consumer(constants.QUEUE_SUBSCRIPTION_UPDATE, group="subscription_update", consumer_name="subscription_update_scheduled")
-def process_subscription_update_scheduled(message: Dict[str, Any]):
+@mq_consumer(constants.QUEUE_SUBSCRIPTION_UPDATE_INCREMENTAL, group="subscription_update", consumer_name="subscription_update_incremental")
+def process_subscription_update_incremental(message: Dict[str, Any]):
     """
-    处理定时订阅更新消息
-    职责：解析消息并调用编排器执行订阅更新
+    处理增量订阅更新消息（5分钟频率）
+    职责：解析消息并调用编排器执行增量订阅更新
+    """
+    _process_subscription_update(message, UpdateTrigger.SCHEDULED)
+
+
+@mq_consumer(constants.QUEUE_SUBSCRIPTION_UPDATE_FULL, group="subscription_update", consumer_name="subscription_update_full")
+def process_subscription_update_full(message: Dict[str, Any]):
+    """
+    处理全量订阅更新消息（1小时频率）
+    职责：解析消息并调用编排器执行全量订阅更新
     """
     _process_subscription_update(message, UpdateTrigger.SCHEDULED)
 
@@ -36,9 +45,12 @@ def process_subscription_update_manual(message: Dict[str, Any]):
 def process_domain_subscription_update(message: Dict[str, Any], queue_name: str):
     """
     处理域级别的订阅更新消息（用于域队列消费者）
-    根据队列名判断是 manual 还是 scheduled
+    根据队列名判断是 manual、incremental 还是 full
     """
-    trigger = UpdateTrigger.MANUAL if '::manual' in queue_name else UpdateTrigger.SCHEDULED
+    if '::manual' in queue_name:
+        trigger = UpdateTrigger.MANUAL
+    else:
+        trigger = UpdateTrigger.SCHEDULED
     _process_subscription_update(message, trigger)
 
 

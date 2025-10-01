@@ -40,8 +40,14 @@ class DomainConsumerRegistrar:
         config = get_queue_config()
         registered_count = 0
         
+        # 根据队列类型选择对应的模式
+        if queue_type == QueueType.SUBSCRIPTION_UPDATE:
+            modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
+        else:
+            modes = [QueueMode.MANUAL, QueueMode.SCHEDULED]
+        
         for site in config.get_supported_sites():
-            for mode in QueueMode:
+            for mode in modes:
                 queue_name = config.build_queue_name(queue_type, site, mode)
                 consumer_name = f"{consumer_prefix}-{site}-{mode.value}"
                 
@@ -87,8 +93,14 @@ class DomainConsumerRegistrar:
         config = get_queue_config()
         registered_count = 0
         
+        # 根据队列类型选择对应的模式
+        if queue_type == QueueType.SUBSCRIPTION_UPDATE:
+            modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
+        else:
+            modes = [QueueMode.MANUAL, QueueMode.SCHEDULED]
+        
         for site in config.get_supported_sites():
-            for mode in QueueMode:
+            for mode in modes:
                 queue_name = config.build_queue_name(queue_type, site, mode)
                 consumer_name = f"{consumer_prefix}-{site}-{mode.value}"
                 

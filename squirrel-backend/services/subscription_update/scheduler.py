@@ -78,12 +78,17 @@ class SubscriptionScheduler:
         
         return success_count, error_count
     
-    def enqueue_all_active(self, trigger: UpdateTrigger = UpdateTrigger.SCHEDULED) -> tuple[int, int]:
+    def enqueue_all_active(
+        self, 
+        trigger: UpdateTrigger = UpdateTrigger.SCHEDULED,
+        mode: UpdateMode = UpdateMode.INCREMENTAL
+    ) -> tuple[int, int]:
         """
         将所有活跃订阅发送到消息队列（按 domain 分发）
         
         Args:
             trigger: 触发类型
+            mode: 更新模式（增量/全量）
             
         Returns:
             (成功数, 失败数)
@@ -94,7 +99,7 @@ class SubscriptionScheduler:
             logger.info("No active subscriptions to enqueue")
             return 0, 0
         
-        logger.info(f"Enqueuing {len(subscriptions)} active subscriptions")
+        logger.info(f"Enqueuing {len(subscriptions)} active subscriptions (mode={mode.value})")
         
         grouped = self._group_by_domain(subscriptions)
         
@@ -104,11 +109,11 @@ class SubscriptionScheduler:
         for domain, subs in grouped.items():
             logger.info(f"Enqueuing {len(subs)} subscriptions for domain: {domain}")
             
-            queue_name = self._get_queue_for_domain(domain, trigger)
+            queue_name = self._get_queue_for_domain(domain, trigger, mode)
             
             for sub in subs:
                 try:
-                    self._enqueue_subscription_update(sub, trigger, queue_name)
+                    self._enqueue_subscription_update(sub, trigger, mode, queue_name)
                     success_count += 1
                 except Exception as e:
                     logger.error(f"Failed to enqueue subscription {sub.id}: {e}", exc_info=True)
@@ -209,22 +214,32 @@ class SubscriptionScheduler:
         return grouped
     
     @staticmethod
-    def _get_queue_for_domain(domain: str, trigger: UpdateTrigger) -> str:
+    def _get_queue_for_domain(domain: str, trigger: UpdateTrigger, mode: UpdateMode = UpdateMode.INCREMENTAL) -> str:
         """获取 domain 对应的队列名"""
-        trigger_type = 'manual' if trigger == UpdateTrigger.MANUAL else 'scheduled'
+        if trigger == UpdateTrigger.MANUAL:
+            queue_type = 'manual'
+        elif mode == UpdateMode.FULL:
+            queue_type = 'full'
+        else:
+            queue_type = 'incremental'
         
         if domain in constants.SUBSCRIPTION_UPDATE_DOMAIN_QUEUE_MAPPING:
-            return constants.SUBSCRIPTION_UPDATE_DOMAIN_QUEUE_MAPPING[domain][trigger_type]
+            return constants.SUBSCRIPTION_UPDATE_DOMAIN_QUEUE_MAPPING[domain][queue_type]
         
-        return constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL if trigger == UpdateTrigger.MANUAL else constants.QUEUE_SUBSCRIPTION_UPDATE
+        if trigger == UpdateTrigger.MANUAL:
+            return constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL
+        elif mode == UpdateMode.FULL:
+            return constants.QUEUE_SUBSCRIPTION_UPDATE_FULL
+        else:
+            return constants.QUEUE_SUBSCRIPTION_UPDATE_INCREMENTAL
     
     @staticmethod
-    def _enqueue_subscription_update(sub: Subscription, trigger: UpdateTrigger, queue_name: str):
+    def _enqueue_subscription_update(sub: Subscription, trigger: UpdateTrigger, mode: UpdateMode, queue_name: str):
         """将订阅更新任务发送到消息队列"""
         content = {
             'subscription_id': sub.id,
             'url': sub.url,
-            'mode': UpdateMode.SMART.value,
+            'mode': mode.value,
             'user_id': None,
             'force': False
         }
@@ -232,7 +247,7 @@ class SubscriptionScheduler:
         message = message_service.create_message(content)
         RedisStreamProducer().send(queue_name, message.to_dict())
         
-        logger.debug(f"Enqueued subscription {sub.id} to {queue_name}")
+        logger.debug(f"Enqueued subscription {sub.id} to {queue_name} (mode={mode.value})")
 
 
 scheduler = SubscriptionScheduler()

@@ -5,8 +5,12 @@ QUEUE_VIDEO_EXTRACT = 'queue::video::extract::manual'
 QUEUE_VIDEO_EXTRACT_SCHEDULED = 'queue::video::extract::scheduled'
 QUEUE_SUBSCRIBE = 'queue::video::subscribe'
 QUEUE_VIDEO_PROGRESS = 'queue::video::progress'
-QUEUE_SUBSCRIPTION_UPDATE = 'queue::subscription::update::scheduled'
+# Subscription update queues - incremental (5 min) and full (1 hour)
+QUEUE_SUBSCRIPTION_UPDATE_INCREMENTAL = 'queue::subscription::update::incremental'
+QUEUE_SUBSCRIPTION_UPDATE_FULL = 'queue::subscription::update::full'
 QUEUE_SUBSCRIPTION_UPDATE_MANUAL = 'queue::subscription::update::manual'
+# Legacy queue names for backward compatibility
+QUEUE_SUBSCRIPTION_UPDATE = 'queue::subscription::update::incremental'
 
 # Redis keys
 REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS = 'video:download:progress'
@@ -47,7 +51,8 @@ def get_all_queues():
         QUEUE_VIDEO_EXTRACT_SCHEDULED,
         QUEUE_SUBSCRIBE,
         QUEUE_VIDEO_PROGRESS,
-        QUEUE_SUBSCRIPTION_UPDATE,
+        QUEUE_SUBSCRIPTION_UPDATE_INCREMENTAL,
+        QUEUE_SUBSCRIPTION_UPDATE_FULL,
         QUEUE_SUBSCRIPTION_UPDATE_MANUAL,
     ]
 
@@ -57,7 +62,8 @@ def get_all_queues():
             f'queue::video::extract::{site_name}::manual',
             f'queue::video::extract::{site_name}::scheduled',
             f'queue::subscription::update::{site_name}::manual',
-            f'queue::subscription::update::{site_name}::scheduled',
+            f'queue::subscription::update::{site_name}::incremental',
+            f'queue::subscription::update::{site_name}::full',
         ])
 
     return base_queues + site_queues
@@ -75,7 +81,8 @@ DOMAIN_QUEUE_MAPPING = {
 SUBSCRIPTION_UPDATE_DOMAIN_QUEUE_MAPPING = {
     domain: {
         'manual': f'queue::subscription::update::{site_name}::manual',
-        'scheduled': f'queue::subscription::update::{site_name}::scheduled',
+        'incremental': f'queue::subscription::update::{site_name}::incremental',
+        'full': f'queue::subscription::update::{site_name}::full',
     }
     for domain, site_name in SUPPORTED_SITES.items()
 }

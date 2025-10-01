@@ -13,7 +13,9 @@ logger = logging.getLogger()
 class QueueMode(str, Enum):
     """队列模式枚举"""
     MANUAL = 'manual'
-    SCHEDULED = 'scheduled'
+    SCHEDULED = 'scheduled'  # Legacy, for video extract
+    INCREMENTAL = 'incremental'  # For subscription update, 5 min
+    FULL = 'full'  # For subscription update, 1 hour
 
 
 class QueueType(str, Enum):
@@ -94,12 +96,29 @@ class QueueConfigManager:
                 },
                 ...
             }
+            
+            或对于订阅更新：
+            {
+                'bilibili.com': {
+                    'manual': 'queue::subscription::update::bilibili::manual',
+                    'incremental': 'queue::subscription::update::bilibili::incremental',
+                    'full': 'queue::subscription::update::bilibili::full'
+                },
+                ...
+            }
         """
         mapping = {}
+        
+        # 根据队列类型选择对应的模式
+        if queue_type == QueueType.SUBSCRIPTION_UPDATE:
+            modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
+        else:
+            modes = [QueueMode.MANUAL, QueueMode.SCHEDULED]
+        
         for domain, site in self._domain_to_site.items():
             mapping[domain] = {
                 mode.value: self.build_queue_name(queue_type, site, mode)
-                for mode in QueueMode
+                for mode in modes
             }
         return mapping
 
