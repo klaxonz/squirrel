@@ -22,10 +22,18 @@ def _setup_video_extract_consumer():
 
 
 def _setup_subscription_update_consumer():
-    """配置订阅更新消费者"""
-    # 注意：如果还有订阅更新的域消费者，在这里配置
-    # 目前订阅更新已重构，不再需要域队列消费者
-    pass
+    """配置订阅更新消费者（域级别队列）"""
+    from consumer.processors.subscription_update_task import process_domain_subscription_update
+    
+    config = ConsumerConfig(
+        queue_type=QueueType.SUBSCRIPTION_UPDATE,
+        group='subscription_update_domain',
+        consumer_prefix='subscription_update',
+        handler=process_domain_subscription_update,
+        block_ms=1000,
+        read_count=1
+    )
+    ConsumerConfigManager.register_config(config)
 
 
 def setup_all_consumers():

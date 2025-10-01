@@ -9,14 +9,14 @@ logger = logging.getLogger()
 class AutoUpdateChannelVideo(BaseTask):
     """
     定时调度所有订阅更新任务
-    职责：触发订阅更新调度器，具体更新逻辑由调度器和编排器处理
+    职责：将所有活跃订阅发送到消息队列，按 domain 并行处理
     """
 
     @classmethod
     def run(cls):
         try:
-            success, failed = scheduler.schedule_all_active(batch_size=100)
-            logger.info(f"Auto update completed: success={success}, failed={failed}")
+            success, failed = scheduler.enqueue_all_active()
+            logger.info(f"Auto update enqueued: success={success}, failed={failed}")
         except Exception as e:
             logger.error(f"AutoUpdateChannelVideo.run error: {e}", exc_info=True)
 

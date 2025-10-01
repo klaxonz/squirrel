@@ -5,14 +5,11 @@
 import logging
 from typing import Dict, Any
 from pydantic import ValidationError
-
-from schemas.video.dto.video_dto import VideoExtractDto
+from common import constants
 from models.message import Message
 from mq import mq_consumer
 from mq.message_router import video_extract_router
-from mq.consumer_registrar import DomainConsumerRegistrar
-from mq.queue_config import QueueType
-from common import constants
+from schemas.video.dto.video_dto import VideoExtractDto
 from services.video_extraction import video_extractor
 
 logger = logging.getLogger()
