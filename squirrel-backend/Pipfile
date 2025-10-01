@@ -22,7 +22,6 @@ sqlalchemy = "*"
 pycookiecloud = "*"
 sse-starlette = "*"
 alembic = "*"
-dramatiq = { extras = ["watch", "redis"] }
 phub = "*"
 cloudscraper = "*"
 feedparser = "*"
@@ -36,7 +35,6 @@ pytubefix = "*"
 httpx = {extras = ["http2"], version = "*"}
 botasaurus = "*"
 js2py = "*"
-fastapi-radar = "*"
 python-redis-lock = "*"
 
 [dev-packages]
