@@ -57,7 +57,14 @@
             </div>
 
             <div class="p-2 text-center">
-              <h3 class="text-xs font-semibold truncate text-white">{{ subscription.name }}</h3>
+              <div class="flex items-center justify-center gap-1 mb-0.5">
+                <h3 class="text-xs font-semibold truncate text-white">{{ subscription.name }}</h3>
+                <span v-if="subscription.type === 'PLAYLIST'" 
+                      class="text-[9px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 whitespace-nowrap"
+                      title="播放列表">
+                  播放列表
+                </span>
+              </div>
               <p class="text-[10px] text-[#aaa] mt-0.5">
                 总视频: {{ subscription.total_videos }} | 已解析: {{ subscription.total_extract }}
               </p>

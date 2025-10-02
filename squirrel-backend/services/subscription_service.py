@@ -12,6 +12,24 @@ from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscripti
 from utils.sql_parser import parse_dynamic_sql
 
 
+def _detect_subscription_type(url: str) -> str:
+    """检测订阅类型：播放列表或频道"""
+    # YouTube 播放列表检测
+    if 'youtube.com' in url or 'youtu.be' in url:
+        if 'list=' in url or '/playlist?' in url:
+            return ContentType.PLAYLIST
+    
+    # Bilibili 播放列表检测（收藏夹、合集）
+    if 'bilibili.com' in url:
+        if '/favlist' in url or 'fid=' in url:
+            return ContentType.PLAYLIST
+        if '/season/' in url or 'season_id=' in url:
+            return ContentType.PLAYLIST
+    
+    # 默认为频道
+    return ContentType.CHANNEL
+
+
 def get_subscription_by_id(subscription_id: int):
     with get_session() as session:
         subscription = session.get(Subscription, subscription_id)
@@ -33,8 +51,11 @@ def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):
         if subscription:
             return subscription
         else:
+            # 检测订阅类型：播放列表还是频道
+            content_type = _detect_subscription_type(subscribe_info.url)
+            
             subscription = Subscription(
-                type=ContentType.CHANNEL,
+                type=content_type,
                 name=subscribe_info.name,
                 url=subscribe_info.url,
                 avatar=subscribe_info.avatar,

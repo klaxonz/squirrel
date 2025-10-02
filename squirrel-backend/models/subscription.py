@@ -11,6 +11,7 @@ from models.mixins.serializer import SerializerMixin
 
 class ContentType:
     CHANNEL = "CHANNEL"
+    PLAYLIST = "PLAYLIST"
     ACTRESS = "ACTRESS"
     MOVIE = "MOVIE"
     TV_SERIES = "TV_SERIES"

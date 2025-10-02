@@ -3,7 +3,7 @@
     <div class="bg-[#1f1f1f] rounded-lg w-full max-w-lg mx-4">
       <!-- 标题栏 -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-[#272727]">
-        <h3 class="text-lg font-medium">添加频道</h3>
+        <h3 class="text-lg font-medium">添加订阅</h3>
         <button @click="$emit('close')" class="text-[#aaaaaa] hover:text-white">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -16,14 +16,17 @@
         <div class="space-y-4">
           <!-- URL输入 -->
           <div>
-            <label class="block text-sm font-medium text-[#aaaaaa] mb-1">频道地址</label>
+            <label class="block text-sm font-medium text-[#aaaaaa] mb-1">订阅地址</label>
             <input 
               v-model="channelUrl"
               type="url"
-              placeholder="请输入频道地址"
+              placeholder="支持频道地址或播放列表地址"
               class="w-full px-3 py-2 bg-[#272727] rounded border border-[#333] focus:border-[#cc0000] focus:outline-none text-white text-sm"
               :disabled="loading"
             >
+            <p class="mt-2 text-xs text-[#888888]">
+              支持：YouTube频道/播放列表、Bilibili用户空间/合集/收藏夹
+            </p>
           </div>
 
           <!-- 错误提示 -->

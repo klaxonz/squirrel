@@ -23,17 +23,25 @@ def _setup_video_extract_consumer():
 
 def _setup_subscription_update_consumer():
     """配置订阅更新消费者（域级别队列）"""
+    from mq.consumer_registrar import DomainConsumerRegistrar
     from consumer.processors.subscription_update_task import process_domain_subscription_update
     
-    config = ConsumerConfig(
+    # 使用 register_with_stream_param 支持传递 queue_name 参数
+    def handler_factory(queue_name: str):
+        """创建包含 queue_name 的 handler"""
+        def handler(message):
+            return process_domain_subscription_update(message, queue_name)
+        return handler
+    
+    count = DomainConsumerRegistrar.register_with_stream_param(
         queue_type=QueueType.SUBSCRIPTION_UPDATE,
         group='subscription_update_domain',
         consumer_prefix='subscription_update',
-        handler=process_domain_subscription_update,
+        handler_factory=handler_factory,
         block_ms=1000,
         read_count=1
     )
-    ConsumerConfigManager.register_config(config)
+    return count
 
 
 def setup_all_consumers():
@@ -41,6 +49,12 @@ def setup_all_consumers():
     配置所有域消费者
     应在消费者启动前调用
     """
+    import logging
+    logger = logging.getLogger()
+    
     _setup_video_extract_consumer()
-    _setup_subscription_update_consumer()
+    
+    # 订阅更新消费者直接注册（因为需要 queue_name 参数）
+    count = _setup_subscription_update_consumer()
+    logger.info(f"Registered {count} subscription update domain consumers")
 
