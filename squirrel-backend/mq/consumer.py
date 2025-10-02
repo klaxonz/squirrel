@@ -103,13 +103,25 @@ class RedisStreamConsumer:
 
     def poll_once(self) -> bool:
         try:
+            # 先尝试读取 pending 消息（之前读取但未确认的消息）
             results = redis_client.xreadgroup(
                 groupname=self.options.group,
                 consumername=self.options.consumer_name,
-                streams={self.stream: ">"},
+                streams={self.stream: "0"},
                 count=self.options.read_count,
-                block=self.options.block_ms,
+                block=0,  # 不阻塞，立即返回
             )
+            
+            # 如果没有 pending 消息，读取新消息
+            if not results or not results[0][1]:
+                results = redis_client.xreadgroup(
+                    groupname=self.options.group,
+                    consumername=self.options.consumer_name,
+                    streams={self.stream: ">"},
+                    count=self.options.read_count,
+                    block=self.options.block_ms,
+                )
+            
             if not results:
                 return False
             # results: List[ (stream, [ (id, fields), ... ]) ]
