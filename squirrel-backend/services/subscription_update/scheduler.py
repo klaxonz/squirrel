@@ -121,47 +121,7 @@ class SubscriptionScheduler:
         
         logger.info(f"Enqueue completed: success={success_count}, failed={error_count}")
         return success_count, error_count
-    
-    def schedule_all_active(self, batch_size: int = 100) -> tuple[int, int]:
-        """
-        调度所有活跃订阅（定时任务使用）
-        
-        @deprecated 建议使用 enqueue_all_active 替代，将订阅发送到消息队列异步处理
-        
-        Returns:
-            (成功数, 失败数)
-        """
-        total = self._count_active_subscriptions()
-        if total == 0:
-            logger.info("No active subscriptions to schedule")
-            return 0, 0
-        
-        logger.info(f"Scheduling {total} active subscriptions")
-        
-        success_count = 0
-        error_count = 0
-        offset = 0
-        
-        while offset < total:
-            batch = self._fetch_batch(offset, batch_size)
-            
-            for sub in batch:
-                if self.schedule_one(
-                    sub.id,
-                    sub.url,
-                    trigger=UpdateTrigger.SCHEDULED,
-                    mode=UpdateMode.SMART
-                ):
-                    success_count += 1
-                else:
-                    error_count += 1
-            
-            offset += batch_size
-            logger.debug(f"Scheduled {min(offset, total)}/{total} subscriptions")
-        
-        logger.info(f"Scheduling completed: success={success_count}, failed={error_count}")
-        return success_count, error_count
-    
+
     @staticmethod
     def _count_active_subscriptions() -> int:
         """统计活跃订阅数"""
@@ -171,7 +131,7 @@ class SubscriptionScheduler:
                 .where(Subscription.is_deleted == False)
             ).scalar() or 0
             return count
-    
+
     @staticmethod
     def _fetch_all_active() -> List[Subscription]:
         """一次性获取所有活跃订阅"""
@@ -182,7 +142,7 @@ class SubscriptionScheduler:
                 .order_by(Subscription.id.asc())
             ).all()
             return list(subscriptions)
-    
+
     @staticmethod
     def _fetch_batch(offset: int, limit: int) -> List[Subscription]:
         """分批获取订阅"""
