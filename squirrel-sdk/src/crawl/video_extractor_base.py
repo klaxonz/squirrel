@@ -41,13 +41,6 @@ class VideoExtractorBase(IExtractor, ABC):
                     error="无法获取视频信息或不是有效视频"
                 )
             
-            # 检查是否为播放列表
-            if self._is_playlist(video_info):
-                return ExtractionResult(
-                    success=False,
-                    error="不支持播放列表URL"
-                )
-            
             # 创建视频实例
             video = self._create_video(task.url, video_info)
 
