@@ -1,7 +1,9 @@
 import logging
+import json
 
 from common import constants
 from mq.producer import RedisStreamProducer
+from mq.duplicate_checker import create_simple_checker
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import video_service, message_service
 
@@ -25,9 +27,22 @@ def enqueue_video_extraction(params: VideoExtractDto) -> None:
 def _send_to_extract_queue(params: VideoExtractDto) -> None:
     content = params.model_dump()
     message = message_service.create_message(content)
+    message_dict = message.to_dict()
     
     queue_name = constants.QUEUE_VIDEO_EXTRACT if params.is_manual else constants.QUEUE_VIDEO_EXTRACT_SCHEDULED
-    RedisStreamProducer().send(queue_name, message.to_dict())
+    
+    # 对定时任务检查重复，手动触发不检查（允许用户强制重新提取）
+    if not params.is_manual:
+        checker = create_simple_checker(
+            queue_name=queue_name,
+            key_fn=lambda msg: json.loads(msg['body'])['url']
+        )
+        
+        if checker.is_duplicate(message_dict):
+            logger.debug(f"Video extraction task already in queue, skipping: {params.url}")
+            return
+    
+    RedisStreamProducer().send(queue_name, message_dict)
 
 
 # 兼容旧代码的函数，标记为废弃

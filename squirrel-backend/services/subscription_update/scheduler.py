@@ -9,6 +9,7 @@ from core.database import get_session
 from models.subscription import Subscription
 from services import message_service
 from mq.producer import RedisStreamProducer
+from mq.duplicate_checker import create_simple_checker
 from utils import url_helper
 from common import constants
 from .models import SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
@@ -205,8 +206,28 @@ class SubscriptionScheduler:
         }
         
         message = message_service.create_message(content)
-        RedisStreamProducer().send(queue_name, message.to_dict())
+        message_dict = message.to_dict()
         
+        # 调用方决定是否检查重复
+        # 策略：定时任务检查重复，手动触发不检查
+        if trigger == UpdateTrigger.SCHEDULED:
+            # 创建重复检测器，基于 subscription_id 和 mode 判断
+            import json
+            checker = create_simple_checker(
+                queue_name=queue_name,
+                key_fn=lambda msg: (
+                    json.loads(msg['body'])['subscription_id'],
+                    json.loads(msg['body'])['mode']
+                )
+            )
+            
+            # 检查队列中是否已存在，如果存在则跳过
+            if checker.is_duplicate(message_dict):
+                logger.debug(f"Skipped duplicate subscription {sub.id} for {queue_name} (mode={mode.value})")
+                return
+        
+        # 发送消息
+        RedisStreamProducer().send(queue_name, message_dict)
         logger.debug(f"Enqueued subscription {sub.id} to {queue_name} (mode={mode.value})")
 
 
