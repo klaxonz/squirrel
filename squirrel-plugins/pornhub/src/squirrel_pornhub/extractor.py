@@ -43,8 +43,6 @@ class PornhubExtractor(YoutubeDLExtractorBase):
     def _extract_with_ytdlp(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
         """使用yt-dlp获取Pornhub视频信息"""
         try:
-            logger.debug(f"开始提取Pornhub视频信息: {url}")
-            
             ydl_opts = self._build_ytdlp_opts(url, queue_name)
             
             with YoutubeDL(ydl_opts) as ydl:
@@ -81,7 +79,5 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                 # 转成datetime
                 video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
 
-            logger.info(f"Pornhub信息处理完成: {video_info.get('title', 'Unknown')}")
-            
         except Exception as e:
             logger.warning(f"处理Pornhub特定信息失败: {e}")

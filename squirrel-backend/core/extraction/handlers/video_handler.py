@@ -27,8 +27,6 @@ class VideoExtractionHandler(BaseResultHandler):
     def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:
         """处理成功结果"""
         try:
-            logger.info(f"处理视频提取成功结果: {task.task_id}")
-
             if result.success is False:
                 logger.info(f"提取任务结果失败: {task.task_id}")
                 return
@@ -59,7 +57,6 @@ class VideoExtractionHandler(BaseResultHandler):
             if not only_extract and video:
                 self._create_download_task(video)
 
-            logger.info(f"视频提取结果处理完成: {task.task_id}")
 
         except Exception as e:
             logger.error(f"处理成功结果失败: {task.task_id}, error: {e}", exc_info=True)

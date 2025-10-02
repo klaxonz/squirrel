@@ -102,7 +102,8 @@ class BaseTaskProcessor(ITaskProcessor):
             # 处理结果
             if result.success:
                 self.result_handler.handle_success(task, result)
-                logger.info(f"任务处理成功: {task.task_id}")
+                title = result.data.title if result.data else "未知"
+                logger.info(f"任务处理成功: {task.task_id}, 标题: {title}")
             else:
                 self.result_handler.handle_failure(task, result)
                 logger.error(f"任务处理失败: {task.task_id}, error: {result.error}")

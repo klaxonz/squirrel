@@ -40,14 +40,12 @@ class JavdbExtractor(VideoExtractorBase):
     def _get_video_info(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
         """获取JavDB视频信息"""
         try:
-            logger.debug(f"开始提取JavDB视频信息: {url}")
-            
             # 使用JavDB专用下载器
             javdb_downloader = JavdbDownloader(url)
             video_info = javdb_downloader.get_video_info(queue_name)
             
             if not video_info:
-                logger.warning(f"JavDB视频信息提取失败: {url} - 可能需要登录或VIP权限")
+                logger.info(f"JavDB视频信息提取失败: {url} - 可能需要登录或VIP权限")
                 return None
             
             # JavDB特定的信息处理
@@ -58,9 +56,9 @@ class JavdbExtractor(VideoExtractorBase):
         except Exception as e:
             error_msg = str(e).lower()
             if 'login' in error_msg or '登入' in error_msg:
-                logger.warning(f"JavDB视频需要登录访问: {url}")
+                logger.info(f"JavDB视频需要登录访问: {url}")
             elif 'vip' in error_msg:
-                logger.warning(f"JavDB视频需要VIP权限: {url}")
+                logger.info(f"JavDB视频需要VIP权限: {url}")
             else:
                 logger.error(f"JavDB视频信息提取失败: {url}, error: {e}")
             return None
@@ -71,8 +69,6 @@ class JavdbExtractor(VideoExtractorBase):
             # 处理发行日期
             if 'timestamp' in video_info:
                 video_info['upload_date'] = video_info['timestamp']
-            
-            logger.debug(f"JavDB信息处理完成: {video_info.get('title', 'Unknown')}")
             
         except Exception as e:
             logger.warning(f"处理JavDB特定信息失败: {e}")

@@ -69,8 +69,6 @@ class VideoExtractor:
         Returns:
             ExtractionResult: 提取结果
         """
-        logger.info(f"Extracting video: {params.url}")
-        
         task = self._create_task(params)
         result = self.task_manager.process_task(task)
         

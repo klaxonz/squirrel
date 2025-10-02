@@ -87,7 +87,5 @@ class BilibiliExtractor(YoutubeDLExtractorBase):
                 # 转换成datetime
                 video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
 
-            logger.info(f"Bilibili信息处理完成: {video_info.get('title', 'Unknown')}")
-            
         except Exception as e:
             logger.warning(f"处理Bilibili特定信息失败: {e}")

@@ -43,8 +43,6 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
     def _extract_with_ytdlp(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
         """使用yt-dlp获取YouTube视频信息"""
         try:
-            logger.debug(f"开始提取YouTube视频信息: {url}")
-            
             # YouTube不使用Cookie文件
             ydl_opts = self._build_ytdlp_opts(url, None)
             
@@ -76,8 +74,6 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             if 'timestamp' in video_info:
                 # 转成datetime
                 video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
-            
-            logger.info(f"YouTube信息处理完成: {video_info.get('title', 'Unknown')}")
             
         except Exception as e:
             logger.warning(f"处理YouTube特定信息失败: {e}")
