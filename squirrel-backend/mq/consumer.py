@@ -81,8 +81,9 @@ class RedisStreamConsumer:
                     deliveries = getattr(entry, "delivery_count", 0)
                     break
             if deliveries >= self.options.max_delivery:
-                # 推送到 DLQ
-                redis_client.xadd(self.options.retry_dlq, MqMessage(body={"body": body, "message_id": message_id}).to_stream_fields())
+                # 推送到 DLQ，保留原消息的 trace_id
+                from utils.trace import get_trace_id
+                redis_client.xadd(self.options.retry_dlq, MqMessage(body={"body": body, "message_id": message_id}, trace_id=get_trace_id()).to_stream_fields())
                 # ACK 原消息
                 acked = redis_client.xack(self.stream, self.options.group, message_id)
                 if acked:
@@ -134,6 +135,10 @@ class RedisStreamConsumer:
                 for message_id, fields in messages:
                     msg = MqMessage.from_stream_fields(fields)
                     try:
+                        # 设置消息的 trace_id 到当前上下文，实现链路追踪
+                        from utils.trace import set_trace_id
+                        set_trace_id(msg.trace_id)
+                        
                         logger.debug(
                             "开始处理消息 stream=%s message_id=%s",
                             self.stream,

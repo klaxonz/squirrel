@@ -51,8 +51,13 @@ def read_log_lines(
     if not os.path.exists(filepath):
         return [], 0, False
     
-    # 日志级别正则匹配
-    log_pattern = re.compile(
+    # 日志级别正则匹配 (支持新旧两种格式)
+    # 新格式: 2025-10-03 10:30:45,123 [trace_id] INFO logger_name: message
+    # 旧格式: 2025-10-03 10:30:45,123 INFO logger_name: message
+    log_pattern_new = re.compile(
+        r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) \[([^\]]+)\] (DEBUG|INFO|WARNING|ERROR|CRITICAL) (.+?): (.+)$'
+    )
+    log_pattern_old = re.compile(
         r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) (DEBUG|INFO|WARNING|ERROR|CRITICAL) (.+?): (.+)$'
     )
     
@@ -66,29 +71,49 @@ def read_log_lines(
             line = line.rstrip('\n')
             all_lines.append(line)
             
-            # 尝试匹配新的日志条目
-            match = log_pattern.match(line)
+            # 先尝试匹配新格式（带 trace_id）
+            match = log_pattern_new.match(line)
             
             if match:
                 # 保存之前的日志条目
                 if current_log_entry and _should_include_log(current_log_entry, keyword, level):
                     filtered_lines.append(current_log_entry)
                 
-                # 开始新的日志条目
-                timestamp, log_level, logger_name, message = match.groups()
+                # 开始新的日志条目（新格式）
+                timestamp, trace_id, log_level, logger_name, message = match.groups()
                 current_log_entry = {
                     'line_num': line_num,
                     'timestamp': timestamp,
+                    'trace_id': trace_id if trace_id != '-' else None,
                     'level': log_level,
                     'logger': logger_name,
                     'message': message,
                     'raw_lines': [line]
                 }
             else:
-                # 多行日志的后续行（如堆栈信息）
-                if current_log_entry:
-                    current_log_entry['message'] += '\n' + line
-                    current_log_entry['raw_lines'].append(line)
+                # 尝试匹配旧格式（不带 trace_id）
+                match = log_pattern_old.match(line)
+                if match:
+                    # 保存之前的日志条目
+                    if current_log_entry and _should_include_log(current_log_entry, keyword, level):
+                        filtered_lines.append(current_log_entry)
+                    
+                    # 开始新的日志条目（旧格式）
+                    timestamp, log_level, logger_name, message = match.groups()
+                    current_log_entry = {
+                        'line_num': line_num,
+                        'timestamp': timestamp,
+                        'trace_id': None,
+                        'level': log_level,
+                        'logger': logger_name,
+                        'message': message,
+                        'raw_lines': [line]
+                    }
+                else:
+                    # 多行日志的后续行（如堆栈信息）
+                    if current_log_entry:
+                        current_log_entry['message'] += '\n' + line
+                        current_log_entry['raw_lines'].append(line)
         
         # 处理最后一条日志
         if current_log_entry and _should_include_log(current_log_entry, keyword, level):
@@ -120,6 +145,10 @@ def _should_include_log(log_entry: Dict, keyword: Optional[str], level: Optional
             log_entry['logger'] + ' ' + 
             log_entry['level']
         ).lower()
+        
+        # 如果有 trace_id，也包含在搜索范围内
+        if log_entry.get('trace_id'):
+            searchable_text += ' ' + log_entry['trace_id'].lower()
         
         if keyword_lower not in searchable_text:
             return False

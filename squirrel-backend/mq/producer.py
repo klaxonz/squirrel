@@ -12,13 +12,19 @@ class RedisStreamProducer:
 
     使用 XADD 追加消息，消息字段遵循 `MqMessage` 约定。
     支持简单的重试与退避。
+    支持链路追踪：自动从当前上下文获取 trace_id 并传递到消息中。
     """
 
     def __init__(self):
         ...
 
-    def send(self, stream: str, message: Dict, max_retries: int = 3, approximate_maxlen: Optional[int] = 100000) -> str:
-        payload = MqMessage(body=message).to_stream_fields()
+    def send(self, stream: str, message: Dict, max_retries: int = 3, approximate_maxlen: Optional[int] = 100000, trace_id: Optional[str] = None) -> str:
+        # 如果未指定 trace_id，则从当前上下文获取
+        if trace_id is None:
+            from utils.trace import get_trace_id
+            trace_id = get_trace_id()
+        
+        payload = MqMessage(body=message, trace_id=trace_id).to_stream_fields()
         last_err = None
         for attempt in range(max_retries + 1):
             try:

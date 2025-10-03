@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
-from typing import Any, Dict
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
 
 
 @dataclass
@@ -11,13 +11,18 @@ class MqMessage:
 
     存储于 Redis Streams 的字段为:
     - key: "body" -> JSON 字符串
+    - key: "trace_id" -> trace_id 字符串（用于链路追踪）
     - 可扩展：headers_xxx
     """
 
     body: Dict[str, Any]
+    trace_id: Optional[str] = field(default=None)
 
     def to_stream_fields(self) -> Dict[str, str]:
-        return {"body": json.dumps(self.body, ensure_ascii=False)}
+        fields = {"body": json.dumps(self.body, ensure_ascii=False)}
+        if self.trace_id:
+            fields["trace_id"] = self.trace_id
+        return fields
 
     @classmethod
     def from_stream_fields(cls, fields: Dict[bytes, bytes]) -> "MqMessage":
@@ -30,6 +35,8 @@ class MqMessage:
             body = json.loads(body_raw)
         except Exception:
             body = {"_raw": body_raw}
-        return cls(body=body)
+        
+        trace_id = mapped.get("trace_id")
+        return cls(body=body, trace_id=trace_id)
 
 

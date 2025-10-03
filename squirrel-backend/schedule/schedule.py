@@ -10,13 +10,25 @@ class Scheduler:
         self.jobs = []
         self.running = False
 
+    def _run_job_with_trace(self, func):
+        """执行任务并为其生成 trace_id"""
+        from utils.trace import TraceContext
+        
+        # 为每个定时任务生成一个新的 trace_id
+        with TraceContext() as trace_id:
+            logger.info(f"定时任务开始执行: {func.__name__}")
+            try:
+                func()
+            except Exception as e:
+                logger.exception(f"定时任务执行失败: {func.__name__}, error: {e}")
+
     def _run_jobs(self):
         """内部方法，循环检查并执行到期的任务"""
         while self.running:
             current_time = time.time()
             for job in self.jobs[:]:
                 if job['next_run'] <= current_time:
-                    thread = Thread(target=job['func'])
+                    thread = Thread(target=self._run_job_with_trace, args=(job['func'],))
                     thread.start()
                     job['next_run'] += job['interval']
             time.sleep(1)

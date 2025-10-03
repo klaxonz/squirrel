@@ -20,6 +20,7 @@ from routes.middleware.auth import (
     TokenMissingError,
     TokenExpiredError,
 )
+from routes.middleware.trace import TraceMiddleware
 from routes.subscription import router as subscription_router
 from routes.task import router as task_router
 from routes.user import router as user_router
@@ -67,9 +68,13 @@ def create_app() -> FastAPI:
         allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
-        allow_headers=["*", "Authorization"],
+        allow_headers=["*", "Authorization", "X-Trace-Id"],
+        expose_headers=["X-Trace-Id"],
     )
 
+    # 配置链路追踪中间件（必须在认证中间件之前，确保所有请求都有 trace_id）
+    app.add_middleware(TraceMiddleware)
+    
     # 配置认证中间件
     app.add_middleware(AuthMiddleware)
     

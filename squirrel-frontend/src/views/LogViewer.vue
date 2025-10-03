@@ -12,6 +12,17 @@
         </div>
         <div class="flex gap-2">
           <button
+            @click="copyAllLogs"
+            :disabled="logs.length === 0"
+            class="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+            :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            {{ allCopied ? '已复制全部' : '复制全部' }}
+          </button>
+          <button
             @click="toggleAutoRefresh"
             class="px-3 py-1.5 text-sm rounded transition-colors"
             :class="autoRefresh ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'"
@@ -37,7 +48,7 @@
               v-model="filters.keyword"
               @keyup.enter="applyFilters"
               type="text"
-              placeholder="搜索日志内容..."
+              placeholder="搜索日志内容、trace_id..."
               class="w-full bg-[#2a2a2a] border border-gray-700 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -115,11 +126,24 @@
               :data-index="index"
             >
               <div
-                class="log-entry border-b border-gray-800 px-3 py-2 hover:bg-[#252525] transition-colors"
+                class="log-entry border-b border-gray-800 px-3 py-2 hover:bg-[#252525] transition-colors group relative"
                 :class="getLogLevelClass(item.level)"
               >
+                <!-- 复制按钮 -->
+                <button
+                  @click="copyLog(item)"
+                  class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white px-2 py-1 rounded text-[10px] flex items-center gap-1"
+                  :title="'复制日志'"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span v-if="copiedLogId === item.id" class="text-green-400">已复制</span>
+                  <span v-else>复制</span>
+                </button>
+
                 <!-- 日志头部 -->
-                <div class="flex items-center gap-2 mb-1">
+                <div class="flex items-center gap-2 mb-1 flex-wrap pr-16">
                   <span
                     class="log-level-badge px-1.5 py-0.5 rounded text-[10px] font-semibold leading-none"
                     :class="getLevelBadgeClass(item.level)"
@@ -127,6 +151,14 @@
                     {{ item.level }}
                   </span>
                   <span class="text-gray-400 text-xs">{{ item.timestamp }}</span>
+                  <span 
+                    v-if="item.trace_id" 
+                    @click="filterByTraceId(item.trace_id)"
+                    class="text-blue-400 text-[10px] font-mono bg-blue-950 px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-900 hover:text-blue-300 transition-colors" 
+                    :title="'点击筛选 Trace ID: ' + item.trace_id"
+                  >
+                    {{ item.trace_id.substring(0, 8) }}
+                  </span>
                   <span class="text-gray-500 text-xs">{{ item.logger }}</span>
                   <span class="text-gray-600 text-[10px] ml-auto">行 {{ item.line_num }}</span>
                 </div>
@@ -157,6 +189,8 @@ const logFiles = ref([]);
 const totalLogs = ref(0);
 const loading = ref(false);
 const autoRefresh = ref(true);
+const copiedLogId = ref(null);
+const allCopied = ref(false);
 
 // 过滤条件
 const filters = ref({
@@ -167,6 +201,8 @@ const filters = ref({
 
 // 自动刷新定时器
 let refreshTimer = null;
+let copiedTimer = null;
+let allCopiedTimer = null;
 
 // 计算滚动器高度
 const scrollerHeight = computed(() => {
@@ -245,6 +281,98 @@ function clearFilters() {
   filters.value.keyword = '';
   filters.value.level = '';
   applyFilters();
+}
+
+// 按 trace_id 筛选
+function filterByTraceId(traceId) {
+  filters.value.keyword = traceId;
+  filters.value.level = '';
+  applyFilters();
+}
+
+// 复制单条日志
+function copyLog(logItem) {
+  // 构建完整的日志文本
+  let logText = '';
+  
+  // 添加日志元信息
+  logText += `时间: ${logItem.timestamp}\n`;
+  if (logItem.trace_id) {
+    logText += `Trace ID: ${logItem.trace_id}\n`;
+  }
+  logText += `级别: ${logItem.level}\n`;
+  logText += `日志器: ${logItem.logger}\n`;
+  logText += `行号: ${logItem.line_num}\n`;
+  logText += `\n内容:\n${logItem.message}\n`;
+  
+  // 复制到剪贴板
+  navigator.clipboard.writeText(logText).then(() => {
+    // 显示复制成功状态
+    copiedLogId.value = logItem.id;
+    
+    // 清除之前的定时器
+    if (copiedTimer) {
+      clearTimeout(copiedTimer);
+    }
+    
+    // 2秒后清除复制状态
+    copiedTimer = setTimeout(() => {
+      copiedLogId.value = null;
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    alert('复制失败，请手动复制');
+  });
+}
+
+// 复制所有日志
+function copyAllLogs() {
+  if (logs.value.length === 0) {
+    return;
+  }
+  
+  // 构建所有日志的文本
+  let allLogsText = `日志导出 - 共 ${logs.value.length} 条\n`;
+  allLogsText += `文件: ${filters.value.filename}\n`;
+  if (filters.value.keyword) {
+    allLogsText += `搜索: ${filters.value.keyword}\n`;
+  }
+  if (filters.value.level) {
+    allLogsText += `级别: ${filters.value.level}\n`;
+  }
+  allLogsText += `导出时间: ${new Date().toLocaleString()}\n`;
+  allLogsText += `${'='.repeat(80)}\n\n`;
+  
+  logs.value.forEach((logItem, index) => {
+    allLogsText += `[${index + 1}] `;
+    allLogsText += `${logItem.timestamp} `;
+    if (logItem.trace_id) {
+      allLogsText += `[${logItem.trace_id}] `;
+    }
+    allLogsText += `${logItem.level} `;
+    allLogsText += `${logItem.logger}: `;
+    allLogsText += `${logItem.message}\n`;
+    allLogsText += `${'-'.repeat(80)}\n`;
+  });
+  
+  // 复制到剪贴板
+  navigator.clipboard.writeText(allLogsText).then(() => {
+    // 显示复制成功状态
+    allCopied.value = true;
+    
+    // 清除之前的定时器
+    if (allCopiedTimer) {
+      clearTimeout(allCopiedTimer);
+    }
+    
+    // 2秒后清除复制状态
+    allCopiedTimer = setTimeout(() => {
+      allCopied.value = false;
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    alert('复制失败，请手动复制');
+  });
 }
 
 // 切换自动刷新
