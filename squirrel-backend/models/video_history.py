@@ -12,7 +12,8 @@ class VideoHistory(Base, SerializerMixin):
 
     __table_args__ = (
         Index('ix_video_history_user_video', 'user_id', 'video_id'),
-        Index('ix_video_history_video_id', 'video_id')
+        Index('ix_video_history_video_id', 'video_id'),
+        Index('ix_video_history_user_end_time', 'user_id', 'end_time')
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
