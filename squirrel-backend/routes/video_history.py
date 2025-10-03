@@ -29,6 +29,8 @@ def get_history_list(
         min_duration: int = Query(None),
         start_date: datetime = Query(None),
         end_date: datetime = Query(None),
+        nsfw: str = Query(None, description="NSFW筛选: all/yes/no"),
+        site: str = Query(None, description="站点筛选"),
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=100),
         user: User = Depends(get_current_user)
@@ -37,7 +39,9 @@ def get_history_list(
         "video_id": video_id,
         "min_duration": min_duration,
         "start_date": start_date,
-        "end_date": end_date
+        "end_date": end_date,
+        "nsfw": nsfw,
+        "site": site
     }
     video_histories = video_history_service.list_histories(
         user_id=user.id,

@@ -98,11 +98,20 @@ export default function useVideoHistory() {
     }
   };
   // 获取观看历史（分页，返回视频详情）
-  const getWatchHistory = async (page = 1, pageSize = 20) => {
+  const getWatchHistory = async (page = 1, filters = {}) => {
     try {
-      const res = await axios.get('/api/video-history/list', {
-        params: { page, page_size: pageSize }
-      });
+      const { nsfw, site, pageSize = 20 } = filters;
+      const params = { page, page_size: pageSize };
+      
+      // 添加筛选参数
+      if (nsfw && nsfw !== 'all') {
+        params.nsfw = nsfw;
+      }
+      if (site && site !== 'all') {
+        params.site = site;
+      }
+      
+      const res = await axios.get('/api/video-history/list', { params });
       const resp = res?.data || {};
       if (resp.code !== 0) {
         throw new Error(resp.msg || '加载历史失败');

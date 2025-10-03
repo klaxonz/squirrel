@@ -4,8 +4,9 @@ from core.database import get_session
 from models.video_history import VideoHistory
 from models.video import Video
 from models.subscription import Subscription
-from models.links import SubscriptionVideo
+from models.links import SubscriptionVideo, UserSubscription
 from schemas.video_history import HistoryCreate
+from utils.url_helper import get_site_from_url
 
 
 def update_history(user_id: int, data: HistoryCreate):
@@ -87,6 +88,14 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
         sub_ids = list(set(link.subscription_id for link in subs_links))
         subs = session.query(Subscription).filter(Subscription.id.in_(sub_ids)).all()
         sub_map = {s.id: s for s in subs}
+        
+        # 查询用户订阅关系以获取 is_nsfw 标记
+        user_subs = session.query(UserSubscription).filter(
+            UserSubscription.user_id == user_id,
+            UserSubscription.subscription_id.in_(sub_ids)
+        ).all()
+        user_sub_nsfw_map = {us.subscription_id: us.is_nsfw for us in user_subs}
+        
         # 为每个 video_id 组织订阅列表（多数情况下一个）
         video_subs = {}
         for link in subs_links:
@@ -105,10 +114,39 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                     'name': s.name,
                     'url': s.url,
                     'type': s.type,
-                    'avatar': s.avatar
+                    'avatar': s.avatar,
+                    'is_nsfw': user_sub_nsfw_map.get(s.id, False)
                 }
                 for s in (video_subs.get(v.id) or []) if s is not None
             ]
+            
+            # 提取站点信息（用于筛选和返回）
+            video_site = get_site_from_url(v.url)
+            if not video_site and subs_for_video:
+                for sub_info in subs_for_video:
+                    sub_url = sub_info.get('url')
+                    if sub_url:
+                        video_site = get_site_from_url(sub_url)
+                        if video_site:
+                            break
+            
+            # 应用筛选条件
+            # NSFW 筛选
+            if filters.get('nsfw') and filters['nsfw'] != 'all':
+                nsfw_filter = filters['nsfw']
+                is_nsfw = any(s.get('is_nsfw') for s in subs_for_video)
+                # 前端发送 'yes'/'no'，后端也支持 'true'/'false'
+                if nsfw_filter in ('yes', 'true') and not is_nsfw:
+                    continue
+                if nsfw_filter in ('no', 'false') and is_nsfw:
+                    continue
+            
+            # 站点筛选
+            if filters.get('site'):
+                site_filter = filters['site']
+                if video_site != site_filter:
+                    continue
+            
             item = {
                 'id': v.id,
                 'title': v.title,
@@ -119,12 +157,13 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                 'uploaded_at': v.publish_date.strftime('%Y-%m-%d %H:%M:%S') if v.publish_date else None,
                 'created_at': v.created_at.strftime('%Y-%m-%d %H:%M:%S') if v.created_at else None,
                 'subscriptions': subs_for_video,
+                'site': video_site,
             }
             items.append(item)
 
         return {
             "items": items,
-            "total": total,
+            "total": len(items),
             "page": page,
             "page_size": page_size
         }
