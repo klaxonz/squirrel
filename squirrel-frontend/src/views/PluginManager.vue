@@ -1,128 +1,142 @@
 <template>
-  <div class="p-6 text-white">
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
-      <div>
-        <h1 class="text-2xl font-semibold">插件管理</h1>
-        <p class="text-sm text-[#9ca3af] mt-1">导入、启用或卸载插件，控制后端扩展能力</p>
-      </div>
-      <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div class="flex items-center gap-3 bg-[#1f2937] rounded-lg px-4 py-3 border border-[#374151]">
-          <input
-            type="file"
-            accept=".zip"
-            class="text-sm w-40"
-            @change="handleFileChange"
-          />
-          <button
-            class="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-md text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-            :disabled="!selectedFile || installing"
-            @click="handleInstall"
-          >
-            {{ installing ? '安装中...' : '导入插件' }}
-          </button>
+  <div class="plugin-manager bg-[#0f0f0f] text-white min-h-screen">
+    <!-- 顶部操作区 -->
+    <div class="border-b border-white/10">
+      <div class="max-w-[1800px] mx-auto px-6 py-6">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div>
+            <h1 class="text-xl font-medium mb-1">插件管理</h1>
+            <p class="text-sm text-[#aaaaaa]">导入、启用或卸载插件，控制后端扩展能力</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-3 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full cursor-pointer transition-colors">
+              <input
+                type="file"
+                accept=".zip"
+                class="hidden"
+                @change="handleFileChange"
+              />
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span class="text-sm font-medium">{{ selectedFile ? selectedFile.name : '选择文件' }}</span>
+            </label>
+            <button
+              class="px-4 py-2 bg-[#cc0000] hover:bg-[#ff0000] rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="!selectedFile || installing"
+              @click="handleInstall"
+            >
+              {{ installing ? '安装中...' : '导入插件' }}
+            </button>
+            <button
+              class="p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-40"
+              :disabled="reloading || loading"
+              @click="handleReload"
+              title="重新加载插件"
+            >
+              <svg class="w-5 h-5" :class="{ 'animate-spin': reloading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <button
-          class="px-4 py-2 bg-[#374151] hover:bg-[#4b5563] rounded-md text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-          :disabled="reloading || loading"
-          @click="handleReload"
-        >
-          {{ reloading ? '重载中...' : '重新加载插件' }}
-        </button>
       </div>
     </div>
 
-    <div class="bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden">
-      <div class="border-b border-[#1f2937] px-6 py-3 flex items-center justify-between text-xs uppercase tracking-wide text-[#9ca3af]">
-        <span>插件列表</span>
-        <span v-if="loading" class="animate-pulse">加载中...</span>
+    <!-- 插件列表 -->
+    <div class="max-w-[1800px] mx-auto px-6 py-6">
+      <div v-if="loading" class="flex items-center justify-center py-20">
+        <div class="animate-spin rounded-full h-8 w-8 border-2 border-white/20 border-t-white"></div>
       </div>
 
-      <div v-if="!loading && plugins.length === 0" class="p-10 text-center text-[#9ca3af]">
-        暂无插件，请先导入 zip 包后再启用。
+      <div v-else-if="plugins.length === 0" class="flex flex-col items-center justify-center py-20 text-[#aaaaaa]">
+        <svg class="w-16 h-16 mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+        <p class="text-sm">暂无插件</p>
+        <p class="text-xs mt-1">请导入插件 ZIP 包</p>
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead class="bg-[#1f2937] text-left text-[#9ca3af]">
-            <tr>
-              <th class="px-6 py-3 font-medium">名称</th>
-              <th class="px-6 py-3 font-medium">版本</th>
-              <th class="px-6 py-3 font-medium">来源</th>
-              <th class="px-6 py-3 font-medium hidden lg:table-cell">描述</th>
-              <th class="px-6 py-3 font-medium text-center">状态</th>
-              <th class="px-6 py-3 font-medium text-right">操作</th>
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-white/10">
+              <th class="text-left py-3 px-4 text-sm font-medium text-[#aaaaaa]">名称</th>
+              <th class="text-left py-3 px-4 text-sm font-medium text-[#aaaaaa]">版本</th>
+              <th class="text-left py-3 px-4 text-sm font-medium text-[#aaaaaa]">来源</th>
+              <th class="text-left py-3 px-4 text-sm font-medium text-[#aaaaaa] hidden lg:table-cell">描述</th>
+              <th class="text-center py-3 px-4 text-sm font-medium text-[#aaaaaa]">状态</th>
+              <th class="text-right py-3 px-4 text-sm font-medium text-[#aaaaaa]">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr
               v-for="plugin in plugins"
               :key="plugin.name"
-              class="border-t border-[#1f2937] hover:bg-[#1f2937]/60 transition"
+              class="border-b border-white/5 hover:bg-white/5 transition-colors"
             >
-              <td class="px-6 py-4">
-                <div class="flex items-center gap-2">
-                  <span class="font-medium text-white">{{ plugin.name }}</span>
-                  <span
-                    v-if="plugin.state === 'missing'"
-                    class="px-2 py-[2px] text-[11px] rounded-full bg-red-500/20 text-red-300"
-                  >
-                    配置缺失
-                  </span>
-                  <span
-                    v-else-if="plugin.source === 'external'"
-                    class="px-2 py-[2px] text-[11px] rounded-full bg-emerald-500/20 text-emerald-300"
-                  >
-                    外部
-                  </span>
-                  <span
-                    v-else-if="plugin.source === 'internal'"
-                    class="px-2 py-[2px] text-[11px] rounded-full bg-sky-500/20 text-sky-300"
-                  >
-                    内置
-                  </span>
-                  <span
-                    v-else-if="plugin.source === 'package'"
-                    class="px-2 py-[2px] text-[11px] rounded-full bg-purple-500/20 text-purple-300"
-                  >
-                    包安装
-                  </span>
+              <td class="py-4 px-4">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium">{{ plugin.name }}</span>
+                    <span
+                      v-if="plugin.state === 'missing'"
+                      class="px-2 py-0.5 text-[10px] rounded bg-red-500/20 text-red-400 font-medium"
+                    >
+                      配置缺失
+                    </span>
+                    <span
+                      v-else-if="plugin.source === 'external'"
+                      class="px-2 py-0.5 text-[10px] rounded bg-blue-500/20 text-blue-400 font-medium"
+                    >
+                      外部
+                    </span>
+                    <span
+                      v-else-if="plugin.source === 'internal'"
+                      class="px-2 py-0.5 text-[10px] rounded bg-purple-500/20 text-purple-400 font-medium"
+                    >
+                      内置
+                    </span>
+                  </div>
+                  <div v-if="plugin.module" class="text-xs text-[#aaaaaa] mt-0.5">{{ plugin.module }}</div>
                 </div>
-                <div v-if="plugin.module" class="text-xs text-[#6b7280] mt-1">{{ plugin.module }}</div>
               </td>
-              <td class="px-6 py-4 text-[#d1d5db]">{{ plugin.version || '—' }}</td>
-              <td class="px-6 py-4 text-[#d1d5db]">{{ formatSource(plugin.source) }}</td>
-              <td class="px-6 py-4 hidden lg:table-cell text-[#9ca3af] max-w-xs">
+              <td class="py-4 px-4 text-[#aaaaaa] text-sm">{{ plugin.version || '—' }}</td>
+              <td class="py-4 px-4 text-[#aaaaaa] text-sm">{{ formatSource(plugin.source) }}</td>
+              <td class="py-4 px-4 text-[#aaaaaa] text-sm hidden lg:table-cell max-w-md">
                 <div class="line-clamp-2">{{ plugin.description || '暂无描述' }}</div>
               </td>
-              <td class="px-6 py-4">
-                <div class="flex items-center justify-center">
+              <td class="py-4 px-4">
+                <div class="flex justify-center">
                   <span
-                    class="px-3 py-1 rounded-full text-xs"
-                    :class="plugin.enabled ? 'bg-green-500/20 text-green-300' : 'bg-[#4b5563] text-[#d1d5db]'"
+                    class="px-2.5 py-1 rounded text-xs font-medium"
+                    :class="plugin.enabled ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-[#aaaaaa]'"
                   >
                     {{ plugin.enabled ? '已启用' : '已禁用' }}
                   </span>
                 </div>
               </td>
-              <td class="px-6 py-4">
-                <div class="flex items-center gap-2 justify-end">
+              <td class="py-4 px-4">
+                <div class="flex items-center justify-end gap-2">
                   <button
-                    class="px-3 py-1.5 rounded-md text-xs bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-60 disabled:cursor-not-allowed"
-                    :disabled="actioning === plugin.name || plugin.state === 'missing' || plugin.enabled"
+                    v-if="!plugin.enabled"
+                    class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    :disabled="actioning === plugin.name || plugin.state === 'missing'"
                     @click="handleEnable(plugin)"
                   >
                     启用
                   </button>
                   <button
-                    class="px-3 py-1.5 rounded-md text-xs bg-[#374151] hover:bg-[#4b5563] disabled:opacity-60 disabled:cursor-not-allowed"
-                    :disabled="actioning === plugin.name || plugin.state === 'missing' || !plugin.enabled"
+                    v-if="plugin.enabled"
+                    class="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    :disabled="actioning === plugin.name || plugin.state === 'missing'"
                     @click="handleDisable(plugin)"
                   >
                     禁用
                   </button>
                   <button
                     v-if="plugin.source === 'external'"
-                    class="px-3 py-1.5 rounded-md text-xs bg-[#b91c1c] hover:bg-[#dc2626] disabled:opacity-60 disabled:cursor-not-allowed"
+                    class="px-3 py-1.5 bg-white/5 hover:bg-red-600/20 hover:text-red-400 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     :disabled="actioning === plugin.name"
                     @click="handleUninstall(plugin)"
                   >
@@ -236,6 +250,7 @@ onMounted(() => {
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
