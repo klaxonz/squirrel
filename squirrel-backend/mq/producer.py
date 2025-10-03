@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import time
 from typing import Optional, Dict
 
 from core.cache import redis_client
 from .message import MqMessage
+
+logger = logging.getLogger()
 
 
 class RedisStreamProducer:
@@ -24,6 +27,21 @@ class RedisStreamProducer:
             from utils.trace import get_trace_id
             trace_id = get_trace_id()
         
+        # 记录消息追踪
+        try:
+            from services import message_service
+            message_type = message.get('type') or message.get('action')
+            message_service.record_message_trace(
+                trace_id=trace_id,
+                queue_name=stream,
+                message_type=message_type,
+                body=message,
+                status='PENDING'
+            )
+            logger.debug(f"记录消息追踪 trace_id={trace_id} queue={stream} type={message_type}")
+        except Exception as e:
+            logger.warning(f"记录消息追踪失败: {e}")
+        
         payload = MqMessage(body=message, trace_id=trace_id).to_stream_fields()
         last_err = None
         for attempt in range(max_retries + 1):
@@ -36,6 +54,16 @@ class RedisStreamProducer:
                 if attempt < max_retries:
                     time.sleep(0.1 * (attempt + 1))
                 else:
+                    # 记录发送失败
+                    try:
+                        from services import message_service
+                        message_service.update_message_status(
+                            trace_id=trace_id,
+                            status='FAILED',
+                            error_msg=f"发送失败: {str(e)}"
+                        )
+                    except:
+                        pass
                     raise last_err
 
 

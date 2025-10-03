@@ -148,6 +148,20 @@ class RedisStreamConsumer:
                             self.handler(msg.body, self.stream)
                         else:
                             self.handler(msg.body)
+                        
+                        # 更新消息状态为成功
+                        if msg.trace_id:
+                            try:
+                                from services import message_service
+                                from datetime import datetime
+                                message_service.update_message_status(
+                                    trace_id=msg.trace_id,
+                                    status='SUCCESS',
+                                    processed_at=datetime.now()
+                                )
+                            except Exception as e:
+                                logger.warning(f"更新消息状态失败: {e}")
+                        
                         if self.options.auto_ack:
                             acked = redis_client.xack(self.stream, self.options.group, message_id)
                             if acked:
@@ -157,12 +171,23 @@ class RedisStreamConsumer:
                                     self.stream,
                                     message_id,
                                 )
-                    except Exception:
+                    except Exception as e:
                         logger.exception(
                             "处理消息失败 stream=%s message_id=%s",
                             self.stream,
                             message_id,
                         )
+                        # 更新消息状态为失败
+                        if msg.trace_id:
+                            try:
+                                from services import message_service
+                                message_service.update_message_status(
+                                    trace_id=msg.trace_id,
+                                    status='FAILED',
+                                    error_msg=str(e)
+                                )
+                            except Exception as ex:
+                                logger.warning(f"更新消息状态失败: {ex}")
                         # 失败时尝试 DLQ
                         self._nack_or_dlq(message_id, msg.body)
             return True

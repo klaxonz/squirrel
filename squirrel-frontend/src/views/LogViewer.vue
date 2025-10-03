@@ -153,11 +153,24 @@
                   <span class="text-gray-400 text-xs">{{ item.timestamp }}</span>
                   <span 
                     v-if="item.trace_id" 
-                    @click="filterByTraceId(item.trace_id)"
-                    class="text-blue-400 text-[10px] font-mono bg-blue-950 px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-900 hover:text-blue-300 transition-colors" 
-                    :title="'点击筛选 Trace ID: ' + item.trace_id"
+                    class="flex items-center gap-1"
                   >
-                    {{ item.trace_id.substring(0, 8) }}
+                    <span
+                      @click="filterByTraceId(item.trace_id)"
+                      class="text-blue-400 text-[10px] font-mono bg-blue-950 px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-900 hover:text-blue-300 transition-colors" 
+                      :title="'点击筛选 Trace ID: ' + item.trace_id"
+                    >
+                      {{ item.trace_id.substring(0, 8) }}
+                    </span>
+                    <button
+                      @click="viewMessageTrace(item.trace_id)"
+                      class="text-blue-400 hover:text-blue-300 transition-colors"
+                      :title="'查看消息追踪详情'"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </button>
                   </span>
                   <span class="text-gray-500 text-xs">{{ item.logger }}</span>
                   <span class="text-gray-600 text-[10px] ml-auto">行 {{ item.line_num }}</span>
@@ -179,9 +192,12 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import axios from '../utils/axios';
+
+const router = useRouter();
 
 // 数据
 const logs = ref([]);
@@ -288,6 +304,14 @@ function filterByTraceId(traceId) {
   filters.value.keyword = traceId;
   filters.value.level = '';
   applyFilters();
+}
+
+// 跳转到消息追踪页面
+function viewMessageTrace(traceId) {
+  router.push({
+    name: 'MessageTrace',
+    query: { traceId }
+  });
 }
 
 // 复制单条日志

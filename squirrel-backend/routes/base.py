@@ -30,6 +30,7 @@ from routes.video_interaction import router as video_interaction_router
 from routes.system_config import router as system_config_router
 from routes.plugins import router as plugins_router
 from routes.logs import router as logs_router
+from routes.message_trace import router as message_trace_router
 
 logger = logging.getLogger()
 
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(system_config_router)
     app.include_router(plugins_router)
     app.include_router(logs_router)
+    app.include_router(message_trace_router)
 
     # 生产环境：挂载静态文件和 SPA 路由
     if not settings.is_dev:
