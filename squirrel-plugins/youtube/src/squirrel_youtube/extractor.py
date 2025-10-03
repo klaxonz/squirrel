@@ -11,6 +11,8 @@ from crawl import (
     register_extractor,
     ExtractionTask,
     ExtractionResult,
+    filter_cookies_to_query_string,
+    resolve_cookie_file_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,8 +45,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
     def _extract_with_ytdlp(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
         """使用yt-dlp获取YouTube视频信息"""
         try:
-            # YouTube不使用Cookie文件
-            ydl_opts = self._build_ytdlp_opts(url, None)
+            ydl_opts = self._build_ytdlp_opts(url, queue_name)
             
             with YoutubeDL(ydl_opts) as ydl:
                 video_info = ydl.extract_info(url, download=False)
@@ -61,11 +62,19 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
     
     def _build_ytdlp_opts(self, url: str, queue_name: str = None) -> Dict[str, Any]:
         """构建yt-dlp选项"""
+        cookie_file = resolve_cookie_file_path(url)
         ydl_opts: Dict[str, Any] = {
             'quiet': True,
             'skip_download': True,
         }
-        # YouTube通常不需要额外的配置
+
+        if cookie_file:
+            ydl_opts['cookiefile'] = cookie_file
+        else:
+            cookies = filter_cookies_to_query_string(url)
+            if cookies:
+                ydl_opts['cookie'] = cookies
+            
         return ydl_opts
     
     def _process_youtube_info(self, video_info: dict) -> None:

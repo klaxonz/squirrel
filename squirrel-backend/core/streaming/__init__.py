@@ -7,14 +7,12 @@
 from .proxy import (
     VideoProxy,
     ProxyRequest,
-    ProxyMetrics,
     ConnectionManager,
 )
 
 __all__ = [
     'VideoProxy',
     'ProxyRequest', 
-    'ProxyMetrics',
     'ConnectionManager',
 ]
 
