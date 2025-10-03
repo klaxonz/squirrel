@@ -90,7 +90,6 @@ import { useRoute, useRouter } from 'vue-router';
 import {
   HomeIcon,
   BookmarkIcon,
-  SpeakerWaveIcon,
   ClockIcon,
   ArrowDownTrayIcon,
   Cog6ToothIcon as CogIcon,
@@ -115,11 +114,6 @@ const menuItems = [
     name: '订阅',
     path: '/subscribed',
     icon: BookmarkIcon,
-  },
-  {
-    name: '播客',
-    path: '/podcasts',
-    icon: SpeakerWaveIcon,
   },
   {
     name: '下载',

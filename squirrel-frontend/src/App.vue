@@ -34,19 +34,6 @@
 
     <!-- Mobile navigation -->
     <MobileNav v-if="isMobile" :routes="mobileRoutes" />
-
-    <!-- 全局播放器 -->
-    <Teleport to="body">
-      <PodcastPlayer
-        v-if="currentPodcast && currentEpisode"
-        :podcast="currentPodcast"
-        :currentEpisode="currentEpisode"
-        :isPlaying="isPlaying"
-        @play="handlePodcastPlay"
-        @pause="handlePodcastPause"
-        @timeupdate="handlePodcastTimeUpdate"
-      />
-    </Teleport>
   </div>
 </template>
 
@@ -55,13 +42,11 @@ import { provide, ref, onMounted, onUnmounted, computed } from 'vue';
 import mitt from 'mitt';
 import MobileNav from './components/MobileNav.vue';
 import Sidebar from './components/Sidebar.vue';
-import PodcastPlayer from './components/PodcastPlayer.vue';
 import GlobalSearchBar from './components/GlobalSearchBar.vue';
 import RefreshCenter from './components/RefreshCenter.vue';
-import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
+import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon } from '@heroicons/vue/24/outline';
 import { isMobile } from "./composables/useMobile.js";
 import { useRoute } from 'vue-router';
-import { usePodcasts } from './composables/usePodcasts';
 import { useUser } from './composables/useUser';
 import { useGlobalSearch } from './composables/useGlobalSearch';
 import { useSystemConfig } from './composables/useSystemConfig';
@@ -85,7 +70,6 @@ const { searchQuery, searchPlaceholder, handleSearch: handleGlobalSearch, handle
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
   { path: '/subscribed', name: '订阅', icon: BookmarkIcon },
-  { path: '/podcasts', name: '播客', icon: SpeakerWaveIcon },
   { path: '/history', name: '观看历史', icon: ClockIcon },
   { path: '/downloads', name: '下载任务', icon: ArrowDownTrayIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
@@ -95,40 +79,6 @@ const routes = ref([
 onUnmounted(() => {
   emitter.all.clear();
 });
-
-// 添加播客相关状态
-const currentEpisode = ref(null);
-const currentPodcast = ref(null);
-const isPlaying = ref(false);
-
-// 提供全局状态
-provide('currentPodcast', currentPodcast);
-provide('currentEpisode', currentEpisode);
-provide('isPlaying', isPlaying);
-
-// 提供全局方法来控制播放器
-provide('playPodcast', (episode, podcast) => {
-  currentEpisode.value = episode;
-  currentPodcast.value = podcast;
-  isPlaying.value = true;
-});
-
-// 播放器控制方法
-const handlePodcastPlay = () => {
-  isPlaying.value = true;
-};
-
-const handlePodcastPause = () => {
-  isPlaying.value = false;
-};
-
-const { updatePlayProgress } = usePodcasts();
-
-const handlePodcastTimeUpdate = ({ position, duration }) => {
-  if (currentEpisode.value) {
-    updatePlayProgress(currentEpisode.value.id, position, duration);
-  }
-};
 
 const sidebarRoutes = computed(() => {
   return routes.value.filter(route => !route.path.includes('/settings'))

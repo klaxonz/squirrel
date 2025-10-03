@@ -5,7 +5,6 @@ import Settings from '../views/Settings.vue'
 import DownloadTasks from '../views/DownloadTasks.vue'
 import VideoTab from "../components/VideoTab.vue";
 import History from '../views/History.vue';
-import Podcasts from '../views/Podcasts.vue'
 import VideoPlay from '../views/VideoPlay.vue'
 import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
@@ -141,12 +140,6 @@ const routes = [
     name: 'History',
     component: History,
     meta: { showSearch: true, search: 'history', searchEvent: 'search:history', searchPlaceholder: '搜索观看历史...' },
-  },
-  {
-    path: '/podcasts',
-    name: 'Podcasts',
-    component: Podcasts,
-    meta: { showSearch: true, search: 'podcasts', searchEvent: 'search:podcasts', searchPlaceholder: '搜索播客...' },
   },
   {
     path: '/video/:videoId',
