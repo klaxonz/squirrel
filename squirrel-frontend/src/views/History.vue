@@ -67,9 +67,9 @@ const showClearConfirm = async () => {
     try {
       await clearHistory();
       videos.value = [];
-      displayToast('历史记录已清空');
+      displayToast('观看历史已清空');
     } catch (err) {
-      displayToast('清空历史记录失败', {type: 'error'});
+      displayToast('清空观看历史失败', {type: 'error'});
     }
   }
 };

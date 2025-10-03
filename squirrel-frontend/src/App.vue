@@ -86,7 +86,7 @@ const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
   { path: '/subscribed', name: '订阅', icon: BookmarkIcon },
   { path: '/podcasts', name: '播客', icon: SpeakerWaveIcon },
-  { path: '/history', name: '历史记录', icon: ClockIcon },
+  { path: '/history', name: '观看历史', icon: ClockIcon },
   { path: '/downloads', name: '下载任务', icon: ArrowDownTrayIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
 ]);

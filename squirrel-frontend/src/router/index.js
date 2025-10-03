@@ -140,7 +140,7 @@ const routes = [
     path: '/history',
     name: 'History',
     component: History,
-    meta: { showSearch: true, search: 'history', searchEvent: 'search:history', searchPlaceholder: '搜索历史记录...' },
+    meta: { showSearch: true, search: 'history', searchEvent: 'search:history', searchPlaceholder: '搜索观看历史...' },
   },
   {
     path: '/podcasts',
