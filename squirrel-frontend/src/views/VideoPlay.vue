@@ -168,6 +168,7 @@
                 <!-- 统计信息单独一行 -->
                 <div class="ml-11 md:ml-12 lg:ml-13 text-[10px] text-[#aaaaaa] mt-1">
                   总视频: {{ sub.total_videos || 0 }} | 已解析: {{ sub.total_extract || 0 }}
+                  <span v-if="video?.publish_date"> · {{ formatDate(video.publish_date) }}发布</span>
                 </div>
               </div>
             </div>

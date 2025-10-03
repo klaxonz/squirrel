@@ -7,6 +7,7 @@ import 'vue-toastification/dist/index.css';
 import './styles/index.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './styles/toast.css'
+import './utils/iconify'
 
 // 阻止默认的右键菜单
 document.addEventListener('contextmenu', (event) => {
