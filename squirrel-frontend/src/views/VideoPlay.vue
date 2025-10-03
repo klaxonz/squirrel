@@ -34,7 +34,7 @@
                 title="随机播放"
                 aria-label="随机播放"
               >
-                <IconShuffle class="h-5 w-5" />
+                <Icon icon="material-symbols:shuffle" class="h-5 w-5" />
               </button>
               <!-- 主要按钮显示在外面 -->
               <button
@@ -42,7 +42,10 @@
                 class="p-2 rounded-full hover:bg-[#272727] transition-colors"
                 :class="{ 'text-red-500': video?.interaction_type === INTERACTION_TYPE.LIKE }"
               >
-                <IconThumbUp class="h-5 w-5" :filled="video?.interaction_type === INTERACTION_TYPE.LIKE" />
+                <Icon 
+                  :icon="video?.interaction_type === INTERACTION_TYPE.LIKE ? 'material-symbols:thumb-up' : 'material-symbols:thumb-up-outline'" 
+                  class="h-5 w-5" 
+                />
               </button>
 
               <button
@@ -50,7 +53,10 @@
                 class="p-2 rounded-full hover:bg-[#272727] transition-colors"
                 :class="{ 'text-gray-400': video?.interaction_type === INTERACTION_TYPE.DISLIKE }"
               >
-                <IconThumbDown class="h-5 w-5" :filled="video?.interaction_type === INTERACTION_TYPE.DISLIKE" />
+                <Icon 
+                  :icon="video?.interaction_type === INTERACTION_TYPE.DISLIKE ? 'material-symbols:thumb-down' : 'material-symbols:thumb-down-outline'" 
+                  class="h-5 w-5" 
+                />
               </button>
 
               <button
@@ -60,7 +66,10 @@
                 title="稍后看"
                 aria-label="稍后看"
               >
-                <IconClock class="h-5 w-5" :filled="video?.interaction_type === INTERACTION_TYPE.LATER" />
+                <Icon 
+                  :icon="video?.interaction_type === INTERACTION_TYPE.LATER ? 'material-symbols:schedule' : 'material-symbols:schedule-outline'" 
+                  class="h-5 w-5" 
+                />
               </button>
 
 	                <!-- 原视频页按钮 -->
@@ -73,7 +82,7 @@
 	                  aria-label="打开原视频页"
 	                  title="打开原视频页"
 	                >
-                <IconExternal class="h-5 w-5" />
+                <Icon icon="material-symbols:open-in-new" class="h-5 w-5" />
 	                </a>
 
 
@@ -83,9 +92,7 @@
                   @click="handleMoreOptionsClick"
                   class="p-2 rounded-full hover:bg-[#272727] transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                  </svg>
+                  <Icon icon="material-symbols:more-vert" class="h-5 w-5" />
                 </button>
 
                 <!-- 下拉菜单 -->
@@ -231,11 +238,7 @@ import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
 import useOptionsDropdown from '../composables/useOptionsDropdown';
 import VideoPlayer from '../components/video-player/VideoPlayer.vue';
-import IconShuffle from '../components/icons/IconShuffle.vue';
-import IconThumbUp from '../components/icons/IconThumbUp.vue';
-import IconThumbDown from '../components/icons/IconThumbDown.vue';
-import IconClock from '../components/icons/IconClock.vue';
-import IconExternal from '../components/icons/IconExternal.vue';
+import { Icon } from '@iconify/vue';
 import useOptionsMenu from '../composables/useOptionsMenu';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';

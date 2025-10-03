@@ -31,7 +31,7 @@
             class="flex items-center rounded-lg text-sm transition-colors whitespace-nowrap px-4 py-2"
             :class="currentView === item.id ? 'bg-[#272727] text-white' : 'text-[#aaaaaa] hover:text-white'"
           >
-            <component :is="item.icon" class="w-5 h-5 mr-3 flex-shrink-0"/>
+            <Icon :icon="item.icon" class="w-5 h-5 mr-3 flex-shrink-0"/>
             {{ item.label }}
           </button>
         </div>
@@ -128,9 +128,7 @@ import PodcastDrawer from '../components/PodcastDrawer.vue';
 import { usePodcasts } from '../composables/usePodcasts';
 import useCustomToast from '../composables/useToast';
 import axios from 'axios';
-import GridIcon from '../components/icons/GridIcon.vue';
-import PlayingIcon from '../components/icons/PlayingIcon.vue';
-import ClockIcon from '../components/icons/ClockIcon.vue';
+import { Icon } from '@iconify/vue';
 
 const emitter = inject('emitter');
 const currentPodcast = inject('currentPodcast');
@@ -243,17 +241,17 @@ const navItems = [
   { 
     id: 'all', 
     label: '所有播客',
-    icon: GridIcon
+    icon: 'material-symbols:grid-view-outline'
   },
   { 
     id: 'listening', 
     label: '正在收听',
-    icon: PlayingIcon
+    icon: 'material-symbols:graphic-eq'
   },
   { 
     id: 'recent', 
     label: '最近更新',
-    icon: ClockIcon
+    icon: 'material-symbols:schedule-outline'
   }
 ];
 </script>
