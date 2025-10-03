@@ -53,9 +53,13 @@
         <div class="relative group">
           <div class="flex items-center">
             <div class="flex -space-x-2 relative">
-              <template v-for="(avatar, index) in displayAvatars" :key="index">
+              <div 
+                v-for="(avatar, index) in displayAvatars" 
+                :key="`avatar-${index}`"
+                class="contents"
+              >
                 <img 
-                  v-if="index < 3"
+                  v-if="index < 3 && !avatarErrors.has(index)"
                   :src="avatar.avatar" 
                   class="w-4 h-4 rounded-full object-cover flex-shrink-0 cursor-pointer ring-1 ring-[#212121]"
                   :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
@@ -65,13 +69,13 @@
                 >
                 <!-- 添加默认头像 -->
                 <div 
-                  v-if="avatarErrors[index]"
+                  v-else-if="index < 3 && avatarErrors.has(index)"
                   class="w-4 h-4 rounded-full flex-shrink-0 cursor-pointer ring-1 ring-[#212121] bg-gray-700 flex items-center justify-center"
                   :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
                 >
                   <span class="text-white text-2xs">{{ getInitials(avatar.name) }}</span>
                 </div>
-              </template>
+              </div>
             </div>
             <span class="text-2xs text-gray-400 ml-2 truncate">
               {{ displayNames }}
@@ -183,22 +187,6 @@ onUnmounted(() => {
 const showMenu = ref(false);
 const menuPosition = ref({ x: 0, y: 0 });
 
-const videoRef = toRef(props, 'video');
-const {
-  downloadVideo,
-  copyVideoLink,
-} = useOptionsMenu(videoRef);
-
-watch(() => props.video, (newVideo) => {
-  const {
-    downloadVideo: newDownloadVideo,
-    copyVideoLink: newCopyVideoLink,
-  } = useOptionsMenu(newVideo);
-
-  downloadVideo.value = newDownloadVideo;
-  copyVideoLink.value = newCopyVideoLink;
-}, { deep: true });
-
 const showContextMenu = async (event) => {
   event.preventDefault();
   event.stopPropagation();
@@ -233,16 +221,21 @@ const goToSubscription = (subscriptionId) => {
   emit('goToSubscription', subscriptionId);
 };
 
+watch(showMenu, (isOpen) => {
+  if (isOpen) {
+    nextTick(() => {
+      document.addEventListener('click', closeContextMenu, { once: true });
+      window.addEventListener('scroll', handleScroll, { passive: true, capture: true, once: true });
+    });
+  }
+});
+
 onMounted(() => {
   document.addEventListener('closeAllContextMenus', closeContextMenu);
-  document.addEventListener('click', closeContextMenu);
-  window.addEventListener('scroll', handleScroll, true);
 });
 
 onUnmounted(() => {
   document.removeEventListener('closeAllContextMenus', closeContextMenu);
-  document.removeEventListener('click', closeContextMenu);
-  window.removeEventListener('scroll', handleScroll, true);
 });
 
 const displayAvatars = computed(() => {
@@ -274,7 +267,8 @@ const displayNames = computed(() => {
 
 // 添加状态管理
 const showDefaultThumbnail = ref(false);
-const avatarErrors = ref({});
+// 使用 Set 代替对象，提高性能
+const avatarErrors = ref(new Set());
 
 // 处理封面加载失败
 const handleThumbnailError = (e) => {
@@ -283,7 +277,7 @@ const handleThumbnailError = (e) => {
 
 // 处理头像加载失败
 const handleAvatarError = (e, index) => {
-  avatarErrors.value[index] = true;
+  avatarErrors.value.add(index);
 };
 
 // 获取名字首字母
@@ -331,6 +325,7 @@ const getInitials = (name) => {
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

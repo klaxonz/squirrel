@@ -96,8 +96,18 @@ const currentScrollTop = ref(0);
 const suppressScroll = ref(false);
 
 // ==================== 滚动位置管理 ====================
+const MAX_SCROLL_POSITIONS = 50; // 限制 Map 大小，防止内存泄漏
 const scrollPositions = ref(new Map());
 const instanceId = ref(null);
+
+const saveScrollPosition = (id, position) => {
+  // 限制 Map 大小，移除最旧的条目
+  if (scrollPositions.value.size >= MAX_SCROLL_POSITIONS) {
+    const firstKey = scrollPositions.value.keys().next().value;
+    scrollPositions.value.delete(firstKey);
+  }
+  scrollPositions.value.set(id, position);
+};
 
 const restoreScrollPosition = () => {
   if (instanceId.value && scrollPositions.value.has(instanceId.value)) {
@@ -415,7 +425,7 @@ const handleScroll = () => {
     return;
   }
   
-  scrollPositions.value.set(instanceId.value, scrollTop.value);
+  saveScrollPosition(instanceId.value, scrollTop.value);
 
   // 向下兼容：提供与原有使用一致的 target 字段
   emit('scroll', { 
@@ -488,7 +498,16 @@ watch(() => props.items, (newItems, oldItems) => {
   }
   
   if (!appended) {
+    // 完全清理旧的引用和观察器
+    itemEls.value.forEach(el => {
+      if (el && resizeObserver.value) {
+        resizeObserver.value.unobserve(el);
+      }
+    });
+    itemEls.value = [];
+    observedElements.value.clear();
     rowHeights.value = [];
+    
     // 当数据源发生替换（非尾部追加）时，重置滚动，避免切换标签后出现顶部空白
     if (container.value) {
       container.value.scrollTop = 0;
