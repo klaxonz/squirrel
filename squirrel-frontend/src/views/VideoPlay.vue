@@ -214,7 +214,7 @@
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
@@ -244,6 +244,9 @@ const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlayba
 const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
 const { unsubscribe: apiUnsubscribe } = useSubscriptionApi();
 const { getRandomVideo } = useVideoApi();
+
+// 记录最近播放的视频，防止循环播放
+const recentlyPlayed = ref([]);
 
 const handleUnsubscribe = async (subscriptionId) => {
   if (!subscriptionId) return;
@@ -284,6 +287,24 @@ const handlePlayRandom = async () => {
   const params = {};
   const site = video.value?.domain || video.value?.site;
   if (site) params.site = site;
+  
+  // 尝试多次获取，跳过最近播放过的视频
+  let attempts = 0;
+  const maxAttempts = 3;
+  
+  while (attempts < maxAttempts) {
+    const res = await getRandomVideo(params);
+    if (res.success && res.data?.id) {
+      // 如果这个视频不在最近播放历史中，就播放它
+      if (!recentlyPlayed.value.includes(res.data.id)) {
+        await goToVideo(res.data.id);
+        return;
+      }
+    }
+    attempts++;
+  }
+  
+  // 如果尝试3次都是最近播放过的，就播放最后一个
   const res = await getRandomVideo(params);
   if (res.success && res.data?.id) {
     await goToVideo(res.data.id);
@@ -294,6 +315,16 @@ const handlePlayRandom = async () => {
 const goToVideo = async (id) => {
   if (!id) return;
   if (video.value?.id === id) return;
+  
+  // 记录当前视频到播放历史（如果有的话）
+  if (video.value?.id && !recentlyPlayed.value.includes(video.value.id)) {
+    recentlyPlayed.value.push(video.value.id);
+    // 只保留最近5个视频的历史
+    if (recentlyPlayed.value.length > 5) {
+      recentlyPlayed.value.shift();
+    }
+  }
+  
   await router.replace(`/video/${id}`);
   await loadAndPlayById(id);
 };
@@ -306,11 +337,14 @@ const handleAutoplayNext = async (evt) => {
     const loopEnabled = evt?.loop !== undefined ? evt.loop : false;
     if (!autoplayEnabled || !autoplayNextEnabled || loopEnabled) return;
 
-    const next = relatedVideos.value?.[0];
+    // 查找第一个未在最近播放历史中的视频
+    const next = relatedVideos.value?.find(v => !recentlyPlayed.value.includes(v.id));
     if (next?.id) {
       await goToVideo(next.id);
       return;
     }
+    
+    // 如果所有相关视频都播放过，随机播放一个
     await handlePlayRandom();
   } catch (_) {}
 };

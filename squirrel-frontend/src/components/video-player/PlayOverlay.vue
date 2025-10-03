@@ -1,7 +1,7 @@
 <template>
   <div 
     class="play-overlay" 
-    v-if="!playing && !loading"
+    v-if="!playing && !loading && canPlay"
     @click="$emit('play')"
   >
     <div class="play-button">
@@ -22,6 +22,10 @@ const props = defineProps({
     default: false
   },
   loading: {
+    type: Boolean,
+    default: false
+  },
+  canPlay: {
     type: Boolean,
     default: false
   }

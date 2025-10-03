@@ -48,6 +48,7 @@
       <PlayOverlay
         :playing="playerState.media.playing"
         :loading="playerState.media.loading"
+        :can-play="isCanplay"
         @play="togglePlay"
       />
 
