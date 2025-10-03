@@ -54,6 +54,22 @@
           <span class="slider"></span>
         </label>
       </div>
+
+      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+        <div>
+          <h3 class="font-medium">NSFW 视频封面模糊</h3>
+          <p class="text-sm text-gray-400">自动模糊显示标记为 NSFW 的视频封面</p>
+        </div>
+        <label class="switch">
+          <input
+            type="checkbox"
+            :checked="systemConfig?.blur_nsfw_thumbnails"
+            :disabled="systemLoading || systemSaving"
+            @change="onSystemToggle('blur_nsfw_thumbnails', $event.target.checked)"
+          >
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
   </div>
 </template>

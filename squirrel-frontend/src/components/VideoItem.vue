@@ -9,6 +9,7 @@
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
         class="w-full h-full object-cover absolute top-0 left-0 transition-transform duration-300 group-hover:scale-105"
+        :class="{ 'blur-thumbnail': shouldBlurThumbnail }"
         @error="handleThumbnailError"
         :alt="video.title"
       >
@@ -134,6 +135,7 @@ import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from "../composables/useOptionsMenu.js";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import { Icon } from '@iconify/vue';
+import { useSystemConfig } from '../composables/useSystemConfig.js';
 
 const props = defineProps({
   video: {
@@ -161,6 +163,18 @@ const emit = defineEmits([
   'downloadVideo',
 ]);
 
+// 获取系统配置
+const { config: systemConfig } = useSystemConfig();
+
+// 计算视频是否为 NSFW（任一订阅为 NSFW 则视频为 NSFW）
+const isNsfwVideo = computed(() => {
+  return props.video.subscriptions?.some(sub => sub.is_nsfw) || false;
+});
+
+// 计算是否应该模糊封面
+const shouldBlurThumbnail = computed(() => {
+  return systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value;
+});
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll, true);
@@ -468,5 +482,15 @@ const getInitials = (name) => {
 /* 添加默认头像样式 */
 .default-avatar {
   @apply bg-gray-700 text-white flex items-center justify-center text-2xs font-medium;
+}
+
+/* NSFW 封面模糊效果 */
+.blur-thumbnail {
+  filter: blur(20px);
+  transition: filter 0.3s ease-in-out;
+}
+
+.video-thumbnail:hover .blur-thumbnail {
+  filter: blur(0px);
 }
 </style>

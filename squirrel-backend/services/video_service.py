@@ -585,11 +585,22 @@ def list_videos(
         # 获取各类别计数
         counts = _get_video_counts(user_id, show_nsfw, subscription_id, query, nsfw=nsfw, domains=domains)
 
-        # 获取订阅信息
+        # 获取订阅信息（包含 is_nsfw）
         subscription_ids = list(set(video.subscription_id for video in videos))
-        subscriptions = session.scalars(
-            select(Subscription).where(Subscription.id.in_(subscription_ids))
+        subscription_results = session.execute(
+            select(Subscription, UserSubscription.is_nsfw)
+            .join(UserSubscription, Subscription.id == UserSubscription.subscription_id)
+            .where(
+                and_(
+                    Subscription.id.in_(subscription_ids),
+                    UserSubscription.user_id == user_id
+                )
+            )
         ).all()
+        
+        # 构建订阅字典，包含 is_nsfw
+        subscriptions_dict = {sub.id: {'subscription': sub, 'is_nsfw': is_nsfw} 
+                             for sub, is_nsfw in subscription_results}
 
         # 获取视频相关创作者
         video_ids = [video.id for video in videos]
@@ -610,7 +621,23 @@ def list_videos(
         # 构建返回数据
         video_list = []
         for video in videos:
-            subscription_info = next((sub for sub in subscriptions if sub.id == video.subscription_id), None)
+            subscription_data = subscriptions_dict.get(video.subscription_id)
+            if subscription_data:
+                subscription_info = subscription_data['subscription']
+                is_nsfw = subscription_data['is_nsfw']
+                subscriptions_list = [
+                    {
+                        'id': subscription_info.id,
+                        'name': subscription_info.name,
+                        'url': subscription_info.url,
+                        'type': subscription_info.type,
+                        'avatar': subscription_info.avatar,
+                        'is_nsfw': is_nsfw
+                    }
+                ]
+            else:
+                subscriptions_list = []
+            
             video_data = {
                 'id': video.id,
                 'title': video.title,
@@ -620,15 +647,7 @@ def list_videos(
                 'last_position': video_history_dict[video.id].last_position if video.id in video_history_dict else 0,
                 'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
                 'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'subscriptions': [
-                    {
-                        'id': subscription_info.id,
-                        'name': subscription_info.name,
-                        'url': subscription_info.url,
-                        'type': subscription_info.type,
-                        "avatar": subscription_info.avatar
-                    }
-                ] if subscription_info else [],
+                'subscriptions': subscriptions_list,
                 'actors': [creator.to_dict() for creator in creators_dict.get(video.id, [])]
             }
             video_list.append(video_data)
@@ -661,8 +680,16 @@ def get_video(user_id, video_id):
         ).all()
         subscription_ids = [sv.subscription_id for sv in subscription_videos] or []
 
-        subscriptions = session.scalars(
-            select(Subscription).where(Subscription.id.in_(subscription_ids))
+        # 获取订阅信息（包含 is_nsfw）
+        subscription_results = session.execute(
+            select(Subscription, UserSubscription.is_nsfw)
+            .join(UserSubscription, Subscription.id == UserSubscription.subscription_id)
+            .where(
+                and_(
+                    Subscription.id.in_(subscription_ids),
+                    UserSubscription.user_id == user_id
+                )
+            )
         ).all() if subscription_ids else []
 
         # 计算每个订阅的已解析视频数（total_extract）
@@ -675,11 +702,12 @@ def get_video(user_id, video_id):
             ).all()
             counts_map = {row[0]: row[1] for row in rows}
 
-        # 构造包含 total_extract 的订阅信息
+        # 构造包含 total_extract 和 is_nsfw 的订阅信息
         subscriptions_data = []
-        for subscription in subscriptions:
+        for subscription, is_nsfw in subscription_results:
             s_dict = subscription.to_dict()
             s_dict['total_extract'] = counts_map.get(subscription.id, 0)
+            s_dict['is_nsfw'] = is_nsfw
             subscriptions_data.append(s_dict)
 
         creators = session.scalars(

@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 from fastapi import APIRouter
-from common.constants import SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER
+from common.constants import SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER, SYS_BLUR_NSFW_THUMBNAILS
 from controllers.scheduler_controller import scheduler_start, scheduler_stop
 from controllers.worker_controller import worker_start, worker_stop
 from fastapi import Body
@@ -52,7 +52,7 @@ def _convert_config_types(config_dict: dict) -> dict:
     将配置字典中的特定键转换为正确的数据类型
     """
     # 定义需要转换为布尔值的配置项
-    boolean_configs = {SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER}
+    boolean_configs = {SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER, SYS_BLUR_NSFW_THUMBNAILS}
 
     result = {}
     for key, value in config_dict.items():

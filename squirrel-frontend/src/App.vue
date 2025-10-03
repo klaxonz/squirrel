@@ -64,6 +64,7 @@ import { useRoute } from 'vue-router';
 import { usePodcasts } from './composables/usePodcasts';
 import { useUser } from './composables/useUser';
 import { useGlobalSearch } from './composables/useGlobalSearch';
+import { useSystemConfig } from './composables/useSystemConfig';
 
 const route = useRoute();
 const emitter = mitt();
@@ -138,6 +139,7 @@ const mobileRoutes = computed(() => {
 })
 
 const { getCurrentUser } = useUser();
+const { loadSystemConfig } = useSystemConfig();
 
 // 是否允许当前页面滚动（如视频播放页）
 const isScrollablePage = computed(() => {
@@ -151,6 +153,13 @@ onMounted(async () => {
     } catch (error) {
       console.error('Failed to get user info:', error);
     }
+  }
+  
+  // 加载系统配置
+  try {
+    await loadSystemConfig();
+  } catch (error) {
+    console.error('Failed to load system config:', error);
   }
 });
 
