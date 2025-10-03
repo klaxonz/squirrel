@@ -146,6 +146,7 @@ const {
   videoCore,
   isHlsStream,
   isDashStream,
+  isCanplay,
   progress,
   volumeIcon,
   fullscreenIcon,
