@@ -177,6 +177,8 @@ class SubscriptionScheduler:
     @staticmethod
     def _get_queue_for_domain(domain: str, trigger: UpdateTrigger, mode: UpdateMode = UpdateMode.INCREMENTAL) -> str:
         """获取 domain 对应的队列名"""
+        from crawl import MetaRegistry
+        
         if trigger == UpdateTrigger.MANUAL:
             queue_type = 'manual'
         elif mode == UpdateMode.FULL:
@@ -184,8 +186,9 @@ class SubscriptionScheduler:
         else:
             queue_type = 'incremental'
         
-        if domain in constants.SUBSCRIPTION_UPDATE_DOMAIN_QUEUE_MAPPING:
-            return constants.SUBSCRIPTION_UPDATE_DOMAIN_QUEUE_MAPPING[domain][queue_type]
+        # 检查该域名是否有注册的插件
+        if MetaRegistry.get_meta_class(domain):
+            return constants.get_subscription_update_queue(domain, queue_type)
         
         if trigger == UpdateTrigger.MANUAL:
             return constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL

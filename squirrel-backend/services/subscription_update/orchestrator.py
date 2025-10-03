@@ -64,11 +64,16 @@ class SubscriptionOrchestrator:
     
     def _resolve_site(self, url: str) -> str:
         """解析站点名称"""
+        from crawl import MetaRegistry
+        
         domain = url_helper.extract_top_level_domain(url)
         
-        from common.constants import SUPPORTED_SITES
-        site = SUPPORTED_SITES.get(domain)
-        return site if site else "default"
+        # 检查是否有注册的插件支持该域名
+        if MetaRegistry.get_meta_class(domain):
+            # 从域名提取站点名称 (如 'bilibili.com' -> 'bilibili')
+            return domain.split('.')[0] if '.' in domain else domain
+        
+        return "default"
     
     def _select_strategy(self, site_name: str) -> 'UpdateStrategy':
         """选择更新策略"""
