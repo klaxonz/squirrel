@@ -200,7 +200,17 @@
                       {{ relatedVideo.title }}
                     </div>
                     <div class="text-[#aaaaaa] text-[10px] mt-1 truncate">
-                      {{ relatedVideo.subscriptions?.[0]?.name || relatedVideo.site }}
+                      <router-link
+                        v-if="relatedVideo.subscriptions?.[0]?.id"
+                        :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
+                        @click.stop
+                        class="hover:text-[#3ea6ff] transition-colors"
+                      >
+                        {{ relatedVideo.subscriptions[0].name }}
+                      </router-link>
+                      <span v-else>
+                        {{ relatedVideo.site }}
+                      </span>
                     </div>
                   </div>
                 </div>

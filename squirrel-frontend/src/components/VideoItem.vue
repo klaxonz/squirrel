@@ -65,6 +65,7 @@
                   :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
                   referrerpolicy="no-referrer"
                   @error="(e) => handleAvatarError(e, index)"
+                  @click.stop="goToSubscription(avatar.id)"
                   :alt="avatar.name"
                 >
                 <!-- 添加默认头像 -->
@@ -72,12 +73,16 @@
                   v-else-if="index < 3 && avatarErrors.has(index)"
                   class="w-4 h-4 rounded-full flex-shrink-0 cursor-pointer ring-1 ring-[#212121] bg-gray-700 flex items-center justify-center"
                   :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
+                  @click.stop="goToSubscription(avatar.id)"
                 >
                   <span class="text-white text-2xs">{{ getInitials(avatar.name) }}</span>
                 </div>
               </div>
             </div>
-            <span class="text-2xs text-gray-400 ml-2 truncate">
+            <span 
+              class="text-2xs text-gray-400 ml-2 truncate cursor-pointer hover:text-[#3ea6ff] transition-colors"
+              @click.stop="goToSubscription(video.subscriptions[0]?.id)"
+            >
               {{ displayNames }}
             </span>
           </div>
