@@ -29,11 +29,16 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
           usePixelRatioInLimitBitrateByPortal: false
         },
         buffer: {
-          stableBufferTime: 3,
-          bufferTimeAtTopQuality: 6,
-          bufferTimeAtTopQualityLongForm: 10,
-          longFormContentDurationThreshold: 1200,
-          bufferToKeep: 1.5
+          stableBufferTime: 20,
+          bufferTimeAtTopQuality: 30,
+          bufferTimeAtTopQualityLongForm: 40,
+          longFormContentDurationThreshold: 600,
+          bufferToKeep: 20,
+          bufferPruningInterval: 10,
+          fastSwitchEnabled: true
+        },
+        scheduling: {
+          scheduleWhilePaused: true
         }
       }
     })
