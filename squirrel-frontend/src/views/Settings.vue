@@ -2,22 +2,40 @@
   <div class="settings-container bg-[#0f0f0f] text-white min-h-screen p-4 md:p-8">
     <h1 class="text-2xl font-bold mb-6">设置</h1>
 
-    <!-- 用户偏好设置 -->
+    <!-- NSFW 内容设置 -->
     <div class="settings-section mb-8">
-      <h2 class="text-lg font-semibold mb-4 text-gray-300">内容偏好</h2>
+      <h2 class="text-lg font-semibold mb-4 text-gray-300">内容设置</h2>
       <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
         <div>
-          <h3 class="font-medium">{{ getLabel('showNsfw') }}</h3>
+          <h3 class="font-medium">显示敏感内容</h3>
           <p class="text-sm text-gray-400">显示可能包含成人内容的媒体</p>
         </div>
         <label class="switch">
-          <input type="checkbox" v-model="settings.showNsfw">
+          <input 
+            type="checkbox" 
+            v-model="settings.showNsfw"
+            :disabled="userSaving"
+            @change="onUserSettingChange"
+          >
           <span class="slider"></span>
         </label>
       </div>
-      <button @click="saveSettings" class="save-button bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-4">
-        保存用户设置
-      </button>
+
+      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+        <div>
+          <h3 class="font-medium">NSFW 视频封面模糊</h3>
+          <p class="text-sm text-gray-400">自动模糊显示标记为 NSFW 的视频封面</p>
+        </div>
+        <label class="switch">
+          <input
+            type="checkbox"
+            :checked="systemConfig?.blur_nsfw_thumbnails"
+            :disabled="systemLoading || systemSaving"
+            @change="onSystemToggle('blur_nsfw_thumbnails', $event.target.checked)"
+          >
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
 
     <!-- 系统配置 -->
@@ -54,22 +72,6 @@
           <span class="slider"></span>
         </label>
       </div>
-
-      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
-        <div>
-          <h3 class="font-medium">NSFW 视频封面模糊</h3>
-          <p class="text-sm text-gray-400">自动模糊显示标记为 NSFW 的视频封面</p>
-        </div>
-        <label class="switch">
-          <input
-            type="checkbox"
-            :checked="systemConfig?.blur_nsfw_thumbnails"
-            :disabled="systemLoading || systemSaving"
-            @change="onSystemToggle('blur_nsfw_thumbnails', $event.target.checked)"
-          >
-          <span class="slider"></span>
-        </label>
-      </div>
     </div>
   </div>
 </template>
@@ -77,26 +79,17 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from '../utils/axios';
-import { useToast } from 'vue-toastification';
 import { useSystemConfig } from '../composables/useSystemConfig';
-
-const toast = useToast();
 
 // 用户设置
 const settings = ref({
   showNsfw: false
 });
+const userSaving = ref(false);
 
 // 系统配置
 const { config: systemConfig, loading: systemLoading, loadSystemConfig, updateSystemConfig } = useSystemConfig();
 const systemSaving = ref(false);
-
-const getLabel = (key) => {
-  const labels = {
-    showNsfw: '显示敏感内容'
-  };
-  return labels[key];
-};
 
 onMounted(async () => {
   // 加载用户设置
@@ -120,7 +113,8 @@ onMounted(async () => {
   }
 });
 
-const saveSettings = async () => {
+const onUserSettingChange = async () => {
+  userSaving.value = true;
   try {
     const response = await axios.put('/api/users/me/config', {
       settings: settings.value,
@@ -128,14 +122,22 @@ const saveSettings = async () => {
     });
 
     if (response.data.code === 0) {
-      toast.success('用户设置保存成功');
       settings.value = response.data.data;
     } else {
       throw new Error(response.data.msg || '保存用户设置失败');
     }
   } catch (error) {
     console.error('保存用户设置失败:', error);
-    toast.error('保存用户设置失败: ' + (error.message || '未知错误'));
+    // 恢复到之前的值
+    const response = await axios.get('/api/users/me/config');
+    if (response.data.code === 0) {
+      settings.value = {
+        ...settings.value,
+        ...response.data.data
+      };
+    }
+  } finally {
+    userSaving.value = false;
   }
 };
 
@@ -143,10 +145,8 @@ const onSystemToggle = async (key, val) => {
   systemSaving.value = true;
   try {
     await updateSystemConfig({ [key]: val });
-    // 系统配置是即时生效的，不需要成功提示
   } catch (e) {
     console.error('系统配置操作失败:', e);
-    toast.error('系统配置操作失败');
   } finally {
     systemSaving.value = false;
   }
@@ -208,11 +208,8 @@ input:checked + .slider:before {
   transform: translateX(24px);
 }
 
-.save-button {
-  transition: background-color 0.2s;
-}
-
-.save-button:hover {
-  background-color: #cc0000;
+input:disabled + .slider {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
