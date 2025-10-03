@@ -1,13 +1,11 @@
 <template>
   <div class="loading-spinner-container" :style="{ pointerEvents: statusOnly ? 'none' : undefined }">
     <div class="loading-spinner" v-if="!statusOnly">
-      <div class="spinner">
-        <svg class="spinner__circle" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="45"/>
-        </svg>
+      <!-- 使用纯 CSS 实现的加载圆圈 -->
+      <div class="spinner-circle">
+        <div class="spinner-arc"></div>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -31,32 +29,31 @@ const props = defineProps({
 <style scoped>
 .loading-spinner-container {
   @apply absolute inset-0 z-30;
+  pointer-events: none;
 }
 
 .loading-spinner {
-  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+  @apply absolute top-1/2 left-1/2
     flex flex-col items-center justify-center;
+  transform: translate(-50%, -50%);
 }
 
-.spinner {
-  @apply relative w-12 h-12;
+.spinner-circle {
+  @apply relative;
+  width: 48px;
+  height: 48px;
 }
 
-.spinner__circle {
-  @apply w-full h-full;
-  animation: media-spinner 1.4s linear infinite;
+.spinner-arc {
+  @apply absolute inset-0 rounded-full;
+  border: 3px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.9);
+  border-right-color: rgba(255, 255, 255, 0.6);
+  animation: spinner-rotate 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
 }
 
-.spinner__circle circle {
-  @apply fill-none stroke-white stroke-2;
-  stroke-dasharray: 80, 200;
-  stroke-dashoffset: 0;
-  stroke-linecap: round;
-  animation: spinner-dash 1.4s ease-in-out infinite;
-}
-
-
-@keyframes media-spinner {
+@keyframes spinner-rotate {
   0% {
     transform: rotate(0deg);
   }
@@ -65,18 +62,9 @@ const props = defineProps({
   }
 }
 
-@keyframes spinner-dash {
-  0% {
-    stroke-dasharray: 1, 200;
-    stroke-dashoffset: 0;
-  }
-  50% {
-    stroke-dasharray: 100, 200;
-    stroke-dashoffset: -15;
-  }
-  100% {
-    stroke-dasharray: 100, 200;
-    stroke-dashoffset: -125;
-  }
+/* GPU 加速优化 */
+.spinner-arc {
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 </style>
