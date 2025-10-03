@@ -27,7 +27,7 @@ class ProxyRequest:
     headers: Dict[str, str] = field(default_factory=dict)
     timeout: float = 120.0
     max_retries: int = 3
-    chunk_size: int = 8192
+    chunk_size: int = 1024 * 1024  # 1MB for better streaming performance
     follow_redirects: bool = True
 
     def __post_init__(self):
@@ -119,15 +119,15 @@ class ConnectionManager:
     def _build_client_config(self, domain_config: Optional[Any]) -> Dict[str, Any]:
         if domain_config:
             connect_timeout = getattr(domain_config, "connect_timeout", 10.0)
-            read_timeout = getattr(domain_config, "read_timeout", 60.0)
-            max_connections = getattr(domain_config, "max_connections", 20)
-            keepalive_expiry = getattr(domain_config, "keepalive_expiry", 15.0)
+            read_timeout = getattr(domain_config, "read_timeout", 120.0)
+            max_connections = getattr(domain_config, "max_connections", 50)
+            keepalive_expiry = getattr(domain_config, "keepalive_expiry", 30.0)
             enable_http2 = getattr(domain_config, "enable_http2", True)
         else:
             connect_timeout = 10.0
-            read_timeout = 60.0
-            max_connections = 20
-            keepalive_expiry = 15.0
+            read_timeout = 120.0
+            max_connections = 50
+            keepalive_expiry = 30.0
             enable_http2 = True
 
         return {
