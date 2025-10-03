@@ -94,6 +94,7 @@ import {
   ArrowDownTrayIcon,
   Cog6ToothIcon as CogIcon,
   PuzzlePieceIcon,
+  DocumentTextIcon,
 } from '@heroicons/vue/24/outline';
 import { useUser } from '../composables/useUser';
 
@@ -128,6 +129,11 @@ const menuItems = [
 ];
 
 const bottomItems = [
+  {
+    name: '日志',
+    path: '/logs',
+    icon: DocumentTextIcon,
+  },
   {
     name: '设置',
     path: '/settings',

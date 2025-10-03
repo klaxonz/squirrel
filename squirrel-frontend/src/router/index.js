@@ -9,6 +9,7 @@ import VideoPlay from '../views/VideoPlay.vue'
 import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
 import PluginManager from '../views/PluginManager.vue';
+import LogViewer from '../views/LogViewer.vue';
 import { useUser } from '../composables/useUser';
 
 
@@ -77,6 +78,12 @@ const routes = [
     path: '/plugins',
     name: 'Plugins',
     component: PluginManager,
+    meta: { showSearch: false }
+  },
+  {
+    path: '/logs',
+    name: 'Logs',
+    component: LogViewer,
     meta: { showSearch: false }
   },
   {
