@@ -351,8 +351,6 @@ const handleDownload = async () => {
 
 const handlePlayRandom = async () => {
   const params = {};
-  const site = video.value?.domain || video.value?.site;
-  if (site) params.site = site;
   
   // 尝试多次获取，跳过最近播放过的视频
   let attempts = 0;
