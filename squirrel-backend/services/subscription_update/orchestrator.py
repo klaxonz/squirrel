@@ -48,8 +48,6 @@ class SubscriptionOrchestrator:
             
             result = strategy.execute(request)
             
-            self._log_result(result)
-            
             return result
             
         except Exception as e:
@@ -85,23 +83,6 @@ class SubscriptionOrchestrator:
         logger.debug(f"No specific strategy for {site_name}, using default")
         return self.default_strategy
     
-    def _log_result(self, result: SubscriptionUpdateResult):
-        """记录更新结果"""
-        if result.success:
-            if result.skipped_reason:
-                logger.info(
-                    f"Subscription {result.subscription_id} skipped: {result.skipped_reason}"
-                )
-            else:
-                logger.info(
-                    f"Subscription {result.subscription_id} updated: "
-                    f"found={result.videos_found}, enqueued={result.videos_enqueued}"
-                )
-        else:
-            logger.error(
-                f"Subscription {result.subscription_id} update failed: {result.error_message}"
-            )
-
 
 orchestrator = SubscriptionOrchestrator()
 
