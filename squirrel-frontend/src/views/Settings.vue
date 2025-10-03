@@ -38,6 +38,58 @@
       </div>
     </div>
 
+    <!-- 播放设置 -->
+    <div class="settings-section mb-8">
+      <h2 class="text-lg font-semibold mb-4 text-gray-300">播放设置</h2>
+      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+        <div>
+          <h3 class="font-medium">自动播放</h3>
+          <p class="text-sm text-gray-400">打开视频页面时自动开始播放</p>
+        </div>
+        <label class="switch">
+          <input 
+            type="checkbox" 
+            v-model="settings.autoplay"
+            :disabled="userSaving"
+            @change="onUserSettingChange"
+          >
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+        <div>
+          <h3 class="font-medium">自动播放下一个</h3>
+          <p class="text-sm text-gray-400">当前视频播放完毕后自动播放下一个视频</p>
+        </div>
+        <label class="switch">
+          <input 
+            type="checkbox" 
+            v-model="settings.autoplayNext"
+            :disabled="userSaving"
+            @change="onUserSettingChange"
+          >
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+        <div>
+          <h3 class="font-medium">循环播放</h3>
+          <p class="text-sm text-gray-400">视频播放完毕后自动重新播放</p>
+        </div>
+        <label class="switch">
+          <input 
+            type="checkbox" 
+            v-model="settings.loop"
+            :disabled="userSaving"
+            @change="onUserSettingChange"
+          >
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
     <!-- 系统配置 -->
     <div class="settings-section mb-8">
       <h2 class="text-lg font-semibold mb-4 text-gray-300">系统配置</h2>
@@ -83,7 +135,10 @@ import { useSystemConfig } from '../composables/useSystemConfig';
 
 // 用户设置
 const settings = ref({
-  showNsfw: false
+  showNsfw: false,
+  autoplay: true,
+  autoplayNext: true,
+  loop: false
 });
 const userSaving = ref(false);
 
