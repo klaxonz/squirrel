@@ -72,6 +72,8 @@
         :supports-pip="supportsPiP"
         :available-qualities="availableQualities"
         :playback-rates="playbackRates"
+        :has-prev="hasPrev"
+        :has-next="hasNext"
         @toggle-play="togglePlay"
         @skip-forward="skipForward"
         @skip-backward="skipBackward"
@@ -86,6 +88,8 @@
         @seek-start="onSeekStart"
         @progress-seek="setVideoTime"
         @seek-end="onSeekEnd"
+        @prev-video="$emit('prev-video')"
+        @next-video="$emit('next-video')"
       />
 
 
@@ -129,10 +133,12 @@ import useInitialTimeRestore from '../../composables/useInitialTimeRestore.js'
 
 const props = defineProps({
   video: Object,
-  initialTime: { type: Number, default: 0 }
+  initialTime: { type: Number, default: 0 },
+  hasPrev: { type: Boolean, default: false },
+  hasNext: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate', 'error'])
+const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate', 'error', 'prev-video', 'next-video'])
 
 const {
   playerState,

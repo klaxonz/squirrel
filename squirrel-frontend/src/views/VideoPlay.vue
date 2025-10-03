@@ -11,10 +11,14 @@
               v-if="video"
               :video="video"
               :initialTime="startTime"
+              :has-prev="hasPrevVideo"
+              :has-next="hasNextVideo"
               @play="onVideoPlay"
               @pause="onVideoPause"
               @ended="handleAutoplayNext"
               @timeupdate="onVideoTimeUpdate"
+              @prev-video="handlePrevVideo"
+              @next-video="handleNextVideo"
             />
           </div>
         </div>
@@ -232,7 +236,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
@@ -261,6 +265,54 @@ const { getRandomVideo } = useVideoApi();
 
 // 记录最近播放的视频，防止循环播放
 const recentlyPlayed = ref([]);
+
+// 是否有上一个视频（相关视频列表有数据就可以切换）
+const hasPrevVideo = computed(() => {
+  return relatedVideos.value && relatedVideos.value.length > 0;
+});
+
+// 是否有下一个视频（相关视频列表有数据就可以切换）
+const hasNextVideo = computed(() => {
+  return relatedVideos.value && relatedVideos.value.length > 0;
+});
+
+// 切换到上一个视频（从相关视频列表末尾开始找一个未播放的）
+const handlePrevVideo = async () => {
+  if (!relatedVideos.value?.length) return;
+  
+  // 从末尾往前找第一个未在最近播放历史中的视频
+  for (let i = relatedVideos.value.length - 1; i >= 0; i--) {
+    const prevVideo = relatedVideos.value[i];
+    if (prevVideo?.id && !recentlyPlayed.value.includes(prevVideo.id)) {
+      await goToVideo(prevVideo.id);
+      return;
+    }
+  }
+  
+  // 如果所有视频都播放过，就播放最后一个
+  const lastVideo = relatedVideos.value[relatedVideos.value.length - 1];
+  if (lastVideo?.id) {
+    await goToVideo(lastVideo.id);
+  }
+};
+
+// 切换到下一个视频（从相关视频列表开头找一个未播放的）
+const handleNextVideo = async () => {
+  if (!relatedVideos.value?.length) return;
+  
+  // 查找第一个未在最近播放历史中的视频
+  const nextVideo = relatedVideos.value.find(v => !recentlyPlayed.value.includes(v.id));
+  if (nextVideo?.id) {
+    await goToVideo(nextVideo.id);
+    return;
+  }
+  
+  // 如果所有视频都播放过，就播放第一个
+  const firstVideo = relatedVideos.value[0];
+  if (firstVideo?.id) {
+    await goToVideo(firstVideo.id);
+  }
+};
 
 const handleUnsubscribe = async (subscriptionId) => {
   if (!subscriptionId) return;

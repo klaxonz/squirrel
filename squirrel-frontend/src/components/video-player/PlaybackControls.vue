@@ -18,24 +18,47 @@
       />
     </button>
 
-    <!-- 跳过按钮组 -->
-    <div class="skip-controls">
-      <button
-        @click="$emit('skip-backward')"
-        class="vp-control-btn skip-btn"
-        aria-label="后退10秒"
-      >
-        <Icon icon="material-symbols:replay-10" class="vp-control-icon" />
-      </button>
-      
-      <button
-        @click="$emit('skip-forward')"
-        class="vp-control-btn skip-btn"
-        aria-label="前进10秒"
-      >
-        <Icon icon="material-symbols:forward-10" class="vp-control-icon" />
-      </button>
-    </div>
+    <!-- 上一个视频按钮 -->
+    <button
+      @click="$emit('prev-video')"
+      class="vp-control-btn skip-video-btn"
+      :disabled="!hasPrev"
+      :class="{ 'disabled': !hasPrev }"
+      aria-label="上一个视频"
+      title="上一个视频"
+    >
+      <Icon icon="material-symbols:skip-previous" class="vp-control-icon" />
+    </button>
+    
+    <!-- 下一个视频按钮 -->
+    <button
+      @click="$emit('next-video')"
+      class="vp-control-btn skip-video-btn"
+      :disabled="!hasNext"
+      :class="{ 'disabled': !hasNext }"
+      aria-label="下一个视频"
+      title="下一个视频"
+    >
+      <Icon icon="material-symbols:skip-next" class="vp-control-icon" />
+    </button>
+
+    <!-- 快退10秒 -->
+    <button
+      @click="$emit('skip-backward')"
+      class="vp-control-btn skip-btn"
+      aria-label="后退10秒"
+    >
+      <Icon icon="material-symbols:replay-10" class="vp-control-icon" />
+    </button>
+
+    <!-- 快进10秒 -->
+    <button
+      @click="$emit('skip-forward')"
+      class="vp-control-btn skip-btn"
+      aria-label="前进10秒"
+    >
+      <Icon icon="material-symbols:forward-10" class="vp-control-icon" />
+    </button>
   </div>
 </template>
 
@@ -43,10 +66,12 @@
 import { Icon } from '@iconify/vue'
 
 const props = defineProps({
-  playing: Boolean
+  playing: Boolean,
+  hasPrev: { type: Boolean, default: false },
+  hasNext: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['toggle-play', 'skip-forward', 'skip-backward'])
+const emit = defineEmits(['toggle-play', 'skip-forward', 'skip-backward', 'prev-video', 'next-video'])
 </script>
 
 <style scoped>
@@ -60,13 +85,14 @@ const emit = defineEmits(['toggle-play', 'skip-forward', 'skip-backward'])
   @apply flex items-center justify-center;
   min-width: 40px;
   min-height: 40px;
+  transition: all 0.15s ease;
 }
 
-.vp-control-btn:hover {
+.vp-control-btn:hover:not(.disabled) {
   transform: scale(1.05);
 }
 
-.vp-control-btn:active {
+.vp-control-btn:active:not(.disabled) {
   transform: scale(0.98);
 }
 
@@ -76,15 +102,22 @@ const emit = defineEmits(['toggle-play', 'skip-forward', 'skip-backward'])
   min-height: 48px;
 }
 
-.skip-controls {
-  @apply flex items-center;
-  gap: 2px;
-}
-
 .skip-btn {
   @apply p-2;
   min-width: 36px;
   min-height: 36px;
+}
+
+.skip-video-btn {
+  @apply p-2;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.skip-video-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .vp-control-icon {
@@ -98,6 +131,10 @@ const emit = defineEmits(['toggle-play', 'skip-forward', 'skip-backward'])
 
 .skip-btn .vp-control-icon {
   @apply text-lg;
+}
+
+.skip-video-btn .vp-control-icon {
+  @apply text-xl;
 }
 
 /* YouTube风格的播放按钮柔和光晕 */

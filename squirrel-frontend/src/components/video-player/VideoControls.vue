@@ -26,9 +26,13 @@
         <!-- 播放控制 -->
         <PlaybackControls
             :playing="playerState.media.playing"
+            :has-prev="hasPrev"
+            :has-next="hasNext"
             @toggle-play="$emit('toggle-play')"
             @skip-forward="$emit('skip-forward')"
             @skip-backward="$emit('skip-backward')"
+            @prev-video="$emit('prev-video')"
+            @next-video="$emit('next-video')"
         />
 
         <!-- 音量控制 -->
@@ -156,7 +160,9 @@ const props = defineProps({
   fullscreenIcon: String,
   supportsPip: Boolean,
   availableQualities: Array,
-  playbackRates: Array
+  playbackRates: Array,
+  hasPrev: { type: Boolean, default: false },
+  hasNext: { type: Boolean, default: false }
 })
 
 const emit = defineEmits([
@@ -173,7 +179,9 @@ const emit = defineEmits([
   'set-subtitle',
   'seek-start',
   'progress-seek',
-  'seek-end'
+  'seek-end',
+  'prev-video',
+  'next-video'
 ])
 
 const isTouchDevice = computed(() =>
