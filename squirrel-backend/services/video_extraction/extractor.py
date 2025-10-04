@@ -73,7 +73,11 @@ class VideoExtractor:
         result = self.task_manager.process_task(task)
         
         platform = url_helper.extract_top_level_domain(params.url)
-        logger.info(f"Video extraction completed: success={result.success}, platform={platform}")
+        if result.success:
+            video_title = result.data.title if result.data else 'N/A'
+            logger.info(f"Video extracted: platform={platform}, url={params.url}, title={video_title}")
+        else:
+            logger.error(f"Video extraction failed: platform={platform}, url={params.url}, error={result.error}")
         
         return result
     
