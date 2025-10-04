@@ -7,6 +7,7 @@ from sqlalchemy import update
 from core.cache import get_distributed_lock
 from core.config import settings
 from core.database import get_session
+from core.progress import progress_emitter, ProgressEvent, ProgressEventType
 from crawl import SubscriptionFactory
 from models.subscription import Subscription
 from schemas.video.dto.video_dto import VideoExtractDto
@@ -63,8 +64,20 @@ class DefaultUpdateStrategy(UpdateStrategy):
         """将视频加入提取队列"""
         enqueued = 0
         is_manual = request.trigger == UpdateTrigger.MANUAL
+        total = len(video_urls)
         
-        for video_url in video_urls:
+        # 发射批量处理开始事件
+        progress_emitter.emit(ProgressEvent(
+            event_type=ProgressEventType.BATCH_PROCESS_START,
+            trace_id=request.trace_id,
+            subscription_id=request.subscription_id,
+            url=request.url,
+            current=0,
+            total=total,
+            message=f"开始处理 {total} 个视频"
+        ))
+        
+        for index, video_url in enumerate(video_urls, 1):
             try:
                 params = VideoExtractDto(
                     url=video_url,
@@ -74,10 +87,44 @@ class DefaultUpdateStrategy(UpdateStrategy):
                     is_manual=is_manual,
                     is_extract_all=False
                 )
+                
+                # 发出视频提取开始事件（入队时）
+                progress_emitter.emit(ProgressEvent(
+                    event_type=ProgressEventType.VIDEO_EXTRACTION_START,
+                    trace_id=request.trace_id,
+                    subscription_id=request.subscription_id,
+                    url=video_url,
+                    message=f"视频入队: {video_url}"
+                ))
+                
                 download_service.enqueue_video_extraction(params)
                 enqueued += 1
+                
+                # 每处理 10 个视频或处理完毕时发射进度事件
+                if index % 10 == 0 or index == total:
+                    progress_emitter.emit(ProgressEvent(
+                        event_type=ProgressEventType.BATCH_PROCESS_PROGRESS,
+                        trace_id=request.trace_id,
+                        subscription_id=request.subscription_id,
+                        url=request.url,
+                        current=index,
+                        total=total,
+                        message=f"已处理 {index}/{total} 个视频"
+                    ))
+                    
             except Exception as e:
                 logger.warning(f"Failed to enqueue video {video_url}: {e}")
+        
+        # 发射批量处理完成事件
+        progress_emitter.emit(ProgressEvent(
+            event_type=ProgressEventType.BATCH_PROCESS_COMPLETE,
+            trace_id=request.trace_id,
+            subscription_id=request.subscription_id,
+            url=request.url,
+            current=enqueued,
+            total=total,
+            message=f"处理完成，成功 {enqueued}/{total} 个视频"
+        ))
         
         return enqueued
     

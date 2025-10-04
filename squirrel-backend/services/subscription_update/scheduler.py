@@ -28,7 +28,8 @@ class SubscriptionScheduler:
         trigger: UpdateTrigger = UpdateTrigger.MANUAL,
         mode: UpdateMode = UpdateMode.SMART,
         user_id: Optional[int] = None,
-        force: bool = False
+        force: bool = False,
+        trace_id: Optional[str] = None
     ) -> bool:
         """
         调度单个订阅更新
@@ -42,7 +43,8 @@ class SubscriptionScheduler:
             trigger=trigger,
             mode=mode,
             user_id=user_id,
-            force=force
+            force=force,
+            trace_id=trace_id
         )
         
         result = orchestrator.update(request)

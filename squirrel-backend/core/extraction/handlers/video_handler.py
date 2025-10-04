@@ -5,6 +5,7 @@ import logging
 from datetime import datetime
 
 from core.database import get_session
+from core.progress import progress_emitter, ProgressEvent, ProgressEventType
 from crawl import ExtractionTask, ExtractionResult, Video
 from models.subscription import Subscription
 from services import (
@@ -27,12 +28,21 @@ class VideoExtractionHandler(BaseResultHandler):
     def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:
         """处理成功结果"""
         try:
+            subscription_id = task.metadata.get('subscription_id')
+            
             if result.success is False:
                 logger.info(f"提取任务结果失败: {task.task_id}")
+                # 发射失败事件
+                if subscription_id:
+                    progress_emitter.emit(ProgressEvent(
+                        event_type=ProgressEventType.VIDEO_EXTRACTION_ERROR,
+                        subscription_id=subscription_id,
+                        url=task.url,
+                        error="提取结果失败"
+                    ))
                 return
 
             # 获取任务元数据
-            subscription_id = task.metadata.get('subscription_id')
             only_extract = task.metadata.get('only_extract', True)
             subscribed = task.metadata.get('subscribed', False)
             is_extract_all = task.metadata.get('is_extract_all', False)
@@ -44,14 +54,46 @@ class VideoExtractionHandler(BaseResultHandler):
             # 检查订阅是否存在
             if not self._check_subscription_exist(subscription_id):
                 logger.info(f"订阅不存在或已删除: {subscription_id}")
+                progress_emitter.emit(ProgressEvent(
+                    event_type=ProgressEventType.VIDEO_EXTRACTION_ERROR,
+                    subscription_id=subscription_id,
+                    url=task.url,
+                    error="订阅不存在或已删除"
+                ))
                 return
 
             # 创建或更新视频记录
             video = None
+            video_status = "unknown"
             if subscribed:
-                video = self._create_or_update_video(
+                video, video_status = self._create_or_update_video(
                     task, result, subscription_id, is_extract_all
                 )
+
+            # 发射成功事件
+            if video:
+                video_title = result.data.title if hasattr(result.data, 'title') else task.url
+                message = f"提取成功: {video_title}"
+                if video_status == "existed":
+                    message = f"视频已存在: {video_title}"
+                elif video_status == "created":
+                    message = f"新视频: {video_title}"
+                
+                progress_emitter.emit(ProgressEvent(
+                    event_type=ProgressEventType.VIDEO_EXTRACTION_COMPLETE,
+                    subscription_id=subscription_id,
+                    video_id=video.id,
+                    url=task.url,
+                    message=message,
+                    metadata={'status': video_status}
+                ))
+            else:
+                progress_emitter.emit(ProgressEvent(
+                    event_type=ProgressEventType.VIDEO_EXTRACTION_ERROR,
+                    subscription_id=subscription_id,
+                    url=task.url,
+                    error="创建视频失败"
+                ))
 
             # 如果需要下载，创建下载任务
             if not only_extract and video:
@@ -60,27 +102,52 @@ class VideoExtractionHandler(BaseResultHandler):
 
         except Exception as e:
             logger.error(f"处理成功结果失败: {task.task_id}, error: {e}", exc_info=True)
+            # 发射异常事件
+            subscription_id = task.metadata.get('subscription_id')
+            if subscription_id:
+                progress_emitter.emit(ProgressEvent(
+                    event_type=ProgressEventType.VIDEO_EXTRACTION_ERROR,
+                    subscription_id=subscription_id,
+                    url=task.url,
+                    error=str(e)
+                ))
 
     def handle_failure(self, task: ExtractionTask, result: ExtractionResult) -> None:
         """处理失败结果"""
         try:
             logger.error(f"处理视频提取失败结果: {task.task_id}, error: {result.error}")
+            
+            # 发射失败事件
+            subscription_id = task.metadata.get('subscription_id')
+            if subscription_id:
+                progress_emitter.emit(ProgressEvent(
+                    event_type=ProgressEventType.VIDEO_EXTRACTION_ERROR,
+                    subscription_id=subscription_id,
+                    url=task.url,
+                    error=result.error or "视频提取失败"
+                ))
 
         except Exception as e:
             logger.error(f"处理失败结果异常: {task.task_id}, error: {e}")
 
     def _create_or_update_video(self, task: ExtractionTask, result: ExtractionResult, subscription_id: int, is_extract_all: bool):
-        """创建或更新视频记录"""
+        """
+        创建或更新视频记录
+        
+        Returns:
+            (video, status): 视频对象和状态 ('created', 'existed', 'error')
+        """
         try:
             data = result.data
 
             if not isinstance(data, Video):
                 logger.error(f"提取结果返回的 data 类型不是 Video: {type(data)}")
-                return None
+                return None, "error"
 
             with get_session():
                 # 检查视频是否已存在
                 video = video_service.get_video_by_url(task.url)
+                video_status = "existed" if video else "created"
 
                 if not video:
                     # 创建新视频
@@ -105,11 +172,11 @@ class VideoExtractionHandler(BaseResultHandler):
                 # 处理演员信息
                 self._process_actors(video, data)
 
-                return video
+                return video, video_status
 
         except Exception as e:
             logger.error(f"创建或更新视频失败: {task.url}, error: {e}")
-            return None
+            return None, "error"
 
     def _process_actors(self, video, video_meta: Video):
         """处理演员信息"""

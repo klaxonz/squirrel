@@ -3,8 +3,6 @@
 负责处理视频提取的核心业务逻辑
 """
 import logging
-from typing import Dict, Any
-
 from crawl import ExtractionTask, TaskPriority
 from schemas.video.dto.video_dto import VideoExtractDto
 from core.extraction.task_manager import TaskManager
@@ -68,11 +66,17 @@ class VideoExtractor:
             
         Returns:
             ExtractionResult: 提取结果
+        
+        注意：
+            - VIDEO_EXTRACTION_START 事件在入队时由调用方发出
+            - VIDEO_EXTRACTION_COMPLETE/ERROR 事件由 VideoExtractionHandler 发出
+            - 这里只记录日志，不发出进度事件，避免重复
         """
         task = self._create_task(params)
         result = self.task_manager.process_task(task)
         
         platform = url_helper.extract_top_level_domain(params.url)
+        
         if result.success:
             video_title = result.data.title if result.data else 'N/A'
             logger.info(f"Video extracted: platform={platform}, url={params.url}, title={video_title}")

@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, Request
 from sqlalchemy import select
 import common.response as response
 from core.database import get_session
@@ -136,7 +136,11 @@ def list_subscriptions(
 
 
 @router.post("/api/subscription/{subscription_id}/refresh")
-def refresh_subscription(subscription_id: int, current_user: User = Depends(get_current_user)):
+def refresh_subscription(
+    subscription_id: int, 
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
     """
     手动刷新订阅
     职责：验证权限后调用调度器，具体更新逻辑由调度器和编排器处理
@@ -165,12 +169,16 @@ def refresh_subscription(subscription_id: int, current_user: User = Depends(get_
 
     from services.subscription_update import scheduler, UpdateTrigger, UpdateMode
     
+    # 获取 trace_id（由 TraceMiddleware 设置）
+    trace_id = getattr(request.state, 'trace_id', None)
+    
     success = scheduler.schedule_one(
         subscription_id=subscription.id,
         url=subscription.url,
         trigger=UpdateTrigger.MANUAL,
         mode=UpdateMode.SMART,
-        user_id=current_user.id
+        user_id=current_user.id,
+        trace_id=trace_id
     )
     
     if not success:

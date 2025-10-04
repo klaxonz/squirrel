@@ -29,6 +29,7 @@ class SubscriptionUpdateRequest:
     mode: UpdateMode = UpdateMode.SMART
     user_id: Optional[int] = None
     force: bool = False
+    trace_id: Optional[str] = None
 
 
 @dataclass

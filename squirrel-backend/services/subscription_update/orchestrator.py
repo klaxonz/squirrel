@@ -7,6 +7,7 @@ from utils import url_helper
 from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult
 from .strategies.registry import StrategyRegistry
 from .strategies.default_strategy import DefaultUpdateStrategy
+from core.progress import progress_emitter, ProgressEvent, ProgressEventType
 
 logger = logging.getLogger()
 
@@ -37,8 +38,16 @@ class SubscriptionOrchestrator:
         """
         try:
             site_name = self._resolve_site(request.url)
-            
             strategy = self._select_strategy(site_name)
+            
+            # 发射开始事件
+            progress_emitter.emit(ProgressEvent(
+                event_type=ProgressEventType.SUBSCRIPTION_UPDATE_START,
+                trace_id=request.trace_id,
+                subscription_id=request.subscription_id,
+                url=request.url,
+                message=f"Starting update with {strategy.site_name} strategy"
+            ))
             
             logger.info(
                 f"Updating subscription {request.subscription_id} "
@@ -48,10 +57,40 @@ class SubscriptionOrchestrator:
             
             result = strategy.execute(request)
             
+            # 发射完成事件
+            if result.success:
+                progress_emitter.emit(ProgressEvent(
+                    event_type=ProgressEventType.SUBSCRIPTION_UPDATE_COMPLETE,
+                    trace_id=request.trace_id,
+                    subscription_id=request.subscription_id,
+                    url=request.url,
+                    current=result.videos_enqueued,
+                    total=result.videos_found,
+                    message=f"Updated successfully: {result.videos_enqueued}/{result.videos_found} videos"
+                ))
+            else:
+                progress_emitter.emit(ProgressEvent(
+                    event_type=ProgressEventType.SUBSCRIPTION_UPDATE_ERROR,
+                    trace_id=request.trace_id,
+                    subscription_id=request.subscription_id,
+                    url=request.url,
+                    error=result.error_message
+                ))
+            
             return result
             
         except Exception as e:
             logger.error(f"Orchestrator error for subscription {request.subscription_id}: {e}", exc_info=True)
+            
+            # 发射错误事件
+            progress_emitter.emit(ProgressEvent(
+                event_type=ProgressEventType.SUBSCRIPTION_UPDATE_ERROR,
+                trace_id=request.trace_id,
+                subscription_id=request.subscription_id,
+                url=request.url,
+                error=str(e)
+            ))
+            
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
                 success=False,

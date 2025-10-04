@@ -67,6 +67,7 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
         mode = body_data.get('mode', 'smart')
         user_id = body_data.get('user_id')
         force = body_data.get('force', False)
+        trace_id = message_obj.trace_id if hasattr(message_obj, 'trace_id') else None
         
         if not subscription_id or not url:
             logger.error(f"Invalid message: missing subscription_id or url, message={body_data}")
@@ -74,7 +75,7 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
         
         logger.info(
             f"Processing subscription update: "
-            f"id={subscription_id}, trigger={trigger.value}, mode={mode}"
+            f"id={subscription_id}, trigger={trigger.value}, mode={mode}, trace_id={trace_id}"
         )
         
         request = SubscriptionUpdateRequest(
@@ -83,7 +84,8 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
             trigger=trigger,
             mode=UpdateMode(mode),
             user_id=user_id,
-            force=force
+            force=force,
+            trace_id=trace_id
         )
         
         result = orchestrator.update(request)

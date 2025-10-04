@@ -86,6 +86,15 @@
                  class="absolute top-1.5 left-1.5 bg-white/10 text-white/80 text-[10px] px-1.5 py-0.5 rounded-md">
               <span>{{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}</span>
             </div>
+            
+            <!-- 进度指示器 -->
+            <div v-if="subscriptionProgress[subscription.id]" class="px-2 pb-2">
+              <ProgressIndicator 
+                :progress="subscriptionProgress[subscription.id]"
+                compact
+                :hide-when-idle="true"
+              />
+            </div>
           </div>
         </div>
 
@@ -184,6 +193,7 @@
 import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';
 import FeedToolbar from '../components/feed/FeedToolbar.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
+import ProgressIndicator from '../components/ProgressIndicator.vue';
 import {useRouter} from "vue-router";
 import { useRefreshTriggers } from '../composables/useRefreshTriggers';
 import AddChannelDialog from '../components/AddChannelDialog.vue';
@@ -192,6 +202,7 @@ import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
 import {useSubscriptionRefresh} from '../composables/useSubscriptionRefresh';
 import {useSubscriptionApi} from '../composables/useSubscriptionApi';
+import {useProgressApi} from '../composables/useProgressApi';
 import { useFeedFilters } from '../composables/useFeedFilters';
 
 const router = useRouter();
@@ -239,6 +250,60 @@ const {
   getStatusText,
   cleanup: cleanupRefresh
 } = useSubscriptionRefresh();
+
+// 进度跟踪
+const { getLatestProgressBySubscription } = useProgressApi();
+const subscriptionProgress = ref({});
+let progressRefreshTimer = null;
+
+// 加载所有订阅的进度
+const loadAllProgress = async () => {
+  if (subscriptions.value.length === 0) return;
+  
+  for (const subscription of subscriptions.value) {
+    try {
+      const result = await getLatestProgressBySubscription(subscription.id);
+      if (result.success && result.data) {
+        // 只有在进度状态为 "处理中" 时才更新
+        const eventType = result.data.event_type;
+        if (eventType && (eventType.includes('_start') || eventType.includes('_progress'))) {
+          subscriptionProgress.value[subscription.id] = result.data;
+        } else if (eventType && (eventType.includes('_complete') || eventType.includes('_error'))) {
+          // 完成或错误状态显示3秒后移除
+          subscriptionProgress.value[subscription.id] = result.data;
+          setTimeout(() => {
+            delete subscriptionProgress.value[subscription.id];
+          }, 3000);
+        }
+      }
+    } catch (error) {
+      // 忽略个别订阅的错误
+    }
+  }
+};
+
+// 开始定时刷新进度
+const startProgressRefresh = () => {
+  if (progressRefreshTimer) {
+    clearInterval(progressRefreshTimer);
+  }
+  
+  // 立即加载一次
+  loadAllProgress();
+  
+  // 每5秒刷新一次
+  progressRefreshTimer = setInterval(() => {
+    loadAllProgress();
+  }, 5000);
+};
+
+// 停止定时刷新
+const stopProgressRefresh = () => {
+  if (progressRefreshTimer) {
+    clearInterval(progressRefreshTimer);
+    progressRefreshTimer = null;
+  }
+};
 
 
 const setupIntersectionObserver = () => {
@@ -501,6 +566,9 @@ onMounted(async () => {
 
   // 监听全局搜索事件
   emitter.on('search:subscribed', handleGlobalSearch);
+  
+  // 开始进度刷新
+  startProgressRefresh();
 
   // 键盘/可见性刷新改为 composable 统一管理
 });
@@ -513,6 +581,11 @@ watch(subscriptions, () => {
       observer.value.observe(loadingTrigger.value);
     }
   });
+  
+  // 订阅列表变化时，重新加载进度
+  if (subscriptions.value.length > 0) {
+    loadAllProgress();
+  }
 }, { deep: true });
 
 onUnmounted(() => {
@@ -525,6 +598,9 @@ onUnmounted(() => {
 
   // 清理订阅更新相关资源
   cleanupRefresh();
+  
+  // 停止进度刷新
+  stopProgressRefresh();
 
   // 键盘/可见性刷新由 composable 自动清理
 });
