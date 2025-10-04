@@ -29,43 +29,6 @@ export function useProgressApi() {
   };
 
   /**
-   * 获取订阅的最新进度
-   */
-  const getLatestProgressBySubscription = async (subscriptionId) => {
-    try {
-      const response = await axios.get(`/api/progress/subscription/${subscriptionId}/latest`);
-      if (response.data.code === 0) {
-        return {
-          success: true,
-          data: response.data.data
-        };
-      } else {
-        // 404 表示没有进度记录，不算错误
-        if (response.data.code === -1 && response.data.msg.includes('未找到')) {
-          return {
-            success: true,
-            data: null
-          };
-        }
-        throw new Error(response.data.msg || '获取进度失败');
-      }
-    } catch (error) {
-      // 如果是 404，返回 null 而不是错误
-      if (error.response?.status === 404) {
-        return {
-          success: true,
-          data: null
-        };
-      }
-      console.error('获取最新进度失败:', error);
-      return {
-        success: false,
-        error: error.message || '获取进度失败'
-      };
-    }
-  };
-
-  /**
    * 获取trace_id的最新进度
    */
   const getLatestProgressByTraceId = async (traceId) => {
@@ -148,7 +111,6 @@ export function useProgressApi() {
 
   return {
     getProgressList,
-    getLatestProgressBySubscription,
     getLatestProgressByTraceId,
     getProgressTimeline,
     getProgressStatistics

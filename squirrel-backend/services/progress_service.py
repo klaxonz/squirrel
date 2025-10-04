@@ -82,27 +82,6 @@ def query_progress(
         return result, total_count
 
 
-def get_latest_progress_by_subscription(subscription_id: int) -> Optional[dict]:
-    """
-    获取订阅的最新进度
-    
-    Args:
-        subscription_id: 订阅ID
-        
-    Returns:
-        最新进度记录
-    """
-    with get_session() as session:
-        record = session.scalars(
-            select(ProgressRecord)
-            .where(ProgressRecord.subscription_id == subscription_id)
-            .order_by(desc(ProgressRecord.created_at))
-            .limit(1)
-        ).first()
-        
-        return record.to_dict() if record else None
-
-
 def get_latest_progress_by_trace_id(trace_id: str) -> Optional[dict]:
     """
     获取trace_id的最新进度

@@ -53,26 +53,6 @@ def list_progress(
         return response.server_error("查询进度失败")
 
 
-@router.get("/api/progress/subscription/{subscription_id}/latest")
-def get_subscription_latest_progress(
-    subscription_id: int,
-    current_user: User = Depends(get_current_user)
-):
-    """
-    获取订阅的最新进度
-    """
-    try:
-        record = progress_service.get_latest_progress_by_subscription(subscription_id)
-        if not record:
-            return response.not_found("未找到进度记录")
-        
-        return response.success(record)
-    
-    except Exception as e:
-        logger.error(f"Failed to get latest progress: {e}", exc_info=True)
-        return response.server_error("获取进度失败")
-
-
 @router.get("/api/progress/trace/{trace_id}/latest")
 def get_trace_latest_progress(
     trace_id: str,
