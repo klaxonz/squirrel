@@ -44,18 +44,19 @@ class DefaultUpdateStrategy(UpdateStrategy):
     
     def fetch_videos(self, request: SubscriptionUpdateRequest) -> List[str]:
         """获取视频列表"""
-        sub = subscription_service.get_subscription_detail(request.subscription_id)
-        
         subscribe_channel = SubscriptionFactory.create_subscription(request.url)
         
-        is_extract_all = self._should_extract_all(sub, request.mode)
+        # 直接根据 request.mode 判断是否全量提取
+        is_full_update = request.mode == UpdateMode.FULL
         
-        video_list = subscribe_channel.get_subscribe_videos(extract_all=is_extract_all)
+        video_list = subscribe_channel.get_subscribe_videos(extract_all=is_full_update)
         
-        if is_extract_all and video_list:
+        # 全量更新时，更新总视频数
+        if is_full_update and video_list:
             self._update_total_videos(request.subscription_id, len(video_list))
         
-        if is_extract_all:
+        # 全量更新返回所有视频，增量更新只返回最新的 N 个
+        if is_full_update:
             return video_list
         else:
             return video_list[:settings.CHANNEL_UPDATE_DEFAULT_SIZE]
@@ -64,6 +65,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
         """将视频加入提取队列"""
         enqueued = 0
         is_manual = request.trigger == UpdateTrigger.MANUAL
+        is_full_update = request.mode == UpdateMode.FULL
         total = len(video_urls)
         
         # 发射批量处理开始事件
@@ -85,7 +87,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
                     only_extract=True,
                     subscription_id=request.subscription_id,
                     is_manual=is_manual,
-                    is_extract_all=False
+                    is_extract_all=is_full_update
                 )
                 
                 # 发出视频提取开始事件（入队时）
@@ -138,22 +140,6 @@ class DefaultUpdateStrategy(UpdateStrategy):
                     self._lock.release()
                 except Exception as e:
                     logger.warning(f"Failed to release lock for subscription {request.subscription_id}: {e}")
-    
-    @staticmethod
-    def _should_extract_all(sub, mode: UpdateMode) -> bool:
-        """判断是否全量提取"""
-        if mode == UpdateMode.FULL:
-            return True
-        if mode == UpdateMode.INCREMENTAL:
-            return False
-        
-        if sub.total_videos <= 0:
-            return True
-        if sub.total_extract >= sub.total_videos:
-            return True
-        if (sub.total_videos - sub.total_extract) >= settings.CHANNEL_UPDATE_DEFAULT_SIZE:
-            return True
-        return False
     
     @staticmethod
     def _update_total_videos(subscription_id: int, total: int) -> None:

@@ -25,7 +25,7 @@ class MessageRouter:
         self.producer = RedisStreamProducer()
         self.config = get_queue_config()
     
-    def route(self, message: Dict[str, Any], url: str, is_manual: bool) -> None:
+    def route(self, message: Dict[str, Any], url: str, is_manual: bool, is_extract_all: bool = False) -> None:
         """
         路由消息到对应的域队列
         
@@ -33,19 +33,31 @@ class MessageRouter:
             message: 原始消息
             url: 用于解析域名的 URL
             is_manual: 是否为手动触发
+            is_extract_all: 是否为全量提取（仅视频提取队列使用）
         """
-        queue_name = self._resolve_queue(url, is_manual)
+        queue_name = self._resolve_queue(url, is_manual, is_extract_all)
         self.producer.send(queue_name, message)
         logger.debug(f"Routed message to {queue_name}")
     
-    def _resolve_queue(self, url: str, is_manual: bool) -> str:
+    def _resolve_queue(self, url: str, is_manual: bool, is_extract_all: bool = False) -> str:
         """解析队列名称"""
         domain = url_helper.extract_top_level_domain(url)
         site = self.config.get_site_by_domain(domain)
         if not site:
             raise ValueError(f"Unsupported domain: {domain}")
         
-        mode = QueueMode.MANUAL if is_manual else QueueMode.SCHEDULED
+        # 根据队列类型和参数选择模式
+        if is_manual:
+            mode = QueueMode.MANUAL
+        elif self.queue_type == QueueType.VIDEO_EXTRACT:
+            # 视频提取：根据 is_extract_all 选择增量或全量队列
+            # 增量更新 -> INCREMENTAL（高优先级，快速处理新视频）
+            # 全量更新 -> FULL（低优先级，慢慢处理历史视频）
+            mode = QueueMode.FULL if is_extract_all else QueueMode.INCREMENTAL
+        else:
+            # 其他队列类型（如 VIDEO_DOWNLOAD）：使用 SCHEDULED 作为兜底
+            mode = QueueMode.SCHEDULED
+        
         return self.config.build_queue_name(self.queue_type, site, mode)
 
 

@@ -30,19 +30,39 @@ def process_extract_message(message: Dict[str, Any]) -> None:
     """处理手动视频提取消息（入口队列）"""
     try:
         params = _parse_message(message)
-        video_extract_router.route(message, params.url, is_manual=True)
+        video_extract_router.route(message, params.url, is_manual=True, is_extract_all=params.is_extract_all)
     except Exception as e:
         logger.error(f"Failed to route manual video extract: {e}", exc_info=True)
 
 
 @mq_consumer(constants.QUEUE_VIDEO_EXTRACT_SCHEDULED, group="extract", consumer_name="extract-entry-scheduled")
 def process_extract_scheduled_message(message: Dict[str, Any]) -> None:
-    """处理定时视频提取消息（入口队列）"""
+    """处理定时视频提取消息（入口队列，保留用于兼容）"""
     try:
         params = _parse_message(message)
-        video_extract_router.route(message, params.url, is_manual=False)
+        video_extract_router.route(message, params.url, is_manual=False, is_extract_all=params.is_extract_all)
     except Exception as e:
         logger.error(f"Failed to route scheduled video extract: {e}", exc_info=True)
+
+
+@mq_consumer(constants.QUEUE_VIDEO_EXTRACT_INCREMENTAL, group="extract", consumer_name="extract-entry-incremental")
+def process_extract_incremental_message(message: Dict[str, Any]) -> None:
+    """处理增量更新视频提取消息（入口队列，高优先级）"""
+    try:
+        params = _parse_message(message)
+        video_extract_router.route(message, params.url, is_manual=False, is_extract_all=params.is_extract_all)
+    except Exception as e:
+        logger.error(f"Failed to route incremental video extract: {e}", exc_info=True)
+
+
+@mq_consumer(constants.QUEUE_VIDEO_EXTRACT_FULL, group="extract", consumer_name="extract-entry-full")
+def process_extract_full_message(message: Dict[str, Any]) -> None:
+    """处理全量更新视频提取消息（入口队列，低优先级）"""
+    try:
+        params = _parse_message(message)
+        video_extract_router.route(message, params.url, is_manual=False, is_extract_all=params.is_extract_all)
+    except Exception as e:
+        logger.error(f"Failed to route full video extract: {e}", exc_info=True)
 
 
 def process_domain_video_extract(message: Dict[str, Any]) -> None:

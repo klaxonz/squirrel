@@ -40,9 +40,18 @@ def _send_to_extract_queue(params: VideoExtractDto) -> None:
     message = message_service.create_message(content)
     message_dict = message.to_dict()
     
-    queue_name = constants.QUEUE_VIDEO_EXTRACT if params.is_manual else constants.QUEUE_VIDEO_EXTRACT_SCHEDULED
+    # 队列优先级策略：
+    # 1. 手动触发 -> manual（最高优先级）
+    # 2. 增量更新 -> incremental（高优先级，快速响应新视频）
+    # 3. 全量更新 -> full（低优先级，慢慢处理历史视频）
+    if params.is_manual:
+        queue_name = constants.QUEUE_VIDEO_EXTRACT
+    elif params.is_extract_all:
+        queue_name = constants.QUEUE_VIDEO_EXTRACT_FULL
+    else:
+        queue_name = constants.QUEUE_VIDEO_EXTRACT_INCREMENTAL
     
-    # 对定时任务检查重复，手动触发不检查（允许用户强制重新提取）
+    # 对自动任务检查重复，手动触发不检查（允许用户强制重新提取）
     if not params.is_manual:
         checker = create_simple_checker(
             queue_name=queue_name,

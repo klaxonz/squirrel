@@ -12,10 +12,10 @@ logger = logging.getLogger()
 
 class QueueMode(str, Enum):
     """队列模式枚举"""
-    MANUAL = 'manual'
-    SCHEDULED = 'scheduled'  # Legacy, for video extract
-    INCREMENTAL = 'incremental'  # For subscription update, 5 min
-    FULL = 'full'  # For subscription update, 1 hour
+    MANUAL = 'manual'  # 手动触发（最高优先级）
+    SCHEDULED = 'scheduled'  # 定时任务（用于 VIDEO_DOWNLOAD 等队列，VIDEO_EXTRACT 已弃用）
+    INCREMENTAL = 'incremental'  # 增量更新（高优先级，用于 SUBSCRIPTION_UPDATE 和 VIDEO_EXTRACT）
+    FULL = 'full'  # 全量更新（低优先级，用于 SUBSCRIPTION_UPDATE 和 VIDEO_EXTRACT）
 
 
 class QueueType(str, Enum):
@@ -92,7 +92,8 @@ class QueueConfigManager:
             {
                 'bilibili.com': {
                     'manual': 'queue::video::extract::bilibili::manual',
-                    'scheduled': 'queue::video::extract::bilibili::scheduled'
+                    'incremental': 'queue::video::extract::bilibili::incremental',
+                    'full': 'queue::video::extract::bilibili::full'
                 },
                 ...
             }
@@ -111,6 +112,9 @@ class QueueConfigManager:
         
         # 根据队列类型选择对应的模式
         if queue_type == QueueType.SUBSCRIPTION_UPDATE:
+            modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
+        elif queue_type == QueueType.VIDEO_EXTRACT:
+            # 视频提取也支持三种模式：手动、增量、全量
             modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
         else:
             modes = [QueueMode.MANUAL, QueueMode.SCHEDULED]

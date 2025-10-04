@@ -43,6 +43,9 @@ class DomainConsumerRegistrar:
         # 根据队列类型选择对应的模式
         if queue_type == QueueType.SUBSCRIPTION_UPDATE:
             modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
+        elif queue_type == QueueType.VIDEO_EXTRACT:
+            # 视频提取支持三种模式：手动、增量、全量
+            modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
         else:
             modes = [QueueMode.MANUAL, QueueMode.SCHEDULED]
         
@@ -95,6 +98,9 @@ class DomainConsumerRegistrar:
         
         # 根据队列类型选择对应的模式
         if queue_type == QueueType.SUBSCRIPTION_UPDATE:
+            modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
+        elif queue_type == QueueType.VIDEO_EXTRACT:
+            # 视频提取支持三种模式：手动、增量、全量
             modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
         else:
             modes = [QueueMode.MANUAL, QueueMode.SCHEDULED]

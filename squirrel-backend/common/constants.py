@@ -2,7 +2,9 @@
 QUEUE_VIDEO_DOWNLOAD = 'queue::video::download::manual'
 QUEUE_VIDEO_DOWNLOAD_SCHEDULED = 'queue::video::download::scheduled'
 QUEUE_VIDEO_EXTRACT = 'queue::video::extract::manual'
-QUEUE_VIDEO_EXTRACT_SCHEDULED = 'queue::video::extract::scheduled'
+QUEUE_VIDEO_EXTRACT_INCREMENTAL = 'queue::video::extract::incremental'  # 增量更新（高优先级）
+QUEUE_VIDEO_EXTRACT_FULL = 'queue::video::extract::full'  # 全量更新（低优先级）
+QUEUE_VIDEO_EXTRACT_SCHEDULED = 'queue::video::extract::scheduled'  # 保留用于兼容
 QUEUE_SUBSCRIBE = 'queue::video::subscribe'
 # Subscription update queues - incremental (5 min) and full (1 hour)
 QUEUE_SUBSCRIPTION_UPDATE_INCREMENTAL = 'queue::subscription::update::incremental'
