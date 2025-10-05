@@ -196,7 +196,7 @@ def main() -> None:
             "main:create_application",
             host="0.0.0.0",
             port=8000,
-            reload=True,
+            reload=False,
             factory=True
         )
     else:
