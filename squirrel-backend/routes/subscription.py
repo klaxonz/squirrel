@@ -221,3 +221,106 @@ def toggle_nsfw(
         req.is_enable
     )
     return response.success({"success": success})
+
+
+@router.get("/api/subscription/import/sites")
+def get_supported_sites(current_user: User = Depends(get_current_user)):
+    """
+    获取支持导入的站点列表
+    
+    Returns:
+        支持的站点列表
+    """
+    from crawl import get_importer_registry
+    
+    importer_registry = get_importer_registry()
+    supported_sites = importer_registry.get_supported_sites()
+    
+    return response.success({
+        "sites": supported_sites
+    })
+
+
+@router.get("/api/subscription/import/{site}/preview")
+def preview_subscriptions(
+    site: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    预览用户在指定站点的订阅列表（不实际导入）
+    
+    Args:
+        site: 站点名称
+        
+    Returns:
+        预览结果
+    """
+    import logging
+    from crawl import get_importer_registry
+    
+    logger = logging.getLogger()
+    
+    try:
+        # 从注册表动态获取支持的站点列表
+        importer_registry = get_importer_registry()
+        supported_sites = importer_registry.get_supported_sites()
+        
+        if site not in supported_sites:
+            return response.param_error(f"不支持的站点: {site}，支持的站点: {', '.join(supported_sites)}")
+        
+        logger.info(f"User {current_user.id} previewing subscriptions from {site}")
+        
+        result = subscription_service.preview_user_subscriptions(site)
+        
+        return response.success(result)
+        
+    except ValueError as e:
+        logger.error(f"Invalid request for site {site}: {e}")
+        return response.param_error(str(e))
+    except Exception as e:
+        logger.exception(f"Failed to preview subscriptions from {site}: {e}")
+        return response.server_error(f"预览失败: {str(e)}")
+
+
+@router.post("/api/subscription/import/{site}")
+def import_subscriptions(
+    site: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    从指定站点导入用户的所有订阅
+    
+    Args:
+        site: 站点名称（动态支持所有已注册的站点）
+        
+    Returns:
+        导入结果统计
+    """
+    import logging
+    from crawl import get_importer_registry
+    
+    logger = logging.getLogger()
+    
+    try:
+        # 从注册表动态获取支持的站点列表
+        importer_registry = get_importer_registry()
+        supported_sites = importer_registry.get_supported_sites()
+        
+        if site not in supported_sites:
+            return response.param_error(f"不支持的站点: {site}，支持的站点: {', '.join(supported_sites)}")
+        
+        logger.info(f"User {current_user.id} importing subscriptions from {site}")
+        
+        result = subscription_service.import_user_subscriptions(site, current_user.id)
+        
+        return response.success({
+            "site": site,
+            "total": result['total']
+        })
+        
+    except ValueError as e:
+        logger.error(f"Invalid request for site {site}: {e}")
+        return response.param_error(str(e))
+    except Exception as e:
+        logger.exception(f"Failed to import subscriptions from {site}: {e}")
+        return response.server_error(f"导入失败: {str(e)}")

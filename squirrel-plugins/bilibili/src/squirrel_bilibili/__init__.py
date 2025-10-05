@@ -9,6 +9,7 @@ from .id_extractor import BilibiliIdExtractor  # noqa: F401
 from .downloader import BilibiliDownloader  # noqa: F401
 from .config import BilibiliProxyConfig  # noqa: F401
 from .extractor import BilibiliExtractor  # noqa: F401
+from .importer import BilibiliUserSubscriptionImporter  # noqa: F401
 
 PLUGIN_NAME = "bilibili"
 PLUGIN_VERSION = "0.1.0"

@@ -170,3 +170,44 @@ def register_subscription(site_name: str, domains: List[str]):
         return cls
 
     return decorator
+
+
+# ---------------- User Subscription Importer registry -----------------
+
+
+class UserSubscriptionImporterRegistry:
+    """Keep track of registered user subscription importer classes by site name."""
+
+    def __init__(self) -> None:
+        self._by_site: Dict[str, Type] = {}
+        self._lock = RLock()
+
+    def register(self, site_name: str, cls: Type) -> None:
+        with self._lock:
+            if site_name in self._by_site:
+                raise ValueError(f"Importer already registered for site: {site_name}")
+            self._by_site[site_name] = cls
+
+    def get_by_site(self, site_name: str) -> Optional[Type]:
+        return self._by_site.get(site_name)
+
+    def get_supported_sites(self) -> List[str]:
+        return list(self._by_site.keys())
+
+
+_importer_registry_singleton: Optional[UserSubscriptionImporterRegistry] = None
+
+
+def get_importer_registry() -> UserSubscriptionImporterRegistry:
+    global _importer_registry_singleton
+    if _importer_registry_singleton is None:
+        _importer_registry_singleton = UserSubscriptionImporterRegistry()
+    return _importer_registry_singleton
+
+
+def register_user_subscription_importer(site_name: str):
+    """Decorator for registering a user subscription importer."""
+    def decorator(cls: Type):
+        get_importer_registry().register(site_name, cls)
+        return cls
+    return decorator

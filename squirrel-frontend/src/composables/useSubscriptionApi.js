@@ -162,6 +162,53 @@ export function useSubscriptionApi() {
     }
   }
 
+  // 获取支持导入的站点列表
+  const getSupportedImportSites = async () => {
+    try {
+      const response = await axios.get('/api/subscription/import/sites');
+      if (response.data.code === 0) {
+        return { success: true, data: response.data.data.sites || [] };
+      }
+      throw new Error(response.data.msg || '获取站点列表失败');
+    } catch (error) {
+      console.error('获取站点列表失败:', error);
+      return { success: false, error: error.message || '获取站点列表失败' };
+    }
+  };
+
+  // 预览订阅列表
+  const previewImportSubscriptions = async (site) => {
+    try {
+      const response = await axios.get(`/api/subscription/import/${site}/preview`);
+      if (response.data.code === 0) {
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data.msg || '预览失败');
+    } catch (error) {
+      console.error('预览订阅失败:', error);
+      const errorMessage = error.message || '预览失败';
+      displayToast(errorMessage, { type: 'error' });
+      return { success: false, error: errorMessage };
+    }
+  };
+
+  // 执行导入
+  const importSubscriptions = async (site) => {
+    try {
+      const response = await axios.post(`/api/subscription/import/${site}`);
+      if (response.data.code === 0) {
+        displayToast('导入完成！', { type: 'success' });
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data.msg || '导入失败');
+    } catch (error) {
+      console.error('导入订阅失败:', error);
+      const errorMessage = error.message || '导入失败';
+      displayToast(errorMessage, { type: 'error' });
+      return { success: false, error: errorMessage };
+    }
+  };
+
   return {
     getSubscriptions,
     getSubscriptionDetail,
@@ -169,6 +216,9 @@ export function useSubscriptionApi() {
     updateNsfwStatus,
     triggerRefresh,
     getRefreshStatus,
-    getActiveRefreshTasks
+    getActiveRefreshTasks,
+    getSupportedImportSites,
+    previewImportSubscriptions,
+    importSubscriptions
   };
 }

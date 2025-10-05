@@ -174,6 +174,25 @@ def request(method: str, url: str, **kwargs):
     return session.request(method, url, **kwargs)
 
 
+def request_without_limit(method: str, url: str, **kwargs):
+    """发送 HTTP 请求，不使用限流器（用于批量导入等场景）"""
+    session = requests.Session()
+    
+    retry = Retry(
+        total=3,
+        read=3,
+        connect=3,
+        backoff_factor=0.3,
+        status_forcelist=(500, 502, 504),
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
+    kwargs.setdefault("timeout", DEFAULT_TIMEOUT_SECONDS)
+    return session.request(method, url, **kwargs)
+
+
 def get(url: str, **kwargs):
     session = get_http_session()
     return session.get(url, **kwargs)

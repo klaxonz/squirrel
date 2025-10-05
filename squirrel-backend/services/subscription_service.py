@@ -6,6 +6,7 @@ from core.database import get_session
 from crawl import SubscriptionMeta
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from models.links import UserSubscription
+from models.message import Message
 from models.subscription import Subscription, ContentType
 from services import user_config_service
 from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql, get_subscription_sql
@@ -261,3 +262,149 @@ def restore_subscription(subscription_id: int, user_id: int) -> None:
             session.add(user_subscription)
         
         session.commit()
+
+
+def preview_user_subscriptions(site_name: str) -> Dict[str, Any]:
+    """
+    预览用户在指定站点的订阅列表（不实际导入）
+    
+    Args:
+        site_name: 站点名称（如 'bilibili', 'youtube' 等）
+        
+    Returns:
+        预览结果：{
+            'site': 站点名称,
+            'total': 找到的订阅数量,
+            'subscriptions': 订阅列表 [{'url': '...', 'name': '...', 'avatar': '...'}, ...]
+        }
+    """
+    import logging
+    from crawl import get_importer_registry, SubscriptionFactory
+    
+    logger = logging.getLogger()
+    
+    try:
+        # 获取对应站点的 importer
+        importer_registry = get_importer_registry()
+        importer_class = importer_registry.get_by_site(site_name)
+        
+        if not importer_class:
+            raise ValueError(f"No importer found for site: {site_name}")
+        
+        # 创建 importer 实例并获取订阅列表
+        importer = importer_class()
+        subscription_urls = importer.get_user_subscriptions()
+        
+        logger.info(f"Found {len(subscription_urls)} subscriptions from {site_name} for preview")
+        
+        # 直接返回 URL 列表，不获取详细信息（避免耗时）
+        return {
+            'site': site_name,
+            'total': len(subscription_urls),
+            'urls': subscription_urls[:100]  # 预览最多显示前100个
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to preview subscriptions from {site_name}: {e}", exc_info=True)
+        raise
+
+
+def _enqueue_subscriptions_async(subscription_urls: List[str], user_id: int, site_name: str):
+    """
+    在后台线程中投递订阅任务到消息队列
+    
+    Args:
+        subscription_urls: 订阅 URL 列表
+        user_id: 用户ID
+        site_name: 站点名称
+    """
+    import logging
+    import json
+    from common import constants
+    from mq.producer import RedisStreamProducer
+    
+    logger = logging.getLogger()
+    
+    try:
+        enqueued = 0
+        producer = RedisStreamProducer()
+        
+        with get_session() as session:
+            for url in subscription_urls:
+                try:
+                    # 创建订阅任务
+                    task = {
+                        "url": url,
+                        "user_id": user_id
+                    }
+                    message = Message(body=json.dumps(task))
+                    session.add(message)
+                    session.flush()  # 获取 message.id
+                    
+                    # 投递到队列
+                    dump_json = message.to_dict()
+                    producer.send(constants.QUEUE_SUBSCRIBE, dump_json)
+                    enqueued += 1
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to enqueue subscription {url}: {e}")
+            
+            session.commit()
+        
+        logger.info(f"Enqueued {enqueued}/{len(subscription_urls)} subscription tasks from {site_name}")
+        
+    except Exception as e:
+        logger.error(f"Failed to enqueue subscriptions from {site_name}: {e}", exc_info=True)
+
+
+def import_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
+    """
+    从指定站点导入用户的所有订阅（异步）
+    
+    Args:
+        site_name: 站点名称（如 'bilibili', 'youtube' 等）
+        user_id: 用户ID
+        
+    Returns:
+        导入结果：{
+            'total': 总数
+        }
+    """
+    import logging
+    import threading
+    from crawl import get_importer_registry
+    
+    logger = logging.getLogger()
+    
+    try:
+        # 获取对应站点的 importer
+        importer_registry = get_importer_registry()
+        importer_class = importer_registry.get_by_site(site_name)
+        
+        if not importer_class:
+            raise ValueError(f"No importer found for site: {site_name}")
+        
+        # 创建 importer 实例并获取订阅列表
+        importer = importer_class()
+        subscription_urls = importer.get_user_subscriptions()
+        
+        logger.info(f"Found {len(subscription_urls)} subscriptions from {site_name}")
+        
+        # 在后台线程中投递消息
+        thread = threading.Thread(
+            target=_enqueue_subscriptions_async,
+            args=(subscription_urls, user_id, site_name),
+            daemon=True
+        )
+        thread.start()
+        
+        logger.info(f"Started background thread to enqueue {len(subscription_urls)} subscriptions")
+        
+        # 立即返回
+        return {
+            'total': len(subscription_urls)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to import subscriptions from {site_name}: {e}", exc_info=True)
+        raise

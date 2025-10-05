@@ -35,6 +35,7 @@ from .interfaces import (
     ITaskProcessor,
     IResultHandler,
     TaskPriority,
+    IUserSubscriptionImporter,
 )
 from .registry import (
     ExtractorRegistry,
@@ -44,6 +45,9 @@ from .registry import (
     SubscriptionRegistry,
     SubscriptionFactory,
     register_subscription,
+    UserSubscriptionImporterRegistry,
+    get_importer_registry,
+    register_user_subscription_importer,
 )
 from .meta_origin import SubscriptionMeta
 from .utils import filter_cookies_to_query_string, configure_cookie_file_resolver, resolve_cookie_file_path
@@ -60,6 +64,7 @@ from .http import (
     get_http_session,
     get_rate_limiter,
     request,
+    request_without_limit,
     get,
     post,
 )
@@ -94,6 +99,7 @@ __all__ = [
     "IExtractor",
     "ITaskProcessor",
     "IResultHandler",
+    "IUserSubscriptionImporter",
     # base entities
     "Video",
     "Actor",
@@ -108,6 +114,10 @@ __all__ = [
     "SubscriptionRegistry",
     "SubscriptionFactory",
     "register_subscription",
+    # user subscription importer
+    "UserSubscriptionImporterRegistry",
+    "get_importer_registry",
+    "register_user_subscription_importer",
     # utils
     "filter_cookies_to_query_string",
     "configure_cookie_file_resolver",
@@ -153,6 +163,7 @@ __all__ = [
     "get_rate_limiter",
     "get_http_session",
     "request",
+    "request_without_limit",
     "get",
     "post",
 ]

@@ -10,6 +10,7 @@ from .downloader import JavdbDownloader  # noqa: F401
 from .proxy import JavdbProxy  # noqa: F401
 from .config import JavdbProxyConfig  # noqa: F401
 from .extractor import JavdbExtractor  # noqa: F401
+from .importer import JavdbUserSubscriptionImporter  # noqa: F401
 
 
 PLUGIN_NAME = "javdb"

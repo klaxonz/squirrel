@@ -205,9 +205,26 @@ class ISubscription(abc.ABC):
     def get_subscribe_videos(self, extract_all: bool) -> List[str]:
         """Return a list of video URLs to extract for this subscription."""
 
+
+class IUserSubscriptionImporter(abc.ABC):
+    """Interface for importing user's subscriptions from a site.
+    
+    This is used to bulk-import all subscriptions that a user has on a particular
+    video site (e.g., all followed channels on Bilibili, all subscribed channels on YouTube).
+    """
+
     @abc.abstractmethod
-    def handle_failure(self, task: ExtractionTask, result: ExtractionResult) -> None:
-        ...
+    def get_user_subscriptions(self) -> List[str]:
+        """Return a list of subscription URLs from the user's account.
+        
+        Returns:
+            List of subscription URLs (e.g., channel URLs, playlist URLs)
+            
+        Note:
+            This method should use cookies to authenticate and fetch the user's
+            subscription list. The cookies are resolved via the SDK's cookie
+            configuration.
+        """
 
 
 # ---------------- Video & Actor Base Classes -----------------

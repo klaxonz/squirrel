@@ -21,6 +21,15 @@
           </svg>
           <span class="ml-1">添加订阅</span>
         </button>
+        <button
+          class="ml-2 px-3 py-1.5 min-w-[100px] bg-[#cc0000]/80 hover:bg-[#cc0000] text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
+          @click="showImportDialog = true"
+        >
+          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"/>
+          </svg>
+          <span class="ml-1">导入订阅</span>
+        </button>
       </FeedToolbar>
     </div>
 
@@ -175,6 +184,12 @@
       @close="showAddDialog = false"
     />
 
+    <!-- 导入订阅对话框 -->
+    <ImportSubscriptionDialog
+      :show="showImportDialog"
+      @close="showImportDialog = false"
+      @imported="handleSubscriptionsImported"
+    />
 
   </div>
 
@@ -188,6 +203,7 @@ import ProgressIndicator from '../components/ProgressIndicator.vue';
 import {useRouter} from "vue-router";
 import { useRefreshTriggers } from '../composables/useRefreshTriggers';
 import AddChannelDialog from '../components/AddChannelDialog.vue';
+import ImportSubscriptionDialog from '../components/ImportSubscriptionDialog.vue';
 
 import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
@@ -224,6 +240,7 @@ const loadingTrigger = ref(null);
 
 
 const showAddDialog = ref(false);
+const showImportDialog = ref(false);
 const unsubscribeError = ref('');
 
 // API功能
@@ -427,6 +444,13 @@ const handleImageError = (event) => {
 };
 
 const handleChannelAdded = () => {
+  subscriptions.value = [];
+  currentPage.value = 1;
+  allLoaded.value = false;
+  loadSubscriptions();
+};
+
+const handleSubscriptionsImported = () => {
   subscriptions.value = [];
   currentPage.value = 1;
   allLoaded.value = false;

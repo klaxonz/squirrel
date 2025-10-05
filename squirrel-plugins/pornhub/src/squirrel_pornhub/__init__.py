@@ -7,6 +7,7 @@ from .meta import PornhubVideo  # noqa: F401
 from .extractor import PornhubExtractor  # noqa: F401
 from .config import PornhubProxyConfig  # noqa: F401
 from .proxy import PornhubProxy  # noqa: F401
+from .importer import PornhubUserSubscriptionImporter  # noqa: F401
 
 
 PLUGIN_NAME = "pornhub"
