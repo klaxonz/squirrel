@@ -8,7 +8,16 @@ export default function useVideoOperations() {
   }
 
   const getVideoUrl = async (video) => {
-    if (video.stream_video_url || video.mpd_url) return true
+    console.log('[getVideoUrl] Called with video:', {
+      id: video?.id,
+      hasStreamUrl: !!video?.stream_video_url,
+      hasMpdUrl: !!video?.mpd_url
+    })
+    
+    if (video.stream_video_url || video.mpd_url) {
+      console.log('[getVideoUrl] URL already exists, skipping API call')
+      return true
+    }
 
     if (!video || !video.id) {
       const err = Object.assign(new Error('无效的视频对象'), { code: 'BAD_REQUEST' })
@@ -22,6 +31,7 @@ export default function useVideoOperations() {
       }
 
       // 统一通过后端获取播放链接（VideoUrlDto），后端会在 bilibili/YouTube 情况下返回 mpd_url 与可选清晰度
+      console.log('[getVideoUrl] Making API call to /api/video/url for video:', video.id)
       const response = await axios.get('/api/video/url', {
         params: { video_id: video.id }
       })

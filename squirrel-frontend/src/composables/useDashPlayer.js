@@ -6,16 +6,27 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
   const initializeDash = () => {
     const mpdUrl = props.video?.mpd_url || props.video?.stream_video_url
     const resolvedMpdUrl = (() => { try { return new URL(mpdUrl, window.location.origin).toString() } catch (_) { return mpdUrl } })()
+    
+    console.log('[DASH] initializeDash called', {
+      mpdUrl,
+      resolvedMpdUrl,
+      hasVideoRef: !!videoRef.value,
+      hasPreviousDashInstance: !!dashRef.value,
+      stackTrace: new Error().stack
+    })
+    
     if (!resolvedMpdUrl) { console.warn('[Debug] 4.X No MPD URL provided to dash'); return }
     if (!videoRef.value) { console.warn('[Debug] 4.X videoRef is not ready, skip init'); return }
 
     // Destroy previous instance
     if (dashRef.value) {
+      console.log('[DASH] Destroying previous dash.js instance')
       try { dashRef.value.reset() } catch (_) {}
       dashRef.value = null
     }
 
     const player = dashjs.MediaPlayer().create()
+    
     player.updateSettings({
       streaming: {
         abr: {
@@ -39,6 +50,29 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
         },
         scheduling: {
           scheduleWhilePaused: true
+        },
+        // 关键：配置 HTTP 请求超时时间
+        requests: {
+          timeout: 30000              // 30秒超时（默认约10秒）
+        },
+        // 配置重试设置，防止无限重试
+        retryAttempts: {
+          MPD: 1,                     // MPD 清单文件最多重试 1 次（降低重复请求）
+          XLinkExpansion: 1,
+          MediaSegment: 2,            // 媒体片段最多重试 2 次
+          InitializationSegment: 2,
+          BitstreamSwitchingSegment: 1,
+          IndexSegment: 1,
+          other: 1
+        },
+        retryIntervals: {
+          MPD: 1000,                  // MPD 重试间隔 1s（增加间隔）
+          XLinkExpansion: 500,
+          MediaSegment: 1000,
+          InitializationSegment: 1000,
+          BitstreamSwitchingSegment: 1000,
+          IndexSegment: 1000,
+          other: 1000
         }
       }
     })

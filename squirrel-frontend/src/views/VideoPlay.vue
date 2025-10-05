@@ -9,7 +9,7 @@
             <VideoPlayer
               ref="videoPlayerRef"
               :key="video?.id"
-              v-if="video"
+              v-if="video && (video.stream_video_url || video.mpd_url)"
               :video="video"
               :initialTime="startTime"
               :has-prev="hasPrevVideo"

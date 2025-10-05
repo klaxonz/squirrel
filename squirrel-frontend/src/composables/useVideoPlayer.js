@@ -1,5 +1,4 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import useVideoOperations from './useVideoOperations'
 import useVideoHistory from './useVideoHistory'
 import useVideoErrorHandler from './useVideoErrorHandler'
 import usePerformanceMonitor from './usePerformanceMonitor'
@@ -83,8 +82,6 @@ export default function useVideoPlayer(props, emit) {
   })
 
   // 组合函数
-  const { playVideo } = useVideoOperations()
-
   const {
     sendReport,
     updateLocalHistory,
@@ -554,15 +551,6 @@ export default function useVideoPlayer(props, emit) {
       // 延迟一小段时间确保所有媒体元素都准备好
       setTimeout(() => {
         attemptAutoplay()
-  // 当 mpd_url 就绪时，要求核心重新初始化媒体源（用于 DASH）
-  watch(() => props.video?.mpd_url, (newUrl) => {
-    if (newUrl) {
-      try {
-        videoCore.value?.reinitSources?.()
-      } catch (e) {}
-    }
-  })
-
       }, 100)
     }
   }, { immediate: true })
@@ -730,26 +718,13 @@ export default function useVideoPlayer(props, emit) {
       fullscreenEventNames.forEach(evt => document.addEventListener(evt, updateFullscreenState))
     } catch (e) {}
 
-    // 获取播放链接阶段：设置fetching并添加超时保护
-    if (!props.video?.stream_video_url) {
-      playerState.media.loading = true
-      playerState.media.loadingStage = 'fetching'
-      let urlFetchTimer = setTimeout(() => {
-        handleVideoError({ name: 'TimeoutError', message: '获取播放链接超时', code: 'URL_FETCH_TIMEOUT' })
-      }, 15000)
-
-      try {
-        await playVideo(props.video)
-        // 若为 DASH，playVideo 返回后 mpd_url 已就绪，立即请求核心重新初始化媒体源
-        if (props.video?.mpd_url) {
-          try { videoCore.value?.reinitSources?.() } catch (_) {}
-        }
-      } catch (e) {
-        handleVideoError(e)
-      } finally {
-        clearTimeout(urlFetchTimer)
-      }
-    }
+    // 播放器只会在有播放 URL 时才渲染（由 VideoPlay.vue 控制），
+    // 所以这里不需要再获取 URL，直接使用传入的 URL 即可
+    console.log('[useVideoPlayer] onMounted, video ready with URL:', {
+      hasStreamUrl: !!props.video?.stream_video_url,
+      hasMpdUrl: !!props.video?.mpd_url,
+      videoId: props.video?.id
+    })
 
     // 调试函数
     if (typeof window !== 'undefined') {
@@ -787,16 +762,6 @@ export default function useVideoPlayer(props, emit) {
   watch(() => props.video?.id, (newId, oldId) => {
     if (newId && newId !== oldId && playerState.media.autoplay) {
       // 重置播放状态
-  // 再次在顶层监听 mpd_url，确保任何时刻就绪都能触发
-  watch(() => props.video?.mpd_url, async (newUrl, oldUrl) => {
-    if (newUrl && newUrl !== oldUrl) {
-      try {
-        await nextTick()
-        videoCore.value?.reinitSources?.()
-      } catch (e) {}
-    }
-  })
-
       playerState.media.playing = false
       playerState.media.canPlay.video = false
       playerState.media.canPlay.audio = false

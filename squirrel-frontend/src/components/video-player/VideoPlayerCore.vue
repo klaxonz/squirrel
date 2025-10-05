@@ -400,12 +400,50 @@ const initializeMediaSources = () => {
   }
 }
 
-// 监听视频URL变化
-watch(() => props.video?.stream_video_url, (newUrl) => {
-  if (newUrl) {
-    initializeMediaSources()
+// 防抖定时器和去重标记
+let initDebounceTimer = null
+let lastInitializedUrl = null // 记录上次初始化的 URL，避免重复
+
+// 监听视频URL和MPD URL变化（合并为一个watch，避免重复初始化）
+watch(
+  () => [props.video?.stream_video_url, props.video?.mpd_url],
+  ([newStreamUrl, newMpdUrl], [oldStreamUrl, oldMpdUrl]) => {
+    console.log('[Debug] URL watch triggered:', {
+      oldStreamUrl,
+      newStreamUrl,
+      oldMpdUrl,
+      newMpdUrl,
+      streamChanged: newStreamUrl !== oldStreamUrl,
+      mpdChanged: newMpdUrl !== oldMpdUrl
+    })
+    
+    // 确定当前使用的 URL（优先使用 mpd_url）
+    const currentUrl = newMpdUrl || newStreamUrl || null
+    
+    // 只有当URL真正变化且与上次初始化的不同时才重新初始化
+    if (currentUrl && currentUrl !== lastInitializedUrl &&
+        ((newStreamUrl && newStreamUrl !== oldStreamUrl) || 
+         (newMpdUrl && newMpdUrl !== oldMpdUrl))) {
+      
+      console.log('[Debug] URL changed, scheduling reinitialization')
+      
+      // 使用防抖避免短时间内多次初始化
+      if (initDebounceTimer) {
+        console.log('[Debug] Clearing previous debounce timer')
+        clearTimeout(initDebounceTimer)
+      }
+      
+      initDebounceTimer = setTimeout(() => {
+        console.log('[Debug] Executing reinitialization after debounce')
+        lastInitializedUrl = currentUrl // 记录已初始化的 URL
+        initializeMediaSources()
+        initDebounceTimer = null
+      }, 100) // 增加防抖时间到 100ms
+    } else {
+      console.log('[Debug] URL not changed or already initialized, skipping reinitialization')
+    }
   }
-})
+)
 
 // 监听音量变化
 watch(() => props.playerState.media.volume, (newVolume) => {
@@ -424,14 +462,6 @@ watch(() => props.playerState.media.muted, (newMuted) => {
     if (audioElement.value) {
       audioElement.value.muted = newMuted
     }
-  }
-})
-
-
-// 监听 MPD URL 变化（DASH）
-watch(() => props.video?.mpd_url, (newUrl) => {
-  if (newUrl) {
-    initializeMediaSources()
   }
 })
 
@@ -508,6 +538,10 @@ const handleRightDoubleClick = () => {
 }
 
 onMounted(() => {
+  // 记录初始 URL，避免 watch 重复触发
+  const currentUrl = props.video?.mpd_url || props.video?.stream_video_url || null
+  lastInitializedUrl = currentUrl
+  
   initializeMediaSources()
 
   if (videoElement.value) {
@@ -522,6 +556,14 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // 清理防抖定时器
+  if (initDebounceTimer) {
+    clearTimeout(initDebounceTimer)
+    initDebounceTimer = null
+  }
+  // 重置去重标记
+  lastInitializedUrl = null
+  // 清理播放器实例
   try { destroyHls() } catch (_) {}
   try { destroyDash() } catch (_) {}
 })
