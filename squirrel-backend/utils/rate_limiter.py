@@ -56,7 +56,7 @@ class RateLimiter:
 
     # Default rate limits for different domains (second-level domains)
     DEFAULT_LIMITS: Dict[str, RateLimit] = {
-        'bilibili.com': RateLimit(3, 5, 'bilibili.com'),
+        'bilibili.com': RateLimit(2, 4, 'bilibili.com'),
         'youtube.com': RateLimit(2, 5, 'youtube.com'),
         'pornhub.com': RateLimit(3, 8, 'pornhub.com'),
         'javdb.com': RateLimit(5, 8, 'javdb.com'),  # javdb 需要更长的间隔避免风控
