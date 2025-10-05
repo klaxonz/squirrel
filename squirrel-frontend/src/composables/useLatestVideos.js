@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { get } from '../utils/request';
 
 export default function useLatestVideos(initial = {}) {
@@ -9,6 +9,7 @@ export default function useLatestVideos(initial = {}) {
   const error = ref(null);
   const activeTab = ref(initial.activeTab ?? 'unread');
   const videoCounts = ref({ all: 0, unread: 0, read: 0, preview: 0, liked: 0, later: 0 });
+  const countsLoading = ref(false);
   const currentPage = ref(1);
   const searchQuery = ref(initial.searchQuery ?? '');
   const isResetting = ref(false);
@@ -21,6 +22,33 @@ export default function useLatestVideos(initial = {}) {
 
   // Ensure only most recent in-flight request mutates state
   let requestToken = 0;
+  let countsRequestToken = 0;
+
+  // 异步加载视频计数（独立接口，不阻塞列表）
+  const loadVideoCounts = async () => {
+    countsLoading.value = true;
+    const currentToken = ++countsRequestToken;
+
+    const { data, error: requestError } = await get('/api/video/counts', {
+      query: searchQuery.value || '',
+      subscription_id: subscriptionId.value,
+      nsfw: nsfw.value,
+      site: site.value,
+    });
+
+    // If a newer request started, ignore this response
+    if (currentToken !== countsRequestToken) {
+      countsLoading.value = false;
+      return;
+    }
+
+    if (!requestError && data) {
+      videoCounts.value = data;
+    }
+    
+    countsLoading.value = false;
+    return data;
+  };
 
   const loadMore = async () => {
     if (loading.value || allLoaded.value) return;
@@ -29,6 +57,7 @@ export default function useLatestVideos(initial = {}) {
     const pageSize = 50;
     const currentToken = ++requestToken;
 
+    // 不再请求 counts，提升列表加载速度
     const { data, error: requestError } = await get('/api/video/list', {
       page: currentPage.value,
       pageSize,
@@ -38,6 +67,7 @@ export default function useLatestVideos(initial = {}) {
       sort_by: sortBy.value,
       nsfw: nsfw.value,
       site: site.value,
+      // includeCounts: false (默认值，不传)
     });
 
     // If a newer request started, ignore this response
@@ -71,9 +101,9 @@ export default function useLatestVideos(initial = {}) {
     allLoaded.value = newVideos.length < pageSize;
     loading.value = false;
 
-    if (data?.counts) {
-      videoCounts.value = data.counts;
-      return data.counts;
+    // 首次加载时异步获取 counts（不阻塞列表展示）
+    if (currentPage.value === 2) {
+      loadVideoCounts();
     }
   };
 
@@ -89,6 +119,14 @@ export default function useLatestVideos(initial = {}) {
     }
   };
 
+  // 监听筛选条件变化，重新加载 counts
+  watch([subscriptionId, searchQuery, nsfw, site], () => {
+    if (currentPage.value > 1) {
+      // 只在已加载数据后才重新获取 counts
+      loadVideoCounts();
+    }
+  });
+
   return {
     videos,
     loading,
@@ -96,9 +134,11 @@ export default function useLatestVideos(initial = {}) {
     error,
     activeTab,
     videoCounts,
+    countsLoading,
     handleSearch: resetAndReload,
     refresh: resetAndReload,
     loadMore,
+    loadVideoCounts,
     searchQuery,
     subscriptionId,
     sortBy,

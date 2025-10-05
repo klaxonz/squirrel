@@ -11,6 +11,7 @@ class VideoInteraction(Base, SerializerMixin):
 
     __table_args__ = (
         Index('ix_video_interaction_user_video', 'user_id', 'video_id'),
+        Index('ix_video_interaction_user_type_video', 'user_id', 'interaction_type', 'video_id')
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

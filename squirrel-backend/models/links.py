@@ -25,6 +25,11 @@ class SubscriptionVideo(Base, SerializerMixin):
 class VideoCreator(Base):
     __tablename__ = "video_creator"
 
+    __table_args__ = (
+        Index('ix_video_creator_video_id', 'video_id'),
+        Index('ix_video_creator_creator_id', 'creator_id'),
+    )
+
     video_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     creator_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -53,4 +58,7 @@ class UserSubscription(Base, SerializerMixin):
         Index('ix_user_subscription_user_id', 'user_id'),
         Index('ix_user_subscription_subscription_id', 'subscription_id'),
         Index('ix_user_subscription_is_deleted', 'is_deleted'),
+        Index('ix_user_subscription_user_deleted_nsfw', 'user_id', 'is_deleted', 'is_nsfw'),
+        # 优化 COUNT 查询中的 JOIN：覆盖 subscription_id, user_id, is_deleted
+        Index('ix_user_subscription_sub_user_deleted', 'subscription_id', 'user_id', 'is_deleted'),
     )

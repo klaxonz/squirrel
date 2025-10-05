@@ -20,8 +20,7 @@ export function useVideoApi() {
       if (response.data.code === 0) {
         const payload = response.data.data || {};
         const items = Array.isArray(payload.data) ? payload.data : [];
-        const counts = payload.counts || null;
-        return { success: true, data: items, counts };
+        return { success: true, data: items };
       }
       throw new Error(response.data.msg || '获取视频列表失败');
     } catch (error) {
@@ -87,12 +86,26 @@ export function useVideoApi() {
     }
   };
 
+  const getVideoCounts = async (params = {}) => {
+    try {
+      const response = await axios.get('/api/video/counts', { params });
+      if (response.data.code === 0) {
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data.msg || '获取计数失败');
+    } catch (error) {
+      console.error('获取视频计数失败:', error);
+      return { success: false, error: error.message || '获取视频计数失败' };
+    }
+  };
+
   return {
     getVideoDetail,
     listVideos,
     getSubtitles,
     getRelatedVideos,
     getRandomVideo,
+    getVideoCounts,
   };
 }
 

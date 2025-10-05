@@ -33,7 +33,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> Optional[User]:
     """
-    Validate token and return current user
+    Validate token and return current user with config preloaded
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -49,6 +49,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Optional[User
         user = user_service.get_user_by_id(user_id)
         if user is None:
             raise credentials_exception
+        
+        # 预加载 user_config，避免后续重复查询
+        # 将 config 作为临时属性附加到 user 对象上
+        from services import user_config_service
+        user._cached_config = user_config_service.get_config(user_id)
+        
         return user
     except JWTError:
         raise credentials_exception

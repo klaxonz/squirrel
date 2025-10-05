@@ -11,7 +11,8 @@ class Video(Base, SerializerMixin):
 
     __table_args__ = (
         Index('ix_video_title', 'title'),
-        Index('ix_video_deleted_publish_date',  'is_deleted', 'publish_date')
+        Index('ix_video_deleted_publish_date',  'is_deleted', 'publish_date'),
+        Index('ix_video_deleted_created_at', 'is_deleted', 'created_at')
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

@@ -1,4 +1,5 @@
 import logging
+import time
 from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response
 from fastapi.responses import PlainTextResponse
 import common.response as response
@@ -75,21 +76,49 @@ def get_videos(
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
         current_user: User = Depends(get_current_user)
 ):
+
     domains_list: List[str] | None = None
     if site:
         resolved = SiteCatalog.resolve_domains(site)
         domains_list = resolved if resolved else None
 
-    videos, total_counts, counts = video_service.list_videos(
+    if hasattr(current_user, '_cached_config'):
+        logger.info(f"[Performance] Route: Using cached user config")
+    
+    videos, total_counts = video_service.list_videos(
         current_user.id, query, subscription_id, category, sort_by, nsfw, domains_list, page, page_size
     )
-    return response.success({
+
+    result = response.success({
         "total": total_counts,
         "page": page,
         "pageSize": page_size,
-        "data": videos,
-        "counts": counts
+        "data": videos
     })
+
+    return result
+
+
+@router.get("/api/video/counts")
+def get_video_counts(
+        query: str = Query(None, description="搜索关键字"),
+        subscription_id: int = Query(None, description="订阅ID"),
+        nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
+        site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
+        current_user: User = Depends(get_current_user)
+):
+    """获取视频各类别计数的独立接口（可单独缓存）"""
+
+    domains_list: List[str] | None = None
+    if site:
+        resolved = SiteCatalog.resolve_domains(site)
+        domains_list = resolved if resolved else None
+    
+    counts = video_service.get_video_counts(
+        current_user.id, query, subscription_id, nsfw, domains_list
+    )
+    
+    return response.success(counts)
 
 
 @router.post("/api/video/download")

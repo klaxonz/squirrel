@@ -24,7 +24,13 @@ engine = create_engine(
     pool_size=settings.POOL_SIZE,
     max_overflow=settings.POOL_MAX_SIZE,
     pool_recycle=settings.POOL_RECYCLE,
-    echo=False
+    pool_pre_ping=True,  # 检测失效连接
+    pool_use_lifo=True,  # LIFO 池，提高连接复用
+    echo=False,
+    connect_args={
+        'connect_timeout': 10,
+        'options': '-c statement_timeout=30000'  # 30秒超时
+    }
 )
 
 

@@ -264,10 +264,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useProgressApi } from '../composables/useProgressApi';
-import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 
 const { getProgressList } = useProgressApi();
-const { getSubscriptionDetail } = useSubscriptionApi();
 
 const loading = ref(false);
 const progressList = ref([]);
@@ -312,21 +310,8 @@ const loadProgressList = async () => {
 };
 
 const loadSubscriptionInfo = async (subscriptionIds) => {
-  const idsToLoad = subscriptionIds.filter(id => !subscriptionCache.value.has(id));
-  if (idsToLoad.length === 0) return;
-  
-  const promises = idsToLoad.map(async (id) => {
-    try {
-      const result = await getSubscriptionDetail(id);
-      if (result.success && result.data) {
-        subscriptionCache.value.set(id, result.data);
-      }
-    } catch (error) {
-      // Ignore
-    }
-  });
-  
-  await Promise.all(promises);
+  // 移除了 getSubscriptionDetail 调用，订阅信息不再加载
+  return;
 };
 
 const refreshAll = () => {

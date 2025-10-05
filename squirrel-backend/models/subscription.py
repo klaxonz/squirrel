@@ -24,6 +24,8 @@ class Subscription(Base, SerializerMixin):
     __table_args__ = (
         Index('ix_subscription_is_deleted', 'is_deleted'),
         Index('ix_subscription_type', 'type'),
+        # 优化 COUNT 查询中的 JOIN：先过滤 is_deleted，再用 id 做 JOIN
+        Index('ix_subscription_deleted_id', 'is_deleted', 'id'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
