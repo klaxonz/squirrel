@@ -67,6 +67,7 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
         mode = body_data.get('mode', 'smart')
         user_id = body_data.get('user_id')
         force = body_data.get('force', False)
+        domain = body_data.get('domain')  # 获取 domain 信息
         trace_id = message_obj.trace_id if hasattr(message_obj, 'trace_id') else None
         
         if not subscription_id or not url:
@@ -75,7 +76,7 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
         
         logger.info(
             f"Processing subscription update: "
-            f"id={subscription_id}, trigger={trigger.value}, mode={mode}, trace_id={trace_id}"
+            f"id={subscription_id}, trigger={trigger.value}, mode={mode}, domain={domain}, trace_id={trace_id}"
         )
         
         request = SubscriptionUpdateRequest(
@@ -87,6 +88,10 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
             force=force,
             trace_id=trace_id
         )
+        
+        # 将 domain 信息附加到 request（用于 offset 更新）
+        if domain:
+            setattr(request, 'domain', domain)
         
         result = orchestrator.update(request)
         

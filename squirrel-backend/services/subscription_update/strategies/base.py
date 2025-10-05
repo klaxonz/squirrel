@@ -4,7 +4,7 @@
 """
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult
+from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateTrigger
 
 
 class UpdateStrategy(ABC):
@@ -65,6 +65,9 @@ class UpdateStrategy(ABC):
             
             enqueued = self.enqueue_extraction(video_urls, request)
             
+            # 在视频 URL 入队后，更新 offset
+            self._update_offset_after_enqueue(request)
+            
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
                 success=True,
@@ -79,4 +82,33 @@ class UpdateStrategy(ABC):
                 videos_enqueued=0,
                 error_message=str(e)
             )
+    
+    def _update_offset_after_enqueue(self, request: SubscriptionUpdateRequest):
+        """
+        在视频入队后更新偏移量
+        """
+        try:
+            # 只有定时任务触发的更新才需要记录 offset
+            if request.trigger != UpdateTrigger.SCHEDULED:
+                return
+            
+            # 从 request 中获取 domain（需要在消费者中解析并传入）
+            domain = getattr(request, 'domain', None)
+            if not domain:
+                # 如果没有 domain，尝试从 URL 提取
+                from utils import url_helper
+                try:
+                    domain = url_helper.extract_top_level_domain(request.url)
+                except Exception:
+                    domain = 'unknown'
+            
+            # 更新 offset
+            from services.subscription_update.scheduler import SubscriptionScheduler
+            SubscriptionScheduler.update_offset(domain, request.mode, request.subscription_id)
+            
+        except Exception as e:
+            # offset 更新失败不应影响主流程
+            import logging
+            logger = logging.getLogger()
+            logger.warning(f"Failed to update offset for subscription {request.subscription_id}: {e}")
 
