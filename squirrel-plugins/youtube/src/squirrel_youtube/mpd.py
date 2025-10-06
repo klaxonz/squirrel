@@ -23,93 +23,9 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 SESSION = get_http_session()
 
 
-def _be32(b: bytes, pos: int) -> int:
-    return struct.unpack_from('>I', b, pos)[0]
-
-
-def _be64(b: bytes, pos: int) -> int:
-    return struct.unpack_from('>Q', b, pos)[0]
-
-
-def _find_mp4_boxes_prefix(data: bytes):
-    offset = 0
-    length = len(data)
-    moov_start = moov_end = -1
-    sidx_start = sidx_end = -1
-
-    for _ in range(1000):
-        if offset + 8 > length:
-            break
-        try:
-            size = _be32(data, offset)
-            typ = data[offset + 4: offset + 8]
-        except Exception:
-            break
-
-        if size == 0:
-            box_end = length
-        elif size == 1:
-            if offset + 16 > length:
-                break
-            size = _be64(data, offset + 8)
-            box_end = offset + int(size)
-        else:
-            box_end = offset + int(size)
-
-        if box_end > length or size < 8:
-            break
-
-        if typ == b'moov':
-            moov_start, moov_end = offset, box_end
-        elif typ == b'sidx':
-            sidx_start, sidx_end = offset, box_end
-
-        if moov_start != -1 and sidx_start != -1:
-            break
-
-        offset = box_end
-
-    return moov_start, moov_end, sidx_start, sidx_end
-
-
-def _probe_ranges(url: str, max_tries: int = 2, chunk_sizes=(1024 * 1024, 4 * 1024 * 1024)):
-    headers = {
-        'User-Agent': USER_AGENT,
-        'Accept': '*/*',
-        'Connection': 'keep-alive',
-    }
-    for i in range(min(max_tries, len(chunk_sizes))):
-        end = chunk_sizes[i] - 1
-        try:
-            resp = SESSION.get(url, headers={**headers, 'Range': f'bytes=0-{end}'}, timeout=15)
-            if resp.status_code not in (200, 206):
-                continue
-            data = resp.content or b''
-            if not data:
-                continue
-            moov_start, moov_end, sidx_start, sidx_end = _find_mp4_boxes_prefix(data)
-            init_range = None
-            index_range = None
-            if moov_end > 0:
-                init_range = f"{0}-{moov_end - 1}"
-            if sidx_start >= 0 and sidx_end > sidx_start:
-                index_range = f"{sidx_start}-{sidx_end - 1}"
-            if init_range or index_range:
-                return init_range, index_range
-        except Exception:
-            continue
-    return None, None
-
 
 def _proxy(u: str) -> str:
     return f"/api/video/proxy?domain=youtube.com&url=" + quote(u, safe='')
-
-
-def _safe_int(x, default=0):
-    try:
-        return int(x)
-    except Exception:
-        return default
 
 
 def _extract_video_info_with_ytdlp(url: str) -> dict:
@@ -120,9 +36,7 @@ def _extract_video_info_with_ytdlp(url: str) -> dict:
         'quiet': True,
         'no_warnings': True,
         'skip_download': True,
-        'socket_timeout': 30,
-        # 关键：让 yt-dlp 提取完整的格式信息，包括 fragment 和 manifest
-        'youtube_include_dash_manifest': True,
+        'noplaylist': True,
         'extract_flat': False,
     }
     

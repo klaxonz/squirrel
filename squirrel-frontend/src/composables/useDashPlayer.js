@@ -30,7 +30,6 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     player.updateSettings({
       streaming: {
         abr: {
-          // 固定使用最高清晰度起播
           autoSwitchBitrate: { video: false, audio: true },
           initialBitrate: { video: 50000, audio: 320 },
           initialRepresentationRatio: 1,
@@ -48,32 +47,7 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
           bufferPruningInterval: 10,
           fastSwitchEnabled: true
         },
-        scheduling: {
-          scheduleWhilePaused: true
-        },
-        // 关键：配置 HTTP 请求超时时间
-        requests: {
-          timeout: 30000              // 30秒超时（默认约10秒）
-        },
-        // 配置重试设置，防止无限重试
-        retryAttempts: {
-          MPD: 1,                     // MPD 清单文件最多重试 1 次（降低重复请求）
-          XLinkExpansion: 1,
-          MediaSegment: 2,            // 媒体片段最多重试 2 次
-          InitializationSegment: 2,
-          BitstreamSwitchingSegment: 1,
-          IndexSegment: 1,
-          other: 1
-        },
-        retryIntervals: {
-          MPD: 1000,                  // MPD 重试间隔 1s（增加间隔）
-          XLinkExpansion: 500,
-          MediaSegment: 1000,
-          InitializationSegment: 1000,
-          BitstreamSwitchingSegment: 1000,
-          IndexSegment: 1000,
-          other: 1000
-        }
+        manifestRequestTimeout: 30000
       }
     })
 

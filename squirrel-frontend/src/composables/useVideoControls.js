@@ -1,7 +1,9 @@
-import { ref, watch } from 'vue'
+import { ref, watch, isRef } from 'vue'
 
 // videoParam: reactive video object (e.g., props.video)
 export default function useVideoControls(playerState, videoCore, videoParam) {
+
+  const getVideoParam = () => (isRef(videoParam) ? videoParam.value : videoParam)
   
   const playbackRates = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
   const availableQualities = ref([])
@@ -47,9 +49,12 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
   }
 
 
-  watch(() => videoParam && [videoParam.id, videoParam?.qualities], () => {
-    applyQualitiesFromVideo(videoParam)
-  }, { deep: false })
+  watch(() => {
+    const currentVideo = getVideoParam()
+    return currentVideo ? [currentVideo.id, currentVideo?.qualities] : null
+  }, () => {
+    applyQualitiesFromVideo(getVideoParam())
+  }, { deep: false, immediate: true })
 
   const updateAvailableQualities = (qualities) => {
     if (Array.isArray(qualities) && qualities.length > 0) {
