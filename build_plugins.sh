@@ -15,7 +15,6 @@ NC='\033[0m' # No Color
 # 脚本目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGINS_DIR="$SCRIPT_DIR/squirrel-plugins"
-BUILD_DIR="$SCRIPT_DIR/plugin_builds"
 DIST_DIR="$SCRIPT_DIR/plugin_packages"
 PLUGINS_EXT_DIR="$SCRIPT_DIR/squirrel-backend/plugins_ext"
 
@@ -46,7 +45,6 @@ done
 
 echo -e "${BLUE}=== Squirrel 插件一键打包工具 ===${NC}"
 echo "插件目录: $PLUGINS_DIR"
-echo "构建目录: $BUILD_DIR"
 echo "输出目录: $DIST_DIR"
 if [ "$DEV_MODE" = true ]; then
     echo -e "${YELLOW}开发模式: 已启用 (将自动部署到 plugins_ext)${NC}"
@@ -60,13 +58,11 @@ if [ ! -d "$PLUGINS_DIR" ]; then
     exit 1
 fi
 
-# 创建构建和输出目录
-mkdir -p "$BUILD_DIR"
+# 创建输出目录
 mkdir -p "$DIST_DIR"
 
 # 清理之前的构建文件
 echo -e "${YELLOW}清理之前的构建文件...${NC}"
-rm -rf "$BUILD_DIR"/*
 rm -rf "$DIST_DIR"/*
 
 # 如果是开发模式，清理 plugins_ext 目录
@@ -90,18 +86,6 @@ fi
 echo -e "${GREEN}找到 ${#PLUGINS[@]} 个插件: ${PLUGINS[*]}${NC}"
 echo
 
-# 检查是否安装了 build 工具
-if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}错误: 未找到 python3 命令${NC}"
-    exit 1
-fi
-
-# 安装 build 工具（如果未安装）
-if ! python3 -c "import build" &> /dev/null; then
-    echo -e "${YELLOW}安装 Python build 工具...${NC}"
-    pip3 install build
-fi
-
 # 构建每个插件
 SUCCESS_COUNT=0
 FAILED_PLUGINS=()
@@ -114,82 +98,47 @@ for plugin in "${PLUGINS[@]}"; do
         continue
     fi
     
-    # 检查是否有 pyproject.toml 文件
-    if [ ! -f "$plugin_path/pyproject.toml" ]; then
-        echo -e "${YELLOW}跳过 $plugin: 没有找到 pyproject.toml${NC}"
+    echo -e "${BLUE}正在打包插件: $plugin${NC}"
+
+    # 检查 src 目录是否存在
+    if [ ! -d "$plugin_path/src" ]; then
+        echo -e "${RED}✗ $plugin 打包失败: 未找到 src 目录${NC}"
+        FAILED_PLUGINS+=("$plugin")
+        echo
         continue
     fi
-    
-    echo -e "${BLUE}正在构建插件: $plugin${NC}"
-    
-    # 创建插件专用的构建目录
-    plugin_build_dir="$BUILD_DIR/$plugin"
-    mkdir -p "$plugin_build_dir"
-    
-    # 进入插件目录构建
-    cd "$plugin_path"
-    
-    if python3 -m build --outdir "$plugin_build_dir"; then
-        echo -e "${GREEN}✓ $plugin 构建成功${NC}"
-        
-        # 查找生成的 wheel 文件
-        wheel_file=$(find "$plugin_build_dir" -name "*.whl" -type f | head -n 1)
-        tar_file=$(find "$plugin_build_dir" -name "*.tar.gz" -type f | head -n 1)
-        
-        if [ -n "$wheel_file" ] || [ -n "$tar_file" ]; then
-            # 创建插件包目录
-            plugin_package_dir="$DIST_DIR/$plugin"
-            mkdir -p "$plugin_package_dir"
-            
-            # 复制构建产物
-            if [ -n "$wheel_file" ]; then
-                cp "$wheel_file" "$plugin_package_dir/"
-            fi
-            if [ -n "$tar_file" ]; then
-                cp "$tar_file" "$plugin_package_dir/"
-            fi
-            
-            # 复制源码和配置文件
-            cp -r src "$plugin_package_dir/" 2>/dev/null || true
-            cp pyproject.toml "$plugin_package_dir/" 2>/dev/null || true
-            cp README.md "$plugin_package_dir/" 2>/dev/null || true
-            
-            # 创建 zip 包
-            cd "$DIST_DIR"
-            zip_file="${plugin}_plugin.zip"
-            zip -r "$zip_file" "$plugin" > /dev/null
-            
-            # 如果是开发模式，解压到 plugins_ext 目录
-            if [ "$DEV_MODE" = true ]; then
-                echo -e "${BLUE}  → 部署到 plugins_ext/$plugin${NC}"
-                plugin_deploy_dir="$PLUGINS_EXT_DIR/$plugin"
-                mkdir -p "$plugin_deploy_dir"
-                unzip -q "$zip_file" -d "$PLUGINS_EXT_DIR"
-                echo -e "${GREEN}  ✓ 已部署到开发环境${NC}"
-            fi
-            
-            # 删除临时目录
-            rm -rf "$plugin"
-            
-            echo -e "${GREEN}✓ $plugin 打包完成: $zip_file${NC}"
-            ((SUCCESS_COUNT++))
-        else
-            echo -e "${RED}✗ $plugin 构建失败: 未找到构建产物${NC}"
-            FAILED_PLUGINS+=("$plugin")
-        fi
-    else
-        echo -e "${RED}✗ $plugin 构建失败${NC}"
-        FAILED_PLUGINS+=("$plugin")
+
+    plugin_package_dir="$DIST_DIR/$plugin"
+    mkdir -p "$plugin_package_dir"
+
+    # 复制插件源文件
+    cp -R "$plugin_path/" "$plugin_package_dir/" 2>/dev/null || true
+    find "$plugin_package_dir" -name "__pycache__" -type d -prune -exec rm -rf {} +
+
+    # 创建 zip 包
+    cd "$DIST_DIR"
+    zip_file="${plugin}_plugin.zip"
+    zip -r "$zip_file" "$plugin" > /dev/null
+
+    # 如果是开发模式，解压到 plugins_ext 目录
+    if [ "$DEV_MODE" = true ]; then
+        echo -e "${BLUE}  → 部署到 plugins_ext/$plugin${NC}"
+        plugin_deploy_dir="$PLUGINS_EXT_DIR/$plugin"
+        mkdir -p "$plugin_deploy_dir"
+        unzip -q "$zip_file" -d "$PLUGINS_EXT_DIR"
+        echo -e "${GREEN}  ✓ 已部署到开发环境${NC}"
     fi
-    
+
+    # 删除临时目录
+    rm -rf "$plugin"
+
+    echo -e "${GREEN}✓ $plugin 打包完成: $zip_file${NC}"
+    ((SUCCESS_COUNT++))
     echo
 done
 
 # 返回原目录
 cd "$SCRIPT_DIR"
-
-# 清理构建目录
-rm -rf "$BUILD_DIR"
 
 # 输出构建结果
 echo -e "${BLUE}=== 构建完成 ===${NC}"
