@@ -21,17 +21,10 @@ version: '3.8'
 services:
   squirrel:
     # 移除对 redis 和 postgres 的依赖
-    depends_on: {}
+    depends_on: []
 
-  # 禁用 redis 服务
-  redis:
-    deploy:
-      replicas: 0
-    restart: "no"
-
-  # 禁用 postgres 服务
-  postgres:
-    deploy:
-      replicas: 0
-    restart: "no"
+  # 完全移除 redis 和 postgres 服务定义
+  # Docker Compose 会忽略这些服务
+  redis: null
+  postgres: null
 
