@@ -2,6 +2,9 @@
 
 # Squirrel 插件一键打包脚本
 # 用于构建 squirrel-plugins 目录下的所有插件并打包成 zip 文件
+#
+# 注意：Windows 用户请使用 build_plugins.ps1 (PowerShell 版本)
+# 或在 Git Bash / WSL 中运行此脚本
 
 set -e  # 遇到错误时退出
 
