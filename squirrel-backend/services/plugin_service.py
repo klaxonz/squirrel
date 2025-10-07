@@ -98,13 +98,28 @@ class PluginService:
                     
                     plugin_name = top_dirs.pop()
                     
-                    # Extract to temp directory
-                    zf.extractall(Path(tmpdir))
+                    # Extract to temp directory with path normalization
+                    for member in zf.namelist():
+                        # Normalize Windows-style paths to Unix-style
+                        normalized_path = member.replace('\\', '/')
+                        target_path = Path(tmpdir) / normalized_path
+                        
+                        if member.endswith('/') or member.endswith('\\'):
+                            # Directory
+                            target_path.mkdir(parents=True, exist_ok=True)
+                        else:
+                            # File
+                            target_path.parent.mkdir(parents=True, exist_ok=True)
+                            with zf.open(member) as source, open(target_path, 'wb') as target:
+                                shutil.copyfileobj(source, target)
                 
                 # Verify extracted directory
                 top = Path(tmpdir) / plugin_name
                 if not top.exists() or not top.is_dir():
-                    return False, f"Plugin directory not found after extraction: {plugin_name}"
+                    # Debug: list what was actually extracted
+                    actual_contents = list(Path(tmpdir).iterdir())
+                    logger.error(f"Expected '{plugin_name}' but found: {[str(p) for p in actual_contents]}")
+                    return False, f"Plugin directory '{plugin_name}' not found after extraction. Found: {[p.name for p in actual_contents]}"
                 
                 if not PluginService._is_valid_name(plugin_name):
                     return False, f"Invalid plugin name: {plugin_name}"
