@@ -57,9 +57,10 @@ cp env.example .env
 # 根据 .env 文件中的注释修改数据库和 Redis 连接信息
 ```
 
-2. 编辑 `docker-compose.yaml`，按照文件顶部注释说明：
-   - 注释掉 `redis` 和 `postgres` 服务
-   - 注释掉 `squirrel` 服务的 `depends_on` 部分
+2. 复制覆盖配置文件：
+```bash
+cp docker-compose.override.example.yaml docker-compose.override.yaml
+```
 
 3. 启动服务：
 ```bash
@@ -67,6 +68,10 @@ docker compose up -d
 ```
 
 4. 访问应用：`http://localhost:8000`
+
+**说明：** 
+- `docker-compose.override.yaml` 会自动覆盖 `docker-compose.yaml` 中的配置
+- 此文件已在 `.gitignore` 中，不会被 git 跟踪，更新时不会冲突
 
 ### 使用指南
 
@@ -92,6 +97,18 @@ cp env.example .env
 # - REDIS_PASSWORD: 改为实际密码
 # - POSTGRES_HOST: 改为外部 PostgreSQL 地址
 # - POSTGRES_PASSWORD: 改为实际密码
+```
+
+#### Docker Compose 覆盖配置（独立部署）
+
+独立部署时使用 `docker-compose.override.yaml` 覆盖主配置：
+
+```bash
+# 复制覆盖配置示例
+cp docker-compose.override.example.yaml docker-compose.override.yaml
+
+# 此文件会自动与 docker-compose.yaml 合并
+# 且不会被 git 跟踪，更新代码时不会冲突
 ```
 
 #### 创建必要的目录
@@ -171,6 +188,10 @@ git pull
 docker compose down
 docker compose up -d
 ```
+
+**说明：**
+- 完整部署：直接更新即可
+- 独立部署：`docker-compose.override.yaml` 不会被 git 跟踪，您的配置不会丢失
 
 ## 常用命令
 

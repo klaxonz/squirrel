@@ -6,18 +6,13 @@
 #
 # 1. 完整部署（默认）：
 #    - 启动 Squirrel、Redis 和 PostgreSQL 三个服务
-#    - 适合从零开始部署
-#    - .env 配置示例：
-#      REDIS_HOST=redis
-#      POSTGRES_HOST=postgres
+#    - 直接使用: docker compose up -d
 #
 # 2. 独立部署：
 #    - 仅启动 Squirrel 服务，连接已有的 Redis 和 PostgreSQL
-#    - 注释掉下方的 redis 和 postgres 服务（添加 # 号）
-#    - 注释掉 squirrel 服务的 depends_on 部分
-#    - 修改 .env 文件中的数据库连接配置：
-#      REDIS_HOST=host.docker.internal (或外部 IP)
-#      POSTGRES_HOST=host.docker.internal (或外部 IP)
+#    - 复制 docker-compose.override.example.yaml 为 docker-compose.override.yaml
+#    - 修改 .env 文件中的数据库连接配置
+#    - Docker Compose 会自动合并两个文件
 #
 # ========================================
 
@@ -48,8 +43,6 @@ services:
       - ./plugins_ext:/app/squirrel-backend/plugins_ext
     networks:
       - squirrel-network
-    # 完整部署：保持以下配置
-    # 独立部署：注释掉 depends_on 部分
     depends_on:
       redis:
         condition: service_healthy
@@ -61,11 +54,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  # ========================================
-  # 完整部署：保持以下 Redis 和 PostgreSQL 服务
-  # 独立部署：注释掉以下所有 Redis 和 PostgreSQL 配置
-  # ========================================
 
   redis:
     image: redis:7-alpine
