@@ -24,12 +24,12 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
           usePixelRatioInLimitBitrateByPortal: false
         },
         buffer: {
-          stableBufferTime: 40,
-          bufferTimeAtTopQuality: 60,
-          bufferTimeAtTopQualityLongForm: 90,
+          stableBufferTime: 20,
+          bufferTimeAtTopQuality: 30,
+          bufferTimeAtTopQualityLongForm: 40,
           longFormContentDurationThreshold: 600,
-          bufferToKeep: 30,
-          bufferPruningInterval: 30,
+          bufferToKeep: 20,
+          bufferPruningInterval: 10,
           fastSwitchEnabled: true
         },
         manifestRequestTimeout: 60000,
