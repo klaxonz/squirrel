@@ -42,7 +42,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/openapi.json",
             "/api/video/proxy",
             "/api/video/play",
-            "/api/video/mpd"
+            "/api/video/mpd",
+            "/health",
+            "/health/ready",
+            "/health/live"
         ]
 
     async def dispatch(self, request: Request, call_next):

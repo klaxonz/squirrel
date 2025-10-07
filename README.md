@@ -28,14 +28,71 @@ Squirrel 是一个视频订阅和下载工具，下载时可以生成nfo文件�
 
 ### Docker部署
 
-1. 构建镜像：
-   ```bash
-   ./build.sh
-   ```
-2. 运行容器：
-   ```bash
-   docker compose up -d
-   ```
+#### 快速部署（推荐）
+
+**Linux/Mac:**
+```bash
+./deploy.sh
+```
+
+**Windows PowerShell:**
+```powershell
+.\deploy.ps1
+```
+
+快速部署脚本会自动：
+- 检查 Docker 环境
+- 创建 `.env` 配置文件
+- 创建必要的目录
+- 拉取或构建镜像
+- 启动所有服务
+
+#### 手动部署
+
+**1. 创建配置文件**
+
+复制以下内容创建 `.env` 文件：
+```env
+REDIS_PASSWORD=squirrel123
+POSTGRES_PASSWORD=postgres
+POSTGRES_DATABASE=squirrel
+```
+
+**2. 构建镜像**（可选，也可直接使用 Docker Hub 镜像）
+```bash
+# Linux/Mac
+./build.sh
+
+# Windows PowerShell
+docker build -t klaxonz/squirrel:latest .
+```
+
+**3. 启动服务**
+```bash
+docker compose up -d
+```
+
+**4. 访问应用**
+
+浏览器访问：`http://localhost:8000`
+
+#### 查看日志
+
+```bash
+# 查看所有服务日志
+docker compose logs -f
+
+# 查看特定服务日志
+docker compose logs -f squirrel
+```
+
+#### 停止服务
+
+```bash
+docker compose down
+```
+
+详细部署说明请参考 [部署指南](./DEPLOYMENT.md)
 
 ### 浏览器拓展安装
 
