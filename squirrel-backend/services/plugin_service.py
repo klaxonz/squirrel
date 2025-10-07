@@ -72,31 +72,48 @@ class PluginService:
                     pass
                 with open(tmp_zip, "wb") as f:
                     shutil.copyfileobj(file_obj, f)
-                # extract
+                # extract and find top-level directory
                 import zipfile
                 with zipfile.ZipFile(tmp_zip, 'r') as zf:
-                    # Use extractall for better compatibility
+                    # Find top-level directory from zip contents
+                    namelist = zf.namelist()
+                    logger.info(f"Zip contents: {namelist[:10]}")  # Log first 10 entries
+                    
+                    # Get top-level directories (before first /)
+                    top_dirs = set()
+                    for name in namelist:
+                        parts = name.split('/')
+                        if parts[0] and parts[0] != '__MACOSX':
+                            top_dirs.add(parts[0])
+                    
+                    logger.info(f"Found top-level directories: {top_dirs}")
+                    
+                    if not top_dirs:
+                        return False, f"Invalid plugin package: no top-level directory found"
+                    
+                    if len(top_dirs) > 1:
+                        return False, f"Invalid plugin package: multiple top-level directories: {top_dirs}"
+                    
+                    plugin_name = top_dirs.pop()
+                    
+                    # Extract to temp directory
                     zf.extractall(Path(tmpdir))
                 
-                # detect top folder
-                all_entries = list(Path(tmpdir).iterdir())
-                logger.info(f"Extracted entries: {[e.name for e in all_entries]}")
+                # Verify extracted directory
+                top = Path(tmpdir) / plugin_name
+                if not top.exists() or not top.is_dir():
+                    return False, f"Plugin directory not found after extraction: {plugin_name}"
                 
-                entries = [e for e in all_entries if e.is_dir() and e.name != "__MACOSX"]
-                logger.info(f"Valid directory entries: {[e.name for e in entries]}")
+                if not PluginService._is_valid_name(plugin_name):
+                    return False, f"Invalid plugin name: {plugin_name}"
                 
-                if not entries:
-                    return False, f"Invalid plugin package: no valid directories found (found: {[e.name for e in all_entries]})"
-                top = entries[0]
-                if not PluginService._is_valid_name(top.name):
-                    return False, "Invalid plugin name"
-                target = ext_dir / top.name
+                target = ext_dir / plugin_name
                 if target.exists():
                     shutil.rmtree(target)
                 shutil.copytree(top, target)
 
                 result = {
-                    "name": top.name,
+                    "name": plugin_name,
                     "installed_path": str(target)
                 }
                 return True, result
