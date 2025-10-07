@@ -52,11 +52,6 @@ class PluginService:
         return True
 
     @staticmethod
-    def install_from_zip(url: str) -> InstallResult:
-        """Deprecated: kept for backward compatibility."""
-        return False, "installing from remote URL is disabled"
-
-    @staticmethod
     def install_from_upload(file) -> InstallResult:
         """Handle uploaded zip file and extract to plugins_ext."""
         base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
