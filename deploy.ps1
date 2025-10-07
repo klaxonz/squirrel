@@ -26,6 +26,32 @@ Write-ColorOutput Blue "Squirrel 快速部署脚本"
 Write-ColorOutput Blue "========================"
 Write-Output ""
 
+# 全局变量
+$script:STANDALONE_MODE = $false
+$script:COMPOSE_FILE = "docker-compose.yaml"
+
+# 选择部署模式
+function Select-DeploymentMode {
+    Write-ColorOutput Yellow "请选择部署模式:"
+    Write-ColorOutput Green "  1) 完整部署 (包含 PostgreSQL 和 Redis)"
+    Write-ColorOutput Green "  2) 独立部署 (使用已有的 PostgreSQL 和 Redis)"
+    Write-Output ""
+    
+    $mode = Read-Host "请选择 (1/2，默认为 1)"
+    Write-Output ""
+    
+    if ($mode -eq "2") {
+        $script:STANDALONE_MODE = $true
+        $script:COMPOSE_FILE = "docker-compose.standalone.yaml"
+        Write-ColorOutput Blue "✓ 已选择: 独立部署模式"
+    } else {
+        $script:STANDALONE_MODE = $false
+        $script:COMPOSE_FILE = "docker-compose.yaml"
+        Write-ColorOutput Blue "✓ 已选择: 完整部署模式"
+    }
+    Write-Output ""
+}
+
 # 检查 Docker 和 Docker Compose
 function Check-Requirements {
     Write-ColorOutput Yellow "[1/5] 检查环境依赖..."
@@ -60,53 +86,42 @@ function Create-EnvFile {
         return
     }
     
-    $envContent = @"
-# Redis 配置
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_DB=0
-REDIS_PASSWORD=squirrel123
-
-# PostgreSQL 配置
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DATABASE=squirrel
-
-# 下载配置
-MEDIA_DOWNLOAD_PATH=/downloads
-
-# Cookie 配置
-COOKIE_TYPE=file
-COOKIE_CLOUD_URL=
-COOKIE_CLOUD_UUID=
-COOKIE_CLOUD_PASSWORD=
-COOKIE_CLOUD_DOMAIN=
-
-# 数据库连接池配置
-POOL_SIZE=30
-POOL_MAX_SIZE=60
-POOL_RECYCLE=300
-
-# 频道更新配置
-CHANNEL_UPDATE_DEFAULT_SIZE=30
-
-# 运行环境
-ENV=prod
-"@
-    
-    $envContent | Out-File -FilePath ".env" -Encoding UTF8
-    
-    Write-ColorOutput Green "✓ .env 文件创建成功"
-    Write-ColorOutput Yellow "提示: 请根据需要修改 .env 文件中的配置"
+    # 复制示例文件
+    if (Test-Path "env.example") {
+        Copy-Item "env.example" ".env"
+        Write-ColorOutput Green "✓ .env 文件创建成功（已从 env.example 复制）"
+        
+        if ($script:STANDALONE_MODE) {
+            Write-ColorOutput Yellow "独立部署提示：请编辑 .env 文件，根据注释修改以下配置："
+            Write-ColorOutput Yellow "  - REDIS_HOST（改为外部 Redis 地址）"
+            Write-ColorOutput Yellow "  - REDIS_PASSWORD（改为实际密码）"
+            Write-ColorOutput Yellow "  - POSTGRES_HOST（改为外部 PostgreSQL 地址）"
+            Write-ColorOutput Yellow "  - POSTGRES_PASSWORD（改为实际密码）"
+            Write-Output ""
+            $edit = Read-Host "是否现在编辑 .env 文件？(y/N)"
+            if ($edit -eq "y" -or $edit -eq "Y") {
+                notepad .env
+            }
+        } else {
+            Write-ColorOutput Yellow "提示：建议修改 .env 文件中的默认密码"
+        }
+    } else {
+        Write-ColorOutput Red "错误: 未找到 env.example 文件"
+        exit 1
+    }
 }
 
 # 创建必要的目录
 function Create-Directories {
     Write-ColorOutput Yellow "[3/5] 创建必要的目录..."
     
-    $directories = @("config", "logs", "downloads", "postgres\data", "redis\data")
+    if ($script:STANDALONE_MODE) {
+        # 独立部署：不需要数据库数据目录
+        $directories = @("config", "logs", "downloads", "plugins_ext")
+    } else {
+        # 完整部署：需要数据库数据目录
+        $directories = @("config", "logs", "downloads", "postgres\data", "redis\data")
+    }
     
     foreach ($dir in $directories) {
         if (!(Test-Path $dir)) {
@@ -131,7 +146,7 @@ function Setup-Images {
         docker build -t klaxonz/squirrel:latest .
     } else {
         Write-ColorOutput Yellow "从 Docker Hub 拉取镜像..."
-        docker compose pull
+        docker compose -f $script:COMPOSE_FILE pull
     }
     
     Write-ColorOutput Green "✓ 镜像准备完成"
@@ -141,7 +156,7 @@ function Setup-Images {
 function Start-Services {
     Write-ColorOutput Yellow "[5/5] 启动服务..."
     
-    docker compose up -d
+    docker compose -f $script:COMPOSE_FILE up -d
     
     Write-ColorOutput Green "✓ 服务启动成功"
 }
@@ -160,7 +175,7 @@ function Show-Result {
     
     # 显示服务状态
     Write-ColorOutput Blue "服务状态:"
-    docker compose ps
+    docker compose -f $script:COMPOSE_FILE ps
     
     Write-Output ""
     Write-ColorOutput Blue "访问地址:"
@@ -168,9 +183,15 @@ function Show-Result {
     Write-Output ""
     
     Write-ColorOutput Blue "常用命令:"
-    Write-ColorOutput Yellow "  查看日志: docker compose logs -f"
-    Write-ColorOutput Yellow "  停止服务: docker compose down"
-    Write-ColorOutput Yellow "  重启服务: docker compose restart"
+    if ($script:STANDALONE_MODE) {
+        Write-ColorOutput Yellow "  查看日志: docker compose -f $($script:COMPOSE_FILE) logs -f"
+        Write-ColorOutput Yellow "  停止服务: docker compose -f $($script:COMPOSE_FILE) down"
+        Write-ColorOutput Yellow "  重启服务: docker compose -f $($script:COMPOSE_FILE) restart"
+    } else {
+        Write-ColorOutput Yellow "  查看日志: docker compose logs -f"
+        Write-ColorOutput Yellow "  停止服务: docker compose down"
+        Write-ColorOutput Yellow "  重启服务: docker compose restart"
+    }
     Write-Output ""
     
     Write-ColorOutput Blue "配置文件位置:"
@@ -180,12 +201,17 @@ function Show-Result {
     Write-ColorOutput Yellow "  下载目录: .\downloads\"
     Write-Output ""
     
-    Write-ColorOutput Yellow "提示: 首次启动可能需要等待数据库初始化，请稍候"
+    if ($script:STANDALONE_MODE) {
+        Write-ColorOutput Yellow "提示: 请确保外部数据库和 Redis 服务正常运行"
+    } else {
+        Write-ColorOutput Yellow "提示: 首次启动可能需要等待数据库初始化，请稍候"
+    }
 }
 
 # 主流程
 function Main {
     try {
+        Select-DeploymentMode
         Check-Requirements
         Create-EnvFile
         Create-Directories

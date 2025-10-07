@@ -24,6 +24,31 @@ echo -e "${BLUE}Squirrel 快速部署脚本${NC}"
 echo -e "${BLUE}========================${NC}"
 echo ""
 
+# 全局变量
+STANDALONE_MODE=false
+COMPOSE_FILE="docker-compose.yaml"
+
+# 选择部署模式
+select_deployment_mode() {
+    echo -e "${YELLOW}请选择部署模式:${NC}"
+    echo -e "  ${GREEN}1)${NC} 完整部署 (包含 PostgreSQL 和 Redis)"
+    echo -e "  ${GREEN}2)${NC} 独立部署 (使用已有的 PostgreSQL 和 Redis)"
+    echo ""
+    read -p "请选择 (1/2，默认为 1): " -r mode
+    echo ""
+    
+    if [[ "$mode" == "2" ]]; then
+        STANDALONE_MODE=true
+        COMPOSE_FILE="docker-compose.standalone.yaml"
+        echo -e "${BLUE}✓ 已选择: 独立部署模式${NC}"
+    else
+        STANDALONE_MODE=false
+        COMPOSE_FILE="docker-compose.yaml"
+        echo -e "${BLUE}✓ 已选择: 完整部署模式${NC}"
+    fi
+    echo ""
+}
+
 # 检查 Docker 和 Docker Compose
 check_requirements() {
     echo -e "${YELLOW}[1/5] 检查环境依赖...${NC}"
@@ -50,52 +75,45 @@ create_env_file() {
         return
     fi
     
-    cat > .env << 'EOF'
-# Redis 配置
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_DB=0
-REDIS_PASSWORD=squirrel123
-
-# PostgreSQL 配置
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DATABASE=squirrel
-
-# 下载配置
-MEDIA_DOWNLOAD_PATH=/downloads
-
-# Cookie 配置
-COOKIE_TYPE=file
-COOKIE_CLOUD_URL=
-COOKIE_CLOUD_UUID=
-COOKIE_CLOUD_PASSWORD=
-COOKIE_CLOUD_DOMAIN=
-
-# 数据库连接池配置
-POOL_SIZE=30
-POOL_MAX_SIZE=60
-POOL_RECYCLE=300
-
-# 频道更新配置
-CHANNEL_UPDATE_DEFAULT_SIZE=30
-
-# 运行环境
-ENV=prod
-EOF
-    
-    echo -e "${GREEN}✓ .env 文件创建成功${NC}"
-    echo -e "${YELLOW}提示: 请根据需要修改 .env 文件中的配置${NC}"
+    # 复制示例文件
+    if [ -f "env.example" ]; then
+        cp env.example .env
+        echo -e "${GREEN}✓ .env 文件创建成功（已从 env.example 复制）${NC}"
+        
+        if [ "$STANDALONE_MODE" = true ]; then
+            echo -e "${YELLOW}独立部署提示：请编辑 .env 文件，根据注释修改以下配置：${NC}"
+            echo -e "  - REDIS_HOST（改为外部 Redis 地址）"
+            echo -e "  - REDIS_PASSWORD（改为实际密码）"
+            echo -e "  - POSTGRES_HOST（改为外部 PostgreSQL 地址）"
+            echo -e "  - POSTGRES_PASSWORD（改为实际密码）"
+            echo ""
+            read -p "是否现在编辑 .env 文件？(y/N): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                ${EDITOR:-nano} .env
+            fi
+        else
+            echo -e "${YELLOW}提示：建议修改 .env 文件中的默认密码${NC}"
+        fi
+    else
+        echo -e "${RED}错误: 未找到 env.example 文件${NC}"
+        exit 1
+    fi
 }
 
 # 创建必要的目录
 create_directories() {
     echo -e "${YELLOW}[3/5] 创建必要的目录...${NC}"
     
-    mkdir -p config logs downloads postgres/data redis/data
-    chmod -R 755 config logs downloads postgres/data redis/data
+    if [ "$STANDALONE_MODE" = true ]; then
+        # 独立部署：不需要数据库数据目录
+        mkdir -p config logs downloads plugins_ext
+        chmod -R 755 config logs downloads plugins_ext
+    else
+        # 完整部署：需要数据库数据目录
+        mkdir -p config logs downloads postgres/data redis/data
+        chmod -R 755 config logs downloads postgres/data redis/data
+    fi
     
     echo -e "${GREEN}✓ 目录创建成功${NC}"
 }
@@ -118,7 +136,7 @@ setup_images() {
         fi
     else
         echo -e "${YELLOW}从 Docker Hub 拉取镜像...${NC}"
-        docker compose pull
+        docker compose -f "$COMPOSE_FILE" pull
     fi
     
     echo -e "${GREEN}✓ 镜像准备完成${NC}"
@@ -128,7 +146,7 @@ setup_images() {
 start_services() {
     echo -e "${YELLOW}[5/5] 启动服务...${NC}"
     
-    docker compose up -d
+    docker compose -f "$COMPOSE_FILE" up -d
     
     echo -e "${GREEN}✓ 服务启动成功${NC}"
 }
@@ -147,7 +165,7 @@ show_result() {
     
     # 显示服务状态
     echo -e "${BLUE}服务状态:${NC}"
-    docker compose ps
+    docker compose -f "$COMPOSE_FILE" ps
     
     echo ""
     echo -e "${BLUE}访问地址:${NC}"
@@ -155,9 +173,15 @@ show_result() {
     echo ""
     
     echo -e "${BLUE}常用命令:${NC}"
-    echo -e "  查看日志: ${YELLOW}docker compose logs -f${NC}"
-    echo -e "  停止服务: ${YELLOW}docker compose down${NC}"
-    echo -e "  重启服务: ${YELLOW}docker compose restart${NC}"
+    if [ "$STANDALONE_MODE" = true ]; then
+        echo -e "  查看日志: ${YELLOW}docker compose -f $COMPOSE_FILE logs -f${NC}"
+        echo -e "  停止服务: ${YELLOW}docker compose -f $COMPOSE_FILE down${NC}"
+        echo -e "  重启服务: ${YELLOW}docker compose -f $COMPOSE_FILE restart${NC}"
+    else
+        echo -e "  查看日志: ${YELLOW}docker compose logs -f${NC}"
+        echo -e "  停止服务: ${YELLOW}docker compose down${NC}"
+        echo -e "  重启服务: ${YELLOW}docker compose restart${NC}"
+    fi
     echo ""
     
     echo -e "${BLUE}配置文件位置:${NC}"
@@ -167,11 +191,16 @@ show_result() {
     echo -e "  下载目录: ${YELLOW}./downloads/${NC}"
     echo ""
     
-    echo -e "${YELLOW}提示: 首次启动可能需要等待数据库初始化，请稍候${NC}"
+    if [ "$STANDALONE_MODE" = true ]; then
+        echo -e "${YELLOW}提示: 请确保外部数据库和 Redis 服务正常运行${NC}"
+    else
+        echo -e "${YELLOW}提示: 首次启动可能需要等待数据库初始化，请稍候${NC}"
+    fi
 }
 
 # 主流程
 main() {
+    select_deployment_mode
     check_requirements
     create_env_file
     create_directories
