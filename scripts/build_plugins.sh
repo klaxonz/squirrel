@@ -147,7 +147,7 @@ for plugin in "${PLUGINS[@]}"; do
     rm -rf "$plugin"
 
     echo -e "${GREEN}✓ $plugin 打包完成: $zip_file${NC}"
-    ((SUCCESS_COUNT++))
+    SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
     echo
 done
 
