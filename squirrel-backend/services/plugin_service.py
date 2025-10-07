@@ -75,11 +75,18 @@ class PluginService:
                 # extract
                 import zipfile
                 with zipfile.ZipFile(tmp_zip, 'r') as zf:
-                    PluginService._safe_extract(zf, Path(tmpdir))
+                    # Use extractall for better compatibility
+                    zf.extractall(Path(tmpdir))
+                
                 # detect top folder
-                entries = [e for e in Path(tmpdir).iterdir() if e.is_dir() and e.name != "__MACOSX"]
+                all_entries = list(Path(tmpdir).iterdir())
+                logger.info(f"Extracted entries: {[e.name for e in all_entries]}")
+                
+                entries = [e for e in all_entries if e.is_dir() and e.name != "__MACOSX"]
+                logger.info(f"Valid directory entries: {[e.name for e in entries]}")
+                
                 if not entries:
-                    return False, "Invalid plugin package"
+                    return False, f"Invalid plugin package: no valid directories found (found: {[e.name for e in all_entries]})"
                 top = entries[0]
                 if not PluginService._is_valid_name(top.name):
                     return False, "Invalid plugin name"
