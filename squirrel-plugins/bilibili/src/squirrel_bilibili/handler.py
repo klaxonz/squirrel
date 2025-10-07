@@ -129,8 +129,13 @@ class BilibiliHandler(VideoUrlHandler, ABC):
             for q in qualities:
                 uniq[q['label']] = q
             qualities = sorted(uniq.values(), key=sort_key, reverse=True)
+            
+            # 排序后重新分配index，与MPD中Representation的顺序一致
+            for idx, q in enumerate(qualities):
+                q['index'] = idx
+            
             if not any(q['value'] == 'auto' for q in qualities):
-                qualities.insert(0, {'value': 'auto', 'label': '自动'})
+                qualities.insert(0, {'value': 'auto', 'label': '自动', 'index': -1})
 
         return {
             'video_url': f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,

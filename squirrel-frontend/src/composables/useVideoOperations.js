@@ -20,8 +20,7 @@ export default function useVideoOperations() {
     }
 
     if (!video || !video.id) {
-      const err = Object.assign(new Error('无效的视频对象'), { code: 'BAD_REQUEST' })
-      throw err
+      throw Object.assign(new Error('无效的视频对象'), {code: 'BAD_REQUEST'})
     }
 
     try {
@@ -41,8 +40,7 @@ export default function useVideoOperations() {
 
       if (code !== 0) {
         const errCode = extractErrorCode(msg) || code || 'UNKNOWN'
-        const err = Object.assign(new Error(msg || '无法获取播放链接'), { code: errCode })
-        throw err
+        throw Object.assign(new Error(msg || '无法获取播放链接'), {code: errCode})
       }
 
       const mpdUrl = data?.mpd_url
@@ -50,25 +48,28 @@ export default function useVideoOperations() {
       const audioUrl = data?.audio_url
       const qualities = Array.isArray(data?.qualities) ? data.qualities : []
 
-      // 将清晰度选项透传给前端播放器用于显示
       if (qualities.length) {
-        video.qualities = qualities.map(q => ({ value: q.value, label: q.label, height: q.height, bandwidth: q.bandwidth, id: q.id }))
+        video.qualities = qualities.map(q => ({ 
+          value: q.value, 
+          label: q.label, 
+          height: q.height, 
+          bandwidth: q.bandwidth, 
+          id: q.id,
+          index: q.index
+        }))
       } else {
         video.qualities = undefined
       }
 
       if (mpdUrl) {
-        console.log('[Debug] 1.1. useVideoOperations: DASH mode detected. Setting video.mpd_url =', mpdUrl);
         video.mpd_url = mpdUrl
         return true
       }
 
       if (!videoUrl && !audioUrl) {
-        const err = Object.assign(new Error('无法获取播放链接'), { code: 'NO_STREAM_URL' })
-        throw err
+        throw Object.assign(new Error('无法获取播放链接'), {code: 'NO_STREAM_URL'})
       }
 
-      console.log('[Debug] 1.2. useVideoOperations: Non-DASH mode. Setting stream URLs.');
       video.stream_video_url = videoUrl || ''
       video.stream_audio_url = audioUrl || ''
       video.mpd_url = ''

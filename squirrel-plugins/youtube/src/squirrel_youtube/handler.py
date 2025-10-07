@@ -40,8 +40,13 @@ class YouTubeHandler(VideoUrlHandler, ABC):
                             "id": str(rid)
                         })
         reps.sort(key=lambda q: ((q.get('height') or 0), (q.get('bandwidth') or 0)), reverse=True)
+        
+        # 排序后分配index，与MPD中Representation的顺序一致
+        for idx, q in enumerate(reps):
+            q['index'] = idx
+        
         if not any(q.get('value') == 'auto' for q in reps):
-            reps.insert(0, {"value": "auto", "label": "自动"})
+            reps.insert(0, {"value": "auto", "label": "自动", "index": -1})
         return {
             "mpd_url": f"/api/video/mpd?video_id={video.id}",
             "qualities": reps or None,

@@ -42,6 +42,7 @@ class QualityOptionDto(BaseModel):
     height: Optional[int] = None  # for video tracks
     bandwidth: Optional[int] = None  # bps
     id: Optional[str] = None  # representation id / itag etc.
+    index: Optional[int] = None  # quality index in dash.js bitrateList or hls.js levels (0-based)
 
 
 class VideoUrlDto(BaseModel):

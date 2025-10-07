@@ -36,6 +36,10 @@ class BilibiliMpdBuilder(BaseMpdBuilder):
                 v for v in dash_data['video']
                 if 'codecs' in v and any(x in v['codecs'] for x in ('avc', 'avc1', 'h264'))
             ] or dash_data['video']
+            
+            # 按照bandwidth排序（高到低），确保与handler中qualities的排序一致
+            # 这样qualities中的index就能正确对应MPD中Representation的顺序
+            video_streams = sorted(video_streams, key=lambda x: (x.get('height', 0), x.get('bandwidth', 0)), reverse=True)
 
             video_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="video", mimeType="video/mp4")
             for stream in video_streams:

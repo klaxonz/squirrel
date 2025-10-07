@@ -134,23 +134,57 @@ export default function useHlsPlayer({
   };
 
   const setQuality = (quality) => {
-    playerState.media.currentQuality = quality;
     if (!hlsRef.value) return;
     
-    const levels = hlsRef.value.levels || []
-    let target = levels.findIndex(level =>
-      level.height === parseInt(quality) || level.name === quality || (String(level.height) + 'p' === String(quality))
-    );
-    if (target === -1 && levels.length) {
-      // 回退：选择最高可用清晰度
-      let maxH = -1, maxI = 0
-      for (let i = 0; i < levels.length; i++) {
-        const h = levels[i]?.height || 0
-        if (h > maxH) { maxH = h; maxI = i }
-      }
-      target = maxI
+    console.log('[HLS] Switching quality to:', quality);
+    
+    // 1. 优先使用后端提供的index（一一对应，无需匹配）
+    const qualityInfo = (props?.video?.qualities || []).find(q => q.value === quality)
+    if (qualityInfo && typeof qualityInfo.index === 'number' && qualityInfo.index >= 0) {
+      console.log('[HLS] Using backend-provided index:', qualityInfo.index)
+      hlsRef.value.currentLevel = qualityInfo.index
+      console.log('[HLS] ✓ Quality switched to level:', qualityInfo.index)
+      return
     }
-    hlsRef.value.currentLevel = target;
+
+    // 2. 降级方案：手动匹配（适用于旧版本后端或其他情况）
+    console.warn('[HLS] No index provided, falling back to manual matching')
+    const levels = hlsRef.value.levels || []
+    if (!levels.length) {
+      console.warn('[HLS] No levels available')
+      return
+    }
+
+    const qualityStr = String(quality)
+    const targetHeight = parseInt(qualityStr.replace(/[^0-9]/g, ''), 10)
+    
+    let targetLevel = levels.findIndex(level => 
+      level.height === targetHeight || 
+      level.name === qualityStr || 
+      String(level.height) + 'p' === qualityStr
+    )
+    
+    if (targetLevel === -1) {
+      targetLevel = levels.reduce((closest, level, i) => {
+        if (level.height <= targetHeight && (closest === -1 || level.height > levels[closest].height)) {
+          return i
+        }
+        return closest
+      }, -1)
+      
+      if (targetLevel === -1) {
+        targetLevel = levels.reduce((max, level, i) => 
+          level.height > levels[max].height ? i : max, 0
+        )
+      }
+    }
+    
+    if (targetLevel >= 0) {
+      hlsRef.value.currentLevel = targetLevel
+      console.log('[HLS] ✓ Quality switched to fallback level:', targetLevel)
+    } else {
+      console.warn('[HLS] ✗ No valid level found for:', quality)
+    }
   };
 
   return {
