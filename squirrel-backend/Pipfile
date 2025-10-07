@@ -36,6 +36,6 @@ httpx = {extras = ["http2"], version = "*"}
 botasaurus = "*"
 js2py = "*"
 python-redis-lock = "*"
-uvloop = {version = "*", markers = "sys_platform != 'win32'"}
+uvloop = {version = ">=0.14.0", markers = "sys_platform != 'win32'"}
 
 [dev-packages]
