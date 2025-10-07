@@ -54,24 +54,23 @@ docker compose up -d
 1. 复制并修改环境变量：
 ```bash
 cp env.example .env
-# 根据 .env 文件中的注释修改数据库和 Redis 连接信息
+# 修改 .env 文件中的数据库和 Redis 连接信息：
+# - REDIS_HOST=你的Redis地址
+# - REDIS_PASSWORD=你的Redis密码
+# - POSTGRES_HOST=你的PostgreSQL地址
+# - POSTGRES_PASSWORD=你的PostgreSQL密码
 ```
 
-2. 复制覆盖配置文件：
+2. 启动服务（仅启动 Squirrel，不启动数据库）：
 ```bash
-cp docker-compose.override.example.yaml docker-compose.override.yaml
+docker compose up -d --no-deps squirrel
 ```
 
-3. 启动服务：
-```bash
-docker compose up -d
-```
-
-4. 访问应用：`http://localhost:8000`
+3. 访问应用：`http://localhost:8000`
 
 **说明：** 
-- `docker-compose.override.yaml` 会自动覆盖 `docker-compose.yaml` 中的配置
-- 此文件已在 `.gitignore` 中，不会被 git 跟踪，更新时不会冲突
+- `--no-deps` 参数会跳过依赖服务（Redis 和 PostgreSQL），不会拉取或启动它们
+- 确保外部数据库可以从容器内访问（使用 `host.docker.internal` 或实际 IP）
 
 ### 使用指南
 
@@ -99,16 +98,15 @@ cp env.example .env
 # - POSTGRES_PASSWORD: 改为实际密码
 ```
 
-#### Docker Compose 覆盖配置（独立部署）
+#### Docker Compose 独立部署配置
 
-独立部署时使用 `docker-compose.override.yaml` 覆盖主配置：
+独立部署时使用 `--no-deps` 参数跳过数据库服务：
 
 ```bash
-# 复制覆盖配置示例
-cp docker-compose.override.example.yaml docker-compose.override.yaml
+# 修改 .env 文件配置外部数据库连接信息
 
-# 此文件会自动与 docker-compose.yaml 合并
-# 且不会被 git 跟踪，更新代码时不会冲突
+# 启动服务（不启动 Redis 和 PostgreSQL）
+docker compose up -d --no-deps squirrel
 ```
 
 #### 创建必要的目录
