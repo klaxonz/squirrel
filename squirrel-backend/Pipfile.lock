@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "81490ea7596df42219e584b65249694e4aa03aed9b4e449cb4b5cbada0bbdb26"
+            "sha256": "e2307f6312fa9cb1a545dd150a75a4b555d53769bf2068848b6cc137895b9dc6"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -2864,10 +2864,6 @@
             "index": "pypi",
             "markers": "python_version >= '3.8'",
             "version": "==0.30.1"
-        },
-        "uvloop": {
-            "markers": "sys_platform != 'win32'",
-            "version": "==0.14.0"
         },
         "watchfiles": {
             "hashes": [
