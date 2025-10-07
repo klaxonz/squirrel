@@ -19,11 +19,9 @@ Squirrel 是一个视频订阅和下载工具，下载时可以生成nfo文件�
 ## 目录
 
 - [快速开始](#快速开始)
-  - [一键部署](#一键部署推荐)
-  - [手动部署](#手动部署3步)
+  - [完整部署](#方式一完整部署包含数据库和redis)
+  - [独立部署](#方式二独立部署使用已有的数据库和redis)（使用已有的数据库和Redis）
 - [详细部署指南](#详细部署指南)
-  - [完整部署配置](#完整部署配置)
-  - [独立部署配置](#独立部署配置)（使用已有的数据库和Redis）
 - [常用命令](#常用命令)
 - [浏览器扩展](#浏览器扩展)
 - [插件开发](#插件开发)
@@ -32,38 +30,11 @@ Squirrel 是一个视频订阅和下载工具，下载时可以生成nfo文件�
 
 ## 快速开始
 
-### 🚀 一键部署（推荐）
+### 🚀 快速部署
 
-**Linux/Mac:**
-```bash
-./deploy.sh
-```
+`docker-compose.yaml` 支持两种部署模式，通过注释配置切换。
 
-**Windows PowerShell:**
-```powershell
-.\deploy.ps1
-```
-
-部署脚本支持两种模式：
-- **完整部署**：自动部署 Squirrel、PostgreSQL 和 Redis
-- **独立部署**：仅部署 Squirrel，使用已有的 PostgreSQL 和 Redis
-
-脚本会自动：
-- 选择部署模式
-- 检查 Docker 环境
-- 创建 `.env` 配置文件
-- 创建必要的目录
-- 拉取或构建镜像
-- 启动服务
-
-**独立部署说明：**
-- 选择独立部署时，脚本会提示输入外部数据库和 Redis 的连接信息
-- 默认使用 `host.docker.internal` 连接宿主机服务（适用于 Docker Desktop）
-- Linux 用户可能需要使用宿主机 IP（如 `172.17.0.1`）
-
-### 📦 手动部署（3步）
-
-**方式一：完整部署（包含数据库和Redis）**
+#### 方式一：完整部署（包含数据库和Redis）
 
 1. 复制环境变量示例文件：
 ```bash
@@ -78,24 +49,24 @@ docker compose up -d
 
 3. 访问应用：`http://localhost:8000`
 
-**方式二：独立部署（使用已有的数据库和Redis）**
+#### 方式二：独立部署（使用已有的数据库和Redis）
 
-如果您已经搭建好了 PostgreSQL 和 Redis：
-
-1. 复制环境变量示例文件并修改：
+1. 复制并修改环境变量：
 ```bash
 cp env.example .env
 # 根据 .env 文件中的注释修改数据库和 Redis 连接信息
 ```
 
-2. 启动服务：
+2. 编辑 `docker-compose.yaml`，按照文件顶部注释说明：
+   - 注释掉 `redis` 和 `postgres` 服务
+   - 注释掉 `squirrel` 服务的 `depends_on` 部分
+
+3. 启动服务：
 ```bash
-docker compose -f docker-compose.standalone.yaml up -d
+docker compose up -d
 ```
 
-3. 访问应用：`http://localhost:8000`
-
-详细配置说明请参考 [独立部署配置](#独立部署配置)
+4. 访问应用：`http://localhost:8000`
 
 ### 使用指南
 
@@ -107,87 +78,33 @@ docker compose -f docker-compose.standalone.yaml up -d
 
 ## 详细部署指南
 
-### 📋 完整部署配置
+### 📋 部署配置说明
 
-适用于从零开始部署所有服务（包括 PostgreSQL 和 Redis）。
-
-#### 1. 创建环境配置文件
+#### 环境变量配置
 
 ```bash
 # 复制示例文件
 cp env.example .env
 
-# 修改配置（可选）
-# 建议修改：REDIS_PASSWORD、POSTGRES_PASSWORD
+# 完整部署：保持默认配置即可
+# 独立部署：修改以下配置
+# - REDIS_HOST: 改为外部 Redis 地址
+# - REDIS_PASSWORD: 改为实际密码
+# - POSTGRES_HOST: 改为外部 PostgreSQL 地址
+# - POSTGRES_PASSWORD: 改为实际密码
 ```
 
-#### 2. 创建必要的目录
+#### 创建必要的目录
 
 ```bash
+# 完整部署：需要数据库数据目录
 mkdir -p config logs downloads postgres/data redis/data
+
+# 独立部署：不需要数据库数据目录
+mkdir -p config logs downloads plugins_ext
 ```
 
-### 🔨 从源码构建
-
-#### 构建插件
-
-```bash
-# 开发模式（自动部署到 plugins_ext 目录）
-./build_plugins.sh -d
-
-# 生产模式（仅打包到 plugin_packages 目录）
-./build_plugins.sh
-```
-
-#### 构建镜像
-
-**基础构建：**
-```bash
-# 仅构建应用镜像
-./build.sh
-
-# 构建基础镜像 + 应用镜像
-./build.sh -b
-
-# 不使用缓存重新构建
-./build.sh --no-cache
-
-# 跳过插件构建
-./build.sh --skip-plugins
-```
-
-**推送到仓库：**
-```bash
-# 构建并推送应用镜像
-./build.sh -p
-
-# 构建并推送基础镜像 + 应用镜像
-./build.sh -b -p
-```
-
-**多平台构建（需要推送）：**
-```bash
-# 构建多平台应用镜像 (linux/amd64, linux/arm64)
-./build.sh -m -p
-
-# 构建多平台基础镜像 + 应用镜像
-./build.sh -b -m -p
-```
-
-**查看帮助：**
-```bash
-./build.sh -h
-```
-
-#### 启动服务
-
-```bash
-docker compose up -d
-```
-
-### 📦 使用Docker Compose
-
-#### 启动和停止
+### 📦 Docker Compose 使用
 
 ```bash
 # 启动所有服务
@@ -206,17 +123,6 @@ docker compose down
 docker compose down -v
 ```
 
-#### 使用远程镜像
-
-如果使用 Docker Hub 上的镜像，确保 `docker-compose.yaml` 中的镜像名称正确：
-
-```yaml
-services:
-  squirrel:
-    image: klaxonz/squirrel:latest
-    # ...
-```
-
 ### 📊 服务说明
 
 #### Squirrel 主服务
@@ -227,7 +133,7 @@ services:
   - `./config:/app/config` - 配置文件
   - `./logs:/app/logs` - 日志文件
   - `./downloads:/downloads` - 下载的媒体文件
-  - `./squirrel-backend/plugins_ext:/app/squirrel-backend/plugins_ext` - 插件目录
+  - `./plugins_ext:/app/squirrel-backend/plugins_ext` - 插件目录
 
 #### Redis
 
@@ -257,206 +163,14 @@ docker compose ps
 
 ### 🔄 更新部署
 
-#### 更新应用
-
 ```bash
 # 1. 拉取最新代码
 git pull
 
-# 2. 重新构建镜像
-./build.sh
-
-# 3. 重启服务
+# 2. 重启服务
 docker compose down
 docker compose up -d
 ```
-
-#### 仅更新插件
-
-```bash
-# 1. 构建插件
-./build_plugins.sh -d
-
-# 2. 重启 Squirrel 服务
-docker compose restart squirrel
-```
-
-### 📋 独立部署配置
-
-适用于已经搭建好 PostgreSQL 和 Redis 的场景。
-
-#### 1. 准备外部服务
-
-确保您已经有以下服务运行：
-- **PostgreSQL** (推荐 15+)
-- **Redis** (推荐 7+)
-
-#### 2. 创建数据库
-
-在 PostgreSQL 中创建 squirrel 数据库：
-
-```sql
-CREATE DATABASE squirrel;
-```
-
-#### 3. 配置环境变量
-
-```bash
-# 复制示例文件
-cp env.example .env
-
-# 根据 .env 文件中的注释修改数据库和 Redis 连接信息
-# 必须修改：REDIS_HOST、REDIS_PASSWORD、POSTGRES_HOST、POSTGRES_PASSWORD
-```
-
-#### 4. 创建必要的目录
-
-```bash
-mkdir -p config logs downloads plugins_ext
-```
-
-#### 5. 启动服务
-
-使用独立版 docker-compose 文件启动：
-
-```bash
-docker compose -f docker-compose.standalone.yaml up -d
-```
-
-#### 6. 查看日志
-
-```bash
-docker compose -f docker-compose.standalone.yaml logs -f
-```
-
-#### 7. 访问应用
-
-浏览器访问：`http://localhost:8000`
-
-#### 高级配置
-
-**网络配置**
-
-如果您的 Redis/PostgreSQL 在其他 Docker 容器中运行，可以让 Squirrel 加入同一网络：
-
-```yaml
-# 在 docker-compose.standalone.yaml 中修改
-networks:
-  squirrel-network:
-    external: true
-    name: your-existing-network
-```
-
-#### 独立部署常用命令
-
-```bash
-# 启动服务
-docker compose -f docker-compose.standalone.yaml up -d
-
-# 停止服务
-docker compose -f docker-compose.standalone.yaml down
-
-# 查看日志
-docker compose -f docker-compose.standalone.yaml logs -f squirrel
-
-# 重启服务
-docker compose -f docker-compose.standalone.yaml restart
-
-# 进入容器
-docker compose -f docker-compose.standalone.yaml exec squirrel bash
-```
-
-#### 独立部署故障排查
-
-**连接数据库失败：**
-
-1. 检查数据库地址是否正确
-   ```bash
-   # 在容器中测试连接
-   docker compose -f docker-compose.standalone.yaml exec squirrel bash
-   ping $POSTGRES_HOST
-   ```
-
-2. 检查数据库是否允许远程连接
-   - PostgreSQL: 修改 `postgresql.conf` 的 `listen_addresses`
-   - PostgreSQL: 修改 `pg_hba.conf` 添加允许的IP段
-
-3. 检查防火墙设置
-   ```bash
-   # 确保数据库端口可访问
-   telnet POSTGRES_HOST 5432
-   ```
-
-**连接 Redis 失败：**
-
-1. 检查 Redis 配置
-   - 确保 Redis 绑定了正确的网络接口（`bind` 配置）
-   - 检查 `protected-mode` 设置
-
-2. 验证密码
-   ```bash
-   redis-cli -h REDIS_HOST -p 6379 -a your_password ping
-   ```
-
-**查看容器内配置：**
-
-```bash
-docker compose -f docker-compose.standalone.yaml exec squirrel env | grep -E '(REDIS|POSTGRES)'
-```
-
-#### 性能优化建议
-
-**PostgreSQL 连接池配置：**
-
-根据您的数据库性能调整连接池大小：
-
-```env
-# 基础连接池大小
-POOL_SIZE=30
-
-# 最大连接数
-POOL_MAX_SIZE=60
-
-# 连接回收时间（秒）
-POOL_RECYCLE=300
-```
-
-**Redis 配置：**
-
-确保 Redis 有足够的内存和适当的淘汰策略：
-
-```redis
-# redis.conf
-maxmemory 2gb
-maxmemory-policy allkeys-lru
-```
-
-#### 从完整版迁移到独立版
-
-1. 备份数据
-   ```bash
-   docker compose exec postgres pg_dump -U postgres squirrel > backup.sql
-   ```
-
-2. 导入到外部数据库
-   ```bash
-   psql -h YOUR_POSTGRES_HOST -U postgres squirrel < backup.sql
-   ```
-
-3. 迁移 Redis 数据（如需要）
-   ```bash
-   # 导出
-   docker compose exec redis redis-cli -a squirrel123 --rdb dump.rdb
-   
-   # 导入到外部 Redis
-   redis-cli -h YOUR_REDIS_HOST -a your_password --rdb dump.rdb
-   ```
-
-4. 切换到独立版部署
-   ```bash
-   docker compose down
-   docker compose -f docker-compose.standalone.yaml up -d
-   ```
 
 ## 常用命令
 
@@ -503,29 +217,6 @@ curl http://localhost:8000/health
 ## 插件开发
 
 Squirrel 支持通过插件系统扩展更多视频平台。
-
-### 构建插件
-
-使用 `build_plugins.sh` 脚本可以一键构建所有插件：
-
-**生产模式**（仅打包插件）：
-```bash
-./build_plugins.sh
-```
-生成的插件包将保存在 `plugin_packages/` 目录，可通过 Web 界面上传安装。
-
-**开发模式**（打包 + 自动部署）：
-```bash
-./build_plugins.sh -d
-# 或
-./build_plugins.sh --dev
-```
-开发模式下会自动将插件解压到 `squirrel-backend/plugins_ext/` 目录，无需手动上传。
-
-**查看帮助**：
-```bash
-./build_plugins.sh -h
-```
 
 ### 插件目录
 
