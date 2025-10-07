@@ -30,24 +30,37 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     player.updateSettings({
       streaming: {
         abr: {
-          autoSwitchBitrate: { video: false, audio: true },
+          autoSwitchBitrate: { video: false, audio: false },
           initialBitrate: { video: 50000, audio: 320 },
           initialRepresentationRatio: 1,
-          limitBitrateByPortal: false,
+          limitBitrateByPortal: true,
           maxBitrate: { video: -1, audio: -1 },
           bandwidthSafetyFactor: 0.95,
+          maxRepresentationRatio: 1,
+          fetchThroughputCalculationMode: 'manual',
           usePixelRatioInLimitBitrateByPortal: false
         },
         buffer: {
-          stableBufferTime: 20,
-          bufferTimeAtTopQuality: 30,
-          bufferTimeAtTopQualityLongForm: 40,
+          stableBufferTime: 40,
+          bufferTimeAtTopQuality: 60,
+          bufferTimeAtTopQualityLongForm: 90,
           longFormContentDurationThreshold: 600,
-          bufferToKeep: 20,
-          bufferPruningInterval: 10,
+          bufferToKeep: 30,
+          bufferPruningInterval: 30,
           fastSwitchEnabled: true
         },
-        manifestRequestTimeout: 30000
+        manifestRequestTimeout: 60000,
+        retryAttempts: {
+          MPD: 1,
+          XLinkExpansion: 1,
+          MediaSegment: 3,
+          InitializationSegment: 2,
+          BitstreamSwitchingSegment: 2,
+          IndexSegment: 2,
+          FragmentInfoSegment: 2,
+          license: 1,
+          other: 1
+        },
       }
     })
 
