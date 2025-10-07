@@ -79,10 +79,12 @@ class PluginService:
                     namelist = zf.namelist()
                     logger.info(f"Zip contents: {namelist[:10]}")  # Log first 10 entries
                     
-                    # Get top-level directories (before first /)
+                    # Get top-level directories (handle both / and \ separators)
                     top_dirs = set()
                     for name in namelist:
-                        parts = name.split('/')
+                        # Normalize path separators to /
+                        normalized = name.replace('\\', '/')
+                        parts = normalized.split('/')
                         if parts[0] and parts[0] != '__MACOSX':
                             top_dirs.add(parts[0])
                     
