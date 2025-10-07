@@ -56,6 +56,16 @@ if [ "$DEV_MODE" = true ]; then
 fi
 echo
 
+# 检查依赖
+if ! command -v zip &> /dev/null; then
+    echo -e "${RED}错误: 未找到 zip 命令${NC}"
+    echo -e "${YELLOW}请先安装 zip:${NC}"
+    echo -e "  Ubuntu/Debian: ${GREEN}sudo apt-get install zip${NC}"
+    echo -e "  CentOS/RHEL:   ${GREEN}sudo yum install zip${NC}"
+    echo -e "  macOS:         ${GREEN}brew install zip${NC}"
+    exit 1
+fi
+
 # 检查插件目录是否存在
 if [ ! -d "$PLUGINS_DIR" ]; then
     echo -e "${RED}错误: 插件目录不存在: $PLUGINS_DIR${NC}"
