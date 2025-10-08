@@ -67,10 +67,8 @@ export default function useLatestVideos(initial = {}) {
       sort_by: sortBy.value,
       nsfw: nsfw.value,
       site: site.value,
-      // includeCounts: false (默认值，不传)
     });
 
-    // If a newer request started, ignore this response
     if (currentToken !== requestToken) {
       loading.value = false;
       return;
@@ -89,19 +87,30 @@ export default function useLatestVideos(initial = {}) {
       video_url: null,
     }));
 
-    videos.value =
-      currentPage.value === 1
-        ? newVideos
-        : [
-            ...videos.value,
-            ...newVideos.filter((video) => !videos.value.some((existing) => existing.id === video.id)),
-          ];
+    if (currentPage.value === 1) {
+      const seen = new Set();
+      videos.value = newVideos.filter(video => {
+        if (seen.has(video.id)) {
+          return false;
+        }
+        seen.add(video.id);
+        return true;
+      });
+    } else {
+      const existingIds = new Set(videos.value.map(v => v.id));
+      const uniqueNewVideos = newVideos.filter(video => {
+        if (existingIds.has(video.id)) {
+          return false;
+        }
+        return true;
+      });
+      videos.value = [...videos.value, ...uniqueNewVideos];
+    }
 
     currentPage.value++;
     allLoaded.value = newVideos.length < pageSize;
     loading.value = false;
 
-    // 首次加载时异步获取 counts（不阻塞列表展示）
     if (currentPage.value === 2) {
       loadVideoCounts();
     }
@@ -122,7 +131,6 @@ export default function useLatestVideos(initial = {}) {
   // 监听筛选条件变化，重新加载 counts
   watch([subscriptionId, searchQuery, nsfw, site], () => {
     if (currentPage.value > 1) {
-      // 只在已加载数据后才重新获取 counts
       loadVideoCounts();
     }
   });
