@@ -1,8 +1,8 @@
 import { ref, computed } from 'vue';
 import { useVideoApi } from './useVideoApi';
 
-export default function useVideoDetail() {
-  const video = ref(null);
+export default function useVideoDetail(initialVideo = null) {
+  const video = ref(initialVideo);
   const { getVideoDetail, getSubtitles } = useVideoApi();
 
   const startTime = computed(() => {

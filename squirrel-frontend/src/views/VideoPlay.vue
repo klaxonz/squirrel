@@ -8,8 +8,7 @@
           <div class="video-container">
             <VideoPlayer
               ref="videoPlayerRef"
-              :key="video?.id"
-              v-if="video && (video.stream_video_url || video.mpd_url)"
+              v-if="video"
               :video="video"
               :initialTime="startTime"
               :has-prev="hasPrevVideo"
@@ -27,8 +26,9 @@
         <!-- 视频信息区域 -->
         <div class="mt-3 px-4">
           <!-- 标题与操作按钮 -->
-          <div class="flex items-center justify-between">
-            <h1 class="text-xs md:text-sm lg:text-base lg:font-medium text-white">{{ video?.title }}</h1>
+          <transition name="fade" mode="out-in">
+            <div :key="video?.id" class="flex items-center justify-between">
+              <h1 class="text-xs md:text-sm lg:text-base lg:font-medium text-white">{{ video?.title }}</h1>
 
             <!-- 操作按钮组 -->
             <div class="flex items-center space-x-1">
@@ -143,10 +143,12 @@
                 </div>
               </div>
             </div>
-          </div>
+            </div>
+          </transition>
 
           <!-- 频道信息 -->
-          <div class="mt-3 pb-3 border-b border-[#272727]">
+          <transition name="fade" mode="out-in">
+            <div :key="video?.id" class="mt-3 pb-3 border-b border-[#272727]">
             <div class="flex flex-col space-y-3">
               <div v-for="sub in video?.subscriptions" :key="sub.id" class="flex flex-col">
                 <!-- 头像、频道名称、取消订阅按钮在同一行 -->
@@ -177,7 +179,8 @@
                 </div>
               </div>
             </div>
-          </div>
+            </div>
+          </transition>
 
         </div>
       </div>
@@ -194,7 +197,7 @@
                   v-for="relatedVideo in relatedVideos"
                   :key="relatedVideo.id"
                   class="flex space-x-3 cursor-pointer group"
-                  @click="goToVideo(relatedVideo.id)"
+                  @click="goToVideo(relatedVideo.id, relatedVideo)"
                 >
                   <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-black/60">
                     <img
@@ -255,7 +258,9 @@ import { useVideoApi } from '../composables/useVideoApi';
 
 const route = useRoute();
 const router = useRouter();
-const { video, startTime, relatedVideos, loadingRelated, loadAndPlayById } = usePlaybackOrchestrator();
+
+// 内部切换不使用 router，所以不需要从 history.state 读取初始数据
+const { video, startTime, relatedVideos, loadingRelated, loadAndPlayById } = usePlaybackOrchestrator(null);
 const { sendReport } = useVideoHistory();
 const { downloadVideo } = useOptionsMenu(video);
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
@@ -288,7 +293,7 @@ const handlePrevVideo = async () => {
   for (let i = relatedVideos.value.length - 1; i >= 0; i--) {
     const prevVideo = relatedVideos.value[i];
     if (prevVideo?.id && !recentlyPlayed.value.includes(prevVideo.id)) {
-      await goToVideo(prevVideo.id);
+      await goToVideo(prevVideo.id, prevVideo);
       return;
     }
   }
@@ -296,7 +301,7 @@ const handlePrevVideo = async () => {
   // 如果所有视频都播放过，就播放最后一个
   const lastVideo = relatedVideos.value[relatedVideos.value.length - 1];
   if (lastVideo?.id) {
-    await goToVideo(lastVideo.id);
+    await goToVideo(lastVideo.id, lastVideo);
   }
 };
 
@@ -307,14 +312,14 @@ const handleNextVideo = async () => {
   // 查找第一个未在最近播放历史中的视频
   const nextVideo = relatedVideos.value.find(v => !recentlyPlayed.value.includes(v.id));
   if (nextVideo?.id) {
-    await goToVideo(nextVideo.id);
+    await goToVideo(nextVideo.id, nextVideo);
     return;
   }
   
   // 如果所有视频都播放过，就播放第一个
   const firstVideo = relatedVideos.value[0];
   if (firstVideo?.id) {
-    await goToVideo(firstVideo.id);
+    await goToVideo(firstVideo.id, firstVideo);
   }
 };
 
@@ -365,7 +370,7 @@ const handlePlayRandom = async () => {
     if (res.success && res.data?.id) {
       // 如果这个视频不在最近播放历史中，就播放它
       if (!recentlyPlayed.value.includes(res.data.id)) {
-        await goToVideo(res.data.id);
+        await goToVideo(res.data.id, res.data);
         return;
       }
     }
@@ -375,7 +380,7 @@ const handlePlayRandom = async () => {
   // 如果尝试3次都是最近播放过的，就播放最后一个
   const res = await getRandomVideo(params);
   if (res.success && res.data?.id) {
-    await goToVideo(res.data.id);
+    await goToVideo(res.data.id, res.data);
   }
 };
 
@@ -396,7 +401,7 @@ const focusVideoPlayer = async () => {
   }, 100);
 };
 
-const goToVideo = async (id) => {
+const goToVideo = async (id, videoData = null) => {
   if (!id) return;
   if (video.value?.id === id) return;
   
@@ -409,8 +414,27 @@ const goToVideo = async (id) => {
     }
   }
   
-  await router.replace(`/video/${id}`);
-  await loadAndPlayById(id);
+  // 使用 history.replaceState 直接更新 URL，不触发 Vue Router 的任何逻辑
+  // 注意：history.state 只能存储可序列化的简单数据，不能存储复杂对象
+  if (route.params.videoId !== id) {
+    const newUrl = `/video/${id}`;
+    try {
+      // 只传递基础的、可序列化的数据
+      const simpleState = videoData ? {
+        videoId: videoData.id,
+        title: videoData.title,
+        thumbnail: videoData.thumbnail,
+      } : {};
+      window.history.replaceState(simpleState, '', newUrl);
+    } catch (e) {
+      console.warn('Failed to update history state:', e);
+      // 如果失败，仍然更新URL，只是不带state
+      window.history.replaceState({}, '', newUrl);
+    }
+  }
+  
+  // 直接加载视频，不依赖路由watch
+  await loadAndPlayById(id, videoData);
   // 视频加载后自动聚焦播放器
   await focusVideoPlayer();
 };
@@ -426,7 +450,7 @@ const handleAutoplayNext = async (evt) => {
     // 查找第一个未在最近播放历史中的视频
     const next = relatedVideos.value?.find(v => !recentlyPlayed.value.includes(v.id));
     if (next?.id) {
-      await goToVideo(next.id);
+      await goToVideo(next.id, next);
       return;
     }
     
@@ -437,13 +461,18 @@ const handleAutoplayNext = async (evt) => {
 
 
 onMounted(async () => {
+  // 初始加载时从API获取数据
   await loadAndPlayById(route.params.videoId);
   await focusVideoPlayer();
 });
 
-watch(() => route.params.videoId, async () => {
-  await loadAndPlayById(route.params.videoId);
-  await focusVideoPlayer();
+watch(() => route.params.videoId, async (newId, oldId) => {
+  // 只有从外部导航进来才需要重新加载
+  // 内部切换（goToVideo）已经调用了loadAndPlayById，不需要重复加载
+  if (newId && newId !== oldId && video.value?.id !== newId) {
+    await loadAndPlayById(newId);
+    await focusVideoPlayer();
+  }
 });
 
 </script>
@@ -500,5 +529,22 @@ watch(() => route.params.videoId, async () => {
   .video-container {
     border-radius: 0;
   }
+}
+
+/* 平滑过渡动画 - 快速淡入淡出 */
+.fade-enter-active {
+  transition: opacity 0.1s ease-out;
+}
+
+.fade-leave-active {
+  transition: opacity 0.08s ease-in;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+.fade-enter-to, .fade-leave-from {
+  opacity: 1;
 }
 </style>

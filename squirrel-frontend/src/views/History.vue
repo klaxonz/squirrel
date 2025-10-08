@@ -115,6 +115,7 @@ const showClearConfirm = async () => {
 };
 
 const handleOpenModal = (video) => {
+  // 从列表页进入时，直接跳转，不传递复杂对象
   router.push(`/video/${video.id}`);
 };
 

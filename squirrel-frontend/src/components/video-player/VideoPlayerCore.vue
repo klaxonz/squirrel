@@ -357,34 +357,24 @@ const handleAudioError = () => {
 const initializeMediaSources = () => {
   const hasVideoUrl = !!props.video?.stream_video_url
   const hasMpd = !!props.video?.mpd_url || (hasVideoUrl && props.video.stream_video_url.endsWith('.mpd'))
-  console.log('[Debug] 3. VideoPlayerCore.initializeMediaSources', {
-    hasVideoUrl,
-    hasMpd,
-    isHlsStream: props.isHlsStream,
-    isDashStream: props.isDashStream,
-    urls: { stream: props.video?.stream_video_url, mpd: props.video?.mpd_url }
-  })
 
   if (props.isHlsStream && hasVideoUrl) {
-    console.log('[Debug] 3.1 Using HLS via hls.js')
     try { destroyDash() } catch (_) {}
     initializeHls()
   } else if (hasMpd) {
-    console.log('[Debug] 3.2 Using DASH via dash.js with MPD', props.video?.mpd_url || props.video?.stream_video_url)
     try { destroyHls() } catch (_) {}
     initializeDash()
   } else if (hasVideoUrl) {
-    console.log('[Debug] 3.3 Using native video src', props.video?.stream_video_url)
     try { destroyHls() } catch (_) {}
     try { destroyDash() } catch (_) {}
     videoElement.value.src = props.video.stream_video_url
   } else {
-    console.log('[Debug] 3.4 No playable source yet')
+    props.playerState.media.loading = true
+    props.playerState.media.loadingStage = 'fetching'
   }
 
   // 非 HLS/DASH 才需要独立音频
   if (!props.isHlsStream && !props.isDashStream && props.video.stream_audio_url && audioElement.value) {
-    console.log('[Debug] 3.A Attach separate audio', props.video.stream_audio_url)
     audioElement.value.src = props.video.stream_audio_url
   }
 
@@ -408,15 +398,6 @@ let lastInitializedUrl = null // 记录上次初始化的 URL，避免重复
 watch(
   () => [props.video?.stream_video_url, props.video?.mpd_url],
   ([newStreamUrl, newMpdUrl], [oldStreamUrl, oldMpdUrl]) => {
-    console.log('[Debug] URL watch triggered:', {
-      oldStreamUrl,
-      newStreamUrl,
-      oldMpdUrl,
-      newMpdUrl,
-      streamChanged: newStreamUrl !== oldStreamUrl,
-      mpdChanged: newMpdUrl !== oldMpdUrl
-    })
-    
     // 确定当前使用的 URL（优先使用 mpd_url）
     const currentUrl = newMpdUrl || newStreamUrl || null
     
@@ -425,22 +406,15 @@ watch(
         ((newStreamUrl && newStreamUrl !== oldStreamUrl) || 
          (newMpdUrl && newMpdUrl !== oldMpdUrl))) {
       
-      console.log('[Debug] URL changed, scheduling reinitialization')
-      
-      // 使用防抖避免短时间内多次初始化
       if (initDebounceTimer) {
-        console.log('[Debug] Clearing previous debounce timer')
         clearTimeout(initDebounceTimer)
       }
       
       initDebounceTimer = setTimeout(() => {
-        console.log('[Debug] Executing reinitialization after debounce')
         lastInitializedUrl = currentUrl // 记录已初始化的 URL
         initializeMediaSources()
         initDebounceTimer = null
       }, 100) // 增加防抖时间到 100ms
-    } else {
-      console.log('[Debug] URL not changed or already initialized, skipping reinitialization')
     }
   }
 )
