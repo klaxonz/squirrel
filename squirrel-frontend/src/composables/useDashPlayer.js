@@ -30,7 +30,7 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
           longFormContentDurationThreshold: 600,
           bufferToKeep: 20,
           bufferPruningInterval: 10,
-          fastSwitchEnabled: true
+          fastSwitchEnabled: false
         },
         manifestRequestTimeout: 60000,
       }
