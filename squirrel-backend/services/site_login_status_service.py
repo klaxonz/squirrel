@@ -23,7 +23,7 @@ class SiteLoginStatusService:
     def test(site_name: str) -> Dict[str, Any]:
         registry = get_login_checker_registry()
         checker = registry.get(site_name)
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now().isoformat()
 
         if checker is None:
             return {

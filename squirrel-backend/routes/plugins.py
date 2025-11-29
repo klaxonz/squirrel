@@ -1,7 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Query
 import asyncio
 import logging
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 from services.plugin_service import PluginService
 from services.site_login_status_service import SiteLoginStatusService
@@ -9,6 +9,7 @@ from plugins.loader import reload_plugins
 from common.response import success, error, param_error
 from core.extraction import get_extractor_registry
 from routes.connectivity import test_site_connectivity
+from core.cookie_config import get_cookies_file_path
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +183,37 @@ def get_site_login_status(site_name: str):
 
     status = SiteLoginStatusService.test(site_name)
     return success(status)
+
+
+@router.post("/sites/{site_name}/cookies")
+async def upload_site_cookies(
+    site_name: str,
+    file: UploadFile = File(...),
+    target: Literal["default", "http"] = Query("default")
+):
+    registry = get_extractor_registry()
+    if site_name not in registry.get_all_sites():
+        return param_error(f"不支持的站点: {site_name}")
+
+    data = await file.read()
+    if not data:
+        return param_error("文件为空")
+
+
+    target_path = get_cookies_file_path()
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_bytes(data)
+
+    status = SiteLoginStatusService.test(site_name)
+    return success(
+        {
+            "site_name": site_name,
+            "target": target,
+            "bytes": len(data),
+            "login_status": status,
+        },
+        msg="Cookies 已更新"
+    )
 
 
 @router.post("/sites/test-connectivity/batch")

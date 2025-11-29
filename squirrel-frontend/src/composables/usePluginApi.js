@@ -168,6 +168,37 @@ export function usePluginApi() {
     }
   };
 
+  const uploadSiteCookies = async (siteName, file, target = 'default') => {
+    if (!file) {
+      return { success: false, error: '请选择 Cookie 文件' };
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post(
+        `/api/plugins/sites/${encodeURIComponent(siteName)}/cookies`,
+        formData,
+        {
+          params: { target },
+          headers: { 'Content-Type': 'multipart/form-data' }
+        }
+      );
+
+      if (response.data?.code === 0) {
+        displayToast('Cookie 更新成功');
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data?.msg || 'Cookie 更新失败');
+    } catch (error) {
+      console.error('上传站点 Cookie 失败:', error);
+      const errorMessage = error.message || 'Cookie 更新失败';
+      displayToast(errorMessage, { type: 'error' });
+      return { success: false, error: errorMessage };
+    }
+  };
+
   return {
     getPlugins,
     installPlugin,
@@ -179,6 +210,7 @@ export function usePluginApi() {
     testSiteConnectivity,
     testSiteLoginStatus,
     testAllSitesConnectivity,
+    uploadSiteCookies,
   };
 }
 

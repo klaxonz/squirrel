@@ -4,12 +4,12 @@ from crawl import (
     filter_cookies_to_query_string as sdk_filter_cookies_to_query_string,
     configure_cookie_file_resolver,
 )
-from core.cookie_config import get_cookies_http_file_path
+from core.cookie_config import get_cookies_file_path
 
 
 def resolve_cookie_file_for_url(target_url: str) -> Optional[str]:
     try:
-        file_path = get_cookies_http_file_path()
+        file_path = get_cookies_file_path()
     except Exception:
         return None
 

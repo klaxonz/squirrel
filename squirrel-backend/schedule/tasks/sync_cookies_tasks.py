@@ -9,7 +9,7 @@ from utils.cookie import json_cookie_to_netscape
 logger = logging.getLogger()
 
 
-@TaskRegistry.register(interval=60, unit='minutes')
+# @TaskRegistry.register(interval=60, unit='minutes')
 class SyncCookies(BaseTask):
     @classmethod
     def run(cls):

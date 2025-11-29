@@ -352,6 +352,13 @@
                   >
                     {{ site.loginTesting ? '检测中...' : '登录检测' }}
                   </button>
+                  <button
+                    @click="handleUploadCookies(site)"
+                    :disabled="site.cookieUploading || testingAll"
+                    class="px-3 py-1.5 bg-white/5 hover:bg-white/20 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    {{ site.cookieUploading ? '上传中...' : '上传Cookie' }}
+                  </button>
                 </div>
               </td>
             </tr>
@@ -376,7 +383,8 @@ const {
   getSupportedSites,
   testSiteConnectivity,
   testSiteLoginStatus,
-  testAllSitesConnectivity
+  testAllSitesConnectivity,
+  uploadSiteCookies
 } = usePluginApi();
 
 // 插件管理相关状态
@@ -395,6 +403,7 @@ const supportedSites = ref([]);
 const connectivityResults = ref([]);
 const loginStatusResults = ref({});
 const loginStatusTesting = ref({});
+const cookieUploading = ref({});
 
 // 计算属性
 const siteStats = computed(() => ({
@@ -435,6 +444,7 @@ const displaySites = computed(() => {
       loginStatus: loginResultMap[siteName],
       loginTesting: !!loginTestingMap[siteName],
       supports_login_status: siteInfo.supports_login_status ?? false,
+      cookieUploading: !!cookieUploading.value[siteName],
     };
   });
 });
@@ -601,6 +611,44 @@ const handleTestLogin = async (site) => {
     ...loginStatusTesting.value,
     [siteName]: false
   };
+};
+
+const setCookieUploading = (siteName, value) => {
+  cookieUploading.value = {
+    ...cookieUploading.value,
+    [siteName]: value
+  };
+};
+
+const handleUploadCookies = (site) => {
+  const siteName = site.site_name || site.name;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.txt,.json';
+
+  input.onchange = async (event) => {
+    const files = event.target.files || [];
+    if (!files.length) {
+      return;
+    }
+
+    const file = files[0];
+    setCookieUploading(siteName, true);
+    try {
+      const result = await uploadSiteCookies(siteName, file);
+      if (result.success && result.data?.login_status) {
+        loginStatusResults.value = {
+          ...loginStatusResults.value,
+          [siteName]: result.data.login_status
+        };
+      }
+    } finally {
+      setCookieUploading(siteName, false);
+    }
+    input.value = '';
+  };
+
+  input.click();
 };
 
 // 测试全部站点
