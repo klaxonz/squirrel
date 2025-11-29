@@ -50,8 +50,8 @@
         {{ video.title }}
       </h5>
       <div class="flex items-center justify-between text-2xs text-gray-400 pt-1">
-        <div class="relative group">
-          <div class="flex items-center">
+        <div class="relative group flex-1 min-w-0">
+          <div class="flex items-center min-w-0">
             <div class="flex -space-x-2 relative">
               <div 
                 v-for="(avatar, index) in displayAvatars" 
@@ -80,8 +80,9 @@
               </div>
             </div>
             <span 
-              class="text-2xs text-gray-400 ml-2 truncate cursor-pointer hover:text-[#3ea6ff] transition-colors"
+              class="text-2xs text-gray-400 ml-2 truncate cursor-pointer hover:text-[#3ea6ff] transition-colors flex-1 min-w-0 block"
               @click.stop="goToSubscription(video.subscriptions[0]?.id)"
+              :title="displayNames"
             >
               {{ displayNames }}
             </span>
@@ -116,7 +117,7 @@
             <div class="absolute -bottom-2 left-4 w-4 h-4 bg-[#282828] transform rotate-45"></div>
           </div>
         </div>
-        <span class="leading-4 font-medium">{{ formatDate(video.uploaded_at) }}</span>
+        <span class="leading-4 font-medium flex-shrink-0 ml-2">{{ formatDate(video.uploaded_at) }}</span>
       </div>
     </div>
     <Teleport to="body">
