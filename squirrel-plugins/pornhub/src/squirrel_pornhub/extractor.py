@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 class PornhubExtractor(YoutubeDLExtractorBase):
     """Pornhub视频提取器"""
     
+    test_url = "https://www.pornhub.com"
+    
     def __init__(self):
         super().__init__('pornhub', ['pornhub.com'])
     

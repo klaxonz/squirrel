@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 class JavdbExtractor(VideoExtractorBase):
     """JavDB视频提取器"""
     
+    test_url = "https://javdb.com"
+    
     def __init__(self):
         super().__init__('javdb', ['javdb.com'])
     

@@ -112,6 +112,49 @@ export function usePluginApi() {
     }
   };
 
+  const getSupportedSites = async () => {
+    try {
+      const response = await axios.get('/api/plugins/sites');
+      if (response.data?.code === 0) {
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data?.msg || '获取支持站点列表失败');
+    } catch (error) {
+      console.error('获取支持站点列表失败:', error);
+      return { success: false, error: error.message || '获取支持站点列表失败' };
+    }
+  };
+
+  const testSiteConnectivity = async (siteName, timeout = 10) => {
+    try {
+      const response = await axios.get(`/api/plugins/sites/${encodeURIComponent(siteName)}/test-connectivity`, {
+        params: { timeout }
+      });
+      if (response.data?.code === 0) {
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data?.msg || '测试连通性失败');
+    } catch (error) {
+      console.error('测试站点连通性失败:', error);
+      return { success: false, error: error.message || '测试连通性失败' };
+    }
+  };
+
+  const testAllSitesConnectivity = async (timeout = 10) => {
+    try {
+      const response = await axios.get('/api/plugins/sites/test-connectivity/all', {
+        params: { timeout }
+      });
+      if (response.data?.code === 0) {
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data?.msg || '批量测试失败');
+    } catch (error) {
+      console.error('批量测试站点连通性失败:', error);
+      return { success: false, error: error.message || '批量测试失败' };
+    }
+  };
+
   return {
     getPlugins,
     installPlugin,
@@ -119,6 +162,9 @@ export function usePluginApi() {
     disablePlugin,
     uninstallPlugin,
     reloadPlugins,
+    getSupportedSites,
+    testSiteConnectivity,
+    testAllSitesConnectivity,
   };
 }
 

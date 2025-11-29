@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 class BilibiliExtractor(YoutubeDLExtractorBase):
     """Bilibili视频提取器"""
     
+    test_url = "https://www.bilibili.com"
+    
     def __init__(self):
         super().__init__('bilibili', ['bilibili.com'])
     

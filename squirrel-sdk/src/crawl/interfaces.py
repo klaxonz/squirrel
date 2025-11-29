@@ -143,6 +143,11 @@ class IExtractor(abc.ABC):
     site_name: str  # e.g. "youtube"
     supported_domains: List[str]  # e.g. ["youtube.com", "youtu.be"]
 
+    @classmethod
+    def get_test_url(cls) -> Optional[str]:
+        """Return URL for connectivity testing."""
+        return getattr(cls, 'test_url', None)
+
     @property
     def supported_sites(self) -> List[str]:  # noqa: D401 – purposely concise
         """Return list with single ``site_name`` by default."""

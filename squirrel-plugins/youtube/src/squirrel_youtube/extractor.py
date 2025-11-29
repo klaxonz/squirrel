@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 class YoutubeExtractor(YoutubeDLExtractorBase):
     """YouTube视频提取器"""
     
+    test_url = "https://www.youtube.com"
+    
     def __init__(self):
         super().__init__('youtube', ['youtube.com', 'youtu.be'])
     

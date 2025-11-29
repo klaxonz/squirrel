@@ -15,6 +15,7 @@ class ExtractorRegistry:
     def __init__(self):
         self._extractors: Dict[str, Type[IExtractor]] = {}
         self._domain_mapping: Dict[str, str] = {}
+        self._test_urls: Dict[str, str] = {}  # 存储每个站点的测试URL
     
     def register(self, site_name: str, extractor_class: Type[IExtractor], domains: List[str]) -> None:
         """注册提取器"""
@@ -29,7 +30,20 @@ class ExtractorRegistry:
                 logger.warning(f"域名映射已存在，将被覆盖: {domain} -> {site_name}")
             self._domain_mapping[domain] = site_name
         
-        logger.info(f"注册提取器: {site_name}, 支持域名: {domains}")
+        test_url = None
+        if hasattr(extractor_class, 'get_test_url'):
+            try:
+                test_url = extractor_class.get_test_url()
+            except Exception as e:
+                logger.warning(f"调用 {site_name}.get_test_url() 失败: {e}")
+                import traceback
+                logger.info(traceback.format_exc())
+        
+        if test_url:
+            self._test_urls[site_name] = test_url
+            logger.info(f"✓ 注册提取器: {site_name}, 支持域名: {domains}, 测试URL: {test_url}")
+        else:
+            logger.info(f"✗ 注册提取器: {site_name}, 支持域名: {domains} (无测试URL)")
     
     def get_extractor_class(self, site_name: str) -> Optional[Type[IExtractor]]:
         """根据网站名获取提取器类"""
@@ -46,6 +60,10 @@ class ExtractorRegistry:
     def get_all_domains(self) -> List[str]:
         """获取所有支持的域名"""
         return list(self._domain_mapping.keys())
+    
+    def get_test_url(self, site_name: str) -> Optional[str]:
+        """获取站点的测试URL"""
+        return self._test_urls.get(site_name)
 
 
 class ExtractorFactory:

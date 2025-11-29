@@ -63,19 +63,25 @@ class PluginBridge:
 
                 # 为当前循环的 extractor_class 生成独立的适配器类，避免闭包晚绑定问题
                 def _make_adapter(extractor_cls):
+                    plugin_test_url = getattr(extractor_cls, "test_url", None)
+                    plugin_site_name = getattr(extractor_cls, "site_name", site_name)
+                    plugin_domains = list(getattr(extractor_cls, "supported_domains", []) or domains)
+
                     class AdapterClass(PluginExtractorAdapter):
+                        test_url = plugin_test_url
+                        site_name = plugin_site_name
+                        supported_domains = plugin_domains
+
                         def __init__(self):
                             plugin_instance = extractor_cls()
                             super().__init__(plugin_instance)
 
-                    # 提高可读性：为不同站点赋予不同的类名
                     AdapterClass.__name__ = f"{extractor_cls.__name__}Adapter"
                     return AdapterClass
 
                 AdapterClass = _make_adapter(extractor_class)
 
-                # 注册到后端工厂
-                backend_registry.register(site_name, AdapterClass, domains)
+                backend_registry.register(site_name, AdapterClass, domains or AdapterClass.supported_domains or [])
                 logger.info(f"已桥接插件提取器: {site_name}, 域名: {domains}")
             
             self._initialized = True
