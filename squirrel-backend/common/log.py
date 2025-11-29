@@ -1,4 +1,5 @@
 import logging.config
+import logging.handlers
 import os
 import sys
 
@@ -73,12 +74,24 @@ LOGGING_CONFIG = {
             'filters': ['trace_id'],
         },
         'file': {
-            'class': 'logging.FileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(LOG_DIR, 'app.log'),
             'formatter': 'default',
             'level': 'INFO',
             'encoding': 'utf-8',
             'filters': ['trace_id'],
+            'maxBytes': 50 * 1024 * 1024,  # 50MB per file
+            'backupCount': 10,  # Keep 10 backup files (total ~500MB)
+        },
+        'error_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'error.log'),
+            'formatter': 'default',
+            'level': 'ERROR',
+            'encoding': 'utf-8',
+            'filters': ['trace_id'],
+            'maxBytes': 20 * 1024 * 1024,  # 20MB per file
+            'backupCount': 5,  # Keep 5 backup files (total ~100MB)
         },
     },
     'loggers': {
@@ -92,7 +105,7 @@ LOGGING_CONFIG = {
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': ['console', 'file', 'error_file'],
         'level': 'INFO',
     },
 }
