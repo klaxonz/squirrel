@@ -140,6 +140,19 @@ export function usePluginApi() {
     }
   };
 
+  const testSiteLoginStatus = async (siteName) => {
+    try {
+      const response = await axios.get(`/api/plugins/sites/${encodeURIComponent(siteName)}/login-status`);
+      if (response.data?.code === 0) {
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data?.msg || '检测登录状态失败');
+    } catch (error) {
+      console.error('检测站点登录状态失败:', error);
+      return { success: false, error: error.message || '检测登录状态失败' };
+    }
+  };
+
   const testAllSitesConnectivity = async (timeout = 10) => {
     try {
       const response = await axios.get('/api/plugins/sites/test-connectivity/all', {
@@ -164,6 +177,7 @@ export function usePluginApi() {
     reloadPlugins,
     getSupportedSites,
     testSiteConnectivity,
+    testSiteLoginStatus,
     testAllSitesConnectivity,
   };
 }

@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from threading import RLock
-from typing import Dict, List, Optional, Type
+from typing import Callable, Dict, List, Optional, Type
 
-from .interfaces import IExtractor, ISubscription
+from .interfaces import IExtractor, ISubscription, LoginStatusResult
 
 
 class ExtractorRegistry:
@@ -210,4 +210,47 @@ def register_user_subscription_importer(site_name: str):
     def decorator(cls: Type):
         get_importer_registry().register(site_name, cls)
         return cls
+    return decorator
+
+
+# ---------------- Login status checker registry -----------------
+
+LoginStatusChecker = Callable[[], LoginStatusResult]
+
+
+class LoginStatusCheckerRegistry:
+    """Registry for optional site login status checkers."""
+
+    def __init__(self) -> None:
+        self._by_site: Dict[str, LoginStatusChecker] = {}
+        self._lock = RLock()
+
+    def register(self, site_name: str, checker: LoginStatusChecker) -> None:
+        if not callable(checker):
+            raise TypeError("login checker must be callable")
+        with self._lock:
+            self._by_site[site_name] = checker
+
+    def get(self, site_name: str) -> Optional[LoginStatusChecker]:
+        return self._by_site.get(site_name)
+
+    def get_supported_sites(self) -> List[str]:
+        return list(self._by_site.keys())
+
+
+_login_checker_registry_singleton: Optional[LoginStatusCheckerRegistry] = None
+
+
+def get_login_checker_registry() -> LoginStatusCheckerRegistry:
+    global _login_checker_registry_singleton
+    if _login_checker_registry_singleton is None:
+        _login_checker_registry_singleton = LoginStatusCheckerRegistry()
+    return _login_checker_registry_singleton
+
+
+def register_login_checker(site_name: str):
+    """Decorator for registering a site login status checker."""
+    def decorator(func: LoginStatusChecker):
+        get_login_checker_registry().register(site_name, func)
+        return func
     return decorator

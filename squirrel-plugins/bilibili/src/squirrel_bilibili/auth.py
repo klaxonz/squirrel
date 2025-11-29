@@ -1,0 +1,70 @@
+from __future__ import annotations
+
+import logging
+
+from crawl import (
+    LoginStatusResult,
+    filter_cookies_to_query_string,
+    register_login_checker,
+    request_without_limit,
+)
+
+logger = logging.getLogger(__name__)
+
+_CHECK_URL = "https://api.bilibili.com/x/web-interface/nav"
+_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Referer": "https://www.bilibili.com",
+}
+
+
+@register_login_checker("bilibili")
+def check_bilibili_login_status() -> LoginStatusResult:
+    cookies = filter_cookies_to_query_string(_CHECK_URL)
+    site_name = "bilibili"
+
+    if not cookies:
+        return LoginStatusResult(
+            site_name=site_name,
+            logged_in=False,
+            message="cookies.txt 中未找到 Bilibili 条目",
+        )
+
+    headers = dict(_HEADERS)
+    headers["Cookie"] = cookies
+
+    try:
+        resp = request_without_limit("GET", _CHECK_URL, headers=headers, timeout=15)
+        payload = resp.json()
+    except Exception as exc:
+        logger.warning("bilibili login check failed: %s", exc, exc_info=True)
+        return LoginStatusResult(
+            site_name=site_name,
+            logged_in=False,
+            message=f"请求失败: {exc}",
+        )
+
+    if payload.get("code") == 0:
+        data = payload.get("data") or {}
+        if data.get("isLogin"):
+            level_info = data.get("level_info") or {}
+            extra = {
+                "level": level_info.get("current_level"),
+                "vipType": data.get("vipType"),
+            }
+            return LoginStatusResult(
+                site_name=site_name,
+                logged_in=True,
+                username=data.get("uname"),
+                user_id=str(data.get("mid") or ""),
+                message="已登录",
+                extra=extra,
+            )
+
+    message = payload.get("message") or payload.get("data", {}).get("message")
+    return LoginStatusResult(
+        site_name=site_name,
+        logged_in=False,
+        message=message or "未登录或 Cookie 已过期",
+    )

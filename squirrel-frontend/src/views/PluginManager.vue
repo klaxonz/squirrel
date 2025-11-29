@@ -225,6 +225,7 @@
               <th class="text-left py-3 px-4 text-sm font-medium text-[#aaaaaa]">站点名称</th>
               <th class="text-left py-3 px-4 text-sm font-medium text-[#aaaaaa] hidden lg:table-cell">支持域名</th>
               <th class="text-center py-3 px-4 text-sm font-medium text-[#aaaaaa]">状态</th>
+              <th class="text-center py-3 px-4 text-sm font-medium text-[#aaaaaa]">登录状态</th>
               <th class="text-center py-3 px-4 text-sm font-medium text-[#aaaaaa]">响应时间</th>
               <th class="text-center py-3 px-4 text-sm font-medium text-[#aaaaaa] hidden md:table-cell">IP地址</th>
               <th class="text-right py-3 px-4 text-sm font-medium text-[#aaaaaa]">操作</th>
@@ -289,6 +290,45 @@
                   </span>
                 </div>
               </td>
+              <td class="py-4 px-4">
+                <div class="flex justify-center">
+                  <span
+                    v-if="!site.supports_login_status"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-white/5 text-[#aaaaaa]"
+                  >
+                    未接入
+                  </span>
+                  <span
+                    v-else-if="site.loginTesting"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400 flex items-center gap-1"
+                  >
+                    <svg class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    检测中
+                  </span>
+                  <span
+                    v-else-if="site.loginStatus?.logged_in"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-green-500/20 text-green-400"
+                    :title="site.loginStatus?.message || '已登录'"
+                  >
+                    已登录
+                  </span>
+                  <span
+                    v-else-if="site.loginStatus"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-red-500/20 text-red-400"
+                    :title="site.loginStatus?.message || '未登录'"
+                  >
+                    未登录
+                  </span>
+                  <span
+                    v-else
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-white/5 text-[#aaaaaa]"
+                  >
+                    未检测
+                  </span>
+                </div>
+              </td>
               <td class="py-4 px-4 text-center text-sm text-[#aaaaaa]">
                 {{ site.response_time ? `${site.response_time}ms` : '—' }}
               </td>
@@ -302,7 +342,15 @@
                     :disabled="site.testing || testingAll"
                     class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    {{ site.testing ? '测试中...' : '测试' }}
+                    {{ site.testing ? '测试中...' : '连通性' }}
+                  </button>
+                  <button
+                    v-if="site.supports_login_status"
+                    @click="handleTestLogin(site)"
+                    :disabled="site.loginTesting || testingAll"
+                    class="px-3 py-1.5 bg-white/5 hover:bg-white/15 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    {{ site.loginTesting ? '检测中...' : '登录检测' }}
                   </button>
                 </div>
               </td>
@@ -327,6 +375,7 @@ const {
   reloadPlugins,
   getSupportedSites,
   testSiteConnectivity,
+  testSiteLoginStatus,
   testAllSitesConnectivity
 } = usePluginApi();
 
@@ -344,6 +393,8 @@ const loadingSites = ref(false);
 const testingAll = ref(false);
 const supportedSites = ref([]);
 const connectivityResults = ref([]);
+const loginStatusResults = ref({});
+const loginStatusTesting = ref({});
 
 // 计算属性
 const siteStats = computed(() => ({
@@ -366,6 +417,9 @@ const displaySites = computed(() => {
     });
   }
 
+  const loginResultMap = loginStatusResults.value || {};
+  const loginTestingMap = loginStatusTesting.value || {};
+
   return supportedSites.value.map(siteInfo => {
     const siteName = siteInfo.name;
     const result = resultsMap.get(siteName);
@@ -377,7 +431,10 @@ const displaySites = computed(() => {
       site_name: siteName,
       // 优先使用测试结果中的域名和test_url，否则使用站点基本信息
       domains: result?.domains || siteInfo.domains || [],
-      test_url: result?.test_url || siteInfo.test_url || ''
+      test_url: result?.test_url || siteInfo.test_url || '',
+      loginStatus: loginResultMap[siteName],
+      loginTesting: !!loginTestingMap[siteName],
+      supports_login_status: siteInfo.supports_login_status ?? false,
     };
   });
 });
@@ -511,6 +568,39 @@ const handleTestSingle = async (site) => {
   if (index !== -1) {
     displaySites.value[index].testing = false;
   }
+};
+
+const handleTestLogin = async (site) => {
+  const siteName = site.site_name || site.name;
+  loginStatusTesting.value = {
+    ...loginStatusTesting.value,
+    [siteName]: true
+  };
+
+  const result = await testSiteLoginStatus(siteName);
+
+  if (result.success && result.data) {
+    loginStatusResults.value = {
+      ...loginStatusResults.value,
+      [siteName]: result.data
+    };
+  } else {
+    loginStatusResults.value = {
+      ...loginStatusResults.value,
+      [siteName]: {
+        site_name: siteName,
+        logged_in: false,
+        message: result.error || '检测失败',
+        supported: false,
+        checked_at: new Date().toISOString(),
+      }
+    };
+  }
+
+  loginStatusTesting.value = {
+    ...loginStatusTesting.value,
+    [siteName]: false
+  };
 };
 
 // 测试全部站点

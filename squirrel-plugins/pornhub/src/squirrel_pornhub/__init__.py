@@ -8,6 +8,7 @@ from .extractor import PornhubExtractor  # noqa: F401
 from .config import PornhubProxyConfig  # noqa: F401
 from .proxy import PornhubProxy  # noqa: F401
 from .importer import PornhubUserSubscriptionImporter  # noqa: F401
+from . import auth as _auth  # noqa: F401
 
 
 PLUGIN_NAME = "pornhub"

@@ -232,6 +232,28 @@ class IUserSubscriptionImporter(abc.ABC):
         """
 
 
+@dataclass
+class LoginStatusResult:
+    """Result returned by site login status checkers."""
+
+    site_name: str
+    logged_in: bool
+    username: Optional[str] = None
+    user_id: Optional[str] = None
+    message: Optional[str] = None
+    extra: Optional[Dict[str, Any]] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "site_name": self.site_name,
+            "logged_in": self.logged_in,
+            "username": self.username,
+            "user_id": self.user_id,
+            "message": self.message,
+            "extra": self.extra or {},
+        }
+
+
 # ---------------- Video & Actor Base Classes -----------------
 
 

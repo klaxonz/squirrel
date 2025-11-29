@@ -11,6 +11,7 @@ from .subtitles import YoutubeSubtitlesProvider  # noqa: F401
 from .extractor import YoutubeExtractor  # noqa: F401
 from .config import YoutubeProxyConfig  # noqa: F401
 from .importer import YoutubeUserSubscriptionImporter  # noqa: F401
+from . import auth as _auth  # noqa: F401
 
 
 PLUGIN_NAME = "youtube"

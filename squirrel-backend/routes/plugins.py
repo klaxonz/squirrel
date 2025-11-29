@@ -4,6 +4,7 @@ import logging
 from typing import List, Optional
 
 from services.plugin_service import PluginService
+from services.site_login_status_service import SiteLoginStatusService
 from plugins.loader import reload_plugins
 from common.response import success, error, param_error
 from core.extraction import get_extractor_registry
@@ -92,6 +93,7 @@ def get_supported_sites():
         每个站点的详细信息，包括名称和对应的域名列表
     """
     registry = get_extractor_registry()
+    login_supported_sites = SiteLoginStatusService.get_supported_sites()
     all_sites = registry.get_all_sites()
     domain_mapping = registry._domain_mapping
     
@@ -111,7 +113,8 @@ def get_supported_sites():
             "name": site_name,
             "domains": site_domains,
             "primary_domain": select_primary_domain(site_domains),
-            "test_url": test_url
+            "test_url": test_url,
+            "supports_login_status": site_name in login_supported_sites,
         })
     
     return success({
@@ -169,6 +172,16 @@ async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(1
         "ip_address": result.ip_address,
         "error_message": result.error_message
     })
+
+
+@router.get("/sites/{site_name}/login-status")
+def get_site_login_status(site_name: str):
+    registry = get_extractor_registry()
+    if site_name not in registry.get_all_sites():
+        return param_error(f"不支持的站点: {site_name}")
+
+    status = SiteLoginStatusService.test(site_name)
+    return success(status)
 
 
 @router.post("/sites/test-connectivity/batch")

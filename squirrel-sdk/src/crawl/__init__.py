@@ -36,6 +36,7 @@ from .interfaces import (
     IResultHandler,
     TaskPriority,
     IUserSubscriptionImporter,
+    LoginStatusResult,
 )
 from .registry import (
     ExtractorRegistry,
@@ -48,6 +49,8 @@ from .registry import (
     UserSubscriptionImporterRegistry,
     get_importer_registry,
     register_user_subscription_importer,
+    get_login_checker_registry,
+    register_login_checker,
 )
 from .meta_origin import SubscriptionMeta
 from .utils import filter_cookies_to_query_string, configure_cookie_file_resolver, resolve_cookie_file_path
@@ -100,6 +103,7 @@ __all__ = [
     "ITaskProcessor",
     "IResultHandler",
     "IUserSubscriptionImporter",
+    "LoginStatusResult",
     # base entities
     "Video",
     "Actor",
@@ -118,6 +122,8 @@ __all__ = [
     "UserSubscriptionImporterRegistry",
     "get_importer_registry",
     "register_user_subscription_importer",
+    "get_login_checker_registry",
+    "register_login_checker",
     # utils
     "filter_cookies_to_query_string",
     "configure_cookie_file_resolver",
