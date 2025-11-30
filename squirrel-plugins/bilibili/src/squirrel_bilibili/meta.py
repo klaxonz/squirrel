@@ -5,9 +5,11 @@ import logging
 import re
 from typing import Optional
 
-from crawl import register_meta, Video, Actor, filter_cookies_to_query_string, request
+from crawl import register_meta, Video, Actor, filter_cookies_to_query_string, request, get_http_headers
 
 logger = logging.getLogger(__name__)
+
+SITE_SLUG = 'bilibili'
 
 
 @register_meta
@@ -17,12 +19,12 @@ class BilibiliVideo(Video):
     @property
     def actors(self):  # type: ignore[override]
         if len(self._actors) == 0:
-            headers = {
+            headers = get_http_headers(SITE_SLUG, {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                               'AppleWebKit/537.36 (KHTML, like Gecko) '
                               'Chrome/58.0.3029.110 Safari/537.3',
                 'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
-            }
+            })
 
             response = request('GET', self.url, headers=headers, timeout=20)
             response.raise_for_status()
@@ -46,12 +48,12 @@ class BilibiliVideo(Video):
 
     def video_exists(self) -> bool:
         cookies = filter_cookies_to_query_string(self.url)
-        headers = {
+        headers = get_http_headers(SITE_SLUG, {
             'Referer': self.url,
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                           '(KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-            'Cookie': cookies,
-        }
+        })
+        headers['Cookie'] = cookies
         response = request('GET', self.url, headers=headers, timeout=20)
         return '视频去哪了' not in response.text
 

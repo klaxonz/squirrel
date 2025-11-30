@@ -1,6 +1,6 @@
 import logging
 import time
-from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response
+from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response, Body
 from fastapi.responses import PlainTextResponse
 import common.response as response
 from common.video_stream import VideoStreamHandler
@@ -9,8 +9,10 @@ from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExt
 from models.user import User
 from schemas.video.request.video import SortBy, DownloadVideoRequest
 from services import video_service, subscription_video_service, subscription_service
+from services.site_catalog_service import SiteCatalogService
 from typing import List
 from utils.site_catalog import SiteCatalog
+from core.site_config_manager import get_effective_site_catalog
 from crawl import VideoFactory, DownloaderFactory, ProxyRegistry, SubtitlesRegistry, MpdRegistry
 from utils.jwt_helper import get_current_user
 from utils.url_helper import extract_top_level_domain
@@ -263,4 +265,26 @@ def get_video_mpd(
 @router.get("/api/sites")
 def get_sites_catalog():
     """返回完整站点配置（label, domains, aliases, enabled）。"""
-    return response.success(SiteCatalog.get_catalog())
+    return response.success(get_effective_site_catalog())
+
+
+@router.put("/api/sites")
+def update_sites_catalog(payload: dict = Body(...)):
+    """保存页面编辑后的站点配置。"""
+    sites_payload = None
+    if isinstance(payload, dict):
+        sites_payload = payload.get("sites")
+    elif isinstance(payload, list):
+        sites_payload = payload
+
+    if sites_payload is None:
+        return response.param_error("缺少 sites 参数")
+
+    try:
+        catalog = SiteCatalogService.save_sites(sites_payload)
+        return response.success(catalog, msg="站点配置已更新")
+    except ValueError as exc:
+        return response.param_error(str(exc))
+    except Exception:
+        logger.exception("Failed to update site catalog")
+        return response.server_error("保存站点配置失败")

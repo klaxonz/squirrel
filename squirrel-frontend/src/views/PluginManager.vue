@@ -238,7 +238,18 @@
               class="border-b border-white/5 hover:bg-white/5 transition-colors"
             >
               <td class="py-4 px-4">
-                <div class="font-medium">{{ site.site_name || site.name }}</div>
+                <div class="font-medium flex items-center gap-2">
+                  <span>{{ site.display_label || site.site_name || site.name }}</span>
+                  <span
+                    v-if="site.config_enabled === false"
+                    class="px-2 py-0.5 text-[10px] rounded-full bg-red-500/10 text-red-400 border border-red-500/30"
+                  >
+                    已禁用
+                  </span>
+                </div>
+                <div class="text-xs text-[#aaaaaa] mt-0.5">
+                  标识：{{ site.site_name || site.name }}
+                </div>
                 <div v-if="site.test_url" class="text-xs text-[#aaaaaa] mt-0.5">{{ site.test_url }}</div>
               </td>
               <td class="py-4 px-4 hidden lg:table-cell">
@@ -338,6 +349,13 @@
               <td class="py-4 px-4">
                 <div class="flex items-center justify-end gap-2">
                   <button
+                    @click="openSiteEditor(site)"
+                    :disabled="!siteCatalogLoaded || siteCatalogLoading"
+                    class="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    站点配置
+                  </button>
+                  <button
                     @click="handleTestSingle(site)"
                     :disabled="site.testing || testingAll"
                     class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
@@ -364,6 +382,222 @@
             </tr>
           </tbody>
         </table>
+    </div>
+  </div>
+
+    <!-- 站点配置编辑弹窗 -->
+    <div
+      v-if="siteEditorVisible"
+      class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      @click.self="closeSiteEditor"
+    >
+      <div class="bg-[#161616] rounded-2xl border border-white/10 w-full max-w-3xl shadow-2xl">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
+          <div>
+            <h3 class="text-lg font-semibold">编辑站点配置</h3>
+            <p class="text-xs text-[#aaaaaa] mt-1">插件站点：{{ siteEditorForm.siteName }}</p>
+          </div>
+          <button
+            class="text-[#aaaaaa] hover:text-white transition-colors"
+            @click="closeSiteEditor"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="site-editor-scroll px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto pr-2">
+          <div>
+            <label class="block text-sm text-[#aaaaaa] mb-1">显示名称</label>
+            <input
+              v-model="siteEditorForm.label"
+              class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]"
+              placeholder="展示给用户的名称"
+            >
+          </div>
+
+  <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm text-[#aaaaaa] mb-1">域名列表</label>
+              <textarea
+                v-model="siteEditorForm.domainsText"
+                rows="5"
+                class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]"
+                placeholder="每行一个域名，例如：www.youtube.com"
+              ></textarea>
+              <p class="text-xs text-[#777] mt-1">用于匹配订阅与视频来源，至少填写一个域名。</p>
+            </div>
+            <div>
+              <label class="block text-sm text-[#aaaaaa] mb-1">别名（可选）</label>
+              <textarea
+                v-model="siteEditorForm.aliasesText"
+                rows="5"
+                class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]"
+                placeholder="每行一个别名，例如：yt、油管"
+              ></textarea>
+              <p class="text-xs text-[#777] mt-1">别名可用于筛选条件。</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 text-sm text-[#aaaaaa]">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" v-model="siteEditorForm.enabled" class="accent-[#cc0000]">
+              启用该站点（用于筛选/数据爬取）
+            </label>
+          </div>
+
+          <div>
+            <label class="block text-sm text-[#aaaaaa] mb-1">测试 URL</label>
+            <input
+              v-model="siteEditorForm.testUrl"
+              class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]"
+              placeholder="用于连通性检测的 URL"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm text-[#aaaaaa] mb-1">HTTP 请求头（每行 key: value）</label>
+            <textarea
+              v-model="siteEditorForm.httpHeadersText"
+              rows="4"
+              class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]"
+              placeholder="User-Agent: Mozilla/5.0"
+            ></textarea>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm text-[#aaaaaa] mb-1">最小请求间隔（秒）</label>
+              <input
+                type="number"
+                step="0.1"
+                v-model="siteEditorForm.rateLimitMin"
+                class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]"
+              >
+            </div>
+            <div>
+              <label class="block text-sm text-[#aaaaaa] mb-1">最大请求间隔（秒）</label>
+              <input
+                type="number"
+                step="0.1"
+                v-model="siteEditorForm.rateLimitMax"
+                class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]"
+              >
+            </div>
+          </div>
+
+          <div>
+            <h4 class="text-sm text-gray-300 mb-2">代理参数</h4>
+            <div class="grid md:grid-cols-2 gap-4 text-sm text-[#aaaaaa]">
+              <label class="flex flex-col">
+                <span class="mb-1">连接超时 (秒)</span>
+                <input type="number" step="0.1" v-model="siteEditorForm.proxyConnectTimeout"
+                  class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-[#cc0000]">
+              </label>
+              <label class="flex flex-col">
+                <span class="mb-1">读取超时 (秒)</span>
+                <input type="number" step="0.1" v-model="siteEditorForm.proxyReadTimeout"
+                  class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-[#cc0000]">
+              </label>
+              <label class="flex flex-col">
+                <span class="mb-1">写入超时 (秒)</span>
+                <input type="number" step="0.1" v-model="siteEditorForm.proxyWriteTimeout"
+                  class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-[#cc0000]">
+              </label>
+              <label class="flex flex-col">
+                <span class="mb-1">连接池超时 (秒)</span>
+                <input type="number" step="0.1" v-model="siteEditorForm.proxyPoolTimeout"
+                  class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-[#cc0000]">
+              </label>
+              <label class="flex flex-col">
+                <span class="mb-1">Keepalive 过期 (秒)</span>
+                <input type="number" step="0.1" v-model="siteEditorForm.proxyKeepaliveExpiry"
+                  class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-[#cc0000]">
+              </label>
+              <label class="flex flex-col">
+                <span class="mb-1">最大连接数</span>
+                <input type="number" step="1" v-model="siteEditorForm.proxyMaxConnections"
+                  class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-[#cc0000]">
+              </label>
+              <label class="flex flex-col">
+                <span class="mb-1">最大 Keepalive 连接数</span>
+                <input type="number" step="1" v-model="siteEditorForm.proxyMaxKeepaliveConnections"
+                  class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-[#cc0000]">
+              </label>
+              <label class="flex flex-col">
+                <span class="mb-1">分块大小 (字节)</span>
+                <input type="number" step="1" v-model="siteEditorForm.proxyChunkSize"
+                  class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-[#cc0000]">
+              </label>
+              <label class="flex flex-col">
+                <span class="mb-1">最大重试次数</span>
+                <input type="number" step="1" v-model="siteEditorForm.proxyMaxRetries"
+                  class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-[#cc0000]">
+              </label>
+            </div>
+            <div class="flex flex-wrap gap-4 mt-3 text-sm text-[#aaaaaa]">
+              <label class="flex items-center gap-2">
+                <input type="checkbox" v-model="siteEditorForm.proxyEnableHttp2" class="accent-[#cc0000]">
+                启用 HTTP/2
+              </label>
+              <label class="flex items-center gap-2">
+                <input type="checkbox" v-model="siteEditorForm.proxyFollowRedirects" class="accent-[#cc0000]">
+                允许重定向
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <h4 class="text-sm text-gray-300 mb-2">登录检测</h4>
+            <div class="grid md:grid-cols-2 gap-4">
+              <input v-model="siteEditorForm.loginCheckUrl" placeholder="检测 URL" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]">
+              <input type="number" step="0.1" v-model="siteEditorForm.loginTimeout" placeholder="超时时间 (秒)" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]">
+            </div>
+            <textarea
+              v-model="siteEditorForm.loginHeadersText"
+              rows="4"
+              class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm mt-3 focus:outline-none focus:border-[#cc0000]"
+              placeholder="登录检测请求头，每行 key: value"
+            ></textarea>
+          </div>
+
+          <div class="flex flex-wrap gap-6 text-sm text-[#aaaaaa]">
+            <label class="flex items-center gap-2">
+              <input type="checkbox" v-model="siteEditorForm.metadataNsfw" class="accent-[#cc0000]">
+              默认标记为 NSFW
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" v-model="siteEditorForm.metadataRequiresCookies" class="accent-[#cc0000]">
+              需要 Cookies 才可抓取
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" v-model="siteEditorForm.metadataRequiresLogin" class="accent-[#cc0000]">
+              需要登录状态
+            </label>
+          </div>
+
+          <div
+            v-if="siteEditorError"
+            class="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2"
+          >
+            {{ siteEditorError }}
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
+          <button
+            @click="closeSiteEditor"
+            class="px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 text-sm transition-colors"
+          >
+            取消
+          </button>
+          <button
+            @click="saveSiteEditor"
+            :disabled="siteEditorSaving"
+            class="px-5 py-2 rounded-full bg-[#cc0000] hover:bg-[#ff0000] text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {{ siteEditorSaving ? '保存中...' : '保存配置' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -371,6 +605,8 @@
 
 <script setup>
 import { onMounted, ref, computed, watch } from 'vue';
+import axios from '../utils/axios';
+import { resetSitesCache } from '../composables/useSites';
 import { usePluginApi } from '../composables/usePluginApi';
 
 const { 
@@ -405,10 +641,49 @@ const loginStatusResults = ref({});
 const loginStatusTesting = ref({});
 const cookieUploading = ref({});
 
+// 站点配置（数据爬取）
+const siteCatalog = ref({});
+const siteCatalogLoading = ref(false);
+const siteCatalogLoaded = ref(false);
+const siteEditorVisible = ref(false);
+const siteEditorSaving = ref(false);
+const siteEditorError = ref('');
+const siteEditorForm = ref({
+  slug: '',
+  siteName: '',
+  label: '',
+  domainsText: '',
+  aliasesText: '',
+  enabled: true,
+  testUrl: '',
+  httpHeadersText: '',
+  rateLimitMin: '',
+  rateLimitMax: '',
+  proxyConnectTimeout: '',
+  proxyReadTimeout: '',
+  proxyWriteTimeout: '',
+  proxyPoolTimeout: '',
+  proxyKeepaliveExpiry: '',
+  proxyMaxConnections: '',
+  proxyMaxKeepaliveConnections: '',
+  proxyChunkSize: '',
+  proxyMaxRetries: '',
+  proxyEnableHttp2: true,
+  proxyFollowRedirects: true,
+  loginCheckUrl: '',
+  loginHeadersText: '',
+  loginTimeout: '',
+  metadataNsfw: false,
+  metadataRequiresCookies: false,
+  metadataRequiresLogin: false,
+});
+
 // 计算属性
 const siteStats = computed(() => ({
   total: supportedSites.value.length || 0
 }));
+
+const siteCatalogMap = computed(() => siteCatalog.value || {});
 
 const connectivitySummary = computed(() => {
   if (connectivityResults.value.length === 0) {
@@ -432,22 +707,255 @@ const displaySites = computed(() => {
   return supportedSites.value.map(siteInfo => {
     const siteName = siteInfo.name;
     const result = resultsMap.get(siteName);
+    const catalogInfo = siteCatalogMap.value[siteName?.toLowerCase()] || null;
+    const catalogDomains = catalogInfo?.domains || [];
+    const displayLabel = catalogInfo?.label || siteInfo.name;
     
     // 合并站点信息和测试结果
     return {
       ...siteInfo,
       ...result,
       site_name: siteName,
-      // 优先使用测试结果中的域名和test_url，否则使用站点基本信息
-      domains: result?.domains || siteInfo.domains || [],
+      // 优先使用站点配置中的域名，其次为测试结果、站点定义
+      domains: catalogDomains.length > 0 ? catalogDomains : (result?.domains || siteInfo.domains || []),
       test_url: result?.test_url || siteInfo.test_url || '',
       loginStatus: loginResultMap[siteName],
       loginTesting: !!loginTestingMap[siteName],
       supports_login_status: siteInfo.supports_login_status ?? false,
       cookieUploading: !!cookieUploading.value[siteName],
+      display_label: displayLabel,
+      config_enabled: catalogInfo?.enabled !== false,
+      config_aliases: catalogInfo?.aliases || [],
     };
   });
 });
+
+const parseListInput = (text = '') => {
+  return text
+    .split(/[\n,]/)
+    .map(item => item.trim())
+    .filter(Boolean);
+};
+
+const headersToText = (headers = {}) => {
+  return Object.entries(headers || {})
+    .map(([key, value]) => `${key}: ${value}`)
+    .join('\n');
+};
+
+const parseHeadersText = (text = '') => {
+  const result = {};
+  text.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const [key, ...rest] = trimmed.split(':');
+    if (!key) return;
+    result[key.trim()] = rest.join(':').trim();
+  });
+  return result;
+};
+
+const toNumberOrUndefined = (value) => {
+  if (value === '' || value === null || value === undefined) {
+    return undefined;
+  }
+  const num = Number(value);
+  return Number.isNaN(num) ? undefined : num;
+};
+
+const catalogObjectToPayload = (catalogObj) => {
+  return Object.entries(catalogObj).map(([slug, info]) => {
+    const payload = {
+      slug,
+      label: info?.label || slug,
+      domains: info?.domains || [],
+      aliases: info?.aliases || [],
+      enabled: info?.enabled !== false,
+    };
+    if (info?.http) payload.http = info.http;
+    if (info?.proxy) payload.proxy = info.proxy;
+    if (info?.login) payload.login = info.login;
+    if (info?.rate_limit) payload.rate_limit = info.rate_limit;
+    if (info?.metadata) payload.metadata = info.metadata;
+    if (info?.test_url) payload.test_url = info.test_url;
+    return payload;
+  });
+};
+
+const loadSiteCatalog = async () => {
+  siteCatalogLoading.value = true;
+  try {
+    const resp = await axios.get('/api/sites');
+    if (resp?.data?.code === 0) {
+      siteCatalog.value = resp.data.data || {};
+      siteCatalogLoaded.value = true;
+    } else {
+      siteCatalogLoaded.value = false;
+    }
+  } catch (error) {
+    console.error('获取站点配置失败:', error);
+    siteCatalogLoaded.value = false;
+  } finally {
+    siteCatalogLoading.value = false;
+  }
+};
+
+const openSiteEditor = async (site) => {
+  if (!siteCatalogLoaded.value && !siteCatalogLoading.value) {
+    await loadSiteCatalog();
+  }
+  const siteName = site.site_name || site.name;
+  const slug = (siteName || '').toLowerCase();
+  const catalogInfo = siteCatalog.value[slug];
+  const rateLimit = catalogInfo?.rate_limit || {};
+  const proxy = catalogInfo?.proxy || {};
+  const loginConfig = catalogInfo?.login || {};
+  const metadata = catalogInfo?.metadata || {};
+
+  siteEditorForm.value = {
+    slug,
+    siteName,
+    label: catalogInfo?.label || siteName,
+    domainsText: (catalogInfo?.domains?.length ? catalogInfo.domains : (site.domains || [])).join('\n'),
+    aliasesText: (catalogInfo?.aliases || []).join('\n'),
+    enabled: catalogInfo?.enabled !== false,
+    testUrl: catalogInfo?.test_url || '',
+    httpHeadersText: headersToText(catalogInfo?.http?.headers || {}),
+    rateLimitMin: rateLimit?.min_interval ?? '',
+    rateLimitMax: rateLimit?.max_interval ?? '',
+    proxyConnectTimeout: proxy?.connect_timeout ?? '',
+    proxyReadTimeout: proxy?.read_timeout ?? '',
+    proxyWriteTimeout: proxy?.write_timeout ?? '',
+    proxyPoolTimeout: proxy?.pool_timeout ?? '',
+    proxyKeepaliveExpiry: proxy?.keepalive_expiry ?? '',
+    proxyMaxConnections: proxy?.max_connections ?? '',
+    proxyMaxKeepaliveConnections: proxy?.max_keepalive_connections ?? '',
+    proxyChunkSize: proxy?.chunk_size ?? '',
+    proxyMaxRetries: proxy?.max_retries ?? '',
+    proxyEnableHttp2: proxy?.enable_http2 !== false,
+    proxyFollowRedirects: proxy?.follow_redirects !== false,
+    loginCheckUrl: loginConfig?.check_url || '',
+    loginHeadersText: headersToText(loginConfig?.headers || {}),
+    loginTimeout: loginConfig?.timeout ?? '',
+    metadataNsfw: !!metadata?.nsfw,
+    metadataRequiresCookies: !!metadata?.requires_cookies,
+    metadataRequiresLogin: !!metadata?.requires_login,
+  };
+  siteEditorError.value = '';
+  siteEditorVisible.value = true;
+};
+
+const closeSiteEditor = () => {
+  siteEditorVisible.value = false;
+  siteEditorError.value = '';
+};
+
+const saveSiteEditor = async () => {
+  siteEditorError.value = '';
+  const { slug, siteName } = siteEditorForm.value;
+  if (!slug) {
+    siteEditorError.value = '站点标识不可为空';
+    return;
+  }
+  const domains = parseListInput(siteEditorForm.value.domainsText);
+  if (!domains.length) {
+    siteEditorError.value = '请至少填写一个域名';
+    return;
+  }
+  const aliases = parseListInput(siteEditorForm.value.aliasesText);
+  const label = siteEditorForm.value.label?.trim() || siteName || slug;
+
+  const httpHeaders = parseHeadersText(siteEditorForm.value.httpHeadersText);
+  const loginHeaders = parseHeadersText(siteEditorForm.value.loginHeadersText);
+  const rateLimitMin = toNumberOrUndefined(siteEditorForm.value.rateLimitMin);
+  const rateLimitMax = toNumberOrUndefined(siteEditorForm.value.rateLimitMax);
+  const proxyPayload = {};
+  const proxyFields = [
+    ['connect_timeout', siteEditorForm.value.proxyConnectTimeout],
+    ['read_timeout', siteEditorForm.value.proxyReadTimeout],
+    ['write_timeout', siteEditorForm.value.proxyWriteTimeout],
+    ['pool_timeout', siteEditorForm.value.proxyPoolTimeout],
+    ['keepalive_expiry', siteEditorForm.value.proxyKeepaliveExpiry],
+    ['max_connections', siteEditorForm.value.proxyMaxConnections],
+    ['max_keepalive_connections', siteEditorForm.value.proxyMaxKeepaliveConnections],
+    ['chunk_size', siteEditorForm.value.proxyChunkSize],
+    ['max_retries', siteEditorForm.value.proxyMaxRetries],
+  ];
+  proxyFields.forEach(([key, value]) => {
+    const num = toNumberOrUndefined(value);
+    if (num !== undefined) {
+      proxyPayload[key] = num;
+    }
+  });
+  proxyPayload.enable_http2 = !!siteEditorForm.value.proxyEnableHttp2;
+  proxyPayload.follow_redirects = !!siteEditorForm.value.proxyFollowRedirects;
+
+  const rateLimitPayload = {};
+  if (rateLimitMin !== undefined) rateLimitPayload.min_interval = rateLimitMin;
+  if (rateLimitMax !== undefined) rateLimitPayload.max_interval = rateLimitMax;
+
+  const loginPayload = {};
+  if (siteEditorForm.value.loginCheckUrl?.trim()) {
+    loginPayload.check_url = siteEditorForm.value.loginCheckUrl.trim();
+  }
+  if (Object.keys(loginHeaders).length) {
+    loginPayload.headers = loginHeaders;
+  }
+  const loginTimeout = toNumberOrUndefined(siteEditorForm.value.loginTimeout);
+  if (loginTimeout !== undefined) {
+    loginPayload.timeout = loginTimeout;
+  }
+
+  const metadataPayload = {
+    nsfw: !!siteEditorForm.value.metadataNsfw,
+    requires_cookies: !!siteEditorForm.value.metadataRequiresCookies,
+    requires_login: !!siteEditorForm.value.metadataRequiresLogin,
+  };
+
+  const sitePayload = {
+    label,
+    domains,
+    aliases,
+    enabled: !!siteEditorForm.value.enabled,
+  };
+  const testUrl = siteEditorForm.value.testUrl?.trim();
+  if (testUrl) {
+    sitePayload.test_url = testUrl;
+  }
+  if (Object.keys(httpHeaders).length) {
+    sitePayload.http = { headers: httpHeaders };
+  }
+  if (Object.keys(rateLimitPayload).length) {
+    sitePayload.rate_limit = rateLimitPayload;
+  }
+  if (Object.keys(proxyPayload).some(key => proxyPayload[key] !== undefined && proxyPayload[key] !== '')) {
+    sitePayload.proxy = proxyPayload;
+  }
+  if (Object.keys(loginPayload).length) {
+    sitePayload.login = loginPayload;
+  }
+  sitePayload.metadata = metadataPayload;
+
+  const updatedCatalog = { ...siteCatalog.value };
+  updatedCatalog[slug] = sitePayload;
+
+  siteEditorSaving.value = true;
+  try {
+    const payload = catalogObjectToPayload(updatedCatalog);
+    const resp = await axios.put('/api/sites', { sites: payload });
+    if (resp?.data?.code !== 0) {
+      throw new Error(resp?.data?.msg || '保存站点配置失败');
+    }
+    siteCatalog.value = resp.data.data || {};
+    resetSitesCache();
+    siteEditorVisible.value = false;
+  } catch (error) {
+    console.error('保存站点配置失败:', error);
+    siteEditorError.value = error?.message || '保存站点配置失败';
+  } finally {
+    siteEditorSaving.value = false;
+  }
+};
 
 const fetchPlugins = async () => {
   loading.value = true;
@@ -672,6 +1180,7 @@ watch(currentTab, async (newTab) => {
 
 onMounted(() => {
   fetchPlugins();
+  loadSiteCatalog();
 });
 </script>
 
@@ -682,6 +1191,24 @@ onMounted(() => {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.site-editor-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.site-editor-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 9999px;
+}
+
+.site-editor-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+
+.site-editor-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
 }
 </style>
 

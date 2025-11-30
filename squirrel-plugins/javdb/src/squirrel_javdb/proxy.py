@@ -7,15 +7,19 @@ import httpx
 from fastapi import HTTPException
 from fastapi import Request
 from starlette.responses import StreamingResponse
-from crawl import VideoProxyBase, register_proxy
+from crawl import VideoProxyBase, register_proxy, get_http_headers, get_proxy_config
 from crawl.proxy_interfaces import ProxyConfigRegistry
 
 logger = logging.getLogger()
 
 
+SITE_SLUG = 'javdb'
+
+
 @register_proxy
 class JavdbProxy(VideoProxyBase):
     domain = 'javdb.com'
+    site_slug = SITE_SLUG
 
     def __init__(self, request: Request):
         super().__init__()
@@ -48,29 +52,40 @@ class JavdbProxy(VideoProxyBase):
             }
         )
 
+    def _build_client_params(self):
+        proxy_cfg = get_proxy_config(self.site_slug)
+        timeout_config = httpx.Timeout(
+            connect=float(proxy_cfg.get('connect_timeout', 30.0)),
+            read=float(proxy_cfg.get('read_timeout', 180.0)),
+            write=float(proxy_cfg.get('write_timeout', 30.0)),
+            pool=float(proxy_cfg.get('pool_timeout', 30.0)),
+        )
+        limits = httpx.Limits(
+            max_keepalive_connections=int(proxy_cfg.get('max_keepalive_connections', 20)),
+            max_connections=int(proxy_cfg.get('max_connections', 40)),
+            keepalive_expiry=float(proxy_cfg.get('keepalive_expiry', 60.0)),
+        )
+        follow_redirects = bool(proxy_cfg.get('follow_redirects', True))
+        http2_enabled = bool(proxy_cfg.get('enable_http2', True))
+        return timeout_config, limits, follow_redirects, http2_enabled
+
     async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:
         try:
-            timeout_config = httpx.Timeout(
-                connect=30.0,
-                read=180.0,
-                write=30.0,
-                pool=30.0
-            )
+            timeout_config, limits, follow_redirects, http2_enabled = self._build_client_params()
 
             client_config = {
                 "timeout": timeout_config,
-                "limits": httpx.Limits(
-                    max_keepalive_connections=20,
-                    max_connections=40,
-                    keepalive_expiry=60.0
-                ),
-                "follow_redirects": True,
-                "http2": True
+                "limits": limits,
+                "follow_redirects": follow_redirects,
+                "http2": http2_enabled,
             }
 
             # Build headers from registered site config
             provider_cls = ProxyConfigRegistry.get(self.domain)
-            headers = (provider_cls.get_site_headers() or {}) if provider_cls else {}
+            headers = get_http_headers(
+                self.site_slug,
+                (provider_cls.get_site_headers() or {}) if provider_cls else {},
+            )
 
             async with httpx.AsyncClient(**client_config) as client:
                 parsed = urlparse(url)

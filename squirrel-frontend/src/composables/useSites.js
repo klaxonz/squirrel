@@ -5,6 +5,10 @@ const cached = ref(null);
 const loading = ref(false);
 const error = ref(null);
 
+const resetCache = () => {
+  cached.value = null;
+};
+
 export async function fetchSites() {
   if (cached.value || loading.value) return { data: cached.value, error: error.value };
   loading.value = true;
@@ -29,7 +33,11 @@ export async function fetchSites() {
 }
 
 export function useSites() {
-  return { options: cached, loading, error, fetchSites };
+  return { options: cached, loading, error, fetchSites, resetCache };
+}
+
+export function resetSitesCache() {
+  resetCache();
 }
 
 

@@ -71,6 +71,16 @@ from .http import (
     get,
     post,
 )
+from .site_config import (
+    set_site_config,
+    set_site_configs,
+    get_site_config,
+    get_http_headers,
+    get_login_config,
+    get_login_headers,
+    get_proxy_config,
+    get_rate_limit_config,
+)
 from .proxy_interfaces import (
     VideoProxyBase,
     ProxyRegistry,
@@ -172,6 +182,15 @@ __all__ = [
     "request_without_limit",
     "get",
     "post",
+    # site config helpers
+    "set_site_config",
+    "set_site_configs",
+    "get_site_config",
+    "get_http_headers",
+    "get_login_config",
+    "get_login_headers",
+    "get_proxy_config",
+    "get_rate_limit_config",
 ]
 
 # Re-export for convenience

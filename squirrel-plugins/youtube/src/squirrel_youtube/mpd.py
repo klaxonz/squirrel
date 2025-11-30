@@ -13,9 +13,11 @@ from crawl import (
     register_mpd,
     filter_cookies_to_query_string,
     resolve_cookie_file_path,
+    get_http_headers,
 )
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115 Safari/537.36'
+SITE_SLUG = 'youtube'
 SESSION = requests.Session()
 logger = logging.getLogger(__name__)
 
@@ -70,11 +72,11 @@ def _find_mp4_boxes_prefix(data: bytes):
 
 
 def _probe_ranges(url: str, max_tries: int = 2, chunk_sizes=(1024 * 1024, 4 * 1024 * 1024)):
-    headers = {
+    headers = get_http_headers(SITE_SLUG, {
         'User-Agent': USER_AGENT,
         'Accept': '*/*',
         'Connection': 'keep-alive',
-    }
+    })
     for i in range(min(max_tries, len(chunk_sizes))):
         end = chunk_sizes[i] - 1
         try:

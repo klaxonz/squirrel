@@ -6,7 +6,7 @@ from functools import reduce
 from hashlib import md5
 from typing import Dict
 
-from crawl import request
+from crawl import request, get_http_headers
 
 mixinKeyEncTab = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
@@ -34,10 +34,10 @@ def enc_wbi(params: Dict[str, str], img_key: str, sub_key: str) -> Dict[str, str
 
 
 def get_wbi_keys() -> tuple[str, str]:
-    headers = {
+    headers = get_http_headers(SITE_SLUG, {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
         'Referer': 'https://www.bilibili.com/'
-    }
+    })
     resp = request('GET', 'https://api.bilibili.com/x/web-interface/nav', headers=headers, timeout=15)
     resp.raise_for_status()
     json_content = resp.json()
@@ -54,3 +54,4 @@ def sign(params: Dict[str, str]) -> str:
     return urllib.parse.urlencode(signed_params)
 
 
+SITE_SLUG = 'bilibili'

@@ -7,6 +7,8 @@ from crawl import (
     filter_cookies_to_query_string,
     register_login_checker,
     request_without_limit,
+    get_login_config,
+    get_login_headers,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,8 +23,11 @@ _HEADERS = {
 
 @register_login_checker("bilibili")
 def check_bilibili_login_status() -> LoginStatusResult:
-    cookies = filter_cookies_to_query_string(_CHECK_URL)
     site_name = "bilibili"
+    login_config = get_login_config(site_name)
+    check_url = login_config.get("check_url") or _CHECK_URL
+
+    cookies = filter_cookies_to_query_string(check_url)
 
     if not cookies:
         return LoginStatusResult(
@@ -31,11 +36,12 @@ def check_bilibili_login_status() -> LoginStatusResult:
             message="cookies.txt 中未找到 Bilibili 条目",
         )
 
-    headers = dict(_HEADERS)
+    headers = get_login_headers(site_name, _HEADERS)
     headers["Cookie"] = cookies
+    timeout = float(login_config.get("timeout", 15))
 
     try:
-        resp = request_without_limit("GET", _CHECK_URL, headers=headers, timeout=15)
+        resp = request_without_limit("GET", check_url, headers=headers, timeout=timeout)
         payload = resp.json()
     except Exception as exc:
         logger.warning("bilibili login check failed: %s", exc, exc_info=True)

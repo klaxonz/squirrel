@@ -9,10 +9,12 @@ from crawl import (
     register_user_subscription_importer,
     filter_cookies_to_query_string,
     request_without_limit,
+    get_http_headers,
 )
 
 
 logger = logging.getLogger(__name__)
+SITE_SLUG = "bilibili"
 
 
 @register_user_subscription_importer("bilibili")
@@ -28,10 +30,10 @@ class BilibiliUserSubscriptionImporter(IUserSubscriptionImporter):
         """获取当前登录用户的 mid"""
         base_url = f'https://www.{self.domain}'
         cookies = filter_cookies_to_query_string(base_url)
-        headers = {
+        headers = get_http_headers(SITE_SLUG, {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-            'Cookie': cookies,
-        }
+        })
+        headers['Cookie'] = cookies
         
         # 获取用户信息
         api_url = 'https://api.bilibili.com/x/web-interface/nav'
@@ -61,10 +63,10 @@ class BilibiliUserSubscriptionImporter(IUserSubscriptionImporter):
             
             base_url = f'https://www.{self.domain}'
             cookies = filter_cookies_to_query_string(base_url)
-            headers = {
+            headers = get_http_headers(SITE_SLUG, {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-                'Cookie': cookies,
-            }
+            })
+            headers['Cookie'] = cookies
             subscription_urls: List[str] = []
             page = 1
             page_size = 50

@@ -15,18 +15,21 @@ from crawl import (
     register_id_extractor,
     Video,
     filter_cookies_to_query_string,
+    get_http_headers,
 )
+
+SITE_SLUG = 'bilibili'
 
 
 @brequest(output=None, raise_exception=True, close_on_crash=True, create_error_logs=False, max_retry=10)
 def _fetch_html(req: Request, link: str) -> str:
     cookies = filter_cookies_to_query_string(link)
-    headers = {
+    headers = get_http_headers(SITE_SLUG, {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
         'Referer': link,
         'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
-        'Cookie': cookies,
-    }
+    })
+    headers['Cookie'] = cookies
     # botasaurus handles its own throttling; still cap via SDK session for consistency
     resp = req.get(link, headers=headers, timeout=20)
     resp.raise_for_status()

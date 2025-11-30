@@ -11,6 +11,7 @@ from crawl import (
     register_user_subscription_importer,
     filter_cookies_to_query_string,
     request_without_limit,
+    get_http_headers,
 )
 
 
@@ -36,10 +37,10 @@ class JavdbUserSubscriptionImporter(IUserSubscriptionImporter):
         try:
             base_url = f'https://{self.domain}'
             cookies = filter_cookies_to_query_string(base_url)
-            headers = {
+            headers = get_http_headers('javdb', {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Cookie': cookies
-            }
+            })
+            headers['Cookie'] = cookies
             
             subscription_urls: List[str] = []
             page = 1

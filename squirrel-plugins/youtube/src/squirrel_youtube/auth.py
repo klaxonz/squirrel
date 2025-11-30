@@ -9,6 +9,8 @@ from crawl import (
     filter_cookies_to_query_string,
     register_login_checker,
     request_without_limit,
+    get_login_config,
+    get_login_headers,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,7 +28,10 @@ _ACCOUNT_LABEL = re.compile(r'"ACCOUNT_LABEL":"([^"]+)"')
 @register_login_checker("youtube")
 def check_youtube_login_status() -> LoginStatusResult:
     site_name = "youtube"
-    cookies = filter_cookies_to_query_string(_CHANNELS_URL)
+    login_config = get_login_config(site_name)
+    check_url = login_config.get("check_url") or _CHANNELS_URL
+
+    cookies = filter_cookies_to_query_string(check_url)
 
     if not cookies:
         return LoginStatusResult(
@@ -35,11 +40,12 @@ def check_youtube_login_status() -> LoginStatusResult:
             message="cookies.txt 中未找到 YouTube 条目",
         )
 
-    headers = dict(_HEADERS)
+    headers = get_login_headers(site_name, _HEADERS)
     headers["Cookie"] = cookies
+    timeout = float(login_config.get("timeout", 20))
 
     try:
-        resp = request_without_limit("GET", _CHANNELS_URL, headers=headers, timeout=20)
+        resp = request_without_limit("GET", check_url, headers=headers, timeout=timeout)
         body = resp.text or ""
     except Exception as exc:
         logger.warning("youtube login check failed: %s", exc, exc_info=True)

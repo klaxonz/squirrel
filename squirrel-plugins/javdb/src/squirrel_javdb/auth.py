@@ -8,6 +8,8 @@ from crawl import (
     filter_cookies_to_query_string,
     register_login_checker,
     request_without_limit,
+    get_login_config,
+    get_login_headers,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,7 +25,10 @@ _LOGIN_REDIRECT = re.compile(r"/users/(sign_in|login)")
 @register_login_checker("javdb")
 def check_javdb_login_status() -> LoginStatusResult:
     site_name = "javdb"
-    cookies = filter_cookies_to_query_string(_CHECK_URL)
+    login_config = get_login_config(site_name)
+    check_url = login_config.get("check_url") or _CHECK_URL
+
+    cookies = filter_cookies_to_query_string(check_url)
 
     if not cookies:
         return LoginStatusResult(
@@ -32,15 +37,16 @@ def check_javdb_login_status() -> LoginStatusResult:
             message="cookies.txt 中未找到 JavDB 条目",
         )
 
-    headers = dict(_HEADERS)
+    headers = get_login_headers(site_name, _HEADERS)
     headers["Cookie"] = cookies
+    timeout = float(login_config.get("timeout", 15))
 
     try:
         resp = request_without_limit(
             "GET",
-            _CHECK_URL,
+            check_url,
             headers=headers,
-            timeout=15,
+            timeout=timeout,
             allow_redirects=False,
         )
         body = resp.text or ""

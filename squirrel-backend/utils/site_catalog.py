@@ -33,15 +33,22 @@ class SiteCatalog:
                     data = json.load(f)
                 # normalize
                 catalog: Dict[str, dict] = {}
+                extra_keys = {'http', 'proxy', 'login', 'rate_limit', 'metadata', 'test_url'}
                 for slug, info in (data or {}).items():
                     domains = list({d.strip().lower() for d in info.get('domains', []) if d})
                     aliases = list({a.strip().lower() for a in info.get('aliases', []) if a})
-                    catalog[slug.strip().lower()] = {
+                    normalized_slug = slug.strip().lower()
+                    entry: dict = {
                         'label': info.get('label', slug),
                         'domains': domains,
                         'aliases': aliases,
                         'enabled': bool(info.get('enabled', True))
                     }
+                    for key in extra_keys:
+                        value = info.get(key)
+                        if value is not None:
+                            entry[key] = value
+                    catalog[normalized_slug] = entry
                 return catalog
             except Exception:
                 return None
@@ -110,6 +117,17 @@ class SiteCatalog:
         return cls._catalog
 
     @classmethod
+    def set_catalog(cls, catalog: Dict[str, dict]) -> None:
+        """Replace the in-memory catalog (e.g. after editing via API)."""
+        cls._catalog = catalog
+
+    @classmethod
+    def reload(cls) -> Dict[str, dict]:
+        """Force reloading catalog from disk or registries."""
+        cls._catalog = None
+        return cls.get_catalog()
+
+    @classmethod
     def get_all_domains(cls) -> List[str]:
         domains: List[str] = []
         for info in cls.get_catalog().values():
@@ -148,6 +166,5 @@ class SiteCatalog:
         all_domains = cls.get_all_domains()
         matched = [d for d in all_domains if k in d.lower()]
         return matched
-
 
 

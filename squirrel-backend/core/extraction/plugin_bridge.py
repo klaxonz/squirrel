@@ -7,6 +7,7 @@ from crawl import (
     get_extractor_registry as get_sdk_registry,
     IExtractor, ExtractionTask, ExtractionResult
 )
+from utils.site_catalog import SiteCatalog
 from .factory import get_extractor_registry
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,8 @@ class PluginBridge:
             # 获取SDK中注册的提取器
             sdk_registry = get_sdk_registry()
             backend_registry = get_extractor_registry()
-            
+            site_catalog = SiteCatalog.get_catalog() or {}
+
             # 遍历所有注册的站点
             for site_name in sdk_registry.get_all_sites():
                 extractor_class = sdk_registry.get_extractor_class(site_name)
@@ -61,14 +63,17 @@ class PluginBridge:
                 if hasattr(extractor_class, 'supported_domains'):
                     domains = list(getattr(extractor_class, 'supported_domains', []) or [])
 
+                catalog_entry = site_catalog.get(site_name.lower()) or {}
+
                 # 为当前循环的 extractor_class 生成独立的适配器类，避免闭包晚绑定问题
-                def _make_adapter(extractor_cls):
+                def _make_adapter(extractor_cls, configured_site_name: str, site_entry: dict):
                     plugin_test_url = getattr(extractor_cls, "test_url", None)
-                    plugin_site_name = getattr(extractor_cls, "site_name", site_name)
+                    plugin_site_name = getattr(extractor_cls, "site_name", configured_site_name)
                     plugin_domains = list(getattr(extractor_cls, "supported_domains", []) or domains)
+                    override_test_url = site_entry.get("test_url") if isinstance(site_entry, dict) else None
 
                     class AdapterClass(PluginExtractorAdapter):
-                        test_url = plugin_test_url
+                        test_url = override_test_url or plugin_test_url
                         site_name = plugin_site_name
                         supported_domains = plugin_domains
 
@@ -79,7 +84,7 @@ class PluginBridge:
                     AdapterClass.__name__ = f"{extractor_cls.__name__}Adapter"
                     return AdapterClass
 
-                AdapterClass = _make_adapter(extractor_class)
+                AdapterClass = _make_adapter(extractor_class, site_name, catalog_entry)
 
                 backend_registry.register(site_name, AdapterClass, domains or AdapterClass.supported_domains or [])
                 logger.info(f"已桥接插件提取器: {site_name}, 域名: {domains}")

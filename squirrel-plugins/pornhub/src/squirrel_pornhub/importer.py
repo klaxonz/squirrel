@@ -11,10 +11,12 @@ from crawl import (
     register_user_subscription_importer,
     filter_cookies_to_query_string,
     request_without_limit,
+    get_http_headers,
 )
 
 
 logger = logging.getLogger(__name__)
+SITE_SLUG = 'pornhub'
 
 
 @register_user_subscription_importer("pornhub")
@@ -36,10 +38,10 @@ class PornhubUserSubscriptionImporter(IUserSubscriptionImporter):
         try:
             base_url = f'https://www.{self.domain}'
             cookies = filter_cookies_to_query_string(base_url)
-            headers = {
+            headers = get_http_headers(SITE_SLUG, {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Cookie': cookies
-            }
+            })
+            headers['Cookie'] = cookies
             
             subscription_urls: List[str] = []
             

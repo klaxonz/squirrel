@@ -11,6 +11,7 @@ from crawl import (
     register_user_subscription_importer,
     filter_cookies_to_query_string,
     request_without_limit,
+    get_http_headers,
 )
 
 
@@ -36,11 +37,11 @@ class YoutubeUserSubscriptionImporter(IUserSubscriptionImporter):
         try:
             base_url = f'https://www.{self.domain}'
             cookies = filter_cookies_to_query_string(base_url)
-            headers = {
+            headers = get_http_headers('youtube', {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Cookie': cookies,
                 'Accept-Language': 'en-US,en;q=0.9'
-            }
+            })
+            headers['Cookie'] = cookies
             
             # 访问订阅页面
             subscriptions_url = f'{base_url}/feed/channels'

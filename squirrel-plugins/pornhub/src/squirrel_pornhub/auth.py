@@ -8,6 +8,8 @@ from crawl import (
     filter_cookies_to_query_string,
     register_login_checker,
     request_without_limit,
+    get_login_config,
+    get_login_headers,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,7 +38,10 @@ _PROFILE_STATUS_PATTERN = re.compile(
 @register_login_checker("pornhub")
 def check_pornhub_login_status() -> LoginStatusResult:
     site_name = "pornhub"
-    cookies = filter_cookies_to_query_string(_CHECK_URL)
+    login_config = get_login_config(site_name)
+    check_url = login_config.get("check_url") or _CHECK_URL
+
+    cookies = filter_cookies_to_query_string(check_url)
 
     if not cookies:
         return LoginStatusResult(
@@ -45,10 +50,10 @@ def check_pornhub_login_status() -> LoginStatusResult:
             message="cookies.txt 中未找到 Pornhub 条目",
         )
 
-    headers = dict(_HEADERS)
+    headers = get_login_headers(site_name, _HEADERS)
     headers["Cookie"] = cookies
 
-    resp = _fetch_with_age_bypass(headers)
+    resp = _fetch_with_age_bypass(headers, check_url, login_config)
     if isinstance(resp, LoginStatusResult):
         return resp
 
@@ -61,7 +66,7 @@ def check_pornhub_login_status() -> LoginStatusResult:
             message=f"被拒绝访问 (status={resp.status_code})",
         )
 
-    final_url = resp.url or _CHECK_URL
+    final_url = resp.url or check_url
     if any(token in final_url for token in ("/login", "/users/login")):
         return LoginStatusResult(
             site_name=site_name,
@@ -103,13 +108,14 @@ def check_pornhub_login_status() -> LoginStatusResult:
     )
 
 
-def _fetch_with_age_bypass(headers: dict):
+def _fetch_with_age_bypass(headers: dict, check_url: str, login_config: dict):
+    timeout = float(login_config.get("timeout", 20))
     try:
         resp = request_without_limit(
             "GET",
-            _CHECK_URL,
+            check_url,
             headers=headers,
-            timeout=20,
+            timeout=timeout,
         )
     except Exception as exc:
         logger.warning("pornhub login check failed: %s", exc, exc_info=True)
@@ -128,9 +134,9 @@ def _fetch_with_age_bypass(headers: dict):
         try:
             resp = request_without_limit(
                 "GET",
-                _CHECK_URL,
+                check_url,
                 headers=extra_headers,
-                timeout=20,
+                timeout=timeout,
             )
         except Exception as exc:
             logger.warning("pornhub age bypass failed: %s", exc, exc_info=True)

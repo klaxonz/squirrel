@@ -11,11 +11,26 @@ from crawl import (
     SubscriptionMeta,
     filter_cookies_to_query_string,
     request,
+    get_http_headers,
 )
 from .sign import sign
 
 
 logger = logging.getLogger(__name__)
+SITE_SLUG = 'bilibili'
+DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+
+
+def build_headers(referer: str | None = None, cookies: str | None = None) -> dict:
+    base = {
+        'User-Agent': DEFAULT_UA,
+    }
+    if referer:
+        base['Referer'] = referer
+    headers = get_http_headers(SITE_SLUG, base)
+    if cookies:
+        headers['Cookie'] = cookies
+    return headers
 
 
 @register_subscription("bilibili", ["bilibili.com"])
@@ -71,11 +86,7 @@ class BilibiliSubscription:
     def _get_space_info(self) -> SubscriptionMeta:
         """获取空间（用户）信息"""
         cookies = filter_cookies_to_query_string(self.url)
-        headers = {
-            "Referer": self.url,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-            'Cookie': cookies
-        }
+        headers = build_headers(self.url, cookies)
         resp = request('GET', self.url, headers=headers, timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, 'html.parser')
@@ -96,11 +107,7 @@ class BilibiliSubscription:
         """获取收藏夹信息"""
         fid = self._extract_favlist_id()
         cookies = filter_cookies_to_query_string(self.url)
-        headers = {
-            "Referer": self.url,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-            'Cookie': cookies
-        }
+        headers = build_headers(self.url, cookies)
         
         api_url = f'https://api.bilibili.com/x/v3/fav/folder/info?media_id={fid}'
         resp = request('GET', api_url, headers=headers, timeout=15)
@@ -121,11 +128,7 @@ class BilibiliSubscription:
         """获取合集信息"""
         season_id = self._extract_season_id()
         cookies = filter_cookies_to_query_string(self.url)
-        headers = {
-            "Referer": self.url,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-            'Cookie': cookies
-        }
+        headers = build_headers(self.url, cookies)
         
         api_url = f'https://api.bilibili.com/x/polymer/space/seasons_series_list?mid={self.get_mid()}&season_id={season_id}'
         resp = request('GET', api_url, headers=headers, timeout=15)
@@ -157,11 +160,7 @@ class BilibiliSubscription:
     def _get_space_videos(self, extract_all: bool) -> List[str]:
         """获取空间（用户）的视频列表"""
         cookies = filter_cookies_to_query_string(self.url)
-        headers = {
-            'Referer': self.url,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-            'Cookie': cookies
-        }
+        headers = build_headers(self.url, cookies)
 
         params = {
             'mid': self.get_mid(),
@@ -205,11 +204,7 @@ class BilibiliSubscription:
         """获取收藏夹的视频列表"""
         fid = self._extract_favlist_id()
         cookies = filter_cookies_to_query_string(self.url)
-        headers = {
-            'Referer': self.url,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-            'Cookie': cookies
-        }
+        headers = build_headers(self.url, cookies)
         
         video_list: List[str] = []
         page = 1
@@ -247,11 +242,7 @@ class BilibiliSubscription:
         """获取合集的视频列表"""
         season_id = self._extract_season_id()
         cookies = filter_cookies_to_query_string(self.url)
-        headers = {
-            'Referer': self.url,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-            'Cookie': cookies
-        }
+        headers = build_headers(self.url, cookies)
         
         video_list: List[str] = []
         page = 1

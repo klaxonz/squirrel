@@ -14,6 +14,7 @@ from controllers.scheduler_controller import scheduler_start, scheduler_stop
 from controllers.worker_controller import worker_start, worker_stop
 from core.config import settings
 from core.extraction import initialize_plugin_bridge
+from core.site_config_manager import apply_site_config_overrides
 from plugins.loader import init_plugins, app_start, app_stop
 from services.system_config_service import get_bool
 
@@ -47,6 +48,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Application startup sequence begin")
     logger.info("=" * 60)
     
+    # 0. 应用站点配置覆盖（HTTP / 代理 / 限流 等）
+    logger.info("[0/5] Applying site configuration overrides...")
+    try:
+        apply_site_config_overrides()
+        logger.info("[0/5] ✓ Site configuration overrides applied")
+    except Exception as e:
+        logger.warning(f"[0/5] ⚠ Failed to apply site config overrides: {e}")
+
     # 1. 加载插件（必须先加载，注册到 SDK 注册表）
     logger.info("[1/5] Loading plugins...")
     try:
