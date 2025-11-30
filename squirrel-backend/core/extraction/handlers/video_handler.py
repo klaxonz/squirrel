@@ -4,12 +4,15 @@
 import logging
 from datetime import datetime
 
+from sqlalchemy import select
+
 from core.database import get_session
 from core.progress import progress_emitter, ProgressEvent, ProgressEventType
 from crawl import ExtractionTask, ExtractionResult, Video
 from models.subscription import Subscription
+from models.video import Video as VideoModel
 from services import (
-    video_service, subscription_video_service, creator_service,
+    subscription_video_service, creator_service,
     video_creator_service, task_service, message_service
 )
 from mq.producer import RedisStreamProducer
@@ -144,21 +147,25 @@ class VideoExtractionHandler(BaseResultHandler):
                 logger.error(f"提取结果返回的 data 类型不是 Video: {type(data)}")
                 return None, "error"
 
-            with get_session():
-                # 检查视频是否已存在
-                video = video_service.get_video_by_url(task.url)
+            with get_session() as session:
+                video = session.scalars(
+                    select(VideoModel).where(VideoModel.url == task.url)
+                ).first()
                 video_status = "existed" if video else "created"
 
                 if not video:
                     # 创建新视频
                     publish_date = self._resolve_publish_date(data)
-                    video = video_service.create_video(
-                        task.url,
-                        data.title or task.url,
-                        publish_date,
-                        data.thumbnail,
-                        data.duration
+                    video = VideoModel(
+                        url=task.url,
+                        title=data.title or task.url,
+                        publish_date=publish_date,
+                        thumbnail=data.thumbnail,
+                        duration=data.duration
                     )
+                    session.add(video)
+                    session.commit()
+                    session.refresh(video)
 
                 # 创建订阅-视频关联
                 _, created_new_link = subscription_video_service.create_subscription_video(

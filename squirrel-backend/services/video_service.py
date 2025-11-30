@@ -1,7 +1,7 @@
 import logging
 import time
 from datetime import datetime
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 from sqlalchemy import select, func, and_, or_
 from core.database import get_session
 from core.exceptions.video_exceptions import UnsupportedDomainError
@@ -24,6 +24,16 @@ def get_video_by_url(url: str) -> Video:
     with get_session() as session:
         video = session.scalars(select(Video).where(Video.url == url)).first()
         return video
+
+
+def get_videos_by_urls(urls: List[str]) -> Dict[str, Video]:
+    if not urls:
+        return {}
+    with get_session() as session:
+        rows = session.scalars(
+            select(Video).where(Video.url.in_(urls))
+        ).all()
+        return {video.url: video for video in rows}
 
 
 def get_video_by_id(video_id: int) -> Video:
