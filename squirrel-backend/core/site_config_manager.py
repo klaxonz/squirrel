@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Dict, Any
 
 from crawl import configure_rate_limit, set_site_configs
+from utils.rate_limiter import rate_limiter as backend_rate_limiter
 from utils.site_catalog import SiteCatalog
 from .site_config_defaults import SITE_CONFIG_DEFAULTS
 
@@ -59,5 +60,6 @@ def apply_site_config_overrides(catalog: Dict[str, dict] | None = None) -> None:
                 continue
             try:
                 configure_rate_limit(domain, min_value, max_value)
+                backend_rate_limiter.add_rate_limit(domain, min_value, max_value)
             except Exception:
                 continue

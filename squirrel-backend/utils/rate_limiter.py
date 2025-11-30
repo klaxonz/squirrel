@@ -54,13 +54,8 @@ class RateLimiter:
     - 分桶：未知域名不再共用全局 '*' 桶，而是各自以二级域名为桶键
     """
 
-    # Default rate limits for different domains (second-level domains)
-    DEFAULT_LIMITS: Dict[str, RateLimit] = {
-        'bilibili.com': RateLimit(2, 4, 'bilibili.com'),
-        'youtube.com': RateLimit(2, 5, 'youtube.com'),
-        'pornhub.com': RateLimit(3, 8, 'pornhub.com'),
-        'javdb.com': RateLimit(5, 8, 'javdb.com'),  # javdb 需要更长的间隔避免风控
-    }
+    # Site-specific defaults are driven by site configs; keep the map empty here
+    DEFAULT_LIMITS: Dict[str, RateLimit] = {}
 
     # Global default rate limit config (used for unknown domains)
     DEFAULT_RATE_LIMIT = RateLimit(3, 5, '*')
