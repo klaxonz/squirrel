@@ -8,6 +8,7 @@ from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult
 from .strategies.registry import StrategyRegistry
 from .strategies.default_strategy import DefaultUpdateStrategy
 from core.progress import progress_emitter, ProgressEvent, ProgressEventType
+from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger()
 
@@ -37,6 +38,26 @@ class SubscriptionOrchestrator:
             更新结果
         """
         try:
+            domain = url_helper.extract_top_level_domain(request.url)
+            if not SiteCatalog.is_site_enabled(domain=domain):
+                message = f"Site is disabled, skip subscription update: {domain}"
+                logger.info(message)
+                progress_emitter.emit(ProgressEvent(
+                    event_type=ProgressEventType.SUBSCRIPTION_UPDATE_ERROR,
+                    trace_id=request.trace_id,
+                    subscription_id=request.subscription_id,
+                    url=request.url,
+                    error=message
+                ))
+                return SubscriptionUpdateResult(
+                    subscription_id=request.subscription_id,
+                    success=False,
+                    videos_found=0,
+                    videos_enqueued=0,
+                    error_message=message,
+                    skipped_reason="site_disabled"
+                )
+
             site_name = self._resolve_site(request.url)
             strategy = self._select_strategy(site_name)
             

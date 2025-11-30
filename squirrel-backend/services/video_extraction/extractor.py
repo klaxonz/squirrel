@@ -10,6 +10,7 @@ from core.extraction.handlers.video_handler import VideoExtractionHandler
 from core.extraction.base import BaseTaskProcessor
 from core.extraction.factory import get_extractor_factory
 from utils import url_helper
+from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger()
 
@@ -72,16 +73,23 @@ class VideoExtractor:
             - VIDEO_EXTRACTION_COMPLETE/ERROR 事件由 VideoExtractionHandler 发出
             - 这里只记录日志，不发出进度事件，避免重复
         """
+        domain = url_helper.extract_top_level_domain(params.url)
+        if not SiteCatalog.is_site_enabled(domain=domain):
+            logger.info(f"Skip video extraction because site is disabled: domain={domain}, url={params.url}")
+            from crawl import ExtractionResult
+            return ExtractionResult(
+                success=False,
+                error="site_disabled"
+            )
+
         task = self._create_task(params)
         result = self.task_manager.process_task(task)
         
-        platform = url_helper.extract_top_level_domain(params.url)
-        
         if result.success:
             video_title = result.data.title if result.data else 'N/A'
-            logger.info(f"Video extracted: platform={platform}, url={params.url}, title={video_title}")
+            logger.info(f"Video extracted: platform={domain}, url={params.url}, title={video_title}")
         else:
-            logger.error(f"Video extraction failed: platform={platform}, url={params.url}, error={result.error}")
+            logger.error(f"Video extraction failed: platform={domain}, url={params.url}, error={result.error}")
         
         return result
     

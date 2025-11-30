@@ -10,6 +10,8 @@ from common import constants
 from models.message import Message
 from services import subscription_service
 from mq import mq_consumer
+from utils.site_catalog import SiteCatalog
+from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()
 
@@ -28,6 +30,11 @@ def process_subscribe_message(message: Dict[str, Any]):
         
         if not url or not user_id:
             logger.error(f"Invalid message: missing url or user_id, message={body_data}")
+            return
+
+        domain = extract_top_level_domain(url)
+        if not SiteCatalog.is_site_enabled(domain=domain):
+            logger.info(f"Skip subscribe request because site is disabled: url={url}, user_id={user_id}")
             return
         
         logger.info(f"Processing subscribe request: url={url}, user_id={user_id}")

@@ -7,6 +7,8 @@ from mq.duplicate_checker import create_simple_checker
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import video_service, message_service
 from core.progress import progress_emitter, ProgressEvent, ProgressEventType
+from utils.site_catalog import SiteCatalog
+from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()
 
@@ -16,6 +18,11 @@ def enqueue_video_extraction(params: VideoExtractDto) -> None:
     将视频提取任务加入队列
     注意：在批量调用时，订阅存在性检查应在外层完成，避免重复查询
     """
+    domain = extract_top_level_domain(params.url)
+    if not SiteCatalog.is_site_enabled(domain=domain):
+        logger.info(f"Skip enqueue video extraction for disabled site: domain={domain}, url={params.url}")
+        return
+
     if params.only_extract:
         video = video_service.get_video_by_url(params.url)
         if video:
@@ -80,6 +87,11 @@ def start(params: VideoExtractDto) -> None:
     @deprecated 请使用 enqueue_video_extraction
     此函数保留用于兼容性，将在未来版本移除
     """
+    domain = extract_top_level_domain(params.url)
+    if not SiteCatalog.is_site_enabled(domain=domain):
+        logger.info(f"Skip legacy start() for disabled site: domain={domain}, url={params.url}")
+        return
+
     from services import subscription_service
     
     if params.only_extract:

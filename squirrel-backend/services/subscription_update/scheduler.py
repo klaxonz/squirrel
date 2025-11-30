@@ -12,6 +12,7 @@ from services import message_service
 from mq.producer import RedisStreamProducer
 from mq.duplicate_checker import create_simple_checker
 from utils import url_helper
+from utils.site_catalog import SiteCatalog
 from common import constants
 from .models import SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
 from .orchestrator import orchestrator
@@ -38,6 +39,11 @@ class SubscriptionScheduler:
         Returns:
             是否成功
         """
+        domain = url_helper.extract_top_level_domain(url)
+        if not SiteCatalog.is_site_enabled(domain=domain):
+            logger.info(f"Skip scheduling subscription {subscription_id} because site is disabled: {domain}")
+            return False
+
         request = SubscriptionUpdateRequest(
             subscription_id=subscription_id,
             url=url,
@@ -126,8 +132,9 @@ class SubscriptionScheduler:
             
             for sub in reordered_subs:
                 try:
-                    self._enqueue_subscription_update(sub, trigger, mode, queue_name, domain)
-                    success_count += 1
+                    enqueued = self._enqueue_subscription_update(sub, trigger, mode, queue_name, domain)
+                    if enqueued:
+                        success_count += 1
                 except Exception as e:
                     logger.error(f"Failed to enqueue subscription {sub.id}: {e}", exc_info=True)
                     error_count += 1
@@ -265,8 +272,12 @@ class SubscriptionScheduler:
         mode: UpdateMode, 
         queue_name: str,
         domain: Optional[str] = None
-    ):
+    ) -> bool:
         """将订阅更新任务发送到消息队列"""
+        if domain and not SiteCatalog.is_site_enabled(domain=domain):
+            logger.debug(f"Skip enqueue for disabled site: subscription_id={sub.id}, domain={domain}")
+            return False
+
         content = {
             'subscription_id': sub.id,
             'url': sub.url,
@@ -300,6 +311,7 @@ class SubscriptionScheduler:
         # 发送消息
         RedisStreamProducer().send(queue_name, message_dict)
         logger.debug(f"Enqueued subscription {sub.id} to {queue_name} (mode={mode.value})")
+        return True
 
 
 scheduler = SubscriptionScheduler()

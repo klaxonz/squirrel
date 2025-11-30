@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Any
 from pydantic import BaseModel
 from utils import url_helper
+from utils.site_catalog import SiteCatalog
 from mq.producer import RedisStreamProducer
 from mq.queue_config import get_queue_config, QueueType, QueueMode
 
@@ -36,12 +37,19 @@ class MessageRouter:
             is_extract_all: 是否为全量提取（仅视频提取队列使用）
         """
         queue_name = self._resolve_queue(url, is_manual, is_extract_all)
+        if not queue_name:
+            logger.info(
+                f"Skip routing message because site is disabled: url={url}, queue_type={self.queue_type}"
+            )
+            return
         self.producer.send(queue_name, message)
         logger.debug(f"Routed message to {queue_name}")
     
-    def _resolve_queue(self, url: str, is_manual: bool, is_extract_all: bool = False) -> str:
+    def _resolve_queue(self, url: str, is_manual: bool, is_extract_all: bool = False) -> str | None:
         """解析队列名称"""
         domain = url_helper.extract_top_level_domain(url)
+        if not SiteCatalog.is_site_enabled(domain=domain):
+            return None
         site = self.config.get_site_by_domain(domain)
         if not site:
             raise ValueError(f"Unsupported domain: {domain}")

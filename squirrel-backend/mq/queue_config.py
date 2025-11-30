@@ -7,6 +7,8 @@ import logging
 from typing import Dict, List
 from enum import Enum
 
+from utils.site_catalog import SiteCatalog
+
 logger = logging.getLogger()
 
 
@@ -48,6 +50,9 @@ class QueueConfigManager:
             for domain in registry.get_all_domains():
                 site = registry.get_site_by_domain(domain)
                 if site:
+                    if not SiteCatalog.is_site_enabled(site, domain):
+                        logger.info(f"Skipping disabled site in queue config: site={site}, domain={domain}")
+                        continue
                     self._domain_to_site[domain] = site
             
             self._initialized = True

@@ -5,6 +5,7 @@ import logging
 from typing import Dict, Optional, List, Type
 from urllib.parse import urlparse
 from crawl import IExtractor
+from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger()
 
@@ -78,6 +79,10 @@ class ExtractorFactory:
         try:
             parsed = urlparse(url)
             domain = parsed.netloc.lower()
+
+            if not SiteCatalog.is_site_enabled(domain=domain):
+                logger.info(f"站点已禁用，跳过提取器创建: {domain}")
+                return None
             
             # 尝试完整域名匹配
             site_name = self.registry.get_site_by_domain(domain)
@@ -105,13 +110,16 @@ class ExtractorFactory:
                 self._instances[site_name] = extractor_class()
             
             return self._instances[site_name]
-            
+        
         except Exception as e:
             logger.error(f"创建提取器失败: {url}, error: {e}")
             return None
     
     def get_extractor_by_site(self, site_name: str) -> Optional[IExtractor]:
         """根据网站名获取提取器实例"""
+        if not SiteCatalog.is_site_enabled(site=site_name):
+            logger.info(f"站点已禁用，跳过提取器获取: {site_name}")
+            return None
         if site_name not in self._instances:
             extractor_class = self.registry.get_extractor_class(site_name)
             if not extractor_class:

@@ -20,13 +20,28 @@ class SiteCatalog:
     """
 
     _catalog: Dict[str, dict] | None = None
+    _catalog_mtime: float | None = None
 
-    @classmethod
-    def _load_from_file(cls) -> Optional[Dict[str, dict]]:
+    @staticmethod
+    def _config_path() -> str:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         # project root
         root_dir = os.path.dirname(base_dir)
-        config_path = os.path.join(root_dir, 'config', 'sites.json')
+        return os.path.join(root_dir, 'config', 'sites.json')
+
+    @classmethod
+    def _get_config_mtime(cls) -> float | None:
+        try:
+            path = cls._config_path()
+            if os.path.exists(path):
+                return os.path.getmtime(path)
+        except Exception:
+            return None
+        return None
+
+    @classmethod
+    def _load_from_file(cls) -> Optional[Dict[str, dict]]:
+        config_path = cls._config_path()
         if os.path.exists(config_path):
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
@@ -108,23 +123,30 @@ class SiteCatalog:
 
     @classmethod
     def get_catalog(cls) -> Dict[str, dict]:
-        if cls._catalog is None:
+        config_mtime = cls._get_config_mtime()
+        should_reload = cls._catalog is None or config_mtime != cls._catalog_mtime
+
+        if should_reload:
             file_catalog = cls._load_from_file()
             if file_catalog is not None:
                 cls._catalog = file_catalog
+                cls._catalog_mtime = config_mtime
             else:
                 cls._catalog = cls._build_from_registries()
+                cls._catalog_mtime = config_mtime
         return cls._catalog
 
     @classmethod
     def set_catalog(cls, catalog: Dict[str, dict]) -> None:
         """Replace the in-memory catalog (e.g. after editing via API)."""
         cls._catalog = catalog
+        cls._catalog_mtime = cls._get_config_mtime()
 
     @classmethod
     def reload(cls) -> Dict[str, dict]:
         """Force reloading catalog from disk or registries."""
         cls._catalog = None
+        cls._catalog_mtime = None
         return cls.get_catalog()
 
     @classmethod
@@ -167,4 +189,35 @@ class SiteCatalog:
         matched = [d for d in all_domains if k in d.lower()]
         return matched
 
+    @classmethod
+    def find_site_by_domain(cls, domain: Optional[str]) -> tuple[Optional[str], Optional[dict]]:
+        """Find site slug and catalog entry by domain (supports subdomain match)."""
+        if not domain:
+            return None, None
+        domain_lower = str(domain).split(":")[0].strip().lower()
+        catalog = cls.get_catalog() or {}
+        for slug, info in catalog.items():
+            domains = info.get("domains") or []
+            for d in domains:
+                d_lower = str(d).strip().lower()
+                if not d_lower:
+                    continue
+                if domain_lower == d_lower or domain_lower.endswith(f".{d_lower}"):
+                    return slug, info
+        return None, None
 
+    @classmethod
+    def is_site_enabled(cls, site: Optional[str] = None, domain: Optional[str] = None) -> bool:
+        """Check whether a site is enabled via slug or domain lookup."""
+        if domain:
+            _, info = cls.find_site_by_domain(domain)
+            if info is not None:
+                return info.get("enabled", True)
+
+        if site:
+            catalog = cls.get_catalog() or {}
+            info = catalog.get(site.strip().lower())
+            if info is not None:
+                return info.get("enabled", True)
+
+        return True

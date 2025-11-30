@@ -14,6 +14,7 @@ from schemas.subscription.request.subscription import SubscribeRequest, Unsubscr
 from services import subscription_service, message_service
 from typing import List
 from utils.site_catalog import SiteCatalog
+from utils.url_helper import extract_top_level_domain
 from utils.jwt_helper import get_current_user
 from mq.producer import RedisStreamProducer
 from common import constants
@@ -23,6 +24,10 @@ router = APIRouter(tags=['订阅接口'])
 
 @router.post("/api/subscription/subscribe")
 def subscribe_content(req: SubscribeRequest, current_user: User = Depends(get_current_user)):
+    domain = extract_top_level_domain(req.url)
+    if not SiteCatalog.is_site_enabled(domain=domain):
+        return response.param_error("站点插件未启用，无法订阅")
+
     with get_session() as session:
         task = {
             "url": req.url,
@@ -166,6 +171,10 @@ def refresh_subscription(
             "status": "in_progress",
             "inProgress": True
         })
+
+    domain = extract_top_level_domain(subscription.url)
+    if not SiteCatalog.is_site_enabled(domain=domain):
+        return response.param_error("站点插件未启用，无法刷新订阅")
 
     from services.subscription_update import scheduler, UpdateTrigger, UpdateMode
     

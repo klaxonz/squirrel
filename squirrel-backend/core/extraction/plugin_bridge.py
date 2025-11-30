@@ -64,6 +64,9 @@ class PluginBridge:
                     domains = list(getattr(extractor_class, 'supported_domains', []) or [])
 
                 catalog_entry = site_catalog.get(site_name.lower()) or {}
+                if catalog_entry.get("enabled") is False:
+                    logger.info(f"站点已禁用，跳过插件桥接: {site_name}")
+                    continue
 
                 # 为当前循环的 extractor_class 生成独立的适配器类，避免闭包晚绑定问题
                 def _make_adapter(extractor_cls, configured_site_name: str, site_entry: dict):
