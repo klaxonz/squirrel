@@ -1,7 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Query
 import asyncio
 import logging
-from typing import List, Optional, Literal
+from typing import List, Literal
 
 from services.plugin_service import PluginService
 from services.site_login_status_service import SiteLoginStatusService
@@ -10,6 +10,7 @@ from common.response import success, error, param_error
 from core.extraction import get_extractor_registry
 from routes.connectivity import test_site_connectivity
 from core.cookie_config import get_cookies_file_path
+from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,71 @@ def select_primary_domain(domains: list) -> str:
     
     # 如果没有 www. 开头的，选择最短的域名（通常是主域名）
     return min(domains, key=len)
+
+
+def merge_site_names(registry, catalog: dict) -> list[str]:
+    """
+    合并提取器注册表与站点配置中的站点名称，避免遗漏被禁用的站点
+    """
+    names: list[str] = []
+    seen = set()
+
+    for site_name in registry.get_all_sites():
+        key = site_name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        names.append(site_name)
+
+    for slug in catalog.keys():
+        key = slug.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        names.append(slug)
+
+    return names
+
+
+def build_site_info(site_name: str, registry, catalog: dict) -> dict | None:
+    """
+    基于注册表与站点配置汇总站点信息，优先使用配置文件中的域名/测试URL
+    """
+    if not site_name:
+        return None
+
+    slug = site_name.lower()
+    catalog_entry = catalog.get(slug, {})
+    domain_mapping = registry._domain_mapping
+
+    site_domains = catalog_entry.get("domains") or [
+        domain for domain, mapped_site in domain_mapping.items()
+        if str(mapped_site).lower() == slug
+    ]
+
+    # 去重但保持顺序
+    seen = set()
+    deduped_domains = []
+    for d in site_domains:
+        if d in seen:
+            continue
+        seen.add(d)
+        deduped_domains.append(d)
+
+    primary_domain = select_primary_domain(deduped_domains)
+    test_url = (
+        catalog_entry.get("test_url")
+        or registry.get_test_url(site_name)
+        or (f"https://{primary_domain}" if primary_domain else None)
+    )
+
+    return {
+        "name": site_name,
+        "domains": deduped_domains,
+        "primary_domain": primary_domain,
+        "test_url": test_url,
+        "config_enabled": catalog_entry.get("enabled", True),
+    }
 
 
 router = APIRouter(prefix="/api/plugins", tags=["plugins"])
@@ -94,29 +160,19 @@ def get_supported_sites():
         每个站点的详细信息，包括名称和对应的域名列表
     """
     registry = get_extractor_registry()
+    catalog = SiteCatalog.get_catalog() or {}
     login_supported_sites = SiteLoginStatusService.get_supported_sites()
-    all_sites = registry.get_all_sites()
-    domain_mapping = registry._domain_mapping
+    login_supported_sites_lower = {s.lower() for s in login_supported_sites}
+    site_names = merge_site_names(registry, catalog)
     
     # 构建每个站点的完整信息
     sites_info = []
-    for site_name in all_sites:
-        # 获取该站点对应的所有域名
-        site_domains = [domain for domain, mapped_site in domain_mapping.items() if mapped_site == site_name]
-        
-        # 获取插件定义的测试URL，如果没有则使用智能选择的主域名
-        test_url = registry.get_test_url(site_name)
-        if not test_url:
-            primary_domain = select_primary_domain(site_domains)
-            test_url = f"https://{primary_domain}" if primary_domain else None
-        
-        sites_info.append({
-            "name": site_name,
-            "domains": site_domains,
-            "primary_domain": select_primary_domain(site_domains),
-            "test_url": test_url,
-            "supports_login_status": site_name in login_supported_sites,
-        })
+    for site_name in site_names:
+        info = build_site_info(site_name, registry, catalog)
+        if not info:
+            continue
+        info["supports_login_status"] = site_name.lower() in login_supported_sites_lower
+        sites_info.append(info)
     
     return success({
         "sites": sites_info,
@@ -137,23 +193,19 @@ async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(1
         连通性测试结果
     """
     registry = get_extractor_registry()
-    
-    # 检查站点是否存在
-    if site_name not in registry.get_all_sites():
+    catalog = SiteCatalog.get_catalog() or {}
+    site_info = build_site_info(site_name, registry, catalog)
+
+    if not site_info:
         return param_error(f"不支持的站点: {site_name}")
     
-    # 获取站点的域名列表
-    domain_mapping = registry._domain_mapping
-    site_domains = [domain for domain, mapped_site in domain_mapping.items() if mapped_site == site_name]
-    
-    if not site_domains:
+    site_domains = site_info.get("domains") or []
+    test_url = site_info.get("test_url")
+
+    if not site_domains and not test_url:
         return error(f"站点 {site_name} 没有关联的域名")
-    
-    # 优先使用插件定义的测试URL，如果没有则使用智能选择的主域名
-    test_url = registry.get_test_url(site_name)
     if not test_url:
-        primary_domain = select_primary_domain(site_domains)
-        test_url = f"https://{primary_domain}"
+        return error(f"站点 {site_name} 未配置可用的测试URL")
     
     result = await test_site_connectivity(
         url=test_url,
@@ -178,7 +230,9 @@ async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(1
 @router.get("/sites/{site_name}/login-status")
 def get_site_login_status(site_name: str):
     registry = get_extractor_registry()
-    if site_name not in registry.get_all_sites():
+    catalog = SiteCatalog.get_catalog() or {}
+    site_info = build_site_info(site_name, registry, catalog)
+    if not site_info:
         return param_error(f"不支持的站点: {site_name}")
 
     status = SiteLoginStatusService.test(site_name)
@@ -192,7 +246,9 @@ async def upload_site_cookies(
     target: Literal["default", "http"] = Query("default")
 ):
     registry = get_extractor_registry()
-    if site_name not in registry.get_all_sites():
+    catalog = SiteCatalog.get_catalog() or {}
+    site_info = build_site_info(site_name, registry, catalog)
+    if not site_info:
         return param_error(f"不支持的站点: {site_name}")
 
     data = await file.read()
@@ -238,22 +294,15 @@ async def test_batch_sites_connectivity(
         return param_error("站点列表不能为空")
     
     registry = get_extractor_registry()
-    all_sites = registry.get_all_sites()
-    domain_mapping = registry._domain_mapping
+    catalog = SiteCatalog.get_catalog() or {}
     
     # 过滤有效的站点
     valid_sites = []
     for site_name in site_names:
-        if site_name in all_sites:
-            # 获取站点的所有域名
-            site_domains = [d for d, s in domain_mapping.items() if s == site_name]
-            if site_domains:
-                # 优先使用插件定义的测试URL
-                test_url = registry.get_test_url(site_name)
-                if not test_url:
-                    primary_domain = select_primary_domain(site_domains)
-                    test_url = f"https://{primary_domain}"
-                valid_sites.append((site_name, test_url, site_domains))
+        site_info = build_site_info(site_name, registry, catalog)
+        if not site_info or not site_info.get("test_url"):
+            continue
+        valid_sites.append((site_info["name"], site_info["test_url"], site_info.get("domains") or []))
     
     if not valid_sites:
         return param_error("没有有效的站点")
@@ -340,10 +389,10 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
         所有站点的测试结果
     """
     registry = get_extractor_registry()
-    all_sites = registry.get_all_sites()
-    domain_mapping = registry._domain_mapping
+    catalog = SiteCatalog.get_catalog() or {}
+    site_names = merge_site_names(registry, catalog)
     
-    if not all_sites:
+    if not site_names:
         return success({
             "results": [],
             "summary": {
@@ -356,17 +405,14 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
         })
     
     test_sites = []
-    for site_name in all_sites:
-        site_domains = [d for d, s in domain_mapping.items() if s == site_name]
-        if not site_domains:
+    for site_name in site_names:
+        site_info = build_site_info(site_name, registry, catalog)
+        if not site_info:
             continue
-        test_url = registry.get_test_url(site_name)
-        if not test_url:
-            primary_domain = select_primary_domain(site_domains)
-            test_url = f"https://{primary_domain}" if primary_domain else None
+        test_url = site_info.get("test_url")
         if not test_url:
             continue
-        test_sites.append((site_name, test_url, site_domains))
+        test_sites.append((site_info["name"], test_url, site_info.get("domains") or []))
     
     MAX_CONCURRENT = 20
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
