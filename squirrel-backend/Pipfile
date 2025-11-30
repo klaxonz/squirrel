@@ -29,10 +29,10 @@ python-jose = {extras = ["cryptography"], version = "*"}
 email-validator = "*"
 sqlalchemy-to-pydantic= "0.0.8"
 pytubefix = "*"
-httpx = {extras = ["http2"], version = "*"}
 botasaurus = "*"
 js2py = "*"
 python-redis-lock = "*"
 bilibili-api-python = "*"
+httpx = {extras = ["http2"], version = "==0.27.0"}
 
 [dev-packages]
