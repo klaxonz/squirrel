@@ -6,7 +6,7 @@ from services.subscription_update.models import UpdateTrigger, UpdateMode
 logger = logging.getLogger()
 
 
-@TaskRegistry.register(interval=60, unit='minutes')
+@TaskRegistry.register(interval=60 * 24, unit='minutes')
 class SubscriptionFullUpdateTask(BaseTask):
     """
     订阅全量更新定时任务

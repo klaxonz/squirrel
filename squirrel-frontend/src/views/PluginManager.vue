@@ -389,7 +389,6 @@
     <div
       v-if="siteEditorVisible"
       class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-      @click.self="closeSiteEditor"
     >
       <div class="bg-[#161616] rounded-2xl border border-white/10 w-full max-w-3xl shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
