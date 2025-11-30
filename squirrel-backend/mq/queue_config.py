@@ -22,9 +22,9 @@ class QueueMode(str, Enum):
 
 class QueueType(str, Enum):
     """队列类型枚举"""
-    VIDEO_EXTRACT = 'video::extract'
-    SUBSCRIPTION_UPDATE = 'subscription::update'
-    VIDEO_DOWNLOAD = 'video::download'
+    VIDEO_EXTRACT = 'video:extract'
+    SUBSCRIPTION_UPDATE = 'subscription:update'
+    VIDEO_DOWNLOAD = 'video:download'
 
 
 class QueueConfigManager:
@@ -79,11 +79,11 @@ class QueueConfigManager:
     
     def build_queue_name(self, queue_type: QueueType, site: str, mode: QueueMode) -> str:
         """构建队列名称"""
-        return f'queue::{queue_type.value}::{site}::{mode.value}'
+        return f'queue:{queue_type.value}:{site}:{mode.value}'
     
     def build_entry_queue(self, queue_type: QueueType, mode: QueueMode) -> str:
         """构建入口队列名称"""
-        return f'queue::{queue_type.value}::{mode.value}'
+        return f'queue:{queue_type.value}:{mode.value}'
     
     def get_all_modes(self) -> List[QueueMode]:
         """获取所有队列模式"""
@@ -92,26 +92,6 @@ class QueueConfigManager:
     def generate_domain_queue_mapping(self, queue_type: QueueType) -> Dict[str, Dict[str, str]]:
         """
         生成域队列映射
-        
-        Returns:
-            {
-                'bilibili.com': {
-                    'manual': 'queue::video::extract::bilibili::manual',
-                    'incremental': 'queue::video::extract::bilibili::incremental',
-                    'full': 'queue::video::extract::bilibili::full'
-                },
-                ...
-            }
-            
-            或对于订阅更新：
-            {
-                'bilibili.com': {
-                    'manual': 'queue::subscription::update::bilibili::manual',
-                    'incremental': 'queue::subscription::update::bilibili::incremental',
-                    'full': 'queue::subscription::update::bilibili::full'
-                },
-                ...
-            }
         """
         mapping = {}
         
