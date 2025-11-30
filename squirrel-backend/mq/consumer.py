@@ -46,7 +46,8 @@ class RedisStreamConsumer:
     def _ensure_group(self) -> None:
         try:
             # MKSTREAM 确保创建 stream
-            redis_client.xgroup_create(name=self.stream, groupname=self.options.group, id="$", mkstream=True)
+            # 使用 id=0 确保能消费创建消费者组之前已经存在的 backlog 消息
+            redis_client.xgroup_create(name=self.stream, groupname=self.options.group, id="0", mkstream=True)
             logger.info(
                 "已创建 Redis Stream 消费者组 stream=%s group=%s",
                 self.stream,
