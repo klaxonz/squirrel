@@ -1,20 +1,39 @@
 from __future__ import annotations
 
+import os
 import re
 from typing import Optional
 from urllib.parse import quote
 
 from bs4 import BeautifulSoup
-from botasaurus.request import request as brequest, Request
+from botasaurus.browser import browser as bbrowser, Driver
 
 from crawl import VideoUrlHandler, register_handler
 
 
-@brequest(output=None, raise_exception=True, close_on_crash=True, create_error_logs=False, max_retry=10)
-def _fetch_html(req: Request, link: str) -> str:
-	resp = req.get(link, timeout=20)
-	resp.raise_for_status()
-	return resp.text
+DEBUG_BROWSER = os.getenv("JAVDB_DEBUG_BROWSER") == "1"
+
+
+@bbrowser(
+	output=None,
+	raise_exception=True,
+	close_on_crash=True,
+	create_error_logs=False,
+	max_retry=3,
+	reuse_driver=False,
+	block_images_and_css=True,
+    headless=True
+)
+def _fetch_html(driver: Driver, link: str) -> str:
+	# When debugging, load the page in the real browser as well.
+	if driver.config.is_new:
+		# First hit goes through Google referrer to clear Cloudflare checks.
+		driver.google_get(link, bypass_cloudflare=True)
+	response = driver.requests.get(link)
+	response.raise_for_status()
+	if DEBUG_BROWSER:
+		driver.prompt()
+	return response.text
 
 
 def fetch_html(link: str) -> str:

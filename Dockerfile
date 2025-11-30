@@ -32,6 +32,12 @@ FROM base AS final
 # 设置工作目录
 WORKDIR /app
 
+# 安装 Chromium 供 Botasaurus 使用
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends chromium && \
+    ln -sf /usr/bin/chromium /usr/bin/google-chrome && \
+    rm -rf /var/lib/apt/lists/*
+
 # 复制 squirrel-sdk（后端依赖）
 COPY squirrel-sdk ./squirrel-sdk
 
@@ -65,7 +71,8 @@ ENV PYTHONPATH=/app/squirrel-backend:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     NODE_PATH=/usr/lib/node_modules \
-    TZ=Asia/Shanghai
+    TZ=Asia/Shanghai \
+    CHROME_PATH=/usr/bin/chromium
 
 # 暴露端口
 EXPOSE 8000
