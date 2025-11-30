@@ -736,6 +736,22 @@ const parseListInput = (text = '') => {
     .filter(Boolean);
 };
 
+const setLoginTesting = (siteName, value) => {
+  if (!siteName) return;
+  loginStatusTesting.value = {
+    ...loginStatusTesting.value,
+    [siteName]: value
+  };
+};
+
+const upsertLoginStatus = (siteName, payload) => {
+  if (!siteName) return;
+  loginStatusResults.value = {
+    ...loginStatusResults.value,
+    [siteName]: payload
+  };
+};
+
 const headersToText = (headers = {}) => {
   return Object.entries(headers || {})
     .map(([key, value]) => `${key}: ${value}`)
@@ -1089,35 +1105,23 @@ const handleTestSingle = async (site) => {
 
 const handleTestLogin = async (site) => {
   const siteName = site.site_name || site.name;
-  loginStatusTesting.value = {
-    ...loginStatusTesting.value,
-    [siteName]: true
-  };
+  setLoginTesting(siteName, true);
 
   const result = await testSiteLoginStatus(siteName);
 
   if (result.success && result.data) {
-    loginStatusResults.value = {
-      ...loginStatusResults.value,
-      [siteName]: result.data
-    };
+    upsertLoginStatus(siteName, result.data);
   } else {
-    loginStatusResults.value = {
-      ...loginStatusResults.value,
-      [siteName]: {
-        site_name: siteName,
-        logged_in: false,
-        message: result.error || '检测失败',
-        supported: false,
-        checked_at: new Date().toISOString(),
-      }
-    };
+    upsertLoginStatus(siteName, {
+      site_name: siteName,
+      logged_in: false,
+      message: result.error || '检测失败',
+      supported: false,
+      checked_at: new Date().toISOString(),
+    });
   }
 
-  loginStatusTesting.value = {
-    ...loginStatusTesting.value,
-    [siteName]: false
-  };
+  setLoginTesting(siteName, false);
 };
 
 const setCookieUploading = (siteName, value) => {
@@ -1158,16 +1162,48 @@ const handleUploadCookies = (site) => {
   input.click();
 };
 
+const testLoginForAllSupportedSites = async () => {
+  const targets = supportedSites.value.filter(site => site.supports_login_status);
+  if (!targets.length) return;
+
+  await Promise.all(
+    targets.map(async (site) => {
+      const siteName = site.site_name || site.name;
+      if (!siteName) return;
+
+      setLoginTesting(siteName, true);
+      try {
+        const result = await testSiteLoginStatus(siteName);
+        if (result.success && result.data) {
+          upsertLoginStatus(siteName, result.data);
+        } else {
+          upsertLoginStatus(siteName, {
+            site_name: siteName,
+            logged_in: false,
+            message: result.error || '检测失败',
+            supported: false,
+            checked_at: new Date().toISOString(),
+          });
+        }
+      } finally {
+        setLoginTesting(siteName, false);
+      }
+    })
+  );
+};
+
 // 测试全部站点
 const handleTestAll = async () => {
   testingAll.value = true;
-  const result = await testAllSitesConnectivity();
-  
-  if (result.success && result.data) {
-    connectivityResults.value = [result.data];
+  try {
+    const result = await testAllSitesConnectivity();
+    if (result.success && result.data) {
+      connectivityResults.value = [result.data];
+    }
+    await testLoginForAllSupportedSites();
+  } finally {
+    testingAll.value = false;
   }
-  
-  testingAll.value = false;
 };
 
 // 监听标签页切换
