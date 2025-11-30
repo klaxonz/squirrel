@@ -1,6 +1,5 @@
 from typing import Any, Dict, List, Optional
 import logging
-import os
 
 from core.database import get_session
 from models.system_config import SystemConfig
@@ -55,19 +54,9 @@ def get_bool(key: str, default: bool) -> bool:
     """
     读取布尔配置，使用 'true'/'false' 等字符串解析
     
-    优先级：环境变量 > 数据库配置 > 默认值
-    环境变量命名规则：将 key 转为大写
-    例如: enable_scheduler -> ENABLE_SCHEDULER
+    优先级：数据库配置 > 默认值
     """
-    # 1. 优先检查环境变量
-    env_key = key.upper()
-    env_value = os.getenv(env_key)
-    if env_value is not None:
-        result = _to_bool(env_value, default)
-        logging.getLogger().debug(f"[system_config] get_bool({key}) from env {env_key}={env_value} -> {result}")
-        return result
-    
-    # 2. 从数据库读取
+    # 从数据库读取
     db_value = get_value(key, None)
     result = _to_bool(db_value, default)
     if db_value is not None:
