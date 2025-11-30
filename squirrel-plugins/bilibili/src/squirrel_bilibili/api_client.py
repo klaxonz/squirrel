@@ -9,7 +9,10 @@ from urllib.parse import parse_qs, urlparse
 from bilibili_api import Credential, ResourceType, parse_link, sync
 from bilibili_api import video as bili_video
 
-from crawl import filter_cookies_to_query_string
+from crawl import (
+    filter_cookies_to_query_string,
+    get_rate_limiter,
+)
 
 
 @dataclass
@@ -18,6 +21,15 @@ class VideoContext:
     credential: Credential
     page_index: int
     cid: Optional[int]
+
+
+_rate_limiter = get_rate_limiter()
+
+
+def throttled_sync(coro):
+    """Use shared rate limiter to avoid hitting anti-spider limits."""
+    _rate_limiter.wait("bilibili.com")
+    return sync(coro)
 
 
 def _load_cookies(cookie_string: str) -> Dict[str, str]:
@@ -65,7 +77,7 @@ def get_video_context(
 ) -> VideoContext:
     """Resolve the Video object, credential and cid for the given URL."""
     credential = credential or build_credential(url)
-    obj, resource_type = sync(parse_link(url, credential))
+    obj, resource_type = throttled_sync(parse_link(url, credential))
     if obj == -1 or resource_type != ResourceType.VIDEO:
         raise ValueError("URL is not a supported bilibili video link")
 
@@ -75,7 +87,7 @@ def get_video_context(
     page_index = extract_page_index(url)
     cid: Optional[int] = None
     try:
-        pages = sync(video_obj.get_pages())
+        pages = throttled_sync(video_obj.get_pages())
         if pages:
             page_index = min(page_index, len(pages) - 1)
             cid = pages[page_index].get("cid")
@@ -91,7 +103,7 @@ def fetch_video_info(
 ) -> Tuple[dict, VideoContext, Optional[dict]]:
     """Fetch base video info along with context and selected page."""
     context = get_video_context(url, credential)
-    info = sync(context.video.get_info())
+    info = throttled_sync(context.video.get_info())
 
     pages = info.get("pages") or []
     page_info: Optional[dict] = None
@@ -146,7 +158,7 @@ def fetch_play_data(
     else:
         params["page_index"] = context.page_index
 
-    play_data = sync(context.video.get_download_url(**params))
+    play_data = throttled_sync(context.video.get_download_url(**params))
     if isinstance(play_data, dict) and play_data.get("video_info"):
         play_data = play_data["video_info"]
 
