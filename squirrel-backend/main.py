@@ -4,19 +4,15 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import uvicorn
-from alembic import command
 from alembic.config import Config as AlembicConfig
 from fastapi import FastAPI
 
-from common.constants import SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER
+from alembic import command
 from common.log import init_logging
-from controllers.scheduler_controller import scheduler_start, scheduler_stop
-from controllers.worker_controller import worker_start, worker_stop
 from core.config import settings
 from core.extraction import initialize_plugin_bridge
 from core.site_config_manager import apply_site_config_overrides
 from plugins.loader import init_plugins, app_start, app_stop
-from services.system_config_service import get_bool
 
 logger = logging.getLogger()
 
@@ -101,32 +97,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning(f"[3/5] ⚠ Plugin startup hooks failed (ignored): {e}")
     
-    # 4. 启动 Worker
-    enable_worker = get_bool(SYS_ENABLE_WORKER, True)
-    if enable_worker:
-        logger.info("[4/5] Starting message queue worker...")
-        try:
-            worker_start()
-            logger.info("[4/5] ✓ Worker started")
-        except Exception as e:
-            logger.exception(f"[4/5] ✗ Failed to start worker: {e}")
-            raise
-    else:
-        logger.info("[4/5] ⊘ Worker disabled by system config")
-    
-    # 5. 启动调度器
-    enable_scheduler = get_bool(SYS_ENABLE_SCHEDULER, True)
-    if enable_scheduler:
-        logger.info("[5/5] Starting task scheduler...")
-        try:
-            scheduler_start()
-            logger.info("[5/5] ✓ Scheduler started")
-        except Exception as e:
-            logger.exception(f"[5/5] ✗ Failed to start scheduler: {e}")
-            raise
-    else:
-        logger.info("[5/5] ⊘ Scheduler disabled by system config")
-    
+
     logger.info("=" * 60)
     logger.info("✓ Application startup completed successfully")
     logger.info("=" * 60)
@@ -139,27 +110,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("=" * 60)
     
     # 优雅停止所有服务（逆序）
-    logger.info("[1/3] Stopping scheduler...")
-    try:
-        scheduler_stop()
-        logger.info("[1/3] ✓ Scheduler stopped")
-    except Exception as e:
-        logger.warning(f"[1/3] ⚠ Error stopping scheduler (ignored): {e}")
-    
     logger.info("[2/3] Stopping plugins...")
     try:
         app_stop()
         logger.info("[2/3] ✓ Plugins stopped")
     except Exception as e:
         logger.warning(f"[2/3] ⚠ Error stopping plugins (ignored): {e}")
-    
-    logger.info("[3/3] Stopping worker...")
-    try:
-        worker_stop()
-        logger.info("[3/3] ✓ Worker stopped")
-    except Exception as e:
-        logger.warning(f"[3/3] ⚠ Error stopping worker (ignored): {e}")
-    
+
     logger.info("=" * 60)
     logger.info("✓ Application shutdown completed")
     logger.info("=" * 60)

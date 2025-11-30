@@ -57,6 +57,54 @@ services:
       retries: 3
       start_period: 40s
 
+  squirrel-worker:
+    image: klaxonz/squirrel:latest
+    container_name: squirrel-worker
+    restart: always
+    command: ["python", "-m", "processes.worker_process"]
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./downloads:/downloads
+      - ./plugins_ext:/app/squirrel-backend/plugins_ext
+    networks:
+      - squirrel-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  squirrel-scheduler:
+    image: klaxonz/squirrel:latest
+    container_name: squirrel-scheduler
+    restart: always
+    command: ["python", "-m", "processes.scheduler_process"]
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./downloads:/downloads
+      - ./plugins_ext:/app/squirrel-backend/plugins_ext
+    networks:
+      - squirrel-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
   redis:
     image: redis:7-alpine
     container_name: squirrel-redis
