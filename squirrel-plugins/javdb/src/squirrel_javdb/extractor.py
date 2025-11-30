@@ -2,6 +2,7 @@
 JavDB视频提取器
 """
 import logging
+from datetime import datetime
 from typing import Dict, Any, Optional
 
 from crawl import (
@@ -70,7 +71,8 @@ class JavdbExtractor(VideoExtractorBase):
         try:
             # 处理发行日期
             if 'timestamp' in video_info:
-                video_info['upload_date'] = video_info['timestamp']
-            
+                if isinstance( video_info['timestamp'], (int, float)):
+                    video_info['publish_date'] = datetime.fromtimestamp( video_info['timestamp'])
+
         except Exception as e:
             logger.warning(f"处理JavDB特定信息失败: {e}")
