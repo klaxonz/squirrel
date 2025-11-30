@@ -40,7 +40,7 @@
 
       <!-- 缓冲指示器 -->
       <BufferingIndicator
-        :is-buffering="playerState.media.loading && playerState.media.loadingStage === 'buffering'"
+        :is-buffering="isActiveBuffering"
         :network-speed="formatNetworkSpeed(performanceState.bandwidth.current)"
       />
 
@@ -165,6 +165,14 @@ const {
   onPointerLeave,
   onPointerMove,
 } = useVideoPlayer(props, emit)
+
+const isActiveBuffering = computed(() => {
+  const media = playerState.media
+  if (!(media.loading && media.loadingStage === 'buffering')) return false
+  if (media.seeking?.video) return true
+  if (media.hasStartedPlayback) return true
+  return media.currentTime > 0
+})
 
 // 字幕集成：将 VideoCore 的 videoElement 作为字幕的 videoRef
 const videoElRef = computed(() => videoCore.value?.videoElement || null)

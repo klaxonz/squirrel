@@ -315,7 +315,8 @@ const handleVideoLoadstart = () => {
 }
 
 const handleVideoLoadedmetadata = () => {
-  props.playerState.media.loadingStage = 'buffering'
+  props.playerState.media.loading = true
+  props.playerState.media.loadingStage = props.playerState.media.hasStartedPlayback ? 'buffering' : 'fetching'
   if (videoElement.value) {
     props.playerState.media.duration = videoElement.value.duration
   }

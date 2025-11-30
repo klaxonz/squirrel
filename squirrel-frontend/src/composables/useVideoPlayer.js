@@ -25,6 +25,7 @@ export default function useVideoPlayer(props, emit) {
       playbackRate: 1,
       subtitlesEnabled: false,
       pictureInPicture: false,
+      hasStartedPlayback: false,
       currentQuality: null,
       currentSubtitle: null,
       autoplay: false,
@@ -210,6 +211,7 @@ export default function useVideoPlayer(props, emit) {
     playerState.network.firstInteraction = false
     // 视频实际开始播放时，无条件更新状态
     playerState.media.playing = true
+    playerState.media.hasStartedPlayback = true
 
     // 确保音频也在播放（非HLS情况下）
     if (!isHlsStream.value && videoCore.value?.audioElement) {
@@ -760,6 +762,9 @@ export default function useVideoPlayer(props, emit) {
 
   // 监听视频变化，支持自动播放新视频
   watch(() => props.video?.id, (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      playerState.media.hasStartedPlayback = false
+    }
     if (newId && newId !== oldId && playerState.media.autoplay) {
       // 重置播放状态
       playerState.media.playing = false
