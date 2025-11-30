@@ -19,6 +19,15 @@ class BilibiliVideo(Video):
     @property
     def actors(self):  # type: ignore[override]
         if len(self._actors) == 0:
+            owner = self._base_info.get("owner") or {}
+            if owner.get('mid'):
+                actor_url = f"https://space.bilibili.com/{owner.get('mid')}"
+                actor = Actor(actor_url)
+                actor.name = owner.get('name')
+                actor.avatar = owner.get('face')
+                self._actors.append(actor)
+                return self._actors
+
             headers = get_http_headers(SITE_SLUG, {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                               'AppleWebKit/537.36 (KHTML, like Gecko) '

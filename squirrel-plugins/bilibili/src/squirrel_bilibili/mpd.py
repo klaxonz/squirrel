@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 from urllib.parse import quote
 
 from crawl import BaseMpdBuilder, register_mpd
-from .handler import fetch_html, extract_playinfo_from_html
+from .handler import get_dash_data, _base_url
 
 
 @register_mpd
@@ -12,12 +12,7 @@ class BilibiliMpdBuilder(BaseMpdBuilder):
     domain = 'bilibili.com'
 
     def build_mpd(self, video) -> str:
-        html = fetch_html(video.url)
-        play_info = extract_playinfo_from_html(html)
-        if not play_info or 'data' not in play_info or 'dash' not in play_info['data']:
-            raise RuntimeError("Failed to extract play info")
-
-        dash_data = play_info['data']['dash']
+        dash_data = get_dash_data(video.url)
         duration = dash_data.get('duration')
         min_buffer_time = dash_data.get('minBufferTime')
 
@@ -56,8 +51,11 @@ class BilibiliMpdBuilder(BaseMpdBuilder):
                 if 'bandwidth' in stream:
                     representation.set("bandwidth", str(stream['bandwidth']))
 
+                base = _base_url(stream)
+                if not base:
+                    continue
                 base_url = ET.SubElement(representation, "BaseURL")
-                proxied = f"/api/video/proxy?domain=bilibili.com&url=" + quote(stream['baseUrl'], safe='')
+                proxied = f"/api/video/proxy?domain=bilibili.com&url=" + quote(base, safe='')
                 base_url.text = proxied
 
                 segment_base = stream.get('SegmentBase')
@@ -81,8 +79,11 @@ class BilibiliMpdBuilder(BaseMpdBuilder):
                 if 'bandwidth' in audio_stream:
                     representation.set("bandwidth", str(audio_stream['bandwidth']))
 
+                base = _base_url(audio_stream)
+                if not base:
+                    continue
                 base_url = ET.SubElement(representation, "BaseURL")
-                proxied = f"/api/video/proxy?domain=bilibili.com&url=" + quote(audio_stream['baseUrl'], safe='')
+                proxied = f"/api/video/proxy?domain=bilibili.com&url=" + quote(base, safe='')
                 base_url.text = proxied
 
                 segment_base = audio_stream.get('SegmentBase')

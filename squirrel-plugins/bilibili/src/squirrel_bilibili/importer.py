@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 import logging
-import re
 from typing import List
 
-from crawl import (
-    IUserSubscriptionImporter,
-    register_user_subscription_importer,
-    filter_cookies_to_query_string,
-    request_without_limit,
-    get_http_headers,
-)
+from bilibili_api import user, sync
+
+from crawl import IUserSubscriptionImporter, register_user_subscription_importer
+from .api_client import build_credential
 
 
 logger = logging.getLogger(__name__)
@@ -28,26 +24,11 @@ class BilibiliUserSubscriptionImporter(IUserSubscriptionImporter):
     
     def _get_current_user_mid(self) -> str:
         """获取当前登录用户的 mid"""
-        base_url = f'https://www.{self.domain}'
-        cookies = filter_cookies_to_query_string(base_url)
-        headers = get_http_headers(SITE_SLUG, {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-        })
-        headers['Cookie'] = cookies
-        
-        # 获取用户信息
-        api_url = 'https://api.bilibili.com/x/web-interface/nav'
-        resp = request_without_limit('GET', api_url, headers=headers, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-        
-        if data.get('code') != 0:
-            raise ValueError(f"Failed to get user info: {data.get('message', 'Unknown error')}")
-        
-        mid = data['data']['mid']
+        credential = build_credential(f'https://www.{self.domain}')
+        info = sync(user.get_self_info(credential))
+        mid = info.get('mid')
         if not mid:
             raise ValueError("User not logged in or cookies expired")
-        
         return str(mid)
     
     def get_user_subscriptions(self) -> List[str]:
@@ -58,31 +39,18 @@ class BilibiliUserSubscriptionImporter(IUserSubscriptionImporter):
             关注的 UP 主空间 URL 列表
         """
         try:
+            credential = build_credential(f'https://www.{self.domain}')
             mid = self._get_current_user_mid()
             logger.info(f"Getting subscriptions for Bilibili user: {mid}")
             
-            base_url = f'https://www.{self.domain}'
-            cookies = filter_cookies_to_query_string(base_url)
-            headers = get_http_headers(SITE_SLUG, {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-            })
-            headers['Cookie'] = cookies
+            user_obj = user.User(int(mid), credential=credential)
             subscription_urls: List[str] = []
             page = 1
             page_size = 50
             
             while True:
-                # 获取关注列表
-                api_url = f'https://api.bilibili.com/x/relation/followings?vmid={mid}&pn={page}&ps={page_size}'
-                resp = request_without_limit('GET', api_url, headers=headers, timeout=15)
-                resp.raise_for_status()
-                data = resp.json()
-                
-                if data.get('code') != 0:
-                    logger.error(f"Failed to get followings page {page}: {data.get('message')}")
-                    break
-                
-                followings = data['data'].get('list', [])
+                data = sync(user_obj.get_followings(pn=page, ps=page_size))
+                followings = data.get('list') or []
                 if not followings:
                     break
                 
@@ -92,9 +60,8 @@ class BilibiliUserSubscriptionImporter(IUserSubscriptionImporter):
                         space_url = f'https://space.bilibili.com/{following_mid}'
                         subscription_urls.append(space_url)
                 
-                # 检查是否还有下一页
-                total = data['data'].get('total', 0)
-                if len(subscription_urls) >= total:
+                total = data.get('total', 0)
+                if not total or len(subscription_urls) >= total or len(followings) < page_size:
                     break
                 
                 page += 1
