@@ -7,7 +7,6 @@ from datetime import datetime
 from sqlalchemy import select
 
 from core.database import get_session
-from core.progress import progress_emitter, ProgressEvent, ProgressEventType
 from crawl import ExtractionTask, ExtractionResult, Video
 from models.subscription import Subscription
 from models.video import Video as VideoModel
@@ -35,14 +34,6 @@ class VideoExtractionHandler(BaseResultHandler):
             
             if result.success is False:
                 logger.info(f"提取任务结果失败: {task.task_id}")
-                # 发射失败事件
-                if subscription_id:
-                    progress_emitter.emit(ProgressEvent(
-                        event_type=ProgressEventType.VIDEO_EXTRACTION_ERROR,
-                        subscription_id=subscription_id,
-                        url=task.url,
-                        error="提取结果失败"
-                    ))
                 return
 
             # 获取任务元数据
@@ -57,12 +48,6 @@ class VideoExtractionHandler(BaseResultHandler):
             # 检查订阅是否存在
             if not self._check_subscription_exist(subscription_id):
                 logger.info(f"订阅不存在或已删除: {subscription_id}")
-                progress_emitter.emit(ProgressEvent(
-                    event_type=ProgressEventType.VIDEO_EXTRACTION_ERROR,
-                    subscription_id=subscription_id,
-                    url=task.url,
-                    error="订阅不存在或已删除"
-                ))
                 return
 
             # 创建或更新视频记录
@@ -73,31 +58,6 @@ class VideoExtractionHandler(BaseResultHandler):
                     task, result, subscription_id, is_extract_all
                 )
 
-            # 发射成功事件
-            if video:
-                video_title = result.data.title if hasattr(result.data, 'title') else task.url
-                message = f"提取成功: {video_title}"
-                if video_status == "existed":
-                    message = f"视频已存在: {video_title}"
-                elif video_status == "created":
-                    message = f"新视频: {video_title}"
-                
-                progress_emitter.emit(ProgressEvent(
-                    event_type=ProgressEventType.VIDEO_EXTRACTION_COMPLETE,
-                    subscription_id=subscription_id,
-                    video_id=video.id,
-                    url=task.url,
-                    message=message,
-                    metadata={'status': video_status}
-                ))
-            else:
-                progress_emitter.emit(ProgressEvent(
-                    event_type=ProgressEventType.VIDEO_EXTRACTION_ERROR,
-                    subscription_id=subscription_id,
-                    url=task.url,
-                    error="创建视频失败"
-                ))
-
             # 如果需要下载，创建下载任务
             if not only_extract and video:
                 self._create_download_task(video)
@@ -105,31 +65,12 @@ class VideoExtractionHandler(BaseResultHandler):
 
         except Exception as e:
             logger.error(f"处理成功结果失败: {task.task_id}, error: {e}", exc_info=True)
-            # 发射异常事件
-            subscription_id = task.metadata.get('subscription_id')
-            if subscription_id:
-                progress_emitter.emit(ProgressEvent(
-                    event_type=ProgressEventType.VIDEO_EXTRACTION_ERROR,
-                    subscription_id=subscription_id,
-                    url=task.url,
-                    error=str(e)
-                ))
 
     def handle_failure(self, task: ExtractionTask, result: ExtractionResult) -> None:
         """处理失败结果"""
         try:
             logger.error(f"处理视频提取失败结果: {task.task_id}, error: {result.error}")
             
-            # 发射失败事件
-            subscription_id = task.metadata.get('subscription_id')
-            if subscription_id:
-                progress_emitter.emit(ProgressEvent(
-                    event_type=ProgressEventType.VIDEO_EXTRACTION_ERROR,
-                    subscription_id=subscription_id,
-                    url=task.url,
-                    error=result.error or "视频提取失败"
-                ))
-
         except Exception as e:
             logger.error(f"处理失败结果异常: {task.task_id}, error: {e}")
 

@@ -80,15 +80,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.exception(f"[2.1/5] ✗ Failed to initialize queue config: {e}")
         raise
     
-    # 2.2 初始化进度跟踪监听器
-    logger.info("[2.2/5] Setting up progress listeners...")
-    try:
-        from core.progress import setup_default_listeners
-        setup_default_listeners()
-        logger.info("[2.2/5] ✓ Progress listeners setup completed")
-    except Exception as e:
-        logger.warning(f"[2.2/5] ⚠ Failed to setup progress listeners (ignored): {e}")
-    
     # 3. 触发插件启动钩子
     logger.info("[3/5] Triggering plugin startup hooks...")
     try:

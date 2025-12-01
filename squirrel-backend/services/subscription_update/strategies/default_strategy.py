@@ -7,10 +7,8 @@ from sqlalchemy import update
 from core.cache import get_distributed_lock
 from core.config import settings
 from core.database import get_session
-from core.progress import progress_emitter, ProgressEvent, ProgressEventType
 from crawl import SubscriptionFactory
 from models.subscription import Subscription
-from models.video import Video
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, video_service
 from .base import UpdateStrategy
@@ -65,26 +63,17 @@ class DefaultUpdateStrategy(UpdateStrategy):
     def enqueue_extraction(self, video_urls: List[str], request: SubscriptionUpdateRequest) -> int:
         """将视频加入提取队列"""
         enqueued = 0
+        existing_count = 0
+        failed_count = 0
         is_manual = request.trigger == UpdateTrigger.MANUAL
         is_full_update = request.mode == UpdateMode.FULL
         total = len(video_urls)
         existing_videos = video_service.get_videos_by_urls(video_urls)
         
-        # 发射批量处理开始事件
-        progress_emitter.emit(ProgressEvent(
-            event_type=ProgressEventType.BATCH_PROCESS_START,
-            trace_id=request.trace_id,
-            subscription_id=request.subscription_id,
-            url=request.url,
-            current=0,
-            total=total,
-            message=f"开始处理 {total} 个视频"
-        ))
-        
         for index, video_url in enumerate(video_urls, 1):
             existing_video = existing_videos.get(video_url)
             if existing_video:
-                self._emit_existing_video_event(request, video_url, existing_video)
+                existing_count += 1
             else:
                 try:
                     params = VideoExtractDto(
@@ -95,44 +84,23 @@ class DefaultUpdateStrategy(UpdateStrategy):
                         is_manual=is_manual,
                         is_extract_all=is_full_update
                     )
-                    
-                    # 发出视频提取开始事件（入队时）
-                    progress_emitter.emit(ProgressEvent(
-                        event_type=ProgressEventType.VIDEO_EXTRACTION_START,
-                        trace_id=request.trace_id,
-                        subscription_id=request.subscription_id,
-                        url=video_url,
-                        message=f"视频入队: {video_url}"
-                    ))
-                    
                     download_service.enqueue_video_extraction(params)
                     enqueued += 1
                 except Exception as e:
+                    failed_count += 1
                     logger.warning(f"Failed to enqueue video {video_url}: {e}")
 
-            # 每处理 10 个视频或处理完毕时发射进度事件
-            if index % 10 == 0 or index == total:
-                progress_emitter.emit(ProgressEvent(
-                    event_type=ProgressEventType.BATCH_PROCESS_PROGRESS,
-                    trace_id=request.trace_id,
-                    subscription_id=request.subscription_id,
-                    url=request.url,
-                    current=index,
-                    total=total,
-                    message=f"已处理 {index}/{total} 个视频"
-                ))
-        
-        # 发射批量处理完成事件
-        progress_emitter.emit(ProgressEvent(
-            event_type=ProgressEventType.BATCH_PROCESS_COMPLETE,
-            trace_id=request.trace_id,
-            subscription_id=request.subscription_id,
-            url=request.url,
-            current=enqueued,
-            total=total,
-            message=f"处理完成，成功 {enqueued}/{total} 个视频"
-        ))
-        
+        logger.debug(
+            "Enqueue summary subscription_id=%s domain=%s trigger=%s mode=%s total=%s queued=%s existed=%s failed=%s",
+            request.subscription_id,
+            getattr(request, 'domain', None) or "-",
+            request.trigger.value,
+            request.mode.value,
+            total,
+            enqueued,
+            existing_count,
+            failed_count,
+        )
         return enqueued
     
     def execute(self, request: SubscriptionUpdateRequest) -> 'SubscriptionUpdateResult':
@@ -155,19 +123,4 @@ class DefaultUpdateStrategy(UpdateStrategy):
                 .where(Subscription.id == subscription_id)
                 .values(total_videos=total)
             )
-
-    @staticmethod
-    def _emit_existing_video_event(request: SubscriptionUpdateRequest, video_url: str, video: Video):
-        """当视频已存在时发出完成事件以保持行为一致"""
-        if not request.subscription_id:
-            return
-        progress_emitter.emit(ProgressEvent(
-            event_type=ProgressEventType.VIDEO_EXTRACTION_COMPLETE,
-            trace_id=request.trace_id,
-            subscription_id=request.subscription_id,
-            video_id=video.id,
-            url=video_url,
-            message=f"视频已存在: {video.title or video_url}",
-            metadata={'status': 'existed'}
-        ))
 

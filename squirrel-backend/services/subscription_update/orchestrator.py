@@ -7,10 +7,9 @@ from utils import url_helper
 from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult
 from .strategies.registry import StrategyRegistry
 from .strategies.default_strategy import DefaultUpdateStrategy
-from core.progress import progress_emitter, ProgressEvent, ProgressEventType
 from utils.site_catalog import SiteCatalog
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class SubscriptionOrchestrator:
@@ -42,13 +41,6 @@ class SubscriptionOrchestrator:
             if not SiteCatalog.is_site_enabled(domain=domain):
                 message = f"Site is disabled, skip subscription update: {domain}"
                 logger.info(message)
-                progress_emitter.emit(ProgressEvent(
-                    event_type=ProgressEventType.SUBSCRIPTION_UPDATE_ERROR,
-                    trace_id=request.trace_id,
-                    subscription_id=request.subscription_id,
-                    url=request.url,
-                    error=message
-                ))
                 return SubscriptionUpdateResult(
                     subscription_id=request.subscription_id,
                     success=False,
@@ -61,56 +53,20 @@ class SubscriptionOrchestrator:
             site_name = self._resolve_site(request.url)
             strategy = self._select_strategy(site_name)
             
-            # 发射开始事件
-            progress_emitter.emit(ProgressEvent(
-                event_type=ProgressEventType.SUBSCRIPTION_UPDATE_START,
-                trace_id=request.trace_id,
-                subscription_id=request.subscription_id,
-                url=request.url,
-                message=f"Starting update with {strategy.site_name} strategy"
-            ))
-            
-            logger.info(
-                f"Updating subscription {request.subscription_id} "
-                f"using {strategy.site_name} strategy "
-                f"(trigger={request.trigger.value}, mode={request.mode.value})"
+            logger.debug(
+                "Updating subscription %s using %s strategy (trigger=%s, mode=%s)",
+                request.subscription_id,
+                strategy.site_name,
+                request.trigger.value,
+                request.mode.value,
             )
             
             result = strategy.execute(request)
-            
-            # 发射完成事件
-            if result.success:
-                progress_emitter.emit(ProgressEvent(
-                    event_type=ProgressEventType.SUBSCRIPTION_UPDATE_COMPLETE,
-                    trace_id=request.trace_id,
-                    subscription_id=request.subscription_id,
-                    url=request.url,
-                    current=result.videos_enqueued,
-                    total=result.videos_found,
-                    message=f"Updated successfully: {result.videos_enqueued}/{result.videos_found} videos"
-                ))
-            else:
-                progress_emitter.emit(ProgressEvent(
-                    event_type=ProgressEventType.SUBSCRIPTION_UPDATE_ERROR,
-                    trace_id=request.trace_id,
-                    subscription_id=request.subscription_id,
-                    url=request.url,
-                    error=result.error_message
-                ))
             
             return result
             
         except Exception as e:
             logger.error(f"Orchestrator error for subscription {request.subscription_id}: {e}", exc_info=True)
-            
-            # 发射错误事件
-            progress_emitter.emit(ProgressEvent(
-                event_type=ProgressEventType.SUBSCRIPTION_UPDATE_ERROR,
-                trace_id=request.trace_id,
-                subscription_id=request.subscription_id,
-                url=request.url,
-                error=str(e)
-            ))
             
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,

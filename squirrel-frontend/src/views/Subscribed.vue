@@ -199,7 +199,6 @@
 import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';
 import FeedToolbar from '../components/feed/FeedToolbar.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
-import ProgressIndicator from '../components/ProgressIndicator.vue';
 import {useRouter} from "vue-router";
 import { useRefreshTriggers } from '../composables/useRefreshTriggers';
 import AddChannelDialog from '../components/AddChannelDialog.vue';
@@ -209,7 +208,6 @@ import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
 import {useSubscriptionRefresh} from '../composables/useSubscriptionRefresh';
 import {useSubscriptionApi} from '../composables/useSubscriptionApi';
-import {useProgressApi} from '../composables/useProgressApi';
 import { useFeedFilters } from '../composables/useFeedFilters';
 
 const router = useRouter();

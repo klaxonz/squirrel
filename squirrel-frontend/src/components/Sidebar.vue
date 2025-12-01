@@ -96,7 +96,6 @@ import {
   PuzzlePieceIcon,
   DocumentTextIcon,
   QueueListIcon,
-  ChartBarIcon,
 } from '@heroicons/vue/24/outline';
 import { useUser } from '../composables/useUser';
 
@@ -131,11 +130,6 @@ const menuItems = [
 ];
 
 const bottomItems = [
-  {
-    name: '进度监控',
-    path: '/progress',
-    icon: ChartBarIcon,
-  },
   {
     name: '日志',
     path: '/logs',

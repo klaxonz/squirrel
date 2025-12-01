@@ -11,7 +11,6 @@ import Register from "../views/Register.vue";
 import PluginManager from '../views/PluginManager.vue';
 import LogViewer from '../views/LogViewer.vue';
 import MessageTrace from '../views/MessageTrace.vue';
-import ProgressMonitor from '../views/ProgressMonitor.vue';
 import { useUser } from '../composables/useUser';
 
 
@@ -92,12 +91,6 @@ const routes = [
     path: '/message-trace',
     name: 'MessageTrace',
     component: MessageTrace,
-    meta: { showSearch: false }
-  },
-  {
-    path: '/progress',
-    name: 'ProgressMonitor',
-    component: ProgressMonitor,
     meta: { showSearch: false }
   },
   {
