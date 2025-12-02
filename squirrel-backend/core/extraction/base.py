@@ -1,5 +1,5 @@
 """
-数据提取基础实现类
+Base extraction implementations.
 """
 import logging
 from typing import List, Optional
@@ -10,7 +10,7 @@ logger = logging.getLogger()
 
 
 class BaseExtractor(IExtractor):
-    """基础提取器实现"""
+    """Base extractor implementation."""
     
     def __init__(self, site_name: str, supported_domains: List[str]):
         self.site_name = site_name
@@ -21,22 +21,20 @@ class BaseExtractor(IExtractor):
         return [self.site_name]
     
     def can_handle(self, url: str) -> bool:
-        """检查是否可以处理指定URL"""
+        """Check if the extractor can handle the given URL."""
         try:
             parsed = urlparse(url)
             domain = parsed.netloc.lower()
-            
-            # 检查完整域名和父域名
             for supported_domain in self._supported_domains:
                 if domain == supported_domain or domain.endswith(f'.{supported_domain}'):
                     return True
             return False
         except Exception as e:
-            logger.warning(f"URL解析失败: {url}, error: {e}")
+            logger.warning(f"Failed to parse URL: {url}, error: {e}")
             return False
     
     def validate_url(self, url: str) -> bool:
-        """验证URL格式"""
+        """Validate URL format."""
         try:
             result = urlparse(url)
             return all([result.scheme, result.netloc])
@@ -44,74 +42,71 @@ class BaseExtractor(IExtractor):
             return False
     
     def extract(self, task: ExtractionTask) -> ExtractionResult:
-        """基础提取实现，子类应重写此方法"""
+        """Base extraction implementation; subclasses should override."""
         if not self.can_handle(task.url):
             return ExtractionResult(
                 success=False,
-                error=f"不支持的URL: {task.url}"
+                error=f"Unsupported URL: {task.url}"
             )
         
         if not self.validate_url(task.url):
             return ExtractionResult(
                 success=False,
-                error=f"无效的URL格式: {task.url}"
+                error=f"Invalid URL format: {task.url}"
             )
         
-        # 子类应实现具体的提取逻辑
         return self._do_extract(task)
     
     def _do_extract(self, task: ExtractionTask) -> ExtractionResult:
-        """具体的提取逻辑，子类必须实现"""
-        raise NotImplementedError("子类必须实现_do_extract方法")
+        """Concrete extraction logic; must be implemented by subclasses."""
+        raise NotImplementedError("Subclasses must implement _do_extract.")
 
 
 class BaseTaskProcessor(ITaskProcessor):
-    """基础任务处理器"""
+    """Base task processor."""
     
     def __init__(self, extractor: IExtractor, result_handler: IResultHandler):
         self.extractor = extractor
         self.result_handler = result_handler
     
     def can_process(self, task: ExtractionTask) -> bool:
-        """检查是否可以处理任务"""
+        """Check whether the task can be processed."""
         extractor = self._get_extractor_for_task(task)
         return extractor.can_handle(task.url) if extractor else False
     
     def process(self, task: ExtractionTask) -> ExtractionResult:
-        """处理任务"""
+        """Process the given task."""
         extractor = self._get_extractor_for_task(task)
         if extractor is None:
-            raise ValueError("未找到可用提取器")
+            raise ValueError("No available extractor found.")
         return self._process_with_extractor(extractor, task)
 
     def _get_extractor_for_task(self, task: ExtractionTask) -> Optional[IExtractor]:
-        """获取当前任务要使用的提取器，默认返回初始化时的提取器"""
+        """Return the extractor to use for the task; defaults to the provided extractor."""
         return self.extractor
 
     def _process_with_extractor(self, extractor: IExtractor, task: ExtractionTask) -> ExtractionResult:
-        """使用指定提取器处理任务"""
+        """Process the task with the specified extractor."""
         if extractor is None:
-            raise ValueError("未配置提取器")
+            raise ValueError("Extractor not configured.")
 
         try:
-            logger.info(f"开始处理任务: {task.task_id}, URL: {task.url}")
+            logger.info(f"Start execute extract task, task_id: {task.task_id}, url: {task.url}")
 
-            # 执行提取
             result = extractor.extract(task)
 
-            # 处理结果
             if result.success:
                 self.result_handler.handle_success(task, result)
-                title = result.data.title if result.data else "未知"
-                logger.info(f"任务处理成功: {task.task_id}, 标题: {title}")
+                title = result.data.title if result.data else "unknown"
+                logger.info(f"Task processed successfully: {task.task_id}, title: {title}")
             else:
                 self.result_handler.handle_failure(task, result)
-                logger.error(f"任务处理失败: {task.task_id}, error: {result.error}")
+                logger.error(f"Task processing failed: {task.task_id}, error: {result.error}")
 
             return result
 
         except Exception as e:
-            error_msg = f"任务处理异常: {task.task_id}, error: {str(e)}"
+            error_msg = f"Task processing exception: {task.task_id}, error: {str(e)}"
             logger.error(error_msg, exc_info=True)
 
             result = ExtractionResult(
@@ -124,14 +119,12 @@ class BaseTaskProcessor(ITaskProcessor):
 
 
 class BaseResultHandler(IResultHandler):
-    """基础结果处理器"""
+    """Base result handler."""
     
     def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:
-        """处理成功结果"""
-        logger.info(f"任务成功: {task.task_id}")
-        # 子类可以重写此方法实现具体的成功处理逻辑
+        """Handle successful extraction results."""
+        logger.info(f"Task succeeded: {task.task_id}")
     
     def handle_failure(self, task: ExtractionTask, result: ExtractionResult) -> None:
-        """处理失败结果"""
-        logger.error(f"任务失败: {task.task_id}, error: {result.error}")
-        # 子类可以重写此方法实现具体的失败处理逻辑
+        """Handle failed extraction results."""
+        logger.error(f"Task failed: {task.task_id}, error: {result.error}")

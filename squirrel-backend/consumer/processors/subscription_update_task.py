@@ -67,7 +67,7 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
         mode = body_data.get('mode', 'smart')
         user_id = body_data.get('user_id')
         force = body_data.get('force', False)
-        domain = body_data.get('domain')  # 获取 domain 信息
+        domain = body_data.get('domain')
         trace_id = message_obj.trace_id if hasattr(message_obj, 'trace_id') else None
         
         if not subscription_id or not url:
