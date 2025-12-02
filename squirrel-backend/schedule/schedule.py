@@ -10,16 +10,20 @@ class Scheduler:
         self.jobs = []
         self.running = False
 
-    def _run_job_with_trace(self, func):
+    def _resolve_job_name(self, func):
+        """Return a readable job name for logging."""
+        return getattr(func, "__qualname__", None) or getattr(func, "__name__", repr(func))
+
+    def _run_job_with_trace(self, func, job_name):
         """Execute the job with a trace context."""
         from utils.trace import TraceContext
         
         with TraceContext():
-            logger.info(f"Scheduled job started: {func.__name__}")
+            logger.info(f"Scheduled job started: {job_name}")
             try:
                 func()
             except Exception as e:
-                logger.exception(f"Scheduled job failed: {func.__name__}, error: {e}")
+                logger.exception(f"Scheduled job failed: {job_name}, error: {e}")
 
     def _run_jobs(self):
         """Loop through jobs and run any that are due."""
@@ -27,12 +31,12 @@ class Scheduler:
             current_time = time.time()
             for job in self.jobs[:]:
                 if job['next_run'] <= current_time:
-                    thread = Thread(target=self._run_job_with_trace, args=(job['func'],))
+                    thread = Thread(target=self._run_job_with_trace, args=(job['func'], job['name']))
                     thread.start()
                     job['next_run'] += job['interval']
             time.sleep(1)
 
-    def add_job(self, func, interval, unit='seconds', start_immediately=True):
+    def add_job(self, func, interval, unit='seconds', start_immediately=True, job_name=None):
         """Add a scheduled job."""
         if unit not in ['seconds', 'minutes']:
             raise ValueError("unit must be 'seconds' or 'minutes'")
@@ -44,6 +48,7 @@ class Scheduler:
             'func': func,
             'interval': interval,
             'next_run': next_run,
+            'name': job_name or self._resolve_job_name(func),
         })
 
     def start(self):
