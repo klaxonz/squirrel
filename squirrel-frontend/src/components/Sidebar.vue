@@ -95,7 +95,6 @@ import {
   Cog6ToothIcon as CogIcon,
   PuzzlePieceIcon,
   DocumentTextIcon,
-  QueueListIcon,
 } from '@heroicons/vue/24/outline';
 import { useUser } from '../composables/useUser';
 
@@ -134,11 +133,6 @@ const bottomItems = [
     name: '日志',
     path: '/logs',
     icon: DocumentTextIcon,
-  },
-  {
-    name: '消息追踪',
-    path: '/message-trace',
-    icon: QueueListIcon,
   },
   {
     name: '设置',

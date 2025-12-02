@@ -26,24 +26,8 @@ class RedisStreamProducer:
         if trace_id is None:
             from utils.trace import get_trace_id
             trace_id = get_trace_id()
-        
-        # 记录消息追踪
-        try:
-            from services import message_service
-            message_type = message.get('type') or message.get('action')
-            message_service.record_message_trace(
-                trace_id=trace_id,
-                queue_name=stream,
-                message_type=message_type,
-                body=message,
-                status='PENDING'
-            )
-            logger.debug(f"记录消息追踪 trace_id={trace_id} queue={stream} type={message_type}")
-        except Exception as e:
-            logger.warning(f"记录消息追踪失败: {e}")
-        
+
         payload = MqMessage(body=message, trace_id=trace_id).to_stream_fields()
-        last_err = None
         for attempt in range(max_retries + 1):
             try:
                 # 使用近似裁剪，避免无界增长
@@ -54,16 +38,12 @@ class RedisStreamProducer:
                 if attempt < max_retries:
                     time.sleep(0.1 * (attempt + 1))
                 else:
-                    # 记录发送失败
-                    try:
-                        from services import message_service
-                        message_service.update_message_status(
-                            trace_id=trace_id,
-                            status='FAILED',
-                            error_msg=f"发送失败: {str(e)}"
-                        )
-                    except:
-                        pass
+                    logger.error(
+                        "Failed to send message stream=%s after %s retries: %s",
+                        stream,
+                        max_retries,
+                        e,
+                    )
                     raise last_err
 
 

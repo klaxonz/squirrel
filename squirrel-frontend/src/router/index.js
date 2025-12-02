@@ -10,7 +10,6 @@ import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
 import PluginManager from '../views/PluginManager.vue';
 import LogViewer from '../views/LogViewer.vue';
-import MessageTrace from '../views/MessageTrace.vue';
 import { useUser } from '../composables/useUser';
 
 
@@ -85,12 +84,6 @@ const routes = [
     path: '/logs',
     name: 'Logs',
     component: LogViewer,
-    meta: { showSearch: false }
-  },
-  {
-    path: '/message-trace',
-    name: 'MessageTrace',
-    component: MessageTrace,
     meta: { showSearch: false }
   },
   {

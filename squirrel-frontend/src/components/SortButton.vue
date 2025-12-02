@@ -56,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { isMobile } from "../composables/useMobile.js";
 import { useDropdown } from "../composables/useDropdown.js";
 
