@@ -11,19 +11,18 @@ class Scheduler:
         self.running = False
 
     def _run_job_with_trace(self, func):
-        """执行任务并为其生成 trace_id"""
+        """Execute the job with a trace context."""
         from utils.trace import TraceContext
         
-        # 为每个定时任务生成一个新的 trace_id
-        with TraceContext() as trace_id:
-            logger.info(f"定时任务开始执行: {func.__name__}")
+        with TraceContext():
+            logger.info(f"Scheduled job started: {func.__name__}")
             try:
                 func()
             except Exception as e:
-                logger.exception(f"定时任务执行失败: {func.__name__}, error: {e}")
+                logger.exception(f"Scheduled job failed: {func.__name__}, error: {e}")
 
     def _run_jobs(self):
-        """内部方法，循环检查并执行到期的任务"""
+        """Loop through jobs and run any that are due."""
         while self.running:
             current_time = time.time()
             for job in self.jobs[:]:
@@ -34,14 +33,7 @@ class Scheduler:
             time.sleep(1)
 
     def add_job(self, func, interval, unit='seconds', start_immediately=True):
-        """
-        添加一个定时任务。
-        
-        :param func: 要执行的函数
-        :param interval: 执行间隔
-        :param unit: 时间间隔单位，默认为秒
-        :param start_immediately: 是否立即执行一次，默认为True
-        """
+        """Add a scheduled job."""
         if unit not in ['seconds', 'minutes']:
             raise ValueError("unit must be 'seconds' or 'minutes'")
 
@@ -55,7 +47,7 @@ class Scheduler:
         })
 
     def start(self):
-        """启动调度器"""
+        """Start the scheduler."""
         if not self.running:
             self.running = True
             thread = Thread(target=self._run_jobs)
@@ -63,5 +55,5 @@ class Scheduler:
             thread.start()
 
     def stop(self):
-        """停止调度器"""
+        """Stop the scheduler."""
         self.running = False

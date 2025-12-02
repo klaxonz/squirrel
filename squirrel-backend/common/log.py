@@ -103,6 +103,10 @@ LOGGING_CONFIG = {
             'level': 'WARNING',
             'propagate': True,
         },
+        'redis_lock': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
     },
     'root': {
         'handlers': ['console', 'file', 'error_file'],
