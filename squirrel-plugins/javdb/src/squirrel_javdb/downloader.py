@@ -5,7 +5,8 @@ from typing import Dict, Optional, Any
 
 from bs4 import BeautifulSoup
 
-from crawl import BaseDownloader, register_downloader, request
+from crawl import BaseDownloader, register_downloader
+from .browser_utils import fetch_page_html
 
 
 @register_downloader
@@ -13,17 +14,13 @@ class JavdbDownloader(BaseDownloader):
     domain = 'javdb.com'
 
     def get_video_info(self, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        }
-        response = request('GET', self.url, headers=headers, timeout=15)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        html = fetch_page_html(self.url)  # type: ignore
+        soup = BeautifulSoup(html, 'html.parser')
         video_info: Dict[str, Any] = {}
 
-        if '永久VIP' in response.text:
+        if '永久VIP' in html:
             return None
-        if '此內容需要登入' in response.text:
+        if '此內容需要登入' in html:
             return None
 
         title_nodes = soup.select('.title strong')

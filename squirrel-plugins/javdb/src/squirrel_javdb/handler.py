@@ -6,38 +6,16 @@ from typing import Optional
 from urllib.parse import quote
 
 from bs4 import BeautifulSoup
-from botasaurus.browser import browser as bbrowser, Driver
 
 from crawl import VideoUrlHandler, register_handler
+from .browser_utils import fetch_page_html
 
 
 DEBUG_BROWSER = os.getenv("JAVDB_DEBUG_BROWSER") == "1"
 
 
-@bbrowser(
-	output=None,
-	raise_exception=True,
-	close_on_crash=True,
-	create_error_logs=False,
-	max_retry=3,
-	reuse_driver=False,
-	block_images_and_css=True,
-    headless=True
-)
-def _fetch_html(driver: Driver, link: str) -> str:
-	# When debugging, load the page in the real browser as well.
-	if driver.config.is_new:
-		# First hit goes through Google referrer to clear Cloudflare checks.
-		driver.google_get(link, bypass_cloudflare=True)
-	response = driver.requests.get(link)
-	response.raise_for_status()
-	if DEBUG_BROWSER:
-		driver.prompt()
-	return response.text
-
-
 def fetch_html(link: str) -> str:
-	return _fetch_html(link)  # type: ignore
+	return fetch_page_html(link, debug=DEBUG_BROWSER)  # type: ignore
 
 
 @register_handler

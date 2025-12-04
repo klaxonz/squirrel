@@ -4,7 +4,9 @@ import re
 from typing import List
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-from crawl import register_subscription, SubscriptionMeta, filter_cookies_to_query_string, request
+
+from crawl import register_subscription, SubscriptionMeta
+from .browser_utils import fetch_page_html
 
 
 @register_subscription("javdb", ["javdb.com"])
@@ -13,15 +15,8 @@ class JavdbSubscription:
         self.url = url
 
     def get_subscribe_info(self) -> SubscriptionMeta:
-        cookies = filter_cookies_to_query_string(self.url)
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Cookie': cookies
-        }
-        response = request('GET', self.url, headers=headers, timeout=15)
-        response.raise_for_status()
-
-        bs4 = BeautifulSoup(response.text, 'html.parser')
+        html = fetch_page_html(self.url)  # type: ignore
+        bs4 = BeautifulSoup(html, 'html.parser')
         username_el = bs4.select('.actor-section-name')
         if len(username_el) == 0:
             raise Exception(f'Can not find channel name in {self.url}')
@@ -39,20 +34,13 @@ class JavdbSubscription:
         return SubscriptionMeta(channel_id, name, avatar, self.url)
 
     def get_subscribe_videos(self, extract_all: bool) -> List[str]:
-        cookies = filter_cookies_to_query_string(self.url)
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Cookie': cookies
-        }
-
-        response = request('GET', self.url, headers=headers, timeout=15)
-        response.raise_for_status()
-
+        html = fetch_page_html(self.url)  # type: ignore
+        
         parsed_url = urlparse(self.url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         video_list: List[str] = []
 
-        bs4 = BeautifulSoup(response.text, 'html.parser')
+        bs4 = BeautifulSoup(html, 'html.parser')
         self._extract_video_urls(bs4, base_url, video_list)
 
         page_next_list = bs4.select('a.pagination-link[rel="next"]')
@@ -61,9 +49,8 @@ class JavdbSubscription:
 
         while current_page < page and extract_all:
             current_page += 1
-            response = request('GET', self.url + f'?page={current_page}&sort_type=0', headers=headers, timeout=15)
-            response.raise_for_status()
-            bs4 = BeautifulSoup(response.text, 'html.parser')
+            page_html = fetch_page_html(self.url + f'?page={current_page}&sort_type=0')  # type: ignore
+            bs4 = BeautifulSoup(page_html, 'html.parser')
 
             self._extract_video_urls(bs4, base_url, video_list)
 
