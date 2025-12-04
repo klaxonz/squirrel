@@ -48,7 +48,7 @@ class JavdbUserSubscriptionImporter(IUserSubscriptionImporter):
             # JavDB 的订阅演员页面
             while True:
                 # 访问订阅页面
-                subscribed_url = f'{base_url}/users/subscribed_actors?page={page}'
+                subscribed_url = f'{base_url}/users/collection_actors?page={page}'
                 
                 try:
                     resp = request_without_limit('GET', subscribed_url, headers=headers, timeout=15)
