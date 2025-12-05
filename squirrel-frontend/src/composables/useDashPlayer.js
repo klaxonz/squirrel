@@ -17,18 +17,19 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     player.updateSettings({
       streaming: {
         abr: {
-          initialBitrate: { video: 50000, audio: 320 },
+          // 使用较保守的初始码率，避免起播阶段错误估计带宽导致瞬时卡顿
+          initialBitrate: { video: 3000, audio: 192 },
           initialRepresentationRatio: 1,
           maxBitrate: { video: -1, audio: -1 },
           bandwidthSafetyFactor: 0.95,
           usePixelRatioInLimitBitrateByPortal: false
         },
         buffer: {
-          stableBufferTime: 20,
-          bufferTimeAtTopQuality: 30,
-          bufferTimeAtTopQualityLongForm: 40,
+          stableBufferTime: 12,
+          bufferTimeAtTopQuality: 20,
+          bufferTimeAtTopQualityLongForm: 30,
           longFormContentDurationThreshold: 600,
-          bufferToKeep: 20,
+          bufferToKeep: 12,
           bufferPruningInterval: 10,
           fastSwitchEnabled: false
         },

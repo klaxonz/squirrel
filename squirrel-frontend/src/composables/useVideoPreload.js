@@ -15,14 +15,14 @@ export default function useVideoPreload() {
   // 获取优化的HLS配置
   const getOptimizedHlsConfig = () => {
     return {
-      maxBufferLength: 90,
-      maxMaxBufferLength: 180,
-      maxBufferSize: 100 * 1000 * 1000,
+      maxBufferLength: 45,
+      maxMaxBufferLength: 90,
+      maxBufferSize: 80 * 1000 * 1000,
       maxBufferHole: 0.5,
       enableWorker: true,
       enableSoftwareAES: true,
       lowLatencyMode: false,
-      backBufferLength: 120,
+      backBufferLength: 60,
       
       abrBandWidthFactor: 0.7,
       abrBandWidthUpFactor: 0.5,

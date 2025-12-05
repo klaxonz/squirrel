@@ -30,7 +30,7 @@ export default function useHlsPlayer({
       hlsRef.value.loadSource(props.video.stream_video_url);
     });
 
-    // 当清单解析完成后，更新可用清晰度列表并设置默认为最高清晰度
+    // 当清单解析完成后，更新可用清晰度列表
     hlsRef.value.on(Hls.Events.MANIFEST_PARSED, () => {
       try {
         const levels = hlsRef.value.levels || []
@@ -56,15 +56,9 @@ export default function useHlsPlayer({
             onQualitiesUpdate(qualities)
           }
           
-          // 自动选择最高清晰度
+          // 如果已有用户选择的清晰度，则尊重该选择；否则交给 HLS 自己通过 ABR 决定
           const currentQuality = playerState?.media?.currentQuality
-          if (!currentQuality) {
-            const highestQuality = qualities[0]
-            if (highestQuality) {
-              playerState.media.currentQuality = highestQuality.value
-              setQuality(highestQuality.value)
-            }
-          } else {
+          if (currentQuality) {
             // 复用 setQuality 内的回退逻辑
             setQuality(currentQuality)
           }
