@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import List
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 
@@ -12,6 +12,14 @@ from crawl import register_subscription, SubscriptionMeta, filter_cookies_to_que
 @register_subscription("pornhub", ["pornhub.com"])
 class PornhubSubscription:
     def __init__(self, url: str) -> None:
+        parsed = urlparse(url)
+        netloc = parsed.netloc.lower()
+
+        # 归一化子域：将 *.pornhub.com 统一为 www.pornhub.com，避免相同订阅因为子域不同被当成多条
+        if netloc.endswith(".pornhub.com") and netloc != "www.pornhub.com":
+            parsed = parsed._replace(netloc="www.pornhub.com")
+            url = urlunparse(parsed)
+
         self.url = url
 
     def get_subscribe_info(self) -> SubscriptionMeta:
