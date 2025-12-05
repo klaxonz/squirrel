@@ -46,6 +46,21 @@ def get_subscription_by_url_and_name(url: str, name: str):
         return subscription
 
 
+def get_active_user_subscription_by_url(user_id: int, url: str):
+    with get_session() as session:
+        subscription = session.execute(
+            select(Subscription)
+            .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
+            .where(
+                Subscription.url == url,
+                Subscription.is_deleted == False,
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted == False,
+            )
+        ).scalar_one_or_none()
+        return subscription
+
+
 def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):
     with get_session() as session:
         subscription = get_subscription_by_url_and_name(url=subscribe_info.url, name=subscribe_info.name)
@@ -212,10 +227,14 @@ def handle_subscribe_request(url: str, user_id: int) -> Subscription:
         订阅对象
     """
     from crawl import SubscriptionFactory
-    
+
+    existing_subscription = get_active_user_subscription_by_url(user_id=user_id, url=url)
+    if existing_subscription:
+        return existing_subscription
+
     subscribe_channel = SubscriptionFactory.create_subscription(url)
     subscribe_info = subscribe_channel.get_subscribe_info()
-    
+
     subscription = get_subscription_by_url_and_name(url, subscribe_info.name)
     
     if subscription:

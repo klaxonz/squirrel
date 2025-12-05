@@ -30,6 +30,8 @@ class WorkerRunner:
                 consumer_name=spec.consumer_name,
                 block_ms=spec.block_ms,
                 read_count=spec.read_count,
+                retry_dlq=f"{spec.stream}:dlq",
+                max_delivery=3,
             )
             consumers.append(RedisStreamConsumer(spec.stream, spec.handler, options))
 
