@@ -73,11 +73,20 @@ def extract_page_index(target_url: str) -> int:
 
 
 def get_video_context(
-    url: str, credential: Optional[Credential] = None
+    url: str,
+    credential: Optional[Credential] = None,
+    throttled: bool = True,
 ) -> VideoContext:
-    """Resolve the Video object, credential and cid for the given URL."""
+    """Resolve the Video object, credential and cid for the given URL.
+
+    When ``throttled`` is False, the shared rate limiter will be bypassed.
+    This is primarily intended for latency-sensitive playback paths.
+    """
     credential = credential or build_credential(url)
-    obj, resource_type = throttled_sync(parse_link(url, credential))
+    if throttled:
+        obj, resource_type = throttled_sync(parse_link(url, credential))
+    else:
+        obj, resource_type = sync(parse_link(url, credential))
     if obj == -1 or resource_type != ResourceType.VIDEO:
         raise ValueError("URL is not a supported bilibili video link")
 
@@ -87,7 +96,10 @@ def get_video_context(
     page_index = extract_page_index(url)
     cid: Optional[int] = None
     try:
-        pages = throttled_sync(video_obj.get_pages())
+        if throttled:
+            pages = throttled_sync(video_obj.get_pages())
+        else:
+            pages = sync(video_obj.get_pages())
         if pages:
             page_index = min(page_index, len(pages) - 1)
             cid = pages[page_index].get("cid")
@@ -99,11 +111,16 @@ def get_video_context(
 
 
 def fetch_video_info(
-    url: str, credential: Optional[Credential] = None
+    url: str,
+    credential: Optional[Credential] = None,
+    throttled: bool = True,
 ) -> Tuple[dict, VideoContext, Optional[dict]]:
     """Fetch base video info along with context and selected page."""
-    context = get_video_context(url, credential)
-    info = throttled_sync(context.video.get_info())
+    context = get_video_context(url, credential, throttled=throttled)
+    if throttled:
+        info = throttled_sync(context.video.get_info())
+    else:
+        info = sync(context.video.get_info())
 
     pages = info.get("pages") or []
     page_info: Optional[dict] = None
@@ -148,17 +165,29 @@ def build_base_info(
 
 
 def fetch_play_data(
-    url: str, context: Optional[VideoContext] = None
+    url: str,
+    context: Optional[VideoContext] = None,
+    throttled: bool = True,
 ) -> Tuple[dict, VideoContext]:
-    """Fetch playurl (dash) info for the given video URL."""
-    context = context or get_video_context(url)
+    """Fetch playurl (dash) info for the given video URL.
+
+    When ``throttled`` is False, the shared rate limiter will be bypassed for
+    resolving the Video context and fetching play data. This is intended for
+    interactive playback, where additional latency from rate limiting is
+    undesirable. Background tasks should continue to use the default
+    throttled=True.
+    """
+    context = context or get_video_context(url, throttled=throttled)
     params = {}
     if context.cid is not None:
         params["cid"] = context.cid
     else:
         params["page_index"] = context.page_index
 
-    play_data = throttled_sync(context.video.get_download_url(**params))
+    if throttled:
+        play_data = throttled_sync(context.video.get_download_url(**params))
+    else:
+        play_data = sync(context.video.get_download_url(**params))
     if isinstance(play_data, dict) and play_data.get("video_info"):
         play_data = play_data["video_info"]
 

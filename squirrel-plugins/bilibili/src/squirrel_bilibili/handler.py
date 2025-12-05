@@ -25,7 +25,7 @@ def _base_url(stream: dict) -> Optional[str]:
 
 
 def get_dash_data(url: str) -> dict:
-    play_data, _ = fetch_play_data(url)
+    play_data, _ = fetch_play_data(url, throttled=False)
     dash_data = play_data.get('dash') if isinstance(play_data, dict) else None
     if not dash_data:
         raise RuntimeError("Failed to fetch play data from bilibili-api")
