@@ -151,7 +151,6 @@ export function useSubscriptionApi() {
     } catch (error) {
       console.error('预览订阅失败:', error);
       const errorMessage = error.message || '预览失败';
-      displayToast(errorMessage, { type: 'error' });
       return { success: false, error: errorMessage };
     }
   };
@@ -161,14 +160,12 @@ export function useSubscriptionApi() {
     try {
       const response = await axios.post(`/api/subscription/import/${site}`);
       if (response.data.code === 0) {
-        displayToast('导入完成！', { type: 'success' });
         return { success: true, data: response.data.data };
       }
       throw new Error(response.data.msg || '导入失败');
     } catch (error) {
       console.error('导入订阅失败:', error);
       const errorMessage = error.message || '导入失败';
-      displayToast(errorMessage, { type: 'error' });
       return { success: false, error: errorMessage };
     }
   };
