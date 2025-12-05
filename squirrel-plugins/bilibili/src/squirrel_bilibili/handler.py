@@ -95,7 +95,7 @@ class BilibiliHandler(VideoUrlHandler, ABC):
             best_audio_url = _base_url(best_audio_stream)
 
         if not qualities:
-            qualities = [{'value': 'auto', 'label': '自动'}]
+            qualities = []
         else:
             def sort_key(q: dict):
                 return (q.get('height') or 0, q.get('bandwidth') or 0)
@@ -108,9 +108,6 @@ class BilibiliHandler(VideoUrlHandler, ABC):
             # 排序后重新分配index，与MPD中Representation的顺序一致
             for idx, q in enumerate(qualities):
                 q['index'] = idx
-            
-            if not any(q['value'] == 'auto' for q in qualities):
-                qualities.insert(0, {'value': 'auto', 'label': '自动', 'index': -1})
 
         return {
             'video_url': f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,

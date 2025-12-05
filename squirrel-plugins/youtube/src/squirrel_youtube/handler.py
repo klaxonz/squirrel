@@ -70,9 +70,6 @@ class YouTubeHandler(VideoUrlHandler, ABC):
                 "index": idx,
             })
 
-        if qualities and not any(q.get('value') == 'auto' for q in qualities):
-            qualities.insert(0, {"value": "auto", "label": "自动", "index": -1})
-
         return {
             "mpd_url": f"/api/video/mpd?video_id={video.id}",
             "qualities": qualities or None,
@@ -124,9 +121,6 @@ class YouTubeHandler(VideoUrlHandler, ABC):
                 "id": fmt.get('format_id'),
                 "index": idx
             })
-
-        if qualities and not any(q.get('value') == 'auto' for q in qualities):
-            qualities.insert(0, {"value": "auto", "label": "自动", "index": -1})
 
         return {
             "video_url": proxied_url,
