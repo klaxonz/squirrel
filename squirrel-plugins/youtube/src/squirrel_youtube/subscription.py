@@ -23,6 +23,10 @@ class YoutubeSubscription:
             self.channel = None
         else:
             self.channel = YouTubeChannel(url, use_oauth=False)
+            if self.channel:
+                channel_id = self.channel.channel_id
+                if channel_id:
+                    self.url = f"https://www.youtube.com/channel/{channel_id}"
             self.playlist = None
     
     def _is_playlist_url(self, url: str) -> bool:

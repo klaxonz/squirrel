@@ -74,7 +74,7 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
             logger.error(f"Invalid message: missing subscription_id or url, message={body_data}")
             return
         
-        logger.info(
+        logger.debug(
             f"Processing subscription update: "
             f"id={subscription_id}, trigger={trigger.value}, mode={mode}, domain={domain}, trace_id={trace_id}"
         )
@@ -96,7 +96,7 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
         result = orchestrator.update(request)
         
         if result.success:
-            logger.info(
+            logger.debug(
                 f"Subscription update completed: id={subscription_id}, "
                 f"found={result.videos_found}, enqueued={result.videos_enqueued}"
             )
