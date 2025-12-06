@@ -42,8 +42,8 @@ const emit = defineEmits(['play'])
 }
 
 .play-overlay:hover .play-button {
-  transform: scale(1.1);
-  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.06);
+  background: #f1f1f1;
 }
 
 .play-overlay:hover .play-button .play-icon {
@@ -53,17 +53,16 @@ const emit = defineEmits(['play'])
 .play-button {
   @apply relative z-10 rounded-full
     flex items-center justify-center;
-  width: 56px;
-  height: 56px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
+  width: 64px;
+  height: 64px;
+  background: #ffffff;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .play-icon {
-  font-size: 24px;
-  color: #000000;
+  font-size: 30px;
+  color: #212121;
   margin-left: 2px; /* 视觉居中调整 */
 }
 
@@ -81,12 +80,12 @@ const emit = defineEmits(['play'])
 /* 移动端优化 */
 @media (max-width: 768px) {
   .play-button {
-    width: 48px;
-    height: 48px;
+    width: 54px;
+    height: 54px;
   }
 
   .play-icon {
-    font-size: 20px;
+    font-size: 26px;
   }
 }
 </style>
