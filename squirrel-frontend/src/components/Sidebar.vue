@@ -122,7 +122,7 @@ const menuItems = [
     icon: ArrowDownTrayIcon,
   },
   {
-    name: '观看历史',
+    name: '历史',
     path: '/history',
     icon: ClockIcon,
   }

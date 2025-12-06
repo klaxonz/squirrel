@@ -70,12 +70,11 @@ const { searchQuery, searchPlaceholder, handleSearch: handleGlobalSearch, handle
 const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
   { path: '/subscribed', name: '订阅', icon: BookmarkIcon },
-  { path: '/history', name: '观看历史', icon: ClockIcon },
+  { path: '/history', name: '历史', icon: ClockIcon },
   { path: '/downloads', name: '下载任务', icon: ArrowDownTrayIcon },
   { path: '/logs', name: '日志', icon: DocumentTextIcon },
   { path: '/settings', name: '设置', icon: CogIcon },
 ]);
-
 
 onUnmounted(() => {
   emitter.all.clear();
