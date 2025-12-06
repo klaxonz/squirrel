@@ -27,7 +27,7 @@
         :is-dash-stream="isDashStream"
         :on-bandwidth-sample="updateBandwidth"
         :on-qualities-update="updateAvailableQualities"
-        :external-error="getErrorInfo()"
+        :external-error="props.externalError || getErrorInfo()"
         @play="handleVideoPlay"
         @pause="handleVideoPause"
         @timeupdate="handleVideoTimeupdate"
@@ -135,7 +135,8 @@ const props = defineProps({
   video: Object,
   initialTime: { type: Number, default: 0 },
   hasPrev: { type: Boolean, default: false },
-  hasNext: { type: Boolean, default: false }
+  hasNext: { type: Boolean, default: false },
+  externalError: { type: Object, default: null }
 })
 
 const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate', 'error', 'prev-video', 'next-video'])

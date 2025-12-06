@@ -1,3 +1,4 @@
+import { ref } from 'vue';
 import useVideoDetail from './useVideoDetail';
 import useRelatedVideos from './useRelatedVideos';
 import useVideoOperations from './useVideoOperations';
@@ -6,6 +7,7 @@ export default function usePlaybackOrchestrator(initialVideo = null) {
   const { video, startTime, fetchVideoDetails, maybeInjectSubtitles } = useVideoDetail(initialVideo);
   const { relatedVideos, loadingRelated, fetchRelatedVideos } = useRelatedVideos(video);
   const { playVideo } = useVideoOperations();
+  const externalError = ref(null);
 
   const loadAndPlayById = async (videoId, initialVideoData = null) => {
     if (!videoId) return;
@@ -33,11 +35,26 @@ export default function usePlaybackOrchestrator(initialVideo = null) {
     });
     try { await maybeInjectSubtitles(videoId); } catch (e) {}
     await fetchRelatedVideos();
+
+    // 重置外部错误状态
+    externalError.value = null;
+
     console.log('[usePlaybackOrchestrator] calling playVideo (non-blocking)...');
-    // 仅负责触发播放链接获取，不阻塞 UI 切换到新视频
-    try {
-      playVideo(video.value).catch(() => {});
-    } catch (e) {}
+    // 仅负责触发播放链接获取，不阻塞 UI 切换到新视频；失败时设置外部错误用于播放器展示
+    (async () => {
+      try {
+        await playVideo(video.value);
+      } catch (err) {
+        const code = err?.code || 'FAILED';
+        const message = err?.message || '播放链接获取失败';
+        externalError.value = {
+          code,
+          title: '播放失败',
+          message,
+          canRetry: true
+        };
+      }
+    })();
     console.log('[usePlaybackOrchestrator] playVideo invoked:', {
       hasStreamUrl: !!video.value?.stream_video_url,
       hasMpdUrl: !!video.value?.mpd_url
@@ -50,6 +67,7 @@ export default function usePlaybackOrchestrator(initialVideo = null) {
     startTime,
     relatedVideos,
     loadingRelated,
+    externalError,
 
     // actions
     loadAndPlayById,

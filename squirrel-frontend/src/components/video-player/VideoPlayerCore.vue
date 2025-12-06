@@ -191,6 +191,16 @@ watch(() => props.externalError, (info) => {
     }
     errorState.value = { show: true, ...mapped }
     scheduleAutoHide()
+    // 外部错误时停止加载状态，避免无限转圈
+    try {
+      if (props.playerState?.media) {
+        props.playerState.media.playing = false
+        props.playerState.media.loading = false
+        props.playerState.media.loadingStage = 'idle'
+        props.playerState.media.canPlay.video = false
+        props.playerState.media.canPlay.audio = false
+      }
+    } catch (_) {}
   } catch (_) {}
 })
 

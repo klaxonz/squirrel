@@ -13,6 +13,8 @@
               :initialTime="startTime"
               :has-prev="hasPrevVideo"
               :has-next="hasNextVideo"
+              :external-error="externalError"
+
               @play="onVideoPlay"
               @pause="onVideoPause"
               @ended="handleAutoplayNext"
@@ -260,7 +262,7 @@ const route = useRoute();
 const router = useRouter();
 
 // 内部切换不使用 router，所以不需要从 history.state 读取初始数据
-const { video, startTime, relatedVideos, loadingRelated, loadAndPlayById } = usePlaybackOrchestrator(null);
+const { video, startTime, relatedVideos, loadingRelated, loadAndPlayById, externalError } = usePlaybackOrchestrator(null);
 const { sendReport } = useVideoHistory();
 const { downloadVideo } = useOptionsMenu(video);
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
