@@ -63,5 +63,6 @@ Thumbs.db
 squirrel-backend/radar.db
 squirrel-backend/plugins_ext
 squirrel-backend/plugins_ext/*
+squirrel-backend/static/thumbnails/*
 /squirrel-backend/radar.duckdb
 /.cursor/
