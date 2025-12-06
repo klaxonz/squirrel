@@ -252,6 +252,12 @@
                         {{ relatedVideo.site }}
                       </span>
                     </div>
+                    <div
+                      v-if="relatedVideo.uploaded_at"
+                      class="text-[#777777] text-[10px] mt-0.5 truncate"
+                    >
+                      {{ formatDate(relatedVideo.uploaded_at) }}
+                    </div>
                   </div>
                 </div>
               </div>
