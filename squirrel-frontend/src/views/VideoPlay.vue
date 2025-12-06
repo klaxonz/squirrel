@@ -151,36 +151,58 @@
           <!-- 频道信息 -->
           <transition name="fade" mode="out-in">
             <div :key="video?.id" class="mt-3 pb-3 border-b border-[#272727]">
-            <div class="flex flex-col space-y-3">
-              <div v-for="sub in video?.subscriptions" :key="sub.id" class="flex flex-col">
-                <!-- 头像、频道名称、取消订阅按钮在同一行 -->
+              <div v-if="video?.subscriptions?.length" class="flex flex-col space-y-3">
+                <!-- 主订阅：完整行展示 -->
                 <div class="flex items-center space-x-3">
                   <img
-                    :src="sub.avatar"
-                    :alt="sub.name"
+                    :src="video.subscriptions[0].avatar"
+                    :alt="video.subscriptions[0].name"
                     class="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-full object-cover"
                     referrerpolicy="no-referrer"
                   >
                   <router-link
-                    :to="`/subscription/${sub.id}/all`"
+                    :to="`/subscription/${video.subscriptions[0].id}/all`"
                     class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
                   >
-                    {{ sub.name }}
+                    {{ video.subscriptions[0].name }}
                   </router-link>
                   <button
                     class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/15 text-white rounded-full transition-colors font-medium"
-                    @click.stop="handleUnsubscribe(sub.id)"
-                    :title="`取消订阅 ${sub.name}`"
-                    :aria-label="`取消订阅 ${sub.name}`"
+                    @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
+                    :title="`取消订阅 ${video.subscriptions[0].name}`"
+                    :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
                   >取消订阅</button>
                 </div>
-                <!-- 统计信息单独一行 -->
-                <div class="ml-11 md:ml-12 lg:ml-13 text-[10px] text-[#aaaaaa] mt-1">
-                  总视频: {{ sub.total_videos || 0 }} | 已解析: {{ sub.total_extract || 0 }}
+
+                <!-- 主订阅统计信息 -->
+                <div class="ml-11 md:ml-12 text-[10px] text-[#aaaaaa] mt-1">
+                  <span>
+                    总视频: {{ video.subscriptions[0].total_videos || 0 }} | 已解析: {{ video.subscriptions[0].total_extract || 0 }}
+                  </span>
                   <span v-if="video?.publish_date"> · {{ formatDate(video.publish_date) }}发布</span>
                 </div>
+
+                <!-- 额外订阅：紧凑 chip 风格 -->
+                <div
+                  v-if="video.subscriptions.length > 1"
+                  class="ml-11 md:ml-12 flex flex-wrap gap-2 mt-3"
+                >
+                  <div
+                    v-for="sub in video.subscriptions.slice(1)"
+                    :key="sub.id"
+                    class="flex items-center px-2 py-1 rounded-full bg-white/5 hover:bg-white/10 cursor-pointer transition-colors text-[11px] text-[#e5e5e5]"
+                    @click.stop="$router.push(`/subscription/${sub.id}/all`)"
+                  >
+                    <img
+                      :src="sub.avatar"
+                      :alt="sub.name"
+                      class="w-5 h-5 rounded-full object-cover mr-2"
+                      referrerpolicy="no-referrer"
+                    >
+                    <span class="truncate max-w-[140px]">{{ sub.name }}</span>
+                  </div>
+                </div>
               </div>
-            </div>
             </div>
           </transition>
 
