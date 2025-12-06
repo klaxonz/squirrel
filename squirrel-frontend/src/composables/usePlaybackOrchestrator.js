@@ -33,9 +33,12 @@ export default function usePlaybackOrchestrator(initialVideo = null) {
     });
     try { await maybeInjectSubtitles(videoId); } catch (e) {}
     await fetchRelatedVideos();
-    console.log('[usePlaybackOrchestrator] calling playVideo...');
-    try { await playVideo(video.value) } catch (e) {}
-    console.log('[usePlaybackOrchestrator] after playVideo:', {
+    console.log('[usePlaybackOrchestrator] calling playVideo (non-blocking)...');
+    // 仅负责触发播放链接获取，不阻塞 UI 切换到新视频
+    try {
+      playVideo(video.value).catch(() => {});
+    } catch (e) {}
+    console.log('[usePlaybackOrchestrator] playVideo invoked:', {
       hasStreamUrl: !!video.value?.stream_video_url,
       hasMpdUrl: !!video.value?.mpd_url
     });

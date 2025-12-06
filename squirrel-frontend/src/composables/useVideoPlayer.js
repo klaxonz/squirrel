@@ -760,17 +760,20 @@ export default function useVideoPlayer(props, emit) {
     }
   })
 
-  // 监听视频变化，支持自动播放新视频
+  // 监听视频变化，支持自动播放新视频，并在切换时重置时长/进度等状态
   watch(() => props.video?.id, (newId, oldId) => {
     if (newId && newId !== oldId) {
+      // 清理上一段视频的播放状态和进度
       playerState.media.hasStartedPlayback = false
-    }
-    if (newId && newId !== oldId && playerState.media.autoplay) {
-      // 重置播放状态
       playerState.media.playing = false
+      playerState.media.currentTime = 0
+      playerState.media.duration = 0
+      playerState.media.bufferedProgress = 0
       playerState.media.canPlay.video = false
       playerState.media.canPlay.audio = false
+    }
 
+    if (newId && newId !== oldId && playerState.media.autoplay) {
       // 等待新视频加载完成后尝试自动播放
       setTimeout(() => {
         if (isCanplay.value) {
