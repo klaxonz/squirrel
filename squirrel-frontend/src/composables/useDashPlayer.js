@@ -31,7 +31,7 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
           longFormContentDurationThreshold: 600,
           bufferToKeep: 12,
           bufferPruningInterval: 10,
-          fastSwitchEnabled: false
+          fastSwitchEnabled: true
         },
         manifestRequestTimeout: 60000,
       }
@@ -79,8 +79,50 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     const player = dashRef.value
 
     const qualityInfo = (props?.video?.qualities || []).find(q => q.value === quality)
-    if (qualityInfo && typeof qualityInfo.index === 'number' && qualityInfo.index >= 0) {
-      player.setQualityFor('video', qualityInfo.index, true)
+
+    const qStr = String(quality || '').toLowerCase()
+    const isAutoValue = qStr === 'auto' || qStr === '自动'
+
+    // 自动档位或没有可用 index 时，交给 ABR
+    if (!qualityInfo || isAutoValue || typeof qualityInfo.index !== 'number' || qualityInfo.index < 0) {
+      console.log('[DASH] Switching to AUTO quality, enable ABR. quality=', quality)
+      try {
+        player.updateSettings({
+          streaming: {
+            abr: {
+              autoSwitchBitrate: { video: true }
+            }
+          }
+        })
+      } catch (_) {}
+      return
+    }
+
+    const targetIndex = qualityInfo.index
+    console.log('[DASH] Switching quality to', quality, 'index=', targetIndex)
+
+    try {
+      player.updateSettings({
+        streaming: {
+          abr: {
+            autoSwitchBitrate: { video: false }
+          }
+        }
+      })
+    } catch (_) {}
+
+    try {
+      if (typeof player.setQualityFor === 'function') {
+        player.setQualityFor('video', targetIndex)
+      } else if (typeof player.setRepresentationForTypeByIndex === 'function') {
+        player.setRepresentationForTypeByIndex('video', targetIndex, true)
+      }
+      const currentIndex = typeof player.getQualityFor === 'function'
+        ? player.getQualityFor('video')
+        : null
+      console.log('[DASH] After switch, current quality index =', currentIndex)
+    } catch (e) {
+      console.warn('[DASH] setQualityFor failed', e)
     }
   }
 

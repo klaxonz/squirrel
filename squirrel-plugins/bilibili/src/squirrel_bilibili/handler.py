@@ -44,6 +44,7 @@ class BilibiliHandler(VideoUrlHandler, ABC):
         best_video_url: Optional[str] = None
         best_audio_url: Optional[str] = None
         qualities: List[dict] = []
+        id_to_index: dict[str, int] = {}
 
         video_streams = dash_data.get('video') or []
         audio_streams = dash_data.get('audio') or []
@@ -63,7 +64,15 @@ class BilibiliHandler(VideoUrlHandler, ABC):
                 126: 2160,
                 127: 4320,
             }
-            for stream in video_streams:
+
+            filtered_streams = [
+                v for v in video_streams
+                if 'codecs' in v and any(x in v['codecs'] for x in ('avc', 'avc1', 'h264'))
+            ] or video_streams
+
+            index_meta: List[dict] = []
+
+            for stream in filtered_streams:
                 bandwidth = stream.get('bandwidth')
                 vid = stream.get('id')
                 height = None
@@ -79,13 +88,25 @@ class BilibiliHandler(VideoUrlHandler, ABC):
                         height = None
                 label = f"{height}p" if height else (f"{int(bandwidth/1000)}kbps" if bandwidth else 'unknown')
                 value = f"{height}p" if height else (f"{int(bandwidth/1000)}kbps" if bandwidth else 'auto')
-                qualities.append({
+                q = {
                     'value': value,
                     'label': label,
                     'height': height,
                     'bandwidth': bandwidth,
                     'id': str(vid) if vid is not None else None,
-                })
+                }
+                qualities.append(q)
+
+                if vid is not None:
+                    index_meta.append({
+                        'id': str(vid),
+                        'height': height or 0,
+                        'bandwidth': bandwidth or 0,
+                    })
+
+            if index_meta:
+                sorted_meta = sorted(index_meta, key=lambda m: (m['height'], m['bandwidth']))
+                id_to_index = {m['id']: idx for idx, m in enumerate(sorted_meta)}
 
             best_video_stream = max(video_streams, key=lambda x: x.get('bandwidth', 0))
             best_video_url = _base_url(best_video_stream)
@@ -100,14 +121,28 @@ class BilibiliHandler(VideoUrlHandler, ABC):
             def sort_key(q: dict):
                 return (q.get('height') or 0, q.get('bandwidth') or 0)
 
-            uniq = {}
+            uniq: dict[str, dict] = {}
             for q in qualities:
-                uniq[q['label']] = q
-            qualities = sorted(uniq.values(), key=sort_key, reverse=True)
-            
-            # 排序后重新分配index，与MPD中Representation的顺序一致
-            for idx, q in enumerate(qualities):
-                q['index'] = idx
+                key = q['label']
+                existing = uniq.get(key)
+                if not existing:
+                    uniq[key] = q
+                else:
+                    prev_id = existing.get('id')
+                    new_id = q.get('id')
+                    prev_idx = id_to_index.get(prev_id) if prev_id is not None else -1
+                    new_idx = id_to_index.get(new_id) if new_id is not None else -1
+                    if new_idx > prev_idx:
+                        uniq[key] = q
+
+            qualities = list(uniq.values())
+
+            for q in qualities:
+                vid = q.get('id')
+                if vid is not None and vid in id_to_index:
+                    q['index'] = id_to_index[vid]
+
+            qualities = sorted(qualities, key=sort_key, reverse=True)
 
         return {
             'video_url': f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,
