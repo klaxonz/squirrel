@@ -348,7 +348,7 @@ def _get_category_count(user_id: int, show_nsfw: bool, category: str, subscripti
     with get_session() as session:
         # 基础count查询，只选择Video.id用于计数
         base_count_query = (
-            select(func.count(Video.id))
+            select(func.count(func.distinct(Video.id)))
             .select_from(Video)
             .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
             .join(UserSubscription, SubscriptionVideo.subscription_id == UserSubscription.subscription_id)
@@ -448,11 +448,11 @@ def _get_video_counts_in_session(session, user_id: int, show_nsfw: bool, subscri
 
     base_conditions = build_base_conditions()
 
-    # 1. 总数和预览数统计（最重要，必须先执行）
+    # 1. 总数和预览数统计（按唯一 Video.id 计数）
     total_preview_query = (
         select(
-            func.count(Video.id).label('total'),
-            func.count(Video.id).filter(Video.publish_date > func.now()).label('preview')
+            func.count(func.distinct(Video.id)).label('total'),
+            func.count(func.distinct(Video.id)).filter(Video.publish_date > func.now()).label('preview')
         )
         .select_from(Video)
         .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
@@ -465,9 +465,9 @@ def _get_video_counts_in_session(session, user_id: int, show_nsfw: bool, subscri
     preview_count = total_result.preview or 0
     all_count = total_count - preview_count
 
-    # 2. 已读数统计（从 video_history 开始 JOIN，只扫描有历史记录的视频）
+    # 2. 已读数统计（按唯一 Video.id 计数）
     read_count_query = (
-        select(func.count(Video.id))
+        select(func.count(func.distinct(Video.id)))
         .select_from(VideoHistory)
         .join(Video, VideoHistory.video_id == Video.id)
         .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
@@ -483,9 +483,9 @@ def _get_video_counts_in_session(session, user_id: int, show_nsfw: bool, subscri
     )
     read_count = session.execute(read_count_query).scalar() or 0
 
-    # 4. 点赞数统计（从 video_interaction 开始 JOIN）
+    # 4. 点赞数统计（按唯一 Video.id 计数）
     like_count_query = (
-        select(func.count(Video.id))
+        select(func.count(func.distinct(Video.id)))
         .select_from(VideoInteraction)
         .join(Video, VideoInteraction.video_id == Video.id)
         .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
@@ -502,9 +502,9 @@ def _get_video_counts_in_session(session, user_id: int, show_nsfw: bool, subscri
     )
     like_count = session.execute(like_count_query).scalar() or 0
 
-    # 5. 稍后观看数统计
+    # 5. 稍后观看数统计（按唯一 Video.id 计数）
     later_count_query = (
-        select(func.count(Video.id))
+        select(func.count(func.distinct(Video.id)))
         .select_from(VideoInteraction)
         .join(Video, VideoInteraction.video_id == Video.id)
         .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
@@ -577,26 +577,100 @@ def list_videos(
     query_method = query_methods.get(category, _query_all_videos)
 
     with get_session() as session:
-        # 执行主查询
-        main_query = query_method(user_id, show_nsfw, subscription_id, query, sort_by, page, page_size, nsfw=nsfw,
-                                  domains=domains)
-        results = session.execute(main_query).all()
+        # 第一步：基于 _build_base_video_query 和类别过滤，按唯一 video.id 做分页
+        base_query = _build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw, domains)
 
-        videos = []
-        for row in results:
-            video = row[0]  # Video object
-            subscription_id_val = row[1]  # subscription_id
-            video_dto = VideoDto.model_validate({
-                **video.to_dict(),
-                'subscription_id': subscription_id_val
-            })
-            videos.append(video_dto)
+        # 按类别追加条件（与各 _query_* 保持一致）
+        if category == 'read':
+            base_query = base_query.join(VideoHistory, and_(
+                VideoHistory.video_id == Video.id,
+                VideoHistory.user_id == user_id
+            )).where(Video.publish_date <= func.now())
+        elif category == 'unread':
+            base_query = base_query.outerjoin(VideoHistory, and_(
+                VideoHistory.video_id == Video.id,
+                VideoHistory.user_id == user_id
+            )).where(
+                and_(
+                    VideoHistory.video_id.is_(None),
+                    Video.publish_date <= func.now()
+                )
+            )
+        elif category == 'preview':
+            base_query = base_query.where(Video.publish_date > func.now())
+        elif category == 'liked':
+            base_query = base_query.join(VideoInteraction, and_(
+                VideoInteraction.video_id == Video.id,
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.interaction_type == 1
+            )).where(Video.publish_date <= func.now())
+        elif category == 'later':
+            base_query = base_query.join(VideoInteraction, and_(
+                VideoInteraction.video_id == Video.id,
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.interaction_type == 3
+            )).where(Video.publish_date <= func.now())
+        else:  # 'all'
+            base_query = base_query.where(Video.publish_date <= func.now())
 
-        # 只计算当前类别的总数（用于分页）
+        # 排序字段与原逻辑保持一致
+        if sort_by == 'created_at':
+            order_column = Video.created_at.desc()
+        else:
+            order_column = Video.publish_date.desc()
+
+        # 只选择唯一的 Video.id 进行分页
+        # 注意：PostgreSQL 要求 DISTINCT + ORDER BY 的列必须都出现在 SELECT 列表中
+        id_query = (
+            base_query
+            .with_only_columns(Video.id, order_column)
+            .distinct()
+            .order_by(order_column)
+            .limit(page_size)
+            .offset((page - 1) * page_size)
+        )
+
+        id_rows = session.execute(id_query).all()
+        # 只使用第 0 列的 video.id 作为分页结果
+        video_ids = [row[0] for row in id_rows]
+
+        if not video_ids:
+            # 即使当前页没有数据，也要返回正确的 total
+            total_count = _get_category_count(user_id, show_nsfw, category, subscription_id, query, nsfw, domains)
+            return [], total_count
+
+        # 第二步：根据本页 video_ids 查询详细信息（视频 + 所有关联订阅）
+        detail_rows = session.execute(
+            select(Video, SubscriptionVideo.subscription_id.label('subscription_id'))
+            .select_from(Video)
+            .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
+            .where(Video.id.in_(video_ids))
+        ).all()
+
+        # 聚合：同一个 video.id 只保留一个 Video 对象，并收集所有 subscription_id
+        video_map: Dict[int, VideoDto] = {}
+        video_subscriptions_map: Dict[int, set] = {}
+        for row in detail_rows:
+            video = row[0]
+            subscription_id_val = row[1]
+
+            if video.id not in video_map:
+                video_dto = VideoDto.model_validate({
+                    **video.to_dict(),
+                    'subscription_id': subscription_id_val
+                })
+                video_map[video.id] = video_dto
+
+            if video.id not in video_subscriptions_map:
+                video_subscriptions_map[video.id] = set()
+            if subscription_id_val is not None:
+                video_subscriptions_map[video.id].add(subscription_id_val)
+
+        # 只计算当前类别的总数（用于分页），已改为按唯一 Video.id 计数
         total_count = _get_category_count(user_id, show_nsfw, category, subscription_id, query, nsfw, domains)
 
-        # 获取订阅信息（包含 is_nsfw）
-        subscription_ids = list(set(video.subscription_id for video in videos))
+        # 获取所有关联订阅信息（包含 is_nsfw）
+        subscription_ids = list({sid for sids in video_subscriptions_map.values() for sid in sids}) if video_subscriptions_map else []
         subscription_results = session.execute(
             select(Subscription, UserSubscription.is_nsfw)
             .join(UserSubscription, Subscription.id == UserSubscription.subscription_id)
@@ -606,31 +680,29 @@ def list_videos(
                     UserSubscription.user_id == user_id
                 )
             )
-        ).all()
+        ).all() if subscription_ids else []
 
         # 构建订阅字典，包含 is_nsfw
         subscriptions_dict = {sub.id: {'subscription': sub, 'is_nsfw': is_nsfw}
                               for sub, is_nsfw in subscription_results}
-        video_ids = [video.id for video in videos]
 
-        # 获取视频相关创作者（优化：使用 SQLAlchemy 2.0 风格）
-        if video_ids:
-            creators = session.execute(
-                select(Creator, VideoCreator)
-                .join(VideoCreator, Creator.id == VideoCreator.creator_id)
-                .where(VideoCreator.video_id.in_(video_ids))
-            ).all()
-        else:
-            creators = []
+        # 为了保持顺序，按分页得到的 video_ids 顺序输出
+        ordered_videos = [video_map[vid] for vid in video_ids if vid in video_map]
 
-        creators_dict = {}
+        # 获取视频相关创作者
+        creators = session.execute(
+            select(Creator, VideoCreator)
+            .join(VideoCreator, Creator.id == VideoCreator.creator_id)
+            .where(VideoCreator.video_id.in_(video_ids))
+        ).all() if video_ids else []
+
+        creators_dict: Dict[int, List[Creator]] = {}
         for creator, video_creator in creators:
             if video_creator.video_id not in creators_dict:
                 creators_dict[video_creator.video_id] = []
             creators_dict[video_creator.video_id].append(creator)
 
-        # 获取视频历史记录（优化：直接在当前 session 查询，避免创建新 session）
-        step_start = time.time()
+        # 获取视频历史记录
         if video_ids:
             video_history = session.execute(
                 select(VideoHistory)
@@ -645,25 +717,25 @@ def list_videos(
             video_history = []
         video_history_dict = {vh.video_id: vh for vh in video_history}
 
-        # 构建返回数据
+        # 构建返回数据：同一个视频只返回一次，并包含所有关联订阅
         video_list = []
-        for video in videos:
-            subscription_data = subscriptions_dict.get(video.subscription_id)
-            if subscription_data:
+        for video in ordered_videos:
+            related_subscription_ids = video_subscriptions_map.get(video.id, set())
+            subscriptions_list = []
+            for sid in related_subscription_ids:
+                subscription_data = subscriptions_dict.get(sid)
+                if not subscription_data:
+                    continue
                 subscription_info = subscription_data['subscription']
                 is_nsfw = subscription_data['is_nsfw']
-                subscriptions_list = [
-                    {
-                        'id': subscription_info.id,
-                        'name': subscription_info.name,
-                        'url': subscription_info.url,
-                        'type': subscription_info.type,
-                        'avatar': subscription_info.avatar,
-                        'is_nsfw': is_nsfw
-                    }
-                ]
-            else:
-                subscriptions_list = []
+                subscriptions_list.append({
+                    'id': subscription_info.id,
+                    'name': subscription_info.name,
+                    'url': subscription_info.url,
+                    'type': subscription_info.type,
+                    'avatar': subscription_info.avatar,
+                    'is_nsfw': is_nsfw
+                })
 
             video_data = {
                 'id': video.id,
