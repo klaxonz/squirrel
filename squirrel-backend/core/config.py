@@ -5,6 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
+# Backend project root directory (module-level for convenience)
 base_dir = Path(__file__).parent.parent
 
 
@@ -59,6 +60,21 @@ class Settings(BaseSettings):
     @property
     def config_dir(self) -> Path:
         return base_dir.parent / 'config'
+
+    @property
+    def base_dir(self) -> Path:
+        """Backend project root directory."""
+        return base_dir
+
+    @property
+    def static_dir(self) -> Path:
+        """Backend static files directory (backend/static)."""
+        return self.base_dir / "static"
+
+    @property
+    def thumbnails_dir(self) -> Path:
+        """Directory for cached video thumbnails (backend/static/thumbnails)."""
+        return self.static_dir / "thumbnails"
 
 
 @lru_cache()

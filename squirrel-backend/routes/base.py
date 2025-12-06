@@ -115,8 +115,7 @@ def create_app() -> FastAPI:
 
 
 def _mount_static_files(app: FastAPI) -> None:
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    static_dir = os.path.join(base_dir, "static")
+    static_dir = str(settings.static_dir)
     
     if os.path.exists(static_dir):
         app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -130,10 +129,8 @@ def _register_spa_route(app: FastAPI) -> None:
     @app.get("/{full_path:path}", name="spa")
     async def serve_spa(full_path: str):
         """服务于前端 SPA 的路由处理器"""
-        file_static_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
-            "static"
-        )
+        file_static_dir = str(settings.static_dir)
+        
         static_file = Path(file_static_dir) / full_path
 
         # 如果是静态文件，直接返回

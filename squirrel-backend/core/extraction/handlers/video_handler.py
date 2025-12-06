@@ -2,11 +2,15 @@
 视频提取结果处理器
 """
 import logging
+import os
 from datetime import datetime
+from urllib.parse import urlparse
 
+import httpx
 from sqlalchemy import select
 
 from core.database import get_session
+from core.config import settings
 from crawl import ExtractionTask, ExtractionResult, Video
 from models.subscription import Subscription
 from models.video import Video as VideoModel
@@ -14,8 +18,10 @@ from services import (
     subscription_video_service, creator_service,
     video_creator_service, task_service, message_service
 )
+from core.site_config_manager import get_effective_site_catalog
+from utils.url_helper import get_site_from_url
+from common.site_constants import SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD
 from mq.producer import RedisStreamProducer
-from common import constants
 from ..base import BaseResultHandler
 
 logger = logging.getLogger()
@@ -120,7 +126,14 @@ class VideoExtractionHandler(BaseResultHandler):
                 # 处理演员信息
                 self._process_actors(video, data)
 
-                return video, video_status
+            # 会话结束后，再根据站点配置尝试下载封面到本地
+            try:
+                if video_status == "created" and data.thumbnail:
+                    self._download_thumbnail(video, data.thumbnail)
+            except Exception as e:
+                logger.warning(f"下载封面失败: video_id={video.id}, url={data.thumbnail}, error: {e}")
+
+            return video, video_status
 
         except Exception as e:
             logger.error(f"创建或更新视频失败: {task.url}, error: {e}")
@@ -161,6 +174,51 @@ class VideoExtractionHandler(BaseResultHandler):
                 session.commit()
         except Exception as e:
             logger.warning(f"更新订阅总视频数失败: {subscription_id}, error: {e}")
+
+    def _download_thumbnail(self, video: VideoModel, thumbnail_url: str) -> None:
+        if not thumbnail_url:
+            return
+
+        # 从视频 URL 推断站点，并从站点配置中读取 offline_thumbnails 开关
+        site = get_site_from_url(video.url)
+        if not site:
+            return
+
+        catalog = get_effective_site_catalog()
+        info = catalog.get(site) or {}
+        metadata = info.get("metadata") or {}
+        # 仅在站点配置中启用 offline_thumbnails_download 时才进行下载
+        use_download = metadata.get(SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD)
+        if not use_download:
+            return
+
+        # 解析扩展名
+        parsed = urlparse(thumbnail_url)
+        _, ext = os.path.splitext(parsed.path or "")
+        if not ext:
+            ext = ".jpg"
+
+        # 计算本地目录和文件路径
+        thumbnails_dir = str(settings.thumbnails_dir)
+        os.makedirs(thumbnails_dir, exist_ok=True)
+
+        file_path = os.path.join(thumbnails_dir, f"{video.id}{ext}")
+
+        # 已存在则不重复下载
+        if os.path.exists(file_path):
+            return
+
+        # 同步下载封面
+        resp = httpx.get(thumbnail_url, timeout=20.0)
+        if resp.status_code != 200:
+            raise RuntimeError(f"unexpected status code: {resp.status_code}")
+
+        content_type = resp.headers.get("content-type", "")
+        if not content_type.startswith("image/"):
+            raise RuntimeError(f"unexpected content-type: {content_type}")
+
+        with open(file_path, "wb") as f:
+            f.write(resp.content)
 
     def _resolve_publish_date(self, video_meta: Video):
         """根据 Video 对象推断发布时间"""

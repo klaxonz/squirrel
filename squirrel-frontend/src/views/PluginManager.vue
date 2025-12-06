@@ -596,6 +596,14 @@
               <input type="checkbox" v-model="siteEditorForm.metadataPlayerUrlCache" class="accent-[#cc0000]">
               启用播放器链接缓存
             </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" v-model="siteEditorForm.metadataOfflineThumbnailsDownload" class="accent-[#cc0000]">
+              解析时下载封面到本地
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" v-model="siteEditorForm.metadataOfflineThumbnailsDisplay" class="accent-[#cc0000]">
+              优先使用本地封面显示
+            </label>
           </div>
 
           <div
@@ -706,6 +714,8 @@ const siteEditorForm = ref({
   metadataRequiresCookies: false,
   metadataRequiresLogin: false,
   metadataPlayerUrlCache: false,
+  metadataOfflineThumbnailsDownload: false,
+  metadataOfflineThumbnailsDisplay: false,
 });
 
 // 计算属性
@@ -905,6 +915,8 @@ const openSiteEditor = async (site) => {
     metadataRequiresCookies: !!metadata?.requires_cookies,
     metadataRequiresLogin: !!metadata?.requires_login,
     metadataPlayerUrlCache: !!metadata?.player_url_cache,
+    metadataOfflineThumbnailsDownload: !!metadata?.offline_thumbnails_download,
+    metadataOfflineThumbnailsDisplay: !!metadata?.offline_thumbnails_display,
   };
   siteEditorError.value = '';
   siteEditorVisible.value = true;
@@ -976,6 +988,8 @@ const saveSiteEditor = async () => {
     requires_cookies: !!siteEditorForm.value.metadataRequiresCookies,
     requires_login: !!siteEditorForm.value.metadataRequiresLogin,
     player_url_cache: !!siteEditorForm.value.metadataPlayerUrlCache,
+    offline_thumbnails_download: !!siteEditorForm.value.metadataOfflineThumbnailsDownload,
+    offline_thumbnails_display: !!siteEditorForm.value.metadataOfflineThumbnailsDisplay,
   };
 
   const sitePayload = {

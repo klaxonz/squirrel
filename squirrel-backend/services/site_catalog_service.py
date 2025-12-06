@@ -4,6 +4,10 @@ from typing import Dict, List, Any
 
 from core.site_config_manager import apply_site_config_overrides, get_effective_site_catalog
 from utils.site_catalog import SiteCatalog
+from common.site_constants import (
+    SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD,
+    SITE_META_OFFLINE_THUMBNAILS_DISPLAY,
+)
 
 
 class SiteCatalogService:
@@ -139,9 +143,16 @@ class SiteCatalogService:
         if not isinstance(raw, dict):
             raise ValueError("metadata 必须是对象")
         result: Dict[str, Any] = {}
+        # 通用布尔键
         for key in ("nsfw", "requires_login", "requires_cookies", "player_url_cache"):
             if key in raw:
                 result[key] = cls._parse_bool(raw.get(key))
+
+        # 离线封面下载与展示两个独立开关
+        if SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD in raw:
+            result[SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD] = cls._parse_bool(raw.get(SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD))
+        if SITE_META_OFFLINE_THUMBNAILS_DISPLAY in raw:
+            result[SITE_META_OFFLINE_THUMBNAILS_DISPLAY] = cls._parse_bool(raw.get(SITE_META_OFFLINE_THUMBNAILS_DISPLAY))
         return result
 
     @classmethod
