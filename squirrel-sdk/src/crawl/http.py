@@ -120,6 +120,8 @@ class RateLimitedSession(requests.Session):
         super().__init__()
         self._rate_limiter = rate_limiter or RateLimiter()
 
+        self.headers["Accept-Encoding"] = "gzip, deflate"
+
         retry = Retry(
             total=retries,
             read=retries,
@@ -178,6 +180,9 @@ def request_without_limit(method: str, url: str, **kwargs):
     """发送 HTTP 请求，不使用限流器（用于批量导入等场景）"""
     session = requests.Session()
     
+    # Keep encoding to gzip/deflate only to avoid Brotli-related decode errors
+    session.headers["Accept-Encoding"] = "gzip, deflate"
+
     retry = Retry(
         total=3,
         read=3,

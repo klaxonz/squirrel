@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "f84cfbf405abbebbd3987ae55c443d00c21cd5ef9a3e40e2ad224ccb0fcfdd45"
+            "sha256": "d8232a84999056ceded671990c451a2399ce76c44a338a79a98cfb7cadfdba23"
         },
         "pipfile-spec": 6,
         "requires": {},
@@ -2824,6 +2824,10 @@
             "index": "pypi",
             "markers": "python_version >= '3.10' and python_version < '4.0'",
             "version": "==0.0.8"
+        },
+        "squirrel-sdk": {
+            "editable": true,
+            "file": "../squirrel-sdk"
         },
         "sse-starlette": {
             "hashes": [
