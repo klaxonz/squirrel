@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
 
@@ -30,9 +31,9 @@ class ThumbnailRefreshTask(BaseTask):
     def run(cls):
         logger.info("[ThumbnailRefreshTask] Start refreshing video thumbnails")
         
-        batch_size = 500
+        batch_size = 200
         last_id: int | None = None
-        max_workers = 100
+        max_workers = 16
 
         while True:
             with get_session() as session:
@@ -61,7 +62,7 @@ class ThumbnailRefreshTask(BaseTask):
                             getattr(video, "id", None),
                             e,
                         )
-
+            time.sleep(0.1)
         logger.info("[ThumbnailRefreshTask] Finished refreshing video thumbnails")
 
     @staticmethod
