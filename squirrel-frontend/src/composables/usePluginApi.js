@@ -168,6 +168,32 @@ export function usePluginApi() {
     }
   };
 
+  const importAllSiteCookies = async (file) => {
+    if (!file) {
+      return { success: false, error: '请选择 Cookie 文件' };
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post('/api/plugins/sites/cookies/import-all', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (response.data?.code === 0) {
+        displayToast('已按站点拆分导入 Cookies');
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data?.msg || 'Cookies 导入失败');
+    } catch (error) {
+      console.error('导入所有站点 Cookies 失败:', error);
+      const errorMessage = error.message || 'Cookies 导入失败';
+      displayToast(errorMessage, { type: 'error' });
+      return { success: false, error: errorMessage };
+    }
+  };
+
   const uploadSiteCookies = async (siteName, file, target = 'default') => {
     if (!file) {
       return { success: false, error: '请选择 Cookie 文件' };
@@ -210,6 +236,7 @@ export function usePluginApi() {
     testSiteConnectivity,
     testSiteLoginStatus,
     testAllSitesConnectivity,
+    importAllSiteCookies,
     uploadSiteCookies,
   };
 }

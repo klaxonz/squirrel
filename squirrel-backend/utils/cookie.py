@@ -1,25 +1,59 @@
 from typing import Optional
+from urllib.parse import urlparse
 
 from crawl import (
     filter_cookies_to_query_string as sdk_filter_cookies_to_query_string,
     configure_cookie_file_resolver,
 )
-from core.cookie_config import get_cookies_file_path
+from core.cookie_config import get_site_cookies_file_path
+from utils.site_catalog import SiteCatalog
+
+
+def _extract_host_from_url(target_url: str) -> Optional[str]:
+    if not target_url:
+        return None
+    parsed = urlparse(target_url)
+    host = parsed.hostname or ""
+    if not host:
+        return None
+    return host.split(":", 1)[0].lstrip(".").lower()
 
 
 def resolve_cookie_file_for_url(target_url: str) -> Optional[str]:
+    host = _extract_host_from_url(target_url)
+    if not host:
+        return None
+
     try:
-        file_path = get_cookies_file_path()
+        catalog = SiteCatalog.get_catalog() or {}
     except Exception:
+        catalog = {}
+
+    matched_site: Optional[str] = None
+    for slug, entry in catalog.items():
+        try:
+            domains = [
+                (d or "").strip().lstrip(".").lower()
+                for d in entry.get("domains", [])
+                if d
+            ]
+        except Exception:
+            continue
+        for d in domains:
+            if host == d or host.endswith("." + d):
+                matched_site = slug
+                break
+        if matched_site:
+            break
+
+    if not matched_site:
         return None
 
-    if not file_path:
+    path = get_site_cookies_file_path(matched_site)
+    if not path.exists():
         return None
 
-    if not file_path.exists():
-        return None
-
-    return str(file_path)
+    return str(path)
 
 
 configure_cookie_file_resolver(resolve_cookie_file_for_url)

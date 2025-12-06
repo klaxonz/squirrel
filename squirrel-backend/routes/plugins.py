@@ -1,7 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Query
 import asyncio
 import logging
-from typing import List, Literal
+from typing import Dict, List, Literal
 
 from services.plugin_service import PluginService
 from services.site_login_status_service import SiteLoginStatusService
@@ -9,7 +9,10 @@ from plugins.loader import reload_plugins
 from common.response import success, error, param_error
 from core.extraction import get_extractor_registry
 from routes.connectivity import test_site_connectivity
-from core.cookie_config import get_cookies_file_path
+from core.cookie_config import (
+    get_site_cookies_dir,
+    get_site_cookies_file_path,
+)
 from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger(__name__)
@@ -255,10 +258,39 @@ async def upload_site_cookies(
     if not data:
         return param_error("文件为空")
 
+    text = data.decode("utf-8", errors="ignore")
+    lines = text.splitlines()
 
-    target_path = get_cookies_file_path()
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    target_path.write_bytes(data)
+    site_domains = [d.strip().lstrip(".").lower() for d in (site_info.get("domains") or []) if d]
+    if not site_domains:
+        return error(f"站点 {site_name} 没有关联的域名，无法从 cookies 文件中切分")
+
+    header_lines: List[str] = []
+    body_lines: List[str] = []
+    for line in lines:
+        if not line or line.startswith("#"):
+            header_lines.append(line)
+            continue
+        parts = line.split("\t")
+        if not parts:
+            continue
+        domain = parts[0].strip().lstrip(".").lower()
+        if any(domain == d or domain.endswith("." + d) for d in site_domains):
+            body_lines.append(line)
+
+    if not body_lines:
+        return error("在该文件中未找到与当前站点域名匹配的 Cookie 条目")
+
+    site_cookies_path = get_site_cookies_file_path(site_name)
+    site_cookies_path.parent.mkdir(parents=True, exist_ok=True)
+
+    output_lines: List[str] = []
+    output_lines.extend(l for l in header_lines if l)
+    if not output_lines or not output_lines[0].startswith("# Netscape HTTP Cookie File"):
+        output_lines.insert(0, "# Netscape HTTP Cookie File")
+    output_lines.extend(body_lines)
+
+    site_cookies_path.write_text("\n".join(output_lines) + "\n", encoding="utf-8")
 
     status = SiteLoginStatusService.test(site_name)
     return success(
@@ -266,9 +298,85 @@ async def upload_site_cookies(
             "site_name": site_name,
             "target": target,
             "bytes": len(data),
+            "site_cookies_bytes": site_cookies_path.stat().st_size,
             "login_status": status,
         },
         msg="Cookies 已更新"
+    )
+
+
+@router.post("/sites/cookies/import-all")
+async def import_cookies_for_all_sites(file: UploadFile = File(...)):
+    data = await file.read()
+    if not data:
+        return param_error("文件为空")
+
+    text = data.decode("utf-8", errors="ignore")
+    lines = text.splitlines()
+
+    registry = get_extractor_registry()
+    catalog = SiteCatalog.get_catalog() or {}
+    site_names = merge_site_names(registry, catalog)
+
+    domain_to_sites: Dict[str, List[str]] = {}
+    site_to_domains: Dict[str, List[str]] = {}
+    for site_name in site_names:
+        info = build_site_info(site_name, registry, catalog)
+        if not info:
+            continue
+        domains = [d.strip().lstrip(".").lower() for d in (info.get("domains") or []) if d]
+        if not domains:
+            continue
+        site_to_domains[site_name] = domains
+        for d in domains:
+            domain_to_sites.setdefault(d, []).append(site_name)
+
+    site_lines: Dict[str, List[str]] = {name: [] for name in site_to_domains.keys()}
+    header_lines: List[str] = []
+
+    for line in lines:
+        if not line or line.startswith("#"):
+            header_lines.append(line)
+            continue
+        parts = line.split("\t")
+        if not parts:
+            continue
+        raw_domain = parts[0].strip().lstrip(".").lower()
+        matched_sites: List[str] = []
+        for d, names in domain_to_sites.items():
+            if raw_domain == d or raw_domain.endswith("." + d):
+                matched_sites.extend(names)
+        if not matched_sites:
+            continue
+        for site in matched_sites:
+            site_lines.setdefault(site, []).append(line)
+
+    get_site_cookies_dir().mkdir(parents=True, exist_ok=True)
+
+    result_summary: Dict[str, Dict[str, int]] = {}
+    for site_name, body in site_lines.items():
+        if not body:
+            continue
+        path = get_site_cookies_file_path(site_name)
+        output: List[str] = []
+        output.extend(l for l in header_lines if l)
+        if not output or not output[0].startswith("# Netscape HTTP Cookie File"):
+            output.insert(0, "# Netscape HTTP Cookie File")
+        output.extend(body)
+        path.write_text("\n".join(output) + "\n", encoding="utf-8")
+        result_summary[site_name] = {"cookies": len(body)}
+
+    total_lines = len(lines)
+    matched_lines = sum(info["cookies"] for info in result_summary.values())
+
+    return success(
+        {
+            "file_name": file.filename,
+            "total_lines": total_lines,
+            "matched_lines": matched_lines,
+            "sites": result_summary,
+        },
+        msg="Cookies 已按站点拆分导入"
     )
 
 

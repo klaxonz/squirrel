@@ -176,19 +176,39 @@
           共 {{ siteStats.total }} 个支持的站点
         </div>
         <div class="flex items-center gap-3">
-          <button
-            @click="handleTestAll"
-            :disabled="testingAll || loadingSites"
-            class="px-4 py-2 bg-[#cc0000] hover:bg-[#ff0000] rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <svg v-if="testingAll" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {{ testingAll ? '测试中...' : '测试全部' }}
-          </button>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-full cursor-pointer transition-colors text-xs md:text-sm">
+              <input
+                type="file"
+                accept=".txt"
+                class="hidden"
+                @change="handleCookiesFileChange"
+              />
+              <span class="truncate max-w-[180px]" :title="cookiesFileName || '选择 cookies.txt 文件'">
+                {{ cookiesFileName || '选择 cookies.txt 文件' }}
+              </span>
+            </label>
+            <button
+              @click="handleImportAllCookies"
+              :disabled="!selectedCookiesFile || importingCookies"
+              class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {{ importingCookies ? '导入中...' : '导入所有站点 Cookie' }}
+            </button>
+            <button
+              @click="handleTestAll"
+              :disabled="testingAll || loadingSites"
+              class="px-4 py-2 bg-[#cc0000] hover:bg-[#ff0000] rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <svg v-if="testingAll" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {{ testingAll ? '测试中...' : '测试全部' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -623,6 +643,7 @@ const {
   testSiteConnectivity,
   testSiteLoginStatus,
   testAllSitesConnectivity,
+  importAllSiteCookies,
   uploadSiteCookies
 } = usePluginApi();
 
@@ -643,6 +664,11 @@ const connectivityResults = ref([]);
 const loginStatusResults = ref({});
 const loginStatusTesting = ref({});
 const cookieUploading = ref({});
+
+// Cookies 导入（全局 / 单站点复用）
+const selectedCookiesFile = ref(null);
+const cookiesFileName = ref('');
+const importingCookies = ref(false);
 
 // 站点配置（数据爬取）
 const siteCatalog = ref({});
@@ -733,6 +759,24 @@ const displaySites = computed(() => {
     };
   });
 });
+
+const handleCookiesFileChange = (event) => {
+  const file = event.target.files?.[0];
+  selectedCookiesFile.value = file || null;
+  cookiesFileName.value = file ? file.name : '';
+};
+
+const handleImportAllCookies = async () => {
+  if (!selectedCookiesFile.value || importingCookies.value) return;
+  importingCookies.value = true;
+  try {
+    await importAllSiteCookies(selectedCookiesFile.value);
+  } catch (e) {
+    console.error('导入所有站点 Cookies 失败:', e);
+  } finally {
+    importingCookies.value = false;
+  }
+};
 
 const parseListInput = (text = '') => {
   return text
