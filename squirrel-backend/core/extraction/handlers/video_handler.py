@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import httpx
 from sqlalchemy import select
 
+from common import constants
 from core.database import get_session
 from core.config import settings
 from crawl import ExtractionTask, ExtractionResult, Video
@@ -208,8 +209,15 @@ class VideoExtractionHandler(BaseResultHandler):
         if os.path.exists(file_path):
             return
 
-        # 同步下载封面
-        resp = httpx.get(thumbnail_url, timeout=20.0)
+        # 同步下载封面，带上浏览器 UA，避免部分图床因缺少 UA 返回 412 等错误
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+        }
+        resp = httpx.get(thumbnail_url, timeout=20.0, headers=headers)
         if resp.status_code != 200:
             raise RuntimeError(f"unexpected status code: {resp.status_code}")
 
