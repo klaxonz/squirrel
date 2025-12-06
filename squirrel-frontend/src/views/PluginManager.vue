@@ -572,6 +572,10 @@
               <input type="checkbox" v-model="siteEditorForm.metadataRequiresLogin" class="accent-[#cc0000]">
               需要登录状态
             </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" v-model="siteEditorForm.metadataPlayerUrlCache" class="accent-[#cc0000]">
+              启用播放器链接缓存
+            </label>
           </div>
 
           <div
@@ -675,6 +679,7 @@ const siteEditorForm = ref({
   metadataNsfw: false,
   metadataRequiresCookies: false,
   metadataRequiresLogin: false,
+  metadataPlayerUrlCache: false,
 });
 
 // 计算属性
@@ -855,6 +860,7 @@ const openSiteEditor = async (site) => {
     metadataNsfw: !!metadata?.nsfw,
     metadataRequiresCookies: !!metadata?.requires_cookies,
     metadataRequiresLogin: !!metadata?.requires_login,
+    metadataPlayerUrlCache: !!metadata?.player_url_cache,
   };
   siteEditorError.value = '';
   siteEditorVisible.value = true;
@@ -925,6 +931,7 @@ const saveSiteEditor = async () => {
     nsfw: !!siteEditorForm.value.metadataNsfw,
     requires_cookies: !!siteEditorForm.value.metadataRequiresCookies,
     requires_login: !!siteEditorForm.value.metadataRequiresLogin,
+    player_url_cache: !!siteEditorForm.value.metadataPlayerUrlCache,
   };
 
   const sitePayload = {

@@ -139,7 +139,7 @@ class SiteCatalogService:
         if not isinstance(raw, dict):
             raise ValueError("metadata 必须是对象")
         result: Dict[str, Any] = {}
-        for key in ("nsfw", "requires_login", "requires_cookies"):
+        for key in ("nsfw", "requires_login", "requires_cookies", "player_url_cache"):
             if key in raw:
                 result[key] = cls._parse_bool(raw.get(key))
         return result

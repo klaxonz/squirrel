@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from datetime import datetime
@@ -6,6 +7,7 @@ from sqlalchemy import select, func, and_, or_
 from core.database import get_session
 from core.exceptions.video_exceptions import UnsupportedDomainError
 from crawl import VideoUrlHandler, HandlerRegistry
+
 from models.creator import Creator
 from models.links import VideoCreator, SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
@@ -16,8 +18,12 @@ from schemas.video.dto.video_dto import VideoExtractDto, VideoDto, VideoUrlDto
 from services import download_service, subscription_video_service, user_config_service
 from utils import url_helper
 from utils.url_helper import extract_top_level_domain
+from utils.site_catalog import SiteCatalog
+from core.cache import redis_client
 
 logger = logging.getLogger()
+
+VIDEO_URL_CACHE_TTL = 300
 
 
 def get_video_by_url(url: str) -> Video:
@@ -123,6 +129,7 @@ def get_random_video(
 
 def get_video_url(video_id: int) -> VideoUrlDto:
     video_domain = None
+    video: Optional[Video] = None
     with get_session() as session:
         video = session.get(Video, video_id)
         if not video:
@@ -133,6 +140,24 @@ def get_video_url(video_id: int) -> VideoUrlDto:
     if video_domain is None:
         raise ValueError(f"Invalid video URL: {video.url}")
 
+    site_slug, site_info = SiteCatalog.find_site_by_domain(video_domain)
+    metadata = (site_info or {}).get("metadata") or {}
+    enable_cache = bool(metadata.get("player_url_cache"))
+
+    cache_key: Optional[str] = None
+    if enable_cache:
+        cache_key = f"video_url:{site_slug or video_domain}:{video_id}"
+        try:
+            cached = redis_client.get(cache_key)
+        except Exception:
+            cached = None
+        if cached:
+            try:
+                payload = json.loads(cached)
+                return VideoUrlDto.model_validate(payload)
+            except Exception:
+                pass
+
     handler_cls = HandlerRegistry.get_handler(video_domain)
     if not handler_cls:
         raise UnsupportedDomainError(f"No handler found for domain: {video_domain}")
@@ -142,8 +167,15 @@ def get_video_url(video_id: int) -> VideoUrlDto:
     if not isinstance(result, dict):
         raise TypeError("Handler.get_video_url must return a dict")
 
-    # Convert dict payload to VideoUrlDto (nested 'qualities' will be coerced)
-    return VideoUrlDto.model_validate(result)
+    dto = VideoUrlDto.model_validate(result)
+
+    if enable_cache and cache_key is not None:
+        try:
+            redis_client.setex(cache_key, VIDEO_URL_CACHE_TTL, json.dumps(dto.model_dump()))
+        except Exception:
+            pass
+
+    return dto
 
 
 def _build_base_video_query(user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
