@@ -18,6 +18,14 @@ from core.extraction.handlers.video_handler import VideoExtractionHandler
 
 logger = logging.getLogger()
 
+_DEFAULT_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+}
+
 
 @TaskRegistry.register(interval=60 * 24, unit='minutes', start_immediately=True)
 class ThumbnailRefreshTask(BaseTask):
@@ -27,6 +35,37 @@ class ThumbnailRefreshTask(BaseTask):
     - 如果远程封面返回 404，则重新提取该视频详情以获取新的封面 URL，更新数据库后再尝试下载新的封面。
     """
 
+    _handler: VideoExtractionHandler | None = None
+    _http_client: httpx.Client | None = None
+
+    @classmethod
+    def _get_handler(cls) -> VideoExtractionHandler:
+        if cls._handler is None:
+            cls._handler = VideoExtractionHandler()
+        return cls._handler
+
+    @classmethod
+    def _get_http_client(cls) -> httpx.Client:
+        if cls._http_client is None:
+            cls._http_client = httpx.Client(
+                timeout=15.0,
+                follow_redirects=True,
+                headers=_DEFAULT_HEADERS,
+            )
+        return cls._http_client
+
+    @classmethod
+    def _load_existing_thumbnail_ids(cls) -> set[str]:
+        """加载本地已存在的封面文件 ID 集合"""
+        thumbnails_dir = str(settings.thumbnails_dir)
+        if not os.path.isdir(thumbnails_dir):
+            return set()
+        existing_ids = set()
+        for filename in os.listdir(thumbnails_dir):
+            name, _ = os.path.splitext(filename)
+            existing_ids.add(name)
+        return existing_ids
+
     @classmethod
     def run(cls):
         logger.info("[ThumbnailRefreshTask] Start refreshing video thumbnails")
@@ -35,25 +74,26 @@ class ThumbnailRefreshTask(BaseTask):
         last_id: int | None = None
         max_workers = 16
 
-        while True:
-            with get_session() as session:
-                query = select(Video).order_by(Video.id)
-                if last_id is not None:
-                    query = query.where(Video.id > last_id)
-                rows: List[Video] = session.scalars(query.limit(batch_size)).all()
+        existing_thumbnail_ids = cls._load_existing_thumbnail_ids()
+        logger.info("[ThumbnailRefreshTask] Found %d existing thumbnails", len(existing_thumbnail_ids))
 
-            if not rows:
-                break
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            while True:
+                with get_session() as session:
+                    query = select(Video).order_by(Video.id)
+                    if last_id is not None:
+                        query = query.where(Video.id > last_id)
+                    rows: List[Video] = session.scalars(query.limit(batch_size)).all()
 
-            # 每批使用线程池并发处理视频，避免单线程过慢
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                if not rows:
+                    break
+
                 future_to_video = {
-                    executor.submit(cls._process_single_video, video): video for video in rows
+                    executor.submit(cls._process_single_video, video, existing_thumbnail_ids): video for video in rows
                 }
 
                 for future in as_completed(future_to_video):
                     video = future_to_video[future]
-                    last_id = video.id
                     try:
                         future.result()
                     except Exception as e:
@@ -62,51 +102,29 @@ class ThumbnailRefreshTask(BaseTask):
                             getattr(video, "id", None),
                             e,
                         )
-            time.sleep(0.1)
+
+                last_id = rows[-1].id
+                time.sleep(1.0)
+
         logger.info("[ThumbnailRefreshTask] Finished refreshing video thumbnails")
 
-    @staticmethod
-    def _process_single_video(video: Video) -> None:
+    @classmethod
+    def _process_single_video(cls, video: Video, existing_thumbnail_ids: set[str]) -> None:
         """处理单个视频的封面刷新逻辑（在线程池中调用）。"""
         if not video.thumbnail:
             return
 
-        # 先根据与 _download_thumbnail 相同的规则检查本地文件是否已存在
-        # 为了避免重复解析 URL 取扩展名，这里简单按常见扩展名顺序检查；
-        # 如果在 handler 中最终写入的是不在此列表中的扩展名，也只是会多发一次 HTTP 请求，逻辑仍然正确。
-        thumbnails_dir = str(settings.thumbnails_dir)
-        exts = [".jpg", ".jpeg", ".png", ".webp"]
-        for ext in exts:
-            candidate = os.path.join(thumbnails_dir, f"{video.id}{ext}")
-            if os.path.exists(candidate):
-                # 本地已有封面文件，直接跳过
-                return
+        if str(video.id) in existing_thumbnail_ids:
+            return
 
-        # 本地不存在封面文件，按之前的逻辑检查远程并决定是否重新提取或下载
-        handler = VideoExtractionHandler()
-
-        # 先轻量校验远程封面是否可访问，避免不必要的重新提取
-        # 加一个浏览器 UA，避免部分图床因缺少 UA 返回 412 等错误
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            ),
-        }
-
-        # 简单重试：最多 2 次（初次 + 重试 1 次），每次超时时间固定为 15s
+        # 简单重试：最多 2 次（初次 + 重试 1 次）
         resp: httpx.Response | None = None
+        http_client = cls._get_http_client()
 
         try:
             for attempt in range(2):
                 try:
-                    resp = httpx.get(
-                        video.thumbnail,
-                        timeout=15.0,
-                        follow_redirects=True,
-                        headers=headers,
-                    )
+                    resp = http_client.get(video.thumbnail)
                     break
                 except Exception as e:
                     logger.warning(
@@ -123,7 +141,7 @@ class ThumbnailRefreshTask(BaseTask):
 
             if resp.status_code == 404:
                 # 远程封面已失效：尝试重新提取视频详情获取新的 thumbnail
-                ThumbnailRefreshTask._refresh_video_thumbnail_via_extraction(video)
+                cls._refresh_video_thumbnail_via_extraction(video)
                 return
 
             if resp.status_code >= 400:
@@ -136,6 +154,7 @@ class ThumbnailRefreshTask(BaseTask):
                 return
 
             # 远程可访问：尝试按站点配置下载到本地
+            handler = cls._get_handler()
             try:
                 handler._download_thumbnail(video, video.thumbnail)  # type: ignore[attr-defined]
             except Exception as e:
@@ -152,8 +171,8 @@ class ThumbnailRefreshTask(BaseTask):
                 e,
             )
 
-    @staticmethod
-    def _refresh_video_thumbnail_via_extraction(video: Video) -> None:
+    @classmethod
+    def _refresh_video_thumbnail_via_extraction(cls, video: Video) -> None:
         """重新提取视频详情以刷新 thumbnail，并尝试下载新的封面。
 
         仅在提取成功且产生新的 thumbnail 时才更新本地缓存，具体入库逻辑由
@@ -193,7 +212,7 @@ class ThumbnailRefreshTask(BaseTask):
             if not fresh or not fresh.thumbnail:
                 return
 
-            handler = VideoExtractionHandler()
+            handler = cls._get_handler()
             try:
                 handler._download_thumbnail(fresh, fresh.thumbnail)  # type: ignore[attr-defined]
             except Exception as e:
