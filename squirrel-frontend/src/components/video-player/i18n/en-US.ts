@@ -26,6 +26,10 @@ const enUS: LocaleConfig = {
     fullscreen: 'Fullscreen',
     exitFullscreen: 'Exit fullscreen',
     
+    // 宽屏
+    widescreen: 'Theater mode',
+    exitWidescreen: 'Exit theater mode',
+    
     // 画中画
     pictureInPicture: 'Picture in Picture',
     exitPictureInPicture: 'Exit Picture in Picture',

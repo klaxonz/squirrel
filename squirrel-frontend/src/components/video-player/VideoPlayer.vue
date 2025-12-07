@@ -133,6 +133,11 @@
               <PlayerIcon :name="store.pip ? 'pipExit' : 'pip'" />
             </button>
 
+            <!-- 宽屏 -->
+            <button class="sp-btn" @click="toggleWidescreen" :aria-label="props.widescreen ? t('exitWidescreen') : t('widescreen')">
+              <PlayerIcon :name="props.widescreen ? 'widescreenExit' : 'widescreen'" />
+            </button>
+
             <!-- 全屏 -->
             <button class="sp-btn" @click="toggleFullscreen" :aria-label="isFullscreen ? t('exitFullscreen') : t('fullscreen')">
               <PlayerIcon :name="isFullscreen ? 'fullscreenExit' : 'fullscreen'" />
@@ -262,6 +267,7 @@ interface Props {
   hasNext?: boolean
   externalError?: any
   autoplay?: boolean
+  widescreen?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -269,7 +275,8 @@ const props = withDefaults(defineProps<Props>(), {
   hasPrev: false,
   hasNext: false,
   externalError: null,
-  autoplay: true
+  autoplay: true,
+  widescreen: false
 })
 
 const emit = defineEmits<{
@@ -277,6 +284,7 @@ const emit = defineEmits<{
   pause: []
   ended: [data?: { autoplay: boolean; autoplayNext: boolean; loop: boolean }]
   fullscreenChange: [isFullscreen: boolean]
+  widescreenChange: [isWidescreen: boolean]
   timeupdate: [currentTime: number]
   error: [error: any]
   'prev-video': []
@@ -557,6 +565,11 @@ const toggleSettingsMenu = () => {
 const toggleSubtitlesMenu = () => {
   showSubtitlesMenu.value = !showSubtitlesMenu.value
   showSettingsMenu.value = false
+}
+
+// 宽屏模式切换
+const toggleWidescreen = () => {
+  emit('widescreenChange', !props.widescreen)
 }
 
 // 循环播放速度

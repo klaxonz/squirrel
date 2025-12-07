@@ -26,6 +26,10 @@ const jaJP: LocaleConfig = {
     fullscreen: '全画面',
     exitFullscreen: '全画面終了',
     
+    // 宽屏
+    widescreen: 'シアターモード',
+    exitWidescreen: 'シアターモード終了',
+    
     // 画中画
     pictureInPicture: 'ピクチャーインピクチャー',
     exitPictureInPicture: 'ピクチャーインピクチャー終了',

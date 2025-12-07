@@ -5,7 +5,7 @@ export { useA11y } from './useA11y'
 export { useErrorRecovery } from './useErrorRecovery'
 export { useGestures } from './useGestures'
 export { useControlsLayout, type ControlsLayoutConfig, type ControlDefinition, type PresetLayout } from './useControlsLayout'
-export { useIcons, type IconName, type IconDefinition, type IconSet } from './useIcons'
+export { useIcons, type IconName } from './useIcons'
 export {
   usePlayerAdapter,
   createLocalAdapter,

@@ -26,6 +26,10 @@ const zhCN: LocaleConfig = {
     fullscreen: '全屏',
     exitFullscreen: '退出全屏',
     
+    // 宽屏
+    widescreen: '宽屏模式',
+    exitWidescreen: '退出宽屏',
+    
     // 画中画
     pictureInPicture: '画中画',
     exitPictureInPicture: '退出画中画',

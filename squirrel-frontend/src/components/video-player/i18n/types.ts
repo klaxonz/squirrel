@@ -27,6 +27,10 @@ export interface LocaleMessages {
   fullscreen: string
   exitFullscreen: string
   
+  // 宽屏
+  widescreen: string
+  exitWidescreen: string
+  
   // 画中画
   pictureInPicture: string
   exitPictureInPicture: string
