@@ -369,13 +369,6 @@
               <td class="py-4 px-4">
                 <div class="flex items-center justify-end gap-2">
                   <button
-                    @click="openSiteEditor(site)"
-                    :disabled="!siteCatalogLoaded || siteCatalogLoading"
-                    class="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    站点配置
-                  </button>
-                  <button
                     @click="handleTestSingle(site)"
                     :disabled="site.testing || testingAll"
                     class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"

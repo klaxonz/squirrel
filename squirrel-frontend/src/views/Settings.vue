@@ -1,9 +1,24 @@
 <template>
   <div class="settings-container bg-[#0f0f0f] text-white min-h-screen p-4 md:p-8">
-    <h1 class="text-2xl font-bold mb-6">设置</h1>
+    <h1 class="text-2xl font-bold mb-4">设置</h1>
+
+    <!-- Tab 导航 -->
+    <div class="flex flex-wrap gap-2 mb-6 text-sm">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        @click="currentTab = tab.key"
+        class="px-4 py-2 rounded-full border text-sm transition-colors"
+        :class="currentTab === tab.key
+          ? 'bg-white text-black border-white'
+          : 'bg-transparent border-white/20 text-gray-300 hover:bg-white/10'"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
 
     <!-- NSFW 内容设置 -->
-    <div class="settings-section mb-8">
+    <div v-if="currentTab === 'content'" class="settings-section mb-8">
       <h2 class="text-lg font-semibold mb-4 text-gray-300">内容设置</h2>
       <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
         <div>
@@ -39,7 +54,7 @@
     </div>
 
     <!-- 播放设置 -->
-    <div class="settings-section mb-8">
+    <div v-if="currentTab === 'playback'" class="settings-section mb-8">
       <h2 class="text-lg font-semibold mb-4 text-gray-300">播放设置</h2>
       <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
         <div>
@@ -91,7 +106,7 @@
     </div>
 
     <!-- 系统配置 -->
-    <div class="settings-section mb-8">
+    <div v-if="currentTab === 'system'" class="settings-section mb-8">
       <h2 class="text-lg font-semibold mb-4 text-gray-300">系统配置</h2>
       <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
         <div>
@@ -126,22 +141,28 @@
       </div>
     </div>
 
+    <!-- 站点配置 -->
+    <SiteConfigSection v-if="currentTab === 'sites'" />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from '../utils/axios';
 import { useSystemConfig } from '../composables/useSystemConfig';
+import { useUserSettings } from '../composables/useUserSettings';
+import SiteConfigSection from '../components/SiteConfigSection.vue';
+
+// Tabs 配置
+const tabs = [
+  { key: 'content', label: '内容设置' },
+  { key: 'playback', label: '播放设置' },
+  { key: 'system', label: '系统配置' },
+  { key: 'sites', label: '站点配置' },
+];
+const currentTab = ref('content');
 
 // 用户设置
-const settings = ref({
-  showNsfw: false,
-  autoplay: true,
-  autoplayNext: true,
-  loop: false
-});
-const userSaving = ref(false);
+const { settings, loading: userSaving, loadUserSettings, saveUserSettings } = useUserSettings();
 
 // 系统配置
 const { config: systemConfig, loading: systemLoading, loadSystemConfig, updateSystemConfig } = useSystemConfig();
@@ -149,17 +170,7 @@ const systemSaving = ref(false);
 
 onMounted(async () => {
   // 加载用户设置
-  try {
-    const response = await axios.get('/api/users/me/config');
-    if (response.data.code === 0) {
-      settings.value = {
-        ...settings.value,
-        ...response.data.data
-      };
-    }
-  } catch (error) {
-    console.error('获取用户设置失败:', error);
-  }
+  await loadUserSettings();
 
   // 加载系统配置
   try {
@@ -167,34 +178,11 @@ onMounted(async () => {
   } catch (error) {
     console.error('获取系统配置失败:', error);
   }
+
 });
 
 const onUserSettingChange = async () => {
-  userSaving.value = true;
-  try {
-    const response = await axios.put('/api/users/me/config', {
-      settings: settings.value,
-      merge: false
-    });
-
-    if (response.data.code === 0) {
-      settings.value = response.data.data;
-    } else {
-      throw new Error(response.data.msg || '保存用户设置失败');
-    }
-  } catch (error) {
-    console.error('保存用户设置失败:', error);
-    // 恢复到之前的值
-    const response = await axios.get('/api/users/me/config');
-    if (response.data.code === 0) {
-      settings.value = {
-        ...settings.value,
-        ...response.data.data
-      };
-    }
-  } finally {
-    userSaving.value = false;
-  }
+  await saveUserSettings();
 };
 
 const onSystemToggle = async (key, val) => {
@@ -207,6 +195,7 @@ const onSystemToggle = async (key, val) => {
     systemSaving.value = false;
   }
 };
+
 </script>
 
 <style scoped>
