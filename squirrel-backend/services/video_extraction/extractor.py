@@ -11,6 +11,7 @@ from core.extraction.handlers.video_handler import VideoExtractionHandler
 from core.extraction.task_manager import TaskManager
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
+from utils.metrics import metrics
 
 logger = logging.getLogger()
 
@@ -43,6 +44,7 @@ class VideoExtractor:
             - 这里只记录日志，不发出进度事件，避免重复
         """
         domain = url_helper.extract_top_level_domain(params.url)
+        tags = {"site": domain}
         
         # 检查站点是否启用
         if not SiteCatalog.is_site_enabled(domain=domain):
@@ -50,6 +52,7 @@ class VideoExtractor:
                 f"Skip video extraction because site is disabled: "
                 f"domain={domain}, url={params.url}"
             )
+            metrics.counter("crawl.tasks.total", tags={**tags, "status": "skipped"})
             return ExtractionResult(
                 success=False,
                 error="site_disabled"
@@ -58,22 +61,29 @@ class VideoExtractor:
         # 创建提取任务
         task = self._create_task(params)
         
-        # 使用Pipeline处理
-        logger.debug(f"Starting video extraction: {task.url}")
-        result = self.handler.process(task)
+        # 使用计时器记录提取耗时（仅记录耗时，不依赖其自动状态记录）
+        with metrics.timer("crawl.extract", tags=tags):
+            # 使用Pipeline处理
+            logger.debug(f"Starting video extraction: {task.url}")
+            result = self.handler.process(task)
         
-        # 记录结果
+        # 记录结果指标（显式记录成功/失败状态）
         if result.success:
             video_title = result.data.title if result.data else 'N/A'
             logger.info(
                 f"Video extracted: platform={domain}, url={params.url}, "
                 f"title={video_title}"
             )
+            metrics.counter("crawl.tasks.total", tags={**tags, "status": "success"})
+            metrics.counter("videos.discovered", tags={**tags, "subscribed": str(params.subscribed).lower()})
         else:
             logger.error(
                 f"Video extraction failed: platform={domain}, url={params.url}, "
                 f"error={result.error}"
             )
+            error_type = result.error or "unknown"
+            metrics.counter("crawl.tasks.total", tags={**tags, "status": "error"})
+            metrics.counter("crawl.errors.total", tags={**tags, "error_type": error_type})
         
         return result
     

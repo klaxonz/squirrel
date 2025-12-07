@@ -37,11 +37,26 @@ class Scheduler:
             time.sleep(1)
 
     def add_job(self, func, interval, unit='seconds', start_immediately=True, job_name=None):
-        """Add a scheduled job."""
-        if unit not in ['seconds', 'minutes']:
-            raise ValueError("unit must be 'seconds' or 'minutes'")
+        """Add a scheduled job.
+        
+        Args:
+            func: 要执行的函数
+            interval: 间隔数值
+            unit: 时间单位，支持 'seconds', 'minutes', 'hours', 'days'
+            start_immediately: 是否立即执行第一次
+            job_name: 任务名称（可选）
+        """
+        if unit not in ['seconds', 'minutes', 'hours', 'days']:
+            raise ValueError("unit must be 'seconds', 'minutes', 'hours', or 'days'")
 
-        interval *= 60 if unit == 'minutes' else 1
+        # 转换为秒
+        multipliers = {
+            'seconds': 1,
+            'minutes': 60,
+            'hours': 3600,
+            'days': 86400
+        }
+        interval *= multipliers[unit]
         next_run = time.time() if start_immediately else time.time() + interval
 
         self.jobs.append({

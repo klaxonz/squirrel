@@ -4,6 +4,7 @@
 """
 import logging
 from utils import url_helper
+from utils.metrics import metrics
 from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult
 from .strategies.registry import StrategyRegistry
 from .strategies.default_strategy import DefaultUpdateStrategy
@@ -41,6 +42,8 @@ class SubscriptionOrchestrator:
             if not SiteCatalog.is_site_enabled(domain=domain):
                 message = f"Site is disabled, skip subscription update: {domain}"
                 logger.info(message)
+                # 记录跳过指标
+                metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "site_disabled"})
                 return SubscriptionUpdateResult(
                     subscription_id=request.subscription_id,
                     success=False,

@@ -11,6 +11,8 @@ from crawl import SubscriptionFactory
 from models.subscription import Subscription
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, video_service
+from utils.metrics import metrics
+from utils import url_helper
 from .base import UpdateStrategy
 from ..models import SubscriptionUpdateRequest, UpdateMode, UpdateTrigger
 
@@ -89,10 +91,18 @@ class DefaultUpdateStrategy(UpdateStrategy):
         total = len(video_urls)
         existing_videos = video_service.get_videos_by_urls(video_urls)
         
+        # 获取站点信息用于指标
+        try:
+            domain = url_helper.extract_top_level_domain(request.url)
+        except Exception:
+            domain = "unknown"
+        
         for index, video_url in enumerate(video_urls, 1):
             existing_video = existing_videos.get(video_url)
             if existing_video:
                 existing_count += 1
+                # 记录已入库跳过的视频
+                metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_in_db"})
             else:
                 try:
                     params = VideoExtractDto(

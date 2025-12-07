@@ -6,6 +6,7 @@ from typing import Optional, Dict
 
 from core.cache import redis_client
 from .message import MqMessage
+from utils.metrics import metrics
 
 logger = logging.getLogger()
 
@@ -28,10 +29,23 @@ class RedisStreamProducer:
             trace_id = get_trace_id()
 
         payload = MqMessage(body=message, trace_id=trace_id).to_stream_fields()
+        tags = {"queue": stream}
+        
         for attempt in range(max_retries + 1):
             try:
                 # 使用近似裁剪，避免无界增长
                 msg_id = redis_client.xadd(stream, payload, maxlen=approximate_maxlen, approximate=True)
+                
+                # 记录消息发送成功
+                metrics.counter("queue.messages.total", tags={**tags, "action": "publish", "status": "success"})
+                
+                # 更新队列深度
+                try:
+                    depth = redis_client.xlen(stream)
+                    metrics.gauge("queue.depth", depth, tags=tags)
+                except Exception:
+                    pass  # 队列深度查询失败不影响主流程
+                
                 return msg_id  # type: ignore[return-value]
             except Exception as e:
                 last_err = e
@@ -44,6 +58,7 @@ class RedisStreamProducer:
                         max_retries,
                         e,
                     )
+                    metrics.counter("queue.messages.total", tags={**tags, "action": "publish", "status": "error"})
                     raise last_err
 
 

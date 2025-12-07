@@ -95,6 +95,7 @@ import {
   Cog6ToothIcon as CogIcon,
   PuzzlePieceIcon,
   DocumentTextIcon,
+  ChartBarIcon,
 } from '@heroicons/vue/24/outline';
 import { useUser } from '../composables/useUser';
 
@@ -125,6 +126,11 @@ const menuItems = [
     name: '历史',
     path: '/history',
     icon: ClockIcon,
+  },
+  {
+    name: '监控',
+    path: '/monitoring',
+    icon: ChartBarIcon,
   }
 ];
 

@@ -5,6 +5,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateTrigger
+from utils.metrics import metrics
 
 
 class UpdateStrategy(ABC):
@@ -50,8 +51,18 @@ class UpdateStrategy(ABC):
         """
         执行更新流程（模板方法）
         """
+        # 获取站点信息用于指标标签
+        from utils import url_helper
+        try:
+            domain = url_helper.extract_top_level_domain(request.url)
+        except Exception:
+            domain = "unknown"
+        tags = {"site": domain}
+        
         should_update, skip_reason = self.should_update(request)
         if not should_update:
+            # 记录跳过指标
+            metrics.counter("subscription.update.total", tags={**tags, "status": "skipped", "reason": skip_reason or "unknown"})
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
                 success=True,
@@ -68,6 +79,11 @@ class UpdateStrategy(ABC):
             # 在视频 URL 入队后，更新 offset
             self._update_offset_after_enqueue(request)
             
+            # 记录成功指标
+            metrics.counter("subscription.update.total", tags={**tags, "status": "success"})
+            metrics.counter("subscription.videos.found", value=len(video_urls), tags=tags)
+            metrics.counter("subscription.videos.enqueued", value=enqueued, tags=tags)
+            
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
                 success=True,
@@ -75,6 +91,9 @@ class UpdateStrategy(ABC):
                 videos_enqueued=enqueued
             )
         except Exception as e:
+            # 记录错误指标
+            metrics.counter("subscription.update.total", tags={**tags, "status": "error"})
+            metrics.counter("subscription.errors.total", tags={**tags, "error_type": type(e).__name__})
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
                 success=False,

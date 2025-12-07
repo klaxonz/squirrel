@@ -10,6 +10,7 @@ import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
 import PluginManager from '../views/PluginManager.vue';
 import LogViewer from '../views/LogViewer.vue';
+import Monitoring from '../views/Monitoring.vue';
 import { useUser } from '../composables/useUser';
 
 
@@ -85,6 +86,12 @@ const routes = [
     name: 'Logs',
     component: LogViewer,
     meta: { showSearch: false }
+  },
+  {
+    path: '/monitoring',
+    name: 'Monitoring',
+    component: Monitoring,
+    meta: { showSearch: false, scrollable: true }
   },
   {
     path: '/subscription/:id',
