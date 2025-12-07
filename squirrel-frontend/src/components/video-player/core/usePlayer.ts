@@ -106,10 +106,11 @@ export interface PlayerReturn {
   subtitleTracks: Ref<SubtitleTrack[]>
   currentSubtitle: Ref<SubtitleTrack | null>
   setSubtitle: (track: SubtitleTrack | null) => void
+  setSubtitleTracks: (tracks: SubtitleTrack[]) => void
   toggleSubtitles: () => void
   
-  // 源管理
-  loadSource: (video: VideoInfo) => void
+  // 源管理（通用 API）
+  loadSource: (source: MediaSource) => void
   
   // 主题
   theme: Ref<ThemeName>
@@ -415,32 +416,91 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     }
   }
 
-  // ===== 源加载 =====
-  const loadSource = (video: VideoInfo): void => {
-    currentVideo.value = video
+  // ===== 源类型检测 =====
+  const detectSourceType = (src: string): 'hls' | 'dash' | 'native' => {
+    const url = src.toLowerCase()
     
-    // 设置字幕轨道
-    if (video.subtitles && enableSubtitles) {
-      const tracks: SubtitleTrack[] = video.subtitles.map((s, i) => ({
-        id: s.id || `sub-${i}`,
-        label: s.label || s.language || `Subtitle ${i + 1}`,
-        language: s.language || 'unknown',
-        url: s.url,
-        default: i === 0
-      }))
-      subtitleTracks.value = tracks
-      
-      const subtitlesPlugin = pluginManager.get<SubtitlesPlugin>('subtitles')
-      if (subtitlesPlugin) {
-        subtitlesPlugin.setTracks(tracks)
-      }
+    // HLS 检测
+    if (url.includes('.m3u8') || url.includes('format=m3u8')) {
+      return 'hls'
     }
     
-    // 通知插件源变化
-    const src = (video as any).stream_video_url || (video as any).mpd_url || ''
-    const sourceType = isHlsStream.value ? 'hls' : (isDashStream.value ? 'dash' : 'native')
+    // DASH 检测
+    if (url.includes('.mpd') || url.includes('format=mpd')) {
+      return 'dash'
+    }
     
-    events.emit('sourcechange', { src, type: sourceType })
+    return 'native'
+  }
+
+  // ===== 源加载 =====
+  let pendingSource: MediaSource | null = null
+  let autoPlayOnReady = false
+  let currentSourceUrl = ''
+
+  const loadSource = (source: MediaSource): void => {
+    if (!source.src) {
+      console.warn('[usePlayer] No source URL provided')
+      return
+    }
+
+    // 解析源类型
+    const resolvedSource: MediaSource = {
+      ...source,
+      type: source.type === 'auto' || !source.type 
+        ? detectSourceType(source.src) 
+        : source.type
+    }
+
+    // 如果插件或视频元素还没准备好，保存待处理的源
+    if (!isReady.value || !videoElement.value) {
+      pendingSource = resolvedSource
+      return
+    }
+
+    doLoadSource(resolvedSource)
+  }
+
+  const doLoadSource = (source: MediaSource): void => {
+    if (!videoElement.value) {
+      pendingSource = source
+      return
+    }
+
+    const { src, type = 'native' } = source
+
+    // 避免重复加载相同的源
+    if (src === currentSourceUrl) return
+    currentSourceUrl = src
+
+    // 通知插件源变化（HLS/DASH 插件会处理）
+    events.emit('sourcechange', { src, type })
+    
+    // 原生视频直接设置 src
+    if (type === 'native') {
+      videoElement.value.src = src
+      videoElement.value.load()
+    }
+
+    // 设置海报
+    if (source.poster && videoElement.value) {
+      videoElement.value.poster = source.poster
+    }
+
+    // 自动播放：监听 canplay 事件
+    if (store.autoplay) {
+      autoPlayOnReady = true
+    }
+  }
+
+  // ===== 字幕管理 =====
+  const setSubtitleTracks = (tracks: SubtitleTrack[]): void => {
+    subtitleTracks.value = tracks
+    
+    const subtitlesPlugin = pluginManager.get<SubtitlesPlugin>('subtitles')
+    if (subtitlesPlugin) {
+      subtitlesPlugin.setTracks(tracks)
+    }
   }
 
   // ===== 进度管理 =====
@@ -526,6 +586,13 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     }
 
     isReady.value = true
+
+    // 加载待处理的视频源（仅在 videoElement 也准备好时）
+    if (pendingSource && videoElement.value) {
+      const source = pendingSource
+      pendingSource = null
+      doLoadSource(source)
+    }
   }
 
   // ===== 事件监听 =====
@@ -576,6 +643,14 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       store.setLoading(false, 'ready')
       store.setCanPlay('video', true)
       events.emit('canplay', undefined)
+      
+      // 自动播放
+      if (autoPlayOnReady) {
+        autoPlayOnReady = false
+        play().catch(() => {
+          // 自动播放被浏览器阻止，静默处理
+        })
+      }
     })
 
     video.addEventListener('error', (e) => {
@@ -634,9 +709,15 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   })
 
   // 监听 videoElement 变化
-  watch(videoElement, (el) => {
+  watch(videoElement, async (el) => {
     if (el) {
       setupVideoListeners()
+      
+      // 如果插件已准备好但有待处理的源，现在加载它
+      if (isReady.value && pendingSource) {
+        doLoadSource(pendingSource)
+        pendingSource = null
+      }
     }
   })
 
@@ -675,6 +756,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     subtitleTracks,
     currentSubtitle,
     setSubtitle,
+    setSubtitleTracks,
     toggleSubtitles,
     loadSource,
     theme,

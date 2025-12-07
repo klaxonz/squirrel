@@ -76,22 +76,22 @@
           <!-- 左侧控件 -->
           <div class="sp-controls-left">
             <!-- 播放/暂停 -->
-            <button class="sp-btn" @click="togglePlay" :aria-label="isPlaying ? t('pause') : t('play')">
-              <component :is="icons.renderIcon(isPlaying ? 'pause' : 'play')" />
+            <button class="sp-btn sp-btn--play" @click="togglePlay" :aria-label="isPlaying ? t('pause') : t('play')">
+              <PlayerIcon :name="isPlaying ? 'pause' : 'play'" />
             </button>
 
             <!-- 上一个/下一个 -->
             <button v-if="hasPrev" class="sp-btn" @click="$emit('prev-video')" :aria-label="t('previousVideo')">
-              <component :is="icons.renderIcon('previous')" />
+              <PlayerIcon name="previous" />
             </button>
             <button v-if="hasNext" class="sp-btn" @click="$emit('next-video')" :aria-label="t('nextVideo')">
-              <component :is="icons.renderIcon('next')" />
+              <PlayerIcon name="next" />
             </button>
 
             <!-- 音量 -->
             <div class="sp-volume">
               <button class="sp-btn" @click="toggleMute" :aria-label="isMuted ? t('unmute') : t('mute')">
-                <component :is="icons.renderIcon(volumeIconName)" />
+                <PlayerIcon :name="volumeIconName" />
               </button>
               <div class="sp-volume-slider" @click="onVolumeClick">
                 <div class="sp-volume-slider-fill" :style="{ width: `${isMuted ? 0 : volume}%` }"></div>
@@ -115,12 +115,12 @@
               @click="toggleSubtitlesMenu"
               :aria-label="t('subtitles')"
             >
-              <component :is="icons.renderIcon(store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff')" />
+              <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
             </button>
 
             <!-- 设置 -->
             <button class="sp-btn" @click="toggleSettingsMenu" :aria-label="t('settings')">
-              <component :is="icons.renderIcon('settings')" />
+              <PlayerIcon name="settings" />
             </button>
 
             <!-- 画中画 -->
@@ -130,12 +130,12 @@
               @click="togglePictureInPicture"
               :aria-label="t('pictureInPicture')"
             >
-              <component :is="icons.renderIcon(store.pip ? 'pipExit' : 'pip')" />
+              <PlayerIcon :name="store.pip ? 'pipExit' : 'pip'" />
             </button>
 
             <!-- 全屏 -->
             <button class="sp-btn" @click="toggleFullscreen" :aria-label="isFullscreen ? t('exitFullscreen') : t('fullscreen')">
-              <component :is="icons.renderIcon(isFullscreen ? 'fullscreenExit' : 'fullscreen')" />
+              <PlayerIcon :name="isFullscreen ? 'fullscreenExit' : 'fullscreen'" />
             </button>
           </div>
         </div>
@@ -160,9 +160,9 @@
             @click="handleQualitySelect(q)"
           >
             <span>{{ q.label }}</span>
-            <component 
+            <PlayerIcon 
               v-if="currentQuality === q.label || currentQuality === String(q.id)" 
-              :is="icons.renderIcon('check')" 
+              name="check" 
               class="sp-menu-item-check"
             />
           </button>
@@ -179,9 +179,9 @@
             @click="setPlaybackRate(rate)"
           >
             <span>{{ rate === 1 ? t('speedNormal') : `${rate}x` }}</span>
-            <component 
+            <PlayerIcon 
               v-if="store.playbackRate === rate" 
-              :is="icons.renderIcon('check')" 
+              name="check" 
               class="sp-menu-item-check"
             />
           </button>
@@ -201,7 +201,7 @@
           @click="setSubtitle(null)"
         >
           <span>{{ t('subtitlesOff') }}</span>
-          <component v-if="!currentSubtitle" :is="icons.renderIcon('check')" class="sp-menu-item-check" />
+          <PlayerIcon v-if="!currentSubtitle" name="check" class="sp-menu-item-check" />
         </button>
         <button
           v-for="track in subtitleTracks"
@@ -211,9 +211,9 @@
           @click="setSubtitle(track)"
         >
           <span>{{ track.label }}</span>
-          <component 
+          <PlayerIcon 
             v-if="currentSubtitle?.id === track.id" 
-            :is="icons.renderIcon('check')" 
+            name="check" 
             class="sp-menu-item-check"
           />
         </button>
@@ -223,7 +223,7 @@
     <!-- 快进/快退指示器 -->
     <transition name="sp-fade">
       <div v-if="seekIndicator.show" class="sp-seek-indicator" :class="seekIndicator.direction">
-        <component :is="icons.renderIcon(seekIndicator.direction === 'forward' ? 'skipForward' : 'skipBackward')" />
+        <PlayerIcon :name="seekIndicator.direction === 'forward' ? 'skipForward' : 'skipBackward'" />
         <span>{{ seekIndicator.seconds }}{{ t('skipSeconds', { seconds: '' }) }}</span>
       </div>
     </transition>
@@ -231,7 +231,7 @@
     <!-- 音量指示器 -->
     <transition name="sp-fade">
       <div v-if="volumeIndicator.show" class="sp-volume-indicator">
-        <component :is="icons.renderIcon(volumeIconName)" />
+        <PlayerIcon :name="volumeIconName" />
         <span>{{ Math.round(volume) }}%</span>
       </div>
     </transition>
@@ -241,13 +241,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePlayer } from './core'
+import PlayerIcon from './PlayerIcon.vue'
 import type { VideoInfo } from '../../types/video-player'
 
-// 导入主题样式
+// 导入 CSS 变量（主题系统基础）
 import './themes/variables.css'
-import './themes/base.css'
-import './themes/dark.css'
-import './themes/light.css'
 
 interface Props {
   video?: VideoInfo
@@ -303,6 +301,7 @@ const {
   subtitleTracks,
   currentSubtitle,
   setSubtitle,
+  setSubtitleTracks,
   toggleSubtitles,
   loadSource,
   theme,
@@ -368,24 +367,76 @@ watch(containerRef, (el) => {
   containerElement.value = el
 })
 
+// 业务数据适配：将 VideoInfo 转换为通用 MediaSource
+const adaptVideoToSource = (video: VideoInfo) => {
+  const videoAny = video as any
+  const src = videoAny.stream_video_url || videoAny.mpd_url || ''
+  
+  if (!src) return null
+  
+  return {
+    src,
+    type: 'auto' as const,
+    poster: video.thumbnail,
+    title: video.title
+  }
+}
+
+// 记录当前加载的源，避免重复加载
+let currentLoadedSrc = ''
+
+// 业务数据适配：将字幕数据转换为 SubtitleTrack
+const adaptSubtitles = (video: VideoInfo) => {
+  const videoAny = video as any
+  if (!videoAny.subtitles?.length) return []
+  
+  return videoAny.subtitles.map((s: any, i: number) => ({
+    id: s.id || `sub-${i}`,
+    label: s.label || s.language || `Subtitle ${i + 1}`,
+    language: s.language || 'unknown',
+    url: s.url,
+    default: i === 0
+  }))
+}
+
 // 加载视频
-watch(() => props.video, async (video) => {
-  if (video) {
-    loadSource(video)
+watch(
+  () => props.video,
+  async (video) => {
+    if (!video) return
+    
+    // 适配视频源
+    const source = adaptVideoToSource(video)
+    if (!source) return
+    
+    // 避免重复加载相同的源
+    if (source.src === currentLoadedSrc) return
+    currentLoadedSrc = source.src
+    
+    // 加载视频源
+    loadSource(source)
+    
+    // 适配并设置字幕
+    const subtitles = adaptSubtitles(video)
+    if (subtitles.length > 0) {
+      setSubtitleTracks(subtitles)
+    }
     
     // 恢复播放位置
+    const videoId = (video as any).id
     if (props.initialTime > 0) {
       await nextTick()
       seek(props.initialTime)
-    } else if (video.id) {
-      const savedTime = await loadProgress(video.id)
+    } else if (videoId) {
+      const savedTime = await loadProgress(videoId)
       if (savedTime && savedTime > 0) {
         await nextTick()
         seek(savedTime)
       }
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true, deep: true }
+)
 
 // 处理外部错误
 watch(() => props.externalError, (err) => {
@@ -601,6 +652,18 @@ defineExpose({
 </script>
 
 <style scoped>
+/* 播放器容器 */
+.sp-player {
+  position: absolute;
+  inset: 0;
+  background: var(--sp-bg, #000);
+  font-family: var(--sp-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  color: var(--sp-text, #fff);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* 视频元素 */
 .sp-video {
   position: absolute;
   top: 0;
@@ -608,50 +671,187 @@ defineExpose({
   width: 100%;
   height: 100%;
   object-fit: contain;
+  z-index: var(--sp-z-video, 1);
 }
 
-.sp-buffering {
+/* 控制栏 */
+.sp-controls {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 15;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--sp-z-controls, 20);
+  padding: var(--sp-controls-padding, 8px 12px);
+  background: var(--sp-controls-bg, linear-gradient(transparent, rgba(0, 0, 0, 0.8)));
 }
 
+/* 进度条 */
 .sp-progress-container {
   position: relative;
   padding: 8px 0;
   margin-bottom: 4px;
 }
 
+.sp-progress {
+  position: relative;
+  height: var(--sp-progress-height, 4px);
+  background: var(--sp-progress-bg, rgba(255, 255, 255, 0.2));
+  border-radius: 2px;
+  cursor: pointer;
+  transition: height var(--sp-transition-fast, 0.15s);
+}
+
+.sp-progress:hover {
+  height: var(--sp-progress-height-hover, 6px);
+}
+
+.sp-progress-buffered {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--sp-progress-buffered, rgba(255, 255, 255, 0.4));
+  border-radius: 2px;
+}
+
+.sp-progress-played {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--sp-primary, #e53935);
+  border-radius: 2px;
+}
+
+.sp-progress-thumb {
+  position: absolute;
+  top: 50%;
+  width: var(--sp-progress-thumb-size, 14px);
+  height: var(--sp-progress-thumb-size, 14px);
+  background: var(--sp-primary, #e53935);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity var(--sp-transition-fast, 0.15s);
+}
+
+.sp-progress:hover .sp-progress-thumb {
+  opacity: 1;
+}
+
 .sp-progress-preview {
   position: absolute;
   bottom: 100%;
   transform: translateX(-50%);
-  padding: 4px 8px;
-  background: var(--sp-tooltip-bg);
-  border-radius: var(--sp-radius-sm);
-  font-size: var(--sp-font-size-sm);
+  padding: var(--sp-tooltip-padding, 4px 8px);
+  background: var(--sp-tooltip-bg, rgba(28, 28, 28, 0.95));
+  border-radius: var(--sp-radius-sm, 4px);
+  font-size: var(--sp-font-size-sm, 12px);
   white-space: nowrap;
   pointer-events: none;
 }
 
-.sp-controls-left,
-.sp-controls-right {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-spacing-xs);
-}
-
+/* 控制按钮行 */
 .sp-controls-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
+.sp-controls-left,
+.sp-controls-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-controls-gap, 4px);
+}
+
+/* 按钮 */
+.sp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sp-btn-size, 40px);
+  height: var(--sp-btn-size, 40px);
+  padding: 0;
+  border: none;
+  border-radius: var(--sp-radius-full, 50%);
+  background: transparent;
+  color: var(--sp-text, #fff);
+  cursor: pointer;
+  transition: background var(--sp-transition-fast, 0.15s);
+}
+
+.sp-btn:hover {
+  background: var(--sp-btn-hover-bg, rgba(255, 255, 255, 0.1));
+}
+
+.sp-btn:active {
+  background: var(--sp-btn-active-bg, rgba(255, 255, 255, 0.15));
+}
+
+.sp-btn svg,
+.sp-btn .sp-icon {
+  width: var(--sp-btn-icon-size, 24px);
+  height: var(--sp-btn-icon-size, 24px);
+}
+
+/* 音量 */
+.sp-volume {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-spacing-xs, 4px);
+}
+
+.sp-volume-slider {
+  width: 80px;
+  height: var(--sp-progress-height, 4px);
+  background: var(--sp-progress-bg, rgba(255, 255, 255, 0.2));
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.sp-volume-slider-fill {
+  height: 100%;
+  background: var(--sp-text, #fff);
+  border-radius: 2px;
+}
+
+/* 时间 */
+.sp-time {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-spacing-xs, 4px);
+  font-size: var(--sp-font-size-sm, 13px);
+  color: var(--sp-text-secondary, rgba(255, 255, 255, 0.9));
+  margin-left: var(--sp-spacing-sm, 8px);
+}
+
+.sp-time-separator {
+  color: var(--sp-text-tertiary, rgba(255, 255, 255, 0.5));
+}
+
+/* 菜单 */
+.sp-menu {
+  position: absolute;
+  right: var(--sp-spacing-md, 12px);
+  bottom: 60px;
+  width: var(--sp-menu-width, 280px);
+  max-height: var(--sp-menu-max-height, 400px);
+  background: var(--sp-menu-bg, rgba(28, 28, 28, 0.95));
+  border-radius: var(--sp-radius-md, 8px);
+  overflow: hidden;
+  z-index: var(--sp-z-menu, 30);
+}
+
+.sp-menu-header {
+  padding: var(--sp-spacing-md, 12px) var(--sp-spacing-lg, 16px);
+  font-weight: 500;
+  border-bottom: 1px solid var(--sp-border, rgba(255, 255, 255, 0.1));
+}
+
 .sp-menu-section {
-  padding: var(--sp-spacing-sm) 0;
-  border-top: 1px solid var(--sp-border);
+  padding: var(--sp-spacing-sm, 8px) 0;
+  border-top: 1px solid var(--sp-border, rgba(255, 255, 255, 0.1));
 }
 
 .sp-menu-section:first-of-type {
@@ -659,12 +859,103 @@ defineExpose({
 }
 
 .sp-menu-label {
-  padding: var(--sp-spacing-xs) var(--sp-spacing-md);
-  font-size: var(--sp-font-size-xs);
-  color: var(--sp-text-tertiary);
+  padding: var(--sp-spacing-xs, 4px) var(--sp-spacing-lg, 16px);
+  font-size: var(--sp-font-size-xs, 11px);
+  color: var(--sp-text-tertiary, rgba(255, 255, 255, 0.5));
   text-transform: uppercase;
 }
 
+.sp-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--sp-menu-item-padding, 8px 16px);
+  border: none;
+  background: transparent;
+  color: var(--sp-text, #fff);
+  font-size: var(--sp-font-size-md, 14px);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sp-menu-item:hover {
+  background: var(--sp-menu-item-hover-bg, rgba(255, 255, 255, 0.1));
+}
+
+.sp-menu-item--active {
+  color: var(--sp-primary, #e53935);
+}
+
+.sp-menu-item-check {
+  width: 18px;
+  height: 18px;
+}
+
+/* 加载/缓冲 */
+.sp-loading,
+.sp-buffering {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--sp-z-overlay, 15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-spacing-md, 12px);
+}
+
+.sp-loading-spinner {
+  width: var(--sp-spinner-size, 48px);
+  height: var(--sp-spinner-size, 48px);
+  border: 3px solid var(--sp-spinner-track, rgba(255, 255, 255, 0.2));
+  border-top-color: var(--sp-text, #fff);
+  border-radius: 50%;
+  animation: sp-spin 1s linear infinite;
+}
+
+.sp-loading-text {
+  font-size: var(--sp-font-size-md, 14px);
+  color: var(--sp-text-secondary, rgba(255, 255, 255, 0.8));
+}
+
+@keyframes sp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 错误 */
+.sp-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--sp-z-overlay, 15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-spacing-md, 12px);
+  text-align: center;
+}
+
+.sp-error-icon svg,
+.sp-error-icon .sp-icon {
+  width: var(--sp-spinner-size, 48px);
+  height: var(--sp-spinner-size, 48px);
+  color: var(--sp-error, #f44336);
+}
+
+.sp-error-title {
+  font-size: var(--sp-font-size-lg, 16px);
+  font-weight: 500;
+}
+
+.sp-error-message {
+  font-size: var(--sp-font-size-md, 14px);
+  color: var(--sp-text-tertiary, rgba(255, 255, 255, 0.7));
+}
+
+/* 指示器 */
 .sp-seek-indicator,
 .sp-volume-indicator {
   position: absolute;
@@ -674,23 +965,25 @@ defineExpose({
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--sp-spacing-sm);
-  padding: var(--sp-spacing-lg);
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: var(--sp-radius-lg);
-  z-index: 25;
+  gap: var(--sp-spacing-sm, 8px);
+  padding: var(--sp-spacing-lg, 16px);
+  background: var(--sp-indicator-bg, rgba(0, 0, 0, 0.7));
+  border-radius: var(--sp-radius-lg, 12px);
+  z-index: var(--sp-z-indicator, 25);
 }
 
 .sp-seek-indicator svg,
-.sp-volume-indicator svg {
-  width: 32px;
-  height: 32px;
+.sp-seek-indicator .sp-icon,
+.sp-volume-indicator svg,
+.sp-volume-indicator .sp-icon {
+  width: var(--sp-indicator-icon-size, 32px);
+  height: var(--sp-indicator-icon-size, 32px);
 }
 
 /* 过渡动画 */
 .sp-fade-enter-active,
 .sp-fade-leave-active {
-  transition: opacity var(--sp-transition-normal);
+  transition: opacity var(--sp-transition-normal, 0.25s) ease;
 }
 
 .sp-fade-enter-from,
@@ -700,7 +993,7 @@ defineExpose({
 
 .sp-slide-enter-active,
 .sp-slide-leave-active {
-  transition: transform var(--sp-transition-normal), opacity var(--sp-transition-normal);
+  transition: transform var(--sp-transition-normal, 0.25s) ease, opacity var(--sp-transition-normal, 0.25s) ease;
 }
 
 .sp-slide-enter-from,

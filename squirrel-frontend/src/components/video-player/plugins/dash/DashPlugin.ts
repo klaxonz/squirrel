@@ -32,7 +32,15 @@ export class DashPlugin implements PlayerPlugin {
    * 检测是否为 DASH 源
    */
   static isDashSource(src: string): boolean {
-    return /\.mpd($|\?)/i.test(src)
+    const url = src.toLowerCase()
+    // 支持多种 DASH URL 格式：
+    // - xxx.mpd
+    // - xxx.mpd?query
+    // - /mpd/xxx 或 /mpd?xxx
+    // - format=mpd
+    return /\.mpd($|\?)/i.test(src) || 
+           url.includes('/mpd') || 
+           url.includes('format=mpd')
   }
 
   install(context: PluginContext, options?: DashPluginOptions): void {

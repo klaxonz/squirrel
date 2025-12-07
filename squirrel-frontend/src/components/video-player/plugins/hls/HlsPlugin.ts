@@ -40,7 +40,13 @@ export class HlsPlugin implements PlayerPlugin {
    * 检测是否为 HLS 源
    */
   static isHlsSource(src: string): boolean {
-    return /\.m3u8($|\?)/i.test(src)
+    const url = src.toLowerCase()
+    // 支持多种 HLS URL 格式：
+    // - xxx.m3u8
+    // - xxx.m3u8?query
+    // - format=m3u8
+    return /\.m3u8($|\?)/i.test(src) || 
+           url.includes('format=m3u8')
   }
 
   /**
