@@ -39,6 +39,25 @@ class DefaultUpdateStrategy(UpdateStrategy):
             if not self._lock.acquire(blocking=False):
                 return False, "update_in_progress"
         
+        # 检查队列积压情况（仅针对定时触发的增量更新）
+        if request.trigger == UpdateTrigger.SCHEDULED and request.mode == UpdateMode.INCREMENTAL:
+            from mq.queue_monitor import queue_monitor
+            from core.config import settings
+            
+            should_skip, pending_count = queue_monitor.should_skip_subscription_update(
+                subscription_id=request.subscription_id,
+                url=request.url,
+                threshold_ratio=0.5,  # 超过一半
+                incremental_size=settings.CHANNEL_UPDATE_DEFAULT_SIZE
+            )
+            
+            if should_skip:
+                logger.info(
+                    f"Skip subscription {request.subscription_id} update due to backpressure: "
+                    f"pending_videos={pending_count}"
+                )
+                return False, "queue_backpressure"
+        
         return True, None
     
     def fetch_videos(self, request: SubscriptionUpdateRequest) -> List[str]:
