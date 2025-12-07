@@ -9,9 +9,10 @@ from .producer import RedisStreamProducer
 from .consumer import RedisStreamConsumer, ConsumerOptions
 from .registry import ConsumerRegistry, ConsumerSpec
 from .decorators import mq_consumer
-from .message_router import MessageRouter, video_extract_router, subscription_update_router
+from .message_router import MessageRouter
 from .consumer_registrar import DomainConsumerRegistrar
 from .duplicate_checker import MessageDuplicateChecker, create_checker, create_simple_checker
+from .direct_producer import DirectDomainProducer, direct_domain_producer
 from .queue_config import (
     QueueConfigManager,
     get_queue_config,
@@ -29,12 +30,12 @@ __all__ = [
     "ConsumerSpec",
     "mq_consumer",
     "MessageRouter",
-    "video_extract_router",
-    "subscription_update_router",
     "DomainConsumerRegistrar",
     "MessageDuplicateChecker",
     "create_checker",
     "create_simple_checker",
+    "DirectDomainProducer",
+    "direct_domain_producer",
     "QueueConfigManager",
     "get_queue_config",
     "ensure_queue_config_initialized",

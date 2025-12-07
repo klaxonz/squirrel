@@ -1,45 +1,16 @@
 """
 订阅更新任务消费者
-职责：接收订阅更新消息，调用编排器处理订阅更新
+职责：接收域队列的订阅更新消息，调用编排器处理订阅更新
 """
 import json
 import logging
 from typing import Dict, Any
 
-from common import constants
 from models.message import Message
 from services.subscription_update.orchestrator import orchestrator
 from services.subscription_update.models import SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
-from mq import mq_consumer
 
 logger = logging.getLogger()
-
-
-@mq_consumer(constants.QUEUE_SUBSCRIPTION_UPDATE_INCREMENTAL, group="subscription_update", consumer_name="subscription_update_incremental")
-def process_subscription_update_incremental(message: Dict[str, Any]):
-    """
-    处理增量订阅更新消息（5分钟频率）
-    职责：解析消息并调用编排器执行增量订阅更新
-    """
-    _process_subscription_update(message, UpdateTrigger.SCHEDULED)
-
-
-@mq_consumer(constants.QUEUE_SUBSCRIPTION_UPDATE_FULL, group="subscription_update", consumer_name="subscription_update_full")
-def process_subscription_update_full(message: Dict[str, Any]):
-    """
-    处理全量订阅更新消息（1小时频率）
-    职责：解析消息并调用编排器执行全量订阅更新
-    """
-    _process_subscription_update(message, UpdateTrigger.SCHEDULED)
-
-
-@mq_consumer(constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL, group="subscription_update", consumer_name="subscription_update_manual")
-def process_subscription_update_manual(message: Dict[str, Any]):
-    """
-    处理手动订阅更新消息
-    职责：解析消息并调用编排器执行订阅更新
-    """
-    _process_subscription_update(message, UpdateTrigger.MANUAL)
 
 
 def process_domain_subscription_update(message: Dict[str, Any], queue_name: str):

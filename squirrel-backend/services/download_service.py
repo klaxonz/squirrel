@@ -1,9 +1,9 @@
 import logging
 import json
 
-from common import constants
-from mq.producer import RedisStreamProducer
+from mq.direct_producer import direct_domain_producer
 from mq.duplicate_checker import create_simple_checker
+from mq.queue_config import get_queue_config, QueueType, QueueMode
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import video_service, message_service
 from utils.site_catalog import SiteCatalog
@@ -38,17 +38,29 @@ def _send_to_extract_queue(params: VideoExtractDto) -> None:
     
     # 队列优先级策略：
     # 1. 手动触发 -> manual（最高优先级）
-    # 2. 增量更新 -> incremental（高优先级，快速响应新视频）
+    # 2. 增量更新 -> incr（高优先级，快速响应新视频）
     # 3. 全量更新 -> full（低优先级，慢慢处理历史视频）
     if params.is_manual:
-        queue_name = constants.QUEUE_VIDEO_EXTRACT
+        priority = "manual"
     elif params.is_extract_all:
-        queue_name = constants.QUEUE_VIDEO_EXTRACT_FULL
+        priority = "full"
     else:
-        queue_name = constants.QUEUE_VIDEO_EXTRACT_INCREMENTAL
+        priority = "incr"
     
     # 对自动任务检查重复，手动触发不检查（允许用户强制重新提取）
     if not params.is_manual:
+        # 构建域队列名称用于去重检查
+        domain = extract_top_level_domain(params.url)
+        config = get_queue_config()
+        site = config.get_site_by_domain(domain)
+        
+        if not site:
+            logger.error(f"Unsupported domain: {domain}, url={params.url}")
+            return
+        
+        mode_mapping = {"manual": QueueMode.MANUAL, "incr": QueueMode.INCREMENTAL, "full": QueueMode.FULL}
+        queue_name = config.build_queue_name(QueueType.VIDEO_EXTRACT, site, mode_mapping[priority])
+        
         checker = create_simple_checker(
             queue_name=queue_name,
             key_fn=lambda msg: json.loads(msg['body'])['url']
@@ -58,7 +70,11 @@ def _send_to_extract_queue(params: VideoExtractDto) -> None:
             logger.debug(f"Video extraction task already in queue, skipping: {params.url}")
             return
     
-    RedisStreamProducer().send(queue_name, message_dict)
+    # 使用新的直接域队列生产者
+    try:
+        direct_domain_producer.send_video_extract(message_dict, params.url, priority)
+    except ValueError as e:
+        logger.error(f"Failed to send video extract message: {e}, url={params.url}")
 
 
 # 兼容旧代码的函数，标记为废弃

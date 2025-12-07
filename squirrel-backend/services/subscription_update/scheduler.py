@@ -5,11 +5,11 @@ from core.database import get_session
 from core.cache import redis_client
 from models.subscription import Subscription
 from services import message_service
-from mq.producer import RedisStreamProducer
 from mq.duplicate_checker import create_simple_checker
+from mq.direct_producer import direct_domain_producer
+from mq.queue_config import get_queue_config, QueueType, QueueMode
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
-from common import constants
 from .models import SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
 from .orchestrator import orchestrator
 
@@ -101,11 +101,9 @@ class SubscriptionScheduler:
             
             logger.info(f"Domain {domain} starting from subscription_id={reordered_subs[0].id if reordered_subs else 'N/A'}")
             
-            queue_name = self._get_queue_for_domain(domain, trigger, mode)
-            
             for sub in reordered_subs:
                 try:
-                    enqueued = self._enqueue_subscription_update(sub, trigger, mode, queue_name, domain)
+                    enqueued = self._enqueue_subscription_update(sub, trigger, mode, domain)
                     if enqueued:
                         success_count += 1
                 except Exception as e:
@@ -199,36 +197,24 @@ class SubscriptionScheduler:
         return result
     
     @staticmethod
-    def _get_queue_for_domain(domain: str, trigger: UpdateTrigger, mode: UpdateMode = UpdateMode.INCREMENTAL) -> str:
-        """Select queue name for the domain."""
-        from crawl import MetaRegistry
-        
-        if trigger == UpdateTrigger.MANUAL:
-            queue_type = 'manual'
-        elif mode == UpdateMode.FULL:
-            queue_type = 'full'
-        else:
-            queue_type = 'incremental'
-        
-        if MetaRegistry.get_meta_class(domain):
-            return constants.get_subscription_update_queue(domain, queue_type)
-        
-        if trigger == UpdateTrigger.MANUAL:
-            return constants.QUEUE_SUBSCRIPTION_UPDATE_MANUAL
-        elif mode == UpdateMode.FULL:
-            return constants.QUEUE_SUBSCRIPTION_UPDATE_FULL
-        else:
-            return constants.QUEUE_SUBSCRIPTION_UPDATE_INCREMENTAL
-    
-    @staticmethod
     def _enqueue_subscription_update(
         sub: Subscription, 
         trigger: UpdateTrigger, 
         mode: UpdateMode, 
-        queue_name: str,
         domain: Optional[str] = None
     ) -> bool:
-        """Enqueue a subscription update task."""
+        """
+        将订阅更新任务加入域队列
+        
+        Args:
+            sub: 订阅对象
+            trigger: 更新触发器
+            mode: 更新模式
+            domain: 域名（用于offset更新）
+            
+        Returns:
+            是否成功入队
+        """
         if domain and not SiteCatalog.is_site_enabled(domain=domain):
             logger.debug(f"Skip enqueue for disabled site: subscription_id={sub.id}, domain={domain}")
             return False
@@ -245,9 +231,30 @@ class SubscriptionScheduler:
         message = message_service.create_message(content)
         message_dict = message.to_dict()
         
+        # 确定优先级
+        if trigger == UpdateTrigger.MANUAL:
+            priority = "manual"
+        elif mode == UpdateMode.FULL:
+            priority = "full"
+        else:
+            priority = "incr"
+        
         # Duplicate checks are only applied for scheduled triggers.
         if trigger == UpdateTrigger.SCHEDULED:
             import json
+            
+            # 构建域队列名称用于去重检查
+            url_domain = url_helper.extract_top_level_domain(sub.url)
+            config = get_queue_config()
+            site = config.get_site_by_domain(url_domain)
+            
+            if not site:
+                logger.error(f"Unsupported domain: {url_domain}, subscription_id={sub.id}")
+                return False
+            
+            mode_mapping = {"manual": QueueMode.MANUAL, "incr": QueueMode.INCREMENTAL, "full": QueueMode.FULL}
+            queue_name = config.build_queue_name(QueueType.SUBSCRIPTION_UPDATE, site, mode_mapping[priority])
+            
             checker = create_simple_checker(
                 queue_name=queue_name,
                 key_fn=lambda msg: (
@@ -257,13 +264,17 @@ class SubscriptionScheduler:
             )
             
             if checker.is_duplicate(message_dict):
-                logger.debug(f"Skipped duplicate subscription {sub.id} for {queue_name} (mode={mode.value})")
-                return
+                logger.debug(f"Skipped duplicate subscription {sub.id} (mode={mode.value})")
+                return False
         
-        RedisStreamProducer().send(queue_name, message_dict)
-        logger.debug(f"Enqueued subscription {sub.id} to {queue_name} (mode={mode.value})")
-        return True
+        # 使用新的直接域队列生产者
+        try:
+            direct_domain_producer.send_subscription_update(message_dict, sub.url, priority)
+            logger.debug(f"Enqueued subscription {sub.id} (priority={priority}, mode={mode.value})")
+            return True
+        except ValueError as e:
+            logger.error(f"Failed to enqueue subscription update: {e}, subscription_id={sub.id}")
+            return False
 
 
 scheduler = SubscriptionScheduler()
-

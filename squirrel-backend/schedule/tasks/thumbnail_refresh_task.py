@@ -27,7 +27,7 @@ _DEFAULT_HEADERS = {
 }
 
 
-@TaskRegistry.register(interval=60 * 24, unit='minutes', start_immediately=True)
+# @TaskRegistry.register(interval=60 * 24, unit='minutes', start_immediately=True)
 class ThumbnailRefreshTask(BaseTask):
     """定时校验并补全视频封面缓存。
 

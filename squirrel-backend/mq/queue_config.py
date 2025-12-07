@@ -16,7 +16,7 @@ class QueueMode(str, Enum):
     """队列模式枚举"""
     MANUAL = 'manual'  # 手动触发（最高优先级）
     SCHEDULED = 'scheduled'  # 定时任务（用于 VIDEO_DOWNLOAD 等队列，VIDEO_EXTRACT 已弃用）
-    INCREMENTAL = 'incremental'  # 增量更新（高优先级，用于 SUBSCRIPTION_UPDATE 和 VIDEO_EXTRACT）
+    INCREMENTAL = 'incr'  # 增量更新（高优先级，用于 SUBSCRIPTION_UPDATE 和 VIDEO_EXTRACT）
     FULL = 'full'  # 全量更新（低优先级，用于 SUBSCRIPTION_UPDATE 和 VIDEO_EXTRACT）
 
 

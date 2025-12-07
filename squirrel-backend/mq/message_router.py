@@ -89,6 +89,6 @@ class DirectMessageSender:
 
 
 # 预定义路由器（延迟初始化，在插件加载后调用 ensure_queue_config_initialized）
-video_extract_router = MessageRouter(QueueType.VIDEO_EXTRACT)
-subscription_update_router = MessageRouter(QueueType.SUBSCRIPTION_UPDATE)
+# video_extract_router 已移除，请使用 mq.direct_producer.direct_domain_producer
+# subscription_update_router 已移除，请使用 mq.direct_producer.direct_domain_producer
 
