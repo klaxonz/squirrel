@@ -59,32 +59,12 @@
         <div class="loading-status-text">{{ loadingStatusText }}</div>
       </div>
 
-      <!-- 控制栏 -->
+      <!-- 控制栏 - 通过 inject 获取上下文，减少 props -->
       <VideoControls
         v-show="store.controlsVisible"
         :video="video"
-        :progress="progress"
-        :volume-icon="volumeIcon"
-        :fullscreen-icon="fullscreenIcon"
-        :supports-pip="supportsPiP"
-        :available-qualities="availableQualities"
-        :playback-rates="playbackRates"
         :has-prev="hasPrev"
         :has-next="hasNext"
-        @toggle-play="togglePlay"
-        @skip-forward="skipForward"
-        @skip-backward="skipBackward"
-        @toggle-mute="toggleMute"
-        @toggle-fullscreen="toggleFullscreen"
-        @toggle-subtitles="toggleSubtitles"
-        @toggle-theater="toggleTheaterMode"
-        @toggle-pip="togglePictureInPicture"
-        @set-quality="setQuality"
-        @set-playback-rate="setPlaybackRate"
-        @set-subtitle="setSubtitle"
-        @seek-start="onSeekStart"
-        @progress-seek="setVideoTime"
-        @seek-end="onSeekEnd"
         @prev-video="$emit('prev-video')"
         @next-video="$emit('next-video')"
       />
@@ -126,6 +106,7 @@ import useVideoControls from '../../composables/useVideoControls.js'
 import useKeyboardShortcuts from '../../composables/useKeyboardShortcuts.js'
 import useSubtitles from '../../composables/useSubtitles.js'
 import useInitialTimeRestore from '../../composables/useInitialTimeRestore.js'
+import { providePlayerContext, createPlayerContext } from '../../composables/usePlayerContext.js'
 
 const props = defineProps({
   video: Object,
@@ -241,6 +222,47 @@ const onSeekEnd = async () => {
     }
   }
 }
+
+// 提供播放器上下文给子组件
+providePlayerContext(createPlayerContext({
+  store,
+  videoCore,
+  video: props.video,
+  hasPrev: props.hasPrev,
+  hasNext: props.hasNext,
+  isHlsStream,
+  isDashStream,
+  isCanplay,
+  progress,
+  volumeIcon,
+  fullscreenIcon,
+  supportsPiP,
+  loadingStatusText,
+  availableQualities,
+  playbackRates,
+  formatNetworkSpeed,
+  updateBandwidth,
+  togglePlay,
+  skipForward,
+  skipBackward,
+  setVideoTime,
+  toggleMute,
+  adjustVolume,
+  toggleFullscreen,
+  toggleTheaterMode,
+  togglePictureInPicture,
+  toggleKeyboardHelp,
+  toggleSubtitles,
+  setSubtitle,
+  setPlaybackRate,
+  adjustPlaybackRate,
+  setQuality,
+  updateAvailableQualities,
+  onSeekStart,
+  onSeekEnd,
+  onPrevVideo: () => emit('prev-video'),
+  onNextVideo: () => emit('next-video')
+}))
 
 // 键盘快捷键
 const { handleKeyDown } = useKeyboardShortcuts(store, {

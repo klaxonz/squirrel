@@ -7,14 +7,14 @@
     >
       <!-- 进度条容器 -->
       <ProgressBar
-        :progress="progress"
+        :progress="ctx.progress.value"
         :buffered-progress="store.bufferedProgress"
         :duration="store.duration"
         :current-time="store.currentTime"
-        :chapters="video.chapters"
-        @seek-start="$emit('seek-start')"
-        @seek="$emit('progress-seek', $event)"
-        @seek-end="$emit('seek-end')"
+        :chapters="video?.chapters"
+        @seek-start="ctx.onSeekStart"
+        @seek="ctx.setVideoTime"
+        @seek-end="ctx.onSeekEnd"
       />
 
       <!-- 主控制栏 -->
@@ -24,9 +24,9 @@
             :playing="store.playing"
             :has-prev="hasPrev"
             :has-next="hasNext"
-            @toggle-play="$emit('toggle-play')"
-            @skip-forward="$emit('skip-forward')"
-            @skip-backward="$emit('skip-backward')"
+            @toggle-play="ctx.togglePlay"
+            @skip-forward="ctx.skipForward"
+            @skip-backward="ctx.skipBackward"
             @prev-video="$emit('prev-video')"
             @next-video="$emit('next-video')"
           />
@@ -34,8 +34,8 @@
           <VolumeControl
             :volume="store.volume"
             :muted="store.muted"
-            :volume-icon="volumeIcon"
-            @toggle-mute="$emit('toggle-mute')"
+            :volume-icon="ctx.volumeIcon.value"
+            @toggle-mute="ctx.toggleMute"
             @volume-change="handleVolumeChange"
           />
 
@@ -47,17 +47,17 @@
 
         <div class="controls-right">
           <QualitySelector
-            v-if="!isTouchDevice && availableQualities.length > 1"
+            v-if="!isTouchDevice && ctx.availableQualities.value.length > 1"
             :current-quality="store.currentQuality"
-            :available-qualities="availableQualities"
+            :available-qualities="ctx.availableQualities.value"
             :show-menu="store.showQualityMenu"
             @toggle-menu="toggleQualityMenu"
-            @set-quality="$emit('set-quality', $event)"
+            @set-quality="ctx.setQuality"
           />
 
           <button
-            v-if="supportsPip"
-            @click="$emit('toggle-pip')"
+            v-if="ctx.supportsPiP.value"
+            @click="ctx.togglePictureInPicture"
             class="vp-control-btn"
             :class="{ 'active-control': store.pictureInPicture }"
             aria-label="画中画"
@@ -81,7 +81,7 @@
           </button>
 
           <button
-            @click="$emit('toggle-theater')"
+            @click="ctx.toggleTheaterMode"
             class="vp-control-btn"
             :class="{ 'active-control': store.theaterMode }"
             aria-label="剧场模式"
@@ -93,19 +93,19 @@
             :show-menu="store.showSettingsMenu"
             :initial-panel="settingsInitialPanel"
             :current-quality="store.currentQuality"
-            :available-qualities="availableQualities"
+            :available-qualities="ctx.availableQualities.value"
             :current-subtitle="store.currentSubtitle"
-            :subtitles="video.subtitles"
+            :subtitles="video?.subtitles"
             :subtitle-settings="store.subtitleSettings"
             :autoplay="store.autoplay"
             :autoplay-next="store.autoplayNext"
             :loop="store.loop"
             :current-rate="store.playbackRate"
-            :available-rates="playbackRates"
+            :available-rates="ctx.playbackRates.value"
             @toggle-menu="toggleSettingsMenu"
-            @set-quality="$emit('set-quality', $event)"
-            @set-subtitle="$emit('set-subtitle', $event)"
-            @set-playback-rate="$emit('set-playback-rate', $event)"
+            @set-quality="ctx.setQuality"
+            @set-subtitle="ctx.setSubtitle"
+            @set-playback-rate="ctx.setPlaybackRate"
             @update-subtitle-font-size="v => store.updateSubtitleSettings({ fontSize: v })"
             @update-subtitle-color="v => store.updateSubtitleSettings({ color: v })"
             @update-subtitle-bg-opacity="v => store.updateSubtitleSettings({ bgOpacity: v })"
@@ -117,11 +117,11 @@
           />
 
           <button
-            @click="$emit('toggle-fullscreen')"
+            @click="ctx.toggleFullscreen"
             class="vp-control-btn"
             aria-label="全屏"
           >
-            <Icon :icon="fullscreenIcon" class="vp-control-icon"/>
+            <Icon :icon="ctx.fullscreenIcon.value" class="vp-control-icon"/>
           </button>
         </div>
       </div>
@@ -133,6 +133,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { usePlayerStore } from '../../stores/playerStore'
+import { usePlayerContext } from '../../composables/usePlayerContext'
 import ProgressBar from './ProgressBar.vue'
 import PlaybackControls from './PlaybackControls.vue'
 import VolumeControl from './VolumeControl.vue'
@@ -142,36 +143,15 @@ import QualitySelector from './QualitySelector.vue'
 
 const props = defineProps({
   video: Object,
-  progress: Number,
-  volumeIcon: String,
-  fullscreenIcon: String,
-  supportsPip: Boolean,
-  availableQualities: Array,
-  playbackRates: Array,
   hasPrev: { type: Boolean, default: false },
   hasNext: { type: Boolean, default: false }
 })
 
-const emit = defineEmits([
-  'toggle-play',
-  'skip-forward',
-  'skip-backward',
-  'toggle-mute',
-  'toggle-fullscreen',
-  'toggle-subtitles',
-  'toggle-theater',
-  'toggle-pip',
-  'set-quality',
-  'set-playback-rate',
-  'set-subtitle',
-  'seek-start',
-  'progress-seek',
-  'seek-end',
-  'prev-video',
-  'next-video'
-])
+const emit = defineEmits(['prev-video', 'next-video'])
 
+// 使用 store 和 context
 const store = usePlayerStore()
+const ctx = usePlayerContext()
 
 const isTouchDevice = computed(() =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
@@ -227,7 +207,7 @@ const onCcCancel = () => {
 
 const onCcClick = () => {
   if (ccHeld) { ccHeld = false; return }
-  emit('toggle-subtitles')
+  ctx.toggleSubtitles()
 }
 
 const onWindowClick = (evt) => {
