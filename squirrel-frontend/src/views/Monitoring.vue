@@ -1,26 +1,22 @@
 <template>
-  <div class="monitoring-page bg-[#0f0f0f] text-white min-h-screen overflow-y-auto">
+  <div class="monitoring-page bg-[#0f0f0f] text-[#e0e0e0] min-h-screen overflow-y-auto">
     <!-- 顶部状态栏 -->
     <div class="border-b border-white/10">
-      <div class="max-w-[1800px] mx-auto px-6 py-4">
+      <div class="max-w-[1600px] mx-auto px-6 py-3">
         <div class="flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <h1 class="text-xl font-medium">系统监控</h1>
-            <div class="flex items-center gap-2 text-sm text-[#aaaaaa]">
+          <div class="flex items-center gap-6">
+            <h1 class="text-lg font-medium text-white">系统监控</h1>
+            <div class="flex items-center gap-2 text-sm">
               <span class="w-2 h-2 rounded-full" :class="healthDotClass"></span>
-              <span>{{ healthStatusText }}</span>
+              <span class="text-[#888]">{{ healthStatusText }}</span>
+              <span class="text-[#888]">·</span>
+              <span class="font-mono" :class="healthScoreClass">{{ dashboardData?.health?.score || 0 }}</span>
             </div>
           </div>
-          
-          <div class="flex items-center gap-4">
-            <span class="text-xs text-[#666]">{{ lastUpdateTime }}</span>
-            <button
-              @click="refreshData"
-              :disabled="loading"
-              class="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              title="刷新"
-            >
-              <svg class="w-5 h-5" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex items-center gap-3 text-xs text-[#666]">
+            <span>{{ lastUpdateTime }}</span>
+            <button @click="refreshData" :disabled="loading" class="p-1.5 hover:bg-white/10 rounded transition-colors">
+              <svg class="w-4 h-4" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
@@ -30,275 +26,146 @@
     </div>
 
     <!-- 主内容区 -->
-    <div class="max-w-[1800px] mx-auto px-6 py-6 space-y-6">
+    <div class="max-w-[1600px] mx-auto px-6 py-4 space-y-4">
       
-      <!-- 健康度概览 -->
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <!-- 健康分数 -->
-        <div class="bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <div class="text-xs text-[#666] mb-2">健康分数</div>
-          <div class="flex items-end gap-2">
-            <span class="text-4xl font-bold" :class="healthScoreClass">{{ dashboardData?.health?.score || 0 }}</span>
-            <span class="text-lg text-[#666] mb-1">/100</span>
-          </div>
-          <div v-if="dashboardData?.health?.issues?.length" class="mt-3 pt-3 border-t border-white/5">
-            <div v-for="issue in dashboardData.health.issues.slice(0, 2)" :key="issue" class="text-xs text-[#f44336] flex items-start gap-1 mt-1">
-              <span>•</span>
-              <span>{{ issue }}</span>
-            </div>
+      <!-- 概览指标 -->
+      <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
+        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
+          <div class="text-xs text-[#666] mb-1">爬取任务</div>
+          <div class="text-2xl font-bold font-mono">{{ dashboardData?.crawl?.total || 0 }}</div>
+          <div class="flex gap-3 mt-2 text-xs">
+            <span><span class="text-[#22c55e]">{{ dashboardData?.crawl?.success || 0 }}</span> 成功</span>
+            <span><span class="text-[#ef4444]">{{ dashboardData?.crawl?.error || 0 }}</span> 失败</span>
           </div>
         </div>
         
-        <!-- 爬取总数 -->
-        <div class="bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <div class="text-xs text-[#666] mb-2">爬取任务</div>
-          <div class="text-4xl font-bold">{{ dashboardData?.crawl?.total || 0 }}</div>
-          <div class="mt-3 grid grid-cols-3 gap-2 text-center">
-            <div>
-              <div class="text-lg font-semibold text-[#00c853]">{{ dashboardData?.crawl?.success || 0 }}</div>
-              <div class="text-xs text-[#666]">成功</div>
-            </div>
-            <div>
-              <div class="text-lg font-semibold text-[#f44336]">{{ dashboardData?.crawl?.error || 0 }}</div>
-              <div class="text-xs text-[#666]">失败</div>
-            </div>
-            <div>
-              <div class="text-lg font-semibold text-[#ffc107]">{{ dashboardData?.crawl?.skipped || 0 }}</div>
-              <div class="text-xs text-[#666]">跳过</div>
-            </div>
+        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
+          <div class="text-xs text-[#666] mb-1">成功率</div>
+          <div class="text-2xl font-bold font-mono" :class="successRateClass">{{ dashboardData?.crawl?.success_rate || 0 }}%</div>
+          <div class="mt-2 w-full bg-[#252525] rounded-full h-1">
+            <div class="h-1 rounded-full bg-[#22c55e] transition-all" :style="{ width: `${dashboardData?.crawl?.success_rate || 0}%` }"></div>
           </div>
         </div>
         
-        <!-- 发现视频 -->
-        <div class="bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <div class="text-xs text-[#666] mb-2">发现视频</div>
-          <div class="text-4xl font-bold text-[#3b82f6]">{{ dashboardData?.crawl?.videos_discovered || 0 }}</div>
-          <div class="mt-3 pt-3 border-t border-white/5">
-            <div class="flex justify-between items-center">
-              <span class="text-xs text-[#666]">成功率</span>
-              <span class="text-sm font-medium" :class="successRateClass">{{ dashboardData?.crawl?.success_rate || 0 }}%</span>
-            </div>
-            <div class="mt-2 w-full bg-[#333] rounded-full h-1.5">
-              <div class="h-1.5 rounded-full transition-all" :class="successRateBarClass" :style="{ width: `${dashboardData?.crawl?.success_rate || 0}%` }"></div>
-            </div>
+        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
+          <div class="text-xs text-[#666] mb-1">发现视频</div>
+          <div class="text-2xl font-bold font-mono">{{ dashboardData?.crawl?.videos_discovered || 0 }}</div>
+          <div class="text-xs text-[#666] mt-2">跳过 {{ dashboardData?.crawl?.skipped || 0 }}</div>
+        </div>
+        
+        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
+          <div class="text-xs text-[#666] mb-1">队列积压</div>
+          <div class="text-2xl font-bold font-mono" :class="queueDepthClass">{{ dashboardData?.queues?.total_depth || 0 }}</div>
+          <div class="text-xs text-[#666] mt-2">消息 {{ dashboardData?.queues?.total_messages || 0 }}</div>
+        </div>
+        
+        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
+          <div class="text-xs text-[#666] mb-1">订阅更新</div>
+          <div class="text-2xl font-bold font-mono">{{ dashboardData?.subscriptions?.total || 0 }}</div>
+          <div class="flex gap-3 mt-2 text-xs">
+            <span><span class="text-[#22c55e]">{{ dashboardData?.subscriptions?.success || 0 }}</span> 成功</span>
+            <span><span class="text-[#ef4444]">{{ dashboardData?.subscriptions?.error || 0 }}</span> 失败</span>
           </div>
         </div>
         
-        <!-- 队列积压 -->
-        <div class="bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <div class="text-xs text-[#666] mb-2">队列积压</div>
-          <div class="text-4xl font-bold" :class="queueDepthClass">{{ dashboardData?.queues?.total_depth || 0 }}</div>
-          <div class="mt-3 pt-3 border-t border-white/5">
-            <div class="flex justify-between items-center">
-              <span class="text-xs text-[#666]">已发布消息</span>
-              <span class="text-sm font-medium">{{ dashboardData?.queues?.total_messages || 0 }}</span>
-            </div>
-          </div>
+        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
+          <div class="text-xs text-[#666] mb-1">订阅发现</div>
+          <div class="text-2xl font-bold font-mono">{{ dashboardData?.subscriptions?.videos_found || 0 }}</div>
+          <div class="text-xs mt-2"><span class="text-[#22c55e]">{{ dashboardData?.subscriptions?.videos_enqueued || 0 }}</span> 已入队</div>
         </div>
       </div>
-      
-      <!-- 订阅更新统计 -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <div class="text-xs text-[#666] mb-2">订阅更新</div>
-          <div class="text-4xl font-bold">{{ dashboardData?.subscriptions?.total || 0 }}</div>
-          <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+
+      <!-- 性能和错误 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-[#666]">性能指标</span>
+            <span class="text-xs text-[#666]">单位: 秒</span>
+          </div>
+          <div class="grid grid-cols-4 gap-2 text-center">
             <div>
-              <div class="text-lg font-semibold text-[#00c853]">{{ dashboardData?.subscriptions?.success || 0 }}</div>
-              <div class="text-xs text-[#666]">成功</div>
-            </div>
-            <div>
-              <div class="text-lg font-semibold text-[#f44336]">{{ dashboardData?.subscriptions?.error || 0 }}</div>
-              <div class="text-xs text-[#666]">失败</div>
-            </div>
-            <div>
-              <div class="text-lg font-semibold text-[#ffc107]">{{ dashboardData?.subscriptions?.skipped || 0 }}</div>
-              <div class="text-xs text-[#666]">跳过</div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <div class="text-xs text-[#666] mb-2">订阅发现视频</div>
-          <div class="text-4xl font-bold text-[#3b82f6]">{{ dashboardData?.subscriptions?.videos_found || 0 }}</div>
-          <div class="mt-3 pt-3 border-t border-white/5">
-            <div class="flex justify-between items-center">
-              <span class="text-xs text-[#666]">已入队</span>
-              <span class="text-sm font-medium text-[#00c853]">{{ dashboardData?.subscriptions?.videos_enqueued || 0 }}</span>
-            </div>
-            <div class="flex justify-between items-center mt-1">
-              <span class="text-xs text-[#666]">成功率</span>
-              <span class="text-sm font-medium" :class="subSuccessRateClass">{{ dashboardData?.subscriptions?.success_rate || 0 }}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 错误统计和性能指标 -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <!-- 错误统计 -->
-        <div class="bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-sm font-medium">错误统计</div>
-            <span class="text-lg font-bold text-[#f44336]">{{ dashboardData?.errors?.total || 0 }}</span>
-          </div>
-          <div v-if="dashboardData?.errors?.by_type?.length" class="flex flex-wrap gap-2">
-            <span
-              v-for="error in dashboardData.errors.by_type.slice(0, 6)"
-              :key="error.type"
-              class="px-3 py-1.5 bg-[#f44336]/10 text-[#f44336] rounded-lg text-sm"
-            >
-              {{ error.type }}: {{ error.count }}
-            </span>
-          </div>
-          <div v-else class="text-[#666] text-sm">暂无错误</div>
-        </div>
-        
-        <!-- 性能指标 -->
-        <div class="bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <div class="text-sm font-medium mb-3">性能指标</div>
-          <div class="grid grid-cols-4 gap-3 text-center">
-            <div class="p-2 bg-[#252525] rounded">
-              <div class="text-lg font-bold">{{ dashboardData?.crawl?.avg_duration || 0 }}s</div>
+              <div class="text-lg font-mono">{{ dashboardData?.crawl?.avg_duration || 0 }}</div>
               <div class="text-xs text-[#666]">平均</div>
             </div>
-            <div class="p-2 bg-[#252525] rounded">
-              <div class="text-lg font-bold">{{ dashboardData?.crawl?.p50_duration || 0 }}s</div>
+            <div>
+              <div class="text-lg font-mono">{{ dashboardData?.crawl?.p50_duration || 0 }}</div>
               <div class="text-xs text-[#666]">P50</div>
             </div>
-            <div class="p-2 bg-[#252525] rounded">
-              <div class="text-lg font-bold text-[#ffc107]">{{ dashboardData?.crawl?.p95_duration || 0 }}s</div>
+            <div>
+              <div class="text-lg font-mono text-[#f59e0b]">{{ dashboardData?.crawl?.p95_duration || 0 }}</div>
               <div class="text-xs text-[#666]">P95</div>
             </div>
-            <div class="p-2 bg-[#252525] rounded">
-              <div class="text-lg font-bold text-[#f44336]">{{ dashboardData?.crawl?.max_duration || 0 }}s</div>
+            <div>
+              <div class="text-lg font-mono text-[#ef4444]">{{ dashboardData?.crawl?.max_duration || 0 }}</div>
               <div class="text-xs text-[#666]">最大</div>
             </div>
           </div>
         </div>
+        
+        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-[#666]">错误统计</span>
+            <span class="text-sm font-mono text-[#ef4444]">{{ dashboardData?.errors?.total || 0 }}</span>
+          </div>
+          <div v-if="dashboardData?.errors?.by_type?.length" class="flex flex-wrap gap-1.5">
+            <span v-for="error in dashboardData.errors.by_type.slice(0, 8)" :key="error.type" class="px-2 py-0.5 bg-[#ef4444]/10 text-[#ef4444] rounded text-xs">
+              {{ error.type }}: {{ error.count }}
+            </span>
+          </div>
+          <div v-else class="text-xs text-[#444]">暂无错误</div>
+        </div>
       </div>
 
-      <!-- 站点统计 -->
-      <div class="bg-[#1a1a1a] rounded-xl border border-white/5">
-          <div class="px-5 py-4 border-b border-white/5 flex items-center justify-between">
-            <h2 class="font-medium">站点统计</h2>
-            <span class="text-xs text-[#666]">{{ dashboardData?.crawl?.by_site?.length || 0 }} 个站点</span>
-          </div>
+      <!-- 站点统计表格 -->
+      <div class="bg-[#161616] rounded-lg border border-white/5">
+        <div class="px-4 py-2.5 border-b border-white/5 flex items-center justify-between">
+          <span class="text-sm font-medium text-white">站点统计</span>
+          <span class="text-xs text-[#666]">{{ dashboardData?.crawl?.by_site?.length || 0 }} 个站点</span>
+        </div>
+        
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-xs text-[#666] border-b border-white/5">
+                <th class="text-left px-4 py-2 font-medium">站点</th>
+                <th class="text-right px-3 py-2 font-medium">成功率</th>
+                <th class="text-right px-3 py-2 font-medium">成功</th>
+                <th class="text-right px-3 py-2 font-medium">失败</th>
+                <th class="text-right px-3 py-2 font-medium">跳过</th>
+                <th class="text-right px-3 py-2 font-medium">视频</th>
+                <th class="text-right px-3 py-2 font-medium">队列</th>
+                <th class="text-right px-3 py-2 font-medium">平均耗时</th>
+                <th class="text-right px-3 py-2 font-medium">P95</th>
+                <th class="text-right px-3 py-2 font-medium">订阅发现</th>
+                <th class="text-right px-4 py-2 font-medium">订阅入队</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="site in dashboardData?.crawl?.by_site" :key="site.site" class="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                <td class="px-4 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded bg-[#252525] flex items-center justify-center text-[10px] font-bold uppercase text-[#888]">{{ site.site.slice(0, 2) }}</span>
+                    <span class="font-medium text-white">{{ site.site }}</span>
+                  </div>
+                </td>
+                <td class="text-right px-3 py-2.5 font-mono" :class="getSiteRateClass(site.success_rate)">{{ site.success_rate }}%</td>
+                <td class="text-right px-3 py-2.5 font-mono text-[#22c55e]">{{ site.success }}</td>
+                <td class="text-right px-3 py-2.5 font-mono text-[#ef4444]">{{ site.error }}</td>
+                <td class="text-right px-3 py-2.5 font-mono text-[#666]">{{ site.skipped }}</td>
+                <td class="text-right px-3 py-2.5 font-mono">{{ site.videos }}</td>
+                <td class="text-right px-3 py-2.5 font-mono" :class="site.queue_depth > 100 ? 'text-[#ef4444]' : site.queue_depth > 50 ? 'text-[#f59e0b]' : 'text-[#666]'">{{ site.queue_depth || 0 }}</td>
+                <td class="text-right px-3 py-2.5 font-mono text-[#888]">{{ site.avg_duration || '-' }}s</td>
+                <td class="text-right px-3 py-2.5 font-mono text-[#888]">{{ site.p95_duration || '-' }}s</td>
+                <td class="text-right px-3 py-2.5 font-mono">{{ getSubscriptionBySite(site.site)?.videos_found || '-' }}</td>
+                <td class="text-right px-4 py-2.5 font-mono text-[#22c55e]">{{ getSubscriptionBySite(site.site)?.videos_enqueued || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
           
-          <div class="p-5">
-            <div v-if="dashboardData?.crawl?.by_site?.length" class="space-y-3">
-              <div
-                v-for="site in dashboardData.crawl.by_site"
-                :key="site.site"
-                class="p-4 bg-[#252525] rounded-lg hover:bg-[#2a2a2a] transition-colors"
-              >
-                <div class="flex items-center justify-between mb-3">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-[#333] flex items-center justify-center text-xs font-bold uppercase">
-                      {{ site.site.slice(0, 2) }}
-                    </div>
-                    <div>
-                      <div class="font-medium">{{ site.site }}</div>
-                      <div class="text-xs text-[#666]">{{ site.total }} 任务</div>
-                    </div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-lg font-semibold" :class="getSiteSuccessRateClass(site.success_rate)">
-                      {{ site.success_rate }}%
-                    </div>
-                    <div class="text-xs text-[#666]">成功率</div>
-                  </div>
-                </div>
-                
-                <div class="grid grid-cols-5 gap-2 text-center">
-                  <div class="p-2 bg-[#1a1a1a] rounded">
-                    <div class="text-sm font-medium text-[#00c853]">{{ site.success }}</div>
-                    <div class="text-xs text-[#666]">成功</div>
-                  </div>
-                  <div class="p-2 bg-[#1a1a1a] rounded">
-                    <div class="text-sm font-medium text-[#f44336]">{{ site.error }}</div>
-                    <div class="text-xs text-[#666]">失败</div>
-                  </div>
-                  <div class="p-2 bg-[#1a1a1a] rounded">
-                    <div class="text-sm font-medium text-[#ffc107]">{{ site.skipped }}</div>
-                    <div class="text-xs text-[#666]">跳过</div>
-                  </div>
-                  <div class="p-2 bg-[#1a1a1a] rounded">
-                    <div class="text-sm font-medium text-[#3b82f6]">{{ site.videos }}</div>
-                    <div class="text-xs text-[#666]">视频</div>
-                  </div>
-                  <div class="p-2 bg-[#1a1a1a] rounded">
-                    <div class="text-sm font-medium" :class="site.queue_depth > 100 ? 'text-[#f44336]' : site.queue_depth > 50 ? 'text-[#ffc107]' : 'text-[#aaa]'">{{ site.queue_depth || 0 }}</div>
-                    <div class="text-xs text-[#666]">队列</div>
-                  </div>
-                </div>
-                
-                <!-- 性能指标 -->
-                <div v-if="site.avg_duration > 0" class="mt-3 pt-3 border-t border-white/5">
-                  <div class="text-xs text-[#666] mb-2">性能指标</div>
-                  <div class="grid grid-cols-4 gap-2 text-center text-xs">
-                    <div class="p-1.5 bg-[#1a1a1a] rounded">
-                      <div class="font-medium">{{ site.avg_duration }}s</div>
-                      <div class="text-[#666]">平均</div>
-                    </div>
-                    <div class="p-1.5 bg-[#1a1a1a] rounded">
-                      <div class="font-medium">{{ site.p50_duration }}s</div>
-                      <div class="text-[#666]">P50</div>
-                    </div>
-                    <div class="p-1.5 bg-[#1a1a1a] rounded">
-                      <div class="font-medium">{{ site.p95_duration }}s</div>
-                      <div class="text-[#666]">P95</div>
-                    </div>
-                    <div class="p-1.5 bg-[#1a1a1a] rounded">
-                      <div class="font-medium">{{ site.max_duration }}s</div>
-                      <div class="text-[#666]">最大</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- 订阅统计 -->
-                <div v-if="getSubscriptionBySite(site.site)" class="mt-3 pt-3 border-t border-white/5">
-                  <div class="text-xs text-[#666] mb-2">订阅更新</div>
-                  <div class="grid grid-cols-4 gap-2 text-center text-xs">
-                    <div class="p-1.5 bg-[#1a1a1a] rounded">
-                      <div class="font-medium text-[#3b82f6]">{{ getSubscriptionBySite(site.site).videos_found }}</div>
-                      <div class="text-[#666]">发现</div>
-                    </div>
-                    <div class="p-1.5 bg-[#1a1a1a] rounded">
-                      <div class="font-medium text-[#00c853]">{{ getSubscriptionBySite(site.site).videos_enqueued }}</div>
-                      <div class="text-[#666]">入队</div>
-                    </div>
-                    <div class="p-1.5 bg-[#1a1a1a] rounded">
-                      <div class="font-medium">{{ getSubscriptionBySite(site.site).success }}</div>
-                      <div class="text-[#666]">成功</div>
-                    </div>
-                    <div class="p-1.5 bg-[#1a1a1a] rounded">
-                      <div class="font-medium text-[#f44336]">{{ getSubscriptionBySite(site.site).error }}</div>
-                      <div class="text-[#666]">失败</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- 错误详情 -->
-                <div v-if="Object.keys(site.errors || {}).length > 0" class="mt-3 pt-3 border-t border-white/5">
-                  <div class="text-xs text-[#666] mb-2">错误类型</div>
-                  <div class="flex flex-wrap gap-2">
-                    <span
-                      v-for="(count, type) in site.errors"
-                      :key="type"
-                      class="px-2 py-1 bg-[#f44336]/10 text-[#f44336] rounded text-xs"
-                    >
-                      {{ type }}: {{ count }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div v-else class="text-center text-[#666] py-12">
-              暂无站点数据
-            </div>
+          <div v-if="!dashboardData?.crawl?.by_site?.length" class="text-center text-[#444] py-8 text-sm">
+            暂无站点数据
           </div>
+        </div>
       </div>
     </div>
   </div>
@@ -308,13 +175,11 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import axios from '../utils/axios'
 
-// 状态
 const loading = ref(false)
 const dashboardData = ref(null)
 const lastUpdateTime = ref('')
 let refreshTimer = null
 
-// 获取仪表板数据
 const fetchDashboard = async () => {
   loading.value = true
   try {
@@ -328,107 +193,70 @@ const fetchDashboard = async () => {
   }
 }
 
-// 刷新数据
 const refreshData = () => {
   fetchDashboard()
 }
 
-// 计算属性
+// 健康状态
 const healthDotClass = computed(() => {
   const status = dashboardData.value?.health?.status
-  if (status === 'healthy') return 'bg-[#00c853]'
-  if (status === 'degraded') return 'bg-[#ffc107]'
-  if (status === 'critical') return 'bg-[#f44336] animate-pulse'
-  return 'bg-[#666]'
+  if (status === 'healthy') return 'bg-[#22c55e]'
+  if (status === 'degraded') return 'bg-[#f59e0b]'
+  return 'bg-[#ef4444]'
 })
 
 const healthStatusText = computed(() => {
   const status = dashboardData.value?.health?.status
-  if (status === 'healthy') return '系统正常'
-  if (status === 'degraded') return '性能降级'
-  if (status === 'critical') return '系统异常'
+  if (status === 'healthy') return '正常'
+  if (status === 'degraded') return '降级'
+  if (status === 'critical') return '异常'
   return '未知'
 })
 
 const healthScoreClass = computed(() => {
   const score = dashboardData.value?.health?.score || 0
-  if (score >= 80) return 'text-[#00c853]'
-  if (score >= 50) return 'text-[#ffc107]'
-  return 'text-[#f44336]'
+  if (score >= 80) return 'text-[#22c55e]'
+  if (score >= 50) return 'text-[#f59e0b]'
+  return 'text-[#ef4444]'
 })
 
 const successRateClass = computed(() => {
   const rate = dashboardData.value?.crawl?.success_rate || 0
-  if (rate >= 80) return 'text-[#00c853]'
-  if (rate >= 50) return 'text-[#ffc107]'
-  return 'text-[#f44336]'
-})
-
-const successRateBarClass = computed(() => {
-  const rate = dashboardData.value?.crawl?.success_rate || 0
-  if (rate >= 80) return 'bg-[#00c853]'
-  if (rate >= 50) return 'bg-[#ffc107]'
-  return 'bg-[#f44336]'
+  if (rate >= 80) return 'text-[#22c55e]'
+  if (rate >= 50) return 'text-[#f59e0b]'
+  return 'text-[#ef4444]'
 })
 
 const queueDepthClass = computed(() => {
   const depth = dashboardData.value?.queues?.total_depth || 0
-  if (depth < 100) return 'text-[#00c853]'
-  if (depth < 500) return 'text-[#ffc107]'
-  return 'text-[#f44336]'
+  if (depth < 100) return 'text-[#e0e0e0]'
+  if (depth < 500) return 'text-[#f59e0b]'
+  return 'text-[#ef4444]'
 })
 
-// 获取站点对应的订阅数据
+const getSiteRateClass = (rate) => {
+  if (rate >= 80) return 'text-[#22c55e]'
+  if (rate >= 50) return 'text-[#f59e0b]'
+  return 'text-[#ef4444]'
+}
+
 const getSubscriptionBySite = (siteName) => {
   const subscriptions = dashboardData.value?.subscriptions?.by_site || []
   return subscriptions.find(s => s.site === siteName) || null
 }
 
-const subSuccessRateClass = computed(() => {
-  const rate = dashboardData.value?.subscriptions?.success_rate || 0
-  if (rate >= 80) return 'text-[#00c853]'
-  if (rate >= 50) return 'text-[#ffc107]'
-  return 'text-[#f44336]'
-})
-
-// 方法
-const getSiteSuccessRateClass = (rate) => {
-  if (rate >= 80) return 'text-[#00c853]'
-  if (rate >= 50) return 'text-[#ffc107]'
-  return 'text-[#f44336]'
-}
-
-
-// 生命周期
 onMounted(() => {
   fetchDashboard()
-  // 30秒自动刷新
   refreshTimer = setInterval(fetchDashboard, 30000)
 })
 
 onUnmounted(() => {
-  if (refreshTimer) {
-    clearInterval(refreshTimer)
-  }
+  if (refreshTimer) clearInterval(refreshTimer)
 })
 </script>
 
 <style scoped>
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
+.monitoring-page {
+  font-feature-settings: "tnum";
 }
 </style>
