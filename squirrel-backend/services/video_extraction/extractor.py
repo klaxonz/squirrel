@@ -1,64 +1,33 @@
 """
 视频提取器
 负责处理视频提取的核心业务逻辑
+
+使用新的Pipeline架构进行视频提取。
 """
 import logging
-from crawl import ExtractionTask, TaskPriority
+from crawl import ExtractionTask, TaskPriority, ExtractionResult
 from schemas.video.dto.video_dto import VideoExtractDto
-from core.extraction.task_manager import TaskManager
 from core.extraction.handlers.video_handler import VideoExtractionHandler
-from core.extraction.base import BaseTaskProcessor
-from core.extraction.factory import get_extractor_factory
+from core.extraction.task_manager import TaskManager
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger()
 
 
-class VideoTaskProcessor(BaseTaskProcessor):
-    """视频任务处理器"""
-
-    def __init__(self):
-        extractor_factory = get_extractor_factory()
-        video_handler = VideoExtractionHandler()
-        super().__init__(None, video_handler)
-        self.extractor_factory = extractor_factory
-
-    def _get_extractor_for_task(self, task: ExtractionTask):
-        return self.extractor_factory.create_extractor(task.url)
-
-    def can_process(self, task: ExtractionTask) -> bool:
-        """检查是否可以处理任务"""
-        extractor = self.extractor_factory.create_extractor(task.url)
-        return extractor is not None
-
-    def process(self, task: ExtractionTask):
-        """处理任务"""
-        extractor = self._get_extractor_for_task(task)
-        if not extractor:
-            from crawl import ExtractionResult
-            result = ExtractionResult(
-                success=False,
-                error=f"未找到合适的提取器: {task.url}"
-            )
-            self.result_handler.handle_failure(task, result)
-            return result
-
-        return super()._process_with_extractor(extractor, task)
-
-
 class VideoExtractor:
     """
     视频提取服务
+    
     职责：提供统一的视频提取接口
+    使用Pipeline架构处理视频提取流程
     """
     
     def __init__(self):
+        self.handler = VideoExtractionHandler()
         self.task_manager = TaskManager()
-        self.processor = VideoTaskProcessor()
-        self.task_manager.add_processor(self.processor)
     
-    def extract(self, params: VideoExtractDto):
+    def extract(self, params: VideoExtractDto) -> ExtractionResult:
         """
         提取视频
         
@@ -74,22 +43,37 @@ class VideoExtractor:
             - 这里只记录日志，不发出进度事件，避免重复
         """
         domain = url_helper.extract_top_level_domain(params.url)
+        
+        # 检查站点是否启用
         if not SiteCatalog.is_site_enabled(domain=domain):
-            logger.info(f"Skip video extraction because site is disabled: domain={domain}, url={params.url}")
-            from crawl import ExtractionResult
+            logger.info(
+                f"Skip video extraction because site is disabled: "
+                f"domain={domain}, url={params.url}"
+            )
             return ExtractionResult(
                 success=False,
                 error="site_disabled"
             )
 
+        # 创建提取任务
         task = self._create_task(params)
-        result = self.task_manager.process_task(task)
         
+        # 使用Pipeline处理
+        logger.debug(f"Starting video extraction: {task.url}")
+        result = self.handler.process(task)
+        
+        # 记录结果
         if result.success:
             video_title = result.data.title if result.data else 'N/A'
-            logger.info(f"Video extracted: platform={domain}, url={params.url}, title={video_title}")
+            logger.info(
+                f"Video extracted: platform={domain}, url={params.url}, "
+                f"title={video_title}"
+            )
         else:
-            logger.error(f"Video extraction failed: platform={domain}, url={params.url}, error={result.error}")
+            logger.error(
+                f"Video extraction failed: platform={domain}, url={params.url}, "
+                f"error={result.error}"
+            )
         
         return result
     
@@ -113,4 +97,3 @@ class VideoExtractor:
 
 
 video_extractor = VideoExtractor()
-

@@ -39,3 +39,4 @@ selenium = "*"
 squirrel-sdk = {file = "../squirrel-sdk", editable = true}
 
 [dev-packages]
+pytest = "*"
