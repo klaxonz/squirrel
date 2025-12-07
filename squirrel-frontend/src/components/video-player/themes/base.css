@@ -1,0 +1,510 @@
+/**
+ * Squirrel Video Player - 基础样式
+ * 使用 CSS 变量实现主题化
+ */
+
+/* 播放器容器 */
+.sp-player {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  font-family: var(--sp-font-family);
+  font-size: var(--sp-font-size-md);
+  color: var(--sp-text);
+  overflow: hidden;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sp-player *,
+.sp-player *::before,
+.sp-player *::after {
+  box-sizing: border-box;
+}
+
+/* 视频元素 */
+.sp-player video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: var(--sp-z-video);
+}
+
+/* 控制栏容器 */
+.sp-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--sp-z-controls);
+  padding: var(--sp-controls-padding);
+  background: var(--sp-controls-bg);
+  opacity: 1;
+  transition: opacity var(--sp-transition-normal);
+}
+
+.sp-controls--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 控制栏行 */
+.sp-controls-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-controls-gap);
+  height: var(--sp-controls-height);
+}
+
+/* 控制按钮 */
+.sp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sp-btn-size);
+  height: var(--sp-btn-size);
+  padding: 0;
+  border: none;
+  border-radius: var(--sp-radius-full);
+  background: transparent;
+  color: var(--sp-text);
+  cursor: pointer;
+  transition: background var(--sp-transition-fast), transform var(--sp-transition-fast);
+}
+
+.sp-btn:hover {
+  background: var(--sp-btn-hover-bg);
+}
+
+.sp-btn:active {
+  background: var(--sp-btn-active-bg);
+  transform: scale(0.95);
+}
+
+.sp-btn:focus-visible {
+  outline: 2px solid var(--sp-primary);
+  outline-offset: 2px;
+}
+
+.sp-btn--sm {
+  width: var(--sp-btn-size-sm);
+  height: var(--sp-btn-size-sm);
+}
+
+.sp-btn--lg {
+  width: var(--sp-btn-size-lg);
+  height: var(--sp-btn-size-lg);
+}
+
+.sp-btn-icon {
+  width: var(--sp-btn-icon-size);
+  height: var(--sp-btn-icon-size);
+}
+
+.sp-btn--sm .sp-btn-icon {
+  width: var(--sp-btn-icon-size-sm);
+  height: var(--sp-btn-icon-size-sm);
+}
+
+.sp-btn--lg .sp-btn-icon {
+  width: var(--sp-btn-icon-size-lg);
+  height: var(--sp-btn-icon-size-lg);
+}
+
+/* 进度条 */
+.sp-progress {
+  position: relative;
+  width: 100%;
+  height: var(--sp-progress-height);
+  background: var(--sp-progress-bg);
+  border-radius: var(--sp-radius-full);
+  cursor: pointer;
+  transition: height var(--sp-transition-fast);
+}
+
+.sp-progress:hover {
+  height: var(--sp-progress-height-hover);
+}
+
+.sp-progress-buffered {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--sp-progress-buffered);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.sp-progress-played {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--sp-progress-played);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.sp-progress-thumb {
+  position: absolute;
+  top: 50%;
+  width: var(--sp-progress-thumb-size);
+  height: var(--sp-progress-thumb-size);
+  background: var(--sp-progress-thumb-color);
+  border-radius: var(--sp-radius-full);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform var(--sp-transition-fast);
+  pointer-events: none;
+  box-shadow: var(--sp-shadow-sm);
+}
+
+.sp-progress:hover .sp-progress-thumb,
+.sp-progress--dragging .sp-progress-thumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* 时间显示 */
+.sp-time {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-spacing-xs);
+  font-size: var(--sp-font-size-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--sp-text-secondary);
+  white-space: nowrap;
+}
+
+.sp-time-current {
+  color: var(--sp-text);
+}
+
+.sp-time-separator {
+  color: var(--sp-text-tertiary);
+}
+
+/* 音量控制 */
+.sp-volume {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-spacing-xs);
+}
+
+.sp-volume-slider {
+  width: 80px;
+  height: var(--sp-progress-height);
+  background: var(--sp-progress-bg);
+  border-radius: var(--sp-radius-full);
+  cursor: pointer;
+  transition: opacity var(--sp-transition-fast);
+}
+
+.sp-volume-slider-fill {
+  height: 100%;
+  background: var(--sp-text);
+  border-radius: inherit;
+}
+
+/* 菜单 */
+.sp-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  min-width: var(--sp-menu-width);
+  max-height: var(--sp-menu-max-height);
+  margin-bottom: var(--sp-spacing-sm);
+  padding: var(--sp-spacing-xs);
+  background: var(--sp-menu-bg);
+  border-radius: var(--sp-radius-lg);
+  box-shadow: var(--sp-shadow-lg);
+  overflow-y: auto;
+  z-index: var(--sp-z-menu);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.sp-menu-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-spacing-sm);
+  padding: var(--sp-menu-item-padding);
+  border-bottom: 1px solid var(--sp-border);
+}
+
+.sp-menu-title {
+  font-size: var(--sp-font-size-sm);
+  font-weight: 500;
+  color: var(--sp-text);
+}
+
+.sp-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--sp-menu-item-height);
+  padding: var(--sp-menu-item-padding);
+  border: none;
+  border-radius: var(--sp-radius-md);
+  background: transparent;
+  color: var(--sp-text-secondary);
+  font-size: var(--sp-font-size-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--sp-transition-fast), color var(--sp-transition-fast);
+}
+
+.sp-menu-item:hover {
+  background: var(--sp-menu-item-hover-bg);
+  color: var(--sp-text);
+}
+
+.sp-menu-item--active {
+  background: var(--sp-menu-item-active-bg);
+  color: var(--sp-text);
+}
+
+.sp-menu-item-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: var(--sp-spacing-sm);
+  color: var(--sp-text-tertiary);
+}
+
+.sp-menu-item-check {
+  width: 18px;
+  height: 18px;
+  color: var(--sp-primary);
+}
+
+/* 提示 */
+.sp-tooltip {
+  position: absolute;
+  padding: var(--sp-tooltip-padding);
+  background: var(--sp-tooltip-bg);
+  border-radius: var(--sp-radius-sm);
+  font-size: var(--sp-tooltip-font-size);
+  color: var(--sp-text);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: var(--sp-z-tooltip);
+  box-shadow: var(--sp-shadow-md);
+}
+
+/* 字幕 */
+.sp-subtitles {
+  position: absolute;
+  left: 50%;
+  bottom: var(--sp-subtitle-bottom);
+  transform: translateX(-50%);
+  max-width: 80%;
+  text-align: center;
+  z-index: var(--sp-z-overlay);
+}
+
+.sp-subtitle-text {
+  display: inline-block;
+  padding: var(--sp-subtitle-padding);
+  background: var(--sp-subtitle-bg);
+  border-radius: var(--sp-radius-sm);
+  font-size: var(--sp-subtitle-font-size);
+  font-weight: var(--sp-subtitle-font-weight);
+  color: var(--sp-subtitle-color);
+  text-shadow: var(--sp-subtitle-text-shadow);
+  line-height: 1.4;
+}
+
+/* 加载指示器 */
+.sp-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--sp-z-overlay);
+}
+
+.sp-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--sp-text-tertiary);
+  border-top-color: var(--sp-primary);
+  border-radius: var(--sp-radius-full);
+  animation: sp-spin 1s linear infinite;
+}
+
+@keyframes sp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 错误提示 */
+.sp-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-spacing-md);
+  padding: var(--sp-spacing-xl);
+  text-align: center;
+  z-index: var(--sp-z-overlay);
+}
+
+.sp-error-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--sp-error);
+}
+
+.sp-error-title {
+  font-size: var(--sp-font-size-lg);
+  font-weight: 500;
+  color: var(--sp-text);
+}
+
+.sp-error-message {
+  font-size: var(--sp-font-size-sm);
+  color: var(--sp-text-secondary);
+}
+
+/* 播放指示器 */
+.sp-play-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: var(--sp-radius-full);
+  z-index: var(--sp-z-overlay);
+  animation: sp-fade-scale 0.5s ease forwards;
+}
+
+.sp-play-indicator-icon {
+  width: 36px;
+  height: 36px;
+  color: var(--sp-text);
+}
+
+@keyframes sp-fade-scale {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
+
+/* 跳过区域 */
+.sp-skip-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  z-index: var(--sp-z-overlay);
+  cursor: pointer;
+}
+
+.sp-skip-zone--left {
+  left: 0;
+}
+
+.sp-skip-zone--right {
+  right: 0;
+}
+
+.sp-skip-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-spacing-xs);
+  padding: var(--sp-spacing-lg);
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: var(--sp-radius-lg);
+  animation: sp-fade-in 0.2s ease;
+}
+
+.sp-skip-zone--left .sp-skip-indicator {
+  left: var(--sp-spacing-xl);
+}
+
+.sp-skip-zone--right .sp-skip-indicator {
+  right: var(--sp-spacing-xl);
+}
+
+.sp-skip-indicator-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--sp-text);
+}
+
+.sp-skip-indicator-text {
+  font-size: var(--sp-font-size-sm);
+  color: var(--sp-text);
+}
+
+@keyframes sp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 全屏样式 */
+.sp-player:fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+.sp-player:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* 响应式 */
+@media (max-width: 640px) {
+  .sp-player {
+    --sp-btn-size: 36px;
+    --sp-btn-icon-size: 20px;
+    --sp-controls-height: 44px;
+    --sp-menu-width: 240px;
+  }
+  
+  .sp-volume-slider {
+    width: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sp-player {
+    --sp-btn-size: 32px;
+    --sp-btn-icon-size: 18px;
+    --sp-controls-height: 40px;
+  }
+  
+  .sp-time {
+    font-size: var(--sp-font-size-xs);
+  }
+}

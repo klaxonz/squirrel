@@ -1,0 +1,51 @@
+/**
+ * Squirrel Video Player - 暗色主题 (默认)
+ */
+
+.sp-theme-dark,
+[data-sp-theme="dark"] {
+  /* 颜色 */
+  --sp-primary: #e53935;
+  --sp-primary-hover: #ff5252;
+  --sp-primary-active: #c62828;
+  --sp-primary-rgb: 229, 57, 53;
+  
+  /* 背景 */
+  --sp-bg: rgba(0, 0, 0, 0.9);
+  --sp-bg-elevated: rgba(28, 28, 28, 0.95);
+  --sp-bg-overlay: rgba(0, 0, 0, 0.6);
+  --sp-bg-hover: rgba(255, 255, 255, 0.1);
+  --sp-bg-active: rgba(255, 255, 255, 0.15);
+  
+  /* 文字 */
+  --sp-text: #ffffff;
+  --sp-text-secondary: rgba(255, 255, 255, 0.7);
+  --sp-text-tertiary: rgba(255, 255, 255, 0.5);
+  --sp-text-disabled: rgba(255, 255, 255, 0.3);
+  
+  /* 边框 */
+  --sp-border: rgba(255, 255, 255, 0.1);
+  --sp-border-hover: rgba(255, 255, 255, 0.2);
+  
+  /* 控制栏 */
+  --sp-controls-bg: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  
+  /* 进度条 */
+  --sp-progress-bg: rgba(255, 255, 255, 0.2);
+  --sp-progress-buffered: rgba(255, 255, 255, 0.4);
+  
+  /* 菜单 */
+  --sp-menu-bg: rgba(28, 28, 28, 0.95);
+  
+  /* 提示 */
+  --sp-tooltip-bg: rgba(28, 28, 28, 0.95);
+  
+  /* 字幕 */
+  --sp-subtitle-color: #ffffff;
+  --sp-subtitle-bg: rgba(0, 0, 0, 0.75);
+  
+  /* 阴影 */
+  --sp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --sp-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}

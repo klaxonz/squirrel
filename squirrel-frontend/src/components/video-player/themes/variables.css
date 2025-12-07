@@ -1,0 +1,142 @@
+/**
+ * Squirrel Video Player - CSS 变量系统
+ * 所有主题相关的 CSS 变量定义
+ */
+
+:root {
+  /* ========== 颜色系统 ========== */
+  
+  /* 主色调 */
+  --sp-primary: #e53935;
+  --sp-primary-hover: #ff5252;
+  --sp-primary-active: #c62828;
+  --sp-primary-rgb: 229, 57, 53;
+  
+  /* 背景色 */
+  --sp-bg: rgba(0, 0, 0, 0.9);
+  --sp-bg-elevated: rgba(28, 28, 28, 0.95);
+  --sp-bg-overlay: rgba(0, 0, 0, 0.6);
+  --sp-bg-hover: rgba(255, 255, 255, 0.1);
+  --sp-bg-active: rgba(255, 255, 255, 0.15);
+  
+  /* 文字色 */
+  --sp-text: #ffffff;
+  --sp-text-secondary: rgba(255, 255, 255, 0.7);
+  --sp-text-tertiary: rgba(255, 255, 255, 0.5);
+  --sp-text-disabled: rgba(255, 255, 255, 0.3);
+  
+  /* 边框色 */
+  --sp-border: rgba(255, 255, 255, 0.1);
+  --sp-border-hover: rgba(255, 255, 255, 0.2);
+  
+  /* 状态色 */
+  --sp-success: #4caf50;
+  --sp-warning: #ff9800;
+  --sp-error: #f44336;
+  --sp-info: #2196f3;
+
+  /* ========== 控制栏 ========== */
+  
+  --sp-controls-height: 48px;
+  --sp-controls-padding: 0 12px;
+  --sp-controls-gap: 8px;
+  --sp-controls-bg: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  
+  /* ========== 进度条 ========== */
+  
+  --sp-progress-height: 4px;
+  --sp-progress-height-hover: 6px;
+  --sp-progress-bg: rgba(255, 255, 255, 0.2);
+  --sp-progress-buffered: rgba(255, 255, 255, 0.4);
+  --sp-progress-played: var(--sp-primary);
+  --sp-progress-thumb-size: 14px;
+  --sp-progress-thumb-color: var(--sp-primary);
+  
+  /* ========== 按钮 ========== */
+  
+  --sp-btn-size: 40px;
+  --sp-btn-size-sm: 32px;
+  --sp-btn-size-lg: 48px;
+  --sp-btn-icon-size: 24px;
+  --sp-btn-icon-size-sm: 20px;
+  --sp-btn-icon-size-lg: 28px;
+  --sp-btn-hover-bg: var(--sp-bg-hover);
+  --sp-btn-active-bg: var(--sp-bg-active);
+  
+  /* ========== 菜单 ========== */
+  
+  --sp-menu-bg: var(--sp-bg-elevated);
+  --sp-menu-width: 280px;
+  --sp-menu-max-height: 400px;
+  --sp-menu-item-height: 40px;
+  --sp-menu-item-padding: 8px 12px;
+  --sp-menu-item-hover-bg: var(--sp-bg-hover);
+  --sp-menu-item-active-bg: var(--sp-bg-active);
+  
+  /* ========== 提示/Toast ========== */
+  
+  --sp-tooltip-bg: rgba(28, 28, 28, 0.95);
+  --sp-tooltip-padding: 6px 10px;
+  --sp-tooltip-font-size: 12px;
+  
+  /* ========== 字幕 ========== */
+  
+  --sp-subtitle-font-size: 1.5rem;
+  --sp-subtitle-font-weight: 500;
+  --sp-subtitle-color: #ffffff;
+  --sp-subtitle-bg: rgba(0, 0, 0, 0.75);
+  --sp-subtitle-padding: 4px 8px;
+  --sp-subtitle-bottom: 60px;
+  --sp-subtitle-text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  
+  /* ========== 动画 ========== */
+  
+  --sp-transition-fast: 150ms ease;
+  --sp-transition-normal: 250ms ease;
+  --sp-transition-slow: 400ms ease;
+  --sp-transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  /* ========== 圆角 ========== */
+  
+  --sp-radius-xs: 2px;
+  --sp-radius-sm: 4px;
+  --sp-radius-md: 8px;
+  --sp-radius-lg: 12px;
+  --sp-radius-xl: 16px;
+  --sp-radius-full: 9999px;
+  
+  /* ========== 阴影 ========== */
+  
+  --sp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --sp-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --sp-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  
+  /* ========== 层级 (z-index) ========== */
+  
+  --sp-z-video: 1;
+  --sp-z-overlay: 10;
+  --sp-z-controls: 20;
+  --sp-z-menu: 30;
+  --sp-z-tooltip: 40;
+  --sp-z-modal: 50;
+  
+  /* ========== 字体 ========== */
+  
+  --sp-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --sp-font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  --sp-font-size-xs: 10px;
+  --sp-font-size-sm: 12px;
+  --sp-font-size-md: 14px;
+  --sp-font-size-lg: 16px;
+  --sp-font-size-xl: 18px;
+  
+  /* ========== 间距 ========== */
+  
+  --sp-spacing-xs: 4px;
+  --sp-spacing-sm: 8px;
+  --sp-spacing-md: 12px;
+  --sp-spacing-lg: 16px;
+  --sp-spacing-xl: 24px;
+  --sp-spacing-2xl: 32px;
+}
