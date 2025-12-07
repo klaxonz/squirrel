@@ -217,6 +217,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   })
 
   // ===== 计算属性 =====
+  // 注意：Pinia 会自动解包 setup store 的 ref，直接访问即可
   const isPlaying = computed(() => store.playing)
   const isPaused = computed(() => !store.playing)
   const currentTime = computed(() => store.currentTime)
@@ -247,12 +248,12 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
         seeking: store.seekingVideo,
         currentTime: store.currentTime,
         duration: store.duration,
-        buffered: store.bufferedPercent,
+        buffered: store.bufferedProgress,
         volume: store.volume / 100,
         muted: store.muted,
         playbackRate: store.playbackRate,
         fullscreen: store.fullscreen,
-        pip: store.pip,
+        pip: store.pictureInPicture,
         quality: currentQuality.value,
         autoQuality: currentQuality.value === 'auto'
       }
@@ -278,7 +279,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     async requestFullscreen() { await toggleFullscreen() },
     async exitFullscreen() { if (store.fullscreen) await toggleFullscreen() },
     async requestPictureInPicture() { await togglePictureInPicture() },
-    async exitPictureInPicture() { if (store.pip) await togglePictureInPicture() },
+    async exitPictureInPicture() { if (store.pictureInPicture) await togglePictureInPicture() },
     reportError(error) {
       events.emit('error', error)
       onError?.(error)
@@ -287,24 +288,21 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   })
 
   // ===== 控制方法 =====
+  // 注意：状态由视频元素的原生事件驱动，这里只负责调用原生方法
   const play = async (): Promise<void> => {
     if (!videoElement.value) return
     try {
       await videoElement.value.play()
-      store.setPlaying(true)
-      events.emit('play', undefined)
-      onPlay?.()
+      // 状态由 'play' 事件更新
     } catch (e) {
-      console.warn('[IntegratedPlayer] Play failed:', e)
+      console.warn('[usePlayer] Play failed:', e)
     }
   }
 
   const pause = (): void => {
     if (!videoElement.value) return
     videoElement.value.pause()
-    store.setPlaying(false)
-    events.emit('pause', undefined)
-    onPause?.()
+    // 状态由 'pause' 事件更新
   }
 
   const seek = (time: number): void => {
@@ -425,8 +423,8 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       return 'hls'
     }
     
-    // DASH 检测
-    if (url.includes('.mpd') || url.includes('format=mpd')) {
+    // DASH 检测: .mpd, /mpd, format=mpd
+    if (url.includes('.mpd') || url.includes('/mpd') || url.includes('format=mpd')) {
       return 'dash'
     }
     
@@ -443,6 +441,13 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       console.warn('[usePlayer] No source URL provided')
       return
     }
+
+    // 立即重置播放器状态（无论是否能立即加载）
+    store.setCurrentTime(0)
+    store.setDuration(0)
+    store.setBufferedProgress(0)
+    store.setPlaying(false)
+    store.setLoading(true, 'fetching')
 
     // 解析源类型
     const resolvedSource: MediaSource = {
@@ -596,8 +601,13 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   }
 
   // ===== 事件监听 =====
+  let listenersSetup = false
   const setupVideoListeners = (): void => {
     if (!videoElement.value) return
+
+    // 防止重复设置
+    if (listenersSetup) return
+    listenersSetup = true
 
     const video = videoElement.value
 
@@ -627,6 +637,24 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     video.addEventListener('durationchange', () => {
       store.setDuration(video.duration)
       events.emit('durationchange', video.duration)
+    })
+
+    video.addEventListener('loadedmetadata', () => {
+      store.setDuration(video.duration)
+      events.emit('loadedmetadata', { 
+        duration: video.duration, 
+        videoWidth: video.videoWidth, 
+        videoHeight: video.videoHeight 
+      })
+    })
+
+    video.addEventListener('progress', () => {
+      if (video.buffered.length > 0 && video.duration > 0) {
+        const bufferedEnd = video.buffered.end(video.buffered.length - 1)
+        const percent = (bufferedEnd / video.duration) * 100
+        store.setBufferedProgress(percent)
+        events.emit('progress', { buffered: video.buffered, duration: video.duration })
+      }
     })
 
     video.addEventListener('volumechange', () => {

@@ -61,7 +61,7 @@
             @mousemove="onProgressMouseMove"
             @mouseleave="onProgressMouseLeave"
           >
-            <div class="sp-progress-buffered" :style="{ width: `${store.bufferedPercent}%` }"></div>
+            <div class="sp-progress-buffered" :style="{ width: `${store.bufferedProgress}%` }"></div>
             <div class="sp-progress-played" :style="{ width: `${progress}%` }"></div>
             <div class="sp-progress-thumb" :style="{ left: `${progress}%` }"></div>
           </div>
@@ -112,14 +112,14 @@
             <button 
               v-if="subtitleTracks.length > 0" 
               class="sp-btn" 
-              @click="toggleSubtitlesMenu"
+              @click.stop="toggleSubtitlesMenu"
               :aria-label="t('subtitles')"
             >
               <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
             </button>
 
             <!-- 设置 -->
-            <button class="sp-btn" @click="toggleSettingsMenu" :aria-label="t('settings')">
+            <button class="sp-btn" @click.stop="toggleSettingsMenu" :aria-label="t('settings')">
               <PlayerIcon name="settings" />
             </button>
 
@@ -253,13 +253,15 @@ interface Props {
   hasPrev?: boolean
   hasNext?: boolean
   externalError?: any
+  autoplay?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   initialTime: 0,
   hasPrev: false,
   hasNext: false,
-  externalError: null
+  externalError: null,
+  autoplay: true
 })
 
 const emit = defineEmits<{
@@ -318,6 +320,7 @@ const {
   icons,
   destroy
 } = usePlayer({
+  autoplay: props.autoplay,
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
   onEnded: () => emit('ended', { autoplay: store.autoplay, autoplayNext: store.autoplayNext, loop: store.loop }),
@@ -358,19 +361,22 @@ const volumeIconName = computed(() => {
   return 'volumeHigh'
 })
 
-// 同步 refs
+// 同步 refs - 使用 immediate 确保初始值同步
 watch(videoRef, (el) => {
   videoElement.value = el
-})
+}, { immediate: true })
 
 watch(containerRef, (el) => {
   containerElement.value = el
-})
+}, { immediate: true })
 
 // 业务数据适配：将 VideoInfo 转换为通用 MediaSource
 const adaptVideoToSource = (video: VideoInfo) => {
   const videoAny = video as any
-  const src = videoAny.stream_video_url || videoAny.mpd_url || ''
+  
+  // 优先使用 mpd_url（DASH，支持音视频合流）
+  // 其次使用 stream_video_url（HLS 或原生视频）
+  const src = videoAny.mpd_url || videoAny.stream_video_url || ''
   
   if (!src) return null
   
@@ -402,8 +408,21 @@ const adaptSubtitles = (video: VideoInfo) => {
 // 加载视频
 watch(
   () => props.video,
-  async (video) => {
+  async (video, oldVideo) => {
     if (!video) return
+    
+    // 如果是新视频（id 变化），重置已加载的源记录
+    const newVideoId = (video as any).id
+    const oldVideoId = (oldVideo as any)?.id
+    if (newVideoId !== oldVideoId) {
+      currentLoadedSrc = ''
+      // 立即重置播放器状态
+      store.setCurrentTime(0)
+      store.setDuration(0)
+      store.setBufferedProgress(0)
+      store.setPlaying(false)
+      store.setLoading(true, 'fetching')
+    }
     
     // 适配视频源
     const source = adaptVideoToSource(video)
