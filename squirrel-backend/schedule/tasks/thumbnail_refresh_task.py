@@ -60,10 +60,22 @@ class ThumbnailRefreshTask(BaseTask):
         thumbnails_dir = str(settings.thumbnails_dir)
         if not os.path.isdir(thumbnails_dir):
             return set()
-        existing_ids = set()
-        for filename in os.listdir(thumbnails_dir):
-            name, _ = os.path.splitext(filename)
-            existing_ids.add(name)
+        existing_ids: set[str] = set()
+
+        # 仅在 batch_* 子目录下收集已存在的缩略图 ID
+        for entry in os.listdir(thumbnails_dir):
+            batch_path = os.path.join(thumbnails_dir, entry)
+            if not (os.path.isdir(batch_path) and entry.startswith("batch_")):
+                continue
+
+            for filename in os.listdir(batch_path):
+                full_path = os.path.join(batch_path, filename)
+                if not os.path.isfile(full_path):
+                    continue
+                name, _ = os.path.splitext(filename)
+                if name:
+                    existing_ids.add(name)
+
         return existing_ids
 
     @classmethod

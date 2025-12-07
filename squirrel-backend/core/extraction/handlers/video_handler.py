@@ -200,10 +200,15 @@ class VideoExtractionHandler(BaseResultHandler):
             ext = ".jpg"
 
         # 计算本地目录和文件路径
-        thumbnails_dir = str(settings.thumbnails_dir)
-        os.makedirs(thumbnails_dir, exist_ok=True)
+        thumbnails_root = str(settings.thumbnails_dir)
+        os.makedirs(thumbnails_root, exist_ok=True)
 
-        file_path = os.path.join(thumbnails_dir, f"{video.id}{ext}")
+        # 按批次子目录存储缩略图，减小单个目录中文件数量
+        batch_index = (video.id - 1) // 1000 + 1
+        batch_dir = os.path.join(thumbnails_root, f"batch_{batch_index:04d}")
+        os.makedirs(batch_dir, exist_ok=True)
+
+        file_path = os.path.join(batch_dir, f"{video.id}{ext}")
 
         # 已存在则不重复下载
         if os.path.exists(file_path):

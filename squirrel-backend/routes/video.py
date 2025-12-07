@@ -95,11 +95,17 @@ def get_video_thumbnail(video_id: int):
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         thumbnails_dir = os.path.join(base_dir, "static", "thumbnails")
 
-        # 查找以 video_id 开头的文件（允许任意后缀）
+        # 仅在 batch_* 子目录中查找以 video_id 开头的文件（允许任意后缀）
         if os.path.isdir(thumbnails_dir):
-            for name in os.listdir(thumbnails_dir):
-                if name.startswith(f"{video_id}."):
-                    file_path = os.path.join(thumbnails_dir, name)
+            for entry in os.listdir(thumbnails_dir):
+                batch_path = os.path.join(thumbnails_dir, entry)
+                if not (os.path.isdir(batch_path) and entry.startswith("batch_")):
+                    continue
+
+                for name in os.listdir(batch_path):
+                    if not name.startswith(f"{video_id}."):
+                        continue
+                    file_path = os.path.join(batch_path, name)
                     if os.path.isfile(file_path):
                         return FileResponse(file_path)
 
