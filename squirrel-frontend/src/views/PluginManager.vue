@@ -173,7 +173,10 @@
       <!-- 操作区 -->
       <div class="flex items-center justify-between mb-6">
         <div class="text-sm text-[#aaaaaa]">
-          共 {{ siteStats.total }} 个支持的站点
+          <span>共 {{ siteStats.total }} 个支持的站点</span>
+          <span v-if="lastTestedAt" class="ml-3 text-xs">
+            · 上次测试：{{ formatDate(lastTestedAt) }}
+          </span>
         </div>
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-3">
@@ -632,6 +635,7 @@ import { onMounted, ref, computed, watch } from 'vue';
 import axios from '../utils/axios';
 import { resetSitesCache } from '../composables/useSites';
 import { usePluginApi } from '../composables/usePluginApi';
+import { formatDate } from '../utils/dateFormat';
 
 const { 
   getPlugins, 
@@ -665,6 +669,49 @@ const connectivityResults = ref([]);
 const loginStatusResults = ref({});
 const loginStatusTesting = ref({});
 const cookieUploading = ref({});
+const lastTestedAt = ref(null);
+
+// 缓存相关常量
+const CACHE_KEY_CONNECTIVITY = 'squirrel_connectivity_results';
+const CACHE_KEY_LOGIN_STATUS = 'squirrel_login_status_results';
+const CACHE_KEY_LAST_TESTED = 'squirrel_last_tested_at';
+
+// 缓存函数
+const saveResultsToCache = () => {
+  try {
+    if (connectivityResults.value.length > 0) {
+      localStorage.setItem(CACHE_KEY_CONNECTIVITY, JSON.stringify(connectivityResults.value));
+    }
+    if (Object.keys(loginStatusResults.value).length > 0) {
+      localStorage.setItem(CACHE_KEY_LOGIN_STATUS, JSON.stringify(loginStatusResults.value));
+    }
+    const now = new Date().toISOString();
+    lastTestedAt.value = now;
+    localStorage.setItem(CACHE_KEY_LAST_TESTED, now);
+  } catch (e) {
+    console.warn('保存连通性缓存失败:', e);
+  }
+};
+
+const loadResultsFromCache = () => {
+  try {
+    const cachedConnectivity = localStorage.getItem(CACHE_KEY_CONNECTIVITY);
+    const cachedLoginStatus = localStorage.getItem(CACHE_KEY_LOGIN_STATUS);
+    const cachedLastTested = localStorage.getItem(CACHE_KEY_LAST_TESTED);
+    
+    if (cachedConnectivity) {
+      connectivityResults.value = JSON.parse(cachedConnectivity);
+    }
+    if (cachedLoginStatus) {
+      loginStatusResults.value = JSON.parse(cachedLoginStatus);
+    }
+    if (cachedLastTested) {
+      lastTestedAt.value = cachedLastTested;
+    }
+  } catch (e) {
+    console.warn('加载连通性缓存失败:', e);
+  }
+};
 
 // Cookies 导入（全局 / 单站点复用）
 const selectedCookiesFile = ref(null);
@@ -1153,6 +1200,7 @@ const handleTestSingle = async (site) => {
       failed,
       success_rate: results.length > 0 ? Math.round((accessible / results.length) * 100 * 100) / 100 : 0
     };
+    saveResultsToCache();
   }
 
   // 清除测试状态
@@ -1180,6 +1228,7 @@ const handleTestLogin = async (site) => {
   }
 
   setLoginTesting(siteName, false);
+  saveResultsToCache();
 };
 
 const setCookieUploading = (siteName, value) => {
@@ -1259,6 +1308,7 @@ const handleTestAll = async () => {
       connectivityResults.value = [result.data];
     }
     await testLoginForAllSupportedSites();
+    saveResultsToCache();
   } finally {
     testingAll.value = false;
   }
@@ -1266,8 +1316,19 @@ const handleTestAll = async () => {
 
 // 监听标签页切换
 watch(currentTab, async (newTab) => {
-  if (newTab === 'connectivity' && supportedSites.value.length === 0) {
-    await fetchSupportedSites();
+  if (newTab === 'connectivity') {
+    // 加载缓存的结果
+    if (connectivityResults.value.length === 0) {
+      loadResultsFromCache();
+    }
+    // 获取站点列表
+    if (supportedSites.value.length === 0) {
+      await fetchSupportedSites();
+    }
+    // 自动触发测试刷新数据
+    if (!testingAll.value && supportedSites.value.length > 0) {
+      handleTestAll();
+    }
   }
 });
 
