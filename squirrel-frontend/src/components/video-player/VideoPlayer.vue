@@ -42,14 +42,6 @@
         :network-speed="formatNetworkSpeed(performanceState.bandwidth.current)"
       />
 
-      <!-- 播放覆盖层 -->
-      <PlayOverlay
-        :playing="store.playing"
-        :loading="store.loading"
-        :can-play="isCanplay"
-        @play="togglePlay"
-      />
-
       <!-- 加载状态指示器 -->
       <div 
         v-if="store.loading" 
@@ -99,7 +91,6 @@ import SeekingIndicator from './SeekingIndicator.vue'
 import VolumeIndicator from './VolumeIndicator.vue'
 import KeyboardHelp from './KeyboardHelp.vue'
 import BufferingIndicator from './BufferingIndicator.vue'
-import PlayOverlay from './PlayOverlay.vue'
 
 import useVideoPlayer from '../../composables/useVideoPlayer.js'
 import useVideoControls from '../../composables/useVideoControls.js'

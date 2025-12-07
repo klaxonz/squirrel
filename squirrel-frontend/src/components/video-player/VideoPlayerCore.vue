@@ -18,7 +18,7 @@
         class="single-click-zone center-zone"
         @click="$emit('click')"
       >
-        <div class="play-state-indicator" v-if="store.showPlayIndicator">
+        <div class="play-state-indicator" v-if="store.showPlayIndicator || showPausedIndicator">
           <Icon
             :icon="store.playing ? 'material-symbols:pause' : 'material-symbols:play-arrow'"
             class="indicator-icon"
@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { usePlayerStore } from '../../stores/playerStore'
@@ -132,6 +132,11 @@ const {
   handleRightDoubleClick,
   cleanup: cleanupClickZones
 } = useClickZones(emit)
+
+// 暂停时一直显示播放图标
+const showPausedIndicator = computed(() => 
+  !store.playing && !store.loading && (store.canPlayVideo || store.canPlayAudio)
+)
 
 // 错误状态
 const errorState = ref({ show: false, title: '', message: '', code: '' })
