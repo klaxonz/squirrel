@@ -54,20 +54,20 @@
       @ended="$emit('ended')"
       @play="$emit('play')"
       @pause="$emit('pause')"
-      @seeking="handleVideoSeeking"
-      @seeked="handleVideoSeeked"
-      @canplay="handleVideoCanplay"
-      @canplaythrough="handleVideoCanplaythrough"
-      @waiting="handleVideoWaiting"
+      @seeking="mediaEvents.handleVideoSeeking"
+      @seeked="mediaEvents.handleVideoSeeked"
+      @canplay="mediaEvents.handleVideoCanplay"
+      @canplaythrough="mediaEvents.handleVideoCanplaythrough"
+      @waiting="mediaEvents.handleVideoWaiting"
       @timeupdate="$emit('timeupdate', $event?.target?.currentTime)"
-      @progress="handleVideoProgress"
-      @loadstart="handleVideoLoadstart"
-      @loadedmetadata="handleVideoLoadedmetadata"
-      @loadeddata="handleVideoLoadeddata"
+      @progress="mediaEvents.handleVideoProgress"
+      @loadstart="mediaEvents.handleVideoLoadstart"
+      @loadedmetadata="mediaEvents.handleVideoLoadedmetadata"
+      @loadeddata="mediaEvents.handleVideoLoadeddata"
       @error="handleVideoElementError"
-      @stalled="handleVideoStalled"
-      @suspend="handleVideoSuspend"
-      @abort="handleVideoAbort"
+      @stalled="mediaEvents.handleVideoStalled"
+      @suspend="mediaEvents.handleVideoSuspend"
+      @abort="mediaEvents.handleVideoAbort"
     />
 
     <!-- 错误提示（非阻断，底部左侧） -->
@@ -77,7 +77,6 @@
       :loading-text="`${errorState.title} · ${errorState.message}${errorState.code ? `（${errorState.code}）` : ''}`"
     />
 
-
     <!-- 音频元素（仅非HLS/非DASH时） -->
     <audio
       v-if="!isHlsStream && !isDashStream && video.stream_audio_url"
@@ -86,9 +85,9 @@
       :muted="playerState.media.muted"
       :autoplay="playerState.media.autoplay"
       preload="auto"
-      @seeking="handleAudioSeeking"
-      @canplay="handleAudioCanplay"
-      @error="handleAudioError"
+      @seeking="mediaEvents.handleAudioSeeking"
+      @canplay="mediaEvents.handleAudioCanplay"
+      @error="mediaEvents.handleAudioError"
     />
 
     <!-- 悬停渐变 -->
@@ -100,11 +99,14 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import useHlsPlayer from '../../composables/useHlsPlayer'
 import useDashPlayer from '../../composables/useDashPlayer'
+import useClickZones from '../../composables/useClickZones'
+import useMediaError from '../../composables/useMediaError'
+import useMediaEvents from '../../composables/useMediaEvents'
 
 const props = defineProps({
   video: Object,
@@ -119,90 +121,42 @@ const props = defineProps({
 
 const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'click', 'skip-forward', 'skip-backward', 'ended'])
 
-// 双击跳跃状态
-const showLeftSkip = ref(false)
-const showRightSkip = ref(false)
-let leftClickTimer = null
-let rightClickTimer = null
-
 const videoElement = ref(null)
 const audioElement = ref(null)
 
+// 使用点击区域逻辑
+const {
+  showLeftSkip,
+  showRightSkip,
+  handleLeftClick,
+  handleRightClick,
+  handleLeftDoubleClick,
+  handleRightDoubleClick,
+  cleanup: cleanupClickZones
+} = useClickZones(emit)
 
-// 内联错误状态与逻辑（YouTube风格）
-// 自动消隐计时器与方法（错误提示 6 秒后淡出）
-let hideTimer = null
-const scheduleAutoHide = () => {
-  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null }
-  hideTimer = setTimeout(() => {
-    errorState.value.show = false
-  }, 6000)
-}
+// 使用错误处理逻辑
+const {
+  errorState,
+  showInlineError,
+  clearError,
+  watchExternalError,
+  cleanup: cleanupMediaError
+} = useMediaError(emit, props)
 
-const errorState = ref({ show: false, title: '', message: '', code: '', detail: '', retryable: true })
+// 监听外部错误
+watchExternalError(props.playerState)
 
-const mapErrorToUi = (err) => {
-  const e = err || {}
-  const type = e.type || (e.name || '').toLowerCase()
-  // HLS/自定义错误类型
-  if (type === 'network') {
-    return { title: '网络连接错误', message: '无法连接到服务器，请检查网络或稍后重试。', code: e.code || 'NETWORK', detail: e.message || '', retryable: true }
-  }
-  if (type === 'media') {
-    return { title: '媒体播放错误', message: '视频无法播放，可能是格式不支持或文件损坏。', code: e.code || 'MEDIA', detail: e.message || '', retryable: true }
-  }
-  if (type === 'fatal') {
-    return { title: '播放失败', message: '发生致命错误，暂时无法播放。', code: e.code || 'FATAL', detail: e.message || '', retryable: true }
-  }
-  // HTMLMediaElement error
-  const mediaErr = e?.target?.error || e.error || {}
-  switch (mediaErr.code) {
-    case 1: return { title: '已中止', message: '播放被中止。', code: 'MEDIA_ERR_ABORTED', detail: '', retryable: false }
-    case 2: return { title: '网络错误', message: '网络连接异常，请检查网络。', code: 'MEDIA_ERR_NETWORK', detail: '', retryable: true }
-    case 3: return { title: '解码错误', message: '媒体解码失败。', code: 'MEDIA_ERR_DECODE', detail: '', retryable: true }
-    case 4: return { title: '不支持的资源', message: '当前媒体资源不受支持。', code: 'MEDIA_ERR_SRC_NOT_SUPPORTED', detail: '', retryable: false }
-    default: return { title: '播放出现问题', message: '请稍后重试。', code: e.code || 'UNKNOWN', detail: e.message || '', retryable: true }
-  }
-}
-
-const showInlineError = (err) => {
-  const ui = mapErrorToUi(err)
-  errorState.value = { show: true, ...ui }
-  scheduleAutoHide()
-  emit('error', err)
-}
-// 外部错误（例如获取链接失败/超时）进入时，复用内联覆盖层展示
-watch(() => props.externalError, (info) => {
-  if (!info) return
-  try {
-    const CODE_TEXT = {
-      EXTRACT_FAILED: { title: '播放失败', message: '播放链接提取失败，请重试' },
-      NO_STREAM_URL: { title: '无法播放', message: '没有获取到播放链接' },
-      URL_FETCH_TIMEOUT: { title: '获取超时', message: '获取播放链接超时' },
-      FAILED: { title: info.title || '播放失败', message: info.message || '播放出现问题，请稍后重试' }
-    }
-    const mappedCode = info.code && CODE_TEXT[info.code] ? CODE_TEXT[info.code] : null
-    const mapped = {
-      title: mappedCode?.title || info.title || '播放失败',
-      message: mappedCode?.message || info.message || '',
-      code: info.code || '',
-      detail: '',
-      retryable: info.canRetry !== false
-    }
-    errorState.value = { show: true, ...mapped }
-    scheduleAutoHide()
-    // 外部错误时停止加载状态，避免无限转圈
-    try {
-      if (props.playerState?.media) {
-        props.playerState.media.playing = false
-        props.playerState.media.loading = false
-        props.playerState.media.loadingStage = 'idle'
-        props.playerState.media.canPlay.video = false
-        props.playerState.media.canPlay.audio = false
-      }
-    } catch (_) {}
-  } catch (_) {}
-})
+// 使用媒体事件处理逻辑
+const mediaEvents = computed(() =>
+  useMediaEvents(
+    props.playerState,
+    videoElement,
+    audioElement,
+    props.isHlsStream,
+    clearError
+  )
+)
 
 const handleVideoElementError = (evt) => {
   showInlineError(evt)
@@ -251,119 +205,6 @@ const {
   onQualitiesUpdate: props.onQualitiesUpdate
 })
 
-// 视频事件处理
-const handleVideoSeeking = () => {
-  props.playerState.media.loading = true
-  props.playerState.media.loadingStage = 'buffering'
-  props.playerState.media.seeking.video = true
-  // 在非HLS模式下，视频开始seek时暂停独立音频，避免继续播放造成不同步
-  if (!props.isHlsStream && audioElement.value && !audioElement.value.paused) {
-    try { audioElement.value.pause() } catch (e) {}
-  }
-}
-
-const handleVideoSeeked = () => {
-  props.playerState.media.loading = false
-  props.playerState.media.loadingStage = 'ready'
-  props.playerState.media.seeking.video = false
-}
-
-const handleVideoCanplay = () => {
-  if (videoElement.value) {
-    props.playerState.media.duration = videoElement.value.duration
-  }
-  props.playerState.media.loading = false
-  props.playerState.media.loadingStage = 'ready'
-  props.playerState.media.canPlay.video = true
-  props.playerState.media.seeking.video = false
-  // 一旦可播放，隐藏错误覆盖层
-  if (errorState.value.show) errorState.value.show = false
-}
-
-const handleVideoCanplaythrough = () => {
-  props.playerState.media.loading = false
-  props.playerState.media.loadingStage = 'ready'
-  // 缓冲结束后，如需要，恢复音频播放
-  if (!props.isHlsStream && audioElement.value && props.playerState.media.playing) {
-    try { audioElement.value.play().catch(() => {}) } catch (e) {}
-  }
-}
-
-const handleVideoWaiting = () => {
-  props.playerState.media.loading = true
-  props.playerState.media.loadingStage = 'buffering'
-  // 缓冲时暂停独立音频，避免音画不同步（非HLS）
-  if (!props.isHlsStream && audioElement.value && !audioElement.value.paused) {
-    try { audioElement.value.pause() } catch (e) {}
-  }
-}
-
-const handleVideoProgress = () => {
-  if (videoElement.value && videoElement.value.buffered.length > 0) {
-    const buffered = videoElement.value.buffered
-    let bufferedEnd = 0
-
-    for (let i = 0; i < buffered.length; i++) {
-      if (buffered.start(i) <= props.playerState.media.currentTime &&
-          buffered.end(i) >= props.playerState.media.currentTime) {
-        bufferedEnd = buffered.end(i)
-        break
-      }
-      if (buffered.end(i) > bufferedEnd) {
-        bufferedEnd = buffered.end(i)
-      }
-    }
-
-    props.playerState.media.bufferedProgress =
-      (bufferedEnd / props.playerState.media.duration) * 100
-  }
-}
-
-const handleVideoLoadstart = () => {
-  props.playerState.media.loading = true
-  props.playerState.media.loadingStage = 'fetching'
-}
-
-const handleVideoLoadedmetadata = () => {
-  props.playerState.media.loading = true
-  props.playerState.media.loadingStage = props.playerState.media.hasStartedPlayback ? 'buffering' : 'fetching'
-  if (videoElement.value) {
-    props.playerState.media.duration = videoElement.value.duration
-  }
-}
-
-const handleVideoLoadeddata = () => {
-  props.playerState.media.loadingStage = 'ready'
-  props.playerState.media.loading = false
-}
-
-const handleVideoStalled = () => {
-  props.playerState.media.loading = true
-  props.playerState.media.loadingStage = 'buffering'
-}
-
-const handleVideoSuspend = () => {
-  // 网络空闲时暂停下载
-}
-
-const handleVideoAbort = () => {
-  props.playerState.media.loading = false
-}
-
-// 音频事件处理
-const handleAudioSeeking = () => {
-  props.playerState.media.seeking.audio = true
-}
-
-const handleAudioCanplay = () => {
-  props.playerState.media.canPlay.audio = true
-  props.playerState.media.seeking.audio = false
-}
-
-const handleAudioError = () => {
-  console.error('Audio playback error')
-}
-
 // 初始化媒体源
 const initializeMediaSources = () => {
   const hasVideoUrl = !!props.video?.stream_video_url
@@ -403,16 +244,14 @@ const initializeMediaSources = () => {
 
 // 防抖定时器和去重标记
 let initDebounceTimer = null
-let lastInitializedUrl = null // 记录上次初始化的 URL，避免重复
+let lastInitializedUrl = null
 
-// 监听视频URL和MPD URL变化（合并为一个watch，避免重复初始化）
+// 监听视频URL和MPD URL变化
 watch(
   () => [props.video?.stream_video_url, props.video?.mpd_url],
   ([newStreamUrl, newMpdUrl], [oldStreamUrl, oldMpdUrl]) => {
-    // 确定当前使用的 URL（优先使用 mpd_url）
     const currentUrl = newMpdUrl || newStreamUrl || null
     
-    // 只有当URL真正变化且与上次初始化的不同时才重新初始化
     if (currentUrl && currentUrl !== lastInitializedUrl &&
         ((newStreamUrl && newStreamUrl !== oldStreamUrl) || 
          (newMpdUrl && newMpdUrl !== oldMpdUrl))) {
@@ -422,10 +261,10 @@ watch(
       }
       
       initDebounceTimer = setTimeout(() => {
-        lastInitializedUrl = currentUrl // 记录已初始化的 URL
+        lastInitializedUrl = currentUrl
         initializeMediaSources()
         initDebounceTimer = null
-      }, 100) // 增加防抖时间到 100ms
+      }, 100)
     }
   }
 )
@@ -450,7 +289,7 @@ watch(() => props.playerState.media.muted, (newMuted) => {
   }
 })
 
-// 监听清晰度变更，转发到具体播放器
+// 监听清晰度变更
 watch(() => props.playerState.media.currentQuality, (q) => {
   console.log('[Debug] Quality changed:', q, 'isHls=', props.isHlsStream, 'isDash=', props.isDashStream)
   try {
@@ -464,66 +303,7 @@ watch(() => props.playerState.media.currentQuality, (q) => {
   }
 })
 
-
-
-// 双击处理函数
-const handleLeftClick = () => {
-  // 单击延迟处理，如果在延迟期间发生双击则取消单击
-  if (leftClickTimer) {
-    clearTimeout(leftClickTimer)
-    leftClickTimer = null
-    return
-  }
-
-  leftClickTimer = setTimeout(() => {
-    // 这里可以添加左侧单击逻辑，目前不做任何操作
-    leftClickTimer = null
-  }, 300)
-}
-
-const handleRightClick = () => {
-  if (rightClickTimer) {
-    clearTimeout(rightClickTimer)
-    rightClickTimer = null
-    return
-  }
-
-  rightClickTimer = setTimeout(() => {
-    // 这里可以添加右侧单击逻辑，目前不做任何操作
-    rightClickTimer = null
-  }, 300)
-}
-
-const handleLeftDoubleClick = () => {
-  if (leftClickTimer) {
-    clearTimeout(leftClickTimer)
-    leftClickTimer = null
-  }
-
-  showLeftSkip.value = true
-  emit('skip-backward')
-
-  setTimeout(() => {
-    showLeftSkip.value = false
-  }, 500)
-}
-
-const handleRightDoubleClick = () => {
-  if (rightClickTimer) {
-    clearTimeout(rightClickTimer)
-    rightClickTimer = null
-  }
-
-  showRightSkip.value = true
-  emit('skip-forward')
-
-  setTimeout(() => {
-    showRightSkip.value = false
-  }, 500)
-}
-
 onMounted(() => {
-  // 记录初始 URL，避免 watch 重复触发
   const currentUrl = props.video?.mpd_url || props.video?.stream_video_url || null
   lastInitializedUrl = currentUrl
   
@@ -541,23 +321,24 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  // 清理防抖定时器
   if (initDebounceTimer) {
     clearTimeout(initDebounceTimer)
     initDebounceTimer = null
   }
-  // 重置去重标记
   lastInitializedUrl = null
-  // 清理播放器实例
+  cleanupClickZones()
+  cleanupMediaError()
   try { destroyHls() } catch (_) {}
   try { destroyDash() } catch (_) {}
 })
 
-
 defineExpose({
   videoElement,
   audioElement,
-  reinitSources: () => { console.log('[Debug] 3.0 VideoPlayerCore.reinitSources invoked'); initializeMediaSources() }
+  reinitSources: () => {
+    console.log('[Debug] 3.0 VideoPlayerCore.reinitSources invoked')
+    initializeMediaSources()
+  }
 })
 </script>
 
@@ -675,5 +456,4 @@ defineExpose({
     opacity: 1;
   }
 }
-
 </style>
