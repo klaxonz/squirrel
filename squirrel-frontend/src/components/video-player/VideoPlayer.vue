@@ -12,17 +12,15 @@
     >
       <!-- 加载状态 -->
       <LoadingSpinner
-        v-if="playerState.media.loading && playerState.media.loadingStage !== 'buffering'"
+        v-if="store.loading && store.loadingStage !== 'buffering'"
         :loading-text="loadingStatusText"
         :network-speed="formatNetworkSpeed(performanceState.bandwidth.current)"
       />
-
 
       <!-- 视频核心 -->
       <VideoPlayerCore
         ref="videoCore"
         :video="video"
-        :player-state="playerState"
         :is-hls-stream="isHlsStream"
         :is-dash-stream="isDashStream"
         :on-bandwidth-sample="updateBandwidth"
@@ -46,25 +44,24 @@
 
       <!-- 播放覆盖层 -->
       <PlayOverlay
-        :playing="playerState.media.playing"
-        :loading="playerState.media.loading"
+        :playing="store.playing"
+        :loading="store.loading"
         :can-play="isCanplay"
         @play="togglePlay"
       />
 
       <!-- 加载状态指示器 -->
       <div 
-        v-if="playerState.media.loading" 
+        v-if="store.loading" 
         class="loading-status-indicator"
-        :class="{ 'with-controls': playerState.ui.controlsVisible }"
+        :class="{ 'with-controls': store.controlsVisible }"
       >
         <div class="loading-status-text">{{ loadingStatusText }}</div>
       </div>
 
       <!-- 控制栏 -->
       <VideoControls
-        v-show="playerState.ui.controlsVisible"
-        :player-state="playerState"
+        v-show="store.controlsVisible"
         :video="video"
         :progress="progress"
         :volume-icon="volumeIcon"
@@ -92,22 +89,21 @@
         @next-video="$emit('next-video')"
       />
 
-
       <!-- 快进/快退指示器 -->
       <SeekingIndicator
-        v-if="playerState.ui.seeking.active"
-        :seeking-state="playerState.ui.seeking"
+        v-if="store.seekingState.active"
+        :seeking-state="store.seekingState"
       />
 
       <!-- 音量调节指示器 -->
       <VolumeIndicator
-        v-if="playerState.ui.volume.showIndicator"
-        :volume="playerState.media.volume"
+        v-if="store.volumeState.showIndicator"
+        :volume="store.volume"
       />
 
       <!-- 键盘帮助 -->
       <KeyboardHelp
-        v-if="playerState.ui.showKeyboardHelp"
+        v-if="store.showKeyboardHelp"
         @close="toggleKeyboardHelp"
       />
     </div>
@@ -115,7 +111,7 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, watch, onMounted } from 'vue'
 import VideoPlayerCore from './VideoPlayerCore.vue'
 import VideoControls from './VideoControls.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
@@ -142,7 +138,7 @@ const props = defineProps({
 const emit = defineEmits(['play', 'pause', 'ended', 'fullscreenChange', 'timeupdate', 'error', 'prev-video', 'next-video'])
 
 const {
-  playerState,
+  store,
   performanceState,
   videoCore,
   isHlsStream,
@@ -167,32 +163,36 @@ const {
   onPointerMove,
 } = useVideoPlayer(props, emit)
 
-const isActiveBuffering = computed(() => {
-  const media = playerState.media
-  if (!(media.loading && media.loadingStage === 'buffering')) return false
-  if (media.seeking?.video) return true
-  if (media.hasStartedPlayback) return true
-  return media.currentTime > 0
+// 组件挂载时重置播放器状态
+onMounted(() => {
+  store.resetForNewVideo()
 })
 
-// 字幕集成：将 VideoCore 的 videoElement 作为字幕的 videoRef
+const isActiveBuffering = computed(() => {
+  if (!(store.loading && store.loadingStage === 'buffering')) return false
+  if (store.seekingVideo) return true
+  if (store.hasStartedPlayback) return true
+  return store.currentTime > 0
+})
+
+// 字幕集成
 const videoElRef = computed(() => videoCore.value?.videoElement || null)
 const { toggleSubtitles, setSubtitle, ensureSubtitlesOnMetadata, nextSubtitle } = useSubtitles({
-  playerState,
+  store,
   videoRef: videoElRef,
   props
 })
 
 // 元数据就绪时确保字幕加载
-watch(() => playerState.media.canPlay.video, (val) => {
+watch(() => store.canPlayVideo, (val) => {
   if (val) {
     try { ensureSubtitlesOnMetadata() } catch (e) {}
   }
 })
 
-// 从上次位置恢复（抽成组合函数）
+// 从上次位置恢复
 useInitialTimeRestore({
-  playerState,
+  store,
   videoCoreRef: videoCore,
   getInitialTime: () => Number(props.initialTime || 0),
   getVideoId: () => props.video?.id
@@ -215,13 +215,13 @@ const {
   setQuality,
   setPlaybackRate,
   updateAvailableQualities
-} = useVideoControls(playerState, videoCore, props.video)
+} = useVideoControls(store, videoCore, props.video)
 
 // 拖动进度条时的暂停/恢复
 const onSeekStart = () => {
   if (!videoCore.value?.videoElement) return
-  playerState.ui.isDragging = true
-  playerState.ui.seeking.wasPlaying = !!playerState.media.playing
+  store.setIsDragging(true)
+  store.updateSeekingState({ wasPlaying: store.playing })
   try { videoCore.value.videoElement.pause() } catch (e) {}
   if (videoCore.value.audioElement) {
     try { videoCore.value.audioElement.pause() } catch (e) {}
@@ -229,9 +229,8 @@ const onSeekStart = () => {
 }
 
 const onSeekEnd = async () => {
-  playerState.ui.isDragging = false
-  // 拖动结束，如之前在播放则恢复
-  if (playerState.ui.seeking.wasPlaying) {
+  store.setIsDragging(false)
+  if (store.seekingState.wasPlaying) {
     try {
       await videoCore.value?.videoElement?.play()
       if (videoCore.value?.audioElement) {
@@ -244,7 +243,7 @@ const onSeekEnd = async () => {
 }
 
 // 键盘快捷键
-const { handleKeyDown } = useKeyboardShortcuts(playerState, {
+const { handleKeyDown } = useKeyboardShortcuts(store, {
   togglePlay,
   skipForward,
   skipBackward,
@@ -258,35 +257,29 @@ const { handleKeyDown } = useKeyboardShortcuts(playerState, {
   nextSubtitle,
   toggleKeyboardHelp,
   handleEscapeKey: () => {
-    if (playerState.ui.showKeyboardHelp) {
-      playerState.ui.showKeyboardHelp = false
-    } else if (playerState.ui.fullscreen) {
+    if (store.showKeyboardHelp) {
+      store.setShowKeyboardHelp(false)
+    } else if (store.fullscreen) {
       toggleFullscreen()
     }
   },
-  getDuration: () => playerState.media.duration,
-  getCurrentTime: () => playerState.media.currentTime
+  getDuration: () => store.duration,
+  getCurrentTime: () => store.currentTime
 })
 
-defineExpose({
-  videoCore
-})
-
-
-
+defineExpose({ videoCore })
 
 const onEnded = () => {
   try {
     emit('ended', {
-      autoplay: !!playerState?.media?.autoplay,
-      autoplayNext: !!playerState?.media?.autoplayNext,
-      loop: !!playerState?.media?.loop
+      autoplay: store.autoplay,
+      autoplayNext: store.autoplayNext,
+      loop: store.loop
     })
   } catch (e) {
     emit('ended')
   }
 }
-
 </script>
 
 <style scoped>
@@ -300,17 +293,14 @@ const onEnded = () => {
   overflow: hidden;
 }
 
-/* YouTube风格的焦点状态 */
 .video-player-container:focus {
   outline: none;
 }
 
-/* 键盘导航时才显示可见焦点 */
 .video-player-container:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.5);
 }
 
-/* 全屏状态下的样式修复 */
 .video-player-container:fullscreen,
 .video-player-container:-webkit-full-screen,
 .video-player-container:-moz-full-screen {
@@ -323,7 +313,6 @@ const onEnded = () => {
   background: #000000;
 }
 
-/* 确保全屏状态下视频元素正确填充 */
 .video-player-container:fullscreen .video-player,
 .video-player-container:-webkit-full-screen .video-player,
 .video-player-container:-moz-full-screen .video-player {
@@ -332,7 +321,6 @@ const onEnded = () => {
   object-fit: contain;
 }
 
-/* 加载状态指示器 */
 .loading-status-indicator {
   position: absolute;
   left: 1.5rem;

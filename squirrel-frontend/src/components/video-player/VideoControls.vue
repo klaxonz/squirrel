@@ -1,31 +1,27 @@
 <template>
-  <Transition
-    name="video-controls" 
-    appear
-  >
+  <Transition name="video-controls" appear>
     <div 
-      v-show="playerState.ui.controlsVisible"
+      v-show="store.controlsVisible"
       ref="controlsRoot" 
       class="video-controls"
     >
-    <!-- 进度条容器 -->
-    <ProgressBar
+      <!-- 进度条容器 -->
+      <ProgressBar
         :progress="progress"
-        :buffered-progress="playerState.media.bufferedProgress"
-        :duration="playerState.media.duration"
-        :current-time="playerState.media.currentTime"
+        :buffered-progress="store.bufferedProgress"
+        :duration="store.duration"
+        :current-time="store.currentTime"
         :chapters="video.chapters"
         @seek-start="$emit('seek-start')"
         @seek="$emit('progress-seek', $event)"
         @seek-end="$emit('seek-end')"
-    />
+      />
 
-    <!-- 主控制栏 -->
-    <div class="controls-main">
-      <div class="controls-left">
-        <!-- 播放控制 -->
-        <PlaybackControls
-            :playing="playerState.media.playing"
+      <!-- 主控制栏 -->
+      <div class="controls-main">
+        <div class="controls-left">
+          <PlaybackControls
+            :playing="store.playing"
             :has-prev="hasPrev"
             :has-next="hasNext"
             @toggle-play="$emit('toggle-play')"
@@ -33,118 +29,110 @@
             @skip-backward="$emit('skip-backward')"
             @prev-video="$emit('prev-video')"
             @next-video="$emit('next-video')"
-        />
+          />
 
-        <!-- 音量控制 -->
-        <VolumeControl
-            :volume="playerState.media.volume"
-            :muted="playerState.media.muted"
+          <VolumeControl
+            :volume="store.volume"
+            :muted="store.muted"
             :volume-icon="volumeIcon"
             @toggle-mute="$emit('toggle-mute')"
             @volume-change="handleVolumeChange"
-        />
+          />
 
-        <!-- 时间显示 -->
-        <TimeDisplay
-            :current-time="playerState.media.currentTime"
-            :duration="playerState.media.duration"
-        />
-      </div>
+          <TimeDisplay
+            :current-time="store.currentTime"
+            :duration="store.duration"
+          />
+        </div>
 
-      <div class="controls-right">
-
-        <!-- 质量选择器 -->
-        <QualitySelector
+        <div class="controls-right">
+          <QualitySelector
             v-if="!isTouchDevice && availableQualities.length > 1"
-            :current-quality="playerState.media.currentQuality"
+            :current-quality="store.currentQuality"
             :available-qualities="availableQualities"
-            :show-menu="playerState.ui.showQualityMenu"
+            :show-menu="store.showQualityMenu"
             @toggle-menu="toggleQualityMenu"
             @set-quality="$emit('set-quality', $event)"
-        />
+          />
 
-        <!-- 画中画按钮 -->
-        <button
+          <button
             v-if="supportsPip"
             @click="$emit('toggle-pip')"
             class="vp-control-btn"
-            :class="{ 'active-control': playerState.media.pictureInPicture }"
+            :class="{ 'active-control': store.pictureInPicture }"
             aria-label="画中画"
-        >
-          <Icon icon="material-symbols:picture-in-picture-alt" class="vp-control-icon"/>
-        </button>
+          >
+            <Icon icon="material-symbols:picture-in-picture-alt" class="vp-control-icon"/>
+          </button>
 
-        <!-- CC 字幕按钮：单击切换，长按/右键打开字幕面板 -->
-        <button
+          <button
             @mousedown="onCcDown"
             @mouseup="onCcUp"
             @mouseleave="onCcCancel"
             @click="onCcClick"
             @contextmenu.prevent="openSubtitlesMenu"
             class="vp-control-btn cc-btn"
-            :class="{ 'active-control': playerState.media.subtitlesEnabled }"
+            :class="{ 'active-control': store.subtitlesEnabled }"
             aria-label="字幕"
-        >
-          <span class="cc-icon-wrap">
-            <Icon icon="material-symbols:subtitles" class="vp-control-icon"/>
-          </span>
-        </button>
+          >
+            <span class="cc-icon-wrap">
+              <Icon icon="material-symbols:subtitles" class="vp-control-icon"/>
+            </span>
+          </button>
 
-        <!-- 剧场模式按钮 -->
-        <button
+          <button
             @click="$emit('toggle-theater')"
             class="vp-control-btn"
-            :class="{ 'active-control': playerState.ui.theaterMode }"
+            :class="{ 'active-control': store.theaterMode }"
             aria-label="剧场模式"
-        >
-          <Icon icon="material-symbols:fit-screen" class="vp-control-icon"/>
-        </button>
+          >
+            <Icon icon="material-symbols:fit-screen" class="vp-control-icon"/>
+          </button>
 
-        <!-- 设置菜单 -->
-        <SettingsMenu
-            :show-menu="playerState.ui.showSettingsMenu"
+          <SettingsMenu
+            :show-menu="store.showSettingsMenu"
             :initial-panel="settingsInitialPanel"
-            :current-quality="playerState.media.currentQuality"
+            :current-quality="store.currentQuality"
             :available-qualities="availableQualities"
-            :current-subtitle="playerState.media.currentSubtitle"
+            :current-subtitle="store.currentSubtitle"
             :subtitles="video.subtitles"
-            :subtitle-settings="playerState.media.subtitleSettings"
-            :autoplay="playerState.media.autoplay"
-            :autoplay-next="playerState.media.autoplayNext"
-            :loop="playerState.media.loop"
-            :current-rate="playerState.media.playbackRate"
+            :subtitle-settings="store.subtitleSettings"
+            :autoplay="store.autoplay"
+            :autoplay-next="store.autoplayNext"
+            :loop="store.loop"
+            :current-rate="store.playbackRate"
             :available-rates="playbackRates"
             @toggle-menu="toggleSettingsMenu"
             @set-quality="$emit('set-quality', $event)"
             @set-subtitle="$emit('set-subtitle', $event)"
             @set-playback-rate="$emit('set-playback-rate', $event)"
-            @update-subtitle-font-size="v => props.playerState.media.subtitleSettings.fontSize = v"
-            @update-subtitle-color="v => props.playerState.media.subtitleSettings.color = v"
-            @update-subtitle-bg-opacity="v => props.playerState.media.subtitleSettings.bgOpacity = v"
-            @update-subtitle-position="v => props.playerState.media.subtitleSettings.position = v"
-            @update-subtitle-shadow="v => props.playerState.media.subtitleSettings.shadow = v"
-            @update-autoplay="updateAutoplay"
-            @update-autoplay-next="updateAutoplayNext"
-            @update-loop="updateLoop"
-        />
+            @update-subtitle-font-size="v => store.updateSubtitleSettings({ fontSize: v })"
+            @update-subtitle-color="v => store.updateSubtitleSettings({ color: v })"
+            @update-subtitle-bg-opacity="v => store.updateSubtitleSettings({ bgOpacity: v })"
+            @update-subtitle-position="v => store.updateSubtitleSettings({ position: v })"
+            @update-subtitle-shadow="v => store.updateSubtitleSettings({ shadow: v })"
+            @update-autoplay="v => store.setAutoplay(v)"
+            @update-autoplay-next="v => store.setAutoplayNext(v)"
+            @update-loop="v => store.setLoop(v)"
+          />
 
-        <!-- 全屏按钮 -->
-        <button
+          <button
             @click="$emit('toggle-fullscreen')"
             class="vp-control-btn"
             aria-label="全屏"
-        >
-          <Icon :icon="fullscreenIcon" class="vp-control-icon"/>
-        </button>
+          >
+            <Icon :icon="fullscreenIcon" class="vp-control-icon"/>
+          </button>
+        </div>
       </div>
-    </div>
     </div>
   </Transition>
 </template>
 
 <script setup>
-import {computed, ref, onMounted, onUnmounted} from 'vue'
-import {Icon} from '@iconify/vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { Icon } from '@iconify/vue'
+import { usePlayerStore } from '../../stores/playerStore'
 import ProgressBar from './ProgressBar.vue'
 import PlaybackControls from './PlaybackControls.vue'
 import VolumeControl from './VolumeControl.vue'
@@ -153,7 +141,6 @@ import SettingsMenu from './SettingsMenu.vue'
 import QualitySelector from './QualitySelector.vue'
 
 const props = defineProps({
-  playerState: Object,
   video: Object,
   progress: Number,
   volumeIcon: String,
@@ -184,38 +171,42 @@ const emit = defineEmits([
   'next-video'
 ])
 
+const store = usePlayerStore()
+
 const isTouchDevice = computed(() =>
-    typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 )
 
 const handleVolumeChange = (volume) => {
-  props.playerState.media.volume = volume
+  store.setVolume(volume)
 }
 
 const settingsInitialPanel = ref('main')
 const controlsRoot = ref(null)
 
 const toggleQualityMenu = () => {
-  props.playerState.ui.showQualityMenu = !props.playerState.ui.showQualityMenu
-  props.playerState.ui.showSettingsMenu = false
-  props.playerState.ui.showPlaybackRateMenu = false
+  store.showQualityMenu = !store.showQualityMenu
+  store.showSettingsMenu = false
+  store.showPlaybackRateMenu = false
 }
 
 const toggleSettingsMenu = () => {
   settingsInitialPanel.value = 'main'
-  props.playerState.ui.showSettingsMenu = !props.playerState.ui.showSettingsMenu
-  props.playerState.ui.showPlaybackRateMenu = false
-  props.playerState.ui.showQualityMenu = false
+  store.showSettingsMenu = !store.showSettingsMenu
+  store.showPlaybackRateMenu = false
+  store.showQualityMenu = false
 }
 
 let ccHoldTimer = null
 let ccHeld = false
+
 const openSubtitlesMenu = () => {
   settingsInitialPanel.value = 'subtitles'
-  props.playerState.ui.showSettingsMenu = true
-  props.playerState.ui.showPlaybackRateMenu = false
-  props.playerState.ui.showQualityMenu = false
+  store.showSettingsMenu = true
+  store.showPlaybackRateMenu = false
+  store.showQualityMenu = false
 }
+
 const onCcDown = () => {
   ccHeld = false
   if (ccHoldTimer) clearTimeout(ccHoldTimer)
@@ -224,21 +215,18 @@ const onCcDown = () => {
     openSubtitlesMenu()
   }, 600)
 }
+
 const onCcUp = () => {
-  if (ccHoldTimer) {
-    clearTimeout(ccHoldTimer)
-    ccHoldTimer = null
-  }
+  if (ccHoldTimer) { clearTimeout(ccHoldTimer); ccHoldTimer = null }
 }
+
 const onCcCancel = () => {
   if (ccHoldTimer) clearTimeout(ccHoldTimer)
   ccHoldTimer = null
 }
+
 const onCcClick = () => {
-  if (ccHeld) {
-    ccHeld = false;
-    return
-  }
+  if (ccHeld) { ccHeld = false; return }
   emit('toggle-subtitles')
 }
 
@@ -247,9 +235,9 @@ const onWindowClick = (evt) => {
   if (!root) return
   const target = evt?.target
   if (target && !root.contains(target)) {
-    props.playerState.ui.showSettingsMenu = false
-    props.playerState.ui.showPlaybackRateMenu = false
-    props.playerState.ui.showQualityMenu = false
+    store.showSettingsMenu = false
+    store.showPlaybackRateMenu = false
+    store.showQualityMenu = false
   }
 }
 
@@ -260,20 +248,6 @@ onMounted(() => {
 onUnmounted(() => {
   try { window.removeEventListener('click', onWindowClick) } catch (_) {}
 })
-
-
-const updateAutoplay = (value) => {
-  props.playerState.media.autoplay = value
-}
-
-const updateAutoplayNext = (value) => {
-  props.playerState.media.autoplayNext = value
-}
-
-const updateLoop = (value) => {
-  props.playerState.media.loop = value
-}
-
 </script>
 
 <style scoped>
@@ -321,9 +295,7 @@ const updateLoop = (value) => {
   transform: scale(1.04);
 }
 
-.vp-control-btn:active {
-  transform: scale(0.98);
-}
+.vp-control-btn:active { transform: scale(0.98); }
 
 .vp-control-btn.active-control {
   background-color: transparent;
@@ -341,30 +313,11 @@ const updateLoop = (value) => {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
-/* Vue Transition 动画类 - 阻尼效果 */
-.video-controls-enter-active {
-  transition: all 450ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.video-controls-leave-active {
-  transition: all 320ms cubic-bezier(0.7, 0, 0.84, 0);
-}
-
-.video-controls-enter-from {
-  opacity: 0;
-  transform: translateY(100%);
-}
-
-.video-controls-leave-to {
-  opacity: 0;
-  transform: translateY(100%);
-}
-
-.video-controls-enter-to,
-.video-controls-leave-from {
-  opacity: 1;
-  transform: translateY(0);
-}
+.video-controls-enter-active { transition: all 450ms cubic-bezier(0.16, 1, 0.3, 1); }
+.video-controls-leave-active { transition: all 320ms cubic-bezier(0.7, 0, 0.84, 0); }
+.video-controls-enter-from { opacity: 0; transform: translateY(100%); }
+.video-controls-leave-to { opacity: 0; transform: translateY(100%); }
+.video-controls-enter-to, .video-controls-leave-from { opacity: 1; transform: translateY(0); }
 
 .video-controls::before { display: none; }
 
@@ -376,15 +329,8 @@ const updateLoop = (value) => {
   height: 24px;
 }
 
-.cc-btn::after {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.cc-btn.active-control::after {
-  width: 18px;
-  bottom: 7px;
-}
+.cc-btn::after { left: 50%; transform: translateX(-50%); }
+.cc-btn.active-control::after { width: 18px; bottom: 7px; }
 
 .video-player-container:fullscreen .video-controls,
 .video-player-container:-webkit-full-screen .video-controls,
@@ -403,9 +349,7 @@ const updateLoop = (value) => {
   z-index: 2147483647;
 }
 
-.cc-btn {
-  position: relative;
-}
+.cc-btn { position: relative; }
 
 .cc-btn::after {
   content: '';
@@ -424,5 +368,4 @@ const updateLoop = (value) => {
   width: 20px;
   background: #cc0000;
 }
-
 </style>

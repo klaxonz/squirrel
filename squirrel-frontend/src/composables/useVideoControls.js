@@ -1,7 +1,9 @@
 import { ref, watch, isRef } from 'vue'
 
+// store: Pinia player store
+// videoCore: ref to video core component
 // videoParam: reactive video object (e.g., props.video)
-export default function useVideoControls(playerState, videoCore, videoParam) {
+export default function useVideoControls(store, videoCore, videoParam) {
 
   const getVideoParam = () => (isRef(videoParam) ? videoParam.value : videoParam)
   
@@ -15,12 +17,10 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
     { value: '360p', label: '360p' }
   ]
 
-  // 根据视频对象的 qualities 动态更新可选清晰度
   const applyQualitiesFromVideo = (v) => {
     try {
       const list = Array.isArray(v?.qualities) ? v.qualities : []
       if (list.length > 0) {
-        // 规范化数据结构
         const mapped = list.map(q => ({
           value: q.value || (q.height ? `${q.height}p` : `${q.bandwidth || 0}k`),
           label: q.label || (q.height ? `${q.height}p` : `${q.bandwidth || 0}k`),
@@ -28,16 +28,15 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
           bandwidth: q.bandwidth || undefined,
           id: q.id || undefined
         }))
-        // 去重并排序（高到低）
         const uniq = {}
         mapped.forEach(q => { uniq[q.value] = q })
         const arr = Object.values(uniq)
         arr.sort((a, b) => (b.height || 0) - (a.height || 0))
         availableQualities.value = arr
         try {
-          if (!playerState?.media?.currentQuality) {
+          if (!store.currentQuality) {
             const highestQuality = arr[0]
-            if (highestQuality) playerState.media.currentQuality = highestQuality.value
+            if (highestQuality) store.setCurrentQuality(highestQuality.value)
           }
         } catch (_) {}
       } else {
@@ -47,7 +46,6 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
       availableQualities.value = DEFAULT_FALLBACK
     }
   }
-
 
   watch(() => {
     const currentVideo = getVideoParam()
@@ -59,32 +57,29 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
   const updateAvailableQualities = (qualities) => {
     if (Array.isArray(qualities) && qualities.length > 0) {
       availableQualities.value = qualities
-      const currentQuality = playerState?.media?.currentQuality
+      const currentQuality = store.currentQuality
       const isCurrentQualityValid = qualities.some(q => q.value === currentQuality)
       
       if (!currentQuality || !isCurrentQualityValid) {
         const highestQuality = qualities[0]
         if (highestQuality) {
-          playerState.media.currentQuality = highestQuality.value
+          store.setCurrentQuality(highestQuality.value)
         }
       }
     }
   }
 
-  // 播放控制
   const togglePlay = () => {
     if (!videoCore.value?.videoElement) return
 
-    if (playerState.media.playing) {
-      // 暂停播放 - 状态由事件处理器更新
+    if (store.playing) {
       videoCore.value.videoElement.pause()
       if (videoCore.value.audioElement) {
         videoCore.value.audioElement.pause()
       }
     } else {
-      // 开始播放 - 状态由事件处理器更新
-      if (playerState.network.firstInteraction) {
-        playerState.network.firstInteraction = false
+      if (store.networkFirstInteraction) {
+        store.setNetworkFirstInteraction(false)
       }
 
       videoCore.value.videoElement.play().then(() => {
@@ -98,23 +93,17 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
       })
     }
 
-    // 显示播放状态指示器
-    playerState.ui.showPlayIndicator = true
-    setTimeout(() => {
-      playerState.ui.showPlayIndicator = false
-    }, 500)
+    store.setShowPlayIndicator(true)
+    setTimeout(() => store.setShowPlayIndicator(false), 500)
   }
 
   const skipForward = () => {
-    const newTime = Math.min(
-      playerState.media.currentTime + 10,
-      playerState.media.duration
-    )
+    const newTime = Math.min(store.currentTime + 10, store.duration)
     setVideoTime(newTime)
   }
 
   const skipBackward = () => {
-    const newTime = Math.max(playerState.media.currentTime - 10, 0)
+    const newTime = Math.max(store.currentTime - 10, 0)
     setVideoTime(newTime)
   }
 
@@ -125,24 +114,18 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
     if (videoCore.value.audioElement) {
       videoCore.value.audioElement.currentTime = time
     }
-    playerState.media.currentTime = time
+    store.setCurrentTime(time)
   }
 
-  // 音量控制
   const toggleMute = () => {
     if (!videoCore.value?.videoElement) return
-
-    // 只修改状态，让watch处理DOM更新
-    playerState.media.muted = !playerState.media.muted
+    store.toggleMute()
   }
 
-  // 全屏控制
   const toggleFullscreen = async () => {
-    // 找到包含整个视频播放器的容器（包括控件）
     const videoElement = videoCore.value?.videoElement
     if (!videoElement) return
 
-    // 向上查找到 video-player-container
     let container = videoElement.parentElement
     while (container && !container.classList.contains('video-player-container')) {
       container = container.parentElement
@@ -153,7 +136,7 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
     try {
       if (document.fullscreenElement) {
         await document.exitFullscreen()
-        playerState.ui.fullscreen = false
+        store.setFullscreen(false)
       } else {
         if (container.requestFullscreen) {
           await container.requestFullscreen()
@@ -162,39 +145,35 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
         } else if (container.mozRequestFullScreen) {
           await container.mozRequestFullScreen()
         }
-        playerState.ui.fullscreen = true
+        store.setFullscreen(true)
       }
     } catch (error) {
       console.error('Fullscreen error:', error)
     }
   }
 
-  // 画中画控制
   const togglePictureInPicture = async () => {
     if (!document.pictureInPictureEnabled || !videoCore.value?.videoElement) return
 
     try {
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture()
-        playerState.media.pictureInPicture = false
+        store.setPictureInPicture(false)
       } else {
         await videoCore.value.videoElement.requestPictureInPicture()
-        playerState.media.pictureInPicture = true
+        store.setPictureInPicture(true)
       }
     } catch (error) {
       console.error('Picture-in-Picture error:', error)
     }
   }
 
-  // 字幕控制
   const toggleSubtitles = () => {
-    playerState.media.subtitlesEnabled = !playerState.media.subtitlesEnabled
-    // 这里需要与字幕组合函数集成
+    store.toggleSubtitles()
   }
 
-  // 播放速度控制
   const setPlaybackRate = (rate) => {
-    playerState.media.playbackRate = rate
+    store.setPlaybackRate(rate)
 
     if (videoCore.value?.videoElement) {
       videoCore.value.videoElement.playbackRate = rate
@@ -204,94 +183,70 @@ export default function useVideoControls(playerState, videoCore, videoParam) {
       videoCore.value.audioElement.playbackRate = rate
     }
 
-    playerState.ui.showPlaybackRateMenu = false
+    store.showPlaybackRateMenu = false
   }
 
-  // 质量控制
   const setQuality = (quality) => {
-    playerState.media.currentQuality = quality
-    playerState.ui.showQualityMenu = false
-    playerState.ui.showSettingsMenu = false
+    store.setCurrentQuality(quality)
+    store.showQualityMenu = false
+    store.showSettingsMenu = false
     console.debug('Quality changed to:', quality)
   }
 
-  // 字幕设置
   const setSubtitle = (subtitle) => {
-    playerState.media.currentSubtitle = subtitle
-    playerState.media.subtitlesEnabled = !!subtitle
-    // 这里需要与字幕组合函数集成
-    playerState.ui.showSettingsMenu = false
+    store.setCurrentSubtitle(subtitle)
+    store.setSubtitlesEnabled(!!subtitle)
+    store.showSettingsMenu = false
   }
 
-  // 音量调节
   const adjustVolume = (delta) => {
-    const newVolume = Math.min(Math.max(playerState.media.volume + delta, 0), 100)
-    playerState.media.volume = newVolume
+    const newVolume = Math.min(Math.max(store.volume + delta, 0), 100)
+    store.setVolume(newVolume)
 
-    // 显示音量指示器
-    playerState.ui.volume.showIndicator = true
+    store.updateVolumeState({ showIndicator: true })
     setTimeout(() => {
-      playerState.ui.volume.showIndicator = false
+      store.updateVolumeState({ showIndicator: false })
     }, 1000)
   }
 
-  // 播放速度调节
   const adjustPlaybackRate = (delta) => {
-    const currentRate = playerState.media.playbackRate
+    const currentRate = store.playbackRate
     const newRate = Math.min(Math.max(currentRate + delta, 0.25), 2)
     setPlaybackRate(newRate)
   }
 
-  // 跳转到指定百分比位置
   const seekToPercentage = (percentage) => {
-    const seekTime = (percentage / 100) * playerState.media.duration
+    const seekTime = (percentage / 100) * store.duration
     setVideoTime(seekTime)
   }
 
-  // 剧场模式控制
   const toggleTheaterMode = () => {
-    playerState.ui.theaterMode = !playerState.ui.theaterMode
+    store.toggleTheaterMode()
   }
 
-  // 键盘帮助控制
   const toggleKeyboardHelp = () => {
-    playerState.ui.showKeyboardHelp = !playerState.ui.showKeyboardHelp
+    store.setShowKeyboardHelp(!store.showKeyboardHelp)
   }
 
   return {
-    // 配置
     availableQualities,
     playbackRates,
-
-    // 播放控制
     togglePlay,
     skipForward,
     skipBackward,
     setVideoTime,
-
-    // 音量控制
     toggleMute,
     adjustVolume,
-
-    // 显示控制
     toggleFullscreen,
     toggleTheaterMode,
     togglePictureInPicture,
     toggleKeyboardHelp,
-
-    // 字幕控制
     toggleSubtitles,
     setSubtitle,
-
-    // 播放设置
     setPlaybackRate,
     adjustPlaybackRate,
     setQuality,
-
-    // 导航
     seekToPercentage,
-
-    // 清晰度更新
     updateAvailableQualities
   }
 }

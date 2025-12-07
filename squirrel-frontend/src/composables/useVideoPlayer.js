@@ -1,79 +1,16 @@
-import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import useVideoHistory from './useVideoHistory'
 import useVideoErrorHandler from './useVideoErrorHandler'
 import usePerformanceMonitor from './usePerformanceMonitor'
+import { usePlayerStore } from '../stores/playerStore'
 import axios from '../utils/axios'
 
 export default function useVideoPlayer(props, emit) {
   // DOM 引用
   const videoCore = ref(null)
 
-  // 统一状态管理
-  const playerState = reactive({
-    media: {
-      playing: false,
-      canPlay: { video: false, audio: false },
-      seeking: { video: false, audio: false },
-      loading: false,
-      loadingStage: 'idle',
-      volume: 100,
-      muted: false,
-      currentTime: 0,
-      duration: 0,
-      bufferedProgress: 0,
-      firstInteraction: true,
-      playbackRate: 1,
-      subtitlesEnabled: false,
-      pictureInPicture: false,
-      hasStartedPlayback: false,
-      currentQuality: null,
-      currentSubtitle: null,
-      autoplay: false,
-      autoplayNext: true,
-      loop: false,
-      subtitleSettings: {
-        fontSize: 'medium', // small | medium | large | xlarge
-        color: 'white',     // white | yellow
-        bgOpacity: 0.4,     // 0 ~ 1
-        position: 'bottom', // top | bottom
-        shadow: true        // text shadow on/off
-      }
-    },
-    ui: {
-      controlsVisible: true,
-      fullscreen: false,
-      theaterMode: false,
-      showPlayIndicator: false,
-      isDragging: false,
-      errorMessage: null,
-      showPlaybackRateMenu: false,
-      showQualityMenu: false,
-      showSettingsMenu: false,
-      showSubtitlesMenu: false,
-      showKeyboardHelp: false,
-      showKeyboardFeedback: false,
-      keyboardFeedback: '',
-      seeking: {
-        active: false,
-        startX: 0,
-        currentX: 0,
-        distance: 0,
-        direction: null,
-        seekTime: 0,
-        wasPlaying: false
-      },
-      volume: {
-        adjusting: false,
-        startY: 0,
-        startVolume: 0,
-        showIndicator: false
-      }
-    },
-    network: {
-      reconnectAttempts: 0,
-      firstInteraction: true
-    }
-  })
+  // 使用 Pinia store - 直接使用，不再代理
+  const store = usePlayerStore()
 
   // 性能监控状态
   const performanceState = reactive({
@@ -83,10 +20,7 @@ export default function useVideoPlayer(props, emit) {
   })
 
   // 组合函数
-  const {
-    sendReport,
-    updateLocalHistory,
-  } = useVideoHistory()
+  const { sendReport, updateLocalHistory } = useVideoHistory()
 
   const {
     errorState,
@@ -114,31 +48,26 @@ export default function useVideoPlayer(props, emit) {
     !!props.video?.mpd_url || (!!props.video?.stream_video_url && props.video.stream_video_url.endsWith('.mpd'))
   )
 
-  const hasAudioStream = computed(() => {
-    return !!props.video?.stream_audio_url
-  })
+  const hasAudioStream = computed(() => !!props.video?.stream_audio_url)
 
   const isCanplay = computed(() => {
     if (!hasAudioStream.value) {
-      return playerState.media.canPlay.video
+      return store.canPlayVideo
     }
-    return playerState.media.canPlay.video &&
-      (isHlsStream.value || playerState.media.canPlay.audio)
+    return store.canPlayVideo && (isHlsStream.value || store.canPlayAudio)
   })
 
-  const volumeIcon = computed(() => {
-    if (playerState.media.muted || playerState.media.volume === 0)
-      return 'material-symbols:volume-off'
-    if (playerState.media.volume < 50)
-      return 'material-symbols:volume-down'
-    return 'material-symbols:volume-up'
-  })
+  // 直接使用 store 的计算属性
+  const volumeIcon = computed(() => store.volumeIcon)
+  const fullscreenIcon = computed(() => store.fullscreenIcon)
+  const progress = computed(() => store.progress)
+  const loadingStatusText = computed(() => store.loadingStatusText)
 
-  const fullscreenIcon = computed(() =>
-    playerState.ui.fullscreen ? 'material-symbols:fullscreen-exit' : 'material-symbols:fullscreen'
+  const supportsPiP = computed(() =>
+    !!(document.pictureInPictureEnabled && videoCore.value?.videoElement)
   )
 
-  // 同步全屏状态：监听浏览器的 fullscreenchange 事件，确保图标与真实状态一致
+  // 同步全屏状态
   const getPlayerContainer = () => {
     const videoEl = videoCore.value?.videoElement
     if (!videoEl) return null
@@ -164,56 +93,31 @@ export default function useVideoPlayer(props, emit) {
       const container = getPlayerContainer()
       const fsEl = getDocFullscreenElement()
       const isFs = !!(container && fsEl === container)
-      if (playerState.ui.fullscreen !== isFs) {
-        playerState.ui.fullscreen = isFs
+      if (store.fullscreen !== isFs) {
+        store.setFullscreen(isFs)
         try { emit && emit('fullscreenChange', isFs) } catch (e) {}
       }
-    } catch (e) {
-      // 忽略单次同步失败
-    }
+    } catch (e) {}
   }
 
   const fullscreenEventNames = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']
 
-  const progress = computed(() => {
-    return (playerState.media.currentTime / playerState.media.duration) * 100 || 0
-  })
-
-  const supportsPiP = computed(() =>
-    !!(document.pictureInPictureEnabled && videoCore.value?.videoElement)
-  )
-
-  const loadingStatusText = computed(() => {
-    switch (playerState.media.loadingStage) {
-      case 'fetching': return '获取视频链接中...'
-      case 'buffering': return '缓冲中...'
-      case 'ready': return '准备就绪'
-      default: return '加载中...'
-    }
-  })
-
-  // 格式化网络速度（输入为 bps -> 显示为 MB/s 或 KB/s）
+  // 格式化网络速度
   const formatNetworkSpeed = (bps) => {
     if (!bps || bps <= 0) return ''
-
     const bytesPerSecond = bps / 8
     const mBps = bytesPerSecond / 1024 / 1024
     const kBps = bytesPerSecond / 1024
-
-    if (mBps >= 1) {
-      return `${mBps.toFixed(1)} MB/s`
-    }
+    if (mBps >= 1) return `${mBps.toFixed(1)} MB/s`
     return `${Math.round(kBps)} KB/s`
   }
 
   // 事件处理函数
   const handleVideoPlay = () => {
-    playerState.network.firstInteraction = false
-    // 视频实际开始播放时，无条件更新状态
-    playerState.media.playing = true
-    playerState.media.hasStartedPlayback = true
+    store.setNetworkFirstInteraction(false)
+    store.setPlaying(true)
+    store.setHasStartedPlayback(true)
 
-    // 确保音频也在播放（非HLS情况下）
     if (!isHlsStream.value && videoCore.value?.audioElement) {
       videoCore.value.audioElement.play().catch(err => {
         console.warn('Failed to sync audio play:', err)
@@ -221,35 +125,30 @@ export default function useVideoPlayer(props, emit) {
     }
 
     emit('play')
-    // 播放开始后，若鼠标不在播放器上，安排自动隐藏
     scheduleHideControls(2000)
   }
 
   const handleVideoPause = () => {
-    // 视频实际暂停时，无条件更新状态（除非正在seeking）
-    if (!playerState.media.seeking.video) {
-      playerState.media.playing = false
+    if (!store.seekingVideo) {
+      store.setPlaying(false)
     }
 
-    // 确保音频也暂停（非HLS情况下）
     if (!isHlsStream.value && videoCore.value?.audioElement) {
       videoCore.value.audioElement.pause()
     }
 
     emit('pause')
-    // 暂停时显示控制条，便于继续操作
-    playerState.ui.controlsVisible = true
+    store.setControlsVisible(true)
   }
 
-  // 音画同步纠偏（仅非HLS且存在独立音频时）
+  // 音画同步纠偏
   const syncAvIfNeeded = () => {
     if (isHlsStream.value) return
     const v = videoCore.value?.videoElement
     const a = videoCore.value?.audioElement
     if (!v || !a) return
-    if (playerState.media.seeking.video || playerState.media.seeking.audio || playerState.ui.isDragging) return
+    if (store.seekingVideo || store.seekingAudio || store.isDragging) return
     const drift = a.currentTime - v.currentTime
-    // 超过100ms则硬同步
     if (Math.abs(drift) > 0.1) {
       try { a.currentTime = v.currentTime } catch (e) {}
     }
@@ -258,16 +157,14 @@ export default function useVideoPlayer(props, emit) {
   const handleVideoTimeupdate = () => {
     if (videoCore.value?.videoElement) {
       const currentTime = videoCore.value.videoElement.currentTime
-      playerState.media.currentTime = currentTime
+      store.setCurrentTime(currentTime)
 
       if (videoCore.value.videoElement.duration &&
           videoCore.value.videoElement.duration !== Infinity) {
-        playerState.media.duration = videoCore.value.videoElement.duration
+        store.setDuration(videoCore.value.videoElement.duration)
       }
 
-      // 在正常播放时做一次轻量纠偏
       syncAvIfNeeded()
-
       savePlaybackProgress(currentTime)
       emit('timeupdate', currentTime)
     }
@@ -277,33 +174,30 @@ export default function useVideoPlayer(props, emit) {
     const errorInfo = handleError(error, {
       videoId: props.video?.id,
       isHlsStream: isHlsStream.value,
-      reconnectAttempts: playerState.network.reconnectAttempts
+      reconnectAttempts: store.reconnectAttempts
     })
 
-    playerState.media.loading = false
+    store.setLoading(false)
     emit('error', { type: 'video', error, errorInfo })
   }
 
   const handleVideoLayerClick = () => {
-    // 重置可能卡住的状态
-    if (playerState.ui.seeking.active || playerState.ui.volume.adjusting) {
-      playerState.ui.seeking.active = false
-      playerState.ui.volume.adjusting = false
-      playerState.ui.volume.showIndicator = false
+    if (store.seekingState.active || store.volumeState.adjusting) {
+      store.updateSeekingState({ active: false })
+      store.updateVolumeState({ adjusting: false, showIndicator: false })
       return
     }
 
-    // 直接控制视频播放
     if (!videoCore.value?.videoElement) return
 
-    if (playerState.media.playing) {
+    if (store.playing) {
       videoCore.value.videoElement.pause()
       if (videoCore.value.audioElement) {
         videoCore.value.audioElement.pause()
       }
     } else {
-      if (playerState.network.firstInteraction) {
-        playerState.network.firstInteraction = false
+      if (store.networkFirstInteraction) {
+        store.setNetworkFirstInteraction(false)
       }
 
       videoCore.value.videoElement.play().then(() => {
@@ -317,22 +211,18 @@ export default function useVideoPlayer(props, emit) {
       })
     }
 
-    playerState.ui.showPlayIndicator = true
-    setTimeout(() => {
-      playerState.ui.showPlayIndicator = false
-    }, 500)
+    store.setShowPlayIndicator(true)
+    setTimeout(() => store.setShowPlayIndicator(false), 500)
   }
 
-  // 设置视频时间（包含A/V同步）
+  // 设置视频时间
   const setVideoTime = (time) => {
     if (!videoCore.value?.videoElement) return
     const v = videoCore.value.videoElement
     v.currentTime = time
     const a = videoCore.value?.audioElement
-    if (a) {
-      a.currentTime = time
-    }
-    playerState.media.currentTime = time
+    if (a) a.currentTime = time
+    store.setCurrentTime(time)
   }
 
   // 进度保存逻辑
@@ -340,24 +230,22 @@ export default function useVideoPlayer(props, emit) {
   let saveProgressTimer = null
 
   const savePlaybackProgress = (currentTime) => {
-    if (saveProgressTimer) {
-      clearTimeout(saveProgressTimer)
-    }
+    if (saveProgressTimer) clearTimeout(saveProgressTimer)
 
     if (Math.abs(currentTime - lastSavedTime) >= 5) {
       saveProgressTimer = setTimeout(async () => {
         try {
           updateLocalHistory(props.video.id, {
             last_position: currentTime,
-            duration: playerState.media.duration,
-            progress: (currentTime / playerState.media.duration) * 100,
+            duration: store.duration,
+            progress: (currentTime / store.duration) * 100,
             lastWatched: Date.now()
           })
 
           const shouldSendReport =
             Math.random() < 0.05 ||
             (currentTime - lastSavedTime) >= 30 ||
-            isVideoNearEnd(currentTime, playerState.media.duration)
+            isVideoNearEnd(currentTime, store.duration)
 
           if (shouldSendReport) {
             await sendReport(props.video.id, currentTime, {
@@ -375,38 +263,24 @@ export default function useVideoPlayer(props, emit) {
   }
 
   const isVideoNearEnd = (lastPosition, duration) => {
-    if (!duration || duration <= 0 || !lastPosition || lastPosition <= 0) {
-      return false
-    }
-
+    if (!duration || duration <= 0 || !lastPosition || lastPosition <= 0) return false
     const progress = (lastPosition / duration) * 100
     const remainingTime = duration - lastPosition
-
-    if (duration < 300) {
-      return progress >= 85
-    }
-
-    if (duration < 1800) {
-      return progress >= 90 || remainingTime < 120
-    }
-
+    if (duration < 300) return progress >= 85
+    if (duration < 1800) return progress >= 90 || remainingTime < 120
     return progress >= 95 || remainingTime < 180
   }
 
   // 错误处理
   const handleRetry = () => {
     const success = manualRetry(() => {
-      playerState.network.reconnectAttempts = 0
-      // 重新初始化播放器
+      store.resetReconnectAttempts()
       if (videoCore.value) {
         videoCore.value.videoElement.load()
         videoCore.value.videoElement.play().catch(handleVideoError)
       }
     })
-
-    if (!success) {
-      console.warn('Retry failed or not allowed')
-    }
+    if (!success) console.warn('Retry failed or not allowed')
   }
 
   const reportErrorToSupport = async () => {
@@ -417,10 +291,10 @@ export default function useVideoPlayer(props, emit) {
         userAction: 'manual_report',
         additionalContext: {
           playerState: {
-            currentTime: playerState.media.currentTime,
-            duration: playerState.media.duration,
-            volume: playerState.media.volume,
-            playbackRate: playerState.media.playbackRate
+            currentTime: store.currentTime,
+            duration: store.duration,
+            volume: store.volume,
+            playbackRate: store.playbackRate
           }
         }
       })
@@ -430,9 +304,7 @@ export default function useVideoPlayer(props, emit) {
     }
   }
 
-  const dismissError = () => {
-    clearError()
-  }
+  const dismissError = () => clearError()
 
   // Pointer 事件与自动隐藏控制条
   let hideControlsTimer = null
@@ -440,125 +312,78 @@ export default function useVideoPlayer(props, emit) {
   const scheduleHideControls = (delay = 2000) => {
     if (hideControlsTimer) clearTimeout(hideControlsTimer)
     hideControlsTimer = setTimeout(() => {
-      // 交互中或菜单展开时不隐藏，延迟重试
-      if (
-        playerState.ui.isDragging ||
-        playerState.ui.showSettingsMenu ||
-        playerState.ui.showQualityMenu ||
-        playerState.ui.showPlaybackRateMenu
-      ) {
+      if (store.isDragging || store.showSettingsMenu || store.showQualityMenu || store.showPlaybackRateMenu) {
         scheduleHideControls(1500)
         return
       }
-      playerState.ui.controlsVisible = false
+      store.setControlsVisible(false)
     }, delay)
   }
 
   const onPointerEnter = () => {
-    playerState.ui.controlsVisible = true
+    store.setControlsVisible(true)
     scheduleHideControls(2000)
   }
 
-  const onPointerLeave = () => {
-    scheduleHideControls(1500)
-  }
+  const onPointerLeave = () => scheduleHideControls(1500)
 
   const onPointerMove = () => {
-    playerState.ui.controlsVisible = true
+    store.setControlsVisible(true)
     scheduleHideControls(2000)
   }
 
   // 自动播放逻辑
   const attemptAutoplay = async () => {
-    if (!videoCore.value?.videoElement) {
-      console.log('No video element for autoplay')
-      return
-    }
+    if (!videoCore.value?.videoElement) return
+    if (!store.autoplay) return
+    if (store.playing) return
 
-    if (!playerState.media.autoplay) {
-      console.log('Autoplay disabled')
-      return
-    }
-
-    if (playerState.media.playing) {
-      console.log('Already playing')
-      return
-    }
-
-    console.log('Attempting autoplay...', {
-      isHlsStream: isHlsStream.value,
-      hasAudioElement: !!videoCore.value.audioElement,
-      videoMuted: videoCore.value.videoElement.muted,
-      audioMuted: videoCore.value.audioElement?.muted,
-      playerMuted: playerState.media.muted,
-      volume: playerState.media.volume
-    })
-
-    const wasFirstInteraction = playerState.network.firstInteraction
-    const originalMuted = playerState.media.muted
+    const wasFirstInteraction = store.networkFirstInteraction
+    const originalMuted = store.muted
 
     try {
-      // 如果是首次交互且未静音，先尝试正常播放
-      playerState.network.firstInteraction = false
-
+      store.setNetworkFirstInteraction(false)
       await videoCore.value.videoElement.play()
-      console.log('Video play successful')
 
       if (!isHlsStream.value && videoCore.value.audioElement) {
         try {
           await videoCore.value.audioElement.play()
-          console.log('Audio play successful')
         } catch (audioError) {
           console.warn('Audio autoplay failed:', audioError)
         }
       }
-
     } catch (error) {
       console.warn('Video autoplay failed:', error)
-      // 如果正常播放失败且是首次交互，尝试静音播放
       if (wasFirstInteraction && !originalMuted) {
         try {
-          console.log('Trying muted autoplay')
-          playerState.media.muted = true
-
+          store.setMuted(true)
           await videoCore.value.videoElement.play()
-          console.log('Muted video play successful')
 
           if (!isHlsStream.value && videoCore.value.audioElement) {
             try {
               await videoCore.value.audioElement.play()
-              console.log('Muted audio play successful')
             } catch (audioError) {
               console.warn('Muted audio autoplay failed:', audioError)
             }
           }
 
-          // 播放成功后，延迟恢复音量
-          setTimeout(() => {
-            console.log('Restoring original muted state:', originalMuted)
-            playerState.media.muted = originalMuted
-          }, 1000)
-
+          setTimeout(() => store.setMuted(originalMuted), 1000)
         } catch (mutedError) {
           console.warn('Muted autoplay also failed:', mutedError)
-          playerState.media.muted = originalMuted
+          store.setMuted(originalMuted)
         }
       }
     }
   }
 
   // 监听自动播放条件
-  watch([isCanplay, () => playerState.media.autoplay], ([canPlay, autoplay]) => {
-    if (canPlay && autoplay && !playerState.media.playing) {
-      // 延迟一小段时间确保所有媒体元素都准备好
-      setTimeout(() => {
-        attemptAutoplay()
-      }, 100)
+  watch([isCanplay, () => store.autoplay], ([canPlay, autoplay]) => {
+    if (canPlay && autoplay && !store.playing) {
+      setTimeout(() => attemptAutoplay(), 100)
     }
   }, { immediate: true })
 
-  // 生命周期
-  // 非 HLS 的加载速度（吞吐采样：小范围 Range 请求统计真实字节/耗时）
+  // 非 HLS 的加载速度探测
   let probeTimer = null
   let probeAbort = null
   let probeInFlight = false
@@ -599,7 +424,6 @@ export default function useVideoPlayer(props, emit) {
         if (value && value.length) loaded += value.length
       }
 
-      // 尽快结束本次探测
       try { controller.abort() } catch (e) {}
 
       const durationSec = Math.max(0.001, (performance.now() - t0) / 1000)
@@ -607,7 +431,6 @@ export default function useVideoPlayer(props, emit) {
         updateBandwidth(loaded, durationSec)
       }
     } catch (e) {
-      // 忽略单次失败，下一轮重试
     } finally {
       clearTimeout(timeoutId)
       probeInFlight = false
@@ -617,10 +440,9 @@ export default function useVideoPlayer(props, emit) {
 
   const startProbeMonitor = () => {
     if (probeTimer) return
-    // 立即采样一次
     runThroughputProbe()
     probeTimer = setInterval(() => {
-      if (playerState.media.loading && !isHlsStream.value) runThroughputProbe()
+      if (store.loading && !isHlsStream.value) runThroughputProbe()
     }, PROBE_INTERVAL_MS)
   }
 
@@ -636,7 +458,7 @@ export default function useVideoPlayer(props, emit) {
     probeInFlight = false
   }
 
-  watch(() => playerState.media.loading, (loading) => {
+  watch(() => store.loading, (loading) => {
     if (!isHlsStream.value) {
       if (loading) startProbeMonitor()
       else stopProbeMonitor()
@@ -650,135 +472,91 @@ export default function useVideoPlayer(props, emit) {
       if (response.data.code === 0) {
         const config = response.data.data
 
-        // 设置自动播放，默认为true以提供更好的用户体验
         if (config.autoplay !== undefined) {
-          playerState.media.autoplay = config.autoplay
+          store.setAutoplay(config.autoplay)
         } else {
-          playerState.media.autoplay = true
-          // 保存默认设置到后端
+          store.setAutoplay(true)
           saveUserConfig({ autoplay: true })
         }
 
-        // 设置自动播放下一个，默认为true
         if (config.autoplayNext !== undefined) {
-          playerState.media.autoplayNext = config.autoplayNext
+          store.setAutoplayNext(config.autoplayNext)
         } else {
-          playerState.media.autoplayNext = true
+          store.setAutoplayNext(true)
           saveUserConfig({ autoplayNext: true })
         }
 
         if (config.loop !== undefined) {
-          playerState.media.loop = config.loop
+          store.setLoop(config.loop)
         }
       } else {
-        // 如果获取配置失败，使用默认值
-        playerState.media.autoplay = true
-        playerState.media.autoplayNext = true
+        store.setAutoplay(true)
+        store.setAutoplayNext(true)
         saveUserConfig({ autoplay: true, autoplayNext: true })
       }
     } catch (error) {
       console.warn('Failed to load user config:', error)
-      // 如果加载失败，使用默认值
-      playerState.media.autoplay = true
-      playerState.media.autoplayNext = true
+      store.setAutoplay(true)
+      store.setAutoplayNext(true)
     }
   }
 
-  // 保存用户配置
   const saveUserConfig = async (settings) => {
     try {
-      await axios.put('/api/users/me/config', {
-        settings,
-        merge: true
-      })
+      await axios.put('/api/users/me/config', { settings, merge: true })
     } catch (error) {
       console.warn('Failed to save user config:', error)
     }
   }
 
-  // 监听自动播放设置变化并保存
-  watch(() => playerState.media.autoplay, (newValue) => {
-    saveUserConfig({ autoplay: newValue })
-  })
-
-  // 监听自动播放下一个设置变化并保存
-  watch(() => playerState.media.autoplayNext, (newValue) => {
-    saveUserConfig({ autoplayNext: newValue })
-  })
-
-  // 监听循环播放设置变化并保存
-  watch(() => playerState.media.loop, (newValue) => {
-    saveUserConfig({ loop: newValue })
-  })
+  // 监听设置变化并保存
+  watch(() => store.autoplay, (newValue) => saveUserConfig({ autoplay: newValue }))
+  watch(() => store.autoplayNext, (newValue) => saveUserConfig({ autoplayNext: newValue }))
+  watch(() => store.loop, (newValue) => saveUserConfig({ loop: newValue }))
 
   onMounted(async () => {
     await loadUserConfig()
 
-    // 初始化全屏状态并监听系统全屏变更（Esc/系统菜单等）
     try {
       updateFullscreenState()
       fullscreenEventNames.forEach(evt => document.addEventListener(evt, updateFullscreenState))
     } catch (e) {}
 
-    // 播放器只会在有播放 URL 时才渲染（由 VideoPlay.vue 控制），
-    // 所以这里不需要再获取 URL，直接使用传入的 URL 即可
     console.log('[useVideoPlayer] onMounted, video ready with URL:', {
       hasStreamUrl: !!props.video?.stream_video_url,
       hasMpdUrl: !!props.video?.mpd_url,
       videoId: props.video?.id
     })
 
-    // 调试函数
     if (typeof window !== 'undefined') {
       window.debugVideoPlayer = () => {
         console.log('Video Player Debug Info:', {
-          playerState: {
-            playing: playerState.media.playing,
-            muted: playerState.media.muted,
-            volume: playerState.media.volume,
-            autoplay: playerState.media.autoplay,
-            canPlay: playerState.media.canPlay
+          store: {
+            playing: store.playing,
+            muted: store.muted,
+            volume: store.volume,
+            autoplay: store.autoplay,
+            canPlayVideo: store.canPlayVideo,
+            canPlayAudio: store.canPlayAudio
           },
           elements: {
             hasVideoElement: !!videoCore.value?.videoElement,
-            hasAudioElement: !!videoCore.value?.audioElement,
-            videoMuted: videoCore.value?.videoElement?.muted,
-            audioMuted: videoCore.value?.audioElement?.muted,
-            videoVolume: videoCore.value?.videoElement?.volume,
-            audioVolume: videoCore.value?.audioElement?.volume,
-            videoPaused: videoCore.value?.videoElement?.paused,
-            audioPaused: videoCore.value?.audioElement?.paused
-          },
-          stream: {
-            isHlsStream: isHlsStream.value,
-            hasAudioStream: hasAudioStream.value,
-            videoUrl: props.video?.stream_video_url,
-            audioUrl: props.video?.stream_audio_url
+            hasAudioElement: !!videoCore.value?.audioElement
           }
         })
       }
     }
   })
 
-  // 监听视频变化，支持自动播放新视频，并在切换时重置时长/进度等状态
+  // 监听视频变化
   watch(() => props.video?.id, (newId, oldId) => {
     if (newId && newId !== oldId) {
-      // 清理上一段视频的播放状态和进度
-      playerState.media.hasStartedPlayback = false
-      playerState.media.playing = false
-      playerState.media.currentTime = 0
-      playerState.media.duration = 0
-      playerState.media.bufferedProgress = 0
-      playerState.media.canPlay.video = false
-      playerState.media.canPlay.audio = false
+      store.resetForNewVideo()
     }
 
-    if (newId && newId !== oldId && playerState.media.autoplay) {
-      // 等待新视频加载完成后尝试自动播放
+    if (newId && newId !== oldId && store.autoplay) {
       setTimeout(() => {
-        if (isCanplay.value) {
-          attemptAutoplay()
-        }
+        if (isCanplay.value) attemptAutoplay()
       }, 200)
     }
   })
@@ -793,8 +571,10 @@ export default function useVideoPlayer(props, emit) {
   })
 
   return {
-    // 状态
-    playerState,
+    // Store - 直接暴露给组件使用
+    store,
+    
+    // 性能状态
     performanceState,
     errorState,
 

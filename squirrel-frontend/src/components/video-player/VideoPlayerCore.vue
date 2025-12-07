@@ -18,9 +18,9 @@
         class="single-click-zone center-zone"
         @click="$emit('click')"
       >
-        <div class="play-state-indicator" v-if="playerState.ui.showPlayIndicator">
+        <div class="play-state-indicator" v-if="store.showPlayIndicator">
           <Icon
-            :icon="playerState.media.playing ? 'material-symbols:pause' : 'material-symbols:play-arrow'"
+            :icon="store.playing ? 'material-symbols:pause' : 'material-symbols:play-arrow'"
             class="indicator-icon"
           />
         </div>
@@ -48,83 +48,81 @@
       crossorigin="anonymous"
       playsinline
       webkit-playsinline
-      :muted="playerState.media.muted"
-      :autoplay="playerState.media.autoplay"
-      :loop="playerState.media.loop"
+      :muted="store.muted"
+      :autoplay="store.autoplay"
+      :loop="store.loop"
       @ended="$emit('ended')"
       @play="$emit('play')"
       @pause="$emit('pause')"
-      @seeking="mediaEvents.handleVideoSeeking"
-      @seeked="mediaEvents.handleVideoSeeked"
-      @canplay="mediaEvents.handleVideoCanplay"
-      @canplaythrough="mediaEvents.handleVideoCanplaythrough"
-      @waiting="mediaEvents.handleVideoWaiting"
+      @seeking="handleVideoSeeking"
+      @seeked="handleVideoSeeked"
+      @canplay="handleVideoCanplay"
+      @canplaythrough="handleVideoCanplaythrough"
+      @waiting="handleVideoWaiting"
       @timeupdate="$emit('timeupdate', $event?.target?.currentTime)"
-      @progress="mediaEvents.handleVideoProgress"
-      @loadstart="mediaEvents.handleVideoLoadstart"
-      @loadedmetadata="mediaEvents.handleVideoLoadedmetadata"
-      @loadeddata="mediaEvents.handleVideoLoadeddata"
+      @progress="handleVideoProgress"
+      @loadstart="handleVideoLoadstart"
+      @loadedmetadata="handleVideoLoadedmetadata"
+      @loadeddata="handleVideoLoadeddata"
       @error="handleVideoElementError"
-      @stalled="mediaEvents.handleVideoStalled"
-      @suspend="mediaEvents.handleVideoSuspend"
-      @abort="mediaEvents.handleVideoAbort"
+      @stalled="handleVideoStalled"
+      @suspend="handleVideoSuspend"
+      @abort="handleVideoAbort"
     />
 
-    <!-- 错误提示（非阻断，底部左侧） -->
+    <!-- 错误提示 -->
     <LoadingSpinner
       v-if="errorState.show"
       :status-only="true"
       :loading-text="`${errorState.title} · ${errorState.message}${errorState.code ? `（${errorState.code}）` : ''}`"
     />
 
-    <!-- 音频元素（仅非HLS/非DASH时） -->
+    <!-- 音频元素 -->
     <audio
       v-if="!isHlsStream && !isDashStream && video.stream_audio_url"
       ref="audioElement"
       :src="video.stream_audio_url"
-      :muted="playerState.media.muted"
-      :autoplay="playerState.media.autoplay"
+      :muted="store.muted"
+      :autoplay="store.autoplay"
       preload="auto"
-      @seeking="mediaEvents.handleAudioSeeking"
-      @canplay="mediaEvents.handleAudioCanplay"
-      @error="mediaEvents.handleAudioError"
+      @seeking="handleAudioSeeking"
+      @canplay="handleAudioCanplay"
+      @error="handleAudioError"
     />
 
     <!-- 悬停渐变 -->
     <div
       class="hover-gradient"
-      v-if="playerState.ui.controlsVisible && !playerState.media.subtitlesEnabled"
+      v-if="store.controlsVisible && !store.subtitlesEnabled"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import LoadingSpinner from './LoadingSpinner.vue'
+import { usePlayerStore } from '../../stores/playerStore'
 import useHlsPlayer from '../../composables/useHlsPlayer'
 import useDashPlayer from '../../composables/useDashPlayer'
 import useClickZones from '../../composables/useClickZones'
-import useMediaError from '../../composables/useMediaError'
-import useMediaEvents from '../../composables/useMediaEvents'
 
 const props = defineProps({
   video: Object,
-  playerState: Object,
   isHlsStream: Boolean,
   isDashStream: Boolean,
   onBandwidthSample: Function,
   onQualitiesUpdate: Function,
-  helpUrl: String,
   externalError: Object
 })
 
 const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'click', 'skip-forward', 'skip-backward', 'ended'])
 
+const store = usePlayerStore()
 const videoElement = ref(null)
 const audioElement = ref(null)
 
-// 使用点击区域逻辑
+// 点击区域逻辑
 const {
   showLeftSkip,
   showRightSkip,
@@ -135,73 +133,164 @@ const {
   cleanup: cleanupClickZones
 } = useClickZones(emit)
 
-// 使用错误处理逻辑
-const {
-  errorState,
-  showInlineError,
-  clearError,
-  watchExternalError,
-  cleanup: cleanupMediaError
-} = useMediaError(emit, props)
+// 错误状态
+const errorState = ref({ show: false, title: '', message: '', code: '' })
+let hideTimer = null
 
-// 监听外部错误
-watchExternalError(props.playerState)
-
-// 使用媒体事件处理逻辑
-const mediaEvents = computed(() =>
-  useMediaEvents(
-    props.playerState,
-    videoElement,
-    audioElement,
-    props.isHlsStream,
-    clearError
-  )
-)
-
-const handleVideoElementError = (evt) => {
-  showInlineError(evt)
+const scheduleAutoHide = () => {
+  if (hideTimer) clearTimeout(hideTimer)
+  hideTimer = setTimeout(() => { errorState.value.show = false }, 6000)
 }
 
-// HLS播放器管理
+const mapErrorToUi = (err) => {
+  const e = err || {}
+  const type = e.type || (e.name || '').toLowerCase()
+  if (type === 'network') return { title: '网络连接错误', message: '无法连接到服务器', code: e.code || 'NETWORK' }
+  if (type === 'media') return { title: '媒体播放错误', message: '视频无法播放', code: e.code || 'MEDIA' }
+  if (type === 'fatal') return { title: '播放失败', message: '发生致命错误', code: e.code || 'FATAL' }
+  const mediaErr = e?.target?.error || e.error || {}
+  switch (mediaErr.code) {
+    case 1: return { title: '已中止', message: '播放被中止', code: 'MEDIA_ERR_ABORTED' }
+    case 2: return { title: '网络错误', message: '网络连接异常', code: 'MEDIA_ERR_NETWORK' }
+    case 3: return { title: '解码错误', message: '媒体解码失败', code: 'MEDIA_ERR_DECODE' }
+    case 4: return { title: '不支持的资源', message: '媒体资源不受支持', code: 'MEDIA_ERR_SRC_NOT_SUPPORTED' }
+    default: return { title: '播放出现问题', message: '请稍后重试', code: e.code || 'UNKNOWN' }
+  }
+}
+
+const showInlineError = (err) => {
+  const ui = mapErrorToUi(err)
+  errorState.value = { show: true, ...ui }
+  scheduleAutoHide()
+  emit('error', err)
+}
+
+const clearError = () => {
+  errorState.value.show = false
+  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null }
+}
+
+// 外部错误监听
+watch(() => props.externalError, (info) => {
+  if (!info) return
+  const CODES = {
+    EXTRACT_FAILED: { title: '播放失败', message: '播放链接提取失败' },
+    NO_STREAM_URL: { title: '无法播放', message: '没有获取到播放链接' },
+    URL_FETCH_TIMEOUT: { title: '获取超时', message: '获取播放链接超时' }
+  }
+  const mapped = CODES[info.code] || { title: info.title || '播放失败', message: info.message || '' }
+  errorState.value = { show: true, ...mapped, code: info.code || '' }
+  scheduleAutoHide()
+  store.setPlaying(false)
+  store.setLoading(false, 'idle')
+  store.setCanPlay('video', false)
+  store.setCanPlay('audio', false)
+})
+
+const handleVideoElementError = (evt) => showInlineError(evt)
+
+// 视频事件处理
+const handleVideoSeeking = () => {
+  store.setLoading(true, 'buffering')
+  store.setSeeking('video', true)
+  if (!props.isHlsStream && audioElement.value && !audioElement.value.paused) {
+    try { audioElement.value.pause() } catch (e) {}
+  }
+}
+
+const handleVideoSeeked = () => {
+  store.setLoading(false, 'ready')
+  store.setSeeking('video', false)
+}
+
+const handleVideoCanplay = () => {
+  if (videoElement.value) store.setDuration(videoElement.value.duration)
+  store.setLoading(false, 'ready')
+  store.setCanPlay('video', true)
+  store.setSeeking('video', false)
+  clearError()
+}
+
+const handleVideoCanplaythrough = () => {
+  store.setLoading(false, 'ready')
+  if (!props.isHlsStream && audioElement.value && store.playing) {
+    try { audioElement.value.play().catch(() => {}) } catch (e) {}
+  }
+}
+
+const handleVideoWaiting = () => {
+  store.setLoading(true, 'buffering')
+  if (!props.isHlsStream && audioElement.value && !audioElement.value.paused) {
+    try { audioElement.value.pause() } catch (e) {}
+  }
+}
+
+const handleVideoProgress = () => {
+  if (videoElement.value && videoElement.value.buffered.length > 0) {
+    const buffered = videoElement.value.buffered
+    let bufferedEnd = 0
+    for (let i = 0; i < buffered.length; i++) {
+      if (buffered.start(i) <= store.currentTime && buffered.end(i) >= store.currentTime) {
+        bufferedEnd = buffered.end(i)
+        break
+      }
+      if (buffered.end(i) > bufferedEnd) bufferedEnd = buffered.end(i)
+    }
+    store.setBufferedProgress((bufferedEnd / store.duration) * 100)
+  }
+}
+
+const handleVideoLoadstart = () => store.setLoading(true, 'fetching')
+const handleVideoLoadedmetadata = () => {
+  store.setLoading(true, store.hasStartedPlayback ? 'buffering' : 'fetching')
+  if (videoElement.value) store.setDuration(videoElement.value.duration)
+}
+const handleVideoLoadeddata = () => store.setLoading(false, 'ready')
+const handleVideoStalled = () => store.setLoading(true, 'buffering')
+const handleVideoSuspend = () => {}
+const handleVideoAbort = () => store.setLoading(false)
+
+// 音频事件
+const handleAudioSeeking = () => store.setSeeking('audio', true)
+const handleAudioCanplay = () => {
+  store.setCanPlay('audio', true)
+  store.setSeeking('audio', false)
+}
+const handleAudioError = () => console.error('Audio playback error')
+
+// HLS播放器
 const {
   initializeHls,
   destroyHls,
   setQuality: setHlsQuality
 } = useHlsPlayer({
-  playerState: props.playerState,
+  store,
   videoRef: videoElement,
   props,
   onProgress: (sample) => {
-    try {
-      if (!props.onBandwidthSample) return
-      if (sample && typeof sample.loaded === 'number' && typeof sample.durationSec === 'number') {
-        props.onBandwidthSample(sample.loaded, sample.durationSec)
-      }
-    } catch (_) {}
+    if (props.onBandwidthSample && sample?.loaded && sample?.durationSec) {
+      props.onBandwidthSample(sample.loaded, sample.durationSec)
+    }
   },
-  onError: (err) => showInlineError(err),
+  onError: showInlineError,
   onQualitiesUpdate: props.onQualitiesUpdate
 })
 
-// DASH 播放器管理
+// DASH播放器
 const {
   initializeDash,
   destroyDash,
   setQuality: setDashQuality
 } = useDashPlayer({
-  playerState: props.playerState,
+  store,
   videoRef: videoElement,
   props,
   onProgress: (sample) => {
-    try {
-      const loaded = sample?.loaded || 0
-      const durationSec = sample?.durationSec || 0
-      if (loaded > 0 && durationSec > 0) {
-        props.onBandwidthSample && props.onBandwidthSample(loaded, durationSec)
-      }
-    } catch (_) {}
+    if (props.onBandwidthSample && sample?.loaded && sample?.durationSec) {
+      props.onBandwidthSample(sample.loaded, sample.durationSec)
+    }
   },
-  onError: (err) => showInlineError(err),
+  onError: showInlineError,
   onQualitiesUpdate: props.onQualitiesUpdate
 })
 
@@ -221,45 +310,33 @@ const initializeMediaSources = () => {
     try { destroyDash() } catch (_) {}
     videoElement.value.src = props.video.stream_video_url
   } else {
-    props.playerState.media.loading = true
-    props.playerState.media.loadingStage = 'fetching'
+    store.setLoading(true, 'fetching')
   }
 
-  // 非 HLS/DASH 才需要独立音频
   if (!props.isHlsStream && !props.isDashStream && props.video.stream_audio_url && audioElement.value) {
     audioElement.value.src = props.video.stream_audio_url
   }
 
-  // 确保媒体元素的音量和静音状态与playerState同步
   if (videoElement.value) {
-    videoElement.value.volume = props.playerState.media.volume / 100
-    videoElement.value.muted = props.playerState.media.muted
+    videoElement.value.volume = store.volume / 100
+    videoElement.value.muted = store.muted
   }
-
   if (audioElement.value) {
-    audioElement.value.volume = props.playerState.media.volume / 100
-    audioElement.value.muted = props.playerState.media.muted
+    audioElement.value.volume = store.volume / 100
+    audioElement.value.muted = store.muted
   }
 }
 
-// 防抖定时器和去重标记
 let initDebounceTimer = null
 let lastInitializedUrl = null
 
-// 监听视频URL和MPD URL变化
 watch(
   () => [props.video?.stream_video_url, props.video?.mpd_url],
   ([newStreamUrl, newMpdUrl], [oldStreamUrl, oldMpdUrl]) => {
     const currentUrl = newMpdUrl || newStreamUrl || null
-    
     if (currentUrl && currentUrl !== lastInitializedUrl &&
-        ((newStreamUrl && newStreamUrl !== oldStreamUrl) || 
-         (newMpdUrl && newMpdUrl !== oldMpdUrl))) {
-      
-      if (initDebounceTimer) {
-        clearTimeout(initDebounceTimer)
-      }
-      
+        ((newStreamUrl && newStreamUrl !== oldStreamUrl) || (newMpdUrl && newMpdUrl !== oldMpdUrl))) {
+      if (initDebounceTimer) clearTimeout(initDebounceTimer)
       initDebounceTimer = setTimeout(() => {
         lastInitializedUrl = currentUrl
         initializeMediaSources()
@@ -269,65 +346,42 @@ watch(
   }
 )
 
-// 监听音量变化
-watch(() => props.playerState.media.volume, (newVolume) => {
-  if (videoElement.value) {
-    videoElement.value.volume = newVolume / 100
-    if (audioElement.value) {
-      audioElement.value.volume = newVolume / 100
-    }
-  }
+watch(() => store.volume, (newVolume) => {
+  if (videoElement.value) videoElement.value.volume = newVolume / 100
+  if (audioElement.value) audioElement.value.volume = newVolume / 100
 })
 
-// 监听静音状态变化
-watch(() => props.playerState.media.muted, (newMuted) => {
-  if (videoElement.value) {
-    videoElement.value.muted = newMuted
-    if (audioElement.value) {
-      audioElement.value.muted = newMuted
-    }
-  }
+watch(() => store.muted, (newMuted) => {
+  if (videoElement.value) videoElement.value.muted = newMuted
+  if (audioElement.value) audioElement.value.muted = newMuted
 })
 
-// 监听清晰度变更
-watch(() => props.playerState.media.currentQuality, (q) => {
-  console.log('[Debug] Quality changed:', q, 'isHls=', props.isHlsStream, 'isDash=', props.isDashStream)
+watch(() => store.currentQuality, (q) => {
+  console.log('[Debug] Quality changed:', q)
   try {
-    if (props.isHlsStream) {
-      setHlsQuality?.(q)
-    } else if (props.isDashStream) {
-      setDashQuality?.(q)
-    }
-  } catch (e) {
-    console.warn('[Debug] setQuality failed', e)
-  }
+    if (props.isHlsStream) setHlsQuality?.(q)
+    else if (props.isDashStream) setDashQuality?.(q)
+  } catch (e) { console.warn('[Debug] setQuality failed', e) }
 })
 
 onMounted(() => {
-  const currentUrl = props.video?.mpd_url || props.video?.stream_video_url || null
-  lastInitializedUrl = currentUrl
-  
+  lastInitializedUrl = props.video?.mpd_url || props.video?.stream_video_url || null
   initializeMediaSources()
-
   if (videoElement.value) {
-    videoElement.value.volume = props.playerState.media.volume / 100
-    videoElement.value.muted = props.playerState.media.muted
-
-    if (audioElement.value) {
-      audioElement.value.volume = props.playerState.media.volume / 100
-      audioElement.value.muted = props.playerState.media.muted
-    }
+    videoElement.value.volume = store.volume / 100
+    videoElement.value.muted = store.muted
+  }
+  if (audioElement.value) {
+    audioElement.value.volume = store.volume / 100
+    audioElement.value.muted = store.muted
   }
 })
 
 onUnmounted(() => {
-  if (initDebounceTimer) {
-    clearTimeout(initDebounceTimer)
-    initDebounceTimer = null
-  }
+  if (initDebounceTimer) { clearTimeout(initDebounceTimer); initDebounceTimer = null }
+  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null }
   lastInitializedUrl = null
   cleanupClickZones()
-  cleanupMediaError()
   try { destroyHls() } catch (_) {}
   try { destroyDash() } catch (_) {}
 })
@@ -335,10 +389,7 @@ onUnmounted(() => {
 defineExpose({
   videoElement,
   audioElement,
-  reinitSources: () => {
-    console.log('[Debug] 3.0 VideoPlayerCore.reinitSources invoked')
-    initializeMediaSources()
-  }
+  reinitSources: () => { console.log('[Debug] VideoPlayerCore.reinitSources'); initializeMediaSources() }
 })
 </script>
 
@@ -366,35 +417,21 @@ defineExpose({
 }
 
 .double-click-zone {
-  @apply relative flex-1 cursor-pointer
-    flex items-center justify-center;
+  @apply relative flex-1 cursor-pointer flex items-center justify-center;
 }
 
 .single-click-zone {
-  @apply relative flex-1 cursor-pointer
-    flex items-center justify-center;
+  @apply relative flex-1 cursor-pointer flex items-center justify-center;
 }
 
-.left-zone {
-  @apply justify-start pl-12;
-}
-
-.right-zone {
-  @apply justify-end pr-12;
-}
+.left-zone { @apply justify-start pl-12; }
+.right-zone { @apply justify-end pr-12; }
 
 .skip-indicator {
-  @apply absolute inset-0 flex items-center justify-center
-    pointer-events-none;
+  @apply absolute inset-0 flex items-center justify-center pointer-events-none;
 }
-
-.skip-indicator.left {
-  @apply justify-start pl-12;
-}
-
-.skip-indicator.right {
-  @apply justify-end pr-12;
-}
+.skip-indicator.left { @apply justify-start pl-12; }
+.skip-indicator.right { @apply justify-end pr-12; }
 
 .skip-icon {
   @apply text-white text-6xl;
@@ -402,13 +439,10 @@ defineExpose({
   animation: skipIconPulse 0.5s ease-out;
 }
 
-.video-player {
-  @apply w-full h-full object-contain;
-}
+.video-player { @apply w-full h-full object-contain; }
 
 .play-state-indicator {
-  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
-    rounded-full p-3 pointer-events-none;
+  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full p-3 pointer-events-none;
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(8px);
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -428,32 +462,14 @@ defineExpose({
 }
 
 @keyframes playIndicatorPulse {
-  0% {
-    transform: translate(-50%, -50%) scale(0.8);
-    opacity: 0;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.1);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-  }
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
 @keyframes skipIconPulse {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 </style>

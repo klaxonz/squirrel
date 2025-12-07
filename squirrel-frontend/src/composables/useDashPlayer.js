@@ -1,6 +1,7 @@
 import dashjs from 'dashjs'
 
-export default function useDashPlayer({ playerState, videoRef, props, onProgress, onError}) {
+// store: Pinia player store
+export default function useDashPlayer({ store, videoRef, props, onProgress, onError }) {
   const dashRef = { value: null }
 
   const initializeDash = () => {
@@ -17,7 +18,6 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     player.updateSettings({
       streaming: {
         abr: {
-          // 使用较保守的初始码率，避免起播阶段错误估计带宽导致瞬时卡顿
           initialBitrate: { video: 3000, audio: 192 },
           initialRepresentationRatio: 1,
           maxBitrate: { video: -1, audio: -1 },
@@ -44,12 +44,10 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     })
 
     player.on('bufferingStarted', () => {
-      playerState.media.loading = true
-      playerState.media.loadingStage = 'buffering'
+      store.setLoading(true, 'buffering')
     })
     player.on('bufferingCompleted', () => {
-      playerState.media.loading = false
-      playerState.media.loadingStage = 'ready'
+      store.setLoading(false, 'ready')
     })
 
     player.on('fragmentLoadingCompleted', (data) => {
@@ -62,7 +60,7 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
       } catch (_) {}
     })
 
-    player.initialize(videoRef.value, resolvedMpdUrl, !!props.playerState?.media?.autoplay)
+    player.initialize(videoRef.value, resolvedMpdUrl, store.autoplay)
 
     dashRef.value = player
   }
@@ -83,16 +81,11 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
     const qStr = String(quality || '').toLowerCase()
     const isAutoValue = qStr === 'auto' || qStr === '自动'
 
-    // 自动档位或没有可用 index 时，交给 ABR
     if (!qualityInfo || isAutoValue || typeof qualityInfo.index !== 'number' || qualityInfo.index < 0) {
       console.log('[DASH] Switching to AUTO quality, enable ABR. quality=', quality)
       try {
         player.updateSettings({
-          streaming: {
-            abr: {
-              autoSwitchBitrate: { video: true }
-            }
-          }
+          streaming: { abr: { autoSwitchBitrate: { video: true } } }
         })
       } catch (_) {}
       return
@@ -103,11 +96,7 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
 
     try {
       player.updateSettings({
-        streaming: {
-          abr: {
-            autoSwitchBitrate: { video: false }
-          }
-        }
+        streaming: { abr: { autoSwitchBitrate: { video: false } } }
       })
     } catch (_) {}
 
@@ -117,9 +106,7 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
       } else if (typeof player.setRepresentationForTypeByIndex === 'function') {
         player.setRepresentationForTypeByIndex('video', targetIndex, true)
       }
-      const currentIndex = typeof player.getQualityFor === 'function'
-        ? player.getQualityFor('video')
-        : null
+      const currentIndex = typeof player.getQualityFor === 'function' ? player.getQualityFor('video') : null
       console.log('[DASH] After switch, current quality index =', currentIndex)
     } catch (e) {
       console.warn('[DASH] setQualityFor failed', e)
@@ -128,4 +115,3 @@ export default function useDashPlayer({ playerState, videoRef, props, onProgress
 
   return { dashRef, initializeDash, destroyDash, setQuality }
 }
-

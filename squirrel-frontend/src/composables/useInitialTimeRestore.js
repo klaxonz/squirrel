@@ -1,12 +1,15 @@
 import { watch, onUnmounted } from 'vue'
 
-// 从上次进度恢复：媒体可播放且时长就绪后应用 initialTime，
-// 针对 HLS/DASH 可能的内部重置加入短暂重试。
+// 从上次进度恢复
+// store: Pinia player store
+// videoCoreRef: ref to video core component
+// getInitialTime: () => number
+// getVideoId: () => any
 export default function useInitialTimeRestore({
-  playerState,
+  store,
   videoCoreRef,
-  getInitialTime,   // () => number
-  getVideoId        // () => any (用于切换视频时重置)
+  getInitialTime,
+  getVideoId
 }) {
   let appliedInitialTime = false
   let applyRetryTimer = null
@@ -20,13 +23,11 @@ export default function useInitialTimeRestore({
     const videoEl = videoCoreRef?.value?.videoElement
     if (!videoEl) return
 
-    // 要求元数据（时长）已可用，且视频可播放
-    const durationReady = Number(playerState.media.duration || videoEl.duration || 0) > 0
-    const canPlay = !!playerState.media.canPlay.video
+    const durationReady = Number(store.duration || videoEl.duration || 0) > 0
+    const canPlay = store.canPlayVideo
     if (!canPlay || !durationReady) return
 
     try {
-      // 调用宿主提供的同步方法设置时间（VideoPlayer 中提供）
       videoEl.currentTime = time
       const verifyAndMaybeRetry = () => {
         if (appliedInitialTime) return
@@ -48,14 +49,10 @@ export default function useInitialTimeRestore({
     } catch (e) {}
   }
 
-  // 媒体可播放或时长就绪时尝试应用
-  watch(() => playerState.media.canPlay.video, () => { tryApplyInitialTime() })
-  watch(() => playerState.media.duration, () => { tryApplyInitialTime() })
-
-  // 初始时间变化时（例如异步详情加载后）尝试应用
+  watch(() => store.canPlayVideo, () => { tryApplyInitialTime() })
+  watch(() => store.duration, () => { tryApplyInitialTime() })
   watch(() => getInitialTime?.(), () => { tryApplyInitialTime() })
 
-  // 切换视频时重置
   watch(() => getVideoId?.(), () => {
     appliedInitialTime = false
     applyRetryCount = 0
@@ -66,5 +63,3 @@ export default function useInitialTimeRestore({
     if (applyRetryTimer) { clearTimeout(applyRetryTimer); applyRetryTimer = null }
   })
 }
-
-

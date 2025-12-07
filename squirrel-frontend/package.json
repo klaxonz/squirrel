@@ -19,6 +19,7 @@
     "lodash": "^4.17.21",
     "lodash-es": "^4.17.21",
     "mitt": "^3.0.1",
+    "pinia": "^3.0.4",
     "vue": "^3.4.35",
     "vue-router": "^4.4.3",
     "vue-toastification": "2.0.0-rc.5",

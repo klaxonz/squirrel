@@ -1,7 +1,8 @@
 import Hls from 'hls.js';
 
+// store: Pinia player store
 export default function useHlsPlayer({
-  playerState,
+  store,
   videoRef,
   props,
   getOptimizedHlsConfig,
@@ -57,9 +58,8 @@ export default function useHlsPlayer({
           }
           
           // 如果已有用户选择的清晰度，则尊重该选择；否则交给 HLS 自己通过 ABR 决定
-          const currentQuality = playerState?.media?.currentQuality
+          const currentQuality = store?.currentQuality
           if (currentQuality) {
-            // 复用 setQuality 内的回退逻辑
             setQuality(currentQuality)
           }
         }
@@ -90,8 +90,8 @@ export default function useHlsPlayer({
       if (data.fatal) {
         switch (data.type) {
           case Hls.ErrorTypes.NETWORK_ERROR:
-            if (playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-              playerState.network.reconnectAttempts++;
+            if (store.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+              store.incrementReconnectAttempts();
               hlsRef.value.startLoad();
             } else {
               onError?.({ type: 'network', message: 'Network connection failed' });
@@ -101,8 +101,8 @@ export default function useHlsPlayer({
             hlsRef.value.recoverMediaError();
             break;
           default:
-            if (playerState.network.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-              playerState.network.reconnectAttempts++;
+            if (store.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+              store.incrementReconnectAttempts();
               reinitializeHls();
             } else {
               onError?.({ type: 'fatal', message: 'Cannot play video' });

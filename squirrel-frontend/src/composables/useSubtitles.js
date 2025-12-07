@@ -1,18 +1,21 @@
 import { watch } from 'vue';
 import { parseVTT, parseSRT } from '../utils/subtitles';
 
-export default function useSubtitles({ playerState, videoRef, props }) {
+// store: Pinia player store
+// videoRef: ref to video element
+// props: component props with video object
+export default function useSubtitles({ store, videoRef, props }) {
   const getTrack = () => videoRef?.value?.textTracks?.[0] || null;
 
   const applyCuePosition = (track) => {
     try {
-      const pos = playerState?.media?.subtitleSettings?.position || 'bottom';
+      const pos = store.subtitleSettings?.position || 'bottom';
       if (!track?.cues) return;
       for (let i = 0; i < track.cues.length; i++) {
         const cue = track.cues[i];
         try {
           cue.snapToLines = false;
-          cue.line = pos === 'top' ? 10 : 90; // 百分比位置，顶部/底部
+          cue.line = pos === 'top' ? 10 : 90;
           cue.align = 'center';
         } catch (_) {}
       }
@@ -30,7 +33,7 @@ export default function useSubtitles({ playerState, videoRef, props }) {
     if (!videoRef?.value) return;
     ensureVideoCssClass();
 
-    const settings = playerState?.media?.subtitleSettings || {};
+    const settings = store.subtitleSettings || {};
     const fontMap = { small: '14px', medium: '18px', large: '24px', xlarge: '32px' };
     const color = settings.color === 'yellow' ? '#ffd54a' : '#ffffff';
     const bg = `rgba(0,0,0,${Math.max(0, Math.min(1, settings.bgOpacity ?? 0.4))})`;
@@ -67,7 +70,6 @@ export default function useSubtitles({ playerState, videoRef, props }) {
       const response = await fetch(subtitle.url);
       const text = await response.text();
 
-      // 创建或获取字幕轨道
       let track = getTrack();
       if (!track) {
         const label = subtitle.label || subtitle.language || 'Subtitles';
@@ -75,16 +77,14 @@ export default function useSubtitles({ playerState, videoRef, props }) {
         track = videoRef.value.addTextTrack('subtitles', label, langCode);
       }
 
-      // 清空旧的 cues
       if (track?.cues?.length) {
         for (let i = track.cues.length - 1; i >= 0; i--) {
           track.removeCue(track.cues[i]);
         }
       }
 
-      // 自动识别 SRT/VTT
       const isVtt = text.trimStart().startsWith('WEBVTT');
-      const opts = { position: playerState?.media?.subtitleSettings?.position || 'bottom' };
+      const opts = { position: store.subtitleSettings?.position || 'bottom' };
       if (isVtt) {
         parseVTT(text, track, opts);
       } else {
@@ -106,23 +106,22 @@ export default function useSubtitles({ playerState, videoRef, props }) {
   };
 
   const setSubtitle = (subtitle) => {
-    playerState.media.currentSubtitle = subtitle;
-    playerState.media.subtitlesEnabled = !!subtitle;
+    store.setCurrentSubtitle(subtitle);
+    store.setSubtitlesEnabled(!!subtitle);
 
     if (subtitle) {
       loadSubtitle(subtitle);
     } else {
       hideSubtitles();
     }
-    playerState.ui.showSettingsMenu = false;
+    store.showSettingsMenu = false;
   };
 
-  // 切换下一条字幕（循环）
   const nextSubtitle = () => {
     try {
       const list = Array.isArray(props.video?.subtitles) ? props.video.subtitles : [];
       if (!list.length) return;
-      const current = playerState.media.currentSubtitle;
+      const current = store.currentSubtitle;
       let idx = list.findIndex(s => (s?.url && current?.url && s.url === current.url) || (s === current));
       if (idx === -1) idx = 0; else idx = (idx + 1) % list.length;
       const next = list[idx];
@@ -131,13 +130,13 @@ export default function useSubtitles({ playerState, videoRef, props }) {
   };
 
   const toggleSubtitles = () => {
-    const willEnable = !playerState.media.subtitlesEnabled;
-    playerState.media.subtitlesEnabled = willEnable;
+    const willEnable = !store.subtitlesEnabled;
+    store.setSubtitlesEnabled(willEnable);
 
     if (willEnable) {
-      const current = playerState.media.currentSubtitle || (props.video?.subtitles?.[0] || null);
+      const current = store.currentSubtitle || (props.video?.subtitles?.[0] || null);
       if (current) {
-        playerState.media.currentSubtitle = current;
+        store.setCurrentSubtitle(current);
         loadSubtitle(current);
       }
     } else {
@@ -147,10 +146,10 @@ export default function useSubtitles({ playerState, videoRef, props }) {
 
   const ensureSubtitlesOnMetadata = () => {
     if (!videoRef?.value) return;
-    if (playerState.media.subtitlesEnabled && playerState.media.currentSubtitle) {
+    if (store.subtitlesEnabled && store.currentSubtitle) {
       const track = getTrack();
       if (!track || !track.cues || track.cues.length === 0) {
-        loadSubtitle(playerState.media.currentSubtitle);
+        loadSubtitle(store.currentSubtitle);
       } else {
         applyCuePosition(track);
         updateSubtitleCss();
@@ -159,18 +158,16 @@ export default function useSubtitles({ playerState, videoRef, props }) {
     }
   };
 
-  // 当新字幕列表可用且尚未选择时，自动选择第一条
   watch(() => props.video?.subtitles, (newSubs) => {
-    if (Array.isArray(newSubs) && newSubs.length > 0 && !playerState.media.currentSubtitle) {
+    if (Array.isArray(newSubs) && newSubs.length > 0 && !store.currentSubtitle) {
       const first = newSubs[0];
-      playerState.media.currentSubtitle = first;
-      playerState.media.subtitlesEnabled = true;
+      store.setCurrentSubtitle(first);
+      store.setSubtitlesEnabled(true);
       loadSubtitle(first);
     }
   });
 
-  // 监听样式设置变更，动态更新渲染
-  watch(() => playerState.media.subtitleSettings, () => {
+  watch(() => store.subtitleSettings, () => {
     try {
       const track = getTrack();
       if (track) applyCuePosition(track);

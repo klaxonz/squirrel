@@ -1,52 +1,41 @@
 // 键盘快捷键组合函数：封装快捷键映射、执行与反馈
-// 依赖注入：通过回调传入播放器控制函数，内部仅操纵 UI 反馈状态
+// store: Pinia player store
+// callbacks: 播放器控制函数
 
 import { ref } from 'vue';
 
-export default function useKeyboardShortcuts(playerState, callbacks) {
+export default function useKeyboardShortcuts(store, callbacks) {
   const keyboardFeedbackTimer = ref(null);
 
   const showKeyboardFeedback = (message) => {
-    playerState.ui.keyboardFeedback = message;
-    playerState.ui.showKeyboardFeedback = true;
+    store.keyboardFeedback = message;
+    store.showKeyboardFeedback = true;
 
     if (keyboardFeedbackTimer.value) {
       clearTimeout(keyboardFeedbackTimer.value);
     }
 
     keyboardFeedbackTimer.value = setTimeout(() => {
-      playerState.ui.showKeyboardFeedback = false;
+      store.showKeyboardFeedback = false;
     }, 1500);
   };
 
   const keyboardShortcuts = {
-    // 播放控制
     ' ': { action: 'togglePlay', description: '播放/暂停' },
     'k': { action: 'togglePlay', description: '播放/暂停' },
-
     'ArrowRight': { action: 'skipForward5', description: '快进5秒' },
     'ArrowLeft': { action: 'skipBackward5', description: '快退5秒' },
     'j': { action: 'skipBackward10', description: '快退10秒' },
     'l': { action: 'skipForward10', description: '快进10秒' },
-
-    // 音量控制
     'm': { action: 'toggleMute', description: '静音/取消静音' },
     'ArrowUp': { action: 'volumeUp', description: '音量+5%' },
     'ArrowDown': { action: 'volumeDown', description: '音量-5%' },
-
-    // 播放速度
     '<': { action: 'decreaseSpeed', description: '减慢播放速度' },
     '>': { action: 'increaseSpeed', description: '加快播放速度' },
-
-    // 全屏和画中画
     'f': { action: 'toggleFullscreen', description: '全屏/退出全屏' },
     'i': { action: 'togglePictureInPicture', description: '画中画' },
-
-    // 字幕
     'c': { action: 'toggleSubtitles', description: '字幕开/关' },
     'C': { action: 'nextSubtitle', description: '切换下一条字幕' },
-
-    // 跳转
     'Home': { action: 'jumpToStart', description: '跳转到开始' },
     'End': { action: 'jumpToEnd', description: '跳转到结束' },
     '0': { action: 'jumpToPercent', args: [0], description: '跳转到0%' },
@@ -59,8 +48,6 @@ export default function useKeyboardShortcuts(playerState, callbacks) {
     '7': { action: 'jumpToPercent', args: [70], description: '跳转到70%' },
     '8': { action: 'jumpToPercent', args: [80], description: '跳转到80%' },
     '9': { action: 'jumpToPercent', args: [90], description: '跳转到90%' },
-
-    // 帮助
     '?': { action: 'showKeyboardHelp', description: '显示快捷键帮助' },
     'Escape': { action: 'handleEscape', description: '退出菜单/全屏' }
   };
@@ -187,5 +174,3 @@ export default function useKeyboardShortcuts(playerState, callbacks) {
 
   return { handleKeyDown, cleanup };
 }
-
-
