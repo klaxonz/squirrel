@@ -613,6 +613,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
     video.addEventListener('play', () => {
       store.setPlaying(true)
+      store.setHasStartedPlayback(true)
       events.emit('play', undefined)
       onPlay?.()
     })
