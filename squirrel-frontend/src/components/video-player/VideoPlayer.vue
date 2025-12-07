@@ -143,80 +143,88 @@
     </transition>
 
     <!-- 设置菜单 -->
-    <transition name="sp-slide">
-      <div v-if="showSettingsMenu" class="sp-menu" @click.stop>
-        <div class="sp-menu-header">
-          <span class="sp-menu-title">{{ t('settings') }}</span>
-        </div>
-        
-        <!-- 质量选择 -->
-        <div v-if="qualities.length > 0" class="sp-menu-section">
-          <div class="sp-menu-label">{{ t('quality') }}</div>
-          <button
-            v-for="q in qualities"
-            :key="q.id"
-            class="sp-menu-item"
-            :class="{ 'sp-menu-item--active': currentQuality === q.label || currentQuality === String(q.id) }"
-            @click="handleQualitySelect(q)"
-          >
-            <span>{{ q.label }}</span>
-            <PlayerIcon 
-              v-if="currentQuality === q.label || currentQuality === String(q.id)" 
-              name="check" 
-              class="sp-menu-item-check"
-            />
+    <transition name="sp-fade">
+      <div v-if="showSettingsMenu && store.controlsVisible" class="sp-popup" @click.stop>
+        <!-- 主菜单 -->
+        <template v-if="settingsView === 'main'">
+          <button class="sp-popup-item" @click="settingsView = 'speed'">
+            <span>{{ t('playbackSpeed') }}</span>
+            <span class="sp-popup-value">{{ store.playbackRate === 1 ? t('speedNormal') : `${store.playbackRate}x` }}</span>
           </button>
-        </div>
+          <button v-if="qualities.length > 0" class="sp-popup-item" @click="settingsView = 'quality'">
+            <span>{{ t('quality') }}</span>
+            <span class="sp-popup-value">{{ currentQuality || 'Auto' }}</span>
+          </button>
+        </template>
 
-        <!-- 播放速度 -->
-        <div class="sp-menu-section">
-          <div class="sp-menu-label">{{ t('playbackSpeed') }}</div>
-          <button
-            v-for="rate in playbackRates"
-            :key="rate"
-            class="sp-menu-item"
-            :class="{ 'sp-menu-item--active': store.playbackRate === rate }"
-            @click="setPlaybackRate(rate)"
-          >
-            <span>{{ rate === 1 ? t('speedNormal') : `${rate}x` }}</span>
-            <PlayerIcon 
-              v-if="store.playbackRate === rate" 
-              name="check" 
-              class="sp-menu-item-check"
-            />
+        <!-- 播放速度子菜单 -->
+        <template v-else-if="settingsView === 'speed'">
+          <button class="sp-popup-back" @click="settingsView = 'main'">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            <span>{{ t('playbackSpeed') }}</span>
           </button>
-        </div>
+          <div class="sp-popup-list">
+            <button
+              v-for="rate in playbackRates"
+              :key="rate"
+              class="sp-popup-option"
+              :class="{ active: store.playbackRate === rate }"
+              @click="handleSpeedSelect(rate)"
+            >
+              <svg v-if="store.playbackRate === rate" class="sp-check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              <span>{{ rate === 1 ? t('speedNormal') : `${rate}x` }}</span>
+            </button>
+          </div>
+        </template>
+
+        <!-- 画质子菜单 -->
+        <template v-else-if="settingsView === 'quality'">
+          <button class="sp-popup-back" @click="settingsView = 'main'">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            <span>{{ t('quality') }}</span>
+          </button>
+          <div class="sp-popup-list">
+            <button
+              v-for="q in qualities"
+              :key="q.id"
+              class="sp-popup-option"
+              :class="{ active: currentQuality === q.label || currentQuality === String(q.id) }"
+              @click="handleQualitySelect(q)"
+            >
+              <svg v-if="currentQuality === q.label || currentQuality === String(q.id)" class="sp-check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              <span>{{ q.label }}</span>
+            </button>
+          </div>
+        </template>
       </div>
     </transition>
 
     <!-- 字幕菜单 -->
     <transition name="sp-slide">
-      <div v-if="showSubtitlesMenu" class="sp-menu" @click.stop>
-        <div class="sp-menu-header">
-          <span class="sp-menu-title">{{ t('subtitles') }}</span>
+      <div v-if="showSubtitlesMenu && store.controlsVisible" class="sp-menu" @click.stop>
+        <div class="sp-menu-section">
+          <div class="sp-menu-label">{{ t('subtitles') }}</div>
+          <div class="sp-quality-list">
+            <button
+              class="sp-menu-item"
+              :class="{ 'sp-menu-item--active': !currentSubtitle }"
+              @click="setSubtitle(null)"
+            >
+              <span class="sp-menu-item-text">{{ t('subtitlesOff') }}</span>
+              <span v-if="!currentSubtitle" class="sp-menu-item-dot"></span>
+            </button>
+            <button
+              v-for="track in subtitleTracks"
+              :key="track.id"
+              class="sp-menu-item"
+              :class="{ 'sp-menu-item--active': currentSubtitle?.id === track.id }"
+              @click="setSubtitle(track)"
+            >
+              <span class="sp-menu-item-text">{{ track.label }}</span>
+              <span v-if="currentSubtitle?.id === track.id" class="sp-menu-item-dot"></span>
+            </button>
+          </div>
         </div>
-        <button
-          class="sp-menu-item"
-          :class="{ 'sp-menu-item--active': !currentSubtitle }"
-          @click="setSubtitle(null)"
-        >
-          <span>{{ t('subtitlesOff') }}</span>
-          <PlayerIcon v-if="!currentSubtitle" name="check" class="sp-menu-item-check" />
-        </button>
-        <button
-          v-for="track in subtitleTracks"
-          :key="track.id"
-          class="sp-menu-item"
-          :class="{ 'sp-menu-item--active': currentSubtitle?.id === track.id }"
-          @click="setSubtitle(track)"
-        >
-          <span>{{ track.label }}</span>
-          <PlayerIcon 
-            v-if="currentSubtitle?.id === track.id" 
-            name="check" 
-            class="sp-menu-item-check"
-          />
-        </button>
       </div>
     </transition>
 
@@ -335,6 +343,7 @@ const containerRef = ref<HTMLElement | null>(null)
 // UI 状态
 const showSettingsMenu = ref(false)
 const showSubtitlesMenu = ref(false)
+const settingsView = ref<'main' | 'speed' | 'quality'>('main')
 const previewTime = ref<number | null>(null)
 const previewPercent = ref(0)
 const seekIndicator = ref({ show: false, direction: 'forward' as 'forward' | 'backward', seconds: 10 })
@@ -477,8 +486,11 @@ const showControls = () => {
   store.setControlsVisible(true)
   if (hideControlsTimer) clearTimeout(hideControlsTimer)
   hideControlsTimer = setTimeout(() => {
-    if (isPlaying.value && !showSettingsMenu.value && !showSubtitlesMenu.value) {
+    if (isPlaying.value) {
       store.setControlsVisible(false)
+      // 关闭所有菜单
+      showSettingsMenu.value = false
+      showSubtitlesMenu.value = false
     }
   }, 3000)
 }
@@ -539,10 +551,33 @@ const onVolumeClick = (e: MouseEvent) => {
 const toggleSettingsMenu = () => {
   showSettingsMenu.value = !showSettingsMenu.value
   showSubtitlesMenu.value = false
+  settingsView.value = 'main'
 }
 
 const toggleSubtitlesMenu = () => {
   showSubtitlesMenu.value = !showSubtitlesMenu.value
+  showSettingsMenu.value = false
+}
+
+// 循环播放速度
+const cyclePlaybackRate = () => {
+  const currentIndex = playbackRates.indexOf(store.playbackRate)
+  const nextIndex = (currentIndex + 1) % playbackRates.length
+  setPlaybackRate(playbackRates[nextIndex])
+}
+
+// 循环质量
+const cycleQuality = () => {
+  if (qualities.value.length === 0) return
+  const labels = qualities.value.map((q: any) => q.label || String(q.id))
+  const currentIndex = labels.indexOf(currentQuality.value)
+  const nextIndex = (currentIndex + 1) % labels.length
+  setQuality(labels[nextIndex])
+}
+
+// 播放速度选择
+const handleSpeedSelect = (rate: number) => {
+  setPlaybackRate(rate)
   showSettingsMenu.value = false
 }
 
@@ -849,66 +884,201 @@ defineExpose({
   color: var(--sp-text-tertiary, rgba(255, 255, 255, 0.5));
 }
 
-/* 菜单 */
-.sp-menu {
+/* 设置弹出菜单 */
+.sp-popup {
   position: absolute;
-  right: var(--sp-spacing-md, 12px);
+  right: 12px;
   bottom: 60px;
-  width: var(--sp-menu-width, 280px);
-  max-height: var(--sp-menu-max-height, 400px);
-  background: var(--sp-menu-bg, rgba(28, 28, 28, 0.95));
-  border-radius: var(--sp-radius-md, 8px);
+  min-width: 180px;
+  background: rgba(28, 28, 28, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   z-index: var(--sp-z-menu, 30);
 }
 
-.sp-menu-header {
-  padding: var(--sp-spacing-md, 12px) var(--sp-spacing-lg, 16px);
+.sp-popup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.sp-popup-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sp-popup-value {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+}
+
+.sp-popup-back {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
   font-weight: 500;
-  border-bottom: 1px solid var(--sp-border, rgba(255, 255, 255, 0.1));
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.sp-popup-back:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sp-popup-back svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sp-popup-list {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.sp-popup-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sp-popup-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.sp-popup-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.sp-popup-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sp-popup-option.active {
+  color: #fff;
+}
+
+.sp-check {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.sp-popup-option:not(.active) .sp-check {
+  visibility: hidden;
+}
+
+.sp-popup-option:not(.active) {
+  padding-left: 36px;
+}
+
+/* 字幕菜单 */
+.sp-menu {
+  position: absolute;
+  right: 12px;
+  bottom: 56px;
+  min-width: 160px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 6px 0;
+  background: rgba(28, 28, 28, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  z-index: var(--sp-z-menu, 30);
+}
+
+.sp-menu::-webkit-scrollbar {
+  width: 3px;
+}
+
+.sp-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sp-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
 }
 
 .sp-menu-section {
-  padding: var(--sp-spacing-sm, 8px) 0;
-  border-top: 1px solid var(--sp-border, rgba(255, 255, 255, 0.1));
-}
-
-.sp-menu-section:first-of-type {
-  border-top: none;
+  padding: 2px 0;
 }
 
 .sp-menu-label {
-  padding: var(--sp-spacing-xs, 4px) var(--sp-spacing-lg, 16px);
-  font-size: var(--sp-font-size-xs, 11px);
-  color: var(--sp-text-tertiary, rgba(255, 255, 255, 0.5));
-  text-transform: uppercase;
+  padding: 6px 14px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.sp-quality-list {
+  display: flex;
+  flex-direction: column;
 }
 
 .sp-menu-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   width: 100%;
-  padding: var(--sp-menu-item-padding, 8px 16px);
+  padding: 9px 14px;
   border: none;
   background: transparent;
-  color: var(--sp-text, #fff);
-  font-size: var(--sp-font-size-md, 14px);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
+  transition: background 0.12s ease;
 }
 
 .sp-menu-item:hover {
-  background: var(--sp-menu-item-hover-bg, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .sp-menu-item--active {
-  color: var(--sp-primary, #e53935);
+  color: #fff;
 }
 
-.sp-menu-item-check {
-  width: 18px;
-  height: 18px;
+.sp-menu-item-text {
+  flex: 1;
+}
+
+.sp-menu-item-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sp-primary, #e53935);
+  flex-shrink: 0;
 }
 
 /* 加载/缓冲 */
