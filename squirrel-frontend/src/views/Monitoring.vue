@@ -115,7 +115,7 @@
           <div v-else class="text-xs text-[#444]">暂无错误</div>
         </div>
       </div>
-
+      
       <!-- 站点统计表格 -->
       <div class="bg-[#161616] rounded-lg border border-white/5">
         <div class="px-4 py-2.5 border-b border-white/5 flex items-center justify-between">
@@ -164,6 +164,34 @@
           
           <div v-if="!dashboardData?.crawl?.by_site?.length" class="text-center text-[#444] py-8 text-sm">
             暂无站点数据
+          </div>
+        </div>
+      </div>
+      
+      <!-- 最近错误详情 -->
+      <div v-if="dashboardData?.recent_errors?.length" class="bg-[#161616] rounded-lg border border-white/5">
+        <div class="px-4 py-2.5 border-b border-white/5 flex items-center justify-between">
+          <span class="text-sm font-medium text-white">最近错误</span>
+          <span class="text-xs text-[#666]">最近 {{ dashboardData.recent_errors.length }} 条</span>
+        </div>
+        <div class="divide-y divide-white/5 max-h-80 overflow-y-auto custom-scrollbar">
+          <div v-for="(err, idx) in dashboardData.recent_errors" :key="idx" class="px-4 py-2.5 hover:bg-white/[0.02]">
+            <div class="flex items-center justify-between text-xs mb-1">
+              <div class="flex items-center gap-2">
+                <span class="text-[#ef4444] font-medium">{{ err.type }}</span>
+                <span class="text-[#555]">{{ err.site }}</span>
+              </div>
+              <span class="text-[#555]">{{ formatTime(err.time) }}</span>
+            </div>
+            <a :href="err.url" target="_blank" class="text-xs text-[#777] hover:text-[#3b82f6] truncate mb-1.5 block" :title="err.url">{{ err.url }}</a>
+            <details class="text-xs group">
+              <summary class="text-[#555] cursor-pointer hover:text-[#888] select-none">
+                <span class="group-open:hidden">▶</span>
+                <span class="hidden group-open:inline">▼</span>
+                {{ getErrorSummary(err.msg) }}
+              </summary>
+              <pre class="error-stack mt-2 p-3 bg-[#0a0a0a] rounded text-[#999] overflow-x-auto whitespace-pre-wrap text-[11px] leading-relaxed max-h-52 overflow-y-auto">{{ err.msg }}</pre>
+            </details>
           </div>
         </div>
       </div>
@@ -245,9 +273,21 @@ const getSubscriptionBySite = (siteName) => {
   return subscriptions.find(s => s.site === siteName) || null
 }
 
+const formatTime = (isoTime) => {
+  if (!isoTime) return '-'
+  const date = new Date(isoTime)
+  return date.toLocaleTimeString()
+}
+
+const getErrorSummary = (msg) => {
+  if (!msg) return '点击查看详情'
+  const firstLine = msg.split('\n')[0]
+  return firstLine.length > 80 ? firstLine.slice(0, 80) + '...' : firstLine
+}
+
 onMounted(() => {
   fetchDashboard()
-  refreshTimer = setInterval(fetchDashboard, 30000)
+  refreshTimer = setInterval(fetchDashboard, 10000)
 })
 
 onUnmounted(() => {
@@ -258,5 +298,43 @@ onUnmounted(() => {
 <style scoped>
 .monitoring-page {
   font-feature-settings: "tnum";
+}
+
+/* 自定义滚动条 */
+.custom-scrollbar::-webkit-scrollbar,
+.error-stack::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.error-stack::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.error-stack::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.error-stack::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Firefox */
+.custom-scrollbar,
+.error-stack {
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+
+/* 隐藏 summary 默认箭头 */
+details summary::-webkit-details-marker {
+  display: none;
+}
+details summary {
+  list-style: none;
 }
 </style>

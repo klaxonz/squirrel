@@ -171,6 +171,52 @@ class MetricsCollector:
         except Exception as e:
             logger.error(f"Failed to record histogram metric {name}: {e}")
     
+    def record_error(self, site: str, url: str, error_type: str, error_msg: str, max_records: int = 100) -> None:
+        """
+        记录错误详情到 Redis List，用于问题排查
+        
+        Args:
+            site: 站点名称
+            url: 出错的 URL
+            error_type: 错误类型
+            error_msg: 错误消息（可包含堆栈）
+            max_records: 最多保留的记录数
+        """
+        if not self.enabled:
+            return
+        
+        try:
+            import json
+            from datetime import datetime
+            
+            key = "metrics:errors:recent"
+            record = json.dumps({
+                "time": datetime.now().isoformat(),
+                "site": site,
+                "url": url,
+                "type": error_type,
+                "msg": error_msg[:2000]  # 保留更多内容以包含堆栈
+            })
+            
+            # LPUSH + LTRIM 保持最新的 N 条记录
+            self.redis.lpush(key, record)
+            self.redis.ltrim(key, 0, max_records - 1)
+            self.redis.expire(key, 86400)  # 24小时过期
+            
+        except Exception as e:
+            logger.error(f"Failed to record error detail: {e}")
+    
+    def get_recent_errors(self, limit: int = 50) -> list:
+        """获取最近的错误记录"""
+        try:
+            import json
+            key = "metrics:errors:recent"
+            records = self.redis.lrange(key, 0, limit - 1)
+            return [json.loads(r) for r in records]
+        except Exception as e:
+            logger.error(f"Failed to get recent errors: {e}")
+            return []
+
     @contextmanager
     def timer(self, name: str, tags: Optional[Dict[str, str]] = None):
         """

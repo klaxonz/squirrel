@@ -484,6 +484,9 @@ async def get_dashboard() -> Dict[str, Any]:
         
         health_status = "healthy" if health_score >= 80 else "degraded" if health_score >= 50 else "critical"
         
+        # 获取最近的错误详情
+        recent_errors = metrics.get_recent_errors(limit=20)
+        
         return {
             "timestamp": now.isoformat(),
             "health": {
@@ -494,7 +497,8 @@ async def get_dashboard() -> Dict[str, Any]:
             "crawl": crawl_stats,
             "subscriptions": subscription_stats,
             "queues": queue_stats,
-            "errors": error_stats
+            "errors": error_stats,
+            "recent_errors": recent_errors
         }
         
     except Exception as e:

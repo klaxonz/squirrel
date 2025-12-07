@@ -162,6 +162,7 @@ class ExtractionPipeline:
             )
         
         except Exception as e:
+            import traceback
             duration = context.get_duration()
             
             self.logger.error(
@@ -169,6 +170,22 @@ class ExtractionPipeline:
                 f"duration={duration:.2f}s, error={str(e)}",
                 exc_info=True
             )
+            
+            # 记录详细错误信息（包含堆栈）到 metrics
+            try:
+                from utils.metrics import metrics
+                from utils.url_helper import extract_top_level_domain
+                stack_trace = traceback.format_exc()
+                # 使用域名而非站点标识，保持一致性
+                site = extract_top_level_domain(context.task.url) if context.task.url else "unknown"
+                metrics.record_error(
+                    site=site,
+                    url=context.task.url,
+                    error_type=type(e).__name__,
+                    error_msg=f"{str(e)}\n\n{stack_trace}"
+                )
+            except Exception:
+                pass  # 不影响主流程
             
             return ExtractionResult(
                 success=False,

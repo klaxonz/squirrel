@@ -5,6 +5,7 @@
 使用新的Pipeline架构进行视频提取。
 """
 import logging
+import re
 from crawl import ExtractionTask, TaskPriority, ExtractionResult
 from schemas.video.dto.video_dto import VideoExtractDto
 from core.extraction.handlers.video_handler import VideoExtractionHandler
@@ -14,6 +15,41 @@ from utils.site_catalog import SiteCatalog
 from utils.metrics import metrics
 
 logger = logging.getLogger()
+
+
+def _extract_error_type(error_msg: str) -> str:
+    """从错误消息中提取有意义的错误类型
+    
+    错误消息格式可能是：
+    - "StageExecutionError: Critical stage 'extraction' failed: 140"
+    - "Unsupported URL: https://..."
+    - "Task processing exception: xxx, error: ..."
+    """
+    if not error_msg:
+        return "unknown"
+    
+    # 如果包含冒号，提取第一部分作为错误类型
+    if ":" in error_msg:
+        error_type = error_msg.split(":")[0].strip()
+        # 如果是常见的异常类型名称，直接返回
+        if error_type.endswith("Error") or error_type.endswith("Exception"):
+            return error_type
+        # 如果是描述性文本，尝试提取关键信息
+        if "stage" in error_msg.lower():
+            # 提取阶段名称，如 "extraction", "persistence"
+            match = re.search(r"stage\s*['\"](\w+)['\"]", error_msg.lower())
+            if match:
+                return f"Stage:{match.group(1)}"
+        if "unsupported" in error_msg.lower():
+            return "UnsupportedURL"
+        if "timeout" in error_msg.lower():
+            return "Timeout"
+        if "network" in error_msg.lower() or "connection" in error_msg.lower():
+            return "NetworkError"
+        return error_type[:50]  # 截断过长的类型名
+    
+    # 没有冒号，返回前50个字符
+    return error_msg[:50] if len(error_msg) > 50 else error_msg
 
 
 class VideoExtractor:
@@ -81,9 +117,11 @@ class VideoExtractor:
                 f"Video extraction failed: platform={domain}, url={params.url}, "
                 f"error={result.error}"
             )
-            error_type = result.error or "unknown"
+            # 从错误消息中提取错误类型
+            error_type = _extract_error_type(result.error)
             metrics.counter("crawl.tasks.total", tags={**tags, "status": "error"})
             metrics.counter("crawl.errors.total", tags={**tags, "error_type": error_type})
+            # 注：详细错误信息（含堆栈）已在 pipeline/base.py 中记录
         
         return result
     
