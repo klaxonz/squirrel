@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 from typing import List
 
 import httpx
@@ -92,7 +92,9 @@ class ThumbnailRefreshTask(BaseTask):
                     executor.submit(cls._process_single_video, video, existing_thumbnail_ids): video for video in rows
                 }
 
-                for future in as_completed(future_to_video):
+                done, _ = wait(future_to_video.keys(), return_when=ALL_COMPLETED)
+
+                for future in done:
                     video = future_to_video[future]
                     try:
                         future.result()
@@ -104,7 +106,6 @@ class ThumbnailRefreshTask(BaseTask):
                         )
 
                 last_id = rows[-1].id
-                time.sleep(1.0)
 
         logger.info("[ThumbnailRefreshTask] Finished refreshing video thumbnails")
 
