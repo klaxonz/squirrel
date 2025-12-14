@@ -5,7 +5,7 @@ import logging
 
 from crawl import (
     get_extractor_registry as get_sdk_registry,
-    IExtractor, ExtractionTask, ExtractionResult
+    Extractor, ExtractionTask, ExtractionResult
 )
 from utils.site_catalog import SiteCatalog
 from .factory import get_extractor_registry
@@ -14,17 +14,18 @@ from .factory import get_extractor_factory
 logger = logging.getLogger(__name__)
 
 
-class PluginExtractorAdapter(IExtractor):
+class PluginExtractorAdapter:
     """适配器：将插件的提取器适配到后端的接口"""
     
-    def __init__(self, plugin_extractor: IExtractor):
+    def __init__(self, plugin_extractor: Extractor):
         self.plugin_extractor = plugin_extractor
         self.site_name = plugin_extractor.site_name
         self.supported_domains = plugin_extractor.supported_domains
     
     @property
     def supported_sites(self) -> list[str]:
-        return self.plugin_extractor.supported_sites
+        # SDK v2.0 中 Extractor Protocol 没有 supported_sites，只有 site_name
+        return [self.plugin_extractor.site_name] if hasattr(self.plugin_extractor, 'site_name') else []
     
     def can_handle(self, url: str) -> bool:
         return self.plugin_extractor.can_handle(url)
@@ -56,15 +57,24 @@ class PluginBridge:
             site_catalog = SiteCatalog.get_catalog() or {}
 
             # 遍历所有注册的站点
-            for site_name in sdk_registry.get_all_sites():
-                extractor_class = sdk_registry.get_extractor_class(site_name)
-                if not extractor_class:
+            for site_name in sdk_registry.get_all_keys():
+                extractor_plugin = sdk_registry.get(site_name)
+                if not extractor_plugin:
                     continue
+                
+                # 如果是类，需要实例化；如果已经是实例，直接使用
+                if isinstance(extractor_plugin, type):
+                    extractor_class = extractor_plugin
+                else:
+                    # 已经是实例，需要获取其类
+                    extractor_class = type(extractor_plugin)
 
                 # 获取支持的域名（在当前循环中固化）
                 domains = []
                 if hasattr(extractor_class, 'supported_domains'):
                     domains = list(getattr(extractor_class, 'supported_domains', []) or [])
+                elif hasattr(extractor_plugin, 'supported_domains'):
+                    domains = list(getattr(extractor_plugin, 'supported_domains', []) or [])
 
                 catalog_entry = site_catalog.get(site_name.lower()) or {}
                 if catalog_entry.get("enabled") is False:
@@ -72,10 +82,19 @@ class PluginBridge:
                     continue
 
                 # 为当前循环的 extractor_class 生成独立的适配器类，避免闭包晚绑定问题
-                def _make_adapter(extractor_cls, configured_site_name: str, site_entry: dict):
-                    plugin_test_url = getattr(extractor_cls, "test_url", None)
-                    plugin_site_name = getattr(extractor_cls, "site_name", configured_site_name)
-                    plugin_domains = list(getattr(extractor_cls, "supported_domains", []) or domains)
+                def _make_adapter(extractor_cls_or_instance, configured_site_name: str, site_entry: dict):
+                    # 获取类或实例的属性
+                    if isinstance(extractor_cls_or_instance, type):
+                        plugin_test_url = getattr(extractor_cls_or_instance, "test_url", None)
+                        plugin_site_name = getattr(extractor_cls_or_instance, "site_name", configured_site_name)
+                        plugin_domains = list(getattr(extractor_cls_or_instance, "supported_domains", []) or domains)
+                        cls_name = extractor_cls_or_instance.__name__
+                    else:
+                        plugin_test_url = getattr(extractor_cls_or_instance, "test_url", None)
+                        plugin_site_name = getattr(extractor_cls_or_instance, "site_name", configured_site_name)
+                        plugin_domains = list(getattr(extractor_cls_or_instance, "supported_domains", []) or domains)
+                        cls_name = type(extractor_cls_or_instance).__name__
+                    
                     override_test_url = site_entry.get("test_url") if isinstance(site_entry, dict) else None
 
                     class AdapterClass(PluginExtractorAdapter):
@@ -84,13 +103,17 @@ class PluginBridge:
                         supported_domains = plugin_domains
 
                         def __init__(self):
-                            plugin_instance = extractor_cls()
+                            # 如果已经是实例，直接使用；否则实例化
+                            if isinstance(extractor_cls_or_instance, type):
+                                plugin_instance = extractor_cls_or_instance()
+                            else:
+                                plugin_instance = extractor_cls_or_instance
                             super().__init__(plugin_instance)
 
-                    AdapterClass.__name__ = f"{extractor_cls.__name__}Adapter"
+                    AdapterClass.__name__ = f"{cls_name}Adapter"
                     return AdapterClass
 
-                AdapterClass = _make_adapter(extractor_class, site_name, catalog_entry)
+                AdapterClass = _make_adapter(extractor_plugin, site_name, catalog_entry)
 
                 backend_registry.register(site_name, AdapterClass, domains or AdapterClass.supported_domains or [])
                 logger.info(f"已桥接插件提取器: {site_name}, 域名: {domains}")

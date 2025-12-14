@@ -7,7 +7,8 @@ from sqlalchemy import update
 from core.cache import get_distributed_lock
 from core.config import settings
 from core.database import get_session
-from crawl import SubscriptionFactory
+from crawl import get_subscription_registry, Subscription
+from urllib.parse import urlparse
 from models.subscription import Subscription
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, video_service
@@ -64,7 +65,17 @@ class DefaultUpdateStrategy(UpdateStrategy):
     
     def fetch_videos(self, request: SubscriptionUpdateRequest) -> List[str]:
         """获取视频列表"""
-        subscribe_channel = SubscriptionFactory.create_subscription(request.url)
+        # 使用新的注册表 API 创建 Subscription
+        subscription_registry = get_subscription_registry()
+        parsed_url = urlparse(request.url)
+        domain = parsed_url.netloc.lower().split(':')[0]
+        subscription_key = subscription_registry.get_by_domain(domain)
+        if not subscription_key:
+            raise ValueError(f"No subscription handler found for domain: {domain}")
+        subscription_cls = subscription_registry.get(subscription_key)
+        if not subscription_cls or not isinstance(subscription_cls, type):
+            raise ValueError(f"Invalid subscription class for key: {subscription_key}")
+        subscribe_channel: Subscription = subscription_cls(url=request.url)
         
         # 直接根据 request.mode 判断是否全量提取
         is_full_update = request.mode == UpdateMode.FULL

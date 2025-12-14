@@ -72,36 +72,36 @@ class SiteCatalog:
     @classmethod
     def _build_from_registries(cls) -> Dict[str, dict]:
         # best-effort fallback: aggregate domains from various registries
-        registries = []
+        domains: Set[str] = set()
         try:
             from crawl import (
-                HandlerRegistry,
-                MpdRegistry,
-                ProxyRegistry,
-                MetaRegistry,
-                SubtitlesRegistry,
-                SubscriptionRegistry,
-                IdExtractorRegistry,
+                get_extractor_registry,
+                get_handler_registry,
+                get_mpd_registry,
+                get_proxy_registry,
+                get_subtitles_registry,
+                get_subscription_registry,
+                get_id_extractor_registry,
             )
 
-            registries.extend([
-                HandlerRegistry,
-                MpdRegistry,
-                ProxyRegistry,
-                MetaRegistry,
-                SubtitlesRegistry,
-                SubscriptionRegistry,
-                IdExtractorRegistry,
-            ])
+            # 收集所有注册表的域名
+            registries = [
+                get_extractor_registry(),
+                get_handler_registry(),
+                get_mpd_registry(),
+                get_proxy_registry(),
+                get_subtitles_registry(),
+                get_subscription_registry(),
+                get_id_extractor_registry(),
+            ]
+            
+            for reg in registries:
+                try:
+                    domains.update(reg.get_all_domains())
+                except Exception:
+                    pass
         except Exception:
             pass
-
-        domains: Set[str] = set()
-        for reg in registries:
-            try:
-                domains.update(reg.get_supported_domains())
-            except Exception:
-                pass
 
         # Group by top-level host second-level e.g. youtube.com
         catalog: Dict[str, dict] = {}

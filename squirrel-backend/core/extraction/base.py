@@ -4,12 +4,12 @@ Base extraction implementations.
 import logging
 from typing import List, Optional
 from urllib.parse import urlparse
-from crawl import IExtractor, ExtractionTask, ExtractionResult, ITaskProcessor, IResultHandler
+from crawl import Extractor, ExtractionTask, ExtractionResult, TaskProcessor, ResultHandler
 
 logger = logging.getLogger()
 
 
-class BaseExtractor(IExtractor):
+class BaseExtractor:
     """Base extractor implementation."""
     
     def __init__(self, site_name: str, supported_domains: List[str]):
@@ -62,10 +62,10 @@ class BaseExtractor(IExtractor):
         raise NotImplementedError("Subclasses must implement _do_extract.")
 
 
-class BaseTaskProcessor(ITaskProcessor):
+class BaseTaskProcessor:
     """Base task processor."""
     
-    def __init__(self, extractor: IExtractor, result_handler: IResultHandler):
+    def __init__(self, extractor: Extractor, result_handler: ResultHandler):
         self.extractor = extractor
         self.result_handler = result_handler
     
@@ -81,11 +81,11 @@ class BaseTaskProcessor(ITaskProcessor):
             raise ValueError("No available extractor found.")
         return self._process_with_extractor(extractor, task)
 
-    def _get_extractor_for_task(self, task: ExtractionTask) -> Optional[IExtractor]:
+    def _get_extractor_for_task(self, task: ExtractionTask) -> Optional[Extractor]:
         """Return the extractor to use for the task; defaults to the provided extractor."""
         return self.extractor
 
-    def _process_with_extractor(self, extractor: IExtractor, task: ExtractionTask) -> ExtractionResult:
+    def _process_with_extractor(self, extractor: Extractor, task: ExtractionTask) -> ExtractionResult:
         """Process the task with the specified extractor."""
         if extractor is None:
             raise ValueError("Extractor not configured.")
@@ -118,7 +118,7 @@ class BaseTaskProcessor(ITaskProcessor):
             return result
 
 
-class BaseResultHandler(IResultHandler):
+class BaseResultHandler:
     """Base result handler."""
     
     def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Any, Dict
 from datetime import datetime
 
-from crawl import ExtractionTask, Video
+from crawl import ExtractionTask, VideoMeta
 from ..dto import VideoDTO
 
 
@@ -22,7 +22,7 @@ class PipelineContext:
     task: ExtractionTask
     
     # ========== 中间数据（各Stage填充） ==========
-    plugin_video: Optional[Video] = None              # ExtractionStage填充
+    plugin_video: Optional[VideoMeta] = None              # ExtractionStage填充
     video_dto: Optional[VideoDTO] = None              # ValidationStage填充
     video_model: Optional[Any] = None                 # PersistenceStage填充（VideoModel）
     

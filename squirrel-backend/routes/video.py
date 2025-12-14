@@ -14,7 +14,7 @@ from services.site_catalog_service import SiteCatalogService
 from typing import List
 from utils.site_catalog import SiteCatalog
 from core.site_config_manager import get_effective_site_catalog
-from crawl import VideoFactory, DownloaderFactory, ProxyRegistry, SubtitlesRegistry, MpdRegistry
+from crawl import DownloaderFactory, get_proxy_registry, get_subtitles_registry, get_mpd_registry
 from utils.jwt_helper import get_current_user
 from utils.url_helper import extract_top_level_domain, get_site_from_url
 from common.site_constants import SITE_META_OFFLINE_THUMBNAILS_DISPLAY
@@ -211,7 +211,7 @@ def play_video(request: Request, video_id: int):
     video = video_service.get_video_by_id(video_id)
     downloader = DownloaderFactory.create_downloader(video.url)
     video_info = downloader.get_video_info()
-    video = VideoFactory.create_video(video.url, video_info)
+    # VideoFactory 在 SDK v2.0 中已移除，直接使用 video 对象
     subscription_video = subscription_video_service.get_subscription_video_by_video_id(video.id)
     subscription = subscription_service.get_subscription_by_id(subscription_video.subscription_id)
     output_dir = download_config.get_download_full_path(subscription.name, video.season)
@@ -227,11 +227,16 @@ async def proxy_video(domain: str, url: str, request: Request):
     """代理视频文件，用于解决跨域问题"""
     from core.streaming.proxy import VideoProxy
     
-    proxy_cls = ProxyRegistry.get_proxy_class(domain)
-    if not proxy_cls:
-        proxy = VideoProxy(request, domain=domain)
+    proxy_registry = get_proxy_registry()
+    proxy_key = proxy_registry.get_by_domain(domain)
+    if proxy_key:
+        proxy_cls = proxy_registry.get(proxy_key)
+        if proxy_cls and isinstance(proxy_cls, type):
+            proxy = proxy_cls(request)
+        else:
+            proxy = VideoProxy(request, domain=domain)
     else:
-        proxy = proxy_cls(request)
+        proxy = VideoProxy(request, domain=domain)
     return await proxy.handle_stream(url)
 
 
@@ -250,8 +255,12 @@ def get_video_subtitles(
         raise HTTPException(status_code=404, detail="Video not found")
 
     try:
-        subtitles_provider_cls = SubtitlesRegistry.get_provider_class(extract_top_level_domain(video.url))
-        if not subtitles_provider_cls:
+        subtitles_registry = get_subtitles_registry()
+        subtitles_key = subtitles_registry.get_by_domain(extract_top_level_domain(video.url))
+        if not subtitles_key:
+            raise HTTPException(status_code=400, detail="Subtitles provider not available for this domain")
+        subtitles_provider_cls = subtitles_registry.get(subtitles_key)
+        if not subtitles_provider_cls or not isinstance(subtitles_provider_cls, type):
             raise HTTPException(status_code=400, detail="Subtitles provider not available for this domain")
         provider = subtitles_provider_cls()
         srt_text, filename = provider.get_subtitles(video, lang, fmt)
@@ -287,8 +296,12 @@ def get_video_mpd(
         raise HTTPException(status_code=404, detail="Video not found")
 
     try:
-        mpd_builder_cls = MpdRegistry.get_mpd_builder_class(extract_top_level_domain(video.url))
-        if not mpd_builder_cls:
+        mpd_registry = get_mpd_registry()
+        mpd_key = mpd_registry.get_by_domain(extract_top_level_domain(video.url))
+        if not mpd_key:
+            raise HTTPException(status_code=400, detail="MPD builder not available for this domain")
+        mpd_builder_cls = mpd_registry.get(mpd_key)
+        if not mpd_builder_cls or not isinstance(mpd_builder_cls, type):
             raise HTTPException(status_code=400, detail="MPD builder not available for this domain")
         mpd_xml = mpd_builder_cls().build_mpd(video)
         if not mpd_xml:

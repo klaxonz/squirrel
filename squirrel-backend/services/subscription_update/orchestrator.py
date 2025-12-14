@@ -81,14 +81,15 @@ class SubscriptionOrchestrator:
     
     def _resolve_site(self, url: str) -> str:
         """解析站点名称"""
-        from crawl import MetaRegistry
+        from crawl import get_extractor_registry
         
         domain = url_helper.extract_top_level_domain(url)
         
-        # 检查是否有注册的插件支持该域名
-        if MetaRegistry.get_meta_class(domain):
-            # 从域名提取站点名称 (如 'bilibili.com' -> 'bilibili')
-            return domain.split('.')[0] if '.' in domain else domain
+        # 检查是否有注册的提取器支持该域名
+        extractor_registry = get_extractor_registry()
+        site_key = extractor_registry.get_by_domain(domain)
+        if site_key:
+            return site_key
         
         return "default"
     

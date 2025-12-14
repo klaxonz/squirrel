@@ -4,7 +4,7 @@ ExtractionStage - 从插件提取视频数据
 import logging
 from typing import Optional
 
-from crawl import IExtractor
+from crawl import Extractor
 from ..base import PipelineStage
 from ..context import PipelineContext
 from ...exceptions import ExtractionError
@@ -71,7 +71,7 @@ class ExtractionStage(PipelineStage):
         
         return context
     
-    def _get_extractor(self, url: str) -> Optional[IExtractor]:
+    def _get_extractor(self, url: str) -> Optional[Extractor]:
         """获取提取器"""
         try:
             return self.extractor_factory.create_extractor(url)

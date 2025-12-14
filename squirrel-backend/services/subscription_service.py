@@ -226,13 +226,24 @@ def handle_subscribe_request(url: str, user_id: int) -> Subscription:
     Returns:
         订阅对象
     """
-    from crawl import SubscriptionFactory
+    from crawl import get_subscription_registry, Subscription
+    from urllib.parse import urlparse
 
     existing_subscription = get_active_user_subscription_by_url(user_id=user_id, url=url)
     if existing_subscription:
         return existing_subscription
 
-    subscribe_channel = SubscriptionFactory.create_subscription(url)
+    # 使用新的注册表 API 创建 Subscription
+    subscription_registry = get_subscription_registry()
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc.lower().split(':')[0]
+    subscription_key = subscription_registry.get_by_domain(domain)
+    if not subscription_key:
+        raise ValueError(f"No subscription handler found for domain: {domain}")
+    subscription_cls = subscription_registry.get(subscription_key)
+    if not subscription_cls or not isinstance(subscription_cls, type):
+        raise ValueError(f"Invalid subscription class for key: {subscription_key}")
+    subscribe_channel: Subscription = subscription_cls(url=url)
     subscribe_info = subscribe_channel.get_subscribe_info()
 
     subscription = get_subscription_by_url_and_name(url, subscribe_info.name)
@@ -298,20 +309,24 @@ def preview_user_subscriptions(site_name: str) -> Dict[str, Any]:
         }
     """
     import logging
-    from crawl import get_importer_registry, SubscriptionFactory
+    from crawl import get_importer_registry, get_subscription_registry, Subscription
+    from urllib.parse import urlparse
     
     logger = logging.getLogger()
     
     try:
         # 获取对应站点的 importer
         importer_registry = get_importer_registry()
-        importer_class = importer_registry.get_by_site(site_name)
+        importer_plugin = importer_registry.get(site_name)
         
-        if not importer_class:
+        if not importer_plugin:
             raise ValueError(f"No importer found for site: {site_name}")
         
         # 创建 importer 实例并获取订阅列表
-        importer = importer_class()
+        if isinstance(importer_plugin, type):
+            importer = importer_plugin()
+        else:
+            importer = importer_plugin
         subscription_urls = importer.get_user_subscriptions()
         
         logger.info(f"Found {len(subscription_urls)} subscriptions from {site_name} for preview")
@@ -398,13 +413,16 @@ def import_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
     try:
         # 获取对应站点的 importer
         importer_registry = get_importer_registry()
-        importer_class = importer_registry.get_by_site(site_name)
+        importer_plugin = importer_registry.get(site_name)
         
-        if not importer_class:
+        if not importer_plugin:
             raise ValueError(f"No importer found for site: {site_name}")
         
         # 创建 importer 实例并获取订阅列表
-        importer = importer_class()
+        if isinstance(importer_plugin, type):
+            importer = importer_plugin()
+        else:
+            importer = importer_plugin
         subscription_urls = importer.get_user_subscriptions()
         
         logger.info(f"Found {len(subscription_urls)} subscriptions from {site_name}")

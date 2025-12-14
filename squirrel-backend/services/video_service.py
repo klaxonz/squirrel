@@ -6,7 +6,7 @@ from typing import List, Tuple, Optional, Dict
 from sqlalchemy import select, func, and_, or_
 from core.database import get_session
 from core.exceptions.video_exceptions import UnsupportedDomainError
-from crawl import VideoUrlHandler, HandlerRegistry
+from crawl import VideoUrlHandler, get_handler_registry
 
 from models.creator import Creator
 from models.links import VideoCreator, SubscriptionVideo, UserSubscription
@@ -158,10 +158,18 @@ def get_video_url(video_id: int) -> VideoUrlDto:
             except Exception:
                 pass
 
-    handler_cls = HandlerRegistry.get_handler(video_domain)
-    if not handler_cls:
+    handler_registry = get_handler_registry()
+    handler_key = handler_registry.get_by_domain(video_domain)
+    if not handler_key:
         raise UnsupportedDomainError(f"No handler found for domain: {video_domain}")
-    handler: VideoUrlHandler = handler_cls()
+    handler_plugin = handler_registry.get(handler_key)
+    if not handler_plugin:
+        raise UnsupportedDomainError(f"No handler found for domain: {video_domain}")
+    # handler_plugin 可能是类或实例
+    if isinstance(handler_plugin, type):
+        handler: VideoUrlHandler = handler_plugin()
+    else:
+        handler: VideoUrlHandler = handler_plugin
     result = handler.get_video_url(video)
 
     if not isinstance(result, dict):

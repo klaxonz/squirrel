@@ -4,7 +4,7 @@
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
-from crawl import ExtractionTask, ITaskProcessor, TaskPriority, ExtractionResult
+from crawl import ExtractionTask, TaskProcessor, TaskPriority, ExtractionResult
 from .factory import get_extractor_factory
 
 logger = logging.getLogger()
@@ -83,9 +83,9 @@ class TaskManager:
             queue_mapping: 队列映射（已废弃，保留用于兼容性）
         """
         self.router = TaskRouter(queue_mapping or {})
-        self._processors: List[ITaskProcessor] = []
+        self._processors: List[TaskProcessor] = []
 
-    def add_processor(self, processor: ITaskProcessor) -> None:
+    def add_processor(self, processor: TaskProcessor) -> None:
         """添加任务处理器"""
         self._processors.append(processor)
 

@@ -4,7 +4,7 @@
 import logging
 from typing import Dict, Optional, List, Type
 from urllib.parse import urlparse
-from crawl import IExtractor
+from crawl import Extractor
 from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger()
@@ -14,11 +14,11 @@ class ExtractorRegistry:
     """提取器注册表"""
     
     def __init__(self):
-        self._extractors: Dict[str, Type[IExtractor]] = {}
+        self._extractors: Dict[str, Type[Extractor]] = {}
         self._domain_mapping: Dict[str, str] = {}
         self._test_urls: Dict[str, str] = {}  # 存储每个站点的测试URL
     
-    def register(self, site_name: str, extractor_class: Type[IExtractor], domains: List[str]) -> None:
+    def register(self, site_name: str, extractor_class: Type[Extractor], domains: List[str]) -> None:
         """注册提取器"""
         if site_name in self._extractors:
             logger.warning(f"提取器已存在，将被覆盖: {site_name}")
@@ -46,7 +46,7 @@ class ExtractorRegistry:
         else:
             logger.info(f"✗ 注册提取器: {site_name}, 支持域名: {domains} (无测试URL)")
     
-    def get_extractor_class(self, site_name: str) -> Optional[Type[IExtractor]]:
+    def get_extractor_class(self, site_name: str) -> Optional[Type[Extractor]]:
         """根据网站名获取提取器类"""
         return self._extractors.get(site_name)
     
@@ -77,9 +77,9 @@ class ExtractorFactory:
     
     def __init__(self, registry: ExtractorRegistry):
         self.registry = registry
-        self._instances: Dict[str, IExtractor] = {}
+        self._instances: Dict[str, Extractor] = {}
     
-    def create_extractor(self, url: str) -> Optional[IExtractor]:
+    def create_extractor(self, url: str) -> Optional[Extractor]:
         """根据URL创建提取器实例"""
         try:
             parsed = urlparse(url)
@@ -120,7 +120,7 @@ class ExtractorFactory:
             logger.error(f"创建提取器失败: {url}, error: {e}")
             return None
     
-    def get_extractor_by_site(self, site_name: str) -> Optional[IExtractor]:
+    def get_extractor_by_site(self, site_name: str) -> Optional[Extractor]:
         """根据网站名获取提取器实例"""
         if not SiteCatalog.is_site_enabled(site=site_name):
             logger.info(f"站点已禁用，跳过提取器获取: {site_name}")
@@ -145,7 +145,7 @@ _global_factory = ExtractorFactory(_global_registry)
 
 def register_extractor(site_name: str, domains: List[str]):
     """装饰器：注册提取器"""
-    def decorator(extractor_class: Type[IExtractor]):
+    def decorator(extractor_class: Type[Extractor]):
         _global_registry.register(site_name, extractor_class, domains)
         return extractor_class
     return decorator

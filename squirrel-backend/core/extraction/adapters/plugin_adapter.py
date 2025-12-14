@@ -10,7 +10,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-from crawl import Video, Actor
+from crawl import VideoMeta, ActorMeta
 from ..dto import VideoDTO, ActorDTO
 from ..exceptions import DataTransformError
 
@@ -31,7 +31,7 @@ class PluginDataAdapter:
     def __init__(self):
         self.logger = logger
     
-    def adapt(self, video: Video, site_name: str) -> VideoDTO:
+    def adapt(self, video: VideoMeta, site_name: str) -> VideoDTO:
         """
         将插件的Video对象转换为VideoDTO
         
@@ -97,82 +97,67 @@ class PluginDataAdapter:
                 }
             ) from e
     
-    def _extract_base_fields(self, video: Video, site_name: str) -> Dict[str, Any]:
+    def _extract_base_fields(self, video: VideoMeta, site_name: str) -> Dict[str, Any]:
         """
         提取基础字段
         
         Args:
-            video: Video对象
+            video: VideoMeta对象
             site_name: 站点名称
             
         Returns:
             基础字段字典
         """
-        # 只添加实际存在且不为None的字段
+        # VideoMeta 的基础字段
         base_data = {
             'url': video.url,
             'title': video.title or '',
             'site_name': site_name,
         }
         
-        # 可选字段 - 只添加存在且有效的
-        if hasattr(video, 'thumbnail'):
-            thumbnail = video.thumbnail
-            if thumbnail is not None and isinstance(thumbnail, str):
-                base_data['thumbnail'] = thumbnail
+        # 可选字段
+        if video.thumbnail is not None:
+            base_data['thumbnail'] = video.thumbnail
         
-        if hasattr(video, 'duration'):
-            duration = video.duration
-            if duration is not None and isinstance(duration, int):
-                base_data['duration'] = duration
+        if video.duration is not None:
+            base_data['duration'] = video.duration
         
-        if hasattr(video, 'description'):
-            description = video.description
-            if description is not None and isinstance(description, str):
-                base_data['description'] = description
-        
-        if hasattr(video, 'tags'):
-            tags = video.tags
-            if tags is not None and isinstance(tags, list):
-                base_data['tags'] = tags
+        # 从 extra_data 中提取额外字段（如 description, tags）
+        if video.extra_data:
+            if 'description' in video.extra_data:
+                base_data['description'] = video.extra_data['description']
+            if 'tags' in video.extra_data:
+                base_data['tags'] = video.extra_data['tags']
         
         return base_data
     
-    def _extract_publish_date(self, video: Video) -> Optional[datetime]:
+    def _extract_publish_date(self, video: VideoMeta) -> Optional[datetime]:
         """
         提取发布时间（兼容多种格式）
         
         Args:
-            video: Video对象
+            video: VideoMeta对象
             
         Returns:
             datetime对象或None
         """
-        # 优先使用publish_date
-        if hasattr(video, 'publish_date'):
-            publish_date = video.publish_date
-            if publish_date is not None and isinstance(publish_date, datetime):
-                return publish_date
-        
-        # 回退到upload_date
-        if hasattr(video, 'upload_date'):
-            upload_date = video.upload_date
-            if upload_date is not None and isinstance(upload_date, datetime):
-                return upload_date
+        # VideoMeta 的 publish_date 字段
+        if video.publish_date is not None:
+            if isinstance(video.publish_date, datetime):
+                return video.publish_date
+            # 如果是字符串或整数，尝试转换（这里可能需要根据实际情况调整）
+            # 暂时只返回 datetime 类型
         
         return None
     
-    def _extract_actors(self, video: Video) -> List[ActorDTO]:
+    def _extract_actors(self, video: VideoMeta) -> List[ActorDTO]:
         """
         提取actors信息
         
-        **关键改进：**
-        - 主动调用video.actors属性
-        - 可能触发HTTP请求（但在Adapter阶段，不在后端事务中）
-        - 如果失败，记录警告但不中断流程
+        VideoMeta 中 actors 可能在 extra_data 中
         
         Args:
-            video: Video对象
+            video: VideoMeta对象
             
         Returns:
             ActorDTO列表
@@ -180,13 +165,22 @@ class PluginDataAdapter:
         actors = []
         
         try:
-            # 访问actors属性（可能触发懒加载/HTTP请求）
-            if hasattr(video, 'actors'):
-                raw_actors = video.actors
+            # 从 extra_data 中获取 actors
+            if video.extra_data and 'actors' in video.extra_data:
+                raw_actors = video.extra_data['actors']
                 
                 if raw_actors and isinstance(raw_actors, list):
                     for actor in raw_actors:
                         try:
+                            # 如果是字典，转换为 ActorMeta
+                            if isinstance(actor, dict):
+                                actor = ActorMeta(
+                                    url=actor.get('url', ''),
+                                    name=actor.get('name'),
+                                    avatar=actor.get('avatar'),
+                                    extra_data=actor.get('extra_data')
+                                )
+                            
                             actor_dto = self._convert_actor(actor)
                             if actor_dto:
                                 actors.append(actor_dto)
@@ -194,24 +188,24 @@ class PluginDataAdapter:
                             self.logger.warning(
                                 f"Failed to convert actor: {e}",
                                 extra={
-                                    'video_url': getattr(video, 'url', None),
-                                    'actor_url': getattr(actor, 'url', None)
+                                    'video_url': video.url,
+                                    'actor': str(actor)
                                 }
                             )
         
         except Exception as e:
             # actors获取失败不应该导致整个提取失败
             self.logger.warning(
-                f"Failed to extract actors: {getattr(video, 'url', 'unknown')}, error: {e}",
+                f"Failed to extract actors: {video.url}, error: {e}",
                 extra={
-                    'url': getattr(video, 'url', None),
+                    'url': video.url,
                     'error': str(e)
                 }
             )
         
         return actors
     
-    def _convert_actor(self, actor: Actor) -> Optional[ActorDTO]:
+    def _convert_actor(self, actor: ActorMeta) -> Optional[ActorDTO]:
         """
         转换单个Actor对象为ActorDTO
         
@@ -221,7 +215,7 @@ class PluginDataAdapter:
         Returns:
             ActorDTO或None
         """
-        if not isinstance(actor, Actor):
+        if not isinstance(actor, ActorMeta):
             return None
         
         # 确保有url和name
@@ -237,33 +231,24 @@ class PluginDataAdapter:
             avatar=getattr(actor, 'avatar', None)
         )
     
-    def _extract_raw_data(self, video: Video) -> Dict[str, Any]:
+    def _extract_raw_data(self, video: VideoMeta) -> Dict[str, Any]:
         """
         提取原始数据（用于调试和审计）
         
         Args:
-            video: Video对象
+            video: VideoMeta对象
             
         Returns:
             原始数据字典
         """
         raw = {}
         
-        # 保存base_info（如果存在）
-        if hasattr(video, '_base_info'):
-            try:
-                base_info = video._base_info
-                if isinstance(base_info, dict):
-                    # 只保存可序列化的数据
-                    raw['base_info'] = {
-                        k: v for k, v in base_info.items()
-                        if isinstance(v, (str, int, float, bool, type(None)))
-                    }
-            except Exception as e:
-                self.logger.debug(f"Failed to extract base_info: {e}")
-        
-        # 保存其他元数据
-        if hasattr(video, 'DOMAIN'):
-            raw['domain'] = video.DOMAIN
+        # 保存 extra_data（如果存在）
+        if video.extra_data:
+            # 只保存可序列化的数据
+            raw['extra_data'] = {
+                k: v for k, v in video.extra_data.items()
+                if isinstance(v, (str, int, float, bool, type(None), list, dict))
+            }
         
         return raw
