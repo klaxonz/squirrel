@@ -1,7 +1,6 @@
 """Bilibili crawl plugin for Squirrel."""
 
 from .subscription import BilibiliSubscription  # noqa: F401
-from .meta import BilibiliVideo  # noqa: F401
 from .handler import BilibiliHandler  # noqa: F401
 from .mpd import BilibiliMpdBuilder  # noqa: F401
 from .subtitles import BilibiliSubtitlesProvider  # noqa: F401

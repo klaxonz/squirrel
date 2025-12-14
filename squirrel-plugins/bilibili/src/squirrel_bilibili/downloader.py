@@ -1,28 +1,39 @@
 from __future__ import annotations
 
 from typing import Any, Optional
-from datetime import datetime
 
-from crawl import BaseDownloader, register_downloader
+from crawl import Downloader, register_downloader
 from .api_client import fetch_video_info, build_base_info
 
 
 @register_downloader
-class BilibiliDownloader(BaseDownloader):
+class BilibiliDownloader:
+    """Bilibili下载器，实现Downloader Protocol"""
+    
+    domains = ['bilibili.com']
     domain = 'bilibili.com'
+    
+    def __init__(self, url: str):
+        self.url = url
+        self.domain = self.domains[0]
 
     def get_video_info(self, queue_name: Optional[str] = None) -> Optional[dict]:
         try:
             info, context, page_info = fetch_video_info(self.url)
             base_info = build_base_info(info, context, page_info)
-            publish_date = base_info.get("publish_date")
-            if isinstance(publish_date, (int, float)):
-                base_info["publish_date"] = datetime.fromtimestamp(publish_date)
             return base_info
         except Exception:
             return None
 
-    def download(self, subscription, video, task, queue_thread_name: str, video_info=None):  # pragma: no cover
+    def download(
+        self,
+        subscription: Any,
+        video: Any,
+        task: Any,
+        queue_thread_name: str,
+        video_info: Optional[Any] = None,
+    ) -> Any:
+        """执行下载工作流"""
         raise NotImplementedError("Download handled by backend download service")
 
 

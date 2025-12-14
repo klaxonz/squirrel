@@ -8,11 +8,13 @@ from typing import Tuple
 
 from yt_dlp import YoutubeDL
 
-from crawl import register_subtitles, BaseSubtitlesProvider
+from crawl import register_subtitles, SubtitlesProvider
 
 
 @register_subtitles
-class BilibiliSubtitlesProvider(BaseSubtitlesProvider):
+class BilibiliSubtitlesProvider:
+    """Bilibili字幕提供者，实现SubtitlesProvider Protocol"""
+    
     domain = 'bilibili.com'
 
     def get_subtitles(self, video, lang: str, fmt: str = 'srt') -> Tuple[str, str]:

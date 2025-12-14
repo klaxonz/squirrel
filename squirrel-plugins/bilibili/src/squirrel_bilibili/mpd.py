@@ -3,12 +3,14 @@ from __future__ import annotations
 from xml.etree import ElementTree as ET
 from urllib.parse import quote
 
-from crawl import BaseMpdBuilder, register_mpd
+from crawl import MpdBuilder, register_mpd
 from .handler import get_dash_data, _base_url
 
 
 @register_mpd
-class BilibiliMpdBuilder(BaseMpdBuilder):
+class BilibiliMpdBuilder:
+    """Bilibili MPD构建器，实现MpdBuilder Protocol"""
+    
     domain = 'bilibili.com'
 
     def build_mpd(self, video) -> str:

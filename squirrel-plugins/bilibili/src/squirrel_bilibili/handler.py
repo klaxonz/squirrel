@@ -1,17 +1,12 @@
 from __future__ import annotations
 
 import logging
-import re
-from abc import ABC
-from typing import List, Optional
+from typing import Any, List, Optional
 from urllib.parse import quote
 
 from crawl import (
     VideoUrlHandler,
     register_handler,
-    IdExtractor,
-    register_id_extractor,
-    Video,
 )
 from .api_client import fetch_play_data
 
@@ -33,10 +28,12 @@ def get_dash_data(url: str) -> dict:
 
 
 @register_handler
-class BilibiliHandler(VideoUrlHandler, ABC):
+class BilibiliHandler:
+    """Bilibili视频URL处理器，实现VideoUrlHandler Protocol"""
+    
     domain = 'bilibili.com'
 
-    def get_video_url(self, video: Video) -> dict:
+    def get_video_url(self, video: Any) -> dict:
         proxy_prefix_path = f"/api/video/proxy?domain=bilibili.com"
 
         dash_data = get_dash_data(video.url)
@@ -150,17 +147,5 @@ class BilibiliHandler(VideoUrlHandler, ABC):
             'mpd_url': f"/api/video/mpd?video_id={video.id}" if dash_data else None,
             'qualities': qualities or None,
         }
-
-
-@register_id_extractor
-class BilibiliIdExtractor(IdExtractor):
-    domain = 'bilibili.com'
-
-    def extract_id(self) -> str:
-        pattern = r'BV[0-9A-Za-z]+'
-        match = re.search(pattern, self.url)
-        if match:
-            return match.group(0)
-        raise ValueError("Invalid url")
 
 

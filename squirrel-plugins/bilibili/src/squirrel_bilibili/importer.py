@@ -5,7 +5,7 @@ from typing import List
 
 from bilibili_api import user, sync
 
-from crawl import IUserSubscriptionImporter, register_user_subscription_importer
+from crawl import UserSubscriptionImporter, register_user_subscription_importer
 from .api_client import build_credential
 
 
@@ -14,7 +14,7 @@ SITE_SLUG = "bilibili"
 
 
 @register_user_subscription_importer("bilibili")
-class BilibiliUserSubscriptionImporter(IUserSubscriptionImporter):
+class BilibiliUserSubscriptionImporter:
     """
     从 Bilibili 导入用户的关注列表
     需要登录 cookies 才能获取
