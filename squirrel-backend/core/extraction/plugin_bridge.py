@@ -9,6 +9,7 @@ from crawl import (
 )
 from utils.site_catalog import SiteCatalog
 from .factory import get_extractor_registry
+from .factory import get_extractor_factory
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,8 @@ class PluginBridge:
             # 获取SDK中注册的提取器
             sdk_registry = get_sdk_registry()
             backend_registry = get_extractor_registry()
+            backend_registry.clear()
+            get_extractor_factory().clear_cache()
             site_catalog = SiteCatalog.get_catalog() or {}
 
             # 遍历所有注册的站点

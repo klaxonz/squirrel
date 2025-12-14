@@ -254,3 +254,17 @@ def register_login_checker(site_name: str):
         get_login_checker_registry().register(site_name, func)
         return func
     return decorator
+
+
+def reset_registries() -> None:
+    global _registry_singleton
+    global _factory_singleton
+    global _subscription_registry_singleton
+    global _importer_registry_singleton
+    global _login_checker_registry_singleton
+
+    _registry_singleton = None
+    _factory_singleton = None
+    _subscription_registry_singleton = None
+    _importer_registry_singleton = None
+    _login_checker_registry_singleton = None

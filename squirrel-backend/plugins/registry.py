@@ -11,6 +11,10 @@ logger = logging.getLogger()
 _registry: Dict[str, Type[Plugin]] = {}
 
 
+def reset_registry() -> None:
+    _registry.clear()
+
+
 def register_plugin(cls: Type[Plugin]) -> Type[Plugin]:
     """Class decorator to register a plugin class by its `name` attribute."""
     try:

@@ -67,46 +67,24 @@ class PluginService:
                     pass
                 with open(tmp_zip, "wb") as f:
                     shutil.copyfileobj(file_obj, f)
-                # extract and find top-level directory
                 import zipfile
-                with zipfile.ZipFile(tmp_zip, 'r') as zf:
-                    # Find top-level directory from zip contents
+                with zipfile.ZipFile(tmp_zip, "r") as zf:
                     namelist = zf.namelist()
-                    logger.info(f"Zip contents: {namelist[:10]}")  # Log first 10 entries
-                    
-                    # Get top-level directories (handle both / and \ separators)
                     top_dirs = set()
                     for name in namelist:
-                        # Normalize path separators to /
-                        normalized = name.replace('\\', '/')
-                        parts = normalized.split('/')
-                        if parts[0] and parts[0] != '__MACOSX':
+                        normalized = name.replace("\\", "/")
+                        parts = normalized.split("/")
+                        if parts[0] and parts[0] != "__MACOSX":
                             top_dirs.add(parts[0])
-                    
-                    logger.info(f"Found top-level directories: {top_dirs}")
-                    
+
                     if not top_dirs:
-                        return False, f"Invalid plugin package: no top-level directory found"
-                    
+                        return False, "Invalid plugin package: no top-level directory found"
+
                     if len(top_dirs) > 1:
-                        return False, f"Invalid plugin package: multiple top-level directories: {top_dirs}"
-                    
+                        return False, f"Invalid plugin package: multiple top-level directories: {sorted(top_dirs)}"
+
                     plugin_name = top_dirs.pop()
-                    
-                    # Extract to temp directory with path normalization
-                    for member in zf.namelist():
-                        # Normalize Windows-style paths to Unix-style
-                        normalized_path = member.replace('\\', '/')
-                        target_path = Path(tmpdir) / normalized_path
-                        
-                        if member.endswith('/') or member.endswith('\\'):
-                            # Directory
-                            target_path.mkdir(parents=True, exist_ok=True)
-                        else:
-                            # File
-                            target_path.parent.mkdir(parents=True, exist_ok=True)
-                            with zf.open(member) as source, open(target_path, 'wb') as target:
-                                shutil.copyfileobj(source, target)
+                    PluginService._safe_extract(zf, Path(tmpdir))
                 
                 # Verify extracted directory
                 top = Path(tmpdir) / plugin_name
@@ -206,9 +184,9 @@ class PluginService:
     def _safe_extract(zf, dest_dir: Path) -> None:
         """Safely extract zip to dest_dir, preventing path traversal."""
         for member in zf.infolist():
-            name = member.filename
+            name = member.filename.replace("\\", "/")
             # skip absolute paths
-            if os.path.isabs(name):
+            if not name or os.path.isabs(name):
                 continue
             # normalize and ensure within dest_dir
             resolved = (dest_dir / name).resolve()

@@ -43,7 +43,7 @@ class QueueConfigManager:
             return
         
         try:
-            from crawl import get_extractor_registry
+            from core.extraction import get_extractor_registry
             registry = get_extractor_registry()
             
             # 从注册表获取所有站点和域名映射
@@ -60,6 +60,11 @@ class QueueConfigManager:
             
         except Exception as e:
             logger.error(f"Failed to initialize queue config: {e}")
+
+    def refresh(self):
+        self._domain_to_site.clear()
+        self._initialized = False
+        self.initialize()
     
     def get_supported_sites(self) -> List[str]:
         """获取所有支持的站点"""
@@ -129,5 +134,9 @@ def ensure_queue_config_initialized():
     config = get_queue_config()
     if not config._initialized:
         config.initialize()
+
+
+def refresh_queue_config():
+    get_queue_config().refresh()
 
 

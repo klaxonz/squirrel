@@ -8,12 +8,32 @@ import pkgutil
 from pathlib import Path
 from typing import List, Optional, Set
 
-from .registry import instantiate_all
+from .registry import instantiate_all, reset_registry
 
 logger = logging.getLogger()
 
 
 _loaded_plugins = []  # type: ignore[var-annotated]
+_loaded_external_modules: Set[str] = set()
+
+
+def _read_enabled_plugin_names(base_dir: Path) -> Optional[Set[str]]:
+    try:
+        cfg_path = base_dir.parent / "config" / "plugins.json"
+        if not cfg_path.exists():
+            return None
+        with open(cfg_path, "r", encoding="utf-8") as rf:
+            data = json.load(rf)
+        if not isinstance(data, dict):
+            return None
+        names = data.get("enabled", [])
+        if not isinstance(names, list):
+            return None
+        enabled = {str(n).strip() for n in names if str(n).strip()}
+        return enabled or None
+    except Exception:
+        logger.exception("[plugins] failed to read plugins.json")
+        return None
 
 
 def _iter_namespace_packages(package_names: List[str]) -> None:
@@ -36,7 +56,7 @@ def _iter_namespace_packages(package_names: List[str]) -> None:
                     logger.debug("[plugins] skip import %s", m.name)
 
 
-def _extend_sys_path_for_external(external_dir: Path) -> List[Path]:
+def _extend_sys_path_for_external(external_dir: Path, enabled_names: Optional[Set[str]]) -> List[Path]:
     import sys
 
     added_roots: List[Path] = []
@@ -48,7 +68,12 @@ def _extend_sys_path_for_external(external_dir: Path) -> List[Path]:
         if path_str not in sys.path:
             sys.path.append(path_str)
 
-    for child in external_dir.iterdir():
+    children = [p for p in external_dir.iterdir() if p.is_dir()]
+    children.sort(key=lambda p: p.name.lower())
+
+    for child in children:
+        if enabled_names and child.name not in enabled_names:
+            continue
         if not child.is_dir():
             continue
         if child not in added_roots:
@@ -64,89 +89,22 @@ def _extend_sys_path_for_external(external_dir: Path) -> List[Path]:
     return added_roots
 
 
-def _auto_register_plugin(module) -> None:
-    try:
-        from plugins.registry import register_plugin
-    except Exception:
-        return
-
-    name = getattr(module, "PLUGIN_NAME", None)
-    if not isinstance(name, str) or not name:
-        return
-
-    if hasattr(module, "PLUGIN_REGISTERED"):
-        return
-
-    version = getattr(module, "PLUGIN_VERSION", "0.0.0")
-    description = getattr(module, "PLUGIN_DESCRIPTION", "")
-
-    plugin_cls = type(
-        f"{name.title().replace('-', '_')}Plugin",
-        (),
-        {
-            "name": name,
-            "version": version,
-            "description": description,
-        }
-    )
-
-    try:
-        register_plugin(plugin_cls)
-    except Exception as exc:
-        logger.error("[plugins] auto-register failed for %s: %s", name, exc)
-        return
-
-    setattr(module, "PLUGIN_REGISTERED", True)
-
-
 def _import_external_modules(search_roots: List[Path]) -> None:
+    global _loaded_external_modules
+    _loaded_external_modules = set()
     for root in search_roots:
         try:
             for module_info in pkgutil.iter_modules([str(root)]):
                 name = module_info.name
                 try:
                     logger.info("[plugins] importing external module: %s", name)
-                    module = importlib.import_module(name)
+                    importlib.import_module(name)
                     logger.info("[plugins] imported external module: %s", name)
-                    _auto_register_plugin(module)
+                    _loaded_external_modules.add(name)
                 except Exception:
                     logger.exception("[plugins] failed to import external module: %s", name)
         except Exception:
             logger.exception("[plugins] failed to scan %s", root)
-
-
-def _import_entrypoint_modules(group_names: List[str]) -> None:
-    """Import modules advertised via package entry points.
-
-    This is how external packages (installed via pip) make their plugins known.
-    Importing the modules is sufficient to trigger class registration in SDK
-    registries.
-    """
-    try:
-        from importlib.metadata import entry_points
-    except Exception:
-        try:
-            # Python <3.10 backport
-            from importlib_metadata import entry_points  # type: ignore
-        except Exception:
-            return
-
-    try:
-        eps = entry_points()
-        for group in group_names:
-            # Both new and old APIs are handled by .select if available
-            items = getattr(eps, "select", None)
-            if callable(items):
-                matches = eps.select(group=group)
-            else:
-                matches = eps.get(group, [])  # type: ignore[attr-defined]
-            for ep in matches:
-                try:
-                    ep.load()
-                except Exception:
-                    logger.debug("[plugins] skip entry point load %s", getattr(ep, "name", ep))
-    except Exception:
-        logger.debug("[plugins] entry point discovery failed", exc_info=True)
 
 
 
@@ -157,7 +115,7 @@ def init_plugins() -> None:
     Search order:
     1) Built-in package `plugins_builtin` (optional, for future use)
     2) Project internal `plugins` submodules
-    3) External directory at `./plugins_ext` (optional, editable plugins)
+    3) External directory at `./plugins_ext`
     """
     base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     # 1) built-in (reserved)
@@ -167,16 +125,13 @@ def init_plugins() -> None:
     # 3) external folder (non-package)
     external_dir = base_dir / "plugins_ext"
 
+    enabled_names = _read_enabled_plugin_names(base_dir)
+
     # add external dir to sys.path and import modules if it contains any packages
-    external_roots = _extend_sys_path_for_external(external_dir)
+    external_roots = _extend_sys_path_for_external(external_dir, enabled_names=enabled_names)
 
     # import packages to trigger registrations
     _iter_namespace_packages([builtin_pkg, internal_pkg])
-    # import external plugin entry points (both app and crawl/site plugins)
-    _import_entrypoint_modules([
-        "squirrel.plugins",          # app-level plugins (lifecycle)
-        "squirrel.crawl.plugins",    # crawl/site extractor & subscription
-    ])
 
     # import external packages (non-installed) to trigger registrations
     if external_roots:
@@ -184,20 +139,6 @@ def init_plugins() -> None:
 
     # Instantiate and run lifecycle hooks
     global _loaded_plugins
-    # Read enabled plugin names from config file config/plugins.json
-    enabled_names: Optional[Set[str]] = None
-    try:
-        cfg_path = base_dir.parent / "config" / "plugins.json"
-        if cfg_path.exists():
-            with open(cfg_path, "r", encoding="utf-8") as rf:
-                data = json.load(rf)
-            if isinstance(data, dict):
-                names = data.get("enabled", [])
-                if isinstance(names, list):
-                    enabled_names = {str(n) for n in names}
-    except Exception:
-        enabled_names = None
-
     candidates = instantiate_all()
     def _matches_enabled(p) -> bool:
         if not enabled_names:
@@ -250,10 +191,39 @@ def reload_plugins() -> None:
         logger.exception("[plugins] error when stopping before reload (ignored)")
     try:
         import importlib
+        import sys
+
         importlib.invalidate_caches()
     except Exception:
         pass
+
+    try:
+        from crawl import reset_registries as reset_crawl_registries
+        reset_crawl_registries()
+    except Exception:
+        logger.exception("[plugins] failed to reset crawl registries (ignored)")
+
+    try:
+        import sys
+        for root_name in list(_loaded_external_modules):
+            for k in list(sys.modules.keys()):
+                if k == root_name or k.startswith(f"{root_name}."):
+                    sys.modules.pop(k, None)
+    except Exception:
+        logger.exception("[plugins] failed to clear external modules (ignored)")
+
+    reset_registry()
     init_plugins()
+    try:
+        from core.extraction import refresh_plugin_bridge
+        refresh_plugin_bridge()
+    except Exception:
+        logger.exception("[plugins] failed to refresh plugin bridge (ignored)")
+    try:
+        from mq.queue_config import refresh_queue_config
+        refresh_queue_config()
+    except Exception:
+        logger.exception("[plugins] failed to initialize queue config (ignored)")
     try:
         app_start()
     except Exception:

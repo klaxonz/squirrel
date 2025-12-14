@@ -66,6 +66,11 @@ class ExtractorRegistry:
         """获取站点的测试URL"""
         return self._test_urls.get(site_name)
 
+    def clear(self) -> None:
+        self._extractors.clear()
+        self._domain_mapping.clear()
+        self._test_urls.clear()
+
 
 class ExtractorFactory:
     """提取器工厂"""

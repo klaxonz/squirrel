@@ -43,6 +43,7 @@ from .registry import (
     register_extractor,
     get_extractor_factory,
     get_extractor_registry,
+    reset_registries,
     SubscriptionRegistry,
     SubscriptionFactory,
     register_subscription,
@@ -123,6 +124,7 @@ __all__ = [
     "register_extractor",
     "get_extractor_factory",
     "get_extractor_registry",
+    "reset_registries",
     "BaseExtractor",
     # subscription
     "SubscriptionRegistry",
