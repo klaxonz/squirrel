@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from urllib.parse import quote
 
 import phub
@@ -8,10 +9,12 @@ from crawl import VideoUrlHandler, register_handler
 
 
 @register_handler
-class PornhubHandler(VideoUrlHandler):
+class PornhubHandler:
+    """Pornhub视频URL处理器，实现VideoUrlHandler Protocol"""
+    
     domain = 'pornhub.com'
 
-    def get_video_url(self, video) -> dict:
+    def get_video_url(self, video: Any) -> dict:
         proxy_prefix_path = f"/api/video/proxy?domain=pornhub.com"
         client = phub.Client()
         video_obj = client.get(video.url)

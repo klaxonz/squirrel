@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 from crawl import (
-    IUserSubscriptionImporter,
+    UserSubscriptionImporter,
     register_user_subscription_importer,
     filter_cookies_to_query_string,
     request_without_limit,
@@ -20,7 +20,7 @@ SITE_SLUG = 'pornhub'
 
 
 @register_user_subscription_importer("pornhub")
-class PornhubUserSubscriptionImporter(IUserSubscriptionImporter):
+class PornhubUserSubscriptionImporter:
     """
     从 Pornhub 导入用户的订阅列表
     需要登录 cookies 才能获取

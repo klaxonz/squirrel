@@ -6,11 +6,9 @@ from urllib.parse import urljoin, urlparse, urlencode
 
 import httpx
 from fastapi import HTTPException
-from fastapi import Request
 from starlette.responses import StreamingResponse
 
-from crawl import VideoProxyBase, register_proxy, get_http_headers, get_proxy_config
-from crawl.proxy_interfaces import ProxyConfigRegistry
+from crawl import VideoProxy, register_proxy, get_http_headers, get_proxy_config, get_proxy_config_registry
 
 try:
     # Prefer backend utility that respects configured cookies file
@@ -37,12 +35,11 @@ SITE_SLUG = 'pornhub'
 
 
 @register_proxy
-class PornhubProxy(VideoProxyBase):
+class PornhubProxy:
+    """Pornhub视频代理，实现VideoProxy Protocol"""
+    
     domain = 'pornhub.com'
     site_slug = SITE_SLUG
-
-    def __init__(self, request: Request):
-        super().__init__()
 
     async def handle_m3u8(self, url: str, content: bytes) -> StreamingResponse:
         content_text = content.decode(errors='ignore')
@@ -101,7 +98,8 @@ class PornhubProxy(VideoProxyBase):
             }
 
             # Build headers from registered site config
-            provider_cls = ProxyConfigRegistry.get(self.domain)
+            proxy_config_registry = get_proxy_config_registry()
+            provider_cls = proxy_config_registry.get(self.domain)
             headers = get_http_headers(
                 self.site_slug,
                 (provider_cls.get_site_headers() or {}) if provider_cls else {},

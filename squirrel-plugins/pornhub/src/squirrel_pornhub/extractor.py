@@ -21,10 +21,11 @@ logger = logging.getLogger(__name__)
 class PornhubExtractor(YoutubeDLExtractorBase):
     """Pornhub视频提取器"""
     
-    test_url = "https://www.pornhub.com"
+    site_name = 'pornhub'
+    supported_domains = ['pornhub.com']
     
     def __init__(self):
-        super().__init__('pornhub', ['pornhub.com'])
+        super().__init__(self.site_name, self.supported_domains)
     
     def can_handle(self, url: str) -> bool:
         """检查是否可以处理该URL"""
@@ -38,11 +39,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
             'pornhub.com/video/'
         ])
     
-    def extract(self, task: ExtractionTask) -> ExtractionResult:
-        """执行提取任务"""
-        return self.extract_video_info(task)
-    
-    def _extract_with_ytdlp(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
+    def _extract_with_ytdlp(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """使用yt-dlp获取Pornhub视频信息"""
         try:
             ydl_opts = self._build_ytdlp_opts(url, queue_name)
@@ -60,7 +57,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
             logger.error(f"Pornhub视频信息提取失败: {url}, error: {e}")
             return None
     
-    def _build_ytdlp_opts(self, url: str, queue_name: str = None) -> Dict[str, Any]:
+    def _build_ytdlp_opts(self, url: str, queue_name: Optional[str] = None) -> Dict[str, Any]:
         """构建yt-dlp选项"""
         cookies = filter_cookies_to_query_string(url)
         ydl_opts: Dict[str, Any] = {
