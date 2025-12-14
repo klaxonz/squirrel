@@ -1,27 +1,31 @@
-# Squirrel SDK
+# Squirrel SDK v2.0
 
-Squirrel plugin SDK - 为 Squirrel 媒体订阅平台提供稳定的插件接口。
+Squirrel plugin SDK - Provides stable plugin interfaces for the Squirrel media subscription platform.
 
-## 简介
+## Introduction
 
-Squirrel SDK 提供了一套标准化的接口，用于开发视频内容爬取和处理插件。这个 SDK 设计为轻量级、无外部依赖（仅使用 Python 标准库），以确保最大的可移植性。
+Squirrel SDK v2.0 provides a standardized interface for developing video content crawling and processing plugins. This SDK uses modern Python design patterns with Protocol-based interfaces supporting structural type checking.
 
-## 主要特性
+## Key Features
 
-- **轻量级设计**: 仅依赖 Python 标准库
-- **简单易用**: 提供基类和装饰器简化插件开发
-- **类型安全**: 完整的类型注解支持
-- **自动注册**: 插件类自动注册机制
+- **Protocol Interfaces**: Uses Python Protocol to define interfaces with structural type checking
+- **Unified Data Model**: VideoMeta as the only data model, simplifying serialization/deserialization
+- **Unified Registry System**: All plugins use a unified registration mechanism
+- **Type Safety**: Complete type annotation support
+- **Auto Registration**: Automatic plugin class registration
+- **Lightweight**: Core interfaces only depend on Python standard library (HTTP utilities require requests)
 
-## 快速开始
+## Quick Start
 
-### 安装
+### Installation
 
 ```bash
 pip install squirrel-sdk
 ```
 
-### 创建简单的提取器插件
+### Creating a Simple Extractor Plugin
+
+#### Method 1: Using Base Class (Recommended, Simple)
 
 ```python
 from squirrel_sdk.crawl import BaseExtractor, ExtractionTask, ExtractionResult, VideoMeta
@@ -34,9 +38,9 @@ class MyExtractor(BaseExtractor):
         return any(domain in url for domain in self.supported_domains)
     
     def extract(self, task: ExtractionTask) -> ExtractionResult:
-        # 实现你的提取逻辑
+        # Implement your extraction logic
         video_meta = VideoMeta(
-            title="示例视频",
+            title="Example Video",
             url=task.url,
             thumbnail="https://example.com/thumb.jpg",
             duration=120,
@@ -44,29 +48,94 @@ class MyExtractor(BaseExtractor):
         return ExtractionResult(success=True, data=video_meta)
 ```
 
-插件会自动注册到 Squirrel 系统中。
+#### Method 2: Using Protocol (More Flexible)
 
-## 核心接口
+```python
+from squirrel_sdk.crawl import (
+    Extractor, ExtractionTask, ExtractionResult, VideoMeta,
+    register_extractor
+)
 
-### VideoMeta
+@register_extractor("example", ["example.com", "www.example.com"])
+class MyExtractor:
+    site_name = "example"
+    supported_domains = ["example.com", "www.example.com"]
+    
+    def can_handle(self, url: str) -> bool:
+        return any(domain in url for domain in self.supported_domains)
+    
+    def extract(self, task: ExtractionTask) -> ExtractionResult:
+        video_meta = VideoMeta(
+            title="Example Video",
+            url=task.url,
+            thumbnail="https://example.com/thumb.jpg",
+            duration=120,
+        )
+        return ExtractionResult(success=True, data=video_meta)
+    
+    def validate_url(self, url: str) -> bool:
+        return self.can_handle(url)
+```
 
-视频元数据的标准结构：
+Plugins are automatically registered to the Squirrel system.
 
-- `title`: 视频标题（必填）
-- `url`: 视频 URL（必填）  
-- `thumbnail`: 缩略图 URL（可选）
-- `duration`: 视频时长，单位秒（可选）
-- `publish_date`: 发布日期（可选）
-- `extra_data`: 站点特定的额外数据（可选）
+## Core Interfaces
+
+### VideoMeta (Primary Data Model)
+
+`VideoMeta` is the standard structure for video metadata and the only data model in the SDK:
+
+- `title`: Video title (required)
+- `url`: Video URL (required)  
+- `thumbnail`: Thumbnail URL (optional)
+- `duration`: Video duration in seconds (optional)
+- `publish_date`: Publication date (optional)
+- `extra_data`: Site-specific additional data (optional)
+
+All extractors must return `VideoMeta` instances.
 
 ### ExtractionTask
 
-表示一个提取任务，包含要处理的 URL 和相关元数据。
+Represents an extraction task containing the URL to process and related metadata.
 
 ### ExtractionResult  
 
-提取操作的结果，包含成功/失败状态和提取到的数据。
+The result of an extraction operation, containing success/failure status and extracted data. The `data` field must contain a `VideoMeta` instance.
 
-## 许可证
+### Extractor Protocol
+
+Interfaces are defined using Protocol, supporting structural type checking:
+
+```python
+from typing import Protocol, runtime_checkable
+
+@runtime_checkable
+class Extractor(Protocol):
+    site_name: str
+    supported_domains: List[str]
+    
+    def can_handle(self, url: str) -> bool: ...
+    def extract(self, task: ExtractionTask) -> ExtractionResult: ...
+    def validate_url(self, url: str) -> bool: ...
+```
+
+Any class implementing these methods can be used as an extractor without inheriting from a specific base class.
+
+## Design Improvements
+
+### v2.0 Major Improvements
+
+1. **Protocol Interfaces**: Uses `typing.Protocol` instead of ABC, supporting structural type checking
+2. **Unified Data Model**: `VideoMeta` as the only data model, simplifying serialization
+3. **Unified Registry System**: All plugin types use unified `PluginRegistry`
+4. **Removed Legacy Code**: Removed all old ABC interfaces and backward compatibility code
+
+## Dependencies
+
+- **Core Interfaces**: Only depends on Python standard library
+- **HTTP Utilities**: Requires `requests` library (for `http.py` module)
+- **Type Checking**: Requires Python 3.10+ for complete type annotation support
+
+## License
 
 MIT License

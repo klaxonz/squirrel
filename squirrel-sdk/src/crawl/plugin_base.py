@@ -15,14 +15,17 @@ Usage::
             ...
 
 Importing the module that contains an extractor subclass will automatically
-register it with :pymeth:`squirrel_sdk.crawl.registry.register_extractor`.
+register it with the extractor registry.
+
+Note: New code can also use the Extractor Protocol directly without
+inheriting from BaseExtractor.
 """
 from __future__ import annotations
 
 import abc
 from typing import List
-from .interfaces import IExtractor
-from .registry import register_extractor
+from .interfaces import ExtractionTask, ExtractionResult, Extractor
+from .plugin_registry import register_extractor
 
 __all__ = [
     "BaseExtractor",
@@ -43,8 +46,17 @@ class _ExtractorMeta(abc.ABCMeta):
         return cls
 
 
-class BaseExtractor(IExtractor, metaclass=_ExtractorMeta):
-    """Derive from this class to implement a concrete extractor plugin."""
+class BaseExtractor(metaclass=_ExtractorMeta):
+    """Derive from this class to implement a concrete extractor plugin.
+    
+    This class provides a simple base for extractors. For more advanced
+    functionality, consider using VideoExtractorBase or implementing the
+    Extractor Protocol directly.
+    
+    Subclasses must:
+    - Set site_name and supported_domains class attributes
+    - Implement can_handle() and extract() methods
+    """
 
     # Subclasses **must** override these two attributes
     site_name: str  # e.g. "youtube"
@@ -53,7 +65,7 @@ class BaseExtractor(IExtractor, metaclass=_ExtractorMeta):
     # ---- Optional helpers -------------------------------------------------
     def validate_url(self, url: str) -> bool:  # noqa: D401
         """Basic validation: URL host matches any supported domain."""
-        return any(f"://{d}" in url for d in self.supported_domains)
+        return any(f"://{d}" in url or d in url for d in self.supported_domains)
 
     # Subclasses still need to implement can_handle & extract (inherited
     # as abstract from IExtractor).

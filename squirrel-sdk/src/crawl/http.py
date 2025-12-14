@@ -177,7 +177,7 @@ def request(method: str, url: str, **kwargs):
 
 
 def request_without_limit(method: str, url: str, **kwargs):
-    """发送 HTTP 请求，不使用限流器（用于批量导入等场景）"""
+    """Send HTTP request without rate limiter (for batch import scenarios, etc.)."""
     session = requests.Session()
     
     # Keep encoding to gzip/deflate only to avoid Brotli-related decode errors

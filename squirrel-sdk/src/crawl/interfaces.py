@@ -3,14 +3,19 @@
 This file is intentionally **dependency-free** (stdlib only) so that
 `squirrel-sdk` can be vendored or installed in a variety of runtimes
 without pulling heavy third-party libraries.
+
+Design principles:
+- Use Protocol for interfaces (structural typing)
+- VideoMeta as the primary data model
+- Video as optional extension for domain-specific logic
+- Composition over inheritance
 """
 from __future__ import annotations
 
-import abc
 import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 # Public API of this module is stable – add to __all__ in parent __init__.
 
@@ -59,47 +64,37 @@ class VideoMeta:
 # ---------------- Result / Task -----------------
 
 
-# VideoData = Union[VideoMeta, "Video", Dict[str, Any]]  # 废弃Union设计
-# 统一使用Video类型，通过VideoFactory创建具体的Video子类实例
-
-
 @dataclass
 class ExtractionResult:
-    """Outcome of a task (either success or failure)."""
+    """Outcome of a task (either success or failure).
+    
+    The data field must contain VideoMeta. This is the only supported data type.
+    """
 
     success: bool
-    data: Optional[Video] = None  # 现在可以直接使用Video类型
+    data: Optional[VideoMeta] = None
     error: Optional[str] = None
 
-    # -------------------- convenience --------------------
     def to_dict(self) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {
+        """Serialize result to dictionary."""
+        return {
             "success": self.success,
-            "data": None,
+            "data": self.data.to_dict() if self.data else None,
             "error": self.error,
         }
 
-        data_obj = self.data
-        if data_obj is None:
-            payload["data"] = None
-        elif hasattr(data_obj, "to_dict") and callable(getattr(data_obj, "to_dict")):
-            payload["data"] = data_obj.to_dict()
-        elif hasattr(data_obj, "__dict__"):
-            payload["data"] = dict(data_obj.__dict__)
-        else:
-            payload["data"] = data_obj
-
-        return payload
-
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ExtractionResult":
+        """Deserialize result from dictionary."""
         data_payload = data.get("data")
-
-        # 注意：这里简化处理，因为现在统一使用Video类型
-        # Video实例的序列化/反序列化应该由具体的Video子类处理
+        if data_payload and isinstance(data_payload, dict):
+            data_payload = VideoMeta.from_dict(data_payload)
+        elif data_payload and not isinstance(data_payload, VideoMeta):
+            data_payload = None
+        
         return cls(
             success=data.get("success", False),
-            data=data_payload,  # Video对象的重建需要更复杂的逻辑
+            data=data_payload,
             error=data.get("error"),
         )
 
@@ -135,90 +130,84 @@ class ExtractionTask:
         return cls(**data)  # type: ignore[arg-type]
 
 
-class IExtractor(abc.ABC):
-    """Base interface every extractor plugin must implement."""
-
-    # Recommended class-level metadata (not strictly required but improves
-    # factory performance & static analysis). Subclasses should set these.
-    site_name: str  # e.g. "youtube"
-    supported_domains: List[str]  # e.g. ["youtube.com", "youtu.be"]
-
-    @classmethod
-    def get_test_url(cls) -> Optional[str]:
-        """Return URL for connectivity testing."""
-        return getattr(cls, 'test_url', None)
-
-    @property
-    def supported_sites(self) -> List[str]:  # noqa: D401 – purposely concise
-        """Return list with single ``site_name`` by default."""
-        return [self.site_name]
-
-    @abc.abstractmethod
+@runtime_checkable
+class Extractor(Protocol):
+    """Protocol for extractor plugins.
+    
+    This is a structural interface - any class implementing these methods
+    is considered an extractor, regardless of inheritance.
+    """
+    
+    # Class-level metadata (recommended for performance)
+    site_name: str
+    supported_domains: List[str]
+    
     def can_handle(self, url: str) -> bool:
-        """Return *True* if the given URL is supported by this extractor."""
-
-    @abc.abstractmethod
+        """Return True if the given URL is supported by this extractor."""
+        ...
+    
     def extract(self, task: ExtractionTask) -> ExtractionResult:
         """Execute the extraction and return the result."""
-
-    @abc.abstractmethod
+        ...
+    
     def validate_url(self, url: str) -> bool:
         """Lightweight URL validation prior to queueing the task."""
+        ...
 
 
-class ITaskProcessor(abc.ABC):
-    """A higher-level task processor may orchestrate multiple extractors."""
-
-    @abc.abstractmethod
+@runtime_checkable
+class TaskProcessor(Protocol):
+    """Protocol for higher-level task processors that orchestrate multiple extractors."""
+    
     def process(self, task: ExtractionTask) -> ExtractionResult:
+        """Process a task and return the result."""
         ...
-
-    @abc.abstractmethod
+    
     def can_process(self, task: ExtractionTask) -> bool:
+        """Return True if this processor can handle the task."""
         ...
 
 
-class IResultHandler(abc.ABC):
-    """Process results – store to DB, enqueue messages, etc."""
-
-    @abc.abstractmethod
+@runtime_checkable
+class ResultHandler(Protocol):
+    """Protocol for processing results – store to DB, enqueue messages, etc."""
+    
     def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:
+        """Handle a successful extraction result."""
         ...
 
 
 # ---------------- Subscription (Channel) -----------------
 
 
-class ISubscription(abc.ABC):
-    """Interface for channel/actor subscriptions.
-
+@runtime_checkable
+class Subscription(Protocol):
+    """Protocol for channel/actor subscriptions.
+    
     Implementations should be lightweight and rely only on stdlib and the
     SDK's pure-Python utilities. Network and heavy logic should live in the
     plugin package itself.
     """
-
+    
     url: str
-
-    def __init__(self, url: str) -> None:
-        self.url = url
-
-    @abc.abstractmethod
+    
     def get_subscribe_info(self) -> Any:
         """Return channel metadata; typically a SubscriptionMeta instance."""
-
-    @abc.abstractmethod
+        ...
+    
     def get_subscribe_videos(self, extract_all: bool) -> List[str]:
         """Return a list of video URLs to extract for this subscription."""
+        ...
 
 
-class IUserSubscriptionImporter(abc.ABC):
-    """Interface for importing user's subscriptions from a site.
+@runtime_checkable
+class UserSubscriptionImporter(Protocol):
+    """Protocol for importing user's subscriptions from a site.
     
     This is used to bulk-import all subscriptions that a user has on a particular
     video site (e.g., all followed channels on Bilibili, all subscribed channels on YouTube).
     """
-
-    @abc.abstractmethod
+    
     def get_user_subscriptions(self) -> List[str]:
         """Return a list of subscription URLs from the user's account.
         
@@ -230,6 +219,9 @@ class IUserSubscriptionImporter(abc.ABC):
             subscription list. The cookies are resolved via the SDK's cookie
             configuration.
         """
+        ...
+
+
 
 
 @dataclass
@@ -254,121 +246,19 @@ class LoginStatusResult:
         }
 
 
-# ---------------- Video & Actor Base Classes -----------------
+# ---------------- Additional Data Models -----------------
 
-
-class Video:
-    """Base class for video metadata"""
-    DOMAIN = None
-
-    def __init__(self, url, base_info=None):
-        self._url = url
-        self._base_info = base_info or {}
-        self._id = None
-        self._title = None
-        self._description = None
-        self._tags = None
-        self._duration = None
-        self._thumbnail = None
-        self._upload_date = None
-        self._publish_date = None
-        self._actors = []
-        self._season = None
-
-    @property
-    def url(self):
-        return self._url
-
-    @property
-    def title(self):
-        if self._title is None:
-            self._title = self._base_info.get("title")
-        return self._title
-
-    @property
-    def description(self):
-        if self._description is None:
-            self._description = self._base_info.get("description")
-        return self._description
-
-    @property
-    def thumbnail(self):
-        if self._thumbnail is None:
-            self._thumbnail = self._base_info.get("thumbnail")
-        return self._thumbnail
-
-    @property
-    def upload_date(self):
-        if self._upload_date is None:
-            self._upload_date = self._base_info.get("upload_date")
-        return self._upload_date
-
-    @property
-    def publish_date(self):
-        if self._publish_date is None:
-            self._publish_date = self._base_info.get("publish_date")
-        return self._publish_date
-
-    @property
-    def tags(self):
-        if self._tags is None:
-            self._tags = self._base_info.get("tags")
-        return self._tags
-
-    @property
-    def duration(self):
-        if self._duration is None:
-            self._duration = self._base_info.get("duration")
-        return self._duration
-
-    @property
-    def season(self):
-        if self._season is None:
-            self._season = self.upload_date[0:4]
-        return self._season
-
-    @property
-    @abc.abstractmethod
-    def actors(self):
-        """
-        Abstract property that must be implemented by subclasses.
-        Returns the actors configuration.
-        """
-        raise NotImplementedError("Subclasses must implement actors property")
-
-    def video_exists(self):
-        return True
-
-
-class Actor:
-    """Base class for channel/uploader metadata"""
-    DOMAIN = None
-
-    def __init__(self, url):
-        self._url = url
-        self._name = None
-        self._avatar = None
-
-    @property
-    def url(self):
-        return self._url
-
-    @url.setter
-    def url(self, value):
-        self._url = value
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, value):
-        self._name = value
-
-    @property
-    def avatar(self):
-        return self._avatar
-
-    @avatar.setter
-    def avatar(self, value):
-        self._avatar = value
+@dataclass
+class ActorMeta:
+    """Data class for actor/channel metadata."""
+    url: str
+    name: Optional[str] = None
+    avatar: Optional[str] = None
+    extra_data: Optional[Dict[str, Any]] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ActorMeta":
+        return cls(**data)

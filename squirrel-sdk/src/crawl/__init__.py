@@ -3,12 +3,12 @@
 Light-weight SDK for building crawl / extraction plugins that can be loaded by
 Squirrel backend and other Squirrel compatible runtimes.
 
-Only pure-python stdlib dependencies are used to maximise portability.
+Design principles:
+- Protocol-based interfaces (structural typing)
+- VideoMeta as the primary data model
+- Unified plugin registry system
+- Composition over inheritance
 """
-
-# `squirrel-sdk` is distributed as a **single wheel**; crawl is a sub-package.
-# Keep version aligned with the root package instead of using a fictitious
-# "squirrel-sdk-crawl" distribution.
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
 
@@ -19,59 +19,73 @@ def _detect_version() -> str:
         except PackageNotFoundError:
             continue
     # Development checkout – no installed distribution
-    return "0.1.0.dev0"
+    return "2.0.0.dev0"
 
 
 __version__: str = _detect_version()
 
+# Core interfaces and data models
 from .interfaces import (
     TaskStatus,
+    TaskPriority,
     ExtractionTask,
     ExtractionResult,
     VideoMeta,
-    Video,
-    Actor,
-    IExtractor,
-    ITaskProcessor,
-    IResultHandler,
-    TaskPriority,
-    IUserSubscriptionImporter,
+    ActorMeta,
+    Extractor,
+    TaskProcessor,
+    ResultHandler,
+    Subscription,
+    UserSubscriptionImporter,
     LoginStatusResult,
 )
-from .registry import (
-    ExtractorRegistry,
-    register_extractor,
-    get_extractor_factory,
+
+# Unified plugin registry system
+from .plugin_registry import (
+    PluginRegistry,
     get_extractor_registry,
-    reset_registries,
-    SubscriptionRegistry,
-    SubscriptionFactory,
-    register_subscription,
-    UserSubscriptionImporterRegistry,
+    get_subscription_registry,
     get_importer_registry,
-    register_user_subscription_importer,
     get_login_checker_registry,
+    reset_all_registries,
+    ExtractorFactory,
+    get_extractor_factory,
+    register_extractor,
+    register_subscription,
+    register_user_subscription_importer,
     register_login_checker,
 )
+
+# Base classes (optional, for convenience)
+from .plugin_base import BaseExtractor
+from .video_extractor_base import (
+    VideoExtractorBase,
+    YoutubeDLExtractorBase,
+)
+
+# Utilities
 from .meta_origin import SubscriptionMeta
-from .utils import filter_cookies_to_query_string, configure_cookie_file_resolver, resolve_cookie_file_path
-from .meta_registry import MetaRegistry, register_meta, VideoFactory
-from .handler_interfaces import VideoUrlHandler, HandlerRegistry, register_handler
-from .mpd_interfaces import BaseMpdBuilder, MpdRegistry, register_mpd
-from .subtitles_interfaces import BaseSubtitlesProvider, SubtitlesRegistry, register_subtitles
-from .id_extractor_interfaces import IdExtractor, IdExtractorRegistry, register_extractor as register_id_extractor
+from .utils import (
+    filter_cookies_to_query_string,
+    configure_cookie_file_resolver,
+    resolve_cookie_file_path,
+)
+
+# HTTP utilities
 from .http import (
     RateLimit,
-    RateLimitedSession,
     RateLimiter,
+    RateLimitedSession,
     configure_rate_limit,
-    get_http_session,
     get_rate_limiter,
+    get_http_session,
     request,
     request_without_limit,
     get,
     post,
 )
+
+# Site configuration
 from .site_config import (
     set_site_config,
     set_site_configs,
@@ -82,6 +96,12 @@ from .site_config import (
     get_proxy_config,
     get_rate_limit_config,
 )
+
+# Other plugin types (if needed)
+from .handler_interfaces import VideoUrlHandler, HandlerRegistry, register_handler
+from .mpd_interfaces import BaseMpdBuilder, MpdRegistry, register_mpd
+from .subtitles_interfaces import BaseSubtitlesProvider, SubtitlesRegistry, register_subtitles
+from .id_extractor_interfaces import IdExtractor, IdExtractorRegistry, register_extractor as register_id_extractor
 from .proxy_interfaces import (
     VideoProxyBase,
     ProxyRegistry,
@@ -97,83 +117,45 @@ from .downloader_interfaces import (
     get_downloader_factory,
     register_downloader,
 )
-from .video_extractor_base import (
-    VideoExtractorBase,
-    YoutubeDLExtractorBase,
-)
 
 __all__ = [
     "__version__",
-    # interfaces
+    # Core interfaces
     "TaskStatus",
+    "TaskPriority",
     "ExtractionTask",
     "ExtractionResult",
     "VideoMeta",
-    "TaskPriority",
-    "IExtractor",
-    "ITaskProcessor",
-    "IResultHandler",
-    "IUserSubscriptionImporter",
+    "ActorMeta",
+    "Extractor",
+    "TaskProcessor",
+    "ResultHandler",
+    "Subscription",
+    "UserSubscriptionImporter",
     "LoginStatusResult",
-    # base entities
-    "Video",
-    "Actor",
-    "SubscriptionMeta",
-    # registry helpers
-    "ExtractorRegistry",
-    "register_extractor",
-    "get_extractor_factory",
+    # Registry system
+    "PluginRegistry",
     "get_extractor_registry",
-    "reset_registries",
-    "BaseExtractor",
-    # subscription
-    "SubscriptionRegistry",
-    "SubscriptionFactory",
-    "register_subscription",
-    # user subscription importer
-    "UserSubscriptionImporterRegistry",
+    "get_subscription_registry",
     "get_importer_registry",
-    "register_user_subscription_importer",
     "get_login_checker_registry",
+    "reset_all_registries",
+    "ExtractorFactory",
+    "get_extractor_factory",
+    "register_extractor",
+    "register_subscription",
+    "register_user_subscription_importer",
     "register_login_checker",
-    # utils
+    # Base classes
+    "BaseExtractor",
+    "VideoExtractorBase",
+    "YoutubeDLExtractorBase",
+    # Utilities
+    "SubscriptionMeta",
     "filter_cookies_to_query_string",
     "configure_cookie_file_resolver",
     "resolve_cookie_file_path",
-    # meta & factory
-    "MetaRegistry",
-    "register_meta",
-    "VideoFactory",
-    # handlers
-    "VideoUrlHandler",
-    "HandlerRegistry",
-    "register_handler",
-    # mpd
-    "BaseMpdBuilder",
-    "MpdRegistry",
-    "register_mpd",
-    # subtitles
-    "BaseSubtitlesProvider",
-    "SubtitlesRegistry",
-    "register_subtitles",
-    # id extractor
-    "IdExtractor",
-    "IdExtractorRegistry",
-    "register_id_extractor",
-    # proxy
-    "VideoProxyBase",
-    "ProxyRegistry",
-    "register_proxy",
-    # downloader
-    "BaseDownloader",
-    "DownloaderRegistry",
-    "DownloaderFactory",
-    "get_downloader_factory",
-    "register_downloader",
-    # video extractor bases
-    "VideoExtractorBase",
-    "YoutubeDLExtractorBase",
-    # http helpers
+    # HTTP utilities
     "RateLimit",
     "RateLimiter",
     "RateLimitedSession",
@@ -184,7 +166,7 @@ __all__ = [
     "request_without_limit",
     "get",
     "post",
-    # site config helpers
+    # Site configuration
     "set_site_config",
     "set_site_configs",
     "get_site_config",
@@ -193,7 +175,28 @@ __all__ = [
     "get_login_headers",
     "get_proxy_config",
     "get_rate_limit_config",
+    # Other plugin types
+    "VideoUrlHandler",
+    "HandlerRegistry",
+    "register_handler",
+    "BaseMpdBuilder",
+    "MpdRegistry",
+    "register_mpd",
+    "BaseSubtitlesProvider",
+    "SubtitlesRegistry",
+    "register_subtitles",
+    "IdExtractor",
+    "IdExtractorRegistry",
+    "register_id_extractor",
+    "VideoProxyBase",
+    "ProxyRegistry",
+    "register_proxy",
+    "ProxyConfigProvider",
+    "ProxyDomainConfig",
+    "register_site_config",
+    "BaseDownloader",
+    "DownloaderRegistry",
+    "DownloaderFactory",
+    "get_downloader_factory",
+    "register_downloader",
 ]
-
-# Re-export for convenience
-from .plugin_base import BaseExtractor  # noqa: E402  (import after __all__ definition)
