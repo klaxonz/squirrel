@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable, Type, Union
+from typing import Any, Optional, Protocol, runtime_checkable, Type
 from urllib.parse import urlparse
 
 from .registry import PluginRegistry
@@ -49,26 +49,25 @@ class DownloaderFactory:
     
     def create_downloader(self, url: str) -> Downloader:
         """Create a downloader instance for the given URL."""
-        if not isinstance(url, str) or not url:
+        if not url or not isinstance(url, str):
             raise ValueError("A valid URL string must be provided.")
         
         parsed_url = urlparse(url)
-        domain = parsed_url.netloc.lower()
-        # Remove port if present
-        domain = domain.split(':')[0]
+        domain = parsed_url.netloc.lower().split(':')[0]
         
-        # Try to find downloader by domain
         key = self.registry.get_by_domain(domain)
-        if key:
-            downloader_cls = self.registry.get(key)
-            if downloader_cls and isinstance(downloader_cls, type):
-                return downloader_cls(url)  # type: ignore[call-arg]
+        if not key:
+            supported = self.registry.get_all_domains()
+            raise ValueError(
+                f"No downloader registered for domain '{parsed_url.netloc}'. "
+                f"Supported domains: {supported if supported else '(none)'}"
+            )
         
-        supported = self.registry.get_all_domains()
-        raise ValueError(
-            f"No downloader registered for domain '{parsed_url.netloc}' or its parent domains. "
-            f"Supported domains are: {supported}"
-        )
+        downloader_cls = self.registry.get(key)
+        if not downloader_cls or not isinstance(downloader_cls, type):
+            raise ValueError(f"Downloader class for key '{key}' is invalid or not a class.")
+        
+        return downloader_cls(url)  # type: ignore[call-arg]
 
 
 _factory_singleton: Optional[DownloaderFactory] = None
@@ -82,64 +81,43 @@ def get_downloader_factory() -> DownloaderFactory:
     return _factory_singleton
 
 
-def register_downloader(domains: Optional[Union[str, List[str]]] = None):
+def register_downloader(downloader_cls: Type[Downloader]) -> Type[Downloader]:
     """Decorator to register a downloader.
     
+    The downloader class must define a `domains` attribute (list of strings).
+    The first domain in the list will be used as the registry key.
+    
     Usage:
-        # Method 1: Auto-detect domain from class attribute
         @register_downloader
         class MyDownloader:
-            domain = "example.com"
-            ...
-        
-        # Method 2: Explicitly specify domain(s)
-        @register_downloader("example.com")
-        class MyDownloader:
-            domain = "example.com"
-            ...
-        
-        @register_downloader(["example.com", "www.example.com"])
-        class MyDownloader:
-            domain = "example.com"
+            domains = ["example.com", "www.example.com"]
+            
+            def __init__(self, url: str):
+                self.url = url
+                self.domain = self.domains[0]
             ...
     """
-    if domains is None:
-        # Used as @register_downloader (no parentheses)
-        def decorator(downloader_cls: Type[Downloader]):
-            domain_attr = getattr(downloader_cls, "domain", None)
-            if not domain_attr:
-                # Try to get from domains attribute
-                domains_attr = getattr(downloader_cls, "domains", None)
-                if domains_attr and isinstance(domains_attr, list) and domains_attr:
-                    domain_attr = domains_attr[0]
-                else:
-                    raise AttributeError("Downloader class must define 'domain' or 'domains' attribute")
-            
-            domains_list = [domain_attr]
-            # Also check if there's a domains attribute
-            domains_attr = getattr(downloader_cls, "domains", None)
-            if domains_attr and isinstance(domains_attr, list):
-                domains_list = domains_attr
-            
-            registry = get_downloader_registry()
-            registry.register(domain_attr, downloader_cls, domains_list)
-            return downloader_cls
-        return decorator
-    else:
-        # Used as @register_downloader("domain") or @register_downloader(["domain1", "domain2"])
-        if isinstance(domains, str):
-            domains = [domains]
-        
-        def decorator(downloader_cls: Type[Downloader]):
-            registry = get_downloader_registry()
-            # Use first domain as key, or use class domain attribute
-            domain_attr = getattr(downloader_cls, "domain", None)
-            if isinstance(domain_attr, str):
-                key = domain_attr
-            else:
-                key = domains[0] if domains else downloader_cls.__name__
-            
-            registry.register(key, downloader_cls, domains)
-            return downloader_cls
-        return decorator
+    domains = getattr(downloader_cls, "domains", None)
+    
+    if not domains:
+        raise AttributeError(
+            f"Downloader class '{downloader_cls.__name__}' must define 'domains' attribute "
+            f"(list of supported domain strings)"
+        )
+    
+    if not isinstance(domains, list) or not domains:
+        raise ValueError(
+            f"Downloader class '{downloader_cls.__name__}': 'domains' must be a non-empty list"
+        )
+    
+    if not all(isinstance(d, str) and d for d in domains):
+        raise ValueError(
+            f"Downloader class '{downloader_cls.__name__}': all items in 'domains' must be non-empty strings"
+        )
+    
+    key = domains[0]
+    registry = get_downloader_registry()
+    registry.register(key, downloader_cls, domains)
+    
+    return downloader_cls
 
