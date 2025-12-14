@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import quote
 
 from bs4 import BeautifulSoup
@@ -19,10 +19,12 @@ def fetch_html(link: str) -> str:
 
 
 @register_handler
-class JavdbHandler(VideoUrlHandler):
+class JavdbHandler:
+	"""JavDB视频URL处理器，实现VideoUrlHandler Protocol"""
+	
 	domain = 'javdb.com'
 
-	def get_video_url(self, video) -> dict:
+	def get_video_url(self, video: Any) -> dict:
 		proxy_prefix_path = f"/api/video/proxy?domain=javdb.com"
 		no = str(getattr(video, 'title', '')).split(' ')[0]
 		url = self._get_jav_video_url(no)

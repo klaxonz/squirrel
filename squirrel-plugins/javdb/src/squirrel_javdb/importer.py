@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 from crawl import (
-    IUserSubscriptionImporter,
+    UserSubscriptionImporter,
     register_user_subscription_importer,
     filter_cookies_to_query_string,
     request_without_limit,
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @register_user_subscription_importer("javdb")
-class JavdbUserSubscriptionImporter(IUserSubscriptionImporter):
+class JavdbUserSubscriptionImporter:
     """
     从 JavDB 导入用户的订阅列表
     需要登录 cookies 才能获取

@@ -20,10 +20,11 @@ logger = logging.getLogger(__name__)
 class JavdbExtractor(VideoExtractorBase):
     """JavDB视频提取器"""
     
-    test_url = "https://javdb.com"
+    site_name = 'javdb'
+    supported_domains = ['javdb.com']
     
     def __init__(self):
-        super().__init__('javdb', ['javdb.com'])
+        super().__init__(self.site_name, self.supported_domains)
     
     def can_handle(self, url: str) -> bool:
         """检查是否可以处理该URL"""
@@ -36,11 +37,7 @@ class JavdbExtractor(VideoExtractorBase):
             'javdb.com/video/'
         ])
     
-    def extract(self, task: ExtractionTask) -> ExtractionResult:
-        """执行提取任务"""
-        return self.extract_video_info(task)
-    
-    def _get_video_info(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
+    def _get_video_info(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """获取JavDB视频信息"""
         try:
             # 使用JavDB专用下载器
@@ -71,8 +68,8 @@ class JavdbExtractor(VideoExtractorBase):
         try:
             # 处理发行日期
             if 'timestamp' in video_info:
-                if isinstance( video_info['timestamp'], (int, float)):
-                    video_info['publish_date'] = datetime.fromtimestamp( video_info['timestamp'])
+                if isinstance(video_info['timestamp'], (int, float)):
+                    video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
 
         except Exception as e:
             logger.warning(f"处理JavDB特定信息失败: {e}")

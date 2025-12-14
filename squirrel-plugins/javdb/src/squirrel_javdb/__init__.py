@@ -5,7 +5,6 @@ from __future__ import annotations
 from .handler import JavdbHandler  # noqa: F401
 from .subscription import JavdbSubscription  # noqa: F401
 from .id_extractor import JavdbIdExtractor  # noqa: F401
-from .meta import JavdbVideo  # noqa: F401
 from .downloader import JavdbDownloader  # noqa: F401
 from .proxy import JavdbProxy  # noqa: F401
 from .config import JavdbProxyConfig  # noqa: F401

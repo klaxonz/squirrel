@@ -5,13 +5,20 @@ from typing import Dict, Optional, Any
 
 from bs4 import BeautifulSoup
 
-from crawl import BaseDownloader, register_downloader
+from crawl import Downloader, register_downloader
 from .browser_utils import fetch_page_html
 
 
 @register_downloader
-class JavdbDownloader(BaseDownloader):
+class JavdbDownloader:
+    """JavDB下载器，实现Downloader Protocol"""
+    
+    domains = ['javdb.com']
     domain = 'javdb.com'
+    
+    def __init__(self, url: str):
+        self.url = url
+        self.domain = self.domains[0]
 
     def get_video_info(self, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
         html = fetch_page_html(self.url)  # type: ignore
@@ -62,7 +69,15 @@ class JavdbDownloader(BaseDownloader):
             video_info['timestamp'] = None
         return video_info
 
-    def download(self, subscription, video, task, queue_thread_name: str, video_info=None):  # pragma: no cover
+    def download(
+        self,
+        subscription: Any,
+        video: Any,
+        task: Any,
+        queue_thread_name: str,
+        video_info: Optional[Any] = None,
+    ) -> Any:
+        """执行下载工作流"""
         raise NotImplementedError("Download handled by backend download service")
 
 
