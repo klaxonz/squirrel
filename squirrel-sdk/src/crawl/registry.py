@@ -9,7 +9,7 @@ import threading
 from typing import Any, Callable, Dict, Generic, List, Optional, Type, TypeVar, Union
 from urllib.parse import urlparse
 
-from .interfaces import (
+from .core import (
     Extractor,
     Subscription,
     UserSubscriptionImporter,
@@ -152,12 +152,54 @@ def get_login_checker_registry() -> PluginRegistry[Callable[[], LoginStatusResul
 
 
 def reset_all_registries() -> None:
-    """Reset all global registries (useful for testing)."""
+    """Reset all global registries (useful for testing).
+    
+    This resets all registries defined in this module. For other plugin type
+    registries, use their respective reset functions or clear() methods.
+    """
     global _extractor_registry, _subscription_registry, _importer_registry, _login_checker_registry
     _extractor_registry = None
     _subscription_registry = None
     _importer_registry = None
     _login_checker_registry = None
+    
+    # Reset other registries by importing and clearing them
+    try:
+        from .url_handler import get_handler_registry
+        get_handler_registry().clear()
+    except ImportError:
+        pass
+    
+    try:
+        from .id_extractor import get_id_extractor_registry
+        get_id_extractor_registry().clear()
+    except ImportError:
+        pass
+    
+    try:
+        from .downloader import get_downloader_registry
+        get_downloader_registry().clear()
+    except ImportError:
+        pass
+    
+    try:
+        from .mpd import get_mpd_registry
+        get_mpd_registry().clear()
+    except ImportError:
+        pass
+    
+    try:
+        from .subtitles import get_subtitles_registry
+        get_subtitles_registry().clear()
+    except ImportError:
+        pass
+    
+    try:
+        from .proxy import get_proxy_registry, get_proxy_config_registry
+        get_proxy_registry().clear()
+        get_proxy_config_registry().clear()
+    except ImportError:
+        pass
 
 
 # Factory functions

@@ -2,7 +2,7 @@
 
 Usage::
 
-    from squirrel_sdk.crawl.plugin_base import BaseExtractor
+    from squirrel_sdk.crawl.base import BaseExtractor
 
     class MyExtractor(BaseExtractor):
         site_name = "mytube"
@@ -24,8 +24,8 @@ from __future__ import annotations
 
 import abc
 from typing import List
-from .interfaces import ExtractionTask, ExtractionResult, Extractor
-from .plugin_registry import register_extractor
+from .core import ExtractionTask, ExtractionResult, Extractor
+from .registry import register_extractor
 
 __all__ = [
     "BaseExtractor",

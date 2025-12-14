@@ -9,8 +9,8 @@ import logging
 from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
 
-from .interfaces import ExtractionTask, ExtractionResult, VideoMeta, Extractor
-from .plugin_registry import register_extractor
+from .core import ExtractionTask, ExtractionResult, VideoMeta, Extractor
+from .registry import register_extractor
 
 logger = logging.getLogger(__name__)
 

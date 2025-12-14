@@ -25,7 +25,7 @@ def _detect_version() -> str:
 __version__: str = _detect_version()
 
 # Core interfaces and data models
-from .interfaces import (
+from .core import (
     TaskStatus,
     TaskPriority,
     ExtractionTask,
@@ -38,10 +38,11 @@ from .interfaces import (
     Subscription,
     UserSubscriptionImporter,
     LoginStatusResult,
+    SubscriptionMeta,
 )
 
 # Unified plugin registry system
-from .plugin_registry import (
+from .registry import (
     PluginRegistry,
     get_extractor_registry,
     get_subscription_registry,
@@ -57,14 +58,11 @@ from .plugin_registry import (
 )
 
 # Base classes (optional, for convenience)
-from .plugin_base import BaseExtractor
-from .video_extractor_base import (
+from .base import BaseExtractor
+from .extractor import (
     VideoExtractorBase,
     YoutubeDLExtractorBase,
 )
-
-# Utilities
-from .meta_origin import SubscriptionMeta
 from .utils import (
     filter_cookies_to_query_string,
     configure_cookie_file_resolver,
@@ -86,7 +84,7 @@ from .http import (
 )
 
 # Site configuration
-from .site_config import (
+from .config import (
     set_site_config,
     set_site_configs,
     get_site_config,
@@ -97,22 +95,39 @@ from .site_config import (
     get_rate_limit_config,
 )
 
-# Other plugin types (if needed)
-from .handler_interfaces import VideoUrlHandler, HandlerRegistry, register_handler
-from .mpd_interfaces import BaseMpdBuilder, MpdRegistry, register_mpd
-from .subtitles_interfaces import BaseSubtitlesProvider, SubtitlesRegistry, register_subtitles
-from .id_extractor_interfaces import IdExtractor, IdExtractorRegistry, register_extractor as register_id_extractor
-from .proxy_interfaces import (
-    VideoProxyBase,
-    ProxyRegistry,
+# Other plugin types (Protocol-based interfaces with unified registry)
+from .url_handler import (
+    VideoUrlHandler,
+    get_handler_registry,
+    register_handler,
+)
+from .mpd import (
+    MpdBuilder,
+    get_mpd_registry,
+    register_mpd,
+)
+from .subtitles import (
+    SubtitlesProvider,
+    get_subtitles_registry,
+    register_subtitles,
+)
+from .id_extractor import (
+    IdExtractor,
+    get_id_extractor_registry,
+    register_id_extractor,
+)
+from .proxy import (
+    VideoProxy,
+    get_proxy_registry,
     register_proxy,
     ProxyConfigProvider,
     ProxyDomainConfig,
+    get_proxy_config_registry,
     register_site_config,
 )
-from .downloader_interfaces import (
-    BaseDownloader,
-    DownloaderRegistry,
+from .downloader import (
+    Downloader,
+    get_downloader_registry,
     DownloaderFactory,
     get_downloader_factory,
     register_downloader,
@@ -175,27 +190,28 @@ __all__ = [
     "get_login_headers",
     "get_proxy_config",
     "get_rate_limit_config",
-    # Other plugin types
+    # Other plugin types (Protocol-based)
     "VideoUrlHandler",
-    "HandlerRegistry",
+    "get_handler_registry",
     "register_handler",
-    "BaseMpdBuilder",
-    "MpdRegistry",
+    "MpdBuilder",
+    "get_mpd_registry",
     "register_mpd",
-    "BaseSubtitlesProvider",
-    "SubtitlesRegistry",
+    "SubtitlesProvider",
+    "get_subtitles_registry",
     "register_subtitles",
     "IdExtractor",
-    "IdExtractorRegistry",
+    "get_id_extractor_registry",
     "register_id_extractor",
-    "VideoProxyBase",
-    "ProxyRegistry",
+    "VideoProxy",
+    "get_proxy_registry",
     "register_proxy",
     "ProxyConfigProvider",
     "ProxyDomainConfig",
+    "get_proxy_config_registry",
     "register_site_config",
-    "BaseDownloader",
-    "DownloaderRegistry",
+    "Downloader",
+    "get_downloader_registry",
     "DownloaderFactory",
     "get_downloader_factory",
     "register_downloader",

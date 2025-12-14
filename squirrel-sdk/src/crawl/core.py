@@ -262,3 +262,14 @@ class ActorMeta:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ActorMeta":
         return cls(**data)
+
+
+class SubscriptionMeta:
+    """Subscription metadata for channel/actor information."""
+    
+    def __init__(self, id, name, avatar, url):
+        self.id = id
+        self.name = name
+        self.avatar = avatar
+        self.url = url
+
