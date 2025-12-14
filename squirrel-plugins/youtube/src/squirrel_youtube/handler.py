@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-from abc import ABC
 import logging
+from typing import Any
 
-from crawl import VideoUrlHandler, register_handler, MpdRegistry
+from crawl import VideoUrlHandler, register_handler, get_mpd_registry
 from .mpd import _extract_video_info, _proxy, _format_to_rep
 
 logger = logging.getLogger(__name__)
 
 
 @register_handler
-class YouTubeHandler(VideoUrlHandler, ABC):
+class YouTubeHandler:
+    """YouTube视频URL处理器，实现VideoUrlHandler Protocol"""
+    
     domain = 'youtube.com'
 
-    def get_video_url(self, video) -> dict:
+    def get_video_url(self, video: Any) -> dict:
         info = _extract_video_info(video.url)
         if not info:
             raise RuntimeError("无法获取 YouTube 视频信息")
@@ -28,8 +30,9 @@ class YouTubeHandler(VideoUrlHandler, ABC):
 
         raise RuntimeError("未能获取到可用的 DASH 或 HLS 播放链接")
 
-    def _build_mpd_payload(self, video, info) -> dict | None:
-        builder_cls = MpdRegistry.get_mpd_builder_class(self.domain)
+    def _build_mpd_payload(self, video: Any, info: dict) -> dict | None:
+        mpd_registry = get_mpd_registry()
+        builder_cls = mpd_registry.get(self.domain)
         if not builder_cls:
             logger.warning("MPD builder not registered for domain %s", self.domain)
             return None

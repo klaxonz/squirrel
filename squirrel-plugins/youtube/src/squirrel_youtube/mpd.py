@@ -9,7 +9,7 @@ import requests
 from yt_dlp import YoutubeDL
 
 from crawl import (
-    BaseMpdBuilder,
+    MpdBuilder,
     register_mpd,
     filter_cookies_to_query_string,
     resolve_cookie_file_path,
@@ -263,7 +263,9 @@ def _format_to_rep(fmt: dict) -> dict | None:
 
 
 @register_mpd
-class YouTubeMpdBuilder(BaseMpdBuilder):
+class YouTubeMpdBuilder:
+    """YouTube MPD构建器，实现MpdBuilder Protocol"""
+    
     domain = 'youtube.com'
 
     def build_mpd(self, video) -> str:

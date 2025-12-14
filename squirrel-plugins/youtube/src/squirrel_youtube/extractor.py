@@ -22,10 +22,11 @@ logger = logging.getLogger(__name__)
 class YoutubeExtractor(YoutubeDLExtractorBase):
     """YouTube视频提取器"""
     
-    test_url = "https://www.youtube.com"
+    site_name = 'youtube'
+    supported_domains = ['youtube.com', 'youtu.be']
     
     def __init__(self):
-        super().__init__('youtube', ['youtube.com', 'youtu.be'])
+        super().__init__(self.site_name, self.supported_domains)
     
     def can_handle(self, url: str) -> bool:
         """检查是否可以处理该URL"""
@@ -40,11 +41,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             'm.youtube.com'
         ])
     
-    def extract(self, task: ExtractionTask) -> ExtractionResult:
-        """执行提取任务"""
-        return self.extract_video_info(task)
-    
-    def _extract_with_ytdlp(self, url: str, queue_name: str = None) -> Optional[Dict[str, Any]]:
+    def _extract_with_ytdlp(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """使用yt-dlp获取YouTube视频信息"""
         try:
             ydl_opts = self._build_ytdlp_opts(url, queue_name)
@@ -62,7 +59,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             logger.error(f"YouTube视频信息提取失败: {url}, error: {e}")
             return None
     
-    def _build_ytdlp_opts(self, url: str, queue_name: str = None) -> Dict[str, Any]:
+    def _build_ytdlp_opts(self, url: str, queue_name: Optional[str] = None) -> Dict[str, Any]:
         """构建yt-dlp选项"""
         cookie_file = resolve_cookie_file_path(url)
         ydl_opts: Dict[str, Any] = {

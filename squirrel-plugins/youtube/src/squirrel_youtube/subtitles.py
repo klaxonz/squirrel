@@ -8,11 +8,13 @@ from typing import Tuple
 
 from yt_dlp import YoutubeDL
 
-from crawl import BaseSubtitlesProvider, register_subtitles
+from crawl import SubtitlesProvider, register_subtitles
 
 
 @register_subtitles
-class YoutubeSubtitlesProvider(BaseSubtitlesProvider):
+class YoutubeSubtitlesProvider:
+    """YouTube字幕提供者，实现SubtitlesProvider Protocol"""
+    
     domain = 'youtube.com'
 
     def get_subtitles(self, video, lang: str, fmt: str = 'srt') -> Tuple[str, str]:
