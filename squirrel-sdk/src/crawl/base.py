@@ -2,7 +2,7 @@
 
 Usage::
 
-    from squirrel_sdk.crawl.base import BaseExtractor
+    from crawl import BaseExtractor
 
     class MyExtractor(BaseExtractor):
         site_name = "mytube"

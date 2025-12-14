@@ -28,7 +28,7 @@ pip install squirrel-sdk
 #### Method 1: Using Base Class (Recommended, Simple)
 
 ```python
-from squirrel_sdk.crawl import BaseExtractor, ExtractionTask, ExtractionResult, VideoMeta
+from crawl import BaseExtractor, ExtractionTask, ExtractionResult, VideoMeta
 
 class MyExtractor(BaseExtractor):
     site_name = "example"
@@ -51,7 +51,7 @@ class MyExtractor(BaseExtractor):
 #### Method 2: Using Protocol (More Flexible)
 
 ```python
-from squirrel_sdk.crawl import (
+from crawl import (
     Extractor, ExtractionTask, ExtractionResult, VideoMeta,
     register_extractor
 )
