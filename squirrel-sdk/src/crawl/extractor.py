@@ -52,13 +52,14 @@ class VideoExtractorBase(ABC):
                 )
             
             # Create VideoMeta directly from dict
+            # video_info is guaranteed to be non-None at this point
             video_meta = VideoMeta(
                 title=video_info.get('title', ''),
                 url=task.url,
                 thumbnail=video_info.get('thumbnail'),
                 duration=video_info.get('duration'),
                 publish_date=video_info.get('publish_date') or video_info.get('upload_date'),
-                extra_data=video_info if video_info else None,
+                extra_data=video_info,
             )
 
             return ExtractionResult(

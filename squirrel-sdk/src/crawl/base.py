@@ -67,5 +67,5 @@ class BaseExtractor(metaclass=_ExtractorMeta):
         """Basic validation: URL host matches any supported domain."""
         return any(f"://{d}" in url or d in url for d in self.supported_domains)
 
-    # Subclasses still need to implement can_handle & extract (inherited
-    # as abstract from IExtractor).
+    # Subclasses must implement can_handle() and extract() methods
+    # to satisfy the Extractor Protocol.

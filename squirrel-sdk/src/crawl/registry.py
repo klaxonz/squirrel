@@ -157,49 +157,42 @@ def reset_all_registries() -> None:
     This resets all registries defined in this module. For other plugin type
     registries, use their respective reset functions or clear() methods.
     """
+    import logging
+    
     global _extractor_registry, _subscription_registry, _importer_registry, _login_checker_registry
     _extractor_registry = None
     _subscription_registry = None
     _importer_registry = None
     _login_checker_registry = None
     
+    logger = logging.getLogger(__name__)
+    
     # Reset other registries by importing and clearing them
-    try:
-        from .url_handler import get_handler_registry
-        get_handler_registry().clear()
-    except ImportError:
-        pass
+    # These imports should not fail in normal operation, but we catch
+    # ImportError/AttributeError to handle edge cases (e.g., during module reload)
+    registries_to_reset = [
+        (".url_handler", "get_handler_registry", "url_handler"),
+        (".id_extractor", "get_id_extractor_registry", "id_extractor"),
+        (".downloader", "get_downloader_registry", "downloader"),
+        (".mpd", "get_mpd_registry", "mpd"),
+        (".subtitles", "get_subtitles_registry", "subtitles"),
+    ]
     
-    try:
-        from .id_extractor import get_id_extractor_registry
-        get_id_extractor_registry().clear()
-    except ImportError:
-        pass
+    for module_name, func_name, registry_name in registries_to_reset:
+        try:
+            module = __import__(module_name, fromlist=[func_name], level=1)
+            get_registry = getattr(module, func_name)
+            get_registry().clear()
+        except (ImportError, AttributeError) as e:
+            logger.debug(f"Could not reset {registry_name} registry: {e}")
     
-    try:
-        from .downloader import get_downloader_registry
-        get_downloader_registry().clear()
-    except ImportError:
-        pass
-    
-    try:
-        from .mpd import get_mpd_registry
-        get_mpd_registry().clear()
-    except ImportError:
-        pass
-    
-    try:
-        from .subtitles import get_subtitles_registry
-        get_subtitles_registry().clear()
-    except ImportError:
-        pass
-    
+    # Handle proxy registries separately (has two registries)
     try:
         from .proxy import get_proxy_registry, get_proxy_config_registry
         get_proxy_registry().clear()
         get_proxy_config_registry().clear()
-    except ImportError:
-        pass
+    except (ImportError, AttributeError) as e:
+        logger.debug(f"Could not reset proxy registries: {e}")
 
 
 # Factory functions
