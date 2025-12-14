@@ -1,1 +1,0 @@
-"""Extraction unit tests package"""
