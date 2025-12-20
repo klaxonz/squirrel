@@ -476,6 +476,16 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
     // 避免重复加载相同的源
     if (src === currentSourceUrl) return
+
+    // 切换源之前先暂停当前视频，避免旧视频继续播放
+    if (videoElement.value) {
+      try {
+        videoElement.value.pause()
+      } catch (e) {
+        // Ignore pause errors
+      }
+    }
+
     currentSourceUrl = src
 
     // 通知插件源变化（HLS/DASH 插件会处理）

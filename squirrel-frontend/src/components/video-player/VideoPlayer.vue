@@ -709,10 +709,20 @@ onUnmounted(() => {
   if (hideControlsTimer) clearTimeout(hideControlsTimer)
 })
 
+// 停止播放并重置状态
+const stop = () => {
+  pause()
+  if (videoRef.value) {
+    videoRef.value.currentTime = 0
+  }
+  store.resetForNewVideo()
+}
+
 // 暴露给父组件
 defineExpose({
   play,
   pause,
+  stop,
   seek,
   toggleFullscreen,
   videoElement: videoRef

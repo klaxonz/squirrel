@@ -452,23 +452,9 @@ const goToVideo = async (id, videoData = null) => {
     }
   }
   
-  // 切换到新视频前，先停止当前播放，避免在新视频无法获取播放链接时旧视频继续播放
+  // 切换到新视频前，先停止当前播放并重置状态
   try {
-    const core = videoPlayerRef.value?.videoPlayerRef?.videoCore || videoPlayerRef.value?.videoCore;
-    if (core?.videoElement) {
-      try {
-        core.videoElement.pause();
-        core.videoElement.removeAttribute('src');
-        core.videoElement.load();
-      } catch (_) {}
-    }
-    if (core?.audioElement) {
-      try {
-        core.audioElement.pause();
-        core.audioElement.removeAttribute('src');
-        core.audioElement.load();
-      } catch (_) {}
-    }
+    videoPlayerRef.value?.stop();
   } catch (_) {}
   
   // 使用 history.replaceState 直接更新 URL，不触发 Vue Router 的任何逻辑
