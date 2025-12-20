@@ -14,7 +14,6 @@ class SiteLoginStatusService:
     def get_supported_sites() -> set[str]:
         registry = get_login_checker_registry()
         try:
-            # PluginRegistry 使用 get_all_keys() 方法获取所有注册的键
             return set(registry.get_all_keys())
         except AttributeError:
             logger.debug("login checker registry missing get_all_keys")
