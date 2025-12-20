@@ -123,7 +123,7 @@ def generate_task_data(tasks: List[DownloadTask]):
 
                 task_data.append({
                     "id": task.id,
-                    "thumbnail": videos_map[task.video_id].thumbnail,
+                    "thumbnail": f'/api/video/thumbnail/{task.video_id}',
                     "status": task.status,
                     "title": videos_map[task.video_id].title,
                     "channel_name": video_subscription_map[task.video_id].name,

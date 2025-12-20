@@ -43,6 +43,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/video/proxy",
             "/api/video/play",
             "/api/video/mpd",
+            "/api/video/thumbnail",
             "/health",
             "/health/ready",
             "/health/live"

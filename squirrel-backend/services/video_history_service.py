@@ -151,7 +151,7 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                 'id': v.id,
                 'title': v.title,
                 'url': v.url,
-                'thumbnail': v.thumbnail,
+                'thumbnail': f'/api/video/thumbnail/{v.id}',
                 'duration': v.duration,
                 'last_position': h.last_position or 0,
                 'uploaded_at': v.publish_date.strftime('%Y-%m-%d %H:%M:%S') if v.publish_date else None,
