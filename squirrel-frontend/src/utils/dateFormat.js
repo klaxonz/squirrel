@@ -82,7 +82,18 @@ export const formatDate = (dateString) => {
     }
   }
 
-  return formatDate(dateString.split(' ')[0]);
+  // 超过1天的情况，只显示日期部分（去掉时分秒后递归处理）
+  // 处理 ISO 格式 (T分隔) 和普通格式 (空格分隔)
+  const datePart = dateString.includes('T')
+    ? dateString.split('T')[0]
+    : dateString.split(' ')[0];
+
+  // 防止无限递归：如果日期部分和原字符串相同，直接返回格式化的日期
+  if (datePart === dateString || datePart.length > 10) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  return formatDate(datePart);
 };
 
 // 如果需要其他日期格式化方法，也可以在这里添加
