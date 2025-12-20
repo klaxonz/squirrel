@@ -29,39 +29,41 @@ def get_proxy_registry() -> PluginRegistry[Type[VideoProxy]]:
     return _proxy_registry
 
 
-def register_proxy(domain: Optional[str] = None):
+def register_proxy(domain_or_cls=None):
     """Decorator to register a video proxy.
-    
+
     Usage:
         # Method 1: Auto-detect domain from class attribute
         @register_proxy
         class MyProxy:
             domain = "example.com"
             ...
-        
+
         # Method 2: Explicitly specify domain
         @register_proxy("example.com")
         class MyProxy:
             domain = "example.com"
             ...
     """
-    if domain is None:
-        # Used as @register_proxy (no parentheses)
-        def decorator(proxy_class: Type[VideoProxy]):
+    def decorator(proxy_class: Type[VideoProxy]):
+        if isinstance(domain_or_cls, str):
+            domain_attr = domain_or_cls
+        else:
             domain_attr = getattr(proxy_class, 'domain', None)
-            if not domain_attr:
-                raise AttributeError("Proxy must define 'domain' attribute")
-            registry = get_proxy_registry()
-            registry.register(domain_attr, proxy_class, [domain_attr])
-            return proxy_class
-        return decorator
-    else:
-        # Used as @register_proxy("domain")
-        def decorator(proxy_class: Type[VideoProxy]):
-            registry = get_proxy_registry()
-            registry.register(domain, proxy_class, [domain])
-            return proxy_class
-        return decorator
+
+        if not domain_attr:
+            raise AttributeError("Proxy must define 'domain' attribute")
+
+        registry = get_proxy_registry()
+        registry.register(domain_attr, proxy_class, [domain_attr])
+        return proxy_class
+
+    # If called without parentheses, domain_or_cls is the class itself
+    if domain_or_cls is not None and not isinstance(domain_or_cls, str):
+        return decorator(domain_or_cls)
+
+    # If called with parentheses (with or without domain argument)
+    return decorator
 
 
 ProxyConfig = Dict[str, Dict[str, Any]]
@@ -108,36 +110,38 @@ def get_proxy_config_registry() -> PluginRegistry[Type[ProxyConfigProvider]]:
     return _proxy_config_registry
 
 
-def register_site_config(domain: Optional[str] = None):
+def register_site_config(domain_or_cls=None):
     """Decorator to register a proxy config provider.
-    
+
     Usage:
         # Method 1: Auto-detect domain from class attribute
         @register_site_config
         class MyProxyConfigProvider:
             domain = "example.com"
             ...
-        
+
         # Method 2: Explicitly specify domain
         @register_site_config("example.com")
         class MyProxyConfigProvider:
             domain = "example.com"
             ...
     """
-    if domain is None:
-        # Used as @register_site_config (no parentheses)
-        def decorator(provider_cls: Type[ProxyConfigProvider]):
+    def decorator(provider_cls: Type[ProxyConfigProvider]):
+        if isinstance(domain_or_cls, str):
+            domain_attr = domain_or_cls
+        else:
             domain_attr = getattr(provider_cls, 'domain', None)
-            if not domain_attr:
-                raise AttributeError("ProxyConfigProvider must define 'domain' attribute")
-            registry = get_proxy_config_registry()
-            registry.register(domain_attr, provider_cls, [domain_attr])
-            return provider_cls
-        return decorator
-    else:
-        # Used as @register_site_config("domain")
-        def decorator(provider_cls: Type[ProxyConfigProvider]):
-            registry = get_proxy_config_registry()
-            registry.register(domain, provider_cls, [domain])
-            return provider_cls
-        return decorator
+
+        if not domain_attr:
+            raise AttributeError("ProxyConfigProvider must define 'domain' attribute")
+
+        registry = get_proxy_config_registry()
+        registry.register(domain_attr, provider_cls, [domain_attr])
+        return provider_cls
+
+    # If called without parentheses, domain_or_cls is the class itself
+    if domain_or_cls is not None and not isinstance(domain_or_cls, str):
+        return decorator(domain_or_cls)
+
+    # If called with parentheses (with or without domain argument)
+    return decorator

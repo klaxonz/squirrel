@@ -226,13 +226,18 @@ def play_video(request: Request, video_id: int):
 async def proxy_video(domain: str, url: str, request: Request):
     """代理视频文件，用于解决跨域问题"""
     from core.streaming.proxy import VideoProxy
-    
+
     proxy_registry = get_proxy_registry()
     proxy_key = proxy_registry.get_by_domain(domain)
     if proxy_key:
         proxy_cls = proxy_registry.get(proxy_key)
         if proxy_cls and isinstance(proxy_cls, type):
-            proxy = proxy_cls(request)
+            # 尝试用 request 参数实例化，如果失败则不带参数实例化
+            try:
+                proxy = proxy_cls(request)
+            except TypeError:
+                proxy = proxy_cls()
+                proxy._request = request
         else:
             proxy = VideoProxy(request, domain=domain)
     else:

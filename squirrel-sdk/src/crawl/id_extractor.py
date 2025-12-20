@@ -32,38 +32,39 @@ def get_id_extractor_registry() -> PluginRegistry[IdExtractor]:
     return _id_extractor_registry
 
 
-def register_id_extractor(domain: Optional[str] = None):
+def register_id_extractor(domain_or_cls=None):
     """Decorator to register an ID extractor.
-    
+
     Usage:
         # Method 1: Auto-detect domain from class attribute
         @register_id_extractor
         class MyIdExtractor:
             domain = "example.com"
             ...
-        
+
         # Method 2: Explicitly specify domain
         @register_id_extractor("example.com")
         class MyIdExtractor:
             domain = "example.com"
             ...
     """
-    # Support both @register_id_extractor and @register_id_extractor("domain")
-    if domain is None:
-        # Used as @register_id_extractor (no parentheses)
-        def decorator(cls_or_instance: IdExtractor):
+    def decorator(cls_or_instance: IdExtractor):
+        if isinstance(domain_or_cls, str):
+            domain_attr = domain_or_cls
+        else:
             domain_attr = getattr(cls_or_instance, 'domain', None)
-            if not domain_attr:
-                raise AttributeError("IdExtractor must define 'domain' attribute")
-            registry = get_id_extractor_registry()
-            registry.register(domain_attr, cls_or_instance, [domain_attr])
-            return cls_or_instance
-        return decorator
-    else:
-        # Used as @register_id_extractor("domain")
-        def decorator(cls_or_instance: IdExtractor):
-            registry = get_id_extractor_registry()
-            registry.register(domain, cls_or_instance, [domain])
-            return cls_or_instance
-        return decorator
+
+        if not domain_attr:
+            raise AttributeError("IdExtractor must define 'domain' attribute")
+
+        registry = get_id_extractor_registry()
+        registry.register(domain_attr, cls_or_instance, [domain_attr])
+        return cls_or_instance
+
+    # If called without parentheses, domain_or_cls is the class itself
+    if domain_or_cls is not None and not isinstance(domain_or_cls, str):
+        return decorator(domain_or_cls)
+
+    # If called with parentheses (with or without domain argument)
+    return decorator
 

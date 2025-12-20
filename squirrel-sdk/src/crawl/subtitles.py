@@ -32,37 +32,39 @@ def get_subtitles_registry() -> PluginRegistry[Type[SubtitlesProvider]]:
     return _subtitles_registry
 
 
-def register_subtitles(domain: Optional[str] = None):
+def register_subtitles(domain_or_cls=None):
     """Decorator to register a subtitles provider.
-    
+
     Usage:
         # Method 1: Auto-detect domain from class attribute
         @register_subtitles
         class MySubtitlesProvider:
             domain = "example.com"
             ...
-        
+
         # Method 2: Explicitly specify domain
         @register_subtitles("example.com")
         class MySubtitlesProvider:
             domain = "example.com"
             ...
     """
-    if domain is None:
-        # Used as @register_subtitles (no parentheses)
-        def decorator(provider_class: Type[SubtitlesProvider]):
+    def decorator(provider_class: Type[SubtitlesProvider]):
+        if isinstance(domain_or_cls, str):
+            domain_attr = domain_or_cls
+        else:
             domain_attr = getattr(provider_class, 'domain', None)
-            if not domain_attr:
-                raise AttributeError("Subtitles provider must define 'domain' attribute")
-            registry = get_subtitles_registry()
-            registry.register(domain_attr, provider_class, [domain_attr])
-            return provider_class
-        return decorator
-    else:
-        # Used as @register_subtitles("domain")
-        def decorator(provider_class: Type[SubtitlesProvider]):
-            registry = get_subtitles_registry()
-            registry.register(domain, provider_class, [domain])
-            return provider_class
-        return decorator
+
+        if not domain_attr:
+            raise AttributeError("Subtitles provider must define 'domain' attribute")
+
+        registry = get_subtitles_registry()
+        registry.register(domain_attr, provider_class, [domain_attr])
+        return provider_class
+
+    # If called without parentheses, domain_or_cls is the class itself
+    if domain_or_cls is not None and not isinstance(domain_or_cls, str):
+        return decorator(domain_or_cls)
+
+    # If called with parentheses (with or without domain argument)
+    return decorator
 

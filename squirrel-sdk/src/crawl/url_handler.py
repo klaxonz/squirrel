@@ -31,37 +31,40 @@ def get_handler_registry() -> PluginRegistry[VideoUrlHandler]:
     return _handler_registry
 
 
-def register_handler(domain: Optional[str] = None):
+def register_handler(domain_or_cls=None):
     """Decorator to register a video URL handler.
-    
+
     Usage:
         # Method 1: Auto-detect domain from class attribute
         @register_handler
         class MyHandler:
             domain = "example.com"
             ...
-        
+
         # Method 2: Explicitly specify domain
         @register_handler("example.com")
         class MyHandler:
             domain = "example.com"
             ...
     """
-    if domain is None:
-        # Used as @register_handler (no parentheses)
-        def decorator(cls_or_instance: VideoUrlHandler):
+    def decorator(cls_or_instance: VideoUrlHandler):
+        # Determine the domain: use explicit domain if string, otherwise get from class
+        if isinstance(domain_or_cls, str):
+            domain_attr = domain_or_cls
+        else:
             domain_attr = getattr(cls_or_instance, 'domain', None)
-            if not domain_attr:
-                raise AttributeError("Handler class must define 'domain' attribute")
-            registry = get_handler_registry()
-            registry.register(domain_attr, cls_or_instance, [domain_attr])
-            return cls_or_instance
-        return decorator
-    else:
-        # Used as @register_handler("domain")
-        def decorator(cls_or_instance: VideoUrlHandler):
-            registry = get_handler_registry()
-            registry.register(domain, cls_or_instance, [domain])
-            return cls_or_instance
-        return decorator
+
+        if not domain_attr:
+            raise AttributeError("Handler class must define 'domain' attribute")
+
+        registry = get_handler_registry()
+        registry.register(domain_attr, cls_or_instance, [domain_attr])
+        return cls_or_instance
+
+    # If called without parentheses, domain_or_cls is the class itself
+    if domain_or_cls is not None and not isinstance(domain_or_cls, str):
+        return decorator(domain_or_cls)
+
+    # If called with parentheses (with or without domain argument)
+    return decorator
 

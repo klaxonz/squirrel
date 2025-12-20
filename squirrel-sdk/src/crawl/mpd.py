@@ -28,37 +28,39 @@ def get_mpd_registry() -> PluginRegistry[Type[MpdBuilder]]:
     return _mpd_registry
 
 
-def register_mpd(domain: Optional[str] = None):
+def register_mpd(domain_or_cls=None):
     """Decorator to register an MPD builder.
-    
+
     Usage:
         # Method 1: Auto-detect domain from class attribute
         @register_mpd
         class MyMpdBuilder:
             domain = "example.com"
             ...
-        
+
         # Method 2: Explicitly specify domain
         @register_mpd("example.com")
         class MyMpdBuilder:
             domain = "example.com"
             ...
     """
-    if domain is None:
-        # Used as @register_mpd (no parentheses)
-        def decorator(builder_class: Type[MpdBuilder]):
+    def decorator(builder_class: Type[MpdBuilder]):
+        if isinstance(domain_or_cls, str):
+            domain_attr = domain_or_cls
+        else:
             domain_attr = getattr(builder_class, 'domain', None)
-            if not domain_attr:
-                raise AttributeError("MPD builder must define 'domain' attribute")
-            registry = get_mpd_registry()
-            registry.register(domain_attr, builder_class, [domain_attr])
-            return builder_class
-        return decorator
-    else:
-        # Used as @register_mpd("domain")
-        def decorator(builder_class: Type[MpdBuilder]):
-            registry = get_mpd_registry()
-            registry.register(domain, builder_class, [domain])
-            return builder_class
-        return decorator
+
+        if not domain_attr:
+            raise AttributeError("MPD builder must define 'domain' attribute")
+
+        registry = get_mpd_registry()
+        registry.register(domain_attr, builder_class, [domain_attr])
+        return builder_class
+
+    # If called without parentheses, domain_or_cls is the class itself
+    if domain_or_cls is not None and not isinstance(domain_or_cls, str):
+        return decorator(domain_or_cls)
+
+    # If called with parentheses (with or without domain argument)
+    return decorator
 

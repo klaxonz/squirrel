@@ -15,8 +15,7 @@ from core.exceptions.proxy_exceptions import (
     ProxyConfigurationException,
     UnsupportedDomainException,
 )
-from crawl import VideoProxyBase
-from crawl.proxy_interfaces import ProxyConfigRegistry
+from crawl import get_proxy_config_registry
 
 logger = logging.getLogger()
 
@@ -252,7 +251,7 @@ class HttpRequester:
         raise ProxyException("All retry attempts failed", self.domain)
 
 
-class VideoProxy(VideoProxyBase):
+class VideoProxy:
     domain: Optional[str] = None
     _connection_manager = ConnectionManager()
 
@@ -262,7 +261,7 @@ class VideoProxy(VideoProxyBase):
         if not self.domain:
             raise UnsupportedDomainException("unknown")
 
-        provider_cls = ProxyConfigRegistry.get(self.domain)
+        provider_cls = get_proxy_config_registry().get(self.domain)
         if not provider_cls:
             raise ProxyConfigurationException(self.domain, "no proxy config provider")
         self.provider_cls = provider_cls
