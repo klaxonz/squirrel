@@ -41,7 +41,7 @@
                 title="随机播放"
                 aria-label="随机播放"
               >
-                <Icon icon="material-symbols:shuffle" class="h-5 w-5" />
+                <Icon icon="lucide:shuffle" class="h-5 w-5" />
               </button>
               <!-- 主要按钮显示在外面 -->
               <button
