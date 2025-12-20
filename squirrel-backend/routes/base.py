@@ -108,12 +108,22 @@ def create_app() -> FastAPI:
     app.include_router(logs_router)
     app.include_router(connectivity_router)
 
+    # 开发环境也需要挂载 thumbnails 静态文件
+    _mount_thumbnails(app)
+
     # 生产环境：挂载静态文件和 SPA 路由
     if not settings.is_dev:
         _mount_static_files(app)
         _register_spa_route(app)
 
     return app
+
+
+def _mount_thumbnails(app: FastAPI) -> None:
+    thumbnails_dir = str(settings.thumbnails_dir)
+    if os.path.exists(thumbnails_dir):
+        app.mount("/static/thumbnails", StaticFiles(directory=thumbnails_dir), name="thumbnails")
+        logger.info(f"Thumbnails mounted: {thumbnails_dir}")
 
 
 def _mount_static_files(app: FastAPI) -> None:

@@ -2,7 +2,7 @@ import logging
 import os
 import time
 from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response, Body
-from fastapi.responses import PlainTextResponse, RedirectResponse, FileResponse
+from fastapi.responses import PlainTextResponse
 import common.response as response
 from common.video_stream import VideoStreamHandler
 from core import download_config
@@ -16,8 +16,7 @@ from utils.site_catalog import SiteCatalog
 from core.site_config_manager import get_effective_site_catalog
 from crawl import DownloaderFactory, get_proxy_registry, get_subtitles_registry, get_mpd_registry
 from utils.jwt_helper import get_current_user
-from utils.url_helper import extract_top_level_domain, get_site_from_url
-from common.site_constants import SITE_META_OFFLINE_THUMBNAILS_DISPLAY
+from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()
 
@@ -66,51 +65,6 @@ def get_video(
 ):
     video = video_service.get_video(current_user.id, video_id)
     return response.success(video)
-
-
-@router.get("/api/video/thumbnail/{video_id}")
-def get_video_thumbnail(video_id: int):
-    """根据配置返回视频封面：
-
-    - 若启用离线封面，则优先从 static/thumbnails/{video_id}.* 读取本地文件；
-      若本地不存在，则回退为远程封面 URL 重定向。
-    - 若未启用离线封面，则直接重定向到远程封面 URL。
-    """
-    video = video_service.get_video_by_id(video_id)
-    if not video or not getattr(video, "thumbnail", None):
-        raise HTTPException(status_code=404, detail="Video not found")
-
-    # 根据站点配置 metadata.offline_thumbnails_display 判断是否使用本地封面
-    site = get_site_from_url(video.url)
-    use_offline = False
-    if site:
-        catalog = get_effective_site_catalog()
-        info = catalog.get(site) or {}
-        metadata = info.get("metadata") or {}
-        # 仅使用 offline_thumbnails_display 决定是否使用本地封面
-        use_offline = bool(metadata.get(SITE_META_OFFLINE_THUMBNAILS_DISPLAY))
-
-    # 计算本地封面目录，与 routes/base.py 中 _mount_static_files 的 static 目录保持一致
-    if use_offline:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        thumbnails_dir = os.path.join(base_dir, "static", "thumbnails")
-
-        # 仅在 batch_* 子目录中查找以 video_id 开头的文件（允许任意后缀）
-        if os.path.isdir(thumbnails_dir):
-            for entry in os.listdir(thumbnails_dir):
-                batch_path = os.path.join(thumbnails_dir, entry)
-                if not (os.path.isdir(batch_path) and entry.startswith("batch_")):
-                    continue
-
-                for name in os.listdir(batch_path):
-                    if not name.startswith(f"{video_id}."):
-                        continue
-                    file_path = os.path.join(batch_path, name)
-                    if os.path.isfile(file_path):
-                        return FileResponse(file_path)
-
-    # 未开启离线封面或本地文件不存在时，回退到远程 URL
-    return RedirectResponse(url=video.thumbnail)
 
 
 @router.get("/api/video/list")

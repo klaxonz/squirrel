@@ -7,6 +7,7 @@ from models.subscription import Subscription
 from models.links import SubscriptionVideo, UserSubscription
 from schemas.video_history import HistoryCreate
 from utils.url_helper import get_site_from_url
+from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
 
 def update_history(user_id: int, data: HistoryCreate):
@@ -151,7 +152,7 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                 'id': v.id,
                 'title': v.title,
                 'url': v.url,
-                'thumbnail': f'/api/video/thumbnail/{v.id}',
+                'thumbnail': thumbnail_downloader_service.get_thumbnail_url(v.id, v.thumbnail, v.url),
                 'duration': v.duration,
                 'last_position': h.last_position or 0,
                 'uploaded_at': v.publish_date.strftime('%Y-%m-%d %H:%M:%S') if v.publish_date else None,

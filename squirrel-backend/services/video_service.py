@@ -20,6 +20,7 @@ from utils import url_helper
 from utils.url_helper import extract_top_level_domain
 from utils.site_catalog import SiteCatalog
 from core.cache import redis_client
+from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
 logger = logging.getLogger()
 
@@ -749,7 +750,7 @@ def list_videos(
                 'id': video.id,
                 'title': video.title,
                 'url': video.url,
-                'thumbnail': f'/api/video/thumbnail/{video.id}',
+                'thumbnail': thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
                 'duration': video.duration,
                 'last_position': video_history_dict[video.id].last_position if video.id in video_history_dict else 0,
                 'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
@@ -846,7 +847,7 @@ def get_video(user_id, video_id):
 
         video_data = {
             **video.to_dict(),
-            'thumbnail': f'/api/video/thumbnail/{video.id}',
+            'thumbnail': thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
             'interaction_type': video_interaction.interaction_type if video_interaction else None,
             'last_position': video_history.last_position if video_history else 0,
             'domain': url_helper.extract_top_level_domain(video.url),

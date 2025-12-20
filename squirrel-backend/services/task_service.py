@@ -11,6 +11,7 @@ from models.task.download_task import DownloadTask
 from models.task.task_state import TaskState
 from models.video import Video
 from services import download_service
+from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
 
 def create_task(video_id: int, url: str) -> DownloadTask:
@@ -121,9 +122,10 @@ def generate_task_data(tasks: List[DownloadTask]):
                 eta = progress.get('eta', '')
                 percent = progress.get('percent', '')
 
+                video = videos_map[task.video_id]
                 task_data.append({
                     "id": task.id,
-                    "thumbnail": f'/api/video/thumbnail/{task.video_id}',
+                    "thumbnail": thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
                     "status": task.status,
                     "title": videos_map[task.video_id].title,
                     "channel_name": video_subscription_map[task.video_id].name,
