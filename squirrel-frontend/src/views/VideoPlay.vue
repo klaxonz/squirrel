@@ -2,7 +2,7 @@
   <div class="video-page bg-[#0f0f0f] min-h-screen scrollbar min-w-[1200px]">
     <div class="max-w-[1720px] mx-auto lg:px-6 pt-6 flex min-w-[1200px]">
       <!-- 左侧主内容区域 -->
-      <div class="flex-1 max-w-[1280px]">
+      <div :class="['flex-1', isWidescreen ? '' : 'max-w-[1280px]']">
         <!-- 视频播放区域 -->
         <div class="video-section">
           <div class="video-container">
@@ -14,6 +14,7 @@
               :has-prev="hasPrevVideo"
               :has-next="hasNextVideo"
               :external-error="externalError"
+              :widescreen="isWidescreen"
 
               @play="onVideoPlay"
               @pause="onVideoPause"
@@ -21,6 +22,7 @@
               @timeupdate="onVideoTimeUpdate"
               @prev-video="handlePrevVideo"
               @next-video="handleNextVideo"
+              @widescreenChange="toggleWidescreen"
             />
           </div>
         </div>
@@ -210,7 +212,7 @@
       </div>
 
       <!-- 右侧区域 - 相关视频 -->
-      <div class="hidden md:block md:w-[320px] lg:w-[400px] md:ml-6">
+      <div :class="['md:w-[320px] lg:w-[400px] md:ml-6', isWidescreen ? 'hidden' : 'hidden md:block']">
         <div class="sticky top-4">
           <div class="rounded-xl px-4 pb-4 pt-0 flex flex-col">
             <h2 class="text-white text-lg mb-4">相关视频</h2>
@@ -301,6 +303,12 @@ const { getRandomVideo } = useVideoApi();
 
 // 视频播放器引用
 const videoPlayerRef = ref(null);
+
+// 宽屏模式
+const isWidescreen = ref(false);
+const toggleWidescreen = (value) => {
+  isWidescreen.value = value;
+};
 
 // 记录最近播放的视频，防止循环播放
 const recentlyPlayed = ref([]);
