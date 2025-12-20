@@ -4,10 +4,10 @@
         v-if="showTabs"
         v-model="localActiveTab"
         :tabs="tabsWithCounts"
-        class="custom-tab-bar flex-grow"
+        class="custom-tab-bar flex-grow min-w-0"
         @tab-dblclick="$emit('tab-dblclick', $event)"
     />
-    <div class="flex items-center">
+    <div class="flex items-center flex-shrink-0">
       <NsfwFilter v-if="showNsfw" v-model="localNsfw" class="ml-2" />
       <SiteFilter
           v-if="showSite && !subscriptionId"

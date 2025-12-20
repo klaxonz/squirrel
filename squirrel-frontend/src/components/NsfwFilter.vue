@@ -2,7 +2,7 @@
   <div class="relative inline-block" ref="rootRef">
     <button
       @click="toggle"
-      class="flex items-center px-2 py-1.5 text-[#f1f1f1] hover:bg-[#272727] rounded-full transition-colors duration-150"
+      class="flex items-center flex-nowrap px-2 py-1.5 text-[#f1f1f1] hover:bg-[#272727] rounded-full transition-colors duration-150"
       :class="[{ 'bg-[#272727]': isOpen }, isMobile ? 'p-1.5' : 'space-x-1 px-2 text-xs']"
     >
       <!-- Shield icon -->
