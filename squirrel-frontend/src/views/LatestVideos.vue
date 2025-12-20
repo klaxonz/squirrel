@@ -51,7 +51,7 @@
 </template>
 
 <script setup>
-import {computed, inject, onMounted, onUnmounted, ref} from 'vue';
+import {computed, inject, onActivated, onDeactivated, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import { useRouteTabSync } from '../composables/useRouteTabSync';
 import { useFeedFilters } from '../composables/useFeedFilters';
@@ -65,7 +65,7 @@ const emitter = inject('emitter');
 
 // Page-scoped filter state
 const route = useRoute();
-const subscriptionId = computed(() => route.params.id);
+const subscriptionId = ref(route.params.id);
 const { activeTab, nsfw, sortBy, site, searchQuery, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId });
 const childFilters = computed(() => filters.value);
 
@@ -116,12 +116,11 @@ const handleTabDoubleClick = (tab) => {
 
 useRouteTabSync(router, route, activeTab, subscriptionId);
 
-onMounted(() => {
-  // 监听全局搜索事件
+onActivated(() => {
   emitter.on('search:home', handleGlobalSearch);
 });
 
-onUnmounted(() => {
+onDeactivated(() => {
   emitter.off('search:home', handleGlobalSearch);
 });
 

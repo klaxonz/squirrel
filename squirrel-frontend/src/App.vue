@@ -23,7 +23,7 @@
         <div class="content-container absolute inset-0" ref="contentContainerRef" :class="isScrollablePage ? 'scrollbar-hide overflow-y-auto' : 'overflow-hidden'">
           <router-view v-slot="{ Component }">
             <keep-alive :include="['LatestVideos', 'Subscribed']">
-              <component :is="Component" />
+              <component :is="Component" :key="routeCacheKey" />
             </keep-alive>
           </router-view>
         </div>
@@ -97,6 +97,16 @@ const { loadSystemConfig } = useSystemConfig();
 // 是否允许当前页面滚动（如视频播放页）
 const isScrollablePage = computed(() => {
   return !!route.meta?.scrollable;
+});
+
+const routeCacheKey = computed(() => {
+  if (route.params.id) {
+    return `subscription-${route.params.id}`;
+  }
+  if (route.path.startsWith('/videos')) {
+    return 'videos';
+  }
+  return route.name || route.path;
 });
 
 watch(isScrollablePage, (newVal, oldVal) => {
