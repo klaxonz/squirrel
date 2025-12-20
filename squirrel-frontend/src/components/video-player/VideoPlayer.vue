@@ -749,28 +749,36 @@ defineExpose({
   right: 0;
   bottom: 0;
   z-index: var(--sp-z-controls, 20);
-  padding: var(--sp-controls-padding, 8px 12px);
-  background: var(--sp-controls-bg, linear-gradient(transparent, rgba(0, 0, 0, 0.8)));
+  padding: 0 14px 10px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.75) 0%,
+    rgba(0, 0, 0, 0.5) 50%,
+    rgba(0, 0, 0, 0.25) 75%,
+    transparent 100%
+  );
+  padding-top: 40px;
 }
 
 /* 进度条 */
 .sp-progress-container {
   position: relative;
-  padding: 8px 0;
-  margin-bottom: 4px;
+  padding: 10px 0 8px;
+  margin-bottom: 2px;
 }
 
 .sp-progress {
   position: relative;
-  height: var(--sp-progress-height, 4px);
+  height: var(--sp-progress-height, 3px);
   background: var(--sp-progress-bg, rgba(255, 255, 255, 0.2));
-  border-radius: 2px;
+  border-radius: 1.5px;
   cursor: pointer;
-  transition: height var(--sp-transition-fast, 0.15s);
+  transition: height 0.1s ease, transform 0.1s ease;
 }
 
 .sp-progress:hover {
-  height: var(--sp-progress-height-hover, 6px);
+  height: 5px;
+  transform: translateY(-1px);
 }
 
 .sp-progress-buffered {
@@ -778,8 +786,9 @@ defineExpose({
   top: 0;
   left: 0;
   height: 100%;
-  background: var(--sp-progress-buffered, rgba(255, 255, 255, 0.4));
-  border-radius: 2px;
+  background: var(--sp-progress-buffered, rgba(255, 255, 255, 0.35));
+  border-radius: inherit;
+  transition: width 0.1s ease;
 }
 
 .sp-progress-played {
@@ -788,35 +797,49 @@ defineExpose({
   left: 0;
   height: 100%;
   background: var(--sp-primary, #e53935);
-  border-radius: 2px;
+  border-radius: inherit;
+  box-shadow: 0 0 8px rgba(229, 57, 53, 0.4);
 }
 
 .sp-progress-thumb {
   position: absolute;
   top: 50%;
-  width: var(--sp-progress-thumb-size, 14px);
-  height: var(--sp-progress-thumb-size, 14px);
+  width: 13px;
+  height: 13px;
   background: var(--sp-primary, #e53935);
   border-radius: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0;
-  transition: opacity var(--sp-transition-fast, 0.15s);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .sp-progress:hover .sp-progress-thumb {
-  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .sp-progress-preview {
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 8px);
   transform: translateX(-50%);
-  padding: var(--sp-tooltip-padding, 4px 8px);
-  background: var(--sp-tooltip-bg, rgba(28, 28, 28, 0.95));
-  border-radius: var(--sp-radius-sm, 4px);
-  font-size: var(--sp-font-size-sm, 12px);
+  padding: 5px 10px;
+  background: rgba(24, 24, 24, 0.95);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.sp-progress-preview::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(24, 24, 24, 0.95);
 }
 
 /* 控制按钮行 */
@@ -824,13 +847,14 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: space-between;
+  height: 40px;
 }
 
 .sp-controls-left,
 .sp-controls-right {
   display: flex;
   align-items: center;
-  gap: var(--sp-controls-gap, 4px);
+  gap: 2px;
 }
 
 /* 按钮 */
@@ -838,75 +862,126 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--sp-btn-size, 40px);
-  height: var(--sp-btn-size, 40px);
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
-  border-radius: var(--sp-radius-full, 50%);
+  border-radius: 6px;
   background: transparent;
-  color: var(--sp-text, #fff);
+  color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
-  transition: background var(--sp-transition-fast, 0.15s);
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
 .sp-btn:hover {
-  background: var(--sp-btn-hover-bg, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 .sp-btn:active {
-  background: var(--sp-btn-active-bg, rgba(255, 255, 255, 0.15));
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.92);
+}
+
+.sp-btn--play {
+  width: 40px;
+  height: 40px;
 }
 
 .sp-btn svg,
 .sp-btn .sp-icon {
-  width: var(--sp-btn-icon-size, 24px);
-  height: var(--sp-btn-icon-size, 24px);
+  width: 22px;
+  height: 22px;
+}
+
+.sp-btn--play svg,
+.sp-btn--play .sp-icon {
+  width: 26px;
+  height: 26px;
 }
 
 /* 音量 */
 .sp-volume {
   display: flex;
   align-items: center;
-  gap: var(--sp-spacing-xs, 4px);
+  gap: 2px;
 }
 
 .sp-volume-slider {
-  width: 80px;
-  height: var(--sp-progress-height, 4px);
-  background: var(--sp-progress-bg, rgba(255, 255, 255, 0.2));
-  border-radius: 2px;
+  position: relative;
+  width: 70px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 1.5px;
   cursor: pointer;
+  transition: height 0.1s ease;
+}
+
+.sp-volume:hover .sp-volume-slider {
+  height: 4px;
 }
 
 .sp-volume-slider-fill {
+  position: relative;
   height: 100%;
-  background: var(--sp-text, #fff);
-  border-radius: 2px;
+  background: #fff;
+  border-radius: inherit;
+  transition: width 0.05s ease;
+}
+
+.sp-volume-slider-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  transform: translate(50%, -50%) scale(0);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.sp-volume:hover .sp-volume-slider-fill::after {
+  transform: translate(50%, -50%) scale(1);
 }
 
 /* 时间 */
 .sp-time {
   display: flex;
   align-items: center;
-  gap: var(--sp-spacing-xs, 4px);
-  font-size: var(--sp-font-size-sm, 13px);
-  color: var(--sp-text-secondary, rgba(255, 255, 255, 0.9));
-  margin-left: var(--sp-spacing-sm, 8px);
+  gap: 3px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.9);
+  margin-left: 8px;
+}
+
+.sp-time-current {
+  color: #fff;
 }
 
 .sp-time-separator {
-  color: var(--sp-text-tertiary, rgba(255, 255, 255, 0.5));
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 1px;
+}
+
+.sp-time-duration {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* 设置弹出菜单 */
 .sp-popup {
   position: absolute;
   right: 12px;
-  bottom: 60px;
-  min-width: 180px;
-  background: rgba(28, 28, 28, 0.95);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  bottom: 56px;
+  min-width: 200px;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   overflow: hidden;
   z-index: var(--sp-z-menu, 30);
 }
@@ -916,55 +991,56 @@ defineExpose({
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 8px 12px;
+  padding: 11px 14px;
   border: none;
   background: transparent;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.9);
   font-size: 13px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background 0.12s ease;
 }
 
 .sp-popup-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .sp-popup-value {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.45);
   font-size: 13px;
 }
 
 .sp-popup-back {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 11px 14px;
   border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: transparent;
   color: #fff;
   font-size: 13px;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background 0.12s ease;
 }
 
 .sp-popup-back:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .sp-popup-back svg {
   width: 16px;
   height: 16px;
+  opacity: 0.7;
 }
 
 .sp-popup-list {
-  max-height: 240px;
+  max-height: 220px;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 6px 0;
 }
 
 .sp-popup-list::-webkit-scrollbar {
@@ -972,7 +1048,7 @@ defineExpose({
 }
 
 .sp-popup-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
 }
 
@@ -981,18 +1057,19 @@ defineExpose({
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 7px 12px;
+  padding: 9px 14px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 13px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
 .sp-popup-option:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 
 .sp-popup-option.active {
@@ -1003,6 +1080,7 @@ defineExpose({
   width: 14px;
   height: 14px;
   flex-shrink: 0;
+  color: var(--sp-primary, #e53935);
 }
 
 .sp-popup-option:not(.active) .sp-check {
@@ -1010,7 +1088,7 @@ defineExpose({
 }
 
 .sp-popup-option:not(.active) {
-  padding-left: 36px;
+  padding-left: 38px;
 }
 
 /* 字幕菜单 */
@@ -1018,20 +1096,20 @@ defineExpose({
   position: absolute;
   right: 12px;
   bottom: 56px;
-  min-width: 160px;
-  max-height: 280px;
+  min-width: 180px;
+  max-height: 260px;
   overflow-y: auto;
   padding: 6px 0;
-  background: rgba(28, 28, 28, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   z-index: var(--sp-z-menu, 30);
 }
 
 .sp-menu::-webkit-scrollbar {
-  width: 3px;
+  width: 4px;
 }
 
 .sp-menu::-webkit-scrollbar-track {
@@ -1039,19 +1117,21 @@ defineExpose({
 }
 
 .sp-menu::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
 }
 
 .sp-menu-section {
-  padding: 2px 0;
+  padding: 0;
 }
 
 .sp-menu-label {
-  padding: 6px 14px 8px;
+  padding: 8px 14px 6px;
   font-size: 11px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .sp-quality-list {
@@ -1065,18 +1145,19 @@ defineExpose({
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  padding: 9px 14px;
+  padding: 10px 14px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 13px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
 .sp-menu-item:hover {
   background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 
 .sp-menu-item--active {
@@ -1093,6 +1174,7 @@ defineExpose({
   border-radius: 50%;
   background: var(--sp-primary, #e53935);
   flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(229, 57, 53, 0.5);
 }
 
 /* 加载/缓冲 */
@@ -1106,21 +1188,28 @@ defineExpose({
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--sp-spacing-md, 12px);
+  gap: 14px;
 }
 
 .sp-loading-spinner {
-  width: var(--sp-spinner-size, 48px);
-  height: var(--sp-spinner-size, 48px);
-  border: 3px solid var(--sp-spinner-track, rgba(255, 255, 255, 0.2));
-  border-top-color: var(--sp-text, #fff);
+  width: 44px;
+  height: 44px;
+  border: 2.5px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #fff;
   border-radius: 50%;
-  animation: sp-spin 1s linear infinite;
+  animation: sp-spin 0.8s linear infinite;
+}
+
+.sp-buffering .sp-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border-width: 2px;
 }
 
 .sp-loading-text {
-  font-size: var(--sp-font-size-md, 14px);
-  color: var(--sp-text-secondary, rgba(255, 255, 255, 0.8));
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
 }
 
 @keyframes sp-spin {
@@ -1137,25 +1226,43 @@ defineExpose({
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--sp-spacing-md, 12px);
+  gap: 12px;
   text-align: center;
+  padding: 24px;
 }
 
 .sp-error-icon svg,
 .sp-error-icon .sp-icon {
-  width: var(--sp-spinner-size, 48px);
-  height: var(--sp-spinner-size, 48px);
-  color: var(--sp-error, #f44336);
+  width: 44px;
+  height: 44px;
+  color: #ef5350;
 }
 
 .sp-error-title {
-  font-size: var(--sp-font-size-lg, 16px);
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
 }
 
 .sp-error-message {
-  font-size: var(--sp-font-size-md, 14px);
-  color: var(--sp-text-tertiary, rgba(255, 255, 255, 0.7));
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+.sp-error .sp-btn {
+  margin-top: 4px;
+  width: auto;
+  height: 34px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sp-error .sp-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* 指示器 */
@@ -1168,10 +1275,12 @@ defineExpose({
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--sp-spacing-sm, 8px);
-  padding: var(--sp-spacing-lg, 16px);
-  background: var(--sp-indicator-bg, rgba(0, 0, 0, 0.7));
-  border-radius: var(--sp-radius-lg, 12px);
+  gap: 6px;
+  padding: 14px 18px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 10px;
   z-index: var(--sp-z-indicator, 25);
 }
 
@@ -1179,14 +1288,22 @@ defineExpose({
 .sp-seek-indicator .sp-icon,
 .sp-volume-indicator svg,
 .sp-volume-indicator .sp-icon {
-  width: var(--sp-indicator-icon-size, 32px);
-  height: var(--sp-indicator-icon-size, 32px);
+  width: 28px;
+  height: 28px;
+  opacity: 0.9;
+}
+
+.sp-seek-indicator span,
+.sp-volume-indicator span {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* 过渡动画 */
 .sp-fade-enter-active,
 .sp-fade-leave-active {
-  transition: opacity var(--sp-transition-normal, 0.25s) ease;
+  transition: opacity 0.2s ease;
 }
 
 .sp-fade-enter-from,
@@ -1196,12 +1313,12 @@ defineExpose({
 
 .sp-slide-enter-active,
 .sp-slide-leave-active {
-  transition: transform var(--sp-transition-normal, 0.25s) ease, opacity var(--sp-transition-normal, 0.25s) ease;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
 }
 
 .sp-slide-enter-from,
 .sp-slide-leave-to {
-  transform: translateY(10px);
+  transform: translateY(8px);
   opacity: 0;
 }
 </style>
