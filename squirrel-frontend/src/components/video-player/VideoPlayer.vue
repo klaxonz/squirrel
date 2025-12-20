@@ -29,6 +29,7 @@
       playsinline
       webkit-playsinline
       @click="handleVideoClick"
+      @dblclick="toggleFullscreen"
     />
 
     <!-- 字幕容器 (由插件管理) -->
