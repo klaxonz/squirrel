@@ -20,7 +20,7 @@
 
       <!-- 页面内容容器 -->
       <div class="page-container flex-1 relative min-h-0">
-        <div class="content-container absolute inset-0" :class="isScrollablePage ? 'scrollbar-hide overflow-y-auto' : 'overflow-hidden'">
+        <div class="content-container absolute inset-0" ref="contentContainerRef" :class="isScrollablePage ? 'scrollbar-hide overflow-y-auto' : 'overflow-hidden'">
           <router-view v-slot="{ Component }">
             <keep-alive :include="['LatestVideos', 'Subscribed']">
               <component :is="Component" />
@@ -38,7 +38,7 @@
 </template>
 
 <script setup>
-import { provide, ref, onMounted, onUnmounted, computed } from 'vue';
+import { provide, ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import mitt from 'mitt';
 import MobileNav from './components/MobileNav.vue';
 import Sidebar from './components/Sidebar.vue';
@@ -54,6 +54,8 @@ import { useSystemConfig } from './composables/useSystemConfig';
 const route = useRoute();
 const emitter = mitt();
 provide('emitter', emitter);
+
+const contentContainerRef = ref(null);
 
 const isAuthPage = computed(() => {
   return ['/login', '/register'].includes(route.path);
@@ -95,6 +97,12 @@ const { loadSystemConfig } = useSystemConfig();
 // 是否允许当前页面滚动（如视频播放页）
 const isScrollablePage = computed(() => {
   return !!route.meta?.scrollable;
+});
+
+watch(isScrollablePage, (newVal, oldVal) => {
+  if (oldVal && !newVal && contentContainerRef.value) {
+    contentContainerRef.value.scrollTop = 0;
+  }
 });
 
 onMounted(async () => {
