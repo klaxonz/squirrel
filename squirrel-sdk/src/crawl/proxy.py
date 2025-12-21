@@ -145,3 +145,84 @@ def register_site_config(domain_or_cls=None):
 
     # If called with parentheses (with or without domain argument)
     return decorator
+
+
+DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+
+def create_site_config(
+    domain: str,
+    referer: Optional[str] = None,
+    user_agent: Optional[str] = None,
+    connect_timeout: float = 30.0,
+    read_timeout: float = 120.0,
+    max_retries: int = 5,
+    chunk_size: int = 2 * 1024 * 1024,
+    max_connections: int = 50,
+    keepalive_expiry: float = 30.0,
+    enable_http2: bool = True,
+    extra_headers: Optional[Dict[str, str]] = None,
+) -> Type[ProxyConfigProvider]:
+    """Factory function to create and register a site config provider.
+
+    This eliminates boilerplate code in plugins. Instead of defining a full class,
+    plugins can use this one-liner:
+
+        create_site_config('pornhub.com', referer='https://www.pornhub.com')
+
+    Args:
+        domain: The domain this config applies to (e.g., 'youtube.com')
+        referer: The Referer header value (defaults to https://{domain})
+        user_agent: Custom User-Agent (defaults to Chrome UA)
+        connect_timeout: Connection timeout in seconds
+        read_timeout: Read timeout in seconds
+        max_retries: Maximum retry attempts
+        chunk_size: Download chunk size in bytes
+        max_connections: Maximum concurrent connections
+        keepalive_expiry: Keep-alive expiry in seconds
+        enable_http2: Whether to enable HTTP/2
+        extra_headers: Additional headers to include
+
+    Returns:
+        The created and registered ProxyConfigProvider class
+    """
+    _referer = referer or f"https://{domain}"
+    _user_agent = user_agent or DEFAULT_USER_AGENT
+    _extra_headers = extra_headers or {}
+
+    class _GeneratedProxyConfig:
+        pass
+
+    _GeneratedProxyConfig.domain = domain
+
+    @classmethod
+    def _get_site_headers(cls) -> Dict[str, str]:
+        headers = {
+            "User-Agent": _user_agent,
+            "Referer": _referer,
+        }
+        headers.update(_extra_headers)
+        return headers
+
+    @classmethod
+    def _get_domain_configs(cls) -> List[ProxyDomainConfig]:
+        return [
+            ProxyDomainConfig(
+                domain=domain,
+                connect_timeout=connect_timeout,
+                read_timeout=read_timeout,
+                max_retries=max_retries,
+                chunk_size=chunk_size,
+                max_connections=max_connections,
+                keepalive_expiry=keepalive_expiry,
+                enable_http2=enable_http2,
+            )
+        ]
+
+    _GeneratedProxyConfig.get_site_headers = _get_site_headers
+    _GeneratedProxyConfig.get_domain_configs = _get_domain_configs
+
+    registry = get_proxy_config_registry()
+    registry.register(domain, _GeneratedProxyConfig, [domain])
+
+    return _GeneratedProxyConfig

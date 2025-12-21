@@ -69,6 +69,17 @@ from .utils import (
     resolve_cookie_file_path,
 )
 
+# Exceptions
+from .exceptions import (
+    ErrorCategory,
+    PluginError,
+    NetworkError,
+    RateLimitError,
+    AuthError,
+    NotFoundError,
+    ParseError,
+)
+
 # HTTP utilities
 from .http import (
     RateLimit,
@@ -113,6 +124,7 @@ from .subtitles import (
 )
 from .id_extractor import (
     IdExtractor,
+    RegexIdExtractor,
     get_id_extractor_registry,
     register_id_extractor,
 )
@@ -124,6 +136,7 @@ from .proxy import (
     ProxyDomainConfig,
     get_proxy_config_registry,
     register_site_config,
+    create_site_config,
 )
 from .downloader import (
     Downloader,
@@ -131,6 +144,10 @@ from .downloader import (
     DownloaderFactory,
     get_downloader_factory,
     register_downloader,
+)
+from .importer import (
+    BaseImporter,
+    PaginatedImporter,
 )
 
 __all__ = [
@@ -201,6 +218,7 @@ __all__ = [
     "get_subtitles_registry",
     "register_subtitles",
     "IdExtractor",
+    "RegexIdExtractor",
     "get_id_extractor_registry",
     "register_id_extractor",
     "VideoProxy",
@@ -210,9 +228,21 @@ __all__ = [
     "ProxyDomainConfig",
     "get_proxy_config_registry",
     "register_site_config",
+    "create_site_config",
     "Downloader",
     "get_downloader_registry",
     "DownloaderFactory",
     "get_downloader_factory",
     "register_downloader",
+    # Exceptions
+    "ErrorCategory",
+    "PluginError",
+    "NetworkError",
+    "RateLimitError",
+    "AuthError",
+    "NotFoundError",
+    "ParseError",
+    # Importer base classes
+    "BaseImporter",
+    "PaginatedImporter",
 ]

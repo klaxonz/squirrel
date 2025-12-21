@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, List, Optional, Protocol, Union, runtime_checkable
 
 # Public API of this module is stable – add to __all__ in parent __init__.
 
@@ -67,13 +67,16 @@ class VideoMeta:
 @dataclass
 class ExtractionResult:
     """Outcome of a task (either success or failure).
-    
+
     The data field must contain VideoMeta. This is the only supported data type.
     """
 
     success: bool
     data: Optional[VideoMeta] = None
     error: Optional[str] = None
+    error_category: Optional[str] = None
+    retryable: bool = False
+    error_context: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize result to dictionary."""
@@ -81,6 +84,9 @@ class ExtractionResult:
             "success": self.success,
             "data": self.data.to_dict() if self.data else None,
             "error": self.error,
+            "error_category": self.error_category,
+            "retryable": self.retryable,
+            "error_context": self.error_context,
         }
 
     @classmethod
@@ -91,12 +97,43 @@ class ExtractionResult:
             data_payload = VideoMeta.from_dict(data_payload)
         elif data_payload and not isinstance(data_payload, VideoMeta):
             data_payload = None
-        
+
         return cls(
             success=data.get("success", False),
             data=data_payload,
             error=data.get("error"),
+            error_category=data.get("error_category"),
+            retryable=data.get("retryable", False),
+            error_context=data.get("error_context"),
         )
+
+    @classmethod
+    def failure(
+        cls,
+        error: Union[str, Exception],
+        context: Optional[Dict[str, Any]] = None
+    ) -> "ExtractionResult":
+        """Create a failure result from error."""
+        from .exceptions import PluginError
+
+        if isinstance(error, PluginError):
+            return cls(
+                success=False,
+                error=error.message,
+                error_category=error.category.value,
+                retryable=error.retryable,
+                error_context={**error.context, **(context or {})}
+            )
+        return cls(
+            success=False,
+            error=str(error),
+            error_context=context
+        )
+
+    @classmethod
+    def success_result(cls, data: VideoMeta) -> "ExtractionResult":
+        """Create a success result with data."""
+        return cls(success=True, data=data)
 
 
 @dataclass
