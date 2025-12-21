@@ -57,7 +57,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
                 raise AuthError(f"需要登录或为私有视频: {url}", context=context)
             elif 'video unavailable' in error_msg or 'removed' in error_msg or 'deleted' in error_msg:
                 raise NotFoundError(f"视频不存在或已删除: {url}", context=context)
-            elif 'timeout' in error_msg or 'connection' in error_msg or 'network' in error_msg:
+            elif any(kw in error_msg for kw in ['timeout', 'connection', 'network', 'closed file', 'i/o operation']):
                 raise NetworkError(f"网络连接失败: {url}", context=context)
             else:
                 logger.error(f"YouTube视频信息提取失败: {url}", exc_info=True)
@@ -69,6 +69,13 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
         ydl_opts: Dict[str, Any] = {
             'quiet': True,
             'skip_download': True,
+            'socket_timeout': 30,
+            'retries': 5,
+            'extractor_retries': 3,
+            'fragment_retries': 5,
+            'file_access_retries': 3,
+            'ignoreerrors': False,
+            'noprogress': True,
         }
 
         if cookie_file:

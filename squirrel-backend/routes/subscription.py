@@ -177,7 +177,7 @@ def get_supported_sites(current_user: User = Depends(get_current_user)):
     from crawl import get_importer_registry
     
     importer_registry = get_importer_registry()
-    supported_sites = importer_registry.get_supported_sites()
+    supported_sites = importer_registry.get_all_keys()
     
     return response.success({
         "sites": supported_sites
@@ -206,11 +206,11 @@ def preview_subscriptions(
     try:
         # 从注册表动态获取支持的站点列表
         importer_registry = get_importer_registry()
-        supported_sites = importer_registry.get_supported_sites()
-        
+        supported_sites = importer_registry.get_all_keys()
+
         if site not in supported_sites:
             return response.param_error(f"不支持的站点: {site}，支持的站点: {', '.join(supported_sites)}")
-        
+
         logger.info(f"User {current_user.id} previewing subscriptions from {site}")
         
         result = subscription_service.preview_user_subscriptions(site)
@@ -247,11 +247,11 @@ def import_subscriptions(
     try:
         # 从注册表动态获取支持的站点列表
         importer_registry = get_importer_registry()
-        supported_sites = importer_registry.get_supported_sites()
-        
+        supported_sites = importer_registry.get_all_keys()
+
         if site not in supported_sites:
             return response.param_error(f"不支持的站点: {site}，支持的站点: {', '.join(supported_sites)}")
-        
+
         logger.info(f"User {current_user.id} importing subscriptions from {site}")
         
         result = subscription_service.import_user_subscriptions(site, current_user.id)

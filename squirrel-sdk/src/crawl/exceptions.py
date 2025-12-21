@@ -11,6 +11,7 @@ class ErrorCategory(str, Enum):
     NETWORK = "network"
     RATE_LIMIT = "rate_limit"
     AUTH = "auth"
+    VIP = "vip"
     NOT_FOUND = "not_found"
     PARSE = "parse"
     UNKNOWN = "unknown"
@@ -65,10 +66,17 @@ class RateLimitError(PluginError):
 
 
 class AuthError(PluginError):
-    """认证/权限错误（需要登录、VIP等），不可重试"""
+    """认证错误（需要登录），不可重试"""
 
     def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
         super().__init__(message, ErrorCategory.AUTH, retryable=False, context=context)
+
+
+class VipError(PluginError):
+    """VIP权限错误（需要VIP），不可重试"""
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
+        super().__init__(message, ErrorCategory.VIP, retryable=False, context=context)
 
 
 class NotFoundError(PluginError):

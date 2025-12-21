@@ -82,6 +82,7 @@ from .exceptions import (
     NetworkError,
     RateLimitError,
     AuthError,
+    VipError,
     NotFoundError,
     ParseError,
 )
@@ -257,6 +258,7 @@ __all__ = [
     "NetworkError",
     "RateLimitError",
     "AuthError",
+    "VipError",
     "NotFoundError",
     "ParseError",
     # Importer base classes

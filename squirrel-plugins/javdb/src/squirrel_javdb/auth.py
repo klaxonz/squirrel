@@ -14,12 +14,12 @@ from crawl import (
 
 logger = logging.getLogger(__name__)
 
-_CHECK_URL = "https://javdb.com/users/subscribed_actors"
+_CHECK_URL = "https://javdb.com/users/collection_actors"
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 }
-_LOGIN_REDIRECT = re.compile(r"/users/(sign_in|login)")
+_LOGIN_REDIRECT = re.compile(r"/(users/)?(sign_in|login)")
 
 
 @register_login_checker("javdb")
@@ -56,6 +56,13 @@ def check_javdb_login_status() -> LoginStatusResult:
             site_name=site_name,
             logged_in=False,
             message=f"请求失败: {exc}",
+        )
+
+    if resp.status_code == 404:
+        return LoginStatusResult(
+            site_name=site_name,
+            logged_in=False,
+            message="页面不存在(404)",
         )
 
     location = resp.headers.get("Location", "")

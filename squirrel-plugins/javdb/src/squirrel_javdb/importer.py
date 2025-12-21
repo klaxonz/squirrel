@@ -57,7 +57,7 @@ class JavdbUserSubscriptionImporter:
                     soup = BeautifulSoup(resp.text, 'html.parser')
                     
                     # 查找演员链接
-                    actor_items = soup.select('.actor-box a')
+                    actor_items = soup.select('.actor-box a:has(img.avatar)')
                     
                     if not actor_items:
                         # 没有更多数据了
@@ -73,7 +73,7 @@ class JavdbUserSubscriptionImporter:
                                 subscription_urls.append(full_url)
                     
                     # 检查是否有下一页
-                    next_page = soup.select('.pagination .next_page')
+                    next_page = soup.select('.pagination .pagination-next')
                     if not next_page or 'disabled' in next_page[0].get('class', []):
                         break
                     

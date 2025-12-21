@@ -159,7 +159,7 @@ SITE_CONFIG_DEFAULTS = {
             "follow_redirects": True,
         },
         "login": {
-            "check_url": "https://javdb.com/users/subscribed_actors",
+            "check_url": "https://javdb.com/users/collection_actors",
             "headers": {
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             },

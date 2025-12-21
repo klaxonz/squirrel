@@ -5,7 +5,7 @@ from typing import Dict, Optional, Any
 
 from bs4 import BeautifulSoup
 
-from crawl import Downloader, register_downloader, AuthError, ParseError
+from crawl import Downloader, register_downloader, AuthError, VipError, ParseError
 from .browser_utils import fetch_page_html
 
 
@@ -25,9 +25,11 @@ class JavdbDownloader:
         soup = BeautifulSoup(html, 'html.parser')
         video_info: Dict[str, Any] = {}
 
-        if '永久VIP' in html:
-            raise AuthError("需要永久VIP权限", context={"url": self.url, "reason": "vip_required"})
-        if '此內容需要登入' in html:
+        vip_keywords = ['永久VIP', 'Join VIP']
+        login_keywords = ['欢迎登入','歡迎登入', 'requires login to view']
+        if any(kw in html for kw in vip_keywords):
+            raise VipError("需要永久VIP权限", context={"url": self.url, "reason": "vip_required"})
+        if any(kw in html for kw in login_keywords):
             raise AuthError("需要登录访问", context={"url": self.url, "reason": "login_required"})
 
         title_nodes = soup.select('.title strong')

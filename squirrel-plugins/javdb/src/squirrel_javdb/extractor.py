@@ -9,6 +9,7 @@ from crawl import (
     VideoExtractorBase,
     register_extractor,
     AuthError,
+    VipError,
     NotFoundError,
     ParseError,
 )
@@ -39,7 +40,7 @@ class JavdbExtractor(VideoExtractorBase):
             self._process_javdb_info(video_info)
             return video_info
 
-        except (AuthError, NotFoundError, ParseError):
+        except (AuthError, VipError, NotFoundError, ParseError):
             raise
         except Exception as e:
             error_msg = str(e).lower()
@@ -48,7 +49,7 @@ class JavdbExtractor(VideoExtractorBase):
             if 'login' in error_msg or '登入' in error_msg or '登录' in error_msg:
                 raise AuthError(f"需要登录访问: {url}", context=context)
             elif 'vip' in error_msg or '永久vip' in error_msg:
-                raise AuthError(f"需要VIP权限: {url}", context=context)
+                raise VipError(f"需要VIP权限: {url}", context=context)
             elif '不存在' in error_msg or '404' in error_msg:
                 raise NotFoundError(f"视频不存在: {url}", context=context)
             else:
