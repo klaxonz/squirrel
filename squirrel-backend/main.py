@@ -10,7 +10,6 @@ from fastapi import FastAPI
 from alembic import command
 from common.log import init_logging
 from core.config import settings
-from core.extraction import initialize_plugin_bridge
 from core.site_config_manager import apply_site_config_overrides
 from plugins.loader import init_plugins, app_start, app_stop
 
@@ -29,14 +28,12 @@ def upgrade_database() -> None:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     FastAPI 应用生命周期管理
-    
+
     启动时按顺序执行：
     1. 加载插件（注册到 SDK 注册表）
-    2. 初始化插件桥接器（同步插件到后端提取器工厂）
+    2. 初始化队列配置
     3. 触发插件启动钩子
-    4. 启动消息队列 Worker
-    5. 启动任务调度器
-    
+
     关闭时优雅停止所有服务
     """
     # ========== 启动阶段 ==========
@@ -53,40 +50,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning(f"[0/5] ⚠ Failed to apply site config overrides: {e}")
 
     # 1. 加载插件（必须先加载，注册到 SDK 注册表）
-    logger.info("[1/5] Loading plugins...")
+    logger.info("[1/4] Loading plugins...")
     try:
         init_plugins()
-        logger.info("[1/5] ✓ Plugins loaded")
+        logger.info("[1/4] ✓ Plugins loaded")
     except Exception as e:
-        logger.exception(f"[1/5] ✗ Failed to load plugins: {e}")
+        logger.exception(f"[1/4] ✗ Failed to load plugins: {e}")
         raise
-    
-    # 2. 初始化插件桥接器（从 SDK 注册表同步到后端工厂）
-    logger.info("[2/5] Initializing plugin bridge...")
-    try:
-        initialize_plugin_bridge()
-        logger.info("[2/5] ✓ Plugin bridge initialized")
-    except Exception as e:
-        logger.exception(f"[2/5] ✗ Failed to initialize plugin bridge: {e}")
-        raise
-    
-    # 2.1 初始化队列配置（基于插件注册表）
-    logger.info("[2.1/5] Initializing queue configuration...")
+
+    # 2. 初始化队列配置（基于插件注册表）
+    logger.info("[2/4] Initializing queue configuration...")
     try:
         from mq.queue_config import ensure_queue_config_initialized
         ensure_queue_config_initialized()
-        logger.info("[2.1/5] ✓ Queue configuration initialized")
+        logger.info("[2/4] ✓ Queue configuration initialized")
     except Exception as e:
-        logger.exception(f"[2.1/5] ✗ Failed to initialize queue config: {e}")
+        logger.exception(f"[2/4] ✗ Failed to initialize queue config: {e}")
         raise
-    
+
     # 3. 触发插件启动钩子
-    logger.info("[3/5] Triggering plugin startup hooks...")
+    logger.info("[3/4] Triggering plugin startup hooks...")
     try:
         app_start()
-        logger.info("[3/5] ✓ Plugin startup hooks completed")
+        logger.info("[3/4] ✓ Plugin startup hooks completed")
     except Exception as e:
-        logger.warning(f"[3/5] ⚠ Plugin startup hooks failed (ignored): {e}")
+        logger.warning(f"[3/4] ⚠ Plugin startup hooks failed (ignored): {e}")
     
 
     logger.info("=" * 60)

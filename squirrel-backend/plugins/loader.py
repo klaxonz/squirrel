@@ -212,10 +212,10 @@ def reload_plugins() -> None:
     init_plugins()
 
     try:
-        from core.extraction import refresh_plugin_bridge
-        refresh_plugin_bridge()
+        from core.extraction import reset_factory
+        reset_factory()
     except Exception:
-        logger.exception("[plugins] failed to refresh plugin bridge (ignored)")
+        logger.exception("[plugins] failed to reset factory (ignored)")
 
     try:
         from mq.queue_config import refresh_queue_config

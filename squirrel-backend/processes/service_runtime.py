@@ -5,7 +5,6 @@ from contextlib import contextmanager
 
 from common.log import init_logging
 from core.site_config_manager import apply_site_config_overrides
-from core.extraction import initialize_plugin_bridge
 from mq.queue_config import ensure_queue_config_initialized
 from plugins.loader import init_plugins, app_start, app_stop
 
@@ -28,7 +27,6 @@ def bootstrap_runtime(component: str):
 
     try:
         init_plugins()
-        initialize_plugin_bridge()
         ensure_queue_config_initialized()
         app_start()
     except Exception:

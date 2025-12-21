@@ -22,9 +22,6 @@ from .factory import (
     get_extractor_registry,
     reset_factory,
 )
-from .plugin_bridge import (
-    initialize_plugin_bridge, refresh_plugin_bridge, get_plugin_bridge
-)
 
 from .task_manager import TaskManager, TaskRouter
 
@@ -38,9 +35,6 @@ __all__ = [
     'ExtractorFactory',
     'get_extractor_factory', 'get_extractor_registry',
     'reset_factory',
-
-    # 插件桥接
-    'initialize_plugin_bridge', 'refresh_plugin_bridge', 'get_plugin_bridge',
 
     # 任务管理
     'TaskManager', 'TaskRouter',

@@ -47,7 +47,7 @@ def merge_site_names(registry, catalog: dict) -> list[str]:
     names: list[str] = []
     seen = set()
 
-    for site_name in registry.get_all_sites():
+    for site_name in registry.get_all_keys():
         key = site_name.lower()
         if key in seen:
             continue
