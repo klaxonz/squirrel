@@ -5,17 +5,17 @@ from typing import Dict, Optional, Any
 
 from bs4 import BeautifulSoup
 
-from crawl import Downloader, register_downloader
+from crawl import Downloader, register_downloader, AuthError, ParseError
 from .browser_utils import fetch_page_html
 
 
 @register_downloader
 class JavdbDownloader:
     """JavDB下载器，实现Downloader Protocol"""
-    
+
     domains = ['javdb.com']
     domain = 'javdb.com'
-    
+
     def __init__(self, url: str):
         self.url = url
         self.domain = self.domains[0]
@@ -26,13 +26,13 @@ class JavdbDownloader:
         video_info: Dict[str, Any] = {}
 
         if '永久VIP' in html:
-            return None
+            raise AuthError("需要永久VIP权限", context={"url": self.url, "reason": "vip_required"})
         if '此內容需要登入' in html:
-            return None
+            raise AuthError("需要登录访问", context={"url": self.url, "reason": "login_required"})
 
         title_nodes = soup.select('.title strong')
         if not title_nodes:
-            return None
+            raise ParseError("无法解析视频标题，页面结构可能已变化", context={"url": self.url, "reason": "title_not_found"})
         title_parts = [t.get_text(strip=True) for t in title_nodes if t.get_text(strip=True)]
         video_info['title'] = ' '.join(title_parts) if title_parts else None
 

@@ -36,14 +36,10 @@ class JavdbExtractor(VideoExtractorBase):
         try:
             javdb_downloader = JavdbDownloader(url)
             video_info = javdb_downloader.get_video_info(queue_name)
-
-            if not video_info:
-                raise AuthError(f"可能需要登录或VIP权限: {url}", context={"url": url})
-
             self._process_javdb_info(video_info)
             return video_info
 
-        except AuthError:
+        except (AuthError, NotFoundError, ParseError):
             raise
         except Exception as e:
             error_msg = str(e).lower()
