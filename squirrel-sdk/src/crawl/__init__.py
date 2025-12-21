@@ -42,8 +42,14 @@ from .core import (
 )
 
 # Unified plugin registry system
-from .registry import (
+from .registries import (
     PluginRegistry,
+    ComponentFactory,
+    RegistryManager,
+    get_registry_manager,
+    reset_registry_manager,
+)
+from .registry import (
     get_extractor_registry,
     get_subscription_registry,
     get_importer_registry,
@@ -150,6 +156,13 @@ from .importer import (
     PaginatedImporter,
 )
 
+# Plugin descriptor for declarative plugin configuration
+from .plugin import (
+    PluginDescriptor,
+    create_plugin,
+    discover_components,
+)
+
 __all__ = [
     "__version__",
     # Core interfaces
@@ -167,6 +180,10 @@ __all__ = [
     "LoginStatusResult",
     # Registry system
     "PluginRegistry",
+    "ComponentFactory",
+    "RegistryManager",
+    "get_registry_manager",
+    "reset_registry_manager",
     "get_extractor_registry",
     "get_subscription_registry",
     "get_importer_registry",
@@ -245,4 +262,8 @@ __all__ = [
     # Importer base classes
     "BaseImporter",
     "PaginatedImporter",
+    # Plugin descriptor
+    "PluginDescriptor",
+    "create_plugin",
+    "discover_components",
 ]

@@ -107,8 +107,6 @@ def _import_external_modules(search_roots: List[Path]) -> None:
             logger.exception("[plugins] failed to scan %s", root)
 
 
-
-
 def init_plugins() -> None:
     """Discover, import and initialize plugins.
 
@@ -189,17 +187,15 @@ def reload_plugins() -> None:
         app_stop()
     except Exception:
         logger.exception("[plugins] error when stopping before reload (ignored)")
-    try:
-        import importlib
-        import sys
 
+    try:
         importlib.invalidate_caches()
     except Exception:
         pass
 
     try:
-        from crawl import reset_registries as reset_crawl_registries
-        reset_crawl_registries()
+        from crawl import reset_all_registries
+        reset_all_registries()
     except Exception:
         logger.exception("[plugins] failed to reset crawl registries (ignored)")
 
@@ -214,16 +210,19 @@ def reload_plugins() -> None:
 
     reset_registry()
     init_plugins()
+
     try:
         from core.extraction import refresh_plugin_bridge
         refresh_plugin_bridge()
     except Exception:
         logger.exception("[plugins] failed to refresh plugin bridge (ignored)")
+
     try:
         from mq.queue_config import refresh_queue_config
         refresh_queue_config()
     except Exception:
         logger.exception("[plugins] failed to initialize queue config (ignored)")
+
     try:
         app_start()
     except Exception:

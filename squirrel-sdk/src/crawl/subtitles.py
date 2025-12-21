@@ -2,69 +2,64 @@ from __future__ import annotations
 
 from typing import Any, List, Optional, Protocol, runtime_checkable, Tuple, Type
 
-from .registry import PluginRegistry
+from .registries import PluginRegistry, get_registry_manager
 
 
 @runtime_checkable
 class SubtitlesProvider(Protocol):
     """Protocol for subtitles providers."""
-    
-    domain: Optional[str]
-    
+
+    domains: List[str]
+
     def get_subtitles(self, video: Any, lang: str, fmt: str = "srt") -> Tuple[str, str]:
         """Get subtitles for the given video in the specified language and format.
-        
+
         Returns:
             Tuple of (subtitle content, format)
         """
         ...
 
 
-# Global registry
-_subtitles_registry: Optional[PluginRegistry[Type[SubtitlesProvider]]] = None
-
-
 def get_subtitles_registry() -> PluginRegistry[Type[SubtitlesProvider]]:
     """Get the global subtitles provider registry."""
-    global _subtitles_registry
-    if _subtitles_registry is None:
-        _subtitles_registry = PluginRegistry[Type[SubtitlesProvider]]("SubtitlesRegistry")
-    return _subtitles_registry
+    return get_registry_manager().subtitles
 
 
-def register_subtitles(domain_or_cls=None):
+def register_subtitles(domains_or_cls=None):
     """Decorator to register a subtitles provider.
 
     Usage:
-        # Method 1: Auto-detect domain from class attribute
+        # Method 1: Auto-detect domains from class attribute
         @register_subtitles
         class MySubtitlesProvider:
-            domain = "example.com"
+            domains = ["example.com"]
             ...
 
-        # Method 2: Explicitly specify domain
-        @register_subtitles("example.com")
+        # Method 2: Explicitly specify domains
+        @register_subtitles(["example.com"])
         class MySubtitlesProvider:
-            domain = "example.com"
+            domains = ["example.com"]
             ...
     """
     def decorator(provider_class: Type[SubtitlesProvider]):
-        if isinstance(domain_or_cls, str):
-            domain_attr = domain_or_cls
+        if isinstance(domains_or_cls, list):
+            domains = domains_or_cls
         else:
-            domain_attr = getattr(provider_class, 'domain', None)
+            domains = getattr(provider_class, 'domains', None)
+            if not domains:
+                domain = getattr(provider_class, 'domain', None)
+                domains = [domain] if domain else None
 
-        if not domain_attr:
-            raise AttributeError("Subtitles provider must define 'domain' attribute")
+        if not domains:
+            raise AttributeError("Subtitles provider must define 'domains' attribute")
 
         registry = get_subtitles_registry()
-        registry.register(domain_attr, provider_class, [domain_attr])
+        key = domains[0]
+        registry.register(key, provider_class, domains)
         return provider_class
 
-    # If called without parentheses, domain_or_cls is the class itself
-    if domain_or_cls is not None and not isinstance(domain_or_cls, str):
-        return decorator(domain_or_cls)
+    if domains_or_cls is not None and not isinstance(domains_or_cls, list):
+        return decorator(domains_or_cls)
 
-    # If called with parentheses (with or without domain argument)
     return decorator
 

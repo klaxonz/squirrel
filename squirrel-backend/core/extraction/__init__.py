@@ -6,7 +6,7 @@
 主要组件：
 - interfaces: 核心接口定义
 - base: 基础实现类
-- factory: 提取器工厂和注册表
+- factory: 提取器工厂
 - task_manager: 任务管理器
 - cache: 缓存管理器
 - extractors: 各网站提取器实现
@@ -17,8 +17,10 @@
 from .base import BaseExtractor, BaseTaskProcessor, BaseResultHandler
 
 from .factory import (
-    ExtractorRegistry, ExtractorFactory, register_extractor,
-    get_extractor_factory, get_extractor_registry
+    ExtractorFactory,
+    get_extractor_factory,
+    get_extractor_registry,
+    reset_factory,
 )
 from .plugin_bridge import (
     initialize_plugin_bridge, refresh_plugin_bridge, get_plugin_bridge
@@ -31,17 +33,18 @@ from .handlers.video_handler import VideoExtractionHandler
 __all__ = [
     # 基础类
     'BaseExtractor', 'BaseTaskProcessor', 'BaseResultHandler',
-    
+
     # 工厂和注册
-    'ExtractorRegistry', 'ExtractorFactory', 'register_extractor',
+    'ExtractorFactory',
     'get_extractor_factory', 'get_extractor_registry',
-    
+    'reset_factory',
+
     # 插件桥接
     'initialize_plugin_bridge', 'refresh_plugin_bridge', 'get_plugin_bridge',
-    
+
     # 任务管理
     'TaskManager', 'TaskRouter',
-    
+
     # 处理器
     'VideoExtractionHandler',
 ]

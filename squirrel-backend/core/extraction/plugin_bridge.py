@@ -1,136 +1,74 @@
 """
 插件系统与后端提取器工厂的桥接器
+
+由于后端现在直接使用 SDK 的统一注册表，桥接器的职责已大大简化：
+- 不再需要同步两个注册表
+- 只需要在初始化时清理工厂缓存
+- 提供刷新功能以支持热重载
 """
 import logging
 
-from crawl import (
-    get_extractor_registry as get_sdk_registry,
-    Extractor, ExtractionTask, ExtractionResult
-)
+from crawl import get_extractor_registry
 from utils.site_catalog import SiteCatalog
-from .factory import get_extractor_registry
-from .factory import get_extractor_factory
+from .factory import get_extractor_factory, reset_factory
 
 logger = logging.getLogger(__name__)
 
 
-class PluginExtractorAdapter:
-    """适配器：将插件的提取器适配到后端的接口"""
-    
-    def __init__(self, plugin_extractor: Extractor):
-        self.plugin_extractor = plugin_extractor
-        self.site_name = plugin_extractor.site_name
-        self.supported_domains = plugin_extractor.supported_domains
-    
-    @property
-    def supported_sites(self) -> list[str]:
-        # SDK v2.0 中 Extractor Protocol 没有 supported_sites，只有 site_name
-        return [self.plugin_extractor.site_name] if hasattr(self.plugin_extractor, 'site_name') else []
-    
-    def can_handle(self, url: str) -> bool:
-        return self.plugin_extractor.can_handle(url)
-    
-    def extract(self, task: ExtractionTask) -> ExtractionResult:
-        return self.plugin_extractor.extract(task)
-    
-    def validate_url(self, url: str) -> bool:
-        return self.plugin_extractor.validate_url(url)
-
-
 class PluginBridge:
-    """插件系统桥接器"""
-    
+    """插件系统桥接器
+
+    由于后端现在直接使用 SDK 的统一注册表，桥接器只需要：
+    1. 在初始化时清理工厂缓存
+    2. 提供刷新功能以支持热重载
+    """
+
     def __init__(self):
         self._initialized = False
-    
+
     def initialize(self):
-        """初始化插件桥接器，将插件注册的提取器同步到后端工厂"""
+        """初始化插件桥接器"""
         if self._initialized:
             return
-        
+
         try:
-            # 获取SDK中注册的提取器
-            sdk_registry = get_sdk_registry()
-            backend_registry = get_extractor_registry()
-            backend_registry.clear()
-            get_extractor_factory().clear_cache()
+            registry = get_extractor_registry()
+            factory = get_extractor_factory()
+            factory.clear_cache()
+
             site_catalog = SiteCatalog.get_catalog() or {}
+            registered_sites = []
 
-            # 遍历所有注册的站点
-            for site_name in sdk_registry.get_all_keys():
-                extractor_plugin = sdk_registry.get(site_name)
-                if not extractor_plugin:
-                    continue
-                
-                # 如果是类，需要实例化；如果已经是实例，直接使用
-                if isinstance(extractor_plugin, type):
-                    extractor_class = extractor_plugin
-                else:
-                    # 已经是实例，需要获取其类
-                    extractor_class = type(extractor_plugin)
-
-                # 获取支持的域名（在当前循环中固化）
-                domains = []
-                if hasattr(extractor_class, 'supported_domains'):
-                    domains = list(getattr(extractor_class, 'supported_domains', []) or [])
-                elif hasattr(extractor_plugin, 'supported_domains'):
-                    domains = list(getattr(extractor_plugin, 'supported_domains', []) or [])
-
+            for site_name in registry.get_all_keys():
                 catalog_entry = site_catalog.get(site_name.lower()) or {}
                 if catalog_entry.get("enabled") is False:
-                    logger.info(f"站点已禁用，跳过插件桥接: {site_name}")
+                    logger.info(f"站点已禁用: {site_name}")
                     continue
 
-                # 为当前循环的 extractor_class 生成独立的适配器类，避免闭包晚绑定问题
-                def _make_adapter(extractor_cls_or_instance, configured_site_name: str, site_entry: dict):
-                    # 获取类或实例的属性
-                    if isinstance(extractor_cls_or_instance, type):
-                        plugin_test_url = getattr(extractor_cls_or_instance, "test_url", None)
-                        plugin_site_name = getattr(extractor_cls_or_instance, "site_name", configured_site_name)
-                        plugin_domains = list(getattr(extractor_cls_or_instance, "supported_domains", []) or domains)
-                        cls_name = extractor_cls_or_instance.__name__
+                extractor = registry.get(site_name)
+                if extractor:
+                    domains = []
+                    if isinstance(extractor, type):
+                        domains = getattr(extractor, 'supported_domains', [])
                     else:
-                        plugin_test_url = getattr(extractor_cls_or_instance, "test_url", None)
-                        plugin_site_name = getattr(extractor_cls_or_instance, "site_name", configured_site_name)
-                        plugin_domains = list(getattr(extractor_cls_or_instance, "supported_domains", []) or domains)
-                        cls_name = type(extractor_cls_or_instance).__name__
-                    
-                    override_test_url = site_entry.get("test_url") if isinstance(site_entry, dict) else None
+                        domains = getattr(extractor, 'supported_domains', [])
 
-                    class AdapterClass(PluginExtractorAdapter):
-                        test_url = override_test_url or plugin_test_url
-                        site_name = plugin_site_name
-                        supported_domains = plugin_domains
+                    registered_sites.append(site_name)
+                    logger.info(f"已注册提取器: {site_name}, 域名: {domains}")
 
-                        def __init__(self):
-                            # 如果已经是实例，直接使用；否则实例化
-                            if isinstance(extractor_cls_or_instance, type):
-                                plugin_instance = extractor_cls_or_instance()
-                            else:
-                                plugin_instance = extractor_cls_or_instance
-                            super().__init__(plugin_instance)
-
-                    AdapterClass.__name__ = f"{cls_name}Adapter"
-                    return AdapterClass
-
-                AdapterClass = _make_adapter(extractor_plugin, site_name, catalog_entry)
-
-                backend_registry.register(site_name, AdapterClass, domains or AdapterClass.supported_domains or [])
-                logger.info(f"已桥接插件提取器: {site_name}, 域名: {domains}")
-            
             self._initialized = True
-            logger.info("插件桥接器初始化完成")
-            
+            logger.info(f"插件桥接器初始化完成，共 {len(registered_sites)} 个站点")
+
         except Exception as e:
             logger.error(f"插件桥接器初始化失败: {e}", exc_info=True)
-    
+
     def refresh(self):
-        """刷新插件注册，重新同步"""
+        """刷新插件注册"""
         self._initialized = False
+        reset_factory()
         self.initialize()
 
 
-# 全局桥接器实例
 _plugin_bridge = PluginBridge()
 
 
