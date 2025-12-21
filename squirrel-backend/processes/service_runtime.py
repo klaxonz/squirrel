@@ -26,6 +26,14 @@ def bootstrap_runtime(component: str):
         logger.warning("[%s] Failed to apply site config overrides: %s", component, exc)
 
     try:
+        from crawl import configure_cloudflare_bypass_client
+        from utils.cloudflare_bypass import get_default_client
+        configure_cloudflare_bypass_client(get_default_client())
+        logger.info("[%s] Cloudflare bypass client configured", component)
+    except Exception as exc:
+        logger.warning("[%s] Failed to configure Cloudflare bypass client: %s", component, exc)
+
+    try:
         init_plugins()
         ensure_queue_config_initialized()
         app_start()

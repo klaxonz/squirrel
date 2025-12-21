@@ -35,12 +35,56 @@ class CloudflareMirrorClient:
         max_redirects: int = 5
     ) -> CloudflareBypassResult:
         try:
-            return self._fetch_with_redirects(
+            result = self._fetch_with_redirects(
                 url=url,
                 cookies=cookies,
                 follow_redirects=follow_redirects,
                 max_redirects=max_redirects
             )
+
+            if not result.success and "HTTP 403" in (result.error or ""):
+                logger.info(f"镜像返回 403，尝试使用 /html 端点")
+                start_time = time.time()
+
+                headers = {}
+                if cookies:
+                    headers["Cookie"] = cookies
+
+                try:
+                    response = requests.get(
+                        f"{self.service_url}/html",
+                        params={"url": url},
+                        headers=headers,
+                        timeout=self.timeout,
+                        allow_redirects=False
+                    )
+
+                    elapsed = time.time() - start_time
+
+                    if response.status_code == 200:
+                        return CloudflareBypassResult(
+                            success=True,
+                            html=response.text,
+                            final_url=url,
+                            elapsed=elapsed
+                        )
+                    else:
+                        return CloudflareBypassResult(
+                            success=False,
+                            error=f"HTTP {response.status_code}",
+                            final_url=url,
+                            elapsed=elapsed
+                        )
+                except requests.RequestException as e:
+                    elapsed = time.time() - start_time
+                    return CloudflareBypassResult(
+                        success=False,
+                        error=f"请求异常: {str(e)}",
+                        final_url=url,
+                        elapsed=elapsed
+                    )
+
+            return result
         except Exception as e:
             logger.error(f"Cloudflare bypass 请求失败: {e}")
             return CloudflareBypassResult(

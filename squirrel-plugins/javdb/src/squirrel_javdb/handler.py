@@ -36,7 +36,7 @@ class JavdbHandler:
 
 	def _get_jav_video_url(self, no: str) -> Optional[str]:
 		try:
-			url = f'https://missav.ws/search/{no}'
+			url = f'https://missav.ai/search/{no}'
 			html = fetch_html(url)
 			bs4 = BeautifulSoup(html, 'html.parser')
 			items = bs4.select('div.thumbnail')
