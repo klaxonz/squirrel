@@ -3,11 +3,14 @@ Pipeline基类定义
 """
 import logging
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from crawl import ExtractionResult
 from .context import PipelineContext
 from ..exceptions import PipelineError, StageExecutionError
+
+if TYPE_CHECKING:
+    from .middleware import MiddlewareChain
 
 logger = logging.getLogger(__name__)
 
@@ -80,18 +83,20 @@ class PipelineStage(ABC):
 class ExtractionPipeline:
     """
     提取Pipeline
-    
+
     按顺序执行多个Stage，完成整个提取流程。
     """
-    
-    def __init__(self, stages: List[PipelineStage]):
+
+    def __init__(self, stages: List[PipelineStage], middleware: Optional["MiddlewareChain"] = None):
         """
         初始化Pipeline
-        
+
         Args:
             stages: Stage列表（按执行顺序）
+            middleware: 中间件链（可选）
         """
         self.stages = stages
+        self._middleware = middleware
         self.logger = logger
     
     def execute(self, context: PipelineContext) -> ExtractionResult:
@@ -125,16 +130,24 @@ class ExtractionPipeline:
                     self.logger.debug(
                         f"Executing stage '{stage.stage_name}': task_id={context.task.task_id}"
                     )
-                    
+
+                    if self._middleware:
+                        self._middleware.before_stage(context, stage)
+
                     context = stage.execute(context)
-                    
+
+                    if self._middleware:
+                        self._middleware.after_stage(context, stage)
+
                     self.logger.debug(
                         f"Stage '{stage.stage_name}' completed: task_id={context.task.task_id}"
                     )
-                
+
                 except Exception as e:
                     # Stage执行失败
                     stage.on_error(context, e)
+                    if self._middleware:
+                        self._middleware.on_error(context, stage, e)
                     
                     # 判断是否应该继续执行
                     if not self._should_continue_after_error(stage, e):

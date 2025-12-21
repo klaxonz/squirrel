@@ -48,7 +48,7 @@ class QueueConfigManager:
             
             # 从注册表获取所有站点和域名映射
             for domain in registry.get_all_domains():
-                site = registry.get_site_by_domain(domain)
+                site = registry.get_by_domain(domain)
                 if site:
                     if not SiteCatalog.is_site_enabled(site, domain):
                         logger.info(f"Skipping disabled site in queue config: site={site}, domain={domain}")

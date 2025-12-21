@@ -5,8 +5,9 @@ import json
 import logging
 import os
 import pkgutil
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from .registry import instantiate_all, reset_registry
 from .manifest import check_plugin_compatibility
@@ -14,27 +15,94 @@ from .manifest import check_plugin_compatibility
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class PluginConfig:
+    """插件配置"""
+    name: str
+    enabled: bool = True
+    priority: int = 0
+    config: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class PluginsConfig:
+    """插件配置集合"""
+    plugins: Dict[str, PluginConfig] = field(default_factory=dict)
+
+    def is_enabled(self, name: str) -> bool:
+        if not self.plugins:
+            return True
+        cfg = self.plugins.get(name)
+        return cfg.enabled if cfg else False
+
+    def get_priority(self, name: str) -> int:
+        cfg = self.plugins.get(name)
+        return cfg.priority if cfg else 0
+
+    def get_config(self, name: str) -> Dict[str, Any]:
+        cfg = self.plugins.get(name)
+        return cfg.config if cfg else {}
+
+    def get_enabled_names(self) -> Optional[Set[str]]:
+        if not self.plugins:
+            return None
+        return {name for name, cfg in self.plugins.items() if cfg.enabled}
+
+
 _loaded_plugins = []  # type: ignore[var-annotated]
 _loaded_external_modules: Set[str] = set()
+_plugins_config: Optional[PluginsConfig] = None
+
+
+def _load_plugins_config(base_dir: Path) -> PluginsConfig:
+    global _plugins_config
+    try:
+        cfg_path = base_dir / "config" / "plugins.json"
+        if not cfg_path.exists():
+            _plugins_config = PluginsConfig()
+            return _plugins_config
+
+        with open(cfg_path, "r", encoding="utf-8") as rf:
+            data = json.load(rf)
+
+        if not isinstance(data, dict):
+            _plugins_config = PluginsConfig()
+            return _plugins_config
+
+        # 新格式: {"plugins": {"name": {"enabled": true, "priority": 10, "config": {}}}}
+        if "plugins" in data and isinstance(data["plugins"], dict):
+            plugins = {}
+            for name, cfg in data["plugins"].items():
+                if isinstance(cfg, dict):
+                    plugins[name] = PluginConfig(
+                        name=name,
+                        enabled=cfg.get("enabled", True),
+                        priority=cfg.get("priority", 0),
+                        config=cfg.get("config", {})
+                    )
+                else:
+                    plugins[name] = PluginConfig(name=name, enabled=bool(cfg))
+            _plugins_config = PluginsConfig(plugins=plugins)
+            return _plugins_config
+
+        # 旧格式兼容: {"enabled": ["plugin1", "plugin2"]}
+        names = data.get("enabled", [])
+        if isinstance(names, list):
+            plugins = {str(n).strip(): PluginConfig(name=str(n).strip()) for n in names if str(n).strip()}
+            _plugins_config = PluginsConfig(plugins=plugins)
+            return _plugins_config
+
+        _plugins_config = PluginsConfig()
+        return _plugins_config
+    except Exception:
+        logger.exception("[plugins] failed to read plugins.json")
+        _plugins_config = PluginsConfig()
+        return _plugins_config
 
 
 def _read_enabled_plugin_names(base_dir: Path) -> Optional[Set[str]]:
-    try:
-        cfg_path = base_dir.parent / "config" / "plugins.json"
-        if not cfg_path.exists():
-            return None
-        with open(cfg_path, "r", encoding="utf-8") as rf:
-            data = json.load(rf)
-        if not isinstance(data, dict):
-            return None
-        names = data.get("enabled", [])
-        if not isinstance(names, list):
-            return None
-        enabled = {str(n).strip() for n in names if str(n).strip()}
-        return enabled or None
-    except Exception:
-        logger.exception("[plugins] failed to read plugins.json")
-        return None
+    config = _load_plugins_config(base_dir)
+    return config.get_enabled_names()
 
 
 def _iter_namespace_packages(package_names: List[str]) -> None:
@@ -239,5 +307,18 @@ def reload_plugins() -> None:
         app_start()
     except Exception:
         logger.exception("[plugins] error when starting after reload (ignored)")
+
+
+def get_plugin_config(name: str) -> Optional[PluginConfig]:
+    """获取指定插件的配置"""
+    if _plugins_config is None:
+        return None
+    return _plugins_config.plugins.get(name)
+
+
+def get_loaded_plugins() -> List:
+    """获取已加载的插件列表"""
+    return list(_loaded_plugins)
+
 
 

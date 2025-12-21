@@ -56,7 +56,7 @@ class TaskRouter:
                 logger.error(f"无法为URL创建提取器: {task.url}")
                 return None
 
-            site_name = extractor.supported_sites[0] if extractor.supported_sites else None
+            site_name = extractor.site_name if extractor.site_name else None
             if not site_name:
                 logger.error(f"提取器未指定网站名: {task.url}")
                 return None
@@ -99,8 +99,8 @@ class TaskManager:
         # 如果没有指定网站名，尝试从URL推断
         if not site_name:
             extractor = get_extractor_factory().create_extractor(url)
-            if extractor and extractor.supported_sites:
-                site_name = extractor.supported_sites[0]
+            if extractor and extractor.site_name:
+                site_name = extractor.site_name
 
         return ExtractionTask(
             url=url,
