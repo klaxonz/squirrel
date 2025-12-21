@@ -2,22 +2,45 @@
 提取器工厂 - 使用 SDK 统一注册表
 """
 import logging
-from typing import Dict, Optional, List, Type
+import time
+from typing import Dict, Optional, List, Tuple, Type
 from urllib.parse import urlparse
 
 from crawl import Extractor, get_extractor_registry, PluginRegistry
 from utils.site_catalog import SiteCatalog
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class ExtractorFactory:
     """提取器工厂"""
 
-    def __init__(self, registry: PluginRegistry):
+    def __init__(self, registry: PluginRegistry, cache_ttl: int = 3600):
         self.registry = registry
-        self._instances: Dict[str, Extractor] = {}
+        self._instances: Dict[str, Tuple[Extractor, float]] = {}
         self._test_urls: Dict[str, str] = {}
+        self._cache_ttl = cache_ttl
+
+    def _get_cached(self, site_name: str) -> Optional[Extractor]:
+        if site_name in self._instances:
+            instance, timestamp = self._instances[site_name]
+            if time.time() - timestamp < self._cache_ttl:
+                return instance
+            del self._instances[site_name]
+            logger.debug(f"缓存过期，移除提取器: {site_name}")
+        return None
+
+    def _set_cached(self, site_name: str, instance: Extractor) -> None:
+        self._instances[site_name] = (instance, time.time())
+
+    def _create_instance(self, site_name: str) -> Optional[Extractor]:
+        extractor_class = self.registry.get(site_name)
+        if not extractor_class:
+            logger.error(f"提取器类未找到: {site_name}")
+            return None
+        if isinstance(extractor_class, type):
+            return extractor_class()
+        return extractor_class
 
     def create_extractor(self, url: str) -> Optional[Extractor]:
         """根据URL创建提取器实例"""
@@ -43,18 +66,14 @@ class ExtractorFactory:
                 logger.warning(f"未找到支持的提取器: {domain}")
                 return None
 
-            if site_name not in self._instances:
-                extractor_class = self.registry.get(site_name)
-                if not extractor_class:
-                    logger.error(f"提取器类未找到: {site_name}")
-                    return None
+            cached = self._get_cached(site_name)
+            if cached:
+                return cached
 
-                if isinstance(extractor_class, type):
-                    self._instances[site_name] = extractor_class()
-                else:
-                    self._instances[site_name] = extractor_class
-
-            return self._instances[site_name]
+            instance = self._create_instance(site_name)
+            if instance:
+                self._set_cached(site_name, instance)
+            return instance
 
         except Exception as e:
             logger.error(f"创建提取器失败: {url}, error: {e}")
@@ -65,16 +84,15 @@ class ExtractorFactory:
         if not SiteCatalog.is_site_enabled(site=site_name):
             logger.info(f"站点已禁用，跳过提取器获取: {site_name}")
             return None
-        if site_name not in self._instances:
-            extractor_class = self.registry.get(site_name)
-            if not extractor_class:
-                return None
-            if isinstance(extractor_class, type):
-                self._instances[site_name] = extractor_class()
-            else:
-                self._instances[site_name] = extractor_class
 
-        return self._instances[site_name]
+        cached = self._get_cached(site_name)
+        if cached:
+            return cached
+
+        instance = self._create_instance(site_name)
+        if instance:
+            self._set_cached(site_name, instance)
+        return instance
 
     def clear_cache(self) -> None:
         """清空实例缓存"""

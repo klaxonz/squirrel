@@ -9,8 +9,9 @@ from pathlib import Path
 from typing import List, Optional, Set
 
 from .registry import instantiate_all, reset_registry
+from .manifest import check_plugin_compatibility
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 _loaded_plugins = []  # type: ignore[var-annotated]
@@ -44,7 +45,7 @@ def _iter_namespace_packages(package_names: List[str]) -> None:
     for pkg in package_names:
         try:
             mod = importlib.import_module(pkg)
-        except Exception:
+        except (ImportError, ModuleNotFoundError):
             continue
 
         # iterate submodules
@@ -52,7 +53,7 @@ def _iter_namespace_packages(package_names: List[str]) -> None:
             for m in pkgutil.iter_modules(mod.__path__, prefix=f"{pkg}."):
                 try:
                     importlib.import_module(m.name)
-                except Exception:
+                except (ImportError, ModuleNotFoundError):
                     logger.debug("[plugins] skip import %s", m.name)
 
 
@@ -101,8 +102,10 @@ def _import_external_modules(search_roots: List[Path]) -> None:
                     importlib.import_module(name)
                     logger.info("[plugins] imported external module: %s", name)
                     _loaded_external_modules.add(name)
-                except Exception:
-                    logger.exception("[plugins] failed to import external module: %s", name)
+                except (ImportError, ModuleNotFoundError) as e:
+                    logger.warning("[plugins] failed to import %s: %s", name, e)
+                except Exception as e:
+                    logger.error("[plugins] unexpected error importing %s: %s", name, e, exc_info=True)
         except Exception:
             logger.exception("[plugins] failed to scan %s", root)
 
@@ -153,6 +156,15 @@ def init_plugins() -> None:
             pass
         return False
     _loaded_plugins = [p for p in candidates if _matches_enabled(p)]
+
+    compatible_plugins = []
+    for p in _loaded_plugins:
+        if check_plugin_compatibility(p):
+            compatible_plugins.append(p)
+        else:
+            name = getattr(p, "name", p.__class__.__name__)
+            logger.warning("[plugins] skipping incompatible plugin: %s", name)
+    _loaded_plugins = compatible_plugins
 
     for p in list(_loaded_plugins):
         try:
