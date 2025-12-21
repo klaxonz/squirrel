@@ -5,8 +5,7 @@ from typing import List
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
-from crawl import register_subscription, SubscriptionMeta
-from .browser_utils import fetch_page_html
+from crawl import register_subscription, SubscriptionMeta, get, filter_cookies_to_query_string
 
 
 @register_subscription("javdb", ["javdb.com"])
@@ -15,7 +14,10 @@ class JavdbSubscription:
         self.url = url
 
     def get_subscribe_info(self) -> SubscriptionMeta:
-        html = fetch_page_html(self.url)  # type: ignore
+        cookies = filter_cookies_to_query_string(self.url)
+        headers = {'Cookie': cookies} if cookies else {}
+        response = get(self.url, use_cloudflare_bypass=True, headers=headers)
+        html = response.text
         bs4 = BeautifulSoup(html, 'html.parser')
         username_el = bs4.select('.actor-section-name')
         if len(username_el) == 0:
@@ -34,8 +36,11 @@ class JavdbSubscription:
         return SubscriptionMeta(channel_id, name, avatar, self.url)
 
     def get_subscribe_videos(self, extract_all: bool) -> List[str]:
-        html = fetch_page_html(self.url)  # type: ignore
-        
+        cookies = filter_cookies_to_query_string(self.url)
+        headers = {'Cookie': cookies} if cookies else {}
+        response = get(self.url, use_cloudflare_bypass=True, headers=headers)
+        html = response.text
+
         parsed_url = urlparse(self.url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         video_list: List[str] = []
@@ -49,7 +54,8 @@ class JavdbSubscription:
 
         while current_page < page and extract_all:
             current_page += 1
-            page_html = fetch_page_html(self.url + f'?page={current_page}&sort_type=0')  # type: ignore
+            page_response = get(self.url + f'?page={current_page}&sort_type=0', use_cloudflare_bypass=True, headers=headers)
+            page_html = page_response.text
             bs4 = BeautifulSoup(page_html, 'html.parser')
 
             self._extract_video_urls(bs4, base_url, video_list)

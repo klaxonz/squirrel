@@ -49,6 +49,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning(f"[0/5] ⚠ Failed to apply site config overrides: {e}")
 
+    # 0.5. 配置 Cloudflare bypass 客户端
+    logger.info("[0.5/5] Configuring Cloudflare bypass client...")
+    try:
+        from crawl import configure_cloudflare_bypass_client
+        from utils.cloudflare_bypass import get_default_client
+        configure_cloudflare_bypass_client(get_default_client())
+        logger.info("[0.5/5] ✓ Cloudflare bypass client configured")
+    except Exception as e:
+        logger.warning(f"[0.5/5] ⚠ Failed to configure Cloudflare bypass client: {e}")
+
     # 1. 加载插件（必须先加载，注册到 SDK 注册表）
     logger.info("[1/4] Loading plugins...")
     try:

@@ -5,8 +5,7 @@ from typing import Dict, Optional, Any
 
 from bs4 import BeautifulSoup
 
-from crawl import Downloader, register_downloader, AuthError, VipError, ParseError
-from .browser_utils import fetch_page_html
+from crawl import register_downloader, AuthError, VipError, ParseError, get, filter_cookies_to_query_string
 
 
 @register_downloader
@@ -21,7 +20,10 @@ class JavdbDownloader:
         self.domain = self.domains[0]
 
     def get_video_info(self, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        html = fetch_page_html(self.url)  # type: ignore
+        cookies = filter_cookies_to_query_string(self.url)
+        headers = {'Cookie': cookies} if cookies else {}
+        response = get(self.url, use_cloudflare_bypass=True, headers=headers)
+        html = response.text
         soup = BeautifulSoup(html, 'html.parser')
         video_info: Dict[str, Any] = {}
 

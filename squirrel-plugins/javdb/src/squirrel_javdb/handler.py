@@ -7,15 +7,14 @@ from urllib.parse import quote
 
 from bs4 import BeautifulSoup
 
-from crawl import VideoUrlHandler, register_handler
-from .browser_utils import fetch_page_html
-
+from crawl import register_handler, request_without_limit
 
 DEBUG_BROWSER = os.getenv("JAVDB_DEBUG_BROWSER") == "1"
 
 
 def fetch_html(link: str) -> str:
-	return fetch_page_html(link, debug=DEBUG_BROWSER)  # type: ignore
+	response = request_without_limit('GET', link, use_cloudflare_bypass=True)
+	return response.text
 
 
 @register_handler

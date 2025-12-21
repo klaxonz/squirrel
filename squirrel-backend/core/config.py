@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     COOKIE_CLOUD_UUID: str = ''
     COOKIE_CLOUD_PASSWORD: str = ''
     COOKIE_CLOUD_DOMAIN: str = ''
+    CLOUDFLARE_BYPASS_SERVICE_URL: str = ''
 
     POOL_SIZE: int = 30
     POOL_MAX_SIZE: int = 60

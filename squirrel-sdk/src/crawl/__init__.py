@@ -99,6 +99,8 @@ from .http import (
     request_without_limit,
     get,
     post,
+    configure_cloudflare_bypass_client,
+    fetch_with_cloudflare_bypass,
 )
 
 # Site configuration
@@ -216,6 +218,8 @@ __all__ = [
     "request_without_limit",
     "get",
     "post",
+    "configure_cloudflare_bypass_client",
+    "fetch_with_cloudflare_bypass",
     # Site configuration
     "set_site_config",
     "set_site_configs",
