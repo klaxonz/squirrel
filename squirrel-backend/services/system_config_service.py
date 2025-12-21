@@ -1,6 +1,8 @@
 from typing import Any, Dict, List, Optional
 import logging
 
+from sqlalchemy import select
+
 from core.database import get_session
 from models.system_config import SystemConfig
 
@@ -29,7 +31,7 @@ def get_value(key: str, default: Optional[str] = None) -> Optional[str]:
     读取指定 key 的值，若不存在返回 default
     """
     with get_session() as session:
-        row = session.query(SystemConfig).filter(SystemConfig.key == key).first()
+        row = session.scalars(select(SystemConfig).where(SystemConfig.key == key)).first()
         if row is None:
             return default
         return row.value
@@ -40,7 +42,7 @@ def set_value(key: str, value: str) -> None:
     设置/更新指定 key 的值
     """
     with get_session() as session:
-        row = session.query(SystemConfig).filter(SystemConfig.key == key).first()
+        row = session.scalars(select(SystemConfig).where(SystemConfig.key == key)).first()
         if row is None:
             row = SystemConfig(key=key, value=value)
             session.add(row)
@@ -80,7 +82,7 @@ def get_many(keys: List[str], defaults: Dict[str, Any]) -> Dict[str, str]:
     with get_session() as session:
         if not keys:
             return {}
-        rows = session.query(SystemConfig).filter(SystemConfig.key.in_(keys)).all()
+        rows = session.scalars(select(SystemConfig).where(SystemConfig.key.in_(keys))).all()
         result: Dict[str, str] = {}
         found_keys = set()
         for r in rows:
@@ -91,3 +93,12 @@ def get_many(keys: List[str], defaults: Dict[str, Any]) -> Dict[str, str]:
                 dv = defaults.get(k)
                 result[k] = "" if dv is None else str(dv)
         return result
+
+
+def get_all_configs() -> Dict[str, str]:
+    """
+    获取所有系统配置
+    """
+    with get_session() as session:
+        rows = session.scalars(select(SystemConfig)).all()
+        return {row.key: row.value for row in rows}

@@ -1,6 +1,6 @@
 from typing import List, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from common import constants
 from core.cache import redis_client
@@ -63,7 +63,7 @@ def pause_download(task_id: int):
 
 def delete_task(task_id: int):
     with get_session() as session:
-        session.query(DownloadTask).filter(DownloadTask.id == task_id).delete()
+        session.execute(delete(DownloadTask).where(DownloadTask.id == task_id))
         session.commit()
 
 
@@ -86,59 +86,49 @@ def list_tasks(status: str, page: int, page_size: int) -> Tuple[List[dict], int]
 
 
 def generate_task_data(tasks: List[DownloadTask]):
+    if not tasks:
+        return []
+
     task_data = []
+    video_ids = [task.video_id for task in tasks]
 
     with get_session() as session:
-        if tasks:
-            video_ids = []
-            for task in tasks:
-                video_ids.append(task.video_id)
-            videos = session.scalars(select(Video).where(Video.id.in_(video_ids))).all()
-            videos_map = {}
-            for video in videos:
-                videos_map[video.id] = video
+        results = session.execute(
+            select(Video, Subscription)
+            .join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
+            .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
+            .where(Video.id.in_(video_ids))
+        ).all()
 
-            subscription_videos = session.scalars(
-                select(SubscriptionVideo).where(SubscriptionVideo.video_id.in_(video_ids))).all()
-            subscription_ids = []
-            subscription_maps = {}
-            video_subscription_map = {}
-            for subscription_video in subscription_videos:
-                subscription_ids.append(subscription_video.subscription_id)
+        video_map = {}
+        video_subscription_map = {}
+        for video, subscription in results:
+            video_map[video.id] = video
+            video_subscription_map[video.id] = subscription
 
-            if len(subscription_ids) > 0:
-                subscriptions = session.scalars(select(Subscription).where(Subscription.id.in_(subscription_ids)))
-                for subscription in subscriptions:
-                    subscription_maps[subscription.id] = subscription
-            for subscription_video in subscription_videos:
-                video_subscription_map[subscription_video.video_id] = subscription_maps[
-                    subscription_video.subscription_id]
+        for task in tasks:
+            video = video_map.get(task.video_id)
+            subscription = video_subscription_map.get(task.video_id)
+            if not video or not subscription:
+                continue
 
-            for task in tasks:
-                progress = redis_client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.id}')
-                downloaded_size = int(progress.get('downloaded_size', 0))
-                total_size = int(progress.get('total_size', 0))
-                speed = progress.get('speed', '')
-                eta = progress.get('eta', '')
-                percent = progress.get('percent', '')
-
-                video = videos_map[task.video_id]
-                task_data.append({
-                    "id": task.id,
-                    "thumbnail": thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
-                    "status": task.status,
-                    "title": videos_map[task.video_id].title,
-                    "channel_name": video_subscription_map[task.video_id].name,
-                    "channel_avatar": video_subscription_map[task.video_id].avatar,
-                    "downloaded_size": downloaded_size,
-                    "total_size": total_size,
-                    "speed": speed,
-                    "eta": eta,
-                    "percent": percent,
-                    "error_message": task.error_message,
-                    "retry": task.retry,
-                    "updated_at": task.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    "created_at": task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                })
+            progress = redis_client.hgetall(f'{constants.REDIS_KEY_VIDEO_DOWNLOAD_PROGRESS}:{task.id}')
+            task_data.append({
+                "id": task.id,
+                "thumbnail": thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
+                "status": task.status,
+                "title": video.title,
+                "channel_name": subscription.name,
+                "channel_avatar": subscription.avatar,
+                "downloaded_size": int(progress.get('downloaded_size', 0)),
+                "total_size": int(progress.get('total_size', 0)),
+                "speed": progress.get('speed', ''),
+                "eta": progress.get('eta', ''),
+                "percent": progress.get('percent', ''),
+                "error_message": task.error_message,
+                "retry": task.retry,
+                "updated_at": task.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                "created_at": task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            })
 
     return task_data

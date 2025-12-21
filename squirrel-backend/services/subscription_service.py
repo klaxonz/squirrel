@@ -294,6 +294,106 @@ def restore_subscription(subscription_id: int, user_id: int) -> None:
         session.commit()
 
 
+def create_subscribe_message(url: str, user_id: int) -> Dict[str, Any]:
+    import json
+    from common import constants
+    from mq.producer import RedisStreamProducer
+
+    with get_session() as session:
+        task = {
+            "url": url,
+            "user_id": user_id
+        }
+        message = Message(body=json.dumps(task))
+        session.add(message)
+        session.commit()
+        dump_json = message.to_dict()
+        RedisStreamProducer().send(constants.QUEUE_SUBSCRIBE, dump_json)
+    return dump_json
+
+
+def unsubscribe_by_id_or_url(user_id: int, subscription_id: int = None, url: str = None) -> bool:
+    with get_session() as session:
+        if subscription_id:
+            subscription_filter = Subscription.id == subscription_id
+        elif url:
+            subscription_filter = Subscription.url == url
+        else:
+            return False
+
+        subscription = session.scalars(
+            select(Subscription).where(subscription_filter)
+        ).first()
+
+        if subscription:
+            user_subscription = session.scalars(
+                select(UserSubscription).where(
+                    UserSubscription.user_id == user_id,
+                    UserSubscription.subscription_id == subscription.id
+                )
+            ).first()
+
+            if user_subscription:
+                user_subscription.is_deleted = True
+                session.commit()
+                return True
+        return False
+
+
+def check_subscription_status(user_id: int, url: str) -> bool:
+    if not url:
+        return False
+    with get_session() as session:
+        subscription = session.scalars(
+            select(Subscription).where(Subscription.url == url)
+        ).first()
+        if subscription:
+            user_subscription = session.scalars(
+                select(UserSubscription).where(
+                    UserSubscription.user_id == user_id,
+                    UserSubscription.subscription_id == subscription.id,
+                    UserSubscription.is_deleted.is_(False)
+                )
+            ).first()
+            if user_subscription:
+                return True
+    return False
+
+
+def get_user_subscription_nsfw(user_id: int, subscription_id: int) -> Optional[bool]:
+    with get_session() as session:
+        user_sub = session.scalars(
+            select(UserSubscription).where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.subscription_id == subscription_id,
+                UserSubscription.is_deleted.is_(False)
+            )
+        ).first()
+        if user_sub:
+            return user_sub.is_nsfw
+        return None
+
+
+def verify_subscription_access(user_id: int, subscription_id: int) -> Tuple[Optional[Subscription], str]:
+    with get_session() as session:
+        subscription = session.get(Subscription, subscription_id)
+        if not subscription or subscription.is_deleted:
+            return None, "not_found"
+
+        user_subscription = session.scalars(
+            select(UserSubscription).where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.subscription_id == subscription_id,
+                UserSubscription.is_deleted.is_(False)
+            )
+        ).first()
+        if not user_subscription:
+            return None, "forbidden"
+
+        session.expunge(subscription)
+        return subscription, "ok"
+
+
 def preview_user_subscriptions(site_name: str) -> Dict[str, Any]:
     """
     预览用户在指定站点的订阅列表（不实际导入）

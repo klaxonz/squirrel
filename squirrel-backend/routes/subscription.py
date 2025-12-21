@@ -2,13 +2,8 @@ import json
 from datetime import datetime
 
 from fastapi import APIRouter, Query, Depends, Request
-from sqlalchemy import select
 import common.response as response
-from core.database import get_session
 from core.cache import redis_client
-from models.links import UserSubscription
-from models.message import Message
-from models.subscription import Subscription
 from models.user import User
 from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest
 from services import subscription_service, message_service
@@ -16,7 +11,6 @@ from typing import List
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
 from utils.jwt_helper import get_current_user
-from mq.producer import RedisStreamProducer
 from common import constants
 
 router = APIRouter(tags=['订阅接口'])
@@ -28,46 +22,16 @@ def subscribe_content(req: SubscribeRequest, current_user: User = Depends(get_cu
     if not SiteCatalog.is_site_enabled(domain=domain):
         return response.param_error("站点插件未启用，无法订阅")
 
-    with get_session() as session:
-        task = {
-            "url": req.url,
-            "user_id": current_user.id
-        }
-        message = Message(body=json.dumps(task))
-        session.add(message)
-        session.commit()
-        dump_json = message.to_dict()
-        RedisStreamProducer().send(constants.QUEUE_SUBSCRIBE, dump_json)
-
+    subscription_service.create_subscribe_message(req.url, current_user.id)
     return response.success()
 
 
 @router.post("/api/subscription/unsubscribe")
 def unsubscribe_content(req: UnsubscribeRequest, current_user: User = Depends(get_current_user)):
-    with get_session() as session:
-        if req.subscription_id:
-            subscription_filter = Subscription.id == req.subscription_id
-        elif req.url:
-            subscription_filter = Subscription.url == req.url
-        else:
-            return response.error("Invalid request parameters")
-        subscription = session.scalars(
-            select(Subscription).where(subscription_filter)
-        ).first()
-
-        if subscription:
-            user_subscription = session.scalars(
-                select(UserSubscription).where(
-                    UserSubscription.user_id == current_user.id,
-                    UserSubscription.subscription_id == subscription.id
-                )
-            ).first()
-
-            if user_subscription:
-                user_subscription.is_deleted = True
-                session.commit()
-
-        return response.success()
+    if not req.subscription_id and not req.url:
+        return response.error("Invalid request parameters")
+    subscription_service.unsubscribe_by_id_or_url(current_user.id, req.subscription_id, req.url)
+    return response.success()
 
 
 @router.get("/api/subscription/status")
@@ -75,18 +39,7 @@ def get_subscription_status(
         url: str = Query(None),
         current_user: User = Depends(get_current_user)
 ):
-    is_subscribed = False
-    with get_session() as session:
-        if url:
-            subscription = session.scalars(select(Subscription).where(Subscription.url == url)).first()
-            if subscription:
-                user_subscription = session.scalars(select(UserSubscription).where(
-                    UserSubscription.user_id == current_user.id,
-                    UserSubscription.subscription_id == subscription.id,
-                    UserSubscription.is_deleted.is_(False))
-                ).first()
-                if user_subscription:
-                    is_subscribed = True
+    is_subscribed = subscription_service.check_subscription_status(current_user.id, url)
     return response.success({
         "is_subscribed": is_subscribed
     })
@@ -99,18 +52,9 @@ def get_subscription_detail(subscription_id: int, current_user: User = Depends(g
     if not sub:
         return response.not_found("订阅不存在")
 
-    # 查询当前用户在该订阅下的 NSFW 设置
-    with get_session() as session:
-        user_sub = session.scalars(
-            select(UserSubscription).where(
-                UserSubscription.user_id == current_user.id,
-                UserSubscription.subscription_id == subscription_id,
-                UserSubscription.is_deleted.is_(False)
-            )
-        ).first()
-
+    is_nsfw = subscription_service.get_user_subscription_nsfw(current_user.id, subscription_id)
     data = sub.model_dump() if hasattr(sub, 'model_dump') else dict(sub)
-    data["is_nsfw"] = bool(getattr(user_sub, 'is_nsfw', False))
+    data["is_nsfw"] = bool(is_nsfw) if is_nsfw is not None else False
     return response.success(data)
 
 
@@ -142,7 +86,7 @@ def list_subscriptions(
 
 @router.post("/api/subscription/{subscription_id}/refresh")
 def refresh_subscription(
-    subscription_id: int, 
+    subscription_id: int,
     request: Request,
     current_user: User = Depends(get_current_user)
 ):
@@ -150,20 +94,11 @@ def refresh_subscription(
     手动刷新订阅
     职责：验证权限后调用调度器，具体更新逻辑由调度器和编排器处理
     """
-    with get_session() as session:
-        subscription = session.get(Subscription, subscription_id)
-        if not subscription or subscription.is_deleted:
-            return response.not_found("订阅不存在")
-        
-        user_subscription = session.scalars(
-            select(UserSubscription).where(
-                UserSubscription.user_id == current_user.id,
-                UserSubscription.subscription_id == subscription_id,
-                UserSubscription.is_deleted.is_(False)
-            )
-        ).first()
-        if not user_subscription:
-            return response.forbidden("无权操作该订阅")
+    subscription, status = subscription_service.verify_subscription_access(current_user.id, subscription_id)
+    if status == "not_found":
+        return response.not_found("订阅不存在")
+    if status == "forbidden":
+        return response.forbidden("无权操作该订阅")
 
     lock_key = f"lock:subscription:update:{subscription_id}"
     if redis_client.exists(lock_key):
@@ -177,10 +112,9 @@ def refresh_subscription(
         return response.param_error("站点插件未启用，无法刷新订阅")
 
     from services.subscription_update import scheduler, UpdateTrigger, UpdateMode
-    
-    # 获取 trace_id（由 TraceMiddleware 设置）
+
     trace_id = getattr(request.state, 'trace_id', None)
-    
+
     success = scheduler.schedule_one(
         subscription_id=subscription.id,
         url=subscription.url,
@@ -189,10 +123,10 @@ def refresh_subscription(
         user_id=current_user.id,
         trace_id=trace_id
     )
-    
+
     if not success:
         return response.server_error("刷新请求失败")
-    
+
     redis_client.set(
         f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{subscription_id}",
         1,
