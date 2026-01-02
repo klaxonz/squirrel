@@ -140,17 +140,13 @@ class VideoExtractionHandler(BaseResultHandler):
             PipelineContext
         """
         context = PipelineContext(task=task)
-        
+
         # 根据任务元数据设置控制标志
-        only_extract = task.metadata.get('only_extract', True)
-        
-        # 如果只提取不下载，跳过后处理
-        if only_extract:
-            context.should_skip_post_process = True
-        
+        context.should_skip_post_process = bool(task.metadata.get('skip_post_process', False))
+
         # 如果订阅不存在，跳过持久化
         # （这个检查可以在PersistenceStage中进行）
-        
+
         return context
 
 

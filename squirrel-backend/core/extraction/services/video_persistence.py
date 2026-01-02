@@ -53,9 +53,9 @@ class VideoPersistenceService:
             video = session.scalars(
                 select(VideoModel).where(VideoModel.url == url)
             ).first()
-            
+
             is_new = video is None
-            
+
             if is_new:
                 # 创建新视频
                 video = VideoModel(
@@ -64,16 +64,43 @@ class VideoPersistenceService:
                     thumbnail=thumbnail,
                     duration=duration,
                     publish_date=publish_date or datetime.now(),
-                    # description暂时不保存（VideoModel可能没有这个字段）
+                    description=description,
                 )
                 session.add(video)
                 session.commit()
                 session.refresh(video)
-                
-                logger.info(f"Created new video: id={video.id}, url={url}")
+
+                logger.info(f"Created new video: id={video.id}, url={url}")     
             else:
-                logger.debug(f"Video already exists: id={video.id}, url={url}")
-            
+                updated = False
+
+                if title and title != video.title:
+                    video.title = title
+                    updated = True
+
+                if thumbnail is not None and thumbnail != video.thumbnail:
+                    video.thumbnail = thumbnail
+                    updated = True
+
+                if duration is not None and duration != video.duration:
+                    video.duration = duration
+                    updated = True
+
+                if publish_date is not None and publish_date != video.publish_date:
+                    video.publish_date = publish_date
+                    updated = True
+
+                if description is not None and description != video.description:
+                    video.description = description
+                    updated = True
+
+                if updated:
+                    session.commit()
+                    session.refresh(video)
+                    logger.info(f"Updated video: id={video.id}, url={url}")
+                else:
+                    logger.debug(f"Video already exists: id={video.id}, url={url}") 
+
             # 创建订阅-视频关联（如果提供了subscription_id）
             if subscription_id:
                 self._create_subscription_link(
