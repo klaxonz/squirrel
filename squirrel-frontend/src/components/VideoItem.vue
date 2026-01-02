@@ -117,11 +117,11 @@
             <div class="absolute -bottom-2 left-4 w-4 h-4 bg-[#282828] transform rotate-45"></div>
           </div>
         </div>
-        <span class="leading-4 font-medium flex-shrink-0 ml-2">{{ formatDate(video.uploaded_at) }}</span>
+        <span class="leading-4 font-medium flex-shrink-0 ml-2">{{ displayDateText }}</span>
       </div>
     </div>
     <Teleport to="body">
-      <ContextMenu 
+      <ContextMenu
         v-if="showMenu"
         :position="menuPosition"
         :is-open="showMenu"
@@ -145,7 +145,7 @@ import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from "../composables/useOptionsMenu.js";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import { Icon } from '@iconify/vue';
-import { useSystemConfig } from '../composables/useSystemConfig.js';
+import { useSystemConfig } from '../composables/useSystemConfig.js';      
 
 const props = defineProps({
   video: {
@@ -164,6 +164,10 @@ const props = defineProps({
   progress: {
     type: Number,
     default: 0
+  },
+  sortBy: {
+    type: String,
+    default: 'publish_date'
   }
 });
 
@@ -183,7 +187,16 @@ const isNsfwVideo = computed(() => {
 
 // 计算是否应该模糊封面
 const shouldBlurThumbnail = computed(() => {
-  return systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value;
+  return systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value;   
+});
+
+const displayDateText = computed(() => {
+  const sortBy = props.sortBy;
+  const ts = sortBy === 'created_at'
+    ? (props.video.created_at || props.video.uploaded_at)
+    : (props.video.uploaded_at || props.video.created_at);
+
+  return ts ? formatDate(ts) : '';
 });
 
 onUnmounted(() => {

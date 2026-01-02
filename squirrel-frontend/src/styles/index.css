@@ -38,27 +38,6 @@
 
 /* Component layer: structural classes and media queries */
 @layer components {
-  /* 页面容器基础样式 */
-  .page-container {
-    @apply flex flex-col h-full bg-[#0f0f0f] text-white;
-    pointer-events: auto;
-  }
-
-  /* 内容区域基础样式 */
-  .content-container {
-    @apply flex-grow;
-    height: 100%;
-    pointer-events: auto;
-  }
-
-  /* 移动端内容区域高度调整 */
-  @media (max-width: 768px) {
-    .content-container {
-      height: calc(100% - var(--mobile-nav-height));
-      padding-bottom: 0;
-    }
-  }
-
   /* 确保所有可点击元素都能正常工作 */
   button, a, [role="button"], [tabindex="0"] {
     pointer-events: auto !important;

@@ -6,6 +6,7 @@
         :loading="loading"
         :allLoaded="allLoaded"
         :showAvatar="false"
+        :sortBy="sortBy"
         :refreshing="isResetting"
         @loadMore="loadMore"
         @toggleOptions="toggleOptions"

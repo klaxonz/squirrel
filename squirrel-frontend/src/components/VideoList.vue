@@ -20,11 +20,12 @@
           <VideoItem
               :video="video"
               :showAvatar="showAvatar"
+              :sortBy="sortBy"
               :showProgress="video.showProgress"
               :progress="video.progress"
               :index="index"
               :class="{ 'is-refreshing': refreshing }"
-              @toggleOptions="$emit('toggleOptions', $event, video.id)"
+              @toggleOptions="$emit('toggleOptions', $event, video.id)"   
               @goToSubscription="$emit('goToSubscription', $event)"
               @openModal="$emit('openModal', video)"
               @markReadBatch="handleMarkReadBatch"
@@ -69,6 +70,7 @@ const props = defineProps({
   loading: Boolean,
   allLoaded: Boolean,
   showAvatar: Boolean,
+  sortBy: { type: String, default: 'publish_date' },
   refreshing: {
     type: Boolean,
     default: false
