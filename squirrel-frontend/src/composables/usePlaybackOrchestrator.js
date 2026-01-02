@@ -9,7 +9,7 @@ export default function usePlaybackOrchestrator(initialVideo = null) {
   const { playVideo } = useVideoOperations();
   const externalError = ref(null);
 
-  const loadAndPlayById = async (videoId, initialVideoData = null) => {
+  const loadAndPlayById = async (videoId, initialVideoData = null, options = {}) => {
     if (!videoId) return;
     console.log('[usePlaybackOrchestrator] loadAndPlayById start:', videoId);
     
@@ -43,7 +43,7 @@ export default function usePlaybackOrchestrator(initialVideo = null) {
     // 仅负责触发播放链接获取，不阻塞 UI 切换到新视频；失败时设置外部错误用于播放器展示
     (async () => {
       try {
-        await playVideo(video.value);
+        await playVideo(video.value, options);
       } catch (err) {
         const code = err?.code || 'FAILED';
         const message = err?.message || '播放链接获取失败';

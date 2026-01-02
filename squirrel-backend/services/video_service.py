@@ -128,7 +128,7 @@ def get_random_video(
         return random_row[0] if random_row else None
 
 
-def get_video_url(video_id: int) -> VideoUrlDto:
+def get_video_url(video_id: int, force_refresh: bool = False) -> VideoUrlDto:
     video_domain = None
     video: Optional[Video] = None
     with get_session() as session:
@@ -148,16 +148,17 @@ def get_video_url(video_id: int) -> VideoUrlDto:
     cache_key: Optional[str] = None
     if enable_cache:
         cache_key = f"video_url:{site_slug or video_domain}:{video_id}"
-        try:
-            cached = redis_client.get(cache_key)
-        except Exception:
-            cached = None
-        if cached:
+        if not force_refresh:
             try:
-                payload = json.loads(cached)
-                return VideoUrlDto.model_validate(payload)
+                cached = redis_client.get(cache_key)
             except Exception:
-                pass
+                cached = None
+            if cached:
+                try:
+                    payload = json.loads(cached)
+                    return VideoUrlDto.model_validate(payload)
+                except Exception:
+                    pass
 
     handler_registry = get_handler_registry()
     handler_key = handler_registry.get_by_domain(video_domain)

@@ -25,13 +25,14 @@ router = APIRouter(tags=['频道视频接口'])
 
 @router.get("/api/video/url")
 def get_video_url(
-        video_id: int = Query(None, description="视频ID")
+        video_id: int = Query(None, description="视频ID"),
+        force_refresh: bool = Query(False, description="强制刷新播放链接（跳过服务端缓存）", alias="force_refresh")
 ):
     try:
         if video_id is None:
             return response.param_error("参数错误 (VIDEO_ID_REQUIRED)")
 
-        video_urls = video_service.get_video_url(video_id)
+        video_urls = video_service.get_video_url(video_id, force_refresh=force_refresh)
         # 校验是否成功提取到可播放链接（支持 DASH 的 mpd_url 返回）
         has_video = getattr(video_urls, 'video_url', None)
         has_audio = getattr(video_urls, 'audio_url', None)

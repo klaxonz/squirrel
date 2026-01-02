@@ -313,7 +313,7 @@ const toggleWidescreen = (value) => {
 
 const handlePlayerRetry = async () => {
   if (!video.value?.id) return;
-  await loadAndPlayById(video.value.id, video.value);
+  await loadAndPlayById(video.value.id, video.value, { forceRefresh: true });
 };
 
 // 记录最近播放的视频，防止循环播放
