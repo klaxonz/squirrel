@@ -27,7 +27,7 @@ import { AnalyticsPlugin } from '../plugins/analytics'
 import { useTheme, type ThemeName } from '../themes'
 
 // 国际化
-import { useI18n } from '../i18n'
+import { useI18n, type LocaleCode, type LocaleMessages } from '../i18n'
 
 // 类型
 import type { VideoInfo, QualityOption } from '../../../types/video-player'
@@ -43,7 +43,7 @@ export interface PlayerOptions {
   theme?: ThemeName
   
   // 语言
-  locale?: string
+  locale?: LocaleCode
   
   // 插件配置
   enableHls?: boolean
@@ -117,9 +117,9 @@ export interface PlayerReturn {
   setTheme: (theme: ThemeName) => void
   
   // 国际化
-  t: (key: string, params?: Record<string, any>) => string
-  locale: Ref<string>
-  setLocale: (locale: string) => void
+  t: (key: keyof LocaleMessages, params?: Record<string, string | number>) => string
+  locale: Ref<LocaleCode>
+  setLocale: (locale: LocaleCode) => void
   
   // 适配器
   saveProgress: () => void
@@ -374,14 +374,14 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   const togglePictureInPicture = async (): Promise<void> => {
     if (!videoElement.value) return
-    
+
     try {
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture()
-        store.setPip(false)
+        store.setPictureInPicture(false)
       } else {
         await videoElement.value.requestPictureInPicture()
-        store.setPip(true)
+        store.setPictureInPicture(true)
       }
     } catch (e) {
       console.warn('[IntegratedPlayer] PiP failed:', e)
@@ -574,7 +574,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     // HLS 插件
     if (enableHls) {
       await pluginManager.register(new HlsPlugin(), {
-        onBandwidthSample: (loaded, duration) => {
+        onBandwidthSample: (loaded: number, duration: number) => {
           // 可以更新性能状态
         }
       })

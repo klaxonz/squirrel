@@ -39,21 +39,23 @@
       <div class="sp-loading-spinner"></div>
     </div>
 
-    <!-- 错误提示 -->
-    <div v-if="errorState.show" class="sp-error">
-      <div class="sp-error-icon">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-        </svg>
+    <div v-if="errorState.show" class="sp-error-overlay" @click.stop>
+      <div class="sp-error-card" role="alert" aria-live="polite">
+        <div class="sp-error-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+        </div>
+        <div class="sp-error-title">{{ errorState.title }}</div>
+        <div v-if="errorState.code" class="sp-error-code">{{ errorState.code }}</div>
+        <div class="sp-error-message">{{ errorState.message }}</div>
+        <button v-if="errorState.canRetry" class="sp-btn sp-btn--primary" @click="handleRetry">{{ t('retry') }}</button>
       </div>
-      <div class="sp-error-title">{{ errorState.title }}</div>
-      <div class="sp-error-message">{{ errorState.message }}</div>
-      <button class="sp-btn" @click="handleRetry">{{ t('retry') }}</button>
     </div>
 
     <!-- 控制栏 -->
     <transition name="sp-fade">
-      <div v-show="store.controlsVisible" class="sp-controls">
+      <div v-show="store.controlsVisible && !errorState.show" class="sp-controls">
         <!-- 进度条 -->
         <div class="sp-progress-container">
           <div 
@@ -290,6 +292,7 @@ const emit = defineEmits<{
   error: [error: any]
   'prev-video': []
   'next-video': []
+  retry: []
 }>()
 
 // 使用集成播放器
@@ -357,7 +360,7 @@ const previewTime = ref<number | null>(null)
 const previewPercent = ref(0)
 const seekIndicator = ref({ show: false, direction: 'forward' as 'forward' | 'backward', seconds: 10 })
 const volumeIndicator = ref({ show: false })
-const errorState = ref({ show: false, title: '', message: '' })
+const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
 
 // 播放速度选项
 const playbackRates = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
@@ -481,7 +484,9 @@ watch(() => props.externalError, (err) => {
     errorState.value = {
       show: true,
       title: err.title || t('errorTitle'),
-      message: err.message || t('errorUnknown')
+      message: err.message || t('errorUnknown'),
+      code: err.code || '',
+      canRetry: err.canRetry !== false
     }
   } else {
     errorState.value.show = false
@@ -604,6 +609,7 @@ const handleQualitySelect = (q: any) => {
 // 重试
 const handleRetry = () => {
   errorState.value.show = false
+  emit('retry')
   if (videoRef.value) {
     videoRef.value.load()
     play()
@@ -1227,18 +1233,31 @@ defineExpose({
 }
 
 /* 错误 */
-.sp-error {
+.sp-error-overlay {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
   z-index: var(--sp-z-overlay, 15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.82));
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.sp-error-card {
+  width: min(420px, 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   text-align: center;
-  padding: 24px;
+  padding: 22px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(22, 22, 22, 0.78);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
 }
 
 .sp-error-icon svg,
@@ -1254,14 +1273,24 @@ defineExpose({
   color: #fff;
 }
 
+.sp-error-code {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.2px;
+}
+
 .sp-error-message {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.6);
   max-width: 280px;
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.sp-error .sp-btn {
+.sp-error-card .sp-btn {
   margin-top: 4px;
   width: auto;
   height: 34px;
@@ -1271,8 +1300,12 @@ defineExpose({
   font-weight: 500;
 }
 
-.sp-error .sp-btn:hover {
+.sp-error-card .sp-btn:hover {
   background: rgba(255, 255, 255, 0.15);
+}
+
+.sp-btn--primary {
+  background: rgba(255, 255, 255, 0.18);
 }
 
 /* 指示器 */

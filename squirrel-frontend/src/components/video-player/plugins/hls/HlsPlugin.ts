@@ -164,7 +164,7 @@ export class HlsPlugin implements PlayerPlugin {
     this.hls.on(Hls.Events.FRAG_LOADED, (_event, data) => {
       if (this.options.onBandwidthSample) {
         try {
-          const stats = data.frag?.stats || (data as any).stats || {}
+          const stats: any = data.frag?.stats || (data as any).stats || {}
           const loaded = stats.loaded ?? stats.total ?? 0
           const tfirst = stats.tfirst ?? stats.trequest ?? 0
           const tload = stats.tload ?? stats.tend ?? 0

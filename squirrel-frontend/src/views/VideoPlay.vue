@@ -23,6 +23,7 @@
               @prev-video="handlePrevVideo"
               @next-video="handleNextVideo"
               @widescreenChange="toggleWidescreen"
+              @retry="handlePlayerRetry"
             />
           </div>
         </div>
@@ -308,6 +309,11 @@ const videoPlayerRef = ref(null);
 const isWidescreen = ref(false);
 const toggleWidescreen = (value) => {
   isWidescreen.value = value;
+};
+
+const handlePlayerRetry = async () => {
+  if (!video.value?.id) return;
+  await loadAndPlayById(video.value.id, video.value);
 };
 
 // 记录最近播放的视频，防止循环播放
