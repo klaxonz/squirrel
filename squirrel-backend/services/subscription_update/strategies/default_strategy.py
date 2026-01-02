@@ -65,7 +65,6 @@ class DefaultUpdateStrategy(UpdateStrategy):
     
     def fetch_videos(self, request: SubscriptionUpdateRequest) -> List[str]:
         """获取视频列表"""
-        # 使用新的注册表 API 创建 Subscription
         subscription_registry = get_subscription_registry()
         parsed_url = urlparse(request.url)
         domain = parsed_url.netloc.lower().split(':')[0]
@@ -76,17 +75,26 @@ class DefaultUpdateStrategy(UpdateStrategy):
         if not subscription_cls or not isinstance(subscription_cls, type):
             raise ValueError(f"Invalid subscription class for key: {subscription_key}")
         subscribe_channel: Subscription = subscription_cls(url=request.url)
-        
-        # 直接根据 request.mode 判断是否全量提取
+
         is_full_update = request.mode == UpdateMode.FULL
-        
-        video_list = subscribe_channel.get_subscribe_videos(extract_all=is_full_update)
-        
-        # 全量更新时，更新总视频数
-        if is_full_update and video_list:
-            self._update_total_videos(request.subscription_id, len(video_list))
-        
-        # 全量更新返回所有视频，增量更新只返回最新的 N 个
+        need_fetch_all = is_full_update
+
+        if not is_full_update:
+            sub = subscription_service.get_subscription_detail(request.subscription_id)
+            if sub and sub.total_videos > 0 and sub.total_extract >= sub.total_videos:
+                logger.info(
+                    f"Subscription {request.subscription_id} extracted videos ({sub.total_extract}) "
+                    f">= total_videos ({sub.total_videos}), fetching all videos to update total_videos"
+                )
+                need_fetch_all = True
+
+        video_list = subscribe_channel.get_subscribe_videos(extract_all=need_fetch_all)
+
+        if video_list and (is_full_update or need_fetch_all):
+            sub = subscription_service.get_subscription_detail(request.subscription_id)
+            if sub and len(video_list) > sub.total_extract:
+                self._update_total_videos(request.subscription_id, len(video_list))
+
         if is_full_update:
             return video_list
         else:
