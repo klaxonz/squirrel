@@ -1,5 +1,8 @@
 from typing import Optional
 from urllib.parse import urlparse
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def extract_top_level_domain(url):
@@ -24,27 +27,30 @@ def extract_top_level_domain(url):
 def get_site_from_url(url: str) -> Optional[str]:
     """
     从 URL 获取站点名称（使用已注册的提取器映射）
-    
+
     :param url: 完整的URL字符串
     :return: 站点名称，如果未找到则返回 None
     """
     if not url:
+        logger.warning("get_site_from_url: url 为空")
         return None
     try:
         from core.extraction.factory import get_extractor_registry
-        
+
         parsed = urlparse(url)
         domain = parsed.netloc.lower()
-        
-        # 使用已有的提取器注册表获取站点名
+        logger.debug(f"get_site_from_url: url={url}, domain={domain}")
+
         registry = get_extractor_registry()
-        site_name = registry.get_site_by_domain(domain)
-        
-        # 如果完整域名没找到，尝试父域名（移除 www. 等前缀）
+        site_name = registry.get_by_domain(domain)
+        logger.debug(f"get_site_from_url: 完整域名查询结果 site_name={site_name}")
+
         if not site_name and domain.startswith('www.'):
             domain = domain[4:]
-            site_name = registry.get_site_by_domain(domain)
-        
+            site_name = registry.get_by_domain(domain)
+            logger.debug(f"get_site_from_url: 去除www后查询结果 domain={domain}, site_name={site_name}")
+
         return site_name
-    except Exception:
+    except Exception as e:
+        logger.error(f"get_site_from_url 发生异常: url={url}, error={str(e)}", exc_info=True)
         return None
