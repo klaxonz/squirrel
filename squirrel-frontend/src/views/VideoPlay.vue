@@ -447,7 +447,8 @@ const focusVideoPlayer = async () => {
 
 const goToVideo = async (id, videoData = null) => {
   if (!id) return;
-  if (video.value?.id === id) return;
+  const targetId = String(id);
+  if (String(video.value?.id ?? '') === targetId) return;
   
   // 记录当前视频到播放历史（如果有的话）
   if (video.value?.id && !recentlyPlayed.value.includes(video.value.id)) {
@@ -462,30 +463,22 @@ const goToVideo = async (id, videoData = null) => {
   try {
     videoPlayerRef.value?.stop();
   } catch (_) {}
-  
-  // 使用 history.replaceState 直接更新 URL，不触发 Vue Router 的任何逻辑
-  // 注意：history.state 只能存储可序列化的简单数据，不能存储复杂对象
-  if (route.params.videoId !== id) {
-    const newUrl = `/video/${id}`;
+
+  // 使用 Vue Router 进行导航，确保路由参数更新、后退可用，并触发依赖路由的逻辑
+  // 注意：state 只能存储可序列化的数据，避免传入响应式对象
+  if (String(route.params.videoId ?? '') !== targetId) {
+    const simpleState = videoData ? {
+      videoId: videoData.id,
+      title: videoData.title,
+      thumbnail: videoData.thumbnail,
+    } : {};
+
     try {
-      // 只传递基础的、可序列化的数据
-      const simpleState = videoData ? {
-        videoId: videoData.id,
-        title: videoData.title,
-        thumbnail: videoData.thumbnail,
-      } : {};
-      window.history.replaceState(simpleState, '', newUrl);
-    } catch (e) {
-      console.warn('Failed to update history state:', e);
-      // 如果失败，仍然更新URL，只是不带state
-      window.history.replaceState({}, '', newUrl);
+      await router.push({ name: 'VideoPlay', params: { videoId: targetId }, state: simpleState });
+    } catch (_) {
+      await router.push(`/video/${targetId}`);
     }
   }
-  
-  // 直接加载视频，不依赖路由watch
-  await loadAndPlayById(id, videoData);
-  // 视频加载后自动聚焦播放器
-  await focusVideoPlayer();
 };
 
 const handleAutoplayNext = async (evt) => {

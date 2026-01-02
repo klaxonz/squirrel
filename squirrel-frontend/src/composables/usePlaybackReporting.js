@@ -1,7 +1,17 @@
 export default function usePlaybackReporting(videoRef, sendReport) {
+  let lastVideoId = null;
   let lastReportedTime = 0;
 
+  const maybeResetForNewVideo = () => {
+    const currentId = videoRef.value?.id ?? null;
+    if (currentId !== lastVideoId) {
+      lastVideoId = currentId;
+      lastReportedTime = 0;
+    }
+  };
+
   const onVideoPlay = () => {
+    maybeResetForNewVideo();
     if (videoRef.value) videoRef.value.isPlaying = true;
   };
 
@@ -14,6 +24,7 @@ export default function usePlaybackReporting(videoRef, sendReport) {
   };
 
   const onVideoTimeUpdate = (currentTime) => {
+    maybeResetForNewVideo();
     if (!videoRef.value) return;
     if (Math.floor(currentTime) - lastReportedTime >= 2) {
       lastReportedTime = Math.floor(currentTime);
