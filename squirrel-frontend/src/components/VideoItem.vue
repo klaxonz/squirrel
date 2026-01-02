@@ -4,11 +4,11 @@
     @contextmenu.prevent="showContextMenu"
     @click="handleClick"
   >
-    <div class="video-thumbnail relative cursor-pointer overflow-hidden group">
+    <div class="video-thumbnail relative cursor-pointer overflow-hidden group transform-gpu">
       <img
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
-        class="w-full h-full object-cover absolute top-0 left-0 transition-transform duration-300 group-hover:scale-105"
+        class="w-full h-full object-cover absolute top-0 left-0 transform-gpu will-change-transform transition-transform duration-300 group-hover:scale-105"
         :class="{ 'blur-thumbnail': shouldBlurThumbnail }"
         @error="handleThumbnailError"
         :alt="video.title"
@@ -462,7 +462,7 @@ const getInitials = (name) => {
   box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
 }
 
-.ring-[#212121] {
+.ring-\[\#212121\] {
   --tw-ring-color: #212121;
 }
 

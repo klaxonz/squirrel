@@ -226,14 +226,25 @@
                   class="flex space-x-3 cursor-pointer group"
                   @click="goToVideo(relatedVideo.id, relatedVideo)"
                 >
-                  <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-black/60">
+                  <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-black/60 transform-gpu">
                     <img
+                      v-if="relatedVideo.thumbnail && !relatedThumbnailErrorIds.has(relatedVideo.id)"
                       :src="relatedVideo.thumbnail"
                       referrerpolicy="no-referrer"
-                      class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105 pointer-events-none select-none"
+                      class="w-full h-full object-cover transform-gpu will-change-transform transition-transform duration-200 group-hover:scale-105 pointer-events-none select-none"
                       draggable="false"
                       :alt="relatedVideo.title"
+                      @error="() => relatedThumbnailErrorIds.add(relatedVideo.id)"
                     >
+                    <div
+                      v-else
+                      class="w-full h-full absolute top-0 left-0 bg-[#1a1a1a] flex items-center justify-center"
+                    >
+                      <div class="text-gray-500 flex flex-col items-center">
+                        <Icon icon="material-symbols:image" class="text-3xl mb-1" />
+                        <span class="text-[10px]">暂无封面</span>
+                      </div>
+                    </div>
                     <div class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 py-0.5 rounded">
                       {{ formatDuration(relatedVideo.duration) }}
                     </div>
@@ -273,7 +284,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, nextTick } from 'vue';
+import { ref, onMounted, watch, computed, nextTick, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
@@ -311,9 +322,11 @@ const toggleWidescreen = (value) => {
   isWidescreen.value = value;
 };
 
+const relatedThumbnailErrorIds = reactive(new Set());
+
 const handlePlayerRetry = async () => {
   if (!video.value?.id) return;
-  await loadAndPlayById(video.value.id, video.value, { forceRefresh: true });
+  await loadAndPlayById(video.value.id, video.value, { forceRefresh: true });   
 };
 
 // 记录最近播放的视频，防止循环播放

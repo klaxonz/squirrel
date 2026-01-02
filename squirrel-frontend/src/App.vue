@@ -19,15 +19,8 @@
       />
 
       <!-- 页面内容容器 -->
-      <div class="flex-1 min-h-0 flex flex-col">
-        <div
-          ref="contentContainerRef"
-          :class="[
-            'flex-1 min-h-0',
-            isScrollablePage ? 'scrollbar-hide overflow-y-auto' : 'overflow-hidden',
-            isMobile ? 'pb-[var(--mobile-nav-height)]' : '',
-          ]"
-        >
+      <div class="page-container flex-1 relative min-h-0">
+        <div class="content-container absolute inset-0" ref="contentContainerRef" :class="isScrollablePage ? 'scrollbar-hide overflow-y-auto' : 'overflow-hidden'">
           <router-view v-slot="{ Component }">
             <keep-alive :include="['LatestVideos', 'Subscribed']">
               <component :is="Component" :key="routeCacheKey" />
