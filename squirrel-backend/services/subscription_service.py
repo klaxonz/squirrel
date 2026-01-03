@@ -297,7 +297,7 @@ def restore_subscription(subscription_id: int, user_id: int) -> None:
 def create_subscribe_message(url: str, user_id: int) -> Dict[str, Any]:
     import json
     from common import constants
-    from queue.producer import RedisStreamProducer
+    from queues.producer import RedisStreamProducer
 
     with get_session() as session:
         task = {
@@ -455,7 +455,7 @@ def _enqueue_subscriptions_async(subscription_urls: List[str], user_id: int, sit
     import logging
     import json
     from common import constants
-    from queue.producer import RedisStreamProducer
+    from queues.producer import RedisStreamProducer
     
     logger = logging.getLogger()
     

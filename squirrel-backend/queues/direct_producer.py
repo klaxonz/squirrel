@@ -7,8 +7,8 @@
 import logging
 from typing import Dict, Any
 
-from queue.producer import RedisStreamProducer
-from queue.queue_config import get_queue_config, QueueType, QueueMode
+from queues.producer import RedisStreamProducer
+from queues.queue_config import get_queue_config, QueueType, QueueMode
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
 

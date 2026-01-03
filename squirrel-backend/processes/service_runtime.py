@@ -5,7 +5,7 @@ from contextlib import contextmanager
 
 from common.log import init_logging
 from core.site_config_manager import apply_site_config_overrides
-from queue.queue_config import ensure_queue_config_initialized
+from queues.queue_config import ensure_queue_config_initialized
 from plugins.loader import init_plugins, app_start, app_stop
 from plugins.reload_listener import start_reload_listener, stop_reload_listener
 

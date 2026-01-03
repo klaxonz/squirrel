@@ -8,8 +8,8 @@ from typing import Dict, Any
 from pydantic import BaseModel
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
-from queue.producer import RedisStreamProducer
-from queue.queue_config import get_queue_config, QueueType, QueueMode
+from queues.producer import RedisStreamProducer
+from queues.queue_config import get_queue_config, QueueType, QueueMode
 
 logger = logging.getLogger()
 

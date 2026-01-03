@@ -1,9 +1,9 @@
 import logging
 import json
 
-from queue.direct_producer import direct_domain_producer
-from queue.duplicate_checker import create_simple_checker
-from queue.queue_config import get_queue_config, QueueType, QueueMode
+from queues.direct_producer import direct_domain_producer
+from queues.duplicate_checker import create_simple_checker
+from queues.queue_config import get_queue_config, QueueType, QueueMode
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import video_service, message_service
 from utils.site_catalog import SiteCatalog

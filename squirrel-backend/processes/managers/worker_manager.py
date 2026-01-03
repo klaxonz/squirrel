@@ -3,7 +3,7 @@ import threading
 from threading import Lock
 from typing import List
 
-from queue.runner import WorkerRunner
+from queues.runner import WorkerRunner
 
 _logger = logging.getLogger()
 

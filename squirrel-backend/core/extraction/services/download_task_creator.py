@@ -5,7 +5,7 @@ import logging
 
 from common import constants
 from services import task_service, message_service
-from queue.producer import RedisStreamProducer
+from queues.producer import RedisStreamProducer
 
 logger = logging.getLogger(__name__)
 

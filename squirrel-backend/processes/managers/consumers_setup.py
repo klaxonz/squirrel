@@ -2,8 +2,8 @@
 消费者配置注册
 集中管理所有域消费者的配置和 handler 映射
 """
-from queue.consumer_config import ConsumerConfig, ConsumerConfigManager
-from queue.queue_config import QueueType
+from queues.consumer_config import ConsumerConfig, ConsumerConfigManager
+from queues.queue_config import QueueType
 
 
 def _setup_video_extract_consumer():
@@ -23,7 +23,7 @@ def _setup_video_extract_consumer():
 
 def _setup_subscription_update_consumer():
     """配置订阅更新消费者（域级别队列）"""
-    from queue.consumer_registrar import DomainConsumerRegistrar
+    from queues.consumer_registrar import DomainConsumerRegistrar
     from consumer.processors.subscription_update_task import process_domain_subscription_update
     
     # 使用 register_with_stream_param 支持传递 queue_name 参数

@@ -44,7 +44,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
         
         # 检查队列积压情况（仅针对定时触发的增量更新）
         if request.trigger == UpdateTrigger.SCHEDULED and request.mode == UpdateMode.INCREMENTAL:
-            from queue.queue_monitor import queue_monitor
+            from queues.queue_monitor import queue_monitor
             from core.config import settings
             
             should_skip, pending_count = queue_monitor.should_skip_subscription_update(

@@ -5,7 +5,7 @@
 import logging
 from dataclasses import dataclass
 from typing import Callable, Dict, Any
-from queue.queue_config import QueueType
+from queues.queue_config import QueueType
 
 logger = logging.getLogger()
 
@@ -46,7 +46,7 @@ class ConsumerConfigManager:
         Returns:
             总共注册的消费者数量
         """
-        from queue.consumer_registrar import DomainConsumerRegistrar
+        from queues.consumer_registrar import DomainConsumerRegistrar
         
         total_count = 0
         
