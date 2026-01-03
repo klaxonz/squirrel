@@ -12,11 +12,11 @@ class WorkerRunner:
         self._threads: List[threading.Thread] = []
 
     def start(self) -> None:
-        # 1. 导入所有 processor 模块（注册 @mq_consumer 装饰的消费者）
+        # 1. 导入所有 processor 模块（注册 @queue_listener 装饰的消费者）
         module_discovery.import_classes_from_package(package="consumer", recursive=True)
         
         # 2. 配置并注册域消费者
-        from consumer.consumers_setup import setup_all_consumers
+        from processes.managers.consumers_setup import setup_all_consumers
         from queue.consumer_config import init_domain_consumers
         
         setup_all_consumers()
