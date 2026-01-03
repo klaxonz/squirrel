@@ -1,8 +1,7 @@
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 from datetime import datetime
 from sqlalchemy import or_, and_, desc
-from sqlalchemy.orm import selectinload
 
 from core.database import get_session
 from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
@@ -58,24 +57,28 @@ class ScheduledTaskService:
                         if search and search.lower() not in task_name.lower() and search.lower() not in task_info.get('description', '').lower():
                             continue
 
+                        legacy_status = task_info.get('status', 'enabled')
+                        if status and legacy_status != status:
+                            continue
+
                         legacy_task = {
                             'id': f'legacy_{task_name}',
                             'name': task_info.get('name', task_name),
                             'task_type': 'system',
-                            'description': task_info.get('description', ''),
+                            'description': task_info.get('description', ''),    
                             'interval': task_info.get('interval', 60),
                             'unit': task_info.get('unit', 'seconds'),
                             'start_immediately': task_info.get('start_immediately', True),
-                            'status': 'enabled',
+                            'status': legacy_status,
                             'is_active': True,
                             'task_class': task_info.get('task_class', ''),
                             'task_params': {},
-                            'last_run_at': None,
-                            'next_run_at': None,
-                            'last_error': None,
-                            'run_count': 0,
-                            'success_count': 0,
-                            'error_count': 0,
+                            'last_run_at': task_info.get('last_run_at'),
+                            'next_run_at': task_info.get('next_run_at'),
+                            'last_error': task_info.get('last_error'),
+                            'run_count': task_info.get('run_count', 0),
+                            'success_count': task_info.get('success_count', 0),
+                            'error_count': task_info.get('error_count', 0),
                             'created_at': None,
                             'updated_at': None,
                             'is_legacy': True

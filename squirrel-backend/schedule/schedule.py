@@ -59,12 +59,22 @@ class Scheduler:
         interval *= multipliers[unit]
         next_run = time.time() if start_immediately else time.time() + interval
 
-        self.jobs.append({
+        job = {
             'func': func,
             'interval': interval,
             'next_run': next_run,
             'name': job_name or self._resolve_job_name(func),
-        })
+        }
+        self.jobs.append(job)
+        return job
+
+    def remove_job(self, job) -> bool:
+        """Remove a scheduled job."""
+        try:
+            self.jobs.remove(job)
+            return True
+        except ValueError:
+            return False
 
     def start(self):
         """Start the scheduler."""

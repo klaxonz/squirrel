@@ -1,6 +1,6 @@
 import logging
 from threading import Lock, Thread
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from datetime import datetime
 from schedule.schedule import Scheduler
 from schedule.task import TaskRegistry, BaseTask
@@ -17,6 +17,7 @@ _scheduler_running: bool = False
 _scheduler_lock = Lock()
 _heartbeat_thread: Optional[Thread] = None
 _heartbeat_running: bool = False
+_legacy_status_lock = Lock()
 
 
 def _update_scheduler_status(is_running: bool, job_count: int = 0, error_message: str = None, legacy_tasks: dict = None) -> None:
@@ -51,6 +52,68 @@ def _update_scheduler_status(is_running: bool, job_count: int = 0, error_message
     except Exception as e:
         logger.error(f"Failed to update scheduler status: {e}")
 
+def _set_legacy_task_status(task_name: str, status: str, next_run_at: Optional[str] = None) -> None:
+    try:
+        with _legacy_status_lock:
+            with get_session() as session:
+                scheduler_status = session.query(SchedulerStatus).filter(
+                    SchedulerStatus.process_name == 'scheduler'
+                ).first()
+                if not scheduler_status:
+                    scheduler_status = SchedulerStatus(process_name='scheduler')
+                    session.add(scheduler_status)
+
+                legacy_tasks = dict(scheduler_status.legacy_tasks or {})
+                task_info = dict(legacy_tasks.get(task_name) or {})
+                task_info["status"] = status
+                if next_run_at is not None:
+                    task_info["next_run_at"] = next_run_at
+                legacy_tasks[task_name] = task_info
+                scheduler_status.legacy_tasks = legacy_tasks
+    except Exception as e:
+        logger.error(f"Failed to update legacy task status: {task_name}, error: {e}")
+
+
+def _record_legacy_task_result(
+    task_name: str,
+    started_at: datetime,
+    success: bool,
+    next_run_at: Optional[str] = None,
+    error_message: Optional[str] = None,
+) -> None:
+    try:
+        with _legacy_status_lock:
+            with get_session() as session:
+                scheduler_status = session.query(SchedulerStatus).filter(
+                    SchedulerStatus.process_name == 'scheduler'
+                ).first()
+                if not scheduler_status:
+                    scheduler_status = SchedulerStatus(process_name='scheduler')
+                    session.add(scheduler_status)
+
+                legacy_tasks = dict(scheduler_status.legacy_tasks or {})
+                task_info = dict(legacy_tasks.get(task_name) or {})
+
+                task_info["last_run_at"] = started_at.isoformat()
+                if next_run_at is not None:
+                    task_info["next_run_at"] = next_run_at
+
+                task_info["run_count"] = int(task_info.get("run_count", 0)) + 1
+
+                if success:
+                    task_info["success_count"] = int(task_info.get("success_count", 0)) + 1
+                    task_info["last_error"] = None
+                    task_info["status"] = "enabled"
+                else:
+                    task_info["error_count"] = int(task_info.get("error_count", 0)) + 1
+                    task_info["last_error"] = error_message
+                    task_info["status"] = "error"
+
+                legacy_tasks[task_name] = task_info
+                scheduler_status.legacy_tasks = legacy_tasks
+    except Exception as e:
+        logger.error(f"Failed to record legacy task result: {task_name}, error: {e}")
+
 
 def _heartbeat_worker() -> None:
     """心跳线程，定期更新调度器状态"""
@@ -84,17 +147,70 @@ def scheduler_start() -> None:
 
         module_discovery.import_classes_from_package("schedule.tasks", base_class=BaseTask)
 
+        legacy_tasks_info: Dict[str, Any] = {}
         for task_cls in TaskRegistry.tasks:
+            task_name = task_cls.__name__
             logger.info(
                 "[scheduler] register legacy task %s interval=%s unit=%s start_immediately=%s",
                 task_cls.__name__, task_cls.interval, task_cls.unit, task_cls.start_immediately,
             )
-            scheduler.add_job(
-                task_cls.run,
+
+            job_ref: Dict[str, Any] = {}
+
+            def legacy_wrapper(task_cls=task_cls, task_name=task_name, job_ref=job_ref):
+                started_at = datetime.now()
+                job = job_ref.get("job")
+                next_run_at = None
+                if job and isinstance(job.get("next_run"), (int, float)):
+                    next_run_at = datetime.fromtimestamp(job["next_run"]).isoformat()
+
+                _set_legacy_task_status(task_name, "running", next_run_at)
+
+                try:
+                    task_cls.run()
+                except Exception as e:
+                    _record_legacy_task_result(
+                        task_name=task_name,
+                        started_at=started_at,
+                        success=False,
+                        next_run_at=next_run_at,
+                        error_message=str(e),
+                    )
+                    raise
+                else:
+                    _record_legacy_task_result(
+                        task_name=task_name,
+                        started_at=started_at,
+                        success=True,
+                        next_run_at=next_run_at,
+                    )
+
+            scheduler_job = scheduler.add_job(
+                legacy_wrapper,
                 interval=task_cls.interval,
                 unit=task_cls.unit,
                 start_immediately=task_cls.start_immediately,
+                job_name=task_name,
             )
+            job_ref["job"] = scheduler_job
+
+            legacy_tasks_info[task_name] = {
+                'name': task_name,
+                'task_class': f'{task_cls.__module__}.{task_cls.__name__}',
+                'description': (task_cls.__doc__ or '').strip(),
+                'interval': task_cls.interval,
+                'unit': task_cls.unit,
+                'start_immediately': task_cls.start_immediately,
+                'status': 'enabled',
+                'last_run_at': None,
+                'next_run_at': datetime.fromtimestamp(scheduler_job["next_run"]).isoformat()
+                if scheduler_job and isinstance(scheduler_job.get("next_run"), (int, float))
+                else None,
+                'last_error': None,
+                'run_count': 0,
+                'success_count': 0,
+                'error_count': 0,
+            }
 
         dynamic_task_manager.load_and_register_tasks()
 
@@ -103,18 +219,6 @@ def scheduler_start() -> None:
         _scheduler_running = True
 
         job_count = len(scheduler.jobs) if hasattr(scheduler, 'jobs') else 0
-
-        legacy_tasks_info = {}
-        for task_cls in TaskRegistry.tasks:
-            task_name = task_cls.__name__
-            legacy_tasks_info[task_name] = {
-                'name': task_name,
-                'task_class': f'{task_cls.__module__}.{task_cls.__name__}',
-                'description': (task_cls.__doc__ or '').strip(),
-                'interval': task_cls.interval,
-                'unit': task_cls.unit,
-                'start_immediately': task_cls.start_immediately
-            }
 
         _update_scheduler_status(is_running=True, job_count=job_count, legacy_tasks=legacy_tasks_info)
 
