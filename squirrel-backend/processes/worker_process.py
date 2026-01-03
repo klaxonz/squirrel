@@ -2,7 +2,7 @@ import logging
 import time
 
 from common.constants import SYS_ENABLE_WORKER
-from controllers.worker_controller import worker_start, worker_stop
+from managers.worker_manager import worker_start, worker_stop
 from processes.service_runtime import bootstrap_runtime, create_shutdown_event
 from services import system_config_service
 

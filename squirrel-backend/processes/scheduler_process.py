@@ -2,7 +2,7 @@ import logging
 import time
 
 from common.constants import SYS_ENABLE_SCHEDULER
-from controllers.scheduler_controller import scheduler_start, scheduler_stop
+from managers.scheduler_manager import scheduler_start, scheduler_stop
 from processes.service_runtime import bootstrap_runtime, create_shutdown_event
 from services import system_config_service
 
