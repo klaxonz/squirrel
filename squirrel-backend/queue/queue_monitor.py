@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Optional
 
 from core.cache import redis_client
-from mq.queue_config import get_queue_config, QueueType, QueueMode
+from queue.queue_config import get_queue_config, QueueType, QueueMode
 from utils import url_helper
 
 logger = logging.getLogger()

@@ -5,8 +5,8 @@
 """
 import logging
 from typing import Callable, Dict, Any
-from mq.registry import ConsumerRegistry
-from mq.queue_config import get_queue_config, QueueType, QueueMode
+from queue.registry import ConsumerRegistry
+from queue.queue_config import get_queue_config, QueueType, QueueMode
 
 logger = logging.getLogger()
 

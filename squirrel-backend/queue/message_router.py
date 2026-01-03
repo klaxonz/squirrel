@@ -8,8 +8,8 @@ from typing import Dict, Any
 from pydantic import BaseModel
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
-from mq.producer import RedisStreamProducer
-from mq.queue_config import get_queue_config, QueueType, QueueMode
+from queue.producer import RedisStreamProducer
+from queue.queue_config import get_queue_config, QueueType, QueueMode
 
 logger = logging.getLogger()
 
@@ -88,7 +88,4 @@ class DirectMessageSender:
         logger.debug(f"Sent message to {queue}")
 
 
-# 预定义路由器（延迟初始化，在插件加载后调用 ensure_queue_config_initialized）
-# video_extract_router 已移除，请使用 mq.direct_producer.direct_domain_producer
-# subscription_update_router 已移除，请使用 mq.direct_producer.direct_domain_producer
 

@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 2. 初始化队列配置（基于插件注册表）
     logger.info("[2/4] Initializing queue configuration...")
     try:
-        from mq.queue_config import ensure_queue_config_initialized
+        from queue.queue_config import ensure_queue_config_initialized
         ensure_queue_config_initialized()
         logger.info("[2/4] ✓ Queue configuration initialized")
     except Exception as e:

@@ -322,7 +322,7 @@ async def get_dashboard() -> Dict[str, Any]:
         for site_data in crawl_stats["by_site"]:
             site_name = site_data["site"]
             # 需要根据域名找到对应的站点标识
-            from mq.queue_config import get_queue_config
+            from queue.queue_config import get_queue_config
             config = get_queue_config()
             site_key = config.get_site_by_domain(site_name)
             

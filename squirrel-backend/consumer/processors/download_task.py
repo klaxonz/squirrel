@@ -10,7 +10,7 @@ from models.message import Message
 from models.task.task_state import TaskState
 from services import video_service, subscription_video_service, task_service
 from services import subscription_service
-from mq import mq_consumer
+from queue import mq_consumer
 
 logger = logging.getLogger()
 

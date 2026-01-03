@@ -5,9 +5,9 @@ from core.database import get_session
 from core.cache import redis_client
 from models.subscription import Subscription
 from services import message_service
-from mq.duplicate_checker import create_simple_checker
-from mq.direct_producer import direct_domain_producer
-from mq.queue_config import get_queue_config, QueueType, QueueMode
+from queue.duplicate_checker import create_simple_checker
+from queue.direct_producer import direct_domain_producer
+from queue.queue_config import get_queue_config, QueueType, QueueMode
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
 from .models import SubscriptionUpdateRequest, UpdateTrigger, UpdateMode

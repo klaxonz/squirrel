@@ -9,7 +9,7 @@ from typing import Dict, Any
 from common import constants
 from models.message import Message
 from services import subscription_service
-from mq import mq_consumer
+from queue import mq_consumer
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
 

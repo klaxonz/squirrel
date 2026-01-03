@@ -298,7 +298,7 @@ def reload_plugins() -> None:
     init_plugins()
 
     try:
-        from mq.queue_config import refresh_queue_config
+        from queue.queue_config import refresh_queue_config
         refresh_queue_config()
     except Exception:
         logger.exception("[plugins] failed to initialize queue config (ignored)")

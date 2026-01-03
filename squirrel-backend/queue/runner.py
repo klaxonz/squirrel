@@ -17,7 +17,7 @@ class WorkerRunner:
         
         # 2. 配置并注册域消费者
         from consumer.consumers_setup import setup_all_consumers
-        from mq.consumer_config import init_domain_consumers
+        from queue.consumer_config import init_domain_consumers
         
         setup_all_consumers()
         init_domain_consumers()
