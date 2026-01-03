@@ -6,6 +6,7 @@ from typing import Dict, List, Literal
 from services.plugin_service import PluginService
 from services.site_login_status_service import SiteLoginStatusService
 from plugins.loader import reload_plugins
+from utils.redis_client import publish_plugin_reload_signal
 from common.response import success, error, param_error
 from core.extraction import get_extractor_registry
 from routes.connectivity import test_site_connectivity
@@ -115,7 +116,13 @@ def install_plugin(file: UploadFile = File(...)):
         return param_error("file must be a zip archive")
     ok, data_or_err = PluginService.install_from_upload(file)
     if ok:
-        return success(data_or_err, msg="installed")
+        try:
+            reload_plugins()
+            publish_plugin_reload_signal()
+            return success(data_or_err, msg="installed and loaded")
+        except Exception as e:
+            logger.error("failed to reload plugins after install: %s", e, exc_info=True)
+            return success(data_or_err, msg="installed but reload failed, please reload manually")
     return error(data_or_err or "install failed")
 
 
@@ -151,6 +158,7 @@ def uninstall_plugin(name: str):
 @router.post("/reload")
 def reload_all_plugins():
     reload_plugins()
+    publish_plugin_reload_signal()
     return success(msg="reloaded")
 
 

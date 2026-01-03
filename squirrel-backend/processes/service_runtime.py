@@ -7,6 +7,7 @@ from common.log import init_logging
 from core.site_config_manager import apply_site_config_overrides
 from mq.queue_config import ensure_queue_config_initialized
 from plugins.loader import init_plugins, app_start, app_stop
+from plugins.reload_listener import start_reload_listener, stop_reload_listener
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ def bootstrap_runtime(component: str):
         init_plugins()
         ensure_queue_config_initialized()
         app_start()
+        start_reload_listener(component)
     except Exception:
         logger.exception("[%s] Runtime bootstrap failed", component)
         raise
@@ -44,6 +46,10 @@ def bootstrap_runtime(component: str):
     try:
         yield
     finally:
+        try:
+            stop_reload_listener(component)
+        except Exception:
+            logger.warning("[%s] Failed to stop reload listener", component, exc_info=True)
         try:
             app_stop()
         except Exception:

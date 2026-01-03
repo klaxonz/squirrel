@@ -185,16 +185,17 @@ class PluginService:
         """Safely extract zip to dest_dir, preventing path traversal."""
         for member in zf.infolist():
             name = member.filename.replace("\\", "/")
-            # skip absolute paths
             if not name or os.path.isabs(name):
                 continue
-            # normalize and ensure within dest_dir
             resolved = (dest_dir / name).resolve()
             if not str(resolved).startswith(str(dest_dir.resolve())):
                 continue
             if member.is_dir():
                 os.makedirs(resolved, exist_ok=True)
             else:
+                if resolved.parent.exists() and not resolved.parent.is_dir():
+                    logger.warning(f"Skipping {name}: parent path exists but is not a directory")
+                    continue
                 os.makedirs(resolved.parent, exist_ok=True)
                 with zf.open(member, 'r') as src, open(resolved, 'wb') as out:
                     shutil.copyfileobj(src, out)
