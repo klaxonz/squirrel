@@ -1,41 +1,13 @@
 import logging
 import random
-import time
 import threading
+import time
 from dataclasses import dataclass
 from typing import Optional, Dict
-from urllib.parse import urlparse
+
+from .url_helper import extract_second_level_domain
 
 logger = logging.getLogger()
-
-
-def extract_second_level_domain(domain_or_url: str) -> str:
-    """Extract second level domain from URL or domain string
-    
-    Examples:
-        'https://www.example.com/path' -> 'example.com'
-        'api.example.com' -> 'example.com'
-        'example.com' -> 'example.com'
-        'sub.domain.example.com' -> 'example.com'
-    """
-    if not domain_or_url:
-        return domain_or_url
-    
-    # Handle URLs by extracting hostname first
-    if '://' in domain_or_url:
-        parsed = urlparse(domain_or_url)
-        domain = parsed.hostname or domain_or_url
-    else:
-        domain = domain_or_url
-    
-    # Split domain parts
-    parts = domain.lower().split('.')
-    
-    # Return last two parts for second level domain
-    if len(parts) >= 2:
-        return '.'.join(parts[-2:])
-    
-    return domain
 
 
 @dataclass
