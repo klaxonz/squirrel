@@ -171,19 +171,23 @@ def get_http_session() -> RateLimitedSession:
     return _shared_session
 
 
-def request(method: str, url: str, use_cloudflare_bypass: bool = False, **kwargs):
+def request(method: str, url: str, **kwargs):
     """
     发送HTTP请求（支持rate limiting和cloudflare bypass）
 
     Args:
         method: HTTP方法
         url: 目标URL
-        use_cloudflare_bypass: 是否使用cloudflare bypass
-        **kwargs: 其他请求参数
+        **kwargs: 其他请求参数，包括可选的 bypass_mode 参数
+
+    Kwargs:
+        bypass_mode: Cloudflare bypass 方式，可选值为 'html'、'mirror' 或 None
 
     Returns:
         requests.Response对象
     """
+    use_cloudflare_bypass = kwargs.pop('bypass_mode', None)
+
     if use_cloudflare_bypass:
         parsed = urlparse(url)
         domain = parsed.netloc.replace("www.", "") if parsed.netloc else url
@@ -192,63 +196,43 @@ def request(method: str, url: str, use_cloudflare_bypass: bool = False, **kwargs
 
         headers = kwargs.get('headers')
 
-        result = fetch_with_cloudflare_bypass(
-            url=url,
-            headers=headers,
-            follow_redirects=kwargs.get('allow_redirects', True),
-            max_redirects=kwargs.get('max_redirects', 5)
-        )
-
-        response = requests.Response()
-        if result.success:
-            response.status_code = 200
-            response._content = result.html.encode('utf-8') if result.html else b''
-            response.url = result.final_url
-            response.headers['Content-Type'] = 'text/html; charset=utf-8'
+        if use_cloudflare_bypass == "html":
+            return _cloudflare_bypass_client.html(url=url, headers=headers)  # type: ignore
+        elif use_cloudflare_bypass == "mirror":
+            return _cloudflare_bypass_client.mirror(url=url, headers=headers)  # type: ignore
         else:
-            response.status_code = 500
-            response._content = (result.error or 'Unknown error').encode('utf-8')
-            response.url = result.final_url
-        return response
+            raise ValueError(f"无效的 Cloudflare bypass 类型: {use_cloudflare_bypass}，应为 'html' 或 'mirror'")
     else:
         session = get_http_session()
         return session.request(method, url, **kwargs)
 
 
-def request_without_limit(method: str, url: str, use_cloudflare_bypass: bool = False, **kwargs):
+def request_without_limit(method: str, url: str, **kwargs):
     """
     发送HTTP请求（不限流，支持cloudflare bypass）
 
     Args:
         method: HTTP方法
         url: 目标URL
-        use_cloudflare_bypass: 是否使用cloudflare bypass
-        **kwargs: 其他请求参数
+        **kwargs: 其他请求参数，包括可选的 bypass_mode 参数
+
+    Kwargs:
+        bypass_mode: Cloudflare bypass 方式，可选值为 'html'、'mirror' 或 None
 
     Returns:
         requests.Response对象
     """
-    if use_cloudflare_bypass:
+    bypass_mode = kwargs.pop('bypass_mode', None)
+
+    if bypass_mode:
         headers = kwargs.get('headers')
 
-        result = fetch_with_cloudflare_bypass(
-            url=url,
-            headers=headers,
-            follow_redirects=kwargs.get('allow_redirects', True),
-            max_redirects=kwargs.get('max_redirects', 5)
-        )
-
-        response = requests.Response()
-        if result.success:
-            response.status_code = 200
-            response._content = result.html.encode('utf-8') if result.html else b''
-            response.url = result.final_url
-            response.headers['Content-Type'] = 'text/html; charset=utf-8'
+        if bypass_mode == "html":
+            return _cloudflare_bypass_client.html(url=url, headers=headers)  # type: ignore
+        elif bypass_mode == "mirror":
+            return _cloudflare_bypass_client.mirror(url=url, headers=headers)  # type: ignore
         else:
-            response.status_code = 500
-            response._content = (result.error or 'Unknown error').encode('utf-8')
-            response.url = result.final_url
-        return response
+            raise ValueError(f"无效的 Cloudflare bypass 类型: {bypass_mode}，应为 'html' 或 'mirror'")
     else:
         session = requests.Session()
 
@@ -270,34 +254,38 @@ def request_without_limit(method: str, url: str, use_cloudflare_bypass: bool = F
         return session.request(method, url, **kwargs)
 
 
-def get(url: str, use_cloudflare_bypass: bool = False, **kwargs):
+def get(url: str, **kwargs):
     """
     发送GET请求（支持rate limiting和cloudflare bypass）
 
     Args:
         url: 目标URL
-        use_cloudflare_bypass: 是否使用cloudflare bypass
-        **kwargs: 其他请求参数
+        **kwargs: 其他请求参数，包括可选的 bypass_mode 参数
+
+    Kwargs:
+        bypass_mode: Cloudflare bypass 方式，可选值为 'html'、'mirror' 或 None
 
     Returns:
         requests.Response对象
     """
-    return request('GET', url, use_cloudflare_bypass=use_cloudflare_bypass, **kwargs)
+    return request('GET', url, **kwargs)
 
 
-def post(url: str, use_cloudflare_bypass: bool = False, **kwargs):
+def post(url: str, **kwargs):
     """
     发送POST请求（支持rate limiting和cloudflare bypass）
 
     Args:
         url: 目标URL
-        use_cloudflare_bypass: 是否使用cloudflare bypass
-        **kwargs: 其他请求参数
+        **kwargs: 其他请求参数，包括可选的 bypass_mode 参数
+
+    Kwargs:
+        bypass_mode: Cloudflare bypass 方式，可选值为 'html'、'mirror' 或 None
 
     Returns:
         requests.Response对象
     """
-    return request('POST', url, use_cloudflare_bypass=use_cloudflare_bypass, **kwargs)
+    return request('POST', url, **kwargs)
 
 
 _cloudflare_bypass_client: Optional[object] = None
@@ -308,46 +296,4 @@ def configure_cloudflare_bypass_client(client: object) -> None:
     global _cloudflare_bypass_client
     _cloudflare_bypass_client = client
     logger.info("Cloudflare bypass client configured")
-
-
-def fetch_with_cloudflare_bypass(
-    url: str,
-    headers: Optional[dict] = None,
-    follow_redirects: bool = True,
-    max_redirects: int = 5
-):
-    """
-    使用 Cloudflare bypass 服务获取页面内容
-
-    Args:
-        url: 目标 URL
-        headers: 请求头字典（包含 Cookie 等）
-        follow_redirects: 是否跟随重定向
-        max_redirects: 最大重定向次数
-
-    Returns:
-        CloudflareBypassResult 对象，包含：
-        - success: bool - 是否成功
-        - final_url: str - 最终 URL
-        - html: Optional[str] - HTML 内容
-        - error: Optional[str] - 错误信息
-        - redirect_count: int - 重定向次数
-        - elapsed: float - 耗时（秒）
-
-    Raises:
-        RuntimeError: 如果客户端未配置
-    """
-    if _cloudflare_bypass_client is None:
-        raise RuntimeError(
-            "Cloudflare bypass client not configured. "
-            "Backend should call configure_cloudflare_bypass_client() during startup."
-        )
-
-    return _cloudflare_bypass_client.fetch(  # type: ignore
-        url=url,
-        headers=headers,
-        follow_redirects=follow_redirects,
-        max_redirects=max_redirects
-    )
-
 

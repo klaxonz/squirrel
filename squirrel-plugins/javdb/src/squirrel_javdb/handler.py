@@ -1,19 +1,14 @@
 from __future__ import annotations
 
-import os
 import re
 from typing import Any, Optional
 from urllib.parse import quote
-
 from bs4 import BeautifulSoup
-
 from crawl import register_handler, request_without_limit
-
-DEBUG_BROWSER = os.getenv("JAVDB_DEBUG_BROWSER") == "1"
 
 
 def fetch_html(link: str) -> str:
-	response = request_without_limit('GET', link, use_cloudflare_bypass=True)
+	response = request_without_limit('GET', link, bypass_mode="mirror")
 	return response.text
 
 

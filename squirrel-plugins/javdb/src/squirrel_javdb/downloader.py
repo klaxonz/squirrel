@@ -22,7 +22,7 @@ class JavdbDownloader:
     def get_video_info(self, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
         cookies = filter_cookies_to_query_string(self.url)
         headers = {'Cookie': cookies} if cookies else {}
-        response = get(self.url, use_cloudflare_bypass=True, headers=headers)
+        response = get(self.url, headers=headers, bypass_mode="html")
         html = response.text
         soup = BeautifulSoup(html, 'html.parser')
         video_info: Dict[str, Any] = {}
