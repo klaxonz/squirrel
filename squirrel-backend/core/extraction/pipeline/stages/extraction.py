@@ -12,6 +12,7 @@ from ...exceptions import (
     NetworkError,
     PermissionError,
     ResourceNotFoundError,
+    VipError,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,8 @@ class ExtractionStage(PipelineStage):
                 raise NetworkError(error_msg, context=error_context)
             elif result.error_category == 'auth':
                 raise PermissionError(error_msg, context=error_context)
+            elif result.error_category == 'vip':
+                raise VipError(error_msg, context=error_context)
             elif result.error_category == 'not_found':
                 raise ResourceNotFoundError(error_msg, context=error_context)
             else:

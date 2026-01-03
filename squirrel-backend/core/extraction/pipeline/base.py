@@ -199,9 +199,9 @@ class ExtractionPipeline:
             except Exception:
                 pass
 
-            # 如果是权限错误，记录到VIP视频表
-            from ..exceptions import PermissionError as ExtractionPermissionError
-            if isinstance(e, ExtractionPermissionError):
+            # 如果是VIP权限错误，记录到VIP视频表
+            from ..exceptions import VipError
+            if isinstance(e, VipError):
                 try:
                     from services.vip_video_service import vip_video_service
                     vip_video_service.record_vip_video(

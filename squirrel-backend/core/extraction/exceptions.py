@@ -117,13 +117,25 @@ class ResourceNotFoundError(ExtractionError):
 class PermissionError(ExtractionError):
     """
     权限错误
-    
+
     场景：
     - 需要登录
-    - 会员专享内容
     - 地区限制
     """
-    
+
+    def __init__(self, message: str, **kwargs):
+        super().__init__(message, retryable=False, **kwargs)
+
+
+class VipError(ExtractionError):
+    """
+    VIP权限错误
+
+    场景：
+    - 需要VIP会员
+    - 需要付费订阅
+    """
+
     def __init__(self, message: str, **kwargs):
         super().__init__(message, retryable=False, **kwargs)
 
