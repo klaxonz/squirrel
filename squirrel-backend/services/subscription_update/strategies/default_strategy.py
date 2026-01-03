@@ -105,23 +105,35 @@ class DefaultUpdateStrategy(UpdateStrategy):
         enqueued = 0
         existing_count = 0
         failed_count = 0
+        vip_count = 0
         is_manual = request.trigger == UpdateTrigger.MANUAL
         is_full_update = request.mode == UpdateMode.FULL
         total = len(video_urls)
         existing_videos = video_service.get_videos_by_urls(video_urls)
-        
+
         # 获取站点信息用于指标
         try:
             domain = url_helper.extract_top_level_domain(request.url)
         except Exception:
             domain = "unknown"
-        
+
+        # 批量检查VIP视频
+        from services.vip_video_service import vip_video_service
+        from core.database import get_session
+        vip_video_urls = set()
+        with get_session() as session:
+            for video_url in video_urls:
+                if vip_video_service.is_vip_video(video_url, session):
+                    vip_video_urls.add(video_url)
+
         for index, video_url in enumerate(video_urls, 1):
             existing_video = existing_videos.get(video_url)
             if existing_video:
                 existing_count += 1
-                # 记录已入库跳过的视频
                 metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_in_db"})
+            elif video_url in vip_video_urls:
+                vip_count += 1
+                metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "vip_video"})
             else:
                 try:
                     params = VideoExtractDto(
@@ -139,7 +151,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
                     logger.warning(f"Failed to enqueue video {video_url}: {e}")
 
         logger.debug(
-            "Enqueue summary subscription_id=%s domain=%s trigger=%s mode=%s total=%s queued=%s existed=%s failed=%s",
+            "Enqueue summary subscription_id=%s domain=%s trigger=%s mode=%s total=%s queued=%s existed=%s vip=%s failed=%s",
             request.subscription_id,
             getattr(request, 'domain', None) or "-",
             request.trigger.value,
@@ -147,6 +159,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
             total,
             enqueued,
             existing_count,
+            vip_count,
             failed_count,
         )
         return enqueued

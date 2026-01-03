@@ -7,7 +7,7 @@ from typing import List, Optional, TYPE_CHECKING
 
 from crawl import ExtractionResult
 from .context import PipelineContext
-from ..exceptions import PipelineError, StageExecutionError
+from ..exceptions import StageExecutionError
 
 if TYPE_CHECKING:
     from .middleware import MiddlewareChain
@@ -177,19 +177,18 @@ class ExtractionPipeline:
         except Exception as e:
             import traceback
             duration = context.get_duration()
-            
+
             self.logger.error(
                 f"Pipeline failed: task_id={context.task.task_id}, "
                 f"duration={duration:.2f}s, error={str(e)}",
                 exc_info=True
             )
-            
+
             # 记录详细错误信息（包含堆栈）到 metrics
             try:
                 from utils.metrics import metrics
                 from utils.url_helper import extract_top_level_domain
                 stack_trace = traceback.format_exc()
-                # 使用域名而非站点标识，保持一致性
                 site = extract_top_level_domain(context.task.url) if context.task.url else "unknown"
                 metrics.record_error(
                     site=site,
@@ -198,8 +197,23 @@ class ExtractionPipeline:
                     error_msg=f"{str(e)}\n\n{stack_trace}"
                 )
             except Exception:
-                pass  # 不影响主流程
-            
+                pass
+
+            # 如果是权限错误，记录到VIP视频表
+            from ..exceptions import PermissionError as ExtractionPermissionError
+            if isinstance(e, ExtractionPermissionError):
+                try:
+                    from services.vip_video_service import vip_video_service
+                    vip_video_service.record_vip_video(
+                        url=context.task.url,
+                        error_message=str(e),
+                        error_type=type(e).__name__
+                    )
+                except Exception as record_error:
+                    self.logger.warning(
+                        f"Failed to record VIP video: {record_error}"
+                    )
+
             return ExtractionResult(
                 success=False,
                 error=str(e)
