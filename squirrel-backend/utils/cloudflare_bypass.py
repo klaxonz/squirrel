@@ -193,6 +193,15 @@ class CloudflareMirrorClient:
             elapsed=elapsed
         )
 
+    def clear_cache(self):
+        try:
+            response = requests.post(
+                f"{self.service_url}/cache/clear",
+                timeout=self.timeout
+            )
+        except requests.RequestException as e:
+            logger.error(e)
+
 _default_client: Optional[CloudflareMirrorClient] = None
 
 
