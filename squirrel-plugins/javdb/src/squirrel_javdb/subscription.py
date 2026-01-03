@@ -4,7 +4,6 @@ import re
 from typing import List
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-
 from crawl import register_subscription, SubscriptionMeta, get, filter_cookies_to_query_string
 
 
@@ -16,7 +15,7 @@ class JavdbSubscription:
     def get_subscribe_info(self) -> SubscriptionMeta:
         cookies = filter_cookies_to_query_string(self.url)
         headers = {'Cookie': cookies} if cookies else {}
-        response = get(self.url, use_cloudflare_bypass=True, headers=headers)
+        response = get(self.url, headers=headers, bypass_mode="html")
         html = response.text
         bs4 = BeautifulSoup(html, 'html.parser')
         username_el = bs4.select('.actor-section-name')
@@ -38,7 +37,7 @@ class JavdbSubscription:
     def get_subscribe_videos(self, extract_all: bool) -> List[str]:
         cookies = filter_cookies_to_query_string(self.url)
         headers = {'Cookie': cookies} if cookies else {}
-        response = get(self.url, use_cloudflare_bypass=True, headers=headers)
+        response = get(self.url, headers=headers, bypass_mode="html")
         html = response.text
 
         parsed_url = urlparse(self.url)
@@ -54,7 +53,7 @@ class JavdbSubscription:
 
         while current_page < page and extract_all:
             current_page += 1
-            page_response = get(self.url + f'?page={current_page}&sort_type=0', use_cloudflare_bypass=True, headers=headers)
+            page_response = get(self.url + f'?page={current_page}&sort_type=0', headers=headers, bypass_mode="html")
             page_html = page_response.text
             bs4 = BeautifulSoup(page_html, 'html.parser')
 
