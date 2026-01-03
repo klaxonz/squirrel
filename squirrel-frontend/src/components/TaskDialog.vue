@@ -1,167 +1,186 @@
 <template>
-  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-[#1f1f1f] rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-semibold text-white">
+  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-[#1f1f1f] border border-white/10 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <h2 class="text-xl font-bold text-white">
           {{ isEditing ? '编辑任务' : '创建任务' }}
         </h2>
         <button
           @click="$emit('close')"
-          class="text-gray-400 hover:text-white transition-colors"
+          class="text-white/50 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg"
         >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="space-y-4">
-        <!-- 基本信息 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">任务名称</label>
-            <input
-              v-model="formData.name"
-              type="text"
-              required
-              class="w-full px-3 py-2 bg-[#2f2f2f] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-              placeholder="输入任务名称"
-            >
-          </div>
+      <div class="flex-1 overflow-y-auto px-6 py-5">
+        <form @submit.prevent="handleSubmit" class="space-y-5">
+          <!-- 基本信息 -->
+          <div class="space-y-4">
+            <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider">基本信息</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-white mb-2">任务名称 <span class="text-[#e53935]">*</span></label>
+                <input
+                  v-model="formData.name"
+                  type="text"
+                  required
+                  class="w-full px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
+                  placeholder="输入任务名称"
+                >
+              </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">任务类型</label>
-            <select
-              v-model="formData.task_type"
-              class="w-full px-3 py-2 bg-[#2f2f2f] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="user">用户任务</option>
-              <option value="system">系统任务</option>
-              <option value="plugin">插件任务</option>
-            </select>
-          </div>
-        </div>
+              <div>
+                <label class="block text-sm font-medium text-white mb-2">任务类型</label>
+                <select
+                  v-model="formData.task_type"
+                  class="w-full px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
+                >
+                  <option value="user">用户任务</option>
+                  <option value="system">系统任务</option>
+                  <option value="plugin">插件任务</option>
+                </select>
+              </div>
+            </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">任务描述</label>
-          <textarea
-            v-model="formData.description"
-            rows="3"
-            class="w-full px-3 py-2 bg-[#2f2f2f] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
-            placeholder="输入任务描述（可选）"
-          ></textarea>
-        </div>
+            <div>
+              <label class="block text-sm font-medium text-white mb-2">任务描述</label>
+              <textarea
+                v-model="formData.description"
+                rows="3"
+                class="w-full px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors resize-none"
+                placeholder="输入任务描述（可选）"
+              ></textarea>
+            </div>
 
-        <!-- 任务类选择 -->
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">任务类</label>
-          <select
-            v-model="formData.task_class"
-            required
-            class="w-full px-3 py-2 bg-[#2f2f2f] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-          >
-            <option value="">请选择任务类</option>
-            <optgroup v-for="(group, groupName) in groupedTaskClasses" :key="groupName" :label="groupName">
-              <option
-                v-for="(taskClass, className) in group"
-                :key="className"
-                :value="className"
+            <div>
+              <label class="block text-sm font-medium text-white mb-2">任务类 <span class="text-[#e53935]">*</span></label>
+              <select
+                v-model="formData.task_class"
+                required
+                class="w-full px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
               >
-                {{ taskClass.name }} - {{ taskClass.description || '无描述' }}
-              </option>
-            </optgroup>
-          </select>
-        </div>
-
-        <!-- 执行配置 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">执行间隔</label>
-            <input
-              v-model.number="formData.interval"
-              type="number"
-              min="1"
-              required
-              class="w-full px-3 py-2 bg-[#2f2f2f] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-            >
+                <option value="">请选择任务类</option>
+                <optgroup v-for="(group, groupName) in groupedTaskClasses" :key="groupName" :label="groupName">
+                  <option
+                    v-for="(taskClass, className) in group"
+                    :key="className"
+                    :value="className"
+                  >
+                    {{ taskClass.name }} - {{ taskClass.description || '无描述' }}
+                  </option>
+                </optgroup>
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">时间单位</label>
-            <select
-              v-model="formData.unit"
-              class="w-full px-3 py-2 bg-[#2f2f2f] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="seconds">秒</option>
-              <option value="minutes">分钟</option>
-              <option value="hours">小时</option>
-              <option value="days">天</option>
-            </select>
+          <!-- 执行配置 -->
+          <div class="space-y-4">
+            <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider">执行配置</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-white mb-2">执行间隔 <span class="text-[#e53935]">*</span></label>
+                <input
+                  v-model.number="formData.interval"
+                  type="number"
+                  min="1"
+                  required
+                  class="w-full px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
+                >
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-white mb-2">时间单位</label>
+                <select
+                  v-model="formData.unit"
+                  class="w-full px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
+                >
+                  <option value="seconds">秒</option>
+                  <option value="minutes">分钟</option>
+                  <option value="hours">小时</option>
+                  <option value="days">天</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-white mb-2">最大重试次数</label>
+                <input
+                  v-model.number="formData.max_retries"
+                  type="number"
+                  min="0"
+                  max="10"
+                  class="w-full px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
+                >
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">最大重试次数</label>
-            <input
-              v-model.number="formData.max_retries"
-              type="number"
-              min="0"
-              max="10"
-              class="w-full px-3 py-2 bg-[#2f2f2f] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-            >
+          <!-- 选项 -->
+          <div class="space-y-4">
+            <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider">选项</h3>
+            <div class="flex items-center gap-6">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  v-model="formData.start_immediately"
+                  type="checkbox"
+                  class="w-4 h-4 rounded border-white/20 bg-[#161616] text-[#e53935] focus:ring-2 focus:ring-[#e53935] focus:ring-offset-0"
+                >
+                <span class="text-sm text-white">立即启动</span>
+              </label>
+
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  v-model="formData.is_active"
+                  type="checkbox"
+                  class="w-4 h-4 rounded border-white/20 bg-[#161616] text-[#e53935] focus:ring-2 focus:ring-[#e53935] focus:ring-offset-0"
+                >
+                <span class="text-sm text-white">激活状态</span>
+              </label>
+            </div>
           </div>
-        </div>
 
-        <!-- 选项 -->
-        <div class="flex items-center space-x-6">
-          <label class="flex items-center">
-            <input
-              v-model="formData.start_immediately"
-              type="checkbox"
-              class="mr-2"
-            >
-            <span class="text-sm text-gray-300">立即启动</span>
-          </label>
+          <!-- 任务参数 -->
+          <div class="space-y-4">
+            <h3 class="text-sm font-semibold text-white/50 uppercase tracking-wider">高级配置</h3>
+            <div>
+              <label class="block text-sm font-medium text-white mb-2">任务参数 (JSON)</label>
+              <textarea
+                v-model="taskParamsJson"
+                rows="5"
+                class="w-full px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors font-mono resize-none"
+                placeholder='{"key": "value"}'
+              ></textarea>
+              <div v-if="jsonError" class="flex items-center gap-2 text-[#e53935] text-xs mt-2">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <span>{{ jsonError }}</span>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
 
-          <label class="flex items-center">
-            <input
-              v-model="formData.is_active"
-              type="checkbox"
-              class="mr-2"
-            >
-            <span class="text-sm text-gray-300">激活状态</span>
-          </label>
-        </div>
-
-        <!-- 任务参数 -->
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">任务参数 (JSON)</label>
-          <textarea
-            v-model="taskParamsJson"
-            rows="4"
-            class="w-full px-3 py-2 bg-[#2f2f2f] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 font-mono text-sm"
-            placeholder='{"key": "value"}'
-          ></textarea>
-          <div v-if="jsonError" class="text-red-400 text-sm mt-1">{{ jsonError }}</div>
-        </div>
-
-        <!-- 操作按钮 -->
-        <div class="flex justify-end space-x-3 pt-4">
-          <button
-            type="button"
-            @click="$emit('close')"
-            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-          >
-            取消
-          </button>
-          <button
-            type="submit"
-            :disabled="loading || !!jsonError"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-          >
-            {{ loading ? '保存中...' : (isEditing ? '更新' : '创建') }}
-          </button>
-        </div>
-      </form>
+      <!-- 操作按钮 -->
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10 bg-[#161616]">
+        <button
+          type="button"
+          @click="$emit('close')"
+          class="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-full transition-colors"
+        >
+          取消
+        </button>
+        <button
+          type="submit"
+          @click="handleSubmit"
+          :disabled="loading || !!jsonError"
+          class="px-5 py-2.5 bg-[#e53935] hover:bg-[#ff5252] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-full transition-colors"
+        >
+          {{ loading ? '保存中...' : (isEditing ? '更新任务' : '创建任务') }}
+        </button>
+      </div>
     </div>
   </div>
 </template>

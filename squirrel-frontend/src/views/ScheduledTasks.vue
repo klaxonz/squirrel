@@ -1,20 +1,20 @@
 <template>
-  <div class="flex flex-col h-full">
-    <div class="flex-none px-4 pt-2 pb-3">
+  <div class="flex flex-col h-full bg-[#0f0f0f]">
+    <div class="flex-none px-6 pt-6 pb-3">
       <!-- 标题和操作栏 -->
       <div class="flex items-center justify-between mb-4">
-        <h1 class="text-xl font-semibold">定时任务管理</h1>
-        <div class="flex space-x-2">
+        <h1 class="text-xl font-bold text-white">定时任务管理</h1>
+        <div class="flex gap-2">
           <button
             @click="showCreateDialog = true"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+            class="px-3 py-1.5 bg-[#e53935] hover:bg-[#ff5252] text-white text-xs font-medium rounded-full transition-colors"
           >
             创建任务
           </button>
           <button
             @click="refreshData"
             :disabled="loading"
-            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
+            class="px-3 py-1.5 bg-[#0f0f0f] hover:bg-[#272727] disabled:opacity-50 disabled:cursor-not-allowed text-[#f1f1f1] text-xs font-medium rounded-full transition-colors border border-white/10"
           >
             刷新
           </button>
@@ -22,77 +22,69 @@
       </div>
 
       <!-- 统计卡片 -->
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-        <div class="bg-[#1f1f1f] rounded-xl p-4">
-          <div class="text-2xl font-bold text-white">{{ statistics.total_tasks }}</div>
-          <div class="text-sm text-gray-400">总任务数</div>
+      <div class="grid grid-cols-5 gap-1.5 mb-3">
+        <div class="bg-[#161616] border border-white/5 rounded p-1.5 hover:bg-[#1f1f1f] transition-colors">
+          <div class="text-lg font-bold text-white">{{ statistics.total_tasks }}</div>
+          <div class="text-[9px] text-white/50 font-medium">总任务</div>
         </div>
-        <div class="bg-[#1f1f1f] rounded-xl p-4">
-          <div class="text-2xl font-bold text-green-500">{{ statistics.active_tasks }}</div>
-          <div class="text-sm text-gray-400">活跃任务</div>
+        <div class="bg-[#161616] border border-white/5 rounded p-1.5 hover:bg-[#1f1f1f] transition-colors">
+          <div class="text-lg font-bold text-[#4caf50]">{{ statistics.active_tasks }}</div>
+          <div class="text-[9px] text-white/50 font-medium">活跃</div>
         </div>
-        <div class="bg-[#1f1f1f] rounded-xl p-4">
-          <div class="text-2xl font-bold text-blue-500">{{ statistics.running_tasks }}</div>
-          <div class="text-sm text-gray-400">运行中</div>
+        <div class="bg-[#161616] border border-white/5 rounded p-1.5 hover:bg-[#1f1f1f] transition-colors">
+          <div class="text-lg font-bold text-[#2196f3]">{{ statistics.running_tasks }}</div>
+          <div class="text-[9px] text-white/50 font-medium">运行中</div>
         </div>
-        <div class="bg-[#1f1f1f] rounded-xl p-4">
-          <div class="text-2xl font-bold text-red-500">{{ statistics.error_tasks }}</div>
-          <div class="text-sm text-gray-400">错误任务</div>
+        <div class="bg-[#161616] border border-white/5 rounded p-1.5 hover:bg-[#1f1f1f] transition-colors">
+          <div class="text-lg font-bold text-[#e53935]">{{ statistics.error_tasks }}</div>
+          <div class="text-[9px] text-white/50 font-medium">错误</div>
         </div>
-        <div class="bg-[#1f1f1f] rounded-xl p-4">
-          <div class="text-2xl font-bold text-yellow-500">{{ statistics.today_executions }}</div>
-          <div class="text-sm text-gray-400">今日执行</div>
-        </div>
-      </div>
-
-      <!-- 调度器状态控制 -->
-      <div class="bg-[#1f1f1f] rounded-xl p-4 mb-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-3">
-            <div class="flex items-center">
-              <div
-                class="w-3 h-3 rounded-full mr-2"
-                :class="schedulerStatus?.running ? 'bg-green-500' : 'bg-red-500'"
-              ></div>
-              <span class="text-sm font-medium">
-                调度器状态: {{ schedulerStatus?.running ? '运行中' : '已停止' }}
-              </span>
-            </div>
-          </div>
-          <div class="flex space-x-2">
-            <button
-              v-if="!schedulerStatus?.running"
-              @click="enableScheduler"
-              :disabled="loading"
-              class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
-            >
-              启用调度器
-            </button>
-            <button
-              v-if="schedulerStatus?.running"
-              @click="disableScheduler"
-              :disabled="loading"
-              class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
-            >
-              禁用调度器
-            </button>
-          </div>
+        <div class="bg-[#161616] border border-white/5 rounded p-1.5 hover:bg-[#1f1f1f] transition-colors">
+          <div class="text-lg font-bold text-[#ff9800]">{{ statistics.today_executions }}</div>
+          <div class="text-[9px] text-white/50 font-medium">今日执行</div>
         </div>
       </div>
 
-      <!-- 搜索和过滤 -->
-      <div class="flex flex-wrap gap-2 mb-4">
+      <!-- 调度器状态和筛选 -->
+      <div class="flex items-center gap-2 mb-3">
+        <!-- 调度器状态 -->
+        <div class="flex items-center gap-2 bg-[#161616] border border-white/5 rounded px-2.5 py-1.5">
+          <div
+            class="w-1.5 h-1.5 rounded-full"
+            :class="schedulerStatus?.running ? 'bg-[#4caf50] shadow-lg shadow-[#4caf50]/50' : 'bg-[#e53935] shadow-lg shadow-[#e53935]/50'"
+          ></div>
+          <span class="text-[10px] font-medium text-white">
+            <span :class="schedulerStatus?.running ? 'text-[#4caf50]' : 'text-[#e53935]'">{{ schedulerStatus?.running ? '运行中' : '已停止' }}</span>
+          </span>
+          <button
+            v-if="!schedulerStatus?.running"
+            @click="enableScheduler"
+            :disabled="loading"
+            class="ml-1 px-2 py-0.5 bg-[#4caf50] hover:bg-[#66bb6a] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[10px] font-medium rounded-full transition-colors"
+          >
+            启用
+          </button>
+          <button
+            v-if="schedulerStatus?.running"
+            @click="disableScheduler"
+            :disabled="loading"
+            class="ml-1 px-2 py-0.5 bg-[#e53935] hover:bg-[#ff5252] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[10px] font-medium rounded-full transition-colors"
+          >
+            禁用
+          </button>
+        </div>
+        <!-- 搜索和过滤 -->
         <input
           v-model="searchQuery"
           @input="debouncedSearch"
           type="text"
           placeholder="搜索任务..."
-          class="px-3 py-2 bg-[#1f1f1f] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+          class="flex-1 min-w-[150px] px-3 py-1.5 bg-[#161616] border border-white/10 rounded text-white text-[10px] placeholder-white/30 focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
         >
         <select
           v-model="statusFilter"
           @change="loadTasks"
-          class="px-3 py-2 bg-[#1f1f1f] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+          class="px-3 py-1.5 bg-[#161616] border border-white/10 rounded text-white text-[10px] focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
         >
           <option value="">所有状态</option>
           <option value="enabled">启用</option>
@@ -103,7 +95,7 @@
         <select
           v-model="typeFilter"
           @change="loadTasks"
-          class="px-3 py-2 bg-[#1f1f1f] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+          class="px-3 py-1.5 bg-[#161616] border border-white/10 rounded text-white text-[10px] focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
         >
           <option value="">所有类型</option>
           <option value="system">系统任务</option>
@@ -114,134 +106,145 @@
     </div>
 
     <!-- 任务列表 -->
-    <div class="flex-1 overflow-y-auto px-4">
-      <div class="space-y-3">
-        <div
-          v-for="task in tasks"
-          :key="task.id"
-          class="bg-[#1f1f1f] hover:bg-[#272727] transition-colors duration-200 rounded-xl overflow-hidden"
-        >
-          <div class="p-4">
-            <div class="flex items-start justify-between mb-3">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center space-x-2 mb-1">
-                  <h3 class="text-lg font-semibold text-white">{{ task.name }}</h3>
-                  <span
-                    class="px-2 py-1 rounded text-xs"
-                    :class="getStatusBadgeClass(task.status)"
+    <div class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
+      <!-- 表格 -->
+      <div class="bg-[#1f1f1f] border border-white/5 rounded-lg overflow-hidden">
+        <table class="w-full">
+          <thead class="bg-[#161616] border-b border-white/5">
+            <tr>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold text-white/70 uppercase tracking-wider">任务名称</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold text-white/70 uppercase tracking-wider">状态</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold text-white/70 uppercase tracking-wider">类型</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold text-white/70 uppercase tracking-wider">执行间隔</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold text-white/70 uppercase tracking-wider">最后执行</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold text-white/70 uppercase tracking-wider">下次执行</th>
+              <th class="px-3 py-2 text-center text-[10px] font-semibold text-white/70 uppercase tracking-wider">成功/总数</th>
+              <th class="px-3 py-2 text-right text-[10px] font-semibold text-white/70 uppercase tracking-wider">操作</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            <tr
+              v-for="task in tasks"
+              :key="task.id"
+              class="hover:bg-[#272727] transition-colors"
+            >
+              <!-- 任务名称 -->
+              <td class="px-3 py-2">
+                <div class="text-xs font-medium text-white">{{ task.name }}</div>
+                <div v-if="task.description" class="text-[10px] text-white/50 mt-0.5">{{ task.description }}</div>
+                <div v-if="task.last_error" class="text-[10px] text-[#e53935] mt-0.5" :title="task.last_error">错误: {{ task.last_error }}</div>
+              </td>
+
+              <!-- 状态 -->
+              <td class="px-3 py-2">
+                <span
+                  class="px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap"
+                  :class="getStatusBadgeClass(task.status)"
+                >
+                  {{ getStatusText(task.status) }}
+                </span>
+              </td>
+
+              <!-- 类型 -->
+              <td class="px-3 py-2">
+                <span class="text-[10px] text-white/70">{{ getTypeText(task.task_type) }}</span>
+              </td>
+
+              <!-- 执行间隔 -->
+              <td class="px-3 py-2">
+                <span class="text-[10px] text-white">{{ task.interval }} {{ getUnitLabel(task.unit) }}</span>
+              </td>
+
+              <!-- 最后执行 -->
+              <td class="px-3 py-2">
+                <span class="text-[10px] text-white/70">{{ formatDateTime(task.last_run_at) || '从未' }}</span>
+              </td>
+
+              <!-- 下次执行 -->
+              <td class="px-3 py-2">
+                <span class="text-[10px] text-white/70">{{ formatDateTime(task.next_run_at) || '未知' }}</span>
+              </td>
+
+              <!-- 成功/总数 -->
+              <td class="px-3 py-2 text-center">
+                <span class="text-[10px] text-white">{{ task.success_count }}/{{ task.run_count }}</span>
+              </td>
+
+              <!-- 操作 -->
+              <td class="px-3 py-2">
+                <div class="flex gap-1 justify-end">
+                  <button
+                    v-if="!task.is_legacy"
+                    @click="executeTaskNow(task.id)"
+                    :disabled="loading"
+                    class="px-2 py-0.5 bg-[#2196f3] hover:bg-[#42a5f5] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[10px] font-medium rounded-full transition-colors"
+                    title="立即执行"
                   >
-                    {{ getStatusText(task.status) }}
-                  </span>
-                  <span
-                    class="px-2 py-1 rounded text-xs bg-gray-600 text-white"
+                    执行
+                  </button>
+                  <button
+                    v-if="!task.is_legacy"
+                    @click="editTask(task)"
+                    class="px-2 py-0.5 bg-[#ff9800] hover:bg-[#ffa726] text-white text-[10px] font-medium rounded-full transition-colors"
+                    title="编辑"
                   >
-                    {{ getTypeText(task.task_type) }}
+                    编辑
+                  </button>
+                  <button
+                    v-if="!task.is_legacy && task.is_active"
+                    @click="disableTask(task.id)"
+                    class="px-2 py-0.5 bg-white/10 hover:bg-white/20 text-white text-[10px] font-medium rounded-full transition-colors"
+                    title="禁用"
+                  >
+                    禁用
+                  </button>
+                  <button
+                    v-if="!task.is_legacy && !task.is_active"
+                    @click="enableTask(task.id)"
+                    class="px-2 py-0.5 bg-[#4caf50] hover:bg-[#66bb6a] text-white text-[10px] font-medium rounded-full transition-colors"
+                    title="启用"
+                  >
+                    启用
+                  </button>
+                  <button
+                    v-if="!task.is_legacy"
+                    @click="deleteTask(task.id)"
+                    class="px-2 py-0.5 bg-[#e53935] hover:bg-[#ff5252] text-white text-[10px] font-medium rounded-full transition-colors"
+                    title="删除"
+                  >
+                    删除
+                  </button>
+                  <span
+                    v-if="task.is_legacy"
+                    class="px-2 py-0.5 bg-white/10 text-white/50 text-[10px] font-medium rounded-full"
+                    title="系统内置任务，不可修改"
+                  >
+                    系统
                   </span>
                 </div>
-                <p v-if="task.description" class="text-sm text-gray-400 mb-2">{{ task.description }}</p>
-              </div>
-              <div class="flex space-x-2 ml-4">
-                <button
-                  v-if="!task.is_legacy"
-                  @click="executeTaskNow(task.id)"
-                  :disabled="loading"
-                  class="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
-                  title="立即执行"
-                >
-                  执行
-                </button>
-                <button
-                  v-if="!task.is_legacy"
-                  @click="editTask(task)"
-                  class="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded transition-colors"
-                  title="编辑"
-                >
-                  编辑
-                </button>
-                <button
-                  v-if="!task.is_legacy && task.is_active"
-                  @click="disableTask(task.id)"
-                  class="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded transition-colors"
-                  title="禁用"
-                >
-                  禁用
-                </button>
-                <button
-                  v-if="!task.is_legacy && !task.is_active"
-                  @click="enableTask(task.id)"
-                  class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
-                  title="启用"
-                >
-                  启用
-                </button>
-                <button
-                  v-if="!task.is_legacy"
-                  @click="deleteTask(task.id)"
-                  class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
-                  title="删除"
-                >
-                  删除
-                </button>
-                <span
-                  v-if="task.is_legacy"
-                  class="px-3 py-1 bg-gray-700 text-gray-400 text-sm rounded"
-                  title="系统内置任务，不可修改"
-                >
-                  系统任务
-                </span>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
-              <div>
-                <span class="text-gray-400">执行间隔:</span>
-                <span class="text-white ml-2">{{ task.interval }} {{ getUnitLabel(task.unit) }}</span>
-              </div>
-              <div>
-                <span class="text-gray-400">最后执行:</span>
-                <span class="text-white ml-2">{{ formatDateTime(task.last_run_at) || '从未' }}</span>
-              </div>
-              <div>
-                <span class="text-gray-400">下次执行:</span>
-                <span class="text-white ml-2">{{ formatDateTime(task.next_run_at) || '未知' }}</span>
-              </div>
-              <div>
-                <span class="text-gray-400">执行统计:</span>
-                <span class="text-white ml-2">{{ task.success_count }}/{{ task.run_count }}</span>
-              </div>
-            </div>
-
-            <div v-if="task.last_error" class="bg-red-900 bg-opacity-50 border border-red-700 rounded p-2 mb-2">
-              <div class="text-red-400 text-sm">
-                <strong>最后错误:</strong> {{ task.last_error }}
-              </div>
-            </div>
-
-            <div class="flex justify-between text-xs text-gray-400">
-              <span>创建时间: {{ formatDateTime(task.created_at) }}</span>
-              <span>更新时间: {{ formatDateTime(task.updated_at) }}</span>
-            </div>
-          </div>
-        </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- 分页 -->
       <div v-if="totalPages > 1" class="flex justify-center mt-6 mb-4">
-        <div class="flex space-x-2">
+        <div class="flex items-center gap-2">
           <button
             @click="goToPage(currentPage - 1)"
             :disabled="currentPage <= 1"
-            class="px-3 py-2 bg-[#1f1f1f] hover:bg-[#272727] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
+            class="px-4 py-2 bg-[#161616] border border-white/10 hover:bg-[#1f1f1f] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
           >
             上一页
           </button>
-          <span class="px-3 py-2 text-white">
+          <div class="px-4 py-2 bg-[#161616] border border-white/10 text-white text-sm font-medium rounded-lg">
             第 {{ currentPage }} / {{ totalPages }} 页
-          </span>
+          </div>
           <button
             @click="goToPage(currentPage + 1)"
             :disabled="currentPage >= totalPages"
-            class="px-3 py-2 bg-[#1f1f1f] hover:bg-[#272727] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
+            class="px-4 py-2 bg-[#161616] border border-white/10 hover:bg-[#1f1f1f] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
           >
             下一页
           </button>
@@ -249,26 +252,28 @@
       </div>
 
       <!-- 空状态 -->
-      <div v-if="tasks.length === 0 && !loading" class="text-center py-12">
-        <div class="text-gray-400 mb-4">
-          <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      <div v-if="tasks.length === 0 && !loading" class="text-center py-16">
+        <div class="bg-[#161616] border border-white/5 rounded-lg p-8 max-w-md mx-auto">
+          <svg class="w-20 h-20 mx-auto mb-4 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
+          <h3 class="text-lg font-semibold text-white mb-2">暂无定时任务</h3>
+          <p class="text-sm text-white/50 mb-6">点击下方按钮创建您的第一个定时任务</p>
+          <button
+            @click="showCreateDialog = true"
+            class="px-5 py-2.5 bg-[#e53935] hover:bg-[#ff5252] text-white text-sm font-medium rounded-full transition-colors"
+          >
+            创建第一个任务
+          </button>
         </div>
-        <h3 class="text-lg font-medium text-gray-300 mb-2">暂无定时任务</h3>
-        <p class="text-gray-500 mb-4">点击上方"创建任务"按钮添加新的定时任务</p>
-        <button
-          @click="showCreateDialog = true"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          创建第一个任务
-        </button>
       </div>
 
       <!-- 加载状态 -->
-      <div v-if="loading" class="text-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-        <p class="text-gray-400">加载中...</p>
+      <div v-if="loading" class="text-center py-16">
+        <div class="inline-flex items-center gap-3 bg-[#161616] border border-white/5 rounded-lg px-6 py-4">
+          <div class="animate-spin rounded-full h-5 w-5 border-2 border-white/20 border-t-[#e53935]"></div>
+          <span class="text-sm text-white/70 font-medium">加载中...</span>
+        </div>
       </div>
     </div>
 
@@ -488,12 +493,12 @@ const getUnitLabel = (unit) => {
 
 const getStatusBadgeClass = (status) => {
   const classes = {
-    enabled: 'bg-green-600 text-white',
-    disabled: 'bg-gray-600 text-white',
-    running: 'bg-blue-600 text-white',
-    error: 'bg-red-600 text-white'
+    enabled: 'bg-[#4caf50] text-white',
+    disabled: 'bg-white/10 text-white/50',
+    running: 'bg-[#2196f3] text-white',
+    error: 'bg-[#e53935] text-white'
   }
-  return classes[status] || 'bg-gray-600 text-white'
+  return classes[status] || 'bg-white/10 text-white/50'
 }
 
 const getStatusText = (status) => {
@@ -538,5 +543,20 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 自定义样式 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
 </style>
