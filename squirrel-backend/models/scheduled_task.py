@@ -1,0 +1,84 @@
+from datetime import datetime
+from enum import Enum
+from typing import Optional, Dict, Any
+
+from sqlalchemy import Integer, DateTime, Boolean, VARCHAR, TEXT, JSON
+from sqlalchemy.orm import mapped_column, Mapped
+from models import Base
+from models.mixins.serializer import SerializerMixin
+
+
+class TaskType(str, Enum):
+    """任务类型枚举"""
+    SYSTEM = 'system'      # 系统内置任务
+    USER = 'user'         # 用户自定义任务
+    PLUGIN = 'plugin'     # 插件扩展任务
+
+
+class TaskStatus(str, Enum):
+    """任务状态枚举"""
+    ENABLED = 'enabled'   # 启用
+    DISABLED = 'disabled' # 禁用
+    RUNNING = 'running'   # 正在运行
+    ERROR = 'error'       # 错误状态
+
+
+class ScheduledTask(Base, SerializerMixin):
+    """定时任务配置模型"""
+    __tablename__ = 'scheduled_task'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(VARCHAR(100), nullable=False, unique=True, comment="任务名称")
+    task_type: Mapped[str] = mapped_column(VARCHAR(20), nullable=False, default=TaskType.USER.value, comment="任务类型")
+    description: Mapped[Optional[str]] = mapped_column(TEXT, nullable=True, comment="任务描述")
+
+    # 执行配置
+    interval: Mapped[int] = mapped_column(Integer, nullable=False, default=60, comment="执行间隔数值")
+    unit: Mapped[str] = mapped_column(VARCHAR(20), nullable=False, default='seconds', comment="时间单位")
+    start_immediately: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, comment="是否立即执行")
+    max_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=3, comment="最大重试次数")
+
+    # 状态控制
+    status: Mapped[str] = mapped_column(VARCHAR(20), nullable=False, default=TaskStatus.ENABLED.value, comment="任务状态")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, comment="是否激活")
+
+    # 任务配置
+    task_class: Mapped[str] = mapped_column(VARCHAR(255), nullable=False, comment="任务类名")
+    task_params: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False, default={}, comment="任务参数")
+
+    # 执行信息
+    last_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="最后执行时间")
+    next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="下次执行时间")
+    last_error: Mapped[Optional[str]] = mapped_column(TEXT, nullable=True, comment="最后错误信息")
+    run_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment="执行次数")
+    success_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment="成功次数")
+    error_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment="失败次数")
+
+    # 元数据
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+    created_by: Mapped[Optional[str]] = mapped_column(VARCHAR(100), nullable=True, comment="创建者")
+    updated_by: Mapped[Optional[str]] = mapped_column(VARCHAR(100), nullable=True, comment="更新者")
+
+
+class TaskExecutionLog(Base, SerializerMixin):
+    """任务执行日志模型"""
+    __tablename__ = 'task_execution_log'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    task_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="任务ID")
+    task_name: Mapped[str] = mapped_column(VARCHAR(100), nullable=False, comment="任务名称")
+
+    # 执行信息
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, comment="开始时间")
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="完成时间")
+    duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="执行时长(毫秒)")
+    status: Mapped[str] = mapped_column(VARCHAR(20), nullable=False, comment="执行状态")
+
+    # 执行结果
+    error_message: Mapped[Optional[str]] = mapped_column(TEXT, nullable=True, comment="错误信息")
+    result_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True, comment="执行结果数据")
+
+    # 元数据
+    executed_by: Mapped[Optional[str]] = mapped_column(VARCHAR(100), nullable=True, comment="执行者")
+    trace_id: Mapped[Optional[str]] = mapped_column(VARCHAR(100), nullable=True, comment="链路追踪ID")

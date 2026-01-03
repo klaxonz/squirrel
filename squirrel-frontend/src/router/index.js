@@ -11,6 +11,7 @@ import Register from "../views/Register.vue";
 import PluginManager from '../views/PluginManager.vue';
 import LogViewer from '../views/LogViewer.vue';
 import Monitoring from '../views/Monitoring.vue';
+import ScheduledTasks from '../views/ScheduledTasks.vue';
 import { useUser } from '../composables/useUser';
 
 
@@ -92,6 +93,12 @@ const routes = [
     name: 'Monitoring',
     component: Monitoring,
     meta: { showSearch: false, scrollable: true }
+  },
+  {
+    path: '/scheduled-tasks',
+    name: 'ScheduledTasks',
+    component: ScheduledTasks,
+    meta: { showSearch: false }
   },
   {
     path: '/subscription/:id',

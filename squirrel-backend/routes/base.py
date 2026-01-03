@@ -33,6 +33,7 @@ from routes.plugins import router as plugins_router
 from routes.logs import router as logs_router
 from routes.connectivity import router as connectivity_router
 from routes.metrics import router as metrics_router
+from routes.scheduler import router as scheduler_router
 
 logger = logging.getLogger()
 
@@ -107,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(plugins_router)
     app.include_router(logs_router)
     app.include_router(connectivity_router)
+    app.include_router(scheduler_router)
 
     # 开发环境也需要挂载 thumbnails 静态文件
     _mount_thumbnails(app)

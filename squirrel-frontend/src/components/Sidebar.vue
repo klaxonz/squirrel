@@ -96,6 +96,7 @@ import {
   PuzzlePieceIcon,
   DocumentTextIcon,
   ChartBarIcon,
+  CpuChipIcon,
 } from '@heroicons/vue/24/outline';
 import { useUser } from '../composables/useUser';
 
@@ -131,6 +132,11 @@ const menuItems = [
     name: '监控',
     path: '/monitoring',
     icon: ChartBarIcon,
+  },
+  {
+    name: '定时任务',
+    path: '/scheduled-tasks',
+    icon: CpuChipIcon,
   }
 ];
 
