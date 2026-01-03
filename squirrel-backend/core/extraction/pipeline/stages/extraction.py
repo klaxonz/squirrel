@@ -91,6 +91,25 @@ class ExtractionStage(PipelineStage):
 
         return context
 
+    def on_error(self, context: PipelineContext, error: Exception) -> None:
+        """错误处理回调"""
+        # 调用父类的错误处理
+        super().on_error(context, error)
+
+        # 如果是VIP权限错误，记录到VIP视频表
+        if isinstance(error, VipError):
+            try:
+                from services.vip_video_service import vip_video_service
+                vip_video_service.record_vip_video(
+                    url=context.task.url,
+                    error_message=str(error),
+                    error_type=type(error).__name__
+                )
+            except Exception as record_error:
+                logger.warning(
+                    f"Failed to record VIP video: {record_error}"
+                )
+
     def _get_extractor(self, url: str) -> Optional[Extractor]:
         """获取提取器"""
         try:

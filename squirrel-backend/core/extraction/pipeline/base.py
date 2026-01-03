@@ -199,21 +199,6 @@ class ExtractionPipeline:
             except Exception:
                 pass
 
-            # 如果是VIP权限错误，记录到VIP视频表
-            from ..exceptions import VipError
-            if isinstance(e, VipError):
-                try:
-                    from services.vip_video_service import vip_video_service
-                    vip_video_service.record_vip_video(
-                        url=context.task.url,
-                        error_message=str(e),
-                        error_type=type(e).__name__
-                    )
-                except Exception as record_error:
-                    self.logger.warning(
-                        f"Failed to record VIP video: {record_error}"
-                    )
-
             return ExtractionResult(
                 success=False,
                 error=str(e)
