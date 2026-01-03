@@ -13,7 +13,7 @@ WORKDIR /app/squirrel-frontend
 
 COPY squirrel-frontend/package.json squirrel-frontend/package-lock.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY squirrel-frontend/ ./
 
