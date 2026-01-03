@@ -10,17 +10,17 @@ from models.message import Message
 from models.task.task_state import TaskState
 from services import video_service, subscription_video_service, task_service
 from services import subscription_service
-from queue import mq_consumer
+from queue import queue_listener
 
 logger = logging.getLogger()
 
 
-@mq_consumer(constants.QUEUE_VIDEO_DOWNLOAD, group="download", consumer_name="download")
+@queue_listener(constants.QUEUE_VIDEO_DOWNLOAD, group="download", consumer_name="download")
 def process_download_message(message: Dict[str, Any]):
     _process_download_message_unified(message)
 
 
-@mq_consumer(constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED, group="download", consumer_name="download-scheduled")
+@queue_listener(constants.QUEUE_VIDEO_DOWNLOAD_SCHEDULED, group="download", consumer_name="download-scheduled")
 def process_download_scheduled_message(message: Dict[str, Any]):
     _process_download_message_unified(message)
 

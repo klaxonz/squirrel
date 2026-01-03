@@ -8,7 +8,7 @@ from .message import MqMessage
 from .producer import RedisStreamProducer
 from .consumer import RedisStreamConsumer, ConsumerOptions
 from .registry import ConsumerRegistry, ConsumerSpec
-from .decorators import mq_consumer
+from .decorators import queue_listener
 from .message_router import MessageRouter
 from .consumer_registrar import DomainConsumerRegistrar
 from .duplicate_checker import MessageDuplicateChecker, create_checker, create_simple_checker
@@ -28,7 +28,7 @@ __all__ = [
     "ConsumerOptions",
     "ConsumerRegistry",
     "ConsumerSpec",
-    "mq_consumer",
+    "queue_listener",
     "MessageRouter",
     "DomainConsumerRegistrar",
     "MessageDuplicateChecker",

@@ -9,14 +9,14 @@ from typing import Dict, Any
 from common import constants
 from models.message import Message
 from services import subscription_service
-from queue import mq_consumer
+from queue import queue_listener
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger()
 
 
-@mq_consumer(constants.QUEUE_SUBSCRIBE, group="subscription", consumer_name="subscribe")
+@queue_listener(constants.QUEUE_SUBSCRIBE, group="subscription", consumer_name="subscribe")
 def process_subscribe_message(message: Dict[str, Any]):
     """
     处理订阅消息
