@@ -1,6 +1,5 @@
 import json
 import logging
-import time
 from datetime import datetime
 from typing import List, Tuple, Optional, Dict
 from sqlalchemy import select, func, and_, or_
@@ -569,22 +568,11 @@ def list_videos(
         nsfw: str,
         domains: Optional[List[str]],
         page: int,
-        page_size: int
-) -> Tuple[List[dict], int]:
+        page_size: int,
+        with_total: bool = False,
+) -> Tuple[List[dict], Optional[int]]:
     user_config = user_config_service.get_config(user_id)
     show_nsfw = user_config.get('showNsfw', False)
-
-    # 根据类别选择查询方法
-    query_methods = {
-        'all': _query_all_videos,
-        'read': _query_read_videos,
-        'unread': _query_unread_videos,
-        'preview': _query_preview_videos,
-        'liked': _query_liked_videos,
-        'later': _query_later_videos
-    }
-
-    query_method = query_methods.get(category, _query_all_videos)
 
     with get_session() as session:
         # 第一步：基于 _build_base_video_query 和类别过滤，按唯一 video.id 做分页
@@ -646,7 +634,9 @@ def list_videos(
 
         if not video_ids:
             # 即使当前页没有数据，也要返回正确的 total
-            total_count = _get_category_count(user_id, show_nsfw, category, subscription_id, query, nsfw, domains)
+            total_count = _get_category_count(
+                user_id, show_nsfw, category, subscription_id, query, nsfw, domains
+            ) if with_total else None
             return [], total_count
 
         # 第二步：根据本页 video_ids 查询详细信息（视频 + 所有关联订阅）
@@ -677,7 +667,9 @@ def list_videos(
                 video_subscriptions_map[video.id].add(subscription_id_val)
 
         # 只计算当前类别的总数（用于分页），已改为按唯一 Video.id 计数
-        total_count = _get_category_count(user_id, show_nsfw, category, subscription_id, query, nsfw, domains)
+        total_count = _get_category_count(
+            user_id, show_nsfw, category, subscription_id, query, nsfw, domains
+        ) if with_total else None
 
         # 获取所有关联订阅信息（包含 is_nsfw）
         subscription_ids = list({sid for sids in video_subscriptions_map.values() for sid in sids}) if video_subscriptions_map else []

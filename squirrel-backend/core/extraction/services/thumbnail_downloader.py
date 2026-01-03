@@ -3,7 +3,8 @@
 """
 import logging
 import os
-from pathlib import Path
+import time
+from collections import OrderedDict
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -17,6 +18,10 @@ from common.site_constants import SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD, SITE_ME
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 1000
+SUPPORTED_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif")
+_EFFECTIVE_CATALOG_CACHE_TTL = 10.0
+_BATCH_INDEX_CACHE_TTL = 30.0
+_BATCH_INDEX_CACHE_MAX_BATCHES = 64
 
 _DEFAULT_HEADERS = {
     "User-Agent": (
@@ -39,6 +44,9 @@ class ThumbnailDownloaderService:
 
     def __init__(self):
         self._http_client: Optional[httpx.Client] = None
+        self._effective_catalog: Optional[dict] = None
+        self._effective_catalog_cached_at = 0.0
+        self._batch_index_cache: OrderedDict[str, tuple[dict[int, str], float]] = OrderedDict()
 
     def _get_http_client(self) -> httpx.Client:
         if self._http_client is None:
@@ -48,6 +56,65 @@ class ThumbnailDownloaderService:
                 headers=_DEFAULT_HEADERS,
             )
         return self._http_client
+
+    def _get_effective_catalog(self) -> dict:
+        now = time.time()
+        if (
+            self._effective_catalog is None
+            or now - self._effective_catalog_cached_at > _EFFECTIVE_CATALOG_CACHE_TTL
+        ):
+            self._effective_catalog = get_effective_site_catalog()
+            self._effective_catalog_cached_at = now
+        return self._effective_catalog
+
+    def _evict_batch_index_cache(self) -> None:
+        while len(self._batch_index_cache) > _BATCH_INDEX_CACHE_MAX_BATCHES:
+            self._batch_index_cache.popitem(last=False)
+
+    def _scan_batch_index(self, batch_dir: str) -> dict[int, str]:
+        if not os.path.isdir(batch_dir):
+            return {}
+
+        index: dict[int, str] = {}
+        with os.scandir(batch_dir) as it:
+            for entry in it:
+                if not entry.is_file():
+                    continue
+                name = entry.name
+                base, ext = os.path.splitext(name)
+                ext = ext.lower()
+                if ext not in SUPPORTED_EXTENSIONS:
+                    continue
+                try:
+                    video_id = int(base)
+                except ValueError:
+                    continue
+                index[video_id] = name
+        return index
+
+    def _get_batch_index(self, batch_dir: str) -> dict[int, str]:
+        now = time.time()
+        cached = self._batch_index_cache.get(batch_dir)
+        if cached is not None:
+            index, cached_at = cached
+            if now - cached_at <= _BATCH_INDEX_CACHE_TTL:
+                self._batch_index_cache.move_to_end(batch_dir)
+                return index
+
+        index = self._scan_batch_index(batch_dir)
+        self._batch_index_cache[batch_dir] = (index, now)
+        self._batch_index_cache.move_to_end(batch_dir)
+        self._evict_batch_index_cache()
+        return index
+
+    def _upsert_batch_index_entry(self, batch_dir: str, video_id: int, filename: str) -> None:
+        cached = self._batch_index_cache.get(batch_dir)
+        if cached is None:
+            return
+        index, _ = cached
+        index[video_id] = filename
+        self._batch_index_cache[batch_dir] = (index, time.time())
+        self._batch_index_cache.move_to_end(batch_dir)
 
     def download_thumbnail(
         self,
@@ -105,6 +172,7 @@ class ThumbnailDownloaderService:
             with open(file_path, "wb") as f:
                 f.write(resp.content)
 
+            self._upsert_batch_index_entry(batch_dir, video_id, os.path.basename(file_path))
             logger.info(f"Thumbnail downloaded: video_id={video_id}, path={file_path}")
             return file_path
 
@@ -137,10 +205,10 @@ class ThumbnailDownloaderService:
     def _should_download(self, site_name: str) -> bool:
         """检查是否应该下载缩略图"""
         try:
-            catalog = get_effective_site_catalog()
+            catalog = self._get_effective_catalog()
             site_info = catalog.get(site_name.lower(), {})
             metadata = site_info.get("metadata", {})
-            return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD, False)
+            return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD, False)   
         except Exception as e:
             logger.warning(f"Failed to check thumbnail config: {e}")
             return False
@@ -157,7 +225,7 @@ class ThumbnailDownloaderService:
             parsed = urlparse(url)
             path = parsed.path
             _, ext = os.path.splitext(path)
-            if ext and ext.lower() in (".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"):
+            if ext and ext.lower() in SUPPORTED_EXTENSIONS:
                 return ext.lower()
         except Exception:
             pass
@@ -166,37 +234,25 @@ class ThumbnailDownloaderService:
     def thumbnail_exists(self, video_id: int) -> bool:
         """检查缩略图是否已存在"""
         batch_dir = self._get_batch_dir(video_id)
-        if not os.path.isdir(batch_dir):
-            return False
+        return video_id in self._get_batch_index(batch_dir)
 
-        for filename in os.listdir(batch_dir):
-            name, _ = os.path.splitext(filename)
-            if name == str(video_id):
-                return True
-        return False
-
-    def _get_local_thumbnail_path(self, video_id: int) -> Optional[str]:
+    def _get_local_thumbnail_path(self, video_id: int) -> Optional[str]:        
         """获取本地封面的静态URL路径"""
         batch_dir = self._get_batch_dir(video_id)
-        if not os.path.isdir(batch_dir):
+        batch_index = self._get_batch_index(batch_dir)
+        filename = batch_index.get(video_id)
+        if filename is None:
             return None
-
-        batch_num = (video_id - 1) // BATCH_SIZE + 1
-        batch_name = f"batch_{batch_num:03d}"
-
-        for filename in os.listdir(batch_dir):
-            name, _ = os.path.splitext(filename)
-            if name == str(video_id):
-                return f"/static/thumbnails/{batch_name}/{filename}"
-        return None
+        batch_name = os.path.basename(batch_dir)
+        return f"/static/thumbnails/{batch_name}/{filename}"
 
     def _should_use_offline(self, site_name: str) -> bool:
         """检查是否应该使用离线封面"""
         try:
-            catalog = get_effective_site_catalog()
+            catalog = self._get_effective_catalog()
             site_info = catalog.get(site_name.lower(), {})
             metadata = site_info.get("metadata", {})
-            return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DISPLAY, False)
+            return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DISPLAY, False)    
         except Exception as e:
             logger.warning(f"Failed to check thumbnail display config: {e}")
             return False
