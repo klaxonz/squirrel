@@ -93,7 +93,6 @@ def build_site_info(site_name: str, registry, catalog: dict) -> dict | None:
     primary_domain = select_primary_domain(deduped_domains)
     test_url = (
         catalog_entry.get("test_url")
-        or registry.get_test_url(site_name)
         or (f"https://{primary_domain}" if primary_domain else None)
     )
 
