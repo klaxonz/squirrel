@@ -190,13 +190,11 @@ def request(method: str, url: str, use_cloudflare_bypass: bool = False, **kwargs
 
         _default_rate_limiter.wait(domain)
 
-        cookies = kwargs.get('cookies')
-        if isinstance(cookies, dict):
-            cookies = '; '.join([f"{k}={v}" for k, v in cookies.items()])
+        headers = kwargs.get('headers')
 
         result = fetch_with_cloudflare_bypass(
             url=url,
-            cookies=cookies,
+            headers=headers,
             follow_redirects=kwargs.get('allow_redirects', True),
             max_redirects=kwargs.get('max_redirects', 5)
         )
@@ -231,13 +229,11 @@ def request_without_limit(method: str, url: str, use_cloudflare_bypass: bool = F
         requests.Response对象
     """
     if use_cloudflare_bypass:
-        cookies = kwargs.get('cookies')
-        if isinstance(cookies, dict):
-            cookies = '; '.join([f"{k}={v}" for k, v in cookies.items()])
+        headers = kwargs.get('headers')
 
         result = fetch_with_cloudflare_bypass(
             url=url,
-            cookies=cookies,
+            headers=headers,
             follow_redirects=kwargs.get('allow_redirects', True),
             max_redirects=kwargs.get('max_redirects', 5)
         )
@@ -316,7 +312,7 @@ def configure_cloudflare_bypass_client(client: object) -> None:
 
 def fetch_with_cloudflare_bypass(
     url: str,
-    cookies: Optional[str] = None,
+    headers: Optional[dict] = None,
     follow_redirects: bool = True,
     max_redirects: int = 5
 ):
@@ -325,7 +321,7 @@ def fetch_with_cloudflare_bypass(
 
     Args:
         url: 目标 URL
-        cookies: Cookie 字符串
+        headers: 请求头字典（包含 Cookie 等）
         follow_redirects: 是否跟随重定向
         max_redirects: 最大重定向次数
 
@@ -349,7 +345,7 @@ def fetch_with_cloudflare_bypass(
 
     return _cloudflare_bypass_client.fetch(  # type: ignore
         url=url,
-        cookies=cookies,
+        headers=headers,
         follow_redirects=follow_redirects,
         max_redirects=max_redirects
     )

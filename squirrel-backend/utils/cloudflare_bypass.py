@@ -2,7 +2,6 @@ import logging
 import time
 from dataclasses import dataclass
 from typing import Optional
-from urllib.parse import urlparse, urljoin
 import requests
 
 from core.config import settings
@@ -30,168 +29,55 @@ class CloudflareMirrorClient:
     def fetch(
         self,
         url: str,
-        cookies: Optional[str] = None,
+        headers: Optional[dict] = None,
         follow_redirects: bool = True,
         max_redirects: int = 5
     ) -> CloudflareBypassResult:
+        start_time = time.time()
+        request_headers = headers.copy() if headers else {}
+
         try:
-            result = self._fetch_with_redirects(
-                url=url,
-                cookies=cookies,
-                follow_redirects=follow_redirects,
-                max_redirects=max_redirects
+            response = requests.get(
+                f"{self.service_url}/html",
+                params={"url": url},
+                headers=request_headers,
+                timeout=self.timeout,
+                allow_redirects=True
             )
 
-            if not result.success and "HTTP 403" in (result.error or ""):
-                logger.info(f"镜像返回 403，尝试使用 /html 端点")
-                start_time = time.time()
+            elapsed = time.time() - start_time
 
-                headers = {}
-                if cookies:
-                    headers["Cookie"] = cookies
-
-                try:
-                    response = requests.get(
-                        f"{self.service_url}/html",
-                        params={"url": url},
-                        headers=headers,
-                        timeout=self.timeout,
-                        allow_redirects=False
-                    )
-
-                    elapsed = time.time() - start_time
-
-                    if response.status_code == 200:
-                        return CloudflareBypassResult(
-                            success=True,
-                            html=response.text,
-                            final_url=url,
-                            elapsed=elapsed
-                        )
-                    else:
-                        return CloudflareBypassResult(
-                            success=False,
-                            error=f"HTTP {response.status_code}",
-                            final_url=url,
-                            elapsed=elapsed
-                        )
-                except requests.RequestException as e:
-                    elapsed = time.time() - start_time
-                    return CloudflareBypassResult(
-                        success=False,
-                        error=f"请求异常: {str(e)}",
-                        final_url=url,
-                        elapsed=elapsed
-                    )
-
-            return result
+            if response.status_code == 200:
+                return CloudflareBypassResult(
+                    success=True,
+                    html=response.text,
+                    final_url=url,
+                    elapsed=elapsed
+                )
+            else:
+                return CloudflareBypassResult(
+                    success=False,
+                    error=f"HTTP {response.status_code}",
+                    final_url=url,
+                    elapsed=elapsed
+                )
+        except requests.RequestException as e:
+            elapsed = time.time() - start_time
+            return CloudflareBypassResult(
+                success=False,
+                error=f"请求异常: {str(e)}",
+                final_url=url,
+                elapsed=elapsed
+            )
         except Exception as e:
+            elapsed = time.time() - start_time
             logger.error(f"Cloudflare bypass 请求失败: {e}")
             return CloudflareBypassResult(
                 success=False,
                 error=str(e),
-                final_url=url
+                final_url=url,
+                elapsed=elapsed
             )
-
-    def _fetch_with_redirects(
-        self,
-        url: str,
-        cookies: Optional[str],
-        follow_redirects: bool,
-        max_redirects: int
-    ) -> CloudflareBypassResult:
-        current_url = url
-        redirect_count = 0
-        start_time = time.time()
-
-        while redirect_count <= max_redirects:
-            parsed = urlparse(current_url)
-            hostname = parsed.netloc
-            path = parsed.path + ('?' + parsed.query if parsed.query else '')
-
-            headers = {"x-hostname": hostname}
-            if cookies:
-                headers["Cookie"] = cookies
-
-            try:
-                response = requests.get(
-                    f"{self.service_url}{path}",
-                    headers=headers,
-                    timeout=self.timeout,
-                    allow_redirects=False
-                )
-            except requests.RequestException as e:
-                elapsed = time.time() - start_time
-                return CloudflareBypassResult(
-                    success=False,
-                    error=f"请求异常: {str(e)}",
-                    final_url=current_url,
-                    redirect_count=redirect_count,
-                    elapsed=elapsed
-                )
-
-            if response.status_code in (301, 302, 303, 307, 308):
-                location = response.headers.get('Location')
-
-                if not location:
-                    import re
-                    match = re.search(r'href="([^"]+)"', response.text)
-                    if match:
-                        location = match.group(1)
-                    else:
-                        elapsed = time.time() - start_time
-                        return CloudflareBypassResult(
-                            success=False,
-                            error="重定向响应缺少 Location header",
-                            html=response.text,
-                            final_url=current_url,
-                            redirect_count=redirect_count,
-                            elapsed=elapsed
-                        )
-
-                next_url = location if location.startswith('http') else urljoin(current_url, location)
-
-                if not follow_redirects:
-                    elapsed = time.time() - start_time
-                    return CloudflareBypassResult(
-                        success=False,
-                        error=f"遇到重定向但未启用自动跟随: {next_url}",
-                        final_url=next_url,
-                        redirect_count=redirect_count,
-                        elapsed=elapsed
-                    )
-
-                current_url = next_url
-                redirect_count += 1
-                continue
-
-            if response.status_code == 200:
-                elapsed = time.time() - start_time
-                return CloudflareBypassResult(
-                    success=True,
-                    html=response.text,
-                    final_url=current_url,
-                    redirect_count=redirect_count,
-                    elapsed=elapsed
-                )
-            else:
-                elapsed = time.time() - start_time
-                return CloudflareBypassResult(
-                    success=False,
-                    error=f"HTTP {response.status_code}",
-                    final_url=current_url,
-                    redirect_count=redirect_count,
-                    elapsed=elapsed
-                )
-
-        elapsed = time.time() - start_time
-        return CloudflareBypassResult(
-            success=False,
-            error=f"超过最大重定向次数: {max_redirects}",
-            final_url=current_url,
-            redirect_count=redirect_count,
-            elapsed=elapsed
-        )
 
     def clear_cache(self):
         try:
@@ -217,14 +103,14 @@ def get_default_client() -> CloudflareMirrorClient:
 
 def fetch_with_bypass(
     url: str,
-    cookies: Optional[str] = None,
+    headers: Optional[dict] = None,
     follow_redirects: bool = True,
     max_redirects: int = 5
 ) -> CloudflareBypassResult:
     client = get_default_client()
     return client.fetch(
         url=url,
-        cookies=cookies,
+        headers=headers,
         follow_redirects=follow_redirects,
         max_redirects=max_redirects
     )
