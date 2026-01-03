@@ -26,11 +26,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = 'postgres'
     POSTGRES_DATABASE: str = 'squirrel'
     MEDIA_DOWNLOAD_PATH: str = str(base_dir.parent / 'downloads')
-    COOKIE_TYPE: str = 'file'
-    COOKIE_CLOUD_URL: str = ''
-    COOKIE_CLOUD_UUID: str = ''
-    COOKIE_CLOUD_PASSWORD: str = ''
-    COOKIE_CLOUD_DOMAIN: str = ''
+    THUMBNAILS_PATH: str = ''
     CLOUDFLARE_BYPASS_SERVICE_URL: str = ''
 
     POOL_SIZE: int = 30
@@ -75,6 +71,8 @@ class Settings(BaseSettings):
     @property
     def thumbnails_dir(self) -> Path:
         """Directory for cached video thumbnails (backend/static/thumbnails)."""
+        if self.THUMBNAILS_PATH:
+            return Path(self.THUMBNAILS_PATH)
         return self.static_dir / "thumbnails"
 
 

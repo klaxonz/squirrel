@@ -41,6 +41,7 @@ services:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./downloads:/downloads
+      - ./thumbnails:/thumbnails
       - ./plugins_ext:/app/squirrel-backend/plugins_ext
     networks:
       - squirrel-network
@@ -68,12 +69,11 @@ services:
       - .env
     environment:
       - TZ=Asia/Shanghai
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./downloads:/downloads
+      - ./thumbnails:/thumbnails
       - ./plugins_ext:/app/squirrel-backend/plugins_ext
     networks:
       - squirrel-network
@@ -95,12 +95,11 @@ services:
       - .env
     environment:
       - TZ=Asia/Shanghai
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./downloads:/downloads
+      - ./thumbnails:/thumbnails
       - ./plugins_ext:/app/squirrel-backend/plugins_ext
     networks:
       - squirrel-network
