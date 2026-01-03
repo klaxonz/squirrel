@@ -32,15 +32,20 @@ __pycache__/
 *.so
 .Python
 *.egg-info/
-dist/
-build/
-*.egg
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
 .hypothesis/
 *.db
+squirrel-backend/error_logs/
+squirrel-backend/radar.db
+squirrel-backend/plugins_ext/
+squirrel-sdk/dist/
+squirrel-sdk/build/
+squirrel-plugins/*/dist/
+squirrel-plugins/*/build/
+squirrel-plugins/*/*.egg-info/
 
 # Node
 node_modules/
@@ -71,6 +76,8 @@ squirrel-frontend/dist/
 squirrel-frontend/node_modules/
 plugin_packages/
 *.zip
+*.tar.gz
+*.whl
 
 # OS
 .DS_Store
