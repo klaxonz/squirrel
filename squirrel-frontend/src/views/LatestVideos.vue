@@ -65,7 +65,7 @@ const emitter = inject('emitter');
 
 // Page-scoped filter state
 const route = useRoute();
-const subscriptionId = ref(route.params.id);
+const subscriptionId = computed(() => route.params.id);
 const { activeTab, nsfw, sortBy, site, searchQuery, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId });
 const childFilters = computed(() => filters.value);
 
