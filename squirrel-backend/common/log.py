@@ -3,6 +3,12 @@ import logging.handlers
 import os
 import sys
 
+try:
+    from concurrent_log_handler import ConcurrentRotatingFileHandler
+    USE_CONCURRENT_HANDLER = True
+except ImportError:
+    USE_CONCURRENT_HANDLER = False
+
 current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_DIR = os.path.join(current_dir, '..', 'logs')
 if not os.path.exists(LOG_DIR):
@@ -74,24 +80,24 @@ LOGGING_CONFIG = {
             'filters': ['trace_id'],
         },
         'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': 'concurrent_log_handler.ConcurrentRotatingFileHandler' if USE_CONCURRENT_HANDLER else 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(LOG_DIR, 'app.log'),
             'formatter': 'default',
             'level': 'INFO',
             'encoding': 'utf-8',
             'filters': ['trace_id'],
-            'maxBytes': 50 * 1024 * 1024,  # 50MB per file
-            'backupCount': 10,  # Keep 10 backup files (total ~500MB)
+            'maxBytes': 50 * 1024 * 1024,
+            'backupCount': 10,
         },
         'error_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': 'concurrent_log_handler.ConcurrentRotatingFileHandler' if USE_CONCURRENT_HANDLER else 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(LOG_DIR, 'error.log'),
             'formatter': 'default',
             'level': 'ERROR',
             'encoding': 'utf-8',
             'filters': ['trace_id'],
-            'maxBytes': 20 * 1024 * 1024,  # 20MB per file
-            'backupCount': 5,  # Keep 5 backup files (total ~100MB)
+            'maxBytes': 20 * 1024 * 1024,
+            'backupCount': 5,
         },
     },
     'loggers': {
