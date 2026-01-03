@@ -59,7 +59,10 @@ class PluginService:
         ext_dir.mkdir(parents=True, exist_ok=True)
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
-                tmp_zip = Path(tmpdir) / (Path(file.filename or "plugin.zip").name)
+                tmp_path = Path(tmpdir)
+                tmp_zip = tmp_path / "__upload.zip"
+                extract_dir = tmp_path / "__extract"
+                extract_dir.mkdir(parents=True, exist_ok=True)
                 file_obj = getattr(file, "file", None) or file
                 try:
                     file_obj.seek(0)
@@ -84,13 +87,13 @@ class PluginService:
                         return False, f"Invalid plugin package: multiple top-level directories: {sorted(top_dirs)}"
 
                     plugin_name = top_dirs.pop()
-                    PluginService._safe_extract(zf, Path(tmpdir))
-                
+                    PluginService._safe_extract(zf, extract_dir)
+
                 # Verify extracted directory
-                top = Path(tmpdir) / plugin_name
+                top = extract_dir / plugin_name
                 if not top.exists() or not top.is_dir():
                     # Debug: list what was actually extracted
-                    actual_contents = list(Path(tmpdir).iterdir())
+                    actual_contents = list(extract_dir.iterdir())
                     logger.error(f"Expected '{plugin_name}' but found: {[str(p) for p in actual_contents]}")
                     return False, f"Plugin directory '{plugin_name}' not found after extraction. Found: {[p.name for p in actual_contents]}"
                 

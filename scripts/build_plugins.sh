@@ -123,10 +123,9 @@ for plugin in "${PLUGINS[@]}"; do
     fi
 
     plugin_package_dir="$DIST_DIR/$plugin"
-    mkdir -p "$plugin_package_dir"
 
     # 复制插件源文件
-    cp -R "$plugin_path/" "$plugin_package_dir/" 2>/dev/null || true
+    cp -R "$plugin_path" "$plugin_package_dir"
     find "$plugin_package_dir" -name "__pycache__" -type d -prune -exec rm -rf {} +
 
     # 创建 zip 包
@@ -184,4 +183,3 @@ if [ "$DEV_MODE" = true ] && [ -d "$PLUGINS_EXT_DIR" ] && [ "$(ls -A "$PLUGINS_E
 fi
 
 echo -e "${GREEN}完成!${NC}"
-
