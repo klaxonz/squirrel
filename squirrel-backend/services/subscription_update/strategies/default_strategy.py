@@ -32,20 +32,21 @@ class DefaultUpdateStrategy(UpdateStrategy):
     
     def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, Optional[str]]:
         """检查是否需要更新"""
+        self._lock = None
         sub = subscription_service.get_subscription_detail(request.subscription_id)
         if not sub or sub.is_deleted:
             return False, "subscription_not_found"
         
         if not request.force:
             lock_key = f"lock:subscription:update:{request.subscription_id}"
-            self._lock = get_distributed_lock(lock_key, timeout=180, auto_renewal=True)
-            if not self._lock.acquire(blocking=False):
+            lock = get_distributed_lock(lock_key, timeout=180, auto_renewal=True)
+            if not lock.acquire(blocking=False):
                 return False, "update_in_progress"
+            self._lock = lock
         
         # 检查队列积压情况（仅针对定时触发的增量更新）
         if request.trigger == UpdateTrigger.SCHEDULED and request.mode == UpdateMode.INCREMENTAL:
             from queues.queue_monitor import queue_monitor
-            from core.config import settings
             
             should_skip, pending_count = queue_monitor.should_skip_subscription_update(
                 subscription_id=request.subscription_id,
@@ -169,9 +170,11 @@ class DefaultUpdateStrategy(UpdateStrategy):
         try:
             return super().execute(request)
         finally:
-            if self._lock:
+            lock = self._lock
+            self._lock = None
+            if lock:
                 try:
-                    self._lock.release()
+                    lock.release()
                 except Exception as e:
                     logger.warning(f"Failed to release lock for subscription {request.subscription_id}: {e}")
     
