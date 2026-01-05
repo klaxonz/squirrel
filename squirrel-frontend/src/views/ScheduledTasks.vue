@@ -206,14 +206,14 @@
                   >
                     启用
                   </button>
-                  <button
-                    v-if="!task.is_legacy"
-                    @click="deleteTask(task.id)"
-                    class="px-2 py-0.5 bg-[#e53935] hover:bg-[#ff5252] text-white text-[10px] font-medium rounded-full transition-colors"
-                    title="删除"
-                  >
-                    删除
-                  </button>
+                   <button
+                     v-if="!task.is_legacy && task.task_type !== 'system'"
+                     @click="deleteTask(task.id)"
+                     class="px-2 py-0.5 bg-[#e53935] hover:bg-[#ff5252] text-white text-[10px] font-medium rounded-full transition-colors"
+                     title="删除"
+                   >
+                     删除
+                   </button>
                   <span
                     v-if="task.is_legacy"
                     class="px-2 py-0.5 bg-white/10 text-white/50 text-[10px] font-medium rounded-full"

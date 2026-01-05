@@ -41,6 +41,14 @@ logger = logging.getLogger()
 def create_app() -> FastAPI:
     app = FastAPI(exception_handlers=None)
 
+    @app.on_event("startup")
+    async def _bootstrap_scheduled_tasks() -> None:
+        try:
+            from services.scheduled_task_bootstrap import ensure_system_tasks
+            ensure_system_tasks()
+        except Exception as e:
+            logger.error(f"Failed to bootstrap scheduled tasks: {e}", exc_info=True)
+
 
     async def authentication_error_handler(request: Request, exc: AuthenticationError):
         """处理认证错误"""

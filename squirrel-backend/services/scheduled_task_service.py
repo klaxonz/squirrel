@@ -6,6 +6,7 @@ from sqlalchemy import or_, and_, desc
 from core.database import get_session
 from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
 from core.dynamic_task_manager import dynamic_task_manager
+from services.scheduled_task_bootstrap import ensure_system_tasks, discover_task_classes
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,8 @@ class ScheduledTaskService:
         status: Optional[str] = None,
         task_type: Optional[str] = None
     ) -> Dict[str, Any]:
-        """获取任务列表（包含数据库任务和传统任务）"""
-        from models.scheduler_status import SchedulerStatus
-
-        all_tasks = []
+        """获取任务列表"""
+        ensure_system_tasks()
 
         with get_session() as session:
             db_tasks = session.query(ScheduledTask)
@@ -44,48 +43,7 @@ class ScheduledTaskService:
                 db_tasks = db_tasks.filter(ScheduledTask.task_type == task_type)
 
             db_tasks = db_tasks.order_by(desc(ScheduledTask.created_at)).all()
-            all_tasks.extend([task.to_dict() for task in db_tasks])
-
-            legacy_tasks = []
-            if not task_type or task_type == 'system':
-                scheduler_status = session.query(SchedulerStatus).filter(
-                    SchedulerStatus.process_name == 'scheduler'
-                ).first()
-
-                if scheduler_status and scheduler_status.legacy_tasks:
-                    for task_name, task_info in scheduler_status.legacy_tasks.items():
-                        if search and search.lower() not in task_name.lower() and search.lower() not in task_info.get('description', '').lower():
-                            continue
-
-                        legacy_status = task_info.get('status', 'enabled')
-                        if status and legacy_status != status:
-                            continue
-
-                        legacy_task = {
-                            'id': f'legacy_{task_name}',
-                            'name': task_info.get('name', task_name),
-                            'task_type': 'system',
-                            'description': task_info.get('description', ''),    
-                            'interval': task_info.get('interval', 60),
-                            'unit': task_info.get('unit', 'seconds'),
-                            'start_immediately': task_info.get('start_immediately', True),
-                            'status': legacy_status,
-                            'is_active': True,
-                            'task_class': task_info.get('task_class', ''),
-                            'task_params': {},
-                            'last_run_at': task_info.get('last_run_at'),
-                            'next_run_at': task_info.get('next_run_at'),
-                            'last_error': task_info.get('last_error'),
-                            'run_count': task_info.get('run_count', 0),
-                            'success_count': task_info.get('success_count', 0),
-                            'error_count': task_info.get('error_count', 0),
-                            'created_at': None,
-                            'updated_at': None,
-                            'is_legacy': True
-                        }
-                        legacy_tasks.append(legacy_task)
-
-            all_tasks.extend(legacy_tasks)
+            all_tasks = [task.to_dict() for task in db_tasks]
 
         total = len(all_tasks)
         start_idx = (page - 1) * page_size
@@ -121,6 +79,7 @@ class ScheduledTaskService:
     ) -> Optional[ScheduledTask]:
         """创建新任务"""
         try:
+            discover_task_classes()
             # 验证任务类是否存在
             if not dynamic_task_manager.task_factory.get_task_class(task_class):
                 raise ValueError(f"Task class '{task_class}' not found")
@@ -145,10 +104,6 @@ class ScheduledTaskService:
                 session.add(task_config)
                 session.commit()
                 session.refresh(task_config)
-
-                # 注册到动态任务管理器
-                if is_active:
-                    dynamic_task_manager.add_task(task_config)
 
                 logger.info(f"Created scheduled task: {name} (ID: {task_config.id})")
                 return task_config
@@ -201,9 +156,6 @@ class ScheduledTaskService:
 
                 session.commit()
 
-                # 更新动态任务管理器
-                dynamic_task_manager.update_task(task_config)
-
                 logger.info(f"Updated scheduled task: {task_config.name} (ID: {task_id})")
                 return True
 
@@ -220,8 +172,9 @@ class ScheduledTaskService:
                 if not task_config:
                     return False
 
-                # 从动态任务管理器移除
-                dynamic_task_manager.remove_task(task_id)
+                if task_config.task_type == TaskType.SYSTEM.value:
+                    logger.warning(f"Refuse to delete system task: {task_config.name} (ID: {task_id})")
+                    return False
 
                 # 删除任务记录
                 session.delete(task_config)
@@ -262,7 +215,7 @@ class ScheduledTaskService:
                 if not task_config:
                     return False
 
-                # 创建手动执行日志
+                # 创建手动执行请求（由 scheduler 进程消费并执行）
                 execution_log = TaskExecutionLog(
                     task_id=task_id,
                     task_name=task_config.name,
@@ -273,16 +226,16 @@ class ScheduledTaskService:
                 session.add(execution_log)
                 session.commit()
 
-            # 触发执行
-            return dynamic_task_manager.execute_task_now(task_id)
+            return True
 
         except Exception as e:
-            logger.error(f"Failed to execute task {task_id} now: {e}")
+            logger.error(f"Failed to execute task {task_id} now: {e}")    
             return False
 
     @staticmethod
     def get_available_task_classes() -> Dict[str, Any]:
         """获取可用的任务类"""
+        discover_task_classes()
         return dynamic_task_manager.task_factory.get_available_task_classes()
 
     @staticmethod
@@ -316,8 +269,8 @@ class ScheduledTaskService:
 
     @staticmethod
     def get_task_statistics() -> Dict[str, Any]:
-        """获取任务统计信息（包含传统任务）"""
-        from models.scheduler_status import SchedulerStatus
+        """获取任务统计信息"""
+        ensure_system_tasks()
 
         with get_session() as session:
             db_total_tasks = session.query(ScheduledTask).count()
@@ -335,16 +288,9 @@ class ScheduledTaskService:
                 TaskExecutionLog.started_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             ).count()
 
-            legacy_task_count = 0
-            scheduler_status = session.query(SchedulerStatus).filter(
-                SchedulerStatus.process_name == 'scheduler'
-            ).first()
-            if scheduler_status and scheduler_status.legacy_tasks:
-                legacy_task_count = len(scheduler_status.legacy_tasks)
-
             return {
-                "total_tasks": db_total_tasks + legacy_task_count,
-                "active_tasks": db_active_tasks + legacy_task_count,
+                "total_tasks": db_total_tasks,
+                "active_tasks": db_active_tasks,
                 "running_tasks": running_tasks,
                 "error_tasks": error_tasks,
                 "today_executions": recent_executions

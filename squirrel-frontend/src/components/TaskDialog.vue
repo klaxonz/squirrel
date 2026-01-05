@@ -36,6 +36,7 @@
                 <label class="block text-sm font-medium text-white mb-2">任务类型</label>
                 <select
                   v-model="formData.task_type"
+                  :disabled="isEditing"
                   class="w-full px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
                 >
                   <option value="user">用户任务</option>
@@ -60,6 +61,7 @@
               <select
                 v-model="formData.task_class"
                 required
+                :disabled="isEditing"
                 class="w-full px-4 py-2.5 bg-[#161616] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#e53935] focus:ring-1 focus:ring-[#e53935] transition-colors"
               >
                 <option value="">请选择任务类</option>
