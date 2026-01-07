@@ -245,15 +245,15 @@ class UserSubscriptionImporter(Protocol):
     video site (e.g., all followed channels on Bilibili, all subscribed channels on YouTube).
     """
     
-    def get_user_subscriptions(self) -> List[str]:
-        """Return a list of subscription URLs from the user's account.
-        
+    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
+        """Return a list of subscriptions from the user's account.
+
         Returns:
-            List of subscription URLs (e.g., channel URLs, playlist URLs)
-            
+            List of subscriptions with metadata (url/name/avatar).
+
         Note:
-            This method should use cookies to authenticate and fetch the user's
-            subscription list. The cookies are resolved via the SDK's cookie
+            This method should use cookies to authenticate and fetch the user's 
+            subscription list. The cookies are resolved via the SDK's cookie    
             configuration.
         """
         ...
@@ -298,6 +298,23 @@ class ActorMeta:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ActorMeta":
+        return cls(**data)
+
+
+@dataclass
+class SubscriptionImportItem:
+    """Subscription item returned by UserSubscriptionImporter."""
+
+    url: str
+    name: Optional[str] = None
+    avatar: Optional[str] = None
+    extra_data: Optional[Dict[str, Any]] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SubscriptionImportItem":
         return cls(**data)
 
 

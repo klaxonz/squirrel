@@ -43,7 +43,7 @@
             <p class="text-white font-medium mb-2">预览订阅列表</p>
             <p class="text-[#aaa] text-sm">
               找到 <span class="text-white font-bold">{{ previewData.total }}</span> 个订阅，
-              显示前 <span class="text-white font-bold">{{ previewData.urls?.length || 0 }}</span> 个
+              显示前 <span class="text-white font-bold">{{ previewData.subscriptions?.length || 0 }}</span> 个
             </p>
           </div>
 
@@ -57,11 +57,24 @@
 
           <div v-else class="space-y-1 max-h-[400px] overflow-y-auto">
             <div
-              v-for="(url, index) in previewData.urls"
+              v-for="(sub, index) in previewData.subscriptions"
               :key="index"
-              class="p-3 bg-[#181818] rounded-lg hover:bg-[#202020] transition-colors"
+              class="p-3 bg-[#181818] rounded-lg hover:bg-[#202020] transition-colors flex items-center gap-3"
             >
-              <p class="text-white text-sm truncate">{{ url }}</p>
+              <img
+                v-if="sub.avatar"
+                :src="sub.avatar"
+                class="w-8 h-8 rounded-full object-cover"
+                alt="avatar"
+                @error="sub.avatar = ''"
+              />
+              <div
+                v-else
+                class="w-8 h-8 rounded-full bg-[#404040] flex items-center justify-center text-xs text-[#aaa]"
+              >
+                {{ (sub.name?.charAt(0) || '?').toUpperCase() }}
+              </div>
+              <p class="text-white text-sm truncate">{{ sub.name || '未命名订阅' }}</p>
             </div>
           </div>
         </div>
@@ -231,7 +244,7 @@ const handleImport = async () => {
 // 关闭对话框
 const handleClose = () => {
   emit('close');
-  if (step.value === 3 && importResult.value.success > 0) {
+  if (step.value === 3 && importResult.value.total > 0) {
     emit('imported');
   }
   // 重置状态

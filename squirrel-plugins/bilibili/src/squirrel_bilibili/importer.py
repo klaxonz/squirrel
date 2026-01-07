@@ -5,7 +5,7 @@ from typing import List
 
 from bilibili_api import user, sync
 
-from crawl import UserSubscriptionImporter, register_user_subscription_importer
+from crawl import SubscriptionImportItem, register_user_subscription_importer
 from .api_client import build_credential
 
 
@@ -31,12 +31,12 @@ class BilibiliUserSubscriptionImporter:
             raise ValueError("User not logged in or cookies expired")
         return str(mid)
     
-    def get_user_subscriptions(self) -> List[str]:
+    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
         """
         获取用户在 Bilibili 的关注列表
         
         Returns:
-            关注的 UP 主空间 URL 列表
+            订阅列表
         """
         try:
             credential = build_credential(f'https://www.{self.domain}')
@@ -44,10 +44,10 @@ class BilibiliUserSubscriptionImporter:
             logger.info(f"Getting subscriptions for Bilibili user: {mid}")
             
             user_obj = user.User(int(mid), credential=credential)
-            subscription_urls: List[str] = []
             page = 1
             page_size = 50
-            
+
+            items = []
             while True:
                 data = sync(user_obj.get_followings(pn=page, ps=page_size))
                 followings = data.get('list') or []
@@ -58,16 +58,18 @@ class BilibiliUserSubscriptionImporter:
                     following_mid = following.get('mid')
                     if following_mid:
                         space_url = f'https://space.bilibili.com/{following_mid}'
-                        subscription_urls.append(space_url)
+                        face = following.get('face')
+                        name = following.get('uname')
+                        items.append(SubscriptionImportItem(url=space_url, name=name, avatar=face))
                 
                 total = data.get('total', 0)
-                if not total or len(subscription_urls) >= total or len(followings) < page_size:
+                if not total or len(items) >= total or len(followings) < page_size:
                     break
                 
                 page += 1
             
-            logger.info(f"Found {len(subscription_urls)} Bilibili subscriptions")
-            return subscription_urls
+            logger.info(f"Found {len(items)} Bilibili subscriptions")
+            return items
             
         except Exception as e:
             logger.error(f"Failed to import Bilibili subscriptions: {e}", exc_info=True)

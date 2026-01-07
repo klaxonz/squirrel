@@ -3,7 +3,7 @@ from typing import Optional, Tuple, List, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.sql import text
 from core.database import get_session
-from crawl import SubscriptionMeta
+from crawl import SubscriptionMeta, SubscriptionImportItem
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from models.links import UserSubscription
 from models.message import Message
@@ -409,8 +409,7 @@ def preview_user_subscriptions(site_name: str) -> Dict[str, Any]:
         }
     """
     import logging
-    from crawl import get_importer_registry, get_subscription_registry, Subscription
-    from urllib.parse import urlparse
+    from crawl import get_importer_registry
     
     logger = logging.getLogger()
     
@@ -427,15 +426,15 @@ def preview_user_subscriptions(site_name: str) -> Dict[str, Any]:
             importer = importer_plugin()
         else:
             importer = importer_plugin
-        subscription_urls = importer.get_user_subscriptions()
-        
-        logger.info(f"Found {len(subscription_urls)} subscriptions from {site_name} for preview")
-        
-        # 直接返回 URL 列表，不获取详细信息（避免耗时）
+        subscriptions = importer.get_user_subscriptions()
+
+        logger.info(f"Found {len(subscriptions)} subscriptions from {site_name} for preview")
+
+        preview_subscriptions = subscriptions[:100]
         return {
             'site': site_name,
-            'total': len(subscription_urls),
-            'urls': subscription_urls[:100]  # 预览最多显示前100个
+            'total': len(subscriptions),
+            'subscriptions': [s.to_dict() for s in preview_subscriptions]
         }
         
     except Exception as e:
@@ -443,12 +442,12 @@ def preview_user_subscriptions(site_name: str) -> Dict[str, Any]:
         raise
 
 
-def _enqueue_subscriptions_async(subscription_urls: List[str], user_id: int, site_name: str):
+def _enqueue_subscriptions_async(subscriptions: List[SubscriptionImportItem], user_id: int, site_name: str):
     """
     在后台线程中投递订阅任务到消息队列
     
     Args:
-        subscription_urls: 订阅 URL 列表
+        subscriptions: 订阅列表
         user_id: 用户ID
         site_name: 站点名称
     """
@@ -462,13 +461,16 @@ def _enqueue_subscriptions_async(subscription_urls: List[str], user_id: int, sit
     try:
         enqueued = 0
         producer = RedisStreamProducer()
-        
+
         with get_session() as session:
-            for url in subscription_urls:
+            for sub in subscriptions:
+                url = sub.url
                 try:
                     # 创建订阅任务
                     task = {
                         "url": url,
+                        "name": sub.name,
+                        "avatar": sub.avatar,
                         "user_id": user_id
                     }
                     message = Message(body=json.dumps(task))
@@ -484,8 +486,8 @@ def _enqueue_subscriptions_async(subscription_urls: List[str], user_id: int, sit
                     logger.warning(f"Failed to enqueue subscription {url}: {e}")
             
             session.commit()
-        
-        logger.info(f"Enqueued {enqueued}/{len(subscription_urls)} subscription tasks from {site_name}")
+
+        logger.info(f"Enqueued {enqueued}/{len(subscriptions)} subscription tasks from {site_name}")
         
     except Exception as e:
         logger.error(f"Failed to enqueue subscriptions from {site_name}: {e}", exc_info=True)
@@ -523,23 +525,23 @@ def import_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
             importer = importer_plugin()
         else:
             importer = importer_plugin
-        subscription_urls = importer.get_user_subscriptions()
-        
-        logger.info(f"Found {len(subscription_urls)} subscriptions from {site_name}")
-        
+        subscriptions = importer.get_user_subscriptions()
+
+        logger.info(f"Found {len(subscriptions)} subscriptions from {site_name}")
+
         # 在后台线程中投递消息
         thread = threading.Thread(
             target=_enqueue_subscriptions_async,
-            args=(subscription_urls, user_id, site_name),
+            args=(subscriptions, user_id, site_name),
             daemon=True
         )
         thread.start()
-        
-        logger.info(f"Started background thread to enqueue {len(subscription_urls)} subscriptions")
-        
+
+        logger.info(f"Started background thread to enqueue {len(subscriptions)} subscriptions")
+
         # 立即返回
         return {
-            'total': len(subscription_urls)
+            'total': len(subscriptions)
         }
         
     except Exception as e:

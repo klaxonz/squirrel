@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from bs4 import BeautifulSoup
 
+from .core import SubscriptionImportItem
 from .http import request_without_limit
 from .config import get_http_headers
 from .utils import filter_cookies_to_query_string
@@ -27,10 +28,14 @@ class BaseImporter(ABC):
             domain = 'mysite.com'
             site_slug = 'mysite'
 
-            def get_user_subscriptions(self) -> List[str]:
+            def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
                 soup = self._fetch_page('/subscriptions')
                 items = soup.select('a.subscription-link')
-                return [self._to_full_url(item.get('href')) for item in items if item.get('href')]
+                return [
+                    SubscriptionImportItem(url=self._to_full_url(item.get('href')))
+                    for item in items
+                    if item.get('href')
+                ]
     """
 
     domain: str = ""
@@ -109,8 +114,8 @@ class BaseImporter(ABC):
         return urls
 
     @abstractmethod
-    def get_user_subscriptions(self) -> List[str]:
-        """Get user's subscription URLs. Must be implemented by subclasses."""
+    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
+        """Get user's subscriptions. Must be implemented by subclasses."""
         pass
 
 
@@ -141,7 +146,7 @@ class PaginatedImporter(BaseImporter):
     max_pages: int = 100
     page_param: str = "page"
 
-    def get_user_subscriptions(self) -> List[str]:
+    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
         """Paginated subscription fetching."""
         subscription_urls: List[str] = []
         headers = self._get_headers()
@@ -184,7 +189,7 @@ class PaginatedImporter(BaseImporter):
                 logger.warning(f"Error fetching page {page}: {e}")
                 break
 
-        return subscription_urls
+        return [SubscriptionImportItem(url=url) for url in subscription_urls]
 
     def _build_page_url(self, page: int) -> str:
         """Build URL for a specific page."""

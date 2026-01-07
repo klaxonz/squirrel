@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 from crawl import (
-    UserSubscriptionImporter,
+    SubscriptionImportItem,
     register_user_subscription_importer,
     filter_cookies_to_query_string,
     request_without_limit,
@@ -27,12 +27,12 @@ class JavdbUserSubscriptionImporter:
     
     domain = 'javdb.com'
     
-    def get_user_subscriptions(self) -> List[str]:
+    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
         """
         获取用户在 JavDB 的订阅列表
         
         Returns:
-            订阅的演员 URL 列表
+            订阅列表
         """
         try:
             base_url = f'https://{self.domain}'
@@ -41,7 +41,8 @@ class JavdbUserSubscriptionImporter:
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             })
             headers['Cookie'] = cookies
-            
+
+            items = []
             subscription_urls: List[str] = []
             page = 1
             
@@ -65,12 +66,15 @@ class JavdbUserSubscriptionImporter:
                     
                     for item in actor_items:
                         href = item.get('href')
+                        avatar = item.select('img')[0].get('src')
+                        name = item.select('strong')[0].text.strip()
                         if href and '/actors/' in href:
                             full_url = f'{base_url}{href}' if href.startswith('/') else href
                             # 去掉查询参数，只保留演员页面 URL
                             full_url = full_url.split('?')[0]
                             if full_url not in subscription_urls:
                                 subscription_urls.append(full_url)
+                                items.append(SubscriptionImportItem(url=full_url, name=name, avatar=avatar))
                     
                     # 检查是否有下一页
                     next_page = soup.select('.pagination .pagination-next')
@@ -84,7 +88,7 @@ class JavdbUserSubscriptionImporter:
                     break
             
             logger.info(f"Found {len(subscription_urls)} JavDB subscriptions")
-            return subscription_urls
+            return items
             
         except Exception as e:
             logger.error(f"Failed to import JavDB subscriptions: {e}", exc_info=True)

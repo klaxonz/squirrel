@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 from crawl import (
-    UserSubscriptionImporter,
+    SubscriptionImportItem,
     register_user_subscription_importer,
     filter_cookies_to_query_string,
     request_without_limit,
@@ -28,12 +28,12 @@ class PornhubUserSubscriptionImporter:
     
     domain = 'pornhub.com'
     
-    def get_user_subscriptions(self) -> List[str]:
+    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
         """
         获取用户在 Pornhub 的订阅列表
         
         Returns:
-            订阅的频道/用户 URL 列表
+            订阅列表
         """
         try:
             base_url = f'https://www.{self.domain}'
@@ -43,6 +43,7 @@ class PornhubUserSubscriptionImporter:
             })
             headers['Cookie'] = cookies
 
+            channel_items = []
             subscription_urls: List[str] = []
 
             # 优先使用新的 /users/<username>/subscriptions?page=N 页面结构
@@ -92,12 +93,14 @@ class PornhubUserSubscriptionImporter:
                         #       <span class="usernameBadgesWrapper">
                         #           <a class="usernameLink" href="/model/...">...
                         # 只选择这些用户名链接，再用 href 前缀判断类型
-                        items = soup.select('ul#moreData li .usernameWrap .usernameBadgesWrapper a.usernameLink')
+                        items = soup.select('ul#moreData li')
                         logger.info("Page %s: found %s subscription username anchors", page, len(items))
 
                         new_count = 0
                         for item in items:
-                            href = item.get('href')
+                            href = item.select('.usernameWrap .usernameBadgesWrapper a.usernameLink')[0].get('href')
+                            name = item.select('.usernameWrap .usernameBadgesWrapper a.usernameLink')[0].get('title')
+                            avatar = item.select('.userLink .avatar')[0].get('src')
                             if not href:
                                 continue
 
@@ -109,6 +112,7 @@ class PornhubUserSubscriptionImporter:
                             if full_url not in subscription_urls:
                                 subscription_urls.append(full_url)
                                 new_count += 1
+                                channel_items.append(SubscriptionImportItem(url=full_url, name=name, avatar=avatar))
 
                         logger.info("Page %s: added %s new Pornhub subscriptions, total=%s", page, new_count, len(subscription_urls))
 
@@ -188,7 +192,7 @@ class PornhubUserSubscriptionImporter:
                 except Exception as e:
                     logger.warning("Failed to get Pornhub pornstars: %s", e)
 
-            return subscription_urls
+            return channel_items
 
         except Exception as e:
             logger.error(f"Failed to import Pornhub subscriptions: {e}", exc_info=True)
