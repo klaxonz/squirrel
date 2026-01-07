@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -10,6 +10,10 @@ class SubscribeRequest(BaseModel):
 class UnsubscribeRequest(BaseModel):
     subscription_id: Optional[int] = None
     url: Optional[str] = None
+
+
+class ImportSubscriptionsRequest(BaseModel):
+    subscription_urls: Optional[List[str]] = None
 
 
 class UpdateSubscriptionRequest(BaseModel):

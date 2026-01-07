@@ -61,7 +61,22 @@ def get_active_user_subscription_by_url(user_id: int, url: str):
         return subscription
 
 
-def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):
+def get_active_user_subscription_url_map(user_id: int) -> Dict[str, int]:
+    with get_session() as session:
+        rows = session.execute(
+            select(Subscription.url, Subscription.id)
+            .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
+            .where(
+                Subscription.is_deleted.is_(False),
+                Subscription.url.is_not(None),
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(False),
+            )
+        ).all()
+        return {url: subscription_id for url, subscription_id in rows if url}
+
+
+def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):  
     with get_session() as session:
         subscription = get_subscription_by_url_and_name(url=subscribe_info.url, name=subscribe_info.name)
         if subscription:
@@ -247,14 +262,11 @@ def handle_subscribe_request(url: str, user_id: int) -> Subscription:
     subscribe_info = subscribe_channel.get_subscribe_info()
 
     subscription = get_subscription_by_url_and_name(url, subscribe_info.name)
-    
+
     if subscription:
-        if not subscription.is_deleted:
-            return subscription
-        
         restore_subscription(subscription.id, user_id)
         return get_subscription_by_id(subscription.id)
-    
+
     subscription = create_subscription(user_id, subscribe_info)
     return subscription
 
@@ -394,13 +406,25 @@ def verify_subscription_access(user_id: int, subscription_id: int) -> Tuple[Opti
         return subscription, "ok"
 
 
-def preview_user_subscriptions(site_name: str) -> Dict[str, Any]:
+def _dedupe_import_items(subscriptions: List[SubscriptionImportItem]) -> List[SubscriptionImportItem]:
+    seen_urls = set()
+    result = []
+    for sub in subscriptions:
+        if not sub.url or sub.url in seen_urls:
+            continue
+        seen_urls.add(sub.url)
+        result.append(sub)
+    return result
+
+
+def preview_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
     """
     预览用户在指定站点的订阅列表（不实际导入）
     
     Args:
         site_name: 站点名称（如 'bilibili', 'youtube' 等）
-        
+        user_id: 用户ID
+
     Returns:
         预览结果：{
             'site': 站点名称,
@@ -426,17 +450,31 @@ def preview_user_subscriptions(site_name: str) -> Dict[str, Any]:
             importer = importer_plugin()
         else:
             importer = importer_plugin
-        subscriptions = importer.get_user_subscriptions()
+        subscriptions = _dedupe_import_items(importer.get_user_subscriptions())
 
         logger.info(f"Found {len(subscriptions)} subscriptions from {site_name} for preview")
 
-        preview_subscriptions = subscriptions[:100]
+        imported_url_map = get_active_user_subscription_url_map(user_id)
+        imported_count = 0
+
+        preview_subscriptions = []
+        for sub in subscriptions:
+            data = sub.to_dict()
+            is_imported = sub.url in imported_url_map
+            data["is_imported"] = is_imported
+            if is_imported:
+                data["subscription_id"] = imported_url_map[sub.url]
+                imported_count += 1
+            preview_subscriptions.append(data)
+
         return {
             'site': site_name,
             'total': len(subscriptions),
-            'subscriptions': [s.to_dict() for s in preview_subscriptions]
+            'imported': imported_count,
+            'not_imported': len(subscriptions) - imported_count,
+            'subscriptions': preview_subscriptions
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to preview subscriptions from {site_name}: {e}", exc_info=True)
         raise
@@ -493,7 +531,11 @@ def _enqueue_subscriptions_async(subscriptions: List[SubscriptionImportItem], us
         logger.error(f"Failed to enqueue subscriptions from {site_name}: {e}", exc_info=True)
 
 
-def import_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
+def import_user_subscriptions(
+    site_name: str,
+    user_id: int,
+    selected_urls: Optional[List[str]] = None
+) -> Dict[str, Any]:
     """
     从指定站点导入用户的所有订阅（异步）
     
@@ -525,23 +567,39 @@ def import_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
             importer = importer_plugin()
         else:
             importer = importer_plugin
-        subscriptions = importer.get_user_subscriptions()
+        all_subscriptions = _dedupe_import_items(importer.get_user_subscriptions())
+        found_total = len(all_subscriptions)
 
-        logger.info(f"Found {len(subscriptions)} subscriptions from {site_name}")
+        logger.info(f"Found {found_total} subscriptions from {site_name}")
+
+        subscriptions = all_subscriptions
+        if selected_urls is not None:
+            selected_url_set = {u for u in selected_urls if u}
+            subscriptions = [s for s in all_subscriptions if s.url in selected_url_set]
+        selected_total = len(subscriptions)
+
+        imported_url_map = get_active_user_subscription_url_map(user_id)
+        imported_urls = set(imported_url_map.keys())
+        to_import = [s for s in subscriptions if s.url not in imported_urls]
 
         # 在后台线程中投递消息
-        thread = threading.Thread(
-            target=_enqueue_subscriptions_async,
-            args=(subscriptions, user_id, site_name),
-            daemon=True
-        )
-        thread.start()
-
-        logger.info(f"Started background thread to enqueue {len(subscriptions)} subscriptions")
+        if to_import:
+            thread = threading.Thread(
+                target=_enqueue_subscriptions_async,
+                args=(to_import, user_id, site_name),
+                daemon=True
+            )
+            thread.start()
+            logger.info(f"Started background thread to enqueue {len(to_import)} subscriptions")
+        else:
+            logger.info("No new subscriptions to import")
 
         # 立即返回
         return {
-            'total': len(subscriptions)
+            'total': len(to_import),
+            'found': found_total,
+            'selected': selected_total,
+            'skipped': selected_total - len(to_import)
         }
         
     except Exception as e:

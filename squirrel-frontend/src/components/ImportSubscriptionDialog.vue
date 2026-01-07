@@ -42,8 +42,10 @@
           <div class="mb-4">
             <p class="text-white font-medium mb-2">预览订阅列表</p>
             <p class="text-[#aaa] text-sm">
-              找到 <span class="text-white font-bold">{{ previewData.total }}</span> 个订阅，
-              显示前 <span class="text-white font-bold">{{ previewData.subscriptions?.length || 0 }}</span> 个
+              总计 <span class="text-white font-bold">{{ previewData.total }}</span>，
+              已导入 <span class="text-white font-bold">{{ previewData.imported ?? 0 }}</span>，
+              未导入 <span class="text-white font-bold">{{ previewData.not_imported ?? 0 }}</span>，
+              已选 <span class="text-white font-bold">{{ selectedCount }}</span>
             </p>
           </div>
 
@@ -55,26 +57,73 @@
             </div>
           </div>
 
-          <div v-else class="space-y-1 max-h-[400px] overflow-y-auto">
-            <div
-              v-for="(sub, index) in previewData.subscriptions"
-              :key="index"
-              class="p-3 bg-[#181818] rounded-lg hover:bg-[#202020] transition-colors flex items-center gap-3"
-            >
-              <img
-                v-if="sub.avatar"
-                :src="sub.avatar"
-                class="w-8 h-8 rounded-full object-cover"
-                alt="avatar"
-                @error="sub.avatar = ''"
-              />
-              <div
-                v-else
-                class="w-8 h-8 rounded-full bg-[#404040] flex items-center justify-center text-xs text-[#aaa]"
-              >
-                {{ (sub.name?.charAt(0) || '?').toUpperCase() }}
+          <div v-else>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <button
+                  class="px-3 py-1.5 bg-[#404040] text-white text-sm rounded hover:bg-[#505050] transition-colors"
+                  @click="selectAllNotImported"
+                >
+                  全选未导入
+                </button>
+                <button
+                  class="px-3 py-1.5 bg-[#404040] text-white text-sm rounded hover:bg-[#505050] transition-colors"
+                  @click="clearSelection"
+                >
+                  清空
+                </button>
               </div>
-              <p class="text-white text-sm truncate">{{ sub.name || '未命名订阅' }}</p>
+              <p class="text-[#aaa] text-sm">
+                已选 <span class="text-white font-bold">{{ selectedCount }}</span>
+              </p>
+            </div>
+
+            <div class="space-y-1 max-h-[400px] overflow-y-auto">
+              <div
+                v-for="sub in previewData.subscriptions"
+                :key="sub.url"
+                class="p-3 bg-[#181818] rounded-lg hover:bg-[#202020] transition-colors flex items-center gap-3"
+              >
+                <input
+                  type="checkbox"
+                  class="w-4 h-4 accent-[#cc0000]"
+                  :disabled="sub.is_imported"
+                  :checked="!!selectedUrlMap[sub.url]"
+                  @change="toggleSelection(sub)"
+                />
+
+                <img
+                  v-if="sub.avatar"
+                  :src="sub.avatar"
+                  class="w-8 h-8 rounded-full object-cover"
+                  alt="avatar"
+                  @error="sub.avatar = ''"
+                />
+                <div
+                  v-else
+                  class="w-8 h-8 rounded-full bg-[#404040] flex items-center justify-center text-xs text-[#aaa]"
+                >
+                  {{ (sub.name?.charAt(0) || '?').toUpperCase() }}
+                </div>
+
+                <div class="flex-1 min-w-0">
+                  <p class="text-white text-sm truncate">{{ sub.name || '未命名订阅' }}</p>
+                  <p class="text-[#666] text-xs truncate">{{ sub.url }}</p>
+                </div>
+
+                <span
+                  v-if="sub.is_imported"
+                  class="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/30"
+                >
+                  已导入
+                </span>
+                <span
+                  v-else
+                  class="text-xs px-2 py-0.5 rounded bg-[#404040] text-[#aaa] border border-[#505050]"
+                >
+                  未导入
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -83,35 +132,36 @@
         <div v-else-if="step === 3">
           <div class="text-center py-8">
             <div class="flex justify-center mb-4">
-              <div v-if="importResult.total > 0" 
-                   class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
+              <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
                 <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
               </div>
-              <div v-else class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center">
-                <svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </div>
             </div>
-            
+
             <h3 class="text-2xl font-bold text-white mb-6">
-              {{ importResult.total > 0 ? '任务已提交' : '提交失败' }}
+              {{ importResult.total > 0 ? '任务已提交' : '没有需要导入的订阅' }}
             </h3>
 
             <div class="bg-[#181818] rounded-lg p-6 mb-6">
-              <p class="text-[#aaa] text-sm mb-2">订阅总数</p>
+              <p class="text-[#aaa] text-sm mb-2">新增导入任务</p>
               <p class="text-white text-4xl font-bold">{{ importResult.total }}</p>
+              <p class="text-[#aaa] text-xs mt-3">
+                拉取 {{ importResult.found ?? 0 }} 个，选择 {{ importResult.selected ?? 0 }} 个，跳过 {{ importResult.skipped ?? 0 }} 个
+              </p>
             </div>
 
-            <div class="text-[#aaa] text-sm bg-[#181818] rounded-lg p-4">
+            <div class="text-[#aaa] text-sm bg-[#181818] rounded-lg p-4">       
               <svg class="w-5 h-5 inline-block mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
               </svg>
-              导入任务已提交，正在后台处理 {{ importResult.total }} 个订阅。
-              <br>
-              处理完成后订阅列表会自动更新，请稍后刷新查看。
+              <span v-if="importResult.total > 0">
+                导入任务已提交，正在后台处理 {{ importResult.total }} 个订阅。<br>
+                处理完成后订阅列表会自动更新，请稍后刷新查看。
+              </span>
+              <span v-else>
+                当前没有需要导入的订阅（可能都已导入或你未选择任何未导入项）。
+              </span>
             </div>
           </div>
         </div>
@@ -146,14 +196,14 @@
         <button
           v-if="step === 2"
           @click="handleImport"
-          :disabled="importing"
+          :disabled="importing || selectedCount === 0"
           class="px-6 py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] disabled:bg-[#404040] disabled:cursor-not-allowed transition-colors flex items-center"
         >
           <svg v-if="importing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          {{ importing ? '导入中...' : `确认导入 (${previewData.total})` }}
+          {{ importing ? '导入中...' : `确认导入 (${selectedCount})` }}
         </button>
 
         <button
@@ -169,7 +219,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 
 const props = defineProps({
@@ -185,6 +235,7 @@ const step = ref(1); // 1: 选择站点, 2: 预览, 3: 结果
 const supportedSites = ref([]);
 const selectedSite = ref('');
 const previewData = ref({ total: 0, subscriptions: [] });
+const selectedUrlMap = ref({});
 const importResult = ref({});
 const loadingPreview = ref(false);
 const importing = ref(false);
@@ -205,6 +256,33 @@ const siteConfig = {
 
 const getSiteName = (site) => siteConfig[site]?.name || site.charAt(0).toUpperCase() + site.slice(1);
 
+const selectedCount = computed(() => Object.keys(selectedUrlMap.value || {}).length);
+
+const selectAllNotImported = () => {
+  const map = {};
+  for (const sub of previewData.value.subscriptions || []) {
+    if (sub?.url && !sub.is_imported) {
+      map[sub.url] = true;
+    }
+  }
+  selectedUrlMap.value = map;
+};
+
+const clearSelection = () => {
+  selectedUrlMap.value = {};
+};
+
+const toggleSelection = (sub) => {
+  if (!sub?.url || sub.is_imported) return;
+  const map = { ...(selectedUrlMap.value || {}) };
+  if (map[sub.url]) {
+    delete map[sub.url];
+  } else {
+    map[sub.url] = true;
+  }
+  selectedUrlMap.value = map;
+};
+
 // 加载支持的站点
 const loadSupportedSites = async () => {
   const result = await getSupportedImportSites();
@@ -223,6 +301,7 @@ const handlePreview = async () => {
 
   if (result.success) {
     previewData.value = result.data;
+    selectAllNotImported();
     step.value = 2;
   }
 };
@@ -231,8 +310,9 @@ const handlePreview = async () => {
 const handleImport = async () => {
   if (!selectedSite.value) return;
 
+  const subscriptionUrls = Object.keys(selectedUrlMap.value || {});
   importing.value = true;
-  const result = await importSubscriptions(selectedSite.value);
+  const result = await importSubscriptions(selectedSite.value, subscriptionUrls);
   importing.value = false;
 
   if (result.success) {
@@ -252,6 +332,7 @@ const handleClose = () => {
     step.value = 1;
     selectedSite.value = '';
     previewData.value = { total: 0, subscriptions: [] };
+    selectedUrlMap.value = {};
     importResult.value = {};
   }, 300);
 };

@@ -156,9 +156,10 @@ export function useSubscriptionApi() {
   };
 
   // 执行导入
-  const importSubscriptions = async (site) => {
+  const importSubscriptions = async (site, subscriptionUrls = null) => {
     try {
-      const response = await axios.post(`/api/subscription/import/${site}`);
+      const payload = subscriptionUrls ? { subscription_urls: subscriptionUrls } : {};
+      const response = await axios.post(`/api/subscription/import/${site}`, payload);
       if (response.data.code === 0) {
         return { success: true, data: response.data.data };
       }

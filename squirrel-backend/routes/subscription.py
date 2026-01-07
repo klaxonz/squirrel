@@ -1,12 +1,11 @@
-import json
 from datetime import datetime
 
 from fastapi import APIRouter, Query, Depends, Request
 import common.response as response
 from core.cache import redis_client
 from models.user import User
-from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest
-from services import subscription_service, message_service
+from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest, ImportSubscriptionsRequest
+from services import subscription_service
 from typing import List
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
@@ -213,7 +212,7 @@ def preview_subscriptions(
 
         logger.info(f"User {current_user.id} previewing subscriptions from {site}")
         
-        result = subscription_service.preview_user_subscriptions(site)
+        result = subscription_service.preview_user_subscriptions(site, current_user.id)
         
         return response.success(result)
         
@@ -228,6 +227,7 @@ def preview_subscriptions(
 @router.post("/api/subscription/import/{site}")
 def import_subscriptions(
     site: str,
+    req: ImportSubscriptionsRequest | None = None,
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -253,12 +253,16 @@ def import_subscriptions(
             return response.param_error(f"不支持的站点: {site}，支持的站点: {', '.join(supported_sites)}")
 
         logger.info(f"User {current_user.id} importing subscriptions from {site}")
-        
-        result = subscription_service.import_user_subscriptions(site, current_user.id)
-        
+
+        selected_urls = req.subscription_urls if req else None
+        result = subscription_service.import_user_subscriptions(site, current_user.id, selected_urls=selected_urls)
+
         return response.success({
             "site": site,
-            "total": result['total']
+            "total": result['total'],
+            "found": result["found"],
+            "selected": result["selected"],
+            "skipped": result["skipped"]
         })
         
     except ValueError as e:
