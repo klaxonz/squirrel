@@ -194,14 +194,32 @@ class PluginService:
             if not str(resolved).startswith(str(dest_dir.resolve())):
                 continue
             if member.is_dir():
-                os.makedirs(resolved, exist_ok=True)
+                try:
+                    os.makedirs(resolved, exist_ok=True)
+                except (NotADirectoryError, FileExistsError):
+                    logger.warning(f"Skipping directory {name}: path conflict")
+                    continue
             else:
-                if resolved.parent.exists() and not resolved.parent.is_dir():
+                # Check if the parent directory exists and is not a directory
+                parent = resolved.parent
+                if parent.exists() and not parent.is_dir():
                     logger.warning(f"Skipping {name}: parent path exists but is not a directory")
                     continue
-                os.makedirs(resolved.parent, exist_ok=True)
-                with zf.open(member, 'r') as src, open(resolved, 'wb') as out:
-                    shutil.copyfileobj(src, out)
+
+                # Try to create parent directories
+                try:
+                    os.makedirs(parent, exist_ok=True)
+                except (NotADirectoryError, FileExistsError) as e:
+                    logger.warning(f"Skipping {name}: cannot create parent directory: {e}")
+                    continue
+
+                # Extract the file
+                try:
+                    with zf.open(member, 'r') as src, open(resolved, 'wb') as out:
+                        shutil.copyfileobj(src, out)
+                except Exception as e:
+                    logger.warning(f"Failed to extract {name}: {e}")
+                    continue
 
     @staticmethod
     def _is_valid_name(name: str) -> bool:
