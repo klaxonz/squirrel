@@ -6,7 +6,7 @@ import logging
 import os
 import shutil
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Dict, List, Optional, Tuple
 
 # Type alias for clarity
@@ -186,22 +186,92 @@ class PluginService:
     @staticmethod
     def _safe_extract(zf, dest_dir: Path) -> None:
         """Safely extract zip to dest_dir, preventing path traversal."""
+        dest_dir_resolved = dest_dir.resolve()
+
+        normalized_names: list[str] = []
         for member in zf.infolist():
-            name = member.filename.replace("\\", "/")
-            if not name or os.path.isabs(name):
+            normalized = member.filename.replace("\\", "/").lstrip("/")
+            if normalized:
+                normalized_names.append(normalized)
+
+        dir_paths: set[str] = set()
+        for name in normalized_names:
+            stripped = name.rstrip("/")
+            if not stripped:
                 continue
-            resolved = (dest_dir / name).resolve()
-            if not str(resolved).startswith(str(dest_dir.resolve())):
-                continue
-            if member.is_dir():
-                os.makedirs(resolved, exist_ok=True)
-            else:
-                if resolved.parent.exists() and not resolved.parent.is_dir():
-                    logger.warning(f"Skipping {name}: parent path exists but is not a directory")
+            path = PurePosixPath(stripped)
+            for parent in path.parents:
+                if parent == PurePosixPath("."):
                     continue
-                os.makedirs(resolved.parent, exist_ok=True)
-                with zf.open(member, 'r') as src, open(resolved, 'wb') as out:
-                    shutil.copyfileobj(src, out)
+                dir_paths.add(f"{parent.as_posix()}/")
+            if name.endswith("/"):
+                dir_paths.add(name)
+
+        def _ensure_dir(path: Path, member_name: str) -> bool:
+            try:
+                rel = path.relative_to(dest_dir_resolved)
+            except ValueError:
+                return False
+
+            current = dest_dir_resolved
+            for part in rel.parts:
+                current = current / part
+                if current.exists():
+                    if current.is_dir():
+                        continue
+
+                    rel_dir = PurePosixPath(*current.relative_to(dest_dir_resolved).parts).as_posix() + "/"
+                    if rel_dir in dir_paths:
+                        try:
+                            current.unlink()
+                        except Exception as e:
+                            logger.warning("Skipping %s: cannot replace file with directory: %s", member_name, e)
+                            return False
+                        current.mkdir(exist_ok=True)
+                        continue
+
+                    logger.warning("Skipping %s: path component exists but is not a directory: %s", member_name, str(current))
+                    return False
+
+                current.mkdir()
+            return True
+
+        for member in zf.infolist():
+            name = member.filename.replace("\\", "/").lstrip("/")
+            if name.startswith("./"):
+                name = name[2:]
+            if not name or os.path.isabs(name) or name.startswith("../") or "/../" in name:
+                continue
+
+            stripped = name.rstrip("/")
+            is_dir = (
+                member.is_dir()
+                or name.endswith("/")
+                or member.filename.endswith("\\")
+                or bool(member.external_attr & 0x10)
+                or (f"{stripped}/" in dir_paths and member.file_size == 0 and member.compress_size == 0)
+            )
+
+            resolved = (dest_dir / stripped).resolve() if is_dir else (dest_dir / name).resolve()
+            try:
+                resolved.relative_to(dest_dir_resolved)
+            except ValueError:
+                continue
+
+            if is_dir:
+                if _ensure_dir(resolved, name):
+                    resolved.mkdir(parents=True, exist_ok=True)
+                continue
+
+            if not _ensure_dir(resolved.parent, name):
+                continue
+
+            if resolved.exists() and resolved.is_dir():
+                logger.warning("Skipping %s: target path exists but is a directory", name)
+                continue
+
+            with zf.open(member, "r") as src, open(resolved, "wb") as out:
+                shutil.copyfileobj(src, out)
 
     @staticmethod
     def _is_valid_name(name: str) -> bool:
