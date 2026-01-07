@@ -199,20 +199,7 @@ class PluginService:
                 if resolved.parent.exists() and not resolved.parent.is_dir():
                     logger.warning(f"Skipping {name}: parent path exists but is not a directory")
                     continue
-                try:
-                    os.makedirs(resolved.parent, exist_ok=True)
-                except NotADirectoryError:
-                    # If parent directory creation fails due to path conflict,
-                    # try to clean up and retry once
-                    logger.warning(f"Directory creation failed for {name}, retrying...")
-                    try:
-                        # Remove any conflicting file and retry
-                        if resolved.parent.exists() and not resolved.parent.is_dir():
-                            resolved.parent.unlink(missing_ok=True)
-                        os.makedirs(resolved.parent, exist_ok=True)
-                    except Exception:
-                        logger.error(f"Failed to create directory for {name}")
-                        continue
+                os.makedirs(resolved.parent, exist_ok=True)
                 with zf.open(member, 'r') as src, open(resolved, 'wb') as out:
                     shutil.copyfileobj(src, out)
 
