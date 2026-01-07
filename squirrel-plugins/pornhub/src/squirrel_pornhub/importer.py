@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import logging
 from typing import List
-from urllib.parse import urlparse
-
 from bs4 import BeautifulSoup
 
 from crawl import (
@@ -124,73 +122,6 @@ class PornhubUserSubscriptionImporter:
 
             except Exception as e:
                 logger.warning("Failed to fetch Pornhub subscriptions via username-based pages: %s", e)
-
-            # 如果新页面结构没有解析到任何订阅，则回退到旧的 subscribed 页面逻辑
-            if not subscription_urls:
-                logger.info("No Pornhub subscriptions found via /users/<username>/subscriptions, fallback to legacy subscribed pages")
-
-                # 1. 订阅的频道
-                channels_url = f'{base_url}/channels/subscribed'
-                try:
-                    resp = request_without_limit('GET', channels_url, headers=headers, timeout=15)
-                    resp.raise_for_status()
-
-                    soup = BeautifulSoup(resp.text, 'html.parser')
-
-                    # 查找频道链接
-                    channel_items = soup.select('.channelsWrapper .channelsProfileContainer a')
-                    for item in channel_items:
-                        href = item.get('href')
-                        if href and '/channels/' in href:
-                            full_url = f'{base_url}{href}' if href.startswith('/') else href
-                            if full_url not in subscription_urls:
-                                subscription_urls.append(full_url)
-
-                    logger.info("Found %s Pornhub channels", len(subscription_urls))
-                except Exception as e:
-                    logger.warning("Failed to get Pornhub channels: %s", e)
-
-                # 2. 订阅的 Models
-                models_url = f'{base_url}/model/subscribed'
-                try:
-                    resp = request_without_limit('GET', models_url, headers=headers, timeout=15)
-                    resp.raise_for_status()
-
-                    soup = BeautifulSoup(resp.text, 'html.parser')
-
-                    # 查找 model 链接
-                    model_items = soup.select('.channelsWrapper .modelProfileContainer a, .profileUserName a')
-                    for item in model_items:
-                        href = item.get('href')
-                        if href and ('/model/' in href or '/pornstar/' in href):
-                            full_url = f'{base_url}{href}' if href.startswith('/') else href
-                            if full_url not in subscription_urls:
-                                subscription_urls.append(full_url)
-
-                    logger.info("Total: Found %s Pornhub subscriptions after models", len(subscription_urls))
-                except Exception as e:
-                    logger.warning("Failed to get Pornhub models: %s", e)
-
-                # 3. 订阅的 Pornstars
-                pornstars_url = f'{base_url}/pornstars/subscribed'
-                try:
-                    resp = request_without_limit('GET', pornstars_url, headers=headers, timeout=15)
-                    resp.raise_for_status()
-
-                    soup = BeautifulSoup(resp.text, 'html.parser')
-
-                    # 查找 pornstar 链接
-                    pornstar_items = soup.select('.pornstarsWrapper .pornstarProfileContainer a, .pornstarName a')
-                    for item in pornstar_items:
-                        href = item.get('href')
-                        if href and '/pornstar/' in href:
-                            full_url = f'{base_url}{href}' if href.startswith('/') else href
-                            if full_url not in subscription_urls:
-                                subscription_urls.append(full_url)
-
-                    logger.info("Final: Found %s Pornhub subscriptions after pornstars", len(subscription_urls))
-                except Exception as e:
-                    logger.warning("Failed to get Pornhub pornstars: %s", e)
 
             return channel_items
 
