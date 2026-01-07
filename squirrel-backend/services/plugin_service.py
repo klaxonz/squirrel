@@ -194,32 +194,27 @@ class PluginService:
             if not str(resolved).startswith(str(dest_dir.resolve())):
                 continue
             if member.is_dir():
-                try:
-                    os.makedirs(resolved, exist_ok=True)
-                except (NotADirectoryError, FileExistsError):
-                    logger.warning(f"Skipping directory {name}: path conflict")
-                    continue
+                os.makedirs(resolved, exist_ok=True)
             else:
-                # Check if the parent directory exists and is not a directory
-                parent = resolved.parent
-                if parent.exists() and not parent.is_dir():
+                if resolved.parent.exists() and not resolved.parent.is_dir():
                     logger.warning(f"Skipping {name}: parent path exists but is not a directory")
                     continue
-
-                # Try to create parent directories
                 try:
-                    os.makedirs(parent, exist_ok=True)
-                except (NotADirectoryError, FileExistsError) as e:
-                    logger.warning(f"Skipping {name}: cannot create parent directory: {e}")
-                    continue
-
-                # Extract the file
-                try:
-                    with zf.open(member, 'r') as src, open(resolved, 'wb') as out:
-                        shutil.copyfileobj(src, out)
-                except Exception as e:
-                    logger.warning(f"Failed to extract {name}: {e}")
-                    continue
+                    os.makedirs(resolved.parent, exist_ok=True)
+                except NotADirectoryError:
+                    # If parent directory creation fails due to path conflict,
+                    # try to clean up and retry once
+                    logger.warning(f"Directory creation failed for {name}, retrying...")
+                    try:
+                        # Remove any conflicting file and retry
+                        if resolved.parent.exists() and not resolved.parent.is_dir():
+                            resolved.parent.unlink(missing_ok=True)
+                        os.makedirs(resolved.parent, exist_ok=True)
+                    except Exception:
+                        logger.error(f"Failed to create directory for {name}")
+                        continue
+                with zf.open(member, 'r') as src, open(resolved, 'wb') as out:
+                    shutil.copyfileobj(src, out)
 
     @staticmethod
     def _is_valid_name(name: str) -> bool:
