@@ -158,10 +158,11 @@
                 <!-- 主订阅：完整行展示 -->
                 <div class="flex items-center space-x-3">
                   <img
-                    :src="video.subscriptions[0].avatar"
+                    :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
                     :alt="video.subscriptions[0].name"
                     class="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-full object-cover"
                     referrerpolicy="no-referrer"
+                    @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
                   >
                   <router-link
                     :to="`/subscription/${video.subscriptions[0].id}/all`"
@@ -197,10 +198,11 @@
                     @click.stop="$router.push(`/subscription/${sub.id}/all`)"
                   >
                     <img
-                      :src="sub.avatar"
+                      :src="getAvatarSrc(sub.avatar, sub.id)"
                       :alt="sub.name"
                       class="w-5 h-5 rounded-full object-cover mr-2"
                       referrerpolicy="no-referrer"
+                      @error="(e) => handleAvatarError(e, sub.id)"
                     >
                     <span class="truncate max-w-[140px]">{{ sub.name }}</span>
                   </div>
@@ -297,11 +299,13 @@ import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import useVideoInteraction from "../composables/useVideoInteraction.js";
 import { useVideoApi } from '../composables/useVideoApi';
+import { useImageFallback } from '../composables/useImageFallback';
 
 
 
 const route = useRoute();
 const router = useRouter();
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
 // 内部切换不使用 router，所以不需要从 history.state 读取初始数据
 const { video, startTime, relatedVideos, loadingRelated, loadAndPlayById, externalError } = usePlaybackOrchestrator(null);

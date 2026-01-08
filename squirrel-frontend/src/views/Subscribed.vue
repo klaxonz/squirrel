@@ -56,10 +56,10 @@
               <div class="relative w-14 h-14">
                 <img
                   :alt="subscription.name"
-                  :src="subscription.avatar"
+                  :src="getAvatarSrc(subscription.avatar, subscription.id)"
                   class="w-full h-full rounded-full object-cover ring-1 ring-[#303030] transition-transform duration-300 group-hover:scale-105"
                   referrerpolicy="no-referrer"
-                  @error="handleImageError($event)"
+                  @error="(e) => handleAvatarError(e, subscription.id)"
                 />
                 <div class="absolute -inset-0.5 bg-gradient-to-b from-transparent to-[#181818] opacity-20 rounded-full"></div>
               </div>
@@ -209,6 +209,7 @@ import {useScrollPosition} from '../composables/useScrollPosition';
 import {useSubscriptionRefresh} from '../composables/useSubscriptionRefresh';
 import {useSubscriptionApi} from '../composables/useSubscriptionApi';
 import { useFeedFilters } from '../composables/useFeedFilters';
+import { useImageFallback } from '../composables/useImageFallback';
 
 const router = useRouter();
 
@@ -228,6 +229,7 @@ const currentPage = ref(1);
 const searchQuery = ref('');
 const { nsfw, site } = useFeedFilters();
 // Removed tabs on Subscribed page
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
 const showSettings = ref(false);
 const selectedSubscription = ref(null);
@@ -436,10 +438,6 @@ const getSubscriptionVideos = (subscriptionId) => {
 }
 
 
-
-const handleImageError = (event) => {
-  event.target.src = '/squirrel-icon.svg';
-};
 
 const handleChannelAdded = () => {
   subscriptions.value = [];

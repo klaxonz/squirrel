@@ -3,7 +3,7 @@
     <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4">
       <div class="flex items-center justify-between pb-3">
         <div class="flex items-center min-w-0">
-          <img v-if="detail?.avatar" :src="detail.avatar" class="w-12 h-12 rounded-full object-cover mr-4" alt="avatar" />
+          <img v-if="detail" :src="getAvatarSrc(detail.avatar, subscriptionId)" class="w-12 h-12 rounded-full object-cover mr-4" alt="avatar" referrerpolicy="no-referrer" @error="(e) => handleAvatarError(e, subscriptionId)" />
           <div class="min-w-0">
             <div class="flex items-center space-x-2">
               <h2 class="text-lg font-semibold truncate">{{ detail?.name || '频道' }}</h2>
@@ -26,6 +26,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
+import { useImageFallback } from '../composables/useImageFallback';
 
 const props = defineProps({
   subscriptionId: { type: [String, Number], required: true }
@@ -34,6 +35,7 @@ const props = defineProps({
 const detail = ref(null);
 const loading = ref(false);
 const { getSubscriptionDetail } = useSubscriptionApi();
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
 const fetchDetail = async () => {
   if (!props.subscriptionId) return;

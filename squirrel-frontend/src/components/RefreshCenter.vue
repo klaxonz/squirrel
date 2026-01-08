@@ -24,7 +24,7 @@
         </div>
         <ul class="list scrollbar">
           <li v-for="item in activeItems" :key="item.id" class="item">
-            <img v-if="item.meta?.avatar" :src="item.meta.avatar" alt="" referrerpolicy="no-referrer" />
+            <img :src="getAvatarSrc(item.meta?.avatar, item.id)" alt="" referrerpolicy="no-referrer" @error="(e) => handleAvatarError(e, item.id)" />
             <div class="meta">
               <div class="title">{{ item.meta?.name || ('订阅 ' + item.id) }}</div>
               <div class="sub">
@@ -45,9 +45,11 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useSubscriptionRefresh } from '../composables/useSubscriptionRefresh';
+import { useImageFallback } from '../composables/useImageFallback';
 
 const panelOpen = ref(false);
 const { refreshStates, subscriptionMeta, getStatusText, getProgressPercentage } = useSubscriptionRefresh();
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
 const activeItems = computed(() => {
   const items = [];

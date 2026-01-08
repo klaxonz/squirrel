@@ -93,18 +93,12 @@
                 />
 
                 <img
-                  v-if="sub.avatar"
-                  :src="sub.avatar"
+                  :src="getAvatarSrc(sub.avatar, sub.url)"
                   class="w-8 h-8 rounded-full object-cover"
                   alt="avatar"
-                  @error="sub.avatar = ''"
+                  referrerpolicy="no-referrer"
+                  @error="(e) => handleAvatarError(e, sub.url)"
                 />
-                <div
-                  v-else
-                  class="w-8 h-8 rounded-full bg-[#404040] flex items-center justify-center text-xs text-[#aaa]"
-                >
-                  {{ (sub.name?.charAt(0) || '?').toUpperCase() }}
-                </div>
 
                 <div class="flex-1 min-w-0">
                   <p class="text-white text-sm truncate">{{ sub.name || '未命名订阅' }}</p>
@@ -221,6 +215,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
+import { useImageFallback } from '../composables/useImageFallback';
 
 const props = defineProps({
   show: {
@@ -230,6 +225,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'imported']);
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
 const step = ref(1); // 1: 选择站点, 2: 预览, 3: 结果
 const supportedSites = ref([]);

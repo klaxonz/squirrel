@@ -58,25 +58,16 @@
                 :key="`avatar-${index}`"
                 class="contents"
               >
-                <img 
-                  v-if="index < 3 && !avatarErrors.has(index)"
-                  :src="avatar.avatar" 
+                <img
+                  v-if="index < 3"
+                  :src="getAvatarSrc(avatar.avatar, 'video-avatar-' + video.id + '-' + index)"
                   class="w-4 h-4 rounded-full object-cover flex-shrink-0 cursor-pointer ring-1 ring-[#212121]"
                   :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
                   referrerpolicy="no-referrer"
-                  @error="(e) => handleAvatarError(e, index)"
+                  @error="(e) => handleAvatarError(e, 'video-avatar-' + video.id + '-' + index)"
                   @click.stop="goToSubscription(avatar.id)"
                   :alt="avatar.name"
                 >
-                <!-- 添加默认头像 -->
-                <div 
-                  v-else-if="index < 3 && avatarErrors.has(index)"
-                  class="w-4 h-4 rounded-full flex-shrink-0 cursor-pointer ring-1 ring-[#212121] bg-gray-700 flex items-center justify-center"
-                  :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
-                  @click.stop="goToSubscription(avatar.id)"
-                >
-                  <span class="text-white text-2xs">{{ getInitials(avatar.name) }}</span>
-                </div>
               </div>
             </div>
             <span 
@@ -102,10 +93,11 @@
                 @click.stop="goToSubscription(subscription.id)"
               >
                 <img 
-                  :src="subscription.avatar"
+                  :src="getAvatarSrc(subscription.avatar, 'video-popup-avatar-' + subscription.subscription_id)"
                   alt="Actor Avatar" 
                   class="w-6 h-6 rounded-full mr-2 object-cover"
                   referrerpolicy="no-referrer"
+                  @error="(e) => handleAvatarError(e, 'video-popup-avatar-' + subscription.subscription_id)"
                 >
                 <span class="text-gray-300 group-hover/actor:text-white transition-colors duration-150">
                   {{ subscription.name }}
@@ -140,12 +132,13 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, nextTick, computed, watch, toRef } from 'vue';
+import { onMounted, onUnmounted, ref, nextTick, computed, watch } from 'vue';
 import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from "../composables/useOptionsMenu.js";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import { Icon } from '@iconify/vue';
 import { useSystemConfig } from '../composables/useSystemConfig.js';      
+import { useImageFallback } from '../composables/useImageFallback.js';
 
 const props = defineProps({
   video: {
@@ -179,6 +172,7 @@ const emit = defineEmits([
 
 // 获取系统配置
 const { config: systemConfig } = useSystemConfig();
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
 // 计算视频是否为 NSFW（任一订阅为 NSFW 则视频为 NSFW）
 const isNsfwVideo = computed(() => {
@@ -284,26 +278,13 @@ const displayNames = computed(() => {
     .join(', ');
 });
 
-// 添加状态管理
 const showDefaultThumbnail = ref(false);
-// 使用 Set 代替对象，提高性能
-const avatarErrors = ref(new Set());
 
 // 处理封面加载失败
 const handleThumbnailError = (e) => {
   showDefaultThumbnail.value = true;
 };
 
-// 处理头像加载失败
-const handleAvatarError = (e, index) => {
-  avatarErrors.value.add(index);
-};
-
-// 获取名字首字母
-const getInitials = (name) => {
-  if (!name) return '?';
-  return name.charAt(0).toUpperCase();
-};
 </script>
 
 <style scoped>

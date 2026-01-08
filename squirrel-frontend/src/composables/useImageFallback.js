@@ -9,12 +9,25 @@ export function useImageFallback(defaultImage = '/squirrel-icon.svg') {
   const failedImages = ref(new Set());
   
   const handleImageError = (event, identifier) => {
-    if (identifier) {
+    if (identifier !== undefined && identifier !== null) {
       failedImages.value.add(identifier);
     }
     if (event?.target) {
       event.target.src = defaultImage;
     }
+  };
+
+  const getImageSrc = (src, identifier) => {
+    if (identifier !== undefined && identifier !== null && failedImages.value.has(identifier)) {
+      return defaultImage;
+    }
+
+    if (typeof src !== 'string') {
+      return src ? src : defaultImage;
+    }
+
+    const trimmed = src.trim();
+    return trimmed ? trimmed : defaultImage;
   };
   
   const hasError = (identifier) => {
@@ -28,6 +41,7 @@ export function useImageFallback(defaultImage = '/squirrel-icon.svg') {
   return {
     failedImages,
     handleImageError,
+    getImageSrc,
     hasError,
     reset
   };
