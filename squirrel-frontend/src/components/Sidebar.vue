@@ -1,18 +1,18 @@
 <template>
-  <div class="sidebar bg-bg-primary h-full flex flex-col"
-       :class="[isCollapsed ? 'w-16' : 'w-56']">
+  <div class="sidebar bg-bg-primary h-full flex flex-col" :class="{ collapsed: isCollapsed }">
     <!-- 顶部菜单按钮 -->
-    <div class="flex items-center h-14 px-3">
+    <div class="sidebar-header flex items-center h-14 px-3">
       <button
         @click="toggleCollapse"
-        class="p-2 hover:bg-bg-hover rounded-full"
+        class="toggle-btn p-2 hover:bg-bg-hover rounded-full transition-all duration-200"
+        :title="isCollapsed ? '展开侧边栏' : '收起侧边栏'"
       >
-        <Bars3Icon class="h-6 w-6 text-text-accent" />
+        <Bars3Icon class="h-6 w-6 text-text-accent transition-transform duration-300" :class="{ 'rotate-180': isCollapsed }" />
       </button>
     </div>
 
     <!-- 导航菜单 -->
-    <nav class="flex-1 overflow-y-auto py-1 scrollbar-hide">
+    <nav class="sidebar-nav flex-1 overflow-y-auto py-1 scrollbar-hide">
       <!-- 主要菜单项 -->
       <div class="px-2">
         <SidebarMenuItem
@@ -25,7 +25,7 @@
       </div>
 
       <!-- 分割线 -->
-      <div class="my-2 border-t border-border-secondary mx-2"></div>
+      <div class="sidebar-divider my-2 mx-2"></div>
 
       <!-- 底部菜单项 -->
       <div class="px-2">
@@ -40,24 +40,21 @@
     </nav>
 
     <!-- 底部退出按钮 -->
-    <div class="px-2 py-1 border-t border-border-secondary">
+    <div class="sidebar-footer px-2 py-1 border-t border-border-secondary">
       <button
         @click="handleLogout"
-        class="flex items-center h-10 px-3 text-text-accent rounded-lg transition-colors duration-150 w-full"
-        :class="[
-          { 'justify-center': isCollapsed },
-          'hover:bg-bg-hover'
-        ]"
+        class="logout-btn flex items-center h-10 px-3 text-text-accent rounded-lg w-full"
+        :title="isCollapsed ? '退出' : ''"
       >
-        <ArrowRightOnRectangleIcon class="w-5 h-5" :class="[isCollapsed ? '' : 'mr-4']" />
-        <span v-if="!isCollapsed" class="text-xs">退出登录</span>
+        <ArrowRightOnRectangleIcon class="logout-icon w-5 h-5" />
+        <span class="logout-text text-xs">退出</span>
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, inject } from 'vue'
+import { ref, watch, inject, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Bars3Icon,
@@ -75,23 +72,34 @@ const emitter = inject('emitter')
 const { logout } = useUser()
 
 const toggleCollapse = () => {
-  isCollapsed.value = !isCollapsed.value;
-  emit('collapse', isCollapsed.value);
-  emitter.emit('sidebarStateChanged');
-};
+  isCollapsed.value = !isCollapsed.value
+  emit('collapse', isCollapsed.value)
+  emitter.emit('sidebarStateChanged')
+}
 
 const handleLogout = () => {
-  logout();
-  router.push('/login');
-};
+  logout()
+  router.push('/login')
+}
 
-// 监听路由变化，在移动端自动收起侧边栏
+onMounted(() => {
+  const savedState = localStorage.getItem('sidebar-collapsed')
+  if (savedState !== null) {
+    isCollapsed.value = savedState === 'true'
+    emit('collapse', isCollapsed.value)
+  }
+})
+
+watch(isCollapsed, (newValue) => {
+  localStorage.setItem('sidebar-collapsed', String(newValue))
+})
+
 watch(route, () => {
   if (window.innerWidth <= 768) {
-    isCollapsed.value = true;
-    emit('collapse', true);
+    isCollapsed.value = true
+    emit('collapse', true)
   }
-});
+})
 </script>
 
 <style scoped>
@@ -104,13 +112,89 @@ watch(route, () => {
   display: none;
 }
 
-/* 添加平滑过渡效果 */
 .sidebar {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  width: var(--sidebar-width, 12rem);
+  flex-shrink: 0;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
 }
 
-/* 确保图标垂直居中 */
-.router-link-active svg {
-  color: var(--text-accent);
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width, 4rem);
+}
+
+.sidebar-header,
+.sidebar-footer {
+  transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed .sidebar-header,
+.sidebar.collapsed .sidebar-footer {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.toggle-btn {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.toggle-btn:hover {
+  transform: scale(1.05);
+}
+
+.toggle-btn:active {
+  transform: scale(0.95);
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.sidebar-divider {
+  opacity: 1;
+  transition: opacity 0.3s ease, margin 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-divider {
+  opacity: 0.5;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.logout-btn {
+  transition: background-color 0.2s ease, padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logout-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.logout-icon {
+  margin-right: 1rem;
+  transition: margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed .logout-icon {
+  margin-right: 0;
+}
+
+.logout-text {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.sidebar.collapsed .logout-text {
+  opacity: 0;
+  transform: translateX(-0.5rem);
+  pointer-events: none;
+  width: 0;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .logout-btn {
+  padding-left: var(--sidebar-collapsed-item-padding, 0.875rem);
+  padding-right: var(--sidebar-collapsed-item-padding, 0.875rem);
 }
 </style>

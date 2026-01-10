@@ -44,7 +44,7 @@ export const MENU_ITEMS: MenuItems = {
       icon: ChartBarIcon,
     },
     {
-      name: '定时任务',
+      name: '定时',
       path: '/scheduled-tasks',
       icon: CpuChipIcon,
     },

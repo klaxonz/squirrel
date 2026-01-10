@@ -1,5 +1,5 @@
 <template>
-  <div class="video-list-container relative max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8" ref="containerRef">
+  <div class="video-list-container relative" ref="containerRef">
     <VirtualList
         class="scroller"
         :items="props.videos"
@@ -90,11 +90,12 @@ const containerRef = ref(null);
 const { width: containerWidth } = useElementSize(containerRef);
 
 const calculateGridItems = (width) => {
-  if (width >= 1600) return 7;
-  if (width >= 1400) return 6;
-  if (width >= 1100) return 5;
-  if (width >= 800) return 4;
-  if (width >= 500) return 3;
+  if (width >= 2560) return 8;
+  if (width >= 1920) return 7;
+  if (width >= 1600) return 6;
+  if (width >= 1400) return 5;
+  if (width >= 1100) return 4;
+  if (width >= 800) return 3;
   return 2;
 };
 
@@ -142,12 +143,26 @@ defineExpose({
   height: 100%;
   overflow-y: auto;
   margin: 0 auto;
+  padding: 0 1rem;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  max-width: var(--container-max-width, 2560px);
 }
 
 .video-list-container::-webkit-scrollbar {
   display: none;
+}
+
+@media (min-width: 640px) {
+  .video-list-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .video-list-container {
+    padding: 0 2rem;
+  }
 }
 
 .scroller {

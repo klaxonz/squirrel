@@ -6,13 +6,25 @@
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
   --breakpoint-2xl: 1536px;
-  
+
   /* 自定义断点 */
   --breakpoint-mobile: 500px;
   --breakpoint-tablet: 800px;
   --breakpoint-desktop: 1100px;
   --breakpoint-wide: 1400px;
-  --breakpoint-ultrawide: 1600px;
+  --breakpoint-ultrawide: 1920px;
+  --breakpoint-max: 2560px;
+
+  /* 视频网格列数断点 */
+  --grid-cols-mobile: 2;
+  --grid-cols-tablet: 3;
+  --grid-cols-desktop: 4;
+  --grid-cols-wide: 5;
+  --grid-cols-ultrawide: 6;
+  --grid-cols-max: 7;
+
+  /* 容器最大宽度 */
+  --container-max-width: 2560px;
 }
 
 /* 响应式混合类 */

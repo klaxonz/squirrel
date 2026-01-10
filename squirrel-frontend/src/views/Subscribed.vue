@@ -1,7 +1,7 @@
 <template>
   <div class="subscribed-page flex flex-col h-full bg-bg-primary text-text-primary">
     <!-- 顶部操作栏 - 对齐全部视频页的标签样式 -->
-    <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+    <div class="toolbar-container">
       <FeedToolbar
         :show-tabs="false"
         :tabs-with-counts="[]"
@@ -40,14 +40,14 @@
       class="channel-container pt-4 flex-grow overflow-y-auto"
       @scroll="handleScrollPosition"
     >
-      <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8" v-if="loadError">
+      <div class="content-container" v-if="loadError">
         <InlineAlert
           :message="`加载失败：${loadError?.message || loadError}`"
           action-label="重试"
           @action="refreshList"
         />
       </div>
-      <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="content-container">
         <!-- 频道列表 -->
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
           <div v-for="subscription in subscriptions" :key="subscription.id"
@@ -560,6 +560,28 @@ onUnmounted(() => {
 <style scoped>
 .subscribed-page {
   height: 100vh;
+}
+
+.toolbar-container,
+.content-container {
+  max-width: var(--container-max-width, 2560px);
+  margin: 0 auto;
+  padding: 0 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .toolbar-container,
+  .content-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .toolbar-container,
+  .content-container {
+    padding: 0 2rem;
+  }
 }
 
 .channel-container {

@@ -1,6 +1,6 @@
 <template>
   <div class="channel-header w-full">
-    <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4">
+    <div class="channel-header-content pt-4">
       <div class="flex items-center justify-between pb-3">
         <div class="flex items-center min-w-0">
           <img v-if="detail" :src="getAvatarSrc(detail.avatar, subscriptionId)" class="w-12 h-12 rounded-full object-cover mr-4" alt="avatar" referrerpolicy="no-referrer" @error="(e) => handleAvatarError(e, subscriptionId)" />
@@ -18,7 +18,7 @@
       </div>
     </div>
   </div>
-  <div v-if="detail?.description" class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8 pb-3 text-sm text-text-secondary">
+  <div v-if="detail?.description" class="channel-description pb-3 text-sm text-text-secondary">
     <p class="whitespace-pre-line line-clamp-3">{{ detail.description }}</p>
   </div>
 </template>
@@ -51,6 +51,28 @@ onMounted(fetchDetail);
 
 <style scoped>
 .channel-header { backdrop-filter: blur(6px); }
+
+.channel-header-content,
+.channel-description {
+  max-width: var(--container-max-width, 2560px);
+  margin: 0 auto;
+  padding: 0 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .channel-header-content,
+  .channel-description {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .channel-header-content,
+  .channel-description {
+    padding: 0 2rem;
+  }
+}
 </style>
 
 

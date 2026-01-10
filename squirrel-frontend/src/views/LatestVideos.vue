@@ -5,7 +5,7 @@
       :subscription-id="subscriptionId"
     />
     <!-- 顶部操作栏 - TabBar 和 SortButton -->
-    <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+    <div class="toolbar-container">
       <FeedToolbar
         :active-tab="activeTab"
         :nsfw="nsfw"
@@ -24,7 +24,7 @@
     </div>
 
     <div class="video-container flex-grow">
-      <div v-if="loadError" class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+      <div v-if="loadError" class="alert-container">
         <InlineAlert
           :message="`加载失败：${loadError?.message || loadError}`"
           action-label="重试"
@@ -139,6 +139,28 @@ onDeactivated(() => {
 .video-container {
   flex: 1;
   overflow: hidden;
+}
+
+.toolbar-container,
+.alert-container {
+  max-width: var(--container-max-width, 2560px);
+  margin: 0 auto;
+  padding: 0 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .toolbar-container,
+  .alert-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .toolbar-container,
+  .alert-container {
+    padding: 0 2rem;
+  }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }

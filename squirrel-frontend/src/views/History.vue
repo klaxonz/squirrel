@@ -1,7 +1,7 @@
 <template>
   <div class="history-page flex flex-col h-full">
     <!-- 顶部操作栏 -->
-    <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+    <div class="toolbar-container">
       <FeedToolbar
         :show-tabs="false"
         :show-nsfw="true"
@@ -138,6 +138,25 @@ onMounted(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.toolbar-container {
+  max-width: var(--container-max-width, 2560px);
+  margin: 0 auto;
+  padding: 0 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .toolbar-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .toolbar-container {
+    padding: 0 2rem;
+  }
 }
 
 .video-container {
