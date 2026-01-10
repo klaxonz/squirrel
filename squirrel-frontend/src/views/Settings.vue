@@ -1,5 +1,5 @@
 <template>
-  <div class="settings-container bg-bg-primary text-white min-h-screen p-4 md:p-8">
+  <div class="settings-container bg-bg-primary text-text-primary min-h-screen p-4 md:p-8">
     <h1 class="text-2xl font-bold mb-4">设置</h1>
 
     <!-- Tab 导航 -->
@@ -10,8 +10,8 @@
         @click="currentTab = tab.key"
         class="px-4 py-2 rounded-full border text-sm transition-colors"
         :class="currentTab === tab.key
-          ? 'bg-white text-black border-white'
-          : 'bg-transparent border-white/20 text-gray-300 hover:bg-white/10'"
+          ? 'bg-bg-primary text-text-primary border-border-primary'
+          : 'bg-transparent border-border-secondary text-text-secondary hover:bg-bg-hover'"
       >
         {{ tab.label }}
       </button>
@@ -19,11 +19,11 @@
 
     <!-- NSFW 内容设置 -->
     <div v-if="currentTab === 'content'" class="settings-section mb-8">
-      <h2 class="text-lg font-semibold mb-4 text-gray-300">内容设置</h2>
-      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+      <h2 class="text-lg font-semibold mb-4 text-text-secondary">内容设置</h2>
+      <div class="setting-item flex justify-between items-center py-3 border-b border-border-secondary">
         <div>
           <h3 class="font-medium">显示敏感内容</h3>
-          <p class="text-sm text-gray-400">显示可能包含成人内容的媒体</p>
+          <p class="text-sm text-text-muted">显示可能包含成人内容的媒体</p>
         </div>
         <label class="switch">
           <input 
@@ -36,10 +36,10 @@
         </label>
       </div>
 
-      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+      <div class="setting-item flex justify-between items-center py-3 border-b border-border-secondary">
         <div>
           <h3 class="font-medium">NSFW 视频封面模糊</h3>
-          <p class="text-sm text-gray-400">自动模糊显示标记为 NSFW 的视频封面</p>
+          <p class="text-sm text-text-muted">自动模糊显示标记为 NSFW 的视频封面</p>
         </div>
         <label class="switch">
           <input
@@ -55,11 +55,11 @@
 
     <!-- 播放设置 -->
     <div v-if="currentTab === 'playback'" class="settings-section mb-8">
-      <h2 class="text-lg font-semibold mb-4 text-gray-300">播放设置</h2>
-      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+      <h2 class="text-lg font-semibold mb-4 text-text-secondary">播放设置</h2>
+      <div class="setting-item flex justify-between items-center py-3 border-b border-border-secondary">
         <div>
           <h3 class="font-medium">自动播放</h3>
-          <p class="text-sm text-gray-400">打开视频页面时自动开始播放</p>
+          <p class="text-sm text-text-muted">打开视频页面时自动开始播放</p>
         </div>
         <label class="switch">
           <input 
@@ -72,10 +72,10 @@
         </label>
       </div>
 
-      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+      <div class="setting-item flex justify-between items-center py-3 border-b border-border-secondary">
         <div>
           <h3 class="font-medium">自动播放下一个</h3>
-          <p class="text-sm text-gray-400">当前视频播放完毕后自动播放下一个视频</p>
+          <p class="text-sm text-text-muted">当前视频播放完毕后自动播放下一个视频</p>
         </div>
         <label class="switch">
           <input 
@@ -88,10 +88,10 @@
         </label>
       </div>
 
-      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+      <div class="setting-item flex justify-between items-center py-3 border-b border-border-secondary">
         <div>
           <h3 class="font-medium">循环播放</h3>
-          <p class="text-sm text-gray-400">视频播放完毕后自动重新播放</p>
+          <p class="text-sm text-text-muted">视频播放完毕后自动重新播放</p>
         </div>
         <label class="switch">
           <input 
@@ -107,11 +107,11 @@
 
     <!-- 系统配置 -->
     <div v-if="currentTab === 'system'" class="settings-section mb-8">
-      <h2 class="text-lg font-semibold mb-4 text-gray-300">系统配置</h2>
-      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+      <h2 class="text-lg font-semibold mb-4 text-text-secondary">系统配置</h2>
+      <div class="setting-item flex justify-between items-center py-3 border-b border-border-secondary">
         <div>
           <h3 class="font-medium">启用调度器（Scheduler）</h3>
-          <p class="text-sm text-gray-400">按计划任务周期性执行订阅同步、重试等任务</p>
+          <p class="text-sm text-text-muted">按计划任务周期性执行订阅同步、重试等任务</p>
         </div>
         <label class="switch">
           <input
@@ -124,10 +124,10 @@
         </label>
       </div>
 
-      <div class="setting-item flex justify-between items-center py-3 border-b border-gray-700">
+      <div class="setting-item flex justify-between items-center py-3 border-b border-border-secondary">
         <div>
           <h3 class="font-medium">启用 Worker（队列消费）</h3>
-          <p class="text-sm text-gray-400">开启后启动 Dramatiq Worker 进行队列消费</p>
+          <p class="text-sm text-text-muted">开启后启动 Dramatiq Worker 进行队列消费</p>
         </div>
         <label class="switch">
           <input

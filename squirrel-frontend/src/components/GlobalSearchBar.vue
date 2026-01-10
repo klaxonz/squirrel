@@ -1,5 +1,5 @@
 <template>
-  <div class="global-search-bar bg-[#0f0f0f] border-[#272727] px-4 py-3">
+  <div class="global-search-bar bg-bg-primary border border-border-secondary px-4 py-3">
     <div class="max-w-2xl mx-auto">
       <div class="relative flex items-center w-full">
         <input
@@ -9,21 +9,21 @@
           @input="handleInput"
           type="text"
           :placeholder="placeholder"
-          class="w-full h-10 pl-10 pr-12 text-sm bg-[#222222] border border-[#303030] rounded-full focus:outline-none focus:border-[#4a4a4c] text-white placeholder-gray-400"
+          class="w-full h-10 pl-10 pr-12 text-sm bg-bg-secondary border border-border-secondary rounded-full focus:outline-none focus:border-border-hover text-text-primary placeholder-text-muted transition-colors"
         >
         <button
           @click="handleSearch"
           class="absolute left-3 top-1/2 transform -translate-y-1/2 focus:outline-none"
         >
-          <MagnifyingGlassIcon class="h-5 w-5 text-gray-400" />
+          <MagnifyingGlassIcon class="h-5 w-5 text-text-muted" />
         </button>
-        
+
         <!-- 清除按钮 -->
         <button
           v-if="inputValue"
           @click="clearSearch"
           title="清除搜索 (ESC)"
-          class="absolute right-3 top-1/2 transform -translate-y-1/2 focus:outline-none hover:text-white hover:bg-white/10 text-gray-400 rounded-full p-1 transition-colors"
+          class="absolute right-3 top-1/2 transform -translate-y-1/2 focus:outline-none hover:text-text-primary hover:bg-bg-hover text-text-muted rounded-full p-1 transition-colors"
         >
           <XMarkIcon class="h-4 w-4" />
         </button>
@@ -33,7 +33,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch } from 'vue'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 
 // Props: presentational component only
@@ -102,11 +102,7 @@ defineExpose({
 }
 
 /* 添加平滑过渡效果 */
-input {
-  transition: border-color 0.2s ease-in-out;
-}
-
 input:focus {
-  box-shadow: 0 0 0 2px rgba(74, 74, 76, 0.3);
+  box-shadow: 0 0 0 2px var(--border-hover);
 }
 </style>

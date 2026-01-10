@@ -33,7 +33,7 @@
           <!-- 标题与操作按钮 -->
           <transition name="fade" mode="out-in">
             <div :key="video?.id" class="flex items-center justify-between">
-              <h1 class="text-xs md:text-sm lg:text-base lg:font-medium text-white">{{ video?.title }}</h1>
+              <h1 class="text-xs md:text-sm lg:text-base lg:font-medium text-text-primary">{{ video?.title }}</h1>
 
             <!-- 操作按钮组 -->
             <div class="flex items-center space-x-1">
@@ -134,12 +134,12 @@
                   >
                   <router-link
                     :to="`/subscription/${video.subscriptions[0].id}/all`"
-                    class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-color-info transition-colors"
+                    class="text-xs md:text-sm lg:text-base text-text-primary font-medium hover:text-color-info transition-colors"
                   >
                     {{ video.subscriptions[0].name }}
                   </router-link>
                   <button
-                    class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/15 text-white rounded-full transition-colors font-medium"
+                    class="px-3 py-1.5 text-xs bg-bg-elevated hover:bg-bg-hover text-text-primary rounded-full transition-colors font-medium"
                     @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
                     :title="`取消订阅 ${video.subscriptions[0].name}`"
                     :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
@@ -147,7 +147,7 @@
                 </div>
 
                 <!-- 主订阅统计信息 -->
-                <div class="ml-11 md:ml-12 text-[10px] text-text-muted mt-1">
+                <div class="ml-11 md:ml-12 text-2xs text-text-muted mt-1">
                   <span>
                     总视频: {{ video.subscriptions[0].total_videos || 0 }} | 已解析: {{ video.subscriptions[0].total_extract || 0 }}
                   </span>
@@ -162,7 +162,7 @@
                   <div
                     v-for="sub in video.subscriptions.slice(1)"
                     :key="sub.id"
-                    class="flex items-center px-2 py-1 rounded-full bg-white/5 hover:bg-white/10 cursor-pointer transition-colors text-[11px] text-text-primary"
+                    class="flex items-center px-2 py-1 rounded-full bg-bg-tertiary/50 hover:bg-bg-tertiary/70 cursor-pointer transition-colors text-xs text-text-primary"
                     @click.stop="$router.push(`/subscription/${sub.id}/all`)"
                   >
                     <img
@@ -186,9 +186,9 @@
       <div :class="['md:w-[320px] lg:w-[400px] md:ml-6', isWidescreen ? 'hidden' : 'hidden md:block']">
         <div class="sticky top-4">
           <div class="rounded-xl px-4 pb-4 pt-0 flex flex-col">
-            <h2 class="text-white text-lg mb-4">相关视频</h2>
+            <h2 class="text-text-primary text-lg mb-4">相关视频</h2>
             <div>
-              <div v-if="!relatedVideos.length && !loadingRelated" class="text-gray-400 text-sm">暂无推荐</div>
+              <div v-if="!relatedVideos.length && !loadingRelated" class="text-text-muted text-sm">暂无推荐</div>
               <div v-if="relatedVideos.length" class="space-y-3">
                 <div
                   v-for="relatedVideo in relatedVideos"
@@ -196,7 +196,7 @@
                   class="flex space-x-3 cursor-pointer group"
                   @click="goToVideo(relatedVideo.id, relatedVideo)"
                 >
-                  <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-black/60 transform-gpu">
+                  <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-bg-tertiary/60 transform-gpu">
                     <img
                       v-if="relatedVideo.thumbnail && !relatedThumbnailErrorIds.has(relatedVideo.id)"
                       :src="relatedVideo.thumbnail"
@@ -210,20 +210,20 @@
                       v-else
                       class="w-full h-full absolute top-0 left-0 bg-bg-secondary flex items-center justify-center"
                     >
-                      <div class="text-gray-500 flex flex-col items-center">
+                      <div class="text-text-muted flex flex-col items-center">
                         <Icon icon="material-symbols:image" class="text-3xl mb-1" />
-                        <span class="text-[10px]">暂无封面</span>
+                        <span class="text-2xs">暂无封面</span>
                       </div>
                     </div>
-                    <div class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 py-0.5 rounded">
+                    <div class="absolute bottom-1 right-1 bg-bg-tertiary/70 text-text-primary text-2xs px-1 py-0.5 rounded">
                       {{ formatDuration(relatedVideo.duration) }}
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="text-white text-xs leading-5 max-h-10 overflow-hidden group-hover:text-color-info transition-colors">
+                    <div class="text-text-primary text-xs leading-5 max-h-10 overflow-hidden group-hover:text-color-info transition-colors">
                       {{ relatedVideo.title }}
                     </div>
-                    <div class="text-text-muted text-[10px] mt-1 truncate">
+                    <div class="text-text-muted text-2xs mt-1 truncate">
                       <router-link
                         v-if="relatedVideo.subscriptions?.[0]?.id"
                         :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
@@ -238,7 +238,7 @@
                     </div>
                     <div
                       v-if="relatedVideo.uploaded_at"
-                      class="text-text-tertiary text-[10px] mt-0.5 truncate"
+                      class="text-text-tertiary text-2xs mt-0.5 truncate"
                     >
                       {{ formatDate(relatedVideo.uploaded_at) }}
                     </div>

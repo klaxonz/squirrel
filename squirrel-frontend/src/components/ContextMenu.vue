@@ -12,10 +12,10 @@
            @click.stop="toggleReadMenu">
         <button class="option-item w-full flex justify-between items-center group">
           <span class="flex items-center">
-            <CheckIcon class="h-5 w-5 mr-3 text-text-muted group-hover:text-white transition-colors duration-150" />
-            <span class="text-white group-hover:text-white transition-colors duration-150">标记为已读</span>
+            <CheckIcon class="h-5 w-5 mr-3 text-text-muted group-hover:text-text-primary transition-colors duration-150" />
+            <span class="text-text-primary group-hover:text-text-primary transition-colors duration-150">标记为已读</span>
           </span>
-          <ChevronRightIcon class="h-4 w-4 text-text-muted group-hover:text-white transition-colors duration-150" />
+          <ChevronRightIcon class="h-4 w-4 text-text-muted group-hover:text-text-primary transition-colors duration-150" />
         </button>
         <div v-show="showReadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-bg-card border border-border-primary shadow-lg rounded-lg overflow-hidden">
           <button @click.stop="$emit('toggleReadStatus', true)" class="sub-option-item">
@@ -35,10 +35,10 @@
            @click.stop="toggleUnreadMenu">
         <button class="option-item w-full flex justify-between items-center group">
           <span class="flex items-center">
-            <XMarkIcon class="h-5 w-5 mr-3 text-text-muted group-hover:text-white transition-colors duration-150" />
-            <span class="text-white group-hover:text-white transition-colors duration-150">标记为未读</span>
+            <XMarkIcon class="h-5 w-5 mr-3 text-text-muted group-hover:text-text-primary transition-colors duration-150" />
+            <span class="text-text-primary group-hover:text-text-primary transition-colors duration-150">标记为未读</span>
           </span>
-          <ChevronRightIcon class="h-4 w-4 text-text-muted group-hover:text-white transition-colors duration-150" />
+          <ChevronRightIcon class="h-4 w-4 text-text-muted group-hover:text-text-primary transition-colors duration-150" />
         </button>
         <div v-if="showUnreadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-bg-card border border-border-primary shadow-lg rounded-lg overflow-hidden">
           <button @click.stop="$emit('toggleReadStatus', false)" class="sub-option-item">
@@ -57,16 +57,16 @@
     <div class="py-1">
       <button @click="handleLiked" class="option-item group">
         <HeartIcon v-if="video.is_liked === 1"
-             class="h-5 w-5 mr-3 text-red-500"
+             class="h-5 w-5 mr-3 text-color-error"
              fill="currentColor" />
 
         <HandThumbDownIcon v-else-if="video.is_liked === 0"
-             class="h-5 w-5 mr-3 text-yellow-500" />
+             class="h-5 w-5 mr-3 text-color-warning" />
 
         <HeartIcon v-else
-             class="h-5 w-5 mr-3 text-text-muted group-hover:text-white transition-colors duration-150" />
+             class="h-5 w-5 mr-3 text-text-muted group-hover:text-text-primary transition-colors duration-150" />
 
-        <span class="text-white group-hover:text-white transition-colors duration-150">
+        <span class="text-text-primary group-hover:text-text-primary transition-colors duration-150">
           {{ 
             video.is_liked === 1 ? '已喜欢' : 
             video.is_liked === 0 ? '不喜欢' : 
@@ -75,8 +75,8 @@
         </span>
       </button>
       <button @click="$emit('copyVideoLink')" class="option-item group">
-        <ClipboardDocumentIcon class="h-5 w-5 mr-3 text-text-muted group-hover:text-white transition-colors duration-150" />
-        <span class="text-white group-hover:text-white transition-colors duration-150">复制链接</span>
+        <ClipboardDocumentIcon class="h-5 w-5 mr-3 text-text-muted group-hover:text-text-primary transition-colors duration-150" />
+        <span class="text-text-primary group-hover:text-text-primary transition-colors duration-150">复制链接</span>
       </button>
     </div>
   </div>
@@ -171,7 +171,7 @@ onUnmounted(() => {
 }
 
 .sub-option-item {
-  @apply w-full px-3 py-2 text-sm font-normal text-white hover:bg-bg-elevated transition-colors duration-150 ease-in-out flex items-center;
+  @apply w-full px-3 py-2 text-sm font-normal text-text-primary hover:bg-bg-elevated transition-colors duration-150 ease-in-out flex items-center;
 }
 
 .option-item:hover {

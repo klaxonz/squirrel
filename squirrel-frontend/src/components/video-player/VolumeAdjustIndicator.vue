@@ -62,7 +62,7 @@ const volumeIcon = computed(() => {
 }
 
 .volume-icon {
-  @apply text-white text-xl;
+  @apply text-text-primary text-xl;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
@@ -97,7 +97,7 @@ const volumeIcon = computed(() => {
 }
 
 .volume-text {
-  @apply text-white text-sm font-medium;
+  @apply text-text-primary text-sm font-medium;
   font-family: 'Roboto', sans-serif;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   min-width: 32px;

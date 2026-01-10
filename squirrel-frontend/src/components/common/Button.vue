@@ -90,15 +90,15 @@ const shapeClasses = computed(() => {
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'primary':
-      return 'bg-color-info text-white hover:bg-blue-600 focus:ring-blue-500'
+      return 'bg-color-info text-text-accent hover:bg-color-info-hover focus:ring-color-info'
     case 'secondary':
-      return 'bg-bg-elevated text-text-primary hover:bg-bg-card focus:ring-gray-500 border border-border-primary'
+      return 'bg-bg-elevated text-text-primary hover:bg-bg-card focus:ring-text-muted border border-border-primary'
     case 'danger':
-      return 'bg-color-error text-white hover:bg-red-600 focus:ring-red-500'
+      return 'bg-color-error text-text-accent hover:bg-color-error-hover focus:ring-color-error'
     case 'ghost':
-      return 'bg-transparent text-text-primary hover:bg-bg-elevated focus:ring-gray-500'
+      return 'bg-transparent text-text-primary hover:bg-bg-elevated focus:ring-text-muted'
     default:
-      return 'bg-bg-tertiary text-text-primary hover:bg-bg-elevated focus:ring-gray-500'
+      return 'bg-bg-tertiary text-text-primary hover:bg-bg-elevated focus:ring-text-muted'
   }
 })
 </script>

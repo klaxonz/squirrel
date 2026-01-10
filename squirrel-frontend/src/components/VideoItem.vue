@@ -1,6 +1,6 @@
 <template>
-  <div 
-    class="video-item bg-[#212121] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ease-in-out transform hover:-translate-y-1 relative"
+  <div
+    class="video-item bg-bg-card rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ease-in-out transform hover:-translate-y-1 relative"
     @contextmenu.prevent="showContextMenu"
     @click="handleClick"
   >
@@ -13,30 +13,30 @@
         @error="handleThumbnailError"
         :alt="video.title"
       >
-      
+
       <!-- 添加默认封面 -->
-      <div 
-        v-if="showDefaultThumbnail" 
-        class="w-full h-full absolute top-0 left-0 bg-[#1a1a1a] flex items-center justify-center"
+      <div
+        v-if="showDefaultThumbnail"
+        class="w-full h-full absolute top-0 left-0 bg-bg-tertiary flex items-center justify-center"
       >
-        <div class="text-gray-500 flex flex-col items-center">
+        <div class="text-text-muted flex flex-col items-center">
           <Icon icon="material-symbols:image" class="text-4xl mb-2" />
           <span class="text-xs">暂无封面</span>
         </div>
       </div>
-      
-      <div class="video-duration absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-2xs px-1 py-0.5 rounded">
+
+      <div class="video-duration absolute bottom-1 right-1 bg-bg-tertiary/70 text-text-accent text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
       </div>
-      <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+      <div class="absolute inset-0 bg-bg-tertiary opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
 
       <div
-        v-if="showProgress && progress > 0" 
-        class="absolute bottom-0 left-0 right-0 h-[2px] bg-black/40 backdrop-blur-sm"
+        v-if="showProgress && progress > 0"
+        class="absolute bottom-0 left-0 right-0 h-[2px] bg-bg-tertiary/40 backdrop-blur-sm"
       >
-        <div 
-          class="h-full bg-red-600/90 transition-all duration-200"
-          :style="{ 
+        <div
+          class="h-full bg-color-error/90 transition-all duration-200"
+          :style="{
             width: `${(progress * 100).toFixed(1)}%`,
             borderRadius: '1px'
           }"
@@ -44,24 +44,24 @@
       </div>
     </div>
     <div class="p-2">
-      <h5 
-        class="text-[10px] text-white font-medium line-clamp-2 h-8 cursor-pointer hover:text-blue-400 transition-colors duration-200"
+      <h5
+        class="text-2xs text-text-primary font-medium line-clamp-2 h-8 cursor-pointer hover:text-color-info transition-colors duration-200"
       >
         {{ video.title }}
       </h5>
-      <div class="flex items-center justify-between text-2xs text-gray-400 pt-1">
+      <div class="flex items-center justify-between text-2xs text-text-muted pt-1">
         <div class="relative group flex-1 min-w-0">
           <div class="flex items-center min-w-0">
             <div class="flex -space-x-2 relative">
-              <div 
-                v-for="(avatar, index) in displayAvatars" 
+              <div
+                v-for="(avatar, index) in displayAvatars"
                 :key="`avatar-${index}`"
                 class="contents"
               >
                 <img
                   v-if="index < 3"
                   :src="getAvatarSrc(avatar.avatar, 'video-avatar-' + video.id + '-' + index)"
-                  class="w-4 h-4 rounded-full object-cover flex-shrink-0 cursor-pointer ring-1 ring-[#212121]"
+                  class="w-4 h-4 rounded-full object-cover flex-shrink-0 cursor-pointer ring-1 ring-bg-card"
                   :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
                   referrerpolicy="no-referrer"
                   @error="(e) => handleAvatarError(e, 'video-avatar-' + video.id + '-' + index)"
@@ -70,8 +70,8 @@
                 >
               </div>
             </div>
-            <span 
-              class="text-2xs text-gray-400 ml-2 truncate cursor-pointer hover:text-[#3ea6ff] transition-colors flex-1 min-w-0 block"
+            <span
+              class="text-2xs text-text-muted ml-2 truncate cursor-pointer hover:text-color-info transition-colors flex-1 min-w-0 block"
               @click.stop="goToSubscription(video.subscriptions[0]?.id)"
               :title="displayNames"
             >
@@ -80,33 +80,33 @@
           </div>
 
           <!-- 悬浮模态框 -->
-          <div 
+          <div
             v-if="hasActors"
-            class="channel-popup opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute left-0 bottom-full mb-2 bg-[#282828] rounded-lg shadow-lg transition-all duration-200 z-50 w-max max-w-[300px] p-3"
+            class="channel-popup opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute left-0 bottom-full mb-2 bg-bg-card rounded-lg shadow-lg transition-all duration-200 z-50 w-max max-w-72 p-3"
           >
             <!-- 订阅列表 -->
             <div class="flex flex-col gap-2">
-              <div 
+              <div
                 v-for="subscription in video.subscriptions"
                 :key="subscription.subscription_id"
-                class="flex items-center group/actor cursor-pointer hover:bg-gray-700/50 p-1 rounded-lg transition-colors duration-150"
+                class="flex items-center group/actor cursor-pointer hover:bg-bg-hover p-1 rounded-lg transition-colors duration-150"
                 @click.stop="goToSubscription(subscription.id)"
               >
-                <img 
+                <img
                   :src="getAvatarSrc(subscription.avatar, 'video-popup-avatar-' + subscription.subscription_id)"
-                  alt="Actor Avatar" 
+                  alt="Actor Avatar"
                   class="w-6 h-6 rounded-full mr-2 object-cover"
                   referrerpolicy="no-referrer"
                   @error="(e) => handleAvatarError(e, 'video-popup-avatar-' + subscription.subscription_id)"
                 >
-                <span class="text-gray-300 group-hover/actor:text-white transition-colors duration-150">
+                <span class="text-text-secondary group-hover/actor:text-text-primary transition-colors duration-150">
                   {{ subscription.name }}
                 </span>
               </div>
             </div>
-            
+
             <!-- 小三角形 -->
-            <div class="absolute -bottom-2 left-4 w-4 h-4 bg-[#282828] transform rotate-45"></div>
+            <div class="absolute -bottom-2 left-4 w-4 h-4 bg-bg-card transform rotate-45"></div>
           </div>
         </div>
         <span class="leading-4 font-medium flex-shrink-0 ml-2">{{ displayDateText }}</span>
@@ -136,7 +136,7 @@ import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from "../composables/useOptionsMenu.js";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import { Icon } from '@iconify/vue';
-import { useSystemConfig } from '../composables/useSystemConfig.js';      
+import { useSystemConfig } from '../composables/useSystemConfig.js';
 import { useImageFallback } from '../composables/useImageFallback.js';
 
 const props = defineProps({
@@ -179,7 +179,7 @@ const isNsfwVideo = computed(() => {
 
 // 计算是否应该模糊封面
 const shouldBlurThumbnail = computed(() => {
-  return systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value;   
+  return systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value;
 });
 
 const displayDateText = computed(() => {
@@ -202,12 +202,12 @@ const showContextMenu = async (event) => {
   event.preventDefault();
   event.stopPropagation();
   document.dispatchEvent(new CustomEvent('closeAllContextMenus'));
-  
+
   await nextTick();
-  
+
   const x = event.clientX;
   const y = event.clientY;
-  
+
   menuPosition.value = { x, y };
   showMenu.value = true;
 };
@@ -256,7 +256,7 @@ const displayAvatars = computed(() => {
     name: sub.name,
     avatar: sub.avatar
   })) || [];
-  
+
   // 如果 subscriptions 为空，则使用 actors
   if (!avatars.length && props.video.actors) {
     avatars = props.video.actors.map(actor => ({
@@ -265,7 +265,7 @@ const displayAvatars = computed(() => {
       avatar: actor.avatar
     }));
   }
-  
+
   return avatars.slice(0, 3);
 });
 
@@ -296,7 +296,7 @@ const handleThumbnailError = (e) => {
 .video-thumbnail {
   position: relative;
   padding-top: 56.25%; /* 16:9 宽高比 */
-  background-color: #181818; /* 更深的背景色 */
+  background-color: var(--bg-tertiary);
 }
 
 .video-thumbnail img,
@@ -333,20 +333,16 @@ const handleThumbnailError = (e) => {
   line-height: 1rem; /* 16px, 调整行高以匹配头像高度 */
 }
 
-.h-9 {
-  height: 2.25rem; /* 36px */
+.h-8 {
+  height: 2rem; /* 32px, 刚好容纳两行文字 */
 }
 
 .context-menu-item {
-  @apply px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center;
+  @apply px-4 py-2 text-sm text-text-primary hover:bg-bg-hover cursor-pointer flex items-center;
 }
 
 .cursor-pointer {
   cursor: pointer;
-}
-
-.hover\:text-blue-400:hover {
-  color: #60a5fa;
 }
 
 /* 添加一些响应式调整 */
@@ -354,14 +350,10 @@ const handleThumbnailError = (e) => {
   .text-2xs {
     font-size: 0.5625rem;
   }
-  
-  .h-9 {
-    height: 2rem;
-  }
 }
 
 .video-item.border-2 {
-  box-shadow: 0 0 0 2px theme('colors.blue.500');
+  box-shadow: 0 0 0 2px theme('colors.color-info');
 }
 
 .gap-1 {
@@ -402,8 +394,7 @@ const handleThumbnailError = (e) => {
 }
 
 /* 添加进度条相关样式 */
-.video-thumbnail:hover .bg-red-600\/90 {
-  @apply bg-red-500;
+.video-thumbnail:hover .bg-color-error\/90 {
   height: 3px;
   margin-top: -1px;
 }
@@ -411,11 +402,6 @@ const handleThumbnailError = (e) => {
 /* 确保进度条容器在hover时保持原高度 */
 .video-thumbnail:hover .h-\[2px\] {
   height: 2px;
-}
-
-/* 修改标题高度 */
-.h-8 {
-  height: 2rem; /* 32px, 刚好容纳两行文字 */
 }
 
 /* 确保点击区域可以正常工作 */
@@ -441,10 +427,6 @@ const handleThumbnailError = (e) => {
   box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
 }
 
-.ring-\[\#212121\] {
-  --tw-ring-color: #212121;
-}
-
 .-space-x-2 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-x-reverse: 0;
   margin-right: calc(-0.5rem * var(--tw-space-x-reverse));
@@ -461,20 +443,15 @@ const handleThumbnailError = (e) => {
     width: 100%;
     margin-bottom: 2px;
   }
-  
+
   .video-thumbnail {
     padding-top: 56.25%; /* 保持16:9比例 */
   }
 }
 
-/* 添加默认封面样式 */
-.default-thumbnail {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-}
-
-/* 添加默认头像样式 */
+/* 默认头像样式 */
 .default-avatar {
-  @apply bg-gray-700 text-white flex items-center justify-center text-2xs font-medium;
+  @apply bg-bg-tertiary text-text-primary flex items-center justify-center text-2xs font-medium;
 }
 
 /* NSFW 封面模糊效果 */

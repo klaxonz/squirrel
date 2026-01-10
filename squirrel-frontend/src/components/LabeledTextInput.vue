@@ -1,10 +1,10 @@
 <template>
   <div>
-    <label class="block text-xs text-gray-400 mb-1">{{ label }}</label>
+    <label class="block text-xs text-text-muted mb-1">{{ label }}</label>
     <input
       :type="type"
       v-model="internalValue"
-      class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
+      class="w-full bg-bg-tertiary border border-border-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error"
       :placeholder="placeholder"
     >
   </div>

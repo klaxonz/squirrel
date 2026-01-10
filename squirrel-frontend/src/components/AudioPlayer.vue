@@ -1,8 +1,8 @@
 <template>
-  <div 
+  <div
     v-show="isVisible"
     v-if="episode"
-    class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#282828] rounded-lg shadow-lg overflow-hidden w-[420px] transition-opacity duration-200"
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-bg-card rounded-lg shadow-lg overflow-hidden w-80 transition-opacity duration-200 sm:w-96"
   >
     <div class="flex flex-col">
       <!-- 主界面 -->
@@ -16,37 +16,37 @@
             referrerpolicy="no-referrer"
           />
           <div class="flex-grow min-w-0">
-            <h3 class="text-white text-[11px] font-medium line-clamp-1 tracking-wide">{{ episode.title }}</h3>
-            <div class="text-[9px] text-[#aaaaaa] mt-0.5">
+            <h3 class="text-text-primary text-xs font-medium line-clamp-1 tracking-wide">{{ episode.title }}</h3>
+            <div class="text-2xs text-text-muted mt-0.5">
               {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
             </div>
           </div>
         </div>
-        
+
         <!-- 控制按钮 -->
         <div class="flex items-center gap-1">
-          <button 
+          <button
             @click="skipBackward"
-            class="p-1 text-[#aaaaaa] hover:text-white rounded-full hover:bg-[#3f3f3f] transition-colors"
+            class="p-1 text-text-muted hover:text-text-primary rounded-full hover:bg-bg-hover transition-colors"
           >
             <BackwardIcon class="h-3 w-3" />
           </button>
-          <button 
+          <button
             @click="togglePlay"
-            class="p-1 text-white rounded-full bg-white hover:bg-gray-200 transition-colors"
+            class="p-1 text-text-primary rounded-full bg-bg-elevated hover:bg-bg-hover transition-colors"
           >
-            <PlayIcon v-if="!isPlaying" class="h-3 w-3 text-black" />
-            <PauseIcon v-else class="h-3 w-3 text-black" />
+            <PlayIcon v-if="!isPlaying" class="h-3 w-3" />
+            <PauseIcon v-else class="h-3 w-3" />
           </button>
-          <button 
+          <button
             @click="skipForward"
-            class="p-1 text-[#aaaaaa] hover:text-white rounded-full hover:bg-[#3f3f3f] transition-colors"
+            class="p-1 text-text-muted hover:text-text-primary rounded-full hover:bg-bg-hover transition-colors"
           >
             <ForwardIcon class="h-3 w-3" />
           </button>
-          <button 
+          <button
             @click="$emit('close')"
-            class="p-1 text-[#aaaaaa] hover:text-white rounded-full hover:bg-[#3f3f3f] transition-colors"
+            class="p-1 text-text-muted hover:text-text-primary rounded-full hover:bg-bg-hover transition-colors"
           >
             <XMarkIcon class="h-2.5 w-2.5" />
           </button>
@@ -55,13 +55,13 @@
 
       <!-- 进度条 -->
       <div class="px-2 pb-1">
-        <div class="relative h-0.5 bg-[#4f4f4f] rounded-full cursor-pointer" @click="seek">
-          <div 
-            class="absolute left-0 top-0 h-full bg-white rounded-full transition-all"
+        <div class="relative h-0.5 bg-bg-tertiary rounded-full cursor-pointer" @click="seek">
+          <div
+            class="absolute left-0 top-0 h-full bg-bg-elevated rounded-full transition-all"
             :style="{ width: `${progress}%` }"
           ></div>
           <div class="absolute left-0 right-0 top-0 bottom-0 opacity-0 hover:opacity-100 transition-opacity">
-            <div class="absolute left-0 top-0 h-full bg-white/30 rounded-full"
+            <div class="absolute left-0 top-0 h-full bg-bg-elevated/30 rounded-full"
                  :style="{ width: `${progress}%` }">
             </div>
           </div>
@@ -125,7 +125,7 @@ watch(() => props.episode?.id, (newId, oldId) => {
 // 播放控制
 const togglePlay = async () => {
   if (!audioRef.value) return;
-  
+
   try {
     if (audioRef.value.paused) {
       await audioRef.value.play();
@@ -161,13 +161,13 @@ const onTimeUpdate = () => {
   if (!audioRef.value) return;
   currentTime.value = audioRef.value.currentTime;
   progress.value = (currentTime.value / duration.value) * 100;
-  isPlaying.value = !audioRef.value.paused;  // 确保播放状态正确
+  isPlaying.value = !audioRef.value.paused;
 };
 
 const onLoadedMetadata = () => {
   if (!audioRef.value) return;
   duration.value = audioRef.value.duration;
-  isPlaying.value = !audioRef.value.paused;  // 确保初始状态正确
+  isPlaying.value = !audioRef.value.paused;
 };
 
 const onEnded = () => {
@@ -226,6 +226,6 @@ h3 {
 }
 
 h3:hover {
-  color: #ffffff;
+  color: var(--text-accent);
 }
-</style> 
+</style>

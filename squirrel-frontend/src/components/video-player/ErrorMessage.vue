@@ -55,7 +55,7 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 .error-message {
   @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
     rounded-xl p-6 max-w-md w-full mx-4
-    border border-red-500/30 shadow-2xl z-40;
+    border border-color-error/30 shadow-2xl z-40;
   background: rgba(40, 40, 40, 0.95);
   backdrop-filter: blur(12px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
@@ -67,7 +67,7 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 }
 
 .error-icon {
-  @apply text-red-500 text-3xl flex-shrink-0 mt-1;
+  @apply text-color-error text-3xl flex-shrink-0 mt-1;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
@@ -76,12 +76,12 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 }
 
 .error-title {
-  @apply text-white font-semibold text-lg mb-2;
+  @apply text-text-primary font-semibold text-lg mb-2;
   font-family: 'Roboto', sans-serif;
 }
 
 .error-description {
-  @apply text-white/80 text-sm mb-3;
+  @apply text-text-primary/80 text-sm mb-3;
   font-family: 'Roboto', sans-serif;
   line-height: 1.5;
 }
@@ -91,12 +91,12 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 }
 
 .suggestions-title {
-  @apply text-white/90 text-sm font-medium mb-2;
+  @apply text-text-primary/90 text-sm font-medium mb-2;
   font-family: 'Roboto', sans-serif;
 }
 
 .suggestions-list {
-  @apply text-white/70 text-sm space-y-1 pl-4;
+  @apply text-text-primary/70 text-sm space-y-1 pl-4;
   font-family: 'Roboto', sans-serif;
 }
 
@@ -117,19 +117,19 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 }
 
 .retry-button {
-  @apply text-white
+  @apply text-text-accent
     disabled:opacity-50 disabled:cursor-not-allowed;
-  background: #ff0000;
+    background: var(--color-error);
 }
 
 .retry-button:hover:not(:disabled) {
-  background: #cc0000;
+  background: var(--color-error-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .report-button {
-  @apply bg-blue-600 hover:bg-blue-700 text-white;
+  @apply bg-color-info hover:bg-color-info-hover text-text-accent;
 }
 
 .report-button:hover {
@@ -138,7 +138,7 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 }
 
 .dismiss-button {
-  @apply bg-gray-600 hover:bg-gray-700 text-white;
+  @apply bg-bg-elevated hover:bg-bg-hover text-text-accent;
 }
 
 .dismiss-button:hover {

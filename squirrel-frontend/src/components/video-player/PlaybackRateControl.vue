@@ -39,8 +39,8 @@ const emit = defineEmits(['toggle-menu', 'set-rate'])
 }
 
 .control-btn {
-  @apply p-2 rounded-full bg-transparent hover:bg-white/10
-    transition-all duration-200 text-white
+  @apply p-2 rounded-full bg-transparent hover:bg-bg-hover
+    transition-all duration-200 text-text-primary
     focus:outline-none focus:ring-2 focus:ring-white/30
     flex items-center justify-center;
   min-width: 40px;
@@ -73,7 +73,7 @@ const emit = defineEmits(['toggle-menu', 'set-rate'])
 
 .rate-option {
   @apply w-full text-center px-3 py-2 rounded-lg text-sm
-    text-white/80 hover:text-white hover:bg-white/10
+    text-text-secondary/80 hover:text-text-primary hover:bg-bg-hover
     transition-all duration-200;
   font-family: 'Roboto', sans-serif;
 }
@@ -83,7 +83,7 @@ const emit = defineEmits(['toggle-menu', 'set-rate'])
 }
 
 .rate-option.active {
-  @apply text-white;
+  @apply text-text-primary;
   background: rgba(255, 0, 0, 0.15);
   border-left: 3px solid #ff0000;
 }

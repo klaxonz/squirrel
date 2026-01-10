@@ -4,7 +4,7 @@
       <!-- Logo -->
       <div class="flex flex-col items-center">
         <img src="/squirrel-icon.svg" class="w-16 h-16" alt="Logo">
-        <h2 class="mt-6 text-3xl font-bold text-white">登录到 Squirrel</h2>
+        <h2 class="mt-6 text-3xl font-bold text-text-primary">登录到 Squirrel</h2>
       </div>
 
       <!-- 登录表单 -->
@@ -17,7 +17,7 @@
               v-model="form.email"
               type="email"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-white rounded focus:outline-none focus:ring-color-error focus:border-color-error focus:z-10 sm:text-sm"
+              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-text-primary rounded focus:outline-none focus:ring-color-error focus:border-color-error focus:z-10 sm:text-sm"
               placeholder="邮箱"
             >
           </div>
@@ -28,7 +28,7 @@
               v-model="form.password"
               type="password"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-white rounded focus:outline-none focus:ring-color-error focus:border-color-error focus:z-10 sm:text-sm"
+              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-text-primary rounded focus:outline-none focus:ring-color-error focus:border-color-error focus:z-10 sm:text-sm"
               placeholder="密码"
             >
           </div>
@@ -38,7 +38,7 @@
           <button
             type="submit"
             :disabled="loading"
-            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-color-error hover:bg-red-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-text-primary bg-color-error hover:bg-color-error-hover focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="loading">登录中...</span>
             <span v-else>登录</span>
@@ -48,7 +48,7 @@
         <div class="flex items-center justify-center">
           <router-link
             to="/register"
-            class="text-sm text-text-muted hover:text-white transition-colors"
+            class="text-sm text-text-muted hover:text-text-primary transition-colors"
           >
             还没有账号？立即注册
           </router-link>

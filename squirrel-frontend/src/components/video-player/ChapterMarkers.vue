@@ -76,14 +76,14 @@ const emit = defineEmits(['seek-to-chapter'])
 }
 
 .tooltip-title {
-  @apply text-white text-xs font-medium mb-1;
+  @apply text-text-primary text-xs font-medium mb-1;
   font-family: var(--yt-font-family);
   text-align: center;
   line-height: 1.2;
 }
 
 .tooltip-time {
-  @apply text-white/70 text-xs;
+  @apply text-text-secondary/70 text-xs;
   font-family: var(--yt-font-family);
 }
 

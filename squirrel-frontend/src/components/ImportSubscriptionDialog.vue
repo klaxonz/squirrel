@@ -4,7 +4,7 @@
     <div class="bg-bg-card border border-border-primary rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
       <!-- 头部 -->
       <div class="flex items-center justify-between p-6 border-b border-border-primary">
-        <h2 class="text-xl font-bold text-white">导入订阅</h2>
+        <h2 class="text-xl font-bold text-text-primary">导入订阅</h2>
         <IconButton title="关闭" aria-label="关闭" @click="handleClose">
           <XMarkIcon class="h-6 w-6" />
         </IconButton>
@@ -27,10 +27,10 @@
               ]"
               @click="selectedSite = site"
             >
-              <div class="w-12 h-12 mb-3 flex items-center justify-center bg-bg-elevated rounded-lg text-2xl font-bold text-white">
+              <div class="w-12 h-12 mb-3 flex items-center justify-center bg-bg-elevated rounded-lg text-2xl font-bold text-text-primary">
                 {{ site.charAt(0).toUpperCase() }}
               </div>
-              <span class="text-white font-medium">{{ getSiteName(site) }}</span>
+              <span class="text-text-primary font-medium">{{ getSiteName(site) }}</span>
             </button>
           </div>
         </div>
@@ -38,12 +38,12 @@
         <!-- 步骤 2: 预览订阅 -->
         <div v-else-if="step === 2">
           <div class="mb-4">
-            <p class="text-white font-medium mb-2">预览订阅列表</p>
+            <p class="text-text-primary font-medium mb-2">预览订阅列表</p>
             <p class="text-text-muted text-sm">
-              总计 <span class="text-white font-bold">{{ previewData.total }}</span>，
-              已导入 <span class="text-white font-bold">{{ previewData.imported ?? 0 }}</span>，
-              未导入 <span class="text-white font-bold">{{ previewData.not_imported ?? 0 }}</span>，
-              已选 <span class="text-white font-bold">{{ selectedCount }}</span>
+              总计 <span class="text-text-primary font-bold">{{ previewData.total }}</span>，
+              已导入 <span class="text-text-primary font-bold">{{ previewData.imported ?? 0 }}</span>，
+              未导入 <span class="text-text-primary font-bold">{{ previewData.not_imported ?? 0 }}</span>，
+              已选 <span class="text-text-primary font-bold">{{ selectedCount }}</span>
             </p>
           </div>
 
@@ -62,7 +62,7 @@
                 <Button size="sm" variant="secondary" shape="pill" @click="clearSelection">清空</Button>
               </div>
               <p class="text-text-muted text-sm">
-                已选 <span class="text-white font-bold">{{ selectedCount }}</span>
+                已选 <span class="text-text-primary font-bold">{{ selectedCount }}</span>
               </p>
             </div>
 
@@ -89,13 +89,13 @@
                 />
 
                 <div class="flex-1 min-w-0">
-                  <p class="text-white text-sm truncate">{{ sub.name || '未命名订阅' }}</p>
+                  <p class="text-text-primary text-sm truncate">{{ sub.name || '未命名订阅' }}</p>
                   <p class="text-text-tertiary text-xs truncate">{{ sub.url }}</p>     
                 </div>
 
                 <span
                   v-if="sub.is_imported"
-                  class="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/30"
+                  class="text-xs px-2 py-0.5 rounded bg-color-success/20 text-color-success border border-color-success/30"
                 >
                   已导入
                 </span>
@@ -114,18 +114,18 @@
         <div v-else-if="step === 3">
           <div class="text-center py-8">
             <div class="flex justify-center mb-4">
-              <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
-                <CheckIcon class="w-10 h-10 text-green-500" />
+              <div class="w-16 h-16 bg-color-success/20 rounded-full flex items-center justify-center">
+                <CheckIcon class="w-10 h-10 text-color-success" />
               </div>
             </div>
 
-            <h3 class="text-2xl font-bold text-white mb-6">
+            <h3 class="text-2xl font-bold text-text-primary mb-6">
               {{ importResult.total > 0 ? '任务已提交' : '没有需要导入的订阅' }}
             </h3>
 
             <div class="bg-bg-secondary border border-border-primary rounded-lg p-6 mb-6">
               <p class="text-text-muted text-sm mb-2">新增导入任务</p>
-              <p class="text-white text-4xl font-bold">{{ importResult.total }}</p>
+              <p class="text-text-primary text-4xl font-bold">{{ importResult.total }}</p>
               <p class="text-text-muted text-xs mt-3">
                 拉取 {{ importResult.found ?? 0 }} 个，选择 {{ importResult.selected ?? 0 }} 个，跳过 {{ importResult.skipped ?? 0 }} 个
               </p>

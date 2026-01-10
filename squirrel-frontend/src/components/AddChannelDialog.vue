@@ -19,7 +19,7 @@
               v-model="channelUrl"
               type="url"
               placeholder="支持频道地址或播放列表地址"
-              class="w-full px-3 py-2 bg-bg-elevated rounded border border-border-secondary focus:border-color-error focus:ring-1 focus:ring-color-error focus:outline-none text-white text-sm"
+              class="w-full px-3 py-2 bg-bg-elevated rounded border border-border-secondary focus:border-color-error focus:ring-1 focus:ring-color-error focus:outline-none text-text-primary text-sm"
               :disabled="loading"
             >
             <p class="mt-2 text-xs text-text-secondary">

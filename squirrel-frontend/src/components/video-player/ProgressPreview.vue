@@ -47,7 +47,7 @@ const props = defineProps({
 }
 
 .preview-time {
-  @apply text-white text-xs font-medium px-2 py-1 rounded-md mb-2
+  @apply text-text-primary text-xs font-medium px-2 py-1 rounded-md mb-2
     text-center;
   background: rgba(0, 0, 0, 0.9);
   backdrop-filter: blur(4px);
@@ -67,7 +67,7 @@ const props = defineProps({
 }
 
 .thumbnail-icon {
-  @apply text-white/50 text-2xl;
+  @apply text-text-secondary/50 text-2xl;
 }
 
 .preview-arrow {

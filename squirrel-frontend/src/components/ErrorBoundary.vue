@@ -74,15 +74,15 @@ defineExpose({
 }
 
 .error-icon {
-  @apply text-5xl text-red-500 mb-4;
+  @apply text-5xl text-color-error mb-4;
 }
 
 .error-message {
-  @apply text-gray-300 mb-4;
+  @apply text-text-secondary mb-4;
 }
 
 .retry-button {
-  @apply px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg;
+  @apply px-6 py-2 bg-color-error hover:bg-color-error-hover text-text-accent rounded-lg;
   @apply transition-colors duration-200 font-medium;
 }
 </style>

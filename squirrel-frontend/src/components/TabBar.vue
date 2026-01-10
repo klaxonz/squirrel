@@ -20,7 +20,7 @@
         :class="[
           'px-3 py-1 text-xs font-medium rounded-full transition-colors duration-150 ease-in-out flex items-center',
           modelValue === tab.value
-            ? 'bg-bg-elevated text-white'
+            ? 'bg-bg-elevated text-text-primary'
             : 'bg-bg-primary text-text-accent hover:bg-bg-elevated'
         ]"
       >
@@ -28,9 +28,9 @@
         <span
           v-if="tab.count !== undefined"
           :class="[
-            'ml-1 text-[10px]',
+            'ml-1 text-2xs',
             modelValue === tab.value
-              ? 'text-white'
+              ? 'text-text-primary'
               : 'text-text-muted'
           ]"
         >
@@ -106,7 +106,7 @@ const onKeydown = (e) => {
 .tab-bar {
   scrollbar-width: none;
   -ms-overflow-style: none;
-  background-color: #0f0f0f;
+  background-color: var(--bg-primary);
 }
 
 .tab-bar::-webkit-scrollbar {

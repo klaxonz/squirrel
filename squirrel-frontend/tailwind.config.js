@@ -7,65 +7,124 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+        sans: ['var(--font-sans)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
       },
       colors: {
-        // Design System Colors
+        // Design System - Background
         'bg-primary': 'var(--bg-primary)',
         'bg-secondary': 'var(--bg-secondary)',
         'bg-tertiary': 'var(--bg-tertiary)',
         'bg-card': 'var(--bg-card)',
         'bg-elevated': 'var(--bg-elevated)',
+        'bg-hover': 'var(--bg-hover)',
 
+        // Design System - Text
         'text-primary': 'var(--text-primary)',
         'text-secondary': 'var(--text-secondary)',
         'text-tertiary': 'var(--text-tertiary)',
         'text-muted': 'var(--text-muted)',
         'text-accent': 'var(--text-accent)',
 
+        // Design System - Status Colors
         'color-success': 'var(--color-success)',
+        'color-success-hover': 'var(--color-success-hover)',
         'color-error': 'var(--color-error)',
+        'color-error-hover': 'var(--color-error-hover)',
         'color-warning': 'var(--color-warning)',
+        'color-warning-hover': 'var(--color-warning-hover)',
         'color-info': 'var(--color-info)',
+        'color-info-hover': 'var(--color-info-hover)',
 
+        // Design System - Border
         'border-primary': 'var(--border-primary)',
         'border-secondary': 'var(--border-secondary)',
-
-        blue: {
-          50: '#E3F2FD',
-          100: '#BBDEFB',
-          200: '#90CAF9',
-          300: '#64B5F6',
-          400: '#42A5F5',
-          500: '#2196F3',
-          600: '#1E88E5',
-          700: '#1976D2',
-          800: '#1565C0',
-          900: '#0D47A1',
-        },
+        'border-hover': 'var(--border-hover)',
+      },
+      fontSize: {
+        '2xs': 'var(--font-size-2xs)',
+      },
+      spacing: {
+        'nav': 'var(--mobile-nav-height)',
       },
       borderRadius: {
         'sm': 'var(--radius-sm)',
         'md': 'var(--radius-md)',
         'lg': 'var(--radius-lg)',
         'xl': 'var(--radius-xl)',
+        '2xl': 'var(--radius-2xl)',
         'full': 'var(--radius-full)',
       },
       boxShadow: {
         'sm': 'var(--shadow-sm)',
         'md': 'var(--shadow-md)',
         'lg': 'var(--shadow-lg)',
+        'xl': 'var(--shadow-xl)',
+      },
+      minWidth: {
+        '20': '5rem',
+        '24': '6rem',
+        '28': '7rem',
+        '32': '8rem',
+        '36': '9rem',
+        '40': '10rem',
+        '44': '11rem',
+        '48': '12rem',
+        '52': '13rem',
+        '56': '14rem',
+        '60': '15rem',
+        '64': '16rem',
+        '72': '18rem',
+        '80': '20rem',
+        '96': '24rem',
+        'field': 'var(--min-width-field, 10rem)',
       },
     },
   },
   plugins: [
-    function({ addUtilities }) {
+    function({ addUtilities, addComponents }) {
+      // Utilities
       const newUtilities = {
         '.overflow-touch': {
           '-webkit-overflow-scrolling': 'touch',
         },
       }
       addUtilities(newUtilities, ['responsive'])
+
+      // Components - Common button styles
+      const buttonComponents = {
+        '.btn-base': {
+          '@apply inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-primary disabled:opacity-50 disabled:cursor-not-allowed': {},
+        },
+        '.btn-xs': {
+          '@apply px-2 py-1 text-xs rounded': {},
+        },
+        '.btn-sm': {
+          '@apply px-3 py-1.5 text-sm rounded-md': {},
+        },
+        '.btn-md': {
+          '@apply px-4 py-2 text-base rounded-md': {},
+        },
+        '.btn-lg': {
+          '@apply px-6 py-3 text-lg rounded-lg': {},
+        },
+        '.btn-pill': {
+          '@apply rounded-full': {},
+        },
+        // Input styles
+        '.input-base': {
+          '@apply w-full bg-bg-secondary border border-border-primary text-text-primary placeholder-text-muted transition-colors duration-150 focus:outline-none focus:ring-1 focus:border-color-info focus:ring-color-info disabled:opacity-50 disabled:cursor-not-allowed': {},
+        },
+        '.input-sm': {
+          '@apply px-2.5 py-1.5 text-xs rounded-md': {},
+        },
+        '.input-md': {
+          '@apply px-3 py-2 text-sm rounded-md': {},
+        },
+        '.input-lg': {
+          '@apply px-4 py-3 text-base rounded-lg': {},
+        },
+      }
+      addComponents(buttonComponents)
     }
   ],
 }

@@ -43,7 +43,7 @@
     />
 
     <!-- 空状态提示 -->
-    <div v-else-if="!props.loading && (!props.videos || props.videos.length === 0)" class="text-center py-8 text-sm text-gray-500">
+    <div v-else-if="!props.loading && (!props.videos || props.videos.length === 0)" class="text-center py-8 text-sm text-text-muted">
       暂无内容
     </div>
 

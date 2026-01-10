@@ -1,8 +1,8 @@
 <template>
-  <div class="plugin-manager bg-bg-primary text-white min-h-screen">
+  <div class="plugin-manager bg-bg-primary text-text-primary min-h-screen">
     <!-- 顶部操作区 -->
-    <div class="border-b border-white/10">
-      <div class="max-w-[1800px] mx-auto px-6 py-6">
+    <div class="border-b border-border-secondary">
+      <div class="max-w-7xl mx-auto px-6 py-6">
         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div>
             <h1 class="text-xl font-medium mb-1">插件管理</h1>
@@ -13,21 +13,21 @@
               <button
                 @click="currentTab = 'plugins'"
                 class="px-4 py-2 text-sm font-medium rounded-full transition-colors"
-                :class="currentTab === 'plugins' ? 'bg-white/10 text-white' : 'text-text-muted hover:text-white hover:bg-white/5'"
+                :class="currentTab === 'plugins' ? 'bg-bg-elevated text-text-accent' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'"
               >
                 插件列表
               </button>
               <button
                 @click="currentTab = 'connectivity'"
                 class="px-4 py-2 text-sm font-medium rounded-full transition-colors"
-                :class="currentTab === 'connectivity' ? 'bg-white/10 text-white' : 'text-text-muted hover:text-white hover:bg-white/5'"
+                :class="currentTab === 'connectivity' ? 'bg-bg-elevated text-text-accent' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'"
               >
                 站点连通性
               </button>
             </div>
           </div>
           <div class="flex items-center gap-3">
-            <label class="flex items-center gap-3 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full cursor-pointer transition-colors">
+            <label class="flex items-center gap-3 px-4 py-2 bg-bg-tertiary hover:bg-bg-hover rounded-full cursor-pointer transition-colors">
               <input
                 type="file"
                 accept=".zip"
@@ -38,14 +38,14 @@
               <span class="text-sm font-medium">{{ selectedFile ? selectedFile.name : '选择文件' }}</span>
             </label>
             <button
-              class="px-4 py-2 bg-color-error hover:bg-red-600 rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              class="px-4 py-2 bg-color-error hover:bg-color-error-hover rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               :disabled="!selectedFile || installing"
               @click="handleInstall"
             >
               {{ installing ? '安装中...' : '导入插件' }}
             </button>
             <button
-              class="p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-40"
+              class="p-2 hover:bg-bg-hover rounded-full transition-colors disabled:opacity-40"
               :disabled="reloading || loading"
               @click="handleReload"
               title="重新加载插件"
@@ -58,9 +58,9 @@
     </div>
 
     <!-- 插件列表 -->
-    <div v-if="currentTab === 'plugins'" class="max-w-[1800px] mx-auto px-6 py-6">
+    <div v-if="currentTab === 'plugins'" class="max-w-7xl mx-auto px-6 py-6">
       <div v-if="loading" class="flex items-center justify-center py-20">
-        <div class="animate-spin rounded-full h-8 w-8 border-2 border-white/20 border-t-white"></div>
+        <div class="animate-spin rounded-full h-8 w-8 border-2 border-text-muted border-t-text-primary"></div>
       </div>
 
       <div v-else-if="plugins.length === 0" class="flex flex-col items-center justify-center py-20 text-text-muted">
@@ -72,7 +72,7 @@
       <div v-else class="overflow-x-auto">
         <table class="w-full">
           <thead>
-            <tr class="border-b border-white/10">
+            <tr class="border-b border-border-secondary">
               <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">名称</th>
               <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">版本</th>
               <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">来源</th>
@@ -85,7 +85,7 @@
             <tr
               v-for="plugin in plugins"
               :key="plugin.name"
-              class="border-b border-white/5 hover:bg-white/5 transition-colors"
+              class="border-b border-border-primary hover:bg-bg-hover transition-colors"
             >
               <td class="py-4 px-4">
                 <div>
@@ -93,19 +93,19 @@
                     <span class="font-medium">{{ plugin.name }}</span>
                     <span
                       v-if="plugin.state === 'missing'"
-                      class="px-2 py-0.5 text-[10px] rounded bg-red-500/20 text-red-400 font-medium"
+                      class="px-2 py-0.5 text-2xs rounded bg-color-error/20 text-color-error font-medium"
                     >
                       配置缺失
                     </span>
                     <span
                       v-else-if="plugin.source === 'external'"
-                      class="px-2 py-0.5 text-[10px] rounded bg-blue-500/20 text-blue-400 font-medium"
+                      class="px-2 py-0.5 text-2xs rounded bg-color-info/20 text-color-info font-medium"
                     >
                       外部
                     </span>
                     <span
                       v-else-if="plugin.source === 'internal'"
-                      class="px-2 py-0.5 text-[10px] rounded bg-purple-500/20 text-purple-400 font-medium"
+                      class="px-2 py-0.5 text-2xs rounded bg-color-warning/20 text-color-warning font-medium"
                     >
                       内置
                     </span>
@@ -122,7 +122,7 @@
                 <div class="flex justify-center">
                   <span
                     class="px-2.5 py-1 rounded text-xs font-medium"
-                    :class="plugin.enabled ? 'bg-color-success/20 text-color-success' : 'bg-white/5 text-text-muted'"
+                    :class="plugin.enabled ? 'bg-color-success/20 text-color-success' : 'bg-bg-tertiary text-text-muted'"
                   >
                     {{ plugin.enabled ? '已启用' : '已禁用' }}
                   </span>
@@ -132,7 +132,7 @@
                 <div class="flex items-center justify-end gap-2">
                   <button
                     v-if="!plugin.enabled"
-                    class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    class="px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     :disabled="actioning === plugin.name || plugin.state === 'missing'"
                     @click="handleEnable(plugin)"
                   >
@@ -140,7 +140,7 @@
                   </button>
                   <button
                     v-if="plugin.enabled"
-                    class="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    class="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     :disabled="actioning === plugin.name || plugin.state === 'missing'"
                     @click="handleDisable(plugin)"
                   >
@@ -148,7 +148,7 @@
                   </button>
                   <button
                     v-if="plugin.source === 'external'"
-                    class="px-3 py-1.5 bg-white/5 hover:bg-red-600/20 hover:text-red-400 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    class="px-3 py-1.5 bg-bg-tertiary hover:bg-color-error/20 hover:text-color-error rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     :disabled="actioning === plugin.name"
                     @click="handleUninstall(plugin)"
                   >
@@ -163,7 +163,7 @@
     </div>
 
     <!-- 站点连通性测试 -->
-    <div v-if="currentTab === 'connectivity'" class="max-w-[1800px] mx-auto px-6 py-6">
+    <div v-if="currentTab === 'connectivity'" class="max-w-7xl mx-auto px-6 py-6">
       <!-- 操作区 -->
       <div class="flex items-center justify-between mb-6">
         <div class="text-sm text-text-muted">
@@ -174,7 +174,7 @@
         </div>
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-3">
-            <label class="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-full cursor-pointer transition-colors text-xs md:text-sm">
+            <label class="flex items-center gap-2 px-3 py-2 bg-bg-tertiary hover:bg-bg-hover rounded-full cursor-pointer transition-colors text-xs md:text-sm">
               <input
                 type="file"
                 accept=".txt"
@@ -188,21 +188,21 @@
             <button
               @click="handleImportAllCookies"
               :disabled="!selectedCookiesFile || importingCookies"
-              class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              class="px-3 py-2 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {{ importingCookies ? '导入中...' : '导入所有站点 Cookie' }}
             </button>
             <button
               @click="handleSyncCookieCloud"
               :disabled="syncingCookieCloud"
-              class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              class="px-3 py-2 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {{ syncingCookieCloud ? '同步中...' : '从 CookieCloud 同步' }}
             </button>
             <button
               @click="handleTestAll"
               :disabled="testingAll || loadingSites"
-              class="px-4 py-2 bg-color-error hover:bg-red-600 rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              class="px-4 py-2 bg-color-error hover:bg-color-error-hover rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <ArrowPathIcon v-if="testingAll" class="w-4 h-4 animate-spin" />
               <CheckCircleIcon v-else class="w-4 h-4" />
@@ -214,34 +214,34 @@
 
       <!-- 统计信息 -->
       <div v-if="connectivityResults.length > 0" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white/5 rounded-lg p-4">
+        <div class="bg-bg-tertiary rounded-lg p-4">
           <div class="text-text-muted text-xs mb-1">总站点数</div>
           <div class="text-2xl font-medium">{{ connectivitySummary.total }}</div>
         </div>
-        <div class="bg-green-500/10 rounded-lg p-4">
-          <div class="text-green-400 text-xs mb-1">可访问</div>
-          <div class="text-2xl font-medium text-green-400">{{ connectivitySummary.accessible }}</div>
+        <div class="bg-color-success/10 rounded-lg p-4">
+          <div class="text-color-success text-xs mb-1">可访问</div>
+          <div class="text-2xl font-medium text-color-success">{{ connectivitySummary.accessible }}</div>
         </div>
-        <div class="bg-red-500/10 rounded-lg p-4">
-          <div class="text-red-400 text-xs mb-1">不可访问</div>
-          <div class="text-2xl font-medium text-red-400">{{ connectivitySummary.failed }}</div>
+        <div class="bg-color-error/10 rounded-lg p-4">
+          <div class="text-color-error text-xs mb-1">不可访问</div>
+          <div class="text-2xl font-medium text-color-error">{{ connectivitySummary.failed }}</div>
         </div>
-        <div class="bg-blue-500/10 rounded-lg p-4">
-          <div class="text-blue-400 text-xs mb-1">成功率</div>
-          <div class="text-2xl font-medium text-blue-400">{{ connectivitySummary.success_rate }}%</div>
+        <div class="bg-color-info/10 rounded-lg p-4">
+          <div class="text-color-info text-xs mb-1">成功率</div>
+          <div class="text-2xl font-medium text-color-info">{{ connectivitySummary.success_rate }}%</div>
         </div>
       </div>
 
       <!-- 加载状态 -->
       <div v-if="loadingSites" class="flex items-center justify-center py-20">
-        <div class="animate-spin rounded-full h-8 w-8 border-2 border-white/20 border-t-white"></div>
+        <div class="animate-spin rounded-full h-8 w-8 border-2 border-text-muted border-t-text-primary"></div>
       </div>
 
       <!-- 站点列表 -->
       <div v-else class="overflow-x-auto">
         <table class="w-full">
           <thead>
-            <tr class="border-b border-white/10">
+            <tr class="border-b border-border-secondary">
               <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">站点名称</th>
               <th class="text-left py-3 px-4 text-sm font-medium text-text-muted hidden lg:table-cell">支持域名</th>
               <th class="text-center py-3 px-4 text-sm font-medium text-text-muted">状态</th>
@@ -255,14 +255,14 @@
             <tr
               v-for="site in displaySites"
               :key="site.site_name"
-              class="border-b border-white/5 hover:bg-white/5 transition-colors"
+              class="border-b border-border-primary hover:bg-bg-hover transition-colors"
             >
               <td class="py-4 px-4">
                 <div class="font-medium flex items-center gap-2">
                   <span>{{ site.display_label || site.site_name || site.name }}</span>
                   <span
                     v-if="site.config_enabled === false"
-                    class="px-2 py-0.5 text-[10px] rounded-full bg-red-500/10 text-red-400 border border-red-500/30"
+                    class="px-2 py-0.5 text-2xs rounded-full bg-color-error/10 text-color-error border border-color-error/30"
                   >
                     已禁用
                   </span>
@@ -277,13 +277,13 @@
                   <span
                     v-for="domain in site.domains?.slice(0, 3) || []"
                     :key="domain"
-                    class="px-2 py-0.5 text-[10px] rounded bg-white/5 text-text-muted"
+                    class="px-2 py-0.5 text-2xs rounded bg-bg-tertiary text-text-muted"
                   >
                     {{ domain }}
                   </span>
                   <span
                     v-if="site.domains?.length > 3"
-                    class="px-2 py-0.5 text-[10px] rounded bg-white/5 text-text-muted"
+                    class="px-2 py-0.5 text-2xs rounded bg-bg-tertiary text-text-muted"
                   >
                     +{{ site.domains.length - 3 }}
                   </span>
@@ -293,27 +293,27 @@
                 <div class="flex justify-center">
                   <span
                     v-if="site.testing"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400 flex items-center gap-1"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-info/20 text-color-info flex items-center gap-1"
                   >
                     <ArrowPathIcon class="w-3 h-3 animate-spin" />
                     测试中
                   </span>
                   <span
                     v-else-if="site.accessible === true"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-green-500/20 text-green-400"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-success/20 text-color-success"
                   >
                     ✓ 可访问
                   </span>
                   <span
                     v-else-if="site.accessible === false"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-red-500/20 text-red-400"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-error/20 text-color-error"
                     :title="site.error_message"
                   >
                     ✗ 不可访问
                   </span>
                   <span
                     v-else
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-white/5 text-text-muted"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-bg-tertiary text-text-muted"
                   >
                     未测试
                   </span>
@@ -323,34 +323,34 @@
                 <div class="flex justify-center">
                   <span
                     v-if="!site.supports_login_status"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-white/5 text-text-muted"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-bg-tertiary text-text-muted"
                   >
                     未接入
                   </span>
                   <span
                     v-else-if="site.loginTesting"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400 flex items-center gap-1"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-info/20 text-color-info flex items-center gap-1"
                   >
                     <ArrowPathIcon class="w-3 h-3 animate-spin" />
                     检测中
                   </span>
                   <span
                     v-else-if="site.loginStatus?.logged_in"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-green-500/20 text-green-400"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-success/20 text-color-success"
                     :title="site.loginStatus?.message || '已登录'"
                   >
                     已登录
                   </span>
                   <span
                     v-else-if="site.loginStatus"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-red-500/20 text-red-400"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-error/20 text-color-error"
                     :title="site.loginStatus?.message || '未登录'"
                   >
                     未登录
                   </span>
                   <span
                     v-else
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-white/5 text-text-muted"
+                    class="px-2.5 py-1 rounded text-xs font-medium bg-bg-tertiary text-text-muted"
                   >
                     未检测
                   </span>
@@ -367,7 +367,7 @@
                   <button
                     @click="handleTestSingle(site)"
                     :disabled="site.testing || testingAll"
-                    class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    class="px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     {{ site.testing ? '测试中...' : '连通性' }}
                   </button>
@@ -375,14 +375,14 @@
                     v-if="site.supports_login_status"
                     @click="handleTestLogin(site)"
                     :disabled="site.loginTesting || testingAll"
-                    class="px-3 py-1.5 bg-white/5 hover:bg-white/15 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    class="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     {{ site.loginTesting ? '检测中...' : '登录检测' }}
                   </button>
                   <button
                     @click="handleUploadCookies(site)"
                     :disabled="site.cookieUploading || testingAll"
-                    class="px-3 py-1.5 bg-white/5 hover:bg-white/20 rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    class="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     {{ site.cookieUploading ? '上传中...' : '上传Cookie' }}
                   </button>
@@ -400,13 +400,13 @@
       class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
     >
       <div class="bg-bg-secondary rounded-2xl border border-border-primary w-full max-w-3xl shadow-2xl">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border-secondary">
           <div>
             <h3 class="text-lg font-semibold">编辑站点配置</h3>
             <p class="text-xs text-text-muted mt-1">插件站点：{{ siteEditorForm.siteName }}</p>
           </div>
           <button
-            class="text-text-muted hover:text-white transition-colors"
+            class="text-text-muted hover:text-text-primary transition-colors"
             @click="closeSiteEditor"
           >
             ✕
@@ -418,7 +418,7 @@
             <label class="block text-sm text-text-muted mb-1">显示名称</label>
             <input
               v-model="siteEditorForm.label"
-              class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
+              class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
               placeholder="展示给用户的名称"
             >
           </div>
@@ -429,7 +429,7 @@
               <textarea
                 v-model="siteEditorForm.domainsText"
                 rows="5"
-                class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
+                class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
                 placeholder="每行一个域名，例如：www.youtube.com"
               ></textarea>
               <p class="text-xs text-text-tertiary mt-1">用于匹配订阅与视频来源，至少填写一个域名。</p>
@@ -439,7 +439,7 @@
               <textarea
                 v-model="siteEditorForm.aliasesText"
                 rows="5"
-                class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
+                class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
                 placeholder="每行一个别名，例如：yt、油管"
               ></textarea>
               <p class="text-xs text-text-tertiary mt-1">别名可用于筛选条件。</p>
@@ -457,7 +457,7 @@
             <label class="block text-sm text-text-muted mb-1">测试 URL</label>
             <input
               v-model="siteEditorForm.testUrl"
-              class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
+              class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
               placeholder="用于连通性检测的 URL"
             >
           </div>
@@ -467,79 +467,79 @@
             <textarea
               v-model="siteEditorForm.httpHeadersText"
               rows="4"
-              class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
+              class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
               placeholder="User-Agent: Mozilla/5.0"
             ></textarea>
           </div>
 
           <div class="grid md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm text-[#aaaaaa] mb-1">最小请求间隔（秒）</label>
+              <label class="block text-sm text-text-muted mb-1">最小请求间隔（秒）</label>
               <input
                 type="number"
                 step="0.1"
                 v-model="siteEditorForm.rateLimitMin"
-                class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
+                class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
               >
             </div>
             <div>
-              <label class="block text-sm text-[#aaaaaa] mb-1">最大请求间隔（秒）</label>
+              <label class="block text-sm text-text-muted mb-1">最大请求间隔（秒）</label>
               <input
                 type="number"
                 step="0.1"
                 v-model="siteEditorForm.rateLimitMax"
-                class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
+                class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
               >
             </div>
           </div>
 
           <div>
-            <h4 class="text-sm text-gray-300 mb-2">代理参数</h4>
+            <h4 class="text-sm text-text-secondary mb-2">代理参数</h4>
             <div class="grid md:grid-cols-2 gap-4 text-sm text-text-muted">
               <label class="flex flex-col">
                 <span class="mb-1">连接超时 (秒)</span>
                 <input type="number" step="0.1" v-model="siteEditorForm.proxyConnectTimeout"
-                  class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
+                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
               </label>
               <label class="flex flex-col">
                 <span class="mb-1">读取超时 (秒)</span>
                 <input type="number" step="0.1" v-model="siteEditorForm.proxyReadTimeout"
-                  class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
+                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
               </label>
               <label class="flex flex-col">
                 <span class="mb-1">写入超时 (秒)</span>
                 <input type="number" step="0.1" v-model="siteEditorForm.proxyWriteTimeout"
-                  class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
+                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
               </label>
               <label class="flex flex-col">
                 <span class="mb-1">连接池超时 (秒)</span>
                 <input type="number" step="0.1" v-model="siteEditorForm.proxyPoolTimeout"
-                  class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
+                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
               </label>
               <label class="flex flex-col">
                 <span class="mb-1">Keepalive 过期 (秒)</span>
                 <input type="number" step="0.1" v-model="siteEditorForm.proxyKeepaliveExpiry"
-                  class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
+                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
               </label>
               <label class="flex flex-col">
                 <span class="mb-1">最大连接数</span>
                 <input type="number" step="1" v-model="siteEditorForm.proxyMaxConnections"
-                  class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
+                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
               </label>
               <label class="flex flex-col">
                 <span class="mb-1">最大 Keepalive 连接数</span>
                 <input type="number" step="1" v-model="siteEditorForm.proxyMaxKeepaliveConnections"
-                  class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
+                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
               </label>
               <label class="flex flex-col">
                 <span class="mb-1">分块大小 (字节)</span>
                 <input type="number" step="1" v-model="siteEditorForm.proxyChunkSize"
-                  class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
+                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
               </label>
               <label class="flex flex-col">
                 <span class="mb-1">最大重试次数</span>
                 <input type="number" step="1" v-model="siteEditorForm.proxyMaxRetries"
-                  class="w-full bg-black/40 border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
+                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
               </label>
             </div>
             <div class="flex flex-wrap gap-4 mt-3 text-sm text-text-muted">
@@ -555,15 +555,15 @@
           </div>
 
           <div>
-            <h4 class="text-sm text-gray-300 mb-2">登录检测</h4>
+            <h4 class="text-sm text-text-secondary mb-2">登录检测</h4>
             <div class="grid md:grid-cols-2 gap-4">
-              <input v-model="siteEditorForm.loginCheckUrl" placeholder="检测 URL" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]">
-              <input type="number" step="0.1" v-model="siteEditorForm.loginTimeout" placeholder="超时时间 (秒)" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#cc0000]">
+              <input v-model="siteEditorForm.loginCheckUrl" placeholder="检测 URL" class="w-full bg-bg-tertiary border border-border-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error">
+              <input type="number" step="0.1" v-model="siteEditorForm.loginTimeout" placeholder="超时时间 (秒)" class="w-full bg-bg-tertiary border border-border-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error">
             </div>
             <textarea
               v-model="siteEditorForm.loginHeadersText"
               rows="4"
-              class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm mt-3 focus:outline-none focus:border-[#cc0000]"
+              class="w-full bg-bg-tertiary border border-border-secondary rounded-lg px-3 py-2 text-sm mt-3 focus:outline-none focus:border-color-error"
               placeholder="登录检测请求头，每行 key: value"
             ></textarea>
           </div>
@@ -597,23 +597,23 @@
 
           <div
             v-if="siteEditorError"
-            class="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2"
+            class="text-sm text-color-error bg-color-error/10 border border-color-error/30 rounded-lg px-4 py-2"
           >
             {{ siteEditorError }}
           </div>
         </div>
 
-        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-secondary">
           <button
             @click="closeSiteEditor"
-            class="px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 text-sm transition-colors"
+            class="px-5 py-2 rounded-full bg-bg-tertiary hover:bg-bg-hover text-sm transition-colors"
           >
             取消
           </button>
           <button
             @click="saveSiteEditor"
             :disabled="siteEditorSaving"
-            class="px-5 py-2 rounded-full bg-color-error hover:bg-red-600 text-sm font-medium transition-colors disabled:opacity-50"
+            class="px-5 py-2 rounded-full bg-color-error hover:bg-color-error-hover text-sm font-medium transition-colors disabled:opacity-50"
           >
             {{ siteEditorSaving ? '保存中...' : '保存配置' }}
           </button>

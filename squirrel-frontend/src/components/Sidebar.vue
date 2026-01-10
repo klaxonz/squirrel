@@ -1,13 +1,13 @@
 <template>
-  <div class="sidebar bg-[#0f0f0f] h-full flex flex-col"
-       :class="[isCollapsed ? 'w-[64px]' : 'w-[220px]']">
+  <div class="sidebar bg-bg-primary h-full flex flex-col"
+       :class="[isCollapsed ? 'w-16' : 'w-56']">
     <!-- 顶部菜单按钮 -->
     <div class="flex items-center h-14 px-3">
       <button
         @click="toggleCollapse"
-        class="p-2 hover:bg-[#272727] rounded-full"
+        class="p-2 hover:bg-bg-hover rounded-full"
       >
-        <Bars3Icon class="h-6 w-6 text-white" />
+        <Bars3Icon class="h-6 w-6 text-text-accent" />
       </button>
     </div>
 
@@ -25,7 +25,7 @@
       </div>
 
       <!-- 分割线 -->
-      <div class="my-2 border-t border-[#ffffff1a] mx-2"></div>
+      <div class="my-2 border-t border-border-secondary mx-2"></div>
 
       <!-- 底部菜单项 -->
       <div class="px-2">
@@ -40,17 +40,17 @@
     </nav>
 
     <!-- 底部退出按钮 -->
-    <div class="px-2 py-1 border-t border-[#ffffff1a]">
+    <div class="px-2 py-1 border-t border-border-secondary">
       <button
         @click="handleLogout"
-        class="flex items-center h-10 px-3 text-[#f1f1f1] rounded-lg transition-colors duration-150 w-full"
+        class="flex items-center h-10 px-3 text-text-accent rounded-lg transition-colors duration-150 w-full"
         :class="[
           { 'justify-center': isCollapsed },
-          'hover:bg-[#ffffff1a]'
+          'hover:bg-bg-hover'
         ]"
       >
         <ArrowRightOnRectangleIcon class="w-5 h-5" :class="[isCollapsed ? '' : 'mr-4']" />
-        <span v-if="!isCollapsed" class="text-[13px]">退出登录</span>
+        <span v-if="!isCollapsed" class="text-xs">退出登录</span>
       </button>
     </div>
   </div>
@@ -111,6 +111,6 @@ watch(route, () => {
 
 /* 确保图标垂直居中 */
 .router-link-active svg {
-  @apply text-white;
+  color: var(--text-accent);
 }
-</style> 
+</style>

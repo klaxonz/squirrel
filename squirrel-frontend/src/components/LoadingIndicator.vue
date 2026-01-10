@@ -73,7 +73,7 @@ const sizeClass = computed(() => `size-${props.size}`);
 }
 
 .loading-text {
-  @apply mt-2 text-sm text-gray-400;
+  @apply mt-2 text-sm text-text-muted;
 }
 
 @keyframes bounce {

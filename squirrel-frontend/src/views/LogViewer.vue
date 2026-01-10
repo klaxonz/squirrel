@@ -1,20 +1,20 @@
 <template>
-  <div class="log-viewer-container bg-bg-primary text-white min-h-screen p-3">
+  <div class="log-viewer-container bg-bg-primary text-text-primary min-h-screen p-3">
     <div class="max-w-7xl mx-auto">
       <!-- 顶部工具栏 -->
       <div class="flex justify-between items-center mb-3">
         <div class="flex items-center gap-3">
           <h1 class="text-lg font-bold">日志查看器</h1>
-          <span class="text-xs text-gray-400">
+          <span class="text-xs text-text-muted">
             共 {{ totalLogs }} 条
-            <span v-if="filters.keyword || filters.level" class="text-yellow-500">（已筛选）</span>
+            <span v-if="filters.keyword || filters.level" class="text-color-warning">（已筛选）</span>
           </span>
         </div>
         <div class="flex gap-2">
           <button
             @click="copyAllLogs"
             :disabled="logs.length === 0"
-            class="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+            class="px-3 py-1.5 text-sm bg-bg-elevated hover:bg-bg-hover rounded transition-colors disabled:opacity-50 flex items-center gap-1"
             :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
           >
             <ClipboardDocumentIcon class="h-4 w-4" />
@@ -23,14 +23,14 @@
           <button
             @click="toggleAutoRefresh"
             class="px-3 py-1.5 text-sm rounded transition-colors"
-            :class="autoRefresh ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'"
+            :class="autoRefresh ? 'bg-color-info hover:bg-color-info-hover' : 'bg-bg-elevated hover:bg-bg-hover'"
           >
             {{ autoRefresh ? '停止自动刷新' : '开启自动刷新' }}
           </button>
           <button
             @click="loadLogs"
             :disabled="loading"
-            class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 rounded transition-colors disabled:opacity-50"
+            class="px-3 py-1.5 text-sm bg-color-info hover:bg-color-info-hover rounded transition-colors disabled:opacity-50"
           >
             {{ loading ? '加载中...' : '刷新' }}
           </button>
@@ -47,7 +47,7 @@
               @keyup.enter="applyFilters"
               type="text"
               placeholder="搜索日志内容、trace_id..."
-              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
+              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-color-info"
             />
           </div>
 
@@ -56,7 +56,7 @@
             <select
               v-model="filters.level"
               @change="applyFilters"
-              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
+              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-color-info"
             >
               <option value="">全部级别</option>
               <option value="DEBUG">DEBUG</option>
@@ -72,7 +72,7 @@
             <select
               v-model="filters.filename"
               @change="applyFilters"
-              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
+              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-color-info"
             >
               <option v-for="file in logFiles" :key="file.name" :value="file.name">
                 {{ file.name }} ({{ formatFileSize(file.size) }})
@@ -84,13 +84,13 @@
           <div class="flex gap-2">
             <button
               @click="clearFilters"
-              class="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors whitespace-nowrap"
+              class="px-3 py-1.5 text-sm bg-bg-elevated hover:bg-bg-hover rounded transition-colors whitespace-nowrap"
             >
               清空
             </button>
             <button
               @click="applyFilters"
-              class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 rounded transition-colors whitespace-nowrap"
+              class="px-3 py-1.5 text-sm bg-color-info hover:bg-color-info-hover rounded transition-colors whitespace-nowrap"
             >
               应用
             </button>
@@ -100,11 +100,11 @@
 
       <!-- 日志列表 -->
       <div class="bg-bg-secondary border border-border-primary rounded-lg overflow-hidden">
-        <div v-if="loading && logs.length === 0" class="text-center py-8 text-sm text-gray-400">
+        <div v-if="loading && logs.length === 0" class="text-center py-8 text-sm text-text-muted">
           加载中...
         </div>
 
-        <div v-else-if="logs.length === 0" class="text-center py-8 text-sm text-gray-400">
+        <div v-else-if="logs.length === 0" class="text-center py-8 text-sm text-text-muted">
           暂无日志
         </div>
 
@@ -130,37 +130,37 @@
                 <!-- 复制按钮 -->
                 <button
                   @click="copyLog(item)"
-                  class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white px-2 py-1 rounded text-[10px] flex items-center gap-1"
+                  class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-bg-elevated hover:bg-bg-hover text-text-secondary hover:text-text-primary px-2 py-1 rounded text-2xs flex items-center gap-1"
                   :title="'复制日志'"
                 >
                   <ClipboardDocumentIcon class="h-3 w-3" />
-                  <span v-if="copiedLogId === item.id" class="text-green-400">已复制</span>
+                  <span v-if="copiedLogId === item.id" class="text-color-success">已复制</span>
                   <span v-else>复制</span>
                 </button>
 
                 <!-- 日志头部 -->
                 <div class="flex items-center gap-2 mb-1 flex-wrap pr-16">
                   <span
-                    class="log-level-badge px-1.5 py-0.5 rounded text-[10px] font-semibold leading-none"
+                    class="log-level-badge px-1.5 py-0.5 rounded text-2xs font-semibold leading-none"
                     :class="getLevelBadgeClass(item.level)"
                   >
                     {{ item.level }}
                   </span>
-                  <span class="text-gray-400 text-xs">{{ item.timestamp }}</span>
+                  <span class="text-text-muted text-xs">{{ item.timestamp }}</span>
                   <span 
                     v-if="item.trace_id" 
                     class="flex items-center gap-1"
                   >
                     <span
                       @click="filterByTraceId(item.trace_id)"
-                      class="text-blue-400 text-[10px] font-mono bg-blue-950 px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-900 hover:text-blue-300 transition-colors" 
+                      class="text-color-info text-2xs font-mono bg-color-info/20 px-1.5 py-0.5 rounded cursor-pointer hover:bg-color-info/30 hover:text-color-info-hover transition-colors" 
                       :title="'点击筛选 Trace ID: ' + item.trace_id"
                   >
                       {{ item.trace_id.substring(0, 8) }}
                     </span>
                   </span>
-                  <span class="text-gray-500 text-xs">{{ item.logger }}</span>
-                  <span class="text-gray-600 text-[10px] ml-auto">行 {{ item.line_num }}</span>
+                  <span class="text-text-muted text-xs">{{ item.logger }}</span>
+                  <span class="text-text-muted text-2xs ml-auto">行 {{ item.line_num }}</span>
                 </div>
 
                 <!-- 日志内容 -->
@@ -413,33 +413,33 @@ function formatFileSize(bytes) {
 // 获取日志级别样式
 function getLevelBadgeClass(level) {
   const classes = {
-    DEBUG: 'bg-gray-600 text-gray-200',
-    INFO: 'bg-blue-600 text-white',
-    WARNING: 'bg-yellow-600 text-white',
-    ERROR: 'bg-red-600 text-white',
-    CRITICAL: 'bg-purple-600 text-white'
+    DEBUG: 'bg-bg-tertiary text-text-primary',
+    INFO: 'bg-color-info text-text-primary',
+    WARNING: 'bg-color-warning text-text-primary',
+    ERROR: 'bg-color-error text-text-primary',
+    CRITICAL: 'bg-purple-600 text-text-primary'
   };
-  return classes[level] || 'bg-gray-600 text-gray-200';
+  return classes[level] || 'bg-bg-tertiary text-text-primary';
 }
 
 function getLogLevelClass(level) {
   const classes = {
-    ERROR: 'bg-red-900/10',
+    ERROR: 'bg-color-error/10',
     CRITICAL: 'bg-purple-900/10',
-    WARNING: 'bg-yellow-900/10'
+    WARNING: 'bg-color-warning/10'
   };
   return classes[level] || '';
 }
 
 function getMessageBorderClass(level) {
   const classes = {
-    DEBUG: 'border-gray-600',
-    INFO: 'border-blue-500',
-    WARNING: 'border-yellow-500',
-    ERROR: 'border-red-500',
+    DEBUG: 'border-border-secondary',
+    INFO: 'border-color-info',
+    WARNING: 'border-color-warning',
+    ERROR: 'border-color-error',
     CRITICAL: 'border-purple-500'
   };
-  return classes[level] || 'border-gray-600';
+  return classes[level] || 'border-border-secondary';
 }
 </script>
 

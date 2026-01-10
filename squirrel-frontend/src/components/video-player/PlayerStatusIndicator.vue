@@ -67,12 +67,12 @@ const statusText = computed(() => {
 }
 
 .status-icon {
-  @apply text-white text-2xl;
+  @apply text-text-primary text-2xl;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 .status-text {
-  @apply text-white text-sm font-medium;
+  @apply text-text-primary text-sm font-medium;
   font-family: var(--yt-font-family);
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }

@@ -1,24 +1,24 @@
 <template>
   <div class="settings-section mb-8">
-    <h2 class="text-lg font-semibold mb-4 text-gray-300">站点配置</h2>
-    <p class="text-sm text-gray-400 mb-3">管理各站点的域名、代理与抓取参数，用于订阅与视频来源识别。</p>
+    <h2 class="text-lg font-semibold mb-4 text-text-secondary">站点配置</h2>
+    <p class="text-sm text-text-muted mb-3">管理各站点的域名、代理与抓取参数，用于订阅与视频来源识别。</p>
 
-    <div v-if="siteLoading" class="py-6 text-sm text-gray-400">
+    <div v-if="siteLoading" class="py-6 text-sm text-text-muted">
       正在加载站点配置...
     </div>
 
     <div v-else>
-      <div v-if="siteError" class="mb-3 text-sm text-red-400">
+      <div v-if="siteError" class="mb-3 text-sm text-color-error">
         {{ siteError.message || siteError }}
       </div>
 
-      <div v-if="siteList.length === 0" class="py-6 text-sm text-gray-400">
+      <div v-if="siteList.length === 0" class="py-6 text-sm text-text-muted">
         暂无站点配置。
       </div>
 
       <!-- 列表外框：与页面背景接近的深灰，弱化存在感 -->
-      <div v-else class="border border-white/10 rounded-xl overflow-hidden bg-[#0f0f0f]">
-        <div class="grid grid-cols-6 px-4 py-2 text-xs text-[#aaaaaa] bg-[#161616]">
+      <div v-else class="border border-border-secondary rounded-xl overflow-hidden bg-bg-primary">
+        <div class="grid grid-cols-6 px-4 py-2 text-xs text-text-tertiary bg-bg-secondary">
           <div class="col-span-2">站点</div>
           <div class="col-span-2">域名</div>
           <div class="col-span-1 text-center">状态</div>
@@ -27,29 +27,29 @@
         <div
           v-for="site in siteList"
           :key="site.slug"
-          class="grid grid-cols-6 px-4 py-3 text-sm border-t border-white/5 hover:bg-white/5 transition-colors items-center"
+          class="grid grid-cols-6 px-4 py-3 text-sm border-t border-border-primary hover:bg-bg-hover transition-colors items-center"
         >
           <div class="col-span-2">
             <div class="flex items-center gap-2">
               <span class="font-medium">{{ site.label }}</span>
-              <span class="text-xs text-gray-500">({{ site.slug }})</span>
+              <span class="text-xs text-text-tertiary">({{ site.slug }})</span>
             </div>
           </div>
-          <div class="col-span-2 text-xs text-gray-400 truncate">
+          <div class="col-span-2 text-xs text-text-muted truncate">
             <span v-if="site.domains && site.domains.length">{{ site.domains.join(', ') }}</span>
             <span v-else class="italic">未配置</span>
           </div>
           <div class="col-span-1 flex justify-center">
             <span
               class="px-2 py-0.5 rounded-full text-xs font-medium"
-              :class="site.enabled ? 'bg-green-500/10 text-green-400' : 'bg-gray-700 text-gray-300'"
+              :class="site.enabled ? 'bg-color-success/10 text-color-success' : 'bg-bg-tertiary text-text-secondary'"
             >
               {{ site.enabled ? '已启用' : '已禁用' }}
             </span>
           </div>
           <div class="col-span-1 flex justify-end">
             <button
-              class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs font-medium transition-colors"
+              class="px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs font-medium transition-colors"
               @click="openSiteEditor(site)"
             >
               配置
@@ -64,14 +64,14 @@
       v-if="siteEditorVisible"
       class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
     >
-      <div class="bg-[#161616] rounded-2xl border border-white/10 w-full max-w-3xl shadow-2xl">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
+      <div class="bg-bg-secondary rounded-2xl border border-border-secondary w-full max-w-3xl shadow-xl">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border-secondary">
           <div>
             <h3 class="text-lg font-semibold">编辑站点配置</h3>
-            <p class="text-xs text-gray-400 mt-1">站点标识：{{ siteEditorForm.slug }}</p>
+            <p class="text-xs text-text-muted mt-1">站点标识：{{ siteEditorForm.slug }}</p>
           </div>
           <button
-            class="text-gray-400 hover:text-white transition-colors"
+            class="text-text-muted hover:text-text-primary transition-colors"
             @click="closeSiteEditor"
           >
             ✕
@@ -100,7 +100,7 @@
             />
           </div>
 
-          <div class="flex items-center gap-3 text-sm text-gray-300">
+          <div class="flex items-center gap-3 text-sm text-text-secondary">
             <LabeledCheckbox
               label="启用该站点（用于筛选/数据爬取）"
               v-model="siteEditorForm.enabled"
@@ -134,8 +134,8 @@
           </div>
 
           <div>
-            <h4 class="text-xs text-gray-300 mb-2">代理参数</h4>
-            <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-300">
+            <h4 class="text-xs text-text-secondary mb-2">代理参数</h4>
+            <div class="grid md:grid-cols-2 gap-4 text-sm text-text-secondary">
               <LabeledNumberInput
                 label="连接超时 (秒)"
                 v-model="siteEditorForm.proxyConnectTimeout"
@@ -182,7 +182,7 @@
                 :step="1"
               />
             </div>
-            <div class="flex flex-wrap gap-4 mt-3 text-xs text-gray-300">
+            <div class="flex flex-wrap gap-4 mt-3 text-xs text-text-secondary">
               <LabeledCheckbox
                 label="启用 HTTP/2"
                 v-model="siteEditorForm.proxyEnableHttp2"
@@ -195,7 +195,7 @@
           </div>
 
           <div>
-            <h4 class="text-xs text-gray-300 mb-2">登录检测</h4>
+            <h4 class="text-xs text-text-secondary mb-2">登录检测</h4>
             <div class="grid md:grid-cols-2 gap-4">
               <LabeledTextInput
                 label="检测 URL"
@@ -217,7 +217,7 @@
             />
           </div>
 
-          <div class="flex flex-wrap gap-4 text-xs text-gray-300">
+          <div class="flex flex-wrap gap-4 text-xs text-text-secondary">
             <LabeledCheckbox
               label="默认标记为 NSFW"
               v-model="siteEditorForm.metadataNsfw"
@@ -246,23 +246,23 @@
 
           <div
             v-if="siteEditorError"
-            class="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2"
+            class="text-sm text-color-error bg-color-error/10 border border-color-error/30 rounded-lg px-4 py-2"
           >
             {{ siteEditorError }}
           </div>
         </div>
 
-        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-secondary">
           <button
             @click="closeSiteEditor"
-            class="px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 text-sm transition-colors"
+            class="px-5 py-2 rounded-full bg-bg-tertiary hover:bg-bg-hover text-sm transition-colors"
           >
             取消
           </button>
           <button
             @click="saveSiteEditor"
             :disabled="siteEditorSaving"
-            class="px-5 py-2 rounded-full bg-red-600 hover:bg-red-700 text-sm font-medium transition-colors disabled:opacity-50"
+            class="px-5 py-2 rounded-full bg-color-error hover:bg-color-error-hover text-sm font-medium transition-colors disabled:opacity-50"
           >
             {{ siteEditorSaving ? '保存中...' : '保存配置' }}
           </button>
@@ -525,7 +525,7 @@ const saveSiteEditor = async () => {
 .site-editor-scroll {
   /* Firefox */
   scrollbar-width: thin;
-  scrollbar-color: #303030 transparent;
+  scrollbar-color: var(--bg-tertiary) transparent;
 }
 
 .site-editor-scroll::-webkit-scrollbar {
@@ -537,12 +537,12 @@ const saveSiteEditor = async () => {
 }
 
 .site-editor-scroll::-webkit-scrollbar-thumb {
-  background-color: #303030; /* 接近弹窗背景的深灰，类似 YouTube */
+  background-color: var(--bg-tertiary);
   border-radius: 9999px;
 }
 
 .site-editor-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: #4a4a4a;
+  background-color: var(--bg-hover);
 }
 
 /* 在站点配置弹窗内隐藏原生 number 输入的加减箭头，保持纯深色输入框样式 */
