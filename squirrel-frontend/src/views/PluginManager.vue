@@ -1,7 +1,7 @@
 <template>
   <div class="plugin-manager bg-bg-primary text-text-primary min-h-screen">
     <!-- 顶部操作区 -->
-    <div class="border-b border-border-secondary">
+    <div>
       <div class="max-w-7xl mx-auto px-6 py-6">
         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div>

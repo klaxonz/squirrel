@@ -1,7 +1,7 @@
 <template>
   <div class="monitoring-page bg-bg-primary text-text-primary min-h-screen overflow-y-auto">
     <!-- 顶部状态栏 -->
-    <div class="border-b border-border-secondary">
+    <div>
       <div class="max-w-[1600px] mx-auto px-6 py-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-6">

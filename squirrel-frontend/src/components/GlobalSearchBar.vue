@@ -1,5 +1,5 @@
 <template>
-  <div class="global-search-bar bg-bg-primary border border-border-secondary px-4 py-3">
+  <div class="global-search-bar bg-bg-primary px-4 py-3">
     <div class="max-w-2xl mx-auto">
       <div class="relative flex items-center w-full">
         <input
