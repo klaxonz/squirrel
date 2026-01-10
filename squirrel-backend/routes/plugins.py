@@ -5,6 +5,7 @@ from typing import Dict, List, Literal
 
 from services.plugin_service import PluginService
 from services.site_login_status_service import SiteLoginStatusService
+from services.cookiecloud_service import CookieCloudSyncError, sync_cookiecloud_to_site_files
 from plugins.loader import reload_plugins
 from utils.redis_client import publish_plugin_reload_signal
 from common.response import success, error, param_error
@@ -17,6 +18,15 @@ from core.cookie_config import (
 from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_cookie_domain(domain: str) -> str:
+    if not domain:
+        return ""
+    d = str(domain).strip()
+    if d.startswith("#HttpOnly_"):
+        d = d[len("#HttpOnly_") :]
+    return d.lstrip(".").lower()
 
 def select_primary_domain(domains: list) -> str:
     """
@@ -275,14 +285,16 @@ async def upload_site_cookies(
     header_lines: List[str] = []
     body_lines: List[str] = []
     for line in lines:
-        if not line or line.startswith("#"):
+        if not line:
+            continue
+        if line.startswith("#") and not line.startswith("#HttpOnly_"):
             header_lines.append(line)
             continue
         parts = line.split("\t")
         if not parts:
             continue
-        domain = parts[0].strip().lstrip(".").lower()
-        if any(domain == d or domain.endswith("." + d) for d in site_domains):
+        domain = normalize_cookie_domain(parts[0])
+        if any(domain == d or domain.endswith("." + d) for d in site_domains):  
             body_lines.append(line)
 
     if not body_lines:
@@ -342,13 +354,15 @@ async def import_cookies_for_all_sites(file: UploadFile = File(...)):
     header_lines: List[str] = []
 
     for line in lines:
-        if not line or line.startswith("#"):
+        if not line:
+            continue
+        if line.startswith("#") and not line.startswith("#HttpOnly_"):
             header_lines.append(line)
             continue
         parts = line.split("\t")
         if not parts:
             continue
-        raw_domain = parts[0].strip().lstrip(".").lower()
+        raw_domain = normalize_cookie_domain(parts[0])
         matched_sites: List[str] = []
         for d, names in domain_to_sites.items():
             if raw_domain == d or raw_domain.endswith("." + d):
@@ -385,6 +399,18 @@ async def import_cookies_for_all_sites(file: UploadFile = File(...)):
         },
         msg="Cookies 已按站点拆分导入"
     )
+
+
+@router.post("/sites/cookies/cookiecloud/sync")
+def sync_cookies_from_cookiecloud(site_name: str | None = Query(None)):
+    try:
+        data = sync_cookiecloud_to_site_files(site_slug=site_name)
+        return success(data, msg="CookieCloud 同步完成")
+    except CookieCloudSyncError as exc:
+        return error(str(exc))
+    except Exception as exc:
+        logger.exception("CookieCloud sync failed: %s", exc)
+        return error(f"CookieCloud 同步失败: {exc}")
 
 
 @router.post("/sites/test-connectivity/batch")

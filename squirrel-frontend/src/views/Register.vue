@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-[#0f0f0f] px-4">
+  <div class="min-h-screen flex items-center justify-center bg-bg-primary px-4">
     <div class="max-w-md w-full space-y-8">
       <!-- Logo -->
       <div class="flex flex-col items-center">
@@ -17,7 +17,7 @@
               v-model="form.nickname"
               type="text"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-[#272727] bg-[#1f1f1f] placeholder-[#aaaaaa] text-white rounded focus:outline-none focus:ring-[#cc0000] focus:border-[#cc0000] focus:z-10 sm:text-sm"
+              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-white rounded focus:outline-none focus:ring-color-error focus:border-color-error focus:z-10 sm:text-sm"
               placeholder="昵称"
             >
           </div>
@@ -28,7 +28,7 @@
               v-model="form.email"
               type="email"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-[#272727] bg-[#1f1f1f] placeholder-[#aaaaaa] text-white rounded focus:outline-none focus:ring-[#cc0000] focus:border-[#cc0000] focus:z-10 sm:text-sm"
+              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-white rounded focus:outline-none focus:ring-color-error focus:border-color-error focus:z-10 sm:text-sm"
               placeholder="邮箱"
             >
           </div>
@@ -39,7 +39,7 @@
               v-model="form.password"
               type="password"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-[#272727] bg-[#1f1f1f] placeholder-[#aaaaaa] text-white rounded focus:outline-none focus:ring-[#cc0000] focus:border-[#cc0000] focus:z-10 sm:text-sm"
+              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-white rounded focus:outline-none focus:ring-color-error focus:border-color-error focus:z-10 sm:text-sm"
               placeholder="密码"
             >
           </div>
@@ -49,7 +49,7 @@
           <button
             type="submit"
             :disabled="loading"
-            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#cc0000] hover:bg-[#aa0000] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-color-error hover:bg-red-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="loading">注册中...</span>
             <span v-else>注册</span>
@@ -59,7 +59,7 @@
         <div class="flex items-center justify-center">
           <router-link
             to="/login"
-            class="text-sm text-[#aaaaaa] hover:text-white transition-colors"
+            class="text-sm text-text-muted hover:text-white transition-colors"
           >
             已有账号？立即登录
           </router-link>

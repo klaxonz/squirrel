@@ -1,5 +1,5 @@
 <template>
-  <div class="log-viewer-container bg-[#0f0f0f] text-white min-h-screen p-3">
+  <div class="log-viewer-container bg-bg-primary text-white min-h-screen p-3">
     <div class="max-w-7xl mx-auto">
       <!-- 顶部工具栏 -->
       <div class="flex justify-between items-center mb-3">
@@ -38,7 +38,7 @@
       </div>
 
       <!-- 搜索和过滤区域 - 紧凑版 -->
-      <div class="bg-[#1a1a1a] rounded-lg p-3 mb-3">
+      <div class="bg-bg-secondary border border-border-primary rounded-lg p-3 mb-3">
         <div class="flex flex-wrap gap-2 items-end">
           <!-- 搜索框 -->
           <div class="flex-1 min-w-[200px]">
@@ -47,7 +47,7 @@
               @keyup.enter="applyFilters"
               type="text"
               placeholder="搜索日志内容、trace_id..."
-              class="w-full bg-[#2a2a2a] border border-gray-700 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
+              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
 
@@ -56,7 +56,7 @@
             <select
               v-model="filters.level"
               @change="applyFilters"
-              class="w-full bg-[#2a2a2a] border border-gray-700 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
+              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
             >
               <option value="">全部级别</option>
               <option value="DEBUG">DEBUG</option>
@@ -72,7 +72,7 @@
             <select
               v-model="filters.filename"
               @change="applyFilters"
-              class="w-full bg-[#2a2a2a] border border-gray-700 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
+              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
             >
               <option v-for="file in logFiles" :key="file.name" :value="file.name">
                 {{ file.name }} ({{ formatFileSize(file.size) }})
@@ -99,7 +99,7 @@
       </div>
 
       <!-- 日志列表 -->
-      <div class="bg-[#1a1a1a] rounded-lg overflow-hidden">
+      <div class="bg-bg-secondary border border-border-primary rounded-lg overflow-hidden">
         <div v-if="loading && logs.length === 0" class="text-center py-8 text-sm text-gray-400">
           加载中...
         </div>
@@ -124,7 +124,7 @@
               :data-index="index"
             >
               <div
-                class="log-entry border-b border-gray-800 px-3 py-2 hover:bg-[#252525] transition-colors group relative"
+                class="log-entry border-b border-border-primary px-3 py-2 hover:bg-bg-elevated transition-colors group relative"
                 :class="getLogLevelClass(item.level)"
               >
                 <!-- 复制按钮 -->

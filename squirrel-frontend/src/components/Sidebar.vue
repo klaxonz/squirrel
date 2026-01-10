@@ -15,25 +15,13 @@
     <nav class="flex-1 overflow-y-auto py-1 scrollbar-hide">
       <!-- 主要菜单项 -->
       <div class="px-2">
-        <router-link
-          v-for="item in menuItems"
+        <SidebarMenuItem
+          v-for="item in MENU_ITEMS.main"
           :key="item.path"
-          :to="item.path"
-          class="flex items-center h-10 px-3 text-[#f1f1f1] rounded-lg transition-colors duration-150 mb-1"
-          :class="[
-            { 'justify-center': isCollapsed },
-            $route.path === item.path 
-              ? 'bg-[#272727]' 
-              : 'hover:bg-[#ffffff1a]'
-          ]"
-        >
-          <component
-            :is="item.icon"
-            class="w-5 h-5"
-            :class="[isCollapsed ? '' : 'mr-4']"
-          />
-          <span v-if="!isCollapsed" class="text-[13px]">{{ item.name }}</span>
-        </router-link>
+          :item="item"
+          :is-collapsed="isCollapsed"
+          :is-active="$route.path === item.path"
+        />
       </div>
 
       <!-- 分割线 -->
@@ -41,25 +29,13 @@
 
       <!-- 底部菜单项 -->
       <div class="px-2">
-        <router-link
-          v-for="item in bottomItems"
+        <SidebarMenuItem
+          v-for="item in MENU_ITEMS.bottom"
           :key="item.path"
-          :to="item.path"
-          class="flex items-center h-10 px-3 text-[#f1f1f1] rounded-lg transition-colors duration-150 mb-1"
-          :class="[
-            { 'justify-center': isCollapsed },
-            $route.path === item.path 
-              ? 'bg-[#272727]' 
-              : 'hover:bg-[#ffffff1a]'
-          ]"
-        >
-          <component
-            :is="item.icon"
-            class="w-5 h-5"
-            :class="[isCollapsed ? '' : 'mr-4']"
-          />
-          <span v-if="!isCollapsed" class="text-[13px]">{{ item.name }}</span>
-        </router-link>
+          :item="item"
+          :is-collapsed="isCollapsed"
+          :is-active="$route.path === item.path"
+        />
       </div>
     </nav>
 
@@ -81,74 +57,22 @@
 </template>
 
 <script setup>
-import { ref, watch, inject } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { ref, watch, inject } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
-  HomeIcon,
-  BookmarkIcon,
-  ClockIcon,
-  Cog6ToothIcon as CogIcon,
-  PuzzlePieceIcon,
-  DocumentTextIcon,
-  ChartBarIcon,
-  CpuChipIcon,
   Bars3Icon,
   ArrowRightOnRectangleIcon,
-} from '@heroicons/vue/24/outline';
-import { useUser } from '../composables/useUser';
+} from '@heroicons/vue/24/outline'
+import { useUser } from '../composables/useUser'
+import SidebarMenuItem from './SidebarMenuItem.vue'
+import { MENU_ITEMS } from '../constants/sidebar'
 
-const route = useRoute();
-const router = useRouter();
-const isCollapsed = ref(false);
-const emit = defineEmits(['collapse']);
-const emitter = inject('emitter');
-const { logout } = useUser();
-
-const menuItems = [
-  {
-    name: '首页',
-    path: '/',
-    icon: HomeIcon,
-  },
-  {
-    name: '订阅',
-    path: '/subscribed',
-    icon: BookmarkIcon,
-  },
-  {
-    name: '历史',
-    path: '/history',
-    icon: ClockIcon,
-  },
-  {
-    name: '监控',
-    path: '/monitoring',
-    icon: ChartBarIcon,
-  },
-  {
-    name: '定时任务',
-    path: '/scheduled-tasks',
-    icon: CpuChipIcon,
-  }
-];
-
-const bottomItems = [
-  {
-    name: '日志',
-    path: '/logs',
-    icon: DocumentTextIcon,
-  },
-  {
-    name: '设置',
-    path: '/settings',
-    icon: CogIcon,
-  },
-  {
-    name: '插件',
-    path: '/plugins',
-    icon: PuzzlePieceIcon,
-  },
-];
+const route = useRoute()
+const router = useRouter()
+const isCollapsed = ref(false)
+const emit = defineEmits(['collapse'])
+const emitter = inject('emitter')
+const { logout } = useUser()
 
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value;

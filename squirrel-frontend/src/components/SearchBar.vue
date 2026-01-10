@@ -1,12 +1,12 @@
 <template>
-  <div class="search-bar w-full p-4">
+  <div class="search-bar w-full p-4 bg-bg-primary">
     <div class="relative flex items-center w-full max-w-2xl mx-auto">
       <input
         v-model="searchQuery"
         @keyup.enter="handleSearch"
         type="text"
         placeholder="搜索"
-        class="w-full h-10 pl-10 pr-4 text-sm bg-[#222222] border border-[#303030] rounded-full focus:outline-none focus:border-[#4a4a4c] text-white placeholder-gray-400"
+        class="w-full h-10 pl-10 pr-4 text-sm bg-bg-elevated border border-border-secondary rounded-full focus:outline-none focus:border-color-info text-white placeholder-gray-400"
       >
         <button
           @click="handleSearch"
@@ -30,8 +30,4 @@ const handleSearch = () => {
 };
 </script>
 
-<style scoped>
-.search-bar {
-  background-color: #0f0f0f;
-}
-</style>
+<style scoped></style>

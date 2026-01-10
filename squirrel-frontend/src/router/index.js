@@ -1,49 +1,60 @@
-import {createRouter, createWebHistory} from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import LatestVideos from '../views/LatestVideos.vue'
 import Subscribed from '../views/Subscribed.vue'
 import Settings from '../views/Settings.vue'
-import VideoTab from "../components/VideoTab.vue";
-import History from '../views/History.vue';
+import VideoTab from '../components/VideoTab.vue'
+import History from '../views/History.vue'
 import VideoPlay from '../views/VideoPlay.vue'
-import Login from "../views/Login.vue";
-import Register from "../views/Register.vue";
-import PluginManager from '../views/PluginManager.vue';
-import LogViewer from '../views/LogViewer.vue';
-import Monitoring from '../views/Monitoring.vue';
-import ScheduledTasks from '../views/ScheduledTasks.vue';
-import { useUser } from '../composables/useUser';
+import Login from '../views/Login.vue'
+import Register from '../views/Register.vue'
+import PluginManager from '../views/PluginManager.vue'
+import LogViewer from '../views/LogViewer.vue'
+import Monitoring from '../views/Monitoring.vue'
+import ScheduledTasks from '../views/ScheduledTasks.vue'
+import { useUser } from '../composables/useUser'
 
+// 路由元数据常量
+const SEARCH_META = {
+  showSearch: true,
+  search: 'home',
+  searchEvent: 'search:home',
+  searchPlaceholder: '搜索视频...'
+}
+
+const NO_SEARCH_META = {
+  showSearch: false
+}
 
 const routes = [
   {
     path: '/videos',
     name: 'LatestVideos',
     component: LatestVideos,
-    meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+    meta: SEARCH_META,
     children: [
       {
         path: 'all',
         name: 'AllVideos',
         component: VideoTab,
-        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+        meta: SEARCH_META,
       },
       {
         path: 'unread',
         name: 'UnreadVideos',
         component: VideoTab,
-        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+        meta: SEARCH_META,
       },
       {
         path: 'read',
         name: 'ReadVideos',
         component: VideoTab,
-        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+        meta: SEARCH_META,
       },
       {
         path: 'preview',
         name: 'PreviewVideos',
         component: VideoTab,
-        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+        meta: SEARCH_META,
       },
       {
         path: 'liked',
@@ -58,7 +69,7 @@ const routes = [
         meta: { showSearch: true, search: 'home' },
       }
     ],
-    redirect: {name: 'AllVideos'},
+    redirect: { name: 'AllVideos' },
   },
   {
     path: '/',
@@ -68,7 +79,12 @@ const routes = [
     path: '/subscribed',
     name: 'Subscribed',
     component: Subscribed,
-    meta: { showSearch: true, search: 'subscribed', searchEvent: 'search:subscribed', searchPlaceholder: '搜索频道...' },
+    meta: {
+      showSearch: true,
+      search: 'subscribed',
+      searchEvent: 'search:subscribed',
+      searchPlaceholder: '搜索频道...'
+    },
   },
   {
     path: '/settings',
@@ -79,13 +95,13 @@ const routes = [
     path: '/plugins',
     name: 'Plugins',
     component: PluginManager,
-    meta: { showSearch: false }
+    meta: NO_SEARCH_META
   },
   {
     path: '/logs',
     name: 'Logs',
     component: LogViewer,
-    meta: { showSearch: false }
+    meta: NO_SEARCH_META
   },
   {
     path: '/monitoring',
@@ -97,7 +113,7 @@ const routes = [
     path: '/scheduled-tasks',
     name: 'ScheduledTasks',
     component: ScheduledTasks,
-    meta: { showSearch: false }
+    meta: NO_SEARCH_META
   },
   {
     path: '/subscription/:id',
@@ -114,38 +130,37 @@ const routes = [
         path: 'all',
         name: 'SubscriptionAllVideos',
         component: VideoTab,
-        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
-      }
-      ,
+        meta: SEARCH_META,
+      },
       {
         path: 'unread',
         name: 'SubscriptionUnreadVideos',
         component: VideoTab,
-        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+        meta: SEARCH_META,
       },
       {
         path: 'read',
         name: 'SubscriptionReadVideos',
         component: VideoTab,
-        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+        meta: SEARCH_META,
       },
       {
         path: 'preview',
         name: 'SubscriptionPreviewVideos',
         component: VideoTab,
-        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+        meta: SEARCH_META,
       },
       {
         path: 'liked',
         name: 'SubscriptionLikedVideos',
         component: VideoTab,
-        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+        meta: SEARCH_META,
       },
       {
         path: 'later',
         name: 'SubscriptionLaterVideos',
         component: VideoTab,
-        meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+        meta: SEARCH_META,
       }
     ],
   },
@@ -153,13 +168,26 @@ const routes = [
     path: '/history',
     name: 'History',
     component: History,
-    meta: { showSearch: true, search: 'history', searchEvent: 'search:history', searchPlaceholder: '搜索历史...' },
+    meta: {
+      showSearch: true,
+      search: 'history',
+      searchEvent: 'search:history',
+      searchPlaceholder: '搜索历史...'
+    },
   },
   {
     path: '/video/:videoId',
     name: 'VideoPlay',
     component: VideoPlay,
-    meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...', searchRedirectName: 'AllVideos', searchPersistKey: 'LatestVideos', scrollable: true },
+    meta: {
+      showSearch: true,
+      search: 'home',
+      searchEvent: 'search:home',
+      searchPlaceholder: '搜索视频...',
+      searchRedirectName: 'AllVideos',
+      searchPersistKey: 'LatestVideos',
+      scrollable: true
+    },
   },
   {
     path: '/login',
@@ -182,30 +210,30 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach(async (to, from, next) => {
-  const { getCurrentUser, isAuthenticated } = useUser();
-  
+  const { getCurrentUser, isAuthenticated } = useUser()
+
   // 如果有 token 但没有用户信息，尝试获取用户信息
   if (localStorage.getItem('token') && !isAuthenticated.value) {
     try {
-      await getCurrentUser();
+      await getCurrentUser()
     } catch (error) {
-      console.error('Failed to get user info:', error);
+      console.error('Failed to get user info:', error)
     }
   }
 
   // 需要认证但未登录
   if (to.meta.requiresAuth !== false && !isAuthenticated.value) {
-    next('/login');
-    return;
-  }
-  
-  // 已登录用户访问登录/注册页面
-  if ((to.path === '/login' || to.path === '/register') && isAuthenticated.value) {
-    next('/');
-    return;
+    next('/login')
+    return
   }
 
-  next();
-});
+  // 已登录用户访问登录/注册页面
+  if ((to.path === '/login' || to.path === '/register') && isAuthenticated.value) {
+    next('/')
+    return
+  }
+
+  next()
+})
 
 export default router

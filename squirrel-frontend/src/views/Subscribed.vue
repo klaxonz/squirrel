@@ -1,5 +1,5 @@
 <template>
-  <div class="subscribed-page flex flex-col h-full bg-[#0f0f0f] text-white">
+  <div class="subscribed-page flex flex-col h-full bg-bg-primary text-white">
     <!-- 顶部操作栏 - 对齐全部视频页的标签样式 -->
     <div class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
       <FeedToolbar
@@ -12,20 +12,26 @@
         @update:site="(v) => { site = v; }"
         @refresh="refreshList"
       >
-        <button
-          class="ml-2 px-3 py-1.5 min-w-[100px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
+        <Button
+          class="ml-2 min-w-[100px] whitespace-nowrap"
+          size="sm"
+          shape="pill"
+          variant="secondary"
           @click="showAddDialog = true"
         >
           <PlusIcon class="h-4 w-4" />
           <span class="ml-1">添加订阅</span>
-        </button>
-        <button
-          class="ml-2 px-3 py-1.5 min-w-[100px] bg-[#cc0000]/80 hover:bg-[#cc0000] text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
+        </Button>
+        <Button
+          class="ml-2 min-w-[100px] whitespace-nowrap"
+          size="sm"
+          shape="pill"
+          variant="danger"
           @click="showImportDialog = true"
         >
           <ArrowDownTrayIcon class="h-4 w-4" />
           <span class="ml-1">导入订阅</span>
-        </button>
+        </Button>
       </FeedToolbar>
     </div>
 
@@ -35,25 +41,26 @@
       @scroll="handleScrollPosition"
     >
       <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8" v-if="loadError">
-        <div class="mt-2 mb-2 px-3 py-2 rounded bg-rose-500/10 text-rose-300 text-sm flex items-center justify-between">
-          <span>加载失败：{{ loadError?.message || loadError }}</span>
-          <button class="ml-3 px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30" @click="refreshList">重试</button>
-        </div>
+        <InlineAlert
+          :message="`加载失败：${loadError?.message || loadError}`"
+          action-label="重试"
+          @action="refreshList"
+        />
       </div>
       <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
         <!-- 频道列表 -->
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
           <div v-for="subscription in subscriptions" :key="subscription.id"
-               class="channel-item bg-[#202020] rounded-lg overflow-hidden hover:bg-[#303030] transition-all duration-200 relative group"
+               class="channel-item bg-bg-card rounded-lg overflow-hidden hover:bg-bg-elevated transition-all duration-200 relative group"
                :class="{ 'is-refreshing': isResetting }"
                @click="getSubscriptionVideos(subscription.id)"
           >
-            <div class="flex justify-center items-center p-3 bg-[#181818]">
+            <div class="flex justify-center items-center p-3 bg-bg-secondary">
               <div class="relative w-14 h-14">
                 <img
                   :alt="subscription.name"
                   :src="getAvatarSrc(subscription.avatar, subscription.id)"
-                  class="w-full h-full rounded-full object-cover ring-1 ring-[#303030] transition-transform duration-300 group-hover:scale-105"
+                  class="w-full h-full rounded-full object-cover ring-1 ring-border-primary transition-transform duration-300 group-hover:scale-105"
                   referrerpolicy="no-referrer"
                   @error="(e) => handleAvatarError(e, subscription.id)"
                 />
@@ -70,10 +77,10 @@
                   播放列表
                 </span>
               </div>
-              <p class="text-[10px] text-[#aaa] mt-0.5">
+              <p class="text-[10px] text-text-muted mt-0.5">
                 总视频: {{ subscription.total_videos }} | 已解析: {{ subscription.total_extract }}
               </p>
-              <p class="text-[10px] text-[#aaa] mt-0.5">订阅时间: {{ formatDate(subscription.created_at) }}</p>
+              <p class="text-[10px] text-text-muted mt-0.5">订阅时间: {{ formatDate(subscription.created_at) }}</p>
             </div>
 
             <button class="absolute top-1 right-1 p-1 bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition-colors duration-200 opacity-0 group-hover:opacity-100"
@@ -101,14 +108,14 @@
             class="mt-4 mb-4 text-center loading-trigger h-20 flex items-center justify-center"
         >
           <div v-if="loading" class="flex items-center justify-center space-x-2">
-            <div class="w-2 h-2 bg-[#cc0000] rounded-full animate-bounce"></div>
-            <div class="w-2 h-2 bg-[#cc0000] rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-            <div class="w-2 h-2 bg-[#cc0000] rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+            <div class="w-2 h-2 bg-color-error rounded-full animate-bounce"></div>
+            <div class="w-2 h-2 bg-color-error rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+            <div class="w-2 h-2 bg-color-error rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
           </div>
         </div>
 
         <!-- 全部加载完毕 -->
-        <div v-if="allLoaded" class="mt-4 mb-4 text-center text-[#aaa]">
+        <div v-if="allLoaded" class="mt-4 mb-4 text-center text-text-muted">
           <p>已经到底啦</p>
         </div>
       </div>
@@ -117,7 +124,7 @@
     <!-- 设置模态框 -->
     <div v-if="showSettings" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
          @click.self="closeSettings">
-      <div class="bg-[#212121] rounded-lg p-6 w-full max-w-md">
+      <div class="bg-bg-card border border-border-primary rounded-lg p-6 w-full max-w-md">
         <h2 class="text-xl font-bold mb-4 text-white">{{ selectedSubscription.name }} 设置</h2>
         <div class="space-y-6">
           <div class="flex items-center justify-between">
@@ -128,7 +135,7 @@
           <!-- 手动更新按钮 -->
           <div class="space-y-3">
             <button
-              class="w-full py-2 bg-[#404040] text-white rounded-lg hover:bg-[#505050] disabled:bg-[#303030] disabled:cursor-not-allowed transition-colors duration-200 text-sm"
+              class="w-full py-2 bg-bg-elevated text-white rounded-lg hover:bg-bg-tertiary disabled:bg-bg-secondary disabled:cursor-not-allowed transition-colors duration-200 text-sm"
               :disabled="getRefreshState(selectedSubscription.id).isRefreshing"
               @click="handleRefreshSubscription(selectedSubscription.id)"
             >
@@ -144,7 +151,7 @@
             <div v-if="getRefreshState(selectedSubscription.id).status === 'failed'" class="text-xs">
               <p class="text-red-400 mb-2">{{ getRefreshState(selectedSubscription.id).lastError || '更新失败' }}</p>
               <button
-                class="w-full py-1.5 bg-[#505050] text-white rounded hover:bg-[#606060] transition-colors duration-200"
+                class="w-full py-1.5 bg-bg-elevated text-white rounded hover:bg-bg-tertiary transition-colors duration-200"
                 @click="handleRetryRefresh(selectedSubscription.id)"
               >
                 重试更新
@@ -157,8 +164,8 @@
             :class="[
               'w-full py-2 text-white rounded-lg transition-colors duration-200 text-sm',
               getRefreshState(selectedSubscription.id).isRefreshing
-                ? 'bg-[#303030] cursor-not-allowed'
-                : 'bg-[#cc0000] hover:bg-[#990000]'
+                ? 'bg-bg-secondary cursor-not-allowed'
+                : 'bg-color-error hover:bg-red-700'
             ]"
             @click="unsubscribe(selectedSubscription.id)"
           >
@@ -166,7 +173,7 @@
           </button>
           <p v-if="unsubscribeError" class="mt-2 text-xs text-red-400">{{ unsubscribeError }}</p>
         </div>
-        <button class="mt-6 w-full py-2 bg-[#606060] text-white rounded-lg hover:bg-[#808080] transition-colors duration-200 text-sm font-medium"
+        <button class="mt-6 w-full py-2 bg-bg-elevated text-white rounded-lg hover:bg-bg-tertiary transition-colors duration-200 text-sm font-medium"
                 @click="closeSettings">
           关闭
         </button>
@@ -192,9 +199,11 @@
 </template>
 
 <script setup>
-import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';
+import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';       
 import FeedToolbar from '../components/feed/FeedToolbar.vue';
-import { PlusIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
+import Button from '../components/common/Button.vue';
+import InlineAlert from '../components/common/InlineAlert.vue';
+import { PlusIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';        
 import ToggleSwitch from '../components/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
 import { useRefreshTriggers } from '../composables/useRefreshTriggers';

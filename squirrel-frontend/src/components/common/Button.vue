@@ -1,17 +1,18 @@
 <template>
   <button
     :class="[
-      'button inline-flex items-center justify-center rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-primary disabled:opacity-50 disabled:cursor-not-allowed',
+      'button inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-primary disabled:opacity-50 disabled:cursor-not-allowed',
+      shapeClasses,
       sizeClasses,
       variantClasses,
       fullWidth && 'w-full'
     ]"
+    :type="type"
     :disabled="disabled || loading"
     @click="handleClick"
   >
     <ArrowPathIcon v-if="loading" class="animate-spin h-4 w-4 mr-2" />
-
-    <slot v-if="!loading" />
+    <slot />
   </button>
 </template>
 
@@ -41,6 +42,16 @@ const props = defineProps({
   fullWidth: {
     type: Boolean,
     default: false
+  },
+  shape: {
+    type: String,
+    default: 'md',
+    validator: (value) => ['md', 'pill'].includes(value)
+  },
+  type: {
+    type: String,
+    default: 'button',
+    validator: (value) => ['button', 'submit', 'reset'].includes(value)
   }
 })
 
@@ -64,6 +75,15 @@ const sizeClasses = computed(() => {
       return 'px-6 py-3 text-xl'
     default:
       return 'px-4 py-2 text-base'
+  }
+})
+
+const shapeClasses = computed(() => {
+  switch (props.shape) {
+    case 'pill':
+      return 'rounded-full'
+    default:
+      return 'rounded-md'
   }
 })
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="settings-container bg-[#0f0f0f] text-white min-h-screen p-4 md:p-8">
+  <div class="settings-container bg-bg-primary text-white min-h-screen p-4 md:p-8">
     <h1 class="text-2xl font-bold mb-4">设置</h1>
 
     <!-- Tab 导航 -->

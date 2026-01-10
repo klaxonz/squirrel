@@ -1,5 +1,5 @@
 <template>
-  <div class="video-page bg-[#0f0f0f] min-h-screen scrollbar min-w-[1200px]">
+  <div class="video-page bg-bg-primary min-h-screen scrollbar min-w-[1200px]">
     <div class="max-w-[1720px] mx-auto lg:px-6 pt-6 flex min-w-[1200px]">
       <!-- 左侧主内容区域 -->
       <div :class="['flex-1', isWidescreen ? '' : 'max-w-[1280px]']">
@@ -40,7 +40,7 @@
               <!-- 随机播放按钮 -->
               <button
                 @click="handlePlayRandom"
-                class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+                class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
                 title="随机播放"
                 aria-label="随机播放"
               >
@@ -49,8 +49,8 @@
               <!-- 主要按钮显示在外面 -->
               <button
                 @click="handleLike(video, INTERACTION_TYPE.LIKE)"
-                class="p-2 rounded-full hover:bg-[#272727] transition-colors"
-                :class="{ 'text-red-500': video?.interaction_type === INTERACTION_TYPE.LIKE }"
+                class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                :class="{ 'text-color-error': video?.interaction_type === INTERACTION_TYPE.LIKE }"
               >
                 <Icon 
                   :icon="video?.interaction_type === INTERACTION_TYPE.LIKE ? 'material-symbols:thumb-up' : 'material-symbols:thumb-up-outline'" 
@@ -60,8 +60,8 @@
 
               <button
                 @click="handleLike(video, INTERACTION_TYPE.DISLIKE)"
-                class="p-2 rounded-full hover:bg-[#272727] transition-colors"
-                :class="{ 'text-gray-400': video?.interaction_type === INTERACTION_TYPE.DISLIKE }"
+                class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                :class="{ 'text-text-secondary': video?.interaction_type === INTERACTION_TYPE.DISLIKE }"
               >
                 <Icon 
                   :icon="video?.interaction_type === INTERACTION_TYPE.DISLIKE ? 'material-symbols:thumb-down' : 'material-symbols:thumb-down-outline'" 
@@ -71,8 +71,8 @@
 
               <button
                 @click="handleLater(video)"
-                class="p-2 rounded-full hover:bg-[#272727] transition-colors"
-                :class="{ 'text-blue-400': video?.interaction_type === INTERACTION_TYPE.LATER }"
+                class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                :class="{ 'text-color-info': video?.interaction_type === INTERACTION_TYPE.LATER }"
                 title="稍后看"
                 aria-label="稍后看"
               >
@@ -88,7 +88,7 @@
 	                  :href="video.url"
 	                  target="_blank"
 	                  rel="noopener noreferrer"
-	                  class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+	                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
 	                  aria-label="打开原视频页"
 	                  title="打开原视频页"
 	                >
@@ -100,14 +100,14 @@
               <div class="relative">
                 <button
                   @click="handleMoreOptionsClick"
-                  class="p-2 rounded-full hover:bg-[#272727] transition-colors"
+	                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
                 >
                   <Icon icon="material-symbols:more-vert" class="h-5 w-5" />
                 </button>
 
                 <!-- 下拉菜单 -->
                 <div v-if="showMoreOptions"
-                     class="absolute right-0 mt-2 py-2 min-w-[40px] rounded-lg shadow-lg bg-[#282828] z-50"
+                     class="absolute right-0 mt-2 py-2 min-w-[40px] rounded-lg shadow-lg bg-bg-card border border-border-primary z-50"
                      @click.stop
                 >
                   <div class="flex flex-col">
@@ -121,7 +121,7 @@
 
           <!-- 频道信息 -->
           <transition name="fade" mode="out-in">
-            <div :key="video?.id" class="mt-3 pb-3 border-b border-[#272727]">
+            <div :key="video?.id" class="mt-3 pb-3 border-b border-border-primary">
               <div v-if="video?.subscriptions?.length" class="flex flex-col space-y-3">
                 <!-- 主订阅：完整行展示 -->
                 <div class="flex items-center space-x-3">
@@ -134,7 +134,7 @@
                   >
                   <router-link
                     :to="`/subscription/${video.subscriptions[0].id}/all`"
-                    class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-[#3ea6ff] transition-colors"
+                    class="text-xs md:text-sm lg:text-base text-white font-medium hover:text-color-info transition-colors"
                   >
                     {{ video.subscriptions[0].name }}
                   </router-link>
@@ -147,7 +147,7 @@
                 </div>
 
                 <!-- 主订阅统计信息 -->
-                <div class="ml-11 md:ml-12 text-[10px] text-[#aaaaaa] mt-1">
+                <div class="ml-11 md:ml-12 text-[10px] text-text-muted mt-1">
                   <span>
                     总视频: {{ video.subscriptions[0].total_videos || 0 }} | 已解析: {{ video.subscriptions[0].total_extract || 0 }}
                   </span>
@@ -162,7 +162,7 @@
                   <div
                     v-for="sub in video.subscriptions.slice(1)"
                     :key="sub.id"
-                    class="flex items-center px-2 py-1 rounded-full bg-white/5 hover:bg-white/10 cursor-pointer transition-colors text-[11px] text-[#e5e5e5]"
+                    class="flex items-center px-2 py-1 rounded-full bg-white/5 hover:bg-white/10 cursor-pointer transition-colors text-[11px] text-text-primary"
                     @click.stop="$router.push(`/subscription/${sub.id}/all`)"
                   >
                     <img
@@ -208,7 +208,7 @@
                     >
                     <div
                       v-else
-                      class="w-full h-full absolute top-0 left-0 bg-[#1a1a1a] flex items-center justify-center"
+                      class="w-full h-full absolute top-0 left-0 bg-bg-secondary flex items-center justify-center"
                     >
                       <div class="text-gray-500 flex flex-col items-center">
                         <Icon icon="material-symbols:image" class="text-3xl mb-1" />
@@ -220,15 +220,15 @@
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="text-white text-xs leading-5 max-h-10 overflow-hidden group-hover:text-[#3ea6ff] transition-colors">
+                    <div class="text-white text-xs leading-5 max-h-10 overflow-hidden group-hover:text-color-info transition-colors">
                       {{ relatedVideo.title }}
                     </div>
-                    <div class="text-[#aaaaaa] text-[10px] mt-1 truncate">
+                    <div class="text-text-muted text-[10px] mt-1 truncate">
                       <router-link
                         v-if="relatedVideo.subscriptions?.[0]?.id"
                         :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
                         @click.stop
-                        class="hover:text-[#3ea6ff] transition-colors"
+                        class="hover:text-color-info transition-colors"
                       >
                         {{ relatedVideo.subscriptions[0].name }}
                       </router-link>
@@ -238,7 +238,7 @@
                     </div>
                     <div
                       v-if="relatedVideo.uploaded_at"
-                      class="text-[#777777] text-[10px] mt-0.5 truncate"
+                      class="text-text-tertiary text-[10px] mt-0.5 truncate"
                     >
                       {{ formatDate(relatedVideo.uploaded_at) }}
                     </div>

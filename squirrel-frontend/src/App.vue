@@ -148,7 +148,7 @@ html, body {
 
 body {
   font-family: var(--font-sans);
-  @apply bg-[#0f0f0f] text-white;
+  @apply bg-bg-primary text-white;
 }
 
 h1, h2, h3, h4, h5, h6 {

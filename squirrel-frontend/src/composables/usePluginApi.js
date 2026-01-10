@@ -175,7 +175,7 @@ export function usePluginApi() {
     }
   };
 
-  const uploadSiteCookies = async (siteName, file, target = 'default') => {
+  const uploadSiteCookies = async (siteName, file, target = 'default') => {     
     if (!file) {
       return { success: false, error: '请选择 Cookie 文件' };
     }
@@ -204,6 +204,22 @@ export function usePluginApi() {
     }
   };
 
+  const syncCookieCloudCookies = async (siteName = null) => {
+    try {
+      const response = await axios.post('/api/plugins/sites/cookies/cookiecloud/sync', null, {
+        params: siteName ? { site_name: siteName } : undefined
+      });
+      if (response.data?.code === 0) {
+        return { success: true, data: response.data.data };
+      }
+      throw new Error(response.data?.msg || 'CookieCloud 同步失败');
+    } catch (error) {
+      console.error('CookieCloud 同步失败:', error);
+      const errorMessage = error.message || 'CookieCloud 同步失败';
+      return { success: false, error: errorMessage };
+    }
+  };
+
   return {
     getPlugins,
     installPlugin,
@@ -217,6 +233,7 @@ export function usePluginApi() {
     testAllSitesConnectivity,
     importAllSiteCookies,
     uploadSiteCookies,
+    syncCookieCloudCookies,
   };
 }
 

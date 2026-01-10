@@ -25,10 +25,11 @@
 
     <div class="video-container flex-grow">
       <div v-if="loadError" class="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
-        <div class="mt-2 mb-2 px-3 py-2 rounded bg-rose-500/10 text-rose-300 text-sm flex items-center justify-between">
-          <span>加载失败：{{ loadError?.message || loadError }}</span>
-          <button class="ml-3 px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30" @click="refreshCurrentList">重试</button>
-        </div>
+        <InlineAlert
+          :message="`加载失败：${loadError?.message || loadError}`"
+          action-label="重试"
+          @action="refreshCurrentList"
+        />
       </div>
       <router-view v-slot="{ Component }">
         <keep-alive :max="10">
@@ -51,14 +52,15 @@
 </template>
 
 <script setup>
-import {computed, inject, onActivated, onDeactivated, ref} from 'vue';
-import {useRoute, useRouter} from 'vue-router';
-import { useRouteTabSync } from '../composables/useRouteTabSync';
-import { useFeedFilters } from '../composables/useFeedFilters';
-import { useRefreshTriggers } from '../composables/useRefreshTriggers';
-import FeedToolbar from '../components/feed/FeedToolbar.vue';
-import ChannelHeader from '../components/ChannelHeader.vue';
-import { buildTabsWithCounts } from '../utils/feed';
+import { computed, inject, onActivated, onDeactivated, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useRouteTabSync } from '../composables/useRouteTabSync'
+import { useFeedFilters } from '../composables/useFeedFilters'
+import { useRefreshTriggers } from '../composables/useRefreshTriggers'
+import FeedToolbar from '../components/feed/FeedToolbar.vue'
+import ChannelHeader from '../components/ChannelHeader.vue'
+import InlineAlert from '../components/common/InlineAlert.vue'
+import { buildTabsWithCounts } from '../utils/feed'
 
 const router = useRouter();
 const emitter = inject('emitter');
@@ -96,15 +98,12 @@ const handleGlobalSearch = (keyword) => {
 
 const handleOpenModal = (video) => {
   // 从列表页进入时，直接跳转，不传递复杂对象
-  router.push(`/video/${video.id}`);
-};
-
-
-
+  router.push(`/video/${video.id}`)
+}
 
 const goToChannelDetail = (subscriptionId) => {
-  router.push(`/subscription/${subscriptionId}/all`);
-};
+  router.push(`/subscription/${subscriptionId}/all`)
+}
 
 
 const handleTabDoubleClick = (tab) => {

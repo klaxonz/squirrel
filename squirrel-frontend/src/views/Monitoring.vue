@@ -1,5 +1,5 @@
 <template>
-  <div class="monitoring-page bg-[#0f0f0f] text-[#e0e0e0] min-h-screen overflow-y-auto">
+  <div class="monitoring-page bg-bg-primary text-text-primary min-h-screen overflow-y-auto">
     <!-- 顶部状态栏 -->
     <div class="border-b border-white/10">
       <div class="max-w-[1600px] mx-auto px-6 py-3">
@@ -8,12 +8,12 @@
             <h1 class="text-lg font-medium text-white">系统监控</h1>
             <div class="flex items-center gap-2 text-sm">
               <span class="w-2 h-2 rounded-full" :class="healthDotClass"></span>
-              <span class="text-[#888]">{{ healthStatusText }}</span>
-              <span class="text-[#888]">·</span>
+              <span class="text-text-secondary">{{ healthStatusText }}</span>
+              <span class="text-text-secondary">·</span>
               <span class="font-mono" :class="healthScoreClass">{{ dashboardData?.health?.score || 0 }}</span>
             </div>
           </div>
-          <div class="flex items-center gap-3 text-xs text-[#666]">
+          <div class="flex items-center gap-3 text-xs text-text-tertiary">
             <span>{{ lastUpdateTime }}</span>
             <button @click="refreshData" :disabled="loading" class="p-1.5 hover:bg-white/10 rounded transition-colors">
               <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': loading }" />
@@ -201,28 +201,28 @@
       </DataTable>
       
       <!-- 最近错误详情 -->
-      <div v-if="dashboardData?.recent_errors?.length" class="bg-[#161616] rounded-lg border border-white/5">
+      <div v-if="dashboardData?.recent_errors?.length" class="bg-bg-secondary rounded-lg border border-border-primary">
         <div class="px-4 py-2.5 border-b border-white/5 flex items-center justify-between">
           <span class="text-sm font-medium text-white">最近错误</span>
-          <span class="text-xs text-[#666]">最近 {{ dashboardData.recent_errors.length }} 条</span>
+          <span class="text-xs text-text-tertiary">最近 {{ dashboardData.recent_errors.length }} 条</span>
         </div>
         <div class="divide-y divide-white/5 max-h-80 overflow-y-auto custom-scrollbar">
           <div v-for="(err, idx) in dashboardData.recent_errors" :key="idx" class="px-4 py-2.5 hover:bg-white/[0.02]">
             <div class="flex items-center justify-between text-xs mb-1">
               <div class="flex items-center gap-2">
-                <span class="text-[#ef4444] font-medium">{{ err.type }}</span>
-                <span class="text-[#555]">{{ err.site }}</span>
+                <span class="text-color-error font-medium">{{ err.type }}</span>
+                <span class="text-text-tertiary">{{ err.site }}</span>
               </div>
-              <span class="text-[#555]">{{ formatTime(err.time) }}</span>
+              <span class="text-text-tertiary">{{ formatTime(err.time) }}</span>
             </div>
-            <a :href="err.url" target="_blank" class="text-xs text-[#777] hover:text-[#3b82f6] truncate mb-1.5 block" :title="err.url">{{ err.url }}</a>
+            <a :href="err.url" target="_blank" class="text-xs text-text-tertiary hover:text-color-info truncate mb-1.5 block" :title="err.url">{{ err.url }}</a>
             <details class="text-xs group">
-              <summary class="text-[#555] cursor-pointer hover:text-[#888] select-none">
+              <summary class="text-text-tertiary cursor-pointer hover:text-text-secondary select-none">
                 <span class="group-open:hidden">▶</span>
                 <span class="hidden group-open:inline">▼</span>
                 {{ getErrorSummary(err.msg) }}
               </summary>
-              <pre class="error-stack mt-2 p-3 bg-[#0a0a0a] rounded text-[#999] overflow-x-auto whitespace-pre-wrap text-[11px] leading-relaxed max-h-52 overflow-y-auto">{{ err.msg }}</pre>
+              <pre class="error-stack mt-2 p-3 bg-bg-primary rounded text-text-muted overflow-x-auto whitespace-pre-wrap text-[11px] leading-relaxed max-h-52 overflow-y-auto">{{ err.msg }}</pre>
             </details>
           </div>
         </div>
@@ -264,9 +264,9 @@ const refreshData = () => {
 // 健康状态
 const healthDotClass = computed(() => {
   const status = dashboardData.value?.health?.status
-  if (status === 'healthy') return 'bg-[#22c55e]'
-  if (status === 'degraded') return 'bg-[#f59e0b]'
-  return 'bg-[#ef4444]'
+  if (status === 'healthy') return 'bg-color-success'
+  if (status === 'degraded') return 'bg-color-warning'
+  return 'bg-color-error'
 })
 
 const healthStatusText = computed(() => {
@@ -279,9 +279,9 @@ const healthStatusText = computed(() => {
 
 const healthScoreClass = computed(() => {
   const score = dashboardData.value?.health?.score || 0
-  if (score >= 80) return 'text-[#22c55e]'
-  if (score >= 50) return 'text-[#f59e0b]'
-  return 'text-[#ef4444]'
+  if (score >= 80) return 'text-color-success'
+  if (score >= 50) return 'text-color-warning'
+  return 'text-color-error'
 })
 
 const getSuccessRateColor = () => {
@@ -299,9 +299,9 @@ const getQueueDepthColor = () => {
 }
 
 const getSiteRateClass = (rate) => {
-  if (rate >= 80) return 'text-[#22c55e]'
-  if (rate >= 50) return 'text-[#f59e0b]'
-  return 'text-[#ef4444]'
+  if (rate >= 80) return 'text-color-success'
+  if (rate >= 50) return 'text-color-warning'
+  return 'text-color-error'
 }
 
 const getSubscriptionBySite = (siteName) => {

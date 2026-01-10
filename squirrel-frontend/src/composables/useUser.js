@@ -1,116 +1,110 @@
-import { ref } from 'vue';
-import axios from '../utils/axios';
+import { ref } from 'vue'
+import axios from '../utils/axios'
 
 // 创建全局状态
-const currentUser = ref(null);
-const isAuthenticated = ref(false);
-const loading = ref(false);
-const error = ref(null);
+const currentUser = ref(null)
+const isAuthenticated = ref(false)
+const loading = ref(false)
+const error = ref(null)
+
+// API 响应处理工具函数
+const handleApiResponse = (response) => {
+  if (response.data.code !== 0) {
+    throw new Error(response.data.msg)
+  }
+  return response.data
+}
+
+const handleApiError = (err, defaultMessage) => {
+  if (err.response?.data) {
+    const errorMessage = err.response.data.msg || err.response.data.detail
+    error.value = errorMessage
+    throw new Error(errorMessage)
+  }
+  error.value = err.message || defaultMessage
+  throw err
+}
+
+// 通用的API调用包装器
+const apiCall = async (apiFn, options = {}) => {
+  const { defaultErrorMessage = '操作失败', skipLoading = false } = options
+
+  if (!skipLoading) loading.value = true
+  error.value = null
+
+  try {
+    const response = await apiFn()
+    return handleApiResponse(response)
+  } catch (err) {
+    handleApiError(err, defaultErrorMessage)
+  } finally {
+    if (!skipLoading) loading.value = false
+  }
+}
 
 export function useUser() {
   const register = async (data) => {
-    loading.value = true;
-    error.value = null;
-    try {
-      const response = await axios.post('/api/users/register', data);
-      if (response.data.code !== 0) {
-        throw new Error(response.data.msg);
-      }
-      return response.data;
-    } catch (err) {
-      if (err.response?.data) {
-        error.value = err.response.data.msg;
-        throw new Error(err.response.data.msg);
-      }
-      error.value = err.message || '注册失败';
-      throw err;
-    } finally {
-      loading.value = false;
-    }
-  };
+    return apiCall(
+      () => axios.post('/api/users/register', data),
+      { defaultErrorMessage: '注册失败' }
+    )
+  }
 
   const login = async (data) => {
-    loading.value = true;
-    error.value = null;
-    try {
-      const response = await axios.post('/api/users/login', data);
-      if (response.data.code !== 0) {
-        throw new Error(response.data.msg);
-      }
-      currentUser.value = response.data.data.user;
-      isAuthenticated.value = true;
-      return response.data;
-    } catch (err) {
-      error.value = err.message || '登录失败';
-      throw err;
-    } finally {
-      loading.value = false;
-    }
-  };
+    const result = await apiCall(
+      () => axios.post('/api/users/login', data),
+      { defaultErrorMessage: '登录失败' }
+    )
+    currentUser.value = result.data.user
+    isAuthenticated.value = true
+    return result
+  }
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    currentUser.value = null;
-    isAuthenticated.value = false;
-  };
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    currentUser.value = null
+    isAuthenticated.value = false
+  }
 
   const getCurrentUser = async () => {
     if (!localStorage.getItem('token')) {
-      isAuthenticated.value = false;
-      currentUser.value = null;
-      return null;
+      isAuthenticated.value = false
+      currentUser.value = null
+      return null
     }
 
-    loading.value = true;
-    error.value = null;
     try {
-      const response = await axios.get('/api/users/me');
-      if (response.data.code !== 0) {
-        throw new Error(response.data.msg);
-      }
-      currentUser.value = response.data.data;
-      isAuthenticated.value = true;
-      return response.data;
+      const result = await apiCall(
+        () => axios.get('/api/users/me'),
+        { defaultErrorMessage: '获取用户信息失败' }
+      )
+      currentUser.value = result.data
+      isAuthenticated.value = true
+      return result
     } catch (err) {
-      error.value = err.message || '获取用户信息失败';
       if (err.response?.status === 401) {
-        logout();
+        logout()
       }
-      throw err;
-    } finally {
-      loading.value = false;
+      throw err
     }
-  };
+  }
 
   const updateProfile = async (data) => {
-    loading.value = true;
-    error.value = null;
-    try {
-      const response = await axios.put('/api/users/me', data);
-      currentUser.value = response.data;
-      return response.data;
-    } catch (err) {
-      error.value = err.response?.data?.detail || '更新用户信息失败';
-      throw err;
-    } finally {
-      loading.value = false;
-    }
-  };
+    const result = await apiCall(
+      () => axios.put('/api/users/me', data),
+      { defaultErrorMessage: '更新用户信息失败' }
+    )
+    currentUser.value = result
+    return result
+  }
 
   const getUserById = async (userId) => {
-    loading.value = true;
-    error.value = null;
-    try {
-      const response = await axios.get(`/api/users/${userId}`);
-      return response.data;
-    } catch (err) {
-      error.value = err.response?.data?.detail || '获取用户信息失败';
-      throw err;
-    } finally {
-      loading.value = false;
-    }
-  };
+    return apiCall(
+      () => axios.get(`/api/users/${userId}`),
+      { defaultErrorMessage: '获取用户信息失败' }
+    )
+  }
 
   return {
     currentUser,

@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     MEDIA_DOWNLOAD_PATH: str = str(base_dir.parent / 'downloads')
     THUMBNAILS_PATH: str = ''
     CLOUDFLARE_BYPASS_SERVICE_URL: str = ''
+    COOKIECLOUD_URL: str = ''
+    COOKIECLOUD_UUID: str = ''
+    COOKIECLOUD_PASSWORD: str = ''
 
     POOL_SIZE: int = 30
     POOL_MAX_SIZE: int = 60

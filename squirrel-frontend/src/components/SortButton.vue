@@ -2,8 +2,8 @@
   <div class="relative inline-block" ref="rootRef">
     <button
       @click="toggle"
-      class="flex items-center flex-nowrap px-2 py-1.5 text-[#f1f1f1] hover:bg-[#272727] rounded-full transition-colors duration-150"
-      :class="[{ 'bg-[#272727]': isOpen }, isMobile ? 'p-1.5' : 'space-x-1 px-2 text-xs']"
+      class="flex items-center flex-nowrap px-2 py-1.5 text-text-accent hover:bg-bg-elevated rounded-full transition-colors duration-150 border border-transparent"
+      :class="[{ 'bg-bg-elevated border-border-primary': isOpen }, isMobile ? 'p-1.5' : 'space-x-1 px-2 text-xs']"
     >
       <Bars4Icon v-if="!isMobile" class="h-4 w-4" />
       <span v-if="!isMobile">排序</span>
@@ -19,7 +19,7 @@
 
     <div
       v-if="isOpen"
-      class="absolute mt-1 py-0.5 w-24 bg-[#282828] rounded-lg shadow-lg z-50 animate-fade-in"
+      class="absolute mt-1 py-0.5 w-24 bg-bg-card rounded-lg shadow-lg z-50 animate-fade-in border border-border-primary"
       :class="{
         'right-0': isMobile,
         'left-0': !isMobile
@@ -30,11 +30,11 @@
         v-for="option in sortOptions"
         :key="option.value"
         @click="selectOption(option.value)"
-        class="w-full px-2 py-1.5 text-xs text-left text-[#f1f1f1] hover:bg-[#3f3f3f] flex items-center space-x-1"
+        class="w-full px-2 py-1.5 text-xs text-left text-text-accent hover:bg-bg-elevated flex items-center space-x-1"
       >
         <CheckIcon
           v-if="modelValue === option.value"
-          class="h-3 w-3 text-[#3ea6ff] flex-shrink-0"
+          class="h-3 w-3 text-color-info flex-shrink-0"
         />
         <span v-else class="w-3 flex-shrink-0"></span>
         <span class="truncate">{{ option.label }}</span>

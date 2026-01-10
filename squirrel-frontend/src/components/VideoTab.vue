@@ -17,10 +17,10 @@
 </template>
 
 <script setup>
-import {computed, watch} from 'vue';
-import VideoList from "./VideoList.vue";
-import useLatestVideos from "../composables/useLatestVideos.js";
-import useOptionsMenu from "../composables/useOptionsMenu.js";
+import { computed, watch } from 'vue'
+import VideoList from './VideoList.vue'
+import useLatestVideos from '../composables/useLatestVideos.js'
+import useOptionsMenu from '../composables/useOptionsMenu.js'
 
 const emit = defineEmits(['openModal', 'update-counts', 'goToSubscription', 'loading-change']);
 
@@ -28,16 +28,44 @@ const props = defineProps({
   // New unified filters prop (preferred)
   filters: {
     type: Object,
-    default: null
+    default: null,
   },
   // Back-compat individual props (will be derived if filters missing)
-  searchQuery: { type: String, default: '' },
-  activeTab: { type: String, default: 'all' },
-  selectedSubscriptionId: { type: Number, default: null },
-  sortBy: { type: String, default: 'publish_date' },
-  site: { type: String, default: undefined },
-  nsfw: { type: String, default: 'all' }
-});
+  searchQuery: {
+    type: String,
+    default: '',
+  },
+  activeTab: {
+    type: String,
+    default: 'all',
+  },
+  selectedSubscriptionId: {
+    type: Number,
+    default: null,
+  },
+  sortBy: {
+    type: String,
+    default: 'publish_date',
+  },
+  site: {
+    type: String,
+    default: undefined,
+  },
+  nsfw: {
+    type: String,
+    default: 'all',
+  },
+})
+
+// 辅助函数：统一处理props映射
+const getFiltersFromProps = () => ({
+  tab: props.filters?.tab ?? props.activeTab ?? 'all',
+  q: props.filters?.q ?? props.searchQuery ?? '',
+  sid: props.filters?.sid ?? props.selectedSubscriptionId ?? null,
+  sort: props.filters?.sort ?? props.sortBy ?? 'publish_date',
+  site: props.filters?.site ?? props.site,
+  nsfw: props.filters?.nsfw ?? props.nsfw ?? 'all',
+})
 
 const {
   videos,
@@ -53,15 +81,15 @@ const {
   site,
   nsfw,
   videoCounts,
-  error
+  error,
 } = useLatestVideos({
-  activeTab: (props.filters?.tab ?? props.activeTab) || 'all',
-  searchQuery: (props.filters?.q ?? props.searchQuery) || '',
-  subscriptionId: props.filters?.sid ?? props.selectedSubscriptionId ?? null,
-  sortBy: (props.filters?.sort ?? props.sortBy) || 'publish_date',
-  site: props.filters?.site ?? props.site,
-  nsfw: (props.filters?.nsfw ?? props.nsfw) || 'all',
-});
+  activeTab: getFiltersFromProps().tab,
+  searchQuery: getFiltersFromProps().q,
+  subscriptionId: getFiltersFromProps().sid,
+  sortBy: getFiltersFromProps().sort,
+  site: getFiltersFromProps().site,
+  nsfw: getFiltersFromProps().nsfw,
+})
 
 const processedVideos = computed(() => {
   return videos.value.map(video => ({
@@ -80,26 +108,18 @@ watch(() => error.value, (err) => {
 });
 
 watch(
-  () => ({
-    // Prefer filters prop when provided
-    tab: props.filters?.tab ?? props.activeTab,
-    q: props.filters?.q ?? props.searchQuery,
-    sid: props.filters?.sid ?? props.selectedSubscriptionId,
-    sort: props.filters?.sort ?? props.sortBy,
-    st: props.filters?.site ?? props.site,
-    ns: props.filters?.nsfw ?? props.nsfw,
-  }),
-  (next) => {
-    activeTab.value = typeof next.tab === 'string' ? next.tab : 'all';
-    searchQuery.value = next.q || '';
-    subscriptionId.value = next.sid ?? null;
-    sortBy.value = next.sort || 'publish_date';
-    site.value = next.st;
-    nsfw.value = next.ns || 'all';
-    handleSearch();
+  getFiltersFromProps,
+  (filters) => {
+    activeTab.value = filters.tab
+    searchQuery.value = filters.q
+    subscriptionId.value = filters.sid
+    sortBy.value = filters.sort
+    site.value = filters.site
+    nsfw.value = filters.nsfw
+    handleSearch()
   },
   { immediate: true }
-);
+)
 const {
   toggleOptions,
 } = useOptionsMenu(videos);

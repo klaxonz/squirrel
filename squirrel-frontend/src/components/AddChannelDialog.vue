@@ -1,12 +1,12 @@
 <template>
-  <div v-if="show" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div class="bg-[#1f1f1f] rounded-lg w-full max-w-lg mx-4">
+  <div v-if="show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+    <div class="bg-bg-card border border-border-primary rounded-lg w-full max-w-lg mx-4">
       <!-- 标题栏 -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-[#272727]">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-border-primary">
         <h3 class="text-lg font-medium">添加订阅</h3>
-        <button @click="$emit('close')" class="text-[#aaaaaa] hover:text-white">
+        <IconButton title="关闭" aria-label="关闭" @click="$emit('close')">
           <XMarkIcon class="h-6 w-6" />
-        </button>
+        </IconButton>
       </div>
 
       <!-- 表单内容 -->
@@ -14,41 +14,28 @@
         <div class="space-y-4">
           <!-- URL输入 -->
           <div>
-            <label class="block text-sm font-medium text-[#aaaaaa] mb-1">订阅地址</label>
+            <label class="block text-sm font-medium text-text-muted mb-1">订阅地址</label>
             <input 
               v-model="channelUrl"
               type="url"
               placeholder="支持频道地址或播放列表地址"
-              class="w-full px-3 py-2 bg-[#272727] rounded border border-[#333] focus:border-[#cc0000] focus:outline-none text-white text-sm"
+              class="w-full px-3 py-2 bg-bg-elevated rounded border border-border-secondary focus:border-color-error focus:ring-1 focus:ring-color-error focus:outline-none text-white text-sm"
               :disabled="loading"
             >
-            <p class="mt-2 text-xs text-[#888888]">
+            <p class="mt-2 text-xs text-text-secondary">
               支持：YouTube频道/播放列表、Bilibili用户空间/合集/收藏夹
             </p>
           </div>
 
           <!-- 错误提示 -->
-          <p v-if="error" class="text-[#cc0000] text-sm">{{ error }}</p>
+          <p v-if="error" class="text-color-error text-sm">{{ error }}</p>
         </div>
       </div>
 
       <!-- 操作按钮 -->
-      <div class="px-6 py-4 border-t border-[#272727] flex justify-end space-x-4">
-        <button 
-          @click="$emit('close')"
-          class="px-4 py-2 text-sm text-[#aaaaaa] hover:text-white transition-colors"
-          :disabled="loading"
-        >
-          取消
-        </button>
-        <button 
-          @click="handleSubmit"
-          class="px-4 py-2 text-sm bg-[#cc0000] text-white rounded hover:bg-[#aa0000] transition-colors disabled:opacity-50"
-          :disabled="!channelUrl || loading"
-        >
-          <span v-if="loading">添加中...</span>
-          <span v-else>确认添加</span>
-        </button>
+      <div class="px-6 py-4 border-t border-border-primary flex justify-end space-x-4">
+        <Button size="sm" variant="ghost" :disabled="loading" @click="$emit('close')">取消</Button>
+        <Button size="sm" variant="danger" :disabled="!channelUrl || loading" :loading="loading" @click="handleSubmit">确认添加</Button>
       </div>
     </div>
   </div>
@@ -58,6 +45,8 @@
 import { ref, watch } from 'vue';
 import { XMarkIcon } from '@heroicons/vue/24/outline';
 import axios from '../utils/axios';
+import Button from './common/Button.vue';
+import IconButton from './common/IconButton.vue';
 
 const props = defineProps({
   show: Boolean
