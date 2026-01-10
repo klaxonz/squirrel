@@ -17,9 +17,7 @@
             class="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
             :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
+            <ClipboardDocumentIcon class="h-4 w-4" />
             {{ allCopied ? '已复制全部' : '复制全部' }}
           </button>
           <button
@@ -135,9 +133,7 @@
                   class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white px-2 py-1 rounded text-[10px] flex items-center gap-1"
                   :title="'复制日志'"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
+                  <ClipboardDocumentIcon class="h-3 w-3" />
                   <span v-if="copiedLogId === item.id" class="text-green-400">已复制</span>
                   <span v-else>复制</span>
                 </button>
@@ -184,6 +180,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import axios from '../utils/axios';
 

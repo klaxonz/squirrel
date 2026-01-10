@@ -2,7 +2,6 @@ import {createRouter, createWebHistory} from 'vue-router'
 import LatestVideos from '../views/LatestVideos.vue'
 import Subscribed from '../views/Subscribed.vue'
 import Settings from '../views/Settings.vue'
-import DownloadTasks from '../views/DownloadTasks.vue'
 import VideoTab from "../components/VideoTab.vue";
 import History from '../views/History.vue';
 import VideoPlay from '../views/VideoPlay.vue'
@@ -149,12 +148,6 @@ const routes = [
         meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
       }
     ],
-  },
-  {
-    path: '/downloads',
-    name: 'Downloads',
-    component: DownloadTasks,
-    meta: { showSearch: true, search: 'downloads', searchEvent: 'search:downloads', searchPlaceholder: '搜索下载任务...' },
   },
   {
     path: '/history',

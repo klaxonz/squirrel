@@ -111,38 +111,6 @@
                      @click.stop
                 >
                   <div class="flex flex-col">
-                    <button
-                      @click="handleDownload"
-                      class="flex items-center w-full px-4 py-2 text-sm text-white hover:bg-[#3f3f3f]"
-                    >
-                      <svg v-if="!video?.if_downloaded"
-                           xmlns="http://www.w3.org/2000/svg"
-                           class="h-5 w-5 mr-4"
-                           fill="none"
-                           viewBox="0 0 24 24"
-                           stroke="currentColor"
-                      >
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                        />
-                      </svg>
-
-                      <svg v-else
-                           xmlns="http://www.w3.org/2000/svg"
-                           class="h-5 w-5 mr-4"
-                           viewBox="0 0 24 24"
-                           fill="currentColor"
-                      >
-                        <path fill-rule="evenodd"
-                              d="M12 2a1 1 0 011 1v10.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L11 13.586V3a1 1 0 011-1zM4.5 19A1.5 1.5 0 003 20.5v.5a2 2 0 002 2h14a2 2 0 002-2v-.5a1.5 1.5 0 00-1.5-1.5h-15z"
-                              clip-rule="evenodd"
-                        />
-                      </svg>
-
-                      <span class="whitespace-nowrap">下载</span>
-                    </button>
 
                   </div>
                 </div>
@@ -294,7 +262,6 @@ import usePlaybackReporting from '../composables/usePlaybackReporting';
 import useOptionsDropdown from '../composables/useOptionsDropdown';
 import VideoPlayer from '../components/video-player/VideoPlayer.vue';
 import { Icon } from '@iconify/vue';
-import useOptionsMenu from '../composables/useOptionsMenu';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import useVideoInteraction from "../composables/useVideoInteraction.js";
@@ -310,7 +277,6 @@ const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useIm
 // 内部切换不使用 router，所以不需要从 history.state 读取初始数据
 const { video, startTime, relatedVideos, loadingRelated, loadAndPlayById, externalError } = usePlaybackOrchestrator(null);
 const { sendReport } = useVideoHistory();
-const { downloadVideo } = useOptionsMenu(video);
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
 const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
@@ -415,9 +381,6 @@ const handleLater = async (video) => {
   }
 };
 
-const handleDownload = async () => {
-  await downloadVideo();
-};
 
 const handlePlayRandom = async () => {
   const params = {};

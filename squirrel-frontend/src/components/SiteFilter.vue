@@ -5,23 +5,16 @@
       class="flex items-center flex-nowrap px-2 py-1.5 text-[#f1f1f1] hover:bg-[#272727] rounded-full transition-colors duration-150"
       :class="[{ 'bg-[#272727]': isOpen }, isMobile ? 'p-1.5' : 'space-x-1 px-2 text-xs']"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M3 5a2 2 0 012-2h10a2 2 0 012 2v0a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 15a2 2 0 012-2h6a2 2 0 012 2v0a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-      </svg>
+      <Bars4Icon class="h-4 w-4" />
       <span v-if="!isMobile">站点</span>
       <span v-if="!isMobile" class="opacity-70">· {{ currentLabel }}</span>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
+      <ChevronDownIcon
         class="transition-transform duration-200"
         :class="[
           isMobile ? 'h-2.5 w-2.5 -mr-0.5' : 'h-3 w-3',
           { 'transform rotate-180': isOpen }
         ]"
-        viewBox="0 0 20 20"
-        fill="currentColor"
-      >
-        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-      </svg>
+      />
     </button>
 
     <div
@@ -39,15 +32,10 @@
         @click="selectOption(opt.value)"
         class="w-full px-2 py-1.5 text-xs text-left text-[#f1f1f1] hover:bg-[#3f3f3f] flex items-center space-x-1"
       >
-        <svg 
+        <CheckIcon
           v-if="modelValue === opt.value"
-          xmlns="http://www.w3.org/2000/svg" 
-          class="h-3 w-3 text-[#3ea6ff] flex-shrink-0" 
-          viewBox="0 0 20 20" 
-          fill="currentColor"
-        >
-          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-        </svg>
+          class="h-3 w-3 text-[#3ea6ff] flex-shrink-0"
+        />
         <span v-else class="w-3 flex-shrink-0"></span>
         <span class="truncate">{{ opt.label }}</span>
       </button>
@@ -57,6 +45,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import {
+  Bars4Icon,
+  ChevronDownIcon,
+  CheckIcon
+} from '@heroicons/vue/24/outline';
 import { isMobile } from "../composables/useMobile.js";
 import { useDropdown } from "../composables/useDropdown.js";
 import { useSites } from "../composables/useSites.js";

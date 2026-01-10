@@ -1,8 +1,6 @@
 import axios from '../utils/axios';
-import useCustomToast from './useToast';
 
 export function useSubscriptionApi() {
-  const { displayToast, confirm } = useCustomToast();
 
   // 获取订阅列表
   const getSubscriptions = async (params = {}) => {
@@ -42,19 +40,12 @@ export function useSubscriptionApi() {
 
   // 取消订阅
   const unsubscribe = async (subscriptionId) => {
-    const confirmed = await confirm('确定要取消订阅这个频道吗？这将删除所有相关的视频记录。');
-    
-    if (!confirmed) {
-      return { success: false, cancelled: true };
-    }
-
     try {
       const response = await axios.post('/api/subscription/unsubscribe', {
         subscription_id: subscriptionId
       });
       
       if (response.data.code === 0) {
-        displayToast('取消订阅成功');
         return { success: true };
       } else {
         throw new Error(response.data.msg || '取消订阅失败');
@@ -62,7 +53,6 @@ export function useSubscriptionApi() {
     } catch (error) {
       console.error('取消订阅失败:', error);
       const errorMessage = error.message || '取消订阅失败';
-      displayToast(errorMessage, { type: 'error' });
       return {
         success: false,
         error: errorMessage
@@ -117,8 +107,7 @@ export function useSubscriptionApi() {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
-      displayToast(errorMessage, { type: 'error' });
+
       return {
         success: false,
         error: errorMessage

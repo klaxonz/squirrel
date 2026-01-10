@@ -42,9 +42,7 @@
     <div v-if="errorState.show" class="sp-error-overlay" @click.stop>
       <div class="sp-error-card" role="alert" aria-live="polite">
         <div class="sp-error-icon">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-          </svg>
+          <ExclamationTriangleIcon />
         </div>
         <div class="sp-error-title">{{ errorState.title }}</div>
         <div v-if="errorState.code" class="sp-error-code">{{ errorState.code }}</div>
@@ -168,7 +166,7 @@
         <!-- 播放速度子菜单 -->
         <template v-else-if="settingsView === 'speed'">
           <button class="sp-popup-back" @click="settingsView = 'main'">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            <ArrowLeftIcon />
             <span>{{ t('playbackSpeed') }}</span>
           </button>
           <div class="sp-popup-list">
@@ -179,7 +177,7 @@
               :class="{ active: store.playbackRate === rate }"
               @click="handleSpeedSelect(rate)"
             >
-              <svg v-if="store.playbackRate === rate" class="sp-check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              <CheckIcon v-if="store.playbackRate === rate" class="sp-check" />
               <span>{{ rate === 1 ? t('speedNormal') : `${rate}x` }}</span>
             </button>
           </div>
@@ -188,7 +186,7 @@
         <!-- 画质子菜单 -->
         <template v-else-if="settingsView === 'quality'">
           <button class="sp-popup-back" @click="settingsView = 'main'">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            <ArrowLeftIcon />
             <span>{{ t('quality') }}</span>
           </button>
           <div class="sp-popup-list">
@@ -199,7 +197,7 @@
               :class="{ active: currentQuality === q.label || currentQuality === String(q.id) }"
               @click="handleQualitySelect(q)"
             >
-              <svg v-if="currentQuality === q.label || currentQuality === String(q.id)" class="sp-check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              <CheckIcon v-if="currentQuality === q.label || currentQuality === String(q.id)" class="sp-check" />
               <span>{{ q.label }}</span>
             </button>
           </div>
@@ -258,6 +256,11 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePlayer } from './core'
 import PlayerIcon from './PlayerIcon.vue'
+import {
+  ExclamationTriangleIcon,
+  ArrowLeftIcon,
+  CheckIcon
+} from '@heroicons/vue/24/outline'
 import type { VideoInfo } from '../../types/video-player'
 
 // 导入 CSS 变量（主题系统基础）

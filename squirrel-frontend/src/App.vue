@@ -44,7 +44,7 @@ import MobileNav from './components/MobileNav.vue';
 import Sidebar from './components/Sidebar.vue';
 import GlobalSearchBar from './components/GlobalSearchBar.vue';
 import RefreshCenter from './components/RefreshCenter.vue';
-import { HomeIcon, BookmarkIcon, CogIcon, ArrowDownTrayIcon, ClockIcon, DocumentTextIcon, ChartBarIcon } from '@heroicons/vue/24/outline';
+import { HomeIcon, BookmarkIcon, CogIcon, ClockIcon, DocumentTextIcon, ChartBarIcon } from '@heroicons/vue/24/outline';
 import { isMobile } from "./composables/useMobile.js";
 import { useRoute } from 'vue-router';
 import { useUser } from './composables/useUser';
@@ -73,7 +73,6 @@ const routes = ref([
   { path: '/', name: '首页', icon: HomeIcon },
   { path: '/subscribed', name: '订阅', icon: BookmarkIcon },
   { path: '/history', name: '历史', icon: ClockIcon },
-  { path: '/downloads', name: '下载任务', icon: ArrowDownTrayIcon },
   { path: '/monitoring', name: '监控', icon: ChartBarIcon },
   { path: '/logs', name: '日志', icon: DocumentTextIcon },
   { path: '/settings', name: '设置', icon: CogIcon },

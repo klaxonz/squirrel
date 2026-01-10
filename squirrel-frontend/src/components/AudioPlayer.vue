@@ -29,36 +29,26 @@
             @click="skipBackward"
             class="p-1 text-[#aaaaaa] hover:text-white rounded-full hover:bg-[#3f3f3f] transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M8.445 14.832A1 1 0 0010 14v-2.798l5.445 3.63A1 1 0 0017 14V6a1 1 0 00-1.555-.832L10 8.798V6a1 1 0 00-1.555-.832l-6 4a1 1 0 000 1.664l6 4z" />
-            </svg>
+            <BackwardIcon class="h-3 w-3" />
           </button>
           <button 
             @click="togglePlay"
             class="p-1 text-white rounded-full bg-white hover:bg-gray-200 transition-colors"
           >
-            <svg v-if="!isPlaying" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-black" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
-            </svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-black" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-            </svg>
+            <PlayIcon v-if="!isPlaying" class="h-3 w-3 text-black" />
+            <PauseIcon v-else class="h-3 w-3 text-black" />
           </button>
           <button 
             @click="skipForward"
             class="p-1 text-[#aaaaaa] hover:text-white rounded-full hover:bg-[#3f3f3f] transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M4.555 5.168A1 1 0 003 6v8a1 1 0 001.555.832L10 11.202V14a1 1 0 001.555.832l6-4a1 1 0 000-1.664l-6-4A1 1 0 0010 6v2.798L4.555 5.168z" />
-            </svg>
+            <ForwardIcon class="h-3 w-3" />
           </button>
           <button 
             @click="$emit('close')"
             class="p-1 text-[#aaaaaa] hover:text-white rounded-full hover:bg-[#3f3f3f] transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-            </svg>
+            <XMarkIcon class="h-2.5 w-2.5" />
           </button>
         </div>
       </div>
@@ -94,6 +84,13 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import {
+  BackwardIcon,
+  PlayIcon,
+  PauseIcon,
+  ForwardIcon,
+  XMarkIcon
+} from '@heroicons/vue/24/outline';
 
 const props = defineProps({
   episode: Object,

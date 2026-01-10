@@ -20,9 +20,7 @@
           @click="showClearConfirm"
           class="ml-2 px-3 py-1.5 min-w-[100px] bg-white/10 hover:bg-white/15 text-white rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
+          <TrashIcon class="h-4 w-4" />
           <span class="ml-1">清空历史</span>
         </button>
       </FeedToolbar>
@@ -46,14 +44,13 @@
 <script setup>
 import {onMounted, ref, computed, watch} from 'vue';
 import {useRouter} from 'vue-router';
+import { TrashIcon } from '@heroicons/vue/24/outline';
 import VideoList from '../components/VideoList.vue';
 import FeedToolbar from '../components/feed/FeedToolbar.vue';
 import useVideoHistory from '../composables/useVideoHistory';
-import useCustomToast from '../composables/useToast';
 
 const router = useRouter();
 const {getWatchHistory, clearHistory} = useVideoHistory();
-const {displayToast} = useCustomToast();
 
 const videos = ref([]);
 const currentPage = ref(1);
@@ -79,7 +76,7 @@ const loadMore = async () => {
     currentPage.value++;
     allLoaded.value = data.items.length < 20;
   } catch (err) {
-    displayToast(err.message, {type: 'error'});
+    console.error('加载历史记录失败:', err.message);
   } finally {
     loading.value = false;
   }
@@ -107,9 +104,8 @@ const showClearConfirm = async () => {
     try {
       await clearHistory();
       videos.value = [];
-      displayToast('历史记录已清空');
     } catch (err) {
-      displayToast('清空历史记录失败', {type: 'error'});
+      console.error('清空历史记录失败:', err.message);
     }
   }
 };

@@ -73,10 +73,8 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUser } from '../composables/useUser';
-import useCustomToast from '../composables/useToast';
 
 const router = useRouter();
-const { displayToast } = useCustomToast();
 const { register } = useUser();
 const loading = ref(false);
 const form = ref({
@@ -92,12 +90,9 @@ const handleSubmit = async () => {
     if (response.code !== 0) {
       throw new Error(response.msg);
     }
-    displayToast('注册成功，请登录');
     router.push('/login');
   } catch (error) {
-    displayToast(error.message || '注册失败', {
-      type: 'error'
-    });
+    // Error handling without toast
   } finally {
     loading.value = false;
   }

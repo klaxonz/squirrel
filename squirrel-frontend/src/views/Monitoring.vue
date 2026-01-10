@@ -16,9 +16,7 @@
           <div class="flex items-center gap-3 text-xs text-[#666]">
             <span>{{ lastUpdateTime }}</span>
             <button @click="refreshData" :disabled="loading" class="p-1.5 hover:bg-white/10 rounded transition-colors">
-              <svg class="w-4 h-4" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': loading }" />
             </button>
           </div>
         </div>
@@ -30,143 +28,177 @@
       
       <!-- 概览指标 -->
       <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
-        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
-          <div class="text-xs text-[#666] mb-1">爬取任务</div>
-          <div class="text-2xl font-bold font-mono">{{ dashboardData?.crawl?.total || 0 }}</div>
-          <div class="flex gap-3 mt-2 text-xs">
-            <span><span class="text-[#22c55e]">{{ dashboardData?.crawl?.success || 0 }}</span> 成功</span>
-            <span><span class="text-[#ef4444]">{{ dashboardData?.crawl?.error || 0 }}</span> 失败</span>
-          </div>
-        </div>
-        
-        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
-          <div class="text-xs text-[#666] mb-1">成功率</div>
-          <div class="text-2xl font-bold font-mono" :class="successRateClass">{{ dashboardData?.crawl?.success_rate || 0 }}%</div>
-          <div class="mt-2 w-full bg-[#252525] rounded-full h-1">
-            <div class="h-1 rounded-full bg-[#22c55e] transition-all" :style="{ width: `${dashboardData?.crawl?.success_rate || 0}%` }"></div>
-          </div>
-        </div>
-        
-        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
-          <div class="text-xs text-[#666] mb-1">发现视频</div>
-          <div class="text-2xl font-bold font-mono">{{ dashboardData?.crawl?.videos_discovered || 0 }}</div>
-          <div class="text-xs text-[#666] mt-2">跳过 {{ dashboardData?.crawl?.skipped || 0 }}</div>
-        </div>
-        
-        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
-          <div class="text-xs text-[#666] mb-1">队列积压</div>
-          <div class="text-2xl font-bold font-mono" :class="queueDepthClass">{{ dashboardData?.queues?.total_depth || 0 }}</div>
-          <div class="text-xs text-[#666] mt-2">消息 {{ dashboardData?.queues?.total_messages || 0 }}</div>
-        </div>
-        
-        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
-          <div class="text-xs text-[#666] mb-1">订阅更新</div>
-          <div class="text-2xl font-bold font-mono">{{ dashboardData?.subscriptions?.total || 0 }}</div>
-          <div class="flex gap-3 mt-2 text-xs">
-            <span><span class="text-[#22c55e]">{{ dashboardData?.subscriptions?.success || 0 }}</span> 成功</span>
-            <span><span class="text-[#ef4444]">{{ dashboardData?.subscriptions?.error || 0 }}</span> 失败</span>
-          </div>
-        </div>
-        
-        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
-          <div class="text-xs text-[#666] mb-1">订阅发现</div>
-          <div class="text-2xl font-bold font-mono">{{ dashboardData?.subscriptions?.videos_found || 0 }}</div>
-          <div class="text-xs mt-2"><span class="text-[#22c55e]">{{ dashboardData?.subscriptions?.videos_enqueued || 0 }}</span> 已入队</div>
-        </div>
+        <StatsCard
+          title="爬取任务"
+          :value="dashboardData?.crawl?.total || 0"
+          :hover-effect="true"
+        >
+          <template #subtitle>
+            <div class="flex gap-3">
+              <span><span class="text-color-success">{{ dashboardData?.crawl?.success || 0 }}</span> 成功</span>
+              <span><span class="text-color-error">{{ dashboardData?.crawl?.error || 0 }}</span> 失败</span>
+            </div>
+          </template>
+        </StatsCard>
+
+        <StatsCard
+          title="成功率"
+          :value="dashboardData?.crawl?.success_rate || 0"
+          format="percentage"
+          :value-color="getSuccessRateColor()"
+          :show-progress="true"
+          :progress-percent="dashboardData?.crawl?.success_rate || 0"
+          :progress-variant="getSuccessRateColor()"
+          :hover-effect="true"
+        />
+
+        <StatsCard
+          title="发现视频"
+          :value="dashboardData?.crawl?.videos_discovered || 0"
+          :hover-effect="true"
+        >
+          <template #subtitle>
+            跳过 {{ dashboardData?.crawl?.skipped || 0 }}
+          </template>
+        </StatsCard>
+
+        <StatsCard
+          title="队列积压"
+          :value="dashboardData?.queues?.total_depth || 0"
+          :value-color="getQueueDepthColor()"
+          :hover-effect="true"
+        >
+          <template #subtitle>
+            消息 {{ dashboardData?.queues?.total_messages || 0 }}
+          </template>
+        </StatsCard>
+
+        <StatsCard
+          title="订阅更新"
+          :value="dashboardData?.subscriptions?.total || 0"
+          :hover-effect="true"
+        >
+          <template #subtitle>
+            <div class="flex gap-3">
+              <span><span class="text-color-success">{{ dashboardData?.subscriptions?.success || 0 }}</span> 成功</span>
+              <span><span class="text-color-error">{{ dashboardData?.subscriptions?.error || 0 }}</span> 失败</span>
+            </div>
+          </template>
+        </StatsCard>
+
+        <StatsCard
+          title="订阅发现"
+          :value="dashboardData?.subscriptions?.videos_found || 0"
+          :hover-effect="true"
+        >
+          <template #subtitle>
+            <span class="text-color-success">{{ dashboardData?.subscriptions?.videos_enqueued || 0 }}</span> 已入队
+          </template>
+        </StatsCard>
       </div>
 
       <!-- 性能和错误 -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-[#666]">性能指标</span>
-            <span class="text-xs text-[#666]">单位: 秒</span>
+        <Card class="p-4">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs text-text-tertiary">性能指标</span>
+            <span class="text-xs text-text-tertiary">单位: 秒</span>
           </div>
-          <div class="grid grid-cols-4 gap-2 text-center">
+          <div class="grid grid-cols-4 gap-3 text-center">
             <div>
-              <div class="text-lg font-mono">{{ dashboardData?.crawl?.avg_duration || 0 }}</div>
-              <div class="text-xs text-[#666]">平均</div>
+              <div class="text-lg font-mono text-text-primary">{{ dashboardData?.crawl?.avg_duration || 0 }}</div>
+              <div class="text-xs text-text-tertiary">平均</div>
             </div>
             <div>
-              <div class="text-lg font-mono">{{ dashboardData?.crawl?.p50_duration || 0 }}</div>
-              <div class="text-xs text-[#666]">P50</div>
+              <div class="text-lg font-mono text-text-primary">{{ dashboardData?.crawl?.p50_duration || 0 }}</div>
+              <div class="text-xs text-text-tertiary">P50</div>
             </div>
             <div>
-              <div class="text-lg font-mono text-[#f59e0b]">{{ dashboardData?.crawl?.p95_duration || 0 }}</div>
-              <div class="text-xs text-[#666]">P95</div>
+              <div class="text-lg font-mono text-color-warning">{{ dashboardData?.crawl?.p95_duration || 0 }}</div>
+              <div class="text-xs text-text-tertiary">P95</div>
             </div>
             <div>
-              <div class="text-lg font-mono text-[#ef4444]">{{ dashboardData?.crawl?.max_duration || 0 }}</div>
-              <div class="text-xs text-[#666]">最大</div>
+              <div class="text-lg font-mono text-color-error">{{ dashboardData?.crawl?.max_duration || 0 }}</div>
+              <div class="text-xs text-text-tertiary">最大</div>
             </div>
           </div>
-        </div>
-        
-        <div class="bg-[#161616] rounded-lg p-3 border border-white/5">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-[#666]">错误统计</span>
-            <span class="text-sm font-mono text-[#ef4444]">{{ dashboardData?.errors?.total || 0 }}</span>
+        </Card>
+
+        <Card class="p-4">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs text-text-tertiary">错误统计</span>
+            <span class="text-sm font-mono text-color-error">{{ dashboardData?.errors?.total || 0 }}</span>
           </div>
           <div v-if="dashboardData?.errors?.by_type?.length" class="flex flex-wrap gap-1.5">
-            <span v-for="error in dashboardData.errors.by_type.slice(0, 8)" :key="error.type" class="px-2 py-0.5 bg-[#ef4444]/10 text-[#ef4444] rounded text-xs">
-              {{ error.type }}: {{ error.count }}
-            </span>
+            <StatusBadge
+              v-for="error in dashboardData.errors.by_type.slice(0, 8)"
+              :key="error.type"
+              variant="error"
+              size="xs"
+              :label="`${error.type}: ${error.count}`"
+            />
           </div>
-          <div v-else class="text-xs text-[#444]">暂无错误</div>
-        </div>
+          <div v-else class="text-xs text-text-muted">暂无错误</div>
+        </Card>
       </div>
       
       <!-- 站点统计表格 -->
-      <div class="bg-[#161616] rounded-lg border border-white/5">
-        <div class="px-4 py-2.5 border-b border-white/5 flex items-center justify-between">
-          <span class="text-sm font-medium text-white">站点统计</span>
-          <span class="text-xs text-[#666]">{{ dashboardData?.crawl?.by_site?.length || 0 }} 个站点</span>
-        </div>
-        
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-xs text-[#666] border-b border-white/5">
-                <th class="text-left px-4 py-2 font-medium">站点</th>
-                <th class="text-right px-3 py-2 font-medium">成功率</th>
-                <th class="text-right px-3 py-2 font-medium">成功</th>
-                <th class="text-right px-3 py-2 font-medium">失败</th>
-                <th class="text-right px-3 py-2 font-medium">跳过</th>
-                <th class="text-right px-3 py-2 font-medium">视频</th>
-                <th class="text-right px-3 py-2 font-medium">队列</th>
-                <th class="text-right px-3 py-2 font-medium">平均耗时</th>
-                <th class="text-right px-3 py-2 font-medium">P95</th>
-                <th class="text-right px-3 py-2 font-medium">订阅发现</th>
-                <th class="text-right px-4 py-2 font-medium">订阅入队</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="site in dashboardData?.crawl?.by_site" :key="site.site" class="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                <td class="px-4 py-2.5">
-                  <div class="flex items-center gap-2">
-                    <span class="w-6 h-6 rounded bg-[#252525] flex items-center justify-center text-[10px] font-bold uppercase text-[#888]">{{ site.site.slice(0, 2) }}</span>
-                    <span class="font-medium text-white">{{ site.site }}</span>
-                  </div>
-                </td>
-                <td class="text-right px-3 py-2.5 font-mono" :class="getSiteRateClass(site.success_rate)">{{ site.success_rate }}%</td>
-                <td class="text-right px-3 py-2.5 font-mono text-[#22c55e]">{{ site.success }}</td>
-                <td class="text-right px-3 py-2.5 font-mono text-[#ef4444]">{{ site.error }}</td>
-                <td class="text-right px-3 py-2.5 font-mono text-[#666]">{{ site.skipped }}</td>
-                <td class="text-right px-3 py-2.5 font-mono">{{ site.videos }}</td>
-                <td class="text-right px-3 py-2.5 font-mono" :class="site.queue_depth > 100 ? 'text-[#ef4444]' : site.queue_depth > 50 ? 'text-[#f59e0b]' : 'text-[#666]'">{{ site.queue_depth || 0 }}</td>
-                <td class="text-right px-3 py-2.5 font-mono text-[#888]">{{ site.avg_duration || '-' }}s</td>
-                <td class="text-right px-3 py-2.5 font-mono text-[#888]">{{ site.p95_duration || '-' }}s</td>
-                <td class="text-right px-3 py-2.5 font-mono">{{ getSubscriptionBySite(site.site)?.videos_found || '-' }}</td>
-                <td class="text-right px-4 py-2.5 font-mono text-[#22c55e]">{{ getSubscriptionBySite(site.site)?.videos_enqueued || '-' }}</td>
-              </tr>
-            </tbody>
-          </table>
-          
-          <div v-if="!dashboardData?.crawl?.by_site?.length" class="text-center text-[#444] py-8 text-sm">
-            暂无站点数据
+      <DataTable
+        :columns="siteTableColumns"
+        :data="dashboardData?.crawl?.by_site || []"
+      >
+        <template #header>
+          <span class="text-sm font-medium text-text-primary">站点统计</span>
+          <span class="text-xs text-text-tertiary">{{ dashboardData?.crawl?.by_site?.length || 0 }} 个站点</span>
+        </template>
+
+        <template #column-site="{ row }">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded bg-bg-tertiary flex items-center justify-center text-[10px] font-bold uppercase text-text-muted">{{ row.site.slice(0, 2) }}</span>
+            <span class="font-medium text-text-primary">{{ row.site }}</span>
           </div>
-        </div>
-      </div>
+        </template>
+
+        <template #column-success_rate="{ value }">
+          <span class="font-mono" :class="getSiteRateClass(value)">{{ value }}%</span>
+        </template>
+
+        <template #column-success="{ value }">
+          <span class="font-mono text-color-success">{{ value }}</span>
+        </template>
+
+        <template #column-error="{ value }">
+          <span class="font-mono text-color-error">{{ value }}</span>
+        </template>
+
+        <template #column-skipped="{ value }">
+          <span class="font-mono text-text-tertiary">{{ value }}</span>
+        </template>
+
+        <template #column-videos="{ value }">
+          <span class="font-mono text-text-primary">{{ value }}</span>
+        </template>
+
+        <template #column-queue_depth="{ value }">
+          <span class="font-mono" :class="value > 100 ? 'text-color-error' : value > 50 ? 'text-color-warning' : 'text-text-tertiary'">{{ value || 0 }}</span>
+        </template>
+
+        <template #column-avg_duration="{ value }">
+          <span class="font-mono text-text-secondary">{{ value || '-' }}s</span>
+        </template>
+
+        <template #column-p95_duration="{ value }">
+          <span class="font-mono text-text-secondary">{{ value || '-' }}s</span>
+        </template>
+
+        <template #column-videos_found="{ row }">
+          <span class="font-mono text-text-primary">{{ getSubscriptionBySite(row.site)?.videos_found || '-' }}</span>
+        </template>
+
+        <template #column-videos_enqueued="{ row }">
+          <span class="font-mono text-color-success">{{ getSubscriptionBySite(row.site)?.videos_enqueued || '-' }}</span>
+        </template>
+      </DataTable>
       
       <!-- 最近错误详情 -->
       <div v-if="dashboardData?.recent_errors?.length" class="bg-[#161616] rounded-lg border border-white/5">
@@ -201,7 +233,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import axios from '../utils/axios'
+import StatsCard from '../components/common/StatsCard.vue'
+import Card from '../components/common/Card.vue'
+import StatusBadge from '../components/common/StatusBadge.vue'
 
 const loading = ref(false)
 const dashboardData = ref(null)
@@ -248,19 +284,19 @@ const healthScoreClass = computed(() => {
   return 'text-[#ef4444]'
 })
 
-const successRateClass = computed(() => {
+const getSuccessRateColor = () => {
   const rate = dashboardData.value?.crawl?.success_rate || 0
-  if (rate >= 80) return 'text-[#22c55e]'
-  if (rate >= 50) return 'text-[#f59e0b]'
-  return 'text-[#ef4444]'
-})
+  if (rate >= 80) return 'success'
+  if (rate >= 50) return 'warning'
+  return 'error'
+}
 
-const queueDepthClass = computed(() => {
+const getQueueDepthColor = () => {
   const depth = dashboardData.value?.queues?.total_depth || 0
-  if (depth < 100) return 'text-[#e0e0e0]'
-  if (depth < 500) return 'text-[#f59e0b]'
-  return 'text-[#ef4444]'
-})
+  if (depth < 100) return 'default'
+  if (depth < 500) return 'warning'
+  return 'error'
+}
 
 const getSiteRateClass = (rate) => {
   if (rate >= 80) return 'text-[#22c55e]'

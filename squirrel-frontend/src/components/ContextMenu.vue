@@ -12,14 +12,10 @@
            @click.stop="toggleReadMenu">
         <button class="option-item w-full flex justify-between items-center group">
           <span class="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
+            <CheckIcon class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" />
             <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">标记为已读</span>
           </span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
+          <ChevronRightIcon class="h-4 w-4 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" />
         </button>
         <div v-show="showReadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-[#282828] shadow-lg rounded-lg overflow-hidden">
           <button @click.stop="$emit('toggleReadStatus', true)" class="sub-option-item">
@@ -39,14 +35,10 @@
            @click.stop="toggleUnreadMenu">
         <button class="option-item w-full flex justify-between items-center group">
           <span class="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <XMarkIcon class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" />
             <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">标记为未读</span>
           </span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
+          <ChevronRightIcon class="h-4 w-4 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" />
         </button>
         <div v-if="showUnreadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-[#282828] shadow-lg rounded-lg overflow-hidden">
           <button @click.stop="$emit('toggleReadStatus', false)" class="sub-option-item">
@@ -64,40 +56,15 @@
     <div class="border-t border-[#3f3f3f] my-1"></div>
     <div class="py-1">
       <button @click="handleLiked" class="option-item group">
-        <svg v-if="video.is_liked === 1"
-             xmlns="http://www.w3.org/2000/svg" 
-             class="h-5 w-5 mr-3 text-red-500" 
-             fill="currentColor"
-             viewBox="0 0 24 24" 
-        >
-          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-        </svg>
+        <HeartIcon v-if="video.is_liked === 1"
+             class="h-5 w-5 mr-3 text-red-500"
+             fill="currentColor" />
 
-        <svg v-else-if="video.is_liked === 0"
-             xmlns="http://www.w3.org/2000/svg" 
-             class="h-5 w-5 mr-3 text-yellow-500" 
-             fill="none"
-             viewBox="0 0 24 24" 
-             stroke="currentColor"
-        >
-          <path stroke-linecap="round" 
-                stroke-linejoin="round" 
-                stroke-width="2" 
-                d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-        </svg>
+        <HandThumbDownIcon v-else-if="video.is_liked === 0"
+             class="h-5 w-5 mr-3 text-yellow-500" />
 
-        <svg v-else
-             xmlns="http://www.w3.org/2000/svg" 
-             class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" 
-             fill="none"
-             viewBox="0 0 24 24" 
-             stroke="currentColor"
-        >
-          <path stroke-linecap="round" 
-                stroke-linejoin="round" 
-                stroke-width="2" 
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-        </svg>
+        <HeartIcon v-else
+             class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" />
 
         <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">
           {{ 
@@ -107,16 +74,8 @@
           }}
         </span>
       </button>
-      <button @click="handleDownload" class="option-item group">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
-        <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">下载视频</span>
-      </button>
       <button @click="$emit('copyVideoLink')" class="option-item group">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-2.5" />
-        </svg>
+        <ClipboardDocumentIcon class="h-5 w-5 mr-3 text-[#aaaaaa] group-hover:text-white transition-colors duration-150" />
         <span class="text-[#ffffff] group-hover:text-white transition-colors duration-150">复制链接</span>
       </button>
     </div>
@@ -124,9 +83,15 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue';
-import { createApp } from 'vue';
-import Toast from './Toast.vue';
+import { onMounted, onUnmounted, ref } from 'vue'
+import {
+  CheckIcon,
+  ChevronRightIcon,
+  XMarkIcon,
+  HeartIcon,
+  HandThumbDownIcon,
+  ClipboardDocumentIcon
+} from '@heroicons/vue/24/outline';
 
 const props = defineProps({
   position: {
@@ -151,7 +116,6 @@ const emit = defineEmits([
   'close',
   'toggleReadStatus',
   'dislikeVideo',
-  'downloadVideo',
   'copyVideoLink',
   'markReadBatch',
   'toggleLike'
@@ -180,30 +144,7 @@ const handleClickOutside = (event) => {
   }
 };
 
-const showToast = (message, type = 'success') => {
-  const toast = createApp(Toast, {
-    message,
-    type,
-    duration: 3000,
-  });
-  const mountNode = document.createElement('div');
-  document.body.appendChild(mountNode);
-  toast.mount(mountNode);
-  
-  setTimeout(() => {
-    document.body.removeChild(mountNode);
-  }, 3000);
-};
 
-const handleDownload = async () => {
-  try {
-    emit('downloadVideo', props.video);
-    showToast('已添加到下载队列');
-    emit('close');
-  } catch (error) {
-    showToast('添加下载任务失败', 'error');
-  }
-};
 
 const handleLiked = async () => {
   await emit('toggleLike', props.video);

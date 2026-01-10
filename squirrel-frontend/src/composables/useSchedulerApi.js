@@ -1,8 +1,6 @@
 import axios from '../utils/axios';
-import useCustomToast from './useToast';
 
 export function useSchedulerApi() {
-  const { displayToast, confirm } = useCustomToast();
 
   // 获取调度器状态
   const getSchedulerStatus = async () => {
@@ -76,7 +74,6 @@ export function useSchedulerApi() {
   const createTask = async (taskData) => {
     try {
       const response = await axios.post('/api/scheduler/tasks', taskData);
-      displayToast('任务创建成功', { type: 'success' });
       return {
         success: true,
         data: response.data.data
@@ -84,7 +81,6 @@ export function useSchedulerApi() {
     } catch (error) {
       console.error('创建任务失败:', error);
       const errorMessage = error.response?.data?.detail || error.message || '创建任务失败';
-      displayToast(errorMessage, { type: 'error' });
       return {
         success: false,
         error: errorMessage
@@ -96,7 +92,6 @@ export function useSchedulerApi() {
   const updateTask = async (taskId, taskData) => {
     try {
       const response = await axios.put(`/api/scheduler/tasks/${taskId}`, taskData);
-      displayToast('任务更新成功', { type: 'success' });
       return {
         success: true,
         data: response.data
@@ -104,7 +99,6 @@ export function useSchedulerApi() {
     } catch (error) {
       console.error('更新任务失败:', error);
       const errorMessage = error.response?.data?.detail || error.message || '更新任务失败';
-      displayToast(errorMessage, { type: 'error' });
       return {
         success: false,
         error: errorMessage
@@ -114,15 +108,8 @@ export function useSchedulerApi() {
 
   // 删除任务
   const deleteTask = async (taskId) => {
-    const confirmed = await confirm('确定要删除这个定时任务吗？此操作不可撤销。');
-
-    if (!confirmed) {
-      return { success: false, cancelled: true };
-    }
-
     try {
       const response = await axios.delete(`/api/scheduler/tasks/${taskId}`);
-      displayToast('任务删除成功', { type: 'success' });
       return {
         success: true,
         data: response.data
@@ -130,7 +117,6 @@ export function useSchedulerApi() {
     } catch (error) {
       console.error('删除任务失败:', error);
       const errorMessage = error.response?.data?.detail || error.message || '删除任务失败';
-      displayToast(errorMessage, { type: 'error' });
       return {
         success: false,
         error: errorMessage
@@ -142,7 +128,6 @@ export function useSchedulerApi() {
   const enableTask = async (taskId) => {
     try {
       const response = await axios.post(`/api/scheduler/tasks/${taskId}/enable`);
-      displayToast('任务已启用', { type: 'success' });
       return {
         success: true,
         data: response.data
@@ -150,7 +135,6 @@ export function useSchedulerApi() {
     } catch (error) {
       console.error('启用任务失败:', error);
       const errorMessage = error.response?.data?.detail || error.message || '启用任务失败';
-      displayToast(errorMessage, { type: 'error' });
       return {
         success: false,
         error: errorMessage
@@ -162,7 +146,6 @@ export function useSchedulerApi() {
   const disableTask = async (taskId) => {
     try {
       const response = await axios.post(`/api/scheduler/tasks/${taskId}/disable`);
-      displayToast('任务已禁用', { type: 'success' });
       return {
         success: true,
         data: response.data
@@ -170,7 +153,6 @@ export function useSchedulerApi() {
     } catch (error) {
       console.error('禁用任务失败:', error);
       const errorMessage = error.response?.data?.detail || error.message || '禁用任务失败';
-      displayToast(errorMessage, { type: 'error' });
       return {
         success: false,
         error: errorMessage
@@ -182,7 +164,6 @@ export function useSchedulerApi() {
   const executeTaskNow = async (taskId) => {
     try {
       const response = await axios.post(`/api/scheduler/tasks/${taskId}/execute`);
-      displayToast('任务执行请求已提交', { type: 'success' });
       return {
         success: true,
         data: response.data
@@ -190,7 +171,6 @@ export function useSchedulerApi() {
     } catch (error) {
       console.error('执行任务失败:', error);
       const errorMessage = error.response?.data?.detail || error.message || '执行任务失败';
-      displayToast(errorMessage, { type: 'error' });
       return {
         success: false,
         error: errorMessage
@@ -237,7 +217,6 @@ export function useSchedulerApi() {
   const enableScheduler = async () => {
     try {
       const response = await axios.post('/api/scheduler/enable');
-      displayToast('调度器已启用', { type: 'success' });
       return {
         success: true,
         data: response.data
@@ -245,7 +224,6 @@ export function useSchedulerApi() {
     } catch (error) {
       console.error('启用调度器失败:', error);
       const errorMessage = error.message || '启用调度器失败';
-      displayToast(errorMessage, { type: 'error' });
       return {
         success: false,
         error: errorMessage
@@ -255,15 +233,8 @@ export function useSchedulerApi() {
 
   // 禁用调度器
   const disableScheduler = async () => {
-    const confirmed = await confirm('确定要禁用调度器吗？这将停止所有定时任务的执行。');
-
-    if (!confirmed) {
-      return { success: false, cancelled: true };
-    }
-
     try {
       const response = await axios.post('/api/scheduler/disable');
-      displayToast('调度器已禁用', { type: 'success' });
       return {
         success: true,
         data: response.data
@@ -271,7 +242,6 @@ export function useSchedulerApi() {
     } catch (error) {
       console.error('禁用调度器失败:', error);
       const errorMessage = error.message || '禁用调度器失败';
-      displayToast(errorMessage, { type: 'error' });
       return {
         success: false,
         error: errorMessage

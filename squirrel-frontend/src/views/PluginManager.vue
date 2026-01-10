@@ -34,9 +34,7 @@
                 class="hidden"
                 @change="handleFileChange"
               />
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
+              <CloudArrowUpIcon class="w-5 h-5" />
               <span class="text-sm font-medium">{{ selectedFile ? selectedFile.name : '选择文件' }}</span>
             </label>
             <button
@@ -52,9 +50,7 @@
               @click="handleReload"
               title="重新加载插件"
             >
-              <svg class="w-5 h-5" :class="{ 'animate-spin': reloading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <ArrowPathIcon class="w-5 h-5" :class="{ 'animate-spin': reloading }" />
             </button>
           </div>
         </div>
@@ -68,9 +64,7 @@
       </div>
 
       <div v-else-if="plugins.length === 0" class="flex flex-col items-center justify-center py-20 text-[#aaaaaa]">
-        <svg class="w-16 h-16 mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-        </svg>
+        <CubeIcon class="w-16 h-16 mb-4 opacity-40" />
         <p class="text-sm">暂无插件</p>
         <p class="text-xs mt-1">请导入插件 ZIP 包</p>
       </div>
@@ -203,12 +197,8 @@
               :disabled="testingAll || loadingSites"
               class="px-4 py-2 bg-[#cc0000] hover:bg-[#ff0000] rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              <svg v-if="testingAll" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <ArrowPathIcon v-if="testingAll" class="w-4 h-4 animate-spin" />
+              <CheckCircleIcon v-else class="w-4 h-4" />
               {{ testingAll ? '测试中...' : '测试全部' }}
             </button>
           </div>
@@ -298,9 +288,7 @@
                     v-if="site.testing"
                     class="px-2.5 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400 flex items-center gap-1"
                   >
-                    <svg class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
+                    <ArrowPathIcon class="w-3 h-3 animate-spin" />
                     测试中
                   </span>
                   <span
@@ -336,9 +324,7 @@
                     v-else-if="site.loginTesting"
                     class="px-2.5 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400 flex items-center gap-1"
                   >
-                    <svg class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
+                    <ArrowPathIcon class="w-3 h-3 animate-spin" />
                     检测中
                   </span>
                   <span
@@ -632,6 +618,12 @@
 
 <script setup>
 import { onMounted, ref, computed, watch } from 'vue';
+import {
+  CloudArrowUpIcon,
+  ArrowPathIcon,
+  CubeIcon,
+  CheckCircleIcon
+} from '@heroicons/vue/24/outline';
 import axios from '../utils/axios';
 import { resetSitesCache } from '../composables/useSites';
 import { usePluginApi } from '../composables/usePluginApi';

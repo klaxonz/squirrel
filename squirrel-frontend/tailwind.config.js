@@ -10,6 +10,27 @@ export default {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
       },
       colors: {
+        // Design System Colors
+        'bg-primary': 'var(--bg-primary)',
+        'bg-secondary': 'var(--bg-secondary)',
+        'bg-tertiary': 'var(--bg-tertiary)',
+        'bg-card': 'var(--bg-card)',
+        'bg-elevated': 'var(--bg-elevated)',
+
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'text-tertiary': 'var(--text-tertiary)',
+        'text-muted': 'var(--text-muted)',
+        'text-accent': 'var(--text-accent)',
+
+        'color-success': 'var(--color-success)',
+        'color-error': 'var(--color-error)',
+        'color-warning': 'var(--color-warning)',
+        'color-info': 'var(--color-info)',
+
+        'border-primary': 'var(--border-primary)',
+        'border-secondary': 'var(--border-secondary)',
+
         blue: {
           50: '#E3F2FD',
           100: '#BBDEFB',
@@ -22,6 +43,18 @@ export default {
           800: '#1565C0',
           900: '#0D47A1',
         },
+      },
+      borderRadius: {
+        'sm': 'var(--radius-sm)',
+        'md': 'var(--radius-md)',
+        'lg': 'var(--radius-lg)',
+        'xl': 'var(--radius-xl)',
+        'full': 'var(--radius-full)',
+      },
+      boxShadow: {
+        'sm': 'var(--shadow-sm)',
+        'md': 'var(--shadow-md)',
+        'lg': 'var(--shadow-lg)',
       },
     },
   },

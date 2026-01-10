@@ -20,8 +20,8 @@
         :class="[
           'px-3 py-1 text-xs font-medium rounded-full transition-colors duration-150 ease-in-out flex items-center',
           modelValue === tab.value
-            ? 'bg-[#272727] text-white'
-            : 'bg-[#0f0f0f] text-[#f1f1f1] hover:bg-[#272727]'
+            ? 'bg-bg-elevated text-white'
+            : 'bg-bg-primary text-text-accent hover:bg-bg-elevated'
         ]"
       >
         {{ tab.label }}
@@ -31,7 +31,7 @@
             'ml-1 text-[10px]',
             modelValue === tab.value
               ? 'text-white'
-              : 'text-[#aaaaaa]'
+              : 'text-text-muted'
           ]"
         >
           {{ tab.count }}

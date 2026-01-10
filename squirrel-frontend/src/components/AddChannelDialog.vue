@@ -5,9 +5,7 @@
       <div class="flex items-center justify-between px-6 py-4 border-b border-[#272727]">
         <h3 class="text-lg font-medium">添加订阅</h3>
         <button @click="$emit('close')" class="text-[#aaaaaa] hover:text-white">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <XMarkIcon class="h-6 w-6" />
         </button>
       </div>
 
@@ -58,6 +56,7 @@
 
 <script setup>
 import { ref, watch } from 'vue';
+import { XMarkIcon } from '@heroicons/vue/24/outline';
 import axios from '../utils/axios';
 
 const props = defineProps({

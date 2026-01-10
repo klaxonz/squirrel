@@ -6,9 +6,7 @@
       <div class="flex items-center justify-between p-6 border-b border-[#303030]">
         <h2 class="text-xl font-bold text-white">导入订阅</h2>
         <button @click="handleClose" class="text-[#aaa] hover:text-white transition-colors">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+          <XMarkIcon class="h-6 w-6" />
         </button>
       </div>
 
@@ -127,9 +125,7 @@
           <div class="text-center py-8">
             <div class="flex justify-center mb-4">
               <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
-                <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
+                <CheckIcon class="w-10 h-10 text-green-500" />
               </div>
             </div>
 
@@ -145,10 +141,8 @@
               </p>
             </div>
 
-            <div class="text-[#aaa] text-sm bg-[#181818] rounded-lg p-4">       
-              <svg class="w-5 h-5 inline-block mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-              </svg>
+            <div class="text-[#aaa] text-sm bg-[#181818] rounded-lg p-4">
+              <ExclamationTriangleIcon class="w-5 h-5 inline-block mr-2" />
               <span v-if="importResult.total > 0">
                 导入任务已提交，正在后台处理 {{ importResult.total }} 个订阅。<br>
                 处理完成后订阅列表会自动更新，请稍后刷新查看。
@@ -193,10 +187,7 @@
           :disabled="importing || selectedCount === 0"
           class="px-6 py-2 bg-[#cc0000] text-white rounded-lg hover:bg-[#990000] disabled:bg-[#404040] disabled:cursor-not-allowed transition-colors flex items-center"
         >
-          <svg v-if="importing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
+          <ArrowPathIcon v-if="importing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
           {{ importing ? '导入中...' : `确认导入 (${selectedCount})` }}
         </button>
 
@@ -214,6 +205,12 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue';
+import {
+  XMarkIcon,
+  CheckIcon,
+  ExclamationTriangleIcon,
+  ArrowPathIcon
+} from '@heroicons/vue/24/outline';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import { useImageFallback } from '../composables/useImageFallback';
 

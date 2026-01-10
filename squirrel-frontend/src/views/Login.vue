@@ -61,11 +61,9 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import useCustomToast from '../composables/useToast';
 import { useUser } from '../composables/useUser';
 
 const router = useRouter();
-const { displayToast } = useCustomToast();
 const { login } = useUser();
 const loading = ref(false);
 const form = ref({
@@ -80,7 +78,7 @@ const handleSubmit = async () => {
     localStorage.setItem('token', response.data.access_token);
     await router.push('/');
   } catch (error) {
-    displayToast(error.response?.data?.msg || '登录失败', { type: 'error' });
+    // Error handling without toast
   } finally {
     loading.value = false;
   }

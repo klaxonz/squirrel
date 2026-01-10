@@ -254,9 +254,7 @@
       <!-- 空状态 -->
       <div v-if="tasks.length === 0 && !loading" class="text-center py-16">
         <div class="bg-[#161616] border border-white/5 rounded-lg p-8 max-w-md mx-auto">
-          <svg class="w-20 h-20 mx-auto mb-4 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
+          <ClockIcon class="w-20 h-20 mx-auto mb-4 text-white/20" />
           <h3 class="text-lg font-semibold text-white mb-2">暂无定时任务</h3>
           <p class="text-sm text-white/50 mb-6">点击下方按钮创建您的第一个定时任务</p>
           <button
@@ -298,6 +296,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ClockIcon } from '@heroicons/vue/24/outline'
 import { useSchedulerApi } from '../composables/useSchedulerApi'
 import TaskDialog from '../components/TaskDialog.vue'
 import { debounce } from '../utils/debounce'

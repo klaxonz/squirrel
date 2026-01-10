@@ -9,9 +9,7 @@
           @click="$emit('close')"
           class="text-white/50 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+          <XMarkIcon class="w-5 h-5" />
         </button>
       </div>
 
@@ -155,9 +153,7 @@
                 placeholder='{"key": "value"}'
               ></textarea>
               <div v-if="jsonError" class="flex items-center gap-2 text-[#e53935] text-xs mt-2">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                </svg>
+                <ExclamationTriangleIcon class="w-4 h-4" />
                 <span>{{ jsonError }}</span>
               </div>
             </div>
@@ -189,6 +185,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
   task: {

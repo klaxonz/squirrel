@@ -1,7 +1,7 @@
 /* 视频卡片公共样式 */
 
 .video-card {
-  @apply bg-[#212121] rounded-lg overflow-hidden shadow-sm;
+  @apply bg-bg-card rounded-lg overflow-hidden shadow-sm;
   @apply transition-all duration-300 ease-in-out;
   @apply relative;
   width: 100%;
@@ -18,7 +18,7 @@
   @apply relative cursor-pointer overflow-hidden;
   position: relative;
   padding-top: 56.25%; /* 16:9 宽高比 */
-  background-color: #181818;
+  background-color: var(--bg-primary);
 }
 
 .video-card-thumbnail img {
@@ -86,7 +86,7 @@
 }
 
 .author-avatar.default {
-  @apply bg-gray-700 text-white flex items-center justify-center;
+  @apply bg-text-tertiary text-white flex items-center justify-center;
   @apply text-2xs font-medium;
 }
 

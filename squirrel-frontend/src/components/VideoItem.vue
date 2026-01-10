@@ -122,7 +122,6 @@
         @close="closeContextMenu"
         @toggleReadStatus="toggleReadStatus"
         @markReadBatch="markReadBatch"
-        @downloadVideo="downloadVideo"
         @copyVideoLink="copyVideoLink"
         @dislikeVideo="dislikeVideo"
         @toggleLike="toggleLikeVideo"
@@ -166,8 +165,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'goToSubscription',
-  'openModal', 
-  'downloadVideo',
+  'openModal',
 ]);
 
 // 获取系统配置
