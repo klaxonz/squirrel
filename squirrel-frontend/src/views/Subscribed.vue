@@ -13,8 +13,8 @@
         @refresh="refreshList"
       >
         <Button
-          class="ml-2 min-w-[100px] whitespace-nowrap"
-          size="sm"
+          class="ml-2 whitespace-nowrap"
+          size="xs"
           shape="pill"
           variant="secondary"
           @click="showAddDialog = true"
@@ -23,8 +23,8 @@
           <span class="ml-1">添加订阅</span>
         </Button>
         <Button
-          class="ml-2 min-w-[100px] whitespace-nowrap"
-          size="sm"
+          class="ml-2 whitespace-nowrap"
+          size="xs"
           shape="pill"
           variant="danger"
           @click="showImportDialog = true"
@@ -32,12 +32,13 @@
           <ArrowDownTrayIcon class="h-4 w-4" />
           <span class="ml-1">导入订阅</span>
         </Button>
+
       </FeedToolbar>
     </div>
 
     <div
       ref="scrollContainer"
-      class="channel-container scrollbar-hide pt-4 flex-grow overflow-y-auto"
+      class="channel-container scrollbar-hide pt-0 flex-grow overflow-y-auto"
       @scroll="handleScrollPosition"
     >
       <div class="content-container" v-if="loadError">
