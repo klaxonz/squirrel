@@ -48,21 +48,23 @@ const skipText = computed(() => {
 
 .skip-content {
   @apply flex flex-col items-center gap-2 px-4 py-3 rounded-xl;
-  background: rgba(0, 0, 0, 0.85);
+  background: var(--sp-overlay-strong);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--sp-border);
+  box-shadow: var(--sp-shadow-lg);
 }
 
 .skip-icon {
-  @apply text-text-primary text-3xl;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  @apply text-3xl;
+  color: var(--sp-text);
+  filter: drop-shadow(var(--sp-drop-shadow-md));
 }
 
 .skip-text {
-  @apply text-text-primary text-sm font-medium;
-  font-family: 'Roboto', sans-serif;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  @apply text-sm font-medium;
+  color: var(--sp-text);
+  font-family: var(--sp-font-family);
+  text-shadow: var(--sp-text-shadow);
 }
 
 @keyframes skipIndicatorShow {

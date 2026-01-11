@@ -397,7 +397,7 @@
     <!-- 站点配置编辑弹窗 -->
     <div
       v-if="siteEditorVisible"
-      class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-overlay-dark-70 flex items-center justify-center z-50 p-4"
     >
       <div class="bg-bg-secondary rounded-2xl border border-border-primary w-full max-w-3xl shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-border-secondary">
@@ -1372,16 +1372,16 @@ onMounted(() => {
 }
 
 .site-editor-scroll::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--border-primary);
   border-radius: 9999px;
 }
 
 .site-editor-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--border-hover);
   border-radius: 9999px;
 }
 
 .site-editor-scroll:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--overlay-light-30);
 }
 </style>

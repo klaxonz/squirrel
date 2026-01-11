@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+  <div v-if="show" class="fixed inset-0 bg-overlay-dark-50 z-50 flex items-center justify-center">
     <div class="bg-bg-card border border-border-primary rounded-lg w-full max-w-lg mx-4">
       <!-- 标题栏 -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-border-primary">

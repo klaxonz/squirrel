@@ -35,7 +35,7 @@
         class="absolute bottom-0 left-0 right-0 h-[2px] bg-bg-tertiary/40 backdrop-blur-sm"
       >
         <div
-          class="h-full bg-color-error/90 transition-all duration-200"
+          class="h-full bg-color-primary/90 transition-all duration-200"
           :style="{
             width: `${(progress * 100).toFixed(1)}%`,
             borderRadius: '1px'
@@ -77,12 +77,23 @@
             >
               {{ displayNames }}
             </span>
+            <button
+              v-if="hasActors"
+              class="actor-toggle ml-1 text-2xs text-text-muted hover:text-text-primary opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+              type="button"
+              @click.stop="toggleActors"
+              aria-label="显示订阅列表"
+              :aria-expanded="showActors"
+            >
+              ...
+            </button>
           </div>
 
           <!-- 悬浮模态框 -->
           <div
             v-if="hasActors"
             class="channel-popup opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute left-0 bottom-full mb-2 bg-bg-card rounded-lg shadow-lg transition-all duration-200 z-50 w-max max-w-72 p-3"
+            :class="{ 'is-visible': showActors }"
           >
             <!-- 订阅列表 -->
             <div class="flex flex-col gap-2">
@@ -197,6 +208,7 @@ onUnmounted(() => {
 
 const showMenu = ref(false);
 const menuPosition = ref({ x: 0, y: 0 });
+const showActors = ref(false);
 
 const showContextMenu = async (event) => {
   event.preventDefault();
@@ -230,6 +242,10 @@ const hasActors = computed(() => props.video.subscriptions.length > 1);
 
 const goToSubscription = (subscriptionId) => {
   emit('goToSubscription', subscriptionId);
+};
+
+const toggleActors = () => {
+  showActors.value = !showActors.value;
 };
 
 watch(showMenu, (isOpen) => {
@@ -313,9 +329,9 @@ const handleThumbnailError = (e) => {
   position: absolute;
   bottom: 4px;
   right: 4px;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  font-size: 0.75rem;
+  background-color: var(--overlay-dark-70);
+  color: var(--text-accent);
+  font-size: var(--font-size-2xs);
   padding: 2px 4px;
   border-radius: 2px;
 }
@@ -329,7 +345,7 @@ const handleThumbnailError = (e) => {
 }
 
 .text-2xs {
-  font-size: 0.625rem; /* 10px */
+  font-size: var(--font-size-2xs);
   line-height: 1rem; /* 16px, 调整行高以匹配头像高度 */
 }
 
@@ -348,7 +364,7 @@ const handleThumbnailError = (e) => {
 /* 添加一些响应式调整 */
 @media (max-width: 768px) {
   .text-2xs {
-    font-size: 0.5625rem;
+    font-size: var(--font-size-3xs);
   }
 }
 
@@ -366,7 +382,25 @@ const handleThumbnailError = (e) => {
 
 .channel-popup {
   transform-origin: top left;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-popup);
+}
+
+.channel-popup.is-visible {
+  opacity: 1;
+  visibility: visible;
+  z-index: 1000;
+}
+
+.group:focus-within .channel-popup {
+  opacity: 1;
+  visibility: visible;
+  z-index: 1000;
+}
+
+@media (hover: none) {
+  .actor-toggle {
+    opacity: 1;
+  }
 }
 
 .channel-popup::before {
@@ -394,7 +428,7 @@ const handleThumbnailError = (e) => {
 }
 
 /* 添加进度条相关样式 */
-.video-thumbnail:hover .bg-color-error\/90 {
+.video-thumbnail:hover .bg-color-primary\/90 {
   height: 3px;
   margin-top: -1px;
 }

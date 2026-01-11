@@ -2,7 +2,7 @@
   <div v-if="isAuthPage" class="h-screen overflow-hidden">
     <router-view />
   </div>
-  <div v-else :class="['flex h-screen min-h-0', { 'overflow-hidden': !isScrollablePage }]">
+  <div v-else class="flex h-screen min-h-0 overflow-x-hidden">
     <!-- Sidebar for desktop -->
     <Sidebar v-if="!isMobile" :routes="sidebarRoutes" />
 
@@ -20,7 +20,7 @@
 
       <!-- 页面内容容器 -->
       <div class="page-container flex-1 relative min-h-0">
-        <div class="content-container absolute inset-0" ref="contentContainerRef" :class="isScrollablePage ? 'scrollbar-hide overflow-y-auto' : 'overflow-hidden'">
+        <div class="content-container absolute inset-0" ref="contentContainerRef" :class="contentScrollClass">
           <router-view v-slot="{ Component }">
             <keep-alive :include="['LatestVideos', 'Subscribed']">
               <component :is="Component" :key="routeCacheKey" />
@@ -98,6 +98,11 @@ const isScrollablePage = computed(() => {
   return !!route.meta?.scrollable;
 });
 
+const contentScrollClass = computed(() => {
+  if (!isScrollablePage.value) return 'overflow-hidden'
+  return route.meta?.hideScrollbar ? 'scrollbar-hide overflow-y-auto' : 'scrollbar overflow-y-auto'
+})
+
 const routeCacheKey = computed(() => {
   if (route.params.id) {
     return `subscription-${route.params.id}`;
@@ -134,13 +139,6 @@ onMounted(async () => {
 </script>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
-
-:root {
-  --font-sans: 'Roboto', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-}
-
 html, body {
   @apply h-full overflow-hidden;
   overscroll-behavior: none;
@@ -153,10 +151,6 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-sans);
-}
-
-button {
-  @apply focus:outline-none;
 }
 
 </style>

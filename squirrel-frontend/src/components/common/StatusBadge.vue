@@ -55,15 +55,15 @@ const sizeClasses = computed(() => {
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'success':
-      return 'bg-color-success/10 text-color-success border border-color-success/20'
+      return 'bg-color-success/10 text-color-success'
     case 'error':
-      return 'bg-color-error/10 text-color-error border border-color-error/20'
+      return 'bg-color-error/10 text-color-error'
     case 'warning':
-      return 'bg-color-warning/10 text-color-warning border border-color-warning/20'
+      return 'bg-color-warning/10 text-color-warning'
     case 'info':
-      return 'bg-color-info/10 text-color-info border border-color-info/20'
+      return 'bg-color-info/10 text-color-info'
     default:
-      return 'bg-bg-elevated text-text-secondary border border-border-primary'
+      return 'bg-bg-elevated text-text-secondary'
   }
 })
 

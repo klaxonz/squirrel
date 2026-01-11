@@ -36,7 +36,7 @@ const props = defineProps({
 <style scoped>
 .menu-item {
   width: 100%;
-  transition: background-color 0.2s ease, padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.2s ease;
 }
 
 .menu-item-inactive:hover {
@@ -50,14 +50,14 @@ const props = defineProps({
 .menu-icon {
   flex-shrink: 0;
   margin-right: 1rem;
-  transition: margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .menu-text {
   opacity: 1;
   transform: translateX(0);
-  transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.15s ease, transform 0.2s ease;
   white-space: nowrap;
+  will-change: opacity, transform;
 }
 
 .menu-item-collapsed .menu-text {

@@ -1,125 +1,144 @@
 <template>
-  <div class="flex flex-col h-full bg-bg-primary">
+  <div class="flex flex-col h-full bg-bg-primary text-text-primary">
     <div class="flex-none px-6 pt-6 pb-3">
       <!-- 标题和操作栏 -->
       <div class="flex items-center justify-between mb-4">
         <h1 class="text-xl font-bold text-text-primary">定时任务管理</h1>
         <div class="flex gap-2">
-          <button
+          <Button
             @click="showCreateDialog = true"
-            class="px-3 py-1.5 bg-color-error hover:bg-color-error-hover text-text-accent text-xs font-medium rounded-full transition-colors"
+            size="sm"
+            shape="pill"
+            variant="primary"
           >
             创建任务
-          </button>
-          <button
+          </Button>
+          <Button
             @click="refreshData"
             :disabled="loading"
-            class="px-3 py-1.5 bg-bg-primary hover:bg-bg-elevated disabled:opacity-50 disabled:cursor-not-allowed text-text-accent text-xs font-medium rounded-full transition-colors border border-border-primary"
+            size="sm"
+            shape="pill"
+            variant="secondary"
           >
             刷新
-          </button>
+          </Button>
         </div>
       </div>
 
       <!-- 统计卡片 -->
-      <div class="grid grid-cols-5 gap-1.5 mb-3">
-        <div class="bg-bg-secondary border border-border-primary rounded p-1.5 hover:bg-bg-tertiary transition-colors">
-          <div class="text-lg font-bold text-text-primary">{{ statistics.total_tasks }}</div>
-          <div class="text-2xs text-text-tertiary font-medium">总任务</div>
-        </div>
-        <div class="bg-bg-secondary border border-border-primary rounded p-1.5 hover:bg-bg-tertiary transition-colors">
-          <div class="text-lg font-bold text-color-success">{{ statistics.active_tasks }}</div>
-          <div class="text-2xs text-text-tertiary font-medium">活跃</div>
-        </div>
-        <div class="bg-bg-secondary border border-border-primary rounded p-1.5 hover:bg-bg-tertiary transition-colors">
-          <div class="text-lg font-bold text-color-info">{{ statistics.running_tasks }}</div>
-          <div class="text-2xs text-text-tertiary font-medium">运行中</div>
-        </div>
-        <div class="bg-bg-secondary border border-border-primary rounded p-1.5 hover:bg-bg-tertiary transition-colors">
-          <div class="text-lg font-bold text-color-error">{{ statistics.error_tasks }}</div>
-          <div class="text-2xs text-text-tertiary font-medium">错误</div>
-        </div>
-        <div class="bg-bg-secondary border border-border-primary rounded p-1.5 hover:bg-bg-tertiary transition-colors">
-          <div class="text-lg font-bold text-color-warning">{{ statistics.today_executions }}</div>
-          <div class="text-2xs text-text-tertiary font-medium">今日执行</div>
-        </div>
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        <StatsCard
+          title="总任务"
+          :value="statistics.total_tasks"
+          :hover-effect="true"
+        />
+        <StatsCard
+          title="活跃"
+          :value="statistics.active_tasks"
+          value-color="success"
+          :hover-effect="true"
+        />
+        <StatsCard
+          title="运行中"
+          :value="statistics.running_tasks"
+          :hover-effect="true"
+        />
+        <StatsCard
+          title="错误"
+          :value="statistics.error_tasks"
+          value-color="error"
+          :hover-effect="true"
+        />
+        <StatsCard
+          title="今日执行"
+          :value="statistics.today_executions"
+          :hover-effect="true"
+        />
       </div>
 
       <!-- 调度器状态和筛选 -->
-      <div class="flex items-center gap-2 mb-3">
-        <!-- 调度器状态 -->
-        <div class="flex items-center gap-2 bg-bg-secondary border border-border-primary rounded px-2.5 py-1.5">
-          <div
-            class="w-1.5 h-1.5 rounded-full"
-            :class="schedulerStatus?.running ? 'bg-color-success' : 'bg-color-error'"
-          ></div>
-          <span class="text-2xs font-medium text-text-primary">
-            <span :class="schedulerStatus?.running ? 'text-color-success' : 'text-color-error'">{{ schedulerStatus?.running ? '运行中' : '已停止' }}</span>
-          </span>
-          <button
+      <div class="bg-bg-secondary border border-border-primary rounded-lg p-3 mb-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- 调度器状态 -->
+          <div class="flex items-center gap-2 px-3 py-1.5 bg-bg-elevated rounded-full">
+            <span class="text-2xs text-text-tertiary">调度器</span>
+            <StatusBadge
+              :variant="schedulerStatus?.running ? 'success' : 'error'"
+              size="xs"
+              class="border-0"
+              :label="schedulerStatus?.running ? '运行中' : '已停止'"
+            />
+          </div>
+          <Button
             v-if="!schedulerStatus?.running"
             @click="enableScheduler"
             :disabled="loading"
-            class="ml-1 px-2 py-0.5 bg-color-success hover:bg-color-success-hover disabled:opacity-50 disabled:cursor-not-allowed text-text-accent text-2xs font-medium rounded-full transition-colors"
+            size="xs"
+            shape="pill"
+            variant="primary"
           >
             启用
-          </button>
-          <button
+          </Button>
+          <Button
             v-if="schedulerStatus?.running"
             @click="disableScheduler"
             :disabled="loading"
-            class="ml-1 px-2 py-0.5 bg-color-error hover:bg-color-error-hover disabled:opacity-50 disabled:cursor-not-allowed text-text-accent text-2xs font-medium rounded-full transition-colors"
+            size="xs"
+            shape="pill"
+            variant="ghost"
           >
             禁用
-          </button>
+          </Button>
+          <!-- 搜索和过滤 -->
+          <div class="flex-1 min-w-[200px]">
+            <input
+              v-model="searchQuery"
+              @input="debouncedSearch"
+              type="text"
+              placeholder="搜索任务..."
+              class="w-full px-3 py-1.5 bg-bg-elevated border border-border-secondary rounded text-text-primary text-2xs placeholder-text-muted focus:outline-none focus:border-color-primary focus:ring-1 focus:ring-color-primary transition-colors"
+            >
+          </div>
+          <select
+            v-model="statusFilter"
+            @change="loadTasks"
+            class="px-3 py-1.5 bg-bg-elevated border border-border-secondary rounded text-text-primary text-2xs focus:outline-none focus:border-color-primary focus:ring-1 focus:ring-color-primary transition-colors"
+          >
+            <option value="">所有状态</option>
+            <option value="enabled">启用</option>
+            <option value="disabled">禁用</option>
+            <option value="running">运行中</option>
+            <option value="error">错误</option>
+          </select>
+          <select
+            v-model="typeFilter"
+            @change="loadTasks"
+            class="px-3 py-1.5 bg-bg-elevated border border-border-secondary rounded text-text-primary text-2xs focus:outline-none focus:border-color-primary focus:ring-1 focus:ring-color-primary transition-colors"
+          >
+            <option value="">所有类型</option>
+            <option value="system">系统任务</option>
+            <option value="user">用户任务</option>
+            <option value="plugin">插件任务</option>
+          </select>
         </div>
-        <!-- 搜索和过滤 -->
-        <input
-          v-model="searchQuery"
-          @input="debouncedSearch"
-          type="text"
-          placeholder="搜索任务..."
-          class="flex-1 min-w-36 px-3 py-1.5 bg-bg-secondary border border-border-secondary rounded text-text-primary text-2xs placeholder-text-muted focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors"
-        >
-        <select
-          v-model="statusFilter"
-          @change="loadTasks"
-          class="px-3 py-1.5 bg-bg-secondary border border-border-secondary rounded text-text-primary text-2xs focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors"
-        >
-          <option value="">所有状态</option>
-          <option value="enabled">启用</option>
-          <option value="disabled">禁用</option>
-          <option value="running">运行中</option>
-          <option value="error">错误</option>
-        </select>
-        <select
-          v-model="typeFilter"
-          @change="loadTasks"
-          class="px-3 py-1.5 bg-bg-secondary border border-border-secondary rounded text-text-primary text-2xs focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors"
-        >
-          <option value="">所有类型</option>
-          <option value="system">系统任务</option>
-          <option value="user">用户任务</option>
-          <option value="plugin">插件任务</option>
-        </select>
       </div>
     </div>
 
     <!-- 任务列表 -->
     <div class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
       <!-- 表格 -->
-      <div class="bg-bg-tertiary border border-border-primary rounded-lg overflow-hidden">
+      <div class="bg-bg-secondary border border-border-primary rounded-lg overflow-hidden">
         <table class="w-full">
-          <thead class="bg-bg-secondary border-b border-border-primary">
+          <thead class="bg-bg-primary border-b border-border-primary">
             <tr>
-              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-secondary uppercase tracking-wider">任务名称</th>
-              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-secondary uppercase tracking-wider">状态</th>
-              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-secondary uppercase tracking-wider">类型</th>
-              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-secondary uppercase tracking-wider">执行间隔</th>
-              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-secondary uppercase tracking-wider">最后执行</th>
-              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-secondary uppercase tracking-wider">下次执行</th>
-              <th class="px-3 py-2 text-center text-2xs font-semibold text-text-secondary uppercase tracking-wider">成功/总数</th>
-              <th class="px-3 py-2 text-right text-2xs font-semibold text-text-secondary uppercase tracking-wider">操作</th>
+              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-tertiary tracking-wider">任务名称</th>
+              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-tertiary tracking-wider">状态</th>
+              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-tertiary tracking-wider">类型</th>
+              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-tertiary tracking-wider">执行间隔</th>
+              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-tertiary tracking-wider">最后执行</th>
+              <th class="px-3 py-2 text-left text-2xs font-semibold text-text-tertiary tracking-wider">下次执行</th>
+              <th class="px-3 py-2 text-center text-2xs font-semibold text-text-tertiary tracking-wider">成功/总数</th>
+              <th class="px-3 py-2 text-right text-2xs font-semibold text-text-tertiary tracking-wider">操作</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border-primary">
@@ -137,12 +156,13 @@
 
               <!-- 状态 -->
               <td class="px-3 py-2">
-                <span
-                  class="px-2 py-0.5 rounded-full text-2xs font-medium whitespace-nowrap"
-                  :class="getStatusBadgeClass(task.status)"
-                >
-                  {{ getStatusText(task.status) }}
-                </span>
+                <StatusBadge
+                  size="xs"
+                  :show-dot="false"
+                  :variant="getStatusVariant(task.status)"
+                  :label="getStatusText(task.status)"
+                  class="border-0"
+                />
               </td>
 
               <!-- 类型 -->
@@ -173,54 +193,65 @@
               <!-- 操作 -->
               <td class="px-3 py-2">
                 <div class="flex gap-1 justify-end">
-                  <button
+                  <Button
                     v-if="!task.is_legacy"
                     @click="executeTaskNow(task.id)"
                     :disabled="loading"
-                    class="px-2 py-0.5 bg-color-info hover:bg-color-info-hover disabled:opacity-50 disabled:cursor-not-allowed text-text-accent text-2xs font-medium rounded-full transition-colors"
+                    size="xs"
+                    shape="pill"
+                    variant="secondary"
                     title="立即执行"
                   >
                     执行
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     v-if="!task.is_legacy"
                     @click="editTask(task)"
-                    class="px-2 py-0.5 bg-color-warning hover:bg-color-warning-hover text-text-accent text-2xs font-medium rounded-full transition-colors"
+                    size="xs"
+                    shape="pill"
+                    variant="ghost"
                     title="编辑"
                   >
                     编辑
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     v-if="!task.is_legacy && task.is_active"
                     @click="disableTask(task.id)"
-                    class="px-2 py-0.5 bg-bg-elevated hover:bg-bg-hover text-text-accent text-2xs font-medium rounded-full transition-colors"
+                    size="xs"
+                    shape="pill"
+                    variant="ghost"
                     title="禁用"
                   >
                     禁用
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     v-if="!task.is_legacy && !task.is_active"
                     @click="enableTask(task.id)"
-                    class="px-2 py-0.5 bg-color-success hover:bg-color-success-hover text-text-accent text-2xs font-medium rounded-full transition-colors"
+                    size="xs"
+                    shape="pill"
+                    variant="ghost"
                     title="启用"
                   >
                     启用
-                  </button>
-                   <button
+                  </Button>
+                  <Button
                      v-if="!task.is_legacy && task.task_type !== 'system'"
                      @click="deleteTask(task.id)"
-                     class="px-2 py-0.5 bg-color-error hover:bg-color-error-hover text-text-accent text-2xs font-medium rounded-full transition-colors"
+                     size="xs"
+                     shape="pill"
+                     variant="danger"
                      title="删除"
                    >
                      删除
-                   </button>
-                  <span
+                   </Button>
+                  <StatusBadge
                     v-if="task.is_legacy"
-                    class="px-2 py-0.5 bg-bg-tertiary text-text-muted text-2xs font-medium rounded-full"
+                    size="xs"
+                    :show-dot="false"
+                    label="系统"
+                    class="border-0"
                     title="系统内置任务，不可修改"
-                  >
-                    系统
-                  </span>
+                  />
                 </div>
               </td>
             </tr>
@@ -231,23 +262,27 @@
       <!-- 分页 -->
       <div v-if="totalPages > 1" class="flex justify-center mt-6 mb-4">
         <div class="flex items-center gap-2">
-          <button
+          <Button
             @click="goToPage(currentPage - 1)"
             :disabled="currentPage <= 1"
-            class="px-4 py-2 bg-bg-secondary border border-border-secondary hover:bg-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed text-text-primary text-sm font-medium rounded-lg transition-colors"
+            size="sm"
+            shape="pill"
+            variant="secondary"
           >
             上一页
-          </button>
+          </Button>
           <div class="px-4 py-2 bg-bg-secondary border border-border-secondary text-text-primary text-sm font-medium rounded-lg">
             第 {{ currentPage }} / {{ totalPages }} 页
           </div>
-          <button
+          <Button
             @click="goToPage(currentPage + 1)"
             :disabled="currentPage >= totalPages"
-            class="px-4 py-2 bg-bg-secondary border border-border-secondary hover:bg-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed text-text-primary text-sm font-medium rounded-lg transition-colors"
+            size="sm"
+            shape="pill"
+            variant="secondary"
           >
             下一页
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -257,12 +292,14 @@
           <ClockIcon class="w-20 h-20 mx-auto mb-4 text-text-muted" />
           <h3 class="text-lg font-semibold text-text-primary mb-2">暂无定时任务</h3>
           <p class="text-sm text-text-tertiary mb-6">点击下方按钮创建您的第一个定时任务</p>
-          <button
+          <Button
             @click="showCreateDialog = true"
-            class="px-5 py-2.5 bg-color-error hover:bg-color-error-hover text-text-accent text-sm font-medium rounded-full transition-colors"
+            size="sm"
+            shape="pill"
+            variant="primary"
           >
             创建第一个任务
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -299,6 +336,9 @@ import { ref, onMounted } from 'vue'
 import { ClockIcon } from '@heroicons/vue/24/outline'
 import { useSchedulerApi } from '../composables/useSchedulerApi'
 import TaskDialog from '../components/TaskDialog.vue'
+import Button from '../components/common/Button.vue'
+import StatsCard from '../components/common/StatsCard.vue'
+import StatusBadge from '../components/common/StatusBadge.vue'
 import { debounce } from '../utils/debounce'
 
 const {
@@ -489,14 +529,14 @@ const getUnitLabel = (unit) => {
   return labels[unit] || unit
 }
 
-const getStatusBadgeClass = (status) => {
-  const classes = {
-    enabled: 'bg-color-success text-text-accent',
-    disabled: 'bg-bg-tertiary text-text-muted',
-    running: 'bg-color-info text-text-accent',
-    error: 'bg-color-error text-text-accent'
+const getStatusVariant = (status) => {
+  const variants = {
+    enabled: 'success',
+    running: 'success',
+    disabled: 'default',
+    error: 'error'
   }
-  return classes[status] || 'bg-bg-tertiary text-text-muted'
+  return variants[status] || 'default'
 }
 
 const getStatusText = (status) => {

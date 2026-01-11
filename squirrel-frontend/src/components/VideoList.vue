@@ -1,7 +1,7 @@
 <template>
   <div class="video-list-container relative" ref="containerRef">
     <VirtualList
-        class="scroller"
+        class="scroller scrollbar-hide"
         :items="props.videos"
         :item-size="layout.itemSize"
         key-field="id"
@@ -141,16 +141,10 @@ defineExpose({
 <style scoped>
 .video-list-container {
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
   margin: 0 auto;
   padding: 0 1rem;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   max-width: var(--container-max-width, 2560px);
-}
-
-.video-list-container::-webkit-scrollbar {
-  display: none;
 }
 
 @media (min-width: 640px) {
@@ -168,12 +162,6 @@ defineExpose({
 .scroller {
   height: 100%;
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.scroller::-webkit-scrollbar {
-  display: none;
 }
 
 .grid-item {
@@ -212,7 +200,7 @@ defineExpose({
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.06), rgba(255,255,255,0));
+  background: linear-gradient(90deg, transparent, var(--overlay-light-06), transparent);
   animation: shimmer 1.2s infinite;
   pointer-events: none;
 }

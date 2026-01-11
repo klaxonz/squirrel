@@ -17,7 +17,7 @@
               v-model="form.nickname"
               type="text"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-text-primary rounded focus:outline-none focus:ring-color-error focus:border-color-error focus:z-10 sm:text-sm"
+              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-text-primary rounded focus:outline-none focus:ring-color-primary focus:border-color-primary focus:z-10 sm:text-sm"
               placeholder="昵称"
             >
           </div>
@@ -28,7 +28,7 @@
               v-model="form.email"
               type="email"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-text-primary rounded focus:outline-none focus:ring-color-error focus:border-color-error focus:z-10 sm:text-sm"
+              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-text-primary rounded focus:outline-none focus:ring-color-primary focus:border-color-primary focus:z-10 sm:text-sm"
               placeholder="邮箱"
             >
           </div>
@@ -39,7 +39,7 @@
               v-model="form.password"
               type="password"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-text-primary rounded focus:outline-none focus:ring-color-error focus:border-color-error focus:z-10 sm:text-sm"
+              class="appearance-none relative block w-full px-3 py-2 border border-border-primary bg-bg-card placeholder-text-muted text-text-primary rounded focus:outline-none focus:ring-color-primary focus:border-color-primary focus:z-10 sm:text-sm"
               placeholder="密码"
             >
           </div>
@@ -49,7 +49,7 @@
           <button
             type="submit"
             :disabled="loading"
-            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-text-primary bg-color-error hover:bg-color-error-hover focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-text-primary bg-color-primary hover:bg-color-primary-hover focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="loading">注册中...</span>
             <span v-else>注册</span>

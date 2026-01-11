@@ -39,15 +39,16 @@ const emit = defineEmits(['toggle-menu', 'set-rate'])
 }
 
 .control-btn {
-  @apply p-2 rounded-full bg-transparent hover:bg-bg-hover
-    transition-all duration-200 text-text-primary
-    focus:outline-none focus:ring-2 focus:ring-white/30
-    flex items-center justify-center;
+  @apply p-2 rounded-full bg-transparent
+    transition-all duration-200 flex items-center justify-center;
   min-width: 40px;
   min-height: 40px;
+  color: var(--sp-text-strong);
 }
 
 .control-btn:hover {
+  background: var(--sp-bg-hover);
+  color: var(--sp-text);
   transform: scale(1.05);
 }
 
@@ -55,36 +56,44 @@ const emit = defineEmits(['toggle-menu', 'set-rate'])
   transform: scale(0.95);
 }
 
+.control-btn:focus-visible {
+  outline: 2px solid var(--sp-primary);
+  outline-offset: 2px;
+}
+
 .playback-rate-text {
   @apply text-sm font-medium text-center;
-  font-family: 'Roboto', sans-serif;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  font-family: var(--sp-font-family);
+  text-shadow: var(--sp-text-shadow);
   min-width: 24px;
 }
 
 .playback-rate-menu {
   @apply absolute bottom-full right-0 mb-3 w-24
     rounded-xl p-2
-    border border-white/10 shadow-2xl;
-  background: rgba(40, 40, 40, 0.95);
+    border;
+  background: var(--sp-menu-bg);
   backdrop-filter: blur(12px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  border-color: var(--sp-border);
+  box-shadow: var(--sp-shadow-lg);
 }
 
 .rate-option {
   @apply w-full text-center px-3 py-2 rounded-lg text-sm
-    text-text-secondary/80 hover:text-text-primary hover:bg-bg-hover
     transition-all duration-200;
-  font-family: 'Roboto', sans-serif;
+  color: var(--sp-text-secondary);
+  font-family: var(--sp-font-family);
 }
 
 .rate-option:hover {
+  color: var(--sp-text);
+  background: var(--sp-bg-hover);
   transform: translateX(1px);
 }
 
 .rate-option.active {
-  @apply text-text-primary;
-  background: rgba(255, 0, 0, 0.15);
-  border-left: 3px solid #ff0000;
+  color: var(--sp-text);
+  background: rgba(var(--sp-primary-rgb), 0.15);
+  border-left: 3px solid var(--sp-primary);
 }
 </style>

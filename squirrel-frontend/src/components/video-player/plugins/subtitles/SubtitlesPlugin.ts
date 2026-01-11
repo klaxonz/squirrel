@@ -61,9 +61,6 @@ export class SubtitlesPlugin implements PlayerPlugin {
     this.options = {}
     this.style = {
       fontSize: 'medium',
-      color: '#ffffff',
-      backgroundColor: '#000000',
-      backgroundOpacity: 0.75,
       position: 'bottom',
       textShadow: true
     }
@@ -134,11 +131,18 @@ export class SubtitlesPlugin implements PlayerPlugin {
     }
 
     const fontSize = fontSizeMap[this.style.fontSize || 'medium']
-    const color = this.style.color || '#ffffff'
-    const bgOpacity = this.style.backgroundOpacity ?? 0.75
-    const bgColor = this.hexToRgba(this.style.backgroundColor || '#000000', bgOpacity)
+    const color = this.style.color || 'var(--sp-subtitle-color)'
+    const bgOpacity = this.style.backgroundOpacity
+    const bgColor = this.style.backgroundColor
+    let background = 'var(--sp-subtitle-bg)'
+    if (bgColor) {
+      background = this.hexToRgba(bgColor, bgOpacity ?? 1)
+    } else if (typeof bgOpacity === 'number') {
+      background = `rgba(var(--sp-subtitle-bg-rgb), ${bgOpacity})`
+    }
     const position = this.style.position === 'top' ? 'top: 10%;' : 'bottom: 60px;'
-    const shadow = this.style.textShadow ? '0 2px 4px rgba(0,0,0,0.8)' : 'none'
+    const shadow = this.style.textShadow ? 'var(--sp-subtitle-text-shadow)' : 'none'
+    const fontFamily = this.style.fontFamily || 'var(--sp-font-family)'
 
     this.styleElement.textContent = `
       .sp-subtitles {
@@ -155,7 +159,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
       .sp-subtitle-text {
         display: inline-block;
         padding: 4px 12px;
-        background: ${bgColor};
+        background: ${background};
         border-radius: 4px;
         font-size: ${fontSize};
         font-weight: 500;
@@ -163,7 +167,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
         text-shadow: ${shadow};
         line-height: 1.4;
         white-space: pre-wrap;
-        font-family: ${this.style.fontFamily || 'inherit'};
+        font-family: ${fontFamily};
       }
       
       .sp-subtitles:empty {

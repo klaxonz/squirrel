@@ -71,7 +71,7 @@ const indicatorColor = computed(() => {
     case 'warning':
       return 'var(--color-warning)'
     default:
-      return '#f00' // 保持原有红色
+      return 'var(--color-primary)'
   }
 })
 </script>

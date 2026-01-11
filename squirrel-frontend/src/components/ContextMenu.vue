@@ -162,7 +162,7 @@ onUnmounted(() => {
 
 <style scoped>
 .context-menu {
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-popover);
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -180,7 +180,7 @@ onUnmounted(() => {
 
 .submenu {
   animation: slideIn 0.2s ease-out;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-popover);
 }
 
 @keyframes fadeIn {

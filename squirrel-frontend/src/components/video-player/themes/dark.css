@@ -5,21 +5,28 @@
 .sp-theme-dark,
 [data-sp-theme="dark"] {
   /* 颜色 */
-  --sp-primary: #e53935;
-  --sp-primary-hover: #ff5252;
-  --sp-primary-active: #c62828;
-  --sp-primary-rgb: 229, 57, 53;
+  --sp-primary: var(--color-primary);
+  --sp-primary-hover: var(--color-primary-hover);
+  --sp-primary-active: var(--color-primary-active);
+  --sp-primary-rgb: var(--color-primary-rgb);
   
   /* 背景 */
   --sp-bg: rgba(0, 0, 0, 0.9);
   --sp-bg-elevated: rgba(28, 28, 28, 0.95);
   --sp-bg-overlay: rgba(0, 0, 0, 0.6);
+  --sp-surface: rgba(22, 22, 22, 0.78);
+  --sp-overlay-soft: rgba(0, 0, 0, 0.4);
+  --sp-overlay-weak: rgba(0, 0, 0, 0.55);
+  --sp-overlay: rgba(0, 0, 0, 0.75);
+  --sp-overlay-strong: rgba(0, 0, 0, 0.85);
   --sp-bg-hover: rgba(255, 255, 255, 0.1);
   --sp-bg-active: rgba(255, 255, 255, 0.15);
   
   /* 文字 */
   --sp-text: #ffffff;
+  --sp-text-strong: rgba(255, 255, 255, 0.9);
   --sp-text-secondary: rgba(255, 255, 255, 0.7);
+  --sp-text-muted: rgba(255, 255, 255, 0.6);
   --sp-text-tertiary: rgba(255, 255, 255, 0.5);
   --sp-text-disabled: rgba(255, 255, 255, 0.3);
   
@@ -28,7 +35,13 @@
   --sp-border-hover: rgba(255, 255, 255, 0.2);
   
   /* 控制栏 */
-  --sp-controls-bg: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  --sp-controls-bg: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.75) 0%,
+    rgba(0, 0, 0, 0.5) 50%,
+    rgba(0, 0, 0, 0.25) 75%,
+    transparent 100%
+  );
   
   /* 进度条 */
   --sp-progress-bg: rgba(255, 255, 255, 0.2);
@@ -42,7 +55,10 @@
   
   /* 字幕 */
   --sp-subtitle-color: #ffffff;
-  --sp-subtitle-bg: rgba(0, 0, 0, 0.75);
+  --sp-subtitle-highlight: #ffd54a;
+  --sp-subtitle-bg-rgb: 0, 0, 0;
+  --sp-subtitle-bg-opacity: 0.75;
+  --sp-subtitle-bg: rgba(var(--sp-subtitle-bg-rgb), var(--sp-subtitle-bg-opacity));
   
   /* 阴影 */
   --sp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);

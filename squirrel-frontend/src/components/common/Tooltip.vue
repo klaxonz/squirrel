@@ -85,7 +85,7 @@ onUnmounted(() => {
   position: absolute;
   z-index: 1000;
   padding: 0.375rem 0.625rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-2xs);
   line-height: 1;
   color: var(--text-primary);
   background-color: var(--bg-elevated);
@@ -93,7 +93,7 @@ onUnmounted(() => {
   border-radius: 0.375rem;
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-md);
 }
 
 .tooltip-content.right {

@@ -743,9 +743,9 @@ defineExpose({
 .sp-player {
   position: absolute;
   inset: 0;
-  background: var(--sp-bg, #000);
-  font-family: var(--sp-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  color: var(--sp-text, #fff);
+  background: var(--sp-bg);
+  font-family: var(--sp-font-family);
+  color: var(--sp-text);
   overflow: hidden;
   user-select: none;
 }
@@ -769,13 +769,7 @@ defineExpose({
   bottom: 0;
   z-index: var(--sp-z-controls, 20);
   padding: 0 14px 10px;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.75) 0%,
-    rgba(0, 0, 0, 0.5) 50%,
-    rgba(0, 0, 0, 0.25) 75%,
-    transparent 100%
-  );
+  background: var(--sp-controls-bg);
   padding-top: 40px;
 }
 
@@ -788,15 +782,15 @@ defineExpose({
 
 .sp-progress {
   position: relative;
-  height: var(--sp-progress-height, 3px);
-  background: var(--sp-progress-bg, rgba(255, 255, 255, 0.2));
+  height: var(--sp-progress-height);
+  background: var(--sp-progress-bg);
   border-radius: 1.5px;
   cursor: pointer;
   transition: height 0.1s ease, transform 0.1s ease;
 }
 
 .sp-progress:hover {
-  height: 5px;
+  height: var(--sp-progress-height-hover);
   transform: translateY(-1px);
 }
 
@@ -805,7 +799,7 @@ defineExpose({
   top: 0;
   left: 0;
   height: 100%;
-  background: var(--sp-progress-buffered, rgba(255, 255, 255, 0.35));
+  background: var(--sp-progress-buffered);
   border-radius: inherit;
   transition: width 0.1s ease;
 }
@@ -815,9 +809,9 @@ defineExpose({
   top: 0;
   left: 0;
   height: 100%;
-  background: var(--sp-primary, #e53935);
+  background: var(--sp-progress-played);
   border-radius: inherit;
-  box-shadow: 0 0 8px rgba(229, 57, 53, 0.4);
+  box-shadow: var(--sp-glow-primary);
 }
 
 .sp-progress-thumb {
@@ -825,11 +819,11 @@ defineExpose({
   top: 50%;
   width: 13px;
   height: 13px;
-  background: var(--sp-primary, #e53935);
+  background: var(--sp-progress-thumb-color);
   border-radius: 50%;
   transform: translate(-50%, -50%) scale(0);
   transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--sp-shadow-sm);
 }
 
 .sp-progress:hover .sp-progress-thumb {
@@ -841,14 +835,14 @@ defineExpose({
   bottom: calc(100% + 8px);
   transform: translateX(-50%);
   padding: 5px 10px;
-  background: rgba(24, 24, 24, 0.95);
+  background: var(--sp-tooltip-bg);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--font-size-xs);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--sp-shadow-md);
 }
 
 .sp-progress-preview::after {
@@ -858,7 +852,7 @@ defineExpose({
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: rgba(24, 24, 24, 0.95);
+  border-top-color: var(--sp-tooltip-bg);
 }
 
 /* 控制按钮行 */
@@ -887,19 +881,24 @@ defineExpose({
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--sp-text-strong);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
 .sp-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--sp-btn-hover-bg);
+  color: var(--sp-text);
 }
 
 .sp-btn:active {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--sp-btn-active-bg);
   transform: scale(0.92);
+}
+
+.sp-btn:focus-visible {
+  outline: 2px solid var(--sp-primary);
+  outline-offset: 2px;
 }
 
 .sp-btn--play {
@@ -930,7 +929,7 @@ defineExpose({
   position: relative;
   width: 70px;
   height: 3px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--sp-progress-bg);
   border-radius: 1.5px;
   cursor: pointer;
   transition: height 0.1s ease;
@@ -943,7 +942,7 @@ defineExpose({
 .sp-volume-slider-fill {
   position: relative;
   height: 100%;
-  background: #fff;
+  background: var(--sp-text);
   border-radius: inherit;
   transition: width 0.05s ease;
 }
@@ -955,11 +954,11 @@ defineExpose({
   top: 50%;
   width: 10px;
   height: 10px;
-  background: #fff;
+  background: var(--sp-text);
   border-radius: 50%;
   transform: translate(50%, -50%) scale(0);
   transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--sp-shadow-sm);
 }
 
 .sp-volume:hover .sp-volume-slider-fill::after {
@@ -971,23 +970,23 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 13px;
+  font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--sp-text-strong);
   margin-left: 8px;
 }
 
 .sp-time-current {
-  color: #fff;
+  color: var(--sp-text);
 }
 
 .sp-time-separator {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--sp-text-disabled);
   margin: 0 1px;
 }
 
 .sp-time-duration {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--sp-text-muted);
 }
 
 /* 设置弹出菜单 */
@@ -996,11 +995,11 @@ defineExpose({
   right: 12px;
   bottom: 56px;
   min-width: 200px;
-  background: rgba(20, 20, 20, 0.95);
+  background: var(--sp-menu-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--sp-shadow-lg);
   overflow: hidden;
   z-index: var(--sp-z-menu, 30);
 }
@@ -1013,20 +1012,20 @@ defineExpose({
   padding: 11px 14px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 13px;
+  color: var(--sp-text-strong);
+  font-size: var(--font-size-xs);
   text-align: left;
   cursor: pointer;
   transition: background 0.12s ease;
 }
 
 .sp-popup-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--sp-bg-hover);
 }
 
 .sp-popup-value {
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 13px;
+  color: var(--sp-text-tertiary);
+  font-size: var(--font-size-xs);
 }
 
 .sp-popup-back {
@@ -1036,10 +1035,10 @@ defineExpose({
   width: 100%;
   padding: 11px 14px;
   border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--sp-border);
   background: transparent;
-  color: #fff;
-  font-size: 13px;
+  color: var(--sp-text);
+  font-size: var(--font-size-xs);
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -1047,7 +1046,7 @@ defineExpose({
 }
 
 .sp-popup-back:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--sp-bg-hover);
 }
 
 .sp-popup-back svg {
@@ -1067,7 +1066,7 @@ defineExpose({
 }
 
 .sp-popup-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--sp-border-hover);
   border-radius: 2px;
 }
 
@@ -1079,27 +1078,27 @@ defineExpose({
   padding: 9px 14px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 13px;
+  color: var(--sp-text-secondary);
+  font-size: var(--font-size-xs);
   text-align: left;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
 }
 
 .sp-popup-option:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: var(--sp-bg-hover);
+  color: var(--sp-text);
 }
 
 .sp-popup-option.active {
-  color: #fff;
+  color: var(--sp-text);
 }
 
 .sp-check {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  color: var(--sp-primary, #e53935);
+  color: var(--sp-primary);
 }
 
 .sp-popup-option:not(.active) .sp-check {
@@ -1119,11 +1118,11 @@ defineExpose({
   max-height: 260px;
   overflow-y: auto;
   padding: 6px 0;
-  background: rgba(20, 20, 20, 0.95);
+  background: var(--sp-menu-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--sp-shadow-lg);
   z-index: var(--sp-z-menu, 30);
 }
 
@@ -1136,7 +1135,7 @@ defineExpose({
 }
 
 .sp-menu::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--sp-border);
   border-radius: 2px;
 }
 
@@ -1146,9 +1145,9 @@ defineExpose({
 
 .sp-menu-label {
   padding: 8px 14px 6px;
-  font-size: 11px;
+  font-size: var(--font-size-3xs);
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--sp-text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1167,20 +1166,20 @@ defineExpose({
   padding: 10px 14px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 13px;
+  color: var(--sp-text-secondary);
+  font-size: var(--font-size-xs);
   text-align: left;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
 }
 
 .sp-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: var(--sp-bg-hover);
+  color: var(--sp-text);
 }
 
 .sp-menu-item--active {
-  color: #fff;
+  color: var(--sp-text);
 }
 
 .sp-menu-item-text {
@@ -1191,9 +1190,9 @@ defineExpose({
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--sp-primary, #e53935);
+  background: var(--sp-primary);
   flex-shrink: 0;
-  box-shadow: 0 0 6px rgba(229, 57, 53, 0.5);
+  box-shadow: var(--sp-glow-primary);
 }
 
 /* 加载/缓冲 */
@@ -1213,8 +1212,8 @@ defineExpose({
 .sp-loading-spinner {
   width: 44px;
   height: 44px;
-  border: 2.5px solid rgba(255, 255, 255, 0.15);
-  border-top-color: #fff;
+  border: 2.5px solid var(--sp-border);
+  border-top-color: var(--sp-text);
   border-radius: 50%;
   animation: sp-spin 0.8s linear infinite;
 }
@@ -1226,8 +1225,8 @@ defineExpose({
 }
 
 .sp-loading-text {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: var(--font-size-xs);
+  color: var(--sp-text-secondary);
   font-weight: 500;
 }
 
@@ -1244,7 +1243,7 @@ defineExpose({
   align-items: center;
   justify-content: center;
   padding: 18px;
-  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.82));
+  background: radial-gradient(circle at center, var(--sp-overlay-weak), var(--sp-overlay-strong));
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
 }
@@ -1258,33 +1257,33 @@ defineExpose({
   text-align: center;
   padding: 22px 20px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(22, 22, 22, 0.78);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--sp-border);
+  background: var(--sp-surface);
+  box-shadow: var(--sp-shadow-xl);
 }
 
 .sp-error-icon svg,
 .sp-error-icon .sp-icon {
   width: 44px;
   height: 44px;
-  color: #ef5350;
+  color: var(--sp-error);
 }
 
 .sp-error-title {
-  font-size: 15px;
+  font-size: var(--font-size-md);
   font-weight: 600;
-  color: #fff;
+  color: var(--sp-text);
 }
 
 .sp-error-code {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  font-size: var(--font-size-2xs);
+  color: var(--sp-text-tertiary);
   letter-spacing: 0.2px;
 }
 
 .sp-error-message {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: var(--font-size-xs);
+  color: var(--sp-text-muted);
   max-width: 280px;
   line-height: 1.5;
   display: -webkit-box;
@@ -1298,17 +1297,17 @@ defineExpose({
   width: auto;
   height: 34px;
   padding: 0 16px;
-  background: rgba(255, 255, 255, 0.1);
-  font-size: 13px;
+  background: var(--sp-bg-hover);
+  font-size: var(--font-size-xs);
   font-weight: 500;
 }
 
 .sp-error-card .sp-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--sp-bg-active);
 }
 
 .sp-btn--primary {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--sp-bg-active);
 }
 
 /* 指示器 */
@@ -1323,11 +1322,11 @@ defineExpose({
   align-items: center;
   gap: 6px;
   padding: 14px 18px;
-  background: rgba(0, 0, 0, 0.75);
+  background: var(--sp-overlay);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-radius: 10px;
-  z-index: var(--sp-z-indicator, 25);
+  z-index: var(--sp-z-indicator);
 }
 
 .sp-seek-indicator svg,
@@ -1341,9 +1340,9 @@ defineExpose({
 
 .sp-seek-indicator span,
 .sp-volume-indicator span {
-  font-size: 13px;
+  font-size: var(--font-size-xs);
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--sp-text-strong);
 }
 
 /* 过渡动画 */

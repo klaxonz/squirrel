@@ -26,6 +26,8 @@ export default {
         'text-accent': 'var(--text-accent)',
 
         // Design System - Status Colors
+        'color-primary': 'var(--color-primary)',
+        'color-primary-hover': 'var(--color-primary-hover)',
         'color-success': 'var(--color-success)',
         'color-success-hover': 'var(--color-success-hover)',
         'color-error': 'var(--color-error)',
@@ -39,6 +41,11 @@ export default {
         'border-primary': 'var(--border-primary)',
         'border-secondary': 'var(--border-secondary)',
         'border-hover': 'var(--border-hover)',
+
+        // Design System - Overlay
+        'overlay-dark-50': 'var(--overlay-dark-50)',
+        'overlay-dark-70': 'var(--overlay-dark-70)',
+        'overlay-dark-75': 'var(--overlay-dark-75)',
       },
       fontSize: {
         '2xs': 'var(--font-size-2xs)',

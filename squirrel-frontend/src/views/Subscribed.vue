@@ -37,7 +37,7 @@
 
     <div
       ref="scrollContainer"
-      class="channel-container pt-4 flex-grow overflow-y-auto"
+      class="channel-container scrollbar-hide pt-4 flex-grow overflow-y-auto"
       @scroll="handleScrollPosition"
     >
       <div class="content-container" v-if="loadError">
@@ -64,7 +64,7 @@
                   referrerpolicy="no-referrer"
                   @error="(e) => handleAvatarError(e, subscription.id)"
                 />
-                <div class="absolute -inset-0.5 bg-gradient-to-b from-transparent to-[#181818] opacity-20 rounded-full"></div>
+                <div class="absolute -inset-0.5 avatar-sheen opacity-20 rounded-full"></div>
               </div>
             </div>
 
@@ -83,7 +83,7 @@
               <p class="text-2xs text-text-muted mt-0.5">订阅时间: {{ formatDate(subscription.created_at) }}</p>
             </div>
 
-            <button class="absolute top-1 right-1 p-1 bg-bg-tertiary/50 rounded-full hover:bg-bg-tertiary/75 transition-colors duration-200 opacity-0 group-hover:opacity-100"
+            <button class="settings-toggle absolute top-1 right-1 p-1 bg-bg-tertiary/50 rounded-full hover:bg-bg-tertiary/75 transition-colors duration-200 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                     @click.stop="openSettings(subscription)">
               <svg class="h-3.5 w-3.5 text-text-primary" fill="currentColor" viewBox="0 0 20 20"
                    xmlns="http://www.w3.org/2000/svg">
@@ -122,7 +122,7 @@
     </div>
 
     <!-- 设置模态框 -->
-    <div v-if="showSettings" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    <div v-if="showSettings" class="fixed inset-0 bg-overlay-dark-50 flex items-center justify-center z-50"
          @click.self="closeSettings">
       <div class="bg-bg-card border border-border-primary rounded-lg p-6 w-full max-w-md">
         <h2 class="text-xl font-bold mb-4 text-text-primary">{{ selectedSubscription.name }} 设置</h2>
@@ -585,12 +585,6 @@ onUnmounted(() => {
 }
 
 .channel-container {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.channel-container::-webkit-scrollbar {
-  display: none;
 }
 
 .channel-item {
@@ -602,7 +596,7 @@ onUnmounted(() => {
 
 .channel-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-md);
 }
 
 .channel-item img {
@@ -612,7 +606,7 @@ onUnmounted(() => {
 
 .channel-item:hover img {
   transform: scale(1.05);
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 20px var(--overlay-light-10);
 }
 
 .channel-item > div:nth-child(2) {
@@ -628,7 +622,13 @@ onUnmounted(() => {
 }
 
 .channel-item .w-24 {
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+  filter: drop-shadow(var(--shadow-drop-sm));
+}
+
+@media (hover: none) {
+  .settings-toggle {
+    opacity: 1;
+  }
 }
   /* 刷新图标旋转 */
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -639,10 +639,14 @@ onUnmounted(() => {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.06), rgba(255,255,255,0));
+    background: linear-gradient(90deg, transparent, var(--overlay-light-06), transparent);
     animation: shimmer 1.2s infinite;
     pointer-events: none;
     border-radius: inherit;
   }
   @keyframes shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
+
+  .avatar-sheen {
+    background: linear-gradient(to bottom, transparent, var(--bg-tertiary));
+  }
 </style>

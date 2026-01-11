@@ -52,10 +52,18 @@ export default function useSubtitles({ store, videoRef, props }: UseSubtitlesOpt
 
     const settings = store.subtitleSettings || {}
     const fontMap: Record<string, string> = { small: '14px', medium: '18px', large: '24px', xlarge: '32px' }
-    const color = settings.color === 'yellow' ? '#ffd54a' : '#ffffff'
-    const bg = `rgba(0,0,0,${Math.max(0, Math.min(1, settings.bgOpacity ?? 0.4))})`
+    const color = settings.color === 'yellow'
+      ? 'var(--sp-subtitle-highlight, var(--color-warning))'
+      : 'var(--sp-subtitle-color, var(--text-accent))'
+    const clampedOpacity = Math.max(0, Math.min(1, settings.bgOpacity ?? 0.4))
+    const bgOpacity = settings.bgOpacity === undefined
+      ? 'var(--sp-subtitle-bg-opacity, 0.4)'
+      : String(clampedOpacity)
+    const bg = `rgba(var(--sp-subtitle-bg-rgb, 0, 0, 0), ${bgOpacity})`
     const fontSize = fontMap[settings.fontSize] || fontMap.medium
-    const shadow = settings.shadow !== false ? '0 2px 4px rgba(0,0,0,0.8)' : 'none'
+    const shadow = settings.shadow !== false
+      ? 'var(--sp-subtitle-text-shadow, 0 2px 4px rgba(0,0,0,0.8))'
+      : 'none'
 
     const styleId = 'subtitle-style'
     const css = `
@@ -68,6 +76,7 @@ export default function useSubtitles({ store, videoRef, props }: UseSubtitlesOpt
         font-weight: 500;
         padding: 0.15em 0.4em;
         border-radius: 0.25em;
+        font-family: var(--sp-font-family, inherit);
       }
     `
 

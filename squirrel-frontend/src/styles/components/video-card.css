@@ -44,12 +44,12 @@
 }
 
 .video-progress-indicator {
-  @apply h-full bg-color-error/90 transition-all duration-200;
+  @apply h-full bg-color-primary/90 transition-all duration-200;
   border-radius: 1px;
 }
 
 .video-card:hover .video-progress-indicator {
-  @apply bg-color-error-hover;
+  @apply bg-color-primary-hover;
   height: 3px;
   margin-top: -1px;
 }
@@ -98,10 +98,15 @@
   @apply transition-all duration-200 z-50;
   @apply w-max max-w-[300px] p-3;
   transform-origin: top left;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-popup);
 }
 
 .group:hover .channel-popup {
+  @apply opacity-100 visible;
+  z-index: 1000;
+}
+
+.group:focus-within .channel-popup {
   @apply opacity-100 visible;
   z-index: 1000;
 }
@@ -128,11 +133,11 @@
 /* 响应式调整 */
 @media (max-width: 768px) {
   .video-title {
-    font-size: 0.5625rem;
+    font-size: var(--font-size-2xs);
   }
   
   .video-meta {
-    font-size: 0.5rem;
+    font-size: var(--font-size-3xs);
   }
 }
 

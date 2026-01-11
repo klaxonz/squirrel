@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <div class="fixed inset-0 bg-overlay-dark-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div class="bg-bg-tertiary border border-border-primary rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
       <div class="flex items-center justify-between px-6 py-4 border-b border-border-secondary">
         <h2 class="text-xl font-bold text-text-primary">

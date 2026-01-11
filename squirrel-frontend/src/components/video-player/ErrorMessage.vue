@@ -55,10 +55,11 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 .error-message {
   @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
     rounded-xl p-6 max-w-md w-full mx-4
-    border border-color-error/30 shadow-2xl z-40;
-  background: rgba(40, 40, 40, 0.95);
+    z-40;
+  background: var(--sp-surface);
   backdrop-filter: blur(12px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(var(--sp-primary-rgb), 0.3);
+  box-shadow: var(--sp-shadow-lg);
   animation: errorMessageShow 0.3s ease-out;
 }
 
@@ -67,8 +68,9 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 }
 
 .error-icon {
-  @apply text-color-error text-3xl flex-shrink-0 mt-1;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  @apply text-3xl flex-shrink-0 mt-1;
+  color: var(--sp-error);
+  filter: drop-shadow(var(--sp-drop-shadow-md));
 }
 
 .error-text {
@@ -76,13 +78,15 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 }
 
 .error-title {
-  @apply text-text-primary font-semibold text-lg mb-2;
-  font-family: 'Roboto', sans-serif;
+  @apply font-semibold text-lg mb-2;
+  color: var(--sp-text);
+  font-family: var(--sp-font-family);
 }
 
 .error-description {
-  @apply text-text-primary/80 text-sm mb-3;
-  font-family: 'Roboto', sans-serif;
+  @apply text-sm mb-3;
+  color: var(--sp-text-secondary);
+  font-family: var(--sp-font-family);
   line-height: 1.5;
 }
 
@@ -91,13 +95,15 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 }
 
 .suggestions-title {
-  @apply text-text-primary/90 text-sm font-medium mb-2;
-  font-family: 'Roboto', sans-serif;
+  @apply text-sm font-medium mb-2;
+  color: var(--sp-text-strong);
+  font-family: var(--sp-font-family);
 }
 
 .suggestions-list {
-  @apply text-text-primary/70 text-sm space-y-1 pl-4;
-  font-family: 'Roboto', sans-serif;
+  @apply text-sm space-y-1 pl-4;
+  color: var(--sp-text-secondary);
+  font-family: var(--sp-font-family);
 }
 
 .suggestions-list li {
@@ -113,37 +119,39 @@ const emit = defineEmits(['retry', 'report', 'dismiss'])
 .dismiss-button {
   @apply px-4 py-2 rounded-lg text-sm font-medium
     transition-all duration-200 flex items-center gap-2;
-  font-family: 'Roboto', sans-serif;
+  font-family: var(--sp-font-family);
+  color: var(--sp-text);
 }
 
 .retry-button {
-  @apply text-text-accent
-    disabled:opacity-50 disabled:cursor-not-allowed;
-    background: var(--color-error);
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  background: var(--sp-error);
 }
 
 .retry-button:hover:not(:disabled) {
-  background: var(--color-error-hover);
+  background: var(--sp-error-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  box-shadow: var(--sp-shadow-md);
 }
 
 .report-button {
-  @apply bg-color-info hover:bg-color-info-hover text-text-accent;
+  background: var(--sp-info);
 }
 
 .report-button:hover {
+  background: var(--sp-info-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: var(--sp-shadow-md);
 }
 
 .dismiss-button {
-  @apply bg-bg-elevated hover:bg-bg-hover text-text-accent;
+  background: var(--sp-bg-elevated);
 }
 
 .dismiss-button:hover {
+  background: var(--sp-bg-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(75, 85, 99, 0.3);
+  box-shadow: var(--sp-shadow-md);
 }
 
 @keyframes errorMessageShow {

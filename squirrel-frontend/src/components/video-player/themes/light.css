@@ -5,21 +5,28 @@
 .sp-theme-light,
 [data-sp-theme="light"] {
   /* 颜色 */
-  --sp-primary: #d32f2f;
-  --sp-primary-hover: #e53935;
-  --sp-primary-active: #b71c1c;
-  --sp-primary-rgb: 211, 47, 47;
+  --sp-primary: var(--color-primary);
+  --sp-primary-hover: var(--color-primary-hover);
+  --sp-primary-active: var(--color-primary-active);
+  --sp-primary-rgb: var(--color-primary-rgb);
   
   /* 背景 */
   --sp-bg: rgba(255, 255, 255, 0.95);
   --sp-bg-elevated: rgba(250, 250, 250, 0.98);
   --sp-bg-overlay: rgba(255, 255, 255, 0.8);
+  --sp-surface: rgba(255, 255, 255, 0.9);
+  --sp-overlay-soft: rgba(0, 0, 0, 0.1);
+  --sp-overlay-weak: rgba(0, 0, 0, 0.15);
+  --sp-overlay: rgba(0, 0, 0, 0.25);
+  --sp-overlay-strong: rgba(0, 0, 0, 0.4);
   --sp-bg-hover: rgba(0, 0, 0, 0.05);
   --sp-bg-active: rgba(0, 0, 0, 0.1);
   
   /* 文字 */
   --sp-text: #212121;
+  --sp-text-strong: rgba(0, 0, 0, 0.9);
   --sp-text-secondary: rgba(0, 0, 0, 0.7);
+  --sp-text-muted: rgba(0, 0, 0, 0.6);
   --sp-text-tertiary: rgba(0, 0, 0, 0.5);
   --sp-text-disabled: rgba(0, 0, 0, 0.3);
   
@@ -28,7 +35,13 @@
   --sp-border-hover: rgba(0, 0, 0, 0.2);
   
   /* 控制栏 */
-  --sp-controls-bg: linear-gradient(transparent, rgba(255, 255, 255, 0.9));
+  --sp-controls-bg: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.7) 50%,
+    rgba(255, 255, 255, 0.5) 75%,
+    transparent 100%
+  );
   
   /* 进度条 */
   --sp-progress-bg: rgba(0, 0, 0, 0.15);
@@ -42,7 +55,10 @@
   
   /* 字幕 */
   --sp-subtitle-color: #ffffff;
-  --sp-subtitle-bg: rgba(0, 0, 0, 0.8);
+  --sp-subtitle-highlight: #ffd54a;
+  --sp-subtitle-bg-rgb: 0, 0, 0;
+  --sp-subtitle-bg-opacity: 0.8;
+  --sp-subtitle-bg: rgba(var(--sp-subtitle-bg-rgb), var(--sp-subtitle-bg-opacity));
   
   /* 阴影 */
   --sp-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);

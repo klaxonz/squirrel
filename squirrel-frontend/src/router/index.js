@@ -107,7 +107,7 @@ const routes = [
     path: '/monitoring',
     name: 'Monitoring',
     component: Monitoring,
-    meta: { showSearch: false, scrollable: true }
+    meta: { showSearch: false, scrollable: true, hideScrollbar: true }
   },
   {
     path: '/scheduled-tasks',
@@ -186,7 +186,8 @@ const routes = [
       searchPlaceholder: '搜索视频...',
       searchRedirectName: 'AllVideos',
       searchPersistKey: 'LatestVideos',
-      scrollable: true
+      scrollable: true,
+      hideScrollbar: true
     },
   },
   {

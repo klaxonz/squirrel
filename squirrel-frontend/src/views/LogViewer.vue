@@ -1,6 +1,6 @@
 <template>
-  <div class="log-viewer-container bg-bg-primary text-text-primary min-h-screen p-3">
-    <div class="max-w-7xl mx-auto">
+  <div class="log-viewer-container bg-bg-primary text-text-primary h-full p-3">
+    <div class="max-w-7xl mx-auto h-full flex flex-col min-h-0">
       <!-- 顶部工具栏 -->
       <div class="flex justify-between items-center mb-3">
         <div class="flex items-center gap-3">
@@ -99,7 +99,7 @@
       </div>
 
       <!-- 日志列表 -->
-      <div class="bg-bg-secondary border border-border-primary rounded-lg overflow-hidden">
+      <div class="bg-bg-secondary border border-border-primary rounded-lg overflow-hidden flex flex-col min-h-0 flex-1">
         <div v-if="loading && logs.length === 0" class="text-center py-8 text-sm text-text-muted">
           加载中...
         </div>
@@ -113,8 +113,7 @@
           :items="logs"
           :min-item-size="60"
           key-field="id"
-          class="scroller"
-          :style="{ height: scrollerHeight }"
+          class="scroller flex-1 min-h-0"
         >
           <template v-slot="{ item, index, active }">
             <DynamicScrollerItem
@@ -178,7 +177,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
@@ -204,11 +203,6 @@ const filters = ref({
 let refreshTimer = null;
 let copiedTimer = null;
 let allCopiedTimer = null;
-
-// 计算滚动器高度
-const scrollerHeight = computed(() => {
-  return 'calc(100vh - 200px)';
-});
 
 // 生命周期
 onMounted(() => {
@@ -417,7 +411,7 @@ function getLevelBadgeClass(level) {
     INFO: 'bg-color-info text-text-primary',
     WARNING: 'bg-color-warning text-text-primary',
     ERROR: 'bg-color-error text-text-primary',
-    CRITICAL: 'bg-purple-600 text-text-primary'
+    CRITICAL: 'bg-color-error-hover text-text-primary'
   };
   return classes[level] || 'bg-bg-tertiary text-text-primary';
 }
@@ -425,7 +419,7 @@ function getLevelBadgeClass(level) {
 function getLogLevelClass(level) {
   const classes = {
     ERROR: 'bg-color-error/10',
-    CRITICAL: 'bg-purple-900/10',
+    CRITICAL: 'bg-color-error/20',
     WARNING: 'bg-color-warning/10'
   };
   return classes[level] || '';
@@ -437,7 +431,7 @@ function getMessageBorderClass(level) {
     INFO: 'border-color-info',
     WARNING: 'border-color-warning',
     ERROR: 'border-color-error',
-    CRITICAL: 'border-purple-500'
+    CRITICAL: 'border-color-error-hover'
   };
   return classes[level] || 'border-border-secondary';
 }
@@ -445,7 +439,7 @@ function getMessageBorderClass(level) {
 
 <style scoped>
 .log-viewer-container {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .scroller {
@@ -457,20 +451,20 @@ function getMessageBorderClass(level) {
 }
 
 .scroller::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: var(--bg-secondary);
 }
 
 .scroller::-webkit-scrollbar-thumb {
-  background: #4a4a4a;
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 .scroller::-webkit-scrollbar-thumb:hover {
-  background: #5a5a5a;
+  background: var(--scrollbar-thumb-hover);
 }
 
 .log-message {
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .log-entry {

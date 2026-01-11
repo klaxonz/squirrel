@@ -55,15 +55,16 @@ const volumeIcon = computed(() => {
 
 .volume-indicator-content {
   @apply flex items-center gap-3 px-4 py-3 rounded-xl;
-  background: rgba(40, 40, 40, 0.95);
+  background: var(--sp-overlay-strong);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--sp-border);
+  box-shadow: var(--sp-shadow-lg);
 }
 
 .volume-icon {
-  @apply text-text-primary text-xl;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+  @apply text-xl;
+  color: var(--sp-text);
+  filter: drop-shadow(var(--sp-drop-shadow-sm));
 }
 
 .volume-bars {
@@ -73,7 +74,7 @@ const volumeIcon = computed(() => {
 .volume-bar {
   @apply rounded-sm transition-all duration-200;
   width: 3px;
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--sp-text-disabled);
 }
 
 .volume-bar:nth-child(1) { height: 4px; }
@@ -88,18 +89,19 @@ const volumeIcon = computed(() => {
 .volume-bar:nth-child(10) { height: 22px; }
 
 .volume-bar.active {
-  background: #ffffff;
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+  background: var(--sp-text);
+  box-shadow: var(--sp-shadow-sm);
 }
 
 .volume-bar.muted {
-  background: rgba(255, 0, 0, 0.6);
+  background: rgba(var(--sp-primary-rgb), 0.6);
 }
 
 .volume-text {
-  @apply text-text-primary text-sm font-medium;
-  font-family: 'Roboto', sans-serif;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  @apply text-sm font-medium;
+  color: var(--sp-text);
+  font-family: var(--sp-font-family);
+  text-shadow: var(--sp-text-shadow);
   min-width: 32px;
   text-align: center;
 }

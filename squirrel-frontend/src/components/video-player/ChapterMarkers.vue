@@ -48,25 +48,25 @@ const emit = defineEmits(['seek-to-chapter'])
   @apply rounded-full transition-all duration-200;
   width: 4px;
   height: 4px;
-  background: var(--yt-text-secondary);
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  background: var(--sp-text-secondary);
+  box-shadow: var(--sp-shadow-sm);
 }
 
 .chapter-marker:hover .marker-dot {
   width: 6px;
   height: 6px;
-  background: var(--yt-text-primary);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  background: var(--sp-text);
+  box-shadow: var(--sp-shadow-md);
 }
 
 .marker-tooltip {
   @apply absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2
     px-3 py-2 rounded-lg opacity-0 pointer-events-none
     transition-all duration-200 flex flex-col items-center;
-  background: var(--yt-bg-overlay);
+  background: var(--sp-tooltip-bg);
   backdrop-filter: blur(8px);
-  border: 1px solid var(--yt-control-border);
-  box-shadow: var(--yt-shadow-medium);
+  border: 1px solid var(--sp-border);
+  box-shadow: var(--sp-shadow-md);
   min-width: 120px;
 }
 
@@ -76,21 +76,23 @@ const emit = defineEmits(['seek-to-chapter'])
 }
 
 .tooltip-title {
-  @apply text-text-primary text-xs font-medium mb-1;
-  font-family: var(--yt-font-family);
+  @apply text-xs font-medium mb-1;
+  color: var(--sp-text);
+  font-family: var(--sp-font-family);
   text-align: center;
   line-height: 1.2;
 }
 
 .tooltip-time {
-  @apply text-text-secondary/70 text-xs;
-  font-family: var(--yt-font-family);
+  @apply text-xs;
+  color: var(--sp-text-secondary);
+  font-family: var(--sp-font-family);
 }
 
 .marker-tooltip::after {
   content: '';
   @apply absolute top-full left-1/2 transform -translate-x-1/2;
   border: 4px solid transparent;
-  border-top-color: var(--yt-bg-overlay);
+  border-top-color: var(--sp-tooltip-bg);
 }
 </style>

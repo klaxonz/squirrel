@@ -115,7 +115,7 @@ watch(route, () => {
 .sidebar {
   width: var(--sidebar-width, 12rem);
   flex-shrink: 0;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.18s ease-out;
   will-change: width;
 }
 
@@ -125,7 +125,7 @@ watch(route, () => {
 
 .sidebar-header,
 .sidebar-footer {
-  transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: none;
 }
 
 .sidebar.collapsed .sidebar-header,
@@ -152,7 +152,7 @@ watch(route, () => {
 
 .sidebar-divider {
   opacity: 1;
-  transition: opacity 0.3s ease, margin 0.3s ease;
+  transition: opacity 0.2s ease;
 }
 
 .sidebar.collapsed .sidebar-divider {
@@ -162,7 +162,7 @@ watch(route, () => {
 }
 
 .logout-btn {
-  transition: background-color 0.2s ease, padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.2s ease;
 }
 
 .logout-btn:hover {
@@ -171,7 +171,6 @@ watch(route, () => {
 
 .logout-icon {
   margin-right: 1rem;
-  transition: margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar.collapsed .logout-icon {
@@ -181,8 +180,9 @@ watch(route, () => {
 .logout-text {
   opacity: 1;
   transform: translateX(0);
-  transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.15s ease, transform 0.2s ease;
   white-space: nowrap;
+  will-change: opacity, transform;
 }
 
 .sidebar.collapsed .logout-text {

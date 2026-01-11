@@ -1,6 +1,6 @@
 <template>
-  <div class="video-page bg-bg-primary min-h-screen scrollbar min-w-[1200px]">
-    <div class="max-w-[1720px] mx-auto lg:px-6 pt-6 flex min-w-[1200px]">
+  <div class="video-page bg-bg-primary min-h-screen scrollbar-hide">
+    <div class="max-w-[1720px] mx-auto lg:px-6 pt-6 flex">
       <!-- 左侧主内容区域 -->
       <div :class="['flex-1', isWidescreen ? '' : 'max-w-[1280px]']">
         <!-- 视频播放区域 -->
@@ -504,11 +504,11 @@ watch(() => route.params.videoId, async (newId, oldId) => {
 .video-section {
   position: relative;
   width: 100%;
-  background: #000000;
+  background: var(--bg-media);
   margin: 0 auto;
   border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-float);
 }
 
 .video-container {
@@ -517,7 +517,7 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   height: 0;
   padding-bottom: 56.25%; /* 16:9 比例 */
   overflow: hidden;
-  background: #000000;
+  background: var(--bg-media);
 }
 
 .video-container :deep(iframe),
@@ -528,7 +528,7 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: #000;
+  background: var(--bg-media);
 }
 
 /* 滚动条样式统一到全局 .scrollbar */

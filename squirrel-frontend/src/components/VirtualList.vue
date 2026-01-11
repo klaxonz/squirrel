@@ -574,12 +574,6 @@ defineExpose({ scrollToOffset, scrollToIndex, reset, container, range, totalHeig
   position: relative;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-}
-
-.virtual-list-container::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
 }
 
 .scroll-phantom {

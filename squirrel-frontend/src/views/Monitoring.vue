@@ -1,42 +1,48 @@
 <template>
-  <div class="monitoring-page bg-bg-primary text-text-primary min-h-screen overflow-y-auto">
+  <div class="monitoring-page bg-bg-primary text-text-primary h-screen flex flex-col overflow-hidden">
     <!-- 顶部状态栏 -->
-    <div>
-      <div class="max-w-[1600px] mx-auto px-6 py-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-6">
-            <h1 class="text-lg font-medium text-text-primary">系统监控</h1>
-            <div class="flex items-center gap-2 text-sm">
-              <span class="w-2 h-2 rounded-full" :class="healthDotClass"></span>
-              <span class="text-text-secondary">{{ healthStatusText }}</span>
-              <span class="text-text-secondary">·</span>
+    <div class="shrink-0">
+      <div class="toolbar-container pt-16 pb-4">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 class="text-xl font-medium text-text-primary">系统监控</h1>
+            <p class="text-sm text-text-muted">爬取与订阅的实时运行状态</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 text-xs text-text-tertiary">
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-bg-secondary rounded-full">
+              <StatusBadge :variant="healthBadgeVariant" size="xs" class="border-0" :label="healthStatusText" />
               <span class="font-mono" :class="healthScoreClass">{{ dashboardData?.health?.score || 0 }}</span>
             </div>
-          </div>
-          <div class="flex items-center gap-3 text-xs text-text-tertiary">
-            <span>{{ lastUpdateTime }}</span>
-            <button @click="refreshData" :disabled="loading" class="p-1.5 hover:bg-bg-hover rounded transition-colors">
-              <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': loading }" />
-            </button>
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-bg-secondary rounded-full">
+              <span>更新</span>
+              <span class="font-mono">{{ lastUpdateTime || '—' }}</span>
+              <button
+                @click="refreshData"
+                :disabled="loading"
+                class="p-1.5 hover:bg-bg-hover rounded transition-colors"
+              >
+                <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': loading }" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- 主内容区 -->
-    <div class="max-w-[1600px] mx-auto px-6 py-4 space-y-4">
+    <div class="content-container py-6 space-y-5 flex-1 flex flex-col min-h-0 overflow-hidden">
       
       <!-- 概览指标 -->
-      <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
+      <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 shrink-0">
         <StatsCard
           title="爬取任务"
           :value="dashboardData?.crawl?.total || 0"
           :hover-effect="true"
         >
           <template #subtitle>
-            <div class="flex gap-3">
-              <span><span class="text-color-success">{{ dashboardData?.crawl?.success || 0 }}</span> 成功</span>
-              <span><span class="text-color-error">{{ dashboardData?.crawl?.error || 0 }}</span> 失败</span>
+            <div class="flex gap-3 text-text-tertiary">
+              <span><span class="font-mono text-text-primary">{{ dashboardData?.crawl?.success || 0 }}</span> 成功</span>
+              <span><span class="font-mono" :class="getErrorNumberClass(dashboardData?.crawl?.error || 0)">{{ dashboardData?.crawl?.error || 0 }}</span> 失败</span>
             </div>
           </template>
         </StatsCard>
@@ -46,9 +52,6 @@
           :value="dashboardData?.crawl?.success_rate || 0"
           format="percentage"
           :value-color="getSuccessRateColor()"
-          :show-progress="true"
-          :progress-percent="dashboardData?.crawl?.success_rate || 0"
-          :progress-variant="getSuccessRateColor()"
           :hover-effect="true"
         />
 
@@ -58,7 +61,9 @@
           :hover-effect="true"
         >
           <template #subtitle>
-            跳过 {{ dashboardData?.crawl?.skipped || 0 }}
+            <span class="text-text-tertiary">
+              <span class="font-mono text-text-primary">{{ dashboardData?.crawl?.skipped || 0 }}</span> 跳过
+            </span>
           </template>
         </StatsCard>
 
@@ -69,7 +74,9 @@
           :hover-effect="true"
         >
           <template #subtitle>
-            消息 {{ dashboardData?.queues?.total_messages || 0 }}
+            <span class="text-text-tertiary">
+              <span class="font-mono text-text-primary">{{ dashboardData?.queues?.total_messages || 0 }}</span> 消息
+            </span>
           </template>
         </StatsCard>
 
@@ -79,9 +86,9 @@
           :hover-effect="true"
         >
           <template #subtitle>
-            <div class="flex gap-3">
-              <span><span class="text-color-success">{{ dashboardData?.subscriptions?.success || 0 }}</span> 成功</span>
-              <span><span class="text-color-error">{{ dashboardData?.subscriptions?.error || 0 }}</span> 失败</span>
+            <div class="flex gap-3 text-text-tertiary">
+              <span><span class="font-mono text-text-primary">{{ dashboardData?.subscriptions?.success || 0 }}</span> 成功</span>
+              <span><span class="font-mono" :class="getErrorNumberClass(dashboardData?.subscriptions?.error || 0)">{{ dashboardData?.subscriptions?.error || 0 }}</span> 失败</span>
             </div>
           </template>
         </StatsCard>
@@ -92,13 +99,15 @@
           :hover-effect="true"
         >
           <template #subtitle>
-            <span class="text-color-success">{{ dashboardData?.subscriptions?.videos_enqueued || 0 }}</span> 已入队
+            <span class="text-text-tertiary">
+              <span class="font-mono text-text-primary">{{ dashboardData?.subscriptions?.videos_enqueued || 0 }}</span> 已入队
+            </span>
           </template>
         </StatsCard>
       </div>
 
       <!-- 性能和错误 -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
         <Card class="p-4">
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs text-text-tertiary">性能指标</span>
@@ -114,11 +123,11 @@
               <div class="text-xs text-text-tertiary">P50</div>
             </div>
             <div>
-              <div class="text-lg font-mono text-color-warning">{{ dashboardData?.crawl?.p95_duration || 0 }}</div>
+              <div class="text-lg font-mono text-text-primary">{{ dashboardData?.crawl?.p95_duration || 0 }}</div>
               <div class="text-xs text-text-tertiary">P95</div>
             </div>
             <div>
-              <div class="text-lg font-mono text-color-error">{{ dashboardData?.crawl?.max_duration || 0 }}</div>
+              <div class="text-lg font-mono text-text-primary">{{ dashboardData?.crawl?.max_duration || 0 }}</div>
               <div class="text-xs text-text-tertiary">最大</div>
             </div>
           </div>
@@ -127,7 +136,7 @@
         <Card class="p-4">
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs text-text-tertiary">错误统计</span>
-            <span class="text-sm font-mono text-color-error">{{ dashboardData?.errors?.total || 0 }}</span>
+            <span class="text-sm font-mono" :class="errorTotalClass">{{ dashboardData?.errors?.total || 0 }}</span>
           </div>
           <div v-if="dashboardData?.errors?.by_type?.length" class="flex flex-wrap gap-1.5">
             <StatusBadge
@@ -135,6 +144,8 @@
               :key="error.type"
               variant="error"
               size="xs"
+              :show-dot="false"
+              class="border-0"
               :label="`${error.type}: ${error.count}`"
             />
           </div>
@@ -143,90 +154,92 @@
       </div>
       
       <!-- 站点统计表格 -->
-      <DataTable
-        :columns="siteTableColumns"
-        :data="dashboardData?.crawl?.by_site || []"
-      >
-        <template #header>
-          <span class="text-sm font-medium text-text-primary">站点统计</span>
-          <span class="text-xs text-text-tertiary">{{ dashboardData?.crawl?.by_site?.length || 0 }} 个站点</span>
-        </template>
+      <div class="shrink-0">
+        <DataTable
+          :columns="siteTableColumns"
+          :data="dashboardData?.crawl?.by_site || []"
+        >
+          <template #header>
+            <span class="text-sm font-medium text-text-primary">站点统计</span>
+            <span class="text-xs text-text-tertiary">{{ dashboardData?.crawl?.by_site?.length || 0 }} 个站点</span>
+          </template>
 
-        <template #column-site="{ row }">
-          <div class="flex items-center gap-2">
-            <span class="w-6 h-6 rounded bg-bg-tertiary flex items-center justify-center text-2xs font-bold uppercase text-text-muted">{{ row.site.slice(0, 2) }}</span>
-            <span class="font-medium text-text-primary">{{ row.site }}</span>
-          </div>
-        </template>
+          <template #column-site="{ row }">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded bg-bg-tertiary flex items-center justify-center text-2xs font-bold uppercase text-text-muted">{{ row.site.slice(0, 2) }}</span>
+              <span class="font-medium text-text-primary">{{ row.site }}</span>
+            </div>
+          </template>
 
-        <template #column-success_rate="{ value }">
-          <span class="font-mono" :class="getSiteRateClass(value)">{{ value }}%</span>
-        </template>
+          <template #column-success_rate="{ value }">
+            <span class="font-mono" :class="getSiteRateClass(value)">{{ value }}%</span>
+          </template>
 
-        <template #column-success="{ value }">
-          <span class="font-mono text-color-success">{{ value }}</span>
-        </template>
+          <template #column-success="{ value }">
+            <span class="font-mono text-text-secondary">{{ value }}</span>
+          </template>
 
-        <template #column-error="{ value }">
-          <span class="font-mono text-color-error">{{ value }}</span>
-        </template>
+          <template #column-error="{ value }">
+            <span class="font-mono" :class="getErrorNumberClass(value)">{{ value }}</span>
+          </template>
 
-        <template #column-skipped="{ value }">
-          <span class="font-mono text-text-tertiary">{{ value }}</span>
-        </template>
+          <template #column-skipped="{ value }">
+            <span class="font-mono text-text-tertiary">{{ value }}</span>
+          </template>
 
-        <template #column-videos="{ value }">
-          <span class="font-mono text-text-primary">{{ value }}</span>
-        </template>
+          <template #column-videos="{ value }">
+            <span class="font-mono text-text-secondary">{{ value }}</span>
+          </template>
 
-        <template #column-queue_depth="{ value }">
-          <span class="font-mono" :class="value > 100 ? 'text-color-error' : value > 50 ? 'text-color-warning' : 'text-text-tertiary'">{{ value || 0 }}</span>
-        </template>
+          <template #column-queue_depth="{ value }">
+            <span class="font-mono" :class="getQueueDepthTextClass(value)">{{ value || 0 }}</span>
+          </template>
 
-        <template #column-avg_duration="{ value }">
-          <span class="font-mono text-text-secondary">{{ value || '-' }}s</span>
-        </template>
+          <template #column-avg_duration="{ value }">
+            <span class="font-mono text-text-secondary">{{ value || '-' }}s</span>
+          </template>
 
-        <template #column-p95_duration="{ value }">
-          <span class="font-mono text-text-secondary">{{ value || '-' }}s</span>
-        </template>
+          <template #column-p95_duration="{ value }">
+            <span class="font-mono text-text-secondary">{{ value || '-' }}s</span>
+          </template>
 
-        <template #column-videos_found="{ row }">
-          <span class="font-mono text-text-primary">{{ getSubscriptionBySite(row.site)?.videos_found || '-' }}</span>
-        </template>
+          <template #column-videos_found="{ row }">
+            <span class="font-mono text-text-secondary">{{ getSubscriptionBySite(row.site)?.videos_found || '-' }}</span>
+          </template>
 
-        <template #column-videos_enqueued="{ row }">
-          <span class="font-mono text-color-success">{{ getSubscriptionBySite(row.site)?.videos_enqueued || '-' }}</span>
-        </template>
-      </DataTable>
+          <template #column-videos_enqueued="{ row }">
+            <span class="font-mono text-text-secondary">{{ getSubscriptionBySite(row.site)?.videos_enqueued || '-' }}</span>
+          </template>
+        </DataTable>
+      </div>
       
       <!-- 最近错误详情 -->
-      <div v-if="dashboardData?.recent_errors?.length" class="bg-bg-secondary rounded-lg border border-border-primary">
+      <Card v-if="dashboardData?.recent_errors?.length" class="overflow-hidden flex flex-col flex-1 min-h-0">
         <div class="px-4 py-2.5 border-b border-border-primary flex items-center justify-between">
           <span class="text-sm font-medium text-text-primary">最近错误</span>
           <span class="text-xs text-text-tertiary">最近 {{ dashboardData.recent_errors.length }} 条</span>
         </div>
-        <div class="divide-y divide-white/5 max-h-80 overflow-y-auto custom-scrollbar">
-          <div v-for="(err, idx) in dashboardData.recent_errors" :key="idx" class="px-4 py-2.5 hover:bg-bg-tertiary/30">
+        <div class="divide-y divide-border-primary flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+          <div v-for="(err, idx) in dashboardData.recent_errors" :key="idx" class="px-4 py-2.5 hover:bg-bg-hover">
             <div class="flex items-center justify-between text-xs mb-1">
               <div class="flex items-center gap-2">
-                <span class="text-color-error font-medium">{{ err.type }}</span>
+                <StatusBadge variant="error" size="xs" :show-dot="false" class="border-0" :label="err.type" />
                 <span class="text-text-tertiary">{{ err.site }}</span>
               </div>
               <span class="text-text-tertiary">{{ formatTime(err.time) }}</span>
             </div>
-            <a :href="err.url" target="_blank" class="text-xs text-text-tertiary hover:text-color-info truncate mb-1.5 block" :title="err.url">{{ err.url }}</a>
+            <a :href="err.url" target="_blank" class="text-xs text-text-tertiary hover:text-text-secondary truncate mb-1.5 block" :title="err.url">{{ err.url }}</a>
             <details class="text-xs group">
               <summary class="text-text-tertiary cursor-pointer hover:text-text-secondary select-none">
                 <span class="group-open:hidden">▶</span>
                 <span class="hidden group-open:inline">▼</span>
                 {{ getErrorSummary(err.msg) }}
               </summary>
-              <pre class="error-stack mt-2 p-3 bg-bg-primary rounded text-text-muted overflow-x-auto whitespace-pre-wrap text-xs leading-relaxed max-h-52 overflow-y-auto">{{ err.msg }}</pre>
+              <pre class="error-stack mt-2 p-3 bg-bg-secondary rounded text-text-muted overflow-x-auto whitespace-pre-wrap text-xs leading-relaxed max-h-52 overflow-y-auto scrollbar-hide">{{ err.msg }}</pre>
             </details>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   </div>
 </template>
@@ -261,12 +274,26 @@ const refreshData = () => {
   fetchDashboard()
 }
 
+const siteTableColumns = [
+  { key: 'site', label: '站点', align: 'left' },
+  { key: 'success_rate', label: '成功率', align: 'right' },
+  { key: 'success', label: '成功', align: 'right' },
+  { key: 'error', label: '失败', align: 'right' },
+  { key: 'skipped', label: '跳过', align: 'right' },
+  { key: 'videos', label: '发现', align: 'right' },
+  { key: 'queue_depth', label: '队列', align: 'right' },
+  { key: 'avg_duration', label: '平均耗时', align: 'right' },
+  { key: 'p95_duration', label: 'P95耗时', align: 'right' },
+  { key: 'videos_found', label: '订阅发现', align: 'right' },
+  { key: 'videos_enqueued', label: '已入队', align: 'right' }
+]
+
 // 健康状态
-const healthDotClass = computed(() => {
+const healthBadgeVariant = computed(() => {
   const status = dashboardData.value?.health?.status
-  if (status === 'healthy') return 'bg-color-success'
-  if (status === 'degraded') return 'bg-color-warning'
-  return 'bg-color-error'
+  if (status === 'degraded') return 'warning'
+  if (status === 'critical') return 'error'
+  return 'default'
 })
 
 const healthStatusText = computed(() => {
@@ -279,14 +306,14 @@ const healthStatusText = computed(() => {
 
 const healthScoreClass = computed(() => {
   const score = dashboardData.value?.health?.score || 0
-  if (score >= 80) return 'text-color-success'
+  if (score >= 80) return 'text-text-primary'
   if (score >= 50) return 'text-color-warning'
   return 'text-color-error'
 })
 
 const getSuccessRateColor = () => {
   const rate = dashboardData.value?.crawl?.success_rate || 0
-  if (rate >= 80) return 'success'
+  if (rate >= 80) return 'default'
   if (rate >= 50) return 'warning'
   return 'error'
 }
@@ -299,10 +326,26 @@ const getQueueDepthColor = () => {
 }
 
 const getSiteRateClass = (rate) => {
-  if (rate >= 80) return 'text-color-success'
+  if (rate >= 80) return 'text-text-primary'
   if (rate >= 50) return 'text-color-warning'
   return 'text-color-error'
 }
+
+const getQueueDepthTextClass = (value) => {
+  const depth = Number(value) || 0
+  if (depth > 100) return 'text-color-error'
+  if (depth > 50) return 'text-color-warning'
+  return 'text-text-secondary'
+}
+
+const getErrorNumberClass = (value) => {
+  return Number(value) > 0 ? 'text-color-error' : 'text-text-secondary'
+}
+
+const errorTotalClass = computed(() => {
+  const total = dashboardData.value?.errors?.total || 0
+  return total > 0 ? 'text-color-error' : 'text-text-secondary'
+})
 
 const getSubscriptionBySite = (siteName) => {
   const subscriptions = dashboardData.value?.subscriptions?.by_site || []
@@ -336,34 +379,29 @@ onUnmounted(() => {
   font-feature-settings: "tnum";
 }
 
-/* 自定义滚动条 */
-.custom-scrollbar::-webkit-scrollbar,
-.error-stack::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.toolbar-container,
+.content-container {
+  max-width: var(--container-max-width, 2560px);
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  width: 100%;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track,
-.error-stack::-webkit-scrollbar-track {
-  background: transparent;
+@media (min-width: 640px) {
+  .toolbar-container,
+  .content-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb,
-.error-stack::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover,
-.error-stack::-webkit-scrollbar-thumb:hover {
-  background: #444;
-}
-
-/* Firefox */
-.custom-scrollbar,
-.error-stack {
-  scrollbar-width: thin;
-  scrollbar-color: #333 transparent;
+@media (min-width: 1024px) {
+  .toolbar-container,
+  .content-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
 }
 
 /* 隐藏 summary 默认箭头 */

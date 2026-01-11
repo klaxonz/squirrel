@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4"
+  <div v-if="show" class="fixed inset-0 bg-overlay-dark-75 flex items-center justify-center z-50 p-4"
        @click.self="handleClose">
     <div class="bg-bg-card border border-border-primary rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
       <!-- 头部 -->
@@ -313,16 +313,16 @@ watch(() => props.show, (newVal) => {
 }
 
 ::-webkit-scrollbar-track {
-  background: #181818;
+  background: var(--bg-secondary);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #404040;
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #505050;
+  background: var(--scrollbar-thumb-hover);
 }
 </style>

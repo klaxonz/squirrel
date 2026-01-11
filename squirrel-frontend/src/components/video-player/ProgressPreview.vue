@@ -47,13 +47,14 @@ const props = defineProps({
 }
 
 .preview-time {
-  @apply text-text-primary text-xs font-medium px-2 py-1 rounded-md mb-2
+  @apply text-xs font-medium px-2 py-1 rounded-md mb-2
     text-center;
-  background: rgba(0, 0, 0, 0.9);
+  background: var(--sp-tooltip-bg);
   backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-family: 'Roboto', sans-serif;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  border: 1px solid var(--sp-border);
+  color: var(--sp-text);
+  font-family: var(--sp-font-family);
+  text-shadow: var(--sp-text-shadow);
 }
 
 .preview-thumbnail {
@@ -61,20 +62,21 @@ const props = defineProps({
     flex items-center justify-center;
   width: 160px;
   height: 90px;
-  background: rgba(20, 20, 20, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: var(--sp-bg-elevated);
+  border: 1px solid var(--sp-border);
+  box-shadow: var(--sp-shadow-md);
 }
 
 .thumbnail-icon {
-  @apply text-text-secondary/50 text-2xl;
+  @apply text-2xl;
+  color: var(--sp-text-tertiary);
 }
 
 .preview-arrow {
   @apply absolute top-full left-1/2 transform -translate-x-1/2
     w-0 h-0 border-l-4 border-r-4 border-t-4
     border-l-transparent border-r-transparent;
-  border-top-color: rgba(0, 0, 0, 0.9);
+  border-top-color: var(--sp-tooltip-bg);
 }
 
 @keyframes previewShow {

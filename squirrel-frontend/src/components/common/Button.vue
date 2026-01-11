@@ -90,7 +90,7 @@ const shapeClasses = computed(() => {
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'primary':
-      return 'bg-color-info text-text-accent hover:bg-color-info-hover focus:ring-color-info'
+      return 'bg-color-primary text-text-accent hover:bg-color-primary-hover focus:ring-color-primary'
     case 'secondary':
       return 'bg-bg-elevated text-text-primary hover:bg-bg-card focus:ring-text-muted border border-border-primary'
     case 'danger':

@@ -31,7 +31,7 @@ defineEmits(['update:modelValue']);
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #606060;
+  background-color: var(--bg-elevated);
   transition: .4s;
 }
 
@@ -42,12 +42,12 @@ defineEmits(['update:modelValue']);
   width: 18px;
   left: 2px;
   bottom: 2px;
-  background-color: white;
+  background-color: var(--text-accent);
   transition: .4s;
 }
 
 input:checked + .slider {
-  background-color: #cc0000;
+  background-color: var(--color-error);
 }
 
 input:checked + .slider:before {
