@@ -51,7 +51,8 @@
         <!-- 频道列表 -->
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
           <div v-for="subscription in subscriptions" :key="subscription.id"
-               class="channel-item bg-bg-card rounded-lg overflow-hidden hover:bg-bg-elevated transition-all duration-200 relative group"
+               class="channel-item bg-bg-card rounded-lg overflow-hidden hover:bg-bg-elevated transition-all duration-200 relative group cursor-pointer"
+
                :class="{ 'is-refreshing': isResetting }"
                @click="getSubscriptionVideos(subscription.id)"
           >

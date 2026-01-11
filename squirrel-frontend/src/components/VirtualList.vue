@@ -8,6 +8,7 @@
       class="scroll-phantom" 
       :style="{ height: totalHeight + 'px' }"
     ></div>
+
     <div 
       class="visible-items"
       :style="{ 
@@ -83,8 +84,13 @@ const props = defineProps({
   rangeChangeThrottleMs: {
     type: Number,
     default: 0
+  },
+  bottomPadding: {
+    type: Number,
+    default: 0
   }
 });
+
 
 const emit = defineEmits(['scroll', 'range-change', 'reach-start', 'reach-end']);
 
@@ -264,10 +270,12 @@ const visibleItems = computed(() => {
 // 总高度计算
 const totalHeight = computed(() => {
   const rowCount = Math.ceil(props.items.length / columnCount.value);
-  return Array.from({ length: rowCount }).reduce((acc, _, row) => {
+  const contentHeight = Array.from({ length: rowCount }).reduce((acc, _, row) => {
     return acc + (rowHeights.value[row] || defaultRowHeight.value);
   }, 0);
+  return contentHeight + props.bottomPadding;
 });
+
 
 // 当前偏移量
 const offset = computed(() => {

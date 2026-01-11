@@ -96,30 +96,25 @@
               @input="debouncedSearch"
               type="text"
               placeholder="搜索任务..."
-              class="w-full px-3 py-1.5 bg-bg-elevated border border-border-secondary rounded text-text-primary text-2xs placeholder-text-muted focus:outline-none focus:border-color-primary focus:ring-1 focus:ring-color-primary transition-colors"
+              class="w-full px-3 py-1.5 bg-bg-elevated border border-border-secondary rounded text-text-primary text-2xs placeholder-text-muted focus:outline-none focus:border-border-hover focus:ring-1 focus:ring-border-hover transition-colors"
             >
           </div>
-          <select
-            v-model="statusFilter"
-            @change="loadTasks"
-            class="px-3 py-1.5 bg-bg-elevated border border-border-secondary rounded text-text-primary text-2xs focus:outline-none focus:border-color-primary focus:ring-1 focus:ring-color-primary transition-colors"
-          >
-            <option value="">所有状态</option>
-            <option value="enabled">启用</option>
-            <option value="disabled">禁用</option>
-            <option value="running">运行中</option>
-            <option value="error">错误</option>
-          </select>
-          <select
-            v-model="typeFilter"
-            @change="loadTasks"
-            class="px-3 py-1.5 bg-bg-elevated border border-border-secondary rounded text-text-primary text-2xs focus:outline-none focus:border-color-primary focus:ring-1 focus:ring-color-primary transition-colors"
-          >
-            <option value="">所有类型</option>
-            <option value="system">系统任务</option>
-            <option value="user">用户任务</option>
-            <option value="plugin">插件任务</option>
-          </select>
+          <div class="w-28">
+            <Select
+              size="sm"
+              :model-value="statusFilter"
+              :options="statusOptions"
+              @update:model-value="(value) => { statusFilter = value; loadTasks(); }"
+            />
+          </div>
+          <div class="w-32">
+            <Select
+              size="sm"
+              :model-value="typeFilter"
+              :options="typeOptions"
+              @update:model-value="(value) => { typeFilter = value; loadTasks(); }"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -339,6 +334,7 @@ import TaskDialog from '../components/TaskDialog.vue'
 import Button from '../components/common/Button.vue'
 import StatsCard from '../components/common/StatsCard.vue'
 import StatusBadge from '../components/common/StatusBadge.vue'
+import Select from '../components/common/Select.vue'
 import { debounce } from '../utils/debounce'
 
 const {
@@ -375,6 +371,22 @@ const searchQuery = ref('')
 const statusFilter = ref('')
 const typeFilter = ref('')
 const showCreateDialog = ref(false)
+
+const statusOptions = [
+  { value: '', label: '所有状态' },
+  { value: 'enabled', label: '启用' },
+  { value: 'disabled', label: '禁用' },
+  { value: 'running', label: '运行中' },
+  { value: 'error', label: '错误' }
+]
+
+const typeOptions = [
+  { value: '', label: '所有类型' },
+  { value: 'system', label: '系统任务' },
+  { value: 'user', label: '用户任务' },
+  { value: 'plugin', label: '插件任务' }
+]
+
 const editingTask = ref(null)
 
 // 防抖搜索

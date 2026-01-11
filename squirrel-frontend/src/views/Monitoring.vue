@@ -2,7 +2,7 @@
   <div class="monitoring-page bg-bg-primary text-text-primary h-screen flex flex-col overflow-hidden">
     <!-- 顶部状态栏 -->
     <div class="shrink-0">
-      <div class="toolbar-container pt-16 pb-4">
+      <div class="toolbar-container pt-6 pb-4">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 class="text-xl font-medium text-text-primary">系统监控</h1>

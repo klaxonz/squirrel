@@ -19,27 +19,23 @@
 
     <div
       v-if="isOpen"
-      class="absolute mt-1 py-0.5 w-40 bg-bg-card rounded-lg shadow-lg z-50 animate-fade-in border border-border-primary"
-      :class="{
-        'right-0': isMobile,
-        'left-0': !isMobile
-      }"
-      :style="isMobile ? { right: '0', left: 'auto' } : {}"
+      class="absolute right-0 mt-1 py-1 w-max min-w-full bg-bg-card rounded-lg shadow-lg z-50 animate-fade-in border border-border-primary"
     >
       <button
         v-for="opt in options"
         :key="opt.value || 'all'"
         @click="selectOption(opt.value)"
-        class="w-full px-2 py-1.5 text-xs text-left text-text-accent hover:bg-bg-elevated flex items-center space-x-1"
+        class="w-full px-3 py-1.5 text-xs text-text-accent hover:bg-bg-elevated flex items-center gap-2"
       >
+        <span class="flex-1 truncate">{{ opt.label }}</span>
         <CheckIcon
           v-if="modelValue === opt.value"
           class="h-3 w-3 text-color-info flex-shrink-0"
         />
-        <span v-else class="w-3 flex-shrink-0"></span>
-        <span class="truncate">{{ opt.label }}</span>
+        <span v-else class="h-3 w-3 flex-shrink-0"></span>
       </button>
     </div>
+
   </div>
 </template>
 

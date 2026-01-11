@@ -1,6 +1,6 @@
 <template>
   <div class="settings-page bg-bg-primary text-text-primary h-full flex flex-col min-h-0">
-    <div class="toolbar-container pt-10 pb-6">
+    <div class="toolbar-container pt-6 pb-6">
       <div class="settings-hero">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -22,12 +22,12 @@
     </div>
 
     <div
-      class="content-container pb-10 flex-1 min-h-0"
-      :class="allowScroll ? 'overflow-y-auto' : 'overflow-hidden'"
+      class="content-container pb-10 flex-1 min-h-0 overflow-hidden"
     >
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <aside class="lg:col-span-3 lg:sticky lg:top-6 self-start">
-          <div class="settings-nav bg-bg-secondary/40 border border-border-primary rounded-2xl p-2">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-0 min-h-0 h-full">
+        <aside class="lg:col-span-3 lg:sticky lg:top-0 self-start">
+
+          <div class="settings-nav bg-bg-secondary/40 border border-border-primary rounded-2xl p-2 lg:rounded-r-none lg:border-r-0">
             <div class="flex lg:flex-col gap-2 overflow-x-auto scrollbar-hide">
               <button
                 v-for="tab in tabs"
@@ -61,7 +61,10 @@
           </div>
         </aside>
 
-        <section class="lg:col-span-9 space-y-6">
+        <section
+          class="lg:col-span-9 space-y-6 lg:pl-6 lg:border-l lg:border-border-primary"
+          :class="allowScroll ? 'overflow-y-auto min-h-0 pr-1' : ''"
+        >
             <Card v-if="currentTab === 'content'" class="settings-card">
               <div class="settings-card-header">
                 <div>
@@ -69,6 +72,7 @@
                   <p class="text-sm text-text-muted">控制敏感内容的展示与提醒方式。</p>
                 </div>
                 <span class="section-badge">
+                  <span class="status-dot" :class="userStatusDotClass"></span>
                   {{ userSaving ? '保存中...' : '自动保存' }}
                 </span>
               </div>
@@ -114,6 +118,7 @@
                   <p class="text-sm text-text-muted">优化播放体验与自动行为。</p>
                 </div>
                 <span class="section-badge">
+                  <span class="status-dot" :class="userStatusDotClass"></span>
                   {{ userSaving ? '保存中...' : '自动保存' }}
                 </span>
               </div>
@@ -175,6 +180,7 @@
                   <p class="text-sm text-text-muted">影响后台任务与队列消费策略。</p>
                 </div>
                 <span class="section-badge">
+                  <span class="status-dot" :class="systemStatusDotClass"></span>
                   {{ systemStatusLabel }}
                 </span>
               </div>
@@ -255,6 +261,17 @@ const statusDotClass = computed(() => {
   return 'bg-color-success';
 });
 
+const userStatusDotClass = computed(() => {
+  if (userSaving.value) return 'bg-color-warning animate-pulse';
+  return 'bg-color-success';
+});
+
+const systemStatusDotClass = computed(() => {
+  if (systemSaving.value) return 'bg-color-warning animate-pulse';
+  if (systemLoading.value) return 'bg-color-info animate-pulse';
+  return systemConfig.value ? 'bg-color-success' : 'bg-bg-elevated';
+});
+
 const systemStatusLabel = computed(() => {
   if (systemSaving.value) return '更新中';
   if (systemLoading.value) return '加载中';
@@ -299,7 +316,11 @@ const onSystemToggle = async (key, val) => {
 }
 
 .settings-hero {
-  @apply rounded-2xl border border-border-primary bg-bg-secondary px-6 py-5;
+  @apply px-1 sm:px-2;
+}
+
+.settings-nav {
+  @apply shadow-sm;
 }
 
 .toolbar-container,
@@ -328,13 +349,21 @@ const onSystemToggle = async (key, val) => {
 }
 
 .section-badge {
-  @apply text-xs text-text-tertiary bg-bg-secondary border border-border-primary rounded-full px-3 py-1;
+  @apply inline-flex items-center gap-2 text-xs text-text-tertiary bg-bg-secondary border border-border-primary rounded-full px-3 py-1;
+}
+
+.status-dot {
+  @apply h-2 w-2 rounded-full;
 }
 
 .settings-card {
   border-radius: var(--radius-2xl);
   overflow: hidden;
+  background-color: var(--bg-secondary);
+  background-color: color-mix(in srgb, var(--bg-secondary) 60%, var(--bg-primary));
+  @apply shadow-sm;
 }
+
 
 .settings-card-header {
   @apply flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between px-6 py-4 border-b border-border-secondary bg-bg-tertiary;

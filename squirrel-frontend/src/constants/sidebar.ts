@@ -48,6 +48,11 @@ export const MENU_ITEMS: MenuItems = {
       path: '/scheduled-tasks',
       icon: CpuChipIcon,
     },
+    {
+      name: '插件',
+      path: '/plugins',
+      icon: PuzzlePieceIcon,
+    },
   ],
   bottom: [
     {
@@ -59,11 +64,6 @@ export const MENU_ITEMS: MenuItems = {
       name: '设置',
       path: '/settings',
       icon: CogIcon,
-    },
-    {
-      name: '插件',
-      path: '/plugins',
-      icon: PuzzlePieceIcon,
     },
   ],
 }

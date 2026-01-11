@@ -1,20 +1,21 @@
 <template>
-  <div class="log-viewer-container bg-bg-primary text-text-primary h-full p-3">
-    <div class="max-w-7xl mx-auto h-full flex flex-col min-h-0">
+  <div class="log-viewer-container bg-bg-primary text-text-primary h-full flex flex-col min-h-0">
+    <div class="toolbar-container pt-6 pb-4">
       <!-- 顶部工具栏 -->
-      <div class="flex justify-between items-center mb-3">
-        <div class="flex items-center gap-3">
-          <h1 class="text-lg font-bold">日志查看器</h1>
-          <span class="text-xs text-text-muted">
-            共 {{ totalLogs }} 条
-            <span v-if="filters.keyword || filters.level" class="text-color-warning">（已筛选）</span>
-          </span>
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 class="text-xl font-medium text-text-primary">日志查看器</h1>
+          <p class="text-sm text-text-muted">查看后端运行与错误日志。</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center gap-2 px-3 py-1.5 bg-bg-secondary border border-border-primary rounded-full text-xs text-text-tertiary">
+            <span>共 {{ totalLogs }} 条</span>
+            <span v-if="filters.keyword || filters.level" class="text-color-warning">已筛选</span>
+          </div>
           <button
             @click="copyAllLogs"
             :disabled="logs.length === 0"
-            class="px-3 py-1.5 text-sm bg-bg-elevated hover:bg-bg-hover rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+            class="px-3 py-2 text-xs md:text-sm bg-bg-elevated hover:bg-bg-hover rounded-full transition-colors disabled:opacity-50 flex items-center gap-1"
             :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
           >
             <ClipboardDocumentIcon class="h-4 w-4" />
@@ -22,24 +23,30 @@
           </button>
           <button
             @click="toggleAutoRefresh"
-            class="px-3 py-1.5 text-sm rounded transition-colors"
-            :class="autoRefresh ? 'bg-color-info hover:bg-color-info-hover' : 'bg-bg-elevated hover:bg-bg-hover'"
+            class="px-3 py-2 text-xs md:text-sm rounded-full transition-colors"
+            :class="autoRefresh ? 'bg-bg-elevated hover:bg-bg-hover text-text-primary' : 'bg-bg-elevated hover:bg-bg-hover'"
           >
             {{ autoRefresh ? '停止自动刷新' : '开启自动刷新' }}
           </button>
           <button
             @click="loadLogs"
             :disabled="loading"
-            class="px-3 py-1.5 text-sm bg-color-info hover:bg-color-info-hover rounded transition-colors disabled:opacity-50"
+            class="px-3 py-2 text-xs md:text-sm bg-bg-elevated hover:bg-bg-hover rounded-full transition-colors disabled:opacity-50 flex items-center justify-center gap-2 w-20"
           >
-            {{ loading ? '加载中...' : '刷新' }}
+            <span
+              v-if="loading"
+              class="h-3 w-3 animate-spin rounded-full border-2 border-text-tertiary border-t-text-primary"
+            ></span>
+            <span>刷新</span>
           </button>
         </div>
       </div>
+    </div>
 
+    <div class="content-container py-6 space-y-4 flex-1 flex flex-col min-h-0 overflow-hidden">
       <!-- 搜索和过滤区域 - 紧凑版 -->
-      <div class="bg-bg-secondary border border-border-primary rounded-lg p-3 mb-3">
-        <div class="flex flex-wrap gap-2 items-end">
+      <div class="bg-bg-secondary border border-border-primary rounded-lg p-4">
+        <div class="flex flex-wrap gap-3 items-end">
           <!-- 搜索框 -->
           <div class="flex-1 min-w-[200px]">
             <input
@@ -47,50 +54,39 @@
               @keyup.enter="applyFilters"
               type="text"
               placeholder="搜索日志内容、trace_id..."
-              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-color-info"
+              class="w-full bg-bg-elevated border border-border-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-border-hover"
             />
           </div>
 
           <!-- 日志级别过滤 -->
           <div class="w-32">
-            <select
-              v-model="filters.level"
-              @change="applyFilters"
-              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-color-info"
-            >
-              <option value="">全部级别</option>
-              <option value="DEBUG">DEBUG</option>
-              <option value="INFO">INFO</option>
-              <option value="WARNING">WARNING</option>
-              <option value="ERROR">ERROR</option>
-              <option value="CRITICAL">CRITICAL</option>
-            </select>
+            <Select
+              :model-value="filters.level"
+              :options="levelOptions"
+              @update:model-value="(value) => { filters.level = value; applyFilters(); }"
+            />
           </div>
 
           <!-- 日志文件选择 -->
           <div class="w-48">
-            <select
-              v-model="filters.filename"
-              @change="applyFilters"
-              class="w-full bg-bg-elevated border border-border-secondary rounded px-3 py-1.5 text-sm focus:outline-none focus:border-color-info"
-            >
-              <option v-for="file in logFiles" :key="file.name" :value="file.name">
-                {{ file.name }} ({{ formatFileSize(file.size) }})
-              </option>
-            </select>
+            <Select
+              :model-value="filters.filename"
+              :options="fileOptions"
+              @update:model-value="(value) => { filters.filename = value; applyFilters(); }"
+            />
           </div>
 
           <!-- 操作按钮 -->
           <div class="flex gap-2">
             <button
               @click="clearFilters"
-              class="px-3 py-1.5 text-sm bg-bg-elevated hover:bg-bg-hover rounded transition-colors whitespace-nowrap"
+              class="px-3 py-2 text-xs md:text-sm bg-bg-elevated hover:bg-bg-hover rounded-full transition-colors whitespace-nowrap"
             >
               清空
             </button>
             <button
               @click="applyFilters"
-              class="px-3 py-1.5 text-sm bg-color-info hover:bg-color-info-hover rounded transition-colors whitespace-nowrap"
+              class="px-3 py-2 text-xs md:text-sm bg-bg-elevated hover:bg-bg-hover rounded-full transition-colors whitespace-nowrap"
             >
               应用
             </button>
@@ -100,6 +96,7 @@
 
       <!-- 日志列表 -->
       <div class="bg-bg-secondary border border-border-primary rounded-lg overflow-hidden flex flex-col min-h-0 flex-1">
+
         <div v-if="loading && logs.length === 0" class="text-center py-8 text-sm text-text-muted">
           加载中...
         </div>
@@ -140,11 +137,12 @@
                 <!-- 日志头部 -->
                 <div class="flex items-center gap-2 mb-1 flex-wrap pr-16">
                   <span
-                    class="log-level-badge px-1.5 py-0.5 rounded text-2xs font-semibold leading-none"
+                    class="text-2xs font-semibold tracking-wide"
                     :class="getLevelBadgeClass(item.level)"
                   >
                     {{ item.level }}
                   </span>
+
                   <span class="text-text-muted text-xs">{{ item.timestamp }}</span>
                   <span 
                     v-if="item.trace_id" 
@@ -152,7 +150,7 @@
                   >
                     <span
                       @click="filterByTraceId(item.trace_id)"
-                      class="text-color-info text-2xs font-mono bg-color-info/20 px-1.5 py-0.5 rounded cursor-pointer hover:bg-color-info/30 hover:text-color-info-hover transition-colors" 
+                      class="text-text-secondary text-2xs font-mono bg-bg-elevated px-1.5 py-0.5 rounded cursor-pointer hover:bg-bg-hover transition-colors" 
                       :title="'点击筛选 Trace ID: ' + item.trace_id"
                   >
                       {{ item.trace_id.substring(0, 8) }}
@@ -177,11 +175,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
+import Select from '../components/common/Select.vue';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import axios from '../utils/axios';
+
 
 // 数据
 const logs = ref([]);
@@ -198,6 +198,23 @@ const filters = ref({
   level: '',
   filename: 'app.log'
 });
+
+const levelOptions = [
+  { value: '', label: '全部级别' },
+  { value: 'DEBUG', label: 'DEBUG' },
+  { value: 'INFO', label: 'INFO' },
+  { value: 'WARNING', label: 'WARNING' },
+  { value: 'ERROR', label: 'ERROR' },
+  { value: 'CRITICAL', label: 'CRITICAL' }
+];
+
+const fileOptions = computed(() => {
+  return logFiles.value.map((file) => ({
+    value: file.name,
+    label: `${file.name} (${formatFileSize(file.size)})`
+  }));
+});
+
 
 // 自动刷新定时器
 let refreshTimer = null;
@@ -407,13 +424,13 @@ function formatFileSize(bytes) {
 // 获取日志级别样式
 function getLevelBadgeClass(level) {
   const classes = {
-    DEBUG: 'bg-bg-tertiary text-text-primary',
-    INFO: 'bg-color-info text-text-primary',
-    WARNING: 'bg-color-warning text-text-primary',
-    ERROR: 'bg-color-error text-text-primary',
-    CRITICAL: 'bg-color-error-hover text-text-primary'
+    DEBUG: 'text-text-tertiary',
+    INFO: 'text-color-info',
+    WARNING: 'text-color-warning',
+    ERROR: 'text-color-error',
+    CRITICAL: 'text-color-error'
   };
-  return classes[level] || 'bg-bg-tertiary text-text-primary';
+  return classes[level] || 'text-text-tertiary';
 }
 
 function getLogLevelClass(level) {
@@ -438,6 +455,31 @@ function getMessageBorderClass(level) {
 </script>
 
 <style scoped>
+.toolbar-container,
+.content-container {
+  max-width: var(--container-max-width, 2560px);
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .toolbar-container,
+  .content-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .toolbar-container,
+  .content-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
 .log-viewer-container {
   font-family: var(--font-sans);
 }

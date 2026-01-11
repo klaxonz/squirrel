@@ -1,398 +1,382 @@
 <template>
-  <div class="plugin-manager bg-bg-primary text-text-primary min-h-screen">
+  <div class="plugin-manager bg-bg-primary text-text-primary h-full flex flex-col min-h-0">
     <!-- 顶部操作区 -->
-    <div>
-      <div class="max-w-7xl mx-auto px-6 py-6">
-        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          <div>
-            <h1 class="text-xl font-medium mb-1">插件管理</h1>
-            <p class="text-sm text-text-muted">导入、启用或卸载插件，控制后端扩展能力</p>
-            
-            <!-- 标签页切换 -->
-            <div class="flex gap-1 mt-4">
+    <div class="toolbar-container pt-6 pb-4">
+      <div class="flex flex-col gap-4">
+        <div>
+          <h1 class="text-2xl font-semibold text-text-primary">插件管理</h1>
+          <p class="text-sm text-text-muted mt-1">导入、启用或卸载插件，控制后端扩展能力。</p>
+        </div>
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <!-- 标签页切换 -->
+          <div class="inline-flex items-center gap-1 p-1 rounded-full bg-bg-secondary border border-border-primary">
+            <button
+              @click="currentTab = 'plugins'"
+              class="px-4 py-2 text-sm font-medium rounded-full transition-colors"
+              :class="currentTab === 'plugins' ? 'bg-bg-elevated text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'"
+            >
+              插件列表
+            </button>
+            <button
+              @click="currentTab = 'connectivity'"
+              class="px-4 py-2 text-sm font-medium rounded-full transition-colors"
+              :class="currentTab === 'connectivity' ? 'bg-bg-elevated text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'"
+            >
+              站点连通性
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <template v-if="currentTab === 'plugins'">
+              <label class="flex items-center gap-2 px-4 py-2 bg-bg-secondary border border-border-primary hover:bg-bg-hover rounded-full cursor-pointer transition-colors">
+                <input
+                  type="file"
+                  accept=".zip"
+                  class="hidden"
+                  @change="handleFileChange"
+                />
+                <CloudArrowUpIcon class="w-5 h-5" />
+                <span class="text-sm font-medium">{{ selectedFile ? selectedFile.name : '选择文件' }}</span>
+              </label>
               <button
-                @click="currentTab = 'plugins'"
-                class="px-4 py-2 text-sm font-medium rounded-full transition-colors"
-                :class="currentTab === 'plugins' ? 'bg-bg-elevated text-text-accent' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'"
+                class="px-4 py-2 bg-color-error hover:bg-color-error-hover rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="!selectedFile || installing"
+                @click="handleInstall"
               >
-                插件列表
+                {{ installing ? '安装中...' : '导入插件' }}
               </button>
               <button
-                @click="currentTab = 'connectivity'"
-                class="px-4 py-2 text-sm font-medium rounded-full transition-colors"
-                :class="currentTab === 'connectivity' ? 'bg-bg-elevated text-text-accent' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'"
+                class="p-2 bg-bg-secondary border border-border-primary hover:bg-bg-hover rounded-full transition-colors disabled:opacity-40"
+                :disabled="reloading || loading"
+                @click="handleReload"
+                title="重新加载插件"
               >
-                站点连通性
+                <ArrowPathIcon class="w-5 h-5" :class="{ 'animate-spin': reloading }" />
               </button>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <label class="flex items-center gap-3 px-4 py-2 bg-bg-tertiary hover:bg-bg-hover rounded-full cursor-pointer transition-colors">
-              <input
-                type="file"
-                accept=".zip"
-                class="hidden"
-                @change="handleFileChange"
-              />
-              <CloudArrowUpIcon class="w-5 h-5" />
-              <span class="text-sm font-medium">{{ selectedFile ? selectedFile.name : '选择文件' }}</span>
-            </label>
-            <button
-              class="px-4 py-2 bg-color-error hover:bg-color-error-hover rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="!selectedFile || installing"
-              @click="handleInstall"
-            >
-              {{ installing ? '安装中...' : '导入插件' }}
-            </button>
-            <button
-              class="p-2 hover:bg-bg-hover rounded-full transition-colors disabled:opacity-40"
-              :disabled="reloading || loading"
-              @click="handleReload"
-              title="重新加载插件"
-            >
-              <ArrowPathIcon class="w-5 h-5" :class="{ 'animate-spin': reloading }" />
-            </button>
+            </template>
+            <template v-else>
+              <label class="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-border-secondary hover:bg-bg-hover rounded-full cursor-pointer transition-colors text-xs md:text-sm">
+                <input
+                  type="file"
+                  accept=".txt"
+                  class="hidden"
+                  @change="handleCookiesFileChange"
+                />
+                <span class="truncate max-w-[180px]" :title="cookiesFileName || '选择 cookies.txt 文件'">
+                  {{ cookiesFileName || '选择 cookies.txt 文件' }}
+                </span>
+              </label>
+              <button
+                @click="handleImportAllCookies"
+                :disabled="!selectedCookiesFile || importingCookies"
+                class="px-3 py-2 bg-bg-elevated border border-border-secondary hover:bg-bg-hover rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {{ importingCookies ? '导入中...' : '导入所有站点 Cookie' }}
+              </button>
+              <button
+                @click="handleSyncCookieCloud"
+                :disabled="syncingCookieCloud"
+                class="px-3 py-2 bg-bg-elevated border border-border-secondary hover:bg-bg-hover rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {{ syncingCookieCloud ? '同步中...' : '从 CookieCloud 同步' }}
+              </button>
+              <button
+                @click="handleTestAll"
+                :disabled="testingAll || loadingSites"
+                class="px-4 py-2 bg-color-error hover:bg-color-error-hover rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <ArrowPathIcon v-if="testingAll" class="w-4 h-4 animate-spin" />
+                <CheckCircleIcon v-else class="w-4 h-4" />
+                {{ testingAll ? '测试中...' : '测试全部' }}
+              </button>
+            </template>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 插件列表 -->
-    <div v-if="currentTab === 'plugins'" class="max-w-7xl mx-auto px-6 py-6">
-      <div v-if="loading" class="flex items-center justify-center py-20">
-        <div class="animate-spin rounded-full h-8 w-8 border-2 border-text-muted border-t-text-primary"></div>
-      </div>
-
-      <div v-else-if="plugins.length === 0" class="flex flex-col items-center justify-center py-20 text-text-muted">
-        <CubeIcon class="w-16 h-16 mb-4 opacity-40" />
-        <p class="text-sm">暂无插件</p>
-        <p class="text-xs mt-1">请导入插件 ZIP 包</p>
-      </div>
-
-      <div v-else class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="border-b border-border-secondary">
-              <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">名称</th>
-              <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">版本</th>
-              <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">来源</th>
-              <th class="text-left py-3 px-4 text-sm font-medium text-text-muted hidden lg:table-cell">描述</th>
-              <th class="text-center py-3 px-4 text-sm font-medium text-text-muted">状态</th>
-              <th class="text-right py-3 px-4 text-sm font-medium text-text-muted">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="plugin in plugins"
-              :key="plugin.name"
-              class="border-b border-border-primary hover:bg-bg-hover transition-colors"
-            >
-              <td class="py-4 px-4">
-                <div>
-                  <div class="flex items-center gap-2">
-                    <span class="font-medium">{{ plugin.name }}</span>
-                    <span
-                      v-if="plugin.state === 'missing'"
-                      class="px-2 py-0.5 text-2xs rounded bg-color-error/20 text-color-error font-medium"
-                    >
-                      配置缺失
-                    </span>
-                    <span
-                      v-else-if="plugin.source === 'external'"
-                      class="px-2 py-0.5 text-2xs rounded bg-color-info/20 text-color-info font-medium"
-                    >
-                      外部
-                    </span>
-                    <span
-                      v-else-if="plugin.source === 'internal'"
-                      class="px-2 py-0.5 text-2xs rounded bg-color-warning/20 text-color-warning font-medium"
-                    >
-                      内置
-                    </span>
-                  </div>
-                  <div v-if="plugin.module" class="text-xs text-text-muted mt-0.5">{{ plugin.module }}</div>
-                </div>
-              </td>
-              <td class="py-4 px-4 text-text-muted text-sm">{{ plugin.version || '—' }}</td>
-              <td class="py-4 px-4 text-text-muted text-sm">{{ formatSource(plugin.source) }}</td>
-              <td class="py-4 px-4 text-text-muted text-sm hidden lg:table-cell max-w-md">
-                <div class="line-clamp-2">{{ plugin.description || '暂无描述' }}</div>
-              </td>
-              <td class="py-4 px-4">
-                <div class="flex justify-center">
-                  <span
-                    class="px-2.5 py-1 rounded text-xs font-medium"
-                    :class="plugin.enabled ? 'bg-color-success/20 text-color-success' : 'bg-bg-tertiary text-text-muted'"
-                  >
-                    {{ plugin.enabled ? '已启用' : '已禁用' }}
-                  </span>
-                </div>
-              </td>
-              <td class="py-4 px-4">
-                <div class="flex items-center justify-end gap-2">
-                  <button
-                    v-if="!plugin.enabled"
-                    class="px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    :disabled="actioning === plugin.name || plugin.state === 'missing'"
-                    @click="handleEnable(plugin)"
-                  >
-                    启用
-                  </button>
-                  <button
-                    v-if="plugin.enabled"
-                    class="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    :disabled="actioning === plugin.name || plugin.state === 'missing'"
-                    @click="handleDisable(plugin)"
-                  >
-                    禁用
-                  </button>
-                  <button
-                    v-if="plugin.source === 'external'"
-                    class="px-3 py-1.5 bg-bg-tertiary hover:bg-color-error/20 hover:text-color-error rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    :disabled="actioning === plugin.name"
-                    @click="handleUninstall(plugin)"
-                  >
-                    卸载
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- 站点连通性测试 -->
-    <div v-if="currentTab === 'connectivity'" class="max-w-7xl mx-auto px-6 py-6">
-      <!-- 操作区 -->
-      <div class="flex items-center justify-between mb-6">
-        <div class="text-sm text-text-muted">
-          <span>共 {{ siteStats.total }} 个支持的站点</span>
-          <span v-if="lastTestedAt" class="ml-3 text-xs">
-            · 上次测试：{{ formatDate(lastTestedAt) }}
-          </span>
+    <div class="content-container pb-10 flex-1 min-h-0 space-y-6">
+      <!-- 插件列表 -->
+      <div v-if="currentTab === 'plugins'" class="space-y-4">
+        <div v-if="loading" class="bg-bg-secondary border border-border-primary rounded-lg flex items-center justify-center py-20">
+          <div class="animate-spin rounded-full h-8 w-8 border-2 border-text-muted border-t-text-primary"></div>
         </div>
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-3">
-            <label class="flex items-center gap-2 px-3 py-2 bg-bg-tertiary hover:bg-bg-hover rounded-full cursor-pointer transition-colors text-xs md:text-sm">
-              <input
-                type="file"
-                accept=".txt"
-                class="hidden"
-                @change="handleCookiesFileChange"
-              />
-              <span class="truncate max-w-[180px]" :title="cookiesFileName || '选择 cookies.txt 文件'">
-                {{ cookiesFileName || '选择 cookies.txt 文件' }}
-              </span>
-            </label>
-            <button
-              @click="handleImportAllCookies"
-              :disabled="!selectedCookiesFile || importingCookies"
-              class="px-3 py-2 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {{ importingCookies ? '导入中...' : '导入所有站点 Cookie' }}
-            </button>
-            <button
-              @click="handleSyncCookieCloud"
-              :disabled="syncingCookieCloud"
-              class="px-3 py-2 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {{ syncingCookieCloud ? '同步中...' : '从 CookieCloud 同步' }}
-            </button>
-            <button
-              @click="handleTestAll"
-              :disabled="testingAll || loadingSites"
-              class="px-4 py-2 bg-color-error hover:bg-color-error-hover rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <ArrowPathIcon v-if="testingAll" class="w-4 h-4 animate-spin" />
-              <CheckCircleIcon v-else class="w-4 h-4" />
-              {{ testingAll ? '测试中...' : '测试全部' }}
-            </button>
+
+        <div v-else-if="plugins.length === 0" class="bg-bg-secondary border border-border-primary rounded-lg flex flex-col items-center justify-center py-20 text-text-muted">
+          <CubeIcon class="w-16 h-16 mb-4 opacity-40" />
+          <p class="text-sm">暂无插件</p>
+          <p class="text-xs mt-1">请导入插件 ZIP 包</p>
+        </div>
+
+        <div v-else class="bg-bg-secondary border border-border-primary rounded-lg overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-border-secondary">
+                  <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">名称</th>
+                  <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">版本</th>
+                  <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">来源</th>
+                  <th class="text-left py-3 px-4 text-sm font-medium text-text-muted hidden lg:table-cell">描述</th>
+                  <th class="text-center py-3 px-4 text-sm font-medium text-text-muted">状态</th>
+                  <th class="text-right py-3 px-4 text-sm font-medium text-text-muted">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="plugin in plugins"
+                  :key="plugin.name"
+                  class="border-b border-border-primary hover:bg-bg-hover transition-colors"
+                >
+                  <td class="py-4 px-4">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium">{{ plugin.name }}</span>
+                        <span
+                          v-if="plugin.state === 'missing'"
+                          class="px-2 py-0.5 text-2xs rounded bg-color-error/20 text-color-error font-medium"
+                        >
+                          配置缺失
+                        </span>
+                        <span
+                          v-else-if="plugin.source === 'external'"
+                          class="px-2 py-0.5 text-2xs rounded bg-color-info/20 text-color-info font-medium"
+                        >
+                          外部
+                        </span>
+                        <span
+                          v-else-if="plugin.source === 'internal'"
+                          class="px-2 py-0.5 text-2xs rounded bg-color-warning/20 text-color-warning font-medium"
+                        >
+                          内置
+                        </span>
+                      </div>
+                      <div v-if="plugin.module" class="text-xs text-text-muted mt-0.5">{{ plugin.module }}</div>
+                    </div>
+                  </td>
+                  <td class="py-4 px-4 text-text-muted text-sm">{{ plugin.version || '—' }}</td>
+                  <td class="py-4 px-4 text-text-muted text-sm">{{ formatSource(plugin.source) }}</td>
+                  <td class="py-4 px-4 text-text-muted text-sm hidden lg:table-cell max-w-md">
+                    <div class="line-clamp-2">{{ plugin.description || '暂无描述' }}</div>
+                  </td>
+                  <td class="py-4 px-4">
+                    <div class="flex justify-center">
+                      <span
+                        class="px-2.5 py-1 rounded text-xs font-medium"
+                        :class="plugin.enabled ? 'bg-color-success/20 text-color-success' : 'bg-bg-tertiary text-text-muted'"
+                      >
+                        {{ plugin.enabled ? '已启用' : '已禁用' }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="py-4 px-4">
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        v-if="!plugin.enabled"
+                        class="px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        :disabled="actioning === plugin.name || plugin.state === 'missing'"
+                        @click="handleEnable(plugin)"
+                      >
+                        启用
+                      </button>
+                      <button
+                        v-if="plugin.enabled"
+                        class="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        :disabled="actioning === plugin.name || plugin.state === 'missing'"
+                        @click="handleDisable(plugin)"
+                      >
+                        禁用
+                      </button>
+                      <button
+                        v-if="plugin.source === 'external'"
+                        class="px-3 py-1.5 bg-bg-tertiary hover:bg-color-error/20 hover:text-color-error rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        :disabled="actioning === plugin.name"
+                        @click="handleUninstall(plugin)"
+                      >
+                        卸载
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      <!-- 统计信息 -->
-      <div v-if="connectivityResults.length > 0" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-bg-tertiary rounded-lg p-4">
-          <div class="text-text-muted text-xs mb-1">总站点数</div>
-          <div class="text-2xl font-medium">{{ connectivitySummary.total }}</div>
+      <!-- 站点连通性测试 -->
+      <div v-if="currentTab === 'connectivity'" class="space-y-4">
+
+        <!-- 统计信息 -->
+        <div v-if="connectivityResults.length > 0" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatsCard title="总站点数" :value="connectivitySummary.total" :hover-effect="true" />
+          <StatsCard title="可访问" :value="connectivitySummary.accessible" value-color="success" :hover-effect="true" />
+          <StatsCard title="不可访问" :value="connectivitySummary.failed" value-color="error" :hover-effect="true" />
+          <StatsCard title="成功率" :value="connectivitySummary.success_rate" format="percentage" value-color="success" :hover-effect="true" />
         </div>
-        <div class="bg-color-success/10 rounded-lg p-4">
-          <div class="text-color-success text-xs mb-1">可访问</div>
-          <div class="text-2xl font-medium text-color-success">{{ connectivitySummary.accessible }}</div>
+
+        <!-- 加载状态 -->
+        <div v-if="loadingSites" class="bg-bg-secondary border border-border-primary rounded-lg flex items-center justify-center py-20">
+          <div class="animate-spin rounded-full h-8 w-8 border-2 border-text-muted border-t-text-primary"></div>
         </div>
-        <div class="bg-color-error/10 rounded-lg p-4">
-          <div class="text-color-error text-xs mb-1">不可访问</div>
-          <div class="text-2xl font-medium text-color-error">{{ connectivitySummary.failed }}</div>
-        </div>
-        <div class="bg-color-info/10 rounded-lg p-4">
-          <div class="text-color-info text-xs mb-1">成功率</div>
-          <div class="text-2xl font-medium text-color-info">{{ connectivitySummary.success_rate }}%</div>
+
+        <!-- 站点列表 -->
+        <div v-else class="bg-bg-secondary border border-border-primary rounded-lg overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-border-secondary">
+                  <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">站点名称</th>
+                  <th class="text-left py-3 px-4 text-sm font-medium text-text-muted hidden lg:table-cell">支持域名</th>
+                  <th class="text-center py-3 px-4 text-sm font-medium text-text-muted">状态</th>
+                  <th class="text-center py-3 px-4 text-sm font-medium text-text-muted">登录状态</th>
+                  <th class="text-center py-3 px-4 text-sm font-medium text-text-muted">响应时间</th>
+                  <th class="text-center py-3 px-4 text-sm font-medium text-text-muted hidden md:table-cell">IP地址</th>
+                  <th class="text-right py-3 px-4 text-sm font-medium text-text-muted">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="site in displaySites"
+                  :key="site.site_name"
+                  class="border-b border-border-primary hover:bg-bg-hover transition-colors"
+                >
+                  <td class="py-4 px-4">
+                    <div class="font-medium flex items-center gap-2">
+                      <span>{{ site.display_label || site.site_name || site.name }}</span>
+                      <span
+                        v-if="site.config_enabled === false"
+                        class="px-2 py-0.5 text-2xs rounded-full bg-color-error/10 text-color-error border border-color-error/30"
+                      >
+                        已禁用
+                      </span>
+                    </div>
+                    <div class="text-xs text-text-muted mt-0.5">
+                      标识：{{ site.site_name || site.name }}
+                    </div>
+                    <div v-if="site.test_url" class="text-xs text-text-muted mt-0.5">{{ site.test_url }}</div>
+                  </td>
+                  <td class="py-4 px-4 hidden lg:table-cell">
+                    <div class="flex flex-wrap gap-1">
+                      <span
+                        v-for="domain in site.domains?.slice(0, 3) || []"
+                        :key="domain"
+                        class="px-2 py-0.5 text-2xs rounded bg-bg-tertiary text-text-muted"
+                      >
+                        {{ domain }}
+                      </span>
+                      <span
+                        v-if="site.domains?.length > 3"
+                        class="px-2 py-0.5 text-2xs rounded bg-bg-tertiary text-text-muted"
+                      >
+                        +{{ site.domains.length - 3 }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="py-4 px-4">
+                    <div class="flex justify-center">
+                      <span
+                        v-if="site.testing"
+                        class="px-2.5 py-1 rounded text-xs font-medium bg-color-info/20 text-color-info flex items-center gap-1"
+                      >
+                        <ArrowPathIcon class="w-3 h-3 animate-spin" />
+                        测试中
+                      </span>
+                      <span
+                        v-else-if="site.accessible === true"
+                        class="px-2.5 py-1 rounded text-xs font-medium bg-color-success/20 text-color-success"
+                      >
+                        ✓ 可访问
+                      </span>
+                      <span
+                        v-else-if="site.accessible === false"
+                        class="px-2.5 py-1 rounded text-xs font-medium bg-color-error/20 text-color-error"
+                        :title="site.error_message"
+                      >
+                        ✗ 不可访问
+                      </span>
+                      <span
+                        v-else
+                        class="px-2.5 py-1 rounded text-xs font-medium bg-bg-tertiary text-text-muted"
+                      >
+                        未测试
+                      </span>
+                    </div>
+                  </td>
+                  <td class="py-4 px-4">
+                    <div class="flex justify-center">
+                      <span
+                        v-if="!site.supports_login_status"
+                        class="px-2.5 py-1 rounded text-xs font-medium bg-bg-tertiary text-text-muted"
+                      >
+                        未接入
+                      </span>
+                      <span
+                        v-else-if="site.loginTesting"
+                        class="px-2.5 py-1 rounded text-xs font-medium bg-color-info/20 text-color-info flex items-center gap-1"
+                      >
+                        <ArrowPathIcon class="w-3 h-3 animate-spin" />
+                        检测中
+                      </span>
+                      <span
+                        v-else-if="site.loginStatus?.logged_in"
+                        class="px-2.5 py-1 rounded text-xs font-medium bg-color-success/20 text-color-success"
+                        :title="site.loginStatus?.message || '已登录'"
+                      >
+                        已登录
+                      </span>
+                      <span
+                        v-else-if="site.loginStatus"
+                        class="px-2.5 py-1 rounded text-xs font-medium bg-color-error/20 text-color-error"
+                        :title="site.loginStatus?.message || '未登录'"
+                      >
+                        未登录
+                      </span>
+                      <span
+                        v-else
+                        class="px-2.5 py-1 rounded text-xs font-medium bg-bg-tertiary text-text-muted"
+                      >
+                        未检测
+                      </span>
+                    </div>
+                  </td>
+                  <td class="py-4 px-4 text-center text-sm text-text-muted">
+                    {{ site.response_time ? `${site.response_time}ms` : '—' }}
+                  </td>
+                  <td class="py-4 px-4 text-center text-sm text-text-muted hidden md:table-cell">
+                    {{ site.ip_address || '—' }}
+                  </td>
+                  <td class="py-4 px-4">
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        @click="handleTestSingle(site)"
+                        :disabled="site.testing || testingAll"
+                        class="px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        {{ site.testing ? '测试中...' : '连通性' }}
+                      </button>
+                      <button
+                        v-if="site.supports_login_status"
+                        @click="handleTestLogin(site)"
+                        :disabled="site.loginTesting || testingAll"
+                        class="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        {{ site.loginTesting ? '检测中...' : '登录检测' }}
+                      </button>
+                      <button
+                        @click="handleUploadCookies(site)"
+                        :disabled="site.cookieUploading || testingAll"
+                        class="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        {{ site.cookieUploading ? '上传中...' : '上传Cookie' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-
-      <!-- 加载状态 -->
-      <div v-if="loadingSites" class="flex items-center justify-center py-20">
-        <div class="animate-spin rounded-full h-8 w-8 border-2 border-text-muted border-t-text-primary"></div>
-      </div>
-
-      <!-- 站点列表 -->
-      <div v-else class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="border-b border-border-secondary">
-              <th class="text-left py-3 px-4 text-sm font-medium text-text-muted">站点名称</th>
-              <th class="text-left py-3 px-4 text-sm font-medium text-text-muted hidden lg:table-cell">支持域名</th>
-              <th class="text-center py-3 px-4 text-sm font-medium text-text-muted">状态</th>
-              <th class="text-center py-3 px-4 text-sm font-medium text-text-muted">登录状态</th>
-              <th class="text-center py-3 px-4 text-sm font-medium text-text-muted">响应时间</th>
-              <th class="text-center py-3 px-4 text-sm font-medium text-text-muted hidden md:table-cell">IP地址</th>
-              <th class="text-right py-3 px-4 text-sm font-medium text-text-muted">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="site in displaySites"
-              :key="site.site_name"
-              class="border-b border-border-primary hover:bg-bg-hover transition-colors"
-            >
-              <td class="py-4 px-4">
-                <div class="font-medium flex items-center gap-2">
-                  <span>{{ site.display_label || site.site_name || site.name }}</span>
-                  <span
-                    v-if="site.config_enabled === false"
-                    class="px-2 py-0.5 text-2xs rounded-full bg-color-error/10 text-color-error border border-color-error/30"
-                  >
-                    已禁用
-                  </span>
-                </div>
-                <div class="text-xs text-text-muted mt-0.5">
-                  标识：{{ site.site_name || site.name }}
-                </div>
-                <div v-if="site.test_url" class="text-xs text-text-muted mt-0.5">{{ site.test_url }}</div>
-              </td>
-              <td class="py-4 px-4 hidden lg:table-cell">
-                <div class="flex flex-wrap gap-1">
-                  <span
-                    v-for="domain in site.domains?.slice(0, 3) || []"
-                    :key="domain"
-                    class="px-2 py-0.5 text-2xs rounded bg-bg-tertiary text-text-muted"
-                  >
-                    {{ domain }}
-                  </span>
-                  <span
-                    v-if="site.domains?.length > 3"
-                    class="px-2 py-0.5 text-2xs rounded bg-bg-tertiary text-text-muted"
-                  >
-                    +{{ site.domains.length - 3 }}
-                  </span>
-                </div>
-              </td>
-              <td class="py-4 px-4">
-                <div class="flex justify-center">
-                  <span
-                    v-if="site.testing"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-info/20 text-color-info flex items-center gap-1"
-                  >
-                    <ArrowPathIcon class="w-3 h-3 animate-spin" />
-                    测试中
-                  </span>
-                  <span
-                    v-else-if="site.accessible === true"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-success/20 text-color-success"
-                  >
-                    ✓ 可访问
-                  </span>
-                  <span
-                    v-else-if="site.accessible === false"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-error/20 text-color-error"
-                    :title="site.error_message"
-                  >
-                    ✗ 不可访问
-                  </span>
-                  <span
-                    v-else
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-bg-tertiary text-text-muted"
-                  >
-                    未测试
-                  </span>
-                </div>
-              </td>
-              <td class="py-4 px-4">
-                <div class="flex justify-center">
-                  <span
-                    v-if="!site.supports_login_status"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-bg-tertiary text-text-muted"
-                  >
-                    未接入
-                  </span>
-                  <span
-                    v-else-if="site.loginTesting"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-info/20 text-color-info flex items-center gap-1"
-                  >
-                    <ArrowPathIcon class="w-3 h-3 animate-spin" />
-                    检测中
-                  </span>
-                  <span
-                    v-else-if="site.loginStatus?.logged_in"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-success/20 text-color-success"
-                    :title="site.loginStatus?.message || '已登录'"
-                  >
-                    已登录
-                  </span>
-                  <span
-                    v-else-if="site.loginStatus"
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-color-error/20 text-color-error"
-                    :title="site.loginStatus?.message || '未登录'"
-                  >
-                    未登录
-                  </span>
-                  <span
-                    v-else
-                    class="px-2.5 py-1 rounded text-xs font-medium bg-bg-tertiary text-text-muted"
-                  >
-                    未检测
-                  </span>
-                </div>
-              </td>
-              <td class="py-4 px-4 text-center text-sm text-text-muted">
-                {{ site.response_time ? `${site.response_time}ms` : '—' }}
-              </td>
-              <td class="py-4 px-4 text-center text-sm text-text-muted hidden md:table-cell">
-                {{ site.ip_address || '—' }}
-              </td>
-              <td class="py-4 px-4">
-                <div class="flex items-center justify-end gap-2">
-                  <button
-                    @click="handleTestSingle(site)"
-                    :disabled="site.testing || testingAll"
-                    class="px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    {{ site.testing ? '测试中...' : '连通性' }}
-                  </button>
-                  <button
-                    v-if="site.supports_login_status"
-                    @click="handleTestLogin(site)"
-                    :disabled="site.loginTesting || testingAll"
-                    class="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    {{ site.loginTesting ? '检测中...' : '登录检测' }}
-                  </button>
-                  <button
-                    @click="handleUploadCookies(site)"
-                    :disabled="site.cookieUploading || testingAll"
-                    class="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    {{ site.cookieUploading ? '上传中...' : '上传Cookie' }}
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
     </div>
-  </div>
 
     <!-- 站点配置编辑弹窗 -->
     <div
@@ -631,6 +615,7 @@ import {
   CubeIcon,
   CheckCircleIcon
 } from '@heroicons/vue/24/outline';
+import StatsCard from '../components/common/StatsCard.vue';
 import axios from '../utils/axios';
 import { resetSitesCache } from '../composables/useSites';
 import { usePluginApi } from '../composables/usePluginApi';
@@ -1359,6 +1344,31 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.toolbar-container,
+.content-container {
+  max-width: var(--container-max-width, 2560px);
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .toolbar-container,
+  .content-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .toolbar-container,
+  .content-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;

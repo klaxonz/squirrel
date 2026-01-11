@@ -13,8 +13,10 @@
         anchor-mode="element"
         :range-change-throttle-ms="RANGE_CHANGE_THROTTLE_MS"
         :item-secondary-size="layout.itemSecondarySize"
+        :bottom-padding="64"
         ref="virtualList"
     >
+
       <template #item="{ item: video, index }">
         <div class="grid-item">
           <VideoItem
@@ -162,6 +164,8 @@ defineExpose({
 .scroller {
   height: 100%;
   overflow-y: auto;
+  padding-bottom: 24px;
+  box-sizing: border-box;
 }
 
 .grid-item {

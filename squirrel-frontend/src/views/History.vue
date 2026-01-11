@@ -58,6 +58,9 @@ const loading = ref(false);
 const allLoaded = ref(false);
 const isRefreshing = ref(false);
 
+const PAGE_SIZE = 50;
+
+
 // 筛选状态
 const nsfw = ref('all');
 const site = ref(undefined);
@@ -66,21 +69,35 @@ const loadMore = async () => {
   if (loading.value || allLoaded.value) return;
 
   loading.value = true;
+  let newItems = [];
   try {
     const data = await getWatchHistory(currentPage.value, {
       nsfw: nsfw.value,
       site: site.value,
-      pageSize: 20
+      pageSize: PAGE_SIZE
     });
-    videos.value = [...videos.value, ...data.items];
+    newItems = data.items || [];
+    videos.value = [...videos.value, ...newItems];
     currentPage.value++;
-    allLoaded.value = data.items.length < 20;
+
+    if (newItems.length === 0) {
+      allLoaded.value = true;
+    } else if (Number.isFinite(data.total) && data.total > 0) {
+      allLoaded.value = videos.value.length >= data.total;
+    } else {
+      allLoaded.value = newItems.length < PAGE_SIZE;
+    }
   } catch (err) {
     console.error('加载历史记录失败:', err.message);
   } finally {
     loading.value = false;
   }
+
+  if (!loading.value && !allLoaded.value && videos.value.length < PAGE_SIZE && newItems.length > 0) {
+    await loadMore();
+  }
 };
+
 
 const refreshList = async () => {
   isRefreshing.value = true;
