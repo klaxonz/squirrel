@@ -601,5 +601,7 @@ defineExpose({ scrollToOffset, scrollToIndex, reset, container, range, totalHeig
 
 .list-item {
   will-change: transform;
+  min-width: 0;
+  min-height: 0;
 }
-</style> 
+</style>
