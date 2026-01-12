@@ -1,6 +1,6 @@
 <template>
   <div class="video-page bg-bg-primary min-h-screen scrollbar-hide">
-    <div class="max-w-[1720px] mx-auto lg:px-6 pt-6 flex">
+    <div class="video-page__container pt-6 flex">
       <!-- 左侧主内容区域 -->
       <div :class="['flex-1', isWidescreen ? '' : 'max-w-[1280px]']">
         <!-- 视频播放区域 -->
@@ -500,6 +500,29 @@ watch(() => route.params.videoId, async (newId, oldId) => {
 </script>
 
 <style scoped>
+/* 视频页面容器对齐其它页面 */
+.video-page__container {
+  max-width: var(--container-max-width, 2560px);
+  margin: 0 auto;
+  width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .video-page__container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .video-page__container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
 /* 视频区域容器样式 */
 .video-section {
   position: relative;
@@ -510,6 +533,7 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   overflow: hidden;
   box-shadow: var(--shadow-float);
 }
+
 
 .video-container {
   position: relative;
