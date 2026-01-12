@@ -603,5 +603,11 @@ defineExpose({ scrollToOffset, scrollToIndex, reset, container, range, totalHeig
   will-change: transform;
   min-width: 0;
   min-height: 0;
+  list-style: none;
 }
+
+.list-item::marker {
+  content: '';
+}
+
 </style>
