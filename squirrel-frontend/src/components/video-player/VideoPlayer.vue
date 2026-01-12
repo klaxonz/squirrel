@@ -498,27 +498,48 @@ watch(() => props.externalError, (err) => {
 
 // 控制栏显示/隐藏
 let hideControlsTimer: ReturnType<typeof setTimeout> | null = null
+const isPointerInside = ref(false)
 
-const showControls = () => {
-  store.setControlsVisible(true)
+const closeMenus = (): void => {
+  showSettingsMenu.value = false
+  showSubtitlesMenu.value = false
+}
+
+const scheduleHideControls = (delay = 3000): void => {
   if (hideControlsTimer) clearTimeout(hideControlsTimer)
   hideControlsTimer = setTimeout(() => {
-    if (isPlaying.value) {
-      store.setControlsVisible(false)
-      // 关闭所有菜单
-      showSettingsMenu.value = false
-      showSubtitlesMenu.value = false
-    }
-  }, 3000)
+    if (!isPointerInside.value) return
+    if (!isPlaying.value) return
+    store.setControlsVisible(false)
+    closeMenus()
+  }, delay)
 }
 
-const onPointerEnter = () => showControls()
-const onPointerLeave = () => {
+const showControls = (): void => {
+  store.setControlsVisible(true)
   if (isPlaying.value) {
-    store.setControlsVisible(false)
+    scheduleHideControls(3000)
+  } else if (hideControlsTimer) {
+    clearTimeout(hideControlsTimer)
   }
 }
-const onPointerMove = () => showControls()
+
+const onPointerEnter = (): void => {
+  isPointerInside.value = true
+  showControls()
+}
+
+const onPointerLeave = (): void => {
+  isPointerInside.value = false
+  if (hideControlsTimer) clearTimeout(hideControlsTimer)
+  store.setControlsVisible(false)
+  closeMenus()
+}
+
+const onPointerMove = (): void => {
+  isPointerInside.value = true
+  showControls()
+}
 
 // 视频点击
 const handleVideoClick = () => {
