@@ -1,10 +1,11 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy import Boolean, JSON, VARCHAR, Text
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy.orm import mapped_column, Mapped, relationship, foreign
 from models import Base
 from models.mixins.serializer import SerializerMixin
+
 
 
 class Creator(Base, SerializerMixin):
@@ -24,4 +25,19 @@ class Creator(Base, SerializerMixin):
         default=lambda: datetime.now(),
         onupdate=lambda: datetime.now()
     )
+
+    video_links: Mapped[List["VideoCreator"]] = relationship(
+        "VideoCreator",
+        primaryjoin="Creator.id == foreign(VideoCreator.creator_id)",
+        back_populates="creator",
+        viewonly=True,
+    )
+    videos: Mapped[List["Video"]] = relationship(
+        "Video",
+        secondary="video_creator",
+        primaryjoin="Creator.id == foreign(VideoCreator.creator_id)",
+        secondaryjoin="Video.id == foreign(VideoCreator.video_id)",
+        viewonly=True,
+    )
+
 

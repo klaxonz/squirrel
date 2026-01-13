@@ -1,9 +1,10 @@
 from datetime import datetime
 from pydantic import BaseModel
 from sqlalchemy import Integer, Index
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 from models import Base
 from models.mixins.serializer import SerializerMixin
+
 
 
 class VideoInteraction(Base, SerializerMixin):
@@ -25,4 +26,12 @@ class VideoInteraction(Base, SerializerMixin):
         default=lambda: datetime.now(),
         onupdate=lambda: datetime.now()
     )
+
+    video: Mapped["Video"] = relationship(
+        "Video",
+        primaryjoin="Video.id == foreign(VideoInteraction.video_id)",
+        back_populates="interactions",
+        viewonly=True,
+    )
+
 

@@ -1,12 +1,13 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy.types import JSON
 from sqlalchemy import Integer, VARCHAR, Text, Boolean, Index
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from models import Base
 from models.mixins.serializer import SerializerMixin
+
 
 
 class ContentType:
@@ -44,3 +45,24 @@ class Subscription(Base, SerializerMixin):
         default=lambda: datetime.now(),
         onupdate=lambda: datetime.now()
     )
+
+    video_links: Mapped[List["SubscriptionVideo"]] = relationship(
+        "SubscriptionVideo",
+        primaryjoin="Subscription.id == foreign(SubscriptionVideo.subscription_id)",
+        back_populates="subscription",
+        viewonly=True,
+    )
+    videos: Mapped[List["Video"]] = relationship(
+        "Video",
+        secondary="subscription_video",
+        primaryjoin="Subscription.id == foreign(SubscriptionVideo.subscription_id)",
+        secondaryjoin="Video.id == foreign(SubscriptionVideo.video_id)",
+        viewonly=True,
+    )
+    user_subscriptions: Mapped[List["UserSubscription"]] = relationship(
+        "UserSubscription",
+        primaryjoin="Subscription.id == foreign(UserSubscription.subscription_id)",
+        back_populates="subscription",
+        viewonly=True,
+    )
+

@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from sqlalchemy import Integer, Float, DateTime, Index
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from models import Base
 from models.mixins.serializer import SerializerMixin
+
 
 
 class VideoHistory(Base, SerializerMixin):
@@ -31,3 +32,11 @@ class VideoHistory(Base, SerializerMixin):
         default=lambda: datetime.now(),
         onupdate=lambda: datetime.now(),
     )
+
+    video: Mapped["Video"] = relationship(
+        "Video",
+        primaryjoin="Video.id == foreign(VideoHistory.video_id)",
+        back_populates="histories",
+        viewonly=True,
+    )
+

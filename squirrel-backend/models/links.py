@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from sqlalchemy import Integer, UniqueConstraint, Boolean, Index
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from models import Base
 from models.mixins.serializer import SerializerMixin
+
 
 
 class SubscriptionVideo(Base, SerializerMixin):
@@ -21,6 +22,20 @@ class SubscriptionVideo(Base, SerializerMixin):
         default=lambda: datetime.now()
     )
 
+    subscription: Mapped["Subscription"] = relationship(
+        "Subscription",
+        primaryjoin="Subscription.id == foreign(SubscriptionVideo.subscription_id)",
+        back_populates="video_links",
+        viewonly=True,
+    )
+    video: Mapped["Video"] = relationship(
+        "Video",
+        primaryjoin="Video.id == foreign(SubscriptionVideo.video_id)",
+        back_populates="subscription_links",
+        viewonly=True,
+    )
+
+
 
 class VideoCreator(Base):
     __tablename__ = "video_creator"
@@ -35,6 +50,20 @@ class VideoCreator(Base):
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now()
     )
+
+    video: Mapped["Video"] = relationship(
+        "Video",
+        primaryjoin="Video.id == foreign(VideoCreator.video_id)",
+        back_populates="creator_links",
+        viewonly=True,
+    )
+    creator: Mapped["Creator"] = relationship(
+        "Creator",
+        primaryjoin="Creator.id == foreign(VideoCreator.creator_id)",
+        back_populates="video_links",
+        viewonly=True,
+    )
+
 
 
 class UserSubscription(Base, SerializerMixin):
@@ -52,6 +81,14 @@ class UserSubscription(Base, SerializerMixin):
         default=lambda: datetime.now(),
         onupdate=lambda: datetime.now()
     )
+
+    subscription: Mapped["Subscription"] = relationship(
+        "Subscription",
+        primaryjoin="Subscription.id == foreign(UserSubscription.subscription_id)",
+        back_populates="user_subscriptions",
+        viewonly=True,
+    )
+
 
     __table_args__ = (
         UniqueConstraint('user_id', 'subscription_id', name='uix_user_subscription'),
