@@ -12,8 +12,10 @@
     :aria-label="t('videoPlayer')"
   >
     <!-- 加载状态 -->
-    <div v-if="store.loading && store.loadingStage !== 'buffering'" class="sp-loading">
-      <div class="sp-loading-spinner"></div>
+    <div v-if="store.loading && store.loadingStage !== 'buffering' && !errorState.show" class="sp-loading sp-yt-loading" role="status" aria-live="polite">
+      <div class="sp-yt-spinner" aria-hidden="true">
+        <span v-for="n in 12" :key="`loading-${n}`" class="sp-yt-spinner-seg"></span>
+      </div>
       <div class="sp-loading-text">{{ store.loadingStatusText }}</div>
     </div>
 
@@ -35,21 +37,24 @@
     <!-- 字幕容器 (由插件管理) -->
 
     <!-- 缓冲指示器 -->
-    <div v-if="isBuffering" class="sp-buffering">
-      <div class="sp-loading-spinner"></div>
-    </div>
-
-    <div v-if="errorState.show" class="sp-error-overlay" @click.stop>
-      <div class="sp-error-card" role="alert" aria-live="polite">
-        <div class="sp-error-icon">
-          <ExclamationTriangleIcon />
-        </div>
-        <div class="sp-error-title">{{ errorState.title }}</div>
-        <div v-if="errorState.code" class="sp-error-code">{{ errorState.code }}</div>
-        <div class="sp-error-message">{{ errorState.message }}</div>
-        <button v-if="errorState.canRetry" class="sp-btn sp-btn--primary" @click="handleRetry">{{ t('retry') }}</button>
+    <div v-if="isBuffering && !errorState.show" class="sp-buffering sp-yt-loading sp-yt-loading--buffering" role="status" aria-live="polite">
+      <div class="sp-yt-spinner" aria-hidden="true">
+        <span v-for="n in 12" :key="`buffer-${n}`" class="sp-yt-spinner-seg"></span>
       </div>
     </div>
+
+
+    <div v-if="errorState.show" class="sp-error-overlay sp-yt-error" @click.stop>
+      <div class="sp-yt-error-panel" role="alert" aria-live="polite">
+        <div class="sp-yt-error-title">{{ errorState.title }}</div>
+        <div v-if="errorState.message" class="sp-yt-error-message">{{ errorState.message }}</div>
+        <div v-if="errorState.code" class="sp-yt-error-code">{{ errorState.code }}</div>
+        <div v-if="errorState.canRetry" class="sp-yt-error-actions">
+          <button class="sp-yt-error-btn" @click="handleRetry">{{ t('retry') }}</button>
+        </div>
+      </div>
+    </div>
+
 
     <!-- 控制栏 -->
     <transition name="sp-fade">
@@ -257,10 +262,10 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePlayer } from './core'
 import PlayerIcon from './PlayerIcon.vue'
 import {
-  ExclamationTriangleIcon,
   ArrowLeftIcon,
   CheckIcon
 } from '@heroicons/vue/24/outline'
+
 import type { VideoInfo } from '../../types/video-player'
 
 // 导入 CSS 变量（主题系统基础）
@@ -276,7 +281,15 @@ interface Props {
   widescreen?: boolean
 }
 
+type PlayerUiError = {
+  title?: string
+  message?: string
+  code?: string
+  canRetry?: boolean
+}
+
 const props = withDefaults(defineProps<Props>(), {
+
   initialTime: 0,
   hasPrev: false,
   hasNext: false,
@@ -347,7 +360,11 @@ const {
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
   onEnded: () => emit('ended', { autoplay: store.autoplay, autoplayNext: store.autoplayNext, loop: store.loop }),
-  onError: (e) => emit('error', e),
+  onError: (e) => {
+    internalError.value = e as PlayerUiError
+    emit('error', e)
+  },
+
   onTimeUpdate: (time) => emit('timeupdate', time)
 })
 
@@ -364,8 +381,55 @@ const previewPercent = ref(0)
 const seekIndicator = ref({ show: false, direction: 'forward' as 'forward' | 'backward', seconds: 10 })
 const volumeIndicator = ref({ show: false })
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
+const internalError = ref<PlayerUiError | null>(null)
+
+const resolveErrorMessage = (err: PlayerUiError | null): string => {
+  if (err?.message) return err.message
+
+  const code = String(err?.code || '').toUpperCase()
+  if (code.includes('NETWORK') || code.includes('TIMEOUT')) return t('errorNetwork')
+  if (code.includes('DECODE')) return t('errorDecode')
+  if (code.includes('MEDIA')) return t('errorMedia')
+  if (code.includes('NOT_SUPPORTED') || code.includes('UNSUPPORTED')) return t('errorNotSupported')
+  return t('errorUnknown')
+}
+
+const clearErrorState = (): void => {
+  errorState.value = {
+    show: false,
+    title: '',
+    message: '',
+    code: '',
+    canRetry: true
+  }
+}
+
+const applyErrorState = (err: PlayerUiError | null): void => {
+  if (!err) {
+    clearErrorState()
+    return
+  }
+
+  errorState.value = {
+    show: true,
+    title: err.title || t('errorTitle'),
+    message: resolveErrorMessage(err),
+    code: err.code || '',
+    canRetry: err.canRetry !== false
+  }
+
+  store.setLoading(false, 'idle')
+  store.setPlaying(false)
+}
+
+const activeError = computed<PlayerUiError | null>(() => props.externalError || internalError.value)
+
+watch(activeError, (err) => {
+  applyErrorState(err)
+}, { immediate: true })
 
 // 播放速度选项
+
 const playbackRates = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 
 // 计算属性
@@ -440,8 +504,10 @@ watch(
     const oldVideoId = (oldVideo as any)?.id
     if (newVideoId !== oldVideoId) {
       currentLoadedSrc = ''
+      internalError.value = null
       // 立即重置播放器状态
       store.setCurrentTime(0)
+
       store.setDuration(0)
       store.setBufferedProgress(0)
       store.setPlaying(false)
@@ -481,20 +547,6 @@ watch(
   { immediate: true, deep: true }
 )
 
-// 处理外部错误
-watch(() => props.externalError, (err) => {
-  if (err) {
-    errorState.value = {
-      show: true,
-      title: err.title || t('errorTitle'),
-      message: err.message || t('errorUnknown'),
-      code: err.code || '',
-      canRetry: err.canRetry !== false
-    }
-  } else {
-    errorState.value.show = false
-  }
-})
 
 // 控制栏显示/隐藏
 let hideControlsTimer: ReturnType<typeof setTimeout> | null = null
@@ -632,13 +684,16 @@ const handleQualitySelect = (q: any) => {
 
 // 重试
 const handleRetry = () => {
-  errorState.value.show = false
+  internalError.value = null
+  clearErrorState()
+  store.setLoading(true, 'fetching')
   emit('retry')
   if (videoRef.value) {
     videoRef.value.load()
     play()
   }
 }
+
 
 // 键盘快捷键
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -1220,40 +1275,84 @@ defineExpose({
 .sp-loading,
 .sp-buffering {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: none;
   z-index: var(--sp-z-overlay, 15);
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  pointer-events: none;
 }
 
-.sp-loading-spinner {
-  width: 44px;
-  height: 44px;
-  border: 2.5px solid var(--sp-border);
-  border-top-color: var(--sp-text);
-  border-radius: 50%;
-  animation: sp-spin 0.8s linear infinite;
+.sp-yt-loading {
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
 }
 
-.sp-buffering .sp-loading-spinner {
+.sp-yt-loading--buffering {
+  gap: 0;
+}
+
+.sp-yt-spinner {
+  --sp-yt-spinner-radius: 18px;
+  --sp-yt-spinner-radius-neg: -18px;
+  position: relative;
+  width: 46px;
+  height: 46px;
+}
+
+.sp-yt-loading--buffering .sp-yt-spinner {
+  --sp-yt-spinner-radius: 14px;
+  --sp-yt-spinner-radius-neg: -14px;
   width: 36px;
   height: 36px;
-  border-width: 2px;
 }
+
+.sp-yt-spinner-seg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 12px;
+  background: var(--sp-text);
+  border-radius: 999px;
+  opacity: 0.9;
+  animation: sp-yt-spinner-fade 1.2s linear infinite;
+}
+
+.sp-yt-loading--buffering .sp-yt-spinner-seg {
+  height: 10px;
+}
+
+.sp-yt-spinner-seg:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -1.1s; }
+.sp-yt-spinner-seg:nth-child(2) { transform: translate(-50%, -50%) rotate(30deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -1s; }
+.sp-yt-spinner-seg:nth-child(3) { transform: translate(-50%, -50%) rotate(60deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.9s; }
+.sp-yt-spinner-seg:nth-child(4) { transform: translate(-50%, -50%) rotate(90deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.8s; }
+.sp-yt-spinner-seg:nth-child(5) { transform: translate(-50%, -50%) rotate(120deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.7s; }
+.sp-yt-spinner-seg:nth-child(6) { transform: translate(-50%, -50%) rotate(150deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.6s; }
+.sp-yt-spinner-seg:nth-child(7) { transform: translate(-50%, -50%) rotate(180deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.5s; }
+.sp-yt-spinner-seg:nth-child(8) { transform: translate(-50%, -50%) rotate(210deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.4s; }
+.sp-yt-spinner-seg:nth-child(9) { transform: translate(-50%, -50%) rotate(240deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.3s; }
+.sp-yt-spinner-seg:nth-child(10) { transform: translate(-50%, -50%) rotate(270deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.2s; }
+.sp-yt-spinner-seg:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.1s; }
+.sp-yt-spinner-seg:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: 0s; }
 
 .sp-loading-text {
   font-size: var(--font-size-xs);
   color: var(--sp-text-secondary);
   font-weight: 500;
+  text-shadow: var(--sp-text-shadow);
 }
 
-@keyframes sp-spin {
-  to { transform: rotate(360deg); }
+@keyframes sp-yt-spinner-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0.2; }
 }
+
 
 /* 错误 */
 .sp-error-overlay {
@@ -1263,73 +1362,70 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 18px;
-  background: radial-gradient(circle at center, var(--sp-overlay-weak), var(--sp-overlay-strong));
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  padding: 22px;
+  background: rgba(0, 0, 0, 0.82);
 }
 
-.sp-error-card {
-  width: min(420px, 100%);
+.sp-yt-error {
+  text-align: center;
+}
+
+.sp-yt-error-panel {
+  max-width: 520px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  text-align: center;
-  padding: 22px 20px;
-  border-radius: 14px;
-  border: 1px solid var(--sp-border);
-  background: var(--sp-surface);
-  box-shadow: var(--sp-shadow-xl);
-}
-
-.sp-error-icon svg,
-.sp-error-icon .sp-icon {
-  width: 44px;
-  height: 44px;
-  color: var(--sp-error);
-}
-
-.sp-error-title {
-  font-size: var(--font-size-md);
-  font-weight: 600;
+  gap: 6px;
   color: var(--sp-text);
 }
 
-.sp-error-code {
-  font-size: var(--font-size-2xs);
-  color: var(--sp-text-tertiary);
+.sp-yt-error-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
   letter-spacing: 0.2px;
 }
 
-.sp-error-message {
+.sp-yt-error-message {
   font-size: var(--font-size-xs);
-  color: var(--sp-text-muted);
-  max-width: 280px;
+  color: var(--sp-text-secondary);
   line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  max-width: 420px;
 }
 
-.sp-error-card .sp-btn {
-  margin-top: 4px;
-  width: auto;
-  height: 34px;
-  padding: 0 16px;
-  background: var(--sp-bg-hover);
-  font-size: var(--font-size-xs);
+.sp-yt-error-code {
+  font-size: var(--font-size-2xs);
+  color: var(--sp-text-tertiary);
+  letter-spacing: 0.3px;
+}
+
+.sp-yt-error-actions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.sp-yt-error-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--sp-text);
+  font-size: var(--font-size-2xs);
   font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.sp-error-card .sp-btn:hover {
-  background: var(--sp-bg-active);
+.sp-yt-error-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
-.sp-btn--primary {
-  background: var(--sp-bg-active);
+.sp-yt-error-btn:active {
+  background: rgba(255, 255, 255, 0.28);
 }
+
 
 /* 指示器 */
 .sp-seek-indicator,

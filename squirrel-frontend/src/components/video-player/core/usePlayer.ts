@@ -205,16 +205,21 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const icons = useIcons()
 
   // ===== 错误恢复 =====
+  const reportFatalError = (error: PlayerError): void => {
+    store.setLoading(false, 'idle')
+    store.setPlaying(false)
+    events.emit('error', error)
+    onError?.(error)
+  }
+
   const { handleError: handleRecoveryError, setQualities: setRecoveryQualities } = useErrorRecovery({
     maxRetries: 3,
     enableQualityFallback: true,
     onQualityFallback: (quality) => {
       setQuality(quality.label)
-    },
-    onRecoveryFailed: (error) => {
-      onError?.(error)
     }
   })
+
 
   // ===== 计算属性 =====
   // 注意：Pinia 会自动解包 setup store 的 ref，直接访问即可
@@ -281,9 +286,9 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     async requestPictureInPicture() { await togglePictureInPicture() },
     async exitPictureInPicture() { if (store.pictureInPicture) await togglePictureInPicture() },
     reportError(error) {
-      events.emit('error', error)
-      onError?.(error)
+      reportFatalError(error)
     },
+
     getPlugin<T>(name: string) { return pluginManager.get(name) as T }
   })
 
@@ -699,10 +704,17 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
         fatal: true,
         details: e
       }
-      handleRecoveryError(error)
-      events.emit('error', error)
-      onError?.(error)
+      void handleRecoveryError(error)
+        .then((recovered) => {
+          if (!recovered) {
+            reportFatalError(error)
+          }
+        })
+        .catch(() => {
+          reportFatalError(error)
+        })
     })
+
   }
 
   // ===== 全屏监听 =====
