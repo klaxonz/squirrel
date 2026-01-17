@@ -1191,10 +1191,19 @@ defineExpose({
   --sp-primary-rgb: 255, 0, 0;
   --sp-glow-primary: none;
   --sp-menu-bg: rgba(28, 28, 28, 0.88);
+
+  /* YouTube-like bottom overlay behind controls */
+  --sp-controls-bg: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.36) 45%,
+    rgba(0, 0, 0, 0) 100%
+  );
+
   --sp-controls-row-padding: 0 12px;
-  --sp-controls-group-bg: rgba(0, 0, 0, 0.55);
-  --sp-controls-group-padding: 0 6px;
-  --sp-controls-group-radius: 18px;
+  --sp-controls-group-bg: transparent;
+  --sp-controls-group-padding: 0;
+  --sp-controls-group-radius: 0;
   --sp-progress-radius: 0px;
 }
 
@@ -1350,9 +1359,9 @@ defineExpose({
   padding: var(--sp-controls-group-padding);
   background: var(--sp-controls-group-bg);
   border-radius: var(--sp-controls-group-radius);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  border: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* 按钮 */
