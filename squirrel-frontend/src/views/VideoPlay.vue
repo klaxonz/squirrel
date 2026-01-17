@@ -529,9 +529,9 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   width: 100%;
   background: var(--bg-media);
   margin: 0 auto;
-  border-radius: 4px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: var(--shadow-float);
+  box-shadow: none;
 }
 
 

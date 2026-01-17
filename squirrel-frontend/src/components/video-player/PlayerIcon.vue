@@ -39,6 +39,8 @@ const iconMap: Record<IconName, string> = {
   subtitlesOff: 'material-symbols:closed-caption-disabled',
   quality: 'material-symbols:high-quality',
   speed: 'material-symbols:speed',
+  autoplayNext: 'material-symbols:play-circle',
+  loop: 'material-symbols:repeat',
   check: 'material-symbols:check',
   chevronLeft: 'material-symbols:chevron-left',
   chevronRight: 'material-symbols:chevron-right',

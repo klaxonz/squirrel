@@ -124,10 +124,10 @@ export class SubtitlesPlugin implements PlayerPlugin {
     if (!this.styleElement) return
 
     const fontSizeMap: Record<string, string> = {
-      small: '14px',
-      medium: '20px',
-      large: '28px',
-      xlarge: '36px'
+      small: '16px',
+      medium: '18px',
+      large: '24px',
+      xlarge: '32px'
     }
 
     const fontSize = fontSizeMap[this.style.fontSize || 'medium']
@@ -158,9 +158,9 @@ export class SubtitlesPlugin implements PlayerPlugin {
       
       .sp-subtitle-text {
         display: inline-block;
-        padding: 4px 12px;
+        padding: 4px 8px;
         background: ${background};
-        border-radius: 4px;
+        border-radius: 2px;
         font-size: ${fontSize};
         font-weight: 500;
         color: ${color};

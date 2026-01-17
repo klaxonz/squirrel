@@ -61,12 +61,12 @@
   
   /* ========== 进度条 ========== */
   
-  --sp-progress-height: 4px;
+  --sp-progress-height: 3px;
   --sp-progress-height-hover: 6px;
   --sp-progress-bg: rgba(255, 255, 255, 0.2);
   --sp-progress-buffered: rgba(255, 255, 255, 0.4);
   --sp-progress-played: var(--sp-primary);
-  --sp-progress-thumb-size: 14px;
+  --sp-progress-thumb-size: 12px;
   --sp-progress-thumb-color: var(--sp-primary);
   
   /* ========== 按钮 ========== */

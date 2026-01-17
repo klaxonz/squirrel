@@ -31,6 +31,8 @@ export type IconName =
   | 'subtitlesOff'
   | 'quality'
   | 'speed'
+  | 'autoplayNext'
+  | 'loop'
   | 'check'
   | 'chevronLeft'
   | 'chevronRight'

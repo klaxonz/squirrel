@@ -12,9 +12,9 @@
     :aria-label="t('videoPlayer')"
   >
     <!-- 加载状态 -->
-    <div v-if="store.loading && store.loadingStage !== 'buffering' && !errorState.show" class="sp-loading sp-yt-loading" role="status" aria-live="polite">
-      <div class="sp-yt-spinner" aria-hidden="true">
-        <span v-for="n in 12" :key="`loading-${n}`" class="sp-yt-spinner-seg"></span>
+    <div v-if="store.loading && store.loadingStage !== 'buffering' && !errorState.show" class="sp-loading sp-loading--stacked" role="status" aria-live="polite">
+      <div class="sp-spinner" aria-hidden="true">
+        <span v-for="n in 12" :key="`loading-${n}`" class="sp-spinner-seg"></span>
       </div>
       <div class="sp-loading-text">{{ store.loadingStatusText }}</div>
     </div>
@@ -37,35 +37,37 @@
     <!-- 字幕容器 (由插件管理) -->
 
     <!-- 缓冲指示器 -->
-    <div v-if="isBuffering && !errorState.show" class="sp-buffering sp-yt-loading sp-yt-loading--buffering" role="status" aria-live="polite">
-      <div class="sp-yt-spinner" aria-hidden="true">
-        <span v-for="n in 12" :key="`buffer-${n}`" class="sp-yt-spinner-seg"></span>
+    <div v-if="isBuffering && !errorState.show" class="sp-buffering sp-loading--stacked sp-loading--buffering" role="status" aria-live="polite">
+      <div class="sp-spinner" aria-hidden="true">
+        <span v-for="n in 12" :key="`buffer-${n}`" class="sp-spinner-seg"></span>
       </div>
     </div>
 
 
-    <div v-if="errorState.show" class="sp-error-overlay sp-yt-error" @click.stop>
-      <div class="sp-yt-error-panel" role="alert" aria-live="polite">
-        <div class="sp-yt-error-title">{{ errorState.title }}</div>
-        <div v-if="errorState.message" class="sp-yt-error-message">{{ errorState.message }}</div>
-        <div v-if="errorState.code" class="sp-yt-error-code">{{ errorState.code }}</div>
-        <div v-if="errorState.canRetry" class="sp-yt-error-actions">
-          <button class="sp-yt-error-btn" @click="handleRetry">{{ t('retry') }}</button>
+    <div v-if="errorState.show" class="sp-error-overlay sp-error-overlay--centered" @click.stop>
+      <div class="sp-error-panel" role="alert" aria-live="polite">
+        <div class="sp-error-title">{{ errorState.title }}</div>
+        <div v-if="errorState.message" class="sp-error-message">{{ errorState.message }}</div>
+        <div v-if="errorState.code" class="sp-error-code">{{ errorState.code }}</div>
+        <div v-if="errorState.canRetry" class="sp-error-actions">
+          <button class="sp-error-btn" @click="handleRetry">{{ t('retry') }}</button>
         </div>
       </div>
     </div>
-
 
     <!-- 控制栏 -->
     <transition name="sp-fade">
       <div v-show="store.controlsVisible && !errorState.show" class="sp-controls">
         <!-- 进度条 -->
         <div class="sp-progress-container">
-          <div 
+          <div
             class="sp-progress"
-            @mousedown="onProgressMouseDown"
-            @mousemove="onProgressMouseMove"
-            @mouseleave="onProgressMouseLeave"
+            :class="{ 'sp-progress--scrubbing': isScrubbing }"
+            @pointerdown.prevent="onProgressPointerDown"
+            @pointermove="onProgressPointerMove"
+            @pointerleave="onProgressPointerLeave"
+            @pointerup="onProgressPointerUp"
+            @pointercancel="onProgressPointerUp"
           >
             <div class="sp-progress-buffered" :style="{ width: `${store.bufferedProgress}%` }"></div>
             <div class="sp-progress-played" :style="{ width: `${progress}%` }"></div>
@@ -82,21 +84,55 @@
           <!-- 左侧控件 -->
           <div class="sp-controls-left">
             <!-- 播放/暂停 -->
-            <button class="sp-btn sp-btn--play" @click="togglePlay" :aria-label="isPlaying ? t('pause') : t('play')">
+            <button
+              class="sp-btn sp-btn--play"
+              @click="togglePlay"
+              @mouseenter="onControlTooltipEnter($event, isPlaying ? t('pause') : t('play'), 'K')"
+              @mouseleave="hideControlTooltip"
+              @focus="onControlTooltipEnter($event, isPlaying ? t('pause') : t('play'), 'K')"
+              @blur="hideControlTooltip"
+              :aria-label="isPlaying ? t('pause') : t('play')"
+            >
               <PlayerIcon :name="isPlaying ? 'pause' : 'play'" />
             </button>
 
             <!-- 上一个/下一个 -->
-            <button v-if="hasPrev" class="sp-btn" @click="$emit('prev-video')" :aria-label="t('previousVideo')">
+            <button
+              v-if="hasPrev"
+              class="sp-btn"
+              @click="$emit('prev-video')"
+              @mouseenter="onControlTooltipEnter($event, t('previousVideo'))"
+              @mouseleave="hideControlTooltip"
+              @focus="onControlTooltipEnter($event, t('previousVideo'))"
+              @blur="hideControlTooltip"
+              :aria-label="t('previousVideo')"
+            >
               <PlayerIcon name="previous" />
             </button>
-            <button v-if="hasNext" class="sp-btn" @click="$emit('next-video')" :aria-label="t('nextVideo')">
+            <button
+              v-if="hasNext"
+              class="sp-btn"
+              @click="$emit('next-video')"
+              @mouseenter="onControlTooltipEnter($event, t('nextVideo'))"
+              @mouseleave="hideControlTooltip"
+              @focus="onControlTooltipEnter($event, t('nextVideo'))"
+              @blur="hideControlTooltip"
+              :aria-label="t('nextVideo')"
+            >
               <PlayerIcon name="next" />
             </button>
 
             <!-- 音量 -->
             <div class="sp-volume">
-              <button class="sp-btn" @click="toggleMute" :aria-label="isMuted ? t('unmute') : t('mute')">
+              <button
+                class="sp-btn"
+                @click="toggleMute"
+                @mouseenter="onControlTooltipEnter($event, isMuted ? t('unmute') : t('mute'), 'M')"
+                @mouseleave="hideControlTooltip"
+                @focus="onControlTooltipEnter($event, isMuted ? t('unmute') : t('mute'), 'M')"
+                @blur="hideControlTooltip"
+                :aria-label="isMuted ? t('unmute') : t('mute')"
+              >
                 <PlayerIcon :name="volumeIconName" />
               </button>
               <div class="sp-volume-slider" @click="onVolumeClick">
@@ -113,39 +149,74 @@
           </div>
 
           <!-- 右侧控件 -->
-          <div class="sp-controls-right">
+          <div ref="controlsRightRef" class="sp-controls-right">
             <!-- 字幕 -->
-            <button 
-              v-if="subtitleTracks.length > 0" 
-              class="sp-btn" 
-              @click.stop="toggleSubtitlesMenu"
+            <button
+              v-if="subtitleTracks.length > 0"
+              class="sp-btn"
+              :class="{ 'sp-btn--toggled': store.subtitlesEnabled }"
+              @click.stop="toggleSubtitlesQuick"
+              @mouseenter="onControlTooltipEnter($event, store.subtitlesEnabled ? t('subtitlesOff') : t('subtitles'), 'C')"  
+              @mouseleave="hideControlTooltip"
+              @focus="onControlTooltipEnter($event, store.subtitlesEnabled ? t('subtitlesOff') : t('subtitles'), 'C')"       
+              @blur="hideControlTooltip"
               :aria-label="t('subtitles')"
             >
               <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
             </button>
 
             <!-- 设置 -->
-            <button class="sp-btn" @click.stop="toggleSettingsMenu" :aria-label="t('settings')">
+            <button
+              ref="settingsButtonRef"
+              class="sp-btn"
+              :class="{ 'sp-btn--toggled': showSettingsMenu }"
+              @click.stop="toggleSettingsMenu"
+              @mouseenter="onControlTooltipEnter($event, t('settings'))"
+              @mouseleave="hideControlTooltip"
+              @focus="onControlTooltipEnter($event, t('settings'))"
+              @blur="hideControlTooltip"
+              :aria-label="t('settings')"
+            >
               <PlayerIcon name="settings" />
             </button>
 
             <!-- 画中画 -->
-            <button 
-              v-if="supportsPiP" 
-              class="sp-btn" 
+            <button
+              v-if="supportsPiP"
+              class="sp-btn"
               @click="togglePictureInPicture"
+              @mouseenter="onControlTooltipEnter($event, t('pictureInPicture'))"
+              @mouseleave="hideControlTooltip"
+              @focus="onControlTooltipEnter($event, t('pictureInPicture'))"
+              @blur="hideControlTooltip"
               :aria-label="t('pictureInPicture')"
             >
               <PlayerIcon :name="store.pip ? 'pipExit' : 'pip'" />
             </button>
 
             <!-- 宽屏 -->
-            <button class="sp-btn" @click="toggleWidescreen" :aria-label="props.widescreen ? t('exitWidescreen') : t('widescreen')">
+            <button
+              class="sp-btn"
+              @click="toggleWidescreen"
+              @mouseenter="onControlTooltipEnter($event, props.widescreen ? t('exitWidescreen') : t('widescreen'))"
+              @mouseleave="hideControlTooltip"
+              @focus="onControlTooltipEnter($event, props.widescreen ? t('exitWidescreen') : t('widescreen'))"
+              @blur="hideControlTooltip"
+              :aria-label="props.widescreen ? t('exitWidescreen') : t('widescreen')"
+            >
               <PlayerIcon :name="props.widescreen ? 'widescreenExit' : 'widescreen'" />
             </button>
 
             <!-- 全屏 -->
-            <button class="sp-btn" @click="toggleFullscreen" :aria-label="isFullscreen ? t('exitFullscreen') : t('fullscreen')">
+            <button
+              class="sp-btn"
+              @click="toggleFullscreen"
+              @mouseenter="onControlTooltipEnter($event, isFullscreen ? t('exitFullscreen') : t('fullscreen'), 'F')"
+              @mouseleave="hideControlTooltip"
+              @focus="onControlTooltipEnter($event, isFullscreen ? t('exitFullscreen') : t('fullscreen'), 'F')"
+              @blur="hideControlTooltip"
+              :aria-label="isFullscreen ? t('exitFullscreen') : t('fullscreen')"
+            >
               <PlayerIcon :name="isFullscreen ? 'fullscreenExit' : 'fullscreen'" />
             </button>
           </div>
@@ -154,18 +225,83 @@
     </transition>
 
     <!-- 设置菜单 -->
-    <transition name="sp-fade">
-      <div v-if="showSettingsMenu && store.controlsVisible" class="sp-popup" @click.stop>
-        <!-- 主菜单 -->
+    <transition name="sp-overlay">
+      <div
+        v-if="showSettingsMenu && store.controlsVisible"
+        ref="settingsPopupRef"
+        class="sp-popup"
+        :style="settingsPopupStyle"
+        @click.stop
+      >
+        <div class="sp-popup-surface">
+          <!-- 主菜单 -->
         <template v-if="settingsView === 'main'">
-          <button class="sp-popup-item" @click="settingsView = 'speed'">
-            <span>{{ t('playbackSpeed') }}</span>
-            <span class="sp-popup-value">{{ store.playbackRate === 1 ? t('speedNormal') : `${store.playbackRate}x` }}</span>
+          <div class="sp-popup-list sp-popup-list--main">
+            <button
+              class="sp-popup-item sp-popup-item--toggle"
+              type="button"
+              role="switch"
+              :aria-checked="store.autoplayNext"
+              @click="toggleAutoplayNext"
+            >
+              <span class="sp-popup-item-main">
+                <PlayerIcon class="sp-popup-item-icon" name="autoplayNext" />
+                <span class="sp-popup-item-label">{{ t('autoplayNext') }}</span>
+              </span>
+              <span class="sp-switch" :class="{ 'sp-switch--on': store.autoplayNext }" aria-hidden="true"></span>
+            </button>
+
+            <button
+              class="sp-popup-item sp-popup-item--toggle"
+              type="button"
+              role="switch"
+              :aria-checked="store.loop"
+              @click="toggleLoop"
+            >
+              <span class="sp-popup-item-main">
+                <PlayerIcon class="sp-popup-item-icon" name="loop" />
+                <span class="sp-popup-item-label">{{ t('loop') }}</span>
+              </span>
+              <span class="sp-switch" :class="{ 'sp-switch--on': store.loop }" aria-hidden="true"></span>
+            </button>
+
+            <button
+              v-if="subtitleTracks.length > 0"
+              class="sp-popup-item sp-popup-item--submenu"
+              type="button"
+              @click="settingsView = 'subtitles'"
+            >
+              <span class="sp-popup-item-main">
+                <PlayerIcon class="sp-popup-item-icon" :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
+                <span class="sp-popup-item-label">{{ `${t('subtitles')} (${subtitleTracks.length})` }}</span>
+              </span>
+              <span class="sp-popup-item-meta">
+                <span class="sp-popup-value">{{ subtitlesStatusText }}</span>
+                <ChevronRightIcon class="sp-popup-chevron" />
+              </span>
+            </button>
+
+          <button class="sp-popup-item sp-popup-item--submenu" @click="settingsView = 'speed'">
+            <span class="sp-popup-item-main">
+              <PlayerIcon class="sp-popup-item-icon" name="speed" />
+              <span class="sp-popup-item-label">{{ t('playbackSpeed') }}</span>
+            </span>
+            <span class="sp-popup-item-meta">
+              <span class="sp-popup-value">{{ store.playbackRate === 1 ? t('speedNormal') : `${store.playbackRate}x` }}</span>
+              <ChevronRightIcon class="sp-popup-chevron" />
+            </span>
           </button>
-          <button v-if="qualities.length > 0" class="sp-popup-item" @click="settingsView = 'quality'">
-            <span>{{ t('quality') }}</span>
-            <span class="sp-popup-value">{{ currentQuality || 'Auto' }}</span>
+          <button class="sp-popup-item sp-popup-item--submenu" @click="settingsView = 'quality'">
+            <span class="sp-popup-item-main">
+              <PlayerIcon class="sp-popup-item-icon" name="quality" />
+              <span class="sp-popup-item-label">{{ t('quality') }}</span>
+            </span>
+            <span class="sp-popup-item-meta">
+              <span class="sp-popup-value">{{ !currentQuality || currentQuality === 'auto' ? t('qualityAuto') : currentQuality }}</span>
+              <ChevronRightIcon class="sp-popup-chevron" />
+            </span>
           </button>
+          </div>
         </template>
 
         <!-- 播放速度子菜单 -->
@@ -196,6 +332,14 @@
           </button>
           <div class="sp-popup-list">
             <button
+              class="sp-popup-option"
+              :class="{ active: !currentQuality || currentQuality === 'auto' || currentQuality === 'Auto' }"
+              @click="handleQualitySelect({ id: 'auto', label: 'auto' })"
+            >
+              <CheckIcon v-if="!currentQuality || currentQuality === 'auto' || currentQuality === 'Auto'" class="sp-check" />
+              <span>{{ t('qualityAuto') }}</span>
+            </button>
+            <button
               v-for="q in qualities"
               :key="q.id"
               class="sp-popup-option"
@@ -207,34 +351,33 @@
             </button>
           </div>
         </template>
-      </div>
-    </transition>
 
-    <!-- 字幕菜单 -->
-    <transition name="sp-slide">
-      <div v-if="showSubtitlesMenu && store.controlsVisible" class="sp-menu" @click.stop>
-        <div class="sp-menu-section">
-          <div class="sp-menu-label">{{ t('subtitles') }}</div>
-          <div class="sp-quality-list">
+        <template v-else-if="settingsView === 'subtitles'">
+          <button class="sp-popup-back" @click="settingsView = 'main'">
+            <ArrowLeftIcon />
+            <span>{{ t('subtitles') }}</span>
+          </button>
+          <div class="sp-popup-list">
             <button
-              class="sp-menu-item"
-              :class="{ 'sp-menu-item--active': !currentSubtitle }"
-              @click="setSubtitle(null)"
+              class="sp-popup-option"
+              :class="{ active: !currentSubtitle }"
+              @click="handleSubtitleSelect(null)"
             >
-              <span class="sp-menu-item-text">{{ t('subtitlesOff') }}</span>
-              <span v-if="!currentSubtitle" class="sp-menu-item-dot"></span>
+              <CheckIcon v-if="!currentSubtitle" class="sp-check" />
+              <span>{{ t('subtitlesOff') }}</span>
             </button>
             <button
               v-for="track in subtitleTracks"
               :key="track.id"
-              class="sp-menu-item"
-              :class="{ 'sp-menu-item--active': currentSubtitle?.id === track.id }"
-              @click="setSubtitle(track)"
+              class="sp-popup-option"
+              :class="{ active: currentSubtitle?.id === track.id }"
+              @click="handleSubtitleSelect(track)"
             >
-              <span class="sp-menu-item-text">{{ track.label }}</span>
-              <span v-if="currentSubtitle?.id === track.id" class="sp-menu-item-dot"></span>
+              <CheckIcon v-if="currentSubtitle?.id === track.id" class="sp-check" />
+              <span>{{ track.label }}</span>
             </button>
           </div>
+        </template>
         </div>
       </div>
     </transition>
@@ -254,6 +397,19 @@
         <span>{{ Math.round(volume) }}%</span>
       </div>
     </transition>
+
+    <!-- 控制按钮 Tooltip -->
+    <transition name="sp-fade">
+      <div
+        v-if="controlTooltip.visible && store.controlsVisible && !errorState.show"
+        class="sp-tooltip sp-tooltip--controls"
+        :style="{ left: `${controlTooltip.x}px`, top: `${controlTooltip.y}px` }"
+        role="tooltip"
+      >
+        <span class="sp-tooltip-text">{{ controlTooltip.text }}</span>
+        <span v-if="controlTooltip.shortcut" class="sp-tooltip-shortcut">{{ controlTooltip.shortcut }}</span>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -263,10 +419,12 @@ import { usePlayer } from './core'
 import PlayerIcon from './PlayerIcon.vue'
 import {
   ArrowLeftIcon,
-  CheckIcon
+  CheckIcon,
+  ChevronRightIcon
 } from '@heroicons/vue/24/outline'
 
 import type { VideoInfo } from '../../types/video-player'
+import type { SubtitleTrack } from './plugins/subtitles'
 
 // 导入 CSS 变量（主题系统基础）
 import './themes/variables.css'
@@ -340,7 +498,6 @@ const {
   currentSubtitle,
   setSubtitle,
   setSubtitleTracks,
-  toggleSubtitles,
   loadSource,
   theme,
   setTheme,
@@ -372,16 +529,133 @@ const {
 const videoRef = ref<HTMLVideoElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
 
+const controlsRightRef = ref<HTMLElement | null>(null)
+const settingsButtonRef = ref<HTMLElement | null>(null)
+const settingsPopupRef = ref<HTMLElement | null>(null)
+
+const settingsPopupStyle = ref<Record<string, string>>({})
+
 // UI 状态
 const showSettingsMenu = ref(false)
-const showSubtitlesMenu = ref(false)
-const settingsView = ref<'main' | 'speed' | 'quality'>('main')
+const settingsView = ref<'main' | 'speed' | 'quality' | 'subtitles'>('main')
 const previewTime = ref<number | null>(null)
 const previewPercent = ref(0)
+const isScrubbing = ref(false)
+const controlTooltip = ref({ visible: false, text: '', shortcut: '', x: 0, y: 0 })
 const seekIndicator = ref({ show: false, direction: 'forward' as 'forward' | 'backward', seconds: 10 })
 const volumeIndicator = ref({ show: false })
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
 const internalError = ref<PlayerUiError | null>(null)
+
+const CONTROL_TOOLTIP_DELAY = 450
+let controlTooltipTimer: ReturnType<typeof setTimeout> | null = null
+
+const clamp = (value: number, min: number, max: number): number => {
+  return Math.min(max, Math.max(min, value))
+}
+
+const hideControlTooltip = (): void => {
+  if (controlTooltipTimer) {
+    clearTimeout(controlTooltipTimer)
+    controlTooltipTimer = null
+  }
+  controlTooltip.value.visible = false
+}
+
+const onControlTooltipEnter = (e: Event, text: string, shortcut?: string): void => {
+  if (!containerRef.value) return
+
+  const target = e.currentTarget as HTMLElement | null
+  if (!target) return
+
+  hideControlTooltip()
+
+  const containerRect = containerRef.value.getBoundingClientRect()
+  const targetRect = target.getBoundingClientRect()
+  const x = clamp(targetRect.left - containerRect.left + targetRect.width / 2, 16, containerRect.width - 16)
+  const y = clamp(targetRect.top - containerRect.top - 10, 16, containerRect.height - 16)
+
+  controlTooltip.value = { visible: false, text, shortcut: shortcut ?? '', x, y }
+  controlTooltipTimer = setTimeout(() => {
+    controlTooltip.value.visible = true
+  }, CONTROL_TOOLTIP_DELAY)
+}
+
+const updateOverlayPosition = (
+  anchorEl: HTMLElement | null,
+  overlayEl: HTMLElement | null,
+  styleRef: { value: Record<string, string> }
+): void => {
+  if (!containerRef.value || !anchorEl || !overlayEl) return
+
+  const containerRect = containerRef.value.getBoundingClientRect()
+  const anchorRect = anchorEl.getBoundingClientRect()
+  const overlayWidth = overlayEl.offsetWidth
+  const overlayHeight = overlayEl.offsetHeight
+  if (!overlayWidth || !overlayHeight) return
+
+  const padding = 8
+  const gap = 16
+ 
+
+  const left = clamp(
+    anchorRect.right - containerRect.left - overlayWidth,
+    padding,
+    containerRect.width - overlayWidth - padding
+  )
+
+  const top = clamp(
+    anchorRect.top - containerRect.top - overlayHeight - gap,
+    padding,
+    containerRect.height - overlayHeight - padding
+  )
+
+  styleRef.value = {
+    left: `${left}px`,
+    top: `${top}px`,
+    right: 'auto',
+    bottom: 'auto'
+  }
+}
+
+const getSettingsAnchor = (): HTMLElement | null => {
+  return controlsRightRef.value || settingsButtonRef.value
+}
+
+const updateSettingsPopupPosition = async (): Promise<void> => {
+  await nextTick()
+  const update = () => {
+    updateOverlayPosition(getSettingsAnchor(), settingsPopupRef.value, settingsPopupStyle)
+  }
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(update)
+  } else {
+    update()
+  }
+}
+
+watch(showSettingsMenu, async (open) => {
+  if (!open) {
+    settingsPopupStyle.value = {}
+    return
+  }
+  hideControlTooltip()
+  await updateSettingsPopupPosition()
+})
+
+watch(settingsView, async () => {
+  if (!showSettingsMenu.value) return
+  await updateSettingsPopupPosition()
+})
+
+const handleResize = (): void => {
+  hideControlTooltip()
+  if (showSettingsMenu.value) {
+    updateOverlayPosition(getSettingsAnchor(), settingsPopupRef.value, settingsPopupStyle)
+  }
+}
+
 
 const resolveErrorMessage = (err: PlayerUiError | null): string => {
   if (err?.message) return err.message
@@ -441,6 +715,17 @@ const isBuffering = computed(() => {
 
 const supportsPiP = computed(() => {
   return typeof document !== 'undefined' && 'pictureInPictureEnabled' in document
+})
+
+const lastSubtitleTrack = ref<SubtitleTrack | null>(null)
+
+watch(currentSubtitle, (track) => {
+  if (track) lastSubtitleTrack.value = track
+}, { immediate: true })
+
+const subtitlesStatusText = computed(() => {
+  if (!store.subtitlesEnabled || !currentSubtitle.value) return '关闭'
+  return currentSubtitle.value.label
 })
 
 const volumeIconName = computed(() => {
@@ -554,14 +839,16 @@ const isPointerInside = ref(false)
 
 const closeMenus = (): void => {
   showSettingsMenu.value = false
-  showSubtitlesMenu.value = false
+  hideControlTooltip()
 }
+
 
 const scheduleHideControls = (delay = 3000): void => {
   if (hideControlsTimer) clearTimeout(hideControlsTimer)
   hideControlsTimer = setTimeout(() => {
     if (!isPointerInside.value) return
     if (!isPlaying.value) return
+    if (isScrubbing.value) return
     store.setControlsVisible(false)
     closeMenus()
   }, delay)
@@ -582,11 +869,13 @@ const onPointerEnter = (): void => {
 }
 
 const onPointerLeave = (): void => {
+  if (isScrubbing.value) return
   isPointerInside.value = false
   if (hideControlsTimer) clearTimeout(hideControlsTimer)
   store.setControlsVisible(false)
   closeMenus()
 }
+
 
 const onPointerMove = (): void => {
   isPointerInside.value = true
@@ -612,23 +901,61 @@ const togglePlay = () => {
 }
 
 // 进度条交互
-const onProgressMouseDown = (e: MouseEvent) => {
+const updateProgressPreview = (e: PointerEvent): { percent: number; time: number } => {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  const percent = (e.clientX - rect.left) / rect.width
+  const percent = clamp((e.clientX - rect.left) / rect.width, 0, 1)
   const time = percent * duration.value
+
+  // 预览时间位置做边界限制，避免贴边溢出
+  previewPercent.value = clamp(percent * 100, 2, 98)
+  previewTime.value = time
+
+  return { percent, time }
+}
+
+const onProgressPointerDown = (e: PointerEvent) => {
+  hideControlTooltip()
+  isScrubbing.value = true
+  showControls()
+
+  const el = e.currentTarget as HTMLElement
+  if (typeof el.setPointerCapture === 'function') {
+    el.setPointerCapture(e.pointerId)
+  }
+
+  const { time } = updateProgressPreview(e)
   seek(time)
 }
 
-const onProgressMouseMove = (e: MouseEvent) => {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  const percent = (e.clientX - rect.left) / rect.width
-  previewPercent.value = percent * 100
-  previewTime.value = percent * duration.value
+const onProgressPointerMove = (e: PointerEvent) => {
+  const { time } = updateProgressPreview(e)
+  if (!duration.value) return
+
+  if (isScrubbing.value) {
+    showControls()
+    seek(time)
+  }
 }
 
-const onProgressMouseLeave = () => {
+const onProgressPointerLeave = () => {
+  if (isScrubbing.value) return
   previewTime.value = null
 }
+
+const onProgressPointerUp = (e?: PointerEvent) => {
+  if (!isScrubbing.value) return
+
+  if (e) {
+    const { time } = updateProgressPreview(e)
+    seek(time)
+  }
+
+  isScrubbing.value = false
+  setTimeout(() => {
+    if (!isScrubbing.value) previewTime.value = null
+  }, 250)
+}
+
 
 // 音量点击
 const onVolumeClick = (e: MouseEvent) => {
@@ -639,15 +966,40 @@ const onVolumeClick = (e: MouseEvent) => {
 
 // 菜单切换
 const toggleSettingsMenu = () => {
+  hideControlTooltip()
+  showControls()
   showSettingsMenu.value = !showSettingsMenu.value
-  showSubtitlesMenu.value = false
   settingsView.value = 'main'
 }
 
-const toggleSubtitlesMenu = () => {
-  showSubtitlesMenu.value = !showSubtitlesMenu.value
-  showSettingsMenu.value = false
+const toggleAutoplayNext = () => {
+  store.setAutoplayNext(!store.autoplayNext)
 }
+
+const toggleLoop = () => {
+  store.setLoop(!store.loop)
+}
+
+const toggleSubtitlesQuick = () => {
+  hideControlTooltip()
+  showControls()
+
+  if (subtitleTracks.value.length === 0) return
+
+  if (store.subtitlesEnabled) {
+    setSubtitle(null)
+    return
+  }
+
+  const track = lastSubtitleTrack.value || subtitleTracks.value[0] || null
+  if (track) setSubtitle(track)
+}
+
+const handleSubtitleSelect = (track: SubtitleTrack | null) => {
+  setSubtitle(track)
+  settingsView.value = 'main'
+}
+
 
 // 宽屏模式切换
 const toggleWidescreen = () => {
@@ -732,12 +1084,11 @@ const handleKeyDown = (e: KeyboardEvent) => {
       toggleFullscreen()
       break
     case 'c':
-      toggleSubtitles()
+      toggleSubtitlesQuick()
       break
     case 'Escape':
-      if (showSettingsMenu.value || showSubtitlesMenu.value) {
+      if (showSettingsMenu.value) {
         showSettingsMenu.value = false
-        showSubtitlesMenu.value = false
       } else if (isFullscreen.value) {
         toggleFullscreen()
       }
@@ -776,22 +1127,28 @@ const formatTime = (seconds: number): string => {
 
 // 点击外部关闭菜单
 const handleOutsideClick = (e: MouseEvent) => {
-  if (showSettingsMenu.value || showSubtitlesMenu.value) {
+  if (showSettingsMenu.value) {
     const target = e.target as HTMLElement
-    if (!target.closest('.sp-menu')) {
+    if (!target.closest('.sp-popup')) {
       showSettingsMenu.value = false
-      showSubtitlesMenu.value = false
     }
   }
 }
 
 onMounted(() => {
   document.addEventListener('click', handleOutsideClick)
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', handleResize)
+  }
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick)
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', handleResize)
+  }
   if (hideControlsTimer) clearTimeout(hideControlsTimer)
+  hideControlTooltip()
 })
 
 // 停止播放并重置状态
@@ -824,6 +1181,17 @@ defineExpose({
   color: var(--sp-text);
   overflow: hidden;
   user-select: none;
+  --sp-primary: #ff0000;
+  --sp-primary-hover: #ff3333;
+  --sp-primary-active: #cc0000;
+  --sp-primary-rgb: 255, 0, 0;
+  --sp-glow-primary: none;
+  --sp-menu-bg: rgba(28, 28, 28, 0.88);
+  --sp-controls-row-padding: 0 12px;
+  --sp-controls-group-bg: rgba(0, 0, 0, 0.55);
+  --sp-controls-group-padding: 0 6px;
+  --sp-controls-group-radius: 18px;
+  --sp-progress-radius: 0px;
 }
 
 /* 视频元素 */
@@ -844,31 +1212,34 @@ defineExpose({
   right: 0;
   bottom: 0;
   z-index: var(--sp-z-controls, 20);
-  padding: 0 14px 10px;
+  padding: 28px 0 8px;
   background: var(--sp-controls-bg);
-  padding-top: 40px;
+  text-shadow: var(--sp-text-shadow);
 }
 
 /* 进度条 */
 .sp-progress-container {
   position: relative;
-  padding: 10px 0 8px;
-  margin-bottom: 2px;
+  padding: 0 0 6px;
+  margin-bottom: 0;
 }
 
 .sp-progress {
   position: relative;
   height: var(--sp-progress-height);
   background: var(--sp-progress-bg);
-  border-radius: 1.5px;
+  border-radius: var(--sp-progress-radius);
   cursor: pointer;
+  touch-action: none;
   transition: height 0.1s ease, transform 0.1s ease;
 }
 
-.sp-progress:hover {
+.sp-progress:hover,
+.sp-progress--scrubbing {
   height: var(--sp-progress-height-hover);
   transform: translateY(-1px);
 }
+
 
 .sp-progress-buffered {
   position: absolute;
@@ -876,7 +1247,7 @@ defineExpose({
   left: 0;
   height: 100%;
   background: var(--sp-progress-buffered);
-  border-radius: inherit;
+  border-radius: var(--sp-progress-radius);
   transition: width 0.1s ease;
 }
 
@@ -886,25 +1257,28 @@ defineExpose({
   left: 0;
   height: 100%;
   background: var(--sp-progress-played);
-  border-radius: inherit;
+  border-radius: var(--sp-progress-radius);
   box-shadow: var(--sp-glow-primary);
 }
 
 .sp-progress-thumb {
   position: absolute;
   top: 50%;
-  width: 13px;
-  height: 13px;
+  width: var(--sp-progress-thumb-size);
+  height: var(--sp-progress-thumb-size);
   background: var(--sp-progress-thumb-color);
   border-radius: 50%;
   transform: translate(-50%, -50%) scale(0);
   transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--sp-shadow-sm);
+  pointer-events: none;
 }
 
-.sp-progress:hover .sp-progress-thumb {
+.sp-progress:hover .sp-progress-thumb,
+.sp-progress--scrubbing .sp-progress-thumb {
   transform: translate(-50%, -50%) scale(1);
 }
+
 
 .sp-progress-preview {
   position: absolute;
@@ -931,19 +1305,50 @@ defineExpose({
   border-top-color: var(--sp-tooltip-bg);
 }
 
+/* 控制按钮 Tooltip */
+.sp-tooltip--controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(-50%, -100%);
+}
+
+.sp-tooltip--controls::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--sp-tooltip-bg);
+}
+
+.sp-tooltip-shortcut {
+  color: var(--sp-text-secondary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.4px;
+}
+
 /* 控制按钮行 */
 .sp-controls-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 40px;
+  padding: var(--sp-controls-row-padding);
 }
 
 .sp-controls-left,
 .sp-controls-right {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
+  padding: var(--sp-controls-group-padding);
+  background: var(--sp-controls-group-bg);
+  border-radius: var(--sp-controls-group-radius);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* 按钮 */
@@ -951,11 +1356,11 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--sp-btn-size);
+  height: var(--sp-btn-size);
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--sp-radius-full);
   background: transparent;
   color: var(--sp-text-strong);
   cursor: pointer;
@@ -969,7 +1374,12 @@ defineExpose({
 
 .sp-btn:active {
   background: var(--sp-btn-active-bg);
-  transform: scale(0.92);
+  transform: scale(0.94);
+}
+
+.sp-btn--toggled {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--sp-text);
 }
 
 .sp-btn:focus-visible {
@@ -978,21 +1388,23 @@ defineExpose({
 }
 
 .sp-btn--play {
-  width: 40px;
-  height: 40px;
+  width: var(--sp-btn-size);
+  height: var(--sp-btn-size);
 }
 
 .sp-btn svg,
 .sp-btn .sp-icon {
-  width: 22px;
-  height: 22px;
+  width: var(--sp-btn-icon-size);
+  height: var(--sp-btn-icon-size);
+  filter: drop-shadow(var(--sp-drop-shadow-sm));
 }
 
 .sp-btn--play svg,
 .sp-btn--play .sp-icon {
-  width: 26px;
-  height: 26px;
+  width: var(--sp-btn-icon-size-lg);
+  height: var(--sp-btn-icon-size-lg);
 }
+
 
 /* 音量 */
 .sp-volume {
@@ -1003,15 +1415,24 @@ defineExpose({
 
 .sp-volume-slider {
   position: relative;
-  width: 70px;
+  width: 0;
   height: 3px;
+  margin-left: 0;
   background: var(--sp-progress-bg);
   border-radius: 1.5px;
   cursor: pointer;
-  transition: height 0.1s ease;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: width 0.18s ease, opacity 0.18s ease, height 0.1s ease, margin-left 0.18s ease;
 }
 
-.sp-volume:hover .sp-volume-slider {
+.sp-volume:hover .sp-volume-slider,
+.sp-volume:focus-within .sp-volume-slider {
+  width: 70px;
+  margin-left: 6px;
+  opacity: 1;
+  pointer-events: auto;
   height: 4px;
 }
 
@@ -1037,9 +1458,11 @@ defineExpose({
   box-shadow: var(--sp-shadow-sm);
 }
 
-.sp-volume:hover .sp-volume-slider-fill::after {
+.sp-volume:hover .sp-volume-slider-fill::after,
+.sp-volume:focus-within .sp-volume-slider-fill::after {
   transform: translate(50%, -50%) scale(1);
 }
+
 
 /* 时间 */
 .sp-time {
@@ -1049,7 +1472,7 @@ defineExpose({
   font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
   color: var(--sp-text-strong);
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 .sp-time-current {
@@ -1069,24 +1492,32 @@ defineExpose({
 .sp-popup {
   position: absolute;
   right: 12px;
-  bottom: 56px;
-  min-width: 200px;
-  background: var(--sp-menu-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 10px;
-  box-shadow: var(--sp-shadow-lg);
-  overflow: hidden;
+  bottom: 64px;
+  min-width: 300px;
   z-index: var(--sp-z-menu, 30);
+  transform-origin: bottom right;
 }
+
+.sp-popup-surface {
+  padding: 6px;
+  background: var(--sp-menu-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
 
 .sp-popup-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   width: 100%;
-  padding: 11px 14px;
+  min-height: 40px;
+  padding: 10px 12px;
   border: none;
+  border-radius: 10px;
   background: transparent;
   color: var(--sp-text-strong);
   font-size: var(--font-size-xs);
@@ -1096,22 +1527,92 @@ defineExpose({
 }
 
 .sp-popup-item:hover {
-  background: var(--sp-bg-hover);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sp-popup-item-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-popup-item-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--sp-text-secondary);
+  flex-shrink: 0;
+}
+
+.sp-popup-item-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-popup-item-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .sp-popup-value {
-  color: var(--sp-text-tertiary);
+  color: var(--sp-text-secondary);
   font-size: var(--font-size-xs);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+.sp-popup-chevron {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.sp-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.sp-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  transition: transform 0.15s ease;
+}
+
+.sp-switch--on {
+  /* Follow the player's accent color (which is mapped to project tokens via --sp-primary-*) */
+  background: rgba(var(--sp-primary-rgb, 255, 0, 0), 0.85);
+}
+
+.sp-switch--on::after {
+  transform: translateX(16px);
+}
+
 
 .sp-popup-back {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 11px 14px;
+  min-height: 40px;
+  padding: 10px 12px;
   border: none;
-  border-bottom: 1px solid var(--sp-border);
+  border-radius: 10px;
+  margin-bottom: 6px;
   background: transparent;
   color: var(--sp-text);
   font-size: var(--font-size-xs);
@@ -1122,19 +1623,26 @@ defineExpose({
 }
 
 .sp-popup-back:hover {
-  background: var(--sp-bg-hover);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .sp-popup-back svg {
-  width: 16px;
-  height: 16px;
-  opacity: 0.7;
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
 }
 
 .sp-popup-list {
-  max-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 360px;
   overflow-y: auto;
-  padding: 6px 0;
+  padding: 0;
+}
+
+.sp-popup-list--main {
+  max-height: 360px;
 }
 
 .sp-popup-list::-webkit-scrollbar {
@@ -1151,8 +1659,10 @@ defineExpose({
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 9px 14px;
+  min-height: 40px;
+  padding: 10px 12px;
   border: none;
+  border-radius: 10px;
   background: transparent;
   color: var(--sp-text-secondary);
   font-size: var(--font-size-xs);
@@ -1162,7 +1672,7 @@ defineExpose({
 }
 
 .sp-popup-option:hover {
-  background: var(--sp-bg-hover);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--sp-text);
 }
 
@@ -1182,93 +1692,7 @@ defineExpose({
 }
 
 .sp-popup-option:not(.active) {
-  padding-left: 38px;
-}
-
-/* 字幕菜单 */
-.sp-menu {
-  position: absolute;
-  right: 12px;
-  bottom: 56px;
-  min-width: 180px;
-  max-height: 260px;
-  overflow-y: auto;
-  padding: 6px 0;
-  background: var(--sp-menu-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 10px;
-  box-shadow: var(--sp-shadow-lg);
-  z-index: var(--sp-z-menu, 30);
-}
-
-.sp-menu::-webkit-scrollbar {
-  width: 4px;
-}
-
-.sp-menu::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sp-menu::-webkit-scrollbar-thumb {
-  background: var(--sp-border);
-  border-radius: 2px;
-}
-
-.sp-menu-section {
-  padding: 0;
-}
-
-.sp-menu-label {
-  padding: 8px 14px 6px;
-  font-size: var(--font-size-3xs);
-  font-weight: 600;
-  color: var(--sp-text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.sp-quality-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.sp-menu-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 14px;
-  border: none;
-  background: transparent;
-  color: var(--sp-text-secondary);
-  font-size: var(--font-size-xs);
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-
-.sp-menu-item:hover {
-  background: var(--sp-bg-hover);
-  color: var(--sp-text);
-}
-
-.sp-menu-item--active {
-  color: var(--sp-text);
-}
-
-.sp-menu-item-text {
-  flex: 1;
-}
-
-.sp-menu-item-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--sp-primary);
-  flex-shrink: 0;
-  box-shadow: var(--sp-glow-primary);
+  padding-left: 36px;
 }
 
 /* 加载/缓冲 */
@@ -1287,32 +1711,32 @@ defineExpose({
   pointer-events: none;
 }
 
-.sp-yt-loading {
+.sp-loading--stacked {
   flex-direction: column;
   gap: 12px;
   text-align: center;
 }
 
-.sp-yt-loading--buffering {
+.sp-loading--buffering {
   gap: 0;
 }
 
-.sp-yt-spinner {
-  --sp-yt-spinner-radius: 18px;
-  --sp-yt-spinner-radius-neg: -18px;
+.sp-spinner {
+  --sp-spinner-radius: 18px;
+  --sp-spinner-radius-neg: -18px;
   position: relative;
   width: 46px;
   height: 46px;
 }
 
-.sp-yt-loading--buffering .sp-yt-spinner {
-  --sp-yt-spinner-radius: 14px;
-  --sp-yt-spinner-radius-neg: -14px;
+.sp-loading--buffering .sp-spinner {
+  --sp-spinner-radius: 14px;
+  --sp-spinner-radius-neg: -14px;
   width: 36px;
   height: 36px;
 }
 
-.sp-yt-spinner-seg {
+.sp-spinner-seg {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1321,25 +1745,25 @@ defineExpose({
   background: var(--sp-text);
   border-radius: 999px;
   opacity: 0.9;
-  animation: sp-yt-spinner-fade 1.2s linear infinite;
+  animation: sp-spinner-fade 1.2s linear infinite;
 }
 
-.sp-yt-loading--buffering .sp-yt-spinner-seg {
+.sp-loading--buffering .sp-spinner-seg {
   height: 10px;
 }
 
-.sp-yt-spinner-seg:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -1.1s; }
-.sp-yt-spinner-seg:nth-child(2) { transform: translate(-50%, -50%) rotate(30deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -1s; }
-.sp-yt-spinner-seg:nth-child(3) { transform: translate(-50%, -50%) rotate(60deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.9s; }
-.sp-yt-spinner-seg:nth-child(4) { transform: translate(-50%, -50%) rotate(90deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.8s; }
-.sp-yt-spinner-seg:nth-child(5) { transform: translate(-50%, -50%) rotate(120deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.7s; }
-.sp-yt-spinner-seg:nth-child(6) { transform: translate(-50%, -50%) rotate(150deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.6s; }
-.sp-yt-spinner-seg:nth-child(7) { transform: translate(-50%, -50%) rotate(180deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.5s; }
-.sp-yt-spinner-seg:nth-child(8) { transform: translate(-50%, -50%) rotate(210deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.4s; }
-.sp-yt-spinner-seg:nth-child(9) { transform: translate(-50%, -50%) rotate(240deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.3s; }
-.sp-yt-spinner-seg:nth-child(10) { transform: translate(-50%, -50%) rotate(270deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.2s; }
-.sp-yt-spinner-seg:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: -0.1s; }
-.sp-yt-spinner-seg:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(var(--sp-yt-spinner-radius-neg)); animation-delay: 0s; }
+.sp-spinner-seg:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -1.1s; }
+.sp-spinner-seg:nth-child(2) { transform: translate(-50%, -50%) rotate(30deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -1s; }
+.sp-spinner-seg:nth-child(3) { transform: translate(-50%, -50%) rotate(60deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.9s; }
+.sp-spinner-seg:nth-child(4) { transform: translate(-50%, -50%) rotate(90deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.8s; }
+.sp-spinner-seg:nth-child(5) { transform: translate(-50%, -50%) rotate(120deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.7s; }
+.sp-spinner-seg:nth-child(6) { transform: translate(-50%, -50%) rotate(150deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.6s; }
+.sp-spinner-seg:nth-child(7) { transform: translate(-50%, -50%) rotate(180deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.5s; }
+.sp-spinner-seg:nth-child(8) { transform: translate(-50%, -50%) rotate(210deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.4s; }
+.sp-spinner-seg:nth-child(9) { transform: translate(-50%, -50%) rotate(240deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.3s; }
+.sp-spinner-seg:nth-child(10) { transform: translate(-50%, -50%) rotate(270deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.2s; }
+.sp-spinner-seg:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.1s; }
+.sp-spinner-seg:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: 0s; }
 
 .sp-loading-text {
   font-size: var(--font-size-xs);
@@ -1348,7 +1772,7 @@ defineExpose({
   text-shadow: var(--sp-text-shadow);
 }
 
-@keyframes sp-yt-spinner-fade {
+@keyframes sp-spinner-fade {
   0% { opacity: 1; }
   100% { opacity: 0.2; }
 }
@@ -1366,11 +1790,11 @@ defineExpose({
   background: rgba(0, 0, 0, 0.82);
 }
 
-.sp-yt-error {
+.sp-error-overlay--centered {
   text-align: center;
 }
 
-.sp-yt-error-panel {
+.sp-error-panel {
   max-width: 520px;
   display: flex;
   flex-direction: column;
@@ -1379,32 +1803,32 @@ defineExpose({
   color: var(--sp-text);
 }
 
-.sp-yt-error-title {
+.sp-error-title {
   font-size: var(--font-size-md);
   font-weight: 600;
   letter-spacing: 0.2px;
 }
 
-.sp-yt-error-message {
+.sp-error-message {
   font-size: var(--font-size-xs);
   color: var(--sp-text-secondary);
   line-height: 1.5;
   max-width: 420px;
 }
 
-.sp-yt-error-code {
+.sp-error-code {
   font-size: var(--font-size-2xs);
   color: var(--sp-text-tertiary);
   letter-spacing: 0.3px;
 }
 
-.sp-yt-error-actions {
+.sp-error-actions {
   margin-top: 8px;
   display: flex;
   justify-content: center;
 }
 
-.sp-yt-error-btn {
+.sp-error-btn {
   height: 32px;
   padding: 0 14px;
   border-radius: 2px;
@@ -1417,12 +1841,12 @@ defineExpose({
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.sp-yt-error-btn:hover {
+.sp-error-btn:hover {
   background: rgba(255, 255, 255, 0.18);
   border-color: rgba(255, 255, 255, 0.35);
 }
 
-.sp-yt-error-btn:active {
+.sp-error-btn:active {
   background: rgba(255, 255, 255, 0.28);
 }
 
@@ -1482,5 +1906,16 @@ defineExpose({
 .sp-slide-leave-to {
   transform: translateY(8px);
   opacity: 0;
+}
+
+.sp-overlay-enter-active,
+.sp-overlay-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.sp-overlay-enter-from,
+.sp-overlay-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
 }
 </style>
