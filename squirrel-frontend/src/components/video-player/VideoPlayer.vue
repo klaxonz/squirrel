@@ -13,8 +13,10 @@
   >
     <!-- 加载状态 -->
     <div v-if="store.loading && store.loadingStage !== 'buffering' && !errorState.show" class="sp-loading sp-loading--stacked" role="status" aria-live="polite">
-      <div class="sp-spinner" aria-hidden="true">
-        <span v-for="n in 12" :key="`loading-${n}`" class="sp-spinner-seg"></span>
+      <div class="sp-spinner-arc" aria-hidden="true">
+        <svg class="sp-spinner-arc-svg" viewBox="0 0 100 100" focusable="false">
+          <circle class="sp-spinner-arc-circle" cx="50" cy="50" r="42" />
+        </svg>
       </div>
       <div class="sp-loading-text">{{ store.loadingStatusText }}</div>
     </div>
@@ -38,8 +40,10 @@
 
     <!-- 缓冲指示器 -->
     <div v-if="isBuffering && !errorState.show" class="sp-buffering sp-loading--stacked sp-loading--buffering" role="status" aria-live="polite">
-      <div class="sp-spinner" aria-hidden="true">
-        <span v-for="n in 12" :key="`buffer-${n}`" class="sp-spinner-seg"></span>
+      <div class="sp-spinner-arc" aria-hidden="true">
+        <svg class="sp-spinner-arc-svg" viewBox="0 0 100 100" focusable="false">
+          <circle class="sp-spinner-arc-circle" cx="50" cy="50" r="42" />
+        </svg>
       </div>
     </div>
 
@@ -1721,49 +1725,43 @@ defineExpose({
   gap: 0;
 }
 
-.sp-spinner {
-  --sp-spinner-radius: 18px;
-  --sp-spinner-radius-neg: -18px;
-  position: relative;
-  width: 46px;
-  height: 46px;
+/* YouTube-like buffering spinner (single arc, no base ring) */
+.sp-spinner-arc {
+  --sp-spinner-size: 44px;
+  --sp-spinner-stroke: 7px;
+  width: var(--sp-spinner-size);
+  height: var(--sp-spinner-size);
+  filter: drop-shadow(var(--sp-drop-shadow-sm));
 }
 
-.sp-loading--buffering .sp-spinner {
-  --sp-spinner-radius: 14px;
-  --sp-spinner-radius-neg: -14px;
-  width: 36px;
-  height: 36px;
+.sp-loading--buffering .sp-spinner-arc {
+  --sp-spinner-size: 34px;
+  --sp-spinner-stroke: 6px;
 }
 
-.sp-spinner-seg {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 4px;
-  height: 12px;
-  background: var(--sp-text);
-  border-radius: 999px;
-  opacity: 0.9;
-  animation: sp-spinner-fade 1.2s linear infinite;
+.sp-spinner-arc-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  animation: sp-spinner-arc-spin 0.9s linear infinite;
 }
 
-.sp-loading--buffering .sp-spinner-seg {
-  height: 10px;
+.sp-spinner-arc-circle {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: var(--sp-spinner-stroke);
+  stroke-linecap: round;
+  /* arc length + gap to match YouTube look */
+  stroke-dasharray: 168 96;
+  stroke-dashoffset: 0;
+  transform-origin: 50px 50px;
 }
 
-.sp-spinner-seg:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -1.1s; }
-.sp-spinner-seg:nth-child(2) { transform: translate(-50%, -50%) rotate(30deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -1s; }
-.sp-spinner-seg:nth-child(3) { transform: translate(-50%, -50%) rotate(60deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.9s; }
-.sp-spinner-seg:nth-child(4) { transform: translate(-50%, -50%) rotate(90deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.8s; }
-.sp-spinner-seg:nth-child(5) { transform: translate(-50%, -50%) rotate(120deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.7s; }
-.sp-spinner-seg:nth-child(6) { transform: translate(-50%, -50%) rotate(150deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.6s; }
-.sp-spinner-seg:nth-child(7) { transform: translate(-50%, -50%) rotate(180deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.5s; }
-.sp-spinner-seg:nth-child(8) { transform: translate(-50%, -50%) rotate(210deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.4s; }
-.sp-spinner-seg:nth-child(9) { transform: translate(-50%, -50%) rotate(240deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.3s; }
-.sp-spinner-seg:nth-child(10) { transform: translate(-50%, -50%) rotate(270deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.2s; }
-.sp-spinner-seg:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: -0.1s; }
-.sp-spinner-seg:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(var(--sp-spinner-radius-neg)); animation-delay: 0s; }
+@media (prefers-reduced-motion: reduce) {
+  .sp-spinner-arc-svg {
+    animation-duration: 2.7s;
+  }
+}
 
 .sp-loading-text {
   font-size: var(--font-size-xs);
@@ -1772,9 +1770,8 @@ defineExpose({
   text-shadow: var(--sp-text-shadow);
 }
 
-@keyframes sp-spinner-fade {
-  0% { opacity: 1; }
-  100% { opacity: 0.2; }
+@keyframes sp-spinner-arc-spin {
+  to { transform: rotate(360deg); }
 }
 
 
