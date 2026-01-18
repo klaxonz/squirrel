@@ -717,9 +717,39 @@ const playbackRates = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 // 计算属性
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
 
+const pendingResume = ref<{ videoId: string; time: number } | null>(null)
+
+const queueResume = (videoId: string | number | undefined, time: number): void => {
+  if (!videoId || !time || time <= 0) return
+  pendingResume.value = { videoId: String(videoId), time }
+  attemptResume()
+}
+
+const attemptResume = (): void => {
+  const pending = pendingResume.value
+  const media = videoRef.value
+  if (!pending || !media) return
+  const currentId = String((props.video as any)?.id ?? '')
+  if (pending.videoId && currentId && pending.videoId !== currentId) return
+  if (!duration.value || !isFinite(duration.value) || media.readyState < 1) return
+  const maxTime = Math.max(0, duration.value - 0.5)
+  const safeTime = clamp(pending.time, 0, maxTime)
+  if (safeTime <= 0) {
+    pendingResume.value = null
+    return
+  }
+  seek(safeTime)
+  pendingResume.value = null
+}
+
+watch(duration, () => {
+  attemptResume()
+})
+
 const isBuffering = computed(() => {
   return store.loading && store.loadingStage === 'buffering' && store.hasStartedPlayback
 })
+
 
 const displayedQualityLabel = computed(() => {
   const byId = currentQualityId.value !== null
@@ -752,9 +782,17 @@ const volumeIconName = computed(() => {
 })
 
 // 同步 refs - 使用 immediate 确保初始值同步
-watch(videoRef, (el) => {
+watch(videoRef, (el, oldEl) => {
+  if (oldEl) {
+    oldEl.removeEventListener('loadedmetadata', attemptResume)
+  }
   videoElement.value = el
+  if (el) {
+    el.addEventListener('loadedmetadata', attemptResume)
+    attemptResume()
+  }
 }, { immediate: true })
+
 
 watch(containerRef, (el) => {
   containerElement.value = el
@@ -833,21 +871,22 @@ watch(
       setSubtitleTracks(subtitles)
     }
     
-    // 恢复播放位置
+  // 恢复播放位置
     const videoId = (video as any).id
     if (props.initialTime > 0) {
       await nextTick()
-      seek(props.initialTime)
+      queueResume(videoId, props.initialTime)
     } else if (videoId) {
       const savedTime = await loadProgress(videoId)
       if (savedTime && savedTime > 0) {
         await nextTick()
-        seek(savedTime)
+        queueResume(videoId, savedTime)
       }
     }
   },
   { immediate: true, deep: true }
 )
+
 
 
 // 控制栏显示/隐藏
@@ -1217,9 +1256,13 @@ onUnmounted(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', handleResize)
   }
+  if (videoRef.value) {
+    videoRef.value.removeEventListener('loadedmetadata', attemptResume)
+  }
   if (hideControlsTimer) clearTimeout(hideControlsTimer)
   hideControlTooltip()
 })
+
 
 // 停止播放并重置状态
 const stop = () => {
