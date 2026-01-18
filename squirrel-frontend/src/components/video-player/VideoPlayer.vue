@@ -1311,14 +1311,14 @@ defineExpose({
   border-radius: var(--sp-progress-radius);
   cursor: pointer;
   touch-action: none;
-  transition: height 0.1s ease, transform 0.1s ease;
+  transition: height 0.1s ease;
 }
 
 .sp-progress:hover,
 .sp-progress--scrubbing {
   height: var(--sp-progress-height-hover);
-  transform: translateY(-1px);
 }
+
 
 
 .sp-progress-buffered {
