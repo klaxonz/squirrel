@@ -194,9 +194,16 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const { t, locale, setLocale } = useI18n({ locale: initialLocale as any })
 
   // ===== 适配器 =====
-  const { config, saveProgress: adapterSaveProgress, loadProgress: adapterLoadProgress } = usePlayerAdapter({
-    autoLoadConfig: true
+  const {
+    config,
+    loadConfig: adapterLoadConfig,
+    saveConfig: adapterSaveConfig,
+    saveProgress: adapterSaveProgress,
+    loadProgress: adapterLoadProgress
+  } = usePlayerAdapter({
+    autoLoadConfig: false
   })
+
 
   // ===== 控制栏布局 =====
   const controlsLayout = useControlsLayout({ layout: 'default' })
@@ -319,9 +326,18 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   const setVolume = (vol: number): void => {
     const v = Math.max(0, Math.min(100, vol))
+    const shouldUnmute = v > 0 && store.muted
+
     store.setVolume(v)
+    if (shouldUnmute) {
+      store.setMuted(false)
+    }
+
     if (videoElement.value) {
       videoElement.value.volume = v / 100
+      if (shouldUnmute) {
+        videoElement.value.muted = false
+      }
     }
     events.emit('volumechange', { volume: v / 100, muted: store.muted })
   }
@@ -341,6 +357,27 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     }
     events.emit('ratechange', rate)
   }
+
+  const syncMediaElementSettings = (el: HTMLVideoElement | null): void => {
+    if (!el) return
+    el.volume = store.volume / 100
+    el.muted = store.muted
+    el.playbackRate = store.playbackRate
+  }
+
+  const applyConfigFromAdapter = (): void => {
+    const hasVolume = config.value.volume !== undefined
+    const hasMuted = config.value.muted !== undefined
+    const hasPlaybackRate = config.value.playbackRate !== undefined
+
+    if (!hasVolume && !hasMuted && !hasPlaybackRate) return
+
+    if (hasVolume) store.setVolume(config.value.volume as number)
+    if (hasMuted) store.setMuted(config.value.muted as boolean)
+    if (hasPlaybackRate) store.setPlaybackRate(config.value.playbackRate as number)
+  }
+
+
 
   const setQuality = (quality: string): void => {
     currentQuality.value = quality
@@ -674,9 +711,13 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     })
 
     video.addEventListener('volumechange', () => {
-      store.setVolume(video.volume * 100)
+      const volumeValue = video.volume * 100
+      store.setVolume(volumeValue)
       store.setMuted(video.muted)
+      adapterSaveConfig({ volume: volumeValue, muted: video.muted })
+      events.emit('volumechange', { volume: volumeValue / 100, muted: video.muted })
     })
+
 
     video.addEventListener('waiting', () => {
       store.setLoading(true, 'buffering')
@@ -732,10 +773,8 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     store.setVolume(volume)
     store.setLoop(loop)
 
-    // 应用适配器配置
-    if (config.value.volume !== undefined) store.setVolume(config.value.volume)
-    if (config.value.muted !== undefined) store.setMuted(config.value.muted)
-    if (config.value.playbackRate !== undefined) store.setPlaybackRate(config.value.playbackRate)
+    await adapterLoadConfig()
+    applyConfigFromAdapter()
 
     // 初始化插件
     await initPlugins()
@@ -748,6 +787,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       setupVideoListeners()
     }
   })
+
 
   onUnmounted(() => {
     // 保存进度
@@ -763,6 +803,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   watch(videoElement, async (el) => {
     if (el) {
       setupVideoListeners()
+      syncMediaElementSettings(el)
       
       // 如果插件已准备好但有待处理的源，现在加载它
       if (isReady.value && pendingSource) {
@@ -772,12 +813,16 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     }
   })
 
+
   // ===== 销毁 =====
+
+
   const destroy = (): void => {
     saveProgress()
     pluginManager.destroy()
     events.destroy()
   }
+
 
   return {
     store,

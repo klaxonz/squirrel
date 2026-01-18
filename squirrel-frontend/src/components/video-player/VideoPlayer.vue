@@ -970,7 +970,9 @@ const onVolumeClick = (e: MouseEvent) => {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
   const percent = (e.clientX - rect.left) / rect.width
   setVolume(percent * 100)
+  showVolumeIndicator()
 }
+
 
 // 菜单切换
 const toggleSettingsMenu = () => {
