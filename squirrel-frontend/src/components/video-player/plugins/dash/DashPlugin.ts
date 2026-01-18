@@ -48,7 +48,7 @@ export class DashPlugin implements PlayerPlugin {
     this.options = {
       maxRetries: 3,
       retryInterval: 3000,
-      enableAutoQuality: true,
+      enableAutoQuality: false,
       ...options
     }
   }
@@ -201,13 +201,30 @@ export class DashPlugin implements PlayerPlugin {
 
     try {
       const bitrateList = (this.player as any).getBitrateInfoListFor?.('video') || []
-      return bitrateList.map((info: any, index: number) => ({
+      const qualities = bitrateList.map((info: any, index: number) => ({
         id: index,
         label: info.height ? `${info.height}p` : `${Math.round(info.bitrate / 1000)}kbps`,
         width: info.width,
         height: info.height,
         bitrate: info.bitrate
       }))
+
+      const heightCounts = new Map<number, number>()
+      qualities.forEach((q) => {
+        const height = q.height || 0
+        heightCounts.set(height, (heightCounts.get(height) || 0) + 1)
+      })
+
+      qualities.forEach((q) => {
+        if (!q.height) return
+        const count = heightCounts.get(q.height) || 0
+        if (count > 1 && q.bitrate) {
+          const kbps = Math.round(q.bitrate / 1000)
+          q.label = `${q.height}p ${kbps}kbps`
+        }
+      })
+
+      return qualities
     } catch {
       return []
     }
@@ -224,16 +241,13 @@ export class DashPlugin implements PlayerPlugin {
     // 按高度降序排列
     qualities.sort((a, b) => (b.height || 0) - (a.height || 0))
 
-    // 添加自动选项
-    if (this.options.enableAutoQuality) {
-      qualities.unshift({
-        id: 'auto',
-        label: '自动'
-      })
-    }
 
     this.context.registerQualities(qualities)
     this.context.emit('qualitiesloaded', qualities)
+
+    if (!this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
+      this.context.setQuality(qualities[0].label)
+    }
   }
 
   /**

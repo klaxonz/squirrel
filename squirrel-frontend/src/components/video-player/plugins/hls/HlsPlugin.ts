@@ -62,7 +62,7 @@ export class HlsPlugin implements PlayerPlugin {
     this.options = {
       maxRetries: 3,
       retryInterval: 3000,
-      enableAutoQuality: true,
+      enableAutoQuality: false,
       ...options
     }
   }
@@ -191,36 +191,43 @@ export class HlsPlugin implements PlayerPlugin {
   private updateQualities(levels: Level[]): void {
     if (!this.context || !levels.length) return
 
-    const qualities: QualityLevel[] = []
-    const seen = new Set<string>()
+    const qualities: QualityLevel[] = levels.map((level, index) => ({
+      id: index,
+      label: level.height ? `${level.height}p` : `Level ${index}`,
+      width: level.width,
+      height: level.height,
+      bitrate: level.bitrate
+    }))
 
-    levels.forEach((level, index) => {
-      const id = level.height ? `${level.height}p` : `level_${index}`
-      if (seen.has(id)) return
-      seen.add(id)
-
-      qualities.push({
-        id: index,
-        label: level.height ? `${level.height}p` : `Level ${index}`,
-        width: level.width,
-        height: level.height,
-        bitrate: level.bitrate
-      })
+    const heightCounts = new Map<number, number>()
+    qualities.forEach((q) => {
+      const height = q.height || 0
+      heightCounts.set(height, (heightCounts.get(height) || 0) + 1)
     })
 
-    // 按高度降序排列
-    qualities.sort((a, b) => (b.height || 0) - (a.height || 0))
+    qualities.forEach((q) => {
+      if (!q.height) return
+      const count = heightCounts.get(q.height) || 0
+      if (count > 1 && q.bitrate) {
+        const kbps = Math.round(q.bitrate / 1000)
+        q.label = `${q.height}p ${kbps}kbps`
+      }
+    })
 
-    // 添加自动选项
-    if (this.options.enableAutoQuality) {
-      qualities.unshift({
-        id: 'auto',
-        label: '自动'
-      })
-    }
+    // 按高度、带宽降序排列
+    qualities.sort((a, b) => {
+      const heightDelta = (b.height || 0) - (a.height || 0)
+      if (heightDelta !== 0) return heightDelta
+      return (b.bitrate || 0) - (a.bitrate || 0)
+    })
+
 
     this.context.registerQualities(qualities)
     this.context.emit('qualitiesloaded', qualities)
+
+    if (!this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
+      this.context.setQuality(qualities[0].label)
+    }
   }
 
   /**
@@ -280,6 +287,8 @@ export class HlsPlugin implements PlayerPlugin {
       console.log('[HlsPlugin] Quality set to auto')
       return
     }
+
+    this.hls.autoLevelEnabled = false
 
     const levels = this.hls.levels || []
     let targetLevel = -1

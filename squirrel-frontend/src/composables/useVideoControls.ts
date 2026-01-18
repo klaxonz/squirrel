@@ -77,7 +77,10 @@ export default function useVideoControls(
         
         // 去重
         const uniq: Record<string, QualityOption> = {}
-        mapped.forEach(q => { uniq[q.value] = q })
+        mapped.forEach(q => {
+          const key = `${q.value || ''}|${q.bandwidth || ''}`
+          uniq[key] = q
+        })
         
         const arr = Object.values(uniq)
         // 按高度排序（高到低）

@@ -304,13 +304,13 @@
               <ChevronRightIcon class="sp-popup-chevron" />
             </span>
           </button>
-          <button class="sp-popup-item sp-popup-item--submenu" @click="settingsView = 'quality'">
+          <button v-if="qualities.length > 0" class="sp-popup-item sp-popup-item--submenu" @click="settingsView = 'quality'">
             <span class="sp-popup-item-main">
               <PlayerIcon class="sp-popup-item-icon" name="quality" />
               <span class="sp-popup-item-label">{{ t('quality') }}</span>
             </span>
             <span class="sp-popup-item-meta">
-              <span class="sp-popup-value">{{ !currentQuality || currentQuality === 'auto' ? t('qualityAuto') : currentQuality }}</span>
+              <span class="sp-popup-value">{{ currentQuality || '' }}</span>
               <ChevronRightIcon class="sp-popup-chevron" />
             </span>
           </button>
@@ -344,14 +344,6 @@
             <span>{{ t('quality') }}</span>
           </button>
           <div class="sp-popup-list">
-            <button
-              class="sp-popup-option"
-              :class="{ active: !currentQuality || currentQuality === 'auto' || currentQuality === 'Auto' }"
-              @click="handleQualitySelect({ id: 'auto', label: 'auto' })"
-            >
-              <CheckIcon v-if="!currentQuality || currentQuality === 'auto' || currentQuality === 'Auto'" class="sp-check" />
-              <span>{{ t('qualityAuto') }}</span>
-            </button>
             <button
               v-for="q in qualities"
               :key="q.id"
@@ -527,6 +519,7 @@ const {
   destroy
 } = usePlayer({
   autoplay: props.autoplay,
+  video: computed(() => props.video),
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
   onEnded: () => emit('ended', { autoplay: store.autoplay, autoplayNext: store.autoplayNext, loop: store.loop }),

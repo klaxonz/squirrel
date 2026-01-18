@@ -102,7 +102,7 @@ class BilibiliHandler:
                     })
 
             if index_meta:
-                sorted_meta = sorted(index_meta, key=lambda m: (m['height'], m['bandwidth']))
+                sorted_meta = sorted(index_meta, key=lambda m: (m['height'], m['bandwidth']), reverse=True)
                 id_to_index = {m['id']: idx for idx, m in enumerate(sorted_meta)}
 
             best_video_stream = max(video_streams, key=lambda x: x.get('bandwidth', 0))
@@ -112,34 +112,49 @@ class BilibiliHandler:
             best_audio_stream = max(audio_streams, key=lambda x: x.get('bandwidth', 0))
             best_audio_url = _base_url(best_audio_stream)
 
-        if not qualities:
-            qualities = []
-        else:
-            def sort_key(q: dict):
-                return (q.get('height') or 0, q.get('bandwidth') or 0)
+            if not qualities:
+                qualities = []
+            else:
+                def sort_key(q: dict):
+                    return (q.get('height') or 0, q.get('bandwidth') or 0)
 
-            uniq: dict[str, dict] = {}
-            for q in qualities:
-                key = q['label']
-                existing = uniq.get(key)
-                if not existing:
-                    uniq[key] = q
-                else:
-                    prev_id = existing.get('id')
-                    new_id = q.get('id')
-                    prev_idx = id_to_index.get(prev_id) if prev_id is not None else -1
-                    new_idx = id_to_index.get(new_id) if new_id is not None else -1
-                    if new_idx > prev_idx:
+                height_counts: dict[int, int] = {}
+                for q in qualities:
+                    height = q.get('height') or 0
+                    height_counts[height] = height_counts.get(height, 0) + 1
+
+                for q in qualities:
+                    height = q.get('height')
+                    if not height:
+                        continue
+                    if height_counts.get(height, 0) > 1 and q.get('bandwidth'):
+                        kbps = int((q.get('bandwidth') or 0) / 1000)
+                        q['label'] = f"{height}p {kbps}kbps"
+                        q['value'] = q['label']
+
+                uniq: dict[str, dict] = {}
+                for q in qualities:
+                    key = f"{q.get('height') or ''}|{q.get('bandwidth') or ''}"
+                    existing = uniq.get(key)
+                    if not existing:
                         uniq[key] = q
+                    else:
+                        prev_id = existing.get('id')
+                        new_id = q.get('id')
+                        prev_idx = id_to_index.get(prev_id) if prev_id is not None else -1
+                        new_idx = id_to_index.get(new_id) if new_id is not None else -1
+                        if (new_idx or -1) > (prev_idx or -1):
+                            uniq[key] = q
 
-            qualities = list(uniq.values())
+                qualities = list(uniq.values())
 
-            for q in qualities:
-                vid = q.get('id')
-                if vid is not None and vid in id_to_index:
-                    q['index'] = id_to_index[vid]
+                for q in qualities:
+                    vid = q.get('id')
+                    if vid is not None and vid in id_to_index:
+                        q['index'] = id_to_index[vid]
 
-            qualities = sorted(qualities, key=sort_key, reverse=True)
+                qualities = sorted(qualities, key=sort_key, reverse=True)
+
 
         return {
             'video_url': f"{proxy_prefix_path}&url=" + quote(best_video_url) if best_video_url else None,

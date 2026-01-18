@@ -58,6 +58,9 @@ export interface PlayerOptions {
   useApiAdapter?: boolean
   apiBaseUrl?: string
   
+  // 视频上下文
+  video?: Ref<VideoInfo | null | undefined>
+  
   // 回调
   onPlay?: () => void
   onPause?: () => void
@@ -161,6 +164,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     enableSubtitles = true,
     enableAnalytics = false,
     enableGestures = true,
+    video,
     onPlay,
     onPause,
     onEnded,
@@ -179,6 +183,12 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const subtitleTracks = ref<SubtitleTrack[]>([])
   const currentSubtitle = ref<SubtitleTrack | null>(null)
   const currentVideo = ref<VideoInfo | null>(null)
+
+  if (video) {
+    watch(video, (nextVideo) => {
+      currentVideo.value = (nextVideo as VideoInfo) || null
+    }, { immediate: true })
+  }
 
   // ===== 事件系统 =====
   const events = new EventEmitter<PlayerEvents>()
@@ -287,7 +297,17 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       setRecoveryQualities(qs)
     },
     setSource(source) { /* handled by loadSource */ },
-    getSource() { return currentVideo.value ? { src: (currentVideo.value as any).stream_video_url || '' } : null },
+    getSource() {
+      if (currentVideo.value) {
+        return {
+          src: (currentVideo.value as any).mpd_url ||
+            (currentVideo.value as any).stream_video_url ||
+            ''
+        }
+      }
+      return null
+    },
+
     async requestFullscreen() { await toggleFullscreen() },
     async exitFullscreen() { if (store.fullscreen) await toggleFullscreen() },
     async requestPictureInPicture() { await togglePictureInPicture() },
@@ -391,6 +411,10 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       hlsPlugin.setQuality(quality)
     } else if (dashPlugin && isDashStream.value) {
       dashPlugin.setQuality(quality)
+    } else if (dashPlugin) {
+      dashPlugin.setQuality(quality)
+    } else if (hlsPlugin) {
+      hlsPlugin.setQuality(quality)
     }
     
     events.emit('qualitychange', { quality, auto: quality === 'auto' })
@@ -490,6 +514,9 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     store.setBufferedProgress(0)
     store.setPlaying(false)
     store.setLoading(true, 'fetching')
+    currentQuality.value = null
+    store.setCurrentQuality(null)
+
 
     // 解析源类型
     const resolvedSource: MediaSource = {
