@@ -451,21 +451,25 @@ const handlePlayRandom = async () => {
 };
 
 
-// 聚焦到视频播放器，使键盘控制生效
-const focusVideoPlayer = async () => {
-  await nextTick();
-  // 延迟一点，确保 DOM 已经完全渲染
-  setTimeout(() => {
-    try {
-      const playerContainer = videoPlayerRef.value?.$el?.querySelector('.video-player-container');
-      if (playerContainer && typeof playerContainer.focus === 'function') {
-        playerContainer.focus({ preventScroll: true });
+  // 聚焦到视频播放器，使键盘控制生效
+  const focusVideoPlayer = async () => {
+    await nextTick();
+    // 延迟一点，确保 DOM 已经完全渲染
+    setTimeout(() => {
+      try {
+        const rootEl = videoPlayerRef.value?.$el;
+        const containerEl = rootEl instanceof HTMLElement ? rootEl : null;
+        const playerContainer = containerEl?.classList?.contains('sp-player')
+          ? containerEl
+          : containerEl?.querySelector('.sp-player');
+        if (playerContainer && typeof playerContainer.focus === 'function') {
+          playerContainer.focus({ preventScroll: true });
+        }
+      } catch (e) {
+        console.debug('Failed to focus video player:', e);
       }
-    } catch (e) {
-      console.debug('Failed to focus video player:', e);
-    }
-  }, 100);
-};
+    }, 100);
+  };
 
 const goToVideo = async (id, videoData = null) => {
   if (!id) return;
