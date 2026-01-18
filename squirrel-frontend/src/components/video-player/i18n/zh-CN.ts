@@ -81,6 +81,7 @@ const zhCN: LocaleConfig = {
     errorNotSupported: '不支持的视频格式',
     errorUnknown: '未知错误',
     retry: '重试',
+    dismiss: '关闭',
     
     // 提示
     volumePercent: '音量 {percent}%',

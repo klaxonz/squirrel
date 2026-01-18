@@ -53,15 +53,16 @@
         <div class="sp-error-title">{{ errorState.title }}</div>
         <div v-if="errorState.message" class="sp-error-message">{{ errorState.message }}</div>
         <div v-if="errorState.code" class="sp-error-code">{{ errorState.code }}</div>
-        <div v-if="errorState.canRetry" class="sp-error-actions">
-          <button class="sp-error-btn" @click="handleRetry">{{ t('retry') }}</button>
+        <div class="sp-error-actions">
+          <button v-if="errorState.canRetry" class="sp-error-btn" @click="handleRetry">{{ t('retry') }}</button>
+          <button class="sp-error-btn sp-error-btn--ghost" @click="handleDismissError">{{ t('dismiss') }}</button>
         </div>
       </div>
     </div>
 
     <!-- 控制栏 -->
     <transition name="sp-fade">
-      <div v-show="store.controlsVisible && !errorState.show" class="sp-controls">
+      <div v-show="store.controlsVisible" class="sp-controls" :class="{ 'sp-controls--error': errorState.show }">
         <!-- 进度条 -->
         <div class="sp-progress-container">
           <div
@@ -405,7 +406,7 @@
     <!-- 控制按钮 Tooltip -->
     <transition name="sp-fade">
       <div
-        v-if="controlTooltip.visible && store.controlsVisible && !errorState.show"
+        v-if="controlTooltip.visible && store.controlsVisible"
         class="sp-tooltip sp-tooltip--controls"
         :style="{ left: `${controlTooltip.x}px`, top: `${controlTooltip.y}px` }"
         role="tooltip"
@@ -876,9 +877,12 @@ const onPointerLeave = (): void => {
   if (isScrubbing.value) return
   isPointerInside.value = false
   if (hideControlsTimer) clearTimeout(hideControlsTimer)
-  store.setControlsVisible(false)
+  if (!errorState.value.show) {
+    store.setControlsVisible(false)
+  }
   closeMenus()
 }
+
 
 
 const onPointerMove = (): void => {
@@ -1050,6 +1054,12 @@ const handleRetry = () => {
   }
 }
 
+const handleDismissError = () => {
+  internalError.value = null
+  clearErrorState()
+}
+
+
 
 // 键盘快捷键
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -1131,6 +1141,7 @@ const formatTime = (seconds: number): string => {
 
 // 点击外部关闭菜单
 const handleOutsideClick = (e: MouseEvent) => {
+  if (errorState.value.show) return
   if (showSettingsMenu.value) {
     const target = e.target as HTMLElement
     if (!target.closest('.sp-popup')) {
@@ -1228,6 +1239,10 @@ defineExpose({
   padding: 28px 0 8px;
   background: var(--sp-controls-bg);
   text-shadow: var(--sp-text-shadow);
+}
+
+.sp-controls.sp-controls--error {
+  z-index: calc(var(--sp-z-overlay, 15) + 1);
 }
 
 /* 进度条 */
@@ -1794,7 +1809,9 @@ defineExpose({
   justify-content: center;
   padding: 22px;
   background: rgba(0, 0, 0, 0.82);
+  pointer-events: none;
 }
+
 
 .sp-error-overlay--centered {
   text-align: center;
@@ -1807,7 +1824,9 @@ defineExpose({
   align-items: center;
   gap: 6px;
   color: var(--sp-text);
+  pointer-events: auto;
 }
+
 
 .sp-error-title {
   font-size: var(--font-size-md);
@@ -1832,6 +1851,7 @@ defineExpose({
   margin-top: 8px;
   display: flex;
   justify-content: center;
+  gap: 10px;
 }
 
 .sp-error-btn {
@@ -1855,6 +1875,19 @@ defineExpose({
 .sp-error-btn:active {
   background: rgba(255, 255, 255, 0.28);
 }
+
+.sp-error-btn--ghost {
+  background: transparent;
+}
+
+.sp-error-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sp-error-btn--ghost:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 
 
 /* 指示器 */

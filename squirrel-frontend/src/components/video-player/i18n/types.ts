@@ -82,6 +82,7 @@ export interface LocaleMessages {
   errorNotSupported: string
   errorUnknown: string
   retry: string
+  dismiss: string
   
   // 提示
   volumePercent: string

@@ -81,6 +81,7 @@ const jaJP: LocaleConfig = {
     errorNotSupported: 'サポートされていない形式',
     errorUnknown: '不明なエラー',
     retry: '再試行',
+    dismiss: '閉じる',
     
     // 提示
     volumePercent: '音量 {percent}%',

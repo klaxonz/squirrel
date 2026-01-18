@@ -81,6 +81,7 @@ const enUS: LocaleConfig = {
     errorNotSupported: 'Format not supported',
     errorUnknown: 'Unknown error',
     retry: 'Retry',
+    dismiss: 'Dismiss',
     
     // 提示
     volumePercent: 'Volume {percent}%',
