@@ -88,7 +88,8 @@ export interface PlayerReturn {
   isMuted: ComputedRef<boolean>
   isFullscreen: ComputedRef<boolean>
   qualities: Ref<QualityLevel[]>
-  currentQuality: Ref<string | null>
+  currentQualityLabel: Ref<string | null>
+  currentQualityId: Ref<number | null>
   
   // 流类型检测
   isHlsStream: ComputedRef<boolean>
@@ -179,7 +180,10 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const containerElement = ref<HTMLElement | null>(null)
   const isReady = ref(false)
   const qualities = ref<QualityLevel[]>([])
-  const currentQuality = ref<string | null>(null)
+  const currentQualityLabel = ref<string | null>(null)
+  const currentQualityId = ref<number | null>(null)
+  const registeredQualityId = ref<number | null>(null)
+
   const subtitleTracks = ref<SubtitleTrack[]>([])
   const currentSubtitle = ref<SubtitleTrack | null>(null)
   const currentVideo = ref<VideoInfo | null>(null)
@@ -276,8 +280,9 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
         playbackRate: store.playbackRate,
         fullscreen: store.fullscreen,
         pip: store.pictureInPicture,
-        quality: currentQuality.value,
-        autoQuality: currentQuality.value === 'auto'
+        quality: currentQualityLabel.value,
+        autoQuality: currentQualityLabel.value === 'auto'
+
       }
     },
     on: events.on.bind(events),
@@ -290,11 +295,31 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     setVolume(v) { setVolume(v * 100) },
     setMuted(m) { store.setMuted(m) },
     setPlaybackRate(r) { setPlaybackRate(r) },
-    setQuality(q) { setQuality(String(q)) },
+    setQuality(q) { setQuality(q) },
     getQualities() { return qualities.value },
     registerQualities(qs) {
       qualities.value = qs
       setRecoveryQualities(qs)
+      if (registeredQualityId.value !== null) {
+        const match = qs.find((item) => item.id === registeredQualityId.value)
+        if (match?.label) {
+          currentQualityLabel.value = match.label
+          store.setCurrentQuality(match.label, registeredQualityId.value)
+          currentQualityId.value = registeredQualityId.value
+        }
+      }
+    },
+    registerCurrentQualityId(id?: number) {
+      registeredQualityId.value = typeof id === 'number' ? id : null
+      if (registeredQualityId.value === null) return
+      const match = qualities.value.find((item) => item.id === registeredQualityId.value)
+      if (match?.label) {
+        currentQualityLabel.value = match.label
+        store.setCurrentQuality(match.label, registeredQualityId.value)
+        currentQualityId.value = registeredQualityId.value
+      } else {
+        currentQualityId.value = registeredQualityId.value
+      }
     },
     setSource(source) { /* handled by loadSource */ },
     getSource() {
@@ -307,7 +332,6 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       }
       return null
     },
-
     async requestFullscreen() { await toggleFullscreen() },
     async exitFullscreen() { if (store.fullscreen) await toggleFullscreen() },
     async requestPictureInPicture() { await togglePictureInPicture() },
@@ -401,9 +425,13 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   const setQuality = (quality: string | number): void => {
     const qualityLabel = String(quality)
-    currentQuality.value = qualityLabel
-    store.setCurrentQuality(qualityLabel)
-    
+    if (typeof quality === 'number') {
+      currentQualityId.value = quality
+      registeredQualityId.value = quality
+    }
+    currentQualityLabel.value = qualityLabel
+    store.setCurrentQuality(qualityLabel, registeredQualityId.value ?? null)
+
     // 通知插件
     const hlsPlugin = pluginManager.get<HlsPlugin>('hls')
     const dashPlugin = pluginManager.get<DashPlugin>('dash')
@@ -515,8 +543,10 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     store.setBufferedProgress(0)
     store.setPlaying(false)
     store.setLoading(true, 'fetching')
-    currentQuality.value = null
-    store.setCurrentQuality(null)
+    currentQualityLabel.value = null
+    store.setCurrentQuality(null, null)
+    currentQualityId.value = null
+    registeredQualityId.value = null
 
 
     // 解析源类型
@@ -865,7 +895,8 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     isMuted,
     isFullscreen,
     qualities,
-    currentQuality,
+    currentQualityLabel,
+    currentQualityId,
     isHlsStream,
     isDashStream,
     play,

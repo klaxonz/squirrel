@@ -22,7 +22,7 @@ export interface UseVideoControlsReturn {
   setSubtitle: (subtitle: any) => void
   setPlaybackRate: (rate: number) => void
   adjustPlaybackRate: (delta: number) => void
-  setQuality: (quality: string) => void
+  setQuality: (quality: string | number, id?: number | null) => void
   seekToPercentage: (percentage: number) => void
   updateAvailableQualities: (qualities: QualityOption[]) => void
 }
@@ -90,10 +90,12 @@ export default function useVideoControls(
         
         // 设置默认清晰度
         try {
-          if (!store.currentQuality) {
+          const currentQuality = store.currentQuality
+          const currentQualityId = (store as any).currentQualityId
+          if (!currentQuality && currentQualityId === null) {
             const highestQuality = arr[0]
             if (highestQuality) {
-              store.setCurrentQuality(highestQuality.value)
+              store.setCurrentQuality(highestQuality.value, (highestQuality as any).id ?? null)
             }
           }
         } catch (_) {
@@ -126,15 +128,17 @@ export default function useVideoControls(
     if (Array.isArray(qualities) && qualities.length > 0) {
       availableQualities.value = qualities
       
-      const currentQuality = store.currentQuality
-      const isCurrentQualityValid = qualities.some(q => q.value === currentQuality)
+    const currentQuality = store.currentQuality
+    const currentQualityId = (store as any).currentQualityId
+    const isCurrentQualityValid = qualities.some(q => q.value === currentQuality)
+    const isCurrentIdValid = currentQualityId !== null && qualities.some(q => q.id === currentQualityId)
 
-      if (!currentQuality || !isCurrentQualityValid) {
-        const highestQuality = qualities[0]
-        if (highestQuality) {
-          store.setCurrentQuality(highestQuality.value)
-        }
+    if ((!currentQuality && !isCurrentIdValid) || (!isCurrentQualityValid && !isCurrentIdValid)) {
+      const highestQuality = qualities[0]
+      if (highestQuality) {
+        store.setCurrentQuality(highestQuality.value, (highestQuality as any).id ?? null)
       }
+    }
     }
   }
 
@@ -285,8 +289,9 @@ export default function useVideoControls(
   /**
    * 设置清晰度
    */
-  const setQuality = (quality: string): void => {
-    store.setCurrentQuality(quality)
+  const setQuality = (quality: string | number, id?: number | null): void => {
+    const label = String(quality)
+    store.setCurrentQuality(label, id)
     store.showQualityMenu = false
     store.showSettingsMenu = false
     console.debug('Quality changed to:', quality)

@@ -68,8 +68,9 @@ export interface PlayerContext {
   // Settings
   setPlaybackRate: (rate: number) => void
   adjustPlaybackRate: (delta: number) => void
-  setQuality: (quality: string) => void
+  setQuality: (quality: string | number) => void
   updateAvailableQualities: (qualities: QualityOption[]) => void
+
 
   // Seek controls
   onSeekStart: () => void
@@ -87,6 +88,14 @@ export interface VideoPlayerCoreInstance {
   videoElement: HTMLVideoElement | null
   audioElement: HTMLAudioElement | null
   reinitSources?: () => void
+}
+
+export interface SubtitleSettings {
+  fontSize: 'small' | 'medium' | 'large'
+  color: string
+  bgOpacity: number
+  position: 'top' | 'bottom'
+  shadow: boolean
 }
 
 /**
@@ -112,6 +121,7 @@ export interface PlayerStore {
   pictureInPicture: boolean
   hasStartedPlayback: boolean
   currentQuality: string | null
+  currentQualityId: number | null
   currentSubtitle: VideoSubtitle | null
   autoplay: boolean
   autoplayNext: boolean
@@ -156,7 +166,8 @@ export interface PlayerStore {
   setDuration: (value: number) => void
   setBufferedProgress: (value: number) => void
   setPlaybackRate: (value: number) => void
-  setCurrentQuality: (value: string | null) => void
+  setCurrentQuality: (value: string | null, id?: number | null) => void
+  setCurrentQualityId: (value: number | null) => void
   setSubtitlesEnabled: (value: boolean) => void
   toggleSubtitles: () => void
   setCurrentSubtitle: (value: VideoSubtitle | null) => void
@@ -184,14 +195,6 @@ export interface PlayerStore {
   resetReconnectAttempts: () => void
   setNetworkFirstInteraction: (value: boolean) => void
   resetForNewVideo: () => void
-}
-
-export interface SubtitleSettings {
-  fontSize: 'small' | 'medium' | 'large'
-  color: string
-  bgOpacity: number
-  position: 'top' | 'bottom'
-  shadow: boolean
 }
 
 /**
@@ -248,7 +251,7 @@ export interface CreatePlayerContextParams {
   // Settings
   setPlaybackRate: (rate: number) => void
   adjustPlaybackRate: (delta: number) => void
-  setQuality: (quality: string) => void
+  setQuality: (quality: string | number) => void
   updateAvailableQualities: (qualities: QualityOption[]) => void
 
   // Seek controls

@@ -56,9 +56,12 @@ export interface MediaState {
   subtitlesEnabled: boolean
   pictureInPicture: boolean
   currentQuality: string
+  currentQualityId: number | null
   currentSubtitle: VideoSubtitle | null
   autoplay: boolean
   loop: boolean
+
+
 }
 
 // 播放器UI状态
@@ -279,6 +282,7 @@ export interface UseVideoControlsReturn {
   setSubtitle: (subtitle: VideoSubtitle | null) => void
   setPlaybackRate: (rate: number) => void
   adjustPlaybackRate: (delta: number) => void
-  setQuality: (quality: string) => void
+  setQuality: (quality: string | number) => void
   seekToPercentage: (percentage: number) => void
+
 }

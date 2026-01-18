@@ -164,8 +164,12 @@ export class DashPlugin implements PlayerPlugin {
         const quality = qualities.find(q => q.id === e.newQuality)
         this.context?.emit('qualitychange', {
           quality: quality?.label || `level_${e.newQuality}`,
-          auto: this.isAutoQuality()
+          auto: this.isAutoQuality(),
+          id: typeof e.newQuality === 'number' ? e.newQuality : undefined
         })
+        this.context?.registerCurrentQualityId?.(
+          typeof e.newQuality === 'number' ? e.newQuality : undefined
+        )
       }
     })
 
@@ -238,15 +242,19 @@ export class DashPlugin implements PlayerPlugin {
 
     const qualities = this.getAvailableQualities()
     
-    // 按高度降序排列
-    qualities.sort((a, b) => (b.height || 0) - (a.height || 0))
+    // 按高度、码率降序排列
+    qualities.sort((a, b) => {
+      const heightDelta = (b.height || 0) - (a.height || 0)
+      if (heightDelta !== 0) return heightDelta
+      return (b.bitrate || 0) - (a.bitrate || 0)
+    })
 
 
     this.context.registerQualities(qualities)
     this.context.emit('qualitiesloaded', qualities)
 
     if (!this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
-      this.context.setQuality(qualities[0].label)
+      this.context.setQuality(qualities[0].id ?? qualities[0].label)
     }
   }
 
@@ -300,12 +308,19 @@ export class DashPlugin implements PlayerPlugin {
     if (typeof quality === 'number' && quality >= 0) {
       targetIndex = quality
     } else {
-      // 按高度匹配
+      // 按高度匹配，优先选择同分辨率中最高码率
       const height = parseInt(String(quality).replace(/[^0-9]/g, ''), 10)
       const qualities = this.getAvailableQualities()
-      const found = qualities.find(q => q.height === height)
-      if (found && typeof found.id === 'number') {
-        targetIndex = found.id
+      const matches = qualities.filter(q => q.height === height)
+      if (matches.length) {
+        const best = matches.reduce((prev, next) => {
+          const prevBitrate = prev.bitrate ?? 0
+          const nextBitrate = next.bitrate ?? 0
+          return nextBitrate >= prevBitrate ? next : prev
+        })
+        if (typeof best.id === 'number') {
+          targetIndex = best.id
+        }
       }
     }
 

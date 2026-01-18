@@ -36,7 +36,7 @@ export interface UseDashPlayerReturn {
   dashRef: { value: MediaPlayerClass | null }
   initializeDash: () => void
   destroyDash: () => void
-  setQuality: (quality: string) => void
+  setQuality: (quality: string | number) => void
 }
 
 /**

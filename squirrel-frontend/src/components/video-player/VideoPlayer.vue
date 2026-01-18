@@ -310,7 +310,7 @@
               <span class="sp-popup-item-label">{{ t('quality') }}</span>
             </span>
             <span class="sp-popup-item-meta">
-              <span class="sp-popup-value">{{ currentQualityLabel || '' }}</span>
+              <span class="sp-popup-value">{{ displayedQualityLabel || '' }}</span>
               <ChevronRightIcon class="sp-popup-chevron" />
             </span>
           </button>
@@ -348,10 +348,10 @@
               v-for="q in qualities"
               :key="q.id"
               class="sp-popup-option"
-              :class="{ active: currentQuality === q.label || currentQuality === String(q.id) }"
+              :class="{ active: currentQualityId === q.id }"
               @click="handleQualitySelect(q)"
             >
-              <CheckIcon v-if="currentQuality === q.label || currentQuality === String(q.id)" class="sp-check" />
+              <CheckIcon v-if="currentQualityId === q.id" class="sp-check" />
               <span>{{ q.label }}</span>
             </button>
           </div>
@@ -487,7 +487,8 @@ const {
   isMuted,
   isFullscreen,
   qualities,
-  currentQuality,
+  currentQualityLabel,
+  currentQualityId,
   isHlsStream,
   isDashStream,
   play,
@@ -720,9 +721,12 @@ const isBuffering = computed(() => {
   return store.loading && store.loadingStage === 'buffering' && store.hasStartedPlayback
 })
 
-const currentQualityLabel = computed(() => {
-  const q = qualities.value.find((item) => String(item.id) === currentQuality.value)
-  return q?.label || currentQuality.value || ''
+const displayedQualityLabel = computed(() => {
+  const byId = currentQualityId.value !== null
+    ? qualities.value.find((item) => item.id === currentQualityId.value)
+    : undefined
+  if (byId?.label) return byId.label
+  return currentQualityLabel.value || ''
 })
 
 
@@ -1064,11 +1068,18 @@ const cyclePlaybackRate = () => {
 // 循环质量
 const cycleQuality = () => {
   if (qualities.value.length === 0) return
-  const labels = qualities.value.map((q: any) => q.label || String(q.id))
-  const currentIndex = labels.indexOf(currentQuality.value)
-  const nextIndex = (currentIndex + 1) % labels.length
-  setQuality(labels[nextIndex])
+  const ids = qualities.value.map((q: any) => q.id)
+  const currentIndex = currentQualityId.value !== null
+    ? ids.indexOf(currentQualityId.value)
+    : -1
+  const fallbackIndex = currentIndex >= 0
+    ? currentIndex
+    : qualities.value.findIndex((q: any) => q.label === currentQualityLabel.value)
+  const nextIndex = ((fallbackIndex >= 0 ? fallbackIndex : -1) + 1) % ids.length
+  const nextQuality = qualities.value[nextIndex]
+  if (nextQuality) setQuality(nextQuality.id ?? nextQuality.label)
 }
+
 
 // 播放速度选择
 const handleSpeedSelect = (rate: number) => {

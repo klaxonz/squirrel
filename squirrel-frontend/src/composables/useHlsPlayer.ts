@@ -35,7 +35,7 @@ export interface UseHlsPlayerReturn {
   initializeHls: () => void
   reinitializeHls: () => void
   destroyHls: () => void
-  setQuality: (quality: string) => void
+  setQuality: (quality: string | number) => void
   MAX_RECONNECT_ATTEMPTS: number
   RECONNECT_INTERVAL: number
 }

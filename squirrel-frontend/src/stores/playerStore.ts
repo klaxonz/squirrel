@@ -41,6 +41,7 @@ export interface PlayerStoreState {
   pictureInPicture: boolean
   hasStartedPlayback: boolean
   currentQuality: string | null
+  currentQualityId: number | null
   currentSubtitle: VideoSubtitle | null
   autoplay: boolean
   autoplayNext: boolean
@@ -127,6 +128,8 @@ export const usePlayerStore = defineStore('player', () => {
   const pictureInPicture: Ref<boolean> = ref(false)
   const hasStartedPlayback: Ref<boolean> = ref(false)
   const currentQuality: Ref<string | null> = ref(null)
+  const currentQualityId: Ref<number | null> = ref(null)
+
   const currentSubtitle: Ref<VideoSubtitle | null> = ref(null)
   const autoplay: Ref<boolean> = ref(false)
   const autoplayNext: Ref<boolean> = ref(true)
@@ -238,8 +241,17 @@ export const usePlayerStore = defineStore('player', () => {
     playbackRate.value = value
   }
 
-  function setCurrentQuality(value: string | null): void {
+  function setCurrentQuality(value: string | null, id?: number | null): void {
     currentQuality.value = value
+    if (typeof id === 'number') {
+      currentQualityId.value = id
+    } else if (id === null) {
+      currentQualityId.value = null
+    }
+  }
+
+  function setCurrentQualityId(value: number | null): void {
+    currentQualityId.value = value
   }
 
   function setSubtitlesEnabled(value: boolean): void {
@@ -390,6 +402,8 @@ export const usePlayerStore = defineStore('player', () => {
     bufferedProgress.value = 0
     hasStartedPlayback.value = false
     pictureInPicture.value = false
+    currentQuality.value = null
+    currentQualityId.value = null
 
     // 字幕状态
     currentSubtitle.value = null
@@ -423,12 +437,14 @@ export const usePlayerStore = defineStore('player', () => {
     pictureInPicture: pictureInPicture.value,
     hasStartedPlayback: hasStartedPlayback.value,
     currentQuality: currentQuality.value,
+    currentQualityId: currentQualityId.value,
     currentSubtitle: currentSubtitle.value,
     autoplay: autoplay.value,
     autoplayNext: autoplayNext.value,
     loop: loop.value,
     subtitleSettings: subtitleSettings.value
   }))
+
 
   const ui = computed(() => ({
     controlsVisible: controlsVisible.value,
@@ -473,7 +489,9 @@ export const usePlayerStore = defineStore('player', () => {
     pictureInPicture,
     hasStartedPlayback,
     currentQuality,
+    currentQualityId,
     currentSubtitle,
+
     autoplay,
     autoplayNext,
     loop,
@@ -520,6 +538,7 @@ export const usePlayerStore = defineStore('player', () => {
     setBufferedProgress,
     setPlaybackRate,
     setCurrentQuality,
+    setCurrentQualityId,
     setSubtitlesEnabled,
     toggleSubtitles,
     setCurrentSubtitle,

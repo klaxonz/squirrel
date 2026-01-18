@@ -25,7 +25,7 @@ export interface PlayerEvents {
   volumechange: { volume: number; muted: boolean }
 
   // 质量
-  qualitychange: { quality: string; auto: boolean }
+  qualitychange: { quality: string; auto: boolean; id?: number }
   qualitiesloaded: QualityLevel[]
 
   // 播放速率
@@ -123,6 +123,8 @@ export interface PluginContext {
   setQuality(quality: string | number): void
   getQualities(): QualityLevel[]
   registerQualities(qualities: QualityLevel[]): void
+  registerCurrentQualityId(id?: number): void
+
 
   // 媒体源
   setSource(source: MediaSource): void
