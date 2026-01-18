@@ -310,7 +310,7 @@
               <span class="sp-popup-item-label">{{ t('quality') }}</span>
             </span>
             <span class="sp-popup-item-meta">
-              <span class="sp-popup-value">{{ currentQuality || '' }}</span>
+              <span class="sp-popup-value">{{ currentQualityLabel || '' }}</span>
               <ChevronRightIcon class="sp-popup-chevron" />
             </span>
           </button>
@@ -720,6 +720,12 @@ const isBuffering = computed(() => {
   return store.loading && store.loadingStage === 'buffering' && store.hasStartedPlayback
 })
 
+const currentQualityLabel = computed(() => {
+  const q = qualities.value.find((item) => String(item.id) === currentQuality.value)
+  return q?.label || currentQuality.value || ''
+})
+
+
 const supportsPiP = computed(() => {
   return typeof document !== 'undefined' && 'pictureInPictureEnabled' in document
 })
@@ -1072,7 +1078,8 @@ const handleSpeedSelect = (rate: number) => {
 
 // 质量选择
 const handleQualitySelect = (q: any) => {
-  setQuality(q.label || String(q.id))
+  const nextQuality = q?.id !== undefined ? q.id : (q.label || String(q.id))
+  setQuality(nextQuality)
   showSettingsMenu.value = false
 }
 

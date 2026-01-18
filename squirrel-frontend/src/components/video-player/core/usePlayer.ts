@@ -101,7 +101,7 @@ export interface PlayerReturn {
   setVolume: (volume: number) => void
   toggleMute: () => void
   setPlaybackRate: (rate: number) => void
-  setQuality: (quality: string) => void
+  setQuality: (quality: string | number) => void
   toggleFullscreen: () => Promise<void>
   togglePictureInPicture: () => Promise<void>
   
@@ -399,9 +399,10 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
 
 
-  const setQuality = (quality: string): void => {
-    currentQuality.value = quality
-    store.setCurrentQuality(quality)
+  const setQuality = (quality: string | number): void => {
+    const qualityLabel = String(quality)
+    currentQuality.value = qualityLabel
+    store.setCurrentQuality(qualityLabel)
     
     // 通知插件
     const hlsPlugin = pluginManager.get<HlsPlugin>('hls')
@@ -417,8 +418,8 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       hlsPlugin.setQuality(quality)
     }
     
-    events.emit('qualitychange', { quality, auto: quality === 'auto' })
-    onQualityChange?.(quality)
+    events.emit('qualitychange', { quality: qualityLabel, auto: qualityLabel === 'auto' })
+    onQualityChange?.(qualityLabel)
   }
 
   const toggleFullscreen = async (): Promise<void> => {
