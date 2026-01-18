@@ -25,6 +25,21 @@ const NO_SEARCH_META = {
   showSearch: false
 }
 
+const SIDEBAR_MODE = {
+  fixed: {
+    mode: 'fixed',
+    defaultOpen: false,
+  },
+  flyoutClosed: {
+    mode: 'flyout',
+    defaultOpen: false,
+  },
+  flyoutOpen: {
+    mode: 'flyout',
+    defaultOpen: true,
+  },
+}
+
 const routes = [
   {
     path: '/videos',
@@ -187,7 +202,8 @@ const routes = [
       searchRedirectName: 'AllVideos',
       searchPersistKey: 'LatestVideos',
       scrollable: true,
-      hideScrollbar: true
+      hideScrollbar: true,
+      sidebar: SIDEBAR_MODE.fixed,
     },
   },
   {

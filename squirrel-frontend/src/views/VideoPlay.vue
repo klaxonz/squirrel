@@ -1,10 +1,10 @@
 <template>
-  <div class="video-page bg-bg-primary min-h-screen scrollbar-hide">
-    <div class="video-page__container pt-6 flex">
+  <div ref="videoPageRef" class="video-page bg-bg-primary min-h-screen scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
+    <div :class="['video-page__container pt-6 flex gap-8', isWidescreen ? 'is-widescreen' : '']">
       <!-- 左侧主内容区域 -->
-      <div :class="['flex-1', isWidescreen ? '' : 'max-w-[1280px]']">
+      <div :class="['video-main', isWidescreen ? 'is-widescreen' : '']">
         <!-- 视频播放区域 -->
-        <div class="video-section">
+        <div ref="videoSectionRef" class="video-section">
           <div class="video-container">
             <VideoPlayer
               ref="videoPlayerRef"
@@ -29,7 +29,7 @@
         </div>
 
         <!-- 视频信息区域 -->
-        <div class="mt-3 px-4">
+          <div ref="videoMetaRef" class="mt-3 px-4">
           <!-- 标题与操作按钮 -->
           <transition name="fade" mode="out-in">
             <div :key="video?.id" class="flex items-center justify-between">
@@ -183,7 +183,7 @@
       </div>
 
       <!-- 右侧区域 - 相关视频 -->
-      <div :class="['md:w-[320px] lg:w-[400px] md:ml-6', isWidescreen ? 'hidden' : 'hidden md:block']">
+      <div :class="['video-aside', isWidescreen ? 'hidden' : 'hidden md:block']">
         <div class="sticky top-4">
           <div class="rounded-xl px-4 pb-4 pt-0 flex flex-col">
             <h2 class="text-text-primary text-lg mb-4">相关视频</h2>
@@ -254,7 +254,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, nextTick, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed, nextTick, reactive, inject } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
@@ -272,7 +272,9 @@ import { useImageFallback } from '../composables/useImageFallback';
 
 const route = useRoute();
 const router = useRouter();
+const emitter = inject('emitter');
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
+
 
 // 内部切换不使用 router，所以不需要从 history.state 读取初始数据
 const { video, startTime, relatedVideos, loadingRelated, loadAndPlayById, externalError } = usePlaybackOrchestrator(null);
@@ -285,12 +287,45 @@ const { getRandomVideo } = useVideoApi();
 
 // 视频播放器引用
 const videoPlayerRef = ref(null);
+const videoPageRef = ref(null);
+const videoSectionRef = ref(null);
+const videoMetaRef = ref(null);
+let metaResizeObserver = null;
+
+const syncVideoMetaHeight = () => {
+  const root = document.documentElement;
+  const metaEl = videoMetaRef.value;
+  const sectionEl = videoSectionRef.value;
+  if (!metaEl || !sectionEl) return;
+
+  const metaHeight = Math.ceil(metaEl.getBoundingClientRect().height);
+  const sectionTop = sectionEl.getBoundingClientRect().top;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  const availableHeight = Math.max(0, Math.floor(viewportHeight - sectionTop));
+
+  root.style.setProperty('--video-meta-height', `${metaHeight}px`);
+  root.style.setProperty('--video-page-available-height', `${availableHeight}px`);
+};
+
+const handleResize = () => syncVideoMetaHeight();
 
 // 宽屏模式
 const isWidescreen = ref(false);
 const toggleWidescreen = (value) => {
   isWidescreen.value = value;
+  setWidescreenClass(isWidescreen.value);
+  syncWidescreenSidebarState(isWidescreen.value);
 };
+
+const setWidescreenClass = (enabled) => {
+  document.documentElement.classList.toggle('video-widescreen', !!enabled);
+};
+
+const syncWidescreenSidebarState = (enabled) => {
+  if (!emitter) return;
+  emitter.emit('videoWidescreenStateChanged', !!enabled);
+};
+
 
 const relatedThumbnailErrorIds = reactive(new Set());
 
@@ -486,6 +521,19 @@ onMounted(async () => {
   // 初始加载时从API获取数据
   await loadAndPlayById(route.params.videoId);
   await focusVideoPlayer();
+
+  await nextTick();
+  syncVideoMetaHeight();
+  window.addEventListener('resize', handleResize);
+  if (videoMetaRef.value) {
+    metaResizeObserver = new ResizeObserver(() => {
+      syncVideoMetaHeight();
+    });
+    metaResizeObserver.observe(videoMetaRef.value);
+  }
+
+  setWidescreenClass(isWidescreen.value);
+  syncWidescreenSidebarState(isWidescreen.value);
 });
 
 watch(() => route.params.videoId, async (newId, oldId) => {
@@ -494,7 +542,19 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   if (newId && newId !== oldId && video.value?.id !== newId) {
     await loadAndPlayById(newId);
     await focusVideoPlayer();
+    await nextTick();
+    syncVideoMetaHeight();
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+  if (metaResizeObserver) {
+    metaResizeObserver.disconnect();
+    metaResizeObserver = null;
+  }
+  setWidescreenClass(false);
+  syncWidescreenSidebarState(false);
 });
 
 </script>
@@ -502,11 +562,28 @@ watch(() => route.params.videoId, async (newId, oldId) => {
 <style scoped>
 /* 视频页面容器对齐其它页面 */
 .video-page__container {
-  max-width: var(--container-max-width, 2560px);
+  max-width: min(1840px, calc(100vw - 32px));
   margin: 0 auto;
   width: 100%;
   padding-left: 1rem;
   padding-right: 1rem;
+  --video-main-offset: 16px;
+  --video-aside-width: clamp(320px, 22vw, 360px);
+}
+
+.video-page__container.is-widescreen {
+  --video-main-offset: 0px;
+}
+
+
+.video-page__container.is-widescreen {
+  max-width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.video-page__container.is-widescreen .video-section {
+  border-radius: 0;
 }
 
 @media (min-width: 640px) {
@@ -523,6 +600,71 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   }
 }
 
+
+
+.video-main {
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: clamp(1200px, 78vw, 1440px);
+  margin-left: auto;
+  margin-right: auto;
+  transform: translateX(var(--video-main-offset, 0px));
+}
+
+.video-main.is-widescreen {
+  max-width: 100%;
+  transform: none;
+}
+
+
+.video-main.is-widescreen .video-container {
+  /* 宽屏(剧场)模式：用视窗高度约束，不让播放器高到需要滚动 */
+  height: min(
+    calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 0px) - 24px - 12px),
+    calc(100vw * 9 / 16)
+  );
+  max-height: min(
+    calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 0px) - 24px - 12px),
+    calc(100vw * 9 / 16)
+  );
+  padding-bottom: 0; /* 覆盖 16:9 padding hack，避免高度叠加 */
+  min-height: 0;
+}
+
+.video-main:not(.is-widescreen) .video-container {
+  height: auto;
+  padding-bottom: clamp(60%, 64vh, 68%);
+  min-height: clamp(520px, 66vh, 860px);
+  max-height: min(75vh, calc(100vw * 9 / 16));
+}
+
+
+.video-aside {
+  width: var(--video-aside-width, 360px);
+  flex: 0 0 var(--video-aside-width, 360px);
+}
+
+@media (min-width: 1280px) {
+  .video-page__container {
+    --video-aside-width: clamp(340px, 24vw, 420px);
+  }
+
+  .video-main {
+    max-width: clamp(1260px, 72vw, 1500px);
+  }
+}
+
+@media (min-width: 1536px) {
+  .video-page__container {
+    --video-aside-width: clamp(380px, 22vw, 460px);
+  }
+
+  .video-main {
+    max-width: clamp(1320px, 70vw, 1560px);
+  }
+}
+
+
 /* 视频区域容器样式 */
 .video-section {
   position: relative;
@@ -533,6 +675,13 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   overflow: hidden;
   box-shadow: none;
 }
+
+
+
+
+
+
+
 
 
 .video-container {
@@ -573,9 +722,18 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   }
 
   .video-container {
+    height: auto;
     border-radius: 0;
   }
 }
+
+@supports not (aspect-ratio: 1 / 1) {
+  .video-container {
+    height: 0;
+    padding-bottom: 56.25%;
+  }
+}
+
 
 /* 平滑过渡动画 - 快速淡入淡出 */
 .fade-enter-active {

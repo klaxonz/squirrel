@@ -1,13 +1,16 @@
 <template>
-  <div class="sidebar bg-bg-primary h-full flex flex-col" :class="{ collapsed: isCollapsed }">
+  <div class="sidebar bg-bg-primary h-full flex flex-col" :class="{ collapsed: effectiveCollapsed }">
     <!-- 顶部菜单按钮 -->
     <div class="sidebar-header flex items-center h-14 px-3">
-      <button
+<button
         @click="toggleCollapse"
         class="toggle-btn p-2 hover:bg-bg-hover rounded-full transition-all duration-200"
-        :title="isCollapsed ? '展开侧边栏' : '收起侧边栏'"
+        :title="props.flyout ? '关闭侧边栏' : (effectiveCollapsed ? '展开侧边栏' : '收起侧边栏')"
       >
-        <Bars3Icon class="h-6 w-6 text-text-accent transition-transform duration-300" :class="{ 'rotate-180': isCollapsed }" />
+        <Bars3Icon
+          class="h-6 w-6 text-text-accent transition-transform duration-300"
+          :class="{ 'rotate-180': !props.flyout && effectiveCollapsed }"
+        />
       </button>
     </div>
 
@@ -19,7 +22,7 @@
           v-for="item in MENU_ITEMS.main"
           :key="item.path"
           :item="item"
-          :is-collapsed="isCollapsed"
+          :is-collapsed="effectiveCollapsed"
           :is-active="$route.path === item.path"
         />
       </div>
@@ -33,7 +36,7 @@
           v-for="item in MENU_ITEMS.bottom"
           :key="item.path"
           :item="item"
-          :is-collapsed="isCollapsed"
+          :is-collapsed="effectiveCollapsed"
           :is-active="$route.path === item.path"
         />
       </div>
@@ -54,7 +57,7 @@
 </template>
 
 <script setup>
-import { ref, watch, inject, onMounted } from 'vue'
+import { ref, watch, inject, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Bars3Icon,
@@ -67,11 +70,31 @@ import { MENU_ITEMS } from '../constants/sidebar'
 const route = useRoute()
 const router = useRouter()
 const isCollapsed = ref(false)
-const emit = defineEmits(['collapse'])
+const emit = defineEmits(['collapse', 'requestClose'])
+const props = defineProps({
+  flyout: {
+    type: Boolean,
+    default: false,
+  },
+})
 const emitter = inject('emitter')
 const { logout } = useUser()
 
+const effectiveCollapsed = computed(() => {
+  return props.flyout ? false : isCollapsed.value
+})
+
 const toggleCollapse = () => {
+  if (props.flyout) {
+    emit('requestClose')
+    return
+  }
+
+  if (window.innerWidth <= 768) {
+    emit('requestClose')
+    return
+  }
+
   isCollapsed.value = !isCollapsed.value
   emit('collapse', isCollapsed.value)
   emitter.emit('sidebarStateChanged')
@@ -83,16 +106,11 @@ const handleLogout = () => {
 }
 
 onMounted(() => {
-  const savedState = localStorage.getItem('sidebar-collapsed')
-  if (savedState !== null) {
-    isCollapsed.value = savedState === 'true'
-    emit('collapse', isCollapsed.value)
-  }
+  isCollapsed.value = false
+  emit('collapse', false)
+  localStorage.setItem('sidebar-collapsed', 'false')
 })
 
-watch(isCollapsed, (newValue) => {
-  localStorage.setItem('sidebar-collapsed', String(newValue))
-})
 
 watch(route, () => {
   if (window.innerWidth <= 768) {
