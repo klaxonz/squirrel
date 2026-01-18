@@ -1054,7 +1054,10 @@ const handleSubtitleSelect = (track: SubtitleTrack | null) => {
 
 
 // 宽屏模式切换
-const toggleWidescreen = () => {
+const toggleWidescreen = async () => {
+  if (isFullscreen.value) {
+    await toggleFullscreen()
+  }
   emit('widescreenChange', !props.widescreen)
 }
 
