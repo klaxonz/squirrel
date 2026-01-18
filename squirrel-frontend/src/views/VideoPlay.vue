@@ -267,6 +267,8 @@ import { formatDate, formatDuration } from '../utils/dateFormat';
 import useVideoInteraction from "../composables/useVideoInteraction.js";
 import { useVideoApi } from '../composables/useVideoApi';
 import { useImageFallback } from '../composables/useImageFallback';
+import { usePlayerStore } from '../stores/playerStore';
+
 
 
 
@@ -284,6 +286,8 @@ const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlayba
 const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
 const { unsubscribe: apiUnsubscribe } = useSubscriptionApi();
 const { getRandomVideo } = useVideoApi();
+const playerStore = usePlayerStore();
+
 
 // 视频播放器引用
 const videoPlayerRef = ref(null);
@@ -502,22 +506,25 @@ const goToVideo = async (id, videoData = null) => {
 const handleAutoplayNext = async (evt) => {
   try {
     try { onVideoEnded(); } catch (_) {}
-    const autoplayEnabled = evt?.autoplay !== undefined ? evt.autoplay : true;
-    const autoplayNextEnabled = evt?.autoplayNext !== undefined ? evt.autoplayNext : true;
-    const loopEnabled = evt?.loop !== undefined ? evt.loop : false;
+    const autoplayEnabled = evt?.autoplay !== undefined ? evt.autoplay : playerStore.autoplay;
+    const autoplayNextEnabled = evt?.autoplayNext !== undefined ? evt.autoplayNext : playerStore.autoplayNext;
+    const loopEnabled = evt?.loop !== undefined ? evt.loop : playerStore.loop;
     if (!autoplayEnabled || !autoplayNextEnabled || loopEnabled) return;
 
+    const relatedList = Array.isArray(relatedVideos.value) ? relatedVideos.value : [];
+    if (!relatedList.length) return;
+
     // 查找第一个未在最近播放历史中的视频
-    const next = relatedVideos.value?.find(v => !recentlyPlayed.value.includes(v.id));
+    const next = relatedList.find(v => !recentlyPlayed.value.includes(v.id));
     if (next?.id) {
       await goToVideo(next.id, next);
       return;
     }
-    
-    // 如果所有相关视频都播放过，随机播放一个
-    await handlePlayRandom();
+
+    // 相关视频已播完则停止
   } catch (_) {}
 };
+
 
 
 onMounted(async () => {
