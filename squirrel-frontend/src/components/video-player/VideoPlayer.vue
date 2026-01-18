@@ -128,7 +128,7 @@
             </button>
 
             <!-- 音量 -->
-            <div class="sp-volume">
+            <div class="sp-volume" :class="{ 'is-dragging': isVolumeScrubbing }">
               <button
                 class="sp-btn"
                 @click="toggleMute"
@@ -140,10 +140,18 @@
               >
                 <PlayerIcon :name="volumeIconName" />
               </button>
-              <div class="sp-volume-slider" @click="onVolumeClick">
+              <div
+                class="sp-volume-slider"
+                @click="onVolumeClick"
+                @pointerdown.prevent="onVolumePointerDown"
+                @pointermove="onVolumePointerMove"
+                @pointerup="onVolumePointerUp"
+                @pointercancel="onVolumePointerUp"
+              >
                 <div class="sp-volume-slider-fill" :style="{ width: `${isMuted ? 0 : volume}%` }"></div>
               </div>
             </div>
+
 
             <!-- 时间 -->
             <div class="sp-time">
@@ -546,6 +554,7 @@ const settingsView = ref<'main' | 'speed' | 'quality' | 'subtitles'>('main')
 const previewTime = ref<number | null>(null)
 const previewPercent = ref(0)
 const isScrubbing = ref(false)
+const isVolumeScrubbing = ref(false)
 const controlTooltip = ref({ visible: false, text: '', shortcut: '', x: 0, y: 0 })
 const seekIndicator = ref({ show: false, direction: 'forward' as 'forward' | 'backward', seconds: 10 })
 const volumeIndicator = ref({ show: false })
@@ -966,11 +975,41 @@ const onProgressPointerUp = (e?: PointerEvent) => {
 
 
 // 音量点击
-const onVolumeClick = (e: MouseEvent) => {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  const percent = (e.clientX - rect.left) / rect.width
+const updateVolumeFromPointer = (e: PointerEvent | MouseEvent) => {
+  const target = e.currentTarget as HTMLElement | null
+  if (!target) return
+  const rect = target.getBoundingClientRect()
+  const percent = clamp((e.clientX - rect.left) / rect.width, 0, 1)
   setVolume(percent * 100)
   showVolumeIndicator()
+}
+
+const onVolumeClick = (e: MouseEvent) => {
+  updateVolumeFromPointer(e)
+}
+
+const onVolumePointerDown = (e: PointerEvent) => {
+  hideControlTooltip()
+  isVolumeScrubbing.value = true
+  showControls()
+
+  const target = e.currentTarget as HTMLElement | null
+  if (target && typeof target.setPointerCapture === 'function') {
+    target.setPointerCapture(e.pointerId)
+  }
+
+  updateVolumeFromPointer(e)
+}
+
+const onVolumePointerMove = (e: PointerEvent) => {
+  if (!isVolumeScrubbing.value) return
+  updateVolumeFromPointer(e)
+}
+
+const onVolumePointerUp = (e?: PointerEvent) => {
+  if (!isVolumeScrubbing.value) return
+  if (e) updateVolumeFromPointer(e)
+  isVolumeScrubbing.value = false
 }
 
 
@@ -1454,17 +1493,20 @@ defineExpose({
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
+  touch-action: none;
   transition: width 0.18s ease, opacity 0.18s ease, height 0.1s ease, margin-left 0.18s ease;
 }
 
 .sp-volume:hover .sp-volume-slider,
-.sp-volume:focus-within .sp-volume-slider {
+.sp-volume:focus-within .sp-volume-slider,
+.sp-volume.is-dragging .sp-volume-slider {
   width: 70px;
   margin-left: 6px;
   opacity: 1;
   pointer-events: auto;
   height: 4px;
 }
+
 
 .sp-volume-slider-fill {
   position: relative;
