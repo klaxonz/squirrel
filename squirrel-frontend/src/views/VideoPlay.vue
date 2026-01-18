@@ -184,12 +184,12 @@
 
       <!-- 右侧区域 - 相关视频 -->
       <div :class="['video-aside', isWidescreen ? 'hidden' : 'hidden md:block']">
-        <div class="sticky top-4">
+        <div>
           <div class="rounded-xl px-4 pb-4 pt-0 flex flex-col">
             <h2 class="text-text-primary text-lg mb-4">相关视频</h2>
             <div>
               <div v-if="!relatedVideos.length && !loadingRelated" class="text-text-muted text-sm">暂无推荐</div>
-              <div v-if="relatedVideos.length" class="space-y-3">
+              <div v-if="relatedVideos.length" class="related-videos-list space-y-3">
                 <div
                   v-for="relatedVideo in relatedVideos"
                   :key="relatedVideo.id"
@@ -299,12 +299,15 @@ const syncVideoMetaHeight = () => {
   if (!metaEl || !sectionEl) return;
 
   const metaHeight = Math.ceil(metaEl.getBoundingClientRect().height);
-  const sectionTop = sectionEl.getBoundingClientRect().top;
+  const sectionRect = sectionEl.getBoundingClientRect();
+  const sectionTop = sectionRect.top;
+  const sectionHeight = Math.ceil(sectionRect.height);
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
   const availableHeight = Math.max(0, Math.floor(viewportHeight - sectionTop));
 
   root.style.setProperty('--video-meta-height', `${metaHeight}px`);
   root.style.setProperty('--video-page-available-height', `${availableHeight}px`);
+  root.style.setProperty('--related-panel-height', `${sectionHeight}px`);
 };
 
 const handleResize = () => syncVideoMetaHeight();
@@ -642,6 +645,25 @@ onUnmounted(() => {
 .video-aside {
   width: var(--video-aside-width, 360px);
   flex: 0 0 var(--video-aside-width, 360px);
+}
+
+.related-videos-list {
+  max-height: var(--related-panel-height, 75vh);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.related-videos-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.related-videos-list::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 999px;
+}
+
+.related-videos-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 @media (min-width: 1280px) {
