@@ -13,8 +13,10 @@ class Settings(BaseSettings):
 
     model_config = {
         "env_file": f".env.{os.getenv('ENV')}" if os.getenv("ENV") else ".env",
-        "env_file_encoding": "utf-8"
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
     }
+
 
     REDIS_HOST: str = 'localhost'
     REDIS_PORT: int = 6379

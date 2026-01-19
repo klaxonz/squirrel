@@ -15,12 +15,16 @@ class Video(Base, SerializerMixin):
         Index('ix_video_deleted_publish_date',  'is_deleted', 'publish_date'),
         Index('ix_video_deleted_created_at', 'is_deleted', 'created_at'),
         Index('ux_video_url', 'url', unique=True),
+        Index('ix_video_domain', 'domain'),
     )
+
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(VARCHAR(512), nullable=False)
     url: Mapped[str] = mapped_column(VARCHAR(2048), nullable=False)
+    domain: Mapped[Optional[str]] = mapped_column(VARCHAR(255), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     thumbnail: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
     publish_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

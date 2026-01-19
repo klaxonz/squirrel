@@ -1,12 +1,13 @@
 from typing import Optional, List
 
-from sqlalchemy import select, func, and_, or_, exists
+from sqlalchemy import select, func, and_, exists
 
 from models.video import Video
 from models.links import SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
+from utils import url_helper
 
 
 def build_base_video_query(
@@ -49,9 +50,11 @@ def build_base_video_query(
         base_query = base_query.where(Video.title.like(f"%{query}%"))
 
     if domains:
-        like_clauses = [Video.url.like(f"%{domain}%") for domain in domains if domain]
-        if like_clauses:
-            base_query = base_query.where(or_(*like_clauses))
+        normalized_domains = [
+            d for d in {url_helper.normalize_domain(domain) for domain in domains if domain} if d
+        ]
+        if normalized_domains:
+            base_query = base_query.where(Video.domain.in_(normalized_domains))
 
     return base_query
 

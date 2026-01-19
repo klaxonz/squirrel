@@ -57,6 +57,7 @@ def create_video(url: str, title: str, publish_date: datetime, thumbnail: str, d
     with get_session() as session:
         video = Video()
         video.url = url
+        video.domain = url_helper.normalize_domain(url)
         video.title = title
         video.publish_date = publish_date
         video.thumbnail = thumbnail
@@ -64,6 +65,7 @@ def create_video(url: str, title: str, publish_date: datetime, thumbnail: str, d
         session.add(video)
         session.commit()
         return video
+
 
 
 def get_random_video(

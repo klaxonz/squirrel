@@ -9,6 +9,8 @@ from sqlalchemy import select
 from core.database import get_session
 from models.video import Video as VideoModel
 from services import subscription_video_service
+from utils import url_helper
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,12 +62,14 @@ class VideoPersistenceService:
                 # 创建新视频
                 video = VideoModel(
                     url=url,
+                    domain=url_helper.normalize_domain(url),
                     title=title,
                     thumbnail=thumbnail,
                     duration=duration,
                     publish_date=publish_date or datetime.now(),
                     description=description,
                 )
+
                 session.add(video)
                 session.commit()
                 session.refresh(video)
@@ -74,6 +78,11 @@ class VideoPersistenceService:
             else:
                 updated = False
 
+                normalized_domain = url_helper.normalize_domain(url)
+                if normalized_domain and normalized_domain != video.domain:
+                    video.domain = normalized_domain
+                    updated = True
+
                 if title and title != video.title:
                     video.title = title
                     updated = True
@@ -81,6 +90,7 @@ class VideoPersistenceService:
                 if thumbnail is not None and thumbnail != video.thumbnail:
                     video.thumbnail = thumbnail
                     updated = True
+
 
                 if duration is not None and duration != video.duration:
                     video.duration = duration

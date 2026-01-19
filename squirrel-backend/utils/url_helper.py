@@ -1,6 +1,8 @@
 from typing import Optional
 from urllib.parse import urlparse
 import logging
+import ipaddress
+
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,36 @@ def extract_second_level_domain(domain_or_url: str) -> str:
         return '.'.join(parts[-2:])
 
     return domain
+
+
+def normalize_domain(domain_or_url: str) -> Optional[str]:
+    """Normalize a URL or domain to a lower-cased second-level domain."""
+    if not domain_or_url:
+        return domain_or_url
+
+    value = domain_or_url.strip().lower()
+    if not value:
+        return value
+
+    if '://' not in value:
+        value = f"http://{value}"
+
+    parsed = urlparse(value)
+    hostname = parsed.hostname or domain_or_url
+    hostname = hostname.split(':')[0].lower()
+
+    try:
+        ipaddress.ip_address(hostname)
+        return hostname
+    except ValueError:
+        pass
+
+    parts = hostname.split('.')
+    if len(parts) >= 2:
+        return '.'.join(parts[-2:])
+
+    return hostname
+
 
 
 def get_site_from_url(url: str) -> Optional[str]:
