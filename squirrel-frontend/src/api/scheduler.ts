@@ -8,35 +8,35 @@ export const getTaskStatistics = async () => {
   return get('/api/scheduler/statistics')
 }
 
-export const getScheduledTasks = async (params = {}) => {
+export const getScheduledTasks = async (params: Record<string, unknown> = {}) => {
   return get('/api/scheduler/tasks', params)
 }
 
-export const getTaskDetail = async (taskId) => {
+export const getTaskDetail = async (taskId: string | number) => {
   return get(`/api/scheduler/tasks/${taskId}`)
 }
 
-export const createTask = async (taskData) => {
+export const createTask = async (taskData: Record<string, unknown>) => {
   return post('/api/scheduler/tasks', taskData)
 }
 
-export const updateTask = async (taskId, taskData) => {
+export const updateTask = async (taskId: string | number, taskData: Record<string, unknown>) => {
   return put(`/api/scheduler/tasks/${taskId}`, taskData)
 }
 
-export const deleteTask = async (taskId) => {
+export const deleteTask = async (taskId: string | number) => {
   return del(`/api/scheduler/tasks/${taskId}`)
 }
 
-export const enableTask = async (taskId) => {
+export const enableTask = async (taskId: string | number) => {
   return post(`/api/scheduler/tasks/${taskId}/enable`, null)
 }
 
-export const disableTask = async (taskId) => {
+export const disableTask = async (taskId: string | number) => {
   return post(`/api/scheduler/tasks/${taskId}/disable`, null)
 }
 
-export const executeTaskNow = async (taskId) => {
+export const executeTaskNow = async (taskId: string | number) => {
   return post(`/api/scheduler/tasks/${taskId}/execute`, null)
 }
 

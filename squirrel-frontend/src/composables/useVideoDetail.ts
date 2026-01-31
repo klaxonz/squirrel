@@ -10,7 +10,7 @@ type VideoSubtitle = {
 }
 
 type VideoLike = {
-  id?: VideoId
+  id: VideoId
   url?: string
   duration?: number
   last_position?: number

@@ -13,7 +13,7 @@ instance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token')
     if (token) {
-      if (!config.headers) config.headers = {}
+      config.headers = (config.headers ?? {}) as any
       ;(config.headers as any).Authorization = `Bearer ${token}`
     }
     return config

@@ -4,7 +4,7 @@ export const getPlugins = async () => {
   return get('/api/plugins/')
 }
 
-export const installPlugin = async (file) => {
+export const installPlugin = async (file: File | null | undefined) => {
   if (!file) {
     return { data: null, error: new ApiError('请选择插件包') }
   }
@@ -17,15 +17,15 @@ export const installPlugin = async (file) => {
   })
 }
 
-export const enablePlugin = async (name) => {
+export const enablePlugin = async (name: string) => {
   return post(`/api/plugins/${encodeURIComponent(name)}/enable`, null)
 }
 
-export const disablePlugin = async (name) => {
+export const disablePlugin = async (name: string) => {
   return post(`/api/plugins/${encodeURIComponent(name)}/disable`, null)
 }
 
-export const uninstallPlugin = async (name) => {
+export const uninstallPlugin = async (name: string) => {
   return post(`/api/plugins/${encodeURIComponent(name)}/uninstall`, null)
 }
 
@@ -37,11 +37,11 @@ export const getSupportedSites = async () => {
   return get('/api/plugins/sites')
 }
 
-export const testSiteConnectivity = async (siteName, timeout = 10) => {
+export const testSiteConnectivity = async (siteName: string, timeout: number = 10) => {
   return get(`/api/plugins/sites/${encodeURIComponent(siteName)}/test-connectivity`, { timeout })
 }
 
-export const testSiteLoginStatus = async (siteName) => {
+export const testSiteLoginStatus = async (siteName: string) => {
   return get(`/api/plugins/sites/${encodeURIComponent(siteName)}/login-status`)
 }
 
@@ -49,7 +49,7 @@ export const testAllSitesConnectivity = async (timeout = 10) => {
   return get('/api/plugins/sites/test-connectivity/all', { timeout })
 }
 
-export const importAllSiteCookies = async (file) => {
+export const importAllSiteCookies = async (file: File | null | undefined) => {
   if (!file) {
     return { data: null, error: new ApiError('请选择 Cookie 文件') }
   }
@@ -62,7 +62,11 @@ export const importAllSiteCookies = async (file) => {
   })
 }
 
-export const uploadSiteCookies = async (siteName, file, target = 'default') => {
+export const uploadSiteCookies = async (
+  siteName: string,
+  file: File | null | undefined,
+  target: string = 'default'
+) => {
   if (!file) {
     return { data: null, error: new ApiError('请选择 Cookie 文件') }
   }
@@ -76,7 +80,7 @@ export const uploadSiteCookies = async (siteName, file, target = 'default') => {
   })
 }
 
-export const syncCookieCloudCookies = async (siteName = null) => {
+export const syncCookieCloudCookies = async (siteName: string | null = null) => {
   return post('/api/plugins/sites/cookies/cookiecloud/sync', null, {
     params: siteName ? { site_name: siteName } : {},
   })

@@ -289,8 +289,6 @@ export class HlsPlugin implements PlayerPlugin {
       return
     }
 
-    this.hls.autoLevelEnabled = false
-
     const levels = this.hls.levels || []
     let targetLevel = -1
 

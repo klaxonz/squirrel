@@ -207,7 +207,7 @@
               @blur="hideControlTooltip"
               :aria-label="t('pictureInPicture')"
             >
-              <PlayerIcon :name="store.pip ? 'pipExit' : 'pip'" />
+              <PlayerIcon :name="store.pictureInPicture ? 'pipExit' : 'pip'" />
             </button>
 
             <!-- 宽屏 -->

@@ -81,7 +81,7 @@ export const handleRequest = async <T = any>(promise: Promise<AxiosResponse<any>
     if (isApiEnvelope(response.data)) {
       if (response.data.code === 0) {
         return {
-          data: response.data.data,
+          data: (response.data.data ?? null) as T | null,
           error: null,
         }
       }

@@ -139,7 +139,7 @@ const routes = [
       {
         path: '',
         name: 'SubscriptionIndex',
-        redirect: to => ({name: 'SubscriptionAllVideos', params: {id: to.params.id}})
+        redirect: (to: any) => ({name: 'SubscriptionAllVideos', params: {id: to.params.id}})
       },
       {
         path: 'all',

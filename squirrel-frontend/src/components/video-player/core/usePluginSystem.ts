@@ -47,6 +47,7 @@ export function usePluginSystem({
   
   const qualities = ref<QualityLevel[]>([])
   const currentQuality = ref<string | null>(null)
+  const registeredQualityId = ref<number | null>(null)
   const currentSource = shallowRef<MediaSource | null>(null)
 
   // 创建插件上下文
@@ -130,6 +131,21 @@ export function usePluginSystem({
 
     registerQualities(newQualities: QualityLevel[]) {
       qualities.value = newQualities
+      if (registeredQualityId.value !== null) {
+        const match = newQualities.find((item) => item.id === registeredQualityId.value)
+        if (match?.label) {
+          currentQuality.value = match.label
+        }
+      }
+    },
+
+    registerCurrentQualityId(id?: number) {
+      registeredQualityId.value = typeof id === 'number' ? id : null
+      if (registeredQualityId.value === null) return
+      const match = qualities.value.find((item) => item.id === registeredQualityId.value)
+      if (match?.label) {
+        currentQuality.value = match.label
+      }
     },
 
     setSource(source: MediaSource) {

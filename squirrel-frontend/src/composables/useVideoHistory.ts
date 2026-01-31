@@ -181,12 +181,10 @@ export default function useVideoHistory() {
     return Array.from(localHistory.values())
   }
 
-  const updateLocalHistory = (video_id: VideoId, data: Partial<ReportData>) => {
-    const existing = localHistory.get(video_id)
+  const updateLocalHistory = (video_id: VideoId, data: ReportData) => {
     localHistory.set(video_id, {
-      ...existing,
       ...data,
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
     })
   }
 

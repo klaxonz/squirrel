@@ -206,7 +206,7 @@ export class DashPlugin implements PlayerPlugin {
 
     try {
       const bitrateList = (this.player as any).getBitrateInfoListFor?.('video') || []
-      const qualities = bitrateList.map((info: any, index: number) => ({
+      const qualities: QualityLevel[] = bitrateList.map((info: any, index: number) => ({
         id: index,
         label: info.height ? `${info.height}p` : `${Math.round(info.bitrate / 1000)}kbps`,
         width: info.width,

@@ -1,6 +1,6 @@
 type DateLike = string | number | Date
 
-export const formatDate = (dateString: DateLike | null | undefined) => {
+export const formatDate = (dateString: DateLike | null | undefined): string => {
   if (!dateString) return '未知日期'
 
   const raw = typeof dateString === 'string' ? dateString : String(dateString)

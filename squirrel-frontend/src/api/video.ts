@@ -1,14 +1,17 @@
 import { get } from '@/utils/request'
 
-export const getVideoDetail = async (videoId) => {
+export const getVideoDetail = async (videoId: string | number) => {
   return get('/api/video/detail', { video_id: videoId })
 }
 
-export const getVideoList = async (params = {}) => {
+export const getVideoList = async (params: Record<string, unknown> = {}) => {
   return get('/api/video/list', params)
 }
 
-export const getVideoSubtitles = async (videoId, { lang = 'ai-zh', fmt = 'srt' } = {}) => {
+export const getVideoSubtitles = async (
+  videoId: string | number,
+  { lang = 'ai-zh', fmt = 'srt' }: { lang?: string; fmt?: string } = {}
+) => {
   return get(
     '/api/video/subtitles',
     { video_id: videoId, lang, fmt },
@@ -16,15 +19,15 @@ export const getVideoSubtitles = async (videoId, { lang = 'ai-zh', fmt = 'srt' }
   )
 }
 
-export const getRandomVideo = async (params = {}) => {
+export const getRandomVideo = async (params: Record<string, unknown> = {}) => {
   return get('/api/video/random', params)
 }
 
-export const getVideoCounts = async (params = {}) => {
+export const getVideoCounts = async (params: Record<string, unknown> = {}) => {
   return get('/api/video/counts', params)
 }
 
-export const getVideoUrlInfo = async (videoId, { forceRefresh = false } = {}) => {
+export const getVideoUrlInfo = async (videoId: string | number, { forceRefresh = false }: { forceRefresh?: boolean } = {}) => {
   return get('/api/video/url', {
     video_id: videoId,
     ...(forceRefresh ? { force_refresh: true } : {}),

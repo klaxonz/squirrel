@@ -7,7 +7,7 @@ import { Logger } from '@/utils/logger'
 type VideoId = string | number
 
 type VideoLike = {
-  id?: VideoId
+  id: VideoId
   stream_video_url?: string
   mpd_url?: string
   [key: string]: unknown

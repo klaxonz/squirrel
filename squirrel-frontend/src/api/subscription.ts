@@ -1,24 +1,24 @@
 import { ApiError, get, post } from '@/utils/request'
 
-export const getSubscriptions = async (params = {}) => {
+export const getSubscriptions = async (params: Record<string, unknown> = {}) => {
   return get('/api/subscription/list', params)
 }
 
-export const getSubscriptionDetail = async (subscriptionId) => {
+export const getSubscriptionDetail = async (subscriptionId: string | number) => {
   return get(`/api/subscription/detail/${subscriptionId}`)
 }
 
-export const unsubscribe = async (subscriptionId) => {
+export const unsubscribe = async (subscriptionId: string | number) => {
   return post('/api/subscription/unsubscribe', {
     subscription_id: subscriptionId,
   })
 }
 
-export const subscribe = async (url) => {
+export const subscribe = async (url: string) => {
   return post('/api/subscription/subscribe', { url })
 }
 
-export const updateNsfwStatus = async (subscriptionId, isNsfw) => {
+export const updateNsfwStatus = async (subscriptionId: string | number, isNsfw: boolean) => {
   const { data, error } = await post('/api/subscription/toggle-nsfw', {
     subscription_id: subscriptionId,
     is_enable: isNsfw,
@@ -30,7 +30,7 @@ export const updateNsfwStatus = async (subscriptionId, isNsfw) => {
   return { data: null, error: new ApiError('更新失败', undefined, null, data) }
 }
 
-export const triggerRefresh = async (subscriptionId) => {
+export const triggerRefresh = async (subscriptionId: string | number) => {
   const result = await post(`/api/subscription/${subscriptionId}/refresh`, null)
   if (!result.error) return result
 
@@ -56,11 +56,11 @@ export const getSupportedImportSites = async () => {
   return { data: data?.sites || [], error }
 }
 
-export const previewImportSubscriptions = async (site) => {
+export const previewImportSubscriptions = async (site: string) => {
   return get(`/api/subscription/import/${site}/preview`)
 }
 
-export const importSubscriptions = async (site, subscriptionUrls = null) => {
+export const importSubscriptions = async (site: string, subscriptionUrls: string[] | null = null) => {
   const payload = subscriptionUrls ? { subscription_urls: subscriptionUrls } : {}
   return post(`/api/subscription/import/${site}`, payload)
 }

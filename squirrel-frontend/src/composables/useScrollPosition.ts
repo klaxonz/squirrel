@@ -25,7 +25,7 @@ export function useScrollPosition(key: string) {
     let position = 0
 
     if (scrollPositions.has(key)) {
-      position = scrollPositions.get(key)
+      position = scrollPositions.get(key) ?? 0
     } else {
       try {
         const saved = localStorage.getItem(`scroll-${key}`)

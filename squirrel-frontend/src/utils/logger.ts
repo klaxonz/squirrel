@@ -9,7 +9,9 @@ const resolveDefaultLevel = () => {
   return import.meta.env.DEV ? LOG_LEVELS.DEBUG : LOG_LEVELS.WARN
 }
 
-let currentLevel = resolveDefaultLevel()
+type LogLevel = typeof LOG_LEVELS[keyof typeof LOG_LEVELS]
+
+let currentLevel: LogLevel = resolveDefaultLevel()
 
 const shouldLog = (level: number) => level >= currentLevel
 

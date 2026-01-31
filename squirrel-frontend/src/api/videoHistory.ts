@@ -1,18 +1,20 @@
 import { get, post } from '@/utils/request'
 
-export const updateVideoHistory = async (payload) => {
+type VideoId = string | number
+
+export const updateVideoHistory = async (payload: Record<string, unknown>) => {
   return post('/api/video-history/update', payload)
 }
 
-export const batchUpdateVideoHistory = async (reports = []) => {
+export const batchUpdateVideoHistory = async (reports: Record<string, unknown>[] = []) => {
   return post('/api/video-history/batch-update', { reports })
 }
 
-export const listVideoHistory = async (params = {}) => {
+export const listVideoHistory = async (params: Record<string, unknown> = {}) => {
   return get('/api/video-history/list', params)
 }
 
-export const clearVideoHistory = async (videoIds = null) => {
+export const clearVideoHistory = async (videoIds: VideoId[] | null = null) => {
   const body = Array.isArray(videoIds) && videoIds.length ? videoIds : null
   return post('/api/video-history/clear', body)
 }
