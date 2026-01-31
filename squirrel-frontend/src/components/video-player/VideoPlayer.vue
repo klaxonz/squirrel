@@ -423,7 +423,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { usePlayer } from './core'
+import { usePlayer, type MediaSource } from './core'
 import PlayerIcon from './PlayerIcon.vue'
 import {
   ArrowLeftIcon,
@@ -442,6 +442,7 @@ let activePlayerContainer: HTMLElement | null = null
 interface Props {
 
   video?: VideoInfo
+  source?: MediaSource | null
   initialTime?: number
   hasPrev?: boolean
   hasNext?: boolean
@@ -459,6 +460,7 @@ type PlayerUiError = {
 
 const props = withDefaults(defineProps<Props>(), {
 
+  source: null,
   initialTime: 0,
   hasPrev: false,
   hasNext: false,
@@ -808,26 +810,17 @@ watch(containerRef, (el) => {
   containerElement.value = el
 }, { immediate: true })
 
-// 业务数据适配：将 VideoInfo 转换为通用 MediaSource
-const adaptVideoToSource = (video: VideoInfo) => {
-  const videoAny = video as any
-  
-  // 优先使用 mpd_url（DASH，支持音视频合流）
-  // 其次使用 stream_video_url（HLS 或原生视频）
-  const src = videoAny.mpd_url || videoAny.stream_video_url || ''
-  
-  if (!src) return null
-  
+// 记录当前加载的源，避免重复加载（支持 key 强制重载）
+let currentLoadedKey = ''
+
+const resolveSource = (source: MediaSource): MediaSource => {
+  const v: any = props.video || {}
   return {
-    src,
-    type: 'auto' as const,
-    poster: video.thumbnail,
-    title: video.title
+    ...source,
+    poster: source.poster || v.thumbnail,
+    title: source.title || v.title,
   }
 }
-
-// 记录当前加载的源，避免重复加载
-let currentLoadedSrc = ''
 
 // 业务数据适配：将字幕数据转换为 SubtitleTrack
 const adaptSubtitles = (video: VideoInfo) => {
@@ -843,58 +836,68 @@ const adaptSubtitles = (video: VideoInfo) => {
   }))
 }
 
-// 加载视频
 watch(
-  () => props.video,
-  async (video, oldVideo) => {
-    if (!video) return
-    
-    // 如果是新视频（id 变化），重置已加载的源记录
-    const newVideoId = (video as any).id
-    const oldVideoId = (oldVideo as any)?.id
-    if (newVideoId !== oldVideoId) {
-      currentLoadedSrc = ''
-      internalError.value = null
-      // 立即重置播放器状态
-      store.setCurrentTime(0)
+  () => String((props.video as any)?.id ?? ''),
+  (videoId, oldVideoId) => {
+    if (!videoId) return
+    if (videoId === oldVideoId) return
 
-      store.setDuration(0)
-      store.setBufferedProgress(0)
-      store.setPlaying(false)
+    currentLoadedKey = ''
+    internalError.value = null
+    clearErrorState()
+    store.resetForNewVideo()
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.source,
+  (source) => {
+    if (!source || !source.src) {
       store.setLoading(true, 'fetching')
+      return
     }
-    
-    // 适配视频源
-    const source = adaptVideoToSource(video)
-    if (!source) return
-    
-    // 避免重复加载相同的源
-    if (source.src === currentLoadedSrc) return
-    currentLoadedSrc = source.src
-    
-    // 加载视频源
-    loadSource(source)
-    
-    // 适配并设置字幕
-    const subtitles = adaptSubtitles(video)
-    if (subtitles.length > 0) {
-      setSubtitleTracks(subtitles)
-    }
-    
-  // 恢复播放位置
-    const videoId = (video as any).id
-    if (props.initialTime > 0) {
-      await nextTick()
-      queueResume(videoId, props.initialTime)
-    } else if (videoId) {
-      const savedTime = await loadProgress(videoId)
-      if (savedTime && savedTime > 0) {
-        await nextTick()
-        queueResume(videoId, savedTime)
-      }
-    }
+
+    const nextKey = source.key || source.src
+    if (nextKey === currentLoadedKey) return
+    currentLoadedKey = nextKey
+
+    loadSource(resolveSource(source))
+  },
+  { immediate: true }
+)
+
+watch(
+  () => (props.video as any)?.subtitles,
+  () => {
+    const subtitles = props.video ? adaptSubtitles(props.video) : []
+    setSubtitleTracks(subtitles)
   },
   { immediate: true, deep: true }
+)
+
+const lastResumeKey = ref('')
+watch(
+  () => [String((props.video as any)?.id ?? ''), props.initialTime] as const,
+  async ([videoId, initialTime]) => {
+    if (!videoId) return
+    const key = `${videoId}:${initialTime}`
+    if (key === lastResumeKey.value) return
+    lastResumeKey.value = key
+
+    if (initialTime > 0) {
+      await nextTick()
+      queueResume(videoId, initialTime)
+      return
+    }
+
+    const savedTime = await loadProgress(videoId)
+    if (savedTime && savedTime > 0) {
+      await nextTick()
+      queueResume(videoId, savedTime)
+    }
+  },
+  { immediate: true }
 )
 
 

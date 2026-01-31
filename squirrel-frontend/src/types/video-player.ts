@@ -4,10 +4,10 @@
 
 // 基础视频信息
 export interface VideoInfo {
-  id: string
+  id: string | number
   title: string
   thumbnail?: string
-  stream_video_url: string
+  stream_video_url?: string
   stream_audio_url?: string
   mpd_url?: string
   total_duration?: number
@@ -236,5 +236,4 @@ export interface HLSConfig {
   liveMaxLatencyDurationCount?: number
   enableSoftwareAES?: boolean
 }
-
 

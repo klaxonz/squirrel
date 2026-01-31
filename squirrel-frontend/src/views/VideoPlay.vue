@@ -10,6 +10,7 @@
               ref="videoPlayerRef"
               v-if="video"
               :video="video"
+              :source="playbackSource"
               :initialTime="startTime"
               :has-prev="hasPrevVideo"
               :has-next="hasNextVideo"
@@ -279,7 +280,7 @@ const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useIm
 
 
 // 内部切换不使用 router，所以不需要从 history.state 读取初始数据
-const { video, startTime, relatedVideos, loadingRelated, loadAndPlayById, externalError } = usePlaybackOrchestrator(null);
+const { video, startTime, relatedVideos, loadingRelated, playbackSource, loadAndPlayById, externalError } = usePlaybackOrchestrator(null);
 const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);

@@ -31,7 +31,7 @@ import { useTheme, type ThemeName } from '../themes'
 import { useI18n, type LocaleCode, type LocaleMessages } from '../i18n'
 
 // 类型
-import type { VideoInfo, QualityOption } from '../../../types/video-player'
+import type { VideoInfo } from '../../../types/video-player'
 
 export interface PlayerOptions {
   // 初始配置
@@ -253,15 +253,11 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const isMuted = computed(() => store.muted)
   const isFullscreen = computed(() => store.fullscreen)
 
-  const isHlsStream = computed(() => {
-    const url = currentVideo.value?.stream_video_url
-    return !!url && url.includes('.m3u8')
-  })
+  const currentSource = ref<MediaSource | null>(null)
+  const currentSourceType = ref<'native' | 'hls' | 'dash' | null>(null)
 
-  const isDashStream = computed(() => {
-    const video = currentVideo.value as any
-    return !!video?.mpd_url || (!!video?.stream_video_url && video.stream_video_url.endsWith('.mpd'))
-  })
+  const isHlsStream = computed(() => currentSourceType.value === 'hls')
+  const isDashStream = computed(() => currentSourceType.value === 'dash')
 
   // ===== 插件上下文 =====
   const createPluginContext = (): PluginContext => ({
@@ -324,14 +320,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     },
     setSource(source) { /* handled by loadSource */ },
     getSource() {
-      if (currentVideo.value) {
-        return {
-          src: (currentVideo.value as any).mpd_url ||
-            (currentVideo.value as any).stream_video_url ||
-            ''
-        }
-      }
-      return null
+      return currentSource.value
     },
     async requestFullscreen() { await toggleFullscreen() },
     async exitFullscreen() { if (store.fullscreen) await toggleFullscreen() },
@@ -529,14 +518,26 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   // ===== 源加载 =====
   let pendingSource: MediaSource | null = null
+  let pendingSourceKey = ''
   let autoPlayOnReady = false
-  let currentSourceUrl = ''
+  let currentSourceKey = ''
 
   const loadSource = (source: MediaSource): void => {
     if (!source.src) {
       Logger.warn('[usePlayer] No source URL provided')
       return
     }
+
+    // 解析源类型
+    const resolvedSource: MediaSource = {
+      ...source,
+      type: source.type === 'auto' || !source.type
+        ? detectSourceType(source.src)
+        : source.type
+    }
+
+    const nextKey = resolvedSource.key || resolvedSource.src
+    if (nextKey === currentSourceKey || nextKey === pendingSourceKey) return
 
     // 立即重置播放器状态（无论是否能立即加载）
     store.setCurrentTime(0)
@@ -549,18 +550,15 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     currentQualityId.value = null
     registeredQualityId.value = null
 
-
-    // 解析源类型
-    const resolvedSource: MediaSource = {
-      ...source,
-      type: source.type === 'auto' || !source.type 
-        ? detectSourceType(source.src) 
-        : source.type
-    }
+    currentSource.value = resolvedSource
+    currentSourceType.value = resolvedSource.type === 'hls' || resolvedSource.type === 'dash' || resolvedSource.type === 'native'
+      ? resolvedSource.type
+      : null
 
     // 如果插件或视频元素还没准备好，保存待处理的源
     if (!isReady.value || !videoElement.value) {
       pendingSource = resolvedSource
+      pendingSourceKey = nextKey
       return
     }
 
@@ -570,13 +568,15 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const doLoadSource = (source: MediaSource): void => {
     if (!videoElement.value) {
       pendingSource = source
+      pendingSourceKey = source.key || source.src
       return
     }
 
     const { src, type = 'native' } = source
+    const nextKey = source.key || src
 
     // 避免重复加载相同的源
-    if (src === currentSourceUrl) return
+    if (nextKey === currentSourceKey) return
 
     // 切换源之前先暂停当前视频，避免旧视频继续播放
     if (videoElement.value) {
@@ -587,10 +587,13 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       }
     }
 
-    currentSourceUrl = src
+    currentSourceKey = nextKey
+    currentSource.value = source
+    currentSourceType.value = type === 'hls' || type === 'dash' || type === 'native' ? type : null
+    pendingSourceKey = ''
 
     // 通知插件源变化（HLS/DASH 插件会处理）
-    events.emit('sourcechange', { src, type })
+    events.emit('sourcechange', { ...source, src, type })
     
     // 原生视频直接设置 src
     if (type === 'native') {
@@ -622,7 +625,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   // ===== 进度管理 =====
   const saveProgress = (): void => {
     if (!currentVideo.value?.id) return
-    adapterSaveProgress(currentVideo.value.id, store.currentTime, store.duration)
+    adapterSaveProgress(String(currentVideo.value.id), store.currentTime, store.duration)
   }
 
   const loadProgress = async (videoId: string): Promise<number | null> => {

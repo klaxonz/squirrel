@@ -3,13 +3,12 @@ import useVideoDetail from './useVideoDetail'
 import useRelatedVideos from './useRelatedVideos'
 import useVideoOperations from './useVideoOperations'
 import { Logger } from '@/utils/logger'
+import type { MediaSource } from '@/components/video-player/core'
 
 type VideoId = string | number
 
 type VideoLike = {
   id: VideoId
-  stream_video_url?: string
-  mpd_url?: string
   [key: string]: unknown
 }
 
@@ -30,8 +29,10 @@ const toRecord = (value: unknown): Record<string, any> => {
 export default function usePlaybackOrchestrator(initialVideo: VideoLike | null = null) {
   const { video, startTime, fetchVideoDetails, maybeInjectSubtitles } = useVideoDetail(initialVideo)
   const { relatedVideos, loadingRelated, fetchRelatedVideos } = useRelatedVideos(video)
-  const { playVideo } = useVideoOperations()
+  const { getPlaybackSource } = useVideoOperations()
+  const playbackSource = ref<MediaSource | null>(null)
   const externalError = ref<ExternalErrorState | null>(null)
+  const requestSeq = ref(0)
 
   const loadAndPlayById = async (
     videoId: VideoId,
@@ -39,7 +40,14 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     options: PlayOptions = {}
   ) => {
     if (!videoId) return
-    Logger.debug('[usePlaybackOrchestrator] loadAndPlayById start', videoId)
+
+    requestSeq.value += 1
+    const seq = requestSeq.value
+
+    Logger.debug('[usePlaybackOrchestrator] loadAndPlayById start', { videoId, seq })
+
+    externalError.value = null
+    playbackSource.value = null
 
     if (initialVideoData && initialVideoData.id === videoId) {
       video.value = initialVideoData as any
@@ -54,8 +62,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     }
 
     Logger.debug('[usePlaybackOrchestrator] after fetchVideoDetails', {
-      hasStreamUrl: !!(video.value as any)?.stream_video_url,
-      hasMpdUrl: !!(video.value as any)?.mpd_url,
+      hasVideo: !!video.value,
     })
 
     try {
@@ -64,29 +71,36 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
 
     await fetchRelatedVideos()
 
-    externalError.value = null
+    if (seq !== requestSeq.value) return
 
-    Logger.debug('[usePlaybackOrchestrator] calling playVideo (non-blocking)')
-    ;(async () => {
-      try {
-        await playVideo(video.value as any, options)
-      } catch (err) {
-        const e = toRecord(err)
-        const code = String(e.code || 'FAILED')
-        const message = String(e.message || '播放链接获取失败')
-        externalError.value = {
-          code,
-          title: '播放失败',
-          message,
-          canRetry: true,
-        }
+    try {
+      const source = await getPlaybackSource(videoId, options)
+      if (seq !== requestSeq.value) return
+
+      const v: any = video.value || {}
+      playbackSource.value = {
+        ...source,
+        poster: source.poster || v.thumbnail,
+        title: source.title || v.title,
       }
-    })()
 
-    Logger.debug('[usePlaybackOrchestrator] playVideo invoked', {
-      hasStreamUrl: !!(video.value as any)?.stream_video_url,
-      hasMpdUrl: !!(video.value as any)?.mpd_url,
-    })
+      Logger.debug('[usePlaybackOrchestrator] playbackSource ready', {
+        videoId,
+        src: playbackSource.value?.src,
+      })
+    } catch (err) {
+      if (seq !== requestSeq.value) return
+
+      const e = toRecord(err)
+      const code = String(e.code || 'FAILED')
+      const message = String(e.message || '播放链接获取失败')
+      externalError.value = {
+        code,
+        title: '播放失败',
+        message,
+        canRetry: true,
+      }
+    }
   }
 
   return {
@@ -95,6 +109,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     startTime,
     relatedVideos,
     loadingRelated,
+    playbackSource,
     externalError,
 
     // actions

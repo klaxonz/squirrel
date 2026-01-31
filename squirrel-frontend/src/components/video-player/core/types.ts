@@ -68,6 +68,7 @@ export interface QualityLevel {
 export interface MediaSource {
   src: string
   type?: 'auto' | 'native' | 'hls' | 'dash'
+  key?: string
   poster?: string
   title?: string
 }
