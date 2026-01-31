@@ -86,7 +86,10 @@ const sizeClasses = computed(() => {
 })
 
 const onInput = (event) => {
-  const value = props.type === 'number' ? Number(event.target.value) : event.target.value
+  const rawValue = event.target.value
+  const value = props.type === 'number'
+    ? (rawValue === '' ? '' : Number(rawValue))
+    : rawValue
   emit('update:modelValue', value)
 }
 

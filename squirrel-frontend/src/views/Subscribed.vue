@@ -206,7 +206,7 @@ import FeedToolbar from '../components/feed/FeedToolbar.vue';
 import Button from '../components/common/Button.vue';
 import InlineAlert from '../components/common/InlineAlert.vue';
 import { PlusIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';        
-import ToggleSwitch from '../components/ToggleSwitch.vue';
+import ToggleSwitch from '../components/common/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
 import { useRefreshTriggers } from '../composables/useRefreshTriggers';
 import AddChannelDialog from '../components/AddChannelDialog.vue';

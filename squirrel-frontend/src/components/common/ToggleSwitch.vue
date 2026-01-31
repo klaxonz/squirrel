@@ -1,13 +1,32 @@
 <template>
   <label class="switch">
-    <input type="checkbox" :checked="modelValue" @change="$emit('update:modelValue', $event.target.checked)">
+    <input
+      type="checkbox"
+      :checked="modelValue"
+      :disabled="disabled"
+      @change="onChange"
+    >
     <span class="slider round"></span>
   </label>
 </template>
 
 <script setup>
-defineProps(['modelValue']);
-defineEmits(['update:modelValue']);
+const props = defineProps({
+  modelValue: {
+    type: Boolean,
+    default: false,
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const emit = defineEmits(['update:modelValue'])
+
+const onChange = (event) => {
+  emit('update:modelValue', event.target.checked)
+}
 </script>
 
 <style scoped>
@@ -61,4 +80,10 @@ input:checked + .slider:before {
 .slider.round:before {
   border-radius: 50%;
 }
+
+input:disabled + .slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 </style>
+

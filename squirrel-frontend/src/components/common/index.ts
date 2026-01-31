@@ -11,6 +11,8 @@ export { default as Textarea } from './Textarea.vue'
 export { default as LabeledInput } from './LabeledInput.vue'
 export { default as LabeledSelect } from './LabeledSelect.vue'
 export { default as LabeledTextarea } from './LabeledTextarea.vue'
+export { default as LabeledCheckbox } from './LabeledCheckbox.vue'
+export { default as ToggleSwitch } from './ToggleSwitch.vue'
 
 // 容器组件
 export { default as Card } from './Card.vue'

@@ -88,7 +88,7 @@
         </div>
 
         <div class="site-editor-scroll px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto pr-2 text-sm">
-          <LabeledTextInput
+          <LabeledInput
             label="显示名称"
             v-model="siteEditorForm.label"
             placeholder="展示给用户的名称"
@@ -116,7 +116,7 @@
             />
           </div>
 
-          <LabeledTextInput
+          <LabeledInput
             label="测试 URL"
             v-model="siteEditorForm.testUrl"
             placeholder="用于连通性检测的 URL"
@@ -130,14 +130,16 @@
           />
 
           <div class="grid md:grid-cols-2 gap-4">
-            <LabeledNumberInput
+            <LabeledInput
               label="最小请求间隔（秒）"
               v-model="siteEditorForm.rateLimitMin"
+              type="number"
               :step="0.1"
             />
-            <LabeledNumberInput
+            <LabeledInput
               label="最大请求间隔（秒）"
               v-model="siteEditorForm.rateLimitMax"
+              type="number"
               :step="0.1"
             />
           </div>
@@ -145,49 +147,58 @@
           <div>
             <h4 class="text-xs text-text-secondary mb-2">代理参数</h4>
             <div class="grid md:grid-cols-2 gap-4 text-sm text-text-secondary">
-              <LabeledNumberInput
+              <LabeledInput
                 label="连接超时 (秒)"
                 v-model="siteEditorForm.proxyConnectTimeout"
+                type="number"
                 :step="0.1"
               />
-              <LabeledNumberInput
+              <LabeledInput
                 label="读取超时 (秒)"
                 v-model="siteEditorForm.proxyReadTimeout"
+                type="number"
                 :step="0.1"
               />
-              <LabeledNumberInput
+              <LabeledInput
                 label="写入超时 (秒)"
                 v-model="siteEditorForm.proxyWriteTimeout"
+                type="number"
                 :step="0.1"
               />
-              <LabeledNumberInput
+              <LabeledInput
                 label="连接池超时 (秒)"
                 v-model="siteEditorForm.proxyPoolTimeout"
+                type="number"
                 :step="0.1"
               />
-              <LabeledNumberInput
+              <LabeledInput
                 label="Keepalive 过期 (秒)"
                 v-model="siteEditorForm.proxyKeepaliveExpiry"
+                type="number"
                 :step="0.1"
               />
-              <LabeledNumberInput
+              <LabeledInput
                 label="最大连接数"
                 v-model="siteEditorForm.proxyMaxConnections"
+                type="number"
                 :step="1"
               />
-              <LabeledNumberInput
+              <LabeledInput
                 label="最大 Keepalive 连接数"
                 v-model="siteEditorForm.proxyMaxKeepaliveConnections"
+                type="number"
                 :step="1"
               />
-              <LabeledNumberInput
+              <LabeledInput
                 label="分块大小 (字节)"
                 v-model="siteEditorForm.proxyChunkSize"
+                type="number"
                 :step="1"
               />
-              <LabeledNumberInput
+              <LabeledInput
                 label="最大重试次数"
                 v-model="siteEditorForm.proxyMaxRetries"
+                type="number"
                 :step="1"
               />
             </div>
@@ -206,14 +217,15 @@
           <div>
             <h4 class="text-xs text-text-secondary mb-2">登录检测</h4>
             <div class="grid md:grid-cols-2 gap-4">
-              <LabeledTextInput
+              <LabeledInput
                 label="检测 URL"
                 v-model="siteEditorForm.loginCheckUrl"
                 placeholder="检测 URL"
               />
-              <LabeledNumberInput
+              <LabeledInput
                 label="超时时间 (秒)"
                 v-model="siteEditorForm.loginTimeout"
+                type="number"
                 :step="0.1"
               />
             </div>
@@ -285,11 +297,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useSiteCatalog } from '../composables/useSites';
-import LabeledNumberInput from './LabeledNumberInput.vue';
-import LabeledTextarea from './LabeledTextarea.vue';
-import LabeledTextInput from './LabeledTextInput.vue';
-import LabeledCheckbox from './LabeledCheckbox.vue';
 import Card from './common/Card.vue';
+import LabeledCheckbox from './common/LabeledCheckbox.vue';
+import LabeledInput from './common/LabeledInput.vue';
+import LabeledTextarea from './common/LabeledTextarea.vue';
 import { Logger } from '../utils/logger'
 
 const { catalog: siteCatalog, loading: siteLoading, error: siteError, loadCatalog, saveCatalog } = useSiteCatalog();
