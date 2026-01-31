@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { get, post } from '../utils/request'
+import { getSystemConfig, saveSystemConfig } from '@/api'
 
 // 全局共享的系统配置状态
 const config = ref(null)
@@ -9,7 +9,7 @@ export function useSystemConfig() {
   const loadSystemConfig = async () => {
     loading.value = true
     try {
-      const result = await get('/api/system/config')
+      const result = await getSystemConfig()
       if (!result.error) {
         config.value = result.data
       }
@@ -22,7 +22,7 @@ export function useSystemConfig() {
   const updateSystemConfig = async (payload = {}) => {
     loading.value = true
     try {
-      const result = await post('/api/system/config', payload)
+      const result = await saveSystemConfig(payload)
       if (!result.error) {
         config.value = result.data
       }

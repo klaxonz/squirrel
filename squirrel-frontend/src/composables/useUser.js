@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { get, post, put } from '../utils/request'
+import { getUserById as apiGetUserById, getUserMe, loginUser, registerUser, updateUserMe } from '@/api'
 import { clearAuthStorage } from '../utils/auth'
 
 const currentUser = ref(null)
@@ -12,7 +12,7 @@ export function useUser() {
     loading.value = true
     error.value = null
 
-    const result = await post('/api/users/register', data)
+    const result = await registerUser(data)
 
     loading.value = false
     error.value = result.error
@@ -23,7 +23,7 @@ export function useUser() {
     loading.value = true
     error.value = null
 
-    const result = await post('/api/users/login', data)
+    const result = await loginUser(data)
 
     if (!result.error && result.data?.access_token) {
       localStorage.setItem('token', result.data.access_token)
@@ -53,7 +53,7 @@ export function useUser() {
     loading.value = true
     error.value = null
 
-    const result = await get('/api/users/me')
+    const result = await getUserMe()
 
     if (result.error?.status === 401) {
       logout()
@@ -71,7 +71,7 @@ export function useUser() {
     loading.value = true
     error.value = null
 
-    const result = await put('/api/users/me', data)
+    const result = await updateUserMe(data)
 
     if (!result.error) {
       currentUser.value = result.data || null
@@ -86,7 +86,7 @@ export function useUser() {
     loading.value = true
     error.value = null
 
-    const result = await get(`/api/users/${userId}`)
+    const result = await apiGetUserById(userId)
 
     loading.value = false
     error.value = result.error

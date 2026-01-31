@@ -24,3 +24,9 @@ export const getVideoCounts = async (params = {}) => {
   return get('/api/video/counts', params)
 }
 
+export const getVideoUrlInfo = async (videoId, { forceRefresh = false } = {}) => {
+  return get('/api/video/url', {
+    video_id: videoId,
+    ...(forceRefresh ? { force_refresh: true } : {}),
+  })
+}

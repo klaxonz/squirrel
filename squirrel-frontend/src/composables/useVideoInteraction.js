@@ -1,4 +1,4 @@
-import { post } from '../utils/request'
+import { deleteVideoInteraction, toggleVideoInteraction } from '@/api'
 
 export default function useVideoInteraction() {
   const INTERACTION_TYPE = {
@@ -8,16 +8,11 @@ export default function useVideoInteraction() {
   }
 
   const toggleLike = async (videoId, interactionType) => {
-    return post('/api/video-interaction/toggle-like', {
-      video_id: videoId,
-      interaction_type: interactionType,
-    })
+    return toggleVideoInteraction(videoId, interactionType)
   }
 
   const deleteInteraction = async (videoId) => {
-    return post('/api/video-interaction/delete', {
-      video_id: videoId,
-    })
+    return deleteVideoInteraction(videoId)
   }
 
   return {

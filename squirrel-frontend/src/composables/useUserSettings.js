@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { get, put } from '../utils/request'
+import { getUserMeConfig, updateUserMeConfig } from '@/api'
 
 const settingsState = ref({
   showNsfw: false,
@@ -16,7 +16,7 @@ export function useUserSettings() {
     loadingState.value = true;
     errorState.value = null;
 
-    const { data, error } = await get('/api/users/me/config')
+    const { data, error } = await getUserMeConfig()
     if (!error && data) {
       settingsState.value = {
         ...settingsState.value,
@@ -32,7 +32,7 @@ export function useUserSettings() {
     loadingState.value = true;
     errorState.value = null;
 
-    const result = await put('/api/users/me/config', {
+    const result = await updateUserMeConfig({
       settings: settingsState.value,
       merge: false,
     })
@@ -40,7 +40,7 @@ export function useUserSettings() {
     if (result.error) {
       errorState.value = result.error
 
-      const rollbackResult = await get('/api/users/me/config')
+      const rollbackResult = await getUserMeConfig()
       if (!rollbackResult.error && rollbackResult.data) {
         settingsState.value = {
           ...settingsState.value,

@@ -40,7 +40,6 @@ export function useSites() {
 export function resetSitesCache() {
   resetCache();
 }
-// 站点原始配置（/api/sites）的读写，用于管理端配置
 const siteCatalog = ref({});
 const siteCatalogLoading = ref(false);
 const siteCatalogError = ref(null);

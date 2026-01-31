@@ -44,7 +44,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { XMarkIcon } from '@heroicons/vue/24/outline';
-import { post } from '../utils/request'
+import { subscribe } from '@/api'
 import { Button, IconButton } from '@/components/common';
 
 const props = defineProps({
@@ -71,9 +71,7 @@ const handleSubmit = async () => {
   loading.value = true;
   error.value = '';
   
-  const result = await post('/api/subscription/subscribe', {
-    url: channelUrl.value,
-  })
+  const result = await subscribe(channelUrl.value)
 
   if (!result.error) {
     emit('added');

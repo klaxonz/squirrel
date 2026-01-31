@@ -1,7 +1,11 @@
 export * from './metrics'
 export * from './plugins'
 export * from './scheduler'
+export * from './logs'
 export * from './sites'
+export * from './system'
 export * from './subscription'
+export * from './users'
 export * from './video'
-
+export * from './videoHistory'
+export * from './videoInteraction'

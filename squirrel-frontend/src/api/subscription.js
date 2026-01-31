@@ -14,6 +14,10 @@ export const unsubscribe = async (subscriptionId) => {
   })
 }
 
+export const subscribe = async (url) => {
+  return post('/api/subscription/subscribe', { url })
+}
+
 export const updateNsfwStatus = async (subscriptionId, isNsfw) => {
   const { data, error } = await post('/api/subscription/toggle-nsfw', {
     subscription_id: subscriptionId,
@@ -60,4 +64,3 @@ export const importSubscriptions = async (site, subscriptionUrls = null) => {
   const payload = subscriptionUrls ? { subscription_urls: subscriptionUrls } : {}
   return post(`/api/subscription/import/${site}`, payload)
 }
-

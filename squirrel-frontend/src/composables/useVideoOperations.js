@@ -1,4 +1,4 @@
-import { get } from '../utils/request'
+import { getVideoUrlInfo } from '@/api'
 import { Logger } from '../utils/logger'
 
 export default function useVideoOperations() {
@@ -40,10 +40,7 @@ export default function useVideoOperations() {
 
       // 统一通过后端获取播放链接（VideoUrlDto），后端会在 bilibili/YouTube 情况下返回 mpd_url 与可选清晰度
       Logger.debug('[getVideoUrl] Making API call to /api/video/url for video', video.id)
-      const { data, error } = await get('/api/video/url', {
-        video_id: video.id,
-        ...(forceRefresh ? { force_refresh: true } : {}),
-      })
+      const { data, error } = await getVideoUrlInfo(video.id, { forceRefresh })
 
       if (error) {
         const msg = error.data?.msg || error.message

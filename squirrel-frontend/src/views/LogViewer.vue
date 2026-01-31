@@ -180,7 +180,7 @@ import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
 import { Select } from '@/components/common';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import { get } from '../utils/request'
+import { getLogFiles, queryLogs } from '@/api'
 import { Logger } from '../utils/logger'
 
 
@@ -236,7 +236,7 @@ onUnmounted(() => {
 // 加载日志文件列表
 async function loadLogFiles() {
   try {
-    const { data, error } = await get('/api/logs/files')
+    const { data, error } = await getLogFiles()
     if (error) {
       Logger.error('Failed to load log files', error);
       return
@@ -266,7 +266,7 @@ async function loadLogs() {
       pageSize: 500
     };
     
-    const result = await get('/api/logs/query', params)
+    const result = await queryLogs(params)
     if (!result.error && result.data) {
       const data = result.data;
       

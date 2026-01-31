@@ -1,5 +1,5 @@
 import { reactive, ref } from 'vue'
-import { get, post } from '../utils/request'
+import { batchUpdateVideoHistory, clearVideoHistory, listVideoHistory, updateVideoHistory } from '@/api'
 import { Logger } from '../utils/logger'
 
 export default function useVideoHistory() {
@@ -46,7 +46,7 @@ export default function useVideoHistory() {
 
     // 如果在线且不是强制模式，尝试立即发送
     if (syncStatus.isOnline || force) {
-      const { error } = await post('/api/video-history/update', reportData)
+      const { error } = await updateVideoHistory(reportData)
       if (!error) {
         syncStatus.lastSyncTime = Date.now();
         syncStatus.failedAttempts = 0;
@@ -78,9 +78,7 @@ export default function useVideoHistory() {
       return false;
     }
 
-    const { error } = await post('/api/video-history/batch-update', {
-      reports: reports,
-    })
+    const { error } = await batchUpdateVideoHistory(reports)
 
     if (!error) {
       syncStatus.lastSyncTime = Date.now();
@@ -112,7 +110,7 @@ export default function useVideoHistory() {
         params.site = site;
       }
       
-      const { data, error } = await get('/api/video-history/list', params)
+      const { data, error } = await listVideoHistory(params)
       if (error) {
         throw new Error(error.message || '加载历史失败')
       }
@@ -133,8 +131,7 @@ export default function useVideoHistory() {
   // 清空观看历史（可选传入部分视频ID）
   const clearHistory = async (videoIds = null) => {
     try {
-      const body = Array.isArray(videoIds) && videoIds.length ? videoIds : null;
-      const { error } = await post('/api/video-history/clear', body)
+      const { error } = await clearVideoHistory(videoIds)
       if (error) {
         throw new Error(error.message || '清空历史失败')
       }
