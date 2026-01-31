@@ -63,9 +63,9 @@ import {
   Bars3Icon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/vue/24/outline'
-import { useUser } from '../composables/useUser'
+import { useUser } from '@/composables/useUser'
 import SidebarMenuItem from './SidebarMenuItem.vue'
-import { MENU_ITEMS } from '../constants/sidebar'
+import { MENU_ITEMS } from '@/constants/sidebar'
 
 const route = useRoute()
 const router = useRouter()

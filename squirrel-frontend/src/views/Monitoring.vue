@@ -247,7 +247,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 import { Card, StatsCard, StatusBadge } from '@/components/common'
 import { getDashboard } from '@/api'
 

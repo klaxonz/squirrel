@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import useVideoDetail from './useVideoDetail';
 import useRelatedVideos from './useRelatedVideos';
 import useVideoOperations from './useVideoOperations';
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 
 export default function usePlaybackOrchestrator(initialVideo = null) {
   const { video, startTime, fetchVideoDetails, maybeInjectSubtitles } = useVideoDetail(initialVideo);

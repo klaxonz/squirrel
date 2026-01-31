@@ -202,13 +202,13 @@
 
 <script setup>
 import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';       
-import FeedToolbar from '../components/feed/FeedToolbar.vue';
+import FeedToolbar from '@/components/feed/FeedToolbar.vue';
 import { Button, InlineAlert, ToggleSwitch } from '@/components/common';
 import { PlusIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';        
 import {useRouter} from "vue-router";
 import { useRefreshTriggers } from '../composables/useRefreshTriggers';
-import AddChannelDialog from '../components/AddChannelDialog.vue';
-import ImportSubscriptionDialog from '../components/ImportSubscriptionDialog.vue';
+import AddChannelDialog from '@/components/dialogs/AddChannelDialog.vue';
+import ImportSubscriptionDialog from '@/components/dialogs/ImportSubscriptionDialog.vue';
 
 import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';

@@ -296,9 +296,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useSiteCatalog } from '../composables/useSites';
+import { useSiteCatalog } from '@/composables/useSites';
 import { Card, LabeledCheckbox, LabeledInput, LabeledTextarea } from '@/components/common';
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 
 const { catalog: siteCatalog, loading: siteLoading, error: siteError, loadCatalog, saveCatalog } = useSiteCatalog();
 

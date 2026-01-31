@@ -1,5 +1,5 @@
 import { getVideoUrlInfo } from '@/api'
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 
 export default function useVideoOperations() {
   const extractErrorCode = (msg) => {

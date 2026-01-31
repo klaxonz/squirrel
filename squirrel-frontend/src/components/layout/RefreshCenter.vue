@@ -44,8 +44,8 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import { useSubscriptionRefresh } from '../composables/useSubscriptionRefresh';
-import { useImageFallback } from '../composables/useImageFallback';
+import { useImageFallback } from '@/composables/useImageFallback'
+import { useSubscriptionRefresh } from '@/composables/useSubscriptionRefresh'
 
 const panelOpen = ref(false);
 const { refreshStates, subscriptionMeta, getStatusText, getProgressPercentage } = useSubscriptionRefresh();

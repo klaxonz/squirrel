@@ -45,10 +45,10 @@
 import {onMounted, ref, computed, watch} from 'vue';
 import {useRouter} from 'vue-router';
 import { TrashIcon } from '@heroicons/vue/24/outline';
-import VideoList from '../components/VideoList.vue';
-import FeedToolbar from '../components/feed/FeedToolbar.vue';
+import VideoList from '@/components/feed/VideoList.vue';
+import FeedToolbar from '@/components/feed/FeedToolbar.vue';
 import useVideoHistory from '../composables/useVideoHistory';
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 
 const router = useRouter();
 const {getWatchHistory, clearHistory} = useVideoHistory();

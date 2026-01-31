@@ -81,17 +81,17 @@
 <script setup>
 import { provide, ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 import mitt from 'mitt';
-import MobileNav from './components/MobileNav.vue';
-import Sidebar from './components/Sidebar.vue';
-import GlobalSearchBar from './components/GlobalSearchBar.vue';
-import RefreshCenter from './components/RefreshCenter.vue';
+import MobileNav from '@/components/layout/MobileNav.vue';
+import Sidebar from '@/components/layout/Sidebar.vue';
+import GlobalSearchBar from '@/components/layout/GlobalSearchBar.vue';
+import RefreshCenter from '@/components/layout/RefreshCenter.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ClockIcon, DocumentTextIcon, ChartBarIcon, Bars3Icon } from '@heroicons/vue/24/outline';
 import { isMobile } from "./composables/useMobile.js";
 import { useRoute } from 'vue-router';
 import { useUser } from './composables/useUser';
 import { useGlobalSearch } from './composables/useGlobalSearch';
 import { useSystemConfig } from './composables/useSystemConfig';
-import { Logger } from './utils/logger'
+import { Logger } from '@/utils/logger'
 
 const route = useRoute();
 const emitter = mitt();

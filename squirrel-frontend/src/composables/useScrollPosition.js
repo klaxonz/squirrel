@@ -1,5 +1,5 @@
 import { ref, onMounted, onActivated, onBeforeUnmount, nextTick } from 'vue'
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 
 // 全局存储滚动位置
 const scrollPositions = new Map()

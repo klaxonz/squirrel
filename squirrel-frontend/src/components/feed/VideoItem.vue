@@ -144,11 +144,11 @@
 <script setup>
 import { onMounted, onUnmounted, ref, nextTick, computed, watch } from 'vue';
 import ContextMenu from './ContextMenu.vue';
-import useOptionsMenu from "../composables/useOptionsMenu.js";
-import { formatDate, formatDuration } from '../utils/dateFormat';
+import useOptionsMenu from '@/composables/useOptionsMenu.js';
+import { formatDate, formatDuration } from '@/utils/dateFormat';
 import { Icon } from '@iconify/vue';
-import { useSystemConfig } from '../composables/useSystemConfig.js';
-import { useImageFallback } from '../composables/useImageFallback.js';
+import { useImageFallback } from '@/composables/useImageFallback.js';
+import { useSystemConfig } from '@/composables/useSystemConfig.js';
 
 const props = defineProps({
   video: {

@@ -46,9 +46,9 @@ import {
   ChevronDownIcon,
   CheckIcon
 } from '@heroicons/vue/24/outline';
-import { isMobile } from "../composables/useMobile.js";
-import { useDropdown } from "../composables/useDropdown.js";
-import { useSites } from "../composables/useSites.js";
+import { isMobile } from "@/composables/useMobile.js";
+import { useDropdown } from "@/composables/useDropdown.js";
+import { useSites } from "@/composables/useSites.js";
 
 const props = defineProps({
   modelValue: {

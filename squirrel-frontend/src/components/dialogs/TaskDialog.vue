@@ -186,7 +186,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 
 const props = defineProps({
   task: {

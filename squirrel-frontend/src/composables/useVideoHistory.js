@@ -1,6 +1,6 @@
 import { reactive, ref } from 'vue'
 import { batchUpdateVideoHistory, clearVideoHistory, listVideoHistory, updateVideoHistory } from '@/api'
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 
 export default function useVideoHistory() {
   // 本地缓存的播放历史

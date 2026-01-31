@@ -181,7 +181,7 @@ import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
 import { Select } from '@/components/common';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import { getLogFiles, queryLogs } from '@/api'
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 
 
 // 数据

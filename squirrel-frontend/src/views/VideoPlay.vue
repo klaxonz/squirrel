@@ -259,14 +259,14 @@ import { useRoute, useRouter } from 'vue-router';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
 import useOptionsDropdown from '../composables/useOptionsDropdown';
-import VideoPlayer from '../components/video-player/VideoPlayer.vue';
+import VideoPlayer from '@/components/video-player/VideoPlayer.vue';
 import { Icon } from '@iconify/vue';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import useVideoInteraction from "../composables/useVideoInteraction.js";
 import { useImageFallback } from '../composables/useImageFallback';
 import { usePlayerStore } from '../stores/playerStore';
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
 
 

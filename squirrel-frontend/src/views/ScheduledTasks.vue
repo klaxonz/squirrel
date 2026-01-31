@@ -329,10 +329,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ClockIcon } from '@heroicons/vue/24/outline'
-import TaskDialog from '../components/TaskDialog.vue'
+import TaskDialog from '@/components/dialogs/TaskDialog.vue'
 import { Button, Select, StatsCard, StatusBadge } from '@/components/common'
 import { debounce } from '../utils/debounce'
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 import {
   createTask as apiCreateTask,
   deleteTask as apiDeleteTask,

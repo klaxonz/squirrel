@@ -25,7 +25,7 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue';
-import { useImageFallback } from '../composables/useImageFallback';
+import { useImageFallback } from '@/composables/useImageFallback'
 import { getSubscriptionDetail } from '@/api'
 
 const props = defineProps({

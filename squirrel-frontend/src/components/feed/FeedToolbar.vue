@@ -34,11 +34,11 @@
 
 <script setup>
 import { watch, ref } from 'vue';
-import TabBar from '../TabBar.vue';
-import SortButton from '../SortButton.vue';
-import NsfwFilter from '../NsfwFilter.vue';
-import RefreshButton from '../RefreshButton.vue';
-import SiteFilter from '../SiteFilter.vue';
+import TabBar from './TabBar.vue';
+import SortButton from './SortButton.vue';
+import NsfwFilter from './NsfwFilter.vue';
+import RefreshButton from './RefreshButton.vue';
+import SiteFilter from './SiteFilter.vue';
 
 const props = defineProps({
   activeTab: { type: String, default: 'all' },

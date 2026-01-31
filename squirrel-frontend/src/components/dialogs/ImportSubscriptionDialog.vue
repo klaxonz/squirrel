@@ -177,7 +177,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/vue/24/outline';
 import { Button, IconButton } from '@/components/common';
-import { useImageFallback } from '../composables/useImageFallback';
+import { useImageFallback } from '@/composables/useImageFallback'
 import {
   getSupportedImportSites,
   importSubscriptions,

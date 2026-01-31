@@ -230,9 +230,9 @@
 import { ref, onMounted, computed } from 'vue';
 import { useSystemConfig } from '../composables/useSystemConfig';
 import { useUserSettings } from '../composables/useUserSettings';
-import SiteConfigSection from '../components/SiteConfigSection.vue';
+import SiteConfigSection from '@/components/settings/SiteConfigSection.vue';
 import { Card } from '@/components/common';
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 
 // Tabs 配置
 const tabs = [

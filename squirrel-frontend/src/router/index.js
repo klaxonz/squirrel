@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LatestVideos from '../views/LatestVideos.vue'
 import Subscribed from '../views/Subscribed.vue'
 import Settings from '../views/Settings.vue'
-import VideoTab from '../components/VideoTab.vue'
+import VideoTab from '@/components/feed/VideoTab.vue'
 import History from '../views/History.vue'
 import VideoPlay from '../views/VideoPlay.vue'
 import Login from '../views/Login.vue'
@@ -12,7 +12,7 @@ import LogViewer from '../views/LogViewer.vue'
 import Monitoring from '../views/Monitoring.vue'
 import ScheduledTasks from '../views/ScheduledTasks.vue'
 import { useUser } from '../composables/useUser'
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 
 // 路由元数据常量
 const SEARCH_META = {

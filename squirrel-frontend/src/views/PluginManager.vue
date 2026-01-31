@@ -616,7 +616,7 @@ import {
   CheckCircleIcon
 } from '@heroicons/vue/24/outline';
 import { StatsCard } from '@/components/common';
-import { Logger } from '../utils/logger'
+import { Logger } from '@/utils/logger'
 import { resetSitesCache } from '../composables/useSites';
 import { formatDate } from '../utils/dateFormat';
 import {
