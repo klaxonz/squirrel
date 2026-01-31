@@ -3,6 +3,8 @@
  * 抽象业务代码依赖，允许外部注入实现
  */
 
+import { Logger } from '@/utils/logger'
+
 // 播放进度数据
 export interface PlaybackProgress {
   videoId: string
@@ -96,7 +98,7 @@ export class LocalStorageAdapter implements IPlayerAdapter {
       const merged = { ...existing, ...config }
       localStorage.setItem(this.configKey, JSON.stringify(merged))
     } catch (e) {
-      console.warn('[LocalStorageAdapter] Failed to save config:', e)
+      Logger.warn('[LocalStorageAdapter] Failed to save config', e)
     }
   }
 
@@ -108,7 +110,7 @@ export class LocalStorageAdapter implements IPlayerAdapter {
       // 同时更新历史记录
       await this.updateHistory(progress)
     } catch (e) {
-      console.warn('[LocalStorageAdapter] Failed to save progress:', e)
+      Logger.warn('[LocalStorageAdapter] Failed to save progress', e)
     }
   }
 
@@ -169,11 +171,11 @@ export class LocalStorageAdapter implements IPlayerAdapter {
 
   async reportError(report: ErrorReport): Promise<void> {
     // 本地适配器只记录到控制台
-    console.warn('[LocalStorageAdapter] Error report:', report)
+    Logger.warn('[LocalStorageAdapter] Error report', report)
   }
 
   trackEvent(eventName: string, data?: Record<string, any>): void {
-    console.log('[LocalStorageAdapter] Event:', eventName, data)
+    Logger.debug('[LocalStorageAdapter] Event', eventName, data)
   }
 }
 
@@ -221,7 +223,7 @@ export class ApiAdapter implements IPlayerAdapter {
         body: JSON.stringify({ settings: config, merge: true })
       })
     } catch (e) {
-      console.warn('[ApiAdapter] Failed to save config:', e)
+      Logger.warn('[ApiAdapter] Failed to save config', e)
     }
   }
 
@@ -232,7 +234,7 @@ export class ApiAdapter implements IPlayerAdapter {
         body: JSON.stringify(progress)
       })
     } catch (e) {
-      console.warn('[ApiAdapter] Failed to save progress:', e)
+      Logger.warn('[ApiAdapter] Failed to save progress', e)
     }
   }
 
@@ -256,7 +258,7 @@ export class ApiAdapter implements IPlayerAdapter {
     try {
       await this.request('/history', { method: 'DELETE' })
     } catch (e) {
-      console.warn('[ApiAdapter] Failed to clear history:', e)
+      Logger.warn('[ApiAdapter] Failed to clear history', e)
     }
   }
 
@@ -267,7 +269,7 @@ export class ApiAdapter implements IPlayerAdapter {
         body: JSON.stringify(report)
       })
     } catch (e) {
-      console.warn('[ApiAdapter] Failed to report error:', e)
+      Logger.warn('[ApiAdapter] Failed to report error', e)
     }
   }
 

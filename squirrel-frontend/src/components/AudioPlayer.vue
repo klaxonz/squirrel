@@ -91,6 +91,7 @@ import {
   ForwardIcon,
   XMarkIcon
 } from '@heroicons/vue/24/outline';
+import { Logger } from '../utils/logger'
 
 const props = defineProps({
   episode: Object,
@@ -115,7 +116,7 @@ watch(() => props.episode?.id, (newId, oldId) => {
     nextTick(() => {
       if (audioRef.value) {
         audioRef.value.play().catch(error => {
-          console.error('Auto-play failed:', error);
+          Logger.error('Auto-play failed', error);
         });
       }
     });
@@ -135,7 +136,7 @@ const togglePlay = async () => {
       isPlaying.value = false;
     }
   } catch (error) {
-    console.error('Play/pause failed:', error);
+    Logger.error('Play/pause failed', error);
     isPlaying.value = false;
   }
 };

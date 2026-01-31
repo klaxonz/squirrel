@@ -1,4 +1,5 @@
 import { ref, reactive } from 'vue';
+import { Logger } from '../utils/logger'
 
 export default function useVideoErrorHandler() {
   // 错误状态
@@ -60,7 +61,7 @@ export default function useVideoErrorHandler() {
 
   // 处理错误
   const handleError = (error, context = {}) => {
-    console.error('Video error occurred:', error, context);
+    Logger.error('Video error occurred', error, context);
     
     const errorType = determineErrorType(error);
     const errorInfo = ERROR_MESSAGES[errorType];
@@ -156,12 +157,12 @@ export default function useVideoErrorHandler() {
   // 重试操作
   const retry = (context = {}) => {
     if (errorState.retryCount >= errorState.maxRetries) {
-      console.warn('Max retry attempts reached');
+      Logger.warn('Max retry attempts reached');
       return false;
     }
     
     errorState.retryCount++;
-    console.debug(`Retrying... Attempt ${errorState.retryCount}/${errorState.maxRetries}`);
+    Logger.debug(`Retrying... Attempt ${errorState.retryCount}/${errorState.maxRetries}`);
     
     // 清除错误状态
     clearError();
@@ -177,7 +178,7 @@ export default function useVideoErrorHandler() {
   // 手动重试
   const manualRetry = (retryCallback) => {
     if (!errorState.canRetry) {
-      console.warn('This error is not retryable');
+      Logger.warn('This error is not retryable');
       return false;
     }
     
@@ -225,13 +226,13 @@ export default function useVideoErrorHandler() {
       };
       
       // 这里可以发送错误报告到服务器
-      console.debug('Error report:', errorReport);
+      Logger.debug('Error report', errorReport);
       
       // 实际实现中可以调用API
       // await axios.post('/api/error-report', errorReport);
       
     } catch (reportError) {
-      console.error('Failed to report error:', reportError);
+      Logger.error('Failed to report error', reportError);
     }
   };
 

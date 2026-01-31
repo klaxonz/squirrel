@@ -1,4 +1,4 @@
-import axios from '../utils/axios'
+import { Logger } from '../utils/logger'
 
 export default function useOptionsMenu(videoRef) {
   const copyVideoLink = () => {
@@ -23,7 +23,7 @@ export default function useOptionsMenu(videoRef) {
     try {
       document.execCommand('copy')
     } catch (err) {
-      console.error('Fallback: Oops, unable to copy', err)
+      Logger.error('Fallback copy failed', err)
     }
 
     document.body.removeChild(textArea)

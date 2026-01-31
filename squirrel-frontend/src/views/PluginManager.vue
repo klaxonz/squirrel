@@ -616,7 +616,8 @@ import {
   CheckCircleIcon
 } from '@heroicons/vue/24/outline';
 import StatsCard from '../components/common/StatsCard.vue';
-import axios from '../utils/axios';
+import { get, put } from '../utils/request'
+import { Logger } from '../utils/logger'
 import { resetSitesCache } from '../composables/useSites';
 import { usePluginApi } from '../composables/usePluginApi';
 import { formatDate } from '../utils/dateFormat';
@@ -674,7 +675,7 @@ const saveResultsToCache = () => {
     lastTestedAt.value = now;
     localStorage.setItem(CACHE_KEY_LAST_TESTED, now);
   } catch (e) {
-    console.warn('保存连通性缓存失败:', e);
+    Logger.warn('Failed to save connectivity cache', e);
   }
 };
 
@@ -694,7 +695,7 @@ const loadResultsFromCache = () => {
       lastTestedAt.value = cachedLastTested;
     }
   } catch (e) {
-    console.warn('加载连通性缓存失败:', e);
+    Logger.warn('Failed to load connectivity cache', e);
   }
 };
 
@@ -805,32 +806,26 @@ const handleCookiesFileChange = (event) => {
 const handleImportAllCookies = async () => {
   if (!selectedCookiesFile.value || importingCookies.value) return;
   importingCookies.value = true;
-  try {
-    await importAllSiteCookies(selectedCookiesFile.value);
-  } catch (e) {
-    console.error('导入所有站点 Cookies 失败:', e);
-  } finally {
-    importingCookies.value = false;
+  const result = await importAllSiteCookies(selectedCookiesFile.value);
+  if (result.error) {
+    Logger.error('Failed to import cookies for all sites', result.error);
   }
+  importingCookies.value = false;
 };
 
 const handleSyncCookieCloud = async () => {
   if (syncingCookieCloud.value) return;
   syncingCookieCloud.value = true;
-  try {
-    const result = await syncCookieCloudCookies();
-    if (!result?.success) {
-      alert(result?.error || 'CookieCloud 同步失败');
-      return;
-    }
-    const updatedSites = result?.data?.updated_sites ?? 0;
-    alert(`CookieCloud 同步完成，更新 ${updatedSites} 个站点`);
-  } catch (e) {
-    console.error('CookieCloud 同步失败:', e);
-    alert('CookieCloud 同步失败');
-  } finally {
+  const { data, error } = await syncCookieCloudCookies();
+  if (error) {
+    alert(error.message || 'CookieCloud 同步失败');
     syncingCookieCloud.value = false;
+    return;
   }
+
+  const updatedSites = data?.updated_sites ?? 0;
+  alert(`CookieCloud 同步完成，更新 ${updatedSites} 个站点`);
+  syncingCookieCloud.value = false;
 };
 
 const parseListInput = (text = '') => {
@@ -904,15 +899,15 @@ const catalogObjectToPayload = (catalogObj) => {
 const loadSiteCatalog = async () => {
   siteCatalogLoading.value = true;
   try {
-    const resp = await axios.get('/api/sites');
-    if (resp?.data?.code === 0) {
-      siteCatalog.value = resp.data.data || {};
+    const { data, error } = await get('/api/sites')
+    if (!error) {
+      siteCatalog.value = data || {};
       siteCatalogLoaded.value = true;
     } else {
       siteCatalogLoaded.value = false;
     }
   } catch (error) {
-    console.error('获取站点配置失败:', error);
+    Logger.error('Failed to load site config', error);
     siteCatalogLoaded.value = false;
   } finally {
     siteCatalogLoading.value = false;
@@ -1067,15 +1062,15 @@ const saveSiteEditor = async () => {
   siteEditorSaving.value = true;
   try {
     const payload = catalogObjectToPayload(updatedCatalog);
-    const resp = await axios.put('/api/sites', { sites: payload });
-    if (resp?.data?.code !== 0) {
-      throw new Error(resp?.data?.msg || '保存站点配置失败');
+    const result = await put('/api/sites', { sites: payload })
+    if (result.error) {
+      throw result.error
     }
-    siteCatalog.value = resp.data.data || {};
+    siteCatalog.value = result.data || {};
     resetSitesCache();
     siteEditorVisible.value = false;
   } catch (error) {
-    console.error('保存站点配置失败:', error);
+    Logger.error('Failed to save site config', error);
     siteEditorError.value = error?.message || '保存站点配置失败';
   } finally {
     siteEditorSaving.value = false;
@@ -1084,9 +1079,9 @@ const saveSiteEditor = async () => {
 
 const fetchPlugins = async () => {
   loading.value = true;
-  const result = await getPlugins();
-  if (result.success) {
-    plugins.value = result.data;
+  const { data, error } = await getPlugins();
+  if (!error) {
+    plugins.value = data || [];
   }
   loading.value = false;
 };
@@ -1100,7 +1095,7 @@ const handleInstall = async () => {
   if (!selectedFile.value) return;
   installing.value = true;
   const res = await installPlugin(selectedFile.value);
-  if (res.success) {
+  if (!res.error) {
     selectedFile.value = null;
     await fetchPlugins();
   }
@@ -1110,7 +1105,7 @@ const handleInstall = async () => {
 const handleReload = async () => {
   reloading.value = true;
   const res = await reloadPlugins();
-  if (res.success) {
+  if (!res.error) {
     await fetchPlugins();
   }
   reloading.value = false;
@@ -1119,7 +1114,7 @@ const handleReload = async () => {
 const handleEnable = async (plugin) => {
   actioning.value = plugin.name;
   const res = await enablePlugin(plugin.name);
-  if (res.success) {
+  if (!res.error) {
     await fetchPlugins();
   }
   actioning.value = null;
@@ -1128,7 +1123,7 @@ const handleEnable = async (plugin) => {
 const handleDisable = async (plugin) => {
   actioning.value = plugin.name;
   const res = await disablePlugin(plugin.name);
-  if (res.success) {
+  if (!res.error) {
     await fetchPlugins();
   }
   actioning.value = null;
@@ -1137,7 +1132,7 @@ const handleDisable = async (plugin) => {
 const handleUninstall = async (plugin) => {
   actioning.value = plugin.name;
   const res = await uninstallPlugin(plugin.name);
-  if (res.success) {
+  if (!res.error) {
     await fetchPlugins();
   }
   actioning.value = null;
@@ -1161,10 +1156,10 @@ const formatSource = (source) => {
 // 获取支持的站点列表
 const fetchSupportedSites = async () => {
   loadingSites.value = true;
-  const result = await getSupportedSites();
-  if (result.success && result.data) {
+  const { data, error } = await getSupportedSites();
+  if (!error && data) {
     // 新的API返回结构：{ sites: [{name, domains, primary_domain}], total }
-    supportedSites.value = result.data.sites || [];
+    supportedSites.value = data.sites || [];
   }
   loadingSites.value = false;
 };
@@ -1181,7 +1176,7 @@ const handleTestSingle = async (site) => {
 
   const result = await testSiteConnectivity(siteName);
   
-  if (result.success && result.data) {
+  if (!result.error && result.data) {
     // 更新单个站点的测试结果
     if (connectivityResults.value.length === 0) {
       connectivityResults.value = [{ results: [], summary: { total: 0, accessible: 0, failed: 0, success_rate: 0 } }];
@@ -1218,15 +1213,15 @@ const handleTestLogin = async (site) => {
   const siteName = site.site_name || site.name;
   setLoginTesting(siteName, true);
 
-  const result = await testSiteLoginStatus(siteName);
+  const { data, error } = await testSiteLoginStatus(siteName);
 
-  if (result.success && result.data) {
-    upsertLoginStatus(siteName, result.data);
+  if (!error && data) {
+    upsertLoginStatus(siteName, data);
   } else {
     upsertLoginStatus(siteName, {
       site_name: siteName,
       logged_in: false,
-      message: result.error || '检测失败',
+      message: error?.message || '检测失败',
       supported: false,
       checked_at: new Date().toISOString(),
     });
@@ -1259,7 +1254,7 @@ const handleUploadCookies = (site) => {
     setCookieUploading(siteName, true);
     try {
       const result = await uploadSiteCookies(siteName, file);
-      if (result.success && result.data?.login_status) {
+      if (!result.error && result.data?.login_status) {
         loginStatusResults.value = {
           ...loginStatusResults.value,
           [siteName]: result.data.login_status
@@ -1286,13 +1281,13 @@ const testLoginForAllSupportedSites = async () => {
       setLoginTesting(siteName, true);
       try {
         const result = await testSiteLoginStatus(siteName);
-        if (result.success && result.data) {
+        if (!result.error && result.data) {
           upsertLoginStatus(siteName, result.data);
         } else {
           upsertLoginStatus(siteName, {
             site_name: siteName,
             logged_in: false,
-            message: result.error || '检测失败',
+            message: result.error?.message || '检测失败',
             supported: false,
             checked_at: new Date().toISOString(),
           });
@@ -1309,7 +1304,7 @@ const handleTestAll = async () => {
   testingAll.value = true;
   try {
     const result = await testAllSitesConnectivity();
-    if (result.success && result.data) {
+    if (!result.error && result.data) {
       connectivityResults.value = [result.data];
     }
     await testLoginForAllSupportedSites();

@@ -180,7 +180,8 @@ import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
 import Select from '../components/common/Select.vue';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import axios from '../utils/axios';
+import { get } from '../utils/request'
+import { Logger } from '../utils/logger'
 
 
 // 数据
@@ -235,15 +236,18 @@ onUnmounted(() => {
 // 加载日志文件列表
 async function loadLogFiles() {
   try {
-    const response = await axios.get('/api/logs/files');
-    if (response.data.code === 0) {
-      logFiles.value = response.data.data;
-      if (logFiles.value.length > 0 && !filters.value.filename) {
-        filters.value.filename = logFiles.value[0].name;
-      }
+    const { data, error } = await get('/api/logs/files')
+    if (error) {
+      Logger.error('Failed to load log files', error);
+      return
+    }
+
+    logFiles.value = data || []
+    if (logFiles.value.length > 0 && !filters.value.filename) {
+      filters.value.filename = logFiles.value[0].name;
     }
   } catch (error) {
-    console.error('Failed to load log files:', error);
+    Logger.error('Failed to load log files', error);
   }
 }
 
@@ -262,10 +266,9 @@ async function loadLogs() {
       pageSize: 500
     };
     
-    const response = await axios.get('/api/logs/query', { params });
-    
-    if (response.data.code === 0) {
-      const data = response.data.data;
+    const result = await get('/api/logs/query', params)
+    if (!result.error && result.data) {
+      const data = result.data;
       
       // 为每条日志添加唯一 ID
       const logsWithId = data.logs.map((log, index) => ({
@@ -277,7 +280,7 @@ async function loadLogs() {
       totalLogs.value = data.total;
     }
   } catch (error) {
-    console.error('Failed to load logs:', error);
+    Logger.error('Failed to load logs', error);
   } finally {
     loading.value = false;
   }
@@ -332,7 +335,7 @@ function copyLog(logItem) {
       copiedLogId.value = null;
     }, 2000);
   }).catch(err => {
-    console.error('复制失败:', err);
+    Logger.error('Failed to copy log', err);
     alert('复制失败，请手动复制');
   });
 }
@@ -382,7 +385,7 @@ function copyAllLogs() {
       allCopied.value = false;
     }, 2000);
   }).catch(err => {
-    console.error('复制失败:', err);
+    Logger.error('Failed to copy logs', err);
     alert('复制失败，请手动复制');
   });
 }

@@ -1,5 +1,6 @@
 import { ApiError, ErrorTypes } from './request'
 import { logoutAndRedirect } from './auth'
+import { Logger } from './logger'
 
 /**
  * 全局错误处理器
@@ -28,7 +29,7 @@ export class ErrorHandler {
    * 处理错误
    */
   handle(error, context = {}) {
-    console.error('Error handled:', error, context)
+    Logger.debug('Error handled', error, context)
 
     // 如果是 ApiError，使用对应的处理器
     if (error instanceof ApiError) {
@@ -51,13 +52,7 @@ export class ErrorHandler {
    * 默认错误处理器
    */
   defaultHandler(error, context) {
-    // 在开发环境下显示详细错误信息
-    if (import.meta.env.DEV) {
-      console.error('Unhandled error:', error, context)
-    }
-
-    // 可以在这里添加用户友好的错误提示
-    // 例如：显示 toast 通知等
+    Logger.debug('Unhandled error', error, context)
   }
 }
 
@@ -72,13 +67,13 @@ globalErrorHandler.register(ErrorTypes.UNAUTHORIZED, (error) => {
 
 globalErrorHandler.register(ErrorTypes.NETWORK, (error) => {
   // 处理网络错误 - 显示重试选项
-  console.warn('Network error:', error.message)
+  Logger.warn('Network error', error.message)
   // 可以触发全局的重试机制或显示网络错误提示
 })
 
 globalErrorHandler.register(ErrorTypes.SERVER_ERROR, (error) => {
   // 处理服务器错误
-  console.error('Server error:', error.message)
+  Logger.error('Server error', error.message)
   // 可以显示服务器错误提示
 })
 

@@ -1,5 +1,6 @@
-import axios from '../utils/axios';
-import { ref, reactive } from 'vue';
+import { reactive, ref } from 'vue'
+import { get, post } from '../utils/request'
+import { Logger } from '../utils/logger'
 
 export default function useVideoHistory() {
   // 本地缓存的播放历史
@@ -45,8 +46,8 @@ export default function useVideoHistory() {
 
     // 如果在线且不是强制模式，尝试立即发送
     if (syncStatus.isOnline || force) {
-      try {
-        await axios.post('/api/video-history/update', reportData);
+      const { error } = await post('/api/video-history/update', reportData)
+      if (!error) {
         syncStatus.lastSyncTime = Date.now();
         syncStatus.failedAttempts = 0;
 
@@ -54,16 +55,16 @@ export default function useVideoHistory() {
         removePendingUpdate(video_id);
 
         return true;
-      } catch (error) {
-        console.warn('Failed to sync video history:', error);
-        syncStatus.failedAttempts++;
-
-        if (retryOnFailure) {
-          addToPendingUpdates(reportData);
-        }
-
-        return false;
       }
+
+      Logger.warn('Failed to sync video history', error)
+      syncStatus.failedAttempts++
+
+      if (retryOnFailure) {
+        addToPendingUpdates(reportData)
+      }
+
+      return false
     } else {
       // 离线时添加到待同步队列
       addToPendingUpdates(reportData);
@@ -77,11 +78,11 @@ export default function useVideoHistory() {
       return false;
     }
 
-    try {
-      await axios.post('/api/video-history/batch-update', {
-        reports: reports
-      });
+    const { error } = await post('/api/video-history/batch-update', {
+      reports: reports,
+    })
 
+    if (!error) {
       syncStatus.lastSyncTime = Date.now();
       syncStatus.failedAttempts = 0;
 
@@ -91,11 +92,11 @@ export default function useVideoHistory() {
       });
 
       return true;
-    } catch (error) {
-      console.error('Failed to batch sync video history:', error);
-      syncStatus.failedAttempts++;
-      return false;
     }
+
+    Logger.error('Failed to batch sync video history', error)
+    syncStatus.failedAttempts++
+    return false
   };
   // 获取观看历史（分页，返回视频详情）
   const getWatchHistory = async (page = 1, filters = {}) => {
@@ -111,12 +112,12 @@ export default function useVideoHistory() {
         params.site = site;
       }
       
-      const res = await axios.get('/api/video-history/list', { params });
-      const resp = res?.data || {};
-      if (resp.code !== 0) {
-        throw new Error(resp.msg || '加载历史失败');
+      const { data, error } = await get('/api/video-history/list', params)
+      if (error) {
+        throw new Error(error.message || '加载历史失败')
       }
-      const payload = resp.data || {};
+
+      const payload = data || {};
       const items = Array.isArray(payload.items) ? payload.items : [];
       return {
         items,
@@ -133,10 +134,9 @@ export default function useVideoHistory() {
   const clearHistory = async (videoIds = null) => {
     try {
       const body = Array.isArray(videoIds) && videoIds.length ? videoIds : null;
-      const res = await axios.post('/api/video-history/clear', body);
-      const resp = res?.data || {};
-      if (resp.code !== 0) {
-        throw new Error(resp.msg || '清空历史失败');
+      const { error } = await post('/api/video-history/clear', body)
+      if (error) {
+        throw new Error(error.message || '清空历史失败')
       }
       return true;
     } catch (error) {
@@ -242,13 +242,13 @@ export default function useVideoHistory() {
   const setupNetworkListeners = () => {
     const handleOnline = () => {
       syncStatus.isOnline = true;
-      console.debug('Network online, syncing pending updates...');
+      Logger.debug('Network online, syncing pending updates');
       syncPendingUpdates();
     };
 
     const handleOffline = () => {
       syncStatus.isOnline = false;
-      console.debug('Network offline, updates will be queued');
+      Logger.debug('Network offline, updates will be queued');
     };
 
     window.addEventListener('online', handleOnline);

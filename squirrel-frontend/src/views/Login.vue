@@ -74,9 +74,10 @@ const form = ref({
 const handleSubmit = async () => {
   loading.value = true;
   try {
-    const response = await login(form.value);
-    localStorage.setItem('token', response.data.access_token);
-    await router.push('/');
+    const result = await login(form.value)
+    if (!result.error) {
+      await router.push('/')
+    }
   } catch (error) {
     // Error handling without toast
   } finally {

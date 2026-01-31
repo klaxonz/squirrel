@@ -3,6 +3,8 @@
  * 支持泛型事件类型定义
  */
 
+import { Logger } from '@/utils/logger'
+
 export type EventHandler<T = any> = (data: T) => void
 export type EventMap = Record<string, any>
 
@@ -55,7 +57,7 @@ export class EventEmitter<Events extends EventMap = EventMap> {
       try {
         handler(data)
       } catch (err) {
-        console.error(`[EventEmitter] Error in handler for "${String(event)}":`, err)
+        Logger.error(`[EventEmitter] Error in handler for "${String(event)}"`, err)
       }
     })
 
@@ -66,7 +68,7 @@ export class EventEmitter<Events extends EventMap = EventMap> {
         try {
           handler(data)
         } catch (err) {
-          console.error(`[EventEmitter] Error in once handler for "${String(event)}":`, err)
+          Logger.error(`[EventEmitter] Error in once handler for "${String(event)}"`, err)
         }
       })
       this.onceListeners.delete(event)

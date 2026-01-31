@@ -1,9 +1,5 @@
 import axios from './axios'
 
-export default function request(config) {
-  return axios(config)
-}
-
 /**
  * 统一的错误类型枚举
  */
@@ -29,6 +25,10 @@ export class ApiError extends Error {
     this.status = status
     this.data = data
   }
+}
+
+const isApiEnvelope = (data) => {
+  return !!data && typeof data.code === 'number'
 }
 
 /**
@@ -79,7 +79,7 @@ export const handleRequest = async (promise) => {
     const response = await promise
 
     // API 成功响应
-    if (response.data && typeof response.data.code === 'number') {
+    if (isApiEnvelope(response.data)) {
       if (response.data.code === 0) {
         return {
           data: response.data.data,
@@ -119,7 +119,11 @@ export const handleRequest = async (promise) => {
   }
 }
 
-export const get = (url, params) => handleRequest(axios.get(url, { params }))
-export const post = (url, data) => handleRequest(axios.post(url, data))
-export const put = (url, data) => handleRequest(axios.put(url, data))
-export const del = (url, data) => handleRequest(axios.delete(url, { data })) 
+export const request = (config) => handleRequest(axios(config))
+
+export const get = (url, params, config = {}) => request({ url, method: 'get', params, ...config })
+export const post = (url, data, config = {}) => request({ url, method: 'post', data, ...config })
+export const put = (url, data, config = {}) => request({ url, method: 'put', data, ...config })
+export const del = (url, data, config = {}) => request({ url, method: 'delete', data, ...config })
+
+export default request

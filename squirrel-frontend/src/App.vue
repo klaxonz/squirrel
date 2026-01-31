@@ -91,6 +91,7 @@ import { useRoute } from 'vue-router';
 import { useUser } from './composables/useUser';
 import { useGlobalSearch } from './composables/useGlobalSearch';
 import { useSystemConfig } from './composables/useSystemConfig';
+import { Logger } from './utils/logger'
 
 const route = useRoute();
 const emitter = mitt();
@@ -260,18 +261,16 @@ watch(() => route.name, (newRoute) => {
 
 onMounted(async () => {
   if (localStorage.getItem('token')) {
-    try {
-      await getCurrentUser();
-    } catch (error) {
-      console.error('Failed to get user info:', error);
+    const result = await getCurrentUser();
+    if (result.error) {
+      Logger.error('Failed to get user info', result.error);
     }
   }
   
   // 加载系统配置
-  try {
-    await loadSystemConfig();
-  } catch (error) {
-    console.error('Failed to load system config:', error);
+  const configResult = await loadSystemConfig();
+  if (configResult.error) {
+    Logger.error('Failed to load system config', configResult.error);
   }
 
   syncAppTopbarHeight();

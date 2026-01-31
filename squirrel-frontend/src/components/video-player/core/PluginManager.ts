@@ -11,6 +11,7 @@ import type {
   PlayerError
 } from './types'
 import { EventEmitter } from './EventEmitter'
+import { Logger } from '@/utils/logger'
 
 export class PluginManager implements IPluginManager {
   private plugins: Map<string, PlayerPlugin> = new Map()
@@ -61,7 +62,7 @@ export class PluginManager implements IPluginManager {
         try {
           (hook as Function).apply(plugin, args)
         } catch (err) {
-          console.error(`[PluginManager] Error in ${plugin.name}.${hookName}:`, err)
+          Logger.error(`[PluginManager] Error in ${plugin.name}.${hookName}`, err)
         }
       }
     })
@@ -72,7 +73,7 @@ export class PluginManager implements IPluginManager {
    */
   async register(plugin: PlayerPlugin, options?: any): Promise<void> {
     if (this.plugins.has(plugin.name)) {
-      console.warn(`[PluginManager] Plugin "${plugin.name}" already registered, skipping`)
+      Logger.warn(`[PluginManager] Plugin "${plugin.name}" already registered, skipping`)
       return
     }
 
@@ -92,9 +93,9 @@ export class PluginManager implements IPluginManager {
       this.plugins.set(plugin.name, plugin)
       this.events.emit('pluginregistered', { name: plugin.name, plugin })
 
-      console.log(`[PluginManager] Plugin "${plugin.name}" registered`)
+      Logger.debug(`[PluginManager] Plugin "${plugin.name}" registered`)
     } catch (err) {
-      console.error(`[PluginManager] Failed to register plugin "${plugin.name}":`, err)
+      Logger.error(`[PluginManager] Failed to register plugin "${plugin.name}"`, err)
       throw err
     }
   }
@@ -105,7 +106,7 @@ export class PluginManager implements IPluginManager {
   unregister(name: string): void {
     const plugin = this.plugins.get(name)
     if (!plugin) {
-      console.warn(`[PluginManager] Plugin "${name}" not found`)
+      Logger.warn(`[PluginManager] Plugin "${name}" not found`)
       return
     }
 
@@ -123,9 +124,9 @@ export class PluginManager implements IPluginManager {
       this.plugins.delete(name)
       this.events.emit('pluginunregistered', name)
 
-      console.log(`[PluginManager] Plugin "${name}" unregistered`)
+      Logger.debug(`[PluginManager] Plugin "${name}" unregistered`)
     } catch (err) {
-      console.error(`[PluginManager] Error unregistering plugin "${name}":`, err)
+      Logger.error(`[PluginManager] Error unregistering plugin "${name}"`, err)
     }
   }
 

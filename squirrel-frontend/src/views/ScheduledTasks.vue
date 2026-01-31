@@ -336,6 +336,7 @@ import StatsCard from '../components/common/StatsCard.vue'
 import StatusBadge from '../components/common/StatusBadge.vue'
 import Select from '../components/common/Select.vue'
 import { debounce } from '../utils/debounce'
+import { Logger } from '../utils/logger'
 
 const {
   getSchedulerStatus,
@@ -406,19 +407,19 @@ const loadData = async () => {
       getAvailableTaskClasses()
     ])
 
-    if (statusResult.success) {
+    if (!statusResult.error) {
       schedulerStatus.value = statusResult.data
     }
 
-    if (statsResult.success) {
+    if (!statsResult.error) {
       statistics.value = statsResult.data
     }
 
-    if (classesResult.success) {
+    if (!classesResult.error) {
       taskClasses.value = classesResult.data
     }
   } catch (error) {
-    console.error('加载数据失败:', error)
+    Logger.error('Failed to load data', error)
   } finally {
     loading.value = false
   }
@@ -435,12 +436,12 @@ const loadTasks = async () => {
       task_type: typeFilter.value || undefined
     })
 
-    if (result.success) {
+    if (!result.error && result.data) {
       tasks.value = result.data.data
       totalPages.value = Math.ceil(result.data.total / 10)
     }
   } catch (error) {
-    console.error('加载任务列表失败:', error)
+    Logger.error('Failed to load task list', error)
   }
 }
 
@@ -460,7 +461,7 @@ const goToPage = (page) => {
 // 创建任务
 const handleCreateTask = async (taskData) => {
   const result = await apiCreateTask(taskData)
-  if (result.success) {
+  if (!result.error) {
     showCreateDialog.value = false
     await refreshData()
   }
@@ -474,7 +475,7 @@ const editTask = (task) => {
 // 更新任务
 const handleUpdateTask = async (taskData) => {
   const result = await apiUpdateTask(editingTask.value.id, taskData)
-  if (result.success) {
+  if (!result.error) {
     editingTask.value = null
     await refreshData()
   }
@@ -483,7 +484,7 @@ const handleUpdateTask = async (taskData) => {
 // 删除任务
 const deleteTask = async (taskId) => {
   const result = await apiDeleteTask(taskId)
-  if (result.success) {
+  if (!result.error) {
     await refreshData()
   }
 }
@@ -491,7 +492,7 @@ const deleteTask = async (taskId) => {
 // 启用任务
 const enableTask = async (taskId) => {
   const result = await apiEnableTask(taskId)
-  if (result.success) {
+  if (!result.error) {
     await refreshData()
   }
 }
@@ -499,7 +500,7 @@ const enableTask = async (taskId) => {
 // 禁用任务
 const disableTask = async (taskId) => {
   const result = await apiDisableTask(taskId)
-  if (result.success) {
+  if (!result.error) {
     await refreshData()
   }
 }
@@ -507,7 +508,7 @@ const disableTask = async (taskId) => {
 // 立即执行任务
 const executeTaskNow = async (taskId) => {
   const result = await apiExecuteTaskNow(taskId)
-  if (result.success) {
+  if (!result.error) {
     setTimeout(() => refreshData(), 1000)
   }
 }
@@ -515,7 +516,7 @@ const executeTaskNow = async (taskId) => {
 // 启用调度器
 const enableScheduler = async () => {
   const result = await apiEnableScheduler()
-  if (result.success) {
+  if (!result.error) {
     schedulerStatus.value.running = true
     await refreshData()
   }
@@ -524,7 +525,7 @@ const enableScheduler = async () => {
 // 禁用调度器
 const disableScheduler = async () => {
   const result = await apiDisableScheduler()
-  if (result.success) {
+  if (!result.error) {
     schedulerStatus.value.running = false
     await refreshData()
   }

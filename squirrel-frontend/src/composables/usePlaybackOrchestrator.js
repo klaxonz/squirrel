@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import useVideoDetail from './useVideoDetail';
 import useRelatedVideos from './useRelatedVideos';
 import useVideoOperations from './useVideoOperations';
+import { Logger } from '../utils/logger'
 
 export default function usePlaybackOrchestrator(initialVideo = null) {
   const { video, startTime, fetchVideoDetails, maybeInjectSubtitles } = useVideoDetail(initialVideo);
@@ -11,7 +12,7 @@ export default function usePlaybackOrchestrator(initialVideo = null) {
 
   const loadAndPlayById = async (videoId, initialVideoData = null, options = {}) => {
     if (!videoId) return;
-    console.log('[usePlaybackOrchestrator] loadAndPlayById start:', videoId);
+    Logger.debug('[usePlaybackOrchestrator] loadAndPlayById start', videoId);
     
     // 如果提供了初始视频数据，先设置它以便快速渲染
     if (initialVideoData && initialVideoData.id === videoId) {
@@ -26,10 +27,10 @@ export default function usePlaybackOrchestrator(initialVideo = null) {
       await fetchVideoDetails(videoId);
     } else {
       // 有初始数据，后台异步加载完整数据
-      fetchVideoDetails(videoId).catch(e => console.error('[usePlaybackOrchestrator] fetchVideoDetails error:', e));
+      fetchVideoDetails(videoId).catch(e => Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e));
     }
     
-    console.log('[usePlaybackOrchestrator] after fetchVideoDetails:', {
+    Logger.debug('[usePlaybackOrchestrator] after fetchVideoDetails', {
       hasStreamUrl: !!video.value?.stream_video_url,
       hasMpdUrl: !!video.value?.mpd_url
     });
@@ -39,7 +40,7 @@ export default function usePlaybackOrchestrator(initialVideo = null) {
     // 重置外部错误状态
     externalError.value = null;
 
-    console.log('[usePlaybackOrchestrator] calling playVideo (non-blocking)...');
+    Logger.debug('[usePlaybackOrchestrator] calling playVideo (non-blocking)');
     // 仅负责触发播放链接获取，不阻塞 UI 切换到新视频；失败时设置外部错误用于播放器展示
     (async () => {
       try {
@@ -55,7 +56,7 @@ export default function usePlaybackOrchestrator(initialVideo = null) {
         };
       }
     })();
-    console.log('[usePlaybackOrchestrator] playVideo invoked:', {
+    Logger.debug('[usePlaybackOrchestrator] playVideo invoked', {
       hasStreamUrl: !!video.value?.stream_video_url,
       hasMpdUrl: !!video.value?.mpd_url
     });

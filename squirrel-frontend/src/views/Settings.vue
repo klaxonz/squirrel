@@ -232,6 +232,7 @@ import { useSystemConfig } from '../composables/useSystemConfig';
 import { useUserSettings } from '../composables/useUserSettings';
 import SiteConfigSection from '../components/SiteConfigSection.vue';
 import Card from '../components/common/Card.vue';
+import { Logger } from '../utils/logger'
 
 // Tabs 配置
 const tabs = [
@@ -285,10 +286,9 @@ onMounted(async () => {
   await loadUserSettings();
 
   // 加载系统配置
-  try {
-    await loadSystemConfig();
-  } catch (error) {
-    console.error('获取系统配置失败:', error);
+  const result = await loadSystemConfig()
+  if (result.error) {
+    Logger.error('Failed to load system config', result.error)
   }
 
 });
@@ -299,13 +299,11 @@ const onUserSettingChange = async () => {
 
 const onSystemToggle = async (key, val) => {
   systemSaving.value = true;
-  try {
-    await updateSystemConfig({ [key]: val });
-  } catch (e) {
-    console.error('系统配置操作失败:', e);
-  } finally {
-    systemSaving.value = false;
+  const result = await updateSystemConfig({ [key]: val });
+  if (result.error) {
+    Logger.error('Failed to update system config', result.error);
   }
+  systemSaving.value = false;
 };
 
 </script>

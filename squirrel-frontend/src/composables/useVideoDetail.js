@@ -28,15 +28,15 @@ export default function useVideoDetail(initialVideo = null) {
   });
 
   const fetchVideoDetails = async (videoId) => {
-    const { success, data } = await getVideoDetail(videoId);
-    if (success) video.value = data;
+    const { data, error } = await getVideoDetail(videoId);
+    if (!error) video.value = data;
     return video.value;
   };
 
   const maybeInjectSubtitles = async (videoId) => {
     if (video.value && /bilibili\.com/.test(video.value.url)) {
-      const { success, data } = await getSubtitles(videoId, { lang: 'ai-zh', fmt: 'srt' });
-      if (success && typeof data === 'string' && data.length > 0) {
+      const { data, error } = await getSubtitles(videoId, { lang: 'ai-zh', fmt: 'srt' });
+      if (!error && typeof data === 'string' && data.length > 0) {
         const blob = new Blob([data], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const subtitle = { id: 'bili-ai-zh', language: '简体中文(AI)', url };

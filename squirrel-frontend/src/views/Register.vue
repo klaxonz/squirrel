@@ -86,9 +86,9 @@ const form = ref({
 const handleSubmit = async () => {
   loading.value = true;
   try {
-    const response = await register(form.value);
-    if (response.code !== 0) {
-      throw new Error(response.msg);
+    const result = await register(form.value)
+    if (result.error) {
+      throw result.error
     }
     router.push('/login');
   } catch (error) {

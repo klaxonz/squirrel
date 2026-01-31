@@ -245,9 +245,9 @@ const toggleSelection = (sub) => {
 
 // 加载支持的站点
 const loadSupportedSites = async () => {
-  const result = await getSupportedImportSites();
-  if (result.success) {
-    supportedSites.value = result.data;
+  const { data, error } = await getSupportedImportSites();
+  if (!error) {
+    supportedSites.value = data;
   }
 };
 
@@ -259,7 +259,7 @@ const handlePreview = async () => {
   const result = await previewImportSubscriptions(selectedSite.value);
   loadingPreview.value = false;
 
-  if (result.success) {
+  if (!result.error) {
     previewData.value = result.data;
     selectAllNotImported();
     step.value = 2;
@@ -275,7 +275,7 @@ const handleImport = async () => {
   const result = await importSubscriptions(selectedSite.value, subscriptionUrls);
   importing.value = false;
 
-  if (result.success) {
+  if (!result.error) {
     importResult.value = result.data;
     step.value = 3;
   }

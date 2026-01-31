@@ -1,6 +1,5 @@
 import { ref } from 'vue';
-import { get } from '../utils/request';
-import axios from '../utils/axios';
+import { get, put } from '../utils/request'
 
 // 下拉筛选等使用的简化站点选项缓存
 const cached = ref(null);
@@ -15,23 +14,23 @@ export async function fetchSites() {
   if (cached.value || loading.value) return { data: cached.value, error: error.value };
   loading.value = true;
   error.value = null;
-  try {
-    const { data } = await get('/api/sites');
-    const items = data ? Object.entries(data) : [];
-    const opts = [{ value: undefined, label: '全部站点' }];
-    for (const [slug, info] of items) {
-      if (info && info.enabled !== false) {
-        opts.push({ value: slug, label: info.label || slug });
-      }
-    }
-    cached.value = opts;
-    return { data: cached.value, error: null };
-  } catch (e) {
-    error.value = e;
-    return { data: cached.value, error: e };
-  } finally {
-    loading.value = false;
+  const { data, error: requestError } = await get('/api/sites')
+  if (requestError) {
+    error.value = requestError
+    loading.value = false
+    return { data: cached.value, error: requestError }
   }
+
+  const items = data ? Object.entries(data) : []
+  const opts = [{ value: undefined, label: '全部站点' }]
+  for (const [slug, info] of items) {
+    if (info && info.enabled !== false) {
+      opts.push({ value: slug, label: info.label || slug })
+    }
+  }
+  cached.value = opts
+  loading.value = false
+  return { data: cached.value, error: null }
 }
 
 export function useSites() {
@@ -50,19 +49,13 @@ export function useSiteCatalog() {
   const loadCatalog = async () => {
     siteCatalogLoading.value = true;
     siteCatalogError.value = null;
-    try {
-      const resp = await axios.get('/api/sites');
-      if (resp?.data?.code === 0) {
-        siteCatalog.value = resp.data.data || {};
-      } else {
-        siteCatalogError.value = new Error(resp?.data?.msg || '获取站点配置失败');
-      }
-    } catch (e) {
-      console.error('获取站点配置失败:', e);
-      siteCatalogError.value = e;
-    } finally {
-      siteCatalogLoading.value = false;
+    const { data, error } = await get('/api/sites')
+    if (error) {
+      siteCatalogError.value = error
+    } else {
+      siteCatalog.value = data || {}
     }
+    siteCatalogLoading.value = false
   };
 
   const catalogObjectToPayload = (catalogObj) => {
@@ -89,14 +82,14 @@ export function useSiteCatalog() {
     siteCatalogError.value = null;
     try {
       const payload = catalogObjectToPayload(updatedCatalog);
-      const resp = await axios.put('/api/sites', { sites: payload });
-      if (resp?.data?.code !== 0) {
-        throw new Error(resp?.data?.msg || '保存站点配置失败');
+      const result = await put('/api/sites', { sites: payload })
+      if (result.error) {
+        throw result.error
       }
-      siteCatalog.value = resp.data.data || {};
-      resetCache();
+
+      siteCatalog.value = result.data || {}
+      resetCache()
     } catch (e) {
-      console.error('保存站点配置失败:', e);
       siteCatalogError.value = e;
       throw e;
     } finally {
@@ -112,4 +105,3 @@ export function useSiteCatalog() {
     saveCatalog,
   };
 }
-

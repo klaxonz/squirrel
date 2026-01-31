@@ -290,6 +290,7 @@ import LabeledTextarea from './LabeledTextarea.vue';
 import LabeledTextInput from './LabeledTextInput.vue';
 import LabeledCheckbox from './LabeledCheckbox.vue';
 import Card from './common/Card.vue';
+import { Logger } from '../utils/logger'
 
 const { catalog: siteCatalog, loading: siteLoading, error: siteError, loadCatalog, saveCatalog } = useSiteCatalog();
 
@@ -537,7 +538,7 @@ const saveSiteEditor = async () => {
     await saveCatalog(updatedCatalog);
     siteEditorVisible.value = false;
   } catch (error) {
-    console.error('保存站点配置失败:', error);
+    Logger.error('Failed to save site config', error);
     siteEditorError.value = error?.message || '保存站点配置失败';
   } finally {
     siteEditorSaving.value = false;

@@ -40,8 +40,8 @@ const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useIm
 const fetchDetail = async () => {
   if (!props.subscriptionId) return;
   loading.value = true;
-  const { success, data } = await getSubscriptionDetail(props.subscriptionId);
-  if (success) detail.value = data;
+  const { data, error } = await getSubscriptionDetail(props.subscriptionId);
+  if (!error) detail.value = data;
   loading.value = false;
 };
 

@@ -1,4 +1,5 @@
-import axios from '../utils/axios';
+import { get } from '../utils/request'
+import { Logger } from '../utils/logger'
 
 export default function useVideoOperations() {
   const extractErrorCode = (msg) => {
@@ -9,14 +10,14 @@ export default function useVideoOperations() {
 
   const getVideoUrl = async (video, options = {}) => {
     const { forceRefresh = false } = options
-    console.log('[getVideoUrl] Called with video:', {
+    Logger.debug('[getVideoUrl] Called with video', {
       id: video?.id,
       hasStreamUrl: !!video?.stream_video_url,
       hasMpdUrl: !!video?.mpd_url
     })
     
     if (!forceRefresh && (video.stream_video_url || video.mpd_url)) {
-      console.log('[getVideoUrl] URL already exists, skipping API call')
+      Logger.debug('[getVideoUrl] URL already exists, skipping API call')
       return true
     }
 
@@ -38,20 +39,16 @@ export default function useVideoOperations() {
       }
 
       // 统一通过后端获取播放链接（VideoUrlDto），后端会在 bilibili/YouTube 情况下返回 mpd_url 与可选清晰度
-      console.log('[getVideoUrl] Making API call to /api/video/url for video:', video.id)
-      const response = await axios.get('/api/video/url', {
-        params: {
-          video_id: video.id,
-          ...(forceRefresh ? { force_refresh: true } : {})
-        }
+      Logger.debug('[getVideoUrl] Making API call to /api/video/url for video', video.id)
+      const { data, error } = await get('/api/video/url', {
+        video_id: video.id,
+        ...(forceRefresh ? { force_refresh: true } : {}),
       })
 
-      const { code, msg, data } = response?.data || {}
-      console.log('[Debug] 1. useVideoOperations: Received data from /api/video/url', data);
-
-      if (code !== 0) {
-        const errCode = extractErrorCode(msg) || code || 'UNKNOWN'
-        throw Object.assign(new Error(msg || '无法获取播放链接'), {code: errCode})
+      if (error) {
+        const msg = error.data?.msg || error.message
+        const errCode = extractErrorCode(msg) || error.data?.code || error.type || 'UNKNOWN'
+        throw Object.assign(new Error(msg || '无法获取播放链接'), { code: errCode })
       }
 
       const mpdUrl = data?.mpd_url

@@ -48,6 +48,7 @@ import { TrashIcon } from '@heroicons/vue/24/outline';
 import VideoList from '../components/VideoList.vue';
 import FeedToolbar from '../components/feed/FeedToolbar.vue';
 import useVideoHistory from '../composables/useVideoHistory';
+import { Logger } from '../utils/logger'
 
 const router = useRouter();
 const {getWatchHistory, clearHistory} = useVideoHistory();
@@ -88,7 +89,7 @@ const loadMore = async () => {
       allLoaded.value = newItems.length < PAGE_SIZE;
     }
   } catch (err) {
-    console.error('加载历史记录失败:', err.message);
+    Logger.error('Failed to load history', err);
   } finally {
     loading.value = false;
   }
@@ -122,7 +123,7 @@ const showClearConfirm = async () => {
       await clearHistory();
       videos.value = [];
     } catch (err) {
-      console.error('清空历史记录失败:', err.message);
+      Logger.error('Failed to clear history', err);
     }
   }
 };

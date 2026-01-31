@@ -4,6 +4,7 @@
  */
 
 import type { PlayerPlugin, PluginContext } from '../../core/types'
+import { Logger } from '@/utils/logger'
 
 export interface SubtitleTrack {
   id: string
@@ -242,7 +243,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
         const response = await fetch(track.url)
         content = await response.text()
       } catch (e) {
-        console.error('[SubtitlesPlugin] Failed to load subtitle:', e)
+        Logger.error('[SubtitlesPlugin] Failed to load subtitle', e)
         return
       }
     }
@@ -253,7 +254,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
     const isVtt = content.trimStart().startsWith('WEBVTT')
     this.cues = isVtt ? this.parseVTT(content) : this.parseSRT(content)
     
-    console.log(`[SubtitlesPlugin] Loaded ${this.cues.length} cues from ${track.label}`)
+    Logger.debug(`[SubtitlesPlugin] Loaded ${this.cues.length} cues from ${track.label}`)
   }
 
   /**

@@ -1,163 +1,76 @@
-import axios from '../utils/axios';
+import { ApiError, get, post } from '../utils/request'
 
 export function useSubscriptionApi() {
-
   // 获取订阅列表
   const getSubscriptions = async (params = {}) => {
-    try {
-      const response = await axios.get('/api/subscription/list', { params });
-      if (response.data.code === 0) {
-        return {
-          success: true,
-          data: response.data.data
-        };
-      } else {
-        throw new Error(response.data.msg || '获取订阅列表失败');
-      }
-    } catch (error) {
-      console.error('获取订阅列表失败:', error);
-      return {
-        success: false,
-        error: error.message || '获取订阅列表失败'
-      };
-    }
+    return get('/api/subscription/list', params)
   };
 
   // 获取订阅详情
   const getSubscriptionDetail = async (subscriptionId) => {
-    try {
-      const response = await axios.get(`/api/subscription/detail/${subscriptionId}`);
-      if (response.data.code === 0) {
-        return { success: true, data: response.data.data };
-      } else {
-        throw new Error(response.data.msg || '获取订阅详情失败');
-      }
-    } catch (error) {
-      console.error('获取订阅详情失败:', error);
-      return { success: false, error: error.message || '获取订阅详情失败' };
-    }
+    return get(`/api/subscription/detail/${subscriptionId}`)
   };
 
   // 取消订阅
   const unsubscribe = async (subscriptionId) => {
-    try {
-      const response = await axios.post('/api/subscription/unsubscribe', {
-        subscription_id: subscriptionId
-      });
-      
-      if (response.data.code === 0) {
-        return { success: true };
-      } else {
-        throw new Error(response.data.msg || '取消订阅失败');
-      }
-    } catch (error) {
-      console.error('取消订阅失败:', error);
-      const errorMessage = error.message || '取消订阅失败';
-      return {
-        success: false,
-        error: errorMessage
-      };
-    }
+    return post('/api/subscription/unsubscribe', {
+      subscription_id: subscriptionId,
+    })
   };
 
   // 更新NSFW状态
   const updateNsfwStatus = async (subscriptionId, isNsfw) => {
-    try {
-      const response = await axios.post('/api/subscription/toggle-nsfw', {
-        subscription_id: subscriptionId,
-        is_enable: isNsfw
-      });
-      
-      if (response.data.success) {
-        return { success: true };
-      } else {
-        throw new Error('更新失败');
-      }
-    } catch (error) {
-      console.error('更新NSFW状态失败:', error);
-      return {
-        success: false,
-        error: error.message || '更新失败'
-      };
-    }
+    const { data, error } = await post('/api/subscription/toggle-nsfw', {
+      subscription_id: subscriptionId,
+      is_enable: isNsfw,
+    })
+
+    if (error) return { data: null, error }
+    if (data?.success) return { data, error: null }
+
+    return { data: null, error: new ApiError('更新失败', undefined, null, data) }
   };
 
   // 触发手动更新
   const triggerRefresh = async (subscriptionId) => {
-    try {
-      const response = await axios.post(`/api/subscription/${subscriptionId}/refresh`);
-      
-      if (response.data.code === 0) {
-        const data = response.data.data;
-        return {
-          success: true,
-          data: data
-        };
-      } else {
-        throw new Error(response.data.msg || '触发更新失败');
-      }
-    } catch (error) {
-      console.error('触发更新失败:', error);
-      
-      let errorMessage = '触发更新失败';
-      if (error.response?.status === 429) {
-        errorMessage = '操作过于频繁，请稍后再试';
-      } else if (error.response?.status === 403) {
-        errorMessage = '没有权限执行此操作';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
+    const result = await post(`/api/subscription/${subscriptionId}/refresh`, null)
+    if (!result.error) return result
 
+    if (result.error.status === 429) {
       return {
-        success: false,
-        error: errorMessage
-      };
+        data: null,
+        error: new ApiError('操作过于频繁，请稍后再试', result.error.type, result.error.status, result.error.data),
+      }
     }
+
+    if (result.error.status === 403) {
+      return {
+        data: null,
+        error: new ApiError('没有权限执行此操作', result.error.type, result.error.status, result.error.data),
+      }
+    }
+
+    return result
   };
 
   // 获取支持导入的站点列表
   const getSupportedImportSites = async () => {
-    try {
-      const response = await axios.get('/api/subscription/import/sites');
-      if (response.data.code === 0) {
-        return { success: true, data: response.data.data.sites || [] };
-      }
-      throw new Error(response.data.msg || '获取站点列表失败');
-    } catch (error) {
-      console.error('获取站点列表失败:', error);
-      return { success: false, error: error.message || '获取站点列表失败' };
+    const { data, error } = await get('/api/subscription/import/sites')
+    return {
+      data: data?.sites || [],
+      error,
     }
   };
 
   // 预览订阅列表
   const previewImportSubscriptions = async (site) => {
-    try {
-      const response = await axios.get(`/api/subscription/import/${site}/preview`);
-      if (response.data.code === 0) {
-        return { success: true, data: response.data.data };
-      }
-      throw new Error(response.data.msg || '预览失败');
-    } catch (error) {
-      console.error('预览订阅失败:', error);
-      const errorMessage = error.message || '预览失败';
-      return { success: false, error: errorMessage };
-    }
+    return get(`/api/subscription/import/${site}/preview`)
   };
 
   // 执行导入
   const importSubscriptions = async (site, subscriptionUrls = null) => {
-    try {
-      const payload = subscriptionUrls ? { subscription_urls: subscriptionUrls } : {};
-      const response = await axios.post(`/api/subscription/import/${site}`, payload);
-      if (response.data.code === 0) {
-        return { success: true, data: response.data.data };
-      }
-      throw new Error(response.data.msg || '导入失败');
-    } catch (error) {
-      console.error('导入订阅失败:', error);
-      const errorMessage = error.message || '导入失败';
-      return { success: false, error: errorMessage };
-    }
+    const payload = subscriptionUrls ? { subscription_urls: subscriptionUrls } : {}
+    return post(`/api/subscription/import/${site}`, payload)
   };
 
   return {

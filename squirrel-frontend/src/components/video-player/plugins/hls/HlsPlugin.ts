@@ -5,6 +5,7 @@
 
 import Hls, { type HlsConfig, type Level, type ErrorData } from 'hls.js'
 import type { PlayerPlugin, PluginContext, QualityLevel, PlayerError, MediaSource } from '../../core/types'
+import { Logger } from '@/utils/logger'
 
 export interface HlsPluginOptions {
   /** hls.js 配置 */
@@ -139,12 +140,12 @@ export class HlsPlugin implements PlayerPlugin {
 
     // 媒体附加完成
     this.hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-      console.log('[HlsPlugin] Media attached')
+      Logger.debug('[HlsPlugin] Media attached')
     })
 
     // 清单解析完成
     this.hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
-      console.log('[HlsPlugin] Manifest parsed, levels:', data.levels.length)
+      Logger.debug('[HlsPlugin] Manifest parsed, levels', data.levels.length)
       this.updateQualities(data.levels)
     })
 
@@ -247,7 +248,7 @@ export class HlsPlugin implements PlayerPlugin {
       case Hls.ErrorTypes.NETWORK_ERROR:
         if (this.retryCount < (this.options.maxRetries || 3)) {
           this.retryCount++
-          console.log(`[HlsPlugin] Network error, retrying (${this.retryCount})...`)
+          Logger.debug(`[HlsPlugin] Network error, retrying (${this.retryCount})...`)
           setTimeout(() => this.hls?.startLoad(), this.options.retryInterval || 3000)
           return
         }
@@ -255,14 +256,14 @@ export class HlsPlugin implements PlayerPlugin {
         break
 
       case Hls.ErrorTypes.MEDIA_ERROR:
-        console.log('[HlsPlugin] Media error, attempting recovery...')
+        Logger.debug('[HlsPlugin] Media error, attempting recovery...')
         this.hls?.recoverMediaError()
         return
 
       default:
         if (this.retryCount < (this.options.maxRetries || 3)) {
           this.retryCount++
-          console.log(`[HlsPlugin] Fatal error, reinitializing (${this.retryCount})...`)
+          Logger.debug(`[HlsPlugin] Fatal error, reinitializing (${this.retryCount})...`)
           setTimeout(() => {
             if (this.currentSource) {
               this.loadSource(this.currentSource)
@@ -284,7 +285,7 @@ export class HlsPlugin implements PlayerPlugin {
 
     if (quality === 'auto' || quality === -1) {
       this.hls.currentLevel = -1
-      console.log('[HlsPlugin] Quality set to auto')
+      Logger.debug('[HlsPlugin] Quality set to auto')
       return
     }
 
@@ -315,7 +316,7 @@ export class HlsPlugin implements PlayerPlugin {
 
     if (targetLevel >= 0) {
       this.hls.currentLevel = targetLevel
-      console.log('[HlsPlugin] Quality set to level:', targetLevel)
+      Logger.debug('[HlsPlugin] Quality set to level', targetLevel)
     }
   }
 

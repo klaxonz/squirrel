@@ -247,7 +247,8 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
-import axios from '../utils/axios'
+import { get } from '../utils/request'
+import { Logger } from '../utils/logger'
 import StatsCard from '../components/common/StatsCard.vue'
 import Card from '../components/common/Card.vue'
 import StatusBadge from '../components/common/StatusBadge.vue'
@@ -260,11 +261,16 @@ let refreshTimer = null
 const fetchDashboard = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/metrics/dashboard')
-    dashboardData.value = response.data
+    const { data, error } = await get('/api/metrics/dashboard')
+    if (error) {
+      Logger.error('Failed to fetch dashboard', error)
+      return
+    }
+
+    dashboardData.value = data
     lastUpdateTime.value = new Date().toLocaleTimeString()
   } catch (error) {
-    console.error('Failed to fetch dashboard:', error)
+    Logger.error('Failed to fetch dashboard', error)
   } finally {
     loading.value = false
   }

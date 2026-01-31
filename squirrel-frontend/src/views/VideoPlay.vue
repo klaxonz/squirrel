@@ -268,6 +268,7 @@ import useVideoInteraction from "../composables/useVideoInteraction.js";
 import { useVideoApi } from '../composables/useVideoApi';
 import { useImageFallback } from '../composables/useImageFallback';
 import { usePlayerStore } from '../stores/playerStore';
+import { Logger } from '../utils/logger'
 
 
 
@@ -401,25 +402,29 @@ const handleUnsubscribe = async (subscriptionId) => {
 
 const handleLike = async (video, interactionType) => {
   if (video.interaction_type !== interactionType) {
-    await toggleLike(video.id, interactionType).then(() => {
+    const { error } = await toggleLike(video.id, interactionType)
+    if (!error) {
       video.interaction_type = interactionType;
-    });
+    }
   } else {
-    await deleteInteraction(video.id).then(() => {
+    const { error } = await deleteInteraction(video.id)
+    if (!error) {
       video.interaction_type = null;
-    })
+    }
   }
 };
 
 const handleLater = async (video) => {
   if (video.interaction_type !== INTERACTION_TYPE.LATER) {
-    await toggleLike(video.id, INTERACTION_TYPE.LATER).then(() => {
+    const { error } = await toggleLike(video.id, INTERACTION_TYPE.LATER)
+    if (!error) {
       video.interaction_type = INTERACTION_TYPE.LATER;
-    });
+    }
   } else {
-    await deleteInteraction(video.id).then(() => {
+    const { error } = await deleteInteraction(video.id)
+    if (!error) {
       video.interaction_type = null;
-    });
+    }
   }
 };
 
@@ -433,7 +438,7 @@ const handlePlayRandom = async () => {
   
   while (attempts < maxAttempts) {
     const res = await getRandomVideo(params);
-    if (res.success && res.data?.id) {
+    if (!res.error && res.data?.id) {
       // 如果这个视频不在最近播放历史中，就播放它
       if (!recentlyPlayed.value.includes(res.data.id)) {
         await goToVideo(res.data.id, res.data);
@@ -445,7 +450,7 @@ const handlePlayRandom = async () => {
   
   // 如果尝试3次都是最近播放过的，就播放最后一个
   const res = await getRandomVideo(params);
-  if (res.success && res.data?.id) {
+  if (!res.error && res.data?.id) {
     await goToVideo(res.data.id, res.data);
   }
 };
@@ -466,7 +471,7 @@ const handlePlayRandom = async () => {
           playerContainer.focus({ preventScroll: true });
         }
       } catch (e) {
-        console.debug('Failed to focus video player:', e);
+        Logger.debug('Failed to focus video player', e);
       }
     }, 100);
   };

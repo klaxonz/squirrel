@@ -5,6 +5,7 @@
 
 import dashjs, { type MediaPlayerClass, type MediaPlayerSettingClass } from 'dashjs'
 import type { PlayerPlugin, PluginContext, QualityLevel, PlayerError, MediaSource } from '../../core/types'
+import { Logger } from '@/utils/logger'
 
 export interface DashPluginOptions {
   /** dash.js 配置 */
@@ -144,7 +145,7 @@ export class DashPlugin implements PlayerPlugin {
       if (fatal) {
         this.context?.reportError(error)
       } else {
-        console.warn('[DashPlugin] Non-fatal error:', error)
+        Logger.warn('[DashPlugin] Non-fatal error', error)
       }
     })
 
@@ -286,9 +287,9 @@ export class DashPlugin implements PlayerPlugin {
         this.player.updateSettings({
           streaming: { abr: { autoSwitchBitrate: { video: true } } }
         })
-        console.log('[DashPlugin] Quality set to auto')
+        Logger.debug('[DashPlugin] Quality set to auto')
       } catch (e) {
-        console.warn('[DashPlugin] Failed to enable auto quality:', e)
+        Logger.warn('[DashPlugin] Failed to enable auto quality', e)
       }
       return
     }
@@ -332,9 +333,9 @@ export class DashPlugin implements PlayerPlugin {
         } else if (typeof p.setRepresentationForTypeByIndex === 'function') {
           p.setRepresentationForTypeByIndex('video', targetIndex, true)
         }
-        console.log('[DashPlugin] Quality set to level:', targetIndex)
+        Logger.debug('[DashPlugin] Quality set to level', targetIndex)
       } catch (e) {
-        console.warn('[DashPlugin] Failed to set quality:', e)
+        Logger.warn('[DashPlugin] Failed to set quality', e)
       }
     }
   }

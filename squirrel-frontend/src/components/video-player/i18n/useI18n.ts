@@ -7,6 +7,7 @@ import type { LocaleCode, LocaleMessages, LocaleConfig } from './types'
 import zhCN from './zh-CN'
 import enUS from './en-US'
 import jaJP from './ja-JP'
+import { Logger } from '@/utils/logger'
 
 // 内置语言包
 const builtInLocales: Record<string, LocaleConfig> = {
@@ -107,7 +108,7 @@ export function useI18n(options: UseI18nOptions = {}): UseI18nReturn {
    */
   const setLocale = (locale: LocaleCode): void => {
     if (!availableLocales.value.includes(locale)) {
-      console.warn(`[i18n] Locale "${locale}" not available`)
+      Logger.warn(`[i18n] Locale "${locale}" not available`)
       return
     }
     

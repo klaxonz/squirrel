@@ -15,6 +15,7 @@ import {
   type HistoryEntry,
   type ErrorReport
 } from './PlayerAdapter'
+import { Logger } from '@/utils/logger'
 
 export interface UsePlayerAdapterOptions {
   /** 自定义适配器 */
@@ -84,7 +85,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
     try {
       config.value = await adapter.loadConfig()
     } catch (e) {
-      console.warn('[usePlayerAdapter] Failed to load config:', e)
+      Logger.warn('[usePlayerAdapter] Failed to load config', e)
     }
   }
 
@@ -96,7 +97,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
       await adapter.saveConfig(newConfig)
       config.value = { ...config.value, ...newConfig }
     } catch (e) {
-      console.warn('[usePlayerAdapter] Failed to save config:', e)
+      Logger.warn('[usePlayerAdapter] Failed to save config', e)
     }
   }
 
@@ -128,7 +129,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
         await adapter.saveProgress(progress)
         lastSavedTime = currentTime
       } catch (e) {
-        console.warn('[usePlayerAdapter] Failed to save progress:', e)
+        Logger.warn('[usePlayerAdapter] Failed to save progress', e)
       }
     }, progressSaveInterval)
   }
@@ -151,7 +152,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
     try {
       history.value = await adapter.getHistory(limit)
     } catch (e) {
-      console.warn('[usePlayerAdapter] Failed to load history:', e)
+      Logger.warn('[usePlayerAdapter] Failed to load history', e)
     }
   }
 
@@ -163,7 +164,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
       await adapter.clearHistory()
       history.value = []
     } catch (e) {
-      console.warn('[usePlayerAdapter] Failed to clear history:', e)
+      Logger.warn('[usePlayerAdapter] Failed to clear history', e)
     }
   }
 
@@ -177,7 +178,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
         timestamp: Date.now()
       })
     } catch (e) {
-      console.warn('[usePlayerAdapter] Failed to report error:', e)
+      Logger.warn('[usePlayerAdapter] Failed to report error', e)
     }
   }
 

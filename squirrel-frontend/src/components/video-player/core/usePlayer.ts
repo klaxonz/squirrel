@@ -5,6 +5,7 @@
 
 import { ref, computed, watch, onMounted, onUnmounted, type Ref, type ComputedRef } from 'vue'
 import { usePlayerStore, type PlayerStore } from '../../../stores/playerStore'
+import { Logger } from '@/utils/logger'
 
 // 核心模块
 import { EventEmitter } from './EventEmitter'
@@ -351,7 +352,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       await videoElement.value.play()
       // 状态由 'play' 事件更新
     } catch (e) {
-      console.warn('[usePlayer] Play failed:', e)
+      Logger.warn('[usePlayer] Play failed', e)
     }
   }
 
@@ -463,7 +464,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       }
       events.emit('fullscreenchange', store.fullscreen)
     } catch (e) {
-      console.warn('[IntegratedPlayer] Fullscreen failed:', e)
+      Logger.warn('[IntegratedPlayer] Fullscreen failed', e)
     }
   }
 
@@ -479,7 +480,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
         store.setPictureInPicture(true)
       }
     } catch (e) {
-      console.warn('[IntegratedPlayer] PiP failed:', e)
+      Logger.warn('[IntegratedPlayer] PiP failed', e)
     }
   }
 
@@ -533,7 +534,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   const loadSource = (source: MediaSource): void => {
     if (!source.src) {
-      console.warn('[usePlayer] No source URL provided')
+      Logger.warn('[usePlayer] No source URL provided')
       return
     }
 

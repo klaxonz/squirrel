@@ -10,8 +10,8 @@ export default function useRelatedVideos(sourceVideo) {
     if (!sourceVideo.value) return;
     loadingRelated.value = true;
     try {
-      const { success, data } = await getRelatedVideos(sourceVideo.value, { pageSize: 20 });
-      relatedVideos.value = success ? (data || []) : [];
+      const { data, error } = await getRelatedVideos(sourceVideo.value, { pageSize: 20 });
+      relatedVideos.value = !error ? (data || []) : [];
     } finally {
       loadingRelated.value = false;
     }

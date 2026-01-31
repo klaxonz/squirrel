@@ -1,63 +1,40 @@
-import axios from '../utils/axios';
+import { get } from '../utils/request'
 
 export function useVideoApi() {
   const getVideoDetail = async (videoId) => {
-    try {
-      const response = await axios.get('/api/video/detail', { params: { video_id: videoId } });
-      if (response.data.code === 0) {
-        return { success: true, data: response.data.data };
-      }
-      throw new Error(response.data.msg || '获取视频详情失败');
-    } catch (error) {
-      console.error('获取视频详情失败:', error);
-      return { success: false, error: error.message || '获取视频详情失败' };
-    }
-  };
+    return get('/api/video/detail', { video_id: videoId })
+  }
 
   const listVideos = async (params = {}) => {
-    try {
-      const response = await axios.get('/api/video/list', { params });
-      if (response.data.code === 0) {
-        const payload = response.data.data || {};
-        const items = Array.isArray(payload.data) ? payload.data : [];
-        return { success: true, data: items };
-      }
-      throw new Error(response.data.msg || '获取视频列表失败');
-    } catch (error) {
-      console.error('获取视频列表失败:', error);
-      return { success: false, error: error.message || '获取视频列表失败' };
-    }
-  };
+    const { data, error } = await get('/api/video/list', params)
+    const items = Array.isArray(data?.data) ? data.data : []
+    return { data: items, error }
+  }
 
   const getSubtitles = async (videoId, { lang = 'ai-zh', fmt = 'srt' } = {}) => {
-    try {
-      const response = await axios.get('/api/video/subtitles', {
-        params: { video_id: videoId, lang, fmt },
-        responseType: 'text'
-      });
-      // 字幕接口返回纯文本
-      return { success: true, data: response.data };
-    } catch (error) {
-      return { success: false, error: error.message || '获取字幕失败' };
-    }
-  };
+    return get(
+      '/api/video/subtitles',
+      { video_id: videoId, lang, fmt },
+      { responseType: 'text' }
+    )
+  }
 
   const getRelatedVideos = async (video, { pageSize = 20 } = {}) => {
-    if (!video) return { success: true, data: [] };
+    if (!video) return { data: [], error: null }
     const collected = [];
 
     // 1) Try by subscription
     const primarySubId = video?.subscriptions?.[0]?.id;
     if (primarySubId) {
       const bySub = await listVideos({ page: 1, pageSize, sort_by: 'publish_date', subscription_id: primarySubId });
-      if (bySub.success && Array.isArray(bySub.data)) collected.push(...bySub.data);
+      if (!bySub.error && Array.isArray(bySub.data)) collected.push(...bySub.data);
     }
 
     // 2) Fallback by site if empty or insufficient
     if (collected.length < pageSize && video?.site) {
       const remaining = pageSize - collected.length;
       const bySite = await listVideos({ page: 1, pageSize: remaining, sort_by: 'publish_date', site: video.site });
-      if (bySite.success && Array.isArray(bySite.data)) collected.push(...bySite.data);
+      if (!bySite.error && Array.isArray(bySite.data)) collected.push(...bySite.data);
     }
 
     // 3) Unique by id and exclude current
@@ -71,33 +48,16 @@ export function useVideoApi() {
       if (unique.length >= pageSize) break;
     }
 
-    return { success: true, data: unique };
-  };
+    return { data: unique, error: null }
+  }
 
   const getRandomVideo = async (params = {}) => {
-    try {
-      const response = await axios.get('/api/video/random', { params });
-      if (response.data?.code === 0 && response.data?.data) {
-        return { success: true, data: response.data.data };
-      }
-      throw new Error(response.data?.msg || '获取随机视频失败');
-    } catch (error) {
-      return { success: false, error: error.message || '获取随机视频失败' };
-    }
-  };
+    return get('/api/video/random', params)
+  }
 
   const getVideoCounts = async (params = {}) => {
-    try {
-      const response = await axios.get('/api/video/counts', { params });
-      if (response.data.code === 0) {
-        return { success: true, data: response.data.data };
-      }
-      throw new Error(response.data.msg || '获取计数失败');
-    } catch (error) {
-      console.error('获取视频计数失败:', error);
-      return { success: false, error: error.message || '获取视频计数失败' };
-    }
-  };
+    return get('/api/video/counts', params)
+  }
 
   return {
     getVideoDetail,

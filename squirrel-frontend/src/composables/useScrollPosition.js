@@ -1,4 +1,5 @@
 import { ref, onMounted, onActivated, onBeforeUnmount, nextTick } from 'vue'
+import { Logger } from '../utils/logger'
 
 // 全局存储滚动位置
 const scrollPositions = new Map()
@@ -19,7 +20,7 @@ export function useScrollPosition(key) {
       // 同时保存到 localStorage 作为备份
       try {
         localStorage.setItem(`scroll-${key}`, scrollTop.toString())
-        console.log(`[ScrollPosition] Saved position for ${key}:`, scrollTop)
+        Logger.debug(`[ScrollPosition] Saved position for ${key}`, scrollTop)
       } catch (e) {
         // 忽略 localStorage 错误
       }
@@ -48,12 +49,15 @@ export function useScrollPosition(key) {
     }
 
     if (position > 0) {
-      console.log(`[ScrollPosition] Restoring position for ${key}:`, position)
+      Logger.debug(`[ScrollPosition] Restoring position for ${key}`, position)
       // 多次尝试设置滚动位置，确保内容加载完成后能正确恢复
       const setScrollPosition = () => {
         if (scrollContainer.value) {
           scrollContainer.value.scrollTop = position
-          console.log(`[ScrollPosition] Set scroll to ${position}, actual:`, scrollContainer.value.scrollTop)
+          Logger.debug(
+            `[ScrollPosition] Set scroll position for ${key}`,
+            { expected: position, actual: scrollContainer.value.scrollTop }
+          )
         }
       }
 

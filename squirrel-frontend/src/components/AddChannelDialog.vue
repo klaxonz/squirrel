@@ -44,7 +44,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { XMarkIcon } from '@heroicons/vue/24/outline';
-import axios from '../utils/axios';
+import { post } from '../utils/request'
 import Button from './common/Button.vue';
 import IconButton from './common/IconButton.vue';
 
@@ -72,16 +72,18 @@ const handleSubmit = async () => {
   loading.value = true;
   error.value = '';
   
-  try {
-    await axios.post('/api/subscription/subscribe', {
-      url: channelUrl.value
-    });
+  const result = await post('/api/subscription/subscribe', {
+    url: channelUrl.value,
+  })
+
+  if (!result.error) {
     emit('added');
     emit('close');
-  } catch (err) {
-    error.value = err.response?.data?.msg || '添加频道失败，请检查地址是否正确';
-  } finally {
-    loading.value = false;
+    loading.value = false
+    return
   }
+
+  error.value = result.error?.message || '添加频道失败，请检查地址是否正确'
+  loading.value = false
 };
 </script> 

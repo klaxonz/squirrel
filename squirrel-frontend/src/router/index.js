@@ -12,6 +12,7 @@ import LogViewer from '../views/LogViewer.vue'
 import Monitoring from '../views/Monitoring.vue'
 import ScheduledTasks from '../views/ScheduledTasks.vue'
 import { useUser } from '../composables/useUser'
+import { Logger } from '../utils/logger'
 
 // 路由元数据常量
 const SEARCH_META = {
@@ -231,10 +232,9 @@ router.beforeEach(async (to, from, next) => {
 
   // 如果有 token 但没有用户信息，尝试获取用户信息
   if (localStorage.getItem('token') && !isAuthenticated.value) {
-    try {
-      await getCurrentUser()
-    } catch (error) {
-      console.error('Failed to get user info:', error)
+    const result = await getCurrentUser()
+    if (result.error) {
+      Logger.error('Failed to get user info', result.error)
     }
   }
 

@@ -5,6 +5,7 @@
 
 import { ref, computed, type Ref } from 'vue'
 import type { PlayerError, QualityLevel } from './types'
+import { Logger } from '@/utils/logger'
 
 export interface ErrorRecoveryOptions {
   maxRetries?: number
@@ -136,7 +137,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
       retryCount.value++
       onRetry?.(retryCount.value)
       
-      console.log(`[ErrorRecovery] Retry attempt ${retryCount.value}/${maxRetries}`)
+      Logger.debug(`[ErrorRecovery] Retry attempt ${retryCount.value}/${maxRetries}`)
       
       setTimeout(() => {
         resolve(true)
@@ -156,7 +157,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
         return
       }
       
-      console.log(`[ErrorRecovery] Falling back to quality: ${nextQuality.label}`)
+      Logger.debug(`[ErrorRecovery] Falling back to quality: ${nextQuality.label}`)
       
       // 更新当前质量索引
       const newIndex = qualities.value.findIndex(q => q.id === nextQuality.id)
@@ -180,7 +181,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
     
     // 已在恢复中
     if (isRecovering.value) {
-      console.log('[ErrorRecovery] Already recovering, skipping')
+      Logger.debug('[ErrorRecovery] Already recovering, skipping')
       return false
     }
     
@@ -190,7 +191,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
       const strategy = determineStrategy(error)
       currentStrategy.value = strategy
       
-      console.log(`[ErrorRecovery] Strategy: ${strategy}, Error:`, error)
+      Logger.debug(`[ErrorRecovery] Strategy: ${strategy}, Error`, error)
       
       let recovered = false
       
@@ -218,7 +219,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
       }
       
       if (!recovered) {
-        console.log('[ErrorRecovery] Recovery failed')
+        Logger.debug('[ErrorRecovery] Recovery failed')
         onRecoveryFailed?.(error)
       }
       

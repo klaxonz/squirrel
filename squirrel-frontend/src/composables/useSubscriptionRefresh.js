@@ -41,16 +41,16 @@ export function useSubscriptionRefresh() {
 
     state.isRefreshing = true;
 
-    const result = await apiTriggerRefresh(subscriptionId);
+    const { data, error } = await apiTriggerRefresh(subscriptionId);
 
-    if (result.success) {
-      const data = result.data;
+    if (!error && data) {
 
       state.status = data.status;
       state.requestId = data.requestId;
       state.isRefreshing = false;
       return true;
     } else {
+      state.lastError = error;
       state.isRefreshing = false;
       return false;
     }

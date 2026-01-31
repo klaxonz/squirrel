@@ -292,7 +292,7 @@ const loadSubscriptions = async () => {
 
   loading.value = true;
 
-  const result = await apiGetSubscriptions({
+  const { data, error } = await apiGetSubscriptions({
     query: searchQuery.value,
     nsfw: nsfw.value,
     site: site.value,
@@ -300,8 +300,8 @@ const loadSubscriptions = async () => {
     page_size: 100
   });
 
-  if (result.success) {
-    const newSubscriptions = result.data.data;
+  if (!error) {
+    const newSubscriptions = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
     const mapped = newSubscriptions.map(subscription => ({
       ...subscription,
       total_videos: subscription.total_videos || 0,
@@ -330,8 +330,8 @@ const loadSubscriptions = async () => {
       // 数据加载完成后恢复滚动位置
       restoreScrollPosition();
     });
-  } else if (!result.cancelled) {
-    loadError.value = result.error || '获取订阅列表失败';
+  } else {
+    loadError.value = error || '获取订阅列表失败';
   }
 
   loading.value = false;
@@ -431,13 +431,13 @@ const closeSettings = () => {
 const unsubscribe = async (subscriptionId) => {
   unsubscribeError.value = '';
 
-  const result = await apiUnsubscribe(subscriptionId);
+  const { error } = await apiUnsubscribe(subscriptionId);
 
-  if (result.success) {
+  if (!error) {
     subscriptions.value = subscriptions.value.filter(subscription => subscription.id !== subscriptionId);
     closeSettings();
-  } else if (!result.cancelled) {
-    unsubscribeError.value = result.error || '取消订阅失败';
+  } else {
+    unsubscribeError.value = error?.message || '取消订阅失败';
   }
 };
 
@@ -462,9 +462,9 @@ const handleSubscriptionsImported = () => {
 };
 
 const updateNsfwStatus = async (isNsfw) => {
-  const result = await apiUpdateNsfwStatus(selectedSubscription.value.id, isNsfw);
+  const { error } = await apiUpdateNsfwStatus(selectedSubscription.value.id, isNsfw);
 
-  if (result.success) {
+  if (!error) {
     // 立即更新本地状态
     const index = subscriptions.value.findIndex(s => s.id === selectedSubscription.value.id);
     if (index !== -1) {
