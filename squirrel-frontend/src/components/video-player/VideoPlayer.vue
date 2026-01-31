@@ -6,11 +6,14 @@
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"
     @pointermove="onPointerMove"
+    @pointerdown="focusContainer"
+    @focus="markPlayerActive"
     @keydown="handleKeyDown"
     tabindex="0"
     role="application"
     :aria-label="t('videoPlayer')"
   >
+
     <!-- 加载状态 -->
     <div v-if="store.loading && store.loadingStage !== 'buffering' && !errorState.show" class="sp-loading sp-loading--stacked" role="status" aria-live="polite">
       <div class="sp-spinner-arc" aria-hidden="true">
@@ -434,7 +437,10 @@ import type { SubtitleTrack } from './plugins/subtitles'
 // 导入 CSS 变量（主题系统基础）
 import './themes/variables.css'
 
+let activePlayerContainer: HTMLElement | null = null
+
 interface Props {
+
   video?: VideoInfo
   initialTime?: number
   hasPrev?: boolean
@@ -554,6 +560,10 @@ const seekIndicator = ref({ show: false, direction: 'forward' as 'forward' | 'ba
 const volumeIndicator = ref({ show: false })
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
 const internalError = ref<PlayerUiError | null>(null)
+
+const lastActiveAt = ref(0)
+const activeTimeoutMs = 60000
+
 
 const CONTROL_TOOLTIP_DELAY = 450
 let controlTooltipTimer: ReturnType<typeof setTimeout> | null = null
@@ -921,6 +931,7 @@ const showControls = (): void => {
 
 const onPointerEnter = (): void => {
   isPointerInside.value = true
+  markPlayerActive()
   showControls()
 }
 
@@ -935,20 +946,25 @@ const onPointerLeave = (): void => {
 }
 
 
-
 const onPointerMove = (): void => {
   isPointerInside.value = true
+  markPlayerActive()
   showControls()
 }
 
+
+
 // 视频点击
 const handleVideoClick = () => {
+  focusContainer()
+  markPlayerActive()
   if (isPlaying.value) {
     pause()
   } else {
     play()
   }
 }
+
 
 // 切换播放
 const togglePlay = () => {
@@ -1156,8 +1172,49 @@ const handleDismissError = () => {
 
 
 // 键盘快捷键
+const isEditableTarget = (target: EventTarget | null): boolean => {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  const tagName = el.tagName?.toLowerCase()
+  if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') return true
+  return el.isContentEditable
+}
+
+const isLikelyPlayerKey = (e: KeyboardEvent): boolean => {
+  const key = e.key
+  return key === ' ' || key === 'k' || key === 'm' || key === 'f' || key === 'c' ||
+    key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown' ||
+    key === 'Escape'
+}
+
+const markPlayerActive = (): void => {
+  if (!containerRef.value) return
+  activePlayerContainer = containerRef.value
+  lastActiveAt.value = Date.now()
+}
+
+const focusContainer = (): void => {
+  if (!containerRef.value) return
+  if (document.activeElement === containerRef.value) return
+  if (isEditableTarget(document.activeElement)) return
+  containerRef.value.focus({ preventScroll: true })
+  markPlayerActive()
+}
+
+const canHandleGlobalKey = (e: KeyboardEvent): boolean => {
+  if (!containerRef.value) return false
+  if (!lastActiveAt.value) return false
+  if (activePlayerContainer !== containerRef.value) return false
+  if (Date.now() - lastActiveAt.value > activeTimeoutMs) return false
+  if (!isLikelyPlayerKey(e)) return false
+  if (isEditableTarget(e.target)) return false
+  return true
+}
+
 const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.target !== containerRef.value) return
+  if (isEditableTarget(e.target)) return
+  if (!containerRef.value) return
+  if (!containerRef.value.contains(e.target as Node)) return
 
   switch (e.key) {
     case ' ':
@@ -1204,6 +1261,12 @@ const handleKeyDown = (e: KeyboardEvent) => {
   }
 }
 
+const handleGlobalKeyDown = (e: KeyboardEvent) => {
+  if (!canHandleGlobalKey(e)) return
+  handleKeyDown(e)
+}
+
+
 // 指示器
 const showSeekIndicator = (direction: 'forward' | 'backward', seconds: number) => {
   seekIndicator.value = { show: true, direction, seconds }
@@ -1246,13 +1309,16 @@ const handleOutsideClick = (e: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleOutsideClick)
+  document.addEventListener('keydown', handleGlobalKeyDown, true)
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', handleResize)
   }
 })
 
+
 onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick)
+  document.removeEventListener('keydown', handleGlobalKeyDown, true)
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', handleResize)
   }
