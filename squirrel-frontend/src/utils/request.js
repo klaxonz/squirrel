@@ -1,8 +1,4 @@
 import axios from './axios'
-
-/**
- * 统一的错误类型枚举
- */
 export const ErrorTypes = {
   NETWORK: 'NETWORK',
   API: 'API',
@@ -13,10 +9,6 @@ export const ErrorTypes = {
   SERVER_ERROR: 'SERVER_ERROR',
   UNKNOWN: 'UNKNOWN',
 }
-
-/**
- * 自定义错误类
- */
 export class ApiError extends Error {
   constructor(message, type = ErrorTypes.UNKNOWN, status = null, data = null) {
     super(message)
@@ -30,10 +22,6 @@ export class ApiError extends Error {
 const isApiEnvelope = (data) => {
   return !!data && typeof data.code === 'number'
 }
-
-/**
- * 获取错误类型
- */
 const getErrorType = (error) => {
   if (!error.response) {
     if (error.code === 'ECONNABORTED') return ErrorTypes.TIMEOUT
@@ -51,10 +39,6 @@ const getErrorType = (error) => {
     default: return ErrorTypes.API
   }
 }
-
-/**
- * 格式化错误消息
- */
 const formatErrorMessage = (error) => {
   if (error.response?.data?.msg) {
     return error.response.data.msg
@@ -70,15 +54,10 @@ const formatErrorMessage = (error) => {
     default: return '请求失败，请稍后重试'
   }
 }
-
-/**
- * 处理API响应
- */
 export const handleRequest = async (promise) => {
   try {
     const response = await promise
 
-    // API 成功响应
     if (isApiEnvelope(response.data)) {
       if (response.data.code === 0) {
         return {
@@ -87,7 +66,6 @@ export const handleRequest = async (promise) => {
         }
       }
 
-      // API 业务错误
       const error = new ApiError(
         response.data.msg || '请求失败',
         ErrorTypes.API,
@@ -101,13 +79,11 @@ export const handleRequest = async (promise) => {
       }
     }
 
-    // 兼容旧的响应格式
     return {
       data: response.data,
       error: null,
     }
   } catch (err) {
-    // 网络或其他错误
     const errorType = getErrorType(err)
     const errorMessage = formatErrorMessage(err)
     const error = new ApiError(errorMessage, errorType, err.response?.status, err.response?.data)

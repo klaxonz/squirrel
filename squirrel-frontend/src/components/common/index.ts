@@ -1,10 +1,6 @@
-// Common Components - 统一导出
-
-// Button 组件
 export { default as Button } from './Button.vue'
 export { default as IconButton } from './IconButton.vue'
 
-// 表单组件
 export { default as Input } from './Input.vue'
 export { default as Select } from './Select.vue'
 export { default as Textarea } from './Textarea.vue'
@@ -14,12 +10,10 @@ export { default as LabeledTextarea } from './LabeledTextarea.vue'
 export { default as LabeledCheckbox } from './LabeledCheckbox.vue'
 export { default as ToggleSwitch } from './ToggleSwitch.vue'
 
-// 容器组件
 export { default as Card } from './Card.vue'
 export { default as InlineAlert } from './InlineAlert.vue'
 export { default as Tooltip } from './Tooltip.vue'
 
-// 数据展示组件
 export { default as StatusBadge } from './StatusBadge.vue'
 export { default as StatusIndicator } from './StatusIndicator.vue'
 export { default as ProgressBar } from './ProgressBar.vue'

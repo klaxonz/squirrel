@@ -44,11 +44,6 @@ export const getAvailableTaskClasses = async () => {
   return get('/api/scheduler/task-classes')
 }
 
-export const getTaskExecutionLogs = async (taskId = null, params = {}) => {
-  const url = taskId ? `/api/scheduler/tasks/${taskId}/logs` : '/api/scheduler/logs'
-  return get(url, params)
-}
-
 export const enableScheduler = async () => {
   return post('/api/scheduler/enable', null)
 }
@@ -56,4 +51,3 @@ export const enableScheduler = async () => {
 export const disableScheduler = async () => {
   return post('/api/scheduler/disable', null)
 }
-
