@@ -5,8 +5,6 @@
 
 import { ref, onMounted, type Ref } from 'vue'
 import {
-  getPlayerAdapter,
-  setPlayerAdapter,
   LocalStorageAdapter,
   ApiAdapter,
   type IPlayerAdapter,
@@ -15,7 +13,7 @@ import {
   type HistoryEntry,
   type ErrorReport
 } from './PlayerAdapter'
-import { Logger } from '@/utils/logger'
+import { noopLogger, type PlayerLogger } from './logger'
 
 export interface UsePlayerAdapterOptions {
   /** 自定义适配器 */
@@ -26,6 +24,7 @@ export interface UsePlayerAdapterOptions {
   progressSaveInterval?: number
   /** 进度变化阈值(秒) */
   progressThreshold?: number
+  logger?: PlayerLogger
 }
 
 export interface UsePlayerAdapterReturn {
@@ -61,14 +60,12 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
     adapter: customAdapter,
     autoLoadConfig = true,
     progressSaveInterval = 2000,
-    progressThreshold = 5
+    progressThreshold = 5,
+    logger = noopLogger
   } = options
 
   // 设置适配器
-  const adapter = customAdapter || getPlayerAdapter()
-  if (customAdapter) {
-    setPlayerAdapter(customAdapter)
-  }
+  const adapter = customAdapter || new LocalStorageAdapter({ logger })
 
   // 状态
   const config = ref<UserConfig>({})
@@ -85,7 +82,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
     try {
       config.value = await adapter.loadConfig()
     } catch (e) {
-      Logger.warn('[usePlayerAdapter] Failed to load config', e)
+      logger.warn('[usePlayerAdapter] Failed to load config', e)
     }
   }
 
@@ -97,7 +94,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
       await adapter.saveConfig(newConfig)
       config.value = { ...config.value, ...newConfig }
     } catch (e) {
-      Logger.warn('[usePlayerAdapter] Failed to save config', e)
+      logger.warn('[usePlayerAdapter] Failed to save config', e)
     }
   }
 
@@ -129,7 +126,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
         await adapter.saveProgress(progress)
         lastSavedTime = currentTime
       } catch (e) {
-        Logger.warn('[usePlayerAdapter] Failed to save progress', e)
+        logger.warn('[usePlayerAdapter] Failed to save progress', e)
       }
     }, progressSaveInterval)
   }
@@ -152,7 +149,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
     try {
       history.value = await adapter.getHistory(limit)
     } catch (e) {
-      Logger.warn('[usePlayerAdapter] Failed to load history', e)
+      logger.warn('[usePlayerAdapter] Failed to load history', e)
     }
   }
 
@@ -164,7 +161,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
       await adapter.clearHistory()
       history.value = []
     } catch (e) {
-      Logger.warn('[usePlayerAdapter] Failed to clear history', e)
+      logger.warn('[usePlayerAdapter] Failed to clear history', e)
     }
   }
 
@@ -178,7 +175,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
         timestamp: Date.now()
       })
     } catch (e) {
-      Logger.warn('[usePlayerAdapter] Failed to report error', e)
+      logger.warn('[usePlayerAdapter] Failed to report error', e)
     }
   }
 

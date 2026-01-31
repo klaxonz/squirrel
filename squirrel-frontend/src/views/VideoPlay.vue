@@ -9,13 +9,23 @@
             <VideoPlayer
               ref="videoPlayerRef"
               v-if="video"
-              :video="video"
+              :media-id="video?.id"
               :source="playbackSource"
+              :subtitles="subtitleTracks"
+              :poster="video?.thumbnail"
+              :title="video?.title"
               :initialTime="startTime"
               :has-prev="hasPrevVideo"
               :has-next="hasNextVideo"
               :external-error="externalError"
               :widescreen="isWidescreen"
+              :logger="Logger"
+              :adapter="playerAdapter"
+              :theme-options="{ persist: true, storageKey: 'sp-theme' }"
+              :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
+              :enable-global-shortcuts="true"
+              :enable-click-outside-close-menu="true"
+              :enable-window-resize="true"
 
               @play="onVideoPlay"
               @pause="onVideoPause"
@@ -261,6 +271,7 @@ import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
 import useOptionsDropdown from '../composables/useOptionsDropdown';
 import VideoPlayer from '@/components/video-player/VideoPlayer.vue';
+import { LocalStorageAdapter } from '@/components/video-player/core';
 import { Icon } from '@iconify/vue';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
@@ -278,9 +289,11 @@ const router = useRouter();
 const emitter = inject('emitter');
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
+const playerAdapter = new LocalStorageAdapter({ logger: Logger });
+
 
 // 内部切换不使用 router，所以不需要从 history.state 读取初始数据
-const { video, startTime, relatedVideos, loadingRelated, playbackSource, loadAndPlayById, externalError } = usePlaybackOrchestrator(null);
+const { video, startTime, relatedVideos, loadingRelated, playbackSource, subtitleTracks, loadAndPlayById, externalError } = usePlaybackOrchestrator(null);
 const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);

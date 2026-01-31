@@ -4,7 +4,6 @@
  */
 
 import type { PlayerPlugin, PluginContext, PlayerError } from '../../core/types'
-import { Logger } from '@/utils/logger'
 
 export interface PlaybackMetrics {
   // 播放时长
@@ -328,7 +327,7 @@ export class AnalyticsPlugin implements PlayerPlugin {
 
   private log(...args: any[]): void {
     if (this.options.debug) {
-      Logger.debug('[AnalyticsPlugin]', ...args)
+      this.context?.logger.debug('[AnalyticsPlugin]', ...args)
     }
   }
 

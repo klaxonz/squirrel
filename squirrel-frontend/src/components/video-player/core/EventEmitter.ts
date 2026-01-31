@@ -3,7 +3,7 @@
  * 支持泛型事件类型定义
  */
 
-import { Logger } from '@/utils/logger'
+import { noopLogger, type PlayerLogger } from './logger'
 
 export type EventHandler<T = any> = (data: T) => void
 export type EventMap = Record<string, any>
@@ -11,6 +11,11 @@ export type EventMap = Record<string, any>
 export class EventEmitter<Events extends EventMap = EventMap> {
   private listeners: Map<keyof Events, Set<EventHandler>> = new Map()
   private onceListeners: Map<keyof Events, Set<EventHandler>> = new Map()
+  private logger: PlayerLogger
+
+  constructor(options: { logger?: PlayerLogger } = {}) {
+    this.logger = options.logger ?? noopLogger
+  }
 
   /**
    * 注册事件监听器
@@ -57,7 +62,7 @@ export class EventEmitter<Events extends EventMap = EventMap> {
       try {
         handler(data)
       } catch (err) {
-        Logger.error(`[EventEmitter] Error in handler for "${String(event)}"`, err)
+        this.logger.error(`[EventEmitter] Error in handler for "${String(event)}"`, err)
       }
     })
 
@@ -68,7 +73,7 @@ export class EventEmitter<Events extends EventMap = EventMap> {
         try {
           handler(data)
         } catch (err) {
-          Logger.error(`[EventEmitter] Error in once handler for "${String(event)}"`, err)
+          this.logger.error(`[EventEmitter] Error in once handler for "${String(event)}"`, err)
         }
       })
       this.onceListeners.delete(event)

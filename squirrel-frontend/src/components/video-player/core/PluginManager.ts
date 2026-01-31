@@ -11,15 +11,17 @@ import type {
   PlayerError
 } from './types'
 import { EventEmitter } from './EventEmitter'
-import { Logger } from '@/utils/logger'
+import { noopLogger, type PlayerLogger } from './logger'
 
 export class PluginManager implements IPluginManager {
   private plugins: Map<string, PlayerPlugin> = new Map()
   private context: PluginContext | null = null
   private events: EventEmitter<PlayerEvents>
+  private logger: PlayerLogger
 
-  constructor(events: EventEmitter<PlayerEvents>) {
+  constructor(events: EventEmitter<PlayerEvents>, options: { logger?: PlayerLogger } = {}) {
     this.events = events
+    this.logger = options.logger ?? noopLogger
     this.setupEventForwarding()
   }
 
@@ -62,7 +64,7 @@ export class PluginManager implements IPluginManager {
         try {
           (hook as Function).apply(plugin, args)
         } catch (err) {
-          Logger.error(`[PluginManager] Error in ${plugin.name}.${hookName}`, err)
+          this.logger.error(`[PluginManager] Error in ${plugin.name}.${hookName}`, err)
         }
       }
     })
@@ -73,7 +75,7 @@ export class PluginManager implements IPluginManager {
    */
   async register(plugin: PlayerPlugin, options?: any): Promise<void> {
     if (this.plugins.has(plugin.name)) {
-      Logger.warn(`[PluginManager] Plugin "${plugin.name}" already registered, skipping`)
+      this.logger.warn(`[PluginManager] Plugin "${plugin.name}" already registered, skipping`)
       return
     }
 
@@ -93,9 +95,9 @@ export class PluginManager implements IPluginManager {
       this.plugins.set(plugin.name, plugin)
       this.events.emit('pluginregistered', { name: plugin.name, plugin })
 
-      Logger.debug(`[PluginManager] Plugin "${plugin.name}" registered`)
+      this.logger.debug(`[PluginManager] Plugin "${plugin.name}" registered`)
     } catch (err) {
-      Logger.error(`[PluginManager] Failed to register plugin "${plugin.name}"`, err)
+      this.logger.error(`[PluginManager] Failed to register plugin "${plugin.name}"`, err)
       throw err
     }
   }
@@ -106,7 +108,7 @@ export class PluginManager implements IPluginManager {
   unregister(name: string): void {
     const plugin = this.plugins.get(name)
     if (!plugin) {
-      Logger.warn(`[PluginManager] Plugin "${name}" not found`)
+      this.logger.warn(`[PluginManager] Plugin "${name}" not found`)
       return
     }
 
@@ -124,9 +126,9 @@ export class PluginManager implements IPluginManager {
       this.plugins.delete(name)
       this.events.emit('pluginunregistered', name)
 
-      Logger.debug(`[PluginManager] Plugin "${name}" unregistered`)
+      this.logger.debug(`[PluginManager] Plugin "${name}" unregistered`)
     } catch (err) {
-      Logger.error(`[PluginManager] Error unregistering plugin "${name}"`, err)
+      this.logger.error(`[PluginManager] Error unregistering plugin "${name}"`, err)
     }
   }
 

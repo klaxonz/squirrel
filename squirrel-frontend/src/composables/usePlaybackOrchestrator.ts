@@ -1,9 +1,10 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import useVideoDetail from './useVideoDetail'
 import useRelatedVideos from './useRelatedVideos'
 import useVideoOperations from './useVideoOperations'
 import { Logger } from '@/utils/logger'
 import type { MediaSource } from '@/components/video-player/core'
+import type { SubtitleTrack } from '@/components/video-player/plugins/subtitles'
 
 type VideoId = string | number
 
@@ -31,6 +32,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
   const { relatedVideos, loadingRelated, fetchRelatedVideos } = useRelatedVideos(video)
   const { getPlaybackSource } = useVideoOperations()
   const playbackSource = ref<MediaSource | null>(null)
+  const subtitleTracks = ref<SubtitleTrack[]>([])
   const externalError = ref<ExternalErrorState | null>(null)
   const requestSeq = ref(0)
 
@@ -103,6 +105,39 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     }
   }
 
+  const toSubtitleTracks = (subtitles: unknown): SubtitleTrack[] => {
+    if (!Array.isArray(subtitles)) return []
+
+    return subtitles.map((item, i) => {
+      const s = toRecord(item)
+      const id = String(s.id || `sub-${i}`)
+      const language = String(s.language || s.lang || 'unknown')
+      const label = String(s.label || s.name || language || `Subtitle ${i + 1}`)
+      const url = typeof s.url === 'string'
+        ? s.url
+        : (typeof s.src === 'string' ? s.src : undefined)
+      const content = typeof s.content === 'string' ? s.content : undefined
+      const isDefault = s.default === true
+
+      return {
+        id,
+        label,
+        language,
+        url,
+        content,
+        default: isDefault || (!subtitles.some((x: any) => toRecord(x).default === true) && i === 0),
+      }
+    })
+  }
+
+  watch(
+    () => toRecord(video.value as any)?.subtitles,
+    (subtitles) => {
+      subtitleTracks.value = toSubtitleTracks(subtitles)
+    },
+    { immediate: true, deep: true }
+  )
+
   return {
     // state
     video,
@@ -110,6 +145,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     relatedVideos,
     loadingRelated,
     playbackSource,
+    subtitleTracks,
     externalError,
 
     // actions

@@ -3,17 +3,9 @@
  * 支持 VTT/SRT 格式、样式自定义、多轨道切换
  */
 
-import type { PlayerPlugin, PluginContext } from '../../core/types'
-import { Logger } from '@/utils/logger'
+import type { PlayerPlugin, PluginContext, SubtitleTrack as CoreSubtitleTrack } from '../../core/types'
 
-export interface SubtitleTrack {
-  id: string
-  label: string
-  language: string
-  url?: string
-  content?: string
-  default?: boolean
-}
+export type SubtitleTrack = CoreSubtitleTrack
 
 export interface SubtitleCue {
   id: string
@@ -54,12 +46,14 @@ export class SubtitlesPlugin implements PlayerPlugin {
   private cues: SubtitleCue[] = []
   private activeCueIndex: number = -1
   private enabled: boolean = false
+  private scopeId: string
   private style: SubtitleStyle
   private styleElement: HTMLStyleElement | null = null
   private containerElement: HTMLElement | null = null
 
   constructor() {
     this.options = {}
+    this.scopeId = `sp-subtitles-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
     this.style = {
       fontSize: 'medium',
       position: 'bottom',
@@ -97,7 +91,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
     if (typeof document === 'undefined') return
     
     this.styleElement = document.createElement('style')
-    this.styleElement.id = 'sp-subtitles-style'
+    this.styleElement.dataset.spSubtitlesOwner = this.scopeId
     document.head.appendChild(this.styleElement)
   }
 
@@ -113,6 +107,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
 
     this.containerElement = document.createElement('div')
     this.containerElement.className = 'sp-subtitles'
+    this.containerElement.dataset.spSubtitlesOwner = this.scopeId
     this.containerElement.setAttribute('aria-live', 'polite')
     this.containerElement.setAttribute('aria-atomic', 'true')
     parent.appendChild(this.containerElement)
@@ -124,6 +119,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
   private updateStyles(): void {
     if (!this.styleElement) return
 
+    const scope = `.sp-subtitles[data-sp-subtitles-owner="${this.scopeId}"]`
     const fontSizeMap: Record<string, string> = {
       small: '16px',
       medium: '18px',
@@ -146,7 +142,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
     const fontFamily = this.style.fontFamily || 'var(--sp-font-family)'
 
     this.styleElement.textContent = `
-      .sp-subtitles {
+      ${scope} {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
@@ -157,7 +153,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
         pointer-events: none;
       }
       
-      .sp-subtitle-text {
+      ${scope} .sp-subtitle-text {
         display: inline-block;
         padding: 4px 8px;
         background: ${background};
@@ -171,7 +167,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
         font-family: ${fontFamily};
       }
       
-      .sp-subtitles:empty {
+      ${scope}:empty {
         display: none;
       }
     `
@@ -243,7 +239,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
         const response = await fetch(track.url)
         content = await response.text()
       } catch (e) {
-        Logger.error('[SubtitlesPlugin] Failed to load subtitle', e)
+        this.context?.logger.error('[SubtitlesPlugin] Failed to load subtitle', e)
         return
       }
     }
@@ -254,7 +250,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
     const isVtt = content.trimStart().startsWith('WEBVTT')
     this.cues = isVtt ? this.parseVTT(content) : this.parseSRT(content)
     
-    Logger.debug(`[SubtitlesPlugin] Loaded ${this.cues.length} cues from ${track.label}`)
+    this.context?.logger.debug(`[SubtitlesPlugin] Loaded ${this.cues.length} cues from ${track.label}`)
   }
 
   /**

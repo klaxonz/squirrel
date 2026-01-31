@@ -3,6 +3,7 @@
  */
 
 import type { EventEmitter } from './EventEmitter'
+import type { PlayerLogger } from './logger'
 
 // 播放器事件类型
 export interface PlayerEvents {
@@ -36,6 +37,7 @@ export interface PlayerEvents {
 
   // 源相关
   sourcechange: MediaSource
+  sourcetypechange: 'native' | 'hls' | 'dash' | null
   loadsstart: void
   loadedmetadata: { duration: number; videoWidth: number; videoHeight: number }
   loadeddata: void
@@ -62,6 +64,15 @@ export interface QualityLevel {
   height?: number
   bitrate?: number
   codec?: string
+}
+
+export interface SubtitleTrack {
+  id: string
+  label: string
+  language: string
+  url?: string
+  content?: string
+  default?: boolean
 }
 
 // 媒体源配置
@@ -105,6 +116,7 @@ export interface PluginContext {
   // 播放器核心
   readonly videoElement: HTMLVideoElement | null
   readonly state: PlayerState
+  readonly logger: PlayerLogger
 
   // 事件系统
   on: EventEmitter<PlayerEvents>['on']

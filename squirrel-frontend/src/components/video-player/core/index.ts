@@ -1,5 +1,8 @@
 export { EventEmitter, type EventHandler, type EventMap } from './EventEmitter'
 export { PluginManager } from './PluginManager'
+export { noopLogger, type PlayerLogger } from './logger'
+export { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from './createPlayerEngine'
+export { createDefaultPlayerPlugins, type DefaultPluginsOptions } from './defaultPlugins'
 export { createPlayerRuntimeStore, type PlayerRuntimeStore, type LoadingStage } from './PlayerStore'
 export { usePluginSystem } from './usePluginSystem'
 export { useA11y } from './useA11y'
@@ -13,16 +16,17 @@ export {
   createApiAdapter
 } from './usePlayerAdapter'
 export {
+  MemoryAdapter,
   LocalStorageAdapter,
   ApiAdapter,
   CompositeAdapter,
-  setPlayerAdapter,
-  getPlayerAdapter,
   type IPlayerAdapter,
   type UserConfig,
   type PlaybackProgress,
   type HistoryEntry,
-  type ErrorReport
+  type ErrorReport,
+  type LocalStorageAdapterOptions,
+  type MemoryAdapterOptions
 } from './PlayerAdapter'
 export {
   usePlayer,

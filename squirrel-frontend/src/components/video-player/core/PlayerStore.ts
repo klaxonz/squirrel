@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import type { SubtitleTrack } from '../plugins/subtitles'
+import type { SubtitleTrack } from './types'
 
 export type LoadingStage = 'idle' | 'fetching' | 'buffering' | 'ready'
 

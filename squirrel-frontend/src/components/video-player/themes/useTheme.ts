@@ -3,7 +3,7 @@
  * 支持主题切换、自定义 CSS 变量、预设主题
  */
 
-import { ref, computed, watch, onMounted, type Ref } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, type Ref } from 'vue'
 
 export type ThemeName = 'dark' | 'light' | 'auto' | 'custom'
 
@@ -32,8 +32,11 @@ export interface ThemeConfig {
 
 export interface UseThemeOptions {
   defaultTheme?: ThemeName
+  persist?: boolean
   storageKey?: string
+  storage?: Storage
   syncWithSystem?: boolean
+  target?: Ref<HTMLElement | null>
 }
 
 export interface UseThemeReturn {
@@ -79,9 +82,13 @@ function getSystemTheme(): 'dark' | 'light' {
 export function useTheme(options: UseThemeOptions = {}): UseThemeReturn {
   const {
     defaultTheme = 'dark',
+    persist = false,
     storageKey = 'sp-theme',
-    syncWithSystem = true
+    syncWithSystem = true,
+    target
   } = options
+
+  const storage = options.storage ?? (typeof localStorage !== 'undefined' ? localStorage : null)
 
   const theme = ref<ThemeName>(defaultTheme)
   const systemTheme = ref<'dark' | 'light'>(getSystemTheme())
@@ -96,9 +103,14 @@ export function useTheme(options: UseThemeOptions = {}): UseThemeReturn {
 
   // 应用主题到 DOM
   const applyTheme = (themeName: ThemeName) => {
-    if (typeof document === 'undefined') return
+    if (target) {
+      if (!target.value) return
+    } else {
+      if (typeof document === 'undefined') return
+    }
 
-    const root = document.documentElement
+    const root = target ? target.value : document.documentElement
+    if (!root) return
     
     // 移除旧主题类
     root.classList.remove('sp-theme-dark', 'sp-theme-light')
@@ -118,16 +130,15 @@ export function useTheme(options: UseThemeOptions = {}): UseThemeReturn {
     applyTheme(newTheme)
     
     // 持久化
-    if (typeof localStorage !== 'undefined' && storageKey) {
-      localStorage.setItem(storageKey, newTheme)
+    if (persist && storage && storageKey) {
+      storage.setItem(storageKey, newTheme)
     }
   }
 
   // 设置颜色
   const setColors = (colors: ThemeColors) => {
-    if (typeof document === 'undefined') return
-
-    const root = document.documentElement
+    const root = target ? target.value : document.documentElement
+    if (!root) return
     Object.entries(colors).forEach(([key, value]) => {
       if (value && COLOR_VAR_MAP[key as keyof ThemeColors]) {
         root.style.setProperty(COLOR_VAR_MAP[key as keyof ThemeColors], value)
@@ -137,18 +148,20 @@ export function useTheme(options: UseThemeOptions = {}): UseThemeReturn {
 
   // 设置单个变量
   const setVariable = (name: string, value: string) => {
-    if (typeof document === 'undefined') return
-    
+    const root = target ? target.value : document.documentElement
+    if (!root) return
+
     const varName = name.startsWith('--') ? name : `--sp-${name}`
-    document.documentElement.style.setProperty(varName, value)
+    root.style.setProperty(varName, value)
   }
 
   // 获取变量值
   const getVariable = (name: string): string => {
-    if (typeof document === 'undefined') return ''
-    
+    const root = target ? target.value : document.documentElement
+    if (!root) return ''
+
     const varName = name.startsWith('--') ? name : `--sp-${name}`
-    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+    return getComputedStyle(root).getPropertyValue(varName).trim()
   }
 
   // 应用完整配置
@@ -168,45 +181,79 @@ export function useTheme(options: UseThemeOptions = {}): UseThemeReturn {
 
   // 重置到默认
   const resetToDefault = () => {
-    if (typeof document === 'undefined') return
+    const root = target ? target.value : document.documentElement
+    if (!root) return
 
-    // 移除所有自定义样式
-    document.documentElement.removeAttribute('style')
+    root.removeAttribute('style')
     
     // 重置主题
     setTheme(defaultTheme)
   }
 
+  let mediaQuery: MediaQueryList | null = null
+  let handleSystemThemeChange: ((e: MediaQueryListEvent) => void) | null = null
+
+  const detachSystemThemeListener = (): void => {
+    if (!mediaQuery || !handleSystemThemeChange) return
+    mediaQuery.removeEventListener('change', handleSystemThemeChange)
+    mediaQuery = null
+    handleSystemThemeChange = null
+  }
+
+  const attachSystemThemeListener = (): void => {
+    if (!syncWithSystem || typeof window === 'undefined') return
+    if (mediaQuery && handleSystemThemeChange) return
+
+    mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      systemTheme.value = e.matches ? 'dark' : 'light'
+      if (theme.value === 'auto') {
+        applyTheme('auto')
+      }
+    }
+    mediaQuery.addEventListener('change', handleSystemThemeChange)
+  }
+
   // 监听系统主题变化
   onMounted(() => {
     // 从 localStorage 恢复主题
-    if (typeof localStorage !== 'undefined' && storageKey) {
-      const saved = localStorage.getItem(storageKey) as ThemeName | null
+    if (persist && storage && storageKey) {
+      const saved = storage.getItem(storageKey) as ThemeName | null
       if (saved) {
         theme.value = saved
       }
     }
 
+    systemTheme.value = getSystemTheme()
+
     // 应用初始主题
     applyTheme(theme.value)
 
     // 监听系统主题变化
-    if (syncWithSystem && typeof window !== 'undefined') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      
-      const handleChange = (e: MediaQueryListEvent) => {
-        systemTheme.value = e.matches ? 'dark' : 'light'
-        if (theme.value === 'auto') {
-          applyTheme('auto')
-        }
-      }
-
-      mediaQuery.addEventListener('change', handleChange)
+    if (theme.value === 'auto') {
+      attachSystemThemeListener()
     }
   })
 
+  onUnmounted(() => {
+    detachSystemThemeListener()
+  })
+
+  if (target) {
+    watch(target, (el) => {
+      if (!el) return
+      applyTheme(theme.value)
+    }, { immediate: true })
+  }
+
   // 监听主题变化
   watch(theme, (newTheme) => {
+    if (newTheme === 'auto') {
+      systemTheme.value = getSystemTheme()
+      attachSystemThemeListener()
+    } else {
+      detachSystemThemeListener()
+    }
     applyTheme(newTheme)
   })
 

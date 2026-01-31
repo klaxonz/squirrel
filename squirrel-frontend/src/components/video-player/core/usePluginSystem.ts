@@ -6,6 +6,7 @@
 import { ref, shallowRef, onUnmounted, type Ref } from 'vue'
 import { EventEmitter } from './EventEmitter'
 import { PluginManager } from './PluginManager'
+import { noopLogger, type PlayerLogger } from './logger'
 import type {
   PlayerPlugin,
   PluginContext,
@@ -19,6 +20,7 @@ import type {
 export interface UsePluginSystemOptions {
   videoElement: Ref<HTMLVideoElement | null>
   onError?: (error: PlayerError) => void
+  logger?: PlayerLogger
 }
 
 export interface UsePluginSystemReturn {
@@ -39,11 +41,12 @@ export interface UsePluginSystemReturn {
  */
 export function usePluginSystem({
   videoElement,
-  onError
+  onError,
+  logger = noopLogger
 }: UsePluginSystemOptions): UsePluginSystemReturn {
   
-  const events = new EventEmitter<PlayerEvents>()
-  const pluginManager = new PluginManager(events)
+  const events = new EventEmitter<PlayerEvents>({ logger })
+  const pluginManager = new PluginManager(events, { logger })
   
   const qualities = ref<QualityLevel[]>([])
   const currentQuality = ref<string | null>(null)
@@ -76,6 +79,8 @@ export function usePluginSystem({
         autoQuality: currentQuality.value === 'auto'
       }
     },
+
+    logger,
 
     on: events.on.bind(events),
     off: events.off.bind(events),

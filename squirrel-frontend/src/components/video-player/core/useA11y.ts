@@ -4,17 +4,20 @@
  */
 
 import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
-import { useI18n } from '../i18n'
+import type { LocaleMessages } from '../i18n/types'
 
 export interface UseA11yOptions {
   videoElement: Ref<HTMLVideoElement | null>
   containerElement: Ref<HTMLElement | null>
+  t: (key: keyof LocaleMessages, params?: Record<string, string | number>) => string
   onPlay?: () => void
   onPause?: () => void
   onSeek?: (time: number) => void
   onVolumeChange?: (volume: number) => void
   onMuteToggle?: () => void
   onFullscreenToggle?: () => void
+  enableGlobalListeners?: boolean
+  enablePreferencesObserver?: boolean
 }
 
 export interface UseA11yReturn {
@@ -61,8 +64,7 @@ function formatTimeForScreen(seconds: number): string {
  * 无障碍支持 Composable
  */
 export function useA11y(options: UseA11yOptions): UseA11yReturn {
-  const { videoElement, containerElement } = options
-  const { t } = useI18n()
+  const { videoElement, containerElement, t, enableGlobalListeners = false, enablePreferencesObserver = false } = options
   
   // 状态
   const isKeyboardUser = ref(false)
@@ -71,6 +73,10 @@ export function useA11y(options: UseA11yOptions): UseA11yReturn {
   
   // 屏幕阅读器公告区域
   let announceElement: HTMLElement | null = null
+  let highContrastQuery: MediaQueryList | null = null
+  let reducedMotionQuery: MediaQueryList | null = null
+  let handleHighContrastChange: ((e: MediaQueryListEvent) => void) | null = null
+  let handleReducedMotionChange: ((e: MediaQueryListEvent) => void) | null = null
   
   // ARIA 标签
   const playerAriaLabel = computed(() => t('videoPlayer'))
@@ -120,13 +126,18 @@ export function useA11y(options: UseA11yOptions): UseA11yReturn {
       white-space: nowrap;
       border: 0;
     `
-    document.body.appendChild(announceElement)
+
+    const parent = containerElement.value ?? document.body
+    parent.appendChild(announceElement)
   }
 
   /**
    * 屏幕阅读器公告
    */
   const announce = (message: string, priority: 'polite' | 'assertive' = 'polite'): void => {
+    if (!announceElement) {
+      createAnnounceElement()
+    }
     if (!announceElement) return
     
     announceElement.setAttribute('aria-live', priority)
@@ -189,28 +200,31 @@ export function useA11y(options: UseA11yOptions): UseA11yReturn {
     if (typeof window === 'undefined') return
     
     // 高对比度
-    const highContrastQuery = window.matchMedia('(forced-colors: active)')
+    highContrastQuery = window.matchMedia('(forced-colors: active)')
     isHighContrast.value = highContrastQuery.matches
-    highContrastQuery.addEventListener('change', (e) => {
+    handleHighContrastChange = (e: MediaQueryListEvent) => {
       isHighContrast.value = e.matches
-    })
+    }
+    highContrastQuery.addEventListener('change', handleHighContrastChange)
     
     // 减少动画
-    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     prefersReducedMotion.value = reducedMotionQuery.matches
-    reducedMotionQuery.addEventListener('change', (e) => {
+    handleReducedMotionChange = (e: MediaQueryListEvent) => {
       prefersReducedMotion.value = e.matches
-    })
+    }
+    reducedMotionQuery.addEventListener('change', handleReducedMotionChange)
   }
 
   onMounted(() => {
-    createAnnounceElement()
-    detectPreferences()
-    
-    if (typeof document !== 'undefined') {
-      document.addEventListener('keydown', handleKeyDown)
-      document.addEventListener('mousedown', handleMouseDown)
+    if (enablePreferencesObserver) {
+      detectPreferences()
     }
+
+    if (!enableGlobalListeners) return
+    if (typeof document === 'undefined') return
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleMouseDown)
   })
 
   onUnmounted(() => {
@@ -219,10 +233,24 @@ export function useA11y(options: UseA11yOptions): UseA11yReturn {
       announceElement = null
     }
     
-    if (typeof document !== 'undefined') {
+    if (enableGlobalListeners && typeof document !== 'undefined') {
       document.removeEventListener('keydown', handleKeyDown)
       document.removeEventListener('mousedown', handleMouseDown)
     }
+
+    if (enablePreferencesObserver) {
+      if (highContrastQuery && handleHighContrastChange) {
+        highContrastQuery.removeEventListener('change', handleHighContrastChange)
+      }
+      if (reducedMotionQuery && handleReducedMotionChange) {
+        reducedMotionQuery.removeEventListener('change', handleReducedMotionChange)
+      }
+    }
+
+    highContrastQuery = null
+    reducedMotionQuery = null
+    handleHighContrastChange = null
+    handleReducedMotionChange = null
   })
 
   return {

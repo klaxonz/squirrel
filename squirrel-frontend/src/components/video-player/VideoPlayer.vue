@@ -28,7 +28,7 @@
     <video
       ref="videoRef"
       class="sp-video"
-      :poster="video?.thumbnail"
+      :poster="source?.poster || poster"
       :muted="store.muted"
       :autoplay="store.autoplay"
       :loop="store.loop"
@@ -423,7 +423,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { usePlayer, type MediaSource } from './core'
+import { usePlayer, type IPlayerAdapter, type MediaSource, type PluginConfig, type PlayerLogger, type SubtitleTrack } from './core'
+import type { LocaleCode, UseI18nOptions } from './i18n'
+import type { ThemeName, UseThemeOptions } from './themes'
 import PlayerIcon from './PlayerIcon.vue'
 import {
   ArrowLeftIcon,
@@ -431,37 +433,35 @@ import {
   ChevronRightIcon
 } from '@heroicons/vue/24/outline'
 
-import type { SubtitleTrack } from './plugins/subtitles'
-
 // 导入 CSS 变量（主题系统基础）
 import './themes/variables.css'
 
 let activePlayerContainer: HTMLElement | null = null
 
-type PlayerMedia = {
-  id?: string | number
-  title?: string
-  thumbnail?: string
-  subtitles?: Array<{
-    id?: string
-    label?: string
-    language?: string
-    url?: string
-    content?: string
-    default?: boolean
-  }>
-}
-
 interface Props {
 
-  video?: PlayerMedia
+  mediaId?: string | number | null
   source?: MediaSource | null
+  subtitles?: SubtitleTrack[]
+  poster?: string
+  title?: string
   initialTime?: number
   hasPrev?: boolean
   hasNext?: boolean
   externalError?: any
   autoplay?: boolean
   widescreen?: boolean
+  theme?: ThemeName
+  themeOptions?: Omit<UseThemeOptions, 'defaultTheme' | 'target'>
+  locale?: LocaleCode
+  i18nOptions?: Omit<UseI18nOptions, 'locale' | 'logger'>
+  logger?: PlayerLogger
+  adapter?: IPlayerAdapter
+  plugins?: PluginConfig[]
+  useDefaultPlugins?: boolean
+  enableGlobalShortcuts?: boolean
+  enableClickOutsideCloseMenu?: boolean
+  enableWindowResize?: boolean
 }
 
 type PlayerUiError = {
@@ -474,12 +474,19 @@ type PlayerUiError = {
 const props = withDefaults(defineProps<Props>(), {
 
   source: null,
+  subtitles: () => [],
+  poster: '',
+  title: '',
   initialTime: 0,
   hasPrev: false,
   hasNext: false,
   externalError: null,
   autoplay: true,
-  widescreen: false
+  widescreen: false,
+  useDefaultPlugins: true,
+  enableGlobalShortcuts: false,
+  enableClickOutsideCloseMenu: false,
+  enableWindowResize: false
 })
 
 const emit = defineEmits<{
@@ -519,6 +526,8 @@ const {
   toggleMute,
   setPlaybackRate,
   setQuality,
+  setAutoplayNext,
+  setLoop,
   toggleFullscreen,
   togglePictureInPicture,
   subtitleTracks,
@@ -541,7 +550,15 @@ const {
   destroy
 } = usePlayer({
   autoplay: props.autoplay,
-  mediaId: computed(() => (props.video as any)?.id ?? null),
+  mediaId: computed(() => props.mediaId ?? null),
+  theme: props.theme,
+  themeOptions: props.themeOptions,
+  locale: props.locale,
+  i18nOptions: props.i18nOptions,
+  adapter: props.adapter,
+  plugins: props.plugins,
+  useDefaultPlugins: props.useDefaultPlugins,
+  logger: props.logger,
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
   onEnded: () => emit('ended', { autoplay: store.autoplay, autoplayNext: store.autoplayNext, loop: store.loop }),
@@ -754,7 +771,7 @@ const attemptResume = (): void => {
   const pending = pendingResume.value
   const media = videoRef.value
   if (!pending || !media) return
-  const currentId = String((props.video as any)?.id ?? '')
+  const currentId = String(props.mediaId ?? '')
   if (pending.videoId && currentId && pending.videoId !== currentId) return
   if (!duration.value || !isFinite(duration.value) || media.readyState < 1) return
   const maxTime = Math.max(0, duration.value - 0.5)
@@ -796,7 +813,7 @@ watch(currentSubtitle, (track) => {
 }, { immediate: true })
 
 const subtitlesStatusText = computed(() => {
-  if (!store.subtitlesEnabled || !currentSubtitle.value) return '关闭'
+  if (!store.subtitlesEnabled || !currentSubtitle.value) return t('subtitlesOff')
   return currentSubtitle.value.label
 })
 
@@ -827,33 +844,18 @@ watch(containerRef, (el) => {
 let currentLoadedKey = ''
 
 const resolveSource = (source: MediaSource): MediaSource => {
-  const v: any = props.video || {}
   return {
     ...source,
-    poster: source.poster || v.thumbnail,
-    title: source.title || v.title,
+    poster: source.poster || props.poster,
+    title: source.title || props.title,
   }
 }
 
-// 业务数据适配：将字幕数据转换为 SubtitleTrack
-const adaptSubtitles = (video: PlayerMedia) => {
-  if (!video.subtitles?.length) return []
-
-  return video.subtitles.map((s, i: number) => ({
-    id: s.id || `sub-${i}`,
-    label: s.label || s.language || `Subtitle ${i + 1}`,
-    language: s.language || 'unknown',
-    url: s.url,
-    content: s.content,
-    default: i === 0
-  }))
-}
-
 watch(
-  () => String((props.video as any)?.id ?? ''),
-  (videoId, oldVideoId) => {
-    if (!videoId) return
-    if (videoId === oldVideoId) return
+  () => String(props.mediaId ?? ''),
+  (mediaId, oldMediaId) => {
+    if (!mediaId) return
+    if (mediaId === oldMediaId) return
 
     currentLoadedKey = ''
     internalError.value = null
@@ -881,33 +883,32 @@ watch(
 )
 
 watch(
-  () => (props.video as any)?.subtitles,
-  () => {
-    const subtitles = props.video ? adaptSubtitles(props.video) : []
-    setSubtitleTracks(subtitles)
+  () => props.subtitles,
+  (tracks) => {
+    setSubtitleTracks(tracks || [])
   },
   { immediate: true, deep: true }
 )
 
 const lastResumeKey = ref('')
 watch(
-  () => [String((props.video as any)?.id ?? ''), props.initialTime] as const,
-  async ([videoId, initialTime]) => {
-    if (!videoId) return
-    const key = `${videoId}:${initialTime}`
+  () => [String(props.mediaId ?? ''), props.initialTime] as const,
+  async ([mediaId, initialTime]) => {
+    if (!mediaId) return
+    const key = `${mediaId}:${initialTime}`
     if (key === lastResumeKey.value) return
     lastResumeKey.value = key
 
     if (initialTime > 0) {
       await nextTick()
-      queueResume(videoId, initialTime)
+      queueResume(mediaId, initialTime)
       return
     }
 
-    const savedTime = await loadProgress(videoId)
+    const savedTime = await loadProgress(mediaId)
     if (savedTime && savedTime > 0) {
       await nextTick()
-      queueResume(videoId, savedTime)
+      queueResume(mediaId, savedTime)
     }
   },
   { immediate: true }
@@ -1096,11 +1097,11 @@ const toggleSettingsMenu = () => {
 }
 
 const toggleAutoplayNext = () => {
-  store.setAutoplayNext(!store.autoplayNext)
+  setAutoplayNext(!store.autoplayNext)
 }
 
 const toggleLoop = () => {
-  store.setLoop(!store.loop)
+  setLoop(!store.loop)
 }
 
 const toggleSubtitlesQuick = () => {
@@ -1324,18 +1325,26 @@ const handleOutsideClick = (e: MouseEvent) => {
 }
 
 onMounted(() => {
-  document.addEventListener('click', handleOutsideClick)
-  document.addEventListener('keydown', handleGlobalKeyDown, true)
-  if (typeof window !== 'undefined') {
+  if (props.enableClickOutsideCloseMenu) {
+    document.addEventListener('click', handleOutsideClick)
+  }
+  if (props.enableGlobalShortcuts) {
+    document.addEventListener('keydown', handleGlobalKeyDown, true)
+  }
+  if (props.enableWindowResize && typeof window !== 'undefined') {
     window.addEventListener('resize', handleResize)
   }
 })
 
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleOutsideClick)
-  document.removeEventListener('keydown', handleGlobalKeyDown, true)
-  if (typeof window !== 'undefined') {
+  if (props.enableClickOutsideCloseMenu) {
+    document.removeEventListener('click', handleOutsideClick)
+  }
+  if (props.enableGlobalShortcuts) {
+    document.removeEventListener('keydown', handleGlobalKeyDown, true)
+  }
+  if (props.enableWindowResize && typeof window !== 'undefined') {
     window.removeEventListener('resize', handleResize)
   }
   if (videoRef.value) {

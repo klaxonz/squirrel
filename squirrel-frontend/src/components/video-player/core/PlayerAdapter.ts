@@ -3,7 +3,7 @@
  * 抽象业务代码依赖，允许外部注入实现
  */
 
-import { Logger } from '@/utils/logger'
+import { noopLogger, type PlayerLogger } from './logger'
 
 // 播放进度数据
 export interface PlaybackProgress {
@@ -75,17 +75,104 @@ export interface IPlayerAdapter {
   trackEvent?(eventName: string, data?: Record<string, any>): void
 }
 
+export type LocalStorageAdapterOptions = {
+  storage?: Storage
+  configKey?: string
+  historyKey?: string
+  progressPrefix?: string
+  logger?: PlayerLogger
+}
+
+export type MemoryAdapterOptions = {
+  logger?: PlayerLogger
+}
+
+export class MemoryAdapter implements IPlayerAdapter {
+  private logger: PlayerLogger
+  private config: UserConfig = {}
+  private progressMap: Map<string, PlaybackProgress> = new Map()
+  private history: HistoryEntry[] = []
+
+  constructor(options: MemoryAdapterOptions = {}) {
+    this.logger = options.logger ?? noopLogger
+  }
+
+  async loadConfig(): Promise<UserConfig> {
+    return { ...this.config }
+  }
+
+  async saveConfig(config: Partial<UserConfig>): Promise<void> {
+    this.config = { ...this.config, ...config }
+  }
+
+  async saveProgress(progress: PlaybackProgress): Promise<void> {
+    this.progressMap.set(progress.videoId, progress)
+    this.updateHistory(progress)
+  }
+
+  async loadProgress(videoId: string): Promise<PlaybackProgress | null> {
+    return this.progressMap.get(videoId) ?? null
+  }
+
+  async getHistory(limit = 50): Promise<HistoryEntry[]> {
+    return this.history.slice(0, limit)
+  }
+
+  async clearHistory(): Promise<void> {
+    this.history = []
+    this.progressMap.clear()
+  }
+
+  async reportError(report: ErrorReport): Promise<void> {
+    this.logger.warn('[MemoryAdapter] Error report', report)
+  }
+
+  trackEvent(eventName: string, data?: Record<string, any>): void {
+    this.logger.debug('[MemoryAdapter] Event', eventName, data)
+  }
+
+  private updateHistory(progress: PlaybackProgress): void {
+    const index = this.history.findIndex(h => h.videoId === progress.videoId)
+
+    const entry: HistoryEntry = {
+      videoId: progress.videoId,
+      lastPosition: progress.currentTime,
+      duration: progress.duration,
+      progress: progress.progress,
+      lastWatched: progress.timestamp
+    }
+
+    if (index >= 0) {
+      this.history[index] = { ...this.history[index], ...entry }
+    } else {
+      this.history.unshift(entry)
+    }
+
+    this.history = this.history.slice(0, 100)
+  }
+}
+
 /**
  * 默认适配器实现 - 使用 localStorage
  */
 export class LocalStorageAdapter implements IPlayerAdapter {
-  private configKey = 'sp-player-config'
-  private historyKey = 'sp-player-history'
-  private progressPrefix = 'sp-progress-'
+  private storage: Storage
+  private configKey: string
+  private historyKey: string
+  private progressPrefix: string
+  private logger: PlayerLogger
+
+  constructor(options: LocalStorageAdapterOptions = {}) {
+    this.storage = options.storage ?? localStorage
+    this.configKey = options.configKey ?? 'sp-player-config'
+    this.historyKey = options.historyKey ?? 'sp-player-history'
+    this.progressPrefix = options.progressPrefix ?? 'sp-progress-'
+    this.logger = options.logger ?? noopLogger
+  }
 
   async loadConfig(): Promise<UserConfig> {
     try {
-      const data = localStorage.getItem(this.configKey)
+      const data = this.storage.getItem(this.configKey)
       return data ? JSON.parse(data) : {}
     } catch {
       return {}
@@ -96,28 +183,28 @@ export class LocalStorageAdapter implements IPlayerAdapter {
     try {
       const existing = await this.loadConfig()
       const merged = { ...existing, ...config }
-      localStorage.setItem(this.configKey, JSON.stringify(merged))
+      this.storage.setItem(this.configKey, JSON.stringify(merged))
     } catch (e) {
-      Logger.warn('[LocalStorageAdapter] Failed to save config', e)
+      this.logger.warn('[LocalStorageAdapter] Failed to save config', e)
     }
   }
 
   async saveProgress(progress: PlaybackProgress): Promise<void> {
     try {
       const key = this.progressPrefix + progress.videoId
-      localStorage.setItem(key, JSON.stringify(progress))
+      this.storage.setItem(key, JSON.stringify(progress))
       
       // 同时更新历史记录
       await this.updateHistory(progress)
     } catch (e) {
-      Logger.warn('[LocalStorageAdapter] Failed to save progress', e)
+      this.logger.warn('[LocalStorageAdapter] Failed to save progress', e)
     }
   }
 
   async loadProgress(videoId: string): Promise<PlaybackProgress | null> {
     try {
       const key = this.progressPrefix + videoId
-      const data = localStorage.getItem(key)
+      const data = this.storage.getItem(key)
       return data ? JSON.parse(data) : null
     } catch {
       return null
@@ -144,12 +231,12 @@ export class LocalStorageAdapter implements IPlayerAdapter {
     
     // 限制历史记录数量
     const limited = history.slice(0, 100)
-    localStorage.setItem(this.historyKey, JSON.stringify(limited))
+    this.storage.setItem(this.historyKey, JSON.stringify(limited))
   }
 
   async getHistory(limit = 50): Promise<HistoryEntry[]> {
     try {
-      const data = localStorage.getItem(this.historyKey)
+      const data = this.storage.getItem(this.historyKey)
       const history: HistoryEntry[] = data ? JSON.parse(data) : []
       return history.slice(0, limit)
     } catch {
@@ -158,24 +245,29 @@ export class LocalStorageAdapter implements IPlayerAdapter {
   }
 
   async clearHistory(): Promise<void> {
-    localStorage.removeItem(this.historyKey)
+    this.storage.removeItem(this.historyKey)
     
     // 清除所有进度数据
-    const keys = Object.keys(localStorage)
+    const keys: string[] = []
+    for (let i = 0; i < this.storage.length; i++) {
+      const key = this.storage.key(i)
+      if (key) keys.push(key)
+    }
+
     keys.forEach(key => {
       if (key.startsWith(this.progressPrefix)) {
-        localStorage.removeItem(key)
+        this.storage.removeItem(key)
       }
     })
   }
 
   async reportError(report: ErrorReport): Promise<void> {
     // 本地适配器只记录到控制台
-    Logger.warn('[LocalStorageAdapter] Error report', report)
+    this.logger.warn('[LocalStorageAdapter] Error report', report)
   }
 
   trackEvent(eventName: string, data?: Record<string, any>): void {
-    Logger.debug('[LocalStorageAdapter] Event', eventName, data)
+    this.logger.debug('[LocalStorageAdapter] Event', eventName, data)
   }
 }
 
@@ -185,10 +277,12 @@ export class LocalStorageAdapter implements IPlayerAdapter {
 export class ApiAdapter implements IPlayerAdapter {
   private baseUrl: string
   private fetcher: typeof fetch
+  private logger: PlayerLogger
 
-  constructor(options: { baseUrl?: string; fetcher?: typeof fetch } = {}) {
+  constructor(options: { baseUrl?: string; fetcher?: typeof fetch; logger?: PlayerLogger } = {}) {
     this.baseUrl = options.baseUrl || '/api'
     this.fetcher = options.fetcher || fetch.bind(window)
+    this.logger = options.logger ?? noopLogger
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -223,7 +317,7 @@ export class ApiAdapter implements IPlayerAdapter {
         body: JSON.stringify({ settings: config, merge: true })
       })
     } catch (e) {
-      Logger.warn('[ApiAdapter] Failed to save config', e)
+      this.logger.warn('[ApiAdapter] Failed to save config', e)
     }
   }
 
@@ -234,7 +328,7 @@ export class ApiAdapter implements IPlayerAdapter {
         body: JSON.stringify(progress)
       })
     } catch (e) {
-      Logger.warn('[ApiAdapter] Failed to save progress', e)
+      this.logger.warn('[ApiAdapter] Failed to save progress', e)
     }
   }
 
@@ -258,7 +352,7 @@ export class ApiAdapter implements IPlayerAdapter {
     try {
       await this.request('/history', { method: 'DELETE' })
     } catch (e) {
-      Logger.warn('[ApiAdapter] Failed to clear history', e)
+      this.logger.warn('[ApiAdapter] Failed to clear history', e)
     }
   }
 
@@ -269,7 +363,7 @@ export class ApiAdapter implements IPlayerAdapter {
         body: JSON.stringify(report)
       })
     } catch (e) {
-      Logger.warn('[ApiAdapter] Failed to report error', e)
+      this.logger.warn('[ApiAdapter] Failed to report error', e)
     }
   }
 
@@ -328,32 +422,4 @@ export class CompositeAdapter implements IPlayerAdapter {
   trackEvent(eventName: string, data?: Record<string, any>): void {
     this.adapters.forEach(a => a.trackEvent?.(eventName, data))
   }
-}
-
-// 全局适配器实例
-let globalAdapter: IPlayerAdapter | null = null
-
-/**
- * 设置全局适配器
- */
-export function setPlayerAdapter(adapter: IPlayerAdapter): void {
-  globalAdapter = adapter
-}
-
-/**
- * 获取全局适配器
- */
-export function getPlayerAdapter(): IPlayerAdapter {
-  if (!globalAdapter) {
-    globalAdapter = new LocalStorageAdapter()
-  }
-  return globalAdapter
-}
-
-export default {
-  LocalStorageAdapter,
-  ApiAdapter,
-  CompositeAdapter,
-  setPlayerAdapter,
-  getPlayerAdapter
 }

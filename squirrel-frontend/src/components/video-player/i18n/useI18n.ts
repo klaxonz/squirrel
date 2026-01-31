@@ -7,7 +7,7 @@ import type { LocaleCode, LocaleMessages, LocaleConfig } from './types'
 import zhCN from './zh-CN'
 import enUS from './en-US'
 import jaJP from './ja-JP'
-import { Logger } from '@/utils/logger'
+import { noopLogger, type PlayerLogger } from '../core/logger'
 
 // 内置语言包
 const builtInLocales: Record<string, LocaleConfig> = {
@@ -23,6 +23,12 @@ const customLocales = ref<Record<string, LocaleConfig>>({})
 export interface UseI18nOptions {
   locale?: LocaleCode
   fallbackLocale?: LocaleCode
+  persist?: boolean
+  storageKey?: string
+  storage?: Storage
+  applyToDocument?: boolean
+  useGlobal?: boolean
+  logger?: PlayerLogger
 }
 
 export interface UseI18nReturn {
@@ -61,29 +67,37 @@ function detectBrowserLocale(): LocaleCode {
 export function useI18n(options: UseI18nOptions = {}): UseI18nReturn {
   const { 
     locale: initialLocale,
-    fallbackLocale = 'en-US'
+    fallbackLocale = 'en-US',
+    persist = false,
+    storageKey = 'sp-locale',
+    applyToDocument = false,
+    useGlobal = false,
+    logger = noopLogger
   } = options
+
+  const storage = options.storage ?? (typeof localStorage !== 'undefined' ? localStorage : null)
+
+  const localeRef = useGlobal ? globalLocale : ref<LocaleCode>('zh-CN')
+  const customLocalesRef = useGlobal ? customLocales : ref<Record<string, LocaleConfig>>({})
 
   // 初始化语言
   if (initialLocale) {
-    globalLocale.value = initialLocale
-  } else if (globalLocale.value === 'zh-CN') {
+    localeRef.value = initialLocale
+  } else if (localeRef.value === 'zh-CN') {
     // 首次使用时检测浏览器语言
-    const saved = typeof localStorage !== 'undefined' 
-      ? localStorage.getItem('sp-locale') as LocaleCode | null
-      : null
-    globalLocale.value = saved || detectBrowserLocale()
+    const saved = persist && storage && storageKey ? storage.getItem(storageKey) as LocaleCode | null : null
+    localeRef.value = saved || detectBrowserLocale()
   }
 
   // 可用语言列表
   const availableLocales = computed(() => {
-    return [...Object.keys(builtInLocales), ...Object.keys(customLocales.value)] as LocaleCode[]
+    return [...Object.keys(builtInLocales), ...Object.keys(customLocalesRef.value)] as LocaleCode[]
   })
 
   // 当前语言消息
   const messages = computed(() => {
-    const locale = globalLocale.value
-    const config = customLocales.value[locale] || builtInLocales[locale] || builtInLocales[fallbackLocale]
+    const locale = localeRef.value
+    const config = customLocalesRef.value[locale] || builtInLocales[locale] || builtInLocales[fallbackLocale]
     return config?.messages || builtInLocales['en-US'].messages
   })
 
@@ -108,19 +122,19 @@ export function useI18n(options: UseI18nOptions = {}): UseI18nReturn {
    */
   const setLocale = (locale: LocaleCode): void => {
     if (!availableLocales.value.includes(locale)) {
-      Logger.warn(`[i18n] Locale "${locale}" not available`)
+      logger.warn(`[i18n] Locale "${locale}" not available`)
       return
     }
     
-    globalLocale.value = locale
+    localeRef.value = locale
     
     // 持久化
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('sp-locale', locale)
+    if (persist && storage && storageKey) {
+      storage.setItem(storageKey, locale)
     }
     
     // 更新 HTML lang 属性
-    if (typeof document !== 'undefined') {
+    if (applyToDocument && typeof document !== 'undefined') {
       document.documentElement.lang = locale
     }
   }
@@ -129,19 +143,19 @@ export function useI18n(options: UseI18nOptions = {}): UseI18nReturn {
    * 添加自定义语言包
    */
   const addLocale = (config: LocaleConfig): void => {
-    customLocales.value[config.code] = config
+    customLocalesRef.value[config.code] = config
   }
 
   /**
    * 获取语言名称
    */
   const getLocaleName = (code: LocaleCode): string => {
-    const config = customLocales.value[code] || builtInLocales[code]
+    const config = customLocalesRef.value[code] || builtInLocales[code]
     return config?.name || code
   }
 
   return {
-    locale: globalLocale,
+    locale: localeRef,
     availableLocales,
     messages,
     t,

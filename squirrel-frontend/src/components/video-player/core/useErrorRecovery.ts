@@ -3,9 +3,9 @@
  * 网络断线重试、清晰度降级、播放失败恢复
  */
 
-import { ref, computed, type Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import type { PlayerError, QualityLevel } from './types'
-import { Logger } from '@/utils/logger'
+import { noopLogger, type PlayerLogger } from './logger'
 
 export interface ErrorRecoveryOptions {
   maxRetries?: number
@@ -14,6 +14,7 @@ export interface ErrorRecoveryOptions {
   onRetry?: (attempt: number) => void
   onQualityFallback?: (quality: QualityLevel) => void
   onRecoveryFailed?: (error: PlayerError) => void
+  logger?: PlayerLogger
 }
 
 export interface ErrorRecoveryState {
@@ -30,7 +31,7 @@ export interface ErrorRecoveryActions {
   getCurrentQuality: () => QualityLevel | null
 }
 
-export type RecoveryStrategy = 'retry' | 'quality-fallback' | 'reload' | 'none'
+export type RecoveryStrategy = 'retry' | 'quality-fallback' | 'none'
 
 export type UseErrorRecoveryReturn = ErrorRecoveryState & ErrorRecoveryActions
 
@@ -44,7 +45,8 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
     enableQualityFallback = true,
     onRetry,
     onQualityFallback,
-    onRecoveryFailed
+    onRecoveryFailed,
+    logger = noopLogger
   } = options
 
   // 状态
@@ -137,7 +139,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
       retryCount.value++
       onRetry?.(retryCount.value)
       
-      Logger.debug(`[ErrorRecovery] Retry attempt ${retryCount.value}/${maxRetries}`)
+      logger.debug(`[ErrorRecovery] Retry attempt ${retryCount.value}/${maxRetries}`)
       
       setTimeout(() => {
         resolve(true)
@@ -157,7 +159,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
         return
       }
       
-      Logger.debug(`[ErrorRecovery] Falling back to quality: ${nextQuality.label}`)
+      logger.debug(`[ErrorRecovery] Falling back to quality: ${nextQuality.label}`)
       
       // 更新当前质量索引
       const newIndex = qualities.value.findIndex(q => q.id === nextQuality.id)
@@ -181,7 +183,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
     
     // 已在恢复中
     if (isRecovering.value) {
-      Logger.debug('[ErrorRecovery] Already recovering, skipping')
+      logger.debug('[ErrorRecovery] Already recovering, skipping')
       return false
     }
     
@@ -191,7 +193,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
       const strategy = determineStrategy(error)
       currentStrategy.value = strategy
       
-      Logger.debug(`[ErrorRecovery] Strategy: ${strategy}, Error`, error)
+      logger.debug(`[ErrorRecovery] Strategy: ${strategy}, Error`, error)
       
       let recovered = false
       
@@ -204,14 +206,6 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
           recovered = await executeQualityFallback()
           break
           
-        case 'reload':
-          // 重新加载页面（最后手段）
-          if (typeof window !== 'undefined') {
-            window.location.reload()
-          }
-          recovered = false
-          break
-          
         case 'none':
         default:
           recovered = false
@@ -219,7 +213,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
       }
       
       if (!recovered) {
-        Logger.debug('[ErrorRecovery] Recovery failed')
+        logger.debug('[ErrorRecovery] Recovery failed')
         onRecoveryFailed?.(error)
       }
       
