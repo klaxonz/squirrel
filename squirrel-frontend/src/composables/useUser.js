@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import axios from '../utils/axios'
+import { clearAuthStorage } from '../utils/auth'
 
 // 创建全局状态
 const currentUser = ref(null)
@@ -61,8 +62,7 @@ export function useUser() {
   }
 
   const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    clearAuthStorage()
     currentUser.value = null
     isAuthenticated.value = false
   }

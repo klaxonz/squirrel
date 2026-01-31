@@ -1,4 +1,5 @@
 import { ApiError, ErrorTypes } from './request'
+import { logoutAndRedirect } from './auth'
 
 /**
  * 全局错误处理器
@@ -66,9 +67,7 @@ export const globalErrorHandler = new ErrorHandler()
 // 注册默认错误处理器
 globalErrorHandler.register(ErrorTypes.UNAUTHORIZED, (error) => {
   // 处理未授权错误 - 跳转到登录页
-  if (typeof window !== 'undefined') {
-    window.location.href = '/login'
-  }
+  logoutAndRedirect()
 })
 
 globalErrorHandler.register(ErrorTypes.NETWORK, (error) => {
