@@ -1,18 +1,26 @@
-import { reactive } from 'vue';
+import { reactive } from 'vue'
 
 export default function useVideoPreload() {
-  // 预加载状态
-  const preloadState = reactive({
+  type VideoId = string | number
+
+  type PreloadState = {
+    isPreloading: boolean
+    preloadProgress: number
+    networkType: string
+    shouldPreload: boolean
+    preloadedVideos: Set<VideoId>
+    preloadQueue: unknown[]
+  }
+
+  const preloadState = reactive<PreloadState>({
     isPreloading: false,
     preloadProgress: 0,
     networkType: 'unknown',
     shouldPreload: true,
     preloadedVideos: new Set(),
     preloadQueue: []
-  });
+  })
 
-
-  // 获取优化的HLS配置
   const getOptimizedHlsConfig = () => {
     return {
       maxBufferLength: 45,
@@ -41,15 +49,14 @@ export default function useVideoPreload() {
       fragLoadingMaxRetry: 3,
       fragLoadingRetryDelay: 1000,
 
-      xhrSetup: function(xhr, url) {
-        xhr.timeout = 30000;
+      xhrSetup: function (xhr: any) {
+        xhr.timeout = 30000
       }
-    };
-  };
-
+    }
+  }
 
   return {
     preloadState,
     getOptimizedHlsConfig,
-  };
+  }
 }

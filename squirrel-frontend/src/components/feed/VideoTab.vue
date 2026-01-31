@@ -19,8 +19,8 @@
 <script setup>
 import { computed, watch } from 'vue'
 import VideoList from './VideoList.vue'
-import useLatestVideos from '@/composables/useLatestVideos.js'
-import useOptionsMenu from '@/composables/useOptionsMenu.js'
+import useLatestVideos from '@/composables/useLatestVideos'
+import useOptionsMenu from '@/composables/useOptionsMenu'
 
 const emit = defineEmits(['openModal', 'update-counts', 'goToSubscription', 'loading-change']);
 

@@ -1,5 +1,8 @@
 import { deleteVideoInteraction, toggleVideoInteraction } from '@/api'
 
+type VideoId = string | number
+type InteractionType = number
+
 export default function useVideoInteraction() {
   const INTERACTION_TYPE = {
     LIKE: 1,
@@ -7,11 +10,11 @@ export default function useVideoInteraction() {
     LATER: 3,
   }
 
-  const toggleLike = async (videoId, interactionType) => {
+  const toggleLike = async (videoId: VideoId, interactionType: InteractionType) => {
     return toggleVideoInteraction(videoId, interactionType)
   }
 
-  const deleteInteraction = async (videoId) => {
+  const deleteInteraction = async (videoId: VideoId) => {
     return deleteVideoInteraction(videoId)
   }
 

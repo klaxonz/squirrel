@@ -1,22 +1,32 @@
-import { ref } from 'vue';
+import { ref } from 'vue'
 import { getUserMeConfig, updateUserMeConfig } from '@/api'
 
-const settingsState = ref({
+type UserSettings = {
+  showNsfw: boolean
+  autoplay: boolean
+  autoplayNext: boolean
+  loop: boolean
+  [key: string]: unknown
+}
+
+type ApiResult<T> = { data?: T | null; error?: unknown | null }
+
+const settingsState = ref<UserSettings>({
   showNsfw: false,
   autoplay: true,
   autoplayNext: true,
   loop: false,
-});
+})
 
-const loadingState = ref(false);
-const errorState = ref(null);
+const loadingState = ref(false)
+const errorState = ref<unknown | null>(null)
 
 export function useUserSettings() {
   const loadUserSettings = async () => {
-    loadingState.value = true;
-    errorState.value = null;
+    loadingState.value = true
+    errorState.value = null
 
-    const { data, error } = await getUserMeConfig()
+    const { data, error } = (await getUserMeConfig()) as ApiResult<UserSettings>
     if (!error && data) {
       settingsState.value = {
         ...settingsState.value,
@@ -26,21 +36,21 @@ export function useUserSettings() {
 
     errorState.value = error
     loadingState.value = false
-  };
+  }
 
   const saveUserSettings = async () => {
-    loadingState.value = true;
-    errorState.value = null;
+    loadingState.value = true
+    errorState.value = null
 
-    const result = await updateUserMeConfig({
+    const result = (await updateUserMeConfig({
       settings: settingsState.value,
       merge: false,
-    })
+    })) as ApiResult<UserSettings>
 
     if (result.error) {
       errorState.value = result.error
 
-      const rollbackResult = await getUserMeConfig()
+      const rollbackResult = (await getUserMeConfig()) as ApiResult<UserSettings>
       if (!rollbackResult.error && rollbackResult.data) {
         settingsState.value = {
           ...settingsState.value,
@@ -58,7 +68,7 @@ export function useUserSettings() {
 
     loadingState.value = false
     return result
-  };
+  }
 
   return {
     settings: settingsState,
@@ -66,5 +76,5 @@ export function useUserSettings() {
     error: errorState,
     loadUserSettings,
     saveUserSettings,
-  };
+  }
 }

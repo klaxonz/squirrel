@@ -41,8 +41,8 @@
 
 <script setup>
 import { computed } from 'vue';
-import { isMobile } from "@/composables/useMobile.js";
-import { useDropdown } from "@/composables/useDropdown.js";
+import { isMobile } from '@/composables/useMobile';
+import { useDropdown } from '@/composables/useDropdown';
 import {
   ShieldCheckIcon,
   ChevronDownIcon,

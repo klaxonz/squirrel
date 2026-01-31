@@ -1,18 +1,22 @@
 import { Logger } from '@/utils/logger'
+import type { Ref } from 'vue'
 
-export default function useOptionsMenu(videoRef) {
+export default function useOptionsMenu(videoRef: Ref<any>) {
   const copyVideoLink = () => {
+    const url = String(videoRef.value?.url || '')
+    if (!url) return
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(videoRef.value.url)
+      navigator.clipboard.writeText(url)
         .catch(err => {
-          fallbackCopyTextToClipboard(videoRef.value.url)
+          fallbackCopyTextToClipboard(url)
         })
     } else {
-      fallbackCopyTextToClipboard(videoRef.value.url)
+      fallbackCopyTextToClipboard(url)
     }
   }
 
-  const fallbackCopyTextToClipboard = (text) => {
+  const fallbackCopyTextToClipboard = (text: string) => {
     const textArea = document.createElement('textarea')
     textArea.value = text
     textArea.style.position = 'fixed'

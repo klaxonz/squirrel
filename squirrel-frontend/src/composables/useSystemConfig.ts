@@ -1,17 +1,19 @@
 import { ref } from 'vue'
 import { getSystemConfig, saveSystemConfig } from '@/api'
 
-// 全局共享的系统配置状态
-const config = ref(null)
+type SystemConfig = Record<string, unknown>
+type ApiResult<T> = { data?: T | null; error?: unknown | null }
+
+const config = ref<SystemConfig | null>(null)
 const loading = ref(false)
 
 export function useSystemConfig() {
   const loadSystemConfig = async () => {
     loading.value = true
     try {
-      const result = await getSystemConfig()
+      const result = (await getSystemConfig()) as ApiResult<SystemConfig>
       if (!result.error) {
-        config.value = result.data
+        config.value = result.data || null
       }
       return result
     } finally {
@@ -19,12 +21,12 @@ export function useSystemConfig() {
     }
   }
 
-  const updateSystemConfig = async (payload = {}) => {
+  const updateSystemConfig = async (payload: Record<string, unknown> = {}) => {
     loading.value = true
     try {
-      const result = await saveSystemConfig(payload)
+      const result = (await saveSystemConfig(payload)) as ApiResult<SystemConfig>
       if (!result.error) {
-        config.value = result.data
+        config.value = result.data || null
       }
       return result
     } finally {

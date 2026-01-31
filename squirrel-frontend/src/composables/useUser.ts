@@ -1,29 +1,33 @@
 import { ref } from 'vue'
 import { getUserById as apiGetUserById, getUserMe, loginUser, registerUser, updateUserMe } from '@/api'
-import { clearAuthStorage } from '../utils/auth'
+import { clearAuthStorage } from '@/utils/auth'
 
-const currentUser = ref(null)
+type User = Record<string, unknown>
+type ApiResult<T> = { data?: T | null; error?: any }
+type AuthResult = { access_token?: string; user?: User }
+
+const currentUser = ref<User | null>(null)
 const isAuthenticated = ref(false)
 const loading = ref(false)
-const error = ref(null)
+const error = ref<any>(null)
 
 export function useUser() {
-  const register = async (data) => {
+  const register = async (data: Record<string, unknown>) => {
     loading.value = true
     error.value = null
 
-    const result = await registerUser(data)
+    const result = (await registerUser(data)) as ApiResult<AuthResult>
 
     loading.value = false
     error.value = result.error
     return result
   }
 
-  const login = async (data) => {
+  const login = async (data: Record<string, unknown>) => {
     loading.value = true
     error.value = null
 
-    const result = await loginUser(data)
+    const result = (await loginUser(data)) as ApiResult<AuthResult>
 
     if (!result.error && result.data?.access_token) {
       localStorage.setItem('token', result.data.access_token)
@@ -53,7 +57,7 @@ export function useUser() {
     loading.value = true
     error.value = null
 
-    const result = await getUserMe()
+    const result = (await getUserMe()) as ApiResult<User>
 
     if (result.error?.status === 401) {
       logout()
@@ -67,11 +71,11 @@ export function useUser() {
     return result
   }
 
-  const updateProfile = async (data) => {
+  const updateProfile = async (data: Record<string, unknown>) => {
     loading.value = true
     error.value = null
 
-    const result = await updateUserMe(data)
+    const result = (await updateUserMe(data)) as ApiResult<User>
 
     if (!result.error) {
       currentUser.value = result.data || null
@@ -82,11 +86,11 @@ export function useUser() {
     return result
   }
 
-  const getUserById = async (userId) => {
+  const getUserById = async (userId: string | number) => {
     loading.value = true
     error.value = null
 
-    const result = await apiGetUserById(userId)
+    const result = (await apiGetUserById(userId)) as ApiResult<User>
 
     loading.value = false
     error.value = result.error

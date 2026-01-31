@@ -86,7 +86,7 @@ import Sidebar from '@/components/layout/Sidebar.vue';
 import GlobalSearchBar from '@/components/layout/GlobalSearchBar.vue';
 import RefreshCenter from '@/components/layout/RefreshCenter.vue';
 import { HomeIcon, BookmarkIcon, CogIcon, ClockIcon, DocumentTextIcon, ChartBarIcon, Bars3Icon } from '@heroicons/vue/24/outline';
-import { isMobile } from "./composables/useMobile.js";
+import { isMobile } from './composables/useMobile';
 import { useRoute } from 'vue-router';
 import { useUser } from './composables/useUser';
 import { useGlobalSearch } from './composables/useGlobalSearch';

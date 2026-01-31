@@ -263,7 +263,7 @@ import VideoPlayer from '@/components/video-player/VideoPlayer.vue';
 import { Icon } from '@iconify/vue';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
-import useVideoInteraction from "../composables/useVideoInteraction.js";
+import useVideoInteraction from '../composables/useVideoInteraction';
 import { useImageFallback } from '../composables/useImageFallback';
 import { usePlayerStore } from '../stores/playerStore';
 import { Logger } from '@/utils/logger'

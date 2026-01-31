@@ -57,7 +57,7 @@ import {computed, ref} from 'vue';
 import VirtualList from './VirtualList.vue';
 import VideoItem from './VideoItem.vue';
 import LoadingIndicator from './LoadingIndicator.vue';
-import { useElementSize } from '@/composables/useElementSize.js';
+import { useElementSize } from '@/composables/useElementSize';
 
 // Display/layout constants
 const ASPECT_RATIO = 9 / 16;
