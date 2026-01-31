@@ -7,4 +7,3 @@ export const getSystemConfig = async () => {
 export const saveSystemConfig = async (payload = {}) => {
   return post('/api/system/config', payload)
 }
-

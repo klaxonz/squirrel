@@ -2,36 +2,24 @@ import { ApiError, ErrorTypes } from './request'
 import { logoutAndRedirect } from './auth'
 import { Logger } from './logger'
 
-/**
- * 全局错误处理器
- */
-export class ErrorHandler {
-  constructor() {
-    this.handlers = new Map()
-    this.fallbackHandler = null
-  }
+type HandlerContext = Record<string, unknown>
+type HandlerFn = (error: unknown, context: HandlerContext) => void
 
-  /**
-   * 注册错误处理器
-   */
-  register(type, handler) {
+export class ErrorHandler {
+  private handlers = new Map<string, HandlerFn>()
+  private fallbackHandler: HandlerFn | null = null
+
+  register(type: string, handler: HandlerFn) {
     this.handlers.set(type, handler)
   }
 
-  /**
-   * 设置默认错误处理器
-   */
-  setFallbackHandler(handler) {
+  setFallbackHandler(handler: HandlerFn) {
     this.fallbackHandler = handler
   }
 
-  /**
-   * 处理错误
-   */
-  handle(error, context = {}) {
+  handle(error: unknown, context: HandlerContext = {}) {
     Logger.debug('Error handled', error, context)
 
-    // 如果是 ApiError，使用对应的处理器
     if (error instanceof ApiError) {
       const handler = this.handlers.get(error.type)
       if (handler) {
@@ -39,69 +27,50 @@ export class ErrorHandler {
       }
     }
 
-    // 使用默认处理器
     if (this.fallbackHandler) {
       return this.fallbackHandler(error, context)
     }
 
-    // 默认错误处理
     this.defaultHandler(error, context)
   }
 
-  /**
-   * 默认错误处理器
-   */
-  defaultHandler(error, context) {
+  defaultHandler(error: unknown, context: HandlerContext) {
     Logger.debug('Unhandled error', error, context)
   }
 }
 
-// 创建全局错误处理器实例
 export const globalErrorHandler = new ErrorHandler()
 
-// 注册默认错误处理器
-globalErrorHandler.register(ErrorTypes.UNAUTHORIZED, (error) => {
-  // 处理未授权错误 - 跳转到登录页
+globalErrorHandler.register(ErrorTypes.UNAUTHORIZED, () => {
   logoutAndRedirect()
 })
 
 globalErrorHandler.register(ErrorTypes.NETWORK, (error) => {
-  // 处理网络错误 - 显示重试选项
-  Logger.warn('Network error', error.message)
-  // 可以触发全局的重试机制或显示网络错误提示
+  const message = typeof (error as any)?.message === 'string' ? (error as any).message : ''
+  Logger.warn('Network error', message)
 })
 
 globalErrorHandler.register(ErrorTypes.SERVER_ERROR, (error) => {
-  // 处理服务器错误
-  Logger.error('Server error', error.message)
-  // 可以显示服务器错误提示
+  const message = typeof (error as any)?.message === 'string' ? (error as any).message : ''
+  Logger.error('Server error', message)
 })
 
-/**
- * Vue 错误处理函数
- */
-export const vueErrorHandler = (error, instance, info) => {
+export const vueErrorHandler = (error: unknown, instance: any, info: string) => {
   globalErrorHandler.handle(error, {
     component: instance?.$?.type?.name || 'Unknown',
     info,
-    stack: error.stack,
+    stack: (error as any)?.stack,
   })
 }
 
-/**
- * Promise 拒绝处理函数
- */
-export const unhandledRejectionHandler = (event) => {
+export const unhandledRejectionHandler = (event: PromiseRejectionEvent) => {
   globalErrorHandler.handle(event.reason, {
     type: 'unhandledrejection',
     promise: event.promise,
   })
 }
 
-/**
- * 工具函数：安全执行异步函数
- */
-export const safeAsync = async (fn, errorContext = {}) => {
+export const safeAsync = async <T>(fn: () => Promise<T>, errorContext: HandlerContext = {}) => {
   try {
     return await fn()
   } catch (error) {
@@ -110,24 +79,20 @@ export const safeAsync = async (fn, errorContext = {}) => {
   }
 }
 
-/**
- * 工具函数：包装 composable 函数
- */
-export const withErrorHandling = (composableFn) => {
-  return (...args) => {
+export const withErrorHandling = <T extends (...args: any[]) => any>(composableFn: T) => {
+  return (...args: Parameters<T>): ReturnType<T> => {
     try {
       const result = composableFn(...args)
 
-      // 如果返回的是函数（可能是 setup 函数），包装它
       if (typeof result === 'function') {
-        return (...setupArgs) => {
+        return ((...setupArgs: any[]) => {
           try {
-            return result(...setupArgs)
+            return (result as any)(...setupArgs)
           } catch (error) {
             globalErrorHandler.handle(error, { composable: composableFn.name })
             throw error
           }
-        }
+        }) as any
       }
 
       return result

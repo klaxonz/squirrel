@@ -81,4 +81,3 @@ export const syncCookieCloudCookies = async (siteName = null) => {
     params: siteName ? { site_name: siteName } : {},
   })
 }
-

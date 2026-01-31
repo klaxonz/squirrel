@@ -14,7 +14,6 @@ import ScheduledTasks from '../views/ScheduledTasks.vue'
 import { useUser } from '../composables/useUser'
 import { Logger } from '@/utils/logger'
 
-// 路由元数据常量
 const SEARCH_META = {
   showSearch: true,
   search: 'home',
@@ -226,11 +225,9 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫
 router.beforeEach(async (to, from, next) => {
   const { getCurrentUser, isAuthenticated } = useUser()
 
-  // 如果有 token 但没有用户信息，尝试获取用户信息
   if (localStorage.getItem('token') && !isAuthenticated.value) {
     const result = await getCurrentUser()
     if (result.error) {
@@ -238,13 +235,11 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // 需要认证但未登录
   if (to.meta.requiresAuth !== false && !isAuthenticated.value) {
     next('/login')
     return
   }
 
-  // 已登录用户访问登录/注册页面
   if ((to.path === '/login' || to.path === '/register') && isAuthenticated.value) {
     next('/')
     return

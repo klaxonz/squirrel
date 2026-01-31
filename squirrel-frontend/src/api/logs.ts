@@ -7,4 +7,3 @@ export const getLogFiles = async () => {
 export const queryLogs = async (params = {}) => {
   return get('/api/logs/query', params)
 }
-

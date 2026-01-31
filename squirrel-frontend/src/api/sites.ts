@@ -7,4 +7,3 @@ export const getSites = async () => {
 export const saveSites = async (payload) => {
   return put('/api/sites', payload)
 }
-

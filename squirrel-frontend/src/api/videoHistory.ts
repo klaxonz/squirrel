@@ -16,4 +16,3 @@ export const clearVideoHistory = async (videoIds = null) => {
   const body = Array.isArray(videoIds) && videoIds.length ? videoIds : null
   return post('/api/video-history/clear', body)
 }
-

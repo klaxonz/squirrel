@@ -27,4 +27,3 @@ export const getUserMeConfig = async () => {
 export const updateUserMeConfig = async (payload) => {
   return put('/api/users/me/config', payload)
 }
-

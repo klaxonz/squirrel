@@ -3,7 +3,7 @@ const LOG_LEVELS = {
   INFO: 20,
   WARN: 30,
   ERROR: 40,
-}
+} as const
 
 const resolveDefaultLevel = () => {
   return import.meta.env.DEV ? LOG_LEVELS.DEBUG : LOG_LEVELS.WARN
@@ -11,34 +11,33 @@ const resolveDefaultLevel = () => {
 
 let currentLevel = resolveDefaultLevel()
 
-const shouldLog = (level) => level >= currentLevel
+const shouldLog = (level: number) => level >= currentLevel
 
-const formatPrefix = (levelName) => {
+const formatPrefix = (levelName: string) => {
   return `[${levelName}]`
 }
 
-export const setLogLevel = (levelName) => {
+export const setLogLevel = (levelName: unknown) => {
   const key = String(levelName || '').toUpperCase()
   if (!Object.prototype.hasOwnProperty.call(LOG_LEVELS, key)) return
-  currentLevel = LOG_LEVELS[key]
+  currentLevel = LOG_LEVELS[key as keyof typeof LOG_LEVELS]
 }
 
 export const Logger = {
-  debug: (...args) => {
+  debug: (...args: unknown[]) => {
     if (!shouldLog(LOG_LEVELS.DEBUG)) return
     console.debug(formatPrefix('DEBUG'), ...args)
   },
-  info: (...args) => {
+  info: (...args: unknown[]) => {
     if (!shouldLog(LOG_LEVELS.INFO)) return
     console.info(formatPrefix('INFO'), ...args)
   },
-  warn: (...args) => {
+  warn: (...args: unknown[]) => {
     if (!shouldLog(LOG_LEVELS.WARN)) return
     console.warn(formatPrefix('WARN'), ...args)
   },
-  error: (...args) => {
+  error: (...args: unknown[]) => {
     if (!shouldLog(LOG_LEVELS.ERROR)) return
     console.error(formatPrefix('ERROR'), ...args)
   },
 }
-

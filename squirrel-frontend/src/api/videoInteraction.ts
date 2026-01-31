@@ -10,4 +10,3 @@ export const toggleVideoInteraction = async (videoId, interactionType) => {
 export const deleteVideoInteraction = async (videoId) => {
   return post('/api/video-interaction/delete', { video_id: videoId })
 }
-

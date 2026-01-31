@@ -1,4 +1,6 @@
+import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 import axios from './axios'
+
 export const ErrorTypes = {
   NETWORK: 'NETWORK',
   API: 'API',
@@ -8,9 +10,27 @@ export const ErrorTypes = {
   NOT_FOUND: 'NOT_FOUND',
   SERVER_ERROR: 'SERVER_ERROR',
   UNKNOWN: 'UNKNOWN',
+} as const
+
+export type ErrorType = typeof ErrorTypes[keyof typeof ErrorTypes]
+
+type ApiEnvelope<T = unknown> = {
+  code: number
+  msg?: string
+  data?: T
 }
+
+export type RequestResult<T = any> = {
+  data: T | null
+  error: ApiError | null
+}
+
 export class ApiError extends Error {
-  constructor(message, type = ErrorTypes.UNKNOWN, status = null, data = null) {
+  type: ErrorType
+  status: number | null
+  data: unknown | null
+
+  constructor(message: string, type: ErrorType = ErrorTypes.UNKNOWN, status: number | null = null, data: unknown | null = null) {
     super(message)
     this.name = 'ApiError'
     this.type = type
@@ -19,10 +39,10 @@ export class ApiError extends Error {
   }
 }
 
-const isApiEnvelope = (data) => {
+const isApiEnvelope = (data: any): data is ApiEnvelope => {
   return !!data && typeof data.code === 'number'
 }
-const getErrorType = (error) => {
+const getErrorType = (error: any): ErrorType => {
   if (!error.response) {
     if (error.code === 'ECONNABORTED') return ErrorTypes.TIMEOUT
     return ErrorTypes.NETWORK
@@ -39,7 +59,7 @@ const getErrorType = (error) => {
     default: return ErrorTypes.API
   }
 }
-const formatErrorMessage = (error) => {
+const formatErrorMessage = (error: any) => {
   if (error.response?.data?.msg) {
     return error.response.data.msg
   }
@@ -54,7 +74,7 @@ const formatErrorMessage = (error) => {
     default: return '请求失败，请稍后重试'
   }
 }
-export const handleRequest = async (promise) => {
+export const handleRequest = async <T = any>(promise: Promise<AxiosResponse<any>>): Promise<RequestResult<T>> => {
   try {
     const response = await promise
 
@@ -83,10 +103,10 @@ export const handleRequest = async (promise) => {
       data: response.data,
       error: null,
     }
-  } catch (err) {
+  } catch (err: any) {
     const errorType = getErrorType(err)
     const errorMessage = formatErrorMessage(err)
-    const error = new ApiError(errorMessage, errorType, err.response?.status, err.response?.data)
+    const error = new ApiError(errorMessage, errorType, err.response?.status ?? null, err.response?.data ?? null)
 
     return {
       data: null,
@@ -95,11 +115,15 @@ export const handleRequest = async (promise) => {
   }
 }
 
-export const request = (config) => handleRequest(axios(config))
+export const request = <T = any>(config: AxiosRequestConfig) => handleRequest<T>(axios(config))
 
-export const get = (url, params, config = {}) => request({ url, method: 'get', params, ...config })
-export const post = (url, data, config = {}) => request({ url, method: 'post', data, ...config })
-export const put = (url, data, config = {}) => request({ url, method: 'put', data, ...config })
-export const del = (url, data, config = {}) => request({ url, method: 'delete', data, ...config })
+export const get = <T = any>(url: string, params?: unknown, config: AxiosRequestConfig = {}) =>
+  request<T>({ url, method: 'get', params, ...config })
+export const post = <T = any>(url: string, data?: unknown, config: AxiosRequestConfig = {}) =>
+  request<T>({ url, method: 'post', data, ...config })
+export const put = <T = any>(url: string, data?: unknown, config: AxiosRequestConfig = {}) =>
+  request<T>({ url, method: 'put', data, ...config })
+export const del = <T = any>(url: string, data?: unknown, config: AxiosRequestConfig = {}) =>
+  request<T>({ url, method: 'delete', data, ...config })
 
 export default request
