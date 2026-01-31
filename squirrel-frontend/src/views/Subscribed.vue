@@ -215,9 +215,13 @@ import ImportSubscriptionDialog from '../components/ImportSubscriptionDialog.vue
 import {formatDate} from '../utils/dateFormat';
 import {useScrollPosition} from '../composables/useScrollPosition';
 import {useSubscriptionRefresh} from '../composables/useSubscriptionRefresh';
-import {useSubscriptionApi} from '../composables/useSubscriptionApi';
 import { useFeedFilters } from '../composables/useFeedFilters';
 import { useImageFallback } from '../composables/useImageFallback';
+import {
+  getSubscriptions as apiGetSubscriptions,
+  unsubscribe as apiUnsubscribe,
+  updateNsfwStatus as apiUpdateNsfwStatus,
+} from '../api/subscription'
 
 const router = useRouter();
 
@@ -250,13 +254,6 @@ const loadingTrigger = ref(null);
 const showAddDialog = ref(false);
 const showImportDialog = ref(false);
 const unsubscribeError = ref('');
-
-// API功能
-const {
-  getSubscriptions: apiGetSubscriptions,
-  unsubscribe: apiUnsubscribe,
-  updateNsfwStatus: apiUpdateNsfwStatus
-} = useSubscriptionApi();
 
 // 订阅更新功能
 const {

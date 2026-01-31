@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { get, put } from '../utils/request'
+import { getSites, saveSites } from '../api/sites'
 
 // 下拉筛选等使用的简化站点选项缓存
 const cached = ref(null);
@@ -14,7 +14,7 @@ export async function fetchSites() {
   if (cached.value || loading.value) return { data: cached.value, error: error.value };
   loading.value = true;
   error.value = null;
-  const { data, error: requestError } = await get('/api/sites')
+  const { data, error: requestError } = await getSites()
   if (requestError) {
     error.value = requestError
     loading.value = false
@@ -49,7 +49,7 @@ export function useSiteCatalog() {
   const loadCatalog = async () => {
     siteCatalogLoading.value = true;
     siteCatalogError.value = null;
-    const { data, error } = await get('/api/sites')
+    const { data, error } = await getSites()
     if (error) {
       siteCatalogError.value = error
     } else {
@@ -82,7 +82,7 @@ export function useSiteCatalog() {
     siteCatalogError.value = null;
     try {
       const payload = catalogObjectToPayload(updatedCatalog);
-      const result = await put('/api/sites', { sites: payload })
+      const result = await saveSites({ sites: payload })
       if (result.error) {
         throw result.error
       }

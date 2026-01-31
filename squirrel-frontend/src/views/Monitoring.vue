@@ -247,11 +247,11 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
-import { get } from '../utils/request'
 import { Logger } from '../utils/logger'
 import StatsCard from '../components/common/StatsCard.vue'
 import Card from '../components/common/Card.vue'
 import StatusBadge from '../components/common/StatusBadge.vue'
+import { getDashboard } from '../api/metrics'
 
 const loading = ref(false)
 const dashboardData = ref(null)
@@ -261,7 +261,7 @@ let refreshTimer = null
 const fetchDashboard = async () => {
   loading.value = true
   try {
-    const { data, error } = await get('/api/metrics/dashboard')
+    const { data, error } = await getDashboard()
     if (error) {
       Logger.error('Failed to fetch dashboard', error)
       return

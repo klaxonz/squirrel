@@ -1,13 +1,11 @@
 import { reactive } from 'vue';
-import { useSubscriptionApi } from './useSubscriptionApi';
+import { triggerRefresh as apiTriggerRefresh } from '../api/subscription'
 
 const refreshStates = reactive(new Map());
 const pollingTimers = reactive(new Map());
 const subscriptionMeta = reactive(new Map());
 
 export function useSubscriptionRefresh() {
-  const { triggerRefresh: apiTriggerRefresh } = useSubscriptionApi();
-  
   const getRefreshState = (subscriptionId) => {
     if (!refreshStates.has(subscriptionId)) {
       refreshStates.set(subscriptionId, {

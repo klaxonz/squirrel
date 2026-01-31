@@ -1,9 +1,8 @@
 import { ref, computed } from 'vue';
-import { useVideoApi } from './useVideoApi';
+import { getVideoDetail, getVideoSubtitles } from '../api/video'
 
 export default function useVideoDetail(initialVideo = null) {
   const video = ref(initialVideo);
-  const { getVideoDetail, getSubtitles } = useVideoApi();
 
   const startTime = computed(() => {
     if (video.value?.last_position) {
@@ -35,7 +34,7 @@ export default function useVideoDetail(initialVideo = null) {
 
   const maybeInjectSubtitles = async (videoId) => {
     if (video.value && /bilibili\.com/.test(video.value.url)) {
-      const { data, error } = await getSubtitles(videoId, { lang: 'ai-zh', fmt: 'srt' });
+      const { data, error } = await getVideoSubtitles(videoId, { lang: 'ai-zh', fmt: 'srt' });
       if (!error && typeof data === 'string' && data.length > 0) {
         const blob = new Blob([data], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);

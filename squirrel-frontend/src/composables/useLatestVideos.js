@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue';
-import { get } from '../utils/request';
+import { getVideoCounts, getVideoList } from '../api/video'
 
 export default function useLatestVideos(initial = {}) {
   // Instance-scoped state to avoid cross-view interference
@@ -29,7 +29,7 @@ export default function useLatestVideos(initial = {}) {
     countsLoading.value = true;
     const currentToken = ++countsRequestToken;
 
-    const { data, error: requestError } = await get('/api/video/counts', {
+    const { data, error: requestError } = await getVideoCounts({
       query: searchQuery.value || '',
       subscription_id: subscriptionId.value,
       nsfw: nsfw.value,
@@ -58,7 +58,7 @@ export default function useLatestVideos(initial = {}) {
     const currentToken = ++requestToken;
 
     // 不再请求 counts，提升列表加载速度
-    const { data, error: requestError } = await get('/api/video/list', {
+    const { data, error: requestError } = await getVideoList({
       page: currentPage.value,
       pageSize,
       query: searchQuery.value || '',

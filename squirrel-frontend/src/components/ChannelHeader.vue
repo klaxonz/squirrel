@@ -25,8 +25,8 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue';
-import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import { useImageFallback } from '../composables/useImageFallback';
+import { getSubscriptionDetail } from '../api/subscription'
 
 const props = defineProps({
   subscriptionId: { type: [String, Number], required: true }
@@ -34,7 +34,6 @@ const props = defineProps({
 
 const detail = ref(null);
 const loading = ref(false);
-const { getSubscriptionDetail } = useSubscriptionApi();
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
 const fetchDetail = async () => {

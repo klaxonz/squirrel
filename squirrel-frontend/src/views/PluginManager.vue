@@ -616,27 +616,25 @@ import {
   CheckCircleIcon
 } from '@heroicons/vue/24/outline';
 import StatsCard from '../components/common/StatsCard.vue';
-import { get, put } from '../utils/request'
 import { Logger } from '../utils/logger'
 import { resetSitesCache } from '../composables/useSites';
-import { usePluginApi } from '../composables/usePluginApi';
 import { formatDate } from '../utils/dateFormat';
-
-const { 
-  getPlugins, 
-  installPlugin, 
-  enablePlugin, 
-  disablePlugin, 
-  uninstallPlugin, 
-  reloadPlugins,
+import {
+  disablePlugin,
+  enablePlugin,
+  getPlugins,
   getSupportedSites,
+  importAllSiteCookies,
+  installPlugin,
+  reloadPlugins,
+  syncCookieCloudCookies,
+  testAllSitesConnectivity,
   testSiteConnectivity,
   testSiteLoginStatus,
-  testAllSitesConnectivity,
-  importAllSiteCookies,
+  uninstallPlugin,
   uploadSiteCookies,
-  syncCookieCloudCookies,
-} = usePluginApi();
+} from '../api/plugins'
+import { getSites, saveSites } from '../api/sites'
 
 // 插件管理相关状态
 const currentTab = ref('plugins');
@@ -899,7 +897,7 @@ const catalogObjectToPayload = (catalogObj) => {
 const loadSiteCatalog = async () => {
   siteCatalogLoading.value = true;
   try {
-    const { data, error } = await get('/api/sites')
+    const { data, error } = await getSites()
     if (!error) {
       siteCatalog.value = data || {};
       siteCatalogLoaded.value = true;
@@ -1062,7 +1060,7 @@ const saveSiteEditor = async () => {
   siteEditorSaving.value = true;
   try {
     const payload = catalogObjectToPayload(updatedCatalog);
-    const result = await put('/api/sites', { sites: payload })
+    const result = await saveSites({ sites: payload })
     if (result.error) {
       throw result.error
     }

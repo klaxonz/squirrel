@@ -178,8 +178,12 @@ import {
 } from '@heroicons/vue/24/outline';
 import IconButton from './common/IconButton.vue';
 import Button from './common/Button.vue';
-import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import { useImageFallback } from '../composables/useImageFallback';
+import {
+  getSupportedImportSites,
+  importSubscriptions,
+  previewImportSubscriptions,
+} from '../api/subscription'
 
 const props = defineProps({
   show: {
@@ -199,12 +203,6 @@ const selectedUrlMap = ref({});
 const importResult = ref({});
 const loadingPreview = ref(false);
 const importing = ref(false);
-
-const {
-  getSupportedImportSites,
-  previewImportSubscriptions,
-  importSubscriptions
-} = useSubscriptionApi();
 
 // 站点配置
 const siteConfig = {

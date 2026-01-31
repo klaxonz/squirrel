@@ -256,7 +256,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, computed, nextTick, reactive, inject } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useSubscriptionApi } from '../composables/useSubscriptionApi';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
 import useOptionsDropdown from '../composables/useOptionsDropdown';
@@ -265,10 +264,11 @@ import { Icon } from '@iconify/vue';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import useVideoInteraction from "../composables/useVideoInteraction.js";
-import { useVideoApi } from '../composables/useVideoApi';
 import { useImageFallback } from '../composables/useImageFallback';
 import { usePlayerStore } from '../stores/playerStore';
 import { Logger } from '../utils/logger'
+import { unsubscribe as apiUnsubscribe } from '../api/subscription'
+import { getRandomVideo } from '../api/video'
 
 
 
@@ -285,8 +285,6 @@ const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
 const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
-const { unsubscribe: apiUnsubscribe } = useSubscriptionApi();
-const { getRandomVideo } = useVideoApi();
 const playerStore = usePlayerStore();
 
 

@@ -329,7 +329,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ClockIcon } from '@heroicons/vue/24/outline'
-import { useSchedulerApi } from '../composables/useSchedulerApi'
 import TaskDialog from '../components/TaskDialog.vue'
 import Button from '../components/common/Button.vue'
 import StatsCard from '../components/common/StatsCard.vue'
@@ -337,22 +336,21 @@ import StatusBadge from '../components/common/StatusBadge.vue'
 import Select from '../components/common/Select.vue'
 import { debounce } from '../utils/debounce'
 import { Logger } from '../utils/logger'
-
-const {
+import {
+  createTask as apiCreateTask,
+  deleteTask as apiDeleteTask,
+  disableScheduler as apiDisableScheduler,
+  disableTask as apiDisableTask,
+  enableScheduler as apiEnableScheduler,
+  enableTask as apiEnableTask,
+  executeTaskNow as apiExecuteTaskNow,
+  getAvailableTaskClasses,
   getSchedulerStatus,
-  getTaskStatistics,
   getScheduledTasks,
   getTaskDetail,
-  createTask: apiCreateTask,
-  updateTask: apiUpdateTask,
-  deleteTask: apiDeleteTask,
-  enableTask: apiEnableTask,
-  disableTask: apiDisableTask,
-  executeTaskNow: apiExecuteTaskNow,
-  getAvailableTaskClasses,
-  enableScheduler: apiEnableScheduler,
-  disableScheduler: apiDisableScheduler
-} = useSchedulerApi()
+  getTaskStatistics,
+  updateTask as apiUpdateTask,
+} from '../api/scheduler'
 
 // 响应式数据
 const schedulerStatus = ref(null)
