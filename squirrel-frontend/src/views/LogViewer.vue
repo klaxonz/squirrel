@@ -178,7 +178,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
-import Select from '../components/common/Select.vue';
+import { Select } from '@/components/common';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import { get } from '../utils/request'
 import { Logger } from '../utils/logger'

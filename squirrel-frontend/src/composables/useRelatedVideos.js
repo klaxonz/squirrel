@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getVideoList } from '../api/video'
+import { getVideoList } from '@/api'
 
 export default function useRelatedVideos(sourceVideo) {
   const relatedVideos = ref([])

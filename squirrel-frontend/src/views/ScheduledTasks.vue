@@ -330,10 +330,7 @@
 import { ref, onMounted } from 'vue'
 import { ClockIcon } from '@heroicons/vue/24/outline'
 import TaskDialog from '../components/TaskDialog.vue'
-import Button from '../components/common/Button.vue'
-import StatsCard from '../components/common/StatsCard.vue'
-import StatusBadge from '../components/common/StatusBadge.vue'
-import Select from '../components/common/Select.vue'
+import { Button, Select, StatsCard, StatusBadge } from '@/components/common'
 import { debounce } from '../utils/debounce'
 import { Logger } from '../utils/logger'
 import {
@@ -350,7 +347,7 @@ import {
   getTaskDetail,
   getTaskStatistics,
   updateTask as apiUpdateTask,
-} from '../api/scheduler'
+} from '@/api'
 
 // 响应式数据
 const schedulerStatus = ref(null)

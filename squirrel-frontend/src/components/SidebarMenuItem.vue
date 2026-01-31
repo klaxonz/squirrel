@@ -15,7 +15,7 @@
 </template>
 
 <script setup>
-import Tooltip from './common/Tooltip.vue'
+import { Tooltip } from '@/components/common'
 
 const props = defineProps({
   item: {

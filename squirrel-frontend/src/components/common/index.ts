@@ -17,6 +17,7 @@ export { default as ToggleSwitch } from './ToggleSwitch.vue'
 // 容器组件
 export { default as Card } from './Card.vue'
 export { default as InlineAlert } from './InlineAlert.vue'
+export { default as Tooltip } from './Tooltip.vue'
 
 // 数据展示组件
 export { default as StatusBadge } from './StatusBadge.vue'

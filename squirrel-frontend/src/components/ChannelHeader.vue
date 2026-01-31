@@ -26,7 +26,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue';
 import { useImageFallback } from '../composables/useImageFallback';
-import { getSubscriptionDetail } from '../api/subscription'
+import { getSubscriptionDetail } from '@/api'
 
 const props = defineProps({
   subscriptionId: { type: [String, Number], required: true }

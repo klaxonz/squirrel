@@ -176,14 +176,13 @@ import {
   ExclamationTriangleIcon,
   ArrowPathIcon
 } from '@heroicons/vue/24/outline';
-import IconButton from './common/IconButton.vue';
-import Button from './common/Button.vue';
+import { Button, IconButton } from '@/components/common';
 import { useImageFallback } from '../composables/useImageFallback';
 import {
   getSupportedImportSites,
   importSubscriptions,
   previewImportSubscriptions,
-} from '../api/subscription'
+} from '@/api'
 
 const props = defineProps({
   show: {

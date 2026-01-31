@@ -45,8 +45,7 @@
 import { ref, watch } from 'vue';
 import { XMarkIcon } from '@heroicons/vue/24/outline';
 import { post } from '../utils/request'
-import Button from './common/Button.vue';
-import IconButton from './common/IconButton.vue';
+import { Button, IconButton } from '@/components/common';
 
 const props = defineProps({
   show: Boolean

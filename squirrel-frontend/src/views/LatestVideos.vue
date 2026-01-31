@@ -59,7 +59,7 @@ import { useFeedFilters } from '../composables/useFeedFilters'
 import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '../components/feed/FeedToolbar.vue'
 import ChannelHeader from '../components/ChannelHeader.vue'
-import InlineAlert from '../components/common/InlineAlert.vue'
+import { InlineAlert } from '@/components/common'
 import { buildTabsWithCounts } from '../utils/feed'
 
 const router = useRouter();

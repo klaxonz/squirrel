@@ -1,5 +1,5 @@
 import { reactive } from 'vue';
-import { triggerRefresh as apiTriggerRefresh } from '../api/subscription'
+import { triggerRefresh as apiTriggerRefresh } from '@/api'
 
 const refreshStates = reactive(new Map());
 const pollingTimers = reactive(new Map());

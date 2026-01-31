@@ -248,10 +248,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { Logger } from '../utils/logger'
-import StatsCard from '../components/common/StatsCard.vue'
-import Card from '../components/common/Card.vue'
-import StatusBadge from '../components/common/StatusBadge.vue'
-import { getDashboard } from '../api/metrics'
+import { Card, StatsCard, StatusBadge } from '@/components/common'
+import { getDashboard } from '@/api'
 
 const loading = ref(false)
 const dashboardData = ref(null)

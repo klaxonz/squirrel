@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { getSites, saveSites } from '../api/sites'
+import { getSites, saveSites } from '@/api'
 
 // 下拉筛选等使用的简化站点选项缓存
 const cached = ref(null);

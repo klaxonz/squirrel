@@ -267,8 +267,7 @@ import useVideoInteraction from "../composables/useVideoInteraction.js";
 import { useImageFallback } from '../composables/useImageFallback';
 import { usePlayerStore } from '../stores/playerStore';
 import { Logger } from '../utils/logger'
-import { unsubscribe as apiUnsubscribe } from '../api/subscription'
-import { getRandomVideo } from '../api/video'
+import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
 
 
 

@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue';
-import { getVideoCounts, getVideoList } from '../api/video'
+import { getVideoCounts, getVideoList } from '@/api'
 
 export default function useLatestVideos(initial = {}) {
   // Instance-scoped state to avoid cross-view interference

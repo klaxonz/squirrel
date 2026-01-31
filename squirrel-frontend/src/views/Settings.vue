@@ -231,7 +231,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useSystemConfig } from '../composables/useSystemConfig';
 import { useUserSettings } from '../composables/useUserSettings';
 import SiteConfigSection from '../components/SiteConfigSection.vue';
-import Card from '../components/common/Card.vue';
+import { Card } from '@/components/common';
 import { Logger } from '../utils/logger'
 
 // Tabs 配置

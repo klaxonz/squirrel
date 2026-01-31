@@ -615,7 +615,7 @@ import {
   CubeIcon,
   CheckCircleIcon
 } from '@heroicons/vue/24/outline';
-import StatsCard from '../components/common/StatsCard.vue';
+import { StatsCard } from '@/components/common';
 import { Logger } from '../utils/logger'
 import { resetSitesCache } from '../composables/useSites';
 import { formatDate } from '../utils/dateFormat';
@@ -623,18 +623,19 @@ import {
   disablePlugin,
   enablePlugin,
   getPlugins,
+  getSites,
   getSupportedSites,
   importAllSiteCookies,
   installPlugin,
   reloadPlugins,
+  saveSites,
   syncCookieCloudCookies,
   testAllSitesConnectivity,
   testSiteConnectivity,
   testSiteLoginStatus,
   uninstallPlugin,
   uploadSiteCookies,
-} from '../api/plugins'
-import { getSites, saveSites } from '../api/sites'
+} from '@/api'
 
 // 插件管理相关状态
 const currentTab = ref('plugins');

@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue';
-import { getVideoDetail, getVideoSubtitles } from '../api/video'
+import { getVideoDetail, getVideoSubtitles } from '@/api'
 
 export default function useVideoDetail(initialVideo = null) {
   const video = ref(initialVideo);

@@ -203,10 +203,8 @@
 <script setup>
 import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';       
 import FeedToolbar from '../components/feed/FeedToolbar.vue';
-import Button from '../components/common/Button.vue';
-import InlineAlert from '../components/common/InlineAlert.vue';
+import { Button, InlineAlert, ToggleSwitch } from '@/components/common';
 import { PlusIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';        
-import ToggleSwitch from '../components/common/ToggleSwitch.vue';
 import {useRouter} from "vue-router";
 import { useRefreshTriggers } from '../composables/useRefreshTriggers';
 import AddChannelDialog from '../components/AddChannelDialog.vue';
@@ -221,7 +219,7 @@ import {
   getSubscriptions as apiGetSubscriptions,
   unsubscribe as apiUnsubscribe,
   updateNsfwStatus as apiUpdateNsfwStatus,
-} from '../api/subscription'
+} from '@/api'
 
 const router = useRouter();
 
