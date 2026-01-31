@@ -4,7 +4,7 @@
  */
 
 import { ref, computed, watch, onMounted, onUnmounted, type Ref, type ComputedRef } from 'vue'
-import { usePlayerStore, type PlayerStore } from '../../../stores/playerStore'
+import { createPlayerRuntimeStore, type PlayerRuntimeStore } from './PlayerStore'
 import { Logger } from '@/utils/logger'
 
 // 核心模块
@@ -31,11 +31,12 @@ import { useTheme, type ThemeName } from '../themes'
 import { useI18n, type LocaleCode, type LocaleMessages } from '../i18n'
 
 // 类型
-import type { VideoInfo } from '../../../types/video-player'
+export type MediaId = string | number
 
 export interface PlayerOptions {
   // 初始配置
   autoplay?: boolean
+  autoplayNext?: boolean
   muted?: boolean
   volume?: number
   loop?: boolean
@@ -59,8 +60,8 @@ export interface PlayerOptions {
   useApiAdapter?: boolean
   apiBaseUrl?: string
   
-  // 视频上下文
-  video?: Ref<VideoInfo | null | undefined>
+  // 媒体 ID（用于保存/加载进度）
+  mediaId?: Ref<MediaId | null | undefined>
   
   // 回调
   onPlay?: () => void
@@ -73,7 +74,7 @@ export interface PlayerOptions {
 
 export interface PlayerReturn {
   // Store
-  store: PlayerStore
+  store: PlayerRuntimeStore
   
   // DOM refs
   videoElement: Ref<HTMLVideoElement | null>
@@ -128,7 +129,7 @@ export interface PlayerReturn {
   
   // 适配器
   saveProgress: () => void
-  loadProgress: (videoId: string) => Promise<number | null>
+  loadProgress: (mediaId: string) => Promise<number | null>
   
   // 无障碍
   announce: (message: string) => void
@@ -156,6 +157,7 @@ export interface PlayerReturn {
 export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const {
     autoplay = false,
+    autoplayNext = true,
     muted = false,
     volume = 100,
     loop = false,
@@ -166,7 +168,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     enableSubtitles = true,
     enableAnalytics = false,
     enableGestures = true,
-    video,
+    mediaId,
     onPlay,
     onPause,
     onEnded,
@@ -176,7 +178,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   } = options
 
   // ===== 基础状态 =====
-  const store = usePlayerStore()
+  const store = createPlayerRuntimeStore()
   const videoElement = ref<HTMLVideoElement | null>(null)
   const containerElement = ref<HTMLElement | null>(null)
   const isReady = ref(false)
@@ -187,13 +189,6 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   const subtitleTracks = ref<SubtitleTrack[]>([])
   const currentSubtitle = ref<SubtitleTrack | null>(null)
-  const currentVideo = ref<VideoInfo | null>(null)
-
-  if (video) {
-    watch(video, (nextVideo) => {
-      currentVideo.value = (nextVideo as VideoInfo) || null
-    }, { immediate: true })
-  }
 
   // ===== 事件系统 =====
   const events = new EventEmitter<PlayerEvents>()
@@ -244,7 +239,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
 
   // ===== 计算属性 =====
-  // 注意：Pinia 会自动解包 setup store 的 ref，直接访问即可
+  // 注意：store 使用 reactive 包装，ref/computed 会自动解包
   const isPlaying = computed(() => store.playing)
   const isPaused = computed(() => !store.playing)
   const currentTime = computed(() => store.currentTime)
@@ -400,16 +395,38 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   }
 
   const applyConfigFromAdapter = (): void => {
+    const hasAutoplay = config.value.autoplay !== undefined
+    const hasAutoplayNext = config.value.autoplayNext !== undefined
+    const hasLoop = config.value.loop !== undefined
     const hasVolume = config.value.volume !== undefined
     const hasMuted = config.value.muted !== undefined
     const hasPlaybackRate = config.value.playbackRate !== undefined
 
-    if (!hasVolume && !hasMuted && !hasPlaybackRate) return
+    if (!hasAutoplay && !hasAutoplayNext && !hasLoop && !hasVolume && !hasMuted && !hasPlaybackRate) return
 
+    if (hasAutoplay) store.setAutoplay(!!config.value.autoplay)
+    if (hasAutoplayNext) store.setAutoplayNext(!!config.value.autoplayNext)
+    if (hasLoop) store.setLoop(!!config.value.loop)
     if (hasVolume) store.setVolume(config.value.volume as number)
     if (hasMuted) store.setMuted(config.value.muted as boolean)
     if (hasPlaybackRate) store.setPlaybackRate(config.value.playbackRate as number)
   }
+
+  watch(() => store.autoplay, (value) => {
+    void adapterSaveConfig({ autoplay: value })
+  })
+
+  watch(() => store.autoplayNext, (value) => {
+    void adapterSaveConfig({ autoplayNext: value })
+  })
+
+  watch(() => store.loop, (value) => {
+    void adapterSaveConfig({ loop: value })
+  })
+
+  watch(() => store.playbackRate, (value) => {
+    void adapterSaveConfig({ playbackRate: value })
+  })
 
 
 
@@ -624,12 +641,13 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   // ===== 进度管理 =====
   const saveProgress = (): void => {
-    if (!currentVideo.value?.id) return
-    adapterSaveProgress(String(currentVideo.value.id), store.currentTime, store.duration)
+    const id = mediaId?.value
+    if (id === undefined || id === null || id === '') return
+    adapterSaveProgress(String(id), store.currentTime, store.duration)
   }
 
-  const loadProgress = async (videoId: string): Promise<number | null> => {
-    const progress = await adapterLoadProgress(videoId)
+  const loadProgress = async (mediaId: string): Promise<number | null> => {
+    const progress = await adapterLoadProgress(mediaId)
     return progress?.currentTime ?? null
   }
 
@@ -831,6 +849,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   onMounted(async () => {
     // 应用初始配置
     store.setAutoplay(autoplay)
+    store.setAutoplayNext(autoplayNext)
     store.setMuted(muted)
     store.setVolume(volume)
     store.setLoop(loop)

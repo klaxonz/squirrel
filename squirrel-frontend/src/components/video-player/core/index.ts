@@ -1,5 +1,6 @@
 export { EventEmitter, type EventHandler, type EventMap } from './EventEmitter'
 export { PluginManager } from './PluginManager'
+export { createPlayerRuntimeStore, type PlayerRuntimeStore, type LoadingStage } from './PlayerStore'
 export { usePluginSystem } from './usePluginSystem'
 export { useA11y } from './useA11y'
 export { useErrorRecovery } from './useErrorRecovery'

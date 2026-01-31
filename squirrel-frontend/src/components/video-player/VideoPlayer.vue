@@ -21,7 +21,7 @@
           <circle class="sp-spinner-arc-circle" cx="50" cy="50" r="42" />
         </svg>
       </div>
-      <div class="sp-loading-text">{{ store.loadingStatusText }}</div>
+      <div class="sp-loading-text">{{ t('loading') }}</div>
     </div>
 
     <!-- 视频元素 -->
@@ -431,7 +431,6 @@ import {
   ChevronRightIcon
 } from '@heroicons/vue/24/outline'
 
-import type { VideoInfo } from '../../types/video-player'
 import type { SubtitleTrack } from './plugins/subtitles'
 
 // 导入 CSS 变量（主题系统基础）
@@ -439,9 +438,23 @@ import './themes/variables.css'
 
 let activePlayerContainer: HTMLElement | null = null
 
+type PlayerMedia = {
+  id?: string | number
+  title?: string
+  thumbnail?: string
+  subtitles?: Array<{
+    id?: string
+    label?: string
+    language?: string
+    url?: string
+    content?: string
+    default?: boolean
+  }>
+}
+
 interface Props {
 
-  video?: VideoInfo
+  video?: PlayerMedia
   source?: MediaSource | null
   initialTime?: number
   hasPrev?: boolean
@@ -528,7 +541,7 @@ const {
   destroy
 } = usePlayer({
   autoplay: props.autoplay,
-  video: computed(() => props.video),
+  mediaId: computed(() => (props.video as any)?.id ?? null),
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
   onEnded: () => emit('ended', { autoplay: store.autoplay, autoplayNext: store.autoplayNext, loop: store.loop }),
@@ -823,15 +836,15 @@ const resolveSource = (source: MediaSource): MediaSource => {
 }
 
 // 业务数据适配：将字幕数据转换为 SubtitleTrack
-const adaptSubtitles = (video: VideoInfo) => {
-  const videoAny = video as any
-  if (!videoAny.subtitles?.length) return []
-  
-  return videoAny.subtitles.map((s: any, i: number) => ({
+const adaptSubtitles = (video: PlayerMedia) => {
+  if (!video.subtitles?.length) return []
+
+  return video.subtitles.map((s, i: number) => ({
     id: s.id || `sub-${i}`,
     label: s.label || s.language || `Subtitle ${i + 1}`,
     language: s.language || 'unknown',
     url: s.url,
+    content: s.content,
     default: i === 0
   }))
 }
