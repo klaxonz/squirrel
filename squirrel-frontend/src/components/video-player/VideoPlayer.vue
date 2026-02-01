@@ -892,8 +892,10 @@ watch(
 const lastResumeKey = ref('')
 watch(
   () => [resolvedProgressKey.value, props.initialTime] as const,
-  async ([progressKey, initialTime]) => {
+  async ([progressKey, initialTime], oldValue) => {
     if (!progressKey) return
+    const oldProgressKey = oldValue?.[0]
+    if (progressKey === oldProgressKey && store.hasStartedPlayback) return
     const key = `${progressKey}:${initialTime}`
     if (key === lastResumeKey.value) return
     lastResumeKey.value = key
