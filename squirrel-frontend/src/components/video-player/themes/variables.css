@@ -3,14 +3,14 @@
  * 所有主题相关的 CSS 变量定义
  */
 
-:root {
+.sp-player {
   /* ========== 颜色系统 ========== */
   
   /* 主色调 */
-  --sp-primary: var(--color-primary);
-  --sp-primary-hover: var(--color-primary-hover);
-  --sp-primary-active: var(--color-primary-active);
-  --sp-primary-rgb: var(--color-primary-rgb);
+  --sp-primary: #ff0000;
+  --sp-primary-hover: #ff3333;
+  --sp-primary-active: #cc0000;
+  --sp-primary-rgb: 255, 0, 0;
   
   /* 背景色 */
   --sp-bg: rgba(0, 0, 0, 0.9);
@@ -37,14 +37,14 @@
   --sp-border-hover: rgba(255, 255, 255, 0.2);
   
   /* 状态色 */
-  --sp-success: var(--color-success);
-  --sp-success-hover: var(--color-success-hover);
-  --sp-warning: var(--color-warning);
-  --sp-warning-hover: var(--color-warning-hover);
-  --sp-error: var(--color-error);
-  --sp-error-hover: var(--color-error-hover);
-  --sp-info: var(--color-info);
-  --sp-info-hover: var(--color-info-hover);
+  --sp-success: #22c55e;
+  --sp-success-hover: #16a34a;
+  --sp-warning: #f59e0b;
+  --sp-warning-hover: #d97706;
+  --sp-error: #ef4444;
+  --sp-error-hover: #dc2626;
+  --sp-info: #3b82f6;
+  --sp-info-hover: #2563eb;
 
   /* ========== 控制栏 ========== */
   
@@ -53,11 +53,15 @@
   --sp-controls-gap: 8px;
   --sp-controls-bg: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0.75) 0%,
-    rgba(0, 0, 0, 0.5) 50%,
-    rgba(0, 0, 0, 0.25) 75%,
-    transparent 100%
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.36) 45%,
+    rgba(0, 0, 0, 0) 100%
   );
+
+  --sp-controls-row-padding: 0 12px;
+  --sp-controls-group-bg: transparent;
+  --sp-controls-group-padding: 0;
+  --sp-controls-group-radius: 0;
   
   /* ========== 进度条 ========== */
   
@@ -82,7 +86,7 @@
   
   /* ========== 菜单 ========== */
   
-  --sp-menu-bg: var(--sp-bg-elevated);
+  --sp-menu-bg: rgba(28, 28, 28, 0.88);
   --sp-menu-width: 280px;
   --sp-menu-max-height: 400px;
   --sp-menu-item-height: 40px;
@@ -94,11 +98,11 @@
   
   --sp-tooltip-bg: rgba(28, 28, 28, 0.95);
   --sp-tooltip-padding: 6px 10px;
-  --sp-tooltip-font-size: var(--font-size-2xs);
+  --sp-tooltip-font-size: 12px;
   
   /* ========== 字幕 ========== */
   
-  --sp-subtitle-font-size: var(--font-size-2xl);
+  --sp-subtitle-font-size: 24px;
   --sp-subtitle-font-weight: 500;
   --sp-subtitle-color: #ffffff;
   --sp-subtitle-highlight: #ffd54a;
@@ -134,7 +138,7 @@
   --sp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --sp-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
   --sp-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
-  --sp-glow-primary: 0 0 8px rgba(var(--sp-primary-rgb), 0.4);
+  --sp-glow-primary: none;
   
   /* ========== 层级 (z-index) ========== */
   
@@ -148,13 +152,13 @@
   
   /* ========== 字体 ========== */
   
-  --sp-font-family: var(--font-sans);
+  --sp-font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
   --sp-font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
-  --sp-font-size-xs: var(--font-size-4xs);
-  --sp-font-size-sm: var(--font-size-2xs);
-  --sp-font-size-md: var(--font-size-sm);
-  --sp-font-size-lg: var(--font-size-base);
-  --sp-font-size-xl: var(--font-size-lg);
+  --sp-font-size-xs: 12px;
+  --sp-font-size-sm: 13px;
+  --sp-font-size-md: 14px;
+  --sp-font-size-lg: 16px;
+  --sp-font-size-xl: 18px;
   
   /* ========== 间距 ========== */
   
@@ -164,4 +168,5 @@
   --sp-spacing-lg: 16px;
   --sp-spacing-xl: 24px;
   --sp-spacing-2xl: 32px;
+  --sp-progress-radius: 0px;
 }

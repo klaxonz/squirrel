@@ -2,13 +2,8 @@
  * Squirrel Video Player - 亮色主题
  */
 
-.sp-theme-light,
-[data-sp-theme="light"] {
-  /* 颜色 */
-  --sp-primary: var(--color-primary);
-  --sp-primary-hover: var(--color-primary-hover);
-  --sp-primary-active: var(--color-primary-active);
-  --sp-primary-rgb: var(--color-primary-rgb);
+.sp-player.sp-theme-light,
+.sp-player[data-sp-theme="light"] {
   
   /* 背景 */
   --sp-bg: rgba(255, 255, 255, 0.95);

@@ -7,11 +7,10 @@ import type {
   PlayerPlugin,
   PluginContext,
   IPluginManager,
-  PlayerEvents,
-  PlayerError
+  PlayerEvents
 } from './types'
 import { EventEmitter } from './EventEmitter'
-import { noopLogger, type PlayerLogger } from './logger'
+import { playerLogger, type PlayerLogger } from './logger'
 
 export class PluginManager implements IPluginManager {
   private plugins: Map<string, PlayerPlugin> = new Map()
@@ -19,9 +18,9 @@ export class PluginManager implements IPluginManager {
   private events: EventEmitter<PlayerEvents>
   private logger: PlayerLogger
 
-  constructor(events: EventEmitter<PlayerEvents>, options: { logger?: PlayerLogger } = {}) {
+  constructor(events: EventEmitter<PlayerEvents>) {
     this.events = events
-    this.logger = options.logger ?? noopLogger
+    this.logger = playerLogger
     this.setupEventForwarding()
   }
 

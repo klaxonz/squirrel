@@ -80,6 +80,7 @@ export interface MediaSource {
   src: string
   type?: 'auto' | 'native' | 'hls' | 'dash'
   key?: string
+  progressKey?: string
   poster?: string
   title?: string
 }

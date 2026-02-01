@@ -3,7 +3,7 @@
  * 支持泛型事件类型定义
  */
 
-import { noopLogger, type PlayerLogger } from './logger'
+import { playerLogger, type PlayerLogger } from './logger'
 
 export type EventHandler<T = any> = (data: T) => void
 export type EventMap = Record<string, any>
@@ -13,8 +13,8 @@ export class EventEmitter<Events extends EventMap = EventMap> {
   private onceListeners: Map<keyof Events, Set<EventHandler>> = new Map()
   private logger: PlayerLogger
 
-  constructor(options: { logger?: PlayerLogger } = {}) {
-    this.logger = options.logger ?? noopLogger
+  constructor() {
+    this.logger = playerLogger
   }
 
   /**

@@ -12,21 +12,18 @@ export { useControlsLayout, type ControlsLayoutConfig, type ControlDefinition, t
 export { useIcons, type IconName } from './useIcons'
 export {
   usePlayerAdapter,
-  createLocalAdapter,
-  createApiAdapter
+  createLocalAdapter
 } from './usePlayerAdapter'
 export {
   MemoryAdapter,
   LocalStorageAdapter,
-  ApiAdapter,
   CompositeAdapter,
   type IPlayerAdapter,
   type UserConfig,
   type PlaybackProgress,
   type HistoryEntry,
   type ErrorReport,
-  type LocalStorageAdapterOptions,
-  type MemoryAdapterOptions
+  type LocalStorageAdapterOptions
 } from './PlayerAdapter'
 export {
   usePlayer,

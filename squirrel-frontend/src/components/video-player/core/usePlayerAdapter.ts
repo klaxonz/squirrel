@@ -5,15 +5,15 @@
 
 import { ref, onMounted, type Ref } from 'vue'
 import {
+  MemoryAdapter,
   LocalStorageAdapter,
-  ApiAdapter,
   type IPlayerAdapter,
   type UserConfig,
   type PlaybackProgress,
   type HistoryEntry,
   type ErrorReport
 } from './PlayerAdapter'
-import { noopLogger, type PlayerLogger } from './logger'
+import { playerLogger } from './logger'
 
 export interface UsePlayerAdapterOptions {
   /** 自定义适配器 */
@@ -24,7 +24,6 @@ export interface UsePlayerAdapterOptions {
   progressSaveInterval?: number
   /** 进度变化阈值(秒) */
   progressThreshold?: number
-  logger?: PlayerLogger
 }
 
 export interface UsePlayerAdapterReturn {
@@ -37,8 +36,8 @@ export interface UsePlayerAdapterReturn {
   saveConfig: (config: Partial<UserConfig>) => Promise<void>
   
   // 进度
-  saveProgress: (videoId: string, currentTime: number, duration: number) => void
-  loadProgress: (videoId: string) => Promise<PlaybackProgress | null>
+  saveProgress: (progressKey: string, currentTime: number, duration: number) => void
+  loadProgress: (progressKey: string) => Promise<PlaybackProgress | null>
   
   // 历史
   history: Ref<HistoryEntry[]>
@@ -60,12 +59,13 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
     adapter: customAdapter,
     autoLoadConfig = true,
     progressSaveInterval = 2000,
-    progressThreshold = 5,
-    logger = noopLogger
+    progressThreshold = 5
   } = options
 
+  const logger = playerLogger
+
   // 设置适配器
-  const adapter = customAdapter || new LocalStorageAdapter({ logger })
+  const adapter = customAdapter || new MemoryAdapter()
 
   // 状态
   const config = ref<UserConfig>({})
@@ -101,7 +101,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
   /**
    * 保存播放进度（带节流）
    */
-  const saveProgress = (videoId: string, currentTime: number, duration: number): void => {
+  const saveProgress = (progressKey: string, currentTime: number, duration: number): void => {
     // 检查是否超过阈值
     if (Math.abs(currentTime - lastSavedTime) < progressThreshold) {
       return
@@ -116,7 +116,7 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
     saveTimer = setTimeout(async () => {
       try {
         const progress: PlaybackProgress = {
-          videoId,
+          progressKey,
           currentTime,
           duration,
           progress: duration > 0 ? (currentTime / duration) * 100 : 0,
@@ -134,9 +134,9 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
   /**
    * 加载播放进度
    */
-  const loadProgress = async (videoId: string): Promise<PlaybackProgress | null> => {
+  const loadProgress = async (progressKey: string): Promise<PlaybackProgress | null> => {
     try {
-      return await adapter.loadProgress(videoId)
+      return await adapter.loadProgress(progressKey)
     } catch {
       return null
     }
@@ -211,11 +211,6 @@ export function usePlayerAdapter(options: UsePlayerAdapterOptions = {}): UsePlay
 // 便捷函数：创建本地存储适配器
 export function createLocalAdapter(): IPlayerAdapter {
   return new LocalStorageAdapter()
-}
-
-// 便捷函数：创建 API 适配器
-export function createApiAdapter(baseUrl?: string): IPlayerAdapter {
-  return new ApiAdapter({ baseUrl })
 }
 
 export default usePlayerAdapter

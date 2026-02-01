@@ -1,3 +1,5 @@
+import { Logger } from '@/utils/logger'
+
 export type PlayerLogger = {
   debug: (...args: unknown[]) => void
   info: (...args: unknown[]) => void
@@ -14,3 +16,9 @@ export const noopLogger: PlayerLogger = {
   error: noop,
 }
 
+export const playerLogger: PlayerLogger = {
+  debug: (...args: unknown[]) => Logger.debug('[SPPlayer]', ...args),
+  info: (...args: unknown[]) => Logger.info('[SPPlayer]', ...args),
+  warn: (...args: unknown[]) => Logger.warn('[SPPlayer]', ...args),
+  error: (...args: unknown[]) => Logger.error('[SPPlayer]', ...args),
+}

@@ -5,7 +5,7 @@
 
 import { ref, type Ref } from 'vue'
 import type { PlayerError, QualityLevel } from './types'
-import { noopLogger, type PlayerLogger } from './logger'
+import { playerLogger } from './logger'
 
 export interface ErrorRecoveryOptions {
   maxRetries?: number
@@ -14,7 +14,6 @@ export interface ErrorRecoveryOptions {
   onRetry?: (attempt: number) => void
   onQualityFallback?: (quality: QualityLevel) => void
   onRecoveryFailed?: (error: PlayerError) => void
-  logger?: PlayerLogger
 }
 
 export interface ErrorRecoveryState {
@@ -46,8 +45,9 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}): UseErrorRe
     onRetry,
     onQualityFallback,
     onRecoveryFailed,
-    logger = noopLogger
   } = options
+
+  const logger = playerLogger
 
   // 状态
   const isRecovering = ref(false)

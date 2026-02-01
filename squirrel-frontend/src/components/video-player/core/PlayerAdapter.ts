@@ -3,11 +3,11 @@
  * 抽象业务代码依赖，允许外部注入实现
  */
 
-import { noopLogger, type PlayerLogger } from './logger'
+import { playerLogger, type PlayerLogger } from './logger'
 
 // 播放进度数据
 export interface PlaybackProgress {
-  videoId: string
+  progressKey: string
   currentTime: number
   duration: number
   progress: number // 0-100
@@ -28,7 +28,7 @@ export interface UserConfig {
 
 // 历史记录条目
 export interface HistoryEntry {
-  videoId: string
+  progressKey: string
   lastPosition: number
   duration: number
   progress: number
@@ -39,8 +39,8 @@ export interface HistoryEntry {
 
 // 错误报告数据
 export interface ErrorReport {
-  videoId?: string
-  videoUrl?: string
+  progressKey?: string
+  sourceUrl?: string
   errorCode?: string
   errorMessage?: string
   playerState?: {
@@ -64,7 +64,7 @@ export interface IPlayerAdapter {
   
   // 播放历史
   saveProgress(progress: PlaybackProgress): Promise<void>
-  loadProgress(videoId: string): Promise<PlaybackProgress | null>
+  loadProgress(progressKey: string): Promise<PlaybackProgress | null>
   getHistory(limit?: number): Promise<HistoryEntry[]>
   clearHistory(): Promise<void>
   
@@ -80,11 +80,6 @@ export type LocalStorageAdapterOptions = {
   configKey?: string
   historyKey?: string
   progressPrefix?: string
-  logger?: PlayerLogger
-}
-
-export type MemoryAdapterOptions = {
-  logger?: PlayerLogger
 }
 
 export class MemoryAdapter implements IPlayerAdapter {
@@ -93,8 +88,8 @@ export class MemoryAdapter implements IPlayerAdapter {
   private progressMap: Map<string, PlaybackProgress> = new Map()
   private history: HistoryEntry[] = []
 
-  constructor(options: MemoryAdapterOptions = {}) {
-    this.logger = options.logger ?? noopLogger
+  constructor() {
+    this.logger = playerLogger
   }
 
   async loadConfig(): Promise<UserConfig> {
@@ -106,12 +101,12 @@ export class MemoryAdapter implements IPlayerAdapter {
   }
 
   async saveProgress(progress: PlaybackProgress): Promise<void> {
-    this.progressMap.set(progress.videoId, progress)
+    this.progressMap.set(progress.progressKey, progress)
     this.updateHistory(progress)
   }
 
-  async loadProgress(videoId: string): Promise<PlaybackProgress | null> {
-    return this.progressMap.get(videoId) ?? null
+  async loadProgress(progressKey: string): Promise<PlaybackProgress | null> {
+    return this.progressMap.get(progressKey) ?? null
   }
 
   async getHistory(limit = 50): Promise<HistoryEntry[]> {
@@ -132,10 +127,10 @@ export class MemoryAdapter implements IPlayerAdapter {
   }
 
   private updateHistory(progress: PlaybackProgress): void {
-    const index = this.history.findIndex(h => h.videoId === progress.videoId)
+    const index = this.history.findIndex(h => h.progressKey === progress.progressKey)
 
     const entry: HistoryEntry = {
-      videoId: progress.videoId,
+      progressKey: progress.progressKey,
       lastPosition: progress.currentTime,
       duration: progress.duration,
       progress: progress.progress,
@@ -167,7 +162,7 @@ export class LocalStorageAdapter implements IPlayerAdapter {
     this.configKey = options.configKey ?? 'sp-player-config'
     this.historyKey = options.historyKey ?? 'sp-player-history'
     this.progressPrefix = options.progressPrefix ?? 'sp-progress-'
-    this.logger = options.logger ?? noopLogger
+    this.logger = playerLogger
   }
 
   async loadConfig(): Promise<UserConfig> {
@@ -191,7 +186,7 @@ export class LocalStorageAdapter implements IPlayerAdapter {
 
   async saveProgress(progress: PlaybackProgress): Promise<void> {
     try {
-      const key = this.progressPrefix + progress.videoId
+      const key = this.progressPrefix + progress.progressKey
       this.storage.setItem(key, JSON.stringify(progress))
       
       // 同时更新历史记录
@@ -201,9 +196,9 @@ export class LocalStorageAdapter implements IPlayerAdapter {
     }
   }
 
-  async loadProgress(videoId: string): Promise<PlaybackProgress | null> {
+  async loadProgress(progressKey: string): Promise<PlaybackProgress | null> {
     try {
-      const key = this.progressPrefix + videoId
+      const key = this.progressPrefix + progressKey
       const data = this.storage.getItem(key)
       return data ? JSON.parse(data) : null
     } catch {
@@ -213,10 +208,10 @@ export class LocalStorageAdapter implements IPlayerAdapter {
 
   private async updateHistory(progress: PlaybackProgress): Promise<void> {
     const history = await this.getHistory()
-    const index = history.findIndex(h => h.videoId === progress.videoId)
+    const index = history.findIndex(h => h.progressKey === progress.progressKey)
     
     const entry: HistoryEntry = {
-      videoId: progress.videoId,
+      progressKey: progress.progressKey,
       lastPosition: progress.currentTime,
       duration: progress.duration,
       progress: progress.progress,
@@ -272,111 +267,6 @@ export class LocalStorageAdapter implements IPlayerAdapter {
 }
 
 /**
- * API 适配器实现 - 通过 HTTP 请求
- */
-export class ApiAdapter implements IPlayerAdapter {
-  private baseUrl: string
-  private fetcher: typeof fetch
-  private logger: PlayerLogger
-
-  constructor(options: { baseUrl?: string; fetcher?: typeof fetch; logger?: PlayerLogger } = {}) {
-    this.baseUrl = options.baseUrl || '/api'
-    this.fetcher = options.fetcher || fetch.bind(window)
-    this.logger = options.logger ?? noopLogger
-  }
-
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const response = await this.fetcher(`${this.baseUrl}${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      },
-      ...options
-    })
-    
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`)
-    }
-    
-    const data = await response.json()
-    return data.data ?? data
-  }
-
-  async loadConfig(): Promise<UserConfig> {
-    try {
-      return await this.request<UserConfig>('/users/me/config')
-    } catch {
-      return {}
-    }
-  }
-
-  async saveConfig(config: Partial<UserConfig>): Promise<void> {
-    try {
-      await this.request('/users/me/config', {
-        method: 'PUT',
-        body: JSON.stringify({ settings: config, merge: true })
-      })
-    } catch (e) {
-      this.logger.warn('[ApiAdapter] Failed to save config', e)
-    }
-  }
-
-  async saveProgress(progress: PlaybackProgress): Promise<void> {
-    try {
-      await this.request('/history/progress', {
-        method: 'POST',
-        body: JSON.stringify(progress)
-      })
-    } catch (e) {
-      this.logger.warn('[ApiAdapter] Failed to save progress', e)
-    }
-  }
-
-  async loadProgress(videoId: string): Promise<PlaybackProgress | null> {
-    try {
-      return await this.request<PlaybackProgress>(`/history/progress/${videoId}`)
-    } catch {
-      return null
-    }
-  }
-
-  async getHistory(limit = 50): Promise<HistoryEntry[]> {
-    try {
-      return await this.request<HistoryEntry[]>(`/history?limit=${limit}`)
-    } catch {
-      return []
-    }
-  }
-
-  async clearHistory(): Promise<void> {
-    try {
-      await this.request('/history', { method: 'DELETE' })
-    } catch (e) {
-      this.logger.warn('[ApiAdapter] Failed to clear history', e)
-    }
-  }
-
-  async reportError(report: ErrorReport): Promise<void> {
-    try {
-      await this.request('/errors/report', {
-        method: 'POST',
-        body: JSON.stringify(report)
-      })
-    } catch (e) {
-      this.logger.warn('[ApiAdapter] Failed to report error', e)
-    }
-  }
-
-  trackEvent(eventName: string, data?: Record<string, any>): void {
-    // 可以发送到分析服务
-    this.request('/analytics/event', {
-      method: 'POST',
-      body: JSON.stringify({ event: eventName, data, timestamp: Date.now() })
-    }).catch(() => {})
-  }
-}
-
-/**
  * 组合适配器 - 支持多个适配器同时工作
  */
 export class CompositeAdapter implements IPlayerAdapter {
@@ -403,8 +293,8 @@ export class CompositeAdapter implements IPlayerAdapter {
     await Promise.all(this.adapters.map(a => a.saveProgress(progress)))
   }
 
-  async loadProgress(videoId: string): Promise<PlaybackProgress | null> {
-    return this.primary.loadProgress(videoId)
+  async loadProgress(progressKey: string): Promise<PlaybackProgress | null> {
+    return this.primary.loadProgress(progressKey)
   }
 
   async getHistory(limit?: number): Promise<HistoryEntry[]> {

@@ -51,8 +51,9 @@ export default function useVideoOperations() {
       const audioUrl = data?.audio_url
 
       const key = `${videoId}:${Date.now()}`
+      const progressKey = String(videoId)
 
-      if (mpdUrl) return { src: mpdUrl, type: 'auto', key }
+      if (mpdUrl) return { src: mpdUrl, type: 'auto', key, progressKey }
 
       if (!videoUrl && !audioUrl) {
         throw Object.assign(new Error('无法获取播放链接'), { code: 'NO_STREAM_URL' })
@@ -61,7 +62,8 @@ export default function useVideoOperations() {
       return {
         src: videoUrl || audioUrl || '',
         type: 'auto',
-        key
+        key,
+        progressKey
       }
     } catch (err) {
       throw err

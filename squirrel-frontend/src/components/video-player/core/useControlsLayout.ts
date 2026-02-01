@@ -47,7 +47,7 @@ export interface ControlsLayoutConfig {
 }
 
 // 预设布局
-export type PresetLayout = 'default' | 'minimal' | 'youtube' | 'bilibili' | 'custom'
+export type PresetLayout = 'default' | 'minimal' | 'simple' | 'compact' | 'custom'
 
 export interface UseControlsLayoutOptions {
   layout?: ControlsLayoutConfig | PresetLayout
@@ -95,14 +95,14 @@ const PRESET_LAYOUTS: Record<PresetLayout, ControlsLayoutConfig> = {
     right: ['fullscreen']
   },
   
-  youtube: {
+  simple: {
     progress: true,
     left: ['play', 'prev', 'next', 'volume', 'time'],
     center: [],
     right: ['subtitles', 'settings', 'pip', 'fullscreen']
   },
   
-  bilibili: {
+  compact: {
     progress: true,
     left: ['play', 'prev', 'next', 'time'],
     center: [],

@@ -9,7 +9,6 @@
             <VideoPlayer
               ref="videoPlayerRef"
               v-if="video"
-              :media-id="video?.id"
               :source="playbackSource"
               :subtitles="subtitleTracks"
               :poster="video?.thumbnail"
@@ -19,7 +18,6 @@
               :has-next="hasNextVideo"
               :external-error="externalError"
               :widescreen="isWidescreen"
-              :logger="Logger"
               :adapter="playerAdapter"
               :theme-options="{ persist: true, storageKey: 'sp-theme' }"
               :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
@@ -31,8 +29,8 @@
               @pause="onVideoPause"
               @ended="handleAutoplayNext"
               @timeupdate="onVideoTimeUpdate"
-              @prev-video="handlePrevVideo"
-              @next-video="handleNextVideo"
+              @prev="handlePrevVideo"
+              @next="handleNextVideo"
               @widescreenChange="toggleWidescreen"
               @retry="handlePlayerRetry"
             />
@@ -289,7 +287,7 @@ const router = useRouter();
 const emitter = inject('emitter');
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
-const playerAdapter = new LocalStorageAdapter({ logger: Logger });
+const playerAdapter = new LocalStorageAdapter();
 
 
 // 内部切换不使用 router，所以不需要从 history.state 读取初始数据

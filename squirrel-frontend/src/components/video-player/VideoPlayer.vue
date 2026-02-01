@@ -108,7 +108,7 @@
             <button
               v-if="hasPrev"
               class="sp-btn"
-              @click="$emit('prev-video')"
+              @click="$emit('prev')"
               @mouseenter="onControlTooltipEnter($event, t('previousVideo'))"
               @mouseleave="hideControlTooltip"
               @focus="onControlTooltipEnter($event, t('previousVideo'))"
@@ -120,7 +120,7 @@
             <button
               v-if="hasNext"
               class="sp-btn"
-              @click="$emit('next-video')"
+              @click="$emit('next')"
               @mouseenter="onControlTooltipEnter($event, t('nextVideo'))"
               @mouseleave="hideControlTooltip"
               @focus="onControlTooltipEnter($event, t('nextVideo'))"
@@ -291,9 +291,9 @@
                 <PlayerIcon class="sp-popup-item-icon" :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
                 <span class="sp-popup-item-label">{{ `${t('subtitles')} (${subtitleTracks.length})` }}</span>
               </span>
-              <span class="sp-popup-item-meta">
-                <span class="sp-popup-value">{{ subtitlesStatusText }}</span>
-                <ChevronRightIcon class="sp-popup-chevron" />
+                <span class="sp-popup-item-meta">
+                  <span class="sp-popup-value">{{ subtitlesStatusText }}</span>
+                <PlayerIcon name="chevronRight" class="sp-popup-chevron" />
               </span>
             </button>
 
@@ -304,7 +304,7 @@
             </span>
             <span class="sp-popup-item-meta">
               <span class="sp-popup-value">{{ store.playbackRate === 1 ? t('speedNormal') : `${store.playbackRate}x` }}</span>
-              <ChevronRightIcon class="sp-popup-chevron" />
+              <PlayerIcon name="chevronRight" class="sp-popup-chevron" />
             </span>
           </button>
           <button v-if="qualities.length > 0" class="sp-popup-item sp-popup-item--submenu" @click="settingsView = 'quality'">
@@ -314,7 +314,7 @@
             </span>
             <span class="sp-popup-item-meta">
               <span class="sp-popup-value">{{ displayedQualityLabel || '' }}</span>
-              <ChevronRightIcon class="sp-popup-chevron" />
+              <PlayerIcon name="chevronRight" class="sp-popup-chevron" />
             </span>
           </button>
           </div>
@@ -323,7 +323,7 @@
         <!-- 播放速度子菜单 -->
         <template v-else-if="settingsView === 'speed'">
           <button class="sp-popup-back" @click="settingsView = 'main'">
-            <ArrowLeftIcon />
+            <PlayerIcon name="chevronLeft" />
             <span>{{ t('playbackSpeed') }}</span>
           </button>
           <div class="sp-popup-list">
@@ -334,7 +334,7 @@
               :class="{ active: store.playbackRate === rate }"
               @click="handleSpeedSelect(rate)"
             >
-              <CheckIcon v-if="store.playbackRate === rate" class="sp-check" />
+              <PlayerIcon v-if="store.playbackRate === rate" name="check" class="sp-check" />
               <span>{{ rate === 1 ? t('speedNormal') : `${rate}x` }}</span>
             </button>
           </div>
@@ -343,7 +343,7 @@
         <!-- 画质子菜单 -->
         <template v-else-if="settingsView === 'quality'">
           <button class="sp-popup-back" @click="settingsView = 'main'">
-            <ArrowLeftIcon />
+            <PlayerIcon name="chevronLeft" />
             <span>{{ t('quality') }}</span>
           </button>
           <div class="sp-popup-list">
@@ -354,7 +354,7 @@
               :class="{ active: currentQualityId === q.id }"
               @click="handleQualitySelect(q)"
             >
-              <CheckIcon v-if="currentQualityId === q.id" class="sp-check" />
+              <PlayerIcon v-if="currentQualityId === q.id" name="check" class="sp-check" />
               <span>{{ q.label }}</span>
             </button>
           </div>
@@ -362,7 +362,7 @@
 
         <template v-else-if="settingsView === 'subtitles'">
           <button class="sp-popup-back" @click="settingsView = 'main'">
-            <ArrowLeftIcon />
+            <PlayerIcon name="chevronLeft" />
             <span>{{ t('subtitles') }}</span>
           </button>
           <div class="sp-popup-list">
@@ -371,7 +371,7 @@
               :class="{ active: !currentSubtitle }"
               @click="handleSubtitleSelect(null)"
             >
-              <CheckIcon v-if="!currentSubtitle" class="sp-check" />
+              <PlayerIcon v-if="!currentSubtitle" name="check" class="sp-check" />
               <span>{{ t('subtitlesOff') }}</span>
             </button>
             <button
@@ -381,7 +381,7 @@
               :class="{ active: currentSubtitle?.id === track.id }"
               @click="handleSubtitleSelect(track)"
             >
-              <CheckIcon v-if="currentSubtitle?.id === track.id" class="sp-check" />
+              <PlayerIcon v-if="currentSubtitle?.id === track.id" name="check" class="sp-check" />
               <span>{{ track.label }}</span>
             </button>
           </div>
@@ -423,24 +423,19 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { usePlayer, type IPlayerAdapter, type MediaSource, type PluginConfig, type PlayerLogger, type SubtitleTrack } from './core'
+import { usePlayer, type IPlayerAdapter, type MediaSource, type PluginConfig, type SubtitleTrack } from './core'
 import type { LocaleCode, UseI18nOptions } from './i18n'
 import type { ThemeName, UseThemeOptions } from './themes'
 import PlayerIcon from './PlayerIcon.vue'
-import {
-  ArrowLeftIcon,
-  CheckIcon,
-  ChevronRightIcon
-} from '@heroicons/vue/24/outline'
 
 // 导入 CSS 变量（主题系统基础）
 import './themes/variables.css'
+import './themes/dark.css'
+import './themes/light.css'
 
 let activePlayerContainer: HTMLElement | null = null
 
 interface Props {
-
-  mediaId?: string | number | null
   source?: MediaSource | null
   subtitles?: SubtitleTrack[]
   poster?: string
@@ -455,7 +450,6 @@ interface Props {
   themeOptions?: Omit<UseThemeOptions, 'defaultTheme' | 'target'>
   locale?: LocaleCode
   i18nOptions?: Omit<UseI18nOptions, 'locale' | 'logger'>
-  logger?: PlayerLogger
   adapter?: IPlayerAdapter
   plugins?: PluginConfig[]
   useDefaultPlugins?: boolean
@@ -497,8 +491,8 @@ const emit = defineEmits<{
   widescreenChange: [isWidescreen: boolean]
   timeupdate: [currentTime: number]
   error: [error: any]
-  'prev-video': []
-  'next-video': []
+  prev: []
+  next: []
   retry: []
 }>()
 
@@ -550,7 +544,6 @@ const {
   destroy
 } = usePlayer({
   autoplay: props.autoplay,
-  mediaId: computed(() => props.mediaId ?? null),
   theme: props.theme,
   themeOptions: props.themeOptions,
   locale: props.locale,
@@ -558,7 +551,6 @@ const {
   adapter: props.adapter,
   plugins: props.plugins,
   useDefaultPlugins: props.useDefaultPlugins,
-  logger: props.logger,
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
   onEnded: () => emit('ended', { autoplay: store.autoplay, autoplayNext: store.autoplayNext, loop: store.loop }),
@@ -759,11 +751,17 @@ const playbackRates = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 // 计算属性
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
 
-const pendingResume = ref<{ videoId: string; time: number } | null>(null)
+const resolvedProgressKey = computed(() => {
+  const source = props.source
+  const key = source?.progressKey || source?.src || ''
+  return String(key || '')
+})
 
-const queueResume = (videoId: string | number | undefined, time: number): void => {
-  if (!videoId || !time || time <= 0) return
-  pendingResume.value = { videoId: String(videoId), time }
+const pendingResume = ref<{ progressKey: string; time: number } | null>(null)
+
+const queueResume = (progressKey: string | undefined, time: number): void => {
+  if (!progressKey || !time || time <= 0) return
+  pendingResume.value = { progressKey: String(progressKey), time }
   attemptResume()
 }
 
@@ -771,8 +769,8 @@ const attemptResume = (): void => {
   const pending = pendingResume.value
   const media = videoRef.value
   if (!pending || !media) return
-  const currentId = String(props.mediaId ?? '')
-  if (pending.videoId && currentId && pending.videoId !== currentId) return
+  const currentKey = resolvedProgressKey.value
+  if (pending.progressKey && currentKey && pending.progressKey !== currentKey) return
   if (!duration.value || !isFinite(duration.value) || media.readyState < 1) return
   const maxTime = Math.max(0, duration.value - 0.5)
   const safeTime = clamp(pending.time, 0, maxTime)
@@ -852,10 +850,10 @@ const resolveSource = (source: MediaSource): MediaSource => {
 }
 
 watch(
-  () => String(props.mediaId ?? ''),
-  (mediaId, oldMediaId) => {
-    if (!mediaId) return
-    if (mediaId === oldMediaId) return
+  () => resolvedProgressKey.value,
+  (progressKey, oldProgressKey) => {
+    if (!progressKey) return
+    if (progressKey === oldProgressKey) return
 
     currentLoadedKey = ''
     internalError.value = null
@@ -892,23 +890,23 @@ watch(
 
 const lastResumeKey = ref('')
 watch(
-  () => [String(props.mediaId ?? ''), props.initialTime] as const,
-  async ([mediaId, initialTime]) => {
-    if (!mediaId) return
-    const key = `${mediaId}:${initialTime}`
+  () => [resolvedProgressKey.value, props.initialTime] as const,
+  async ([progressKey, initialTime]) => {
+    if (!progressKey) return
+    const key = `${progressKey}:${initialTime}`
     if (key === lastResumeKey.value) return
     lastResumeKey.value = key
 
     if (initialTime > 0) {
       await nextTick()
-      queueResume(mediaId, initialTime)
+      queueResume(progressKey, initialTime)
       return
     }
 
-    const savedTime = await loadProgress(mediaId)
+    const savedTime = await loadProgress(progressKey)
     if (savedTime && savedTime > 0) {
       await nextTick()
-      queueResume(mediaId, savedTime)
+      queueResume(progressKey, savedTime)
     }
   },
   { immediate: true }
@@ -1385,26 +1383,6 @@ defineExpose({
   color: var(--sp-text);
   overflow: hidden;
   user-select: none;
-  --sp-primary: #ff0000;
-  --sp-primary-hover: #ff3333;
-  --sp-primary-active: #cc0000;
-  --sp-primary-rgb: 255, 0, 0;
-  --sp-glow-primary: none;
-  --sp-menu-bg: rgba(28, 28, 28, 0.88);
-
-  /* YouTube-like bottom overlay behind controls */
-  --sp-controls-bg: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.78) 0%,
-    rgba(0, 0, 0, 0.36) 45%,
-    rgba(0, 0, 0, 0) 100%
-  );
-
-  --sp-controls-row-padding: 0 12px;
-  --sp-controls-group-bg: transparent;
-  --sp-controls-group-padding: 0;
-  --sp-controls-group-radius: 0;
-  --sp-progress-radius: 0px;
 }
 
 /* 视频元素 */

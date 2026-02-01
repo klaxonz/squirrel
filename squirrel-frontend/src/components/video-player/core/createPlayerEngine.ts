@@ -1,7 +1,7 @@
 import { EventEmitter } from './EventEmitter'
 import { PluginManager } from './PluginManager'
 import { MemoryAdapter, type IPlayerAdapter, type UserConfig, type PlaybackProgress } from './PlayerAdapter'
-import { noopLogger, type PlayerLogger } from './logger'
+import { playerLogger } from './logger'
 import type { MediaSource, PlayerError, PlayerEvents, PlayerState, QualityLevel, PluginConfig, PluginContext, SubtitleTrack } from './types'
 
 export type PlayerEngineOptions = {
@@ -14,7 +14,6 @@ export type PlayerEngineOptions = {
 
   adapter?: IPlayerAdapter
   plugins?: PluginConfig[]
-  logger?: PlayerLogger
 
   onPlay?: () => void
   onPause?: () => void
@@ -66,9 +65,8 @@ export type PlayerEngine = {
   setSubtitle: (track: SubtitleTrack | null) => void
   toggleSubtitles: () => void
 
-  setMediaId: (mediaId: string | number | null) => void
   saveProgress: () => void
-  loadProgress: (mediaId: string) => Promise<number | null>
+  loadProgress: (progressKey: string) => Promise<number | null>
 
   getConfig: () => UserConfig
   getQualities: () => QualityLevel[]
@@ -90,11 +88,11 @@ const detectSourceType = (src: string): 'hls' | 'dash' | 'native' => {
 }
 
 export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEngine {
-  const logger = options.logger ?? noopLogger
-  const adapter = options.adapter ?? new MemoryAdapter({ logger })
+  const logger = playerLogger
+  const adapter = options.adapter ?? new MemoryAdapter()
 
-  const events = new EventEmitter<PlayerEvents>({ logger })
-  const pluginManager = new PluginManager(events, { logger })
+  const events = new EventEmitter<PlayerEvents>()
+  const pluginManager = new PluginManager(events)
 
   let videoElement: HTMLVideoElement | null = null
   let containerElement: HTMLElement | null = null
@@ -122,7 +120,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   let subtitleTracks: SubtitleTrack[] = []
   let currentSubtitle: SubtitleTrack | null = null
 
-  let mediaId: string | number | null = null
+  let progressKey: string | null = null
 
   let currentSource: MediaSource | null = null
   let currentSourceType: 'native' | 'hls' | 'dash' | null = null
@@ -144,6 +142,23 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   let isRecovering = false
   let retryCount = 0
+
+  const resetProgressState = (): void => {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+      saveTimer = null
+    }
+    pendingProgress = null
+    lastSavedTime = 0
+    lastSavedAt = 0
+  }
+
+  const setProgressKey = (key: string | null): void => {
+    if (progressKey !== key) {
+      resetProgressState()
+    }
+    progressKey = key
+  }
 
   const getState = (): PlayerState => {
     const video = videoElement
@@ -406,6 +421,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
         ? detectSourceType(source.src)
         : source.type
     }
+
+    const nextProgressKey = resolvedSource.progressKey || resolvedSource.key || resolvedSource.src
+    setProgressKey(nextProgressKey ? String(nextProgressKey) : null)
 
     const nextKey = resolvedSource.key || resolvedSource.src
     if (nextKey === currentSourceKey || nextKey === pendingSourceKey) return
@@ -775,21 +793,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
   }
 
-  const setMediaId = (id: string | number | null): void => {
-    if (mediaId !== id) {
-      if (saveTimer) {
-        clearTimeout(saveTimer)
-        saveTimer = null
-      }
-      pendingProgress = null
-      lastSavedTime = 0
-      lastSavedAt = 0
-    }
-    mediaId = id
-  }
-
   const buildProgress = (): PlaybackProgress | null => {
-    if (mediaId === null || mediaId === undefined || mediaId === '') return null
+    const key = progressKey
+    if (!key) return null
     if (!videoElement) return null
     if (!isFinite(videoElement.duration) || videoElement.duration <= 0) return null
 
@@ -797,7 +803,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const duration = videoElement.duration
 
     return {
-      videoId: String(mediaId),
+      progressKey: key,
       currentTime: current,
       duration,
       progress: duration > 0 ? (current / duration) * 100 : 0,
@@ -855,8 +861,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     scheduleProgressSave()
   }
 
-  const loadProgress = async (id: string): Promise<number | null> => {
-    const progress = await adapter.loadProgress(id)
+  const loadProgress = async (key: string): Promise<number | null> => {
+    const progress = await adapter.loadProgress(key)
     return progress?.currentTime ?? null
   }
 
@@ -891,7 +897,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     setSubtitle,
     toggleSubtitles,
 
-    setMediaId,
     saveProgress,
     loadProgress,
 

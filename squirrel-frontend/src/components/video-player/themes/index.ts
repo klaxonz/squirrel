@@ -17,10 +17,8 @@ export const themeFiles = {
   light: () => import('./light.css')
 }
 
-// 预设主题配置
 export const presets = {
-  // YouTube 风格
-  youtube: {
+  red: {
     name: 'dark' as const,
     colors: {
       primary: '#ff0000',
@@ -29,8 +27,7 @@ export const presets = {
     }
   },
   
-  // Bilibili 风格
-  bilibili: {
+  cyan: {
     name: 'dark' as const,
     colors: {
       primary: '#00a1d6',
@@ -39,8 +36,7 @@ export const presets = {
     }
   },
   
-  // Netflix 风格
-  netflix: {
+  crimson: {
     name: 'dark' as const,
     colors: {
       primary: '#e50914',
@@ -49,7 +45,6 @@ export const presets = {
     }
   },
   
-  // 绿色主题
   green: {
     name: 'dark' as const,
     colors: {
@@ -59,7 +54,6 @@ export const presets = {
     }
   },
   
-  // 紫色主题
   purple: {
     name: 'dark' as const,
     colors: {

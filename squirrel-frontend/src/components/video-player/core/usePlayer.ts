@@ -10,11 +10,8 @@ import { useA11y } from './useA11y'
 import { useControlsLayout } from './useControlsLayout'
 import { useGestures } from './useGestures'
 import { useIcons } from './useIcons'
-import { noopLogger, type PlayerLogger } from './logger'
 import type { UserConfig } from './PlayerAdapter'
 import type { MediaSource, PlayerError, PluginConfig, QualityLevel, SubtitleTrack } from './types'
-
-export type MediaId = string | number
 
 export interface PlayerOptions {
   autoplay?: boolean
@@ -37,9 +34,6 @@ export interface PlayerOptions {
   adapter?: PlayerEngineOptions['adapter']
   plugins?: PluginConfig[]
   useDefaultPlugins?: boolean
-  logger?: PlayerLogger
-
-  mediaId?: Ref<MediaId | null | undefined>
 
   onPlay?: () => void
   onPause?: () => void
@@ -98,7 +92,7 @@ export interface PlayerReturn {
   setLocale: (locale: LocaleCode) => void
 
   saveProgress: () => void
-  loadProgress: (mediaId: string) => Promise<number | null>
+  loadProgress: (progressKey: string) => Promise<number | null>
 
   announce: (message: string) => void
 
@@ -129,8 +123,6 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     adapter,
     plugins,
     useDefaultPlugins = true,
-    logger: injectedLogger,
-    mediaId,
     onPlay,
     onPause,
     onEnded,
@@ -138,8 +130,6 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     onTimeUpdate,
     onQualityChange,
   } = options
-
-  const logger = injectedLogger ?? noopLogger
 
   const store = createPlayerRuntimeStore()
   const videoElement = ref<HTMLVideoElement | null>(null)
@@ -172,7 +162,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const { theme, setTheme: applyTheme } = useTheme({ ...(options.themeOptions ?? {}), defaultTheme: initialTheme, target: containerElement })
   const setTheme = (newTheme: ThemeName) => applyTheme(newTheme)
 
-  const { t, locale, setLocale } = useI18n({ ...(options.i18nOptions ?? {}), locale: initialLocale as any, logger })
+  const { t, locale, setLocale } = useI18n({ ...(options.i18nOptions ?? {}), locale: initialLocale as any })
 
   const { announce } = useA11y({ videoElement, containerElement, t })
 
@@ -190,7 +180,6 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     loop,
     adapter,
     plugins: enginePlugins,
-    logger,
     onPlay,
     onPause,
     onEnded,
@@ -284,10 +273,6 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     engine.attachContainerElement(el)
   }, { immediate: true })
 
-  watch(() => mediaId?.value, (id) => {
-    engine.setMediaId((id as any) ?? null)
-  }, { immediate: true })
-
   const play = async (): Promise<void> => {
     await engine.play()
   }
@@ -371,8 +356,8 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     engine.saveProgress()
   }
 
-  const loadProgress = async (id: string): Promise<number | null> => {
-    return await engine.loadProgress(id)
+  const loadProgress = async (key: string): Promise<number | null> => {
+    return await engine.loadProgress(key)
   }
 
   if (enableGestures) {

@@ -7,7 +7,7 @@ import type { LocaleCode, LocaleMessages, LocaleConfig } from './types'
 import zhCN from './zh-CN'
 import enUS from './en-US'
 import jaJP from './ja-JP'
-import { noopLogger, type PlayerLogger } from '../core/logger'
+import { playerLogger } from '../core/logger'
 
 // 内置语言包
 const builtInLocales: Record<string, LocaleConfig> = {
@@ -28,7 +28,6 @@ export interface UseI18nOptions {
   storage?: Storage
   applyToDocument?: boolean
   useGlobal?: boolean
-  logger?: PlayerLogger
 }
 
 export interface UseI18nReturn {
@@ -71,8 +70,7 @@ export function useI18n(options: UseI18nOptions = {}): UseI18nReturn {
     persist = false,
     storageKey = 'sp-locale',
     applyToDocument = false,
-    useGlobal = false,
-    logger = noopLogger
+    useGlobal = false
   } = options
 
   const storage = options.storage ?? (typeof localStorage !== 'undefined' ? localStorage : null)
@@ -122,7 +120,7 @@ export function useI18n(options: UseI18nOptions = {}): UseI18nReturn {
    */
   const setLocale = (locale: LocaleCode): void => {
     if (!availableLocales.value.includes(locale)) {
-      logger.warn(`[i18n] Locale "${locale}" not available`)
+      playerLogger.warn(`[i18n] Locale "${locale}" not available`)
       return
     }
     
