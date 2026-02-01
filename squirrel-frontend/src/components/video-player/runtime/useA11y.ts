@@ -4,7 +4,7 @@
  */
 
 import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
-import type { LocaleMessages } from './i18n/types'
+import type { LocaleMessages } from '../i18n/types'
 
 export interface UseA11yOptions {
   videoElement: Ref<HTMLVideoElement | null>

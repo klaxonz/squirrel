@@ -4,8 +4,8 @@
  */
 
 import { ref, type Ref } from 'vue'
-import type { PlayerError, QualityLevel } from './core/types'
-import { playerLogger } from './core/logger'
+import type { PlayerError, QualityLevel } from '../core/types'
+import { playerLogger } from '../core/logger'
 
 export interface ErrorRecoveryOptions {
   maxRetries?: number
