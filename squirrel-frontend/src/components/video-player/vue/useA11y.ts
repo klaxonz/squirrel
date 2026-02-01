@@ -48,16 +48,17 @@ export interface UseA11yReturn {
  * 格式化时间为可读文本
  */
 function formatTimeForScreen(seconds: number): string {
+  if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return '0:00'
+
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   const s = Math.floor(seconds % 60)
-  
-  const parts: string[] = []
-  if (h > 0) parts.push(`${h}小时`)
-  if (m > 0) parts.push(`${m}分钟`)
-  parts.push(`${s}秒`)
-  
-  return parts.join('')
+
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
+  return `${m}:${s.toString().padStart(2, '0')}`
 }
 
 /**
