@@ -1,17 +1,17 @@
 import { computed, onMounted, onUnmounted, ref, watch, type ComputedRef, type Ref } from 'vue'
 
-import { useI18n, type LocaleCode, type LocaleMessages, type UseI18nOptions } from '../i18n'
-import { useTheme, type ThemeName, type UseThemeOptions } from '../themes'
+import { useI18n, type LocaleCode, type LocaleMessages, type UseI18nOptions } from './i18n'
+import { useTheme, type ThemeName, type UseThemeOptions } from './themes'
 
 import { createPlayerRuntimeStore, type PlayerRuntimeStore } from './PlayerStore'
-import { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from '../core/createPlayerEngine'
-import { createDefaultPlayerPlugins } from '../core/defaultPlugins'
+import { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from './core/createPlayerEngine'
+import { createDefaultPlayerPlugins } from './core/defaultPlugins'
 import { useA11y } from './useA11y'
 import { useControlsLayout } from './useControlsLayout'
 import { useGestures } from './useGestures'
-import { useIcons } from '../core/useIcons'
-import type { UserConfig } from '../core/PlayerAdapter'
-import type { MediaSource, PlayerError, PluginConfig, QualityLevel, SubtitleTrack } from '../core/types'
+import { useIcons } from './core/useIcons'
+import type { UserConfig } from './core/PlayerAdapter'
+import type { MediaSource, PlayerError, PluginConfig, QualityLevel, SubtitleTrack } from './core/types'
 
 export interface PlayerOptions {
   autoplay?: boolean

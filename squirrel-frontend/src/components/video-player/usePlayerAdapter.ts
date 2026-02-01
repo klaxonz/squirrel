@@ -12,8 +12,8 @@ import {
   type PlaybackProgress,
   type HistoryEntry,
   type ErrorReport
-} from '../core/PlayerAdapter'
-import { playerLogger } from '../core/logger'
+} from './core/PlayerAdapter'
+import { playerLogger } from './core/logger'
 
 export interface UsePlayerAdapterOptions {
   /** 自定义适配器 */

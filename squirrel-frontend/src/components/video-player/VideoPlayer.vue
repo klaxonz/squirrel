@@ -423,7 +423,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { usePlayer } from './vue'
+import { usePlayer } from './usePlayer'
 import type { IPlayerAdapter, MediaSource, PluginConfig, SubtitleTrack } from './core'
 import type { LocaleCode, UseI18nOptions } from './i18n'
 import type { ThemeName, UseThemeOptions } from './themes'
