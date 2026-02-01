@@ -514,9 +514,9 @@ const goToVideo = async (id, videoData = null) => {
     } : {};
 
     try {
-      await router.push({ name: 'VideoPlay', params: { videoId: targetId }, state: simpleState });
+      await router.replace({ name: 'VideoPlay', params: { videoId: targetId }, state: simpleState });
     } catch (_) {
-      await router.push(`/video/${targetId}`);
+      await router.replace(`/video/${targetId}`);
     }
   }
 };
