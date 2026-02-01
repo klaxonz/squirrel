@@ -4,9 +4,9 @@
  */
 
 import { ref, shallowRef, onUnmounted, type Ref } from 'vue'
-import { EventEmitter } from './EventEmitter'
-import { PluginManager } from './PluginManager'
-import { playerLogger } from './logger'
+import { EventEmitter } from '../core/EventEmitter'
+import { PluginManager } from '../core/PluginManager'
+import { playerLogger } from '../core/logger'
 import type {
   PlayerPlugin,
   PluginContext,
@@ -15,7 +15,7 @@ import type {
   PlayerError,
   MediaSource,
   QualityLevel
-} from './types'
+} from '../core/types'
 
 export interface UsePluginSystemOptions {
   videoElement: Ref<HTMLVideoElement | null>

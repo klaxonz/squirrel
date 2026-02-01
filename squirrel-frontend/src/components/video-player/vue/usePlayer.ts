@@ -4,14 +4,14 @@ import { useI18n, type LocaleCode, type LocaleMessages, type UseI18nOptions } fr
 import { useTheme, type ThemeName, type UseThemeOptions } from '../themes'
 
 import { createPlayerRuntimeStore, type PlayerRuntimeStore } from './PlayerStore'
-import { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from './createPlayerEngine'
-import { createDefaultPlayerPlugins } from './defaultPlugins'
+import { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from '../core/createPlayerEngine'
+import { createDefaultPlayerPlugins } from '../core/defaultPlugins'
 import { useA11y } from './useA11y'
 import { useControlsLayout } from './useControlsLayout'
 import { useGestures } from './useGestures'
-import { useIcons } from './useIcons'
-import type { UserConfig } from './PlayerAdapter'
-import type { MediaSource, PlayerError, PluginConfig, QualityLevel, SubtitleTrack } from './types'
+import { useIcons } from '../core/useIcons'
+import type { UserConfig } from '../core/PlayerAdapter'
+import type { MediaSource, PlayerError, PluginConfig, QualityLevel, SubtitleTrack } from '../core/types'
 
 export interface PlayerOptions {
   autoplay?: boolean
