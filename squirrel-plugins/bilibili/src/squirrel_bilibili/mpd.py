@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from xml.etree import ElementTree as ET
 from urllib.parse import quote
+from xml.etree import ElementTree as ET
 
-from crawl import MpdBuilder, register_mpd
+from crawl import register_mpd
 from .handler import get_dash_data, _base_url
 
 

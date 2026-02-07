@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from http.cookies import SimpleCookie
+from threading import Lock
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
@@ -29,6 +30,7 @@ class VideoContext:
 
 _rate_limiter = get_rate_limiter()
 _BILIBILI_DOMAIN = 'bilibili.com'
+_request_settings_lock = Lock()
 
 
 def _configure_proxy() -> tuple[Any, Any]:
@@ -58,34 +60,45 @@ def _report_proxy(proxy_provider: Any, proxy_info: Any, success: bool) -> None:
     proxy_provider.report_result(proxy_info, _BILIBILI_DOMAIN, success)
 
 
-def execute_sync(coro, throttled: bool = True):
+def execute_sync(coro, throttled: bool = True, use_proxy: bool = True):
     if throttled:
         _rate_limiter.wait(_BILIBILI_DOMAIN)
-    proxy_provider, proxy_info = _configure_proxy()
-    try:
-        result = sync(coro)
-        _report_proxy(proxy_provider, proxy_info, True)
-        return result
-    except Exception:
-        _report_proxy(proxy_provider, proxy_info, False)
-        raise
+
+    success = False
+    proxy_provider = None
+    proxy_info = None
+
+    with _request_settings_lock:
+        previous_proxy = request_settings.get_proxy()
+        try:
+            if use_proxy:
+                proxy_provider, proxy_info = _configure_proxy()
+            else:
+                request_settings.set_proxy('')
+
+            result = sync(coro)
+            success = True
+            return result
+        finally:
+            request_settings.set_proxy(previous_proxy)
+            if use_proxy:
+                _report_proxy(proxy_provider, proxy_info, success)
 
 
 def throttled_sync(coro):
-    return execute_sync(coro, throttled=True)
+    return execute_sync(coro, throttled=True, use_proxy=True)
 
 
 def direct_sync(coro):
-    return execute_sync(coro, throttled=False)
+    return execute_sync(coro, throttled=False, use_proxy=True)
 
 
 def import_sync(coro):
-    previous_proxy = request_settings.get_proxy()
-    request_settings.set_proxy('')
-    try:
-        return sync(coro)
-    finally:
-        request_settings.set_proxy(previous_proxy)
+    return execute_sync(coro, throttled=False, use_proxy=False)
+
+
+def no_proxy_sync(coro):
+    return execute_sync(coro, throttled=False, use_proxy=False)
 
 
 def _load_cookies(cookie_string: str) -> Dict[str, str]:
@@ -142,7 +155,7 @@ def get_video_context(
     if throttled:
         obj, resource_type = throttled_sync(parse_link(url, credential))
     else:
-        obj, resource_type = direct_sync(parse_link(url, credential))
+        obj, resource_type = no_proxy_sync(parse_link(url, credential))
     if obj == -1 or resource_type != ResourceType.VIDEO:
         raise ValueError("URL is not a supported bilibili video link")
 
@@ -155,7 +168,7 @@ def get_video_context(
         if throttled:
             pages = throttled_sync(video_obj.get_pages())
         else:
-            pages = direct_sync(video_obj.get_pages())
+            pages = no_proxy_sync(video_obj.get_pages())
         if pages:
             page_index = min(page_index, len(pages) - 1)
             cid = pages[page_index].get("cid")
@@ -176,7 +189,7 @@ def fetch_video_info(
     if throttled:
         info = throttled_sync(context.video.get_info())
     else:
-        info = direct_sync(context.video.get_info())
+        info = no_proxy_sync(context.video.get_info())
 
     pages = info.get("pages") or []
     page_info: Optional[dict] = None
@@ -243,7 +256,7 @@ def fetch_play_data(
     if throttled:
         play_data = throttled_sync(context.video.get_download_url(**params))
     else:
-        play_data = direct_sync(context.video.get_download_url(**params))
+        play_data = no_proxy_sync(context.video.get_download_url(**params))
     if isinstance(play_data, dict) and play_data.get("video_info"):
         play_data = play_data["video_info"]
 
