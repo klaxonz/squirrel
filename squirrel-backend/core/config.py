@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     POOL_RECYCLE: int = 300
     CHANNEL_UPDATE_DEFAULT_SIZE: int = 30
 
+    MQ_CONSUMER_DEFAULT_COUNT: int = 1
+    MQ_CONSUMER_COUNT_OVERRIDES: str = ''
+
     @property
     def environment(self) -> str:
         return os.getenv("ENV", "prod").lower()
