@@ -4,7 +4,6 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from http.cookies import SimpleCookie
-from threading import Lock
 from typing import Any, Callable, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
@@ -26,7 +25,6 @@ class VideoContext:
 
 
 _BILIBILI_DOMAIN = 'bilibili.com'
-_request_settings_lock = Lock()
 
 
 def execute_sync(
@@ -44,7 +42,6 @@ def execute_sync(
         configure_proxy=lambda url: request_settings.set_proxy(url or ''),
         capture_state=request_settings.get_proxy,
         restore_state=lambda previous: request_settings.set_proxy(previous or ''),
-        lock=_request_settings_lock,
         max_retries=max_retries,
     )
 
@@ -124,7 +121,7 @@ def get_video_context(
         raise ValueError("URL is not a supported bilibili video link")
 
     video_obj: bili_video.Video = obj  # type: ignore[assignment]
-    video_obj.credential = credential
+    # video_obj.credential = credential
 
     page_index = extract_page_index(url)
     cid: Optional[int] = None
