@@ -7,7 +7,7 @@ import random
 import threading
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional, Set
+from typing import Any, Callable, Dict, Optional, Set
 from urllib.parse import urlparse
 
 import requests
@@ -18,6 +18,92 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_TIMEOUT_SECONDS = 20
+DEFAULT_PROXY_ROTATE_RETRIES = 3
+
+
+def _extract_domain(url: str) -> Optional[str]:
+    if not url:
+        return None
+    parsed = urlparse(url)
+    domain = parsed.netloc.replace('www.', '') if parsed.netloc else url
+    return domain or None
+
+
+def _safe_report_proxy_result(
+    proxy_provider: Optional[object],
+    proxy_info: Optional[object],
+    domain: Optional[str],
+    success: bool,
+) -> None:
+    if not proxy_provider or not proxy_info or not domain:
+        return
+    try:
+        proxy_provider.report_result(proxy_info, domain, success)  # type: ignore[attr-defined]
+    except Exception as e:
+        logger.warning('Failed to report proxy result: %s', e)
+
+
+def _should_rotate_proxy(exception: Exception) -> bool:
+    return isinstance(
+        exception,
+        (
+            requests.exceptions.ProxyError,
+            requests.exceptions.ConnectTimeout,
+            requests.exceptions.ReadTimeout,
+            requests.exceptions.SSLError,
+            requests.exceptions.ConnectionError,
+            requests.exceptions.ChunkedEncodingError,
+            requests.exceptions.RetryError,
+        ),
+    )
+
+
+def _request_with_proxy_rotation(
+    do_request: Callable[[Dict[str, Any]], requests.Response],
+    *,
+    proxy_provider: Optional[object],
+    domain: Optional[str],
+    base_kwargs: Dict[str, Any],
+) -> requests.Response:
+    explicit_proxies = 'proxies' in base_kwargs
+    rotate_retries_raw = base_kwargs.pop('proxy_rotate_retries', None)
+    try:
+        proxy_rotate_retries = int(rotate_retries_raw) if rotate_retries_raw is not None else DEFAULT_PROXY_ROTATE_RETRIES
+    except Exception:
+        proxy_rotate_retries = DEFAULT_PROXY_ROTATE_RETRIES
+
+    if explicit_proxies or not proxy_provider or not domain or proxy_rotate_retries <= 0:
+        return do_request(base_kwargs)
+
+    last_exception: Optional[Exception] = None
+    for attempt in range(proxy_rotate_retries + 1):
+        attempt_kwargs = dict(base_kwargs)
+        proxy_info = None
+
+        try:
+            proxy_info = proxy_provider.get_proxy(domain)  # type: ignore[attr-defined]
+        except Exception as e:
+            logger.warning('Failed to get proxy for domain=%s: %s', domain, e)
+            proxy_info = None
+
+        if proxy_info:
+            attempt_kwargs['proxies'] = proxy_info.to_dict()  # type: ignore[attr-defined]
+        else:
+            attempt_kwargs.pop('proxies', None)
+
+        try:
+            response = do_request(attempt_kwargs)
+            _safe_report_proxy_result(proxy_provider, proxy_info, domain, True)
+            return response
+        except Exception as e:
+            last_exception = e
+            _safe_report_proxy_result(proxy_provider, proxy_info, domain, False)
+            if attempt >= proxy_rotate_retries or not proxy_info or not _should_rotate_proxy(e):
+                raise
+
+    if last_exception:
+        raise last_exception
+    raise RuntimeError('Proxy rotation retries exhausted')
 
 
 def _extract_second_level_domain(domain_or_url: str) -> str:
@@ -148,32 +234,20 @@ class RateLimitedSession(requests.Session):
         self.mount("https://", adapter)
 
     def request(self, method: str, url: str, **kwargs):  # type: ignore[override]
-        domain = None
-        if url:
-            parsed = urlparse(url)
-            domain = parsed.netloc.replace("www.", "") if parsed.netloc else url
+        domain = _extract_domain(url)
         self._rate_limiter.wait(domain)
 
         kwargs.setdefault("timeout", DEFAULT_TIMEOUT_SECONDS)
 
         from .proxy_provider import get_proxy_provider
         proxy_provider = get_proxy_provider()
-        proxy_info = None
 
-        if proxy_provider and domain:
-            proxy_info = proxy_provider.get_proxy(domain)
-            if proxy_info:
-                kwargs["proxies"] = proxy_info.to_dict()
-
-        try:
-            response = super().request(method, url, **kwargs)
-            if proxy_provider and proxy_info and domain:
-                proxy_provider.report_result(proxy_info, domain, True)
-            return response
-        except Exception as e:
-            if proxy_provider and proxy_info and domain:
-                proxy_provider.report_result(proxy_info, domain, False)
-            raise
+        return _request_with_proxy_rotation(
+            lambda attempt_kwargs: super().request(method, url, **attempt_kwargs),
+            proxy_provider=proxy_provider,
+            domain=domain,
+            base_kwargs=kwargs,
+        )
 
 
 _default_rate_limiter = RateLimiter(domain_limits=DEFAULT_DOMAIN_LIMITS)
@@ -288,27 +362,14 @@ def request_without_limit(method: str, url: str, **kwargs):
 
         from .proxy_provider import get_proxy_provider
         proxy_provider = get_proxy_provider()
-        proxy_info = None
-        domain = None
+        domain = _extract_domain(url)
 
-        if url:
-            parsed = urlparse(url)
-            domain = parsed.netloc.replace("www.", "") if parsed.netloc else url
-
-        if proxy_provider and domain:
-            proxy_info = proxy_provider.get_proxy(domain)
-            if proxy_info:
-                kwargs["proxies"] = proxy_info.to_dict()
-
-        try:
-            response = session.request(method, url, **kwargs)
-            if proxy_provider and proxy_info and domain:
-                proxy_provider.report_result(proxy_info, domain, True)
-            return response
-        except Exception as e:
-            if proxy_provider and proxy_info and domain:
-                proxy_provider.report_result(proxy_info, domain, False)
-            raise
+        return _request_with_proxy_rotation(
+            lambda attempt_kwargs: session.request(method, url, **attempt_kwargs),
+            proxy_provider=proxy_provider,
+            domain=domain,
+            base_kwargs=kwargs,
+        )
 
 
 def get(url: str, **kwargs):
