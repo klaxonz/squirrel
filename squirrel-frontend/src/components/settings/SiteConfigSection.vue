@@ -111,7 +111,7 @@
 
           <div class="flex items-center gap-3 text-sm text-text-secondary">
             <LabeledCheckbox
-              label="启用该站点（用于筛选/数据爬取）"
+              label="启用该站点（控制订阅与视频更新）"
               v-model="siteEditorForm.enabled"
             />
           </div>

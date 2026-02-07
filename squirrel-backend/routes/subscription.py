@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Query, Depends, Request
@@ -13,6 +14,20 @@ from utils.jwt_helper import get_current_user
 from common import constants
 
 router = APIRouter(tags=['订阅接口'])
+logger = logging.getLogger(__name__)
+
+
+def _normalize_site_name(site: str) -> str:
+    return str(site or '').strip().lower()
+
+
+def _get_supported_site_set(supported_sites: List[str]) -> set[str]:
+    return {_normalize_site_name(site) for site in supported_sites if _normalize_site_name(site)}
+
+
+def _get_enabled_import_sites(supported_sites: List[str]) -> List[str]:
+    supported_site_set = _get_supported_site_set(supported_sites)
+    return [site for site in supported_site_set if SiteCatalog.is_site_enabled(site=site)]
 
 
 @router.post("/api/subscription/subscribe")
@@ -177,9 +192,10 @@ def get_supported_sites(current_user: User = Depends(get_current_user)):
     
     importer_registry = get_importer_registry()
     supported_sites = importer_registry.get_all_keys()
+    enabled_sites = _get_enabled_import_sites(supported_sites)
     
     return response.success({
-        "sites": supported_sites
+        "sites": enabled_sites
     })
 
 
@@ -197,22 +213,24 @@ def preview_subscriptions(
     Returns:
         预览结果
     """
-    import logging
     from crawl import get_importer_registry
-    
-    logger = logging.getLogger()
-    
+
     try:
         # 从注册表动态获取支持的站点列表
         importer_registry = get_importer_registry()
         supported_sites = importer_registry.get_all_keys()
+        supported_site_set = _get_supported_site_set(supported_sites)
+        normalized_site = _normalize_site_name(site)
+        enabled_sites = _get_enabled_import_sites(supported_sites)
 
-        if site not in supported_sites:
+        if normalized_site not in supported_site_set:
             return response.param_error(f"不支持的站点: {site}，支持的站点: {', '.join(supported_sites)}")
+        if normalized_site not in enabled_sites:
+            return response.param_error(f"站点已禁用，无法预览订阅: {site}")
 
-        logger.info(f"User {current_user.id} previewing subscriptions from {site}")
+        logger.info(f"User {current_user.id} previewing subscriptions from {normalized_site}")
         
-        result = subscription_service.preview_user_subscriptions(site, current_user.id)
+        result = subscription_service.preview_user_subscriptions(normalized_site, current_user.id)
         
         return response.success(result)
         
@@ -239,26 +257,28 @@ def import_subscriptions(
     Returns:
         导入结果统计
     """
-    import logging
     from crawl import get_importer_registry
-    
-    logger = logging.getLogger()
-    
+
     try:
         # 从注册表动态获取支持的站点列表
         importer_registry = get_importer_registry()
         supported_sites = importer_registry.get_all_keys()
+        supported_site_set = _get_supported_site_set(supported_sites)
+        normalized_site = _normalize_site_name(site)
+        enabled_sites = _get_enabled_import_sites(supported_sites)
 
-        if site not in supported_sites:
+        if normalized_site not in supported_site_set:
             return response.param_error(f"不支持的站点: {site}，支持的站点: {', '.join(supported_sites)}")
+        if normalized_site not in enabled_sites:
+            return response.param_error(f"站点已禁用，无法导入订阅: {site}")
 
-        logger.info(f"User {current_user.id} importing subscriptions from {site}")
+        logger.info(f"User {current_user.id} importing subscriptions from {normalized_site}")
 
         selected_urls = req.subscription_urls if req else None
-        result = subscription_service.import_user_subscriptions(site, current_user.id, selected_urls=selected_urls)
+        result = subscription_service.import_user_subscriptions(normalized_site, current_user.id, selected_urls=selected_urls)
 
         return response.success({
-            "site": site,
+            "site": normalized_site,
             "total": result['total'],
             "found": result["found"],
             "selected": result["selected"],
