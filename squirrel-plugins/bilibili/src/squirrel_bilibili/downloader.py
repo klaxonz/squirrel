@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from crawl import Downloader, register_downloader
-from .api_client import fetch_video_info, build_base_info
+from .sign import fetch_video_info, build_base_info
 
 
 @register_downloader
@@ -35,5 +35,3 @@ class BilibiliDownloader:
     ) -> Any:
         """执行下载工作流"""
         raise NotImplementedError("Download handled by backend download service")
-
-

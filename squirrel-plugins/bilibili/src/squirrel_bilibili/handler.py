@@ -5,10 +5,9 @@ from typing import Any, List, Optional
 from urllib.parse import quote
 
 from crawl import (
-    VideoUrlHandler,
     register_handler,
 )
-from .api_client import fetch_play_data
+from .sign import fetch_play_data
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ def get_dash_data(url: str) -> dict:
     play_data, _ = fetch_play_data(url, throttled=False)
     dash_data = play_data.get('dash') if isinstance(play_data, dict) else None
     if not dash_data:
-        raise RuntimeError("Failed to fetch play data from bilibili-api")
+        raise RuntimeError("Failed to fetch play data from bilibili")
     return dash_data
 
 
@@ -162,5 +161,3 @@ class BilibiliHandler:
             'mpd_url': f"/api/video/mpd?video_id={video.id}" if dash_data else None,
             'qualities': qualities or None,
         }
-
-

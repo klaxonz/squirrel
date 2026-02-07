@@ -28,7 +28,9 @@ def _extract_domain(url: str) -> Optional[str]:
     if not url:
         return None
     parsed = urlparse(url)
-    domain = parsed.netloc.replace('www.', '') if parsed.netloc else url
+    netloc = parsed.netloc if parsed.netloc else url
+    host = netloc.split(':', 1)[0]
+    domain = host.replace('www.', '')
     return domain or None
 
 
@@ -69,6 +71,7 @@ def _request_with_proxy_rotation(
     base_kwargs: Dict[str, Any],
 ) -> requests.Response:
     explicit_proxies = 'proxies' in base_kwargs
+    proxy_domain = _extract_second_level_domain(domain) if domain else None
     rotate_retries_raw = base_kwargs.pop('proxy_rotate_retries', None)
     try:
         proxy_rotate_retries = int(rotate_retries_raw) if rotate_retries_raw is not None else DEFAULT_PROXY_ROTATE_RETRIES
@@ -84,9 +87,9 @@ def _request_with_proxy_rotation(
         proxy_info = None
 
         try:
-            proxy_info = proxy_provider.get_proxy(domain)  # type: ignore[attr-defined]
+            proxy_info = proxy_provider.get_proxy(proxy_domain)  # type: ignore[attr-defined]
         except Exception as e:
-            logger.warning('Failed to get proxy for domain=%s: %s', domain, e)
+            logger.warning('Failed to get proxy for domain=%s: %s', proxy_domain, e)
             proxy_info = None
 
         if proxy_info:
@@ -96,11 +99,11 @@ def _request_with_proxy_rotation(
 
         try:
             response = do_request(attempt_kwargs)
-            _safe_report_proxy_result(proxy_provider, proxy_info, domain, True)
+            _safe_report_proxy_result(proxy_provider, proxy_info, proxy_domain, True)
             return response
         except Exception as e:
             last_exception = e
-            _safe_report_proxy_result(proxy_provider, proxy_info, domain, False)
+            _safe_report_proxy_result(proxy_provider, proxy_info, proxy_domain, False)
             if attempt >= proxy_rotate_retries or not proxy_info or not _should_rotate_proxy(e):
                 raise
 
@@ -245,8 +248,9 @@ class RateLimitedSession(requests.Session):
         from .proxy_provider import get_proxy_provider
         proxy_provider = get_proxy_provider()
 
+        base_request = super().request
         return _request_with_proxy_rotation(
-            lambda attempt_kwargs: super().request(method, url, **attempt_kwargs),
+            lambda attempt_kwargs: base_request(method, url, **attempt_kwargs),
             proxy_provider=proxy_provider,
             domain=domain,
             base_kwargs=kwargs,

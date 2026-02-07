@@ -3,10 +3,8 @@ from __future__ import annotations
 import logging
 from typing import List
 
-from bilibili_api import user
-
 from crawl import SubscriptionImportItem, register_user_subscription_importer
-from .api_client import build_credential, import_sync
+from .sign import build_cookies, fetch_followings, fetch_nav
 
 
 logger = logging.getLogger(__name__)
@@ -22,11 +20,10 @@ class BilibiliUserSubscriptionImporter:
     
     domain = 'bilibili.com'
     
-    def _get_current_user_mid(self) -> str:
+    def _get_current_user_mid(self, cookies: str) -> str:
         """获取当前登录用户的 mid"""
-        credential = build_credential(f'https://www.{self.domain}')
-        info = import_sync(lambda: user.get_self_info(credential))
-        mid = info.get('mid')
+        nav = fetch_nav(cookies=cookies, throttled=False, use_proxy=False)
+        mid = nav.get('mid')
         if not mid:
             raise ValueError("User not logged in or cookies expired")
         return str(mid)
@@ -38,40 +35,40 @@ class BilibiliUserSubscriptionImporter:
         Returns:
             订阅列表
         """
-        try:
-            credential = build_credential(f'https://www.{self.domain}')
-            mid = self._get_current_user_mid()
-            logger.info(f"Getting subscriptions for Bilibili user: {mid}")
-            
-            user_obj = user.User(int(mid), credential=credential)
-            page = 1
-            page_size = 50
+        cookies = build_cookies(f'https://www.{self.domain}')
+        mid = self._get_current_user_mid(cookies)
+        logger.info('Getting subscriptions for bilibili user: %s', mid)
 
-            items = []
-            while True:
-                data = import_sync(lambda: user_obj.get_followings(pn=page, ps=page_size))
-                followings = data.get('list') or []
-                if not followings:
-                    break
-                
-                for following in followings:
-                    following_mid = following.get('mid')
-                    if following_mid:
-                        space_url = f'https://space.bilibili.com/{following_mid}'
-                        face = following.get('face')
-                        name = following.get('uname')
-                        items.append(SubscriptionImportItem(url=space_url, name=name, avatar=face))
-                
-                total = data.get('total', 0)
-                if not total or len(items) >= total or len(followings) < page_size:
-                    break
-                
-                page += 1
-            
-            logger.info(f"Found {len(items)} Bilibili subscriptions")
-            return items
-            
-        except Exception as e:
-            logger.error(f"Failed to import Bilibili subscriptions: {e}", exc_info=True)
-            raise
+        page = 1
+        page_size = 50
 
+        items: List[SubscriptionImportItem] = []
+        while True:
+            data = fetch_followings(
+                int(mid),
+                cookies=cookies,
+                pn=page,
+                ps=page_size,
+                throttled=False,
+                use_proxy=False,
+            )
+            followings = data.get('list') or []
+            if not followings:
+                break
+
+            for following in followings:
+                following_mid = following.get('mid')
+                if following_mid:
+                    space_url = f'https://space.bilibili.com/{following_mid}'
+                    face = following.get('face')
+                    name = following.get('uname')
+                    items.append(SubscriptionImportItem(url=space_url, name=name, avatar=face))
+
+            total = data.get('total', 0)
+            if not total or len(items) >= total or len(followings) < page_size:
+                break
+
+            page += 1
+
+        logger.info('Found %s bilibili subscriptions', len(items))
+        return items

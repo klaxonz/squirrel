@@ -3,11 +3,20 @@ from __future__ import annotations
 import logging
 from typing import List
 
-from bilibili_api import channel_series, favorite_list, parse_link, ResourceType
-from bilibili_api.user import User, VideoOrder, ChannelSeriesType
 from crawl import register_subscription, SubscriptionMeta
 
-from .api_client import build_credential, throttled_sync
+from .sign import (
+    build_cookies,
+    parse_subscription_target,
+    ResourceType,
+    ChannelSeriesType,
+    fetch_fav_folder_info,
+    fetch_fav_resource_list,
+    fetch_series_meta,
+    fetch_series_videos,
+    fetch_user_card,
+    fetch_user_videos,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,21 +25,9 @@ logger = logging.getLogger(__name__)
 class BilibiliSubscription:
     def __init__(self, url: str) -> None:
         self.url = url
-        self.credential = build_credential(url)
-        self.target, self.resource_type = self._resolve_target()
-
-    def _resolve_target(self):
-        obj, res_type = throttled_sync(lambda: parse_link(self.url, self.credential))
-        if obj == -1 or res_type not in (
-            ResourceType.USER,
-            ResourceType.FAVORITE_LIST,
-            ResourceType.CHANNEL_SERIES,
-        ):
-            raise ValueError("Unsupported bilibili subscription url")
-
-        # Ensure credential is attached for subsequent calls
-        obj.credential = self.credential  # type: ignore[attr-defined]
-        return obj, res_type
+        self.cookies = build_cookies(url)
+        self.target = parse_subscription_target(url)
+        self.resource_type = self.target.resource_type
 
     def get_subscribe_info(self) -> SubscriptionMeta:
         if self.resource_type == ResourceType.FAVORITE_LIST:
@@ -40,28 +37,40 @@ class BilibiliSubscription:
         return self._get_space_info()
 
     def _get_space_info(self) -> SubscriptionMeta:
-        user_obj: User = self.target  # type: ignore[assignment]
-        info = throttled_sync(lambda: user_obj.get_user_info())
-        mid = info.get("mid") or user_obj.get_uid()
-        channel_name = info.get("name") or info.get("uname")
-        avatar_url = info.get("face")
+        if not self.target.mid:
+            raise ValueError('Missing user id')
+        info = fetch_user_card(self.target.mid, cookies=self.cookies, throttled=True)
+        card = info.get('card') or info
+        mid = card.get('mid') or self.target.mid
+        channel_name = card.get('name') or card.get('uname')
+        avatar_url = card.get('face')
         return SubscriptionMeta(str(mid), channel_name, avatar_url, self.url)
 
     def _get_favlist_info(self) -> SubscriptionMeta:
-        fav: favorite_list.FavoriteList = self.target  # type: ignore[assignment]
-        media_id = fav.get_media_id()
-        info = throttled_sync(lambda: fav.get_info())
-        title = info.get("title") or info.get("name") or "收藏夹"
-        cover = info.get("cover") or info.get("cover_url")
-        return SubscriptionMeta(f"fav_{media_id}", title, cover, self.url)
+        if not self.target.media_id:
+            raise ValueError('Missing favorite list id')
+        info = fetch_fav_folder_info(self.target.media_id, cookies=self.cookies, throttled=True)
+        data = info.get('info') or info
+        title = data.get('title') or data.get('name') or 'Favorite List'
+        cover = data.get('cover') or data.get('cover_url')
+        return SubscriptionMeta(f"fav_{self.target.media_id}", title, cover, self.url)
 
     def _get_channel_info(self) -> SubscriptionMeta:
-        series: channel_series.ChannelSeries = self.target  # type: ignore[assignment]
-        meta = throttled_sync(lambda: series.get_meta())
-        prefix = "season" if series.get_type() == ChannelSeriesType.SEASON else "series"
-        title = meta.get("title") or meta.get("name") or "合集"
-        cover = meta.get("cover") or meta.get("square_cover")
-        return SubscriptionMeta(f"{prefix}_{series.get_id()}", title, cover, self.url)
+        if not self.target.series_id:
+            raise ValueError('Missing channel series id')
+        series_type = self.target.series_type or ChannelSeriesType.SERIES
+        meta = fetch_series_meta(
+            mid=self.target.mid,
+            series_id=self.target.series_id,
+            series_type=series_type,
+            cookies=self.cookies,
+            throttled=True,
+        )
+        data = meta.get('meta') or meta.get('data') or meta
+        prefix = 'season' if series_type == ChannelSeriesType.SEASON else 'series'
+        title = data.get('title') or data.get('name') or 'Channel Series'
+        cover = data.get('cover') or data.get('square_cover')
+        return SubscriptionMeta(f"{prefix}_{self.target.series_id}", title, cover, self.url)
 
     def get_subscribe_videos(self, extract_all: bool) -> List[str]:
         if self.resource_type == ResourceType.FAVORITE_LIST:
@@ -72,20 +81,15 @@ class BilibiliSubscription:
 
     def _get_space_videos(self, extract_all: bool) -> List[str]:
         """获取空间（用户）的视频列表"""
-        user_obj: User = self.target  # type: ignore[assignment]
+        if not self.target.mid:
+            raise ValueError('Missing user id')
         video_list: List[str] = []
         page = 1
         page_size = 50
 
         while True:
-            data = throttled_sync(
-                lambda: user_obj.get_videos(
-                    pn=page,
-                    ps=page_size,
-                    order=VideoOrder.PUBDATE,
-                )
-            )
-            vlist = (data.get("list") or {}).get("vlist") or data.get("vlist") or []
+            data = fetch_user_videos(self.target.mid, cookies=self.cookies, pn=page, ps=page_size, throttled=True)
+            vlist = (data.get('list') or {}).get('vlist') or data.get('vlist') or []
             if not isinstance(vlist, list) or not vlist:
                 break
 
@@ -99,8 +103,8 @@ class BilibiliSubscription:
             if not extract_all:
                 break
 
-            page_info = data.get("page") or {}
-            total = page_info.get("count") or 0
+            page_info = data.get('page') or {}
+            total = page_info.get('count') or 0
             if len(video_list) >= total or len(vlist) < page_size:
                 break
 
@@ -110,19 +114,15 @@ class BilibiliSubscription:
 
     def _get_favlist_videos(self, extract_all: bool) -> List[str]:
         """获取收藏夹的视频列表"""
-        fav: favorite_list.FavoriteList = self.target  # type: ignore[assignment]
+        if not self.target.media_id:
+            raise ValueError('Missing favorite list id')
 
         video_list: List[str] = []
         page = 1
 
         while True:
-            data = throttled_sync(
-                lambda: fav.get_content_video(
-                    page=page,
-                    order=favorite_list.FavoriteListContentOrder.MTIME,
-                )
-            )
-            medias = data.get("medias") or data.get("data", {}).get("medias") or []
+            data = fetch_fav_resource_list(self.target.media_id, cookies=self.cookies, pn=page, ps=20, throttled=True)
+            medias = data.get('medias') or data.get('data', {}).get('medias') or []
             if not medias:
                 break
 
@@ -131,30 +131,44 @@ class BilibiliSubscription:
                 if bvid:
                     video_list.append(f"https://www.bilibili.com/video/{bvid}")
 
-            has_more = data.get("has_more", False)
+            has_more = data.get('has_more', False)
             if not extract_all or not has_more:
                 break
             page += 1
 
-        logger.info(f"从收藏夹提取了 {len(video_list)} 个视频")
+        logger.info('Extracted %s videos from favorite list', len(video_list))
         return video_list
 
     def _get_channel_videos(self, extract_all: bool) -> List[str]:
         """获取合集的视频列表"""
-        series: channel_series.ChannelSeries = self.target  # type: ignore[assignment]
+        if not self.target.series_id:
+            raise ValueError('Missing channel series id')
+        if not self.target.mid:
+            raise ValueError('Missing user id for channel series')
+        series_type = self.target.series_type or ChannelSeriesType.SERIES
 
         video_list: List[str] = []
         page = 1
         page_size = 100
 
         while True:
-            data = throttled_sync(lambda: series.get_videos(pn=page, ps=page_size))
-            archives = data.get("archives") or []
+            data = fetch_series_videos(
+                mid=self.target.mid,
+                series_id=self.target.series_id,
+                series_type=series_type,
+                cookies=self.cookies,
+                pn=page,
+                ps=page_size,
+                throttled=True,
+            )
+            archives = data.get('archives') or (data.get('data') or {}).get('archives') or []
+            if not archives and series_type == ChannelSeriesType.SEASON:
+                archives = (data.get('archives') or data.get('items') or (data.get('data') or {}).get('archives') or [])
             if not archives:
                 break
 
             for archive in archives:
-                bvid = archive.get("bvid")
+                bvid = archive.get("bvid") or (archive.get('archive') or {}).get('bvid')
                 if bvid:
                     video_list.append(f"https://www.bilibili.com/video/{bvid}")
 
@@ -163,5 +177,5 @@ class BilibiliSubscription:
 
             page += 1
 
-        logger.info(f"从合集提取了 {len(video_list)} 个视频")
+        logger.info('Extracted %s videos from channel series', len(video_list))
         return video_list
