@@ -50,6 +50,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
 
     externalError.value = null
     playbackSource.value = null
+    subtitleTracks.value = []
 
     if (initialVideoData && initialVideoData.id === videoId) {
       video.value = initialVideoData as any
@@ -67,16 +68,19 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
       hasVideo: !!video.value,
     })
 
-    try {
-      await maybeInjectSubtitles(videoId as any)
-    } catch (_) {}
-
-    await fetchRelatedVideos()
-
     if (seq !== requestSeq.value) return
 
     try {
-      const source = await getPlaybackSource(videoId, options)
+      const playbackPromise = getPlaybackSource(videoId, options)
+
+      maybeInjectSubtitles(videoId as any).catch((e) =>
+        Logger.error('[usePlaybackOrchestrator] maybeInjectSubtitles error', e)
+      )
+      fetchRelatedVideos(videoId as any).catch((e) =>
+        Logger.error('[usePlaybackOrchestrator] fetchRelatedVideos error', e)
+      )
+
+      const source = await playbackPromise
       if (seq !== requestSeq.value) return
 
       const v: any = video.value || {}

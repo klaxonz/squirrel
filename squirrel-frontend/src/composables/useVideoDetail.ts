@@ -51,7 +51,10 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
   }
 
   const maybeInjectSubtitles = async (videoId: VideoId) => {
-    const url = video.value?.url
+    const snapshot = video.value
+    if (!snapshot || String(snapshot.id) !== String(videoId)) return
+
+    const url = snapshot.url
     if (!url || !/bilibili\.com/.test(url)) return
 
     const { data, error } = (await getVideoSubtitles(videoId, { lang: 'ai-zh', fmt: 'srt' })) as ApiResult<string>
@@ -61,7 +64,7 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
     const objectUrl = URL.createObjectURL(blob)
     const subtitle: VideoSubtitle = { id: 'bili-ai-zh', language: '简体中文(AI)', url: objectUrl }
 
-    if (!video.value) return
+    if (!video.value || String(video.value.id) !== String(videoId)) return
     video.value.subtitles = [subtitle, ...(video.value.subtitles || [])]
   }
 

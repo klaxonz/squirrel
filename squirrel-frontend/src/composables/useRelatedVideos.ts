@@ -17,6 +17,7 @@ type VideoListResponse = { data?: unknown[] }
 export default function useRelatedVideos(sourceVideo: Ref<VideoListItem | null>) {
   const relatedVideos = ref<VideoListItem[]>([])
   const loadingRelated = ref(false)
+  const requestSeq = ref(0)
 
   const extractItems = (data: VideoListResponse | null | undefined) => (Array.isArray(data?.data) ? data!.data! : [])
 
@@ -60,14 +61,27 @@ export default function useRelatedVideos(sourceVideo: Ref<VideoListItem | null>)
     return { data: unique, error: null as unknown | null }
   }
 
-  const fetchRelatedVideos = async () => {
-    if (!sourceVideo.value) return
+  const fetchRelatedVideos = async (expectedVideoId?: VideoId) => {
+    const snapshot = sourceVideo.value
+    if (!snapshot) return
+
+    const expectedId = expectedVideoId !== undefined ? String(expectedVideoId) : String(snapshot.id)
+    if (String(snapshot.id) !== expectedId) return
+
+    requestSeq.value += 1
+    const seq = requestSeq.value
+
+    relatedVideos.value = []
     loadingRelated.value = true
     try {
-      const { data, error } = await getRelatedVideos(sourceVideo.value, { pageSize: 20 })
+      const { data, error } = await getRelatedVideos(snapshot, { pageSize: 20 })
+      if (seq !== requestSeq.value) return
+      if (String(sourceVideo.value?.id) !== expectedId) return
       relatedVideos.value = !error ? data || [] : []
     } finally {
-      loadingRelated.value = false
+      if (seq === requestSeq.value) {
+        loadingRelated.value = false
+      }
     }
   }
 
