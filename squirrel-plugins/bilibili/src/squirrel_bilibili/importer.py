@@ -3,10 +3,10 @@ from __future__ import annotations
 import logging
 from typing import List
 
-from bilibili_api import user, sync
+from bilibili_api import user
 
 from crawl import SubscriptionImportItem, register_user_subscription_importer
-from .api_client import build_credential
+from .api_client import build_credential, import_sync
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class BilibiliUserSubscriptionImporter:
     def _get_current_user_mid(self) -> str:
         """获取当前登录用户的 mid"""
         credential = build_credential(f'https://www.{self.domain}')
-        info = sync(user.get_self_info(credential))
+        info = import_sync(user.get_self_info(credential))
         mid = info.get('mid')
         if not mid:
             raise ValueError("User not logged in or cookies expired")
@@ -49,7 +49,7 @@ class BilibiliUserSubscriptionImporter:
 
             items = []
             while True:
-                data = sync(user_obj.get_followings(pn=page, ps=page_size))
+                data = import_sync(user_obj.get_followings(pn=page, ps=page_size))
                 followings = data.get('list') or []
                 if not followings:
                     break

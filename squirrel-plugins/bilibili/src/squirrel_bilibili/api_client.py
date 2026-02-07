@@ -1,18 +1,22 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from http.cookies import SimpleCookie
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from bilibili_api import Credential, ResourceType, parse_link, sync
+from bilibili_api import Credential, ResourceType, parse_link, request_settings, sync
 from bilibili_api import video as bili_video
 
 from crawl import (
     filter_cookies_to_query_string,
+    get_proxy_provider,
     get_rate_limiter,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -24,12 +28,64 @@ class VideoContext:
 
 
 _rate_limiter = get_rate_limiter()
+_BILIBILI_DOMAIN = 'bilibili.com'
+
+
+def _configure_proxy() -> tuple[Any, Any]:
+    proxy_provider = get_proxy_provider()
+    if not proxy_provider:
+        request_settings.set_proxy('')
+        logger.debug('bilibili-api proxy provider is not configured')
+        return None, None
+
+    proxy_info = proxy_provider.get_proxy(_BILIBILI_DOMAIN)
+    if not proxy_info:
+        request_settings.set_proxy('')
+        logger.info(f'No proxy available for bilibili-api domain={_BILIBILI_DOMAIN}')
+        return proxy_provider, None
+
+    request_settings.set_proxy(proxy_info.to_url())
+    logger.info(
+        f'bilibili-api proxy configured: '
+        f'domain={_BILIBILI_DOMAIN}, proxy={proxy_info.host}:{proxy_info.port}'
+    )
+    return proxy_provider, proxy_info
+
+
+def _report_proxy(proxy_provider: Any, proxy_info: Any, success: bool) -> None:
+    if not proxy_provider or not proxy_info:
+        return
+    proxy_provider.report_result(proxy_info, _BILIBILI_DOMAIN, success)
+
+
+def execute_sync(coro, throttled: bool = True):
+    if throttled:
+        _rate_limiter.wait(_BILIBILI_DOMAIN)
+    proxy_provider, proxy_info = _configure_proxy()
+    try:
+        result = sync(coro)
+        _report_proxy(proxy_provider, proxy_info, True)
+        return result
+    except Exception:
+        _report_proxy(proxy_provider, proxy_info, False)
+        raise
 
 
 def throttled_sync(coro):
-    """Use shared rate limiter to avoid hitting anti-spider limits."""
-    _rate_limiter.wait("bilibili.com")
-    return sync(coro)
+    return execute_sync(coro, throttled=True)
+
+
+def direct_sync(coro):
+    return execute_sync(coro, throttled=False)
+
+
+def import_sync(coro):
+    previous_proxy = request_settings.get_proxy()
+    request_settings.set_proxy('')
+    try:
+        return sync(coro)
+    finally:
+        request_settings.set_proxy(previous_proxy)
 
 
 def _load_cookies(cookie_string: str) -> Dict[str, str]:
@@ -86,7 +142,7 @@ def get_video_context(
     if throttled:
         obj, resource_type = throttled_sync(parse_link(url, credential))
     else:
-        obj, resource_type = sync(parse_link(url, credential))
+        obj, resource_type = direct_sync(parse_link(url, credential))
     if obj == -1 or resource_type != ResourceType.VIDEO:
         raise ValueError("URL is not a supported bilibili video link")
 
@@ -99,7 +155,7 @@ def get_video_context(
         if throttled:
             pages = throttled_sync(video_obj.get_pages())
         else:
-            pages = sync(video_obj.get_pages())
+            pages = direct_sync(video_obj.get_pages())
         if pages:
             page_index = min(page_index, len(pages) - 1)
             cid = pages[page_index].get("cid")
@@ -120,7 +176,7 @@ def fetch_video_info(
     if throttled:
         info = throttled_sync(context.video.get_info())
     else:
-        info = sync(context.video.get_info())
+        info = direct_sync(context.video.get_info())
 
     pages = info.get("pages") or []
     page_info: Optional[dict] = None
@@ -187,7 +243,7 @@ def fetch_play_data(
     if throttled:
         play_data = throttled_sync(context.video.get_download_url(**params))
     else:
-        play_data = sync(context.video.get_download_url(**params))
+        play_data = direct_sync(context.video.get_download_url(**params))
     if isinstance(play_data, dict) and play_data.get("video_info"):
         play_data = play_data["video_info"]
 

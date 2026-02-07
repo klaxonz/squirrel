@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import List
 
-from bilibili_api import channel_series, favorite_list, parse_link, ResourceType, sync
+from bilibili_api import channel_series, favorite_list, parse_link, ResourceType
 from bilibili_api.user import User, VideoOrder, ChannelSeriesType
 from crawl import register_subscription, SubscriptionMeta
 
@@ -41,7 +41,7 @@ class BilibiliSubscription:
 
     def _get_space_info(self) -> SubscriptionMeta:
         user_obj: User = self.target  # type: ignore[assignment]
-        info = sync(user_obj.get_user_info())
+        info = throttled_sync(user_obj.get_user_info())
         mid = info.get("mid") or user_obj.get_uid()
         channel_name = info.get("name") or info.get("uname")
         avatar_url = info.get("face")
@@ -50,7 +50,7 @@ class BilibiliSubscription:
     def _get_favlist_info(self) -> SubscriptionMeta:
         fav: favorite_list.FavoriteList = self.target  # type: ignore[assignment]
         media_id = fav.get_media_id()
-        info = sync(fav.get_info())
+        info = throttled_sync(fav.get_info())
         title = info.get("title") or info.get("name") or "收藏夹"
         cover = info.get("cover") or info.get("cover_url")
         return SubscriptionMeta(f"fav_{media_id}", title, cover, self.url)
