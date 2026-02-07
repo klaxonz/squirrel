@@ -103,6 +103,14 @@ from .http import (
     configure_cloudflare_bypass_client
 )
 
+# Proxy provider
+from .proxy_provider import (
+    ProxyInfo,
+    ProxyProvider,
+    configure_proxy_provider,
+    get_proxy_provider,
+)
+
 # Site configuration
 from .config import (
     set_site_config,
@@ -220,6 +228,11 @@ __all__ = [
     "get",
     "post",
     "configure_cloudflare_bypass_client",
+    # Proxy provider
+    "ProxyInfo",
+    "ProxyProvider",
+    "configure_proxy_provider",
+    "get_proxy_provider",
     # Site configuration
     "set_site_config",
     "set_site_configs",

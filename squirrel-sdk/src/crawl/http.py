@@ -142,7 +142,25 @@ class RateLimitedSession(requests.Session):
         self._rate_limiter.wait(domain)
 
         kwargs.setdefault("timeout", DEFAULT_TIMEOUT_SECONDS)
-        return super().request(method, url, **kwargs)
+
+        from .proxy_provider import get_proxy_provider
+        proxy_provider = get_proxy_provider()
+        proxy_info = None
+
+        if proxy_provider and domain:
+            proxy_info = proxy_provider.get_proxy(domain)
+            if proxy_info:
+                kwargs["proxies"] = proxy_info.to_dict()
+
+        try:
+            response = super().request(method, url, **kwargs)
+            if proxy_provider and proxy_info and domain:
+                proxy_provider.report_result(proxy_info, domain, True)
+            return response
+        except Exception as e:
+            if proxy_provider and proxy_info and domain:
+                proxy_provider.report_result(proxy_info, domain, False)
+            raise
 
 
 _default_rate_limiter = RateLimiter(domain_limits=DEFAULT_DOMAIN_LIMITS)
@@ -236,7 +254,6 @@ def request_without_limit(method: str, url: str, **kwargs):
     else:
         session = requests.Session()
 
-        # Keep encoding to gzip/deflate only to avoid Brotli-related decode errors
         session.headers["Accept-Encoding"] = "gzip, deflate"
 
         retry = Retry(
@@ -251,7 +268,30 @@ def request_without_limit(method: str, url: str, **kwargs):
         session.mount("https://", adapter)
 
         kwargs.setdefault("timeout", DEFAULT_TIMEOUT_SECONDS)
-        return session.request(method, url, **kwargs)
+
+        from .proxy_provider import get_proxy_provider
+        proxy_provider = get_proxy_provider()
+        proxy_info = None
+        domain = None
+
+        if url:
+            parsed = urlparse(url)
+            domain = parsed.netloc.replace("www.", "") if parsed.netloc else url
+
+        if proxy_provider and domain:
+            proxy_info = proxy_provider.get_proxy(domain)
+            if proxy_info:
+                kwargs["proxies"] = proxy_info.to_dict()
+
+        try:
+            response = session.request(method, url, **kwargs)
+            if proxy_provider and proxy_info and domain:
+                proxy_provider.report_result(proxy_info, domain, True)
+            return response
+        except Exception as e:
+            if proxy_provider and proxy_info and domain:
+                proxy_provider.report_result(proxy_info, domain, False)
+            raise
 
 
 def get(url: str, **kwargs):
