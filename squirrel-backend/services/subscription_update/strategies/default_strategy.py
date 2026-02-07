@@ -82,7 +82,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
 
         if not is_full_update:
             sub = subscription_service.get_subscription_detail(request.subscription_id)
-            if sub and sub.total_videos > 0 and sub.total_extract >= sub.total_videos:
+            if sub and sub.total_videos > 0 and sub.total_extract > sub.total_videos:
                 logger.info(
                     f"Subscription {request.subscription_id} extracted videos ({sub.total_extract}) "
                     f">= total_videos ({sub.total_videos}), fetching all videos to update total_videos"

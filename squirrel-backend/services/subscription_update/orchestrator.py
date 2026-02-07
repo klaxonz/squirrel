@@ -3,6 +3,11 @@
 统一入口，负责协调整个更新流程
 """
 import logging
+
+from sqlalchemy import select
+
+from core.database import get_session
+from models.links import UserSubscription
 from utils import url_helper
 from utils.metrics import metrics
 from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult
@@ -46,11 +51,22 @@ class SubscriptionOrchestrator:
                 metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "site_disabled"})
                 return SubscriptionUpdateResult(
                     subscription_id=request.subscription_id,
-                    success=False,
+                    success=True,
                     videos_found=0,
                     videos_enqueued=0,
-                    error_message=message,
                     skipped_reason="site_disabled"
+                )
+
+            if not self._has_active_subscribers(request.subscription_id):
+                message = f"No active subscribers, skip subscription update: subscription_id={request.subscription_id}"
+                logger.info(message)
+                metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "no_subscribers"})
+                return SubscriptionUpdateResult(
+                    subscription_id=request.subscription_id,
+                    success=True,
+                    videos_found=0,
+                    videos_enqueued=0,
+                    skipped_reason="no_subscribers"
                 )
 
             site_name = self._resolve_site(request.url)
@@ -76,8 +92,20 @@ class SubscriptionOrchestrator:
                 success=False,
                 videos_found=0,
                 videos_enqueued=0,
-                error_message=str(e)
+                    error_message=str(e)
             )
+
+    @staticmethod
+    def _has_active_subscribers(subscription_id: int) -> bool:
+        with get_session() as session:
+            row = session.execute(
+                select(UserSubscription.id).where(
+                    UserSubscription.subscription_id == subscription_id,
+                    UserSubscription.is_deleted.is_(False),
+                )
+                .limit(1)
+            ).first()
+            return row is not None
     
     def _resolve_site(self, url: str) -> str:
         """解析站点名称"""

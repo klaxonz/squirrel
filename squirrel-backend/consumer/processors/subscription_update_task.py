@@ -67,10 +67,13 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
         result = orchestrator.update(request)
         
         if result.success:
-            logger.debug(
-                f"Subscription update completed: id={subscription_id}, "
-                f"found={result.videos_found}, enqueued={result.videos_enqueued}"
-            )
+            if result.skipped_reason:
+                logger.debug(f"Subscription update skipped: id={subscription_id}, reason={result.skipped_reason}")
+            else:
+                logger.debug(
+                    f"Subscription update completed: id={subscription_id}, "
+                    f"found={result.videos_found}, enqueued={result.videos_enqueued}"
+                )
         else:
             logger.error(
                 f"Subscription update failed: id={subscription_id}, "

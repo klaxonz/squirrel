@@ -1,8 +1,9 @@
 import logging
 from typing import List, Optional, Dict
-from sqlalchemy import select, func
+from sqlalchemy import select, func, exists
 from core.database import get_session
 from core.cache import redis_client
+from models.links import UserSubscription
 from models.subscription import Subscription
 from services import message_service
 from queues.duplicate_checker import create_simple_checker
@@ -18,6 +19,15 @@ logger = logging.getLogger()
 
 class SubscriptionScheduler:
     """Subscription update scheduler."""
+
+    @staticmethod
+    def _active_user_subscription_exists():
+        return exists(
+            select(1).select_from(UserSubscription).where(
+                UserSubscription.subscription_id == Subscription.id,
+                UserSubscription.is_deleted.is_(False),
+            )
+        )
     
     def schedule_one(
         self,
@@ -32,7 +42,11 @@ class SubscriptionScheduler:
         domain = url_helper.extract_top_level_domain(url)
         if not SiteCatalog.is_site_enabled(domain=domain):
             logger.info(f"Skip scheduling subscription {subscription_id} because site is disabled: {domain}")
-            return False
+            return True
+
+        if not self._has_active_subscribers(subscription_id):
+            logger.info(f"Skip scheduling subscription {subscription_id} because no active subscribers")
+            return True
 
         request = SubscriptionUpdateRequest(
             subscription_id=subscription_id,
@@ -61,7 +75,8 @@ class SubscriptionScheduler:
                 select(Subscription)
                 .where(
                     Subscription.id.in_(subscription_ids),
-                    Subscription.is_deleted == False
+                    Subscription.is_deleted == False,
+                    self._active_user_subscription_exists(),
                 )
             ).all()
             
@@ -88,6 +103,7 @@ class SubscriptionScheduler:
         logger.info(f"Enqueuing {len(subscriptions)} active subscriptions (mode={mode.value})")
         
         grouped = self._group_by_domain(subscriptions)
+        grouped = {domain: subs for domain, subs in grouped.items() if SiteCatalog.is_site_enabled(domain=domain)}
         
         success_count = 0
         error_count = 0
@@ -119,7 +135,10 @@ class SubscriptionScheduler:
         with get_session() as session:
             count = session.execute(
                 select(func.count(Subscription.id))
-                .where(Subscription.is_deleted == False)
+                .where(
+                    Subscription.is_deleted == False,
+                    SubscriptionScheduler._active_user_subscription_exists(),
+                )
             ).scalar() or 0
             return count
 
@@ -129,10 +148,25 @@ class SubscriptionScheduler:
         with get_session() as session:
             subscriptions = session.scalars(
                 select(Subscription)
-                .where(Subscription.is_deleted == False)
+                .where(
+                    Subscription.is_deleted == False,
+                    SubscriptionScheduler._active_user_subscription_exists(),
+                )
                 .order_by(Subscription.id.desc())
             ).all()
             return list(subscriptions)
+
+    @staticmethod
+    def _has_active_subscribers(subscription_id: int) -> bool:
+        with get_session() as session:
+            row = session.execute(
+                select(UserSubscription.id).where(
+                    UserSubscription.subscription_id == subscription_id,
+                    UserSubscription.is_deleted.is_(False),
+                )
+                .limit(1)
+            ).first()
+            return row is not None
 
     @staticmethod
     def _group_by_domain(subscriptions: List[Subscription]) -> Dict[str, List[Subscription]]:
