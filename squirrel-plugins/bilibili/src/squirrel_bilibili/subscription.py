@@ -20,7 +20,7 @@ class BilibiliSubscription:
         self.target, self.resource_type = self._resolve_target()
 
     def _resolve_target(self):
-        obj, res_type = throttled_sync(parse_link(self.url, self.credential))
+        obj, res_type = throttled_sync(lambda: parse_link(self.url, self.credential))
         if obj == -1 or res_type not in (
             ResourceType.USER,
             ResourceType.FAVORITE_LIST,
@@ -41,7 +41,7 @@ class BilibiliSubscription:
 
     def _get_space_info(self) -> SubscriptionMeta:
         user_obj: User = self.target  # type: ignore[assignment]
-        info = throttled_sync(user_obj.get_user_info())
+        info = throttled_sync(lambda: user_obj.get_user_info())
         mid = info.get("mid") or user_obj.get_uid()
         channel_name = info.get("name") or info.get("uname")
         avatar_url = info.get("face")
@@ -50,14 +50,14 @@ class BilibiliSubscription:
     def _get_favlist_info(self) -> SubscriptionMeta:
         fav: favorite_list.FavoriteList = self.target  # type: ignore[assignment]
         media_id = fav.get_media_id()
-        info = throttled_sync(fav.get_info())
+        info = throttled_sync(lambda: fav.get_info())
         title = info.get("title") or info.get("name") or "收藏夹"
         cover = info.get("cover") or info.get("cover_url")
         return SubscriptionMeta(f"fav_{media_id}", title, cover, self.url)
 
     def _get_channel_info(self) -> SubscriptionMeta:
         series: channel_series.ChannelSeries = self.target  # type: ignore[assignment]
-        meta = throttled_sync(series.get_meta())
+        meta = throttled_sync(lambda: series.get_meta())
         prefix = "season" if series.get_type() == ChannelSeriesType.SEASON else "series"
         title = meta.get("title") or meta.get("name") or "合集"
         cover = meta.get("cover") or meta.get("square_cover")
@@ -79,7 +79,7 @@ class BilibiliSubscription:
 
         while True:
             data = throttled_sync(
-                user_obj.get_videos(
+                lambda: user_obj.get_videos(
                     pn=page,
                     ps=page_size,
                     order=VideoOrder.PUBDATE,
@@ -117,7 +117,7 @@ class BilibiliSubscription:
 
         while True:
             data = throttled_sync(
-                fav.get_content_video(
+                lambda: fav.get_content_video(
                     page=page,
                     order=favorite_list.FavoriteListContentOrder.MTIME,
                 )
@@ -148,7 +148,7 @@ class BilibiliSubscription:
         page_size = 100
 
         while True:
-            data = throttled_sync(series.get_videos(pn=page, ps=page_size))
+            data = throttled_sync(lambda: series.get_videos(pn=page, ps=page_size))
             archives = data.get("archives") or []
             if not archives:
                 break

@@ -281,6 +281,12 @@ def reload_plugins() -> None:
 
     try:
         import sys
+        sys.modules.pop('crawl.http', None)
+    except Exception:
+        logger.exception('[plugins] failed to clear crawl.http (ignored)')
+
+    try:
+        import sys
         for root_name in list(_loaded_external_modules):
             for k in list(sys.modules.keys()):
                 if k == root_name or k.startswith(f"{root_name}."):

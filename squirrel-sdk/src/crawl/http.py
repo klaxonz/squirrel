@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 import logging
 import random
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Callable, Dict, Optional, Set, TypeVar
 from urllib.parse import urlparse
 
 import requests
@@ -16,6 +17,8 @@ from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar('T')
+S = TypeVar('S')
 
 DEFAULT_TIMEOUT_SECONDS = 20
 DEFAULT_PROXY_ROTATE_RETRIES = 3
@@ -278,6 +281,46 @@ def get_http_session() -> RateLimitedSession:
             if _shared_session is None:
                 _shared_session = RateLimitedSession(rate_limiter=_default_rate_limiter)
     return _shared_session
+
+
+def execute_with_rate_limit_and_proxy_rotation(
+    execute_func: Callable[[], T],
+    *,
+    domain: str,
+    throttled: bool = True,
+    use_proxy_rotation: bool = True,
+    configure_proxy: Optional[Callable[[Optional[str]], None]] = None,
+    capture_state: Optional[Callable[[], S]] = None,
+    restore_state: Optional[Callable[[S], None]] = None,
+    lock: Optional[object] = None,
+    should_retry: Optional[Callable[[Exception], bool]] = None,
+    max_retries: int = DEFAULT_PROXY_ROTATE_RETRIES,
+) -> T:
+    if throttled:
+        _default_rate_limiter.wait(domain)
+
+    guard = lock if lock is not None else nullcontext()
+    with guard:
+        state = capture_state() if capture_state else None
+        try:
+            if use_proxy_rotation and configure_proxy:
+                from .proxy_provider import execute_with_proxy_rotation
+
+                return execute_with_proxy_rotation(
+                    domain=domain,
+                    execute_func=execute_func,
+                    configure_callback=configure_proxy,
+                    restore_callback=None,
+                    should_retry=should_retry,
+                    max_retries=max_retries,
+                )
+
+            if configure_proxy:
+                configure_proxy(None)
+            return execute_func()
+        finally:
+            if restore_state and capture_state:
+                restore_state(state)  # type: ignore[arg-type]
 
 
 def request(method: str, url: str, **kwargs):

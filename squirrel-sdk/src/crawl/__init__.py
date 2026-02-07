@@ -97,6 +97,7 @@ from .http import (
     configure_rate_limit_enabled,
     get_rate_limiter,
     get_http_session,
+    execute_with_rate_limit_and_proxy_rotation,
     request,
     request_without_limit,
     get,
@@ -110,6 +111,8 @@ from .proxy_provider import (
     ProxyProvider,
     configure_proxy_provider,
     get_proxy_provider,
+    proxy_context,
+    execute_with_proxy_rotation,
 )
 
 # Site configuration
@@ -225,6 +228,7 @@ __all__ = [
     "configure_rate_limit_enabled",
     "get_rate_limiter",
     "get_http_session",
+    "execute_with_rate_limit_and_proxy_rotation",
     "request",
     "request_without_limit",
     "get",
@@ -235,6 +239,8 @@ __all__ = [
     "ProxyProvider",
     "configure_proxy_provider",
     "get_proxy_provider",
+    "proxy_context",
+    "execute_with_proxy_rotation",
     # Site configuration
     "set_site_config",
     "set_site_configs",
