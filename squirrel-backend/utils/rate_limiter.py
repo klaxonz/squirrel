@@ -3,7 +3,7 @@ import random
 import threading
 import time
 from dataclasses import dataclass
-from typing import Optional, Dict
+from typing import Optional, Dict, Set
 
 from .url_helper import extract_second_level_domain
 
@@ -37,6 +37,7 @@ class RateLimiter:
         self._last_request_time: Dict[str, float] = {}
         # key: second-level domain, value: RateLimit
         self._rate_limits: Dict[str, RateLimit] = self.DEFAULT_LIMITS.copy()
+        self._disabled_domains: Set[str] = set()
         # per-domain locks to ensure thread safety per bucket
         self._domain_locks: Dict[str, threading.Lock] = {}
         # protect maps for lazy lock creation
@@ -45,7 +46,17 @@ class RateLimiter:
     def add_rate_limit(self, domain: str, min_interval: float, max_interval: float):
         """Add or update rate limit for a domain (expects second-level domain)"""
         sld = extract_second_level_domain(domain)
+        self._disabled_domains.discard(sld)
         self._rate_limits[sld] = RateLimit(min_interval, max_interval, sld)
+
+    def set_domain_enabled(self, domain: str, enabled: bool):
+        sld = extract_second_level_domain(domain)
+        if not sld:
+            return
+        if enabled:
+            self._disabled_domains.discard(sld)
+            return
+        self._disabled_domains.add(sld)
 
     def _get_lock(self, sld: str) -> threading.Lock:
         # lazy create lock per domain
@@ -61,6 +72,8 @@ class RateLimiter:
     def wait(self, domain: Optional[str] = None):
         """Wait according to rate limit per second-level domain"""
         sld = extract_second_level_domain(domain) if domain else '*'
+        if sld in self._disabled_domains:
+            return
 
         # choose rate limit config
         rate_limit = self._rate_limits.get(sld, self.DEFAULT_RATE_LIMIT)

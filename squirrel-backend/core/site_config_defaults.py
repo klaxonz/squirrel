@@ -19,6 +19,7 @@ SITE_CONFIG_DEFAULTS = {
             }
         },
         "rate_limit": {
+            "enabled": True,
             "min_interval": 2.0,
             "max_interval": 5.0,
         },
@@ -58,6 +59,7 @@ SITE_CONFIG_DEFAULTS = {
             }
         },
         "rate_limit": {
+            "enabled": True,
             "min_interval": 3.0,
             "max_interval": 5.0,
         },
@@ -100,6 +102,7 @@ SITE_CONFIG_DEFAULTS = {
             }
         },
         "rate_limit": {
+            "enabled": True,
             "min_interval": 3.0,
             "max_interval": 8.0,
         },
@@ -142,6 +145,7 @@ SITE_CONFIG_DEFAULTS = {
             }
         },
         "rate_limit": {
+            "enabled": True,
             "min_interval": 5.0,
             "max_interval": 8.0,
         },

@@ -456,13 +456,21 @@
             ></textarea>
           </div>
 
-          <div class="grid md:grid-cols-2 gap-4">
+          <div class="flex items-center gap-3 text-sm text-text-muted">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" v-model="siteEditorForm.rateLimitEnabled" class="accent-color-error">
+              启用站点限流
+            </label>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4" :class="{ 'opacity-60': !siteEditorForm.rateLimitEnabled }">
             <div>
               <label class="block text-sm text-text-muted mb-1">最小请求间隔（秒）</label>
               <input
                 type="number"
                 step="0.1"
                 v-model="siteEditorForm.rateLimitMin"
+                :disabled="!siteEditorForm.rateLimitEnabled"
                 class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
               >
             </div>
@@ -472,6 +480,7 @@
                 type="number"
                 step="0.1"
                 v-model="siteEditorForm.rateLimitMax"
+                :disabled="!siteEditorForm.rateLimitEnabled"
                 class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
               >
             </div>
@@ -720,6 +729,7 @@ const siteEditorForm = ref({
   enabled: true,
   testUrl: '',
   httpHeadersText: '',
+  rateLimitEnabled: true,
   rateLimitMin: '',
   rateLimitMax: '',
   proxyConnectTimeout: '',
@@ -934,6 +944,7 @@ const openSiteEditor = async (site) => {
     enabled: catalogInfo?.enabled !== false,
     testUrl: catalogInfo?.test_url || '',
     httpHeadersText: headersToText(catalogInfo?.http?.headers || {}),
+    rateLimitEnabled: rateLimit?.enabled !== false,
     rateLimitMin: rateLimit?.min_interval ?? '',
     rateLimitMax: rateLimit?.max_interval ?? '',
     proxyConnectTimeout: proxy?.connect_timeout ?? '',
@@ -1007,6 +1018,7 @@ const saveSiteEditor = async () => {
   proxyPayload.follow_redirects = !!siteEditorForm.value.proxyFollowRedirects;
 
   const rateLimitPayload = {};
+  rateLimitPayload.enabled = !!siteEditorForm.value.rateLimitEnabled;
   if (rateLimitMin !== undefined) rateLimitPayload.min_interval = rateLimitMin;
   if (rateLimitMax !== undefined) rateLimitPayload.max_interval = rateLimitMax;
 

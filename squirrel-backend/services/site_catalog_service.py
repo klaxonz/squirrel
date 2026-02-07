@@ -101,13 +101,15 @@ class SiteCatalogService:
                 result[field] = cls._parse_bool(raw.get(field))
         return result
 
-    @staticmethod
-    def _normalize_rate_limit(raw: Any) -> Dict[str, float]:
+    @classmethod
+    def _normalize_rate_limit(cls, raw: Any) -> Dict[str, Any]:
         if raw is None:
             return {}
         if not isinstance(raw, dict):
             raise ValueError("rate_limit 必须是对象")
-        result: Dict[str, float] = {}
+        result: Dict[str, Any] = {}
+        if "enabled" in raw:
+            result["enabled"] = cls._parse_bool(raw.get("enabled"))
         min_interval = raw.get("min_interval")
         max_interval = raw.get("max_interval")
         if min_interval not in (None, ""):

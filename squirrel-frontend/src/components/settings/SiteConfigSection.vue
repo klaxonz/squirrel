@@ -129,18 +129,27 @@
             placeholder="User-Agent: Mozilla/5.0"
           />
 
-          <div class="grid md:grid-cols-2 gap-4">
+          <div class="flex items-center gap-3 text-xs text-text-secondary">
+            <LabeledCheckbox
+              label="启用站点限流"
+              v-model="siteEditorForm.rateLimitEnabled"
+            />
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4" :class="{ 'opacity-60': !siteEditorForm.rateLimitEnabled }">
             <LabeledInput
               label="最小请求间隔（秒）"
               v-model="siteEditorForm.rateLimitMin"
               type="number"
               :step="0.1"
+              :disabled="!siteEditorForm.rateLimitEnabled"
             />
             <LabeledInput
               label="最大请求间隔（秒）"
               v-model="siteEditorForm.rateLimitMax"
               type="number"
               :step="0.1"
+              :disabled="!siteEditorForm.rateLimitEnabled"
             />
           </div>
 
@@ -314,6 +323,7 @@ const siteEditorForm = ref({
   enabled: true,
   testUrl: '',
   httpHeadersText: '',
+  rateLimitEnabled: true,
   rateLimitMin: '',
   rateLimitMax: '',
   proxyConnectTimeout: '',
@@ -417,6 +427,7 @@ const openSiteEditor = (site) => {
     enabled: catalogInfo?.enabled !== false,
     testUrl: catalogInfo?.test_url || '',
     httpHeadersText: headersToText(catalogInfo?.http?.headers || {}),
+    rateLimitEnabled: rateLimit?.enabled !== false,
     rateLimitMin: rateLimit?.min_interval ?? '',
     rateLimitMax: rateLimit?.max_interval ?? '',
     proxyConnectTimeout: proxy?.connect_timeout ?? '',
@@ -490,6 +501,7 @@ const saveSiteEditor = async () => {
   proxyPayload.follow_redirects = !!siteEditorForm.value.proxyFollowRedirects;
 
   const rateLimitPayload = {};
+  rateLimitPayload.enabled = !!siteEditorForm.value.rateLimitEnabled;
   if (rateLimitMin !== undefined) rateLimitPayload.min_interval = rateLimitMin;
   if (rateLimitMax !== undefined) rateLimitPayload.max_interval = rateLimitMax;
 

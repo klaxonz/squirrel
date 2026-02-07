@@ -7,7 +7,7 @@ import random
 import threading
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 from urllib.parse import urlparse
 
 import requests
@@ -62,6 +62,7 @@ class RateLimiter:
         provided_limits = domain_limits or {}
         self._rate_limits: Dict[str, RateLimit] = dict(provided_limits)
         self._last_request_time: Dict[str, float] = {}
+        self._disabled_domains: Set[str] = set()
         self._locks: Dict[str, threading.Lock] = {}
         self._locks_guard = threading.Lock()
 
@@ -70,7 +71,17 @@ class RateLimiter:
 
     def add_rate_limit(self, domain: str, min_interval: float, max_interval: float) -> None:
         sld = _extract_second_level_domain(domain)
+        self._disabled_domains.discard(sld)
         self._rate_limits[sld] = RateLimit(min_interval, max_interval, sld)
+
+    def set_domain_enabled(self, domain: str, enabled: bool) -> None:
+        sld = _extract_second_level_domain(domain)
+        if not sld:
+            return
+        if enabled:
+            self._disabled_domains.discard(sld)
+            return
+        self._disabled_domains.add(sld)
 
     def get_rate_limit(self, domain: Optional[str]) -> RateLimit:
         if not domain:
@@ -92,6 +103,8 @@ class RateLimiter:
         bucket = _extract_second_level_domain(domain) if domain else "*"
         if not bucket:
             bucket = "*"
+        if bucket in self._disabled_domains:
+            return
 
         lock = self._get_lock(bucket)
         rate_limit = self.get_rate_limit(bucket)
@@ -174,6 +187,10 @@ def get_rate_limiter() -> RateLimiter:
 
 def configure_rate_limit(domain: str, min_interval: float, max_interval: float) -> None:
     _default_rate_limiter.add_rate_limit(domain, min_interval, max_interval)
+
+
+def configure_rate_limit_enabled(domain: str, enabled: bool) -> None:
+    _default_rate_limiter.set_domain_enabled(domain, enabled)
 
 
 def set_default_rate_limit(min_interval: float, max_interval: float) -> None:
