@@ -1459,6 +1459,10 @@ defineExpose({
   box-shadow: var(--sp-glow-primary);
 }
 
+.sp-progress--scrubbing .sp-progress-played {
+  background: var(--sp-primary-hover);
+}
+
 .sp-progress-thumb {
   position: absolute;
   top: 50%;
@@ -1470,6 +1474,10 @@ defineExpose({
   transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--sp-shadow-sm);
   pointer-events: none;
+}
+
+.sp-progress--scrubbing .sp-progress-thumb {
+  background: var(--sp-primary-hover);
 }
 
 .sp-progress:hover .sp-progress-thumb,

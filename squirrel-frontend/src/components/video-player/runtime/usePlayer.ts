@@ -211,6 +211,13 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     if (isFinite(duration) && !isNaN(duration)) store.setDuration(duration)
   })
 
+  engine.on('seeking', (time) => {
+    if (!isFinite(time) || isNaN(time)) return
+    const duration = store.duration
+    const nextTime = Math.max(0, time)
+    store.setCurrentTime((isFinite(duration) && !isNaN(duration) && duration > 0) ? Math.min(nextTime, duration) : nextTime)
+  })
+
   engine.on('durationchange', (d) => {
     if (!isFinite(d) || isNaN(d)) return
     store.setDuration(d)
