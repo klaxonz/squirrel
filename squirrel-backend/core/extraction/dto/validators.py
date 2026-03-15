@@ -143,8 +143,4 @@ def validate_duration(duration: Optional[int]) -> Optional[int]:
     if duration < 0:
         raise ValueError(f'Duration must be non-negative, got {duration}')
     
-    # 合理性检查：视频时长不应超过24小时（86400秒）
-    if duration > 86400:
-        raise ValueError(f'Duration seems unreasonable: {duration} seconds')
-    
     return duration
