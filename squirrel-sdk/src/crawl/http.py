@@ -15,6 +15,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from .proxy_provider import _build_proxy_unavailable_error
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
@@ -78,11 +80,17 @@ def _request_with_proxy_rotation(
     except Exception:
         proxy_rotate_retries = DEFAULT_PROXY_ROTATE_RETRIES
 
-    if explicit_proxies or not proxy_provider or not domain or proxy_rotate_retries <= 0:
+    if explicit_proxies:
         return do_request(base_kwargs)
 
+    if not proxy_provider:
+        raise _build_proxy_unavailable_error(domain, 'proxy provider not configured')
+
+    if not domain:
+        raise _build_proxy_unavailable_error(domain, 'request domain not available')
+
     last_exception: Optional[Exception] = None
-    for attempt in range(proxy_rotate_retries + 1):
+    for attempt in range(max(proxy_rotate_retries, 0) + 1):
         attempt_kwargs = dict(base_kwargs)
         proxy_info = None
 
@@ -90,12 +98,13 @@ def _request_with_proxy_rotation(
             proxy_info = proxy_provider.get_proxy(proxy_domain)  # type: ignore[attr-defined]
         except Exception as e:
             logger.warning('Failed to get proxy for domain=%s: %s', proxy_domain, e)
-            proxy_info = None
+            raise _build_proxy_unavailable_error(proxy_domain, 'failed to get proxy') from e
 
         if proxy_info:
             attempt_kwargs['proxies'] = proxy_info.to_dict()  # type: ignore[attr-defined]
         else:
-            attempt_kwargs.pop('proxies', None)
+            logger.error('No proxy available for domain=%s', proxy_domain)
+            raise _build_proxy_unavailable_error(proxy_domain, 'no proxy available')
 
         try:
             response = do_request(attempt_kwargs)

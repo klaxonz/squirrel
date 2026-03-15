@@ -1,9 +1,19 @@
 import logging
 from dataclasses import dataclass
 from typing import Optional
+
 import requests
 
+from core.config import settings
+
 logger = logging.getLogger(__name__)
+
+
+def _normalize_proxy_scheme(scheme: Optional[str]) -> str:
+    scheme_name = (scheme or "http").strip().lower() or "http"
+    if scheme_name in {"socks", "socks5"}:
+        return "socks5h"
+    return scheme_name
 
 
 @dataclass
@@ -15,7 +25,7 @@ class KProxyInfo:
     protocol: str = "http"
 
     def to_url(self, scheme: Optional[str] = None) -> str:
-        scheme_name = (scheme or self.protocol or "http").strip().lower() or "http"
+        scheme_name = _normalize_proxy_scheme(scheme or self.protocol)
         if self.username and self.password:
             return f"{scheme_name}://{self.username}:{self.password}@{self.host}:{self.port}"
         return f"{scheme_name}://{self.host}:{self.port}"
@@ -29,7 +39,7 @@ class KProxyInfo:
 
 
 class KProxyProvider:
-    def __init__(self, base_url: str = "http://127.0.0.1:8002", timeout: int = 5):
+    def __init__(self, base_url: str, timeout: int = 5):
         self.base_url = base_url.rstrip('/')
         self.timeout = timeout
 
@@ -50,7 +60,7 @@ class KProxyProvider:
                 proxy_host = str(proxy_data["ip"]).strip()
                 proxy_port = int(proxy_data["port"])
                 proxy_protocol = str(proxy_data["protocol"]).strip().lower()
-                supported_protocols = {"http", "https", "socks4", "socks5", "socks5h"}
+                supported_protocols = {"http", "https", "socks", "socks4", "socks5", "socks5h"}
                 if proxy_protocol not in supported_protocols:
                     logger.warning(
                         f"Unsupported proxy protocol for domain={domain}: {proxy_protocol}"
@@ -66,7 +76,7 @@ class KProxyProvider:
                     port=proxy_port,
                     username=proxy_data.get("username"),
                     password=proxy_data.get("password"),
-                    protocol=proxy_protocol,
+                    protocol=_normalize_proxy_scheme(proxy_protocol),
                 )
             else:
                 logger.warning(
@@ -102,5 +112,17 @@ class KProxyProvider:
 def configure_default_proxy_provider() -> None:
     from crawl import configure_proxy_provider
 
-    configure_proxy_provider(KProxyProvider())
-    logger.info("Configured global proxy provider: KProxyProvider")
+    service_url = (settings.KPROXY_SERVICE_URL or '').strip()
+    if not service_url:
+        raise ValueError("配置项 KPROXY_SERVICE_URL 未设置")
+
+    provider = KProxyProvider(
+        base_url=service_url,
+        timeout=settings.KPROXY_TIMEOUT,
+    )
+    configure_proxy_provider(provider)
+    logger.info(
+        "Configured global proxy provider: KProxyProvider(base_url=%s, timeout=%s)",
+        provider.base_url,
+        provider.timeout,
+    )

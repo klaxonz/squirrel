@@ -3,7 +3,9 @@ from __future__ import annotations
 import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Protocol, Tuple, TypeVar, runtime_checkable
+from typing import Callable, Optional, Protocol, TypeVar, runtime_checkable
+
+from .exceptions import NetworkError
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,17 @@ def get_proxy_provider() -> Optional[ProxyProvider]:
     return _global_proxy_provider
 
 
+def _build_proxy_unavailable_error(domain: Optional[str], reason: str) -> NetworkError:
+    normalized_domain = domain or 'unknown'
+    return NetworkError(
+        f'Proxy unavailable for domain={normalized_domain}: {reason}',
+        context={
+            'domain': normalized_domain,
+            'reason': reason,
+        },
+    )
+
+
 @contextmanager
 def proxy_context(
     domain: str,
@@ -77,20 +90,18 @@ def proxy_context(
 
     try:
         if not proxy_provider:
-            logger.debug(f'Proxy provider not configured for domain={domain}')
-            if configure_callback:
-                configure_callback(None)
-            yield proxy_provider, proxy_info
-            return
+            logger.error(f'Proxy provider not configured for domain={domain}')
+            raise _build_proxy_unavailable_error(domain, 'proxy provider not configured')
 
-        proxy_info = proxy_provider.get_proxy(domain)
+        try:
+            proxy_info = proxy_provider.get_proxy(domain)
+        except Exception as e:
+            logger.warning(f'Failed to get proxy for domain={domain}: {e}')
+            raise _build_proxy_unavailable_error(domain, 'failed to get proxy') from e
 
         if not proxy_info:
-            logger.info(f'No proxy available for domain={domain}')
-            if configure_callback:
-                configure_callback(None)
-            yield proxy_provider, proxy_info
-            return
+            logger.error(f'No proxy available for domain={domain}')
+            raise _build_proxy_unavailable_error(domain, 'no proxy available')
 
         proxy_url = proxy_info.to_url()
         logger.info(f'Proxy configured: domain={domain}, proxy={proxy_info.host}:{proxy_info.port}')
@@ -147,13 +158,8 @@ def execute_with_proxy_rotation(
     proxy_provider = get_proxy_provider()
 
     if not proxy_provider:
-        logger.debug(f'Proxy provider not configured for domain={domain}')
-        configure_callback(None)
-        try:
-            return execute_func()
-        finally:
-            if restore_callback:
-                restore_callback()
+        logger.error(f'Proxy provider not configured for domain={domain}')
+        raise _build_proxy_unavailable_error(domain, 'proxy provider not configured')
 
     try:
         for attempt in range(max_retries + 1):
@@ -163,6 +169,7 @@ def execute_with_proxy_rotation(
                 proxy_info = proxy_provider.get_proxy(domain)
             except Exception as e:
                 logger.warning(f'Failed to get proxy for domain={domain}: {e}')
+                raise _build_proxy_unavailable_error(domain, 'failed to get proxy') from e
 
             if proxy_info:
                 proxy_url = proxy_info.to_url()
@@ -172,8 +179,8 @@ def execute_with_proxy_rotation(
                 )
                 configure_callback(proxy_url)
             else:
-                logger.info(f'No proxy available for domain={domain}, using direct connection')
-                configure_callback(None)
+                logger.error(f'No proxy available for domain={domain}')
+                raise _build_proxy_unavailable_error(domain, 'no proxy available')
 
             try:
                 result = execute_func()
@@ -195,7 +202,6 @@ def execute_with_proxy_rotation(
 
                 is_last_attempt = attempt >= max_retries
                 should_not_retry = should_retry and not should_retry(e)
-                no_proxy_available = not proxy_info
 
                 if is_last_attempt:
                     logger.warning(
@@ -205,10 +211,6 @@ def execute_with_proxy_rotation(
 
                 if should_not_retry:
                     logger.info(f'Exception not retryable for domain={domain}: {type(e).__name__}')
-                    raise
-
-                if no_proxy_available:
-                    logger.warning(f'No proxy available and request failed for domain={domain}')
                     raise
 
                 logger.info(
