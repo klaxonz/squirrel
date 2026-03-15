@@ -1,8 +1,7 @@
 import logging
 import threading
-import redis
 
-from core.config import settings
+from core.cache import create_redis_client
 from plugins.loader import reload_plugins
 
 logger = logging.getLogger(__name__)
@@ -16,16 +15,7 @@ def _listen_for_reload_signals(component: str):
     _stop_event = threading.Event()
 
     try:
-        client = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            db=settings.REDIS_DB,
-            password=settings.REDIS_PASSWORD if settings.REDIS_PASSWORD else None,
-            decode_responses=True,
-            socket_connect_timeout=5,
-            socket_keepalive=True,
-        )
-
+        client = create_redis_client()
         pubsub = client.pubsub()
         pubsub.subscribe("squirrel:plugin:reload")
         logger.info("[%s] subscribed to plugin reload channel", component)

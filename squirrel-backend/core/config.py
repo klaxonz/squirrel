@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     REDIS_PASSWORD: str = ''
+    REDIS_MAX_CONNECTIONS: int = 256
+    REDIS_POOL_TIMEOUT: int = 10
     POSTGRES_HOST: str = 'localhost'
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = 'postgres'
