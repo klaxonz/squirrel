@@ -4,7 +4,10 @@ import logging
 from typing import Dict, List, Literal
 
 from services.plugin_service import PluginService
-from services.site_login_status_service import SiteLoginStatusService
+from services.site_login_status_service import (
+    get_supported_sites as get_login_supported_sites,
+    test_site_login_status,
+)
 from services.cookiecloud_service import CookieCloudSyncError, sync_cookiecloud_to_site_files
 from plugins.loader import reload_plugins
 from utils.redis_client import publish_plugin_reload_signal
@@ -181,7 +184,7 @@ def get_supported_sites():
     """
     registry = get_extractor_registry()
     catalog = SiteCatalog.get_catalog() or {}
-    login_supported_sites = SiteLoginStatusService.get_supported_sites()
+    login_supported_sites = get_login_supported_sites()
     login_supported_sites_lower = {s.lower() for s in login_supported_sites}
     site_names = merge_site_names(registry, catalog)
     
@@ -255,7 +258,7 @@ def get_site_login_status(site_name: str):
     if not site_info:
         return param_error(f"不支持的站点: {site_name}")
 
-    status = SiteLoginStatusService.test(site_name)
+    status = test_site_login_status(site_name)
     return success(status)
 
 
@@ -311,7 +314,7 @@ async def upload_site_cookies(
 
     site_cookies_path.write_text("\n".join(output_lines) + "\n", encoding="utf-8")
 
-    status = SiteLoginStatusService.test(site_name)
+    status = test_site_login_status(site_name)
     return success(
         {
             "site_name": site_name,
