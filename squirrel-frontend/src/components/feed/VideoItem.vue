@@ -1,6 +1,6 @@
 <template>
   <div
-    class="video-item bg-bg-card rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ease-in-out transform hover:-translate-y-1 relative"
+    class="video-item bg-bg-card rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 relative"
     @contextmenu.prevent="showContextMenu"
     @click="handleClick"
   >
@@ -43,13 +43,13 @@
         ></div>
       </div>
     </div>
-    <div class="p-2">
+    <div class="video-item-content">
       <h5
         class="text-2xs text-text-primary font-medium line-clamp-2 h-8 cursor-pointer hover:text-color-info transition-colors duration-200"
       >
         {{ video.title }}
       </h5>
-      <div class="flex items-center justify-between text-2xs text-text-muted pt-1">
+      <div class="video-item-meta text-2xs text-text-muted">
         <div class="relative group flex-1 min-w-0">
           <div class="flex items-center min-w-0">
             <div class="flex -space-x-2 relative">
@@ -178,19 +178,16 @@ const emit = defineEmits([
   'openModal',
 ]);
 
-// 获取系统配置
 const { config: systemConfig } = useSystemConfig();
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 const { copyVideoLink } = useOptionsMenu(toRef(props, 'video'));
 const { clearHistory, sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 
-// 计算视频是否为 NSFW（任一订阅为 NSFW 则视频为 NSFW）
 const isNsfwVideo = computed(() => {
   return props.video.subscriptions?.some(sub => sub.is_nsfw) || false;
 });
 
-// 计算是否应该模糊封面
 const shouldBlurThumbnail = computed(() => {
   return systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value;
 });
@@ -305,14 +302,12 @@ onUnmounted(() => {
 });
 
 const displayAvatars = computed(() => {
-  // 优先使用 subscriptions
   let avatars = props.video.subscriptions?.map(sub => ({
     id: sub.id,
     name: sub.name,
     avatar: sub.avatar
   })) || [];
 
-  // 如果 subscriptions 为空，则使用 actors
   if (!avatars.length && props.video.actors) {
     avatars = props.video.actors.map(actor => ({
       id: actor.id,
@@ -333,7 +328,6 @@ const displayNames = computed(() => {
 
 const showDefaultThumbnail = ref(false);
 
-// 处理封面加载失败
 const handleThumbnailError = () => {
   showDefaultThumbnail.value = true;
 };
@@ -344,14 +338,32 @@ const handleThumbnailError = () => {
 .video-item {
   width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
   break-inside: avoid;
-  margin-bottom: 4px;
 }
 
 .video-thumbnail {
+  flex: none;
   position: relative;
   padding-top: 56.25%; /* 16:9 宽高比 */
   background-color: var(--bg-tertiary);
+}
+
+.video-item-content {
+  flex: none;
+  height: 68px;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.video-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 16px;
+  margin-top: 4px;
 }
 
 .video-thumbnail img,
@@ -383,15 +395,6 @@ const handleThumbnailError = () => {
   overflow: hidden;
 }
 
-.text-2xs {
-  font-size: var(--font-size-2xs);
-  line-height: 1rem; /* 16px, 调整行高以匹配头像高度 */
-}
-
-.h-8 {
-  height: 2rem; /* 32px, 刚好容纳两行文字 */
-}
-
 .context-menu-item {
   @apply px-4 py-2 text-sm text-text-primary hover:bg-bg-hover cursor-pointer flex items-center;
 }
@@ -400,7 +403,6 @@ const handleThumbnailError = () => {
   cursor: pointer;
 }
 
-/* 添加一些响应式调整 */
 @media (max-width: 768px) {
   .text-2xs {
     font-size: var(--font-size-3xs);
@@ -452,12 +454,10 @@ const handleThumbnailError = () => {
   background: transparent;
 }
 
-/* 确保弹窗在其他元素之上 */
 .group:hover .channel-popup {
   z-index: 1000;
 }
 
-/* 添加一些动画效果 */
 .group-hover\:opacity-100 {
   transition-delay: 200ms;
 }
@@ -466,27 +466,19 @@ const handleThumbnailError = () => {
   transition-delay: 0ms;
 }
 
-/* 添加进度条相关样式 */
 .video-thumbnail:hover .bg-color-primary\/90 {
   height: 3px;
   margin-top: -1px;
 }
 
-/* 确保进度条容器在hover时保持原高度 */
 .video-thumbnail:hover .h-\[2px\] {
   height: 2px;
 }
 
-/* 确保点击区域可以正常工作 */
 .video-item {
   position: relative;
   z-index: 1;
   cursor: pointer;
-}
-
-/* 移除可能影响点击的变换效果 */
-.video-item:hover {
-  transform: none;
 }
 
 .video-thumbnail {
@@ -506,15 +498,9 @@ const handleThumbnailError = () => {
   margin-left: calc(-0.5rem * calc(1 - var(--tw-space-x-reverse)));
 }
 
-.video-info {
-  padding: 8px;
-}
-
-/* 添加响应式样式以确保在移动端的正确显示 */
 @media (max-width: 500px) {
   .video-item {
     width: 100%;
-    margin-bottom: 2px;
   }
 
   .video-thumbnail {
@@ -522,12 +508,10 @@ const handleThumbnailError = () => {
   }
 }
 
-/* 默认头像样式 */
 .default-avatar {
   @apply bg-bg-tertiary text-text-primary flex items-center justify-center text-2xs font-medium;
 }
 
-/* NSFW 封面模糊效果 */
 .blur-thumbnail {
   filter: blur(20px);
   transition: filter 0.3s ease-in-out;

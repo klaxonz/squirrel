@@ -10,14 +10,12 @@
         @scroll="handleScroll"
         :gridItems="layout.gridItems"
         :prerender="PRERENDER_COUNT"
-        anchor-mode="element"
         :range-change-throttle-ms="RANGE_CHANGE_THROTTLE_MS"
-        :item-secondary-size="layout.itemSecondarySize"
         :bottom-padding="64"
         ref="virtualList"
     >
 
-      <template #item="{ item: video, index }">
+      <template #item="{ item: video }">
         <div class="grid-item">
           <VideoItem
               :video="video"
@@ -25,7 +23,6 @@
               :sortBy="sortBy"
               :showProgress="video.showProgress"
               :progress="video.progress"
-              :index="index"
               :class="{ 'is-refreshing': refreshing }"
               @goToSubscription="$emit('goToSubscription', $event)"
               @openModal="$emit('openModal', video)"
@@ -57,13 +54,14 @@ import VideoItem from './VideoItem.vue';
 import LoadingIndicator from './LoadingIndicator.vue';
 import { useElementSize } from '@/composables/useElementSize';
 
-// Display/layout constants
 const ASPECT_RATIO = 9 / 16;
-const CARD_VERTICAL_EXTRA = 76; // non-thumbnail vertical space (title, paddings, etc.)
+const GRID_ITEM_HORIZONTAL_PADDING = 8;
+const GRID_ITEM_VERTICAL_PADDING = 8;
+const CARD_INFO_HEIGHT = 68;
 const BUFFER_PX = 400;
 const PRERENDER_COUNT = 50;
 const RANGE_CHANGE_THROTTLE_MS = 60;
-const PRELOAD_ROWS = 3; // rows ahead of bottom to trigger loading
+const PRELOAD_ROWS = 3;
 
 const props = defineProps({
   videos: Array,
@@ -97,16 +95,17 @@ const calculateGridItems = (width) => {
   return 2;
 };
 
-// Unified layout computed to keep related values in sync
 const layout = computed(() => {
   const width = containerWidth.value || 0;
   const gridItems = calculateGridItems(width);
   const itemSecondarySize = Math.floor(width / gridItems);
-  const itemSize = Math.floor(itemSecondarySize * ASPECT_RATIO) + CARD_VERTICAL_EXTRA;
-  return { gridItems, itemSecondarySize, itemSize };
+  const cardWidth = Math.max(0, itemSecondarySize - GRID_ITEM_HORIZONTAL_PADDING);
+  const thumbnailHeight = Math.floor(cardWidth * ASPECT_RATIO);
+  const itemSize = thumbnailHeight + CARD_INFO_HEIGHT + GRID_ITEM_VERTICAL_PADDING;
+  return { gridItems, itemSize };
 });
 
-const triggerThreshold = computed(() => layout.value.itemSize * layout.value.gridItems * PRELOAD_ROWS);
+const triggerThreshold = computed(() => layout.value.itemSize * PRELOAD_ROWS);
 
 const shouldLoadMore = (scrollTop, clientHeight, scrollHeight) => {
   if (props.loading || props.allLoaded) return false;
@@ -115,7 +114,6 @@ const shouldLoadMore = (scrollTop, clientHeight, scrollHeight) => {
 
 const handleScroll = (event) => {
   const {scrollTop, clientHeight, scrollHeight} = event.target;
-  // 增加预加载触发阈值，提前3行的高度开始加载，确保用户滚动时不需要等待
   if (shouldLoadMore(scrollTop, clientHeight, scrollHeight)) {
     emit('loadMore');
   }
@@ -126,7 +124,7 @@ const virtualList = ref(null);
 
 defineExpose({
   scrollToTop: () => {
-    virtualList.value?.container.scrollTo({ top: 0 });
+    virtualList.value?.scrollToOffset(0);
   }
 });
 
@@ -162,6 +160,7 @@ defineExpose({
 
 .grid-item {
   width: 100%;
+  height: 100%;
   padding: 4px;
   box-sizing: border-box;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);

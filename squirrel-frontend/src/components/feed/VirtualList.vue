@@ -11,15 +11,11 @@
 
     <div 
       class="visible-items"
-      :style="{ 
-        transform: `translateY(${offset}px)`,
-        ...itemStyle
-      }"
+      :style="itemStyle"
     >
       <div
-        v-for="(item, i) in visibleItems"
+        v-for="item in visibleItems"
         :key="item[keyField]"
-        :ref="el => setItemRef(el, i)"
         class="list-item"
       >
         <slot 
@@ -35,16 +31,15 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onActivated, onBeforeUnmount, nextTick } from 'vue';
+import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-// ==================== Props 配置 ====================
 const props = defineProps({
   items: {
     type: Array,
-    required: true
+    default: () => []
   },
   itemSize: {
-    type: [Number, Function],
+    type: Number,
     default: 50
   },
   keyField: {
@@ -59,27 +54,14 @@ const props = defineProps({
     type: Number,
     default: 1
   },
-  itemSecondarySize: {
-    type: Number,
-    default: 300
-  },
   prerender: {
     type: Number,
     default: 0
   },
   bufferMode: {
     type: String,
-    default: 'px', // 'px' | 'rows' | 'auto'
+    default: 'px',
     validator: (v) => ['px', 'rows', 'auto'].includes(v)
-  },
-  anchorMode: {
-    type: String,
-    default: 'row', // 'row' | 'element'
-    validator: (v) => ['row', 'element'].includes(v)
-  },
-  anchorThresholdPx: {
-    type: Number,
-    default: 1.5
   },
   rangeChangeThrottleMs: {
     type: Number,
@@ -88,26 +70,22 @@ const props = defineProps({
   bottomPadding: {
     type: Number,
     default: 0
-  }
+  },
 });
-
 
 const emit = defineEmits(['scroll', 'range-change', 'reach-start', 'reach-end']);
 
-// ==================== 基础状态 ====================
 const container = ref(null);
-const itemEls = ref([]);
 const scrollTop = ref(0);
-const currentScrollTop = ref(0);
-const suppressScroll = ref(false);
+const containerHeight = ref(0);
 
-// ==================== 滚动位置管理 ====================
-const MAX_SCROLL_POSITIONS = 50; // 限制 Map 大小，防止内存泄漏
+const MAX_SCROLL_POSITIONS = 50;
 const scrollPositions = ref(new Map());
 const instanceId = ref(null);
+const resizeObserver = ref(null);
+const rangeThrottleState = { last: 0, timer: null, lastArgs: null };
 
 const saveScrollPosition = (id, position) => {
-  // 限制 Map 大小，移除最旧的条目
   if (scrollPositions.value.size >= MAX_SCROLL_POSITIONS) {
     const firstKey = scrollPositions.value.keys().next().value;
     scrollPositions.value.delete(firstKey);
@@ -118,142 +96,52 @@ const saveScrollPosition = (id, position) => {
 const restoreScrollPosition = () => {
   if (instanceId.value && scrollPositions.value.has(instanceId.value)) {
     const targetPos = scrollPositions.value.get(instanceId.value);
-    container.value.scrollTop = targetPos;
-    scrollTop.value = targetPos;
-    currentScrollTop.value = targetPos;
-    requestAnimationFrame(() => {
-      container.value.scrollTop = targetPos;
-      updateHeights();
-    });
+    scrollToOffset(targetPos);
   }
 };
 
-// ==================== 网格布局计算 ====================
 const columnCount = computed(() => Math.max(1, props.gridItems));
+const rowHeight = computed(() => Math.max(1, Math.floor(props.itemSize || 0)));
+const rowCount = computed(() => Math.ceil(props.items.length / columnCount.value));
 
 const itemStyle = computed(() => ({
   display: 'grid',
-  gridTemplateColumns: `repeat(${columnCount.value}, 1fr)`,
+  gridTemplateColumns: `repeat(${columnCount.value}, minmax(0, 1fr))`,
+  gridAutoRows: `${rowHeight.value}px`,
   width: '100%',
+  transform: `translateY(${offset.value}px)`,
 }));
 
-// ==================== 高度管理 ====================
-const rowHeights = ref([]);
-const updateHeightsTimeout = ref(null);
-
-// 估算行高（优先使用固定 itemSize，其次使用平均行高，最后回退 secondarySize）
-const defaultRowHeight = computed(() => {
-  if (typeof props.itemSize === 'number') return props.itemSize;
-  if (rowHeights.value.length > 0) return averageRowHeight.value;
-  return props.itemSecondarySize;
+const bufferRows = computed(() => {
+  if (props.bufferMode === 'rows') return Math.max(0, Math.ceil(props.buffer));
+  const bufferPx = props.bufferMode === 'auto' && props.buffer <= 50
+    ? props.buffer * rowHeight.value
+    : props.buffer;
+  return Math.max(0, Math.ceil(bufferPx / rowHeight.value));
 });
 
-// 平均行高计算
-const averageRowHeight = computed(() => {
-  if (rowHeights.value.length === 0) return props.itemSecondarySize;
-  const validHeights = rowHeights.value.filter(h => h > 0);
-  return Math.max(50, validHeights.reduce((a, b) => a + b, 0) / validHeights.length) || props.itemSecondarySize;
+const prerenderRows = computed(() => {
+  if (!props.prerender) return 0;
+  return Math.ceil(props.prerender / columnCount.value);
 });
 
-// 缓冲区像素计算
-const bufferPxComputed = computed(() => {
-  if (props.bufferMode === 'px') return props.buffer;
-  if (props.bufferMode === 'rows') return props.buffer * averageRowHeight.value;
-  return props.buffer > 50 ? props.buffer : props.buffer * averageRowHeight.value;
-});
-
-// ==================== 工具函数 ====================
-// 累计高度到某一行（不含该行）
-const calculateCumulativeHeight = (heights, upToRow, fallback) => {
-  let sum = 0;
-  for (let r = 0; r < upToRow; r++) sum += heights[r] || fallback;
-  return sum;
-};
-
-// 滚动位置校正（含阈值与抖动抑制）
-const applyScrollAdjustment = (delta) => {
-  if (!container.value) return;
-  if (Math.abs(delta) <= props.anchorThresholdPx) return;
-  suppressScroll.value = true;
-  container.value.scrollTop = Math.max(0, container.value.scrollTop + delta);
-  scrollTop.value = container.value.scrollTop;
-  currentScrollTop.value = scrollTop.value;
-  requestAnimationFrame(() => { suppressScroll.value = false; });
-};
-
-// ==================== 可见范围计算 ====================
-const containerHeight = computed(() => {
-  return container.value?.clientHeight || 0
-});
-
-// 行偏移计算
-const rowOffsets = computed(() => {
-  const count = Math.ceil(props.items.length / columnCount.value);
-  const offsets = new Array(count);
-  let acc = 0;
-  for (let r = 0; r < count; r++) {
-    offsets[r] = acc;
-    acc += rowHeights.value[r] || defaultRowHeight.value;
-  }
-  return offsets;
-});
-
-// 二分查找起始行
-const findStartRow = (scrollTopVal) => {
-  const offsets = rowOffsets.value;
-  if (offsets.length === 0) return 0;
-  let low = 0, high = offsets.length - 1, ans = 0;
-  while (low <= high) {
-    const mid = (low + high) >> 1;
-    if (offsets[mid] <= scrollTopVal) {
-      ans = mid;
-      low = mid + 1;
-    } else {
-      high = mid - 1;
-    }
-  }
-  return ans;
-};
-
-// 二分查找结束行
-const findEndRowByLimit = (limitPx) => {
-  const offsets = rowOffsets.value;
-  let low = 0, high = offsets.length; // upper_bound
-  while (low < high) {
-    const mid = (low + high) >> 1;
-    if (offsets[mid] < limitPx) low = mid + 1; else high = mid;
-  }
-  return low;
-};
-
-// 可见范围计算
 const range = computed(() => {
-  const rowCount = Math.ceil(props.items.length / columnCount.value);
-  if (rowCount === 0) return { startRow: 0, endRow: 0, startIndex: 0, endIndex: 0, offsetPx: 0 };
-  
-  const bufferPx = bufferPxComputed.value;
-  const st = Math.max(0, currentScrollTop.value);
-  const startRow = Math.max(0, findStartRow(st - bufferPx));
-  const endLimit = st + containerHeight.value + bufferPx;
-  let endRow = findEndRowByLimit(endLimit);
-  
-  // 额外预渲染若干行
-  if (props.prerender && props.prerender > 0) {
-    const extraRows = Math.ceil(props.prerender / Math.max(1, columnCount.value));
-    endRow = Math.min(rowCount, endRow + extraRows);
-  }
-  
-  // 至少包含一行
-  if (endRow <= startRow) endRow = Math.min(rowCount, startRow + 1);
-  
+  if (rowCount.value === 0) return { startRow: 0, endRow: 0, startIndex: 0, endIndex: 0 };
+
+  const safeScrollTop = Math.max(0, scrollTop.value);
+  const firstVisibleRow = Math.floor(safeScrollTop / rowHeight.value);
+  const viewportRows = Math.max(1, Math.ceil(containerHeight.value / rowHeight.value));
+  const startRow = Math.max(0, firstVisibleRow - bufferRows.value);
+  let endRow = Math.min(rowCount.value, firstVisibleRow + viewportRows + bufferRows.value + prerenderRows.value);
+
+  if (endRow <= startRow) endRow = Math.min(rowCount.value, startRow + 1);
+
   const startIndex = startRow * columnCount.value;
   const endIndex = Math.min(props.items.length, endRow * columnCount.value);
-  const offsetPx = rowOffsets.value[startRow] || 0;
-  
-  return { startRow, endRow, startIndex, endIndex, offsetPx };
+
+  return { startRow, endRow, startIndex, endIndex };
 });
 
-// 可见项计算
 const visibleItems = computed(() => {
   const { startIndex, endIndex } = range.value;
   return props.items.slice(startIndex, endIndex).map((item, i) => {
@@ -267,142 +155,12 @@ const visibleItems = computed(() => {
   });
 });
 
-// 总高度计算
 const totalHeight = computed(() => {
-  const rowCount = Math.ceil(props.items.length / columnCount.value);
-  const contentHeight = Array.from({ length: rowCount }).reduce((acc, _, row) => {
-    return acc + (rowHeights.value[row] || defaultRowHeight.value);
-  }, 0);
-  return contentHeight + props.bottomPadding;
+  return rowCount.value * rowHeight.value + props.bottomPadding;
 });
 
-
-// 当前偏移量
-const offset = computed(() => {
-  const off = range.value.offsetPx || 0;
-  const maxOff = Math.max(0, totalHeight.value - containerHeight.value);
-  return Math.min(Math.max(0, off), maxOff);
-});
-
-// ==================== 观察器管理 ====================
-const resizeObserver = ref(null);
-const observedElements = ref(new Set());
-
-// 设置元素引用并注册观察器
-const setItemRef = (el, i) => {
-  const prevEl = itemEls.value[i];
-  if (prevEl && observedElements.value.has(prevEl) && el !== prevEl) {
-    if (resizeObserver.value) resizeObserver.value.unobserve(prevEl);
-    observedElements.value.delete(prevEl);
-  }
-  if (el) {
-    itemEls.value[i] = el;
-    if (resizeObserver.value && !observedElements.value.has(el)) {
-      resizeObserver.value.observe(el);
-      observedElements.value.add(el);
-    }
-  } else {
-    itemEls.value[i] = null;
-  }
-};
-
-// 更新已渲染元素的观察器
-const updateItemObservers = () => {
-  if (!resizeObserver.value) return;
-  const nextSet = new Set(itemEls.value.filter(Boolean));
-
-  // 观察新增元素
-  nextSet.forEach(el => {
-    if (!observedElements.value.has(el)) {
-      resizeObserver.value.observe(el);
-    }
-  });
-
-  // 取消观察已移除元素
-  observedElements.value.forEach(el => {
-    if (!nextSet.has(el)) {
-      resizeObserver.value.unobserve(el);
-    }
-  });
-
-  observedElements.value = nextSet;
-};
-
-// 初始化尺寸观察器
-const observeResize = () => {
-  if (resizeObserver.value) return;
-
-  resizeObserver.value = new ResizeObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.target === container.value) {
-        updateHeights();
-      } else {
-        // 列表项尺寸变化，触发行高更新
-        updateHeights();
-      }
-    });
-  });
-
-  updateItemObservers();
-  if (container.value) {
-    resizeObserver.value.observe(container.value);
-  }
-};
-
-// ==================== 高度更新逻辑 ====================
-let pendingHeightRaf = null;
-
-const updateHeights = () => {
-  if (pendingHeightRaf) return;
-  pendingHeightRaf = requestAnimationFrame(() => {
-    pendingHeightRaf = null;
-    const prevRowHeights = rowHeights.value;
-    const startRowBefore = range.value.startRow;
-    
-    // 计算更新前偏移
-    const prevOffsetBefore = calculateCumulativeHeight(prevRowHeights, startRowBefore, defaultRowHeight.value);
-
-    const newRowHeights = [...prevRowHeights];
-    itemEls.value.forEach((el, i) => {
-      if (!el || !visibleItems.value[i]) return;
-      const index = visibleItems.value[i]._index;
-      const row = Math.floor(index / columnCount.value);
-      const height = el.clientHeight;
-      if (!newRowHeights[row] || height > newRowHeights[row]) {
-        newRowHeights[row] = height;
-      }
-    });
-    rowHeights.value = newRowHeights;
-
-    // 计算更新后偏移并做锚定修正，避免抖动
-    const newOffsetBefore = calculateCumulativeHeight(newRowHeights, startRowBefore, defaultRowHeight.value);
-    const delta = newOffsetBefore - prevOffsetBefore;
-    
-    if (container.value) {
-      let applyDelta = 0;
-      if (props.anchorMode === 'element') {
-        // 选择第一个可见元素作为锚定元素
-        const firstEl = itemEls.value.find(Boolean);
-        if (firstEl) {
-          const beforeTop = firstEl.getBoundingClientRect().top;
-          // 强制同步 reflow 之后再取一次 top
-          firstEl.offsetHeight;
-          const afterTop = firstEl.getBoundingClientRect().top;
-          applyDelta = beforeTop - afterTop;
-        } else {
-          applyDelta = delta;
-        }
-      } else {
-        applyDelta = delta;
-      }
-      applyScrollAdjustment(applyDelta);
-    }
-  });
-};
-
-// ==================== 事件处理 ====================
-// 带节流的 range-change 事件发射
-const rangeThrottleState = { last: 0, timer: null, lastArgs: null };
+const offset = computed(() => range.value.startRow * rowHeight.value);
+const maxScrollTop = computed(() => Math.max(0, totalHeight.value - containerHeight.value));
 
 const emitRangeChange = (r) => {
   const now = performance.now();
@@ -423,56 +181,79 @@ const emitRangeChange = (r) => {
   }
 };
 
-// 滚动事件处理
+const updateContainerHeight = () => {
+  containerHeight.value = container.value?.clientHeight || 0;
+};
+
+const observeContainer = () => {
+  if (resizeObserver.value || !container.value) return;
+  resizeObserver.value = new ResizeObserver(() => {
+    updateContainerHeight();
+    clampScrollTop();
+  });
+  resizeObserver.value.observe(container.value);
+};
+
+const clampScrollTop = () => {
+  if (!container.value) return;
+  const clamped = Math.max(0, Math.min(container.value.scrollTop, maxScrollTop.value));
+  if (clamped !== container.value.scrollTop) {
+    container.value.scrollTop = clamped;
+  }
+  scrollTop.value = clamped;
+};
+
 const handleScroll = () => {
   if (!container.value) return;
-  
+
   scrollTop.value = container.value.scrollTop;
-  currentScrollTop.value = scrollTop.value;
-  if (suppressScroll.value) {
-    return;
-  }
-  
   saveScrollPosition(instanceId.value, scrollTop.value);
 
-  // 向下兼容：提供与原有使用一致的 target 字段
-  emit('scroll', { 
+  emit('scroll', {
     target: container.value,
     scrollTop: scrollTop.value
   });
-  
+
   if (scrollTop.value <= 0) emit('reach-start');
   const nearEnd = scrollTop.value + containerHeight.value >= totalHeight.value - 1;
   if (nearEnd) emit('reach-end');
-
-  // 使用更精确的防抖时间（100ms）
-  if (!updateHeightsTimeout.value) {
-    updateHeightsTimeout.value = setTimeout(() => {
-      updateHeights();
-      updateHeightsTimeout.value = null;
-    }, 100);
-  }
 };
 
-// ==================== 生命周期钩子 ====================
+const scrollToOffset = (offsetPx) => {
+  if (!container.value) return;
+  const nextOffset = Math.max(0, Math.min(offsetPx, maxScrollTop.value));
+  container.value.scrollTop = nextOffset;
+  scrollTop.value = nextOffset;
+  saveScrollPosition(instanceId.value, nextOffset);
+};
+
+const scrollToIndex = (index, align = 'start') => {
+  const clamped = Math.max(0, Math.min(index, props.items.length - 1));
+  const row = Math.floor(clamped / columnCount.value);
+  const base = row * rowHeight.value;
+  let target = base;
+  if (align === 'center') target = base - containerHeight.value / 2 + rowHeight.value / 2;
+  if (align === 'end') target = base - containerHeight.value + rowHeight.value;
+  scrollToOffset(target);
+};
+
+const reset = () => {
+  scrollToOffset(0);
+};
+
 onMounted(() => {
   instanceId.value = Symbol('virtual-list-instance');
-  observeResize();
+  observeContainer();
   nextTick(() => {
-    currentScrollTop.value = container.value?.scrollTop || 0;
+    updateContainerHeight();
     restoreScrollPosition();
-    updateItemObservers();
-    updateHeights();
+    clampScrollTop();
   });
 });
 
 onActivated(() => {
+  updateContainerHeight();
   restoreScrollPosition();
-  // 组件在 keep-alive 场景下被激活时，重新测量以避免隐藏期尺寸为 0 导致的空白
-  nextTick(() => {
-    updateItemObservers();
-    updateHeights();
-  });
 });
 
 onBeforeUnmount(() => {
@@ -481,98 +262,63 @@ onBeforeUnmount(() => {
     resizeObserver.value.disconnect();
     resizeObserver.value = null;
   }
-  if (updateHeightsTimeout.value) {
-    clearTimeout(updateHeightsTimeout.value);
-    updateHeightsTimeout.value = null;
-  }
+  if (rangeThrottleState.timer) clearTimeout(rangeThrottleState.timer);
 });
 
-// ==================== 数据变化监听 ====================
-// 数据源变更时：若为尾部追加则保留已测量行高，否则重置
 watch(() => props.items, (newItems, oldItems) => {
   const oldLen = oldItems?.length || 0;
   const newLen = newItems?.length || 0;
   let appended = false;
-  
+
   if (oldLen > 0 && newLen >= oldLen) {
     const key = props.keyField || 'id';
     appended = true;
     for (let i = 0; i < oldLen; i++) {
-      if (!newItems[i] || newItems[i][key] !== oldItems[i][key]) { 
-        appended = false; 
-        break; 
+      if (!newItems[i] || newItems[i][key] !== oldItems[i][key]) {
+        appended = false;
+        break;
       }
     }
   }
-  
+
   if (!appended) {
-    // 完全清理旧的引用和观察器
-    itemEls.value.forEach(el => {
-      if (el && resizeObserver.value) {
-        resizeObserver.value.unobserve(el);
+    scrollToOffset(0);
+  } else {
+    nextTick(() => {
+      updateContainerHeight();
+      clampScrollTop();
+    });
+  }
+});
+
+watch(
+  () => [columnCount.value, rowHeight.value],
+  (_, oldValue) => {
+    if (!oldValue) return;
+    const [oldColumnCount, oldRowHeight] = oldValue;
+    const anchorRow = Math.floor(scrollTop.value / oldRowHeight);
+    const anchorIndex = Math.min(props.items.length - 1, anchorRow * oldColumnCount);
+    nextTick(() => {
+      updateContainerHeight();
+      if (anchorIndex >= 0) {
+        scrollToIndex(anchorIndex);
+      } else {
+        clampScrollTop();
       }
     });
-    itemEls.value = [];
-    observedElements.value.clear();
-    rowHeights.value = [];
-    
-    // 当数据源发生替换（非尾部追加）时，重置滚动，避免切换标签后出现顶部空白
-    if (container.value) {
-      container.value.scrollTop = 0;
-    }
-    currentScrollTop.value = 0;
-    scrollTop.value = 0;
   }
-  
-  requestAnimationFrame(() => {
-    updateItemObservers();
-    updateHeights();
+);
+
+watch(totalHeight, () => {
+  nextTick(() => {
+    updateContainerHeight();
+    clampScrollTop();
   });
 });
 
-// 列数变化通常意味着布局变化（窗口/容器尺寸变化），需要丢弃旧的行高并重新测量
-watch(() => columnCount.value, () => {
-  rowHeights.value = [];
-  requestAnimationFrame(() => {
-    updateItemObservers();
-    updateHeights();
-  });
-});
-
-// 当行范围变化：合并更新与事件发射
 watch(range, (r) => {
-  requestAnimationFrame(() => {
-    updateItemObservers();
-    updateHeights();
-  });
   emitRangeChange(r);
-});
-
-// ==================== 对外暴露方法 ====================
-const scrollToOffset = (offsetPx) => {
-  if (!container.value) return;
-  container.value.scrollTop = Math.max(0, offsetPx);
-  handleScroll();
-};
-
-const scrollToIndex = (index, align = 'start') => {
-  const clamped = Math.max(0, Math.min(index, props.items.length - 1));
-  const row = Math.floor(clamped / columnCount.value);
-  const base = rowOffsets.value[row] ?? row * averageRowHeight.value;
-  let target = base;
-  if (align === 'center') target = base - containerHeight.value / 2;
-  if (align === 'end') target = base - containerHeight.value + (rowHeights.value[row] || props.itemSecondarySize);
-  scrollToOffset(target);
-};
-
-const reset = () => {
-  rowHeights.value = [];
-  itemEls.value = [];
-  currentScrollTop.value = 0;
-  scrollTop.value = 0;
-  if (container.value) container.value.scrollTop = 0;
-  updateHeights();
-};
+}, { immediate: true });
 
 defineExpose({ scrollToOffset, scrollToIndex, reset, container, range, totalHeight });
 </script>
@@ -603,6 +349,7 @@ defineExpose({ scrollToOffset, scrollToIndex, reset, container, range, totalHeig
   will-change: transform;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   list-style: none;
 }
 
