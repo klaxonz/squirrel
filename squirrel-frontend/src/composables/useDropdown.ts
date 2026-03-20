@@ -1,6 +1,11 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 
-export function useDropdown() {
+type UseDropdownOptions = {
+  closeOnEscape?: boolean
+}
+
+export function useDropdown(options: UseDropdownOptions = {}) {
+  const { closeOnEscape = false } = options
   const isOpen = ref(false)
   const rootRef = ref<HTMLElement | null>(null)
 
@@ -21,12 +26,25 @@ export function useDropdown() {
     }
   }
 
+  const handleEscKey = (event: KeyboardEvent) => {
+    if (!closeOnEscape) return
+    if (event.key === 'Escape') {
+      isOpen.value = false
+    }
+  }
+
   onMounted(() => {
     document.addEventListener('click', handleClickOutside)
+    if (closeOnEscape) {
+      document.addEventListener('keydown', handleEscKey)
+    }
   })
 
   onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside)
+    if (closeOnEscape) {
+      document.removeEventListener('keydown', handleEscKey)
+    }
   })
 
   return { isOpen, rootRef, toggle, close }

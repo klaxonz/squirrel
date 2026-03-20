@@ -106,7 +106,7 @@
 
 
               <!-- 更多按钮 - 点击显示下拉菜单 -->
-              <div class="relative">
+              <div ref="moreOptionsRef" class="relative">
                 <button
                   @click="handleMoreOptionsClick"
 	                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
@@ -267,7 +267,7 @@ import { ref, onMounted, onUnmounted, watch, computed, nextTick, reactive, injec
 import { useRoute, useRouter } from 'vue-router';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
-import useOptionsDropdown from '../composables/useOptionsDropdown';
+import { useDropdown } from '@/composables/useDropdown';
 import VideoPlayer from '@/components/video-player/VideoPlayer.vue';
 import { LocalStorageAdapter } from '@/components/video-player/core';
 import { Icon } from '@iconify/vue';
@@ -294,7 +294,16 @@ const { video, startTime, relatedVideos, loadingRelated, playbackSource, subtitl
 const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
-const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
+const {
+  isOpen: showMoreOptions,
+  rootRef: moreOptionsRef,
+  toggle: toggleMoreOptions,
+} = useDropdown({ closeOnEscape: true });
+
+const handleMoreOptionsClick = (event) => {
+  event.stopPropagation();
+  toggleMoreOptions();
+};
 
 
 // 视频播放器引用
