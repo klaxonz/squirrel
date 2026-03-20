@@ -378,241 +378,15 @@
       </div>
     </div>
 
-    <!-- 站点配置编辑弹窗 -->
-    <div
-      v-if="siteEditorVisible"
-      class="fixed inset-0 bg-overlay-dark-70 flex items-center justify-center z-50 p-4"
-    >
-      <div class="bg-bg-secondary rounded-2xl border border-border-primary w-full max-w-3xl shadow-2xl">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-border-secondary">
-          <div>
-            <h3 class="text-lg font-semibold">编辑站点配置</h3>
-            <p class="text-xs text-text-muted mt-1">插件站点：{{ siteEditorForm.siteName }}</p>
-          </div>
-          <button
-            class="text-text-muted hover:text-text-primary transition-colors"
-            @click="closeSiteEditor"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div class="site-editor-scroll px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto pr-2">
-          <div>
-            <label class="block text-sm text-text-muted mb-1">显示名称</label>
-            <input
-              v-model="siteEditorForm.label"
-              class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
-              placeholder="展示给用户的名称"
-            >
-          </div>
-
-  <div class="grid md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm text-text-muted mb-1">域名列表</label>
-              <textarea
-                v-model="siteEditorForm.domainsText"
-                rows="5"
-                class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
-                placeholder="每行一个域名，例如：www.youtube.com"
-              ></textarea>
-              <p class="text-xs text-text-tertiary mt-1">用于匹配订阅与视频来源，至少填写一个域名。</p>
-            </div>
-            <div>
-              <label class="block text-sm text-text-muted mb-1">别名（可选）</label>
-              <textarea
-                v-model="siteEditorForm.aliasesText"
-                rows="5"
-                class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
-                placeholder="每行一个别名，例如：yt、油管"
-              ></textarea>
-              <p class="text-xs text-text-tertiary mt-1">别名可用于筛选条件。</p>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-3 text-sm text-text-muted">
-            <label class="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" v-model="siteEditorForm.enabled" class="accent-color-error">
-              启用该站点（用于筛选/数据爬取）
-            </label>
-          </div>
-
-          <div>
-            <label class="block text-sm text-text-muted mb-1">测试 URL</label>
-            <input
-              v-model="siteEditorForm.testUrl"
-              class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
-              placeholder="用于连通性检测的 URL"
-            >
-          </div>
-
-          <div>
-            <label class="block text-sm text-text-muted mb-1">HTTP 请求头（每行 key: value）</label>
-            <textarea
-              v-model="siteEditorForm.httpHeadersText"
-              rows="4"
-              class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
-              placeholder="User-Agent: Mozilla/5.0"
-            ></textarea>
-          </div>
-
-          <div class="flex items-center gap-3 text-sm text-text-muted">
-            <label class="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" v-model="siteEditorForm.rateLimitEnabled" class="accent-color-error">
-              启用站点限流
-            </label>
-          </div>
-
-          <div class="grid md:grid-cols-2 gap-4" :class="{ 'opacity-60': !siteEditorForm.rateLimitEnabled }">
-            <div>
-              <label class="block text-sm text-text-muted mb-1">最小请求间隔（秒）</label>
-              <input
-                type="number"
-                step="0.1"
-                v-model="siteEditorForm.rateLimitMin"
-                :disabled="!siteEditorForm.rateLimitEnabled"
-                class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
-              >
-            </div>
-            <div>
-              <label class="block text-sm text-text-muted mb-1">最大请求间隔（秒）</label>
-              <input
-                type="number"
-                step="0.1"
-                v-model="siteEditorForm.rateLimitMax"
-                :disabled="!siteEditorForm.rateLimitEnabled"
-                class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error"
-              >
-            </div>
-          </div>
-
-          <div>
-            <h4 class="text-sm text-text-secondary mb-2">代理参数</h4>
-            <div class="grid md:grid-cols-2 gap-4 text-sm text-text-muted">
-              <label class="flex flex-col">
-                <span class="mb-1">连接超时 (秒)</span>
-                <input type="number" step="0.1" v-model="siteEditorForm.proxyConnectTimeout"
-                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
-              </label>
-              <label class="flex flex-col">
-                <span class="mb-1">读取超时 (秒)</span>
-                <input type="number" step="0.1" v-model="siteEditorForm.proxyReadTimeout"
-                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
-              </label>
-              <label class="flex flex-col">
-                <span class="mb-1">写入超时 (秒)</span>
-                <input type="number" step="0.1" v-model="siteEditorForm.proxyWriteTimeout"
-                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
-              </label>
-              <label class="flex flex-col">
-                <span class="mb-1">连接池超时 (秒)</span>
-                <input type="number" step="0.1" v-model="siteEditorForm.proxyPoolTimeout"
-                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
-              </label>
-              <label class="flex flex-col">
-                <span class="mb-1">Keepalive 过期 (秒)</span>
-                <input type="number" step="0.1" v-model="siteEditorForm.proxyKeepaliveExpiry"
-                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
-              </label>
-              <label class="flex flex-col">
-                <span class="mb-1">最大连接数</span>
-                <input type="number" step="1" v-model="siteEditorForm.proxyMaxConnections"
-                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
-              </label>
-              <label class="flex flex-col">
-                <span class="mb-1">最大 Keepalive 连接数</span>
-                <input type="number" step="1" v-model="siteEditorForm.proxyMaxKeepaliveConnections"
-                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
-              </label>
-              <label class="flex flex-col">
-                <span class="mb-1">分块大小 (字节)</span>
-                <input type="number" step="1" v-model="siteEditorForm.proxyChunkSize"
-                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
-              </label>
-              <label class="flex flex-col">
-                <span class="mb-1">最大重试次数</span>
-                <input type="number" step="1" v-model="siteEditorForm.proxyMaxRetries"
-                  class="w-full bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error">
-              </label>
-            </div>
-            <div class="flex flex-wrap gap-4 mt-3 text-sm text-text-muted">
-              <label class="flex items-center gap-2">
-              <input type="checkbox" v-model="siteEditorForm.proxyEnableHttp2" class="accent-color-error">
-                启用 HTTP/2
-              </label>
-              <label class="flex items-center gap-2">
-              <input type="checkbox" v-model="siteEditorForm.proxyFollowRedirects" class="accent-color-error">
-                允许重定向
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <h4 class="text-sm text-text-secondary mb-2">登录检测</h4>
-            <div class="grid md:grid-cols-2 gap-4">
-              <input v-model="siteEditorForm.loginCheckUrl" placeholder="检测 URL" class="w-full bg-bg-tertiary border border-border-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error">
-              <input type="number" step="0.1" v-model="siteEditorForm.loginTimeout" placeholder="超时时间 (秒)" class="w-full bg-bg-tertiary border border-border-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-color-error">
-            </div>
-            <textarea
-              v-model="siteEditorForm.loginHeadersText"
-              rows="4"
-              class="w-full bg-bg-tertiary border border-border-secondary rounded-lg px-3 py-2 text-sm mt-3 focus:outline-none focus:border-color-error"
-              placeholder="登录检测请求头，每行 key: value"
-            ></textarea>
-          </div>
-
-          <div class="flex flex-wrap gap-6 text-sm text-text-muted">
-            <label class="flex items-center gap-2">
-              <input type="checkbox" v-model="siteEditorForm.metadataNsfw" class="accent-color-error">
-              默认标记为 NSFW
-            </label>
-            <label class="flex items-center gap-2">
-              <input type="checkbox" v-model="siteEditorForm.metadataRequiresCookies" class="accent-color-error">
-              需要 Cookies 才可抓取
-            </label>
-            <label class="flex items-center gap-2">
-              <input type="checkbox" v-model="siteEditorForm.metadataRequiresLogin" class="accent-color-error">
-              需要登录状态
-            </label>
-            <label class="flex items-center gap-2">
-              <input type="checkbox" v-model="siteEditorForm.metadataPlayerUrlCache" class="accent-color-error">
-              启用播放器链接缓存
-            </label>
-            <label class="flex items-center gap-2">
-              <input type="checkbox" v-model="siteEditorForm.metadataOfflineThumbnailsDownload" class="accent-color-error">
-              解析时下载封面到本地
-            </label>
-            <label class="flex items-center gap-2">
-              <input type="checkbox" v-model="siteEditorForm.metadataOfflineThumbnailsDisplay" class="accent-color-error">
-              优先使用本地封面显示
-            </label>
-          </div>
-
-          <div
-            v-if="siteEditorError"
-            class="text-sm text-color-error bg-color-error/10 border border-color-error/30 rounded-lg px-4 py-2"
-          >
-            {{ siteEditorError }}
-          </div>
-        </div>
-
-        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-secondary">
-          <button
-            @click="closeSiteEditor"
-            class="px-5 py-2 rounded-full bg-bg-tertiary hover:bg-bg-hover text-sm transition-colors"
-          >
-            取消
-          </button>
-          <button
-            @click="saveSiteEditor"
-            :disabled="siteEditorSaving"
-            class="px-5 py-2 rounded-full bg-color-error hover:bg-color-error-hover text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {{ siteEditorSaving ? '保存中...' : '保存配置' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <SiteConfigEditorDialog
+      :visible="siteEditorVisible"
+      :site="editingSite"
+      :catalog="siteCatalog"
+      :saving="siteEditorSaving"
+      :error-message="siteEditorError"
+      @close="closeSiteEditor"
+      @save="saveSiteEditor"
+    />
   </div>
 </template>
 
@@ -624,20 +398,18 @@ import {
   CubeIcon,
   CheckCircleIcon
 } from '@heroicons/vue/24/outline';
+import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import { StatsCard } from '@/components/common';
 import { Logger } from '@/utils/logger'
-import { resetSitesCache } from '../composables/useSites';
-import { formatDate } from '../utils/dateFormat';
+import { useSiteCatalog } from '@/composables/useSites';
 import {
   disablePlugin,
   enablePlugin,
   getPlugins,
-  getSites,
   getSupportedSites,
   importAllSiteCookies,
   installPlugin,
   reloadPlugins,
-  saveSites,
   syncCookieCloudCookies,
   testAllSitesConnectivity,
   testSiteConnectivity,
@@ -714,50 +486,12 @@ const importingCookies = ref(false);
 const syncingCookieCloud = ref(false);
 
 // 站点配置（数据爬取）
-const siteCatalog = ref({});
-const siteCatalogLoading = ref(false);
+const { catalog: siteCatalog, loading: siteCatalogLoading, error: siteCatalogErrorState, loadCatalog, saveCatalog } = useSiteCatalog();
 const siteCatalogLoaded = ref(false);
+const editingSite = ref(null);
 const siteEditorVisible = ref(false);
 const siteEditorSaving = ref(false);
 const siteEditorError = ref('');
-const siteEditorForm = ref({
-  slug: '',
-  siteName: '',
-  label: '',
-  domainsText: '',
-  aliasesText: '',
-  enabled: true,
-  testUrl: '',
-  httpHeadersText: '',
-  rateLimitEnabled: true,
-  rateLimitMin: '',
-  rateLimitMax: '',
-  proxyConnectTimeout: '',
-  proxyReadTimeout: '',
-  proxyWriteTimeout: '',
-  proxyPoolTimeout: '',
-  proxyKeepaliveExpiry: '',
-  proxyMaxConnections: '',
-  proxyMaxKeepaliveConnections: '',
-  proxyChunkSize: '',
-  proxyMaxRetries: '',
-  proxyEnableHttp2: true,
-  proxyFollowRedirects: true,
-  loginCheckUrl: '',
-  loginHeadersText: '',
-  loginTimeout: '',
-  metadataNsfw: false,
-  metadataRequiresCookies: false,
-  metadataRequiresLogin: false,
-  metadataPlayerUrlCache: false,
-  metadataOfflineThumbnailsDownload: false,
-  metadataOfflineThumbnailsDisplay: false,
-});
-
-// 计算属性
-const siteStats = computed(() => ({
-  total: supportedSites.value.length || 0
-}));
 
 const siteCatalogMap = computed(() => siteCatalog.value || {});
 
@@ -837,13 +571,6 @@ const handleSyncCookieCloud = async () => {
   syncingCookieCloud.value = false;
 };
 
-const parseListInput = (text = '') => {
-  return text
-    .split(/[\n,]/)
-    .map(item => item.trim())
-    .filter(Boolean);
-};
-
 const setLoginTesting = (siteName, value) => {
   if (!siteName) return;
   loginStatusTesting.value = {
@@ -860,66 +587,13 @@ const upsertLoginStatus = (siteName, payload) => {
   };
 };
 
-const headersToText = (headers = {}) => {
-  return Object.entries(headers || {})
-    .map(([key, value]) => `${key}: ${value}`)
-    .join('\n');
-};
-
-const parseHeadersText = (text = '') => {
-  const result = {};
-  text.split('\n').forEach(line => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    const [key, ...rest] = trimmed.split(':');
-    if (!key) return;
-    result[key.trim()] = rest.join(':').trim();
-  });
-  return result;
-};
-
-const toNumberOrUndefined = (value) => {
-  if (value === '' || value === null || value === undefined) {
-    return undefined;
-  }
-  const num = Number(value);
-  return Number.isNaN(num) ? undefined : num;
-};
-
-const catalogObjectToPayload = (catalogObj) => {
-  return Object.entries(catalogObj).map(([slug, info]) => {
-    const payload = {
-      slug,
-      label: info?.label || slug,
-      domains: info?.domains || [],
-      aliases: info?.aliases || [],
-      enabled: info?.enabled !== false,
-    };
-    if (info?.http) payload.http = info.http;
-    if (info?.proxy) payload.proxy = info.proxy;
-    if (info?.login) payload.login = info.login;
-    if (info?.rate_limit) payload.rate_limit = info.rate_limit;
-    if (info?.metadata) payload.metadata = info.metadata;
-    if (info?.test_url) payload.test_url = info.test_url;
-    return payload;
-  });
-};
-
 const loadSiteCatalog = async () => {
-  siteCatalogLoading.value = true;
   try {
-    const { data, error } = await getSites()
-    if (!error) {
-      siteCatalog.value = data || {};
-      siteCatalogLoaded.value = true;
-    } else {
-      siteCatalogLoaded.value = false;
-    }
+    await loadCatalog();
+    siteCatalogLoaded.value = !siteCatalogErrorState.value;
   } catch (error) {
     Logger.error('Failed to load site config', error);
     siteCatalogLoaded.value = false;
-  } finally {
-    siteCatalogLoading.value = false;
   }
 };
 
@@ -927,158 +601,25 @@ const openSiteEditor = async (site) => {
   if (!siteCatalogLoaded.value && !siteCatalogLoading.value) {
     await loadSiteCatalog();
   }
-  const siteName = site.site_name || site.name;
-  const slug = (siteName || '').toLowerCase();
-  const catalogInfo = siteCatalog.value[slug];
-  const rateLimit = catalogInfo?.rate_limit || {};
-  const proxy = catalogInfo?.proxy || {};
-  const loginConfig = catalogInfo?.login || {};
-  const metadata = catalogInfo?.metadata || {};
-
-  siteEditorForm.value = {
-    slug,
-    siteName,
-    label: catalogInfo?.label || siteName,
-    domainsText: (catalogInfo?.domains?.length ? catalogInfo.domains : (site.domains || [])).join('\n'),
-    aliasesText: (catalogInfo?.aliases || []).join('\n'),
-    enabled: catalogInfo?.enabled !== false,
-    testUrl: catalogInfo?.test_url || '',
-    httpHeadersText: headersToText(catalogInfo?.http?.headers || {}),
-    rateLimitEnabled: rateLimit?.enabled !== false,
-    rateLimitMin: rateLimit?.min_interval ?? '',
-    rateLimitMax: rateLimit?.max_interval ?? '',
-    proxyConnectTimeout: proxy?.connect_timeout ?? '',
-    proxyReadTimeout: proxy?.read_timeout ?? '',
-    proxyWriteTimeout: proxy?.write_timeout ?? '',
-    proxyPoolTimeout: proxy?.pool_timeout ?? '',
-    proxyKeepaliveExpiry: proxy?.keepalive_expiry ?? '',
-    proxyMaxConnections: proxy?.max_connections ?? '',
-    proxyMaxKeepaliveConnections: proxy?.max_keepalive_connections ?? '',
-    proxyChunkSize: proxy?.chunk_size ?? '',
-    proxyMaxRetries: proxy?.max_retries ?? '',
-    proxyEnableHttp2: proxy?.enable_http2 !== false,
-    proxyFollowRedirects: proxy?.follow_redirects !== false,
-    loginCheckUrl: loginConfig?.check_url || '',
-    loginHeadersText: headersToText(loginConfig?.headers || {}),
-    loginTimeout: loginConfig?.timeout ?? '',
-    metadataNsfw: !!metadata?.nsfw,
-    metadataRequiresCookies: !!metadata?.requires_cookies,
-    metadataRequiresLogin: !!metadata?.requires_login,
-    metadataPlayerUrlCache: !!metadata?.player_url_cache,
-    metadataOfflineThumbnailsDownload: !!metadata?.offline_thumbnails_download,
-    metadataOfflineThumbnailsDisplay: !!metadata?.offline_thumbnails_display,
-  };
+  editingSite.value = site;
   siteEditorError.value = '';
   siteEditorVisible.value = true;
 };
 
 const closeSiteEditor = () => {
   siteEditorVisible.value = false;
+  editingSite.value = null;
   siteEditorError.value = '';
 };
 
-const saveSiteEditor = async () => {
+const saveSiteEditor = async ({ slug, sitePayload }) => {
   siteEditorError.value = '';
-  const { slug, siteName } = siteEditorForm.value;
-  if (!slug) {
-    siteEditorError.value = '站点标识不可为空';
-    return;
-  }
-  const domains = parseListInput(siteEditorForm.value.domainsText);
-  if (!domains.length) {
-    siteEditorError.value = '请至少填写一个域名';
-    return;
-  }
-  const aliases = parseListInput(siteEditorForm.value.aliasesText);
-  const label = siteEditorForm.value.label?.trim() || siteName || slug;
-
-  const httpHeaders = parseHeadersText(siteEditorForm.value.httpHeadersText);
-  const loginHeaders = parseHeadersText(siteEditorForm.value.loginHeadersText);
-  const rateLimitMin = toNumberOrUndefined(siteEditorForm.value.rateLimitMin);
-  const rateLimitMax = toNumberOrUndefined(siteEditorForm.value.rateLimitMax);
-  const proxyPayload = {};
-  const proxyFields = [
-    ['connect_timeout', siteEditorForm.value.proxyConnectTimeout],
-    ['read_timeout', siteEditorForm.value.proxyReadTimeout],
-    ['write_timeout', siteEditorForm.value.proxyWriteTimeout],
-    ['pool_timeout', siteEditorForm.value.proxyPoolTimeout],
-    ['keepalive_expiry', siteEditorForm.value.proxyKeepaliveExpiry],
-    ['max_connections', siteEditorForm.value.proxyMaxConnections],
-    ['max_keepalive_connections', siteEditorForm.value.proxyMaxKeepaliveConnections],
-    ['chunk_size', siteEditorForm.value.proxyChunkSize],
-    ['max_retries', siteEditorForm.value.proxyMaxRetries],
-  ];
-  proxyFields.forEach(([key, value]) => {
-    const num = toNumberOrUndefined(value);
-    if (num !== undefined) {
-      proxyPayload[key] = num;
-    }
-  });
-  proxyPayload.enable_http2 = !!siteEditorForm.value.proxyEnableHttp2;
-  proxyPayload.follow_redirects = !!siteEditorForm.value.proxyFollowRedirects;
-
-  const rateLimitPayload = {};
-  rateLimitPayload.enabled = !!siteEditorForm.value.rateLimitEnabled;
-  if (rateLimitMin !== undefined) rateLimitPayload.min_interval = rateLimitMin;
-  if (rateLimitMax !== undefined) rateLimitPayload.max_interval = rateLimitMax;
-
-  const loginPayload = {};
-  if (siteEditorForm.value.loginCheckUrl?.trim()) {
-    loginPayload.check_url = siteEditorForm.value.loginCheckUrl.trim();
-  }
-  if (Object.keys(loginHeaders).length) {
-    loginPayload.headers = loginHeaders;
-  }
-  const loginTimeout = toNumberOrUndefined(siteEditorForm.value.loginTimeout);
-  if (loginTimeout !== undefined) {
-    loginPayload.timeout = loginTimeout;
-  }
-
-  const metadataPayload = {
-    nsfw: !!siteEditorForm.value.metadataNsfw,
-    requires_cookies: !!siteEditorForm.value.metadataRequiresCookies,
-    requires_login: !!siteEditorForm.value.metadataRequiresLogin,
-    player_url_cache: !!siteEditorForm.value.metadataPlayerUrlCache,
-    offline_thumbnails_download: !!siteEditorForm.value.metadataOfflineThumbnailsDownload,
-    offline_thumbnails_display: !!siteEditorForm.value.metadataOfflineThumbnailsDisplay,
-  };
-
-  const sitePayload = {
-    label,
-    domains,
-    aliases,
-    enabled: !!siteEditorForm.value.enabled,
-  };
-  const testUrl = siteEditorForm.value.testUrl?.trim();
-  if (testUrl) {
-    sitePayload.test_url = testUrl;
-  }
-  if (Object.keys(httpHeaders).length) {
-    sitePayload.http = { headers: httpHeaders };
-  }
-  if (Object.keys(rateLimitPayload).length) {
-    sitePayload.rate_limit = rateLimitPayload;
-  }
-  if (Object.keys(proxyPayload).some(key => proxyPayload[key] !== undefined && proxyPayload[key] !== '')) {
-    sitePayload.proxy = proxyPayload;
-  }
-  if (Object.keys(loginPayload).length) {
-    sitePayload.login = loginPayload;
-  }
-  sitePayload.metadata = metadataPayload;
-
   const updatedCatalog = { ...siteCatalog.value };
   updatedCatalog[slug] = sitePayload;
 
   siteEditorSaving.value = true;
   try {
-    const payload = catalogObjectToPayload(updatedCatalog);
-    const result = await saveSites({ sites: payload })
-    if (result.error) {
-      throw result.error
-    }
-    siteCatalog.value = result.data || {};
-    resetSitesCache();
+    await saveCatalog(updatedCatalog);
     siteEditorVisible.value = false;
   } catch (error) {
     Logger.error('Failed to save site config', error);
@@ -1383,21 +924,4 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.site-editor-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.site-editor-scroll::-webkit-scrollbar-track {
-  background: var(--border-primary);
-  border-radius: 9999px;
-}
-
-.site-editor-scroll::-webkit-scrollbar-thumb {
-  background: var(--border-hover);
-  border-radius: 9999px;
-}
-
-.site-editor-scroll:hover::-webkit-scrollbar-thumb {
-  background: var(--overlay-light-30);
-}
 </style>

@@ -275,7 +275,6 @@ import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import useVideoInteraction from '../composables/useVideoInteraction';
 import { useImageFallback } from '../composables/useImageFallback';
-import { usePlayerStore } from '../stores/playerStore';
 import { Logger } from '@/utils/logger'
 import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
 
@@ -296,7 +295,6 @@ const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
 const { showMoreOptions, handleMoreOptionsClick } = useOptionsDropdown();
-const playerStore = usePlayerStore();
 
 
 // 视频播放器引用
@@ -524,9 +522,9 @@ const goToVideo = async (id, videoData = null) => {
 const handleAutoplayNext = async (evt) => {
   try {
     try { onVideoEnded(); } catch (_) {}
-    const autoplayEnabled = evt?.autoplay !== undefined ? evt.autoplay : playerStore.autoplay;
-    const autoplayNextEnabled = evt?.autoplayNext !== undefined ? evt.autoplayNext : playerStore.autoplayNext;
-    const loopEnabled = evt?.loop !== undefined ? evt.loop : playerStore.loop;
+    const autoplayEnabled = evt?.autoplay ?? true;
+    const autoplayNextEnabled = evt?.autoplayNext ?? true;
+    const loopEnabled = evt?.loop ?? false;
     if (!autoplayEnabled || !autoplayNextEnabled || loopEnabled) return;
 
     const relatedList = Array.isArray(relatedVideos.value) ? relatedVideos.value : [];
