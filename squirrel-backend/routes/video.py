@@ -10,7 +10,7 @@ from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExt
 from models.user import User
 from schemas.video.request.video import SortBy, DownloadVideoRequest
 from services import video_service, subscription_video_service, subscription_service
-from services.site_catalog_service import SiteCatalogService
+from services.site_catalog_service import save_sites
 from typing import List
 from utils.site_catalog import SiteCatalog
 from core.site_config_manager import get_effective_site_catalog
@@ -302,7 +302,7 @@ def update_sites_catalog(payload: dict = Body(...)):
         return response.param_error("缺少 sites 参数")
 
     try:
-        catalog = SiteCatalogService.save_sites(sites_payload)
+        catalog = save_sites(sites_payload)
         return response.success(catalog, msg="站点配置已更新")
     except ValueError as exc:
         return response.param_error(str(exc))
