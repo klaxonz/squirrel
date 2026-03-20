@@ -10,6 +10,8 @@ from yt_dlp import YoutubeDL
 
 from crawl import SubtitlesProvider, register_subtitles
 
+YOUTUBE_PLAYER_CLIENT = 'android'
+
 
 @register_subtitles
 class YoutubeSubtitlesProvider:
@@ -31,6 +33,11 @@ class YoutubeSubtitlesProvider:
                 'writeautomaticsub': True,
                 'subtitleslangs': [lang],
                 'subtitlesformat': 'srt',
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': [YOUTUBE_PLAYER_CLIENT],
+                    }
+                },
                 'postprocessors': [{
                     'key': 'FFmpegSubtitlesConvertor',
                     'format': 'srt'

@@ -9,8 +9,6 @@ from yt_dlp import YoutubeDL
 from crawl import (
     YoutubeDLExtractorBase,
     register_extractor,
-    filter_cookies_to_query_string,
-    resolve_cookie_file_path,
     AuthError,
     NetworkError,
     NotFoundError,
@@ -18,6 +16,7 @@ from crawl import (
 )
 
 logger = logging.getLogger(__name__)
+YOUTUBE_PLAYER_CLIENT = 'android'
 
 
 @register_extractor('youtube', ['youtube.com', 'youtu.be'])
@@ -65,7 +64,6 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
 
     def _build_ytdlp_opts(self, url: str, queue_name: Optional[str] = None) -> Dict[str, Any]:
         """构建yt-dlp选项"""
-        cookie_file = resolve_cookie_file_path(url)
         ydl_opts: Dict[str, Any] = {
             'quiet': True,
             'skip_download': True,
@@ -76,14 +74,13 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             'file_access_retries': 3,
             'ignoreerrors': False,
             'noprogress': True,
+            'noplaylist': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': [YOUTUBE_PLAYER_CLIENT],
+                }
+            },
         }
-
-        if cookie_file:
-            ydl_opts['cookiefile'] = cookie_file
-        else:
-            cookies = filter_cookies_to_query_string(url)
-            if cookies:
-                ydl_opts['cookie'] = cookies
 
         return ydl_opts
 

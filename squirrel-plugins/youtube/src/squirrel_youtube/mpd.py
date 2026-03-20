@@ -11,13 +11,12 @@ from yt_dlp import YoutubeDL
 from crawl import (
     MpdBuilder,
     register_mpd,
-    filter_cookies_to_query_string,
-    resolve_cookie_file_path,
     get_http_headers,
 )
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115 Safari/537.36'
 SITE_SLUG = 'youtube'
+YOUTUBE_PLAYER_CLIENT = 'android'
 SESSION = requests.Session()
 logger = logging.getLogger(__name__)
 
@@ -119,14 +118,12 @@ def _build_ytdlp_opts(url: str) -> dict:
         'noplaylist': True,
         'ignoreerrors': False,
         'extract_flat': False,
+        'extractor_args': {
+            'youtube': {
+                'player_client': [YOUTUBE_PLAYER_CLIENT],
+            }
+        },
     }
-    cookie_file = resolve_cookie_file_path(url)
-    if cookie_file:
-        opts['cookiefile'] = cookie_file
-    else:
-        cookies = filter_cookies_to_query_string(url)
-        if cookies:
-            opts['cookie'] = cookies
     return opts
 
 
