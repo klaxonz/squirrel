@@ -90,10 +90,6 @@ const props = defineProps({
     type: Boolean,
     required: true
   },
-  isRead: {
-    type: Boolean,
-    default: false
-  },
   video: {
     type: Object,
     required: true
@@ -103,7 +99,6 @@ const props = defineProps({
 const emit = defineEmits([
   'close',
   'toggleReadStatus',
-  'dislikeVideo',
   'copyVideoLink',
   'toggleLike'
 ]);

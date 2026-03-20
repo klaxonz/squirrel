@@ -128,12 +128,10 @@
         v-if="showMenu"
         :position="menuPosition"
         :is-open="showMenu"
-        :is-read="video.is_read"
         :video="video"
         @close="closeContextMenu"
         @toggleReadStatus="toggleReadStatus"
         @copyVideoLink="copyVideoLink"
-        @dislikeVideo="dislikeVideo"
         @toggleLike="toggleLikeVideo"
       />
     </Teleport>
@@ -272,7 +270,7 @@ const toggleReadStatus = async (isRead) => {
 
 const toggleLikeVideo = async () => {
   try {
-    if (props.video.is_liked === 1) {
+    if (props.video.is_liked === 1 || props.video.is_liked === 0) {
       const { error } = await deleteInteraction(props.video.id);
       if (!error) {
         props.video.is_liked = null;
@@ -286,25 +284,6 @@ const toggleLikeVideo = async () => {
     closeContextMenu();
   } catch (error) {
     Logger.error('Failed to toggle like state', error);
-  }
-};
-
-const dislikeVideo = async () => {
-  try {
-    if (props.video.is_liked === 0) {
-      const { error } = await deleteInteraction(props.video.id);
-      if (!error) {
-        props.video.is_liked = null;
-      }
-    } else {
-      const { error } = await toggleLike(props.video.id, INTERACTION_TYPE.DISLIKE);
-      if (!error) {
-        props.video.is_liked = 0;
-      }
-    }
-    closeContextMenu();
-  } catch (error) {
-    Logger.error('Failed to toggle dislike state', error);
   }
 };
 
