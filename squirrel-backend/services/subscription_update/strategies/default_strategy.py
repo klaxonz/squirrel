@@ -119,12 +119,12 @@ class DefaultUpdateStrategy(UpdateStrategy):
             domain = "unknown"
 
         # 批量检查VIP视频
-        from services.vip_video_service import vip_video_service
+        from services.vip_video_service import is_vip_video
         from core.database import get_session
         vip_video_urls = set()
         with get_session() as session:
             for video_url in video_urls:
-                if vip_video_service.is_vip_video(video_url, session):
+                if is_vip_video(video_url, session):
                     vip_video_urls.add(video_url)
 
         for index, video_url in enumerate(video_urls, 1):

@@ -99,8 +99,8 @@ class ExtractionStage(PipelineStage):
         # 如果是VIP权限错误，记录到VIP视频表
         if isinstance(error, VipError):
             try:
-                from services.vip_video_service import vip_video_service
-                vip_video_service.record_vip_video(
+                from services.vip_video_service import record_vip_video
+                record_vip_video(
                     url=context.task.url,
                     error_message=str(error),
                     error_type=type(error).__name__
