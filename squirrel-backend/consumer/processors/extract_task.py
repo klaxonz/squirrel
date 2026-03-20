@@ -7,7 +7,7 @@ from typing import Dict, Any
 from pydantic import ValidationError
 from models.message import Message
 from schemas.video.dto.video_dto import VideoExtractDto
-from services.video_extraction import video_extractor
+from services.video_extraction import extract_video
 
 logger = logging.getLogger()
 
@@ -31,4 +31,4 @@ def process_domain_video_extract(message: Dict[str, Any]) -> None:
     配置位置：consumer/consumers_setup.py
     """
     params = _parse_message(message)
-    video_extractor.extract(params)
+    extract_video(params)
