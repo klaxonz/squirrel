@@ -46,83 +46,77 @@
 
               <!-- 操作按钮组 -->
               <div class="video-meta__actions">
-                <!-- 随机播放按钮 -->
-                <button
-                  @click="handlePlayRandom"
-                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
-                  title="随机播放"
-                  aria-label="随机播放"
-                >
-                  <Icon icon="lucide:shuffle" class="h-5 w-5" />
-                </button>
-                <!-- 主要按钮显示在外面 -->
-                <button
-                  @click="handleLike(video, INTERACTION_TYPE.LIKE)"
-                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
-                  :class="{ 'text-color-error': video?.interaction_type === INTERACTION_TYPE.LIKE }"
-                >
-                  <Icon
-                    :icon="video?.interaction_type === INTERACTION_TYPE.LIKE ? 'material-symbols:thumb-up' : 'material-symbols:thumb-up-outline'"
-                    class="h-5 w-5"
-                  />
-                </button>
+                <template v-for="action in videoPrimaryActions" :key="action.key">
+                  <a
+                    v-if="action.href"
+                    :href="action.href"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    :class="[
+                      'video-action',
+                      `video-action--${action.variant}`,
+                      action.active ? 'is-active' : '',
+                      action.active ? `is-active--${action.tone}` : ''
+                    ]"
+                    :aria-label="action.label"
+                    :title="action.label"
+                  >
+                    <Icon :icon="action.icon" class="video-action__icon" />
+                    <span class="video-action__label">{{ action.label }}</span>
+                  </a>
+                  <button
+                    v-else
+                    type="button"
+                    :class="[
+                      'video-action',
+                      `video-action--${action.variant}`,
+                      action.active ? 'is-active' : '',
+                      action.active ? `is-active--${action.tone}` : ''
+                    ]"
+                    :aria-pressed="action.active ? 'true' : 'false'"
+                    :title="action.label"
+                    @click="handlePrimaryAction(action)"
+                  >
+                    <Icon :icon="action.icon" class="video-action__icon" />
+                    <span class="video-action__label">{{ action.label }}</span>
+                  </button>
+                </template>
 
-                <button
-                  @click="handleLike(video, INTERACTION_TYPE.DISLIKE)"
-                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
-                  :class="{ 'text-text-secondary': video?.interaction_type === INTERACTION_TYPE.DISLIKE }"
-                >
-                  <Icon
-                    :icon="video?.interaction_type === INTERACTION_TYPE.DISLIKE ? 'material-symbols:thumb-down' : 'material-symbols:thumb-down-outline'"
-                    class="h-5 w-5"
-                  />
-                </button>
-
-                <button
-                  @click="handleLater(video)"
-                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
-                  :class="{ 'text-color-info': video?.interaction_type === INTERACTION_TYPE.LATER }"
-                  title="稍后看"
-                  aria-label="稍后看"
-                >
-                  <Icon
-                    :icon="video?.interaction_type === INTERACTION_TYPE.LATER ? 'material-symbols:schedule' : 'material-symbols:schedule-outline'"
-                    class="h-5 w-5"
-                  />
-                </button>
-
-                <!-- 原视频页按钮 -->
-                <a
-                  v-if="video && video.url"
-                  :href="video.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
-                  aria-label="打开原视频页"
-                  title="打开原视频页"
-                >
-                  <Icon icon="material-symbols:open-in-new" class="h-5 w-5" />
-                </a>
-
-
-                <!-- 更多按钮 - 点击显示下拉菜单 -->
                 <div ref="moreOptionsRef" class="relative">
                   <button
+                    type="button"
                     @click="handleMoreOptionsClick"
-                    class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                    class="video-action video-action--secondary"
+                    :aria-expanded="showMoreOptions ? 'true' : 'false'"
+                    aria-haspopup="menu"
                   >
-                    <Icon icon="material-symbols:more-vert" class="h-5 w-5" />
+                    <Icon icon="material-symbols:more-horiz" class="video-action__icon" />
+                    <span class="video-action__label">更多</span>
                   </button>
 
-                  <!-- 下拉菜单 -->
                   <div
                     v-if="showMoreOptions"
-                    class="absolute right-0 mt-2 py-2 min-w-[40px] rounded-lg shadow-lg bg-bg-card border border-border-primary z-50"
+                    class="video-action-menu"
                     @click.stop
                   >
-                    <div class="flex flex-col">
-
-                    </div>
+                    <button
+                      v-for="action in videoOverflowActions"
+                      :key="action.key"
+                      type="button"
+                      class="video-action-menu__item"
+                      :class="[
+                        action.active ? 'is-active' : '',
+                        action.active ? `is-active--${action.tone}` : ''
+                      ]"
+                      :aria-pressed="action.active ? 'true' : 'false'"
+                      @click="handleOverflowAction(action)"
+                    >
+                      <span class="video-action-menu__main">
+                        <Icon :icon="action.icon" class="video-action-menu__icon" />
+                        <span class="video-action-menu__label">{{ action.label }}</span>
+                      </span>
+                      <span v-if="action.hint" class="video-action-menu__hint">{{ action.hint }}</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -299,11 +293,85 @@ const {
   isOpen: showMoreOptions,
   rootRef: moreOptionsRef,
   toggle: toggleMoreOptions,
+  close: closeMoreOptions,
 } = useDropdown({ closeOnEscape: true });
 
 const handleMoreOptionsClick = (event) => {
   event.stopPropagation();
   toggleMoreOptions();
+};
+
+const currentInteractionType = computed(() => video.value?.interaction_type ?? null);
+
+const videoPrimaryActions = computed(() => {
+  const actions = [
+    {
+      key: 'like',
+      label: currentInteractionType.value === INTERACTION_TYPE.LIKE ? '已喜欢' : '喜欢',
+      icon: currentInteractionType.value === INTERACTION_TYPE.LIKE ? 'material-symbols:thumb-up' : 'material-symbols:thumb-up-outline',
+      active: currentInteractionType.value === INTERACTION_TYPE.LIKE,
+      tone: 'like',
+      variant: 'primary',
+      onClick: () => video.value && handleLike(video.value, INTERACTION_TYPE.LIKE)
+    },
+    {
+      key: 'later',
+      label: currentInteractionType.value === INTERACTION_TYPE.LATER ? '已稍后看' : '稍后看',
+      icon: currentInteractionType.value === INTERACTION_TYPE.LATER ? 'material-symbols:schedule' : 'material-symbols:schedule-outline',
+      active: currentInteractionType.value === INTERACTION_TYPE.LATER,
+      tone: 'later',
+      variant: 'primary',
+      onClick: () => video.value && handleLater(video.value)
+    }
+  ];
+
+  if (video.value?.url) {
+    actions.push({
+      key: 'source',
+      label: '原视频',
+      icon: 'material-symbols:open-in-new',
+      active: false,
+      tone: 'neutral',
+      variant: 'secondary',
+      href: video.value.url
+    });
+  }
+
+  return actions;
+});
+
+const videoOverflowActions = computed(() => {
+  return [
+    {
+      key: 'random',
+      label: '随机播放',
+      icon: 'lucide:shuffle',
+      active: false,
+      tone: 'neutral',
+      hint: '',
+      onClick: () => handlePlayRandom()
+    },
+    {
+      key: 'dislike',
+      label: currentInteractionType.value === INTERACTION_TYPE.DISLIKE ? '取消不喜欢' : '不喜欢',
+      icon: currentInteractionType.value === INTERACTION_TYPE.DISLIKE ? 'material-symbols:thumb-down' : 'material-symbols:thumb-down-outline',
+      active: currentInteractionType.value === INTERACTION_TYPE.DISLIKE,
+      tone: 'danger',
+      hint: currentInteractionType.value === INTERACTION_TYPE.DISLIKE ? '当前' : '',
+      onClick: () => video.value && handleLike(video.value, INTERACTION_TYPE.DISLIKE)
+    }
+  ];
+});
+
+const handlePrimaryAction = async (action) => {
+  if (action.href || !action.onClick) return;
+  await action.onClick();
+};
+
+const handleOverflowAction = async (action) => {
+  closeMoreOptions();
+  if (!action.onClick) return;
+  await action.onClick();
 };
 
 
@@ -828,7 +896,120 @@ onUnmounted(() => {
   width: 100%;
   align-items: center;
   flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.video-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--border-primary);
+  border-radius: 9999px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.video-action:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-secondary);
+  transform: translateY(-1px);
+}
+
+.video-action--secondary {
+  background: transparent;
+}
+
+.video-action__icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+.video-action__label {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.video-action.is-active--like {
+  color: #fff5f5;
+  background: rgba(var(--color-primary-rgb), 0.16);
+  border-color: rgba(var(--color-primary-rgb), 0.42);
+}
+
+.video-action.is-active--later {
+  color: #dbeafe;
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.36);
+}
+
+.video-action-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
   gap: 0.25rem;
+  min-width: 13rem;
+  padding: 0.375rem;
+  border: 1px solid var(--border-primary);
+  border-radius: 1rem;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-popup);
+}
+
+.video-action-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.video-action-menu__item:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-primary);
+}
+
+.video-action-menu__main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.video-action-menu__icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+.video-action-menu__label {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.video-action-menu__hint {
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+}
+
+.video-action-menu__item.is-active--danger {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.24);
+  color: #fee2e2;
 }
 
 .video-channel__primary {
@@ -859,13 +1040,15 @@ onUnmounted(() => {
   }
 
   .video-meta__title {
-    flex: 1 1 auto;
-    max-width: calc(100% - 15rem);
+    flex: 1 1 360px;
+    min-width: 0;
+    padding-right: 1rem;
   }
 
   .video-meta__actions {
     width: auto;
     justify-content: flex-end;
+    max-width: min(100%, 28rem);
   }
 
   .video-channel__stats,
@@ -895,6 +1078,23 @@ onUnmounted(() => {
     height: auto;
     border-radius: 0;
     aspect-ratio: 16 / 9;
+  }
+
+  .video-meta__actions {
+    gap: 0.375rem;
+  }
+
+  .video-action {
+    padding: 0 0.75rem;
+  }
+
+  .video-action__label {
+    font-size: var(--font-size-2xs);
+  }
+
+  .video-action-menu {
+    min-width: min(13rem, calc(100vw - 2rem));
+    max-width: calc(100vw - 1.5rem);
   }
 }
 
