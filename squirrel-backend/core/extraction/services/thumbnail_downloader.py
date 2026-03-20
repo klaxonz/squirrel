@@ -57,6 +57,28 @@ class ThumbnailDownloaderService:
             )
         return self._http_client
 
+    def _build_request_headers(self, site_name: Optional[str]) -> dict[str, str]:
+        headers = dict(_DEFAULT_HEADERS)
+        if not site_name:
+            return headers
+
+        site_info = self._get_effective_catalog().get(site_name.lower(), {})
+        http_headers = (site_info.get("http") or {}).get("headers") or {}
+        for key, value in http_headers.items():
+            if value is not None:
+                headers[str(key)] = str(value)
+
+        referer = headers.get("Referer")
+        if referer and "Origin" not in headers:
+            try:
+                parsed = urlparse(referer)
+                if parsed.scheme and parsed.netloc:
+                    headers["Origin"] = f"{parsed.scheme}://{parsed.netloc}"
+            except Exception:
+                pass
+
+        return headers
+
     def _get_effective_catalog(self) -> dict:
         now = time.time()
         if (
@@ -152,7 +174,8 @@ class ThumbnailDownloaderService:
                 return file_path
 
             client = self._get_http_client()
-            resp = client.get(thumbnail_url)
+            headers = self._build_request_headers(site_name)
+            resp = client.get(thumbnail_url, headers=headers)
 
             if resp.status_code != 200:
                 logger.warning(
