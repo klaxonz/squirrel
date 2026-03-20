@@ -1,6 +1,6 @@
 <template>
-  <div ref="videoPageRef" class="video-page bg-bg-primary min-h-screen scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
-    <div :class="['video-page__container pt-6 flex gap-8', isWidescreen ? 'is-widescreen' : '']">
+  <div ref="videoPageRef" class="video-page bg-bg-primary scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
+    <div :class="['video-page__container', isWidescreen ? 'is-widescreen' : '']">
       <!-- 左侧主内容区域 -->
       <div :class="['video-main', isWidescreen ? 'is-widescreen' : '']">
         <!-- 视频播放区域 -->
@@ -38,102 +38,103 @@
         </div>
 
         <!-- 视频信息区域 -->
-          <div ref="videoMetaRef" class="mt-3 px-4">
+        <div ref="videoMetaRef" class="video-meta">
           <!-- 标题与操作按钮 -->
           <transition name="fade" mode="out-in">
-            <div :key="video?.id" class="flex items-center justify-between">
-              <h1 class="text-xs md:text-sm lg:text-base lg:font-medium text-text-primary">{{ video?.title }}</h1>
+            <div :key="video?.id" class="video-meta__header">
+              <h1 class="video-meta__title text-text-primary">{{ video?.title }}</h1>
 
-            <!-- 操作按钮组 -->
-            <div class="flex items-center space-x-1">
-              <!-- 随机播放按钮 -->
-              <button
-                @click="handlePlayRandom"
-                class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
-                title="随机播放"
-                aria-label="随机播放"
-              >
-                <Icon icon="lucide:shuffle" class="h-5 w-5" />
-              </button>
-              <!-- 主要按钮显示在外面 -->
-              <button
-                @click="handleLike(video, INTERACTION_TYPE.LIKE)"
-                class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
-                :class="{ 'text-color-error': video?.interaction_type === INTERACTION_TYPE.LIKE }"
-              >
-                <Icon 
-                  :icon="video?.interaction_type === INTERACTION_TYPE.LIKE ? 'material-symbols:thumb-up' : 'material-symbols:thumb-up-outline'" 
-                  class="h-5 w-5" 
-                />
-              </button>
-
-              <button
-                @click="handleLike(video, INTERACTION_TYPE.DISLIKE)"
-                class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
-                :class="{ 'text-text-secondary': video?.interaction_type === INTERACTION_TYPE.DISLIKE }"
-              >
-                <Icon 
-                  :icon="video?.interaction_type === INTERACTION_TYPE.DISLIKE ? 'material-symbols:thumb-down' : 'material-symbols:thumb-down-outline'" 
-                  class="h-5 w-5" 
-                />
-              </button>
-
-              <button
-                @click="handleLater(video)"
-                class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
-                :class="{ 'text-color-info': video?.interaction_type === INTERACTION_TYPE.LATER }"
-                title="稍后看"
-                aria-label="稍后看"
-              >
-                <Icon 
-                  :icon="video?.interaction_type === INTERACTION_TYPE.LATER ? 'material-symbols:schedule' : 'material-symbols:schedule-outline'" 
-                  class="h-5 w-5" 
-                />
-              </button>
-
-	                <!-- 原视频页按钮 -->
-	                <a
-	                  v-if="video && video.url"
-	                  :href="video.url"
-	                  target="_blank"
-	                  rel="noopener noreferrer"
-	                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
-	                  aria-label="打开原视频页"
-	                  title="打开原视频页"
-	                >
-                <Icon icon="material-symbols:open-in-new" class="h-5 w-5" />
-	                </a>
-
-
-              <!-- 更多按钮 - 点击显示下拉菜单 -->
-              <div ref="moreOptionsRef" class="relative">
+              <!-- 操作按钮组 -->
+              <div class="video-meta__actions">
+                <!-- 随机播放按钮 -->
                 <button
-                  @click="handleMoreOptionsClick"
-	                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                  @click="handlePlayRandom"
+                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                  title="随机播放"
+                  aria-label="随机播放"
                 >
-                  <Icon icon="material-symbols:more-vert" class="h-5 w-5" />
+                  <Icon icon="lucide:shuffle" class="h-5 w-5" />
+                </button>
+                <!-- 主要按钮显示在外面 -->
+                <button
+                  @click="handleLike(video, INTERACTION_TYPE.LIKE)"
+                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                  :class="{ 'text-color-error': video?.interaction_type === INTERACTION_TYPE.LIKE }"
+                >
+                  <Icon
+                    :icon="video?.interaction_type === INTERACTION_TYPE.LIKE ? 'material-symbols:thumb-up' : 'material-symbols:thumb-up-outline'"
+                    class="h-5 w-5"
+                  />
                 </button>
 
-                <!-- 下拉菜单 -->
-                <div v-if="showMoreOptions"
-                     class="absolute right-0 mt-2 py-2 min-w-[40px] rounded-lg shadow-lg bg-bg-card border border-border-primary z-50"
-                     @click.stop
+                <button
+                  @click="handleLike(video, INTERACTION_TYPE.DISLIKE)"
+                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                  :class="{ 'text-text-secondary': video?.interaction_type === INTERACTION_TYPE.DISLIKE }"
                 >
-                  <div class="flex flex-col">
+                  <Icon
+                    :icon="video?.interaction_type === INTERACTION_TYPE.DISLIKE ? 'material-symbols:thumb-down' : 'material-symbols:thumb-down-outline'"
+                    class="h-5 w-5"
+                  />
+                </button>
 
+                <button
+                  @click="handleLater(video)"
+                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                  :class="{ 'text-color-info': video?.interaction_type === INTERACTION_TYPE.LATER }"
+                  title="稍后看"
+                  aria-label="稍后看"
+                >
+                  <Icon
+                    :icon="video?.interaction_type === INTERACTION_TYPE.LATER ? 'material-symbols:schedule' : 'material-symbols:schedule-outline'"
+                    class="h-5 w-5"
+                  />
+                </button>
+
+                <!-- 原视频页按钮 -->
+                <a
+                  v-if="video && video.url"
+                  :href="video.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                  aria-label="打开原视频页"
+                  title="打开原视频页"
+                >
+                  <Icon icon="material-symbols:open-in-new" class="h-5 w-5" />
+                </a>
+
+
+                <!-- 更多按钮 - 点击显示下拉菜单 -->
+                <div ref="moreOptionsRef" class="relative">
+                  <button
+                    @click="handleMoreOptionsClick"
+                    class="p-2 rounded-full hover:bg-bg-elevated transition-colors border border-transparent text-text-accent"
+                  >
+                    <Icon icon="material-symbols:more-vert" class="h-5 w-5" />
+                  </button>
+
+                  <!-- 下拉菜单 -->
+                  <div
+                    v-if="showMoreOptions"
+                    class="absolute right-0 mt-2 py-2 min-w-[40px] rounded-lg shadow-lg bg-bg-card border border-border-primary z-50"
+                    @click.stop
+                  >
+                    <div class="flex flex-col">
+
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
             </div>
           </transition>
 
           <!-- 频道信息 -->
           <transition name="fade" mode="out-in">
-            <div :key="video?.id" class="mt-3 pb-3 border-b border-border-primary">
+            <div :key="video?.id" class="video-channel mt-3 pb-3 border-b border-border-primary">
               <div v-if="video?.subscriptions?.length" class="flex flex-col space-y-3">
                 <!-- 主订阅：完整行展示 -->
-                <div class="flex items-center space-x-3">
+                <div class="video-channel__primary">
                   <img
                     :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
                     :alt="video.subscriptions[0].name"
@@ -143,12 +144,12 @@
                   >
                   <router-link
                     :to="`/subscription/${video.subscriptions[0].id}/all`"
-                    class="text-xs md:text-sm lg:text-base text-text-primary font-medium hover:text-color-info transition-colors"
+                    class="video-channel__name text-xs md:text-sm lg:text-base text-text-primary font-medium hover:text-color-info transition-colors"
                   >
                     {{ video.subscriptions[0].name }}
                   </router-link>
                   <button
-                    class="px-3 py-1.5 text-xs bg-bg-elevated hover:bg-bg-hover text-text-primary rounded-full transition-colors font-medium"
+                    class="video-channel__unsubscribe px-3 py-1.5 text-xs bg-bg-elevated hover:bg-bg-hover text-text-primary rounded-full transition-colors font-medium"
                     @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
                     :title="`取消订阅 ${video.subscriptions[0].name}`"
                     :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
@@ -156,7 +157,7 @@
                 </div>
 
                 <!-- 主订阅统计信息 -->
-                <div class="ml-11 md:ml-12 text-2xs text-text-muted mt-1">
+                <div class="video-channel__stats text-2xs text-text-muted mt-1">
                   <span>
                     总视频: {{ video.subscriptions[0].total_videos || 0 }} | 已解析: {{ video.subscriptions[0].total_extract || 0 }}
                   </span>
@@ -166,7 +167,7 @@
                 <!-- 额外订阅：紧凑 chip 风格 -->
                 <div
                   v-if="video.subscriptions.length > 1"
-                  class="ml-11 md:ml-12 flex flex-wrap gap-2 mt-3"
+                  class="video-channel__more flex flex-wrap gap-2 mt-3"
                 >
                   <div
                     v-for="sub in video.subscriptions.slice(1)"
@@ -192,10 +193,10 @@
       </div>
 
       <!-- 右侧区域 - 相关视频 -->
-      <div :class="['video-aside', isWidescreen ? 'hidden' : 'hidden md:block']">
+      <div :class="['video-aside', isWidescreen ? 'hidden' : '']">
         <div>
-          <div class="rounded-xl px-4 pb-4 pt-0 flex flex-col">
-            <h2 class="text-text-primary text-lg mb-4">相关视频</h2>
+          <div class="video-aside__panel rounded-xl pb-4 pt-0 flex flex-col">
+            <h2 class="text-text-primary text-base md:text-lg mb-4">相关视频</h2>
             <div>
               <div v-if="!relatedVideos.length && !loadingRelated" class="text-text-muted text-sm">暂无推荐</div>
               <div v-if="relatedVideos.length" class="related-videos-list space-y-3">
@@ -205,7 +206,7 @@
                   class="flex space-x-3 cursor-pointer group"
                   @click="goToVideo(relatedVideo.id, relatedVideo)"
                 >
-                  <div class="relative w-40 h-24 rounded-lg overflow-hidden bg-bg-tertiary/60 transform-gpu">
+                  <div class="relative h-20 w-32 rounded-lg overflow-hidden bg-bg-tertiary/60 transform-gpu sm:h-24 sm:w-40">
                     <img
                       v-if="relatedVideo.thumbnail && !relatedThumbnailErrorIds.has(relatedVideo.id)"
                       :src="relatedVideo.thumbnail"
@@ -595,14 +596,20 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.video-page {
+  min-height: 100%;
+}
+
 /* 视频页面容器对齐其它页面 */
 .video-page__container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   max-width: min(1840px, calc(100vw - 32px));
   margin: 0 auto;
   width: 100%;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  --video-main-offset: 16px;
+  padding: 0.75rem 0.75rem calc(var(--mobile-nav-height, 64px) + 1rem);
+  --video-main-offset: 0px;
   --video-aside-width: clamp(320px, 22vw, 360px);
 }
 
@@ -610,11 +617,12 @@ onUnmounted(() => {
   --video-main-offset: 0px;
 }
 
-
 .video-page__container.is-widescreen {
   max-width: 100%;
   padding-left: 0;
   padding-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .video-page__container.is-widescreen .video-section {
@@ -623,27 +631,46 @@ onUnmounted(() => {
 
 @media (min-width: 640px) {
   .video-page__container {
+    gap: 1.25rem;
     padding-left: 1.5rem;
     padding-right: 1.5rem;
+    padding-bottom: 1.5rem;
   }
 }
 
 @media (min-width: 1024px) {
   .video-page__container {
+    gap: 1.5rem;
     padding-left: 2rem;
     padding-right: 2rem;
+    padding-bottom: 2rem;
   }
 }
 
-
+@media (min-width: 1280px) {
+  .video-page__container {
+    flex-direction: row;
+    align-items: flex-start;
+    --video-main-offset: 16px;
+  }
+}
 
 .video-main {
-  flex: 1 1 0%;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: clamp(1200px, 78vw, 1440px);
+  width: 100%;
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
-  transform: translateX(var(--video-main-offset, 0px));
+  transform: none;
+}
+
+@media (min-width: 1280px) {
+  .video-main {
+    flex: 1 1 0%;
+    max-width: clamp(1200px, 78vw, 1440px);
+    transform: translateX(var(--video-main-offset, 0px));
+  }
 }
 
 .video-main.is-widescreen {
@@ -651,9 +678,8 @@ onUnmounted(() => {
   transform: none;
 }
 
-
 .video-main.is-widescreen .video-container {
-  /* 宽屏(剧场)模式：用视窗高度约束，不让播放器高到需要滚动 */
+  aspect-ratio: auto;
   height: min(
     calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 0px) - 24px - 12px),
     calc(100vw * 9 / 16)
@@ -668,21 +694,24 @@ onUnmounted(() => {
 
 .video-main:not(.is-widescreen) .video-container {
   height: auto;
-  padding-bottom: clamp(60%, 64vh, 68%);
-  min-height: clamp(520px, 66vh, 860px);
-  max-height: min(75vh, calc(100vw * 9 / 16));
+  max-height: none;
 }
 
 
 .video-aside {
-  width: var(--video-aside-width, 360px);
-  flex: 0 0 var(--video-aside-width, 360px);
+  width: 100%;
+  flex: none;
+}
+
+.video-aside__panel {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .related-videos-list {
-  max-height: var(--related-panel-height, 75vh);
-  overflow-y: auto;
-  padding-right: 6px;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
 .related-videos-list::-webkit-scrollbar {
@@ -696,6 +725,24 @@ onUnmounted(() => {
 
 .related-videos-list::-webkit-scrollbar-track {
   background: transparent;
+}
+
+@media (min-width: 1280px) {
+  .video-aside {
+    width: var(--video-aside-width, 360px);
+    flex: 0 0 var(--video-aside-width, 360px);
+  }
+
+  .video-aside__panel {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .related-videos-list {
+    max-height: var(--related-panel-height, 75vh);
+    overflow-y: auto;
+    padding-right: 6px;
+  }
 }
 
 @media (min-width: 1280px) {
@@ -741,8 +788,7 @@ onUnmounted(() => {
 .video-container {
   position: relative;
   width: 100%;
-  height: 0;
-  padding-bottom: 56.25%; /* 16:9 比例 */
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background: var(--bg-media);
 }
@@ -756,6 +802,76 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   background: var(--bg-media);
+}
+
+.video-meta {
+  margin-top: 0.75rem;
+}
+
+.video-meta__header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.video-meta__title {
+  width: 100%;
+  font-size: clamp(0.9375rem, 0.88rem + 0.3vw, 1.0625rem);
+  font-weight: 500;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.video-meta__actions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.video-channel__primary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.video-channel__name {
+  min-width: 0;
+  flex: 1 1 140px;
+}
+
+.video-channel__unsubscribe {
+  flex-shrink: 0;
+}
+
+.video-channel__stats,
+.video-channel__more {
+  margin-left: 0;
+}
+
+@media (min-width: 768px) {
+  .video-meta__header {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .video-meta__title {
+    flex: 1 1 auto;
+    max-width: calc(100% - 15rem);
+  }
+
+  .video-meta__actions {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .video-channel__stats,
+  .video-channel__more {
+    margin-left: 2.75rem;
+  }
 }
 
 /* 滚动条样式统一到全局 .scrollbar */
@@ -778,6 +894,7 @@ onUnmounted(() => {
   .video-container {
     height: auto;
     border-radius: 0;
+    aspect-ratio: 16 / 9;
   }
 }
 

@@ -107,7 +107,7 @@
             <!-- 上一个/下一个 -->
             <button
               v-if="hasPrev"
-              class="sp-btn"
+              class="sp-btn sp-btn--prev"
               @click="$emit('prev')"
               @mouseenter="onControlTooltipEnter($event, t('previousVideo'))"
               @mouseleave="hideControlTooltip"
@@ -119,7 +119,7 @@
             </button>
             <button
               v-if="hasNext"
-              class="sp-btn"
+              class="sp-btn sp-btn--next"
               @click="$emit('next')"
               @mouseenter="onControlTooltipEnter($event, t('nextVideo'))"
               @mouseleave="hideControlTooltip"
@@ -133,7 +133,7 @@
             <!-- 音量 -->
             <div class="sp-volume" :class="{ 'is-dragging': isVolumeScrubbing }">
               <button
-                class="sp-btn"
+                class="sp-btn sp-btn--volume"
                 @click="toggleMute"
                 @mouseenter="onControlTooltipEnter($event, isMuted ? t('unmute') : t('mute'), 'M')"
                 @mouseleave="hideControlTooltip"
@@ -169,7 +169,7 @@
             <!-- 字幕 -->
             <button
               v-if="subtitleTracks.length > 0"
-              class="sp-btn"
+              class="sp-btn sp-btn--subtitles"
               :class="{ 'sp-btn--toggled': store.subtitlesEnabled }"
               @click.stop="toggleSubtitlesQuick"
               @mouseenter="onControlTooltipEnter($event, store.subtitlesEnabled ? t('subtitlesOff') : t('subtitles'), 'C')"  
@@ -184,7 +184,7 @@
             <!-- 设置 -->
             <button
               ref="settingsButtonRef"
-              class="sp-btn"
+              class="sp-btn sp-btn--settings"
               :class="{ 'sp-btn--toggled': showSettingsMenu }"
               @click.stop="toggleSettingsMenu"
               @mouseenter="onControlTooltipEnter($event, t('settings'))"
@@ -199,7 +199,7 @@
             <!-- 画中画 -->
             <button
               v-if="supportsPiP"
-              class="sp-btn"
+              class="sp-btn sp-btn--pip"
               @click="togglePictureInPicture"
               @mouseenter="onControlTooltipEnter($event, t('pictureInPicture'))"
               @mouseleave="hideControlTooltip"
@@ -212,7 +212,7 @@
 
             <!-- 宽屏 -->
             <button
-              class="sp-btn"
+              class="sp-btn sp-btn--widescreen"
               @click="toggleWidescreen"
               @mouseenter="onControlTooltipEnter($event, props.widescreen ? t('exitWidescreen') : t('widescreen'))"
               @mouseleave="hideControlTooltip"
@@ -225,7 +225,7 @@
 
             <!-- 全屏 -->
             <button
-              class="sp-btn"
+              class="sp-btn sp-btn--fullscreen"
               @click="toggleFullscreen"
               @mouseenter="onControlTooltipEnter($event, isFullscreen ? t('exitFullscreen') : t('fullscreen'), 'F')"
               @mouseleave="hideControlTooltip"
@@ -1549,6 +1549,7 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   padding: var(--sp-controls-group-padding);
   background: var(--sp-controls-group-bg);
   border-radius: var(--sp-controls-group-radius);
@@ -1678,6 +1679,7 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 3px;
+  min-width: 0;
   font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
   color: var(--sp-text-strong);
@@ -1902,6 +1904,105 @@ defineExpose({
 
 .sp-popup-option:not(.active) {
   padding-left: 36px;
+}
+
+@media (max-width: 768px) {
+  .sp-player {
+    --sp-btn-size: 36px;
+    --sp-btn-icon-size: 20px;
+    --sp-btn-icon-size-lg: 22px;
+    --sp-progress-thumb-size: 10px;
+  }
+
+  .sp-controls {
+    padding: 0 8px calc(env(safe-area-inset-bottom, 0px) + 6px);
+  }
+
+  .sp-progress-container {
+    padding: 0 2px 8px;
+  }
+
+  .sp-controls-row {
+    height: auto;
+    min-height: 36px;
+    gap: 6px;
+    padding: 0;
+  }
+
+  .sp-controls-left,
+  .sp-controls-right {
+    gap: 2px;
+  }
+
+  .sp-volume,
+  .sp-btn--widescreen {
+    display: none;
+  }
+
+  .sp-time {
+    margin-left: 2px;
+    font-size: 12px;
+  }
+
+  .sp-popup {
+    right: 8px;
+    bottom: 56px;
+    min-width: min(280px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+  }
+
+  .sp-popup-list,
+  .sp-popup-list--main {
+    max-height: min(320px, 55vh);
+  }
+}
+
+@media (max-width: 640px) {
+  .sp-player {
+    --sp-btn-size: 34px;
+    --sp-btn-icon-size: 18px;
+    --sp-btn-icon-size-lg: 20px;
+  }
+
+  .sp-controls-left,
+  .sp-controls-right {
+    gap: 1px;
+  }
+
+  .sp-time {
+    font-size: 11px;
+    letter-spacing: -0.1px;
+  }
+
+  .sp-popup-surface {
+    border-radius: 10px;
+  }
+
+  .sp-popup-item,
+  .sp-popup-option,
+  .sp-popup-back {
+    min-height: 38px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .sp-btn--subtitles {
+    display: none;
+  }
+
+  .sp-time-separator,
+  .sp-time-duration {
+    display: none;
+  }
+
+  .sp-popup {
+    left: 8px;
+    right: 8px;
+    min-width: auto;
+    max-width: none;
+    transform-origin: bottom center;
+  }
 }
 
 /* 加载/缓冲 */
