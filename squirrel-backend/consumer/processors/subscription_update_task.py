@@ -75,6 +75,8 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
             trace_id=trace_id,
             sync_state_id=sync_state_id,
             queue_token=queue_token,
+            cursor_payload=claimed_state.cursor_payload or {},
+            last_seen_video_url=claimed_state.last_seen_video_url,
         )
 
         result = orchestrator.update(request)

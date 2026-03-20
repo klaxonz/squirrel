@@ -32,6 +32,8 @@ class SubscriptionUpdateRequest:
     trace_id: Optional[str] = None
     sync_state_id: Optional[int] = None
     queue_token: Optional[str] = None
+    cursor_payload: Optional[dict] = None
+    last_seen_video_url: Optional[str] = None
 
 
 @dataclass

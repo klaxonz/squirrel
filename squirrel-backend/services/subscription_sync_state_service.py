@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import exists, select, update
 
+from core.cache import redis_client
 from core.database import get_session
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
+from queues.queue_config import get_queue_config, QueueMode, QueueType
 from utils import url_helper
 
 
@@ -17,6 +20,8 @@ INCREMENTAL_INTERVAL = timedelta(minutes=5)
 FULL_INTERVAL = timedelta(hours=2)
 INCREMENTAL_PENDING_THRESHOLD = 15
 RUNNING_TIMEOUT = timedelta(minutes=30)
+SYNC_BATCH_SIZE = 200
+MAX_DRAIN_BATCHES = 20
 
 
 def get_mode_interval(mode: str) -> timedelta:
@@ -30,6 +35,20 @@ def build_retry_delay(mode: str, failure_count: int) -> timedelta:
         minutes = min(30 * (2 ** max(failure_count - 1, 0)), 24 * 60)
         return timedelta(minutes=minutes)
     minutes = min(5 * (2 ** max(failure_count - 1, 0)), 6 * 60)
+    return timedelta(minutes=minutes)
+
+
+def build_success_delay(mode: str, idle_sync_count: int, videos_found: int) -> timedelta:
+    if mode == SyncMode.FULL.value:
+        if videos_found > 0:
+            return FULL_INTERVAL
+        minutes = min(int(FULL_INTERVAL.total_seconds() / 60) * (2 ** min(idle_sync_count, 3)), 24 * 60)
+        return timedelta(minutes=minutes)
+
+    if videos_found > 0:
+        return INCREMENTAL_INTERVAL
+    base_minutes = 15
+    minutes = min(base_minutes * (2 ** min(idle_sync_count, 4)), 6 * 60)
     return timedelta(minutes=minutes)
 
 
@@ -92,6 +111,37 @@ def ensure_incremental_sync_state(subscription_id: int, url: Optional[str]) -> S
         return _get_or_create_sync_state_in_session(session, subscription_id, SyncMode.INCREMENTAL.value, url)
 
 
+def prepare_sync_state_for_enqueue(
+    subscription_id: int,
+    url: Optional[str],
+    mode: str,
+    *,
+    scheduled: bool,
+) -> tuple[Optional[SubscriptionSyncState], str]:
+    now = datetime.now()
+    with get_session() as session:
+        state = _get_or_create_sync_state_in_session(session, subscription_id, mode, url)
+        _recover_stale_running_state(state, now)
+
+        if state.sync_status == SyncStatus.RUNNING.value:
+            return state, 'in_progress'
+        if state.sync_status == SyncStatus.QUEUED.value:
+            return state, 'queued'
+
+        if scheduled and has_incremental_backpressure(state):
+            state.sync_status = SyncStatus.SUCCESS.value
+            state.last_sync_at = now
+            state.last_error = 'queue_backpressure'
+            state.queue_token = None
+            state.queued_at = None
+            state.locked_at = None
+            state.next_sync_at = now + get_mode_interval(state.sync_mode)
+            state.version += 1
+            return state, 'deferred'
+
+        return state, 'ready'
+
+
 def get_sync_state(subscription_id: int, mode: str) -> Optional[SubscriptionSyncState]:
     with get_session() as session:
         return session.execute(
@@ -107,7 +157,7 @@ def get_sync_state_by_id(sync_state_id: int) -> Optional[SubscriptionSyncState]:
         return session.get(SubscriptionSyncState, sync_state_id)
 
 
-def list_due_sync_states(mode: str, limit: int = 200) -> list[tuple[SubscriptionSyncState, str]]:
+def list_due_sync_states(mode: str, limit: int = SYNC_BATCH_SIZE) -> list[tuple[SubscriptionSyncState, str]]:
     now = datetime.now()
     with get_session() as session:
         _recover_stale_running_states_in_session(session, now)
@@ -148,14 +198,18 @@ def _recover_stale_running_states_in_session(session, now: datetime) -> None:
         )
     ).scalars().all()
     for state in states:
-        state.sync_status = SyncStatus.FAILED.value
-        state.last_error = 'stale_running_timeout'
-        state.queue_token = None
-        state.queued_at = None
-        state.locked_at = None
-        state.failure_count += 1
-        state.next_sync_at = now
-        state.version += 1
+        _recover_stale_running_state(state, now)
+
+
+def _recover_stale_running_state(state: SubscriptionSyncState, now: datetime) -> None:
+    state.sync_status = SyncStatus.FAILED.value
+    state.last_error = 'stale_running_timeout'
+    state.queue_token = None
+    state.queued_at = None
+    state.locked_at = None
+    state.failure_count += 1
+    state.next_sync_at = now
+    state.version += 1
 
 
 def recover_stale_sync_state(sync_state_id: int) -> Optional[SubscriptionSyncState]:
@@ -168,14 +222,7 @@ def recover_stale_sync_state(sync_state_id: int) -> Optional[SubscriptionSyncSta
             return state
         if state.locked_at > now - RUNNING_TIMEOUT:
             return state
-        state.sync_status = SyncStatus.FAILED.value
-        state.last_error = 'stale_running_timeout'
-        state.queue_token = None
-        state.queued_at = None
-        state.locked_at = None
-        state.failure_count += 1
-        state.next_sync_at = now
-        state.version += 1
+        _recover_stale_running_state(state, now)
         return state
 
 
@@ -233,6 +280,7 @@ def mark_sync_success(
     *,
     cursor_payload: Optional[dict],
     latest_video_url: Optional[str],
+    videos_found: int = 0,
     next_sync_at: Optional[datetime] = None,
 ) -> Optional[SubscriptionSyncState]:
     now = datetime.now()
@@ -251,7 +299,8 @@ def mark_sync_success(
         state.locked_at = None
         state.failure_count = 0
         state.last_error = None
-        state.next_sync_at = next_sync_at or (now + get_mode_interval(state.sync_mode))
+        state.idle_sync_count = 0 if videos_found > 0 else state.idle_sync_count + 1
+        state.next_sync_at = next_sync_at or (now + build_success_delay(state.sync_mode, state.idle_sync_count, videos_found))
         state.version += 1
         return state
 
@@ -287,6 +336,7 @@ def mark_sync_failed(sync_state_id: int, error_message: str) -> Optional[Subscri
         state.queue_token = None
         state.queued_at = None
         state.locked_at = None
+        state.idle_sync_count = 0
         state.next_sync_at = now + build_retry_delay(state.sync_mode, state.failure_count)
         state.version += 1
         return state
@@ -304,6 +354,7 @@ def defer_sync_state(sync_state_id: int, *, delay: timedelta, error_message: Opt
         state.queue_token = None
         state.queued_at = None
         state.locked_at = None
+        state.idle_sync_count = 0
         state.next_sync_at = now + delay
         state.version += 1
         return state
@@ -337,6 +388,70 @@ def build_queue_token() -> str:
 
 def has_incremental_backpressure(sync_state: SubscriptionSyncState) -> bool:
     return sync_state.sync_mode == SyncMode.INCREMENTAL.value and sync_state.pending_video_count >= INCREMENTAL_PENDING_THRESHOLD
+
+
+def reconcile_pending_video_counts() -> dict[str, int]:
+    counts = _scan_pending_video_counts_from_streams()
+    with get_session() as session:
+        session.execute(
+            update(SubscriptionSyncState)
+            .where(SubscriptionSyncState.pending_video_count != 0)
+            .values(pending_video_count=0)
+        )
+        for sync_state_id, pending_count in counts.items():
+            session.execute(
+                update(SubscriptionSyncState)
+                .where(SubscriptionSyncState.id == sync_state_id)
+                .values(pending_video_count=pending_count)
+            )
+    return {
+        'states': len(counts),
+        'videos': sum(counts.values()),
+    }
+
+
+def _scan_pending_video_counts_from_streams() -> dict[int, int]:
+    config = get_queue_config()
+    counts: dict[int, int] = {}
+    for site in config.get_supported_sites():
+        for mode in (QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL):
+            queue_name = config.build_queue_name(QueueType.VIDEO_EXTRACT, site, mode)
+            for _, fields in redis_client.xrange(queue_name, '-', '+'):
+                sync_state_id = _extract_sync_state_id_from_queue_fields(fields)
+                if not sync_state_id:
+                    continue
+                counts[sync_state_id] = counts.get(sync_state_id, 0) + 1
+    return counts
+
+
+def _extract_sync_state_id_from_queue_fields(fields) -> Optional[int]:
+    body_raw = fields.get('body') or fields.get(b'body')
+    if body_raw is None:
+        return None
+    if isinstance(body_raw, bytes):
+        body_raw = body_raw.decode('utf-8')
+
+    try:
+        message_dict = json.loads(body_raw)
+    except Exception:
+        return None
+
+    nested_body = message_dict.get('body')
+    if not isinstance(nested_body, str):
+        return None
+
+    try:
+        payload = json.loads(nested_body)
+    except Exception:
+        return None
+
+    sync_state_id = payload.get('sync_state_id')
+    if sync_state_id in (None, ''):
+        return None
+    try:
+        return int(sync_state_id)
+    except (TypeError, ValueError):
+        return None
 
 
 def attach_sync_fields(target: dict, sync_state: Optional[SubscriptionSyncState]) -> dict:

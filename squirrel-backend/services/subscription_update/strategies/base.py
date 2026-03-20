@@ -79,6 +79,7 @@ class UpdateStrategy(ABC):
                     request.sync_state_id,
                     cursor_payload=fetch_result.cursor_payload,
                     latest_video_url=fetch_result.latest_video_url,
+                    videos_found=len(fetch_result.video_urls),
                 )
             
             # 记录成功指标

@@ -48,6 +48,7 @@ class SubscriptionSyncState(Base, SerializerMixin):
     queue_token: Mapped[Optional[str]] = mapped_column(VARCHAR(64), nullable=True)
     pending_video_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    idle_sync_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[Optional[str]] = mapped_column(TEXT, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)

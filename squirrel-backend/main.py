@@ -1,27 +1,17 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import uvicorn
-from alembic.config import Config as AlembicConfig
 from fastapi import FastAPI
 
-from alembic import command
 from common.log import init_logging
 from core.config import settings
+from core.database_upgrade import upgrade_database
 from core.site_config_manager import apply_site_config_overrides
 from plugins.loader import init_plugins, app_start, app_stop
 
 logger = logging.getLogger()
-
-
-def upgrade_database() -> None:
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    alembic_ini_path = os.path.join(current_dir, "alembic.ini")
-    logger.info(f"Upgrading database with alembic.ini: {alembic_ini_path}")
-    alembic_cfg = AlembicConfig(alembic_ini_path)
-    command.upgrade(alembic_cfg, "head")
 
 
 @asynccontextmanager

@@ -35,6 +35,13 @@ def _build_video_dedupe_key(url: str, priority: str) -> str:
     return f"dedupe:video_extract:{priority}:{url}"
 
 
+def clear_video_extraction_dedupe(params: VideoExtractDto) -> None:
+    if params.is_manual:
+        return
+    priority = "full" if params.is_extract_all else "incr"
+    redis_client.delete(_build_video_dedupe_key(params.url, priority))
+
+
 def _send_to_extract_queue(params: VideoExtractDto) -> bool:
     content = params.model_dump()
     message = message_service.create_message(content)

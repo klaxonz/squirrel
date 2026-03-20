@@ -5,6 +5,7 @@ from contextlib import contextmanager
 
 from common.log import init_logging
 from core.site_config_manager import apply_site_config_overrides
+from core.database_upgrade import upgrade_database
 from queues.queue_config import ensure_queue_config_initialized
 from plugins.loader import init_plugins, app_start, app_stop
 from plugins.reload_listener import start_reload_listener, stop_reload_listener
@@ -20,6 +21,12 @@ def bootstrap_runtime(component: str):
     """
     init_logging()
     logger.info("[%s] Bootstrapping runtime...", component)
+
+    try:
+        upgrade_database()
+    except Exception:
+        logger.exception("[%s] Database upgrade failed", component)
+        raise
 
     try:
         apply_site_config_overrides()

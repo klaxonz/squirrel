@@ -46,12 +46,11 @@ class DefaultUpdateStrategy(UpdateStrategy):
             raise ValueError(f"Invalid subscription class for key: {subscription_key}")
         subscribe_channel = subscription_cls(url=request.url)
 
-        sync_state = subscription_sync_state_service.get_sync_state_by_id(request.sync_state_id) if request.sync_state_id else None
         sync_mode = UpdateMode.FULL if request.mode == UpdateMode.FULL else UpdateMode.INCREMENTAL
         context = SubscriptionSyncContext(
             mode=sync_mode.value,
-            cursor_payload=(sync_state.cursor_payload if sync_state else None) or {},
-            last_seen_video_url=sync_state.last_seen_video_url if sync_state else None,
+            cursor_payload=request.cursor_payload or {},
+            last_seen_video_url=request.last_seen_video_url,
             limit=None if sync_mode == UpdateMode.FULL else settings.CHANNEL_UPDATE_DEFAULT_SIZE,
         )
         result = subscribe_channel.sync_videos(context)

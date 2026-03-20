@@ -36,21 +36,20 @@ class SubscriptionScheduler:
             logger.info(f"Skip scheduling subscription {subscription_id} because no active subscribers")
             return SubscriptionScheduleResult(subscription_id, None, "no_subscribers")
 
-        sync_states = subscription_sync_state_service.ensure_sync_states(subscription_id, url)
-        sync_state = sync_states[resolved_mode.value]
-        sync_state = subscription_sync_state_service.recover_stale_sync_state(sync_state.id) or sync_state
+        sync_state, state_status = subscription_sync_state_service.prepare_sync_state_for_enqueue(
+            subscription_id,
+            url,
+            resolved_mode.value,
+            scheduled=trigger == UpdateTrigger.SCHEDULED,
+        )
+        if not sync_state:
+            return SubscriptionScheduleResult(subscription_id, None, 'failed')
 
-        if sync_state.sync_status == 'running':
+        if state_status == 'in_progress':
             return SubscriptionScheduleResult(subscription_id, sync_state.id, 'in_progress', sync_state.queue_token)
-        if sync_state.sync_status == 'queued':
+        if state_status == 'queued':
             return SubscriptionScheduleResult(subscription_id, sync_state.id, 'queued', sync_state.queue_token)
-
-        if trigger == UpdateTrigger.SCHEDULED and subscription_sync_state_service.has_incremental_backpressure(sync_state):
-            subscription_sync_state_service.defer_sync_state(
-                sync_state.id,
-                delay=subscription_sync_state_service.get_mode_interval(sync_state.sync_mode),
-                error_message='queue_backpressure',
-            )
+        if state_status == 'deferred':
             return SubscriptionScheduleResult(subscription_id, sync_state.id, 'deferred')
 
         queue_token = subscription_sync_state_service.build_queue_token()
@@ -117,24 +116,34 @@ class SubscriptionScheduler:
         mode: UpdateMode = UpdateMode.INCREMENTAL
     ) -> tuple[int, int]:
         resolved_mode = self._resolve_mode(mode)
-        due_states = subscription_sync_state_service.list_due_sync_states(resolved_mode.value)
-        if not due_states:
-            logger.info(f"No due subscription sync states (mode={resolved_mode.value})")
-            return 0, 0
-
         success_count = 0
         error_count = 0
-        for sync_state, url in due_states:
-            result = self.schedule_one(
-                subscription_id=sync_state.subscription_id,
-                url=url,
-                trigger=trigger,
-                mode=resolved_mode,
-            )
-            if result.status == 'queued':
-                success_count += 1
-            elif result.status == 'failed':
-                error_count += 1
+
+        for _ in range(subscription_sync_state_service.MAX_DRAIN_BATCHES):
+            due_states = subscription_sync_state_service.list_due_sync_states(resolved_mode.value)
+            if not due_states:
+                break
+
+            batch_success = 0
+            batch_failed = 0
+            for sync_state, url in due_states:
+                result = self.schedule_one(
+                    subscription_id=sync_state.subscription_id,
+                    url=url,
+                    trigger=trigger,
+                    mode=resolved_mode,
+                )
+                if result.status == 'queued':
+                    batch_success += 1
+                elif result.status == 'failed':
+                    batch_failed += 1
+
+            success_count += batch_success
+            error_count += batch_failed
+
+            if len(due_states) < subscription_sync_state_service.SYNC_BATCH_SIZE:
+                break
+
         logger.info(f"Enqueue completed: success={success_count}, failed={error_count}, mode={resolved_mode.value}")
         return success_count, error_count
 

@@ -13,7 +13,7 @@ from core.extraction.task_manager import TaskManager
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
 from utils.metrics import metrics
-from services import subscription_sync_state_service
+from services import download_service, subscription_sync_state_service
 
 logger = logging.getLogger()
 handler = VideoExtractionHandler()
@@ -110,6 +110,7 @@ def extract_video(params: VideoExtractDto) -> ExtractionResult:
         
         return result
     finally:
+        download_service.clear_video_extraction_dedupe(params)
         subscription_sync_state_service.decrement_pending_video_count(params.sync_state_id)
 
 
