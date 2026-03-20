@@ -374,7 +374,7 @@ def download_video(video_id: int):
         subscribed=True,
         subscription_id=subscription_video.subscription_id
     )
-    download_service.start(params)
+    download_service.enqueue_video_extraction(params)
 
 
 def get_video(user_id, video_id):

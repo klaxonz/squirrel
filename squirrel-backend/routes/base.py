@@ -23,7 +23,6 @@ from routes.middleware.auth import (
 from routes.middleware.trace import TraceMiddleware
 from routes.health import router as health_router
 from routes.subscription import router as subscription_router
-from routes.task import router as task_router
 from routes.user import router as user_router
 from routes.video import router as video_router
 from routes.video_history import router as video_history_router
@@ -107,7 +106,6 @@ def create_app() -> FastAPI:
     app.include_router(health_router)  # 健康检查路由（无需认证）
     app.include_router(metrics_router)  # 监控指标路由
     app.include_router(video_router)
-    app.include_router(task_router)
     app.include_router(subscription_router)
     app.include_router(user_router)
     app.include_router(video_history_router)

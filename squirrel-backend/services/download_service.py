@@ -80,29 +80,4 @@ def _send_to_extract_queue(params: VideoExtractDto) -> None:
         logger.error(f"Failed to send video extract message: {e}, url={params.url}")
 
 
-# 兼容旧代码的函数，标记为废弃
-def start(params: VideoExtractDto) -> None:
-    """
-    @deprecated 请使用 enqueue_video_extraction
-    此函数保留用于兼容性，将在未来版本移除
-    """
-    domain = extract_top_level_domain(params.url)
-    if not SiteCatalog.is_site_enabled(domain=domain):
-        logger.info(f"Skip legacy start() for disabled site: domain={domain}, url={params.url}")
-        return
-
-    from services import subscription_service
-    
-    if params.only_extract:
-        if video_service.get_video_by_url(params.url):
-            logger.info(f"{params.url} is already extracted")
-            return
-    
-    subscription = subscription_service.get_subscription_by_id(params.subscription_id)
-    if not subscription or subscription.is_deleted:
-        logger.info(f"subscription {params.subscription_id} is not exist")
-        return
-
-    _send_to_extract_queue(params)
-
 
