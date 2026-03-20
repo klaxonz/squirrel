@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from common.constants import SYS_ENABLE_SCHEDULER
 from processes.managers.scheduler_manager import scheduler_status
 from services import system_config_service
-from services.scheduled_task_service import scheduled_task_service
+from services.scheduled_task_service import ScheduledTaskService
 
 router = APIRouter(prefix="/api/scheduler", tags=["定时任务管理"])
 _logger = logging.getLogger()
@@ -47,7 +47,7 @@ def get_scheduler_status():
 @router.get("/statistics")
 def get_task_statistics():
     """获取任务统计信息"""
-    return scheduled_task_service.get_task_statistics()
+    return ScheduledTaskService.get_task_statistics()
 
 
 @router.get("/tasks")
@@ -59,7 +59,7 @@ def get_scheduled_tasks(
     task_type: Optional[str] = Query(None, description="任务类型")
 ):
     """获取定时任务列表"""
-    return scheduled_task_service.get_task_list(
+    return ScheduledTaskService.get_task_list(
         page=page,
         page_size=page_size,
         search=search,
@@ -71,7 +71,7 @@ def get_scheduled_tasks(
 @router.get("/tasks/{task_id}")
 def get_task_detail(task_id: int):
     """获取任务详情"""
-    task = scheduled_task_service.get_task_by_id(task_id)
+    task = ScheduledTaskService.get_task_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     return task.to_dict()
@@ -80,7 +80,7 @@ def get_task_detail(task_id: int):
 @router.post("/tasks")
 def create_task(request: TaskCreateRequest):
     """创建新任务"""
-    task = scheduled_task_service.create_task(
+    task = ScheduledTaskService.create_task(
         name=request.name,
         task_class=request.task_class,
         task_type=request.task_type,
@@ -102,7 +102,7 @@ def create_task(request: TaskCreateRequest):
 @router.put("/tasks/{task_id}")
 def update_task(task_id: int, request: TaskUpdateRequest):
     """更新任务配置"""
-    success = scheduled_task_service.update_task(
+    success = ScheduledTaskService.update_task(
         task_id=task_id,
         name=request.name,
         description=request.description,
@@ -123,7 +123,7 @@ def update_task(task_id: int, request: TaskUpdateRequest):
 @router.delete("/tasks/{task_id}")
 def delete_task(task_id: int):
     """删除任务"""
-    success = scheduled_task_service.delete_task(task_id)
+    success = ScheduledTaskService.delete_task(task_id)
     if not success:
         raise HTTPException(status_code=404, detail="任务不存在或删除失败")
 
@@ -133,7 +133,7 @@ def delete_task(task_id: int):
 @router.post("/tasks/{task_id}/enable")
 def enable_task(task_id: int):
     """启用任务"""
-    success = scheduled_task_service.enable_task(task_id)
+    success = ScheduledTaskService.enable_task(task_id)
     if not success:
         raise HTTPException(status_code=404, detail="任务不存在或启用失败")
 
@@ -143,7 +143,7 @@ def enable_task(task_id: int):
 @router.post("/tasks/{task_id}/disable")
 def disable_task(task_id: int):
     """禁用任务"""
-    success = scheduled_task_service.disable_task(task_id)
+    success = ScheduledTaskService.disable_task(task_id)
     if not success:
         raise HTTPException(status_code=404, detail="任务不存在或禁用失败")
 
@@ -153,7 +153,7 @@ def disable_task(task_id: int):
 @router.post("/tasks/{task_id}/execute")
 def execute_task_now(task_id: int):
     """立即执行任务"""
-    success = scheduled_task_service.execute_task_now(task_id)
+    success = ScheduledTaskService.execute_task_now(task_id)
     if not success:
         raise HTTPException(status_code=404, detail="任务不存在或执行失败")
 
@@ -163,7 +163,7 @@ def execute_task_now(task_id: int):
 @router.get("/task-classes")
 def get_available_task_classes():
     """获取可用的任务类"""
-    return scheduled_task_service.get_available_task_classes()
+    return ScheduledTaskService.get_available_task_classes()
 
 
 @router.get("/tasks/{task_id}/logs")
@@ -174,7 +174,7 @@ def get_task_execution_logs(
     status: Optional[str] = Query(None, description="执行状态")
 ):
     """获取任务执行日志"""
-    return scheduled_task_service.get_task_execution_logs(
+    return ScheduledTaskService.get_task_execution_logs(
         task_id=task_id,
         page=page,
         page_size=page_size,
@@ -189,7 +189,7 @@ def get_all_execution_logs(
     status: Optional[str] = Query(None, description="执行状态")
 ):
     """获取所有任务执行日志"""
-    return scheduled_task_service.get_task_execution_logs(
+    return ScheduledTaskService.get_task_execution_logs(
         task_id=None,
         page=page,
         page_size=page_size,

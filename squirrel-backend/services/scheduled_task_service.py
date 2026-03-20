@@ -296,6 +296,3 @@ class ScheduledTaskService:
                 "today_executions": recent_executions
             }
 
-
-# 服务实例
-scheduled_task_service = ScheduledTaskService()
