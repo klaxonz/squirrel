@@ -122,159 +122,135 @@
               </div>
             </div>
           </transition>
-        </div>
 
-        <div class="video-detail-grid">
+          <!-- 频道信息 -->
           <transition name="fade" mode="out-in">
-            <section :key="`channel-${video?.id}`" class="video-module video-module--channel">
-              <div class="video-module__header">
-                <div>
-                  <div class="video-module__eyebrow">当前归属</div>
-                  <h2 class="video-module__title">频道信息</h2>
-                </div>
-                <div v-if="primarySubscriptionMeta" class="video-module__hint">{{ primarySubscriptionMeta }}</div>
-              </div>
-
-              <div v-if="primarySubscription" class="video-channel-card">
-                <div class="video-channel-card__main">
+            <div :key="video?.id" class="video-channel mt-3 pb-3 border-b border-border-primary">
+              <div v-if="video?.subscriptions?.length" class="flex flex-col space-y-3">
+                <!-- 主订阅：完整行展示 -->
+                <div class="video-channel__primary">
                   <img
-                    :src="getAvatarSrc(primarySubscription.avatar, primarySubscription.id)"
-                    :alt="primarySubscription.name"
-                    class="video-channel-card__avatar"
+                    :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
+                    :alt="video.subscriptions[0].name"
+                    class="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-full object-cover"
                     referrerpolicy="no-referrer"
-                    @error="(e) => handleAvatarError(e, primarySubscription.id)"
+                    @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
                   >
-
-                  <div class="video-channel-card__identity">
-                    <div class="video-channel-card__name-row">
-                      <router-link
-                        :to="`/subscription/${primarySubscription.id}/all`"
-                        class="video-channel-card__name"
-                      >
-                        {{ primarySubscription.name }}
-                      </router-link>
-                      <span class="video-channel-card__badge">已订阅</span>
-                    </div>
-                    <div v-if="primarySubscriptionMeta" class="video-channel-card__meta">{{ primarySubscriptionMeta }}</div>
-                  </div>
-
+                  <router-link
+                    :to="`/subscription/${video.subscriptions[0].id}/all`"
+                    class="video-channel__name text-xs md:text-sm lg:text-base text-text-primary font-medium hover:text-color-info transition-colors"
+                  >
+                    {{ video.subscriptions[0].name }}
+                  </router-link>
                   <button
-                    class="video-channel__unsubscribe video-channel-card__unsubscribe"
-                    @click.stop="handleUnsubscribe(primarySubscription.id)"
-                    :title="`取消订阅 ${primarySubscription.name}`"
-                    :aria-label="`取消订阅 ${primarySubscription.name}`"
+                    class="video-channel__unsubscribe px-3 py-1.5 text-xs bg-bg-elevated hover:bg-bg-hover text-text-primary rounded-full transition-colors font-medium"
+                    @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
+                    :title="`取消订阅 ${video.subscriptions[0].name}`"
+                    :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
                   >取消订阅</button>
                 </div>
 
-                <div class="video-channel-card__stats">
-                  <div
-                    v-for="item in channelSummaryItems"
-                    :key="item.label"
-                    class="video-channel-stat"
-                  >
-                    <span class="video-channel-stat__label">{{ item.label }}</span>
-                    <span class="video-channel-stat__value">{{ item.value }}</span>
-                  </div>
+                <!-- 主订阅统计信息 -->
+                <div class="video-channel__stats text-2xs text-text-muted mt-1">
+                  <span>
+                    总视频: {{ video.subscriptions[0].total_videos || 0 }} | 已解析: {{ video.subscriptions[0].total_extract || 0 }}
+                  </span>
+                  <span v-if="video?.publish_date"> · {{ formatDate(video.publish_date) }}发布</span>
                 </div>
 
-                <div v-if="secondarySubscriptions.length" class="video-channel-card__group">
-                  <div class="video-channel-card__group-title">同时归属</div>
-                  <div class="video-channel-card__chips">
-                    <div
-                      v-for="sub in secondarySubscriptions"
-                      :key="sub.id"
-                      class="video-channel-chip"
-                      @click.stop="$router.push(`/subscription/${sub.id}/all`)"
+                <!-- 额外订阅：紧凑 chip 风格 -->
+                <div
+                  v-if="video.subscriptions.length > 1"
+                  class="video-channel__more flex flex-wrap gap-2 mt-3"
+                >
+                  <div
+                    v-for="sub in video.subscriptions.slice(1)"
+                    :key="sub.id"
+                    class="flex items-center px-2 py-1 rounded-full bg-bg-tertiary/50 hover:bg-bg-tertiary/70 cursor-pointer transition-colors text-xs text-text-primary"
+                    @click.stop="$router.push(`/subscription/${sub.id}/all`)"
+                  >
+                    <img
+                      :src="getAvatarSrc(sub.avatar, sub.id)"
+                      :alt="sub.name"
+                      class="w-5 h-5 rounded-full object-cover mr-2"
+                      referrerpolicy="no-referrer"
+                      @error="(e) => handleAvatarError(e, sub.id)"
                     >
-                      <img
-                        :src="getAvatarSrc(sub.avatar, sub.id)"
-                        :alt="sub.name"
-                        class="video-channel-chip__avatar"
-                        referrerpolicy="no-referrer"
-                        @error="(e) => handleAvatarError(e, sub.id)"
-                      >
-                      <span class="video-channel-chip__label">{{ sub.name }}</span>
-                    </div>
+                    <span class="truncate max-w-[140px]">{{ sub.name }}</span>
                   </div>
                 </div>
               </div>
-
-              <div v-else class="video-module__empty">暂无频道信息</div>
-            </section>
+            </div>
           </transition>
 
-          <section class="video-module video-module--related">
-            <div class="video-module__header">
-              <div>
-                <div class="video-module__eyebrow">下一步去哪里</div>
-                <h2 class="video-module__title">相关视频</h2>
-              </div>
-              <div class="video-module__hint">{{ relatedModuleHint }}</div>
-            </div>
+        </div>
+      </div>
 
-            <div v-if="!relatedVideos.length && !loadingRelated" class="video-module__empty">暂无推荐</div>
-
-            <div v-if="relatedVideos.length" class="related-feed">
-              <article
-                v-for="(relatedVideo, index) in relatedVideos"
-                :key="relatedVideo.id"
-                class="related-item"
-                :class="{ 'is-priority': index === 0 }"
-                @click="goToVideo(relatedVideo.id, relatedVideo)"
-              >
-                <div class="related-item__thumb">
-                  <img
-                    v-if="relatedVideo.thumbnail && !relatedThumbnailErrorIds.has(relatedVideo.id)"
-                    :src="relatedVideo.thumbnail"
-                    referrerpolicy="no-referrer"
-                    class="related-item__image"
-                    draggable="false"
-                    :alt="relatedVideo.title"
-                    @error="() => relatedThumbnailErrorIds.add(relatedVideo.id)"
-                  >
-                  <div
-                    v-else
-                    class="related-item__image-fallback"
-                  >
-                    <div class="text-text-muted flex flex-col items-center">
-                      <Icon icon="material-symbols:image" class="text-3xl mb-1" />
-                      <span class="text-2xs">暂无封面</span>
+      <!-- 右侧区域 - 相关视频 -->
+      <div :class="['video-aside', isWidescreen ? 'hidden' : '']">
+        <div>
+          <div class="video-aside__panel rounded-xl pb-4 pt-0 flex flex-col">
+            <h2 class="text-text-primary text-base md:text-lg mb-4">相关视频</h2>
+            <div>
+              <div v-if="!relatedVideos.length && !loadingRelated" class="text-text-muted text-sm">暂无推荐</div>
+              <div v-if="relatedVideos.length" class="related-videos-list space-y-3">
+                <div
+                  v-for="relatedVideo in relatedVideos"
+                  :key="relatedVideo.id"
+                  class="flex space-x-3 cursor-pointer group"
+                  @click="goToVideo(relatedVideo.id, relatedVideo)"
+                >
+                  <div class="relative h-20 w-32 rounded-lg overflow-hidden bg-bg-tertiary/60 transform-gpu sm:h-24 sm:w-40">
+                    <img
+                      v-if="relatedVideo.thumbnail && !relatedThumbnailErrorIds.has(relatedVideo.id)"
+                      :src="relatedVideo.thumbnail"
+                      referrerpolicy="no-referrer"
+                      class="w-full h-full object-cover transform-gpu will-change-transform transition-transform duration-200 group-hover:scale-105 pointer-events-none select-none"
+                      draggable="false"
+                      :alt="relatedVideo.title"
+                      @error="() => relatedThumbnailErrorIds.add(relatedVideo.id)"
+                    >
+                    <div
+                      v-else
+                      class="w-full h-full absolute top-0 left-0 bg-bg-secondary flex items-center justify-center"
+                    >
+                      <div class="text-text-muted flex flex-col items-center">
+                        <Icon icon="material-symbols:image" class="text-3xl mb-1" />
+                        <span class="text-2xs">暂无封面</span>
+                      </div>
+                    </div>
+                    <div class="absolute bottom-1 right-1 bg-bg-tertiary/70 text-text-primary text-2xs px-1 py-0.5 rounded">
+                      {{ formatDuration(relatedVideo.duration) }}
                     </div>
                   </div>
-                  <div v-if="index === 0" class="related-item__badge">优先</div>
-                  <div class="related-item__duration">
-                    {{ formatDuration(relatedVideo.duration) }}
-                  </div>
-                </div>
-
-                <div class="related-item__body">
-                  <div v-if="index === 0" class="related-item__kicker">下一条候选</div>
-                  <div class="related-item__title">
-                    {{ relatedVideo.title }}
-                  </div>
-                  <div class="related-item__meta">
-                    <router-link
-                      v-if="relatedVideo.subscriptions?.[0]?.id"
-                      :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
-                      @click.stop
-                      class="related-item__channel"
+                  <div class="flex-1 min-w-0">
+                    <div class="text-text-primary text-xs leading-5 max-h-10 overflow-hidden group-hover:text-color-info transition-colors">
+                      {{ relatedVideo.title }}
+                    </div>
+                    <div class="text-text-muted text-2xs mt-1 truncate">
+                      <router-link
+                        v-if="relatedVideo.subscriptions?.[0]?.id"
+                        :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
+                        @click.stop
+                        class="hover:text-color-info transition-colors"
+                      >
+                        {{ relatedVideo.subscriptions[0].name }}
+                      </router-link>
+                      <span v-else>
+                        {{ relatedVideo.site }}
+                      </span>
+                    </div>
+                    <div
+                      v-if="relatedVideo.uploaded_at"
+                      class="text-text-tertiary text-2xs mt-0.5 truncate"
                     >
-                      {{ relatedVideo.subscriptions[0].name }}
-                    </router-link>
-                    <span v-else>
-                      {{ relatedVideo.site }}
-                    </span>
-                  </div>
-                  <div
-                    v-if="relatedVideo.uploaded_at"
-                    class="related-item__date"
-                  >
-                    {{ formatDate(relatedVideo.uploaded_at) }}
+                      {{ formatDate(relatedVideo.uploaded_at) }}
+                    </div>
                   </div>
                 </div>
-              </article>
+              </div>
             </div>
-          </section>
+          </div>
         </div>
       </div>
     </div>
@@ -326,42 +302,6 @@ const handleMoreOptionsClick = (event) => {
 };
 
 const currentInteractionType = computed(() => video.value?.interaction_type ?? null);
-const primarySubscription = computed(() => video.value?.subscriptions?.[0] ?? null);
-const secondarySubscriptions = computed(() => video.value?.subscriptions?.slice(1) ?? []);
-const primarySubscriptionMeta = computed(() => {
-  const metaParts = [];
-
-  if (video.value?.site) {
-    metaParts.push(video.value.site);
-  }
-
-  if (video.value?.publish_date) {
-    metaParts.push(`${formatDate(video.value.publish_date)} 发布`);
-  }
-
-  return metaParts.join(' · ');
-});
-
-const channelSummaryItems = computed(() => {
-  const items = [];
-
-  if (primarySubscription.value) {
-    items.push({ label: '总视频', value: primarySubscription.value.total_videos || 0 });
-    items.push({ label: '已解析', value: primarySubscription.value.total_extract || 0 });
-  }
-
-  if (video.value?.publish_date) {
-    items.push({ label: '发布时间', value: formatDate(video.value.publish_date) });
-  }
-
-  return items;
-});
-
-const relatedModuleHint = computed(() => {
-  if (loadingRelated.value) return '整理中';
-  if (!relatedVideos.value.length) return '暂无候选';
-  return '自动衔接播放池';
-});
 
 const videoPrimaryActions = computed(() => {
   const actions = [
@@ -451,11 +391,13 @@ const syncVideoMetaHeight = () => {
   const metaHeight = Math.ceil(metaEl.getBoundingClientRect().height);
   const sectionRect = sectionEl.getBoundingClientRect();
   const sectionTop = sectionRect.top;
+  const sectionHeight = Math.ceil(sectionRect.height);
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
   const availableHeight = Math.max(0, Math.floor(viewportHeight - sectionTop));
 
   root.style.setProperty('--video-meta-height', `${metaHeight}px`);
   root.style.setProperty('--video-page-available-height', `${availableHeight}px`);
+  root.style.setProperty('--related-panel-height', `${sectionHeight}px`);
 };
 
 const handleResize = () => syncVideoMetaHeight();
@@ -728,10 +670,19 @@ onUnmounted(() => {
 
 /* 视频页面容器对齐其它页面 */
 .video-page__container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   max-width: min(1840px, calc(100vw - 32px));
   margin: 0 auto;
   width: 100%;
   padding: 0.75rem 0.75rem calc(var(--mobile-nav-height, 64px) + 1rem);
+  --video-main-offset: 0px;
+  --video-aside-width: clamp(320px, 22vw, 360px);
+}
+
+.video-page__container.is-widescreen {
+  --video-main-offset: 0px;
 }
 
 .video-page__container.is-widescreen {
@@ -748,6 +699,7 @@ onUnmounted(() => {
 
 @media (min-width: 640px) {
   .video-page__container {
+    gap: 1.25rem;
     padding-left: 1.5rem;
     padding-right: 1.5rem;
     padding-bottom: 1.5rem;
@@ -756,23 +708,42 @@ onUnmounted(() => {
 
 @media (min-width: 1024px) {
   .video-page__container {
+    gap: 1.5rem;
     padding-left: 2rem;
     padding-right: 2rem;
     padding-bottom: 2rem;
   }
 }
 
+@media (min-width: 1280px) {
+  .video-page__container {
+    flex-direction: row;
+    align-items: flex-start;
+    --video-main-offset: 16px;
+  }
+}
+
 .video-main {
+  flex: 1 1 auto;
   min-width: 0;
   width: 100%;
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
-  max-width: clamp(980px, 100vw, 1480px);
+  transform: none;
+}
+
+@media (min-width: 1280px) {
+  .video-main {
+    flex: 1 1 0%;
+    max-width: clamp(1200px, 78vw, 1440px);
+    transform: translateX(var(--video-main-offset, 0px));
+  }
 }
 
 .video-main.is-widescreen {
   max-width: 100%;
+  transform: none;
 }
 
 .video-main.is-widescreen .video-container {
@@ -794,9 +765,71 @@ onUnmounted(() => {
   max-height: none;
 }
 
+
+.video-aside {
+  width: 100%;
+  flex: none;
+}
+
+.video-aside__panel {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.related-videos-list {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.related-videos-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.related-videos-list::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 999px;
+}
+
+.related-videos-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 @media (min-width: 1280px) {
+  .video-aside {
+    width: var(--video-aside-width, 360px);
+    flex: 0 0 var(--video-aside-width, 360px);
+  }
+
+  .video-aside__panel {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .related-videos-list {
+    max-height: var(--related-panel-height, 75vh);
+    overflow-y: auto;
+    padding-right: 6px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .video-page__container {
+    --video-aside-width: clamp(340px, 24vw, 420px);
+  }
+
   .video-main {
-    max-width: clamp(1180px, 86vw, 1500px);
+    max-width: clamp(1260px, 72vw, 1500px);
+  }
+}
+
+@media (min-width: 1536px) {
+  .video-page__container {
+    --video-aside-width: clamp(380px, 22vw, 460px);
+  }
+
+  .video-main {
+    max-width: clamp(1320px, 70vw, 1560px);
   }
 }
 
@@ -979,334 +1012,25 @@ onUnmounted(() => {
   color: #fee2e2;
 }
 
-.video-detail-grid {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.video-module {
-  min-width: 0;
-  padding: 1rem;
-  border: 1px solid var(--border-primary);
-  border-radius: 1rem;
-  background: color-mix(in srgb, var(--bg-secondary) 84%, transparent);
-}
-
-.video-module__header {
+.video-channel__primary {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.video-module__eyebrow {
-  font-size: var(--font-size-2xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-
-.video-module__title {
-  margin-top: 0.25rem;
-  font-size: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.video-module__hint {
-  font-size: var(--font-size-2xs);
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.video-module__empty {
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-}
-
-.video-channel-card {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.video-channel-card__main {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.875rem;
-  align-items: center;
-}
-
-.video-channel-card__avatar {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 9999px;
-  object-fit: cover;
-}
-
-.video-channel-card__identity {
-  min-width: 0;
-}
-
-.video-channel-card__name-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
   flex-wrap: wrap;
 }
 
-.video-channel-card__name {
+.video-channel__name {
   min-width: 0;
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--text-primary);
-  transition: color 0.18s ease;
+  flex: 1 1 140px;
 }
 
-.video-channel-card__name:hover {
-  color: var(--color-info);
+.video-channel__unsubscribe {
+  flex-shrink: 0;
 }
 
-.video-channel-card__badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.5rem;
-  padding: 0 0.625rem;
-  border-radius: 9999px;
-  background: rgba(59, 130, 246, 0.14);
-  color: #dbeafe;
-  font-size: var(--font-size-2xs);
-  font-weight: 600;
-}
-
-.video-channel-card__meta {
-  margin-top: 0.375rem;
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-}
-
-.video-channel-card__unsubscribe {
-  justify-self: start;
-  min-height: 2.5rem;
-  padding: 0 0.875rem;
-  border: 1px solid rgba(239, 68, 68, 0.24);
-  border-radius: 9999px;
-  background: rgba(239, 68, 68, 0.1);
-  color: #fecaca;
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
-}
-
-.video-channel-card__unsubscribe:hover {
-  background: rgba(239, 68, 68, 0.16);
-  border-color: rgba(239, 68, 68, 0.36);
-  color: #fee2e2;
-}
-
-.video-channel-card__stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.75rem;
-}
-
-.video-channel-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  padding: 0.875rem 0.9375rem;
-  border-radius: 0.875rem;
-  background: color-mix(in srgb, var(--bg-tertiary) 88%, transparent);
-  border: 1px solid var(--border-primary);
-}
-
-.video-channel-stat__label {
-  font-size: var(--font-size-2xs);
-  color: var(--text-tertiary);
-}
-
-.video-channel-stat__value {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.video-channel-card__group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-}
-
-.video-channel-card__group-title {
-  font-size: var(--font-size-2xs);
-  color: var(--text-tertiary);
-}
-
-.video-channel-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.625rem;
-}
-
-.video-channel-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  max-width: 100%;
-  padding: 0.5rem 0.75rem;
-  border-radius: 9999px;
-  background: color-mix(in srgb, var(--bg-tertiary) 90%, transparent);
-  color: var(--text-primary);
-  transition: background-color 0.18s ease, transform 0.18s ease;
-}
-
-.video-channel-chip:hover {
-  background: var(--bg-hover);
-  transform: translateY(-1px);
-}
-
-.video-channel-chip__avatar {
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 9999px;
-  object-fit: cover;
-}
-
-.video-channel-chip__label {
-  min-width: 0;
-  max-width: 10rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-}
-
-.related-feed {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.related-item {
-  display: grid;
-  grid-template-columns: minmax(7.5rem, 8.5rem) minmax(0, 1fr);
-  gap: 0.875rem;
-  padding: 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 1rem;
-  background: color-mix(in srgb, var(--bg-tertiary) 84%, transparent);
-  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
-}
-
-.related-item:hover {
-  border-color: var(--border-secondary);
-  background: var(--bg-hover);
-  transform: translateY(-1px);
-}
-
-.related-item.is-priority {
-  border-color: rgba(59, 130, 246, 0.24);
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04));
-}
-
-.related-item__thumb {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  border-radius: 0.875rem;
-  overflow: hidden;
-  background: var(--bg-tertiary);
-}
-
-.related-item__image,
-.related-item__image-fallback {
-  width: 100%;
-  height: 100%;
-}
-
-.related-item__image {
-  object-fit: cover;
-  transition: transform 0.2s ease;
-}
-
-.related-item:hover .related-item__image {
-  transform: scale(1.04);
-}
-
-.related-item__image-fallback {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-secondary);
-}
-
-.related-item__badge,
-.related-item__duration {
-  position: absolute;
-  border-radius: 9999px;
-  font-size: var(--font-size-2xs);
-  font-weight: 600;
-}
-
-.related-item__badge {
-  top: 0.5rem;
-  left: 0.5rem;
-  padding: 0.2rem 0.5rem;
-  background: rgba(59, 130, 246, 0.9);
-  color: #eff6ff;
-}
-
-.related-item__duration {
-  right: 0.5rem;
-  bottom: 0.5rem;
-  padding: 0.2rem 0.45rem;
-  background: rgba(15, 15, 15, 0.76);
-  color: var(--text-primary);
-}
-
-.related-item__body {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.35rem;
-}
-
-.related-item__kicker {
-  font-size: var(--font-size-2xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-info);
-}
-
-.related-item__title {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.related-item__meta,
-.related-item__date {
-  font-size: var(--font-size-2xs);
-  color: var(--text-muted);
-}
-
-.related-item__channel {
-  color: var(--text-muted);
-  transition: color 0.18s ease;
-}
-
-.related-item__channel:hover {
-  color: var(--color-info);
+.video-channel__stats,
+.video-channel__more {
+  margin-left: 0;
 }
 
 @media (min-width: 768px) {
@@ -1327,17 +1051,9 @@ onUnmounted(() => {
     max-width: min(100%, 28rem);
   }
 
-  .video-detail-grid {
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .video-channel-card__main {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-
-  .video-channel-card__unsubscribe {
-    justify-self: end;
+  .video-channel__stats,
+  .video-channel__more {
+    margin-left: 2.75rem;
   }
 }
 
@@ -1379,43 +1095,6 @@ onUnmounted(() => {
   .video-action-menu {
     min-width: min(13rem, calc(100vw - 2rem));
     max-width: calc(100vw - 1.5rem);
-  }
-
-  .video-detail-grid {
-    gap: 0.875rem;
-  }
-
-  .video-module {
-    padding: 0.875rem;
-    border-radius: 0.875rem;
-  }
-
-  .video-module__header {
-    flex-direction: column;
-    gap: 0.375rem;
-  }
-
-  .video-module__hint {
-    white-space: normal;
-  }
-
-  .video-channel-card__main {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .video-channel-card__unsubscribe {
-    grid-column: 1 / -1;
-    width: 100%;
-    justify-content: center;
-  }
-
-  .video-channel-card__stats {
-    grid-template-columns: 1fr;
-  }
-
-  .related-item {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
   }
 }
 
