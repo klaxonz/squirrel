@@ -1,9 +1,7 @@
 import logging
-import json
 
+from core.cache import redis_client
 from queues.direct_producer import direct_domain_producer
-from queues.duplicate_checker import create_simple_checker
-from queues.queue_config import get_queue_config, QueueType, QueueMode
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import video_service, message_service
 from utils.site_catalog import SiteCatalog
@@ -13,7 +11,7 @@ from utils.metrics import metrics
 logger = logging.getLogger()
 
 
-def enqueue_video_extraction(params: VideoExtractDto) -> None:
+def enqueue_video_extraction(params: VideoExtractDto) -> bool:
     """
     将视频提取任务加入队列
     注意：在批量调用时，订阅存在性检查应在外层完成，避免重复查询
@@ -21,22 +19,27 @@ def enqueue_video_extraction(params: VideoExtractDto) -> None:
     domain = extract_top_level_domain(params.url)
     if not SiteCatalog.is_site_enabled(domain=domain):
         logger.info(f"Skip enqueue video extraction for disabled site: domain={domain}, url={params.url}")
-        return
+        return False
 
     if params.only_extract:
         video = video_service.get_video_by_url(params.url)
         if video:
             logger.debug(f"Video already extracted, skipping: {params.url}")
             metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_extracted"})
-            return
+            return False
 
-    _send_to_extract_queue(params)
+    return _send_to_extract_queue(params)
 
 
-def _send_to_extract_queue(params: VideoExtractDto) -> None:
+def _build_video_dedupe_key(url: str, priority: str) -> str:
+    return f"dedupe:video_extract:{priority}:{url}"
+
+
+def _send_to_extract_queue(params: VideoExtractDto) -> bool:
     content = params.model_dump()
     message = message_service.create_message(content)
     message_dict = message.to_dict()
+    dedupe_key = None
     
     # 队列优先级策略：
     # 1. 手动触发 -> manual（最高优先级）
@@ -51,33 +54,22 @@ def _send_to_extract_queue(params: VideoExtractDto) -> None:
     
     # 对自动任务检查重复，手动触发不检查（允许用户强制重新提取）
     if not params.is_manual:
-        # 构建域队列名称用于去重检查
         domain = extract_top_level_domain(params.url)
-        config = get_queue_config()
-        site = config.get_site_by_domain(domain)
-        
-        if not site:
-            logger.error(f"Unsupported domain: {domain}, url={params.url}")
-            return
-        
-        mode_mapping = {"manual": QueueMode.MANUAL, "incr": QueueMode.INCREMENTAL, "full": QueueMode.FULL}
-        queue_name = config.build_queue_name(QueueType.VIDEO_EXTRACT, site, mode_mapping[priority])
-        
-        checker = create_simple_checker(
-            queue_name=queue_name,
-            key_fn=lambda msg: json.loads(msg['body'])['url']
-        )
-        
-        if checker.is_duplicate(message_dict):
-            logger.debug(f"Video extraction task already in queue, skipping: {params.url}")
+        dedupe_key = _build_video_dedupe_key(params.url, priority)
+        acquired = redis_client.set(dedupe_key, '1', nx=True, ex=600)
+        if not acquired:
+            logger.debug(f"Video extraction task already reserved, skipping: {params.url}")
             metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_in_queue"})
-            return
+            return False
     
-    # 使用新的直接域队列生产者
     try:
         direct_domain_producer.send_video_extract(message_dict, params.url, priority)
+        return True
     except ValueError as e:
+        if dedupe_key:
+            redis_client.delete(dedupe_key)
         logger.error(f"Failed to send video extract message: {e}, url={params.url}")
+        return False
 
 
 

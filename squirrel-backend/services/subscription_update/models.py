@@ -2,8 +2,8 @@
 订阅更新领域模型
 """
 from dataclasses import dataclass
-from typing import Optional
 from enum import Enum
+from typing import Optional
 
 
 class UpdateTrigger(Enum):
@@ -30,6 +30,8 @@ class SubscriptionUpdateRequest:
     user_id: Optional[int] = None
     force: bool = False
     trace_id: Optional[str] = None
+    sync_state_id: Optional[int] = None
+    queue_token: Optional[str] = None
 
 
 @dataclass
@@ -41,4 +43,16 @@ class SubscriptionUpdateResult:
     videos_enqueued: int
     error_message: Optional[str] = None
     skipped_reason: Optional[str] = None
+    cursor_payload: Optional[dict] = None
+    latest_video_url: Optional[str] = None
+    total_available: Optional[int] = None
+
+
+@dataclass
+class SubscriptionScheduleResult:
+    """订阅调度结果"""
+    subscription_id: int
+    sync_state_id: Optional[int]
+    status: str
+    request_id: Optional[str] = None
 

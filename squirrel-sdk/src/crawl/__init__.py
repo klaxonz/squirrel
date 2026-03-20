@@ -40,6 +40,8 @@ from .core import (
     UserSubscriptionImporter,
     LoginStatusResult,
     SubscriptionMeta,
+    SubscriptionSyncContext,
+    SubscriptionSyncResult,
 )
 
 # Unified plugin registry system
@@ -206,6 +208,8 @@ __all__ = [
     "YoutubeDLExtractorBase",
     # Utilities
     "SubscriptionMeta",
+    "SubscriptionSyncContext",
+    "SubscriptionSyncResult",
     "filter_cookies_to_query_string",
     "configure_cookie_file_resolver",
     "resolve_cookie_file_path",

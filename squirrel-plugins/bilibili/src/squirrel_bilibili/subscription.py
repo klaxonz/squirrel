@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import List
+from typing import List, Optional
 
-from crawl import register_subscription, SubscriptionMeta
+from crawl import register_subscription, SubscriptionMeta, SubscriptionSyncContext, SubscriptionSyncResult
 
 from .sign import (
     build_cookies,
@@ -72,18 +72,41 @@ class BilibiliSubscription:
         cover = data.get('cover') or data.get('square_cover')
         return SubscriptionMeta(f"{prefix}_{self.target.series_id}", title, cover, self.url)
 
-    def get_subscribe_videos(self, extract_all: bool) -> List[str]:
+    def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
         if self.resource_type == ResourceType.FAVORITE_LIST:
-            return self._get_favlist_videos(extract_all)
-        if self.resource_type == ResourceType.CHANNEL_SERIES:
-            return self._get_channel_videos(extract_all)
-        return self._get_space_videos(extract_all)
+            video_urls, latest_video_url, stop_reason = self._get_favlist_videos(context)
+        elif self.resource_type == ResourceType.CHANNEL_SERIES:
+            video_urls, latest_video_url, stop_reason = self._get_channel_videos(context)
+        else:
+            video_urls, latest_video_url, stop_reason = self._get_space_videos(context)
+        return SubscriptionSyncResult(
+            video_urls=video_urls,
+            latest_video_url=latest_video_url,
+            cursor_payload={'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload,
+            stop_reason=stop_reason,
+            total_available=len(video_urls),
+        )
 
-    def _get_space_videos(self, extract_all: bool) -> List[str]:
-        """获取空间（用户）的视频列表"""
+    def _append_video(
+        self,
+        video_list: List[str],
+        video_url: str,
+        context: SubscriptionSyncContext,
+        latest_video_url: Optional[str],
+    ) -> tuple[bool, Optional[str], Optional[str]]:
+        latest_video_url = latest_video_url or video_url
+        if video_url == context.last_seen_video_url:
+            return False, latest_video_url, 'cursor_hit'
+        video_list.append(video_url)
+        if context.mode != 'full' and len(video_list) >= (context.limit or 30):
+            return False, latest_video_url, 'limit_reached'
+        return True, latest_video_url, None
+
+    def _get_space_videos(self, context: SubscriptionSyncContext) -> tuple[List[str], Optional[str], str]:
         if not self.target.mid:
             raise ValueError('Missing user id')
         video_list: List[str] = []
+        latest_video_url: Optional[str] = None
         page = 1
         page_size = 50
 
@@ -98,9 +121,16 @@ class BilibiliSubscription:
                     continue
                 bvid = v.get("bvid")
                 if bvid:
-                    video_list.append(f"https://www.bilibili.com/video/{bvid}")
+                    keep_going, latest_video_url, stop_reason = self._append_video(
+                        video_list,
+                        f"https://www.bilibili.com/video/{bvid}",
+                        context,
+                        latest_video_url,
+                    )
+                    if not keep_going:
+                        return video_list, latest_video_url, stop_reason or 'cursor_hit'
 
-            if not extract_all:
+            if context.mode != 'full':
                 break
 
             page_info = data.get('page') or {}
@@ -110,14 +140,14 @@ class BilibiliSubscription:
 
             page += 1
 
-        return video_list
+        return video_list, latest_video_url, 'source_exhausted'
 
-    def _get_favlist_videos(self, extract_all: bool) -> List[str]:
-        """获取收藏夹的视频列表"""
+    def _get_favlist_videos(self, context: SubscriptionSyncContext) -> tuple[List[str], Optional[str], str]:
         if not self.target.media_id:
             raise ValueError('Missing favorite list id')
 
         video_list: List[str] = []
+        latest_video_url: Optional[str] = None
         page = 1
 
         while True:
@@ -129,18 +159,24 @@ class BilibiliSubscription:
             for media in medias:
                 bvid = media.get("bvid")
                 if bvid:
-                    video_list.append(f"https://www.bilibili.com/video/{bvid}")
+                    keep_going, latest_video_url, stop_reason = self._append_video(
+                        video_list,
+                        f"https://www.bilibili.com/video/{bvid}",
+                        context,
+                        latest_video_url,
+                    )
+                    if not keep_going:
+                        return video_list, latest_video_url, stop_reason or 'cursor_hit'
 
             has_more = data.get('has_more', False)
-            if not extract_all or not has_more:
+            if context.mode != 'full' or not has_more:
                 break
             page += 1
 
         logger.info('Extracted %s videos from favorite list', len(video_list))
-        return video_list
+        return video_list, latest_video_url, 'source_exhausted'
 
-    def _get_channel_videos(self, extract_all: bool) -> List[str]:
-        """获取合集的视频列表"""
+    def _get_channel_videos(self, context: SubscriptionSyncContext) -> tuple[List[str], Optional[str], str]:
         if not self.target.series_id:
             raise ValueError('Missing channel series id')
         if not self.target.mid:
@@ -148,6 +184,7 @@ class BilibiliSubscription:
         series_type = self.target.series_type or ChannelSeriesType.SERIES
 
         video_list: List[str] = []
+        latest_video_url: Optional[str] = None
         page = 1
         page_size = 100
 
@@ -170,12 +207,19 @@ class BilibiliSubscription:
             for archive in archives:
                 bvid = archive.get("bvid") or (archive.get('archive') or {}).get('bvid')
                 if bvid:
-                    video_list.append(f"https://www.bilibili.com/video/{bvid}")
+                    keep_going, latest_video_url, stop_reason = self._append_video(
+                        video_list,
+                        f"https://www.bilibili.com/video/{bvid}",
+                        context,
+                        latest_video_url,
+                    )
+                    if not keep_going:
+                        return video_list, latest_video_url, stop_reason or 'cursor_hit'
 
-            if not extract_all or len(archives) < page_size:
+            if context.mode != 'full' or len(archives) < page_size:
                 break
 
             page += 1
 
         logger.info('Extracted %s videos from channel series', len(video_list))
-        return video_list
+        return video_list, latest_video_url, 'source_exhausted'

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import re
 import logging
-from typing import List
+from typing import List, Optional
 
 from pytubefix import Channel as YouTubeChannel
 from pytubefix import Playlist as YouTubePlaylist
 
-from crawl import register_subscription, SubscriptionMeta
+from crawl import register_subscription, SubscriptionMeta, SubscriptionSyncContext, SubscriptionSyncResult
 
 logger = logging.getLogger(__name__)
 
@@ -59,30 +59,53 @@ class YoutubeSubscription:
             return match.group(1)
         return ""
 
-    def get_subscribe_videos(self, extract_all: bool) -> List[str]:
+    def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
+        video_urls, latest_video_url, stop_reason = self._collect_videos(context)
+        return SubscriptionSyncResult(
+            video_urls=video_urls,
+            latest_video_url=latest_video_url,
+            cursor_payload={'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload,
+            stop_reason=stop_reason,
+            total_available=len(video_urls),
+        )
+
+    def _collect_videos(self, context: SubscriptionSyncContext) -> tuple[List[str], Optional[str], str]:
+        video_urls: List[str] = []
+        latest_video_url: Optional[str] = None
+        limit = None if context.mode == 'full' else (context.limit or 30)
+
         if self.is_playlist and self.playlist:
-            # 从播放列表获取视频
-            videos_: List[str] = []
             try:
                 for video in self.playlist.videos:
-                    if video and video.watch_url:
-                        videos_.append(video.watch_url)
-                logger.info(f"从播放列表提取了 {len(videos_)} 个视频")
+                    watch_url = getattr(video, 'watch_url', None)
+                    if not watch_url:
+                        continue
+                    if latest_video_url is None:
+                        latest_video_url = watch_url
+                    if watch_url == context.last_seen_video_url:
+                        return video_urls, latest_video_url, 'cursor_hit'
+                    video_urls.append(watch_url)
+                    if limit is not None and len(video_urls) >= limit:
+                        return video_urls, latest_video_url, 'limit_reached'
+                logger.info(f"从播放列表提取了 {len(video_urls)} 个视频")
             except Exception as e:
                 logger.error(f"提取播放列表视频失败: {e}")
-            return videos_
-        else:
-            # 从频道获取视频
-            videos_: List[str] = []
-            if self.channel.videos:
-                for video in self.channel.videos:
-                    if video and video.watch_url:
-                        videos_.append(video.watch_url)
-            shorts_: List[str] = []
-            if self.channel.shorts:
-                for short in self.channel.shorts:
-                    if short and short.watch_url:
-                        shorts_.append(short.watch_url)
-            return videos_ + shorts_
+            return video_urls, latest_video_url, 'source_exhausted'
+
+        for source in [self.channel.videos, self.channel.shorts]:
+            if not source:
+                continue
+            for item in source:
+                watch_url = getattr(item, 'watch_url', None)
+                if not watch_url:
+                    continue
+                if latest_video_url is None:
+                    latest_video_url = watch_url
+                if watch_url == context.last_seen_video_url:
+                    return video_urls, latest_video_url, 'cursor_hit'
+                video_urls.append(watch_url)
+                if limit is not None and len(video_urls) >= limit:
+                    return video_urls, latest_video_url, 'limit_reached'
+        return video_urls, latest_video_url, 'source_exhausted'
 
 

@@ -3,9 +3,18 @@ def get_subscriptions_sql():
         select 
             s.*,
             us.is_nsfw,
-            coalesce(vc.video_count, 0) as total_extract
+            coalesce(vc.video_count, 0) as total_extract,
+            coalesce(ss.sync_status, 'idle') as sync_status,
+            ss.last_sync_at,
+            ss.last_success_at,
+            ss.next_sync_at,
+            ss.last_error,
+            coalesce(ss.pending_video_count, 0) as pending_video_count
         from user_subscription us
         join subscription s on s.id = us.subscription_id
+        left join subscription_sync_state ss
+            on ss.subscription_id = s.id
+            and ss.sync_mode = 'incremental'
         left join (
             select 
                 subscription_id,
@@ -67,8 +76,17 @@ def get_subscription_sql():
         select 
             s.*,
             0 as is_nsfw,
-            coalesce(vc.video_count, 0) as total_extract
+            coalesce(vc.video_count, 0) as total_extract,
+            coalesce(ss.sync_status, 'idle') as sync_status,
+            ss.last_sync_at,
+            ss.last_success_at,
+            ss.next_sync_at,
+            ss.last_error,
+            coalesce(ss.pending_video_count, 0) as pending_video_count
         from subscription s
+        left join subscription_sync_state ss
+            on ss.subscription_id = s.id
+            and ss.sync_mode = 'incremental'
         left join (
             select 
                 subscription_id,

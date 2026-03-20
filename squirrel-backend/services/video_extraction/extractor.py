@@ -13,6 +13,7 @@ from core.extraction.task_manager import TaskManager
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
 from utils.metrics import metrics
+from services import subscription_sync_state_service
 
 logger = logging.getLogger()
 handler = VideoExtractionHandler()
@@ -72,41 +73,44 @@ def extract_video(params: VideoExtractDto) -> ExtractionResult:
     domain = url_helper.extract_top_level_domain(params.url)
     tags = {"site": domain}
     
-    if not SiteCatalog.is_site_enabled(domain=domain):
-        logger.info(
-            f"Skip video extraction because site is disabled: "
-            f"domain={domain}, url={params.url}"
-        )
-        metrics.counter("crawl.tasks.total", tags={**tags, "status": "skipped"})
-        return ExtractionResult(
-            success=False,
-            error="site_disabled"
-        )
+    try:
+        if not SiteCatalog.is_site_enabled(domain=domain):
+            logger.info(
+                f"Skip video extraction because site is disabled: "
+                f"domain={domain}, url={params.url}"
+            )
+            metrics.counter("crawl.tasks.total", tags={**tags, "status": "skipped"})
+            return ExtractionResult(
+                success=False,
+                error="site_disabled"
+            )
 
-    task = _create_task(params)
-    
-    with metrics.timer("crawl.extract", tags=tags):
-        logger.debug(f"Starting video extraction: {task.url}")
-        result = handler.process(task)
-    
-    if result.success:
-        video_title = result.data.title if result.data else 'N/A'
-        logger.info(
-            f"Video extracted: platform={domain}, url={params.url}, "
-            f"title={video_title}"
-        )
-        metrics.counter("crawl.tasks.total", tags={**tags, "status": "success"})
-        metrics.counter("videos.discovered", tags={**tags, "subscribed": str(params.subscribed).lower()})
-    else:
-        logger.error(
-            f"Video extraction failed: platform={domain}, url={params.url}, "
-            f"error={result.error}"
-        )
-        error_type = _extract_error_type(result.error)
-        metrics.counter("crawl.tasks.total", tags={**tags, "status": "error"})
-        metrics.counter("crawl.errors.total", tags={**tags, "error_type": error_type})
-    
-    return result
+        task = _create_task(params)
+        
+        with metrics.timer("crawl.extract", tags=tags):
+            logger.debug(f"Starting video extraction: {task.url}")
+            result = handler.process(task)
+        
+        if result.success:
+            video_title = result.data.title if result.data else 'N/A'
+            logger.info(
+                f"Video extracted: platform={domain}, url={params.url}, "
+                f"title={video_title}"
+            )
+            metrics.counter("crawl.tasks.total", tags={**tags, "status": "success"})
+            metrics.counter("videos.discovered", tags={**tags, "subscribed": str(params.subscribed).lower()})
+        else:
+            logger.error(
+                f"Video extraction failed: platform={domain}, url={params.url}, "
+                f"error={result.error}"
+            )
+            error_type = _extract_error_type(result.error)
+            metrics.counter("crawl.tasks.total", tags={**tags, "status": "error"})
+            metrics.counter("crawl.errors.total", tags={**tags, "error_type": error_type})
+        
+        return result
+    finally:
+        subscription_sync_state_service.decrement_pending_video_count(params.sync_state_id)
 
 
 def _create_task(params: VideoExtractDto) -> ExtractionTask:
@@ -114,6 +118,7 @@ def _create_task(params: VideoExtractDto) -> ExtractionTask:
     
     metadata = {
         'subscription_id': params.subscription_id,
+        'sync_state_id': params.sync_state_id,
         'only_extract': params.only_extract,
         'subscribed': params.subscribed,
         'is_extract_all': params.is_extract_all,

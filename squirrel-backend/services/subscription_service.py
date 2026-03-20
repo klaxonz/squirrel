@@ -9,6 +9,7 @@ from models.links import UserSubscription
 from models.message import Message
 from models.subscription import Subscription, ContentType
 from services import user_config_service
+from services import subscription_sync_state_service
 from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql, get_subscription_sql
 from utils.sql_parser import parse_dynamic_sql
 
@@ -80,6 +81,7 @@ def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):
     with get_session() as session:
         subscription = get_subscription_by_url_and_name(url=subscribe_info.url, name=subscribe_info.name)
         if subscription:
+            subscription_sync_state_service.ensure_sync_states(subscription.id, subscription.url)
             return subscription
         else:
             # 检测订阅类型：播放列表还是频道
@@ -94,6 +96,7 @@ def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):
                 extra_data={}
             )
             session.add(subscription)
+            session.flush()
         user_subscription = session.scalars(
             select(UserSubscription).where(
                 UserSubscription.user_id == user_id,
@@ -112,6 +115,7 @@ def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):
             )
             session.add(user_subscription)
         session.commit()
+    subscription_sync_state_service.ensure_sync_states(subscription.id, subscription.url)
     return subscription
 
 
@@ -304,6 +308,9 @@ def restore_subscription(subscription_id: int, user_id: int) -> None:
             session.add(user_subscription)
         
         session.commit()
+    subscription = get_subscription_by_id(subscription_id)
+    if subscription:
+        subscription_sync_state_service.ensure_sync_states(subscription.id, subscription.url)
 
 
 def create_subscribe_message(url: str, user_id: int) -> Dict[str, Any]:

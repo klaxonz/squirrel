@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from core.database import get_session
 from models.links import UserSubscription
+from services import subscription_sync_state_service
 from utils import url_helper
 from utils.metrics import metrics
 from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult
@@ -47,6 +48,8 @@ class SubscriptionOrchestrator:
             if not SiteCatalog.is_site_enabled(domain=domain):
                 message = f"Site is disabled, skip subscription update: {domain}"
                 logger.info(message)
+                if request.sync_state_id:
+                    subscription_sync_state_service.mark_sync_skipped(request.sync_state_id)
                 # 记录跳过指标
                 metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "site_disabled"})
                 return SubscriptionUpdateResult(
@@ -60,6 +63,8 @@ class SubscriptionOrchestrator:
             if not self._has_active_subscribers(request.subscription_id):
                 message = f"No active subscribers, skip subscription update: subscription_id={request.subscription_id}"
                 logger.info(message)
+                if request.sync_state_id:
+                    subscription_sync_state_service.mark_sync_skipped(request.sync_state_id)
                 metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "no_subscribers"})
                 return SubscriptionUpdateResult(
                     subscription_id=request.subscription_id,
@@ -86,6 +91,8 @@ class SubscriptionOrchestrator:
             
         except Exception as e:
             logger.error(f"Orchestrator error for subscription {request.subscription_id}: {e}", exc_info=True)
+            if request.sync_state_id:
+                subscription_sync_state_service.mark_sync_failed(request.sync_state_id, str(e))
             
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
@@ -109,13 +116,12 @@ class SubscriptionOrchestrator:
     
     def _resolve_site(self, url: str) -> str:
         """解析站点名称"""
-        from crawl import get_extractor_registry
+        from crawl import get_subscription_registry
         
         domain = url_helper.extract_top_level_domain(url)
         
-        # 检查是否有注册的提取器支持该域名
-        extractor_registry = get_extractor_registry()
-        site_key = extractor_registry.get_by_domain(domain)
+        subscription_registry = get_subscription_registry()
+        site_key = subscription_registry.get_by_domain(domain)
         if site_key:
             return site_key
         

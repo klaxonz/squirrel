@@ -3,7 +3,6 @@ from datetime import datetime
 
 from fastapi import APIRouter, Query, Depends, Request
 import common.response as response
-from core.cache import redis_client
 from models.user import User
 from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest, ImportSubscriptionsRequest
 from services import subscription_service
@@ -11,7 +10,6 @@ from typing import List
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
 from utils.jwt_helper import get_current_user
-from common import constants
 
 router = APIRouter(tags=['订阅接口'])
 logger = logging.getLogger(__name__)
@@ -114,13 +112,6 @@ def refresh_subscription(
     if status == "forbidden":
         return response.forbidden("无权操作该订阅")
 
-    lock_key = f"lock:subscription:update:{subscription_id}"
-    if redis_client.exists(lock_key):
-        return response.success({
-            "status": "in_progress",
-            "inProgress": True
-        })
-
     domain = extract_top_level_domain(subscription.url)
     if not SiteCatalog.is_site_enabled(domain=domain):
         return response.param_error("站点插件未启用，无法刷新订阅")
@@ -129,29 +120,24 @@ def refresh_subscription(
 
     trace_id = getattr(request.state, 'trace_id', None)
 
-    success = scheduler.schedule_one(
+    result = scheduler.schedule_one(
         subscription_id=subscription.id,
         url=subscription.url,
         trigger=UpdateTrigger.MANUAL,
-        mode=UpdateMode.SMART,
+        mode=UpdateMode.INCREMENTAL,
         user_id=current_user.id,
         trace_id=trace_id
     )
 
-    if not success:
+    if result.status == 'failed':
         return response.server_error("刷新请求失败")
 
-    redis_client.set(
-        f"{constants.REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX}{subscription_id}",
-        1,
-        ex=120
-    )
-
     return response.success({
-        "status": "queued",
-        "inProgress": False,
+        "status": result.status,
+        "inProgress": result.status == 'in_progress',
         "subscriptionId": subscription_id,
-        "queuedAt": datetime.utcnow().isoformat()
+        "requestId": result.request_id,
+        "queuedAt": datetime.utcnow().isoformat() if result.status == 'queued' else None
     })
 
 

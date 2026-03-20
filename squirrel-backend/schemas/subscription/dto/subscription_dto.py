@@ -19,7 +19,7 @@ class SubscriptionDto(sqlalchemy_to_pydantic(Subscription)):
             if 'properties' in schema and 'extra_data' in schema['properties']:
                 schema['properties']['extra_data']['type'] = ['object', 'string', 'null']
 
-    @field_serializer('created_at', 'updated_at')
+    @field_serializer('created_at', 'updated_at', 'last_sync_at', 'last_success_at', 'next_sync_at')
     def serialize_datetime(self, dt: Optional[datetime]) -> str:
         return dt.strftime("%Y-%m-%d %H:%M:%S") if dt else ""
 
@@ -36,3 +36,9 @@ class SubscriptionDto(sqlalchemy_to_pydantic(Subscription)):
 
     total_extract: int = 0
     is_nsfw: bool
+    sync_status: str = 'idle'
+    last_sync_at: Optional[datetime] = None
+    last_success_at: Optional[datetime] = None
+    next_sync_at: Optional[datetime] = None
+    last_error: Optional[str] = None
+    pending_video_count: int = 0

@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Any
 
 from models.message import Message
+from services import subscription_service, subscription_sync_state_service
 from services.subscription_update.orchestrator import orchestrator
 from services.subscription_update.models import SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
 
@@ -34,36 +35,48 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
         body_data = json.loads(message_obj.body)
         
         subscription_id = body_data.get('subscription_id')
-        url = body_data.get('url')
-        mode = body_data.get('mode', 'smart')
+        sync_state_id = body_data.get('sync_state_id')
+        mode = body_data.get('mode', 'incremental')
         user_id = body_data.get('user_id')
         force = body_data.get('force', False)
-        domain = body_data.get('domain')
+        queue_token = body_data.get('queue_token')
         trace_id = message_obj.trace_id if hasattr(message_obj, 'trace_id') else None
         
-        if not subscription_id or not url:
-            logger.error(f"Invalid message: missing subscription_id or url, message={body_data}")
+        if not subscription_id or not sync_state_id or not queue_token:
+            logger.error(f"Invalid message: missing subscription_id or sync state, message={body_data}")
+            return
+
+        claimed_state = subscription_sync_state_service.claim_sync_state(sync_state_id, queue_token)
+        if not claimed_state:
+            logger.debug(
+                f"Skip subscription update because state can not be claimed: "
+                f"subscription_id={subscription_id}, sync_state_id={sync_state_id}"
+            )
+            return
+
+        subscription = subscription_service.get_subscription_by_id(subscription_id)
+        if not subscription or not subscription.url:
+            subscription_sync_state_service.mark_sync_failed(sync_state_id, 'subscription_not_found')
+            logger.error(f"Subscription not found while processing sync state: subscription_id={subscription_id}")
             return
         
         logger.debug(
             f"Processing subscription update: "
-            f"id={subscription_id}, trigger={trigger.value}, mode={mode}, domain={domain}, trace_id={trace_id}"
+            f"id={subscription_id}, trigger={trigger.value}, mode={mode}, sync_state_id={sync_state_id}, trace_id={trace_id}"
         )
         
         request = SubscriptionUpdateRequest(
             subscription_id=subscription_id,
-            url=url,
+            url=subscription.url,
             trigger=trigger,
             mode=UpdateMode(mode),
             user_id=user_id,
             force=force,
-            trace_id=trace_id
+            trace_id=trace_id,
+            sync_state_id=sync_state_id,
+            queue_token=queue_token,
         )
-        
-        # 将 domain 信息附加到 request（用于 offset 更新）
-        if domain:
-            setattr(request, 'domain', domain)
-        
+
         result = orchestrator.update(request)
         
         if result.success:

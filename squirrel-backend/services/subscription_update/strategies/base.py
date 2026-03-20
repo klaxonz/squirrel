@@ -3,9 +3,11 @@
 每个站点可以实现自己的更新策略
 """
 from abc import ABC, abstractmethod
-from typing import List, Optional
-from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateTrigger
+from typing import Optional
+
+from services import subscription_sync_state_service
 from utils.metrics import metrics
+from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult
 
 
 class UpdateStrategy(ABC):
@@ -28,22 +30,16 @@ class UpdateStrategy(ABC):
         pass
     
     @abstractmethod
-    def fetch_videos(self, request: SubscriptionUpdateRequest) -> List[str]:
+    def fetch_videos(self, request: SubscriptionUpdateRequest):
         """
         获取视频列表
-        
-        Returns:
-            视频URL列表
         """
         pass
     
     @abstractmethod
-    def enqueue_extraction(self, video_urls: List[str], request: SubscriptionUpdateRequest) -> int:
+    def enqueue_extraction(self, fetch_result, request: SubscriptionUpdateRequest) -> int:
         """
         将视频加入提取队列
-        
-        Returns:
-            成功入队的视频数量
         """
         pass
     
@@ -61,6 +57,8 @@ class UpdateStrategy(ABC):
         
         should_update, skip_reason = self.should_update(request)
         if not should_update:
+            if request.sync_state_id:
+                subscription_sync_state_service.mark_sync_skipped(request.sync_state_id)
             # 记录跳过指标
             metrics.counter("subscription.update.total", tags={**tags, "status": "skipped", "reason": skip_reason or "unknown"})
             return SubscriptionUpdateResult(
@@ -72,28 +70,37 @@ class UpdateStrategy(ABC):
             )
         
         try:
-            video_urls = self.fetch_videos(request)
+            fetch_result = self.fetch_videos(request)
             
-            enqueued = self.enqueue_extraction(video_urls, request)
-            
-            # 在视频 URL 入队后，更新 offset
-            self._update_offset_after_enqueue(request)
+            enqueued = self.enqueue_extraction(fetch_result, request)
+
+            if request.sync_state_id:
+                subscription_sync_state_service.mark_sync_success(
+                    request.sync_state_id,
+                    cursor_payload=fetch_result.cursor_payload,
+                    latest_video_url=fetch_result.latest_video_url,
+                )
             
             # 记录成功指标
             metrics.counter("subscription.update.total", tags={**tags, "status": "success"})
-            metrics.counter("subscription.videos.found", value=len(video_urls), tags=tags)
+            metrics.counter("subscription.videos.found", value=len(fetch_result.video_urls), tags=tags)
             metrics.counter("subscription.videos.enqueued", value=enqueued, tags=tags)
             
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
                 success=True,
-                videos_found=len(video_urls),
-                videos_enqueued=enqueued
+                videos_found=len(fetch_result.video_urls),
+                videos_enqueued=enqueued,
+                cursor_payload=fetch_result.cursor_payload,
+                latest_video_url=fetch_result.latest_video_url,
+                total_available=fetch_result.total_available,
             )
         except Exception as e:
             # 记录错误指标
             metrics.counter("subscription.update.total", tags={**tags, "status": "error"})
             metrics.counter("subscription.errors.total", tags={**tags, "error_type": type(e).__name__})
+            if request.sync_state_id:
+                subscription_sync_state_service.mark_sync_failed(request.sync_state_id, str(e))
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
                 success=False,
@@ -101,33 +108,4 @@ class UpdateStrategy(ABC):
                 videos_enqueued=0,
                 error_message=str(e)
             )
-    
-    def _update_offset_after_enqueue(self, request: SubscriptionUpdateRequest):
-        """
-        在视频入队后更新偏移量
-        """
-        try:
-            # 只有定时任务触发的更新才需要记录 offset
-            if request.trigger != UpdateTrigger.SCHEDULED:
-                return
-            
-            # 从 request 中获取 domain（需要在消费者中解析并传入）
-            domain = getattr(request, 'domain', None)
-            if not domain:
-                # 如果没有 domain，尝试从 URL 提取
-                from utils import url_helper
-                try:
-                    domain = url_helper.extract_top_level_domain(request.url)
-                except Exception:
-                    domain = 'unknown'
-            
-            # 更新 offset
-            from services.subscription_update.scheduler import SubscriptionScheduler
-            SubscriptionScheduler.update_offset(domain, request.mode, request.subscription_id)
-            
-        except Exception as e:
-            # offset 更新失败不应影响主流程
-            import logging
-            logger = logging.getLogger()
-            logger.warning(f"Failed to update offset for subscription {request.subscription_id}: {e}")
 

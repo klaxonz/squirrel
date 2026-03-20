@@ -7,6 +7,10 @@ from models import Base
 from models.mixins.serializer import SerializerMixin
 
 
+def _video_join():
+    from models.video import Video
+    return Video.id == foreign(VideoHistory.video_id)
+
 
 class VideoHistory(Base, SerializerMixin):
     __tablename__ = "video_history"
@@ -25,9 +29,7 @@ class VideoHistory(Base, SerializerMixin):
     duration: Mapped[float] = mapped_column(Float)
     watch_duration: Mapped[int] = mapped_column(Integer, default=0)
     last_position: Mapped[float] = mapped_column(Float, default=0.0)
-    created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(),
-    )
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(),
         onupdate=lambda: datetime.now(),
@@ -35,8 +37,7 @@ class VideoHistory(Base, SerializerMixin):
 
     video: Mapped["Video"] = relationship(
         "Video",
-        primaryjoin="Video.id == foreign(VideoHistory.video_id)",
+        primaryjoin=_video_join,
         back_populates="histories",
         viewonly=True,
     )
-

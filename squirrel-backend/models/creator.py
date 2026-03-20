@@ -3,9 +3,20 @@ from typing import Optional, List
 
 from sqlalchemy import Boolean, JSON, VARCHAR, Text
 from sqlalchemy.orm import mapped_column, Mapped, relationship, foreign
+
 from models import Base
 from models.mixins.serializer import SerializerMixin
 
+
+def _video_links_join():
+    from models.links import VideoCreator
+    return Creator.id == foreign(VideoCreator.creator_id)
+
+
+def _videos_secondary_join():
+    from models.links import VideoCreator
+    from models.video import Video
+    return Video.id == foreign(VideoCreator.video_id)
 
 
 class Creator(Base, SerializerMixin):
@@ -18,9 +29,7 @@ class Creator(Base, SerializerMixin):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     extra_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(),
         onupdate=lambda: datetime.now()
@@ -28,16 +37,14 @@ class Creator(Base, SerializerMixin):
 
     video_links: Mapped[List["VideoCreator"]] = relationship(
         "VideoCreator",
-        primaryjoin="Creator.id == foreign(VideoCreator.creator_id)",
+        primaryjoin=_video_links_join,
         back_populates="creator",
         viewonly=True,
     )
     videos: Mapped[List["Video"]] = relationship(
         "Video",
         secondary="video_creator",
-        primaryjoin="Creator.id == foreign(VideoCreator.creator_id)",
-        secondaryjoin="Video.id == foreign(VideoCreator.video_id)",
+        primaryjoin=_video_links_join,
+        secondaryjoin=_videos_secondary_join,
         viewonly=True,
     )
-
-

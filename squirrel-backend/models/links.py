@@ -7,6 +7,30 @@ from models import Base
 from models.mixins.serializer import SerializerMixin
 
 
+def _subscription_video_subscription_join():
+    from models.subscription import Subscription
+    return Subscription.id == foreign(SubscriptionVideo.subscription_id)
+
+
+def _subscription_video_video_join():
+    from models.video import Video
+    return Video.id == foreign(SubscriptionVideo.video_id)
+
+
+def _video_creator_video_join():
+    from models.video import Video
+    return Video.id == foreign(VideoCreator.video_id)
+
+
+def _video_creator_creator_join():
+    from models.creator import Creator
+    return Creator.id == foreign(VideoCreator.creator_id)
+
+
+def _user_subscription_subscription_join():
+    from models.subscription import Subscription
+    return Subscription.id == foreign(UserSubscription.subscription_id)
+
 
 class SubscriptionVideo(Base, SerializerMixin):
     __tablename__ = "subscription_video"
@@ -18,23 +42,20 @@ class SubscriptionVideo(Base, SerializerMixin):
 
     subscription_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     video_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
 
     subscription: Mapped["Subscription"] = relationship(
         "Subscription",
-        primaryjoin="Subscription.id == foreign(SubscriptionVideo.subscription_id)",
+        primaryjoin=_subscription_video_subscription_join,
         back_populates="video_links",
         viewonly=True,
     )
     video: Mapped["Video"] = relationship(
         "Video",
-        primaryjoin="Video.id == foreign(SubscriptionVideo.video_id)",
+        primaryjoin=_subscription_video_video_join,
         back_populates="subscription_links",
         viewonly=True,
     )
-
 
 
 class VideoCreator(Base):
@@ -47,23 +68,20 @@ class VideoCreator(Base):
 
     video_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     creator_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
 
     video: Mapped["Video"] = relationship(
         "Video",
-        primaryjoin="Video.id == foreign(VideoCreator.video_id)",
+        primaryjoin=_video_creator_video_join,
         back_populates="creator_links",
         viewonly=True,
     )
     creator: Mapped["Creator"] = relationship(
         "Creator",
-        primaryjoin="Creator.id == foreign(VideoCreator.creator_id)",
+        primaryjoin=_video_creator_creator_join,
         back_populates="video_links",
         viewonly=True,
     )
-
 
 
 class UserSubscription(Base, SerializerMixin):
@@ -74,9 +92,7 @@ class UserSubscription(Base, SerializerMixin):
     subscription_id: Mapped[int] = mapped_column(Integer, nullable=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     is_nsfw: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(),
         onupdate=lambda: datetime.now()
@@ -84,11 +100,10 @@ class UserSubscription(Base, SerializerMixin):
 
     subscription: Mapped["Subscription"] = relationship(
         "Subscription",
-        primaryjoin="Subscription.id == foreign(UserSubscription.subscription_id)",
+        primaryjoin=_user_subscription_subscription_join,
         back_populates="user_subscriptions",
         viewonly=True,
     )
-
 
     __table_args__ = (
         UniqueConstraint('user_id', 'subscription_id', name='uix_user_subscription'),
@@ -96,6 +111,5 @@ class UserSubscription(Base, SerializerMixin):
         Index('ix_user_subscription_subscription_id', 'subscription_id'),
         Index('ix_user_subscription_is_deleted', 'is_deleted'),
         Index('ix_user_subscription_user_deleted_nsfw', 'user_id', 'is_deleted', 'is_nsfw'),
-        # 优化 COUNT 查询中的 JOIN：覆盖 subscription_id, user_id, is_deleted
         Index('ix_user_subscription_sub_user_deleted', 'subscription_id', 'user_id', 'is_deleted'),
     )

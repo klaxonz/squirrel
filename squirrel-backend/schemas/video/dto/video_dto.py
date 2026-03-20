@@ -12,6 +12,7 @@ class VideoExtractDto(BaseModel):
     subscribed: bool
     only_extract: bool
     subscription_id: int
+    sync_state_id: Optional[int] = None
     is_manual: bool = False
     is_extract_all: bool = False
 

@@ -217,6 +217,41 @@ class ResultHandler(Protocol):
 # ---------------- Subscription (Channel) -----------------
 
 
+@dataclass
+class SubscriptionSyncContext:
+    """Context passed into subscription sync plugins."""
+
+    mode: str
+    cursor_payload: Optional[Dict[str, Any]] = None
+    last_seen_video_url: Optional[str] = None
+    limit: Optional[int] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SubscriptionSyncContext":
+        return cls(**data)
+
+
+@dataclass
+class SubscriptionSyncResult:
+    """Result returned by subscription sync plugins."""
+
+    video_urls: List[str]
+    latest_video_url: Optional[str] = None
+    cursor_payload: Optional[Dict[str, Any]] = None
+    stop_reason: Optional[str] = None
+    total_available: Optional[int] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SubscriptionSyncResult":
+        return cls(**data)
+
+
 @runtime_checkable
 class Subscription(Protocol):
     """Protocol for channel/actor subscriptions.
@@ -232,8 +267,8 @@ class Subscription(Protocol):
         """Return channel metadata; typically a SubscriptionMeta instance."""
         ...
     
-    def get_subscribe_videos(self, extract_all: bool) -> List[str]:
-        """Return a list of video URLs to extract for this subscription."""
+    def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
+        """Return cursor-aware sync results for this subscription."""
         ...
 
 
