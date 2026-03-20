@@ -9,6 +9,7 @@ export interface GestureCallbacks {
   onSeek?: (deltaSeconds: number) => void
   onVolumeChange?: (deltaPercent: number) => void
   onBrightnessChange?: (deltaPercent: number) => void
+  onTap?: (zone: 'left' | 'center' | 'right') => void
   onDoubleTapLeft?: () => void
   onDoubleTapRight?: () => void
   onDoubleTapCenter?: () => void
@@ -45,9 +46,9 @@ interface TouchState {
   startY: number
   startTime: number
   lastTapTime: number
-  lastTapX: number
   isMultiTouch: boolean
   initialDistance: number
+  ignoreGesture: boolean
 }
 
 /**
@@ -72,9 +73,24 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
     startY: 0,
     startTime: 0,
     lastTapTime: 0,
-    lastTapX: 0,
     isMultiTouch: false,
-    initialDistance: 0
+    initialDistance: 0,
+    ignoreGesture: false
+  }
+
+  let singleTapTimer: ReturnType<typeof setTimeout> | null = null
+
+  const clearSingleTapTimer = (): void => {
+    if (singleTapTimer) {
+      clearTimeout(singleTapTimer)
+      singleTapTimer = null
+    }
+  }
+
+  const isInteractiveTarget = (target: EventTarget | null): boolean => {
+    const el = target as HTMLElement | null
+    if (!el) return false
+    return !!el.closest('button, a, input, textarea, select, [role="button"], .sp-controls, .sp-popup')
   }
 
   /**
@@ -110,6 +126,7 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
     touchState.startY = touch.clientY
     touchState.startTime = now
     touchState.isMultiTouch = e.touches.length > 1
+    touchState.ignoreGesture = isInteractiveTarget(e.target)
 
     // 捏合手势初始化
     if (e.touches.length === 2) {
@@ -122,6 +139,7 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
    */
   const handleTouchMove = (e: TouchEvent): void => {
     if (!isEnabled.value) return
+    if (touchState.ignoreGesture) return
 
     // 捏合缩放
     if (e.touches.length === 2) {
@@ -201,36 +219,40 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
 
     const now = Date.now()
     const touchDuration = now - touchState.startTime
+    const shouldIgnoreGesture = touchState.ignoreGesture
 
     // 检测双击
-    if (!isGesturing.value && touchDuration < 200) {
+    if (!shouldIgnoreGesture && !isGesturing.value && touchDuration < 200) {
       const touch = e.changedTouches[0]
       const tapX = touch.clientX
-      const tapY = touch.clientY
+      const rect = element.value?.getBoundingClientRect()
+      const zone = rect ? getTouchZone(tapX - rect.left, rect.width) : 'center'
       
       // 检查是否为双击
       if (now - touchState.lastTapTime < doubleTapDelay) {
-        const rect = element.value?.getBoundingClientRect()
-        if (rect) {
-          const zone = getTouchZone(tapX - rect.left, rect.width)
-          
-          switch (zone) {
-            case 'left':
-              callbacks.onDoubleTapLeft?.()
-              break
-            case 'right':
-              callbacks.onDoubleTapRight?.()
-              break
-            case 'center':
-              callbacks.onDoubleTapCenter?.()
-              break
-          }
+        clearSingleTapTimer()
+
+        switch (zone) {
+          case 'left':
+            callbacks.onDoubleTapLeft?.()
+            break
+          case 'right':
+            callbacks.onDoubleTapRight?.()
+            break
+          case 'center':
+            callbacks.onDoubleTapCenter?.()
+            break
         }
-        
+
         touchState.lastTapTime = 0
       } else {
         touchState.lastTapTime = now
-        touchState.lastTapX = tapX
+        clearSingleTapTimer()
+        singleTapTimer = setTimeout(() => {
+          callbacks.onTap?.(zone)
+          touchState.lastTapTime = 0
+          singleTapTimer = null
+        }, doubleTapDelay)
       }
     }
 
@@ -252,6 +274,7 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
     gestureType.value = null
     gestureProgress.value = 0
     touchState.isMultiTouch = false
+    touchState.ignoreGesture = false
   }
 
   /**
@@ -266,6 +289,7 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
    */
   const disable = (): void => {
     isEnabled.value = false
+    clearSingleTapTimer()
     isGesturing.value = false
     gestureType.value = null
     gestureProgress.value = 0
@@ -283,6 +307,7 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
 
   onUnmounted(() => {
     const el = element.value
+    clearSingleTapTimer()
     if (!el) return
 
     el.removeEventListener('touchstart', handleTouchStart)

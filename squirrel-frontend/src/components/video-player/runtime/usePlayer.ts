@@ -38,6 +38,7 @@ export interface PlayerOptions {
   onPlay?: () => void
   onPause?: () => void
   onEnded?: () => void
+  onTouchTap?: (zone: 'left' | 'center' | 'right') => void
   onError?: (error: PlayerError) => void
   onTimeUpdate?: (time: number) => void
   onQualityChange?: (quality: string) => void
@@ -126,6 +127,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     onPlay,
     onPause,
     onEnded,
+    onTouchTap,
     onError,
     onTimeUpdate,
     onQualityChange,
@@ -371,6 +373,9 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     useGestures({
       element: containerElement,
       callbacks: {
+        onTap: (zone) => {
+          onTouchTap?.(zone)
+        },
         onSeek: (delta) => {
           const newTime = Math.max(0, Math.min(store.duration, store.currentTime + delta))
           seek(newTime)

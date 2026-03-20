@@ -555,6 +555,7 @@ const {
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
   onEnded: () => emit('ended', { autoplay: store.autoplay, autoplayNext: store.autoplayNext, loop: store.loop }),
+  onTouchTap: () => handleTouchTap(),
   onError: (e) => {
     internalError.value = e as PlayerUiError
     emit('error', e)
@@ -1018,6 +1019,17 @@ const onPointerMove = (e: PointerEvent): void => {
   showControls()
 }
 
+const handleTouchTap = (): void => {
+  hideControlTooltip()
+  focusContainer()
+  markPlayerActive()
+  if (store.controlsVisible) {
+    hideControls()
+  } else {
+    showControls()
+  }
+}
+
 
 
 // 视频点击
@@ -1025,12 +1037,6 @@ const handleVideoClick = () => {
   focusContainer()
   markPlayerActive()
   if (isTouchInteraction()) {
-    hideControlTooltip()
-    if (store.controlsVisible) {
-      hideControls()
-    } else {
-      showControls()
-    }
     return
   }
   if (isPlaying.value) {
