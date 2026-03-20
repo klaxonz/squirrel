@@ -2,28 +2,21 @@
 
 from __future__ import annotations
 
-from contextlib import nullcontext
 import logging
 import random
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Set, TypeVar
+from typing import Dict, Optional, Set
 from urllib.parse import urlparse
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from .proxy_provider import _build_proxy_unavailable_error
-
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
-S = TypeVar('S')
-
 DEFAULT_TIMEOUT_SECONDS = 20
-DEFAULT_PROXY_ROTATE_RETRIES = 3
 
 
 def _extract_domain(url: str) -> Optional[str]:
@@ -34,91 +27,6 @@ def _extract_domain(url: str) -> Optional[str]:
     host = netloc.split(':', 1)[0]
     domain = host.replace('www.', '')
     return domain or None
-
-
-def _safe_report_proxy_result(
-    proxy_provider: Optional[object],
-    proxy_info: Optional[object],
-    domain: Optional[str],
-    success: bool,
-) -> None:
-    if not proxy_provider or not proxy_info or not domain:
-        return
-    try:
-        proxy_provider.report_result(proxy_info, domain, success)  # type: ignore[attr-defined]
-    except Exception as e:
-        logger.warning('Failed to report proxy result: %s', e)
-
-
-def _should_rotate_proxy(exception: Exception) -> bool:
-    return isinstance(
-        exception,
-        (
-            requests.exceptions.ProxyError,
-            requests.exceptions.ConnectTimeout,
-            requests.exceptions.ReadTimeout,
-            requests.exceptions.SSLError,
-            requests.exceptions.ConnectionError,
-            requests.exceptions.ChunkedEncodingError,
-            requests.exceptions.RetryError,
-        ),
-    )
-
-
-def _request_with_proxy_rotation(
-    do_request: Callable[[Dict[str, Any]], requests.Response],
-    *,
-    proxy_provider: Optional[object],
-    domain: Optional[str],
-    base_kwargs: Dict[str, Any],
-) -> requests.Response:
-    explicit_proxies = 'proxies' in base_kwargs
-    proxy_domain = _extract_second_level_domain(domain) if domain else None
-    rotate_retries_raw = base_kwargs.pop('proxy_rotate_retries', None)
-    try:
-        proxy_rotate_retries = int(rotate_retries_raw) if rotate_retries_raw is not None else DEFAULT_PROXY_ROTATE_RETRIES
-    except Exception:
-        proxy_rotate_retries = DEFAULT_PROXY_ROTATE_RETRIES
-
-    if explicit_proxies:
-        return do_request(base_kwargs)
-
-    if not proxy_provider:
-        raise _build_proxy_unavailable_error(domain, 'proxy provider not configured')
-
-    if not domain:
-        raise _build_proxy_unavailable_error(domain, 'request domain not available')
-
-    last_exception: Optional[Exception] = None
-    for attempt in range(max(proxy_rotate_retries, 0) + 1):
-        attempt_kwargs = dict(base_kwargs)
-        proxy_info = None
-
-        try:
-            proxy_info = proxy_provider.get_proxy(proxy_domain)  # type: ignore[attr-defined]
-        except Exception as e:
-            logger.warning('Failed to get proxy for domain=%s: %s', proxy_domain, e)
-            raise _build_proxy_unavailable_error(proxy_domain, 'failed to get proxy') from e
-
-        if proxy_info:
-            attempt_kwargs['proxies'] = proxy_info.to_dict()  # type: ignore[attr-defined]
-        else:
-            logger.error('No proxy available for domain=%s', proxy_domain)
-            raise _build_proxy_unavailable_error(proxy_domain, 'no proxy available')
-
-        try:
-            response = do_request(attempt_kwargs)
-            _safe_report_proxy_result(proxy_provider, proxy_info, proxy_domain, True)
-            return response
-        except Exception as e:
-            last_exception = e
-            _safe_report_proxy_result(proxy_provider, proxy_info, proxy_domain, False)
-            if attempt >= proxy_rotate_retries or not proxy_info or not _should_rotate_proxy(e):
-                raise
-
-    if last_exception:
-        raise last_exception
-    raise RuntimeError('Proxy rotation retries exhausted')
 
 
 def _extract_second_level_domain(domain_or_url: str) -> str:
@@ -253,17 +161,7 @@ class RateLimitedSession(requests.Session):
         self._rate_limiter.wait(domain)
 
         kwargs.setdefault("timeout", DEFAULT_TIMEOUT_SECONDS)
-
-        from .proxy_provider import get_proxy_provider
-        proxy_provider = get_proxy_provider()
-
-        base_request = super().request
-        return _request_with_proxy_rotation(
-            lambda attempt_kwargs: base_request(method, url, **attempt_kwargs),
-            proxy_provider=proxy_provider,
-            domain=domain,
-            base_kwargs=kwargs,
-        )
+        return super().request(method, url, **kwargs)
 
 
 _default_rate_limiter = RateLimiter(domain_limits=DEFAULT_DOMAIN_LIMITS)
@@ -294,46 +192,6 @@ def get_http_session() -> RateLimitedSession:
             if _shared_session is None:
                 _shared_session = RateLimitedSession(rate_limiter=_default_rate_limiter)
     return _shared_session
-
-
-def execute_with_rate_limit_and_proxy_rotation(
-    execute_func: Callable[[], T],
-    *,
-    domain: str,
-    throttled: bool = True,
-    use_proxy_rotation: bool = True,
-    configure_proxy: Optional[Callable[[Optional[str]], None]] = None,
-    capture_state: Optional[Callable[[], S]] = None,
-    restore_state: Optional[Callable[[S], None]] = None,
-    lock: Optional[object] = None,
-    should_retry: Optional[Callable[[Exception], bool]] = None,
-    max_retries: int = DEFAULT_PROXY_ROTATE_RETRIES,
-) -> T:
-    if throttled:
-        _default_rate_limiter.wait(domain)
-
-    guard = lock if lock is not None else nullcontext()
-    with guard:
-        state = capture_state() if capture_state else None
-        try:
-            if use_proxy_rotation and configure_proxy:
-                from .proxy_provider import execute_with_proxy_rotation
-
-                return execute_with_proxy_rotation(
-                    domain=domain,
-                    execute_func=execute_func,
-                    configure_callback=configure_proxy,
-                    restore_callback=None,
-                    should_retry=should_retry,
-                    max_retries=max_retries,
-                )
-
-            if configure_proxy:
-                configure_proxy(None)
-            return execute_func()
-        finally:
-            if restore_state and capture_state:
-                restore_state(state)  # type: ignore[arg-type]
 
 
 def request(method: str, url: str, **kwargs):
@@ -415,17 +273,7 @@ def request_without_limit(method: str, url: str, **kwargs):
         session.mount("https://", adapter)
 
         kwargs.setdefault("timeout", DEFAULT_TIMEOUT_SECONDS)
-
-        from .proxy_provider import get_proxy_provider
-        proxy_provider = get_proxy_provider()
-        domain = _extract_domain(url)
-
-        return _request_with_proxy_rotation(
-            lambda attempt_kwargs: session.request(method, url, **attempt_kwargs),
-            proxy_provider=proxy_provider,
-            domain=domain,
-            base_kwargs=kwargs,
-        )
+        return session.request(method, url, **kwargs)
 
 
 def get(url: str, **kwargs):

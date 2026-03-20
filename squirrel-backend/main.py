@@ -9,7 +9,6 @@ from fastapi import FastAPI
 
 from alembic import command
 from common.log import init_logging
-from common.kproxy_provider import configure_default_proxy_provider
 from core.config import settings
 from core.site_config_manager import apply_site_config_overrides
 from plugins.loader import init_plugins, app_start, app_stop
@@ -59,13 +58,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("[0.5/5] ✓ Cloudflare bypass client configured")
     except Exception as e:
         logger.warning(f"[0.5/5] ⚠ Failed to configure Cloudflare bypass client: {e}")
-
-    logger.info("[0.6/5] Configuring global proxy provider...")
-    try:
-        configure_default_proxy_provider()
-        logger.info("[0.6/5] ✓ Global proxy provider configured")
-    except Exception as e:
-        logger.warning(f"[0.6/5] ⚠ Failed to configure global proxy provider: {e}")
 
     # 1. 加载插件（必须先加载，注册到 SDK 注册表）
     logger.info("[1/4] Loading plugins...")

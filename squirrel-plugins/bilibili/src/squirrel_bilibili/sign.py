@@ -11,10 +11,7 @@ from hashlib import md5
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urljoin, urlparse
 
-import requests
-
 from crawl import filter_cookies_to_query_string, get_http_headers, request, request_without_limit
-from crawl.http import execute_with_rate_limit_and_proxy_rotation
 
 mixinKeyEncTab = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
@@ -57,7 +54,7 @@ def enc_wbi(params: Dict[str, str], img_key: str, sub_key: str) -> Dict[str, str
     return params
 
 
-def get_wbi_keys(*, use_proxy: bool = True) -> tuple[str, str]:
+def get_wbi_keys() -> tuple[str, str]:
     global _WBI_KEY_CACHE, _WBI_KEY_CACHE_TS
     if _WBI_KEY_CACHE and _WBI_KEY_CACHE_TS is not None:
         if (time.time() - _WBI_KEY_CACHE_TS) < _WBI_KEY_CACHE_TTL_SECONDS:
@@ -67,15 +64,11 @@ def get_wbi_keys(*, use_proxy: bool = True) -> tuple[str, str]:
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
         'Referer': 'https://www.bilibili.com/'
     })
-    kwargs: Dict[str, Any] = {}
-    if not use_proxy:
-        kwargs['proxy_rotate_retries'] = 0
     resp = request(
         'GET',
         'https://api.bilibili.com/x/web-interface/nav',
         headers=headers,
         timeout=15,
-        **kwargs,
     )
     resp.raise_for_status()
     json_content = resp.json()
@@ -94,8 +87,8 @@ def sign(params: Dict[str, str]) -> str:
     return urllib.parse.urlencode(signed_params)
 
 
-def sign_params(params: Dict[str, str], *, use_proxy: bool = True) -> Dict[str, str]:
-    img_key, sub_key = get_wbi_keys(use_proxy=use_proxy)
+def sign_params(params: Dict[str, str]) -> Dict[str, str]:
+    img_key, sub_key = get_wbi_keys()
     return enc_wbi(params, img_key, sub_key)
 
 
@@ -160,7 +153,6 @@ def _send_request(
     cookies: str = '',
     timeout: float = 20,
     throttled: bool = True,
-    use_proxy: bool = True,
     allow_redirects: bool = True,
 ):
     kwargs: Dict[str, Any] = {
@@ -170,8 +162,6 @@ def _send_request(
     }
     if params:
         kwargs['params'] = params
-    if not use_proxy:
-        kwargs['proxy_rotate_retries'] = 0
     if throttled:
         return request(method, url, **kwargs)
     return request_without_limit(method, url, **kwargs)
@@ -183,67 +173,8 @@ def _get_json(
     params: Optional[Dict[str, Any]] = None,
     cookies: str = '',
     throttled: bool = True,
-    use_proxy: bool = True,
     timeout: float = 20,
 ) -> dict:
-    if use_proxy:
-        proxy_url: Optional[str] = None
-
-        def _configure_proxy(url_value: Optional[str]) -> None:
-            nonlocal proxy_url
-            proxy_url = url_value
-
-        def _should_retry(exc: Exception) -> bool:
-            if isinstance(exc, _RiskControlError):
-                return True
-            return isinstance(
-                exc,
-                (
-                    requests.exceptions.ProxyError,
-                    requests.exceptions.ConnectTimeout,
-                    requests.exceptions.ReadTimeout,
-                    requests.exceptions.SSLError,
-                    requests.exceptions.ConnectionError,
-                    requests.exceptions.ChunkedEncodingError,
-                    requests.exceptions.RetryError,
-                ),
-            )
-
-        def _execute() -> dict:
-            kwargs: Dict[str, Any] = {
-                'headers': _build_headers(cookies),
-                'timeout': timeout,
-                'allow_redirects': True,
-                'proxy_rotate_retries': 0,
-            }
-            if params:
-                kwargs['params'] = params
-            if proxy_url:
-                kwargs['proxies'] = {'http': proxy_url, 'https': proxy_url}
-
-            resp = request_without_limit('GET', url, **kwargs)
-            resp.raise_for_status()
-            payload = resp.json()
-            if isinstance(payload, dict) and payload.get('code') not in (None, 0):
-                code = payload.get('code')
-                message = payload.get('message') or payload.get('msg') or str(code)
-                if '风控' in str(message):
-                    raise _RiskControlError(message)
-                raise RuntimeError(f'{message} (code={code})')
-            if isinstance(payload, dict) and 'data' in payload:
-                return payload.get('data') or {}
-            return payload if isinstance(payload, dict) else {}
-
-        return execute_with_rate_limit_and_proxy_rotation(
-            _execute,
-            domain=_BILIBILI_DOMAIN,
-            throttled=throttled,
-            use_proxy_rotation=True,
-            configure_proxy=_configure_proxy,
-            should_retry=_should_retry,
-            max_retries=3,
-        )
-
     resp = _send_request(
         'GET',
         url,
@@ -251,7 +182,6 @@ def _get_json(
         cookies=cookies,
         timeout=timeout,
         throttled=throttled,
-        use_proxy=False,
         allow_redirects=True,
     )
     resp.raise_for_status()
@@ -265,16 +195,11 @@ def _get_json(
     return payload if isinstance(payload, dict) else {}
 
 
-class _RiskControlError(RuntimeError):
-    pass
-
-
 def _resolve_redirect_url(
     url: str,
     *,
     cookies: str = '',
     throttled: bool = True,
-    use_proxy: bool = True,
     max_hops: int = 5,
 ) -> str:
     current = url
@@ -285,7 +210,6 @@ def _resolve_redirect_url(
             cookies=cookies,
             timeout=15,
             throttled=throttled,
-            use_proxy=use_proxy,
             allow_redirects=False,
         )
         if resp.is_redirect or resp.is_permanent_redirect or (300 <= resp.status_code < 400):
@@ -337,7 +261,7 @@ def normalize_video_url(url: str, *, cookies: str, throttled: bool = True) -> st
     parsed = urlparse(url)
     host = (parsed.hostname or '').lower()
     if host.endswith('b23.tv'):
-        return _resolve_redirect_url(url, cookies=cookies, throttled=throttled, use_proxy=True)
+        return _resolve_redirect_url(url, cookies=cookies, throttled=throttled)
     return url
 
 
@@ -345,7 +269,6 @@ def fetch_video_info(
     url: str,
     cookies: Optional[str] = None,
     throttled: bool = True,
-    use_proxy: bool = True,
 ) -> Tuple[dict, VideoContext, Optional[dict]]:
     cookies = cookies if cookies is not None else build_cookies(url)
     resolved_url = normalize_video_url(url, cookies=cookies, throttled=throttled)
@@ -359,7 +282,6 @@ def fetch_video_info(
         params={k: v for k, v in (('bvid', bvid), ('aid', aid)) if v is not None},
         cookies=cookies,
         throttled=throttled,
-        use_proxy=use_proxy,
     )
     bvid = info.get('bvid') or bvid
     try:
@@ -394,9 +316,8 @@ def get_video_context(
     url: str,
     cookies: Optional[str] = None,
     throttled: bool = True,
-    use_proxy: bool = True,
 ) -> VideoContext:
-    _, context, _ = fetch_video_info(url, cookies=cookies, throttled=throttled, use_proxy=use_proxy)
+    _, context, _ = fetch_video_info(url, cookies=cookies, throttled=throttled)
     return context
 
 
@@ -431,7 +352,7 @@ def fetch_play_data(
     context: Optional[VideoContext] = None,
     throttled: bool = True,
 ) -> Tuple[dict, VideoContext]:
-    context = context or get_video_context(url, throttled=throttled, use_proxy=False)
+    context = context or get_video_context(url, throttled=throttled)
     if context.cid is None:
         raise RuntimeError('Failed to resolve cid')
 
@@ -449,13 +370,12 @@ def fetch_play_data(
     else:
         raise RuntimeError('Missing video id')
 
-    signed = sign_params(params, use_proxy=False)
+    signed = sign_params(params)
     play_data = _get_json(
         'https://api.bilibili.com/x/player/wbi/playurl',
         params=signed,
         cookies=context.cookies,
         throttled=throttled,
-        use_proxy=False,
         timeout=25,
     )
     return play_data, context
@@ -535,7 +455,6 @@ def fetch_user_card(mid: int, *, cookies: str, throttled: bool = True) -> dict:
         params={'mid': str(mid)},
         cookies=cookies,
         throttled=throttled,
-        use_proxy=True,
     )
 
 
@@ -560,18 +479,16 @@ def fetch_user_videos(
         params=params,
         cookies=cookies,
         throttled=throttled,
-        use_proxy=True,
         timeout=25,
     )
 
 
-def fetch_nav(*, cookies: str, throttled: bool = False, use_proxy: bool = False) -> dict:
+def fetch_nav(*, cookies: str, throttled: bool = False) -> dict:
     return _get_json(
         'https://api.bilibili.com/x/web-interface/nav',
         params=None,
         cookies=cookies,
         throttled=throttled,
-        use_proxy=use_proxy,
         timeout=15,
     )
 
@@ -583,14 +500,12 @@ def fetch_followings(
     pn: int,
     ps: int,
     throttled: bool = False,
-    use_proxy: bool = False,
 ) -> dict:
     return _get_json(
         'https://api.bilibili.com/x/relation/followings',
         params={'vmid': str(mid), 'pn': str(pn), 'ps': str(ps), 'order': 'desc', 'order_type': 'attention'},
         cookies=cookies,
         throttled=throttled,
-        use_proxy=use_proxy,
         timeout=20,
     )
 
@@ -601,7 +516,6 @@ def fetch_fav_folder_info(media_id: int, *, cookies: str, throttled: bool = True
         params={'media_id': str(media_id)},
         cookies=cookies,
         throttled=throttled,
-        use_proxy=True,
     )
 
 
@@ -624,7 +538,6 @@ def fetch_fav_resource_list(
         },
         cookies=cookies,
         throttled=throttled,
-        use_proxy=True,
         timeout=25,
     )
 
@@ -645,7 +558,6 @@ def fetch_series_meta(
             params={'mid': str(mid), 'series_id': str(series_id)},
             cookies=cookies,
             throttled=throttled,
-            use_proxy=True,
             timeout=20,
         )
 
@@ -656,7 +568,6 @@ def fetch_series_meta(
         params={'mid': str(mid), 'page_num': '1', 'page_size': '50'},
         cookies=cookies,
         throttled=throttled,
-        use_proxy=True,
         timeout=20,
     )
     items = data.get('items_list') or data.get('items_lists') or data.get('items') or []
@@ -696,7 +607,6 @@ def fetch_series_videos(
             },
             cookies=cookies,
             throttled=throttled,
-            use_proxy=True,
             timeout=25,
         )
 
@@ -710,6 +620,5 @@ def fetch_series_videos(
         },
         cookies=cookies,
         throttled=throttled,
-        use_proxy=True,
         timeout=25,
     )

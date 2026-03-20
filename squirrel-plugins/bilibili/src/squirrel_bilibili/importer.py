@@ -22,7 +22,7 @@ class BilibiliUserSubscriptionImporter:
     
     def _get_current_user_mid(self, cookies: str) -> str:
         """获取当前登录用户的 mid"""
-        nav = fetch_nav(cookies=cookies, throttled=False, use_proxy=False)
+        nav = fetch_nav(cookies=cookies, throttled=False)
         mid = nav.get('mid')
         if not mid:
             raise ValueError("User not logged in or cookies expired")
@@ -50,7 +50,6 @@ class BilibiliUserSubscriptionImporter:
                 pn=page,
                 ps=page_size,
                 throttled=False,
-                use_proxy=False,
             )
             followings = data.get('list') or []
             if not followings:

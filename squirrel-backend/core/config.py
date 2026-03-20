@@ -32,8 +32,6 @@ class Settings(BaseSettings):
     MEDIA_DOWNLOAD_PATH: str = str(base_dir.parent / 'downloads')
     THUMBNAILS_PATH: str = ''
     CLOUDFLARE_BYPASS_SERVICE_URL: str = ''
-    KPROXY_SERVICE_URL: str = ''
-    KPROXY_TIMEOUT: int = 5
     COOKIECLOUD_URL: str = ''
     COOKIECLOUD_UUID: str = ''
     COOKIECLOUD_PASSWORD: str = ''

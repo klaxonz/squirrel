@@ -4,7 +4,6 @@ import threading
 from contextlib import contextmanager
 
 from common.log import init_logging
-from common.kproxy_provider import configure_default_proxy_provider
 from core.site_config_manager import apply_site_config_overrides
 from queues.queue_config import ensure_queue_config_initialized
 from plugins.loader import init_plugins, app_start, app_stop
@@ -34,12 +33,6 @@ def bootstrap_runtime(component: str):
         logger.info("[%s] Cloudflare bypass client configured", component)
     except Exception as exc:
         logger.warning("[%s] Failed to configure Cloudflare bypass client: %s", component, exc)
-
-    try:
-        configure_default_proxy_provider()
-        logger.info("[%s] Global proxy provider configured", component)
-    except Exception as exc:
-        logger.warning("[%s] Failed to configure global proxy provider: %s", component, exc)
 
     try:
         init_plugins()
