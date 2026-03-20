@@ -6,7 +6,7 @@
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"
     @pointermove="onPointerMove"
-    @pointerdown="focusContainer"
+    @pointerdown="handlePointerDown"
     @focus="markPlayerActive"
     @keydown="handleKeyDown"
     tabindex="0"
@@ -681,10 +681,26 @@ const updateSettingsPopupPosition = async (): Promise<void> => {
 watch(showSettingsMenu, async (open) => {
   if (!open) {
     settingsPopupStyle.value = {}
+    if (store.controlsVisible) {
+      showControls()
+    }
     return
   }
   hideControlTooltip()
+  store.setControlsVisible(true)
+  clearHideControlsTimer()
   await updateSettingsPopupPosition()
+})
+
+watch(isPlaying, (playing) => {
+  if (!playing) {
+    showControls()
+    return
+  }
+
+  if (store.controlsVisible) {
+    showControls()
+  }
 })
 
 watch(settingsView, async () => {
@@ -919,54 +935,86 @@ watch(
 
 // 控制栏显示/隐藏
 let hideControlsTimer: ReturnType<typeof setTimeout> | null = null
-const isPointerInside = ref(false)
+const lastPointerType = ref<'mouse' | 'touch' | 'pen' | 'unknown'>('unknown')
 
 const closeMenus = (): void => {
   showSettingsMenu.value = false
   hideControlTooltip()
 }
 
+const clearHideControlsTimer = (): void => {
+  if (hideControlsTimer) {
+    clearTimeout(hideControlsTimer)
+    hideControlsTimer = null
+  }
+}
+
+const syncPointerType = (e?: PointerEvent | null): void => {
+  const pointerType = e?.pointerType
+  if (pointerType === 'mouse' || pointerType === 'touch' || pointerType === 'pen') {
+    lastPointerType.value = pointerType
+  }
+}
+
+const isTouchInteraction = (): boolean => {
+  return lastPointerType.value === 'touch'
+}
+
+const canKeepControlsVisible = (): boolean => {
+  return !!errorState.value.show || showSettingsMenu.value || !isPlaying.value || isScrubbing.value || isVolumeScrubbing.value
+}
+
+const hideControls = (closeMenu = true): void => {
+  clearHideControlsTimer()
+  if (canKeepControlsVisible()) return
+  store.setControlsVisible(false)
+  if (closeMenu) closeMenus()
+}
+
 
 const scheduleHideControls = (delay = 3000): void => {
-  if (hideControlsTimer) clearTimeout(hideControlsTimer)
+  clearHideControlsTimer()
   hideControlsTimer = setTimeout(() => {
-    if (!isPointerInside.value) return
-    if (!isPlaying.value) return
-    if (isScrubbing.value) return
-    store.setControlsVisible(false)
-    closeMenus()
+    if (canKeepControlsVisible()) return
+    hideControls()
   }, delay)
 }
 
 const showControls = (): void => {
   store.setControlsVisible(true)
-  if (isPlaying.value) {
+  if (canKeepControlsVisible()) {
+    clearHideControlsTimer()
+  } else if (isPlaying.value) {
     scheduleHideControls(3000)
-  } else if (hideControlsTimer) {
-    clearTimeout(hideControlsTimer)
   }
 }
 
-const onPointerEnter = (): void => {
-  isPointerInside.value = true
+const handlePointerDown = (e: PointerEvent): void => {
+  syncPointerType(e)
+  focusContainer()
   markPlayerActive()
+}
+
+const onPointerEnter = (e: PointerEvent): void => {
+  syncPointerType(e)
+  markPlayerActive()
+  if (isTouchInteraction()) return
   showControls()
 }
 
-const onPointerLeave = (): void => {
-  if (isScrubbing.value) return
-  isPointerInside.value = false
-  if (hideControlsTimer) clearTimeout(hideControlsTimer)
-  if (!errorState.value.show) {
-    store.setControlsVisible(false)
-  }
-  closeMenus()
+const onPointerLeave = (e: PointerEvent): void => {
+  syncPointerType(e)
+  if (isScrubbing.value || isVolumeScrubbing.value) return
+  clearHideControlsTimer()
+  if (isTouchInteraction()) return
+  hideControls()
 }
 
 
-const onPointerMove = (): void => {
-  isPointerInside.value = true
+const onPointerMove = (e: PointerEvent): void => {
+  syncPointerType(e)
   markPlayerActive()
+  if (isTouchInteraction()) return
   showControls()
 }
 
@@ -976,6 +1024,15 @@ const onPointerMove = (): void => {
 const handleVideoClick = () => {
   focusContainer()
   markPlayerActive()
+  if (isTouchInteraction()) {
+    hideControlTooltip()
+    if (store.controlsVisible) {
+      hideControls()
+    } else {
+      showControls()
+    }
+    return
+  }
   if (isPlaying.value) {
     pause()
   } else {
@@ -1351,7 +1408,7 @@ onUnmounted(() => {
   if (videoRef.value) {
     videoRef.value.removeEventListener('loadedmetadata', attemptResume)
   }
-  if (hideControlsTimer) clearTimeout(hideControlsTimer)
+  clearHideControlsTimer()
   hideControlTooltip()
 })
 
