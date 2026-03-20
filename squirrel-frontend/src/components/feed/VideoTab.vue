@@ -9,7 +9,6 @@
         :sortBy="sortBy"
         :refreshing="isResetting"
         @loadMore="loadMore"
-        @toggleOptions="toggleOptions"
         @openModal="(video) => emit('openModal', video, videos)"
         @goToSubscription="(newSubscriptionId) => emit('goToSubscription', newSubscriptionId)"
     />
@@ -20,7 +19,6 @@
 import { computed, watch } from 'vue'
 import VideoList from './VideoList.vue'
 import useLatestVideos from '@/composables/useLatestVideos'
-import useOptionsMenu from '@/composables/useOptionsMenu'
 
 const emit = defineEmits(['openModal', 'update-counts', 'goToSubscription', 'loading-change']);
 
@@ -120,9 +118,6 @@ watch(
   },
   { immediate: true }
 )
-const {
-  toggleOptions,
-} = useOptionsMenu(videos);
 
 watch(() => loading.value, (val) => {
   emit('loading-change', val);

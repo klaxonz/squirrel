@@ -21,12 +21,6 @@
           <button @click.stop="$emit('toggleReadStatus', true)" class="sub-option-item">
             <span class="mr-2">✓</span>此项
           </button>
-          <button @click.stop="$emit('markReadBatch', true, 'above')" class="sub-option-item">
-            <span class="mr-2">↑</span>以上
-          </button>
-          <button @click.stop="$emit('markReadBatch', true, 'below')" class="sub-option-item">
-            <span class="mr-2">↓</span>以下
-          </button>
         </div>
       </div>
       <div class="relative group" 
@@ -43,12 +37,6 @@
         <div v-if="showUnreadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-bg-card border border-border-primary shadow-lg rounded-lg overflow-hidden">
           <button @click.stop="$emit('toggleReadStatus', false)" class="sub-option-item">
             <span class="mr-2">✓</span>此项
-          </button>
-          <button @click.stop="$emit('markReadBatch', false, 'above')" class="sub-option-item">
-            <span class="mr-2">↑</span>以上
-          </button>
-          <button @click.stop="$emit('markReadBatch', false, 'below')" class="sub-option-item">
-            <span class="mr-2">↓</span>以下
           </button>
         </div>
       </div>
@@ -117,7 +105,6 @@ const emit = defineEmits([
   'toggleReadStatus',
   'dislikeVideo',
   'copyVideoLink',
-  'markReadBatch',
   'toggleLike'
 ]);
 

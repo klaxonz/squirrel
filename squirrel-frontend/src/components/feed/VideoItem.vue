@@ -132,7 +132,6 @@
         :video="video"
         @close="closeContextMenu"
         @toggleReadStatus="toggleReadStatus"
-        @markReadBatch="markReadBatch"
         @copyVideoLink="copyVideoLink"
         @dislikeVideo="dislikeVideo"
         @toggleLike="toggleLikeVideo"
@@ -142,13 +141,16 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, nextTick, computed, watch } from 'vue';
+import { onMounted, onUnmounted, ref, nextTick, computed, watch, toRef } from 'vue';
 import ContextMenu from './ContextMenu.vue';
 import useOptionsMenu from '@/composables/useOptionsMenu';
+import useVideoHistory from '@/composables/useVideoHistory';
+import useVideoInteraction from '@/composables/useVideoInteraction';
 import { formatDate, formatDuration } from '@/utils/dateFormat';
 import { Icon } from '@iconify/vue';
 import { useImageFallback } from '@/composables/useImageFallback';
 import { useSystemConfig } from '@/composables/useSystemConfig';
+import { Logger } from '@/utils/logger';
 
 const props = defineProps({
   video: {
@@ -159,7 +161,6 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
-  setVideoRef: Function,
   showProgress: {
     type: Boolean,
     default: false
@@ -182,6 +183,9 @@ const emit = defineEmits([
 // 获取系统配置
 const { config: systemConfig } = useSystemConfig();
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
+const { copyVideoLink } = useOptionsMenu(toRef(props, 'video'));
+const { clearHistory, sendReport } = useVideoHistory();
+const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 
 // 计算视频是否为 NSFW（任一订阅为 NSFW 则视频为 NSFW）
 const isNsfwVideo = computed(() => {
@@ -234,7 +238,7 @@ const handleScroll = () => {
   }
 };
 
-const handleClick = (event) => {
+const handleClick = () => {
   emit('openModal', props.video);
 };
 
@@ -246,6 +250,62 @@ const goToSubscription = (subscriptionId) => {
 
 const toggleActors = () => {
   showActors.value = !showActors.value;
+};
+
+const toggleReadStatus = async (isRead) => {
+  try {
+    if (isRead) {
+      const position = Number(props.video.duration || props.video.last_position || 0);
+      await sendReport(props.video.id, position, { force: true });
+      props.video.is_read = true;
+      props.video.last_position = position;
+    } else {
+      await clearHistory([props.video.id]);
+      props.video.is_read = false;
+      props.video.last_position = 0;
+    }
+    closeContextMenu();
+  } catch (error) {
+    Logger.error('Failed to update read status', error);
+  }
+};
+
+const toggleLikeVideo = async () => {
+  try {
+    if (props.video.is_liked === 1) {
+      const { error } = await deleteInteraction(props.video.id);
+      if (!error) {
+        props.video.is_liked = null;
+      }
+    } else {
+      const { error } = await toggleLike(props.video.id, INTERACTION_TYPE.LIKE);
+      if (!error) {
+        props.video.is_liked = 1;
+      }
+    }
+    closeContextMenu();
+  } catch (error) {
+    Logger.error('Failed to toggle like state', error);
+  }
+};
+
+const dislikeVideo = async () => {
+  try {
+    if (props.video.is_liked === 0) {
+      const { error } = await deleteInteraction(props.video.id);
+      if (!error) {
+        props.video.is_liked = null;
+      }
+    } else {
+      const { error } = await toggleLike(props.video.id, INTERACTION_TYPE.DISLIKE);
+      if (!error) {
+        props.video.is_liked = 0;
+      }
+    }
+    closeContextMenu();
+  } catch (error) {
+    Logger.error('Failed to toggle dislike state', error);
+  }
 };
 
 watch(showMenu, (isOpen) => {
@@ -295,7 +355,7 @@ const displayNames = computed(() => {
 const showDefaultThumbnail = ref(false);
 
 // 处理封面加载失败
-const handleThumbnailError = (e) => {
+const handleThumbnailError = () => {
   showDefaultThumbnail.value = true;
 };
 

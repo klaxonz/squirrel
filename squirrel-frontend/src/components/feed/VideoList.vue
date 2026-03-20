@@ -27,10 +27,8 @@
               :progress="video.progress"
               :index="index"
               :class="{ 'is-refreshing': refreshing }"
-              @toggleOptions="$emit('toggleOptions', $event, video.id)"   
               @goToSubscription="$emit('goToSubscription', $event)"
               @openModal="$emit('openModal', video)"
-              @markReadBatch="handleMarkReadBatch"
           />
         </div>
       </template>
@@ -80,12 +78,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-  'toggleOptions',
   'goToSubscription',
   'openModal',
   'loadMore',
-  'batchMarkAsRead',
-  'markReadBatch'
+  'batchMarkAsRead'
 ]);
 
 const containerRef = ref(null);
@@ -123,10 +119,6 @@ const handleScroll = (event) => {
   if (shouldLoadMore(scrollTop, clientHeight, scrollHeight)) {
     emit('loadMore');
   }
-};
-
-const handleMarkReadBatch = (videoId, isRead, direction) => {
-  emit('markReadBatch', videoId, isRead, direction);
 };
 
 const virtualList = ref(null);

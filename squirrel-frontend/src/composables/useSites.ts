@@ -53,11 +53,7 @@ export async function fetchSites() {
 }
 
 export function useSites() {
-  return { options: cached, loading, error, fetchSites, resetCache }
-}
-
-export function resetSitesCache() {
-  resetCache()
+  return { options: cached, loading, error, fetchSites }
 }
 const siteCatalog = ref<SitesResponse>({})
 const siteCatalogLoading = ref(false)
