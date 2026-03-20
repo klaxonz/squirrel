@@ -4,7 +4,7 @@ import time
 from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response, Body
 from fastapi.responses import PlainTextResponse
 import common.response as response
-from common.video_stream import VideoStreamHandler
+from common.video_stream import create_stream_response, find_video_file
 from core import download_config
 from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExtractionError
 from models.user import User
@@ -172,10 +172,10 @@ def play_video(request: Request, video_id: int):
     subscription = subscription_service.get_subscription_by_id(subscription_video.subscription_id)
     output_dir = download_config.get_download_full_path(subscription.name, video.season)
     filename = download_config.get_valid_filename(video.title)
-    video_path = VideoStreamHandler.find_video_file(output_dir, filename)
+    video_path = find_video_file(output_dir, filename)
     if not video_path:
         raise HTTPException(status_code=404, detail="Video file not found")
-    return VideoStreamHandler.create_stream_response(request, video_path)
+    return create_stream_response(request, video_path)
 
 
 @router.get("/api/video/proxy")
