@@ -27,6 +27,10 @@ export interface UseGesturesOptions {
   sensitivity?: number
   /** 双击间隔(ms) */
   doubleTapDelay?: number
+  /** 单击最大时长(ms) */
+  tapMaxDuration?: number
+  /** 双击最大位移(px) */
+  doubleTapMaxDistance?: number
   /** 滑动阈值(px) */
   swipeThreshold?: number
 }
@@ -46,6 +50,9 @@ interface TouchState {
   startY: number
   startTime: number
   lastTapTime: number
+  lastTapX: number
+  lastTapY: number
+  lastTapZone: 'left' | 'center' | 'right' | null
   isMultiTouch: boolean
   initialDistance: number
   ignoreGesture: boolean
@@ -59,7 +66,9 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
     element, 
     callbacks,
     sensitivity = 1,
-    doubleTapDelay = 300,
+    doubleTapDelay = 240,
+    tapMaxDuration = 180,
+    doubleTapMaxDistance = 48,
     swipeThreshold = 50
   } = options
 
@@ -73,6 +82,9 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
     startY: 0,
     startTime: 0,
     lastTapTime: 0,
+    lastTapX: 0,
+    lastTapY: 0,
+    lastTapZone: null,
     isMultiTouch: false,
     initialDistance: 0,
     ignoreGesture: false
@@ -91,6 +103,13 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
     const el = target as HTMLElement | null
     if (!el) return false
     return !!el.closest('button, a, input, textarea, select, [role="button"], .sp-controls, .sp-popup')
+  }
+
+  const resetTapState = (): void => {
+    touchState.lastTapTime = 0
+    touchState.lastTapX = 0
+    touchState.lastTapY = 0
+    touchState.lastTapZone = null
   }
 
   /**
@@ -222,14 +241,17 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
     const shouldIgnoreGesture = touchState.ignoreGesture
 
     // 检测双击
-    if (!shouldIgnoreGesture && !isGesturing.value && touchDuration < 200) {
+    if (!shouldIgnoreGesture && !isGesturing.value && touchDuration < tapMaxDuration) {
       const touch = e.changedTouches[0]
       const tapX = touch.clientX
+      const tapY = touch.clientY
       const rect = element.value?.getBoundingClientRect()
       const zone = rect ? getTouchZone(tapX - rect.left, rect.width) : 'center'
+      const tapDistance = Math.hypot(tapX - touchState.lastTapX, tapY - touchState.lastTapY)
+      const isSameZone = touchState.lastTapZone === zone
       
       // 检查是否为双击
-      if (now - touchState.lastTapTime < doubleTapDelay) {
+      if (now - touchState.lastTapTime < doubleTapDelay && isSameZone && tapDistance <= doubleTapMaxDistance) {
         clearSingleTapTimer()
 
         switch (zone) {
@@ -244,13 +266,16 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
             break
         }
 
-        touchState.lastTapTime = 0
+        resetTapState()
       } else {
         touchState.lastTapTime = now
+        touchState.lastTapX = tapX
+        touchState.lastTapY = tapY
+        touchState.lastTapZone = zone
         clearSingleTapTimer()
         singleTapTimer = setTimeout(() => {
           callbacks.onTap?.(zone)
-          touchState.lastTapTime = 0
+          resetTapState()
           singleTapTimer = null
         }, doubleTapDelay)
       }
