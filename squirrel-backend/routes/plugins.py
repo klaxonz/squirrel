@@ -3,7 +3,12 @@ import asyncio
 import logging
 from typing import Dict, List, Literal
 
-from services.plugin_service import PluginService
+from services.plugin_service import (
+    install_from_upload,
+    list_plugins as get_plugin_list,
+    set_enabled_by_name,
+    uninstall_by_name,
+)
 from services.site_login_status_service import (
     get_supported_sites as get_login_supported_sites,
     test_site_login_status,
@@ -126,7 +131,7 @@ def install_plugin(file: UploadFile = File(...)):
     filename = (file.filename or "plugin.zip").lower()
     if not filename.endswith(".zip"):
         return param_error("file must be a zip archive")
-    ok, data_or_err = PluginService.install_from_upload(file)
+    ok, data_or_err = install_from_upload(file)
     if ok:
         try:
             reload_plugins()
@@ -140,12 +145,12 @@ def install_plugin(file: UploadFile = File(...)):
 
 @router.get("/")
 def list_plugins():
-    return success(PluginService.list_plugins())
+    return success(get_plugin_list())
 
 
 @router.post("/{name}/enable")
 def enable_plugin(name: str):
-    ok = PluginService.set_enabled_by_name(name, True)
+    ok = set_enabled_by_name(name, True)
     if ok:
         return success(msg="enabled")
     return error("invalid plugin name or not found")
@@ -153,7 +158,7 @@ def enable_plugin(name: str):
 
 @router.post("/{name}/disable")
 def disable_plugin(name: str):
-    ok = PluginService.set_enabled_by_name(name, False)
+    ok = set_enabled_by_name(name, False)
     if ok:
         return success(msg="disabled")
     return error("invalid plugin name or not found")
@@ -161,7 +166,7 @@ def disable_plugin(name: str):
 
 @router.post("/{name}/uninstall")
 def uninstall_plugin(name: str):
-    ok = PluginService.uninstall_by_name(name)
+    ok = uninstall_by_name(name)
     if ok:
         return success(msg="uninstalled")
     return error("invalid plugin name or not found, or not in plugins_ext")
