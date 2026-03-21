@@ -30,6 +30,12 @@ export interface SyncTrendSiteBreakdown {
   videos_extracted: number
 }
 
+export interface SyncTrendFilters {
+  site: string
+  mode: string
+  trigger: string
+}
+
 interface SyncTrendResponse {
   range: string
   granularity: string
@@ -45,7 +51,7 @@ export function useSyncTrends() {
   const granularity = ref('hour')
   const series = ref<SyncTrendPoint[]>([])
   const siteBreakdown = ref<SyncTrendSiteBreakdown[]>([])
-  const filters = reactive({
+  const filters = reactive<SyncTrendFilters>({
     site: '',
     mode: '',
     trigger: '',
@@ -87,6 +93,29 @@ export function useSyncTrends() {
     loading.value = false
   }
 
+  const setRange = (value: string) => {
+    if (range.value === value) {
+      return false
+    }
+    range.value = value
+    return true
+  }
+
+  const setFilters = (patch: Partial<SyncTrendFilters>) => {
+    let changed = false
+
+    Object.entries(patch).forEach(([key, value]) => {
+      const nextValue = value ?? ''
+      if (filters[key as keyof SyncTrendFilters] === nextValue) {
+        return
+      }
+      filters[key as keyof SyncTrendFilters] = nextValue
+      changed = true
+    })
+
+    return changed
+  }
+
   return {
     error,
     filters,
@@ -96,6 +125,8 @@ export function useSyncTrends() {
     loading,
     range,
     series,
+    setFilters,
+    setRange,
     siteBreakdown,
   }
 }

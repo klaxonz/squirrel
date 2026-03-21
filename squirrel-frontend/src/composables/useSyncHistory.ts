@@ -50,6 +50,15 @@ export interface SyncRunEvent {
   projected_at: string
 }
 
+export interface SyncHistoryFilters {
+  status: string
+  site: string
+  mode: string
+  trigger: string
+  dateFrom: string
+  dateTo: string
+}
+
 interface SyncRunListResponse {
   total: number
   page: number
@@ -69,7 +78,7 @@ export function useSyncHistory() {
   const pageSize = ref(20)
   const selectedRun = ref<SyncRunItem | null>(null)
   const events = ref<SyncRunEvent[]>([])
-  const filters = reactive({
+  const filters = reactive<SyncHistoryFilters>({
     status: '',
     site: '',
     mode: '',
@@ -174,6 +183,32 @@ export function useSyncHistory() {
     await loadRuns()
   }
 
+  const setFilters = (patch: Partial<SyncHistoryFilters>) => {
+    let changed = false
+
+    Object.entries(patch).forEach(([key, value]) => {
+      const nextValue = value ?? ''
+      if (filters[key as keyof SyncHistoryFilters] === nextValue) {
+        return
+      }
+      filters[key as keyof SyncHistoryFilters] = nextValue
+      changed = true
+    })
+
+    if (changed) {
+      page.value = 1
+    }
+
+    return changed
+  }
+
+  const setDateRange = (dateFrom: string, dateTo: string) => {
+    return setFilters({
+      dateFrom,
+      dateTo,
+    })
+  }
+
   return {
     closeRun,
     detailError,
@@ -190,6 +225,8 @@ export function useSyncHistory() {
     runs,
     selectRun,
     selectedRun,
+    setDateRange,
+    setFilters,
     setPage,
     total,
   }
