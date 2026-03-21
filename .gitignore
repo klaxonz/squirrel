@@ -66,3 +66,4 @@ squirrel-backend/plugins_ext/*
 squirrel-backend/static/thumbnails/*
 .cursor/
 .claude/
+.worktrees/
