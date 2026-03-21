@@ -9,6 +9,7 @@ from yt_dlp import YoutubeDL
 from crawl import (
     YoutubeDLExtractorBase,
     register_extractor,
+    apply_ytdlp_rate_limit,
     AuthError,
     NetworkError,
     NotFoundError,
@@ -82,7 +83,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             },
         }
 
-        return ydl_opts
+        return apply_ytdlp_rate_limit(self.site_name, ydl_opts)
 
     def _process_youtube_info(self, video_info: dict) -> None:
         """处理YouTube特定信息"""

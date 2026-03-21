@@ -105,6 +105,7 @@ from .http import (
     post,
     configure_cloudflare_bypass_client
 )
+from .ytdlp import apply_ytdlp_rate_limit
 
 # Site configuration
 from .config import (
@@ -226,6 +227,7 @@ __all__ = [
     "get",
     "post",
     "configure_cloudflare_bypass_client",
+    "apply_ytdlp_rate_limit",
     # Site configuration
     "set_site_config",
     "set_site_configs",

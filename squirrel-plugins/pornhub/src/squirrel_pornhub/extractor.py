@@ -9,6 +9,7 @@ from yt_dlp import YoutubeDL
 from crawl import (
     YoutubeDLExtractorBase,
     register_extractor,
+    apply_ytdlp_rate_limit,
     filter_cookies_to_query_string,
     AuthError,
     NetworkError,
@@ -79,7 +80,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
         if cookies:
             ydl_opts['cookie'] = cookies
 
-        return ydl_opts
+        return apply_ytdlp_rate_limit(self.site_name, ydl_opts)
 
     def _process_pornhub_info(self, video_info: dict) -> None:
         """处理Pornhub特定信息"""
