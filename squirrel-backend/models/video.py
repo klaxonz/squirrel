@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 
-from sqlalchemy import Integer, Boolean, JSON, VARCHAR, Text, DateTime, Index
+from sqlalchemy import Integer, Boolean, JSON, VARCHAR, Text, DateTime, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from models import Base
@@ -47,6 +47,7 @@ class Video(Base, SerializerMixin):
         Index('ix_video_title', 'title'),
         Index('ix_video_deleted_publish_date', 'is_deleted', 'publish_date'),
         Index('ix_video_deleted_created_at', 'is_deleted', 'created_at'),
+        Index('ix_video_active_id_publish_date', 'id', 'publish_date', postgresql_where=text('is_deleted = false')),
         Index('ux_video_url', 'url', unique=True),
         Index('ix_video_domain', 'domain'),
     )

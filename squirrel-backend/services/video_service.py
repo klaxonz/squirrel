@@ -5,7 +5,7 @@ from typing import List, Tuple, Optional, Dict
 from sqlalchemy import select, func, and_, case
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from core.database import get_session
-from services.video_query import build_base_video_query, category_predicate, resolve_sort_column
+from services.video_query import build_base_video_query, build_video_count_source_query, category_predicate, resolve_sort_column
 
 
 from core.exceptions.video_exceptions import UnsupportedDomainError
@@ -172,24 +172,53 @@ def get_video_url(video_id: int, force_refresh: bool = False) -> VideoUrlDto:
 def _get_video_counts_in_session(session, user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
                                  query: Optional[str] = None, nsfw: str = 'all', domains: Optional[List[str]] = None):
     """获取各类别视频数量 - 统一与列表筛选逻辑"""
-    base_query = build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw, domains)
-    base_ids_subquery = (
-        base_query
-        .with_only_columns(Video.id)
-        .distinct()
-        .subquery()
+    candidate_videos = (
+        build_video_count_source_query(user_id, show_nsfw, subscription_id, query, nsfw, domains)
+        .cte('candidate_videos')
     )
 
+    published = candidate_videos.c.publish_date <= func.now()
+    preview = candidate_videos.c.publish_date > func.now()
+    read_videos = (
+        select(VideoHistory.video_id.label('video_id'))
+        .where(VideoHistory.user_id == user_id)
+        .group_by(VideoHistory.video_id)
+        .cte('read_videos')
+    )
+    liked_videos = (
+        select(VideoInteraction.video_id.label('video_id'))
+        .where(
+            and_(
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.interaction_type == 1
+            )
+        )
+        .group_by(VideoInteraction.video_id)
+        .cte('liked_videos')
+    )
+    later_videos = (
+        select(VideoInteraction.video_id.label('video_id'))
+        .where(
+            and_(
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.interaction_type == 3
+            )
+        )
+        .group_by(VideoInteraction.video_id)
+        .cte('later_videos')
+    )
     count_query = (
         select(
-            func.count(Video.id).filter(category_predicate(user_id, 'all')).label('all_count'),
-            func.count(Video.id).filter(category_predicate(user_id, 'preview')).label('preview_count'),
-            func.count(Video.id).filter(category_predicate(user_id, 'read')).label('read_count'),
-            func.count(Video.id).filter(category_predicate(user_id, 'liked')).label('liked_count'),
-            func.count(Video.id).filter(category_predicate(user_id, 'later')).label('later_count'),
+            func.count().filter(published).label('all_count'),
+            func.count().filter(preview).label('preview_count'),
+            func.count().filter(and_(published, read_videos.c.video_id.is_not(None))).label('read_count'),
+            func.count().filter(and_(published, liked_videos.c.video_id.is_not(None))).label('liked_count'),
+            func.count().filter(and_(published, later_videos.c.video_id.is_not(None))).label('later_count'),
         )
-        .select_from(Video)
-        .join(base_ids_subquery, base_ids_subquery.c.id == Video.id)
+        .select_from(candidate_videos)
+        .outerjoin(read_videos, read_videos.c.video_id == candidate_videos.c.video_id)
+        .outerjoin(liked_videos, liked_videos.c.video_id == candidate_videos.c.video_id)
+        .outerjoin(later_videos, later_videos.c.video_id == candidate_videos.c.video_id)
     )
 
     row = session.execute(count_query).first()
