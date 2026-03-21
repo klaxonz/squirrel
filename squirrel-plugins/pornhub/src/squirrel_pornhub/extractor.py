@@ -4,6 +4,7 @@ Pornhub视频提取器
 import logging
 from datetime import datetime
 from typing import Optional, Dict, Any
+
 from yt_dlp import YoutubeDL
 
 from crawl import (
@@ -11,6 +12,9 @@ from crawl import (
     register_extractor,
     apply_ytdlp_rate_limit,
     filter_cookies_to_query_string,
+    resolve_cookie_file_path,
+    get_http_headers,
+    get_proxy_config_registry,
     AuthError,
     NetworkError,
     NotFoundError,
@@ -18,6 +22,15 @@ from crawl import (
 )
 
 logger = logging.getLogger(__name__)
+SITE_DOMAIN = 'pornhub.com'
+SITE_URL = f'https://www.{SITE_DOMAIN}'
+DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+AGE_GATE_COOKIES = {
+    'age_verified': '1',
+    'accessAgeDisclaimerPH': '1',
+    'accessAgeDisclaimerUK': '1',
+    'accessPH': '1',
+}
 
 
 @register_extractor('pornhub', ['pornhub.com'])
@@ -64,7 +77,8 @@ class PornhubExtractor(YoutubeDLExtractorBase):
 
     def _build_ytdlp_opts(self, url: str, queue_name: Optional[str] = None) -> Dict[str, Any]:
         """构建yt-dlp选项"""
-        cookies = filter_cookies_to_query_string(url)
+        cookie_file = resolve_cookie_file_path(url)
+        headers = self._build_ytdlp_headers(url, cookie_file)
         ydl_opts: Dict[str, Any] = {
             'quiet': True,
             'skip_download': True,
@@ -75,10 +89,12 @@ class PornhubExtractor(YoutubeDLExtractorBase):
             'file_access_retries': 3,
             'ignoreerrors': False,
             'noprogress': True,
+            'noplaylist': True,
+            'http_headers': headers,
         }
 
-        if cookies:
-            ydl_opts['cookie'] = cookies
+        if cookie_file:
+            ydl_opts['cookiefile'] = cookie_file
 
         return apply_ytdlp_rate_limit(self.site_name, ydl_opts)
 
@@ -89,3 +105,35 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                 video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
         except Exception as e:
             logger.warning(f"处理Pornhub特定信息失败: {e}")
+
+    def _build_ytdlp_headers(self, url: str, cookie_file: Optional[str]) -> Dict[str, str]:
+        proxy_config_registry = get_proxy_config_registry()
+        provider_cls = proxy_config_registry.get(SITE_DOMAIN)
+        base_headers = provider_cls.get_site_headers() if provider_cls else {}
+        headers = get_http_headers(self.site_name, base_headers)
+        headers.setdefault('User-Agent', DEFAULT_USER_AGENT)
+        headers.setdefault('Accept-Language', 'en-US,en;q=0.9')
+        headers.setdefault('Origin', SITE_URL)
+        referer = (headers.get('Referer') or SITE_URL).rstrip('/')
+        headers['Referer'] = f'{referer}/'
+
+        if not cookie_file:
+            headers['Cookie'] = self._build_cookie_header(url)
+
+        return headers
+
+    def _build_cookie_header(self, url: str) -> str:
+        cookies = {}
+        raw_cookie_header = filter_cookies_to_query_string(url)
+
+        for segment in raw_cookie_header.split(';'):
+            item = segment.strip()
+            if not item or '=' not in item:
+                continue
+            name, value = item.split('=', 1)
+            cookies[name.strip()] = value.strip()
+
+        for name, value in AGE_GATE_COOKIES.items():
+            cookies.setdefault(name, value)
+
+        return '; '.join(f'{name}={value}' for name, value in cookies.items())
