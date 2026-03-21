@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import logging
-from xml.etree import ElementTree as ET
-from urllib.parse import quote
+import shutil
 import struct
+import threading
+import time
+from urllib.parse import urlencode
+from xml.etree import ElementTree as ET
 
 import requests
 from yt_dlp import YoutubeDL
@@ -11,14 +14,19 @@ from yt_dlp import YoutubeDL
 from crawl import (
     MpdBuilder,
     register_mpd,
+    filter_cookies_to_query_string,
+    resolve_cookie_file_path,
     get_http_headers,
 )
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115 Safari/537.36'
 SITE_SLUG = 'youtube'
-YOUTUBE_PLAYER_CLIENT = 'android'
 SESSION = requests.Session()
 logger = logging.getLogger(__name__)
+VIDEO_INFO_CACHE_TTL_SECONDS = 30
+VIDEO_INFO_CACHE_MAX_SIZE = 64
+_VIDEO_INFO_CACHE: dict[str, tuple[float, dict]] = {}
+_VIDEO_INFO_CACHE_LOCK = threading.Lock()
 
 
 def _be32(b: bytes, pos: int) -> int:
@@ -100,16 +108,31 @@ def _probe_ranges(url: str, max_tries: int = 2, chunk_sizes=(1024 * 1024, 4 * 10
 
 
 def _proxy(u: str) -> str:
-    # 保留 URL 结构字符，避免破坏 YouTube 签名
-    # safe 参数保留 : / ? & = 等 URL 关键字符
-    from urllib.parse import quote
-    return f"/api/video/proxy?domain=youtube.com&url=" + quote(u, safe=':/?&=@')
+    return '/api/video/proxy?' + urlencode({
+        'domain': 'youtube.com',
+        'url': u,
+    })
 
 def _safe_int(x, default=0):
     try:
         return int(x)
     except Exception:
         return default
+
+
+def _build_js_runtimes() -> dict:
+    runtimes = {}
+
+    node_path = shutil.which('node')
+    if node_path:
+        runtimes['node'] = {'path': node_path}
+
+    bun_path = shutil.which('bun')
+    if bun_path:
+        runtimes['bun'] = {'path': bun_path}
+
+    return runtimes
+
 
 def _build_ytdlp_opts(url: str) -> dict:
     opts = {
@@ -118,16 +141,61 @@ def _build_ytdlp_opts(url: str) -> dict:
         'noplaylist': True,
         'ignoreerrors': False,
         'extract_flat': False,
-        'extractor_args': {
-            'youtube': {
-                'player_client': [YOUTUBE_PLAYER_CLIENT],
-            }
-        },
     }
+    js_runtimes = _build_js_runtimes()
+    if js_runtimes:
+        opts['js_runtimes'] = js_runtimes
+
+    cookie_file = resolve_cookie_file_path(url)
+    if cookie_file:
+        opts['cookiefile'] = cookie_file
+    else:
+        cookies = filter_cookies_to_query_string(url)
+        if cookies:
+            opts['cookie'] = cookies
     return opts
 
 
+def _get_cached_video_info(url: str) -> dict | None:
+    now = time.monotonic()
+    with _VIDEO_INFO_CACHE_LOCK:
+        cached = _VIDEO_INFO_CACHE.get(url)
+        if not cached:
+            return None
+
+        expires_at, info = cached
+        if expires_at <= now:
+            _VIDEO_INFO_CACHE.pop(url, None)
+            return None
+
+        return info
+
+
+def _set_cached_video_info(url: str, info: dict) -> None:
+    now = time.monotonic()
+    with _VIDEO_INFO_CACHE_LOCK:
+        expired_keys = [
+            key for key, (expires_at, _) in _VIDEO_INFO_CACHE.items()
+            if expires_at <= now
+        ]
+        for key in expired_keys:
+            _VIDEO_INFO_CACHE.pop(key, None)
+
+        if len(_VIDEO_INFO_CACHE) >= VIDEO_INFO_CACHE_MAX_SIZE:
+            oldest_key = min(
+                _VIDEO_INFO_CACHE.items(),
+                key=lambda item: item[1][0],
+            )[0]
+            _VIDEO_INFO_CACHE.pop(oldest_key, None)
+
+        _VIDEO_INFO_CACHE[url] = (now + VIDEO_INFO_CACHE_TTL_SECONDS, info)
+
+
 def _extract_video_info(url: str) -> dict | None:
+    cached_info = _get_cached_video_info(url)
+    if cached_info:
+        return cached_info
+
     try:
         opts = _build_ytdlp_opts(url)
         with YoutubeDL(opts) as ydl:
@@ -137,7 +205,10 @@ def _extract_video_info(url: str) -> dict | None:
             if info.get('_type') == 'playlist':
                 entries = info.get('entries') or []
                 if entries:
-                    return entries[0]
+                    info = entries[0]
+
+            if isinstance(info, dict):
+                _set_cached_video_info(url, info)
             return info
     except Exception as exc:
         logger.error("yt-dlp failed to extract info for %s: %s", url, exc)

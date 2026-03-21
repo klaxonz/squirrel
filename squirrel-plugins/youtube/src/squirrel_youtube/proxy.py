@@ -146,7 +146,8 @@ class YouTubeProxy:
                 return StreamingResponse(
                     response.aiter_bytes(),
                     media_type=content_type or 'application/octet-stream',
-                    headers=forward_headers
+                    headers=forward_headers,
+                    status_code=response.status_code,
                 )
 
         except httpx.HTTPStatusError as e:
