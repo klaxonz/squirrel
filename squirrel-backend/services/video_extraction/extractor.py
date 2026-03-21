@@ -13,6 +13,8 @@ from core.extraction.task_manager import TaskManager
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
 from utils.metrics import metrics
+from services.subscription_sync_event_service import SyncEventInput, append_event
+from services.subscription_sync_run_service import SyncEventType, SyncRunStatus
 from services import download_service, subscription_sync_state_service
 
 logger = logging.getLogger()
@@ -99,6 +101,21 @@ def extract_video(params: VideoExtractDto) -> ExtractionResult:
             )
             metrics.counter("crawl.tasks.total", tags={**tags, "status": "success"})
             metrics.counter("videos.discovered", tags={**tags, "subscribed": str(params.subscribed).lower()})
+            if params.run_id:
+                append_event(
+                    SyncEventInput(
+                        stream_id=params.run_id,
+                        subscription_id=params.subscription_id,
+                        sync_state_id=params.sync_state_id,
+                        site=domain,
+                        sync_mode='full' if params.is_extract_all else 'incremental',
+                        trigger=params.trigger or ('manual' if params.is_manual else 'scheduled'),
+                        event_type=SyncEventType.VIDEO_EXTRACTED,
+                        event_phase='extracting',
+                        event_status=SyncRunStatus.RUNNING,
+                        payload={'videos_extracted_delta': 1, 'video_url': params.url},
+                    )
+                )
         else:
             logger.error(
                 f"Video extraction failed: platform={domain}, url={params.url}, "

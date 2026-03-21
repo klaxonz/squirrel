@@ -6,6 +6,8 @@ from sqlalchemy import select
 from core.database import get_session
 from models.links import UserSubscription
 from services import message_service, subscription_sync_state_service
+from services.subscription_sync_event_service import SyncEventInput, append_event
+from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus, create_run
 from queues.direct_producer import direct_domain_producer
 from utils.site_catalog import SiteCatalog
 from .models import SubscriptionScheduleResult, SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
@@ -29,12 +31,68 @@ class SubscriptionScheduler:
         resolved_mode = self._resolve_mode(mode)
         domain = subscription_sync_state_service._resolve_site(url)
         if not domain or not SiteCatalog.is_site_enabled(domain=domain):
+            run_context = create_run(subscription_id, None, domain, resolved_mode.value, trigger.value, trace_id=trace_id)
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=None,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.RUN_CREATED,
+                event_phase=SyncPhase.INIT,
+                event_status=SyncRunStatus.CREATED,
+                payload={'pending_video_count': 0},
+                occurred_at=run_context.created_at,
+            ))
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=None,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.DEFERRED,
+                event_phase=SyncPhase.DEFERRED,
+                event_status=SyncRunStatus.DEFERRED,
+                payload={'reason': 'site_disabled', 'error_message': 'site_disabled'},
+            ))
             logger.info(f"Skip scheduling subscription {subscription_id} because site is disabled: {domain}")
-            return SubscriptionScheduleResult(subscription_id, None, "site_disabled")
+            return SubscriptionScheduleResult(subscription_id, None, "site_disabled", run_id=run_context.run_id)
 
         if not self._has_active_subscribers(subscription_id):
+            run_context = create_run(subscription_id, None, domain, resolved_mode.value, trigger.value, trace_id=trace_id)
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=None,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.RUN_CREATED,
+                event_phase=SyncPhase.INIT,
+                event_status=SyncRunStatus.CREATED,
+                payload={'pending_video_count': 0},
+                occurred_at=run_context.created_at,
+            ))
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=None,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.DEFERRED,
+                event_phase=SyncPhase.DEFERRED,
+                event_status=SyncRunStatus.DEFERRED,
+                payload={'reason': 'no_subscribers', 'error_message': 'no_subscribers'},
+            ))
             logger.info(f"Skip scheduling subscription {subscription_id} because no active subscribers")
-            return SubscriptionScheduleResult(subscription_id, None, "no_subscribers")
+            return SubscriptionScheduleResult(subscription_id, None, "no_subscribers", run_id=run_context.run_id)
 
         sync_state, state_status = subscription_sync_state_service.prepare_sync_state_for_enqueue(
             subscription_id,
@@ -43,24 +101,108 @@ class SubscriptionScheduler:
             scheduled=trigger == UpdateTrigger.SCHEDULED,
         )
         if not sync_state:
-            return SubscriptionScheduleResult(subscription_id, None, 'failed')
+            return SubscriptionScheduleResult(subscription_id=subscription_id, sync_state_id=None, status='failed')
 
         if state_status == 'in_progress':
-            return SubscriptionScheduleResult(subscription_id, sync_state.id, 'in_progress', sync_state.queue_token)
+            return SubscriptionScheduleResult(
+                subscription_id=subscription_id,
+                sync_state_id=sync_state.id,
+                status='in_progress',
+            )
         if state_status == 'queued':
-            return SubscriptionScheduleResult(subscription_id, sync_state.id, 'queued', sync_state.queue_token)
+            return SubscriptionScheduleResult(
+                subscription_id=subscription_id,
+                sync_state_id=sync_state.id,
+                status='queued',
+            )
+
+        run_context = create_run(
+            subscription_id=subscription_id,
+            sync_state_id=sync_state.id,
+            site=domain,
+            sync_mode=resolved_mode.value,
+            trigger=trigger.value,
+            trace_id=trace_id,
+        )
+        append_event(SyncEventInput(
+            stream_id=run_context.run_id,
+            subscription_id=subscription_id,
+            sync_state_id=sync_state.id,
+            site=domain,
+            sync_mode=resolved_mode.value,
+            trigger=trigger.value,
+            trace_id=trace_id,
+            event_type=SyncEventType.RUN_CREATED,
+            event_phase=SyncPhase.INIT,
+            event_status=SyncRunStatus.CREATED,
+            payload={'pending_video_count': sync_state.pending_video_count},
+            occurred_at=run_context.created_at,
+        ))
         if state_status == 'deferred':
-            return SubscriptionScheduleResult(subscription_id, sync_state.id, 'deferred')
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=sync_state.id,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.DEFERRED,
+                event_phase=SyncPhase.DEFERRED,
+                event_status=SyncRunStatus.DEFERRED,
+                payload={
+                    'reason': 'queue_backpressure',
+                    'pending_video_count': sync_state.pending_video_count,
+                    'next_sync_at': sync_state.next_sync_at,
+                    'error_message': 'queue_backpressure',
+                },
+            ))
+            return SubscriptionScheduleResult(
+                subscription_id=subscription_id,
+                sync_state_id=sync_state.id,
+                status='deferred',
+                run_id=run_context.run_id,
+            )
 
         queue_token = subscription_sync_state_service.build_queue_token()
         queued_state = subscription_sync_state_service.queue_sync_state(sync_state.id, queue_token)
         if not queued_state:
-            return SubscriptionScheduleResult(subscription_id, sync_state.id if sync_state else None, 'failed')
+            return SubscriptionScheduleResult(
+                subscription_id=subscription_id,
+                sync_state_id=sync_state.id if sync_state else None,
+                status='failed',
+            )
         if queued_state.queue_token != queue_token:
             status = 'in_progress' if queued_state.sync_status == 'running' else 'queued'
-            return SubscriptionScheduleResult(subscription_id, queued_state.id, status, queued_state.queue_token)
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=queued_state.id,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.DEFERRED,
+                event_phase=SyncPhase.DEFERRED,
+                event_status=SyncRunStatus.DEFERRED,
+                payload={'reason': 'queue_state_mismatch'},
+            ))
+            return SubscriptionScheduleResult(subscription_id=subscription_id, sync_state_id=queued_state.id, status=status)
         if queued_state.sync_status != 'queued':
-            return SubscriptionScheduleResult(subscription_id, queued_state.id, 'failed')
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=queued_state.id,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.DEFERRED,
+                event_phase=SyncPhase.DEFERRED,
+                event_status=SyncRunStatus.DEFERRED,
+                payload={'reason': 'queue_state_invalid'},
+            ))
+            return SubscriptionScheduleResult(subscription_id=subscription_id, sync_state_id=queued_state.id, status='failed')
 
         content = {
             'subscription_id': subscription_id,
@@ -70,18 +212,58 @@ class SubscriptionScheduler:
             'force': force,
             'queue_token': queue_token,
             'trigger': trigger.value,
+            'run_id': run_context.run_id,
         }
         message = message_service.create_message(content, trace_id=trace_id)
+        request_id = str(message.id)
+        append_event(SyncEventInput(
+            stream_id=run_context.run_id,
+            subscription_id=subscription_id,
+            sync_state_id=queued_state.id,
+            site=domain,
+            sync_mode=resolved_mode.value,
+            trigger=trigger.value,
+            request_id=request_id,
+            trace_id=trace_id,
+            event_type=SyncEventType.QUEUED,
+            event_phase=SyncPhase.QUEUED,
+            event_status=SyncRunStatus.QUEUED,
+            payload={
+                'queue_token': queue_token,
+                'queued_at': queued_state.queued_at,
+                'pending_video_count': queued_state.pending_video_count,
+            },
+        ))
 
         priority = self._resolve_priority(trigger, resolved_mode)
         try:
             direct_domain_producer.send_subscription_update(message.to_dict(), url, priority)
             logger.debug(f"Enqueued subscription {subscription_id} state={queued_state.id} priority={priority}")
-            return SubscriptionScheduleResult(subscription_id, queued_state.id, 'queued', queue_token)
+            return SubscriptionScheduleResult(
+                subscription_id=subscription_id,
+                sync_state_id=queued_state.id,
+                status='queued',
+                request_id=request_id,
+                run_id=run_context.run_id,
+            )
         except ValueError as e:
-            subscription_sync_state_service.mark_sync_failed(queued_state.id, str(e))
+            subscription_sync_state_service.mark_sync_failed(
+                queued_state.id,
+                str(e),
+                run_id=run_context.run_id,
+                request_id=request_id,
+                trace_id=trace_id,
+                error_type='enqueue_failed',
+                trigger=trigger.value,
+            )
             logger.error(f"Failed to enqueue subscription update: {e}, subscription_id={subscription_id}")
-            return SubscriptionScheduleResult(subscription_id, queued_state.id, 'failed')
+            return SubscriptionScheduleResult(
+                subscription_id=subscription_id,
+                sync_state_id=queued_state.id,
+                status='failed',
+                request_id=request_id,
+                run_id=run_context.run_id,
+            )
 
     def schedule_batch(
         self,

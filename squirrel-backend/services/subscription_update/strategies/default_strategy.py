@@ -12,6 +12,8 @@ from urllib.parse import urlparse
 from models.subscription import Subscription as SubscriptionModel
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, subscription_sync_state_service, video_service
+from services.subscription_sync_event_service import SyncEventInput, append_event
+from services.subscription_sync_run_service import SyncEventType, SyncRunStatus
 from utils.metrics import metrics
 from .base import UpdateStrategy
 from ..models import SubscriptionUpdateRequest, UpdateMode, UpdateTrigger
@@ -98,6 +100,8 @@ class DefaultUpdateStrategy(UpdateStrategy):
                         only_extract=True,
                         subscription_id=request.subscription_id,
                         sync_state_id=request.sync_state_id,
+                        run_id=request.run_id,
+                        trigger=request.trigger.value,
                         is_manual=request.trigger == UpdateTrigger.MANUAL,
                         is_extract_all=is_full_update
                     )
@@ -108,6 +112,58 @@ class DefaultUpdateStrategy(UpdateStrategy):
                     logger.warning(f"Failed to enqueue video {video_url}: {e}")
 
         subscription_sync_state_service.increment_pending_video_count(request.sync_state_id, enqueued)
+
+        if request.run_id:
+            append_event(
+                SyncEventInput(
+                    stream_id=request.run_id,
+                    subscription_id=request.subscription_id,
+                    sync_state_id=request.sync_state_id,
+                    site=domain,
+                    sync_mode=request.mode.value,
+                    trigger=request.trigger.value,
+                    request_id=request.request_id,
+                    trace_id=request.trace_id,
+                    event_type=SyncEventType.VIDEO_FOUND,
+                    event_phase='calculating_delta',
+                    event_status=SyncRunStatus.RUNNING,
+                    payload={'videos_found_delta': total, 'videos_found': total},
+                )
+            )
+            append_event(
+                SyncEventInput(
+                    stream_id=request.run_id,
+                    subscription_id=request.subscription_id,
+                    sync_state_id=request.sync_state_id,
+                    site=domain,
+                    sync_mode=request.mode.value,
+                    trigger=request.trigger.value,
+                    request_id=request.request_id,
+                    trace_id=request.trace_id,
+                    event_type=SyncEventType.VIDEO_ENQUEUED,
+                    event_phase='enqueueing',
+                    event_status=SyncRunStatus.RUNNING,
+                    payload={'videos_enqueued_delta': enqueued, 'videos_enqueued': enqueued},
+                )
+            )
+            skipped_total = existing_count + vip_count
+            if skipped_total > 0:
+                append_event(
+                    SyncEventInput(
+                        stream_id=request.run_id,
+                        subscription_id=request.subscription_id,
+                        sync_state_id=request.sync_state_id,
+                        site=domain,
+                        sync_mode=request.mode.value,
+                        trigger=request.trigger.value,
+                        request_id=request.request_id,
+                        trace_id=request.trace_id,
+                        event_type=SyncEventType.VIDEO_SKIPPED,
+                        event_phase='enqueueing',
+                        event_status=SyncRunStatus.RUNNING,
+                        payload={'videos_skipped_delta': skipped_total, 'videos_skipped': skipped_total},
+                    )
+                )
 
         logger.debug(
             "Enqueue summary subscription_id=%s domain=%s trigger=%s mode=%s total=%s queued=%s existed=%s vip=%s failed=%s",

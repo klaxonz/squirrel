@@ -8,6 +8,8 @@ from typing import Dict, Any
 
 from models.message import Message
 from services import subscription_service, subscription_sync_state_service
+from services.subscription_sync_event_service import SyncEventInput, append_event
+from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus
 from services.subscription_update.orchestrator import orchestrator
 from services.subscription_update.models import SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
 
@@ -40,13 +42,22 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
         user_id = body_data.get('user_id')
         force = body_data.get('force', False)
         queue_token = body_data.get('queue_token')
+        run_id = body_data.get('run_id')
+        request_id = str(message_obj.id) if getattr(message_obj, 'id', None) else None
         trace_id = message_obj.trace_id if hasattr(message_obj, 'trace_id') else None
         
         if not subscription_id or not sync_state_id or not queue_token:
             logger.error(f"Invalid message: missing subscription_id or sync state, message={body_data}")
             return
 
-        claimed_state = subscription_sync_state_service.claim_sync_state(sync_state_id, queue_token)
+        claimed_state = subscription_sync_state_service.claim_sync_state(
+            sync_state_id,
+            queue_token,
+            run_id=run_id,
+            request_id=request_id,
+            trace_id=trace_id,
+            trigger=trigger.value,
+        )
         if not claimed_state:
             logger.debug(
                 f"Skip subscription update because state can not be claimed: "
@@ -56,7 +67,15 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
 
         subscription = subscription_service.get_subscription_by_id(subscription_id)
         if not subscription or not subscription.url:
-            subscription_sync_state_service.mark_sync_failed(sync_state_id, 'subscription_not_found')
+            subscription_sync_state_service.mark_sync_failed(
+                sync_state_id,
+                'subscription_not_found',
+                run_id=run_id,
+                request_id=request_id,
+                trace_id=trace_id,
+                error_type='subscription_not_found',
+                trigger=trigger.value,
+            )
             logger.error(f"Subscription not found while processing sync state: subscription_id={subscription_id}")
             return
         
@@ -64,6 +83,24 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
             f"Processing subscription update: "
             f"id={subscription_id}, trigger={trigger.value}, mode={mode}, sync_state_id={sync_state_id}, trace_id={trace_id}"
         )
+
+        if run_id:
+            append_event(
+                SyncEventInput(
+                    stream_id=run_id,
+                    subscription_id=subscription_id,
+                    sync_state_id=sync_state_id,
+                    site=claimed_state.site,
+                    sync_mode=claimed_state.sync_mode,
+                    trigger=trigger.value,
+                    request_id=request_id,
+                    trace_id=trace_id,
+                    event_type=SyncEventType.STARTED,
+                    event_phase=SyncPhase.INIT,
+                    event_status=SyncRunStatus.RUNNING,
+                    payload={'pending_video_count': claimed_state.pending_video_count},
+                )
+            )
         
         request = SubscriptionUpdateRequest(
             subscription_id=subscription_id,
@@ -73,6 +110,8 @@ def _process_subscription_update(message: Dict[str, Any], trigger: UpdateTrigger
             user_id=user_id,
             force=force,
             trace_id=trace_id,
+            request_id=request_id,
+            run_id=run_id,
             sync_state_id=sync_state_id,
             queue_token=queue_token,
             cursor_payload=claimed_state.cursor_payload or {},

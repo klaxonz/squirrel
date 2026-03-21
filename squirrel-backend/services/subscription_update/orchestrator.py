@@ -49,7 +49,14 @@ class SubscriptionOrchestrator:
                 message = f"Site is disabled, skip subscription update: {domain}"
                 logger.info(message)
                 if request.sync_state_id:
-                    subscription_sync_state_service.mark_sync_skipped(request.sync_state_id)
+                    subscription_sync_state_service.mark_sync_skipped(
+                        request.sync_state_id,
+                        run_id=request.run_id,
+                        request_id=request.request_id,
+                        trace_id=request.trace_id,
+                        trigger=request.trigger.value,
+                        reason='site_disabled',
+                    )
                 # 记录跳过指标
                 metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "site_disabled"})
                 return SubscriptionUpdateResult(
@@ -64,7 +71,14 @@ class SubscriptionOrchestrator:
                 message = f"No active subscribers, skip subscription update: subscription_id={request.subscription_id}"
                 logger.info(message)
                 if request.sync_state_id:
-                    subscription_sync_state_service.mark_sync_skipped(request.sync_state_id)
+                    subscription_sync_state_service.mark_sync_skipped(
+                        request.sync_state_id,
+                        run_id=request.run_id,
+                        request_id=request.request_id,
+                        trace_id=request.trace_id,
+                        trigger=request.trigger.value,
+                        reason='no_subscribers',
+                    )
                 metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "no_subscribers"})
                 return SubscriptionUpdateResult(
                     subscription_id=request.subscription_id,
@@ -92,7 +106,15 @@ class SubscriptionOrchestrator:
         except Exception as e:
             logger.error(f"Orchestrator error for subscription {request.subscription_id}: {e}", exc_info=True)
             if request.sync_state_id:
-                subscription_sync_state_service.mark_sync_failed(request.sync_state_id, str(e))
+                subscription_sync_state_service.mark_sync_failed(
+                    request.sync_state_id,
+                    str(e),
+                    run_id=request.run_id,
+                    request_id=request.request_id,
+                    trace_id=request.trace_id,
+                    error_type=type(e).__name__,
+                    trigger=request.trigger.value,
+                )
             
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,

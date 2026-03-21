@@ -13,6 +13,8 @@ from models.links import UserSubscription
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 from queues.queue_config import get_queue_config, QueueMode, QueueType
+from services.subscription_sync_event_service import SyncEventInput, append_event
+from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus
 from utils import url_helper
 
 
@@ -249,9 +251,53 @@ def queue_sync_state(sync_state_id: int, queue_token: str) -> Optional[Subscript
         return session.execute(
             select(SubscriptionSyncState).where(SubscriptionSyncState.id == sync_state_id)
         ).scalar_one_or_none()
+def _append_state_event(
+    session,
+    *,
+    state: SubscriptionSyncState,
+    run_id: Optional[str],
+    request_id: Optional[str],
+    trace_id: Optional[str],
+    trigger: Optional[str],
+    event_type: str,
+    event_phase: Optional[str],
+    event_status: Optional[str],
+    payload: Optional[dict] = None,
+    message: Optional[str] = None,
+    occurred_at: Optional[datetime] = None,
+) -> None:
+    if not run_id:
+        return
+    append_event(
+        SyncEventInput(
+            stream_id=run_id,
+            subscription_id=state.subscription_id,
+            sync_state_id=state.id,
+            site=state.site,
+            sync_mode=state.sync_mode,
+            trigger=trigger,
+            request_id=request_id,
+            trace_id=trace_id,
+            event_type=event_type,
+            event_phase=event_phase,
+            event_status=event_status,
+            payload=payload,
+            message=message,
+            occurred_at=occurred_at,
+        ),
+        session=session,
+    )
 
 
-def claim_sync_state(sync_state_id: int, queue_token: str) -> Optional[SubscriptionSyncState]:
+def claim_sync_state(
+    sync_state_id: int,
+    queue_token: str,
+    *,
+    run_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    trigger: Optional[str] = None,
+) -> Optional[SubscriptionSyncState]:
     now = datetime.now()
     with get_session() as session:
         result = session.execute(
@@ -270,9 +316,28 @@ def claim_sync_state(sync_state_id: int, queue_token: str) -> Optional[Subscript
         )
         if result.rowcount == 0:
             return None
-        return session.execute(
+        state = session.execute(
             select(SubscriptionSyncState).where(SubscriptionSyncState.id == sync_state_id)
         ).scalar_one_or_none()
+        if not state:
+            return None
+        _append_state_event(
+            session,
+            state=state,
+            run_id=run_id,
+            request_id=request_id,
+            trace_id=trace_id,
+            trigger=trigger,
+            event_type=SyncEventType.CLAIMED,
+            event_phase=SyncPhase.CLAIMED,
+            event_status=SyncRunStatus.RUNNING,
+            payload={
+                'pending_video_count': state.pending_video_count,
+                'queue_token': queue_token,
+            },
+            occurred_at=now,
+        )
+        return state
 
 
 def mark_sync_success(
@@ -281,13 +346,19 @@ def mark_sync_success(
     cursor_payload: Optional[dict],
     latest_video_url: Optional[str],
     videos_found: int = 0,
+    videos_enqueued: int = 0,
     next_sync_at: Optional[datetime] = None,
+    run_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    trigger: Optional[str] = None,
 ) -> Optional[SubscriptionSyncState]:
     now = datetime.now()
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
         if not state:
             return None
+        started_at = state.locked_at
         state.sync_status = SyncStatus.SUCCESS.value
         state.cursor_payload = cursor_payload or {}
         if latest_video_url:
@@ -302,10 +373,44 @@ def mark_sync_success(
         state.idle_sync_count = 0 if videos_found > 0 else state.idle_sync_count + 1
         state.next_sync_at = next_sync_at or (now + build_success_delay(state.sync_mode, state.idle_sync_count, videos_found))
         state.version += 1
+        _append_state_event(
+            session,
+            state=state,
+            run_id=run_id,
+            request_id=request_id,
+            trace_id=trace_id,
+            trigger=trigger,
+            event_type=SyncEventType.COMPLETED,
+            event_phase=SyncPhase.COMPLETED,
+            event_status=SyncRunStatus.SUCCESS,
+            payload={
+                'cursor_payload': state.cursor_payload,
+                'latest_video_url': latest_video_url,
+                'videos_found': videos_found,
+                'videos_enqueued': videos_enqueued,
+                'pending_video_count': state.pending_video_count,
+                'failure_count': state.failure_count,
+                'next_sync_at': state.next_sync_at,
+                'duration_ms': int((now - started_at).total_seconds() * 1000) if started_at else 0,
+            },
+            occurred_at=now,
+        )
         return state
 
 
-def mark_sync_skipped(sync_state_id: int, *, next_sync_at: Optional[datetime] = None) -> Optional[SubscriptionSyncState]:
+def mark_sync_skipped(
+    sync_state_id: int,
+    *,
+    next_sync_at: Optional[datetime] = None,
+    run_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    trigger: Optional[str] = None,
+    reason: Optional[str] = None,
+    event_type: str = SyncEventType.DEFERRED,
+    event_phase: str = SyncPhase.DEFERRED,
+    event_status: str = SyncRunStatus.DEFERRED,
+) -> Optional[SubscriptionSyncState]:
     now = datetime.now()
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
@@ -320,15 +425,43 @@ def mark_sync_skipped(sync_state_id: int, *, next_sync_at: Optional[datetime] = 
         state.failure_count = 0
         state.next_sync_at = next_sync_at or (now + get_mode_interval(state.sync_mode))
         state.version += 1
+        _append_state_event(
+            session,
+            state=state,
+            run_id=run_id,
+            request_id=request_id,
+            trace_id=trace_id,
+            trigger=trigger,
+            event_type=event_type,
+            event_phase=event_phase,
+            event_status=event_status,
+            payload={
+                'reason': reason,
+                'next_sync_at': state.next_sync_at,
+                'pending_video_count': state.pending_video_count,
+            },
+            message=reason,
+            occurred_at=now,
+        )
         return state
 
 
-def mark_sync_failed(sync_state_id: int, error_message: str) -> Optional[SubscriptionSyncState]:
+def mark_sync_failed(
+    sync_state_id: int,
+    error_message: str,
+    *,
+    run_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    error_type: Optional[str] = None,
+    trigger: Optional[str] = None,
+) -> Optional[SubscriptionSyncState]:
     now = datetime.now()
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
         if not state:
             return None
+        started_at = state.locked_at
         state.failure_count += 1
         state.sync_status = SyncStatus.FAILED.value
         state.last_sync_at = now
@@ -339,10 +472,40 @@ def mark_sync_failed(sync_state_id: int, error_message: str) -> Optional[Subscri
         state.idle_sync_count = 0
         state.next_sync_at = now + build_retry_delay(state.sync_mode, state.failure_count)
         state.version += 1
+        _append_state_event(
+            session,
+            state=state,
+            run_id=run_id,
+            request_id=request_id,
+            trace_id=trace_id,
+            trigger=trigger,
+            event_type=SyncEventType.FAILED,
+            event_phase=SyncPhase.FAILED,
+            event_status=SyncRunStatus.FAILED,
+            payload={
+                'error_type': error_type or 'sync_failed',
+                'error_message': error_message,
+                'failure_count': state.failure_count,
+                'pending_video_count': state.pending_video_count,
+                'next_sync_at': state.next_sync_at,
+                'duration_ms': int((now - started_at).total_seconds() * 1000) if started_at else 0,
+            },
+            message=error_message,
+            occurred_at=now,
+        )
         return state
 
 
-def defer_sync_state(sync_state_id: int, *, delay: timedelta, error_message: Optional[str] = None) -> Optional[SubscriptionSyncState]:
+def defer_sync_state(
+    sync_state_id: int,
+    *,
+    delay: timedelta,
+    error_message: Optional[str] = None,
+    run_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    trigger: Optional[str] = None,
+) -> Optional[SubscriptionSyncState]:
     now = datetime.now()
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
@@ -357,6 +520,24 @@ def defer_sync_state(sync_state_id: int, *, delay: timedelta, error_message: Opt
         state.idle_sync_count = 0
         state.next_sync_at = now + delay
         state.version += 1
+        _append_state_event(
+            session,
+            state=state,
+            run_id=run_id,
+            request_id=request_id,
+            trace_id=trace_id,
+            trigger=trigger,
+            event_type=SyncEventType.DEFERRED,
+            event_phase=SyncPhase.DEFERRED,
+            event_status=SyncRunStatus.DEFERRED,
+            payload={
+                'error_message': error_message,
+                'pending_video_count': state.pending_video_count,
+                'next_sync_at': state.next_sync_at,
+            },
+            message=error_message,
+            occurred_at=now,
+        )
         return state
 
 

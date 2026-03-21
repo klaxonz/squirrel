@@ -28,10 +28,20 @@ class SyncEventInput:
     seq_no: Optional[int] = None
 
 
+def _serialize_value(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(key): _serialize_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_serialize_value(item) for item in value]
+    return value
+
+
 def serialize_payload(payload: Optional[dict]) -> dict:
     if not payload:
         return {}
-    return dict(payload)
+    return _serialize_value(dict(payload))
 
 
 def build_event(event_input: SyncEventInput, *, session=None) -> SubscriptionSyncEvent:

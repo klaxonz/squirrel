@@ -30,6 +30,8 @@ class SubscriptionUpdateRequest:
     user_id: Optional[int] = None
     force: bool = False
     trace_id: Optional[str] = None
+    request_id: Optional[str] = None
+    run_id: Optional[str] = None
     sync_state_id: Optional[int] = None
     queue_token: Optional[str] = None
     cursor_payload: Optional[dict] = None
@@ -57,4 +59,5 @@ class SubscriptionScheduleResult:
     sync_state_id: Optional[int]
     status: str
     request_id: Optional[str] = None
+    run_id: Optional[str] = None
 

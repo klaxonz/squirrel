@@ -5,9 +5,40 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from services.subscription_sync_event_service import SyncEventInput, append_event
+from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus
 from services import subscription_sync_state_service
 from utils.metrics import metrics
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult
+
+
+def _append_request_event(
+    request: SubscriptionUpdateRequest,
+    event_type: str,
+    event_phase: str,
+    event_status: Optional[str],
+    payload: Optional[dict] = None,
+    message: Optional[str] = None,
+) -> None:
+    if not request.run_id:
+        return
+    append_event(
+        SyncEventInput(
+            stream_id=request.run_id,
+            subscription_id=request.subscription_id,
+            sync_state_id=request.sync_state_id,
+            site=subscription_sync_state_service._resolve_site(request.url),
+            sync_mode=request.mode.value,
+            trigger=request.trigger.value,
+            request_id=request.request_id,
+            trace_id=request.trace_id,
+            event_type=event_type,
+            event_phase=event_phase,
+            event_status=event_status,
+            payload=payload,
+            message=message,
+        )
+    )
 
 
 class UpdateStrategy(ABC):
@@ -58,7 +89,14 @@ class UpdateStrategy(ABC):
         should_update, skip_reason = self.should_update(request)
         if not should_update:
             if request.sync_state_id:
-                subscription_sync_state_service.mark_sync_skipped(request.sync_state_id)
+                subscription_sync_state_service.mark_sync_skipped(
+                    request.sync_state_id,
+                    run_id=request.run_id,
+                    request_id=request.request_id,
+                    trace_id=request.trace_id,
+                    trigger=request.trigger.value,
+                    reason=skip_reason or 'unknown',
+                )
             # 记录跳过指标
             metrics.counter("subscription.update.total", tags={**tags, "status": "skipped", "reason": skip_reason or "unknown"})
             return SubscriptionUpdateResult(
@@ -70,9 +108,42 @@ class UpdateStrategy(ABC):
             )
         
         try:
+            _append_request_event(
+                request,
+                SyncEventType.PHASE_CHANGED,
+                SyncPhase.FETCHING_FEED,
+                SyncRunStatus.RUNNING,
+            )
             fetch_result = self.fetch_videos(request)
+            _append_request_event(
+                request,
+                SyncEventType.PHASE_CHANGED,
+                SyncPhase.CALCULATING_DELTA,
+                SyncRunStatus.RUNNING,
+                payload={
+                    'videos_found': len(fetch_result.video_urls),
+                    'latest_video_url': fetch_result.latest_video_url,
+                },
+            )
             
+            _append_request_event(
+                request,
+                SyncEventType.PHASE_CHANGED,
+                SyncPhase.ENQUEUEING,
+                SyncRunStatus.RUNNING,
+            )
             enqueued = self.enqueue_extraction(fetch_result, request)
+
+            _append_request_event(
+                request,
+                SyncEventType.PHASE_CHANGED,
+                SyncPhase.FINALIZING,
+                SyncRunStatus.RUNNING,
+                payload={
+                    'videos_found': len(fetch_result.video_urls),
+                    'videos_enqueued': enqueued,
+                },
+            )
 
             if request.sync_state_id:
                 subscription_sync_state_service.mark_sync_success(
@@ -80,6 +151,11 @@ class UpdateStrategy(ABC):
                     cursor_payload=fetch_result.cursor_payload,
                     latest_video_url=fetch_result.latest_video_url,
                     videos_found=len(fetch_result.video_urls),
+                    videos_enqueued=enqueued,
+                    run_id=request.run_id,
+                    request_id=request.request_id,
+                    trace_id=request.trace_id,
+                    trigger=request.trigger.value,
                 )
             
             # 记录成功指标
@@ -101,7 +177,15 @@ class UpdateStrategy(ABC):
             metrics.counter("subscription.update.total", tags={**tags, "status": "error"})
             metrics.counter("subscription.errors.total", tags={**tags, "error_type": type(e).__name__})
             if request.sync_state_id:
-                subscription_sync_state_service.mark_sync_failed(request.sync_state_id, str(e))
+                subscription_sync_state_service.mark_sync_failed(
+                    request.sync_state_id,
+                    str(e),
+                    run_id=request.run_id,
+                    request_id=request.request_id,
+                    trace_id=request.trace_id,
+                    error_type=type(e).__name__,
+                    trigger=request.trigger.value,
+                )
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
                 success=False,

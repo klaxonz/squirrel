@@ -103,6 +103,7 @@ export function useSyncCenter() {
   const retryingBatch = ref(false)
   const retryingItemId = ref<number | null>(null)
   const autoRefresh = ref(true)
+  const pollingEnabled = ref(true)
   const selectedItem = ref<SyncCenterItem | null>(null)
   const filters = reactive({
     status: 'failed' as SyncCenterStatusFilter,
@@ -252,7 +253,9 @@ export function useSyncCenter() {
     }
     if (error) {
       Logger.error('Failed to load filtered failed count', error)
-      filteredFailedCount.value = 0
+      if (filters.status === 'failed') {
+        filteredFailedCount.value = total.value
+      }
       return
     }
     filteredFailedCount.value = data?.total || 0
@@ -364,6 +367,10 @@ export function useSyncCenter() {
     return result
   }
 
+  const setPollingEnabled = (enabled: boolean) => {
+    pollingEnabled.value = enabled
+  }
+
   const clearPollTimer = () => {
     if (!pollTimer) {
       return
@@ -374,7 +381,7 @@ export function useSyncCenter() {
 
   const startPolling = () => {
     clearPollTimer()
-    if (!autoRefresh.value) {
+    if (!autoRefresh.value || !pollingEnabled.value) {
       return
     }
     pollTimer = setInterval(() => {
@@ -382,7 +389,7 @@ export function useSyncCenter() {
     }, POLL_INTERVAL)
   }
 
-  watch(autoRefresh, () => {
+  watch([autoRefresh, pollingEnabled], () => {
     startPolling()
   })
 
@@ -424,6 +431,7 @@ export function useSyncCenter() {
     retryItem,
     runningPreview,
     runningPreviewError,
+    setPollingEnabled,
     selectStatus,
     selectedItem,
     setPage,
