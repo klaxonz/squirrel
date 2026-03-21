@@ -39,8 +39,12 @@
                 <p class="text-sm text-text-primary mt-2">{{ run.duration_ms }} ms</p>
               </Card>
               <Card class="p-4">
-                <p class="text-2xs text-text-tertiary">发现 / 入队 / 提取</p>
+                <p class="text-2xs text-text-tertiary">{{ getVideoSummaryLabel(run.sync_mode) }}</p>
                 <p class="text-sm text-text-primary mt-2">{{ run.videos_found }} / {{ run.videos_enqueued }} / {{ run.videos_extracted }}</p>
+              </Card>
+              <Card class="p-4">
+                <p class="text-2xs text-text-tertiary">本次扫描视频数</p>
+                <p class="text-sm text-text-primary mt-2">{{ formatSourceVideoCount(run.source_video_count) }}</p>
               </Card>
               <Card class="p-4">
                 <p class="text-2xs text-text-tertiary">失败次数</p>
@@ -113,6 +117,14 @@ const getVariant = (status: string) => {
     default:
       return 'default'
   }
+}
+
+const getVideoSummaryLabel = (syncMode: string) => {
+  return syncMode === 'incremental' ? '新增发现 / 入队 / 提取' : '发现 / 入队 / 提取'
+}
+
+const formatSourceVideoCount = (value?: number | null) => {
+  return value == null ? '—' : String(value)
 }
 </script>
 

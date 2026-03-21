@@ -30,6 +30,25 @@ def _serialize_datetime(value: Optional[datetime]) -> str:
     return value.strftime('%Y-%m-%d %H:%M:%S') if value else ''
 
 
+def _payload_metric_value(run_id: str, key: str) -> Optional[int]:
+    with get_session() as session:
+        events = session.execute(
+            select(SubscriptionSyncEvent)
+            .where(SubscriptionSyncEvent.stream_id == run_id)
+            .order_by(SubscriptionSyncEvent.seq_no.desc(), SubscriptionSyncEvent.occurred_at.desc())
+        ).scalars().all()
+
+    for event in events:
+        payload = event.payload or {}
+        if key not in payload:
+            continue
+        try:
+            return int(payload.get(key))
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 def _base_run_query(user_id: int):
     return (
         select(SubscriptionSyncRunProjection, Subscription)
@@ -130,6 +149,7 @@ def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
         if not row:
             return None
         run, subscription = row
+        source_video_count = _payload_metric_value(run.run_id, 'source_video_count')
         return {
             'run_id': run.run_id,
             'subscription_id': subscription.id,
@@ -153,6 +173,7 @@ def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
             'videos_enqueued': run.videos_enqueued,
             'videos_extracted': run.videos_extracted,
             'videos_skipped': run.videos_skipped,
+            'source_video_count': source_video_count,
             'pending_video_count': run.pending_video_count,
             'last_event_at': _serialize_datetime(run.last_event_at),
             'created_at': _serialize_datetime(run.created_at),

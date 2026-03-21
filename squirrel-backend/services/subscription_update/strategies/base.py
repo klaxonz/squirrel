@@ -121,6 +121,7 @@ class UpdateStrategy(ABC):
                 SyncPhase.CALCULATING_DELTA,
                 SyncRunStatus.RUNNING,
                 payload={
+                    'source_video_count': fetch_result.source_video_count,
                     'videos_found': len(fetch_result.video_urls),
                     'latest_video_url': fetch_result.latest_video_url,
                 },
@@ -140,6 +141,7 @@ class UpdateStrategy(ABC):
                 SyncPhase.FINALIZING,
                 SyncRunStatus.RUNNING,
                 payload={
+                    'source_video_count': fetch_result.source_video_count,
                     'videos_found': len(fetch_result.video_urls),
                     'videos_enqueued': enqueued,
                 },
@@ -150,6 +152,7 @@ class UpdateStrategy(ABC):
                     request.sync_state_id,
                     cursor_payload=fetch_result.cursor_payload,
                     latest_video_url=fetch_result.latest_video_url,
+                    source_video_count=fetch_result.source_video_count,
                     videos_found=len(fetch_result.video_urls),
                     videos_enqueued=enqueued,
                     run_id=request.run_id,
@@ -170,6 +173,7 @@ class UpdateStrategy(ABC):
                 videos_enqueued=enqueued,
                 cursor_payload=fetch_result.cursor_payload,
                 latest_video_url=fetch_result.latest_video_url,
+                source_video_count=fetch_result.source_video_count,
                 total_available=fetch_result.total_available,
             )
         except Exception as e:

@@ -413,6 +413,7 @@ def mark_sync_success(
     *,
     cursor_payload: Optional[dict],
     latest_video_url: Optional[str],
+    source_video_count: Optional[int] = None,
     videos_found: int = 0,
     videos_enqueued: int = 0,
     next_sync_at: Optional[datetime] = None,
@@ -454,6 +455,7 @@ def mark_sync_success(
             payload={
                 'cursor_payload': state.cursor_payload,
                 'latest_video_url': latest_video_url,
+                'source_video_count': source_video_count,
                 'videos_found': videos_found,
                 'videos_enqueued': videos_enqueued,
                 'pending_video_count': state.pending_video_count,

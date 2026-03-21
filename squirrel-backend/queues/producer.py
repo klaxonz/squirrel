@@ -22,8 +22,16 @@ class RedisStreamProducer:
     def __init__(self):
         ...
 
+    @staticmethod
+    def _resolve_message_trace_id(message: Dict) -> Optional[str]:
+        trace_id = message.get('trace_id')
+        if trace_id in (None, ''):
+            return None
+        return str(trace_id)
+
     def send(self, stream: str, message: Dict, max_retries: int = 3, approximate_maxlen: Optional[int] = 100000, trace_id: Optional[str] = None) -> str:
-        # 如果未指定 trace_id，则从当前上下文获取
+        if trace_id is None:
+            trace_id = self._resolve_message_trace_id(message)
         if trace_id is None:
             from utils.trace import get_trace_id
             trace_id = get_trace_id()

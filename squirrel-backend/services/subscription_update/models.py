@@ -49,6 +49,7 @@ class SubscriptionUpdateResult:
     skipped_reason: Optional[str] = None
     cursor_payload: Optional[dict] = None
     latest_video_url: Optional[str] = None
+    source_video_count: Optional[int] = None
     total_available: Optional[int] = None
 
 

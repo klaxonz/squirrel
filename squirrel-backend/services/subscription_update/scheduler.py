@@ -10,6 +10,7 @@ from services.subscription_sync_event_service import SyncEventInput, append_even
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus, create_run
 from queues.direct_producer import direct_domain_producer
 from utils.site_catalog import SiteCatalog
+from utils.trace import generate_trace_id, get_trace_id
 from .models import SubscriptionScheduleResult, SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
 
 logger = logging.getLogger()
@@ -17,6 +18,10 @@ logger = logging.getLogger()
 
 class SubscriptionScheduler:
     """Subscription update scheduler."""
+
+    @staticmethod
+    def _resolve_trace_id(trace_id: Optional[str]) -> str:
+        return trace_id or get_trace_id() or generate_trace_id()
 
     def schedule_one(
         self,
@@ -28,6 +33,7 @@ class SubscriptionScheduler:
         force: bool = False,
         trace_id: Optional[str] = None
     ) -> SubscriptionScheduleResult:
+        trace_id = self._resolve_trace_id(trace_id)
         resolved_mode = self._resolve_mode(mode)
         domain = subscription_sync_state_service._resolve_site(url)
         if not domain or not SiteCatalog.is_site_enabled(domain=domain):

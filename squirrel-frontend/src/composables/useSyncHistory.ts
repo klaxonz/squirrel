@@ -25,6 +25,7 @@ export interface SyncRunItem {
   videos_enqueued: number
   videos_extracted: number
   videos_skipped: number
+  source_video_count?: number | null
   pending_video_count: number
   last_event_at: string
 }

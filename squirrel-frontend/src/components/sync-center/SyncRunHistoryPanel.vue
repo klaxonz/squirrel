@@ -35,7 +35,7 @@
             </div>
             <div class="text-right text-2xs text-text-secondary">
               <div>耗时 {{ run.duration_ms }} ms</div>
-              <div class="mt-1">发现 {{ run.videos_found }} · 入队 {{ run.videos_enqueued }} · 提取 {{ run.videos_extracted }}</div>
+              <div class="mt-1">{{ formatRunVideoSummary(run) }}</div>
             </div>
           </div>
           <div v-if="run.error_message" class="text-2xs text-color-error mt-2 truncate">{{ run.error_message }}</div>
@@ -119,5 +119,10 @@ const getVariant = (status: string) => {
     default:
       return 'default'
   }
+}
+
+const formatRunVideoSummary = (run: SyncRunItem) => {
+  const foundLabel = run.sync_mode === 'incremental' ? '新增' : '发现'
+  return `${foundLabel} ${run.videos_found} · 入队 ${run.videos_enqueued} · 提取 ${run.videos_extracted}`
 }
 </script>

@@ -242,6 +242,7 @@ class SubscriptionSyncResult:
     latest_video_url: Optional[str] = None
     cursor_payload: Optional[Dict[str, Any]] = None
     stop_reason: Optional[str] = None
+    source_video_count: Optional[int] = None
     total_available: Optional[int] = None
 
     def to_dict(self) -> Dict[str, Any]:
