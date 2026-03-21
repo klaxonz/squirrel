@@ -11,6 +11,7 @@ import PluginManager from '../views/PluginManager.vue'
 import LogViewer from '../views/LogViewer.vue'
 import Monitoring from '../views/Monitoring.vue'
 import ScheduledTasks from '../views/ScheduledTasks.vue'
+import SyncCenter from '../views/SyncCenter.vue'
 import { useUser } from '../composables/useUser'
 import { Logger } from '@/utils/logger'
 
@@ -116,6 +117,12 @@ const routes = [
     path: '/logs',
     name: 'Logs',
     component: LogViewer,
+    meta: NO_SEARCH_META
+  },
+  {
+    path: '/sync-center',
+    name: 'SyncCenter',
+    component: SyncCenter,
     meta: NO_SEARCH_META
   },
   {

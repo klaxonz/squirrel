@@ -8,7 +8,7 @@
         aria-controls="refresh-center-panel"
       >
         <span class="dot" :data-count="activeItems.length"></span>
-        同步
+        同步提醒
       </button>
 
       <div
@@ -16,10 +16,10 @@
         id="refresh-center-panel"
         class="panel"
         role="region"
-        aria-label="同步中心"
+        aria-label="同步提醒"
       >
         <div class="panel-header">
-          <span>同步中心</span>
+          <span>同步提醒</span>
           <button class="close" @click="panelOpen = false">✕</button>
         </div>
         <ul class="list scrollbar-hide">

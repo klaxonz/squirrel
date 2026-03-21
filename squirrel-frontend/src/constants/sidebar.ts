@@ -3,6 +3,7 @@ import {
   HomeIcon,
   BookmarkIcon,
   ClockIcon,
+  ArrowPathIcon,
   Cog6ToothIcon as CogIcon,
   PuzzlePieceIcon,
   DocumentTextIcon,
@@ -37,6 +38,11 @@ export const MENU_ITEMS: MenuItems = {
       name: '历史',
       path: '/history',
       icon: ClockIcon,
+    },
+    {
+      name: '同步中心',
+      path: '/sync-center',
+      icon: ArrowPathIcon,
     },
     {
       name: '监控',

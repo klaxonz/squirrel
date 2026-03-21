@@ -1,0 +1,436 @@
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import {
+  getSupportedSites,
+  getSyncCenterItems,
+  getSyncCenterOverview,
+  retryFailedSyncItems,
+  triggerRefresh,
+} from '@/api'
+import { Logger } from '@/utils/logger'
+
+export type SyncCenterStatusFilter = 'failed' | 'running' | 'queued' | 'scheduled' | 'recent'
+
+export interface SyncCenterOverview {
+  running_count: number
+  queued_count: number
+  failed_count: number
+  due_soon_count: number
+  deferred_count: number
+  pending_videos: number
+  queue_depth: number
+  queue_messages: number
+}
+
+export interface SyncCenterItem {
+  subscription_id: number
+  subscription_name: string
+  subscription_avatar: string | null
+  site: string | null
+  sync_mode: string
+  sync_status: string
+  display_status: string
+  failure_count: number
+  last_error: string | null
+  last_error_summary: string | null
+  last_sync_at: string
+  last_success_at: string
+  next_sync_at: string
+  queued_at: string
+  locked_at: string
+  updated_at: string
+  pending_video_count: number
+  is_deferred: boolean
+  defer_reason: string | null
+}
+
+interface SyncCenterListResponse {
+  total: number
+  page: number
+  pageSize: number
+  data: SyncCenterItem[]
+}
+
+interface RetryFailedResponse {
+  total: number
+  queued: number
+  in_progress: number
+  failed: number
+  skipped: number
+}
+
+interface SiteOption {
+  value: string
+  label: string
+}
+
+const POLL_INTERVAL = 15000
+
+const createEmptyOverview = (): SyncCenterOverview => ({
+  running_count: 0,
+  queued_count: 0,
+  failed_count: 0,
+  due_soon_count: 0,
+  deferred_count: 0,
+  pending_videos: 0,
+  queue_depth: 0,
+  queue_messages: 0,
+})
+
+const statusOptions: Array<{ value: SyncCenterStatusFilter; label: string }> = [
+  { value: 'failed', label: '失败项' },
+  { value: 'running', label: '运行中' },
+  { value: 'queued', label: '排队中' },
+  { value: 'scheduled', label: '即将执行' },
+  { value: 'recent', label: '最近活动' },
+]
+
+export function useSyncCenter() {
+  const overview = ref<SyncCenterOverview>(createEmptyOverview())
+  const items = ref<SyncCenterItem[]>([])
+  const runningPreview = ref<SyncCenterItem[]>([])
+  const queuedPreview = ref<SyncCenterItem[]>([])
+  const runningPreviewError = ref('')
+  const queuedPreviewError = ref('')
+  const filteredFailedCount = ref(0)
+  const total = ref(0)
+  const page = ref(1)
+  const pageSize = ref(20)
+  const lastUpdatedAt = ref('')
+  const overviewError = ref('')
+  const itemsError = ref('')
+  const loadingOverview = ref(false)
+  const loadingItems = ref(false)
+  const retryingBatch = ref(false)
+  const retryingItemId = ref<number | null>(null)
+  const autoRefresh = ref(true)
+  const selectedItem = ref<SyncCenterItem | null>(null)
+  const filters = reactive({
+    status: 'failed' as SyncCenterStatusFilter,
+    site: '',
+    query: '',
+  })
+  const siteOptions = ref<SiteOption[]>([])
+
+  let pollTimer: ReturnType<typeof setInterval> | null = null
+  let queryTimer: ReturnType<typeof setTimeout> | null = null
+  let overviewRequestSeq = 0
+  let itemsRequestSeq = 0
+  let runningPreviewRequestSeq = 0
+  let queuedPreviewRequestSeq = 0
+  let failedCountRequestSeq = 0
+
+  const pageError = computed(() => overviewError.value || itemsError.value)
+
+  const syncSelectedItem = () => {
+    if (!selectedItem.value) {
+      return
+    }
+    const nextItem = items.value.find((item) => item.subscription_id === selectedItem.value?.subscription_id)
+    if (nextItem) {
+      selectedItem.value = nextItem
+      return
+    }
+    const previewItem = [...runningPreview.value, ...queuedPreview.value].find(
+      (item) => item.subscription_id === selectedItem.value?.subscription_id
+    )
+    selectedItem.value = previewItem || null
+  }
+
+  const updateLastRefreshTime = () => {
+    lastUpdatedAt.value = new Date().toLocaleTimeString('zh-CN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  }
+
+  const buildFilterParams = (status: SyncCenterStatusFilter = filters.status, currentPage: number = page.value) => {
+    return {
+      status,
+      site: filters.site || undefined,
+      query: filters.query || undefined,
+      page: currentPage,
+      pageSize: pageSize.value,
+    }
+  }
+
+  const loadOverview = async () => {
+    const requestSeq = ++overviewRequestSeq
+    loadingOverview.value = true
+    overviewError.value = ''
+    const { data, error } = await getSyncCenterOverview()
+    if (requestSeq !== overviewRequestSeq) {
+      return
+    }
+    if (error) {
+      overviewError.value = error.message || '加载同步总览失败'
+      Logger.error('Failed to load sync center overview', error)
+    } else if (data) {
+      overview.value = {
+        ...createEmptyOverview(),
+        ...data,
+      }
+    }
+    loadingOverview.value = false
+  }
+
+  const loadItems = async () => {
+    const requestSeq = ++itemsRequestSeq
+    loadingItems.value = true
+    itemsError.value = ''
+    const { data, error } = await getSyncCenterItems<SyncCenterListResponse>(buildFilterParams())
+    if (requestSeq !== itemsRequestSeq) {
+      return
+    }
+    if (error) {
+      itemsError.value = error.message || '加载同步列表失败'
+      Logger.error('Failed to load sync center items', error)
+      items.value = []
+      total.value = 0
+    } else if (data) {
+      items.value = data.data || []
+      total.value = data.total || 0
+      page.value = data.page || 1
+      pageSize.value = data.pageSize || pageSize.value
+      syncSelectedItem()
+    }
+    loadingItems.value = false
+  }
+
+  const loadPreview = async (status: 'running' | 'queued') => {
+    const requestSeq = status === 'running'
+      ? ++runningPreviewRequestSeq
+      : ++queuedPreviewRequestSeq
+    const { data, error } = await getSyncCenterItems<SyncCenterListResponse>({
+      status,
+      site: filters.site || undefined,
+      query: filters.query || undefined,
+      page: 1,
+      pageSize: 4,
+    })
+    const isStale = status === 'running'
+      ? requestSeq !== runningPreviewRequestSeq
+      : requestSeq !== queuedPreviewRequestSeq
+    if (isStale) {
+      return
+    }
+    if (error) {
+      Logger.error(`Failed to load ${status} preview`, error)
+      if (status === 'running') {
+        runningPreviewError.value = error.message || '加载运行中预览失败'
+        runningPreview.value = []
+      } else {
+        queuedPreviewError.value = error.message || '加载排队预览失败'
+        queuedPreview.value = []
+      }
+      syncSelectedItem()
+      return
+    }
+
+    const nextItems = data?.data || []
+    if (status === 'running') {
+      runningPreviewError.value = ''
+      runningPreview.value = nextItems
+    } else {
+      queuedPreviewError.value = ''
+      queuedPreview.value = nextItems
+    }
+    syncSelectedItem()
+  }
+
+  const loadFilteredFailedCount = async () => {
+    const requestSeq = ++failedCountRequestSeq
+    const { data, error } = await getSyncCenterItems<SyncCenterListResponse>({
+      status: 'failed',
+      site: filters.site || undefined,
+      query: filters.query || undefined,
+      page: 1,
+      pageSize: 1,
+    })
+    if (requestSeq !== failedCountRequestSeq) {
+      return
+    }
+    if (error) {
+      Logger.error('Failed to load filtered failed count', error)
+      filteredFailedCount.value = 0
+      return
+    }
+    filteredFailedCount.value = data?.total || 0
+  }
+
+  const loadSiteOptions = async () => {
+    const { data, error } = await getSupportedSites()
+    if (error) {
+      Logger.error('Failed to load sync center site options', error)
+      siteOptions.value = []
+      return
+    }
+
+    const normalized = (data?.sites || []).map((site: Record<string, unknown>) => {
+      const value = String(site.site_name || site.name || '').trim()
+      const label = String(site.display_label || site.label || value).trim()
+      return { value, label }
+    }).filter((option: SiteOption) => option.value)
+
+    const deduped = normalized.filter((option: SiteOption, index: number, arr: SiteOption[]) => {
+      return arr.findIndex((item) => item.value === option.value) === index
+    })
+
+    if (filters.site && !deduped.some((option: SiteOption) => option.value === filters.site)) {
+      deduped.unshift({ value: filters.site, label: filters.site })
+    }
+
+    siteOptions.value = deduped
+  }
+
+  const refreshAll = async () => {
+    await Promise.all([
+      loadOverview(),
+      loadItems(),
+      loadPreview('running'),
+      loadPreview('queued'),
+      loadFilteredFailedCount(),
+    ])
+    updateLastRefreshTime()
+  }
+
+  const selectStatus = async (status: SyncCenterStatusFilter) => {
+    if (filters.status === status) {
+      return
+    }
+    filters.status = status
+    page.value = 1
+    await loadItems()
+    updateLastRefreshTime()
+  }
+
+  const setSite = async (site: string) => {
+    filters.site = site
+    page.value = 1
+    await Promise.all([loadItems(), loadPreview('running'), loadPreview('queued'), loadFilteredFailedCount()])
+    updateLastRefreshTime()
+  }
+
+  const setQuery = (query: string) => {
+    filters.query = query
+    page.value = 1
+    if (queryTimer) {
+      clearTimeout(queryTimer)
+    }
+    queryTimer = setTimeout(async () => {
+      await Promise.all([loadItems(), loadPreview('running'), loadPreview('queued'), loadFilteredFailedCount()])
+      updateLastRefreshTime()
+    }, 300)
+  }
+
+  const setPage = async (nextPage: number) => {
+    if (nextPage < 1 || nextPage === page.value) {
+      return
+    }
+    page.value = nextPage
+    await loadItems()
+    updateLastRefreshTime()
+  }
+
+  const openDetail = (item: SyncCenterItem) => {
+    selectedItem.value = item
+  }
+
+  const closeDetail = () => {
+    selectedItem.value = null
+  }
+
+  const retryItem = async (item: SyncCenterItem) => {
+    retryingItemId.value = item.subscription_id
+    const result = await triggerRefresh(item.subscription_id, item.sync_mode)
+    if (!result.error) {
+      await refreshAll()
+    }
+    retryingItemId.value = null
+    return result
+  }
+
+  const retryFailed = async () => {
+    retryingBatch.value = true
+    const payload = {
+      site: filters.site || null,
+      query: filters.query || null,
+    }
+    const result = await retryFailedSyncItems<RetryFailedResponse>(payload)
+    if (!result.error) {
+      await refreshAll()
+    }
+    retryingBatch.value = false
+    return result
+  }
+
+  const clearPollTimer = () => {
+    if (!pollTimer) {
+      return
+    }
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+
+  const startPolling = () => {
+    clearPollTimer()
+    if (!autoRefresh.value) {
+      return
+    }
+    pollTimer = setInterval(() => {
+      refreshAll()
+    }, POLL_INTERVAL)
+  }
+
+  watch(autoRefresh, () => {
+    startPolling()
+  })
+
+  onMounted(async () => {
+    await Promise.all([loadSiteOptions(), refreshAll()])
+    startPolling()
+  })
+
+  onUnmounted(() => {
+    clearPollTimer()
+    if (queryTimer) {
+      clearTimeout(queryTimer)
+      queryTimer = null
+    }
+  })
+
+  return {
+    autoRefresh,
+    closeDetail,
+    filters,
+    items,
+    itemsError,
+    lastUpdatedAt,
+    loadingItems,
+    loadingOverview,
+    openDetail,
+    overview,
+    overviewError,
+    page,
+    pageError,
+    pageSize,
+    filteredFailedCount,
+    queuedPreview,
+    queuedPreviewError,
+    refreshAll,
+    retryFailed,
+    retryingBatch,
+    retryingItemId,
+    retryItem,
+    runningPreview,
+    runningPreviewError,
+    selectStatus,
+    selectedItem,
+    setPage,
+    setQuery,
+    setSite,
+    siteOptions,
+    statusOptions,
+    total,
+  }
+}

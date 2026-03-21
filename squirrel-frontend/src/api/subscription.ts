@@ -30,8 +30,10 @@ export const updateNsfwStatus = async (subscriptionId: string | number, isNsfw: 
   return { data: null, error: new ApiError('更新失败', undefined, null, data) }
 }
 
-export const triggerRefresh = async (subscriptionId: string | number) => {
-  const result = await post(`/api/subscription/${subscriptionId}/refresh`, null)
+export const triggerRefresh = async (subscriptionId: string | number, mode: string = 'incremental') => {
+  const result = await post(`/api/subscription/${subscriptionId}/refresh`, null, {
+    params: { mode },
+  })
   if (!result.error) return result
 
   if (result.error.status === 429) {
