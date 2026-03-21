@@ -11,7 +11,7 @@
             size="xs"
             :show-dot="false"
             :variant="getVariant(event.event_status)"
-            :label="event.event_type"
+            :label="getEventLabel(event.event_type)"
             class="border-0"
           />
           <span class="text-2xs text-text-tertiary truncate">{{ event.event_phase || 'phase:unknown' }}</span>
@@ -44,6 +44,19 @@ const getVariant = (status: string | null) => {
       return 'info'
     default:
       return 'default'
+  }
+}
+
+const getEventLabel = (eventType: string) => {
+  switch (eventType) {
+    case 'stale_queued_recovered':
+      return '恢复 queued'
+    case 'stale_running_recovered':
+      return '恢复 running'
+    case 'manual_reconcile_triggered':
+      return '手动对账'
+    default:
+      return eventType
   }
 }
 

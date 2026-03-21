@@ -46,11 +46,17 @@ def bootstrap_runtime(component: str):
         ensure_queue_config_initialized()
         try:
             from services import subscription_sync_state_service
-            recover_result = subscription_sync_state_service.recover_stale_queued_sync_states()
-            if recover_result.get('recovered'):
-                logger.info("[%s] Recovered stale queued sync states: %s", component, recover_result['recovered'])
+            queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()
+            running_result = subscription_sync_state_service.recover_stale_running_sync_states()
+            if queued_result.get('recovered') or running_result.get('recovered'):
+                logger.info(
+                    "[%s] Recovered stale sync states: queued=%s running=%s",
+                    component,
+                    queued_result.get('recovered', 0),
+                    running_result.get('recovered', 0),
+                )
         except Exception:
-            logger.warning("[%s] Failed to recover stale queued sync states", component, exc_info=True)
+            logger.warning("[%s] Failed to recover stale sync states", component, exc_info=True)
         app_start()
         start_reload_listener(component)
     except Exception:

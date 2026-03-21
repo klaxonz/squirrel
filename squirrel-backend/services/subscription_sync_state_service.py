@@ -14,7 +14,7 @@ from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 from queues.queue_config import get_queue_config, QueueMode, QueueType
 from services.subscription_sync_event_service import SyncEventInput, append_event
-from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus
+from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus, create_run
 from utils import url_helper
 
 
@@ -215,6 +215,64 @@ def _recover_stale_running_state(state: SubscriptionSyncState, now: datetime) ->
     state.version += 1
 
 
+def _append_recovery_run_events(
+    session,
+    *,
+    state: SubscriptionSyncState,
+    event_type: str,
+    event_phase: str,
+    event_status: str,
+    reason: str,
+    occurred_at: datetime,
+) -> None:
+    run_context = create_run(
+        subscription_id=state.subscription_id,
+        sync_state_id=state.id,
+        site=state.site,
+        sync_mode=state.sync_mode,
+        trigger='system',
+        occurred_at=occurred_at,
+    )
+    append_event(
+        SyncEventInput(
+            stream_id=run_context.run_id,
+            subscription_id=state.subscription_id,
+            sync_state_id=state.id,
+            site=state.site,
+            sync_mode=state.sync_mode,
+            trigger='system',
+            event_type=SyncEventType.RUN_CREATED,
+            event_phase=SyncPhase.INIT,
+            event_status=SyncRunStatus.CREATED,
+            payload={'pending_video_count': state.pending_video_count},
+            occurred_at=occurred_at,
+        ),
+        session=session,
+    )
+    append_event(
+        SyncEventInput(
+            stream_id=run_context.run_id,
+            subscription_id=state.subscription_id,
+            sync_state_id=state.id,
+            site=state.site,
+            sync_mode=state.sync_mode,
+            trigger='system',
+            event_type=event_type,
+            event_phase=event_phase,
+            event_status=event_status,
+            payload={
+                'reason': reason,
+                'error_message': reason,
+                'pending_video_count': state.pending_video_count,
+                'next_sync_at': state.next_sync_at,
+            },
+            message=reason,
+            occurred_at=occurred_at,
+        ),
+        session=session,
+    )
+
+
 def recover_stale_sync_state(sync_state_id: int) -> Optional[SubscriptionSyncState]:
     now = datetime.now()
     with get_session() as session:
@@ -226,6 +284,15 @@ def recover_stale_sync_state(sync_state_id: int) -> Optional[SubscriptionSyncSta
         if state.locked_at > now - RUNNING_TIMEOUT:
             return state
         _recover_stale_running_state(state, now)
+        _append_recovery_run_events(
+            session,
+            state=state,
+            event_type=SyncEventType.STALE_RUNNING_RECOVERED,
+            event_phase=SyncPhase.FAILED,
+            event_status=SyncRunStatus.TIMEOUT,
+            reason='stale_running_timeout',
+            occurred_at=now,
+        )
         return state
 
 
@@ -617,10 +684,52 @@ def recover_stale_queued_sync_states(grace: timedelta = QUEUED_RECOVERY_GRACE) -
             state.locked_at = None
             state.next_sync_at = now
             state.version += 1
+            _append_recovery_run_events(
+                session,
+                state=state,
+                event_type=SyncEventType.STALE_QUEUED_RECOVERED,
+                event_phase=SyncPhase.FAILED,
+                event_status=SyncRunStatus.FAILED,
+                reason='stale_queued_missing_message',
+                occurred_at=now,
+            )
             recovered += 1
 
     return {
-        'queued_states': len(active_sync_state_ids),
+        'queued_states': len(queued_states),
+        'recovered': recovered,
+    }
+
+
+def recover_stale_running_sync_states(timeout: timedelta = RUNNING_TIMEOUT) -> dict[str, int]:
+    now = datetime.now()
+    recovered = 0
+
+    with get_session() as session:
+        stale_before = now - timeout
+        states = session.execute(
+            select(SubscriptionSyncState).where(
+                SubscriptionSyncState.sync_status == SyncStatus.RUNNING.value,
+                SubscriptionSyncState.locked_at.is_not(None),
+                SubscriptionSyncState.locked_at <= stale_before,
+            )
+        ).scalars().all()
+
+        for state in states:
+            _recover_stale_running_state(state, now)
+            _append_recovery_run_events(
+                session,
+                state=state,
+                event_type=SyncEventType.STALE_RUNNING_RECOVERED,
+                event_phase=SyncPhase.FAILED,
+                event_status=SyncRunStatus.TIMEOUT,
+                reason='stale_running_timeout',
+                occurred_at=now,
+            )
+            recovered += 1
+
+    return {
+        'running_states': len(states),
         'recovered': recovered,
     }
 

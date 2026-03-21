@@ -3,6 +3,8 @@ import {
   getSupportedSites,
   getSyncCenterItems,
   getSyncCenterOverview,
+  getSyncRecoverySummary,
+  reconcileSyncCenter,
   retryFailedSyncItems,
   triggerRefresh,
 } from '@/api'
@@ -58,6 +60,21 @@ interface RetryFailedResponse {
   skipped: number
 }
 
+interface SyncRecoverySummary {
+  last_reconcile_at: string
+  total_recovered: number
+  by_type: Record<string, number>
+  window_hours: number
+}
+
+interface SyncReconcileResponse {
+  reconcileAt: string
+  queuedStates: number
+  queuedRecovered: number
+  runningStates: number
+  runningRecovered: number
+}
+
 interface SiteOption {
   value: string
   label: string
@@ -100,11 +117,18 @@ export function useSyncCenter() {
   const itemsError = ref('')
   const loadingOverview = ref(false)
   const loadingItems = ref(false)
+  const reconciling = ref(false)
   const retryingBatch = ref(false)
   const retryingItemId = ref<number | null>(null)
   const autoRefresh = ref(true)
   const pollingEnabled = ref(true)
   const selectedItem = ref<SyncCenterItem | null>(null)
+  const recoverySummary = ref<SyncRecoverySummary>({
+    last_reconcile_at: '',
+    total_recovered: 0,
+    by_type: {},
+    window_hours: 24,
+  })
   const filters = reactive({
     status: 'failed' as SyncCenterStatusFilter,
     site: '',
@@ -173,6 +197,22 @@ export function useSyncCenter() {
       }
     }
     loadingOverview.value = false
+  }
+
+  const loadRecoverySummary = async () => {
+    const { data, error } = await getSyncRecoverySummary<SyncRecoverySummary>()
+    if (error) {
+      Logger.error('Failed to load sync recovery summary', error)
+      return
+    }
+    if (data) {
+      recoverySummary.value = {
+        last_reconcile_at: data.last_reconcile_at || '',
+        total_recovered: data.total_recovered || 0,
+        by_type: data.by_type || {},
+        window_hours: data.window_hours || 24,
+      }
+    }
   }
 
   const loadItems = async () => {
@@ -289,6 +329,7 @@ export function useSyncCenter() {
   const refreshAll = async () => {
     await Promise.all([
       loadOverview(),
+      loadRecoverySummary(),
       loadItems(),
       loadPreview('running'),
       loadPreview('queued'),
@@ -367,6 +408,16 @@ export function useSyncCenter() {
     return result
   }
 
+  const reconcile = async () => {
+    reconciling.value = true
+    const result = await reconcileSyncCenter<SyncReconcileResponse>()
+    if (!result.error) {
+      await refreshAll()
+    }
+    reconciling.value = false
+    return result
+  }
+
   const setPollingEnabled = (enabled: boolean) => {
     pollingEnabled.value = enabled
   }
@@ -424,6 +475,9 @@ export function useSyncCenter() {
     filteredFailedCount,
     queuedPreview,
     queuedPreviewError,
+    reconcile,
+    reconciling,
+    recoverySummary,
     refreshAll,
     retryFailed,
     retryingBatch,

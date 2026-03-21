@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import common.response as response
 from models.user import User
 from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest, ImportSubscriptionsRequest
-from services import subscription_service, subscription_sync_center_service, subscription_sync_history_service, subscription_sync_trend_service
+from services import subscription_service, subscription_sync_center_service, subscription_sync_history_service, subscription_sync_state_service, subscription_sync_trend_service
 from typing import List
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
@@ -301,6 +301,25 @@ def get_sync_center_trends(
         trigger=trigger,
     )
     return response.success(result)
+
+
+@router.get('/api/subscription/sync-center/recovery-summary')
+def get_sync_center_recovery_summary(current_user: User = Depends(get_current_user)):
+    return response.success(subscription_sync_history_service.get_recovery_summary(current_user.id))
+
+
+@router.post('/api/subscription/sync-center/reconcile')
+def reconcile_sync_center(current_user: User = Depends(get_current_user)):
+    _ = current_user
+    queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()
+    running_result = subscription_sync_state_service.recover_stale_running_sync_states()
+    return response.success({
+        'reconcileAt': datetime.utcnow().isoformat(),
+        'queuedStates': queued_result['queued_states'],
+        'queuedRecovered': queued_result['recovered'],
+        'runningStates': running_result['running_states'],
+        'runningRecovered': running_result['recovered'],
+    })
 
 
 @router.post("/api/subscription/toggle-auto-download")

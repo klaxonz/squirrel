@@ -42,6 +42,16 @@
             >
               重试筛选失败项
             </Button>
+            <Button
+              v-if="activeTab === 'overview'"
+              size="sm"
+              shape="pill"
+              variant="ghost"
+              :loading="reconciling"
+              @click="handleReconcile"
+            >
+              状态对账
+            </Button>
           </div>
         </div>
 
@@ -216,6 +226,31 @@
                   </div>
                 </div>
               </Card>
+
+              <Card class="p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-sm font-medium text-text-primary">恢复摘要</span>
+                  <span class="text-xs text-text-tertiary">最近 {{ recoverySummary.window_hours }}h</span>
+                </div>
+                <div class="space-y-3 text-xs">
+                  <div class="flex items-center justify-between">
+                    <span class="text-text-tertiary">最近恢复时间</span>
+                    <span class="text-text-primary">{{ recoverySummary.last_reconcile_at || '—' }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-text-tertiary">恢复总数</span>
+                    <span class="text-text-primary">{{ recoverySummary.total_recovered || 0 }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-text-tertiary">queued 恢复</span>
+                    <span class="text-text-primary">{{ recoverySummary.by_type?.stale_queued_recovered || 0 }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-text-tertiary">running 恢复</span>
+                    <span class="text-text-primary">{{ recoverySummary.by_type?.stale_running_recovered || 0 }}</span>
+                  </div>
+                </div>
+              </Card>
             </div>
           </div>
         </template>
@@ -318,6 +353,9 @@ const {
   retryItem,
   runningPreview,
   runningPreviewError,
+  reconcile,
+  reconciling,
+  recoverySummary,
   setPollingEnabled,
   selectStatus: overviewSelectStatus,
   selectedItem: overviewSelectedItem,
@@ -444,6 +482,19 @@ const handleRetryFailed = async () => {
   if (data) {
     actionNotice.message = `已处理 ${data.total} 项，入队 ${data.queued} 项，执行中 ${data.in_progress} 项，失败 ${data.failed} 项，跳过 ${data.skipped} 项`
     actionNotice.variant = data.failed > 0 ? 'warning' : 'success'
+  }
+}
+
+const handleReconcile = async () => {
+  const { data, error } = await reconcile()
+  if (error) {
+    actionNotice.message = error.message || '状态对账失败'
+    actionNotice.variant = 'error'
+    return
+  }
+  if (data) {
+    actionNotice.message = `状态对账完成：queued 恢复 ${data.queuedRecovered}，running 恢复 ${data.runningRecovered}`
+    actionNotice.variant = (data.queuedRecovered || data.runningRecovered) ? 'warning' : 'success'
   }
 }
 

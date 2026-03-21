@@ -1,30 +1,22 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 
 from core.database import get_session
 from models.links import UserSubscription
 from models.subscription import Subscription
-from models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
+from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from schemas.subscription.dto.sync_center_dto import (
     SyncCenterItemDto,
     SyncCenterListDto,
     SyncCenterOverviewDto,
 )
-from utils import url_helper
 from utils.metrics import metrics
 
 
 DUE_SOON_WINDOW = timedelta(minutes=30)
-DISPLAY_STATUS_RANK = {
-    'running': 0,
-    'queued': 1,
-    'failed': 2,
-    'deferred': 3,
-    'scheduled': 4,
-    'healthy': 5,
-}
 
 
 def _format_datetime(value: Optional[datetime]) -> str:
@@ -52,6 +44,7 @@ def _summarize_error(message: Optional[str]) -> Optional[str]:
     mapping = {
         'queue_backpressure': '队列积压，已延后',
         'stale_running_timeout': '同步超时，状态已回收',
+        'stale_queued_missing_message': '队列消息丢失，状态已回收',
         'site_disabled': '站点已禁用',
         'no_subscribers': '没有可用订阅者',
     }
@@ -75,145 +68,106 @@ def _summarize_error(message: Optional[str]) -> Optional[str]:
     return first_line[:77] + '...'
 
 
-def _resolve_site_name(subscription: Subscription, sync_state: Optional[SubscriptionSyncState]) -> Optional[str]:
-    if sync_state and sync_state.site:
-        return sync_state.site
-    if not subscription.url:
-        return None
-    try:
-        return url_helper.extract_top_level_domain(subscription.url)
-    except Exception:
-        return None
-
-
-def _resolve_display_status(
-    sync_state: Optional[SubscriptionSyncState],
-    *,
-    now: Optional[datetime] = None,
-    due_soon_threshold: timedelta = DUE_SOON_WINDOW,
-) -> str:
-    if not sync_state:
-        return 'healthy'
-
-    current_time = now or datetime.now()
-    if sync_state.sync_status == SyncStatus.RUNNING.value:
+def _resolve_display_status(current_status: Optional[str], next_sync_at: Optional[datetime]) -> str:
+    status = str(current_status or '').strip().lower()
+    now = datetime.now()
+    if status == 'running':
         return 'running'
-    if sync_state.sync_status == SyncStatus.QUEUED.value:
+    if status == 'queued':
         return 'queued'
-    if sync_state.sync_status == SyncStatus.FAILED.value:
+    if status in {'failed', 'timeout'}:
         return 'failed'
-    if sync_state.last_error == 'queue_backpressure':
+    if status == 'deferred':
         return 'deferred'
-    if (
-        sync_state.next_sync_at
-        and current_time <= sync_state.next_sync_at <= current_time + due_soon_threshold
-    ):
+    if next_sync_at and now <= next_sync_at <= now + DUE_SOON_WINDOW:
         return 'scheduled'
     return 'healthy'
 
 
-def _state_time_value(sync_state: Optional[SubscriptionSyncState], display_status: str) -> datetime:
-    if not sync_state:
-        return datetime.min
-    if display_status == 'running':
-        return sync_state.locked_at or sync_state.updated_at or datetime.min
-    if display_status == 'queued':
-        return sync_state.queued_at or sync_state.updated_at or datetime.min
-    if display_status == 'scheduled':
-        return sync_state.next_sync_at or datetime.max
-    return sync_state.last_sync_at or sync_state.updated_at or datetime.min
+def _queue_metrics_overview() -> tuple[int, int]:
+    queue_depth = sum(
+        _safe_metric_int(metrics.redis.get(key))
+        for key in metrics.get_metrics_keys_by_pattern('metrics:gauge:queue.depth:*')
+    )
+    queue_messages = sum(
+        _safe_metric_int(metrics.redis.get(key))
+        for key in metrics.get_metrics_keys_by_pattern('metrics:counter:queue.messages.total:*')
+    )
+    return queue_depth, queue_messages
 
 
-def _pick_preferred_state(
-    states: list[SubscriptionSyncState],
-    *,
-    now: datetime,
-) -> Optional[SubscriptionSyncState]:
-    if not states:
-        return None
-
-    def state_key(sync_state: SubscriptionSyncState):
-        display_status = _resolve_display_status(sync_state, now=now)
-        rank = DISPLAY_STATUS_RANK.get(display_status, 99)
-        time_value = _state_time_value(sync_state, display_status)
-        if display_status == 'scheduled':
-            time_key = time_value
-        else:
-            time_key = datetime.max - (time_value - datetime.min)
-        mode_rank = 0 if sync_state.sync_mode == SyncMode.INCREMENTAL.value else 1
-        return rank, time_key, mode_rank, sync_state.id
-
-    return min(states, key=state_key)
+def _base_projection_query(user_id: int):
+    return (
+        select(Subscription, SubscriptionSyncSubscriptionProjection, SubscriptionSyncRunProjection)
+        .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
+        .outerjoin(
+            SubscriptionSyncSubscriptionProjection,
+            SubscriptionSyncSubscriptionProjection.subscription_id == Subscription.id,
+        )
+        .outerjoin(
+            SubscriptionSyncRunProjection,
+            SubscriptionSyncRunProjection.run_id == SubscriptionSyncSubscriptionProjection.latest_run_id,
+        )
+        .where(
+            UserSubscription.user_id == user_id,
+            UserSubscription.is_deleted.is_(False),
+            Subscription.is_deleted.is_(False),
+        )
+    )
 
 
 def _build_sync_center_item(
     subscription: Subscription,
-    sync_state: Optional[SubscriptionSyncState],
-    *,
-    now: datetime,
+    subscription_projection: Optional[SubscriptionSyncSubscriptionProjection],
+    run_projection: Optional[SubscriptionSyncRunProjection],
 ) -> SyncCenterItemDto:
-    display_status = _resolve_display_status(sync_state, now=now)
-    site_name = _resolve_site_name(subscription, sync_state)
-    last_error = sync_state.last_error if sync_state else None
-    is_deferred = display_status == 'deferred'
+    current_status = subscription_projection.current_status if subscription_projection else None
+    next_sync_at = subscription_projection.next_sync_at if subscription_projection else None
+    display_status = _resolve_display_status(current_status, next_sync_at)
+    sync_mode = (run_projection.sync_mode if run_projection and run_projection.sync_mode else 'incremental')
+    sync_status = current_status or (run_projection.status if run_projection else 'idle')
+    pending_video_count = (
+        subscription_projection.pending_video_count
+        if subscription_projection
+        else (run_projection.pending_video_count if run_projection else 0)
+    )
+    last_error = (
+        subscription_projection.last_error_message
+        if subscription_projection and subscription_projection.last_error_message
+        else (run_projection.error_message if run_projection else None)
+    )
 
     return SyncCenterItemDto(
         subscription_id=subscription.id,
         subscription_name=subscription.name,
         subscription_avatar=subscription.avatar,
-        site=site_name,
-        sync_mode=sync_state.sync_mode if sync_state else SyncMode.INCREMENTAL.value,
-        sync_status=sync_state.sync_status if sync_state else SyncStatus.IDLE.value,
+        site=(run_projection.site if run_projection and run_projection.site else None),
+        sync_mode=sync_mode,
+        sync_status=sync_status,
         display_status=display_status,
-        failure_count=sync_state.failure_count if sync_state else 0,
+        failure_count=(run_projection.failure_count if run_projection else 0),
         last_error=last_error,
         last_error_summary=_summarize_error(last_error),
-        last_sync_at=_format_datetime(sync_state.last_sync_at if sync_state else None),
-        last_success_at=_format_datetime(sync_state.last_success_at if sync_state else None),
-        next_sync_at=_format_datetime(sync_state.next_sync_at if sync_state else None),
-        queued_at=_format_datetime(sync_state.queued_at if sync_state else None),
-        locked_at=_format_datetime(sync_state.locked_at if sync_state else None),
-        updated_at=_format_datetime(sync_state.updated_at if sync_state else None),
-        pending_video_count=sync_state.pending_video_count if sync_state else 0,
-        is_deferred=is_deferred,
-        defer_reason='queue_backpressure' if is_deferred else None,
+        last_sync_at=_format_datetime(subscription_projection.last_sync_at if subscription_projection else None),
+        last_success_at=_format_datetime(subscription_projection.last_success_at if subscription_projection else None),
+        next_sync_at=_format_datetime(next_sync_at),
+        queued_at=_format_datetime(run_projection.queued_at if run_projection else None),
+        locked_at=_format_datetime(run_projection.started_at if run_projection else None),
+        updated_at=_format_datetime(subscription_projection.updated_at if subscription_projection else (run_projection.updated_at if run_projection else None)),
+        pending_video_count=pending_video_count,
+        is_deferred=display_status == 'deferred',
+        defer_reason='queue_backpressure' if display_status == 'deferred' else None,
     )
 
 
-def _load_subscription_state_rows(user_id: int):
+def _collect_projection_items(user_id: int) -> list[SyncCenterItemDto]:
     with get_session() as session:
-        rows = session.execute(
-            select(Subscription, SubscriptionSyncState)
-            .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
-            .outerjoin(SubscriptionSyncState, SubscriptionSyncState.subscription_id == Subscription.id)
-            .where(
-                UserSubscription.user_id == user_id,
-                UserSubscription.is_deleted.is_(False),
-                Subscription.is_deleted.is_(False),
-            )
-            .order_by(Subscription.id.asc(), SubscriptionSyncState.updated_at.desc(), SubscriptionSyncState.id.asc())
-        ).all()
-        return rows
+        rows = session.execute(_base_projection_query(user_id)).all()
 
-
-def _collect_sync_center_items(user_id: int) -> list[SyncCenterItemDto]:
-    rows = _load_subscription_state_rows(user_id)
-    now = datetime.now()
-    grouped: dict[int, dict[str, object]] = {}
-
-    for subscription, sync_state in rows:
-        bucket = grouped.setdefault(subscription.id, {'subscription': subscription, 'states': []})
-        if sync_state:
-            bucket['states'].append(sync_state)
-
-    items: list[SyncCenterItemDto] = []
-    for bucket in grouped.values():
-        subscription = bucket['subscription']
-        states = bucket['states']
-        preferred_state = _pick_preferred_state(states, now=now)
-        items.append(_build_sync_center_item(subscription, preferred_state, now=now))
-
-    return items
+    return [
+        _build_sync_center_item(subscription, subscription_projection, run_projection)
+        for subscription, subscription_projection, run_projection in rows
+    ]
 
 
 def _sort_items(items: list[SyncCenterItemDto], status: Optional[str]) -> list[SyncCenterItemDto]:
@@ -252,21 +206,9 @@ def _sort_items(items: list[SyncCenterItemDto], status: Optional[str]) -> list[S
     return sorted(items, key=sort_key, reverse=reverse)
 
 
-def _get_queue_metrics_overview() -> tuple[int, int]:
-    queue_depth = sum(
-        _safe_metric_int(metrics.redis.get(key))
-        for key in metrics.get_metrics_keys_by_pattern('metrics:gauge:queue.depth:*')
-    )
-    queue_messages = sum(
-        _safe_metric_int(metrics.redis.get(key))
-        for key in metrics.get_metrics_keys_by_pattern('metrics:counter:queue.messages.total:*')
-    )
-    return queue_depth, queue_messages
-
-
 def get_sync_center_overview(user_id: int) -> SyncCenterOverviewDto:
-    items = _collect_sync_center_items(user_id)
-    queue_depth, queue_messages = _get_queue_metrics_overview()
+    items = _collect_projection_items(user_id)
+    queue_depth, queue_messages = _queue_metrics_overview()
 
     return SyncCenterOverviewDto(
         running_count=sum(1 for item in items if item.display_status == 'running'),
@@ -292,8 +234,7 @@ def list_sync_center_items(
     normalized_site = (site or '').strip().lower() or None
     normalized_query = (query or '').strip().lower()
 
-    items = _collect_sync_center_items(user_id)
-
+    items = _collect_projection_items(user_id)
     if normalized_status and normalized_status != 'recent':
         items = [item for item in items if item.display_status == normalized_status]
     if normalized_site:
@@ -314,12 +255,8 @@ def list_sync_center_items(
     )
 
 
-def list_retry_failed_sync_items(
-    user_id: int,
-    site: Optional[str],
-    query: Optional[str],
-) -> list[SyncCenterItemDto]:
-    items = _collect_sync_center_items(user_id)
+def list_retry_failed_sync_items(user_id: int, site: Optional[str], query: Optional[str]) -> list[SyncCenterItemDto]:
+    items = _collect_projection_items(user_id)
     normalized_site = (site or '').strip().lower() or None
     normalized_query = (query or '').strip().lower()
 

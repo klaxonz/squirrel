@@ -80,6 +80,8 @@ def _resolve_status(event: SubscriptionSyncEvent) -> str:
         SyncEventType.FAILED: SyncRunStatus.FAILED,
         SyncEventType.DEFERRED: SyncRunStatus.DEFERRED,
         SyncEventType.TIMEOUT_RECOVERED: SyncRunStatus.TIMEOUT,
+        SyncEventType.STALE_RUNNING_RECOVERED: SyncRunStatus.TIMEOUT,
+        SyncEventType.STALE_QUEUED_RECOVERED: SyncRunStatus.FAILED,
     }
     return mapping.get(event.event_type, SyncRunStatus.RUNNING)
 
@@ -220,7 +222,14 @@ def _apply_run_projection(projection: SubscriptionSyncRunProjection, event: Subs
         projection.queued_at = event.occurred_at
     if event.event_type in {SyncEventType.CLAIMED, SyncEventType.STARTED} and not projection.started_at:
         projection.started_at = event.occurred_at
-    if event.event_type in {SyncEventType.COMPLETED, SyncEventType.FAILED, SyncEventType.DEFERRED, SyncEventType.TIMEOUT_RECOVERED}:
+    if event.event_type in {
+        SyncEventType.COMPLETED,
+        SyncEventType.FAILED,
+        SyncEventType.DEFERRED,
+        SyncEventType.TIMEOUT_RECOVERED,
+        SyncEventType.STALE_RUNNING_RECOVERED,
+        SyncEventType.STALE_QUEUED_RECOVERED,
+    }:
         projection.finished_at = event.occurred_at
 
     if projection.started_at and projection.finished_at:
@@ -228,7 +237,12 @@ def _apply_run_projection(projection: SubscriptionSyncRunProjection, event: Subs
 
     if 'failure_count' in payload:
         projection.failure_count = _payload_int(payload, 'failure_count', projection.failure_count)
-    elif event.event_type in {SyncEventType.FAILED, SyncEventType.TIMEOUT_RECOVERED}:
+    elif event.event_type in {
+        SyncEventType.FAILED,
+        SyncEventType.TIMEOUT_RECOVERED,
+        SyncEventType.STALE_RUNNING_RECOVERED,
+        SyncEventType.STALE_QUEUED_RECOVERED,
+    }:
         projection.failure_count += 1
 
     projection.pending_video_count = _payload_int(payload, 'pending_video_count', projection.pending_video_count)
@@ -272,14 +286,26 @@ def _apply_subscription_projection(projection: SubscriptionSyncSubscriptionProje
     if next_sync_at:
         projection.next_sync_at = next_sync_at
 
-    if event.event_type in {SyncEventType.COMPLETED, SyncEventType.FAILED, SyncEventType.DEFERRED, SyncEventType.TIMEOUT_RECOVERED}:
+    if event.event_type in {
+        SyncEventType.COMPLETED,
+        SyncEventType.FAILED,
+        SyncEventType.DEFERRED,
+        SyncEventType.TIMEOUT_RECOVERED,
+        SyncEventType.STALE_RUNNING_RECOVERED,
+        SyncEventType.STALE_QUEUED_RECOVERED,
+    }:
         projection.last_sync_at = event.occurred_at
 
     if event.event_type == SyncEventType.COMPLETED:
         projection.last_success_at = event.occurred_at
         projection.last_error_message = None
         projection.failure_streak = 0
-    elif event.event_type in {SyncEventType.FAILED, SyncEventType.TIMEOUT_RECOVERED}:
+    elif event.event_type in {
+        SyncEventType.FAILED,
+        SyncEventType.TIMEOUT_RECOVERED,
+        SyncEventType.STALE_RUNNING_RECOVERED,
+        SyncEventType.STALE_QUEUED_RECOVERED,
+    }:
         projection.last_error_message = _payload_text(payload, 'error_message', event.message)
         projection.failure_streak += 1
     elif event.event_type == SyncEventType.DEFERRED:
@@ -302,11 +328,23 @@ def _apply_trend_projection(session, event: SubscriptionSyncEvent) -> None:
         projection.updated_at = event.occurred_at
 
         payload = event.payload or {}
-        if event.event_type in {SyncEventType.COMPLETED, SyncEventType.FAILED, SyncEventType.DEFERRED, SyncEventType.TIMEOUT_RECOVERED}:
+        if event.event_type in {
+            SyncEventType.COMPLETED,
+            SyncEventType.FAILED,
+            SyncEventType.DEFERRED,
+            SyncEventType.TIMEOUT_RECOVERED,
+            SyncEventType.STALE_RUNNING_RECOVERED,
+            SyncEventType.STALE_QUEUED_RECOVERED,
+        }:
             projection.runs_total += 1
         if event.event_type == SyncEventType.COMPLETED:
             projection.runs_success += 1
-        elif event.event_type in {SyncEventType.FAILED, SyncEventType.TIMEOUT_RECOVERED}:
+        elif event.event_type in {
+            SyncEventType.FAILED,
+            SyncEventType.TIMEOUT_RECOVERED,
+            SyncEventType.STALE_RUNNING_RECOVERED,
+            SyncEventType.STALE_QUEUED_RECOVERED,
+        }:
             projection.runs_failed += 1
         elif event.event_type == SyncEventType.DEFERRED:
             projection.runs_deferred += 1
@@ -322,7 +360,13 @@ def _apply_trend_projection(session, event: SubscriptionSyncEvent) -> None:
                 setattr(projection, field_name, max(0, getattr(projection, field_name) + delta))
 
         duration_ms = _payload_int(payload, 'duration_ms', 0)
-        if duration_ms > 0 and event.event_type in {SyncEventType.COMPLETED, SyncEventType.FAILED, SyncEventType.TIMEOUT_RECOVERED}:
+        if duration_ms > 0 and event.event_type in {
+            SyncEventType.COMPLETED,
+            SyncEventType.FAILED,
+            SyncEventType.TIMEOUT_RECOVERED,
+            SyncEventType.STALE_RUNNING_RECOVERED,
+            SyncEventType.STALE_QUEUED_RECOVERED,
+        }:
             projection.duration_count += 1
             projection.duration_total_ms += duration_ms
             projection.avg_duration_ms = int(projection.duration_total_ms / projection.duration_count)
