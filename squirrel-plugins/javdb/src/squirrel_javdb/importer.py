@@ -2,17 +2,15 @@ from __future__ import annotations
 
 import logging
 from typing import List
-from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
 from crawl import (
     SubscriptionImportItem,
     register_user_subscription_importer,
-    filter_cookies_to_query_string,
-    request_without_limit,
-    get_http_headers,
 )
+
+from .html_client import fetch_javdb_html
 
 
 logger = logging.getLogger(__name__)
@@ -36,12 +34,6 @@ class JavdbUserSubscriptionImporter:
         """
         try:
             base_url = f'https://{self.domain}'
-            cookies = filter_cookies_to_query_string(base_url)
-            headers = get_http_headers('javdb', {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            })
-            headers['Cookie'] = cookies
-
             items = []
             subscription_urls: List[str] = []
             page = 1
@@ -52,7 +44,11 @@ class JavdbUserSubscriptionImporter:
                 subscribed_url = f'{base_url}/users/collection_actors?page={page}'
                 
                 try:
-                    resp = request_without_limit('GET', subscribed_url, headers=headers, timeout=15)
+                    resp = fetch_javdb_html(
+                        subscribed_url,
+                        timeout=15,
+                        use_rate_limit=False,
+                    )
                     resp.raise_for_status()
                     
                     soup = BeautifulSoup(resp.text, 'html.parser')

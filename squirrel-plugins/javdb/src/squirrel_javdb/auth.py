@@ -5,20 +5,15 @@ import re
 
 from crawl import (
     LoginStatusResult,
-    filter_cookies_to_query_string,
     register_login_checker,
-    request_without_limit,
     get_login_config,
-    get_login_headers,
 )
+
+from .html_client import build_javdb_headers, fetch_javdb_html
 
 logger = logging.getLogger(__name__)
 
 _CHECK_URL = "https://javdb.com/users/collection_actors"
-_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-}
 _LOGIN_REDIRECT = re.compile(r"/(users/)?(sign_in|login)")
 
 
@@ -28,26 +23,21 @@ def check_javdb_login_status() -> LoginStatusResult:
     login_config = get_login_config(site_name)
     check_url = login_config.get("check_url") or _CHECK_URL
 
-    cookies = filter_cookies_to_query_string(check_url)
-
-    if not cookies:
+    if not build_javdb_headers(check_url, login=True).get('Cookie'):
         return LoginStatusResult(
             site_name=site_name,
             logged_in=False,
             message="cookies.txt 中未找到 JavDB 条目",
         )
-
-    headers = get_login_headers(site_name, _HEADERS)
-    headers["Cookie"] = cookies
     timeout = float(login_config.get("timeout", 15))
 
     try:
-        resp = request_without_limit(
-            "GET",
+        resp = fetch_javdb_html(
             check_url,
-            headers=headers,
+            login=True,
             timeout=timeout,
             allow_redirects=False,
+            use_rate_limit=False,
         )
         body = resp.text or ""
     except Exception as exc:
@@ -56,6 +46,13 @@ def check_javdb_login_status() -> LoginStatusResult:
             site_name=site_name,
             logged_in=False,
             message=f"请求失败: {exc}",
+        )
+
+    if resp.status_code in (401, 403, 429):
+        return LoginStatusResult(
+            site_name=site_name,
+            logged_in=False,
+            message=f"被拒绝访问 (status={resp.status_code})",
         )
 
     if resp.status_code == 404:

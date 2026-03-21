@@ -3,15 +3,17 @@ from __future__ import annotations
 import re
 from typing import List, Optional
 from urllib.parse import urlparse
+
 from bs4 import BeautifulSoup
+
 from crawl import (
     register_subscription,
     SubscriptionMeta,
     SubscriptionSyncContext,
     SubscriptionSyncResult,
-    get,
-    filter_cookies_to_query_string,
 )
+
+from .html_client import fetch_javdb_html
 
 
 @register_subscription("javdb", ["javdb.com"])
@@ -20,9 +22,7 @@ class JavdbSubscription:
         self.url = url
 
     def get_subscribe_info(self) -> SubscriptionMeta:
-        cookies = filter_cookies_to_query_string(self.url)
-        headers = {'Cookie': cookies} if cookies else {}
-        response = get(self.url, headers=headers, bypass_mode="html")
+        response = fetch_javdb_html(self.url)
         html = response.text
         bs4 = BeautifulSoup(html, 'html.parser')
         username_el = bs4.select('.actor-section-name')
@@ -42,9 +42,7 @@ class JavdbSubscription:
         return SubscriptionMeta(channel_id, name, avatar, self.url)
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
-        cookies = filter_cookies_to_query_string(self.url)
-        headers = {'Cookie': cookies} if cookies else {}
-        response = get(self.url, headers=headers, bypass_mode="html")
+        response = fetch_javdb_html(self.url)
         html = response.text
 
         parsed_url = urlparse(self.url)
@@ -64,7 +62,7 @@ class JavdbSubscription:
 
         while current_page < page and context.mode == 'full':
             current_page += 1
-            page_response = get(self.url + f'?page={current_page}&sort_type=0', headers=headers, bypass_mode="html")
+            page_response = fetch_javdb_html(self.url + f'?page={current_page}&sort_type=0')
             page_html = page_response.text
             bs4 = BeautifulSoup(page_html, 'html.parser')
 
