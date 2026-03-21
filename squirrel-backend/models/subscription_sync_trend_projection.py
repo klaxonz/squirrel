@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, DateTime, Index, Integer, UniqueConstraint, VARCHAR
+from sqlalchemy import BigInteger, DateTime, Index, Integer, JSON, UniqueConstraint, VARCHAR
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
@@ -43,4 +43,5 @@ class SubscriptionSyncTrendProjection(Base, SerializerMixin):
     duration_total_ms: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     avg_duration_ms: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     p95_duration_ms: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    duration_histogram: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)

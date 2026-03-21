@@ -43,6 +43,7 @@ class SubscriptionSyncRunProjection(Base, SerializerMixin):
     videos_extracted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     videos_skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pending_video_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_event_seq_no: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_event_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)

@@ -32,4 +32,5 @@ class SubscriptionSyncSubscriptionProjection(Base, SerializerMixin):
     last_error_message: Mapped[Optional[str]] = mapped_column(VARCHAR(1024), nullable=True)
     pending_video_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failure_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_event_seq_no: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)

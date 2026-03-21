@@ -34,6 +34,7 @@ def upgrade():
         sa.Column('payload', sa.JSON(), nullable=True, server_default='{}'),
         sa.Column('message', sa.TEXT(), nullable=True),
         sa.Column('occurred_at', sa.DateTime(), nullable=False),
+        sa.Column('projected_at', sa.DateTime(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('stream_id', 'seq_no', name='uix_subscription_sync_event_stream_seq'),
@@ -90,6 +91,7 @@ def upgrade():
         sa.Column('videos_extracted', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('videos_skipped', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('pending_video_count', sa.Integer(), nullable=False, server_default='0'),
+        sa.Column('last_event_seq_no', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('last_event_at', sa.DateTime(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
@@ -150,6 +152,7 @@ def upgrade():
         sa.Column('last_error_message', sa.VARCHAR(length=1024), nullable=True),
         sa.Column('pending_video_count', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('failure_streak', sa.Integer(), nullable=False, server_default='0'),
+        sa.Column('last_event_seq_no', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint('subscription_id'),
     )
@@ -198,6 +201,7 @@ def upgrade():
         sa.Column('duration_total_ms', sa.BigInteger(), nullable=False, server_default='0'),
         sa.Column('avg_duration_ms', sa.BigInteger(), nullable=False, server_default='0'),
         sa.Column('p95_duration_ms', sa.BigInteger(), nullable=False, server_default='0'),
+        sa.Column('duration_histogram', sa.JSON(), nullable=False, server_default='{}'),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint(

@@ -38,4 +38,5 @@ class SubscriptionSyncEvent(Base, SerializerMixin):
     payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
     message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
+    projected_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
