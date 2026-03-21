@@ -2,6 +2,7 @@
 默认更新策略（适用于所有站点）
 """
 import logging
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import update
@@ -10,15 +11,31 @@ from core.database import get_session
 from crawl import get_subscription_registry, SubscriptionSyncContext, SubscriptionSyncResult
 from urllib.parse import urlparse
 from models.subscription import Subscription as SubscriptionModel
+from models.subscription_sync_state import SyncMode, SyncStatus
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, subscription_sync_state_service, video_service
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncRunStatus
 from utils.metrics import metrics
 from .base import UpdateStrategy
-from ..models import SubscriptionUpdateRequest, UpdateMode, UpdateTrigger
+from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 
 logger = logging.getLogger()
+
+
+def should_schedule_total_video_backfill(
+    sync_mode: str,
+    total_videos: Optional[int],
+    full_sync_status: Optional[str],
+    full_last_success_at: Optional[datetime],
+) -> bool:
+    if sync_mode == SyncMode.FULL.value:
+        return False
+    if (total_videos or 0) > 0:
+        return False
+    if full_last_success_at is not None:
+        return False
+    return full_sync_status not in {SyncStatus.QUEUED.value, SyncStatus.RUNNING.value}
 
 
 class DefaultUpdateStrategy(UpdateStrategy):
@@ -27,6 +44,12 @@ class DefaultUpdateStrategy(UpdateStrategy):
     @property
     def site_name(self) -> str:
         return "default"
+
+    def execute(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
+        result = super().execute(request)
+        if result.success:
+            self._schedule_total_video_backfill(request)
+        return result
     
     def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, Optional[str]]:
         """检查是否需要更新"""
@@ -188,4 +211,34 @@ class DefaultUpdateStrategy(UpdateStrategy):
                 .where(SubscriptionModel.id == subscription_id)
                 .values(total_videos=total)
             )
+
+    @staticmethod
+    def _schedule_total_video_backfill(request: SubscriptionUpdateRequest) -> None:
+        subscription = subscription_service.get_subscription_by_id(request.subscription_id)
+        if not subscription:
+            return
+
+        full_state = subscription_sync_state_service.get_sync_state(request.subscription_id, SyncMode.FULL.value)
+        if not should_schedule_total_video_backfill(
+            request.mode.value,
+            subscription.total_videos,
+            full_state.sync_status if full_state else None,
+            full_state.last_success_at if full_state else None,
+        ):
+            return
+
+        from services.subscription_update import scheduler
+
+        result = scheduler.schedule_one(
+            subscription_id=request.subscription_id,
+            url=request.url,
+            trigger=UpdateTrigger.SCHEDULED,
+            mode=UpdateMode.FULL,
+            trace_id=request.trace_id,
+        )
+        logger.info(
+            "Scheduled full sync to backfill total videos: subscription_id=%s, status=%s",
+            request.subscription_id,
+            result.status,
+        )
 
