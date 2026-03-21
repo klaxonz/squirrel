@@ -93,7 +93,7 @@ class JavdbSubscription:
             video_url = f'{base_url}{el["href"]}'
             if latest_video_url is None:
                 latest_video_url = video_url
-            if video_url == context.last_seen_video_url:
+            if context.mode != 'full' and video_url == context.last_seen_video_url:
                 return 'cursor_hit', latest_video_url
             video_list.append(video_url)
             if limit is not None and len(video_list) >= limit:

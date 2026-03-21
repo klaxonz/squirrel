@@ -82,7 +82,7 @@ class YoutubeSubscription:
                         continue
                     if latest_video_url is None:
                         latest_video_url = watch_url
-                    if watch_url == context.last_seen_video_url:
+                    if context.mode != 'full' and watch_url == context.last_seen_video_url:
                         return video_urls, latest_video_url, 'cursor_hit'
                     video_urls.append(watch_url)
                     if limit is not None and len(video_urls) >= limit:
@@ -101,7 +101,7 @@ class YoutubeSubscription:
                     continue
                 if latest_video_url is None:
                     latest_video_url = watch_url
-                if watch_url == context.last_seen_video_url:
+                if context.mode != 'full' and watch_url == context.last_seen_video_url:
                     return video_urls, latest_video_url, 'cursor_hit'
                 video_urls.append(watch_url)
                 if limit is not None and len(video_urls) >= limit:

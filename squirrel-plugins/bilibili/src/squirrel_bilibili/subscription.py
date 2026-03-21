@@ -95,7 +95,7 @@ class BilibiliSubscription:
         latest_video_url: Optional[str],
     ) -> tuple[bool, Optional[str], Optional[str]]:
         latest_video_url = latest_video_url or video_url
-        if video_url == context.last_seen_video_url:
+        if context.mode != 'full' and video_url == context.last_seen_video_url:
             return False, latest_video_url, 'cursor_hit'
         video_list.append(video_url)
         if context.mode != 'full' and len(video_list) >= (context.limit or 30):
