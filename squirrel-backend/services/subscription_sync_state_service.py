@@ -22,6 +22,7 @@ INCREMENTAL_INTERVAL = timedelta(minutes=5)
 FULL_INTERVAL = timedelta(hours=2)
 INCREMENTAL_PENDING_THRESHOLD = 15
 RUNNING_TIMEOUT = timedelta(minutes=30)
+QUEUED_RECOVERY_GRACE = timedelta(minutes=2)
 SYNC_BATCH_SIZE = 200
 MAX_DRAIN_BATCHES = 20
 
@@ -591,6 +592,39 @@ def reconcile_pending_video_counts() -> dict[str, int]:
     }
 
 
+def recover_stale_queued_sync_states(grace: timedelta = QUEUED_RECOVERY_GRACE) -> dict[str, int]:
+    active_sync_state_ids = _scan_subscription_update_state_ids_from_streams()
+    now = datetime.now()
+    recovered = 0
+
+    with get_session() as session:
+        queued_states = session.execute(
+            select(SubscriptionSyncState).where(
+                SubscriptionSyncState.sync_status == SyncStatus.QUEUED.value,
+                SubscriptionSyncState.queued_at.is_not(None),
+                SubscriptionSyncState.queued_at <= now - grace,
+            )
+        ).scalars().all()
+
+        for state in queued_states:
+            if state.id in active_sync_state_ids:
+                continue
+            state.sync_status = SyncStatus.FAILED.value
+            state.last_sync_at = now
+            state.last_error = 'stale_queued_missing_message'
+            state.queue_token = None
+            state.queued_at = None
+            state.locked_at = None
+            state.next_sync_at = now
+            state.version += 1
+            recovered += 1
+
+    return {
+        'queued_states': len(active_sync_state_ids),
+        'recovered': recovered,
+    }
+
+
 def _scan_pending_video_counts_from_streams() -> dict[int, int]:
     config = get_queue_config()
     counts: dict[int, int] = {}
@@ -603,6 +637,19 @@ def _scan_pending_video_counts_from_streams() -> dict[int, int]:
                     continue
                 counts[sync_state_id] = counts.get(sync_state_id, 0) + 1
     return counts
+
+
+def _scan_subscription_update_state_ids_from_streams() -> set[int]:
+    config = get_queue_config()
+    state_ids: set[int] = set()
+    for site in config.get_supported_sites():
+        for mode in (QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL):
+            queue_name = config.build_queue_name(QueueType.SUBSCRIPTION_UPDATE, site, mode)
+            for _, fields in redis_client.xrange(queue_name, '-', '+'):
+                sync_state_id = _extract_sync_state_id_from_queue_fields(fields)
+                if sync_state_id:
+                    state_ids.add(sync_state_id)
+    return state_ids
 
 
 def _extract_sync_state_id_from_queue_fields(fields) -> Optional[int]:
