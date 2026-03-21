@@ -22,6 +22,21 @@ def _is_progressive_mp4(fmt: dict) -> bool:
     return vcodec not in ('', 'none') and acodec not in ('', 'none')
 
 
+def _codec_label(rep: dict) -> str | None:
+    codec_family = (rep.get('codecFamily') or '').lower()
+    if codec_family == 'av1':
+        return 'AV1'
+    if codec_family == 'vp9':
+        return 'VP9'
+    if codec_family == 'avc':
+        return 'AVC'
+    if codec_family == 'aac':
+        return 'AAC'
+    if codec_family == 'opus':
+        return 'OPUS'
+    return codec_family.upper() if codec_family else None
+
+
 @register_handler
 class YouTubeHandler:
     """YouTube视频URL处理器，实现VideoUrlHandler Protocol"""
@@ -65,7 +80,7 @@ class YouTubeHandler:
 
         video_reps = [
             r for r in kept_by_itag.values()
-            if isinstance(r.get('mime'), str) and r['kind'] == 'video' and r['mime'].startswith('video/mp4')
+            if isinstance(r.get('mime'), str) and r['kind'] == 'video' and r['mime'].startswith('video/')
         ]
         if not video_reps:
             logger.warning("YouTube 未提供可用的 DASH 视频流，尝试使用 HLS")
@@ -80,7 +95,11 @@ class YouTubeHandler:
         qualities = []
         for idx, rep in enumerate(video_sorted):
             height = rep.get('height')
-            label = f"{height}p (itag {rep['id']})" if height else f"itag {rep['id']}"
+            codec_label = _codec_label(rep)
+            if height:
+                label = f"{height}p {codec_label} (itag {rep['id']})" if codec_label else f"{height}p (itag {rep['id']})"
+            else:
+                label = f"{codec_label} (itag {rep['id']})" if codec_label else f"itag {rep['id']}"
             qualities.append({
                 "value": str(rep['id']),
                 "label": label,
