@@ -18,7 +18,7 @@
       >
         <button
           @click="showClearConfirm"
-          class="ml-2 px-3 py-1.5 min-w-[100px] bg-bg-elevated hover:bg-bg-hover text-text-primary rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
+          class="ml-2 px-3 py-1.5 min-w-[100px] bg-muted hover:bg-accent text-foreground rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
         >
           <TrashIcon class="h-4 w-4" />
           <span class="ml-1">清空历史</span>

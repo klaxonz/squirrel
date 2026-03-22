@@ -1,5 +1,5 @@
 <template>
-  <div class="global-search-bar bg-bg-primary px-4 py-3">
+  <div class="global-search-bar bg-background px-4 py-3">
     <div class="max-w-2xl mx-auto">
       <div class="relative flex items-center w-full">
         <input
@@ -9,13 +9,13 @@
           @input="handleInput"
           type="text"
           :placeholder="placeholder"
-          class="w-full h-10 pl-10 pr-12 text-sm bg-bg-secondary border border-border-secondary rounded-full focus:outline-none focus:border-border-hover text-text-primary placeholder-text-muted transition-colors"
+          class="w-full h-10 pl-10 pr-12 text-sm bg-card border border-border rounded-full focus:outline-none focus:border-border text-foreground placeholder:text-muted-foreground transition-colors"
         >
         <button
           @click="handleSearch"
           class="absolute left-3 top-1/2 transform -translate-y-1/2 focus:outline-none"
         >
-          <MagnifyingGlassIcon class="h-5 w-5 text-text-muted" />
+          <MagnifyingGlassIcon class="h-5 w-5 text-muted-foreground" />
         </button>
 
 
@@ -24,7 +24,7 @@
           v-if="inputValue"
           @click="clearSearch"
           title="清除搜索 (ESC)"
-          class="absolute right-3 top-1/2 transform -translate-y-1/2 focus:outline-none hover:text-text-primary hover:bg-bg-hover text-text-muted rounded-full p-1 transition-colors"
+          class="absolute right-3 top-1/2 transform -translate-y-1/2 focus:outline-none hover:text-foreground hover:bg-accent text-muted-foreground rounded-full p-1 transition-colors"
         >
           <XMarkIcon class="h-4 w-4" />
         </button>
@@ -105,6 +105,6 @@ defineExpose({
 
 /* 添加平滑过渡效果 */
 input:focus {
-  box-shadow: 0 0 0 2px var(--border-hover);
+  box-shadow: 0 0 0 2px hsl(var(--border));
 }
 </style>

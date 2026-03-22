@@ -66,9 +66,9 @@ const progress = (state) => getProgressPercentage(state.processed, state.total);
 
 <style scoped>
 .refresh-fab {
-  background: var(--bg-elevated);
-  color: var(--text-accent);
-  border: 1px solid var(--border-secondary);
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
   border-radius: 999px;
   padding: 8px 14px;
   font-size: var(--font-size-xs);
@@ -82,8 +82,8 @@ const progress = (state) => getProgressPercentage(state.processed, state.total);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-primary);
-  color: var(--text-accent);
+  background: hsl(var(--primary));
+  color: hsl(var(--foreground));
   width: 18px;
   height: 18px;
   border-radius: 999px;
@@ -92,8 +92,8 @@ const progress = (state) => getProgressPercentage(state.processed, state.total);
 .panel {
   margin-top: 8px;
   width: 320px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-secondary);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 12px;
   padding: 8px 0;
   box-shadow: var(--shadow-popup);
@@ -103,18 +103,18 @@ const progress = (state) => getProgressPercentage(state.processed, state.total);
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  color: var(--text-primary);
+  color: hsl(var(--foreground));
 }
-.close { color: var(--text-muted); }
+.close { color: hsl(var(--muted-foreground)); }
 .list { max-height: 360px; overflow: auto; }
 .item { display: flex; gap: 10px; padding: 10px 12px; }
-.item + .item { border-top: 1px solid var(--border-primary); }
+.item + .item { border-top: 1px solid hsl(var(--border)); }
 .item img { width: 28px; height: 28px; border-radius: 999px; }
 .meta { flex: 1; min-width: 0; }
-.title { font-size: var(--font-size-xs); color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sub { font-size: var(--font-size-2xs); color: var(--text-muted); margin-top: 2px; }
-.bar { height: 6px; background: var(--bg-tertiary); border-radius: 999px; margin-top: 6px; overflow: hidden; }
-.progress { height: 100%; background: var(--color-primary); width: 0; transition: width .4s ease; }
+.title { font-size: var(--font-size-xs); color: hsl(var(--foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub { font-size: var(--font-size-2xs); color: hsl(var(--muted-foreground)); margin-top: 2px; }
+.bar { height: 6px; background: hsl(var(--muted)); border-radius: 999px; margin-top: 6px; overflow: hidden; }
+.progress { height: 100%; background: hsl(var(--primary)); width: 0; transition: width .4s ease; }
 </style>
 
 

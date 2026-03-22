@@ -7,9 +7,9 @@
           <div class="min-w-0">
             <div class="flex items-center space-x-2">
               <h2 class="text-lg font-semibold truncate">{{ detail?.name || '频道' }}</h2>
-              <span v-if="detail?.is_nsfw" class="text-2xs font-medium px-1.5 py-0.5 rounded bg-color-error/20 text-color-error">NSFW</span>
+              <span v-if="detail?.is_nsfw" class="text-2xs font-medium px-1.5 py-0.5 rounded bg-destructive/20 text-destructive">NSFW</span>
             </div>
-            <div class="text-xs text-text-muted mt-0.5 truncate">
+            <div class="text-xs text-muted-foreground mt-0.5 truncate">
               <span class="mr-3">共 {{ detail?.total_videos || 0 }} 个视频</span>
               <span>已抓取 {{ detail?.total_extract || 0 }}</span>
             </div>
@@ -18,7 +18,7 @@
       </div>
     </div>
   </div>
-  <div v-if="detail?.description" class="channel-description pb-3 text-sm text-text-secondary">
+  <div v-if="detail?.description" class="channel-description pb-3 text-sm text-muted-foreground">
     <p class="whitespace-pre-line line-clamp-3">{{ detail.description }}</p>
   </div>
 </template>

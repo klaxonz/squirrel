@@ -23,8 +23,8 @@
   left: 0;
   right: 0;
   z-index: 10;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -74,14 +74,14 @@
 }
 
 :deep(.custom-tab-bar .tab-item.active) {
-  background-color: var(--color-primary);
-  color: var(--text-accent);
+  background-color: hsl(var(--primary));
+  color: hsl(var(--foreground));
 }
 
 :deep(.custom-tab-bar .tab-count) {
   font-size: var(--font-size-2xs);
-  background-color: var(--bg-elevated);
-  color: var(--text-primary);
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
   border-radius: 0.25rem;
   padding: 0.125rem 0.25rem;
   margin-left: 0.25rem;

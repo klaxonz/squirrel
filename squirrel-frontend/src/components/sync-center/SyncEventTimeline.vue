@@ -3,30 +3,26 @@
     <div
       v-for="event in events"
       :key="event.id"
-      class="rounded-xl bg-bg-primary border border-border-primary p-3"
+      class="rounded-xl bg-background border border-border p-3"
     >
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2 min-w-0">
-          <StatusBadge
-            size="xs"
-            :show-dot="false"
-            :variant="getVariant(event.event_status)"
-            :label="getEventLabel(event.event_type)"
-            class="border-0"
-          />
-          <span class="text-2xs text-text-tertiary truncate">{{ event.event_phase || 'phase:unknown' }}</span>
+          <Badge :variant="getVariant(event.event_status)">
+            {{ getEventLabel(event.event_type) }}
+          </Badge>
+          <span class="text-2xs text-muted-foreground/70 truncate">{{ event.event_phase || 'phase:unknown' }}</span>
         </div>
-        <span class="text-2xs text-text-muted">{{ event.occurred_at }}</span>
+        <span class="text-2xs text-muted-foreground">{{ event.occurred_at }}</span>
       </div>
-      <div class="text-xs text-text-secondary mt-2">{{ event.message || '无附加消息' }}</div>
-      <pre class="mt-3 whitespace-pre-wrap break-all text-2xs text-text-muted bg-bg-secondary rounded-lg p-3">{{ formatPayload(event.payload) }}</pre>
+      <div class="text-xs text-muted-foreground mt-2">{{ event.message || '无附加消息' }}</div>
+      <pre class="mt-3 whitespace-pre-wrap break-all text-2xs text-muted-foreground bg-card rounded-lg p-3">{{ formatPayload(event.payload) }}</pre>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { StatusBadge } from '@/components/common'
 import type { SyncRunEvent } from '@/composables/useSyncHistory'
+import { Badge } from '@/components/ui/badge'
 
 defineProps<{
   events: SyncRunEvent[]
@@ -35,15 +31,15 @@ defineProps<{
 const getVariant = (status: string | null) => {
   switch (status) {
     case 'success':
-      return 'success'
+      return 'secondary'
     case 'failed':
-      return 'error'
+      return 'destructive'
     case 'deferred':
-      return 'warning'
+      return 'outline'
     case 'running':
-      return 'info'
-    default:
       return 'default'
+    default:
+      return 'outline'
   }
 }
 

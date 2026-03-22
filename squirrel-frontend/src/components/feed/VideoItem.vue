@@ -1,6 +1,6 @@
 <template>
   <div
-    class="video-item bg-bg-card rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 relative"
+    class="video-item bg-card rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 relative"
     @contextmenu.prevent="showContextMenu"
     @click="handleClick"
   >
@@ -17,25 +17,25 @@
       <!-- 添加默认封面 -->
       <div
         v-if="showDefaultThumbnail"
-        class="w-full h-full absolute top-0 left-0 bg-bg-tertiary flex items-center justify-center"
+        class="w-full h-full absolute top-0 left-0 bg-muted flex items-center justify-center"
       >
-        <div class="text-text-muted flex flex-col items-center">
+        <div class="text-muted-foreground flex flex-col items-center">
           <Icon icon="material-symbols:image" class="text-4xl mb-2" />
           <span class="text-xs">暂无封面</span>
         </div>
       </div>
 
-      <div class="video-duration absolute bottom-1 right-1 bg-bg-tertiary/70 text-text-accent text-2xs px-1 py-0.5 rounded">
+      <div class="video-duration absolute bottom-1 right-1 bg-muted/70 text-foreground text-2xs px-1 py-0.5 rounded">
         {{ formatDuration(video.duration) }}
       </div>
-      <div class="absolute inset-0 bg-bg-tertiary opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+      <div class="absolute inset-0 bg-muted opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
 
       <div
         v-if="showProgress && progress > 0"
-        class="absolute bottom-0 left-0 right-0 h-[2px] bg-bg-tertiary/40 backdrop-blur-sm"
+        class="absolute bottom-0 left-0 right-0 h-[2px] bg-muted/40 backdrop-blur-sm"
       >
         <div
-          class="h-full bg-color-primary/90 transition-all duration-200"
+          class="h-full bg-primary/90 transition-all duration-200"
           :style="{
             width: `${(progress * 100).toFixed(1)}%`,
             borderRadius: '1px'
@@ -45,11 +45,11 @@
     </div>
     <div class="video-item-content">
       <h5
-        class="text-2xs text-text-primary font-medium line-clamp-2 h-8 cursor-pointer hover:text-color-info transition-colors duration-200"
+        class="text-2xs text-foreground font-medium line-clamp-2 h-8 cursor-pointer hover:text-blue-500 transition-colors duration-200"
       >
         {{ video.title }}
       </h5>
-      <div class="video-item-meta text-2xs text-text-muted">
+      <div class="video-item-meta text-2xs text-muted-foreground">
         <div class="relative group flex-1 min-w-0">
           <div class="flex items-center min-w-0">
             <div class="flex -space-x-2 relative">
@@ -61,7 +61,7 @@
                 <img
                   v-if="index < 3"
                   :src="getAvatarSrc(avatar.avatar, 'video-avatar-' + video.id + '-' + index)"
-                  class="w-4 h-4 rounded-full object-cover flex-shrink-0 cursor-pointer ring-1 ring-bg-card"
+                  class="w-4 h-4 rounded-full object-cover flex-shrink-0 cursor-pointer ring-1 ring-card"
                   :class="{'relative z-30': index === 0, 'relative z-20': index === 1, 'relative z-10': index === 2}"
                   referrerpolicy="no-referrer"
                   @error="(e) => handleAvatarError(e, 'video-avatar-' + video.id + '-' + index)"
@@ -71,7 +71,7 @@
               </div>
             </div>
             <span
-              class="text-2xs text-text-muted ml-2 truncate cursor-pointer hover:text-color-info transition-colors flex-1 min-w-0 block"
+              class="text-2xs text-muted-foreground ml-2 truncate cursor-pointer hover:text-blue-500 transition-colors flex-1 min-w-0 block"
               @click.stop="goToSubscription(video.subscriptions[0]?.id)"
               :title="displayNames"
             >
@@ -79,7 +79,7 @@
             </span>
             <button
               v-if="hasActors"
-              class="actor-toggle ml-1 text-2xs text-text-muted hover:text-text-primary opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+              class="actor-toggle ml-1 text-2xs text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
               type="button"
               @click.stop="toggleActors"
               aria-label="显示订阅列表"
@@ -92,7 +92,7 @@
           <!-- 悬浮模态框 -->
           <div
             v-if="hasActors"
-            class="channel-popup opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute left-0 bottom-full mb-2 bg-bg-card rounded-lg shadow-lg transition-all duration-200 z-50 w-max max-w-72 p-3"
+            class="channel-popup opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute left-0 bottom-full mb-2 bg-card rounded-lg shadow-lg transition-all duration-200 z-50 w-max max-w-72 p-3"
             :class="{ 'is-visible': showActors }"
           >
             <!-- 订阅列表 -->
@@ -100,7 +100,7 @@
               <div
                 v-for="subscription in video.subscriptions"
                 :key="subscription.subscription_id"
-                class="flex items-center group/actor cursor-pointer hover:bg-bg-hover p-1 rounded-lg transition-colors duration-150"
+                class="flex items-center group/actor cursor-pointer hover:bg-accent p-1 rounded-lg transition-colors duration-150"
                 @click.stop="goToSubscription(subscription.id)"
               >
                 <img
@@ -110,14 +110,14 @@
                   referrerpolicy="no-referrer"
                   @error="(e) => handleAvatarError(e, 'video-popup-avatar-' + subscription.subscription_id)"
                 >
-                <span class="text-text-secondary group-hover/actor:text-text-primary transition-colors duration-150">
+                <span class="text-muted-foreground group-hover/actor:text-foreground transition-colors duration-150">
                   {{ subscription.name }}
                 </span>
               </div>
             </div>
 
             <!-- 小三角形 -->
-            <div class="absolute -bottom-2 left-4 w-4 h-4 bg-bg-card transform rotate-45"></div>
+            <div class="absolute -bottom-2 left-4 w-4 h-4 bg-card transform rotate-45"></div>
           </div>
         </div>
         <span class="leading-4 font-medium flex-shrink-0 ml-2">{{ displayDateText }}</span>
@@ -347,7 +347,7 @@ const handleThumbnailError = () => {
   flex: none;
   position: relative;
   padding-top: 56.25%; /* 16:9 宽高比 */
-  background-color: var(--bg-tertiary);
+  background-color: hsl(var(--muted));
 }
 
 .video-item-content {
@@ -381,7 +381,7 @@ const handleThumbnailError = () => {
   bottom: 4px;
   right: 4px;
   background-color: var(--overlay-dark-70);
-  color: var(--text-accent);
+  color: hsl(var(--foreground));
   font-size: var(--font-size-2xs);
   padding: 2px 4px;
   border-radius: 2px;
@@ -396,7 +396,7 @@ const handleThumbnailError = () => {
 }
 
 .context-menu-item {
-  @apply px-4 py-2 text-sm text-text-primary hover:bg-bg-hover cursor-pointer flex items-center;
+  @apply px-4 py-2 text-sm text-foreground hover:bg-accent cursor-pointer flex items-center;
 }
 
 .cursor-pointer {
@@ -410,7 +410,7 @@ const handleThumbnailError = () => {
 }
 
 .video-item.border-2 {
-  box-shadow: 0 0 0 2px theme('colors.color-info');
+  box-shadow: 0 0 0 2px hsl(var(--ring));
 }
 
 .gap-1 {
@@ -466,7 +466,7 @@ const handleThumbnailError = () => {
   transition-delay: 0ms;
 }
 
-.video-thumbnail:hover .bg-color-primary\/90 {
+.video-thumbnail:hover .bg-primary\/90 {
   height: 3px;
   margin-top: -1px;
 }
@@ -509,7 +509,7 @@ const handleThumbnailError = () => {
 }
 
 .default-avatar {
-  @apply bg-bg-tertiary text-text-primary flex items-center justify-center text-2xs font-medium;
+  @apply bg-muted text-foreground flex items-center justify-center text-2xs font-medium;
 }
 
 .blur-thumbnail {

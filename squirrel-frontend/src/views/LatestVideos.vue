@@ -25,11 +25,15 @@
 
     <div class="video-container flex-grow">
       <div v-if="loadError" class="alert-container">
-        <InlineAlert
-          :message="`加载失败：${loadError?.message || loadError}`"
-          action-label="重试"
-          @action="refreshCurrentList"
-        />
+        <Alert variant="destructive" class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <AlertTitle>加载失败</AlertTitle>
+            <AlertDescription class="break-words">
+              {{ `加载失败：${loadError?.message || loadError}` }}
+            </AlertDescription>
+          </div>
+          <Button variant="secondary" size="sm" class="rounded-full" @click="refreshCurrentList">重试</Button>
+        </Alert>
       </div>
       <router-view v-slot="{ Component }">
         <keep-alive :max="10">
@@ -59,7 +63,8 @@ import { useFeedFilters } from '../composables/useFeedFilters'
 import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/components/feed/ChannelHeader.vue'
-import { InlineAlert } from '@/components/common'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { buildTabsWithCounts } from '../utils/feed'
 
 const router = useRouter();

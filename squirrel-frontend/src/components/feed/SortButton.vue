@@ -2,8 +2,8 @@
   <div class="relative inline-block" ref="rootRef">
     <button
       @click="toggle"
-      class="flex items-center flex-nowrap px-2 py-1.5 text-text-accent hover:bg-bg-elevated rounded-full transition-colors duration-150 border border-transparent"
-      :class="[{ 'bg-bg-elevated border-border-primary': isOpen }, isMobile ? 'p-1.5' : 'space-x-1 px-2 text-xs']"
+      class="flex items-center flex-nowrap px-2 py-1.5 text-foreground hover:bg-muted rounded-full transition-colors duration-150 border border-transparent"
+      :class="[{ 'bg-muted border-border': isOpen }, isMobile ? 'p-1.5' : 'space-x-1 px-2 text-xs']"
     >
       <Bars4Icon v-if="!isMobile" class="h-4 w-4" />
       <span v-if="!isMobile">排序</span>
@@ -19,18 +19,18 @@
 
     <div
       v-if="isOpen"
-      class="absolute right-0 mt-1 py-1 w-max min-w-full bg-bg-card rounded-lg shadow-lg z-50 animate-fade-in border border-border-primary"
+      class="absolute right-0 mt-1 py-1 w-max min-w-full bg-card rounded-lg shadow-lg z-50 animate-fade-in border border-border"
     >
       <button
         v-for="option in sortOptions"
         :key="option.value"
         @click="selectOption(option.value)"
-        class="w-full px-3 py-1.5 text-xs text-text-accent hover:bg-bg-elevated flex items-center gap-2"
+        class="w-full px-3 py-1.5 text-xs text-foreground hover:bg-muted flex items-center gap-2"
       >
         <span class="flex-1 truncate">{{ option.label }}</span>
         <CheckIcon
           v-if="modelValue === option.value"
-          class="h-3 w-3 text-color-info flex-shrink-0"
+          class="h-3 w-3 text-blue-500 flex-shrink-0"
         />
         <span v-else class="h-3 w-3 flex-shrink-0"></span>
       </button>

@@ -20,8 +20,8 @@
         :class="[
           'px-3 py-1 text-xs font-medium rounded-full transition-colors duration-150 ease-in-out flex items-center',
           modelValue === tab.value
-            ? 'bg-bg-elevated text-text-primary'
-            : 'bg-bg-primary text-text-accent hover:bg-bg-elevated'
+            ? 'bg-muted text-foreground'
+            : 'bg-background text-foreground hover:bg-muted'
         ]"
       >
         {{ tab.label }}
@@ -30,8 +30,8 @@
           :class="[
             'ml-1 text-2xs',
             modelValue === tab.value
-              ? 'text-text-primary'
-              : 'text-text-muted'
+              ? 'text-foreground'
+              : 'text-muted-foreground'
           ]"
         >
           {{ tab.count }}
@@ -106,7 +106,7 @@ const onKeydown = (e) => {
 .tab-bar {
   scrollbar-width: none;
   -ms-overflow-style: none;
-  background-color: var(--bg-primary);
+  background-color: hsl(var(--background));
 }
 
 .tab-bar::-webkit-scrollbar {

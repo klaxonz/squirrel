@@ -1,13 +1,13 @@
 <template>
-  <div class="fixed inset-0 bg-overlay-dark-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div class="bg-bg-tertiary border border-border-primary rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-border-secondary">
-        <h2 class="text-xl font-bold text-text-primary">
+  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-muted border border-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+        <h2 class="text-xl font-bold text-foreground">
           {{ isEditing ? '编辑任务' : '创建任务' }}
         </h2>
         <button
           @click="$emit('close')"
-          class="text-text-primary/50 hover:text-text-primary transition-colors p-1 hover:bg-bg-hover rounded-lg"
+          class="text-foreground/50 hover:text-foreground transition-colors p-1 hover:bg-accent rounded-lg"
         >
           <XMarkIcon class="w-5 h-5" />
         </button>
@@ -17,25 +17,25 @@
         <form @submit.prevent="handleSubmit" class="space-y-5">
           <!-- 基本信息 -->
           <div class="space-y-4">
-            <h3 class="text-sm font-semibold text-text-primary/50 uppercase tracking-wider">基本信息</h3>
+            <h3 class="text-sm font-semibold text-foreground/50 uppercase tracking-wider">基本信息</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">任务名称 <span class="text-color-error">*</span></label>
+                <label class="block text-sm font-medium text-foreground mb-2">任务名称 <span class="text-destructive">*</span></label>
                 <input
                   v-model="formData.name"
                   type="text"
                   required
-                  class="w-full px-4 py-2.5 bg-bg-secondary border border-border-secondary rounded-lg text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors"
+                  class="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-destructive focus:ring-1 focus:ring-destructive transition-colors"
                   placeholder="输入任务名称"
                 >
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">任务类型</label>
+                <label class="block text-sm font-medium text-foreground mb-2">任务类型</label>
                 <select
                   v-model="formData.task_type"
                   :disabled="isEditing"
-                  class="w-full px-4 py-2.5 bg-bg-secondary border border-border-secondary rounded-lg text-text-primary text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors"
+                  class="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-destructive focus:ring-1 focus:ring-destructive transition-colors"
                 >
                   <option value="user">用户任务</option>
                   <option value="system">系统任务</option>
@@ -45,22 +45,22 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-text-primary mb-2">任务描述</label>
+              <label class="block text-sm font-medium text-foreground mb-2">任务描述</label>
               <textarea
                 v-model="formData.description"
                 rows="3"
-                class="w-full px-4 py-2.5 bg-bg-secondary border border-border-secondary rounded-lg text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors resize-none"
+                class="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-destructive focus:ring-1 focus:ring-destructive transition-colors resize-none"
                 placeholder="输入任务描述（可选）"
               ></textarea>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-text-primary mb-2">任务类 <span class="text-color-error">*</span></label>
+              <label class="block text-sm font-medium text-foreground mb-2">任务类 <span class="text-destructive">*</span></label>
               <select
                 v-model="formData.task_class"
                 required
                 :disabled="isEditing"
-                class="w-full px-4 py-2.5 bg-bg-secondary border border-border-secondary rounded-lg text-text-primary text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors"
+                class="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-destructive focus:ring-1 focus:ring-destructive transition-colors"
               >
                 <option value="">请选择任务类</option>
                 <optgroup v-for="(group, groupName) in groupedTaskClasses" :key="groupName" :label="groupName">
@@ -78,24 +78,24 @@
 
           <!-- 执行配置 -->
           <div class="space-y-4">
-            <h3 class="text-sm font-semibold text-text-primary/50 uppercase tracking-wider">执行配置</h3>
+            <h3 class="text-sm font-semibold text-foreground/50 uppercase tracking-wider">执行配置</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">执行间隔 <span class="text-color-error">*</span></label>
+                <label class="block text-sm font-medium text-foreground mb-2">执行间隔 <span class="text-destructive">*</span></label>
                 <input
                   v-model.number="formData.interval"
                   type="number"
                   min="1"
                   required
-                  class="w-full px-4 py-2.5 bg-bg-secondary border border-border-secondary rounded-lg text-text-primary text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors"
+                  class="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-destructive focus:ring-1 focus:ring-destructive transition-colors"
                 >
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">时间单位</label>
+                <label class="block text-sm font-medium text-foreground mb-2">时间单位</label>
                 <select
                   v-model="formData.unit"
-                  class="w-full px-4 py-2.5 bg-bg-secondary border border-border-secondary rounded-lg text-text-primary text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors"
+                  class="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-destructive focus:ring-1 focus:ring-destructive transition-colors"
                 >
                   <option value="seconds">秒</option>
                   <option value="minutes">分钟</option>
@@ -105,13 +105,13 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">最大重试次数</label>
+                <label class="block text-sm font-medium text-foreground mb-2">最大重试次数</label>
                 <input
                   v-model.number="formData.max_retries"
                   type="number"
                   min="0"
                   max="10"
-                  class="w-full px-4 py-2.5 bg-bg-secondary border border-border-secondary rounded-lg text-text-primary text-sm focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors"
+                  class="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-destructive focus:ring-1 focus:ring-destructive transition-colors"
                 >
               </div>
             </div>
@@ -119,40 +119,40 @@
 
           <!-- 选项 -->
           <div class="space-y-4">
-            <h3 class="text-sm font-semibold text-text-primary/50 uppercase tracking-wider">选项</h3>
+            <h3 class="text-sm font-semibold text-foreground/50 uppercase tracking-wider">选项</h3>
             <div class="flex items-center gap-6">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
                   v-model="formData.start_immediately"
                   type="checkbox"
-                  class="w-4 h-4 rounded border-border-secondary bg-bg-secondary text-color-error focus:ring-2 focus:ring-color-error focus:ring-offset-0"
+                  class="w-4 h-4 rounded border-border bg-card text-destructive focus:ring-2 focus:ring-destructive focus:ring-offset-0"
                 >
-                <span class="text-sm text-text-primary">立即启动</span>
+                <span class="text-sm text-foreground">立即启动</span>
               </label>
 
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
                   v-model="formData.is_active"
                   type="checkbox"
-                  class="w-4 h-4 rounded border-border-secondary bg-bg-secondary text-color-error focus:ring-2 focus:ring-color-error focus:ring-offset-0"
+                  class="w-4 h-4 rounded border-border bg-card text-destructive focus:ring-2 focus:ring-destructive focus:ring-offset-0"
                 >
-                <span class="text-sm text-text-primary">激活状态</span>
+                <span class="text-sm text-foreground">激活状态</span>
               </label>
             </div>
           </div>
 
           <!-- 任务参数 -->
           <div class="space-y-4">
-            <h3 class="text-sm font-semibold text-text-primary/50 uppercase tracking-wider">高级配置</h3>
+            <h3 class="text-sm font-semibold text-foreground/50 uppercase tracking-wider">高级配置</h3>
             <div>
-              <label class="block text-sm font-medium text-text-primary mb-2">任务参数 (JSON)</label>
+              <label class="block text-sm font-medium text-foreground mb-2">任务参数 (JSON)</label>
               <textarea
                 v-model="taskParamsJson"
                 rows="5"
-                class="w-full px-4 py-2.5 bg-bg-secondary border border-border-secondary rounded-lg text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-color-error focus:ring-1 focus:ring-color-error transition-colors font-mono resize-none"
+                class="w-full px-4 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-destructive focus:ring-1 focus:ring-destructive transition-colors font-mono resize-none"
                 placeholder='{"key": "value"}'
               ></textarea>
-              <div v-if="jsonError" class="flex items-center gap-2 text-color-error text-xs mt-2">
+              <div v-if="jsonError" class="flex items-center gap-2 text-destructive text-xs mt-2">
                 <ExclamationTriangleIcon class="w-4 h-4" />
                 <span>{{ jsonError }}</span>
               </div>
@@ -162,11 +162,11 @@
       </div>
 
       <!-- 操作按钮 -->
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-primary bg-bg-secondary">
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-card">
         <button
           type="button"
           @click="$emit('close')"
-          class="px-5 py-2.5 bg-bg-elevated hover:bg-bg-hover text-text-primary text-sm font-medium rounded-full transition-colors"
+          class="px-5 py-2.5 bg-muted hover:bg-accent text-foreground text-sm font-medium rounded-full transition-colors"
         >
           取消
         </button>
@@ -174,7 +174,7 @@
           type="submit"
           @click="handleSubmit"
           :disabled="loading || !!jsonError"
-          class="px-5 py-2.5 bg-color-error hover:bg-color-error-hover disabled:opacity-50 disabled:cursor-not-allowed text-text-accent text-sm font-medium rounded-full transition-colors"
+          class="px-5 py-2.5 bg-destructive hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed text-destructive-foreground text-sm font-medium rounded-full transition-colors"
         >
           {{ loading ? '保存中...' : (isEditing ? '更新任务' : '创建任务') }}
         </button>

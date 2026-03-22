@@ -68,12 +68,12 @@ const sizeClass = computed(() => `size-${props.size}`);
 }
 
 .bounce-dot {
-  @apply bg-color-error rounded-full;
+  @apply bg-destructive rounded-full;
   animation: bounce 1.4s infinite ease-in-out both;
 }
 
 .loading-text {
-  @apply mt-2 text-sm text-text-muted;
+  @apply mt-2 text-sm text-muted-foreground;
 }
 
 @keyframes bounce {

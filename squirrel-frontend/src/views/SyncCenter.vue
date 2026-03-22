@@ -1,5 +1,5 @@
 <template>
-  <div class="sync-center-page flex min-h-full flex-col bg-bg-primary text-text-primary">
+  <div class="sync-center-page flex min-h-full flex-col bg-background text-foreground">
     <div class="toolbar-container pb-4 pt-4">
       <SyncControlBar
         :auto-refresh="overviewAutoRefresh"
@@ -20,17 +20,20 @@
 
     <div class="content-container h-auto flex-1 min-h-0 overflow-y-auto pb-6">
       <div class="flex flex-col gap-3">
-        <InlineAlert
+        <Alert
           v-if="actionNotice.message"
-          :message="actionNotice.message"
-          :variant="actionNotice.variant"
-        />
+          :variant="actionNoticeVariant"
+          :class="actionNoticeClass"
+        >
+          <AlertDescription>{{ actionNotice.message }}</AlertDescription>
+        </Alert>
 
-        <InlineAlert
+        <Alert
           v-if="loadNotice"
-          :message="loadNotice"
-          variant="warning"
-        />
+          class="border-amber-500/40"
+        >
+          <AlertDescription>{{ loadNotice }}</AlertDescription>
+        </Alert>
 
         <SyncSignalMatrix
           :current="currentSignals"
@@ -70,11 +73,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { InlineAlert } from '@/components/common'
 import SyncAnalysisWorkspace from '@/components/sync-center/SyncAnalysisWorkspace.vue'
 import SyncControlBar from '@/components/sync-center/SyncControlBar.vue'
 import SyncRunDetailDrawer from '@/components/sync-center/SyncRunDetailDrawer.vue'
 import SyncSignalMatrix, { type SyncSignalItem } from '@/components/sync-center/SyncSignalMatrix.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useSyncCenter } from '@/composables/useSyncCenter'
 import { type SyncHistoryFilters, useSyncHistory } from '@/composables/useSyncHistory'
 import { type SyncTimeLens, useSyncCenterWorkbench } from '@/composables/useSyncCenterWorkbench'
@@ -91,6 +94,16 @@ const actionNotice = reactive<{
 }>({
   message: '',
   variant: 'success',
+})
+
+const actionNoticeVariant = computed(() => {
+  return actionNotice.variant === 'error' ? 'destructive' : 'default'
+})
+
+const actionNoticeClass = computed(() => {
+  if (actionNotice.variant === 'success') return 'border-emerald-500/40'
+  if (actionNotice.variant === 'warning') return 'border-amber-500/40'
+  return ''
 })
 
 const {

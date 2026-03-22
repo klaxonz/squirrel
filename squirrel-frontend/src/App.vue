@@ -2,85 +2,88 @@
   <div v-if="isAuthPage" class="h-screen overflow-hidden">
     <router-view />
   </div>
-  <div v-else class="flex h-screen min-h-0 overflow-x-hidden">
-    <!-- Sidebar for desktop -->
-    <Sidebar
-      v-if="!isMobile && !isSidebarFlyout && !(isVideoWidescreen && !isVideoSidebarOpen)"
-      :routes="sidebarRoutes"
-      :flyout="isVideoWidescreen"
-      @requestClose="closeVideoSidebar"
-    />
+  <TooltipProvider v-else :delay-duration="200">
+    <div class="flex h-screen min-h-0 overflow-x-hidden">
+      <!-- Sidebar for desktop -->
+      <Sidebar
+        v-if="!isMobile && !isSidebarFlyout && !(isVideoWidescreen && !isVideoSidebarOpen)"
+        :routes="sidebarRoutes"
+        :flyout="isVideoWidescreen"
+        @requestClose="closeVideoSidebar"
+      />
 
-    <!-- Floating sidebar for flyout routes -->
-    <div v-if="!isMobile && isSidebarFlyout" class="sidebar-flyout">
-      <button
-        class="sidebar-flyout-toggle"
-        @click="toggleSidebarFlyout"
-        :aria-label="isSidebarFlyoutOpen ? '关闭侧边栏' : '打开侧边栏'"
-        :title="isSidebarFlyoutOpen ? '关闭侧边栏' : '打开侧边栏'"
-      >
-        <Bars3Icon class="h-5 w-5" />
-      </button>
-      <transition name="sidebar-flyout">
-        <div
-          v-if="isSidebarFlyoutOpen"
-          class="sidebar-flyout-overlay"
-          @click.self="closeSidebarFlyout"
-        >
-          <Sidebar
-            class="sidebar-flyout-panel"
-            :routes="sidebarRoutes"
-            :flyout="true"
-            @requestClose="closeSidebarFlyout"
-          />
-        </div>
-      </transition>
-    </div>
-
-    <!-- Main content area -->
-    <main class="flex-1 relative flex flex-col min-h-0">
-      <!-- 全局搜索框 -->
-      <div v-if="showGlobalSearch" class="topbar" ref="topbarRef">
+      <!-- Floating sidebar for flyout routes -->
+      <div v-if="!isMobile && isSidebarFlyout" class="sidebar-flyout">
         <button
-          v-if="isVideoWidescreen"
-          class="topbar-menu-btn"
-          :aria-label="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
-          :title="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
+          class="sidebar-flyout-toggle"
           @click="toggleSidebarFlyout"
+          :aria-label="isSidebarFlyoutOpen ? '关闭侧边栏' : '打开侧边栏'"
+          :title="isSidebarFlyoutOpen ? '关闭侧边栏' : '打开侧边栏'"
         >
           <Bars3Icon class="h-5 w-5" />
         </button>
-        <GlobalSearchBar
-          ref="globalSearchBar"
-          v-model="searchQuery"
-          :placeholder="searchPlaceholder"
-          @search="handleGlobalSearch"
-          @clear="handleGlobalSearchClear"
-        />
+        <transition name="sidebar-flyout">
+          <div
+            v-if="isSidebarFlyoutOpen"
+            class="sidebar-flyout-overlay"
+            @click.self="closeSidebarFlyout"
+          >
+            <Sidebar
+              class="sidebar-flyout-panel"
+              :routes="sidebarRoutes"
+              :flyout="true"
+              @requestClose="closeSidebarFlyout"
+            />
+          </div>
+        </transition>
       </div>
 
-      <!-- 页面内容容器 -->
-      <div class="page-container flex-1 relative min-h-0">
-        <div class="content-container absolute inset-0" ref="contentContainerRef" :class="contentScrollClass">
-          <router-view v-slot="{ Component }">
-            <keep-alive :include="['LatestVideos', 'Subscribed']">
-              <component :is="Component" :key="routeCacheKey" />
-            </keep-alive>
-          </router-view>
+      <!-- Main content area -->
+      <main class="flex-1 relative flex flex-col min-h-0">
+        <!-- 全局搜索框 -->
+        <div v-if="showGlobalSearch" class="topbar" ref="topbarRef">
+          <button
+            v-if="isVideoWidescreen"
+            class="topbar-menu-btn"
+            :aria-label="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
+            :title="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
+            @click="toggleSidebarFlyout"
+          >
+            <Bars3Icon class="h-5 w-5" />
+          </button>
+          <GlobalSearchBar
+            ref="globalSearchBar"
+            v-model="searchQuery"
+            :placeholder="searchPlaceholder"
+            @search="handleGlobalSearch"
+            @clear="handleGlobalSearchClear"
+          />
         </div>
-        <!-- 全局同步中心 -->
-        <RefreshCenter />
-      </div>
-    </main>
 
-    <!-- Mobile navigation -->
-    <MobileNav v-if="isMobile" :routes="mobileRoutes" />
-  </div>
+        <!-- 页面内容容器 -->
+        <div class="page-container flex-1 relative min-h-0">
+          <div class="content-container absolute inset-0" ref="contentContainerRef" :class="contentScrollClass">
+            <router-view v-slot="{ Component }">
+              <keep-alive :include="['LatestVideos', 'Subscribed']">
+                <component :is="Component" :key="routeCacheKey" />
+              </keep-alive>
+            </router-view>
+          </div>
+          <!-- 全局同步中心 -->
+          <RefreshCenter />
+        </div>
+      </main>
+
+      <!-- Mobile navigation -->
+      <MobileNav v-if="isMobile" :routes="mobileRoutes" />
+    </div>
+  </TooltipProvider>
 </template>
 
 <script setup>
 import { provide, ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 import mitt from 'mitt';
+import { TooltipProvider } from '@/components/ui/tooltip'
 import MobileNav from '@/components/layout/MobileNav.vue';
 import Sidebar from '@/components/layout/Sidebar.vue';
 import GlobalSearchBar from '@/components/layout/GlobalSearchBar.vue';
@@ -308,7 +311,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--bg-primary);
+  background: hsl(var(--background));
   padding: 0.75rem 1rem;
 }
 
@@ -325,12 +328,12 @@ html, body {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;
-  color: var(--text-primary);
+  color: hsl(var(--foreground));
   transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .topbar-menu-btn:hover {
-  background: var(--bg-hover);
+  background: hsl(var(--accent));
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
   transform: translateY(-1px);
 }
@@ -341,7 +344,7 @@ html, body {
 
 body {
   font-family: var(--font-sans);
-  @apply bg-bg-primary text-text-primary;
+  @apply bg-background text-foreground;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -381,13 +384,13 @@ h1, h2, h3, h4, h5, h6 {
   height: 2.5rem;
   border-radius: 9999px;
   background: transparent;
-  color: var(--text-primary);
+  color: hsl(var(--foreground));
   box-shadow: none;
   transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .sidebar-flyout-toggle:hover {
-  background: var(--bg-hover);
+  background: hsl(var(--accent));
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
   transform: translateY(-1px);
 }

@@ -1,5 +1,5 @@
 <template>
-  <div ref="videoPageRef" class="video-page bg-bg-primary scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
+  <div ref="videoPageRef" class="video-page bg-background scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
     <div :class="['video-page__container', isWidescreen ? 'is-widescreen' : '']">
       <!-- 左侧主内容区域 -->
       <div :class="['video-main', isWidescreen ? 'is-widescreen' : '']">
@@ -42,7 +42,7 @@
           <!-- 标题与操作按钮 -->
           <transition name="fade" mode="out-in">
             <div :key="video?.id" class="video-meta__header">
-              <h1 class="video-meta__title text-text-primary">{{ video?.title }}</h1>
+              <h1 class="video-meta__title text-foreground">{{ video?.title }}</h1>
 
               <!-- 操作按钮组 -->
               <div class="video-meta__actions">
@@ -125,7 +125,7 @@
 
           <!-- 频道信息 -->
           <transition name="fade" mode="out-in">
-            <div :key="video?.id" class="video-channel mt-3 pb-3 border-b border-border-primary">
+            <div :key="video?.id" class="video-channel mt-3 pb-3 border-b border-border">
               <div v-if="video?.subscriptions?.length" class="flex flex-col space-y-3">
                 <!-- 主订阅：完整行展示 -->
                 <div class="video-channel__primary">
@@ -138,12 +138,12 @@
                   >
                   <router-link
                     :to="`/subscription/${video.subscriptions[0].id}/all`"
-                    class="video-channel__name text-xs md:text-sm lg:text-base text-text-primary font-medium hover:text-color-info transition-colors"
+                    class="video-channel__name text-xs md:text-sm lg:text-base text-foreground font-medium hover:text-blue-500 transition-colors"
                   >
                     {{ video.subscriptions[0].name }}
                   </router-link>
                   <button
-                    class="video-channel__unsubscribe px-3 py-1.5 text-xs bg-bg-elevated hover:bg-bg-hover text-text-primary rounded-full transition-colors font-medium"
+                    class="video-channel__unsubscribe px-3 py-1.5 text-xs bg-muted hover:bg-accent text-foreground rounded-full transition-colors font-medium"
                     @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
                     :title="`取消订阅 ${video.subscriptions[0].name}`"
                     :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
@@ -151,7 +151,7 @@
                 </div>
 
                 <!-- 主订阅统计信息 -->
-                <div class="video-channel__stats text-2xs text-text-muted mt-1">
+                <div class="video-channel__stats text-2xs text-muted-foreground mt-1">
                   <span>
                     总视频: {{ video.subscriptions[0].total_videos || 0 }} | 已解析: {{ video.subscriptions[0].total_extract || 0 }}
                   </span>
@@ -166,7 +166,7 @@
                   <div
                     v-for="sub in video.subscriptions.slice(1)"
                     :key="sub.id"
-                    class="flex items-center px-2 py-1 rounded-full bg-bg-tertiary/50 hover:bg-bg-tertiary/70 cursor-pointer transition-colors text-xs text-text-primary"
+                    class="flex items-center px-2 py-1 rounded-full bg-muted/50 hover:bg-muted/70 cursor-pointer transition-colors text-xs text-foreground"
                     @click.stop="$router.push(`/subscription/${sub.id}/all`)"
                   >
                     <img
@@ -190,9 +190,9 @@
       <div :class="['video-aside', isWidescreen ? 'hidden' : '']">
         <div>
           <div class="video-aside__panel rounded-xl pb-4 pt-0 flex flex-col">
-            <h2 class="text-text-primary text-base md:text-lg mb-4">相关视频</h2>
+            <h2 class="text-foreground text-base md:text-lg mb-4">相关视频</h2>
             <div>
-              <div v-if="!relatedVideos.length && !loadingRelated" class="text-text-muted text-sm">暂无推荐</div>
+              <div v-if="!relatedVideos.length && !loadingRelated" class="text-muted-foreground text-sm">暂无推荐</div>
               <div v-if="relatedVideos.length" class="related-videos-list space-y-3">
                 <div
                   v-for="relatedVideo in relatedVideos"
@@ -200,7 +200,7 @@
                   class="flex space-x-3 cursor-pointer group"
                   @click="goToVideo(relatedVideo.id, relatedVideo)"
                 >
-                  <div class="relative h-20 w-32 rounded-lg overflow-hidden bg-bg-tertiary/60 transform-gpu sm:h-24 sm:w-40">
+                  <div class="relative h-20 w-32 rounded-lg overflow-hidden bg-muted/60 transform-gpu sm:h-24 sm:w-40">
                     <img
                       v-if="relatedVideo.thumbnail && !relatedThumbnailErrorIds.has(relatedVideo.id)"
                       :src="relatedVideo.thumbnail"
@@ -212,27 +212,27 @@
                     >
                     <div
                       v-else
-                      class="w-full h-full absolute top-0 left-0 bg-bg-secondary flex items-center justify-center"
+                      class="w-full h-full absolute top-0 left-0 bg-card flex items-center justify-center"
                     >
-                      <div class="text-text-muted flex flex-col items-center">
+                      <div class="text-muted-foreground flex flex-col items-center">
                         <Icon icon="material-symbols:image" class="text-3xl mb-1" />
                         <span class="text-2xs">暂无封面</span>
                       </div>
                     </div>
-                    <div class="absolute bottom-1 right-1 bg-bg-tertiary/70 text-text-primary text-2xs px-1 py-0.5 rounded">
+                    <div class="absolute bottom-1 right-1 bg-muted/70 text-foreground text-2xs px-1 py-0.5 rounded">
                       {{ formatDuration(relatedVideo.duration) }}
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="text-text-primary text-xs leading-5 max-h-10 overflow-hidden group-hover:text-color-info transition-colors">
+                    <div class="text-foreground text-xs leading-5 max-h-10 overflow-hidden group-hover:text-blue-500 transition-colors">
                       {{ relatedVideo.title }}
                     </div>
-                    <div class="text-text-muted text-2xs mt-1 truncate">
+                    <div class="text-muted-foreground text-2xs mt-1 truncate">
                       <router-link
                         v-if="relatedVideo.subscriptions?.[0]?.id"
                         :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
                         @click.stop
-                        class="hover:text-color-info transition-colors"
+                        class="hover:text-blue-500 transition-colors"
                       >
                         {{ relatedVideo.subscriptions[0].name }}
                       </router-link>
@@ -242,7 +242,7 @@
                     </div>
                     <div
                       v-if="relatedVideo.uploaded_at"
-                      class="text-text-tertiary text-2xs mt-0.5 truncate"
+                      class="text-muted-foreground/70 text-2xs mt-0.5 truncate"
                     >
                       {{ formatDate(relatedVideo.uploaded_at) }}
                     </div>
@@ -787,7 +787,7 @@ onUnmounted(() => {
 }
 
 .related-videos-list::-webkit-scrollbar-thumb {
-  background: var(--border-primary);
+  background: hsl(var(--border));
   border-radius: 999px;
 }
 
@@ -838,7 +838,7 @@ onUnmounted(() => {
 .video-section {
   position: relative;
   width: 100%;
-  background: var(--bg-media);
+  background: #000;
   margin: 0 auto;
   border-radius: 12px;
   overflow: hidden;
@@ -858,7 +858,7 @@ onUnmounted(() => {
   width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: var(--bg-media);
+  background: #000;
 }
 
 .video-container :deep(iframe),
@@ -868,7 +868,7 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: var(--bg-media);
+  background: #000;
 }
 
 .video-meta {
@@ -904,16 +904,16 @@ onUnmounted(() => {
   gap: 0.5rem;
   min-height: 2.5rem;
   padding: 0 0.875rem;
-  border: 1px solid var(--border-primary);
+  border: 1px solid hsl(var(--border));
   border-radius: 9999px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .video-action:hover {
-  background: var(--bg-elevated);
-  border-color: var(--border-secondary);
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
   transform: translateY(-1px);
 }
 
@@ -935,8 +935,8 @@ onUnmounted(() => {
 
 .video-action.is-active--like {
   color: #fff5f5;
-  background: rgba(var(--color-primary-rgb), 0.16);
-  border-color: rgba(var(--color-primary-rgb), 0.42);
+  background: hsl(var(--primary) / 0.16);
+  border-color: hsl(var(--primary) / 0.42);
 }
 
 .video-action.is-active--later {
@@ -955,9 +955,9 @@ onUnmounted(() => {
   gap: 0.25rem;
   min-width: 13rem;
   padding: 0.375rem;
-  border: 1px solid var(--border-primary);
+  border: 1px solid hsl(var(--border));
   border-radius: 1rem;
-  background: var(--bg-card);
+  background: hsl(var(--card));
   box-shadow: var(--shadow-popup);
 }
 
@@ -972,14 +972,14 @@ onUnmounted(() => {
   border: 1px solid transparent;
   border-radius: 0.75rem;
   background: transparent;
-  color: var(--text-primary);
+  color: hsl(var(--foreground));
   text-align: left;
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 
 .video-action-menu__item:hover {
-  background: var(--bg-elevated);
-  border-color: var(--border-primary);
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
 }
 
 .video-action-menu__main {
@@ -1002,7 +1002,7 @@ onUnmounted(() => {
 
 .video-action-menu__hint {
   font-size: var(--font-size-2xs);
-  color: var(--text-muted);
+  color: hsl(var(--muted-foreground));
 }
 
 .video-action-menu__item.is-active--danger {

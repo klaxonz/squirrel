@@ -1,27 +1,27 @@
 <template>
   <Card class="settings-card">
-    <div class="px-6 py-4 border-b border-border-secondary bg-bg-tertiary flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <div class="px-6 py-4 border-b border-border bg-muted flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h2 class="text-lg font-semibold">站点配置</h2>
-        <p class="text-sm text-text-muted">管理各站点的域名、代理与抓取参数，用于订阅与视频来源识别。</p>
+        <p class="text-sm text-muted-foreground">管理各站点的域名、代理与抓取参数，用于订阅与视频来源识别。</p>
       </div>
-      <span class="inline-flex items-center gap-2 text-xs text-text-tertiary bg-bg-secondary border border-border-primary rounded-full px-3 py-1">
+      <span class="inline-flex items-center gap-2 text-xs text-muted-foreground/70 bg-card border border-border rounded-full px-3 py-1">
         <span class="h-2 w-2 rounded-full" :class="siteSummaryDotClass"></span>
         {{ siteSummaryText }}
       </span>
     </div>
 
     <div class="space-y-4">
-      <div v-if="siteLoading" class="px-6 py-6 text-sm text-text-muted">
+      <div v-if="siteLoading" class="px-6 py-6 text-sm text-muted-foreground">
         正在加载站点配置...
       </div>
 
       <div v-else>
-        <div v-if="siteError" class="px-6 mb-3 text-sm text-color-error">
+        <div v-if="siteError" class="px-6 mb-3 text-sm text-destructive">
           {{ siteError.message || siteError }}
         </div>
 
-        <div v-if="siteList.length === 0" class="px-6 py-6 text-sm text-text-muted">
+        <div v-if="siteList.length === 0" class="px-6 py-6 text-sm text-muted-foreground">
           暂无站点配置。
         </div>
 
@@ -41,7 +41,7 @@
               <div class="site-list-main">
                 <div class="site-title">
                   <span class="font-medium">{{ site.label }}</span>
-                  <span class="text-xs text-text-tertiary">({{ site.slug }})</span>
+                  <span class="text-xs text-muted-foreground/70">({{ site.slug }})</span>
                 </div>
                 <div class="site-domain">
                   <span v-if="site.domains && site.domains.length">{{ site.domains.join(', ') }}</span>
@@ -51,7 +51,7 @@
               <div class="site-list-meta">
                 <span
                   class="site-status"
-                  :class="site.enabled ? 'bg-color-success/10 text-color-success' : 'bg-bg-tertiary text-text-secondary'"
+                  :class="site.enabled ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground'"
                 >
                   {{ site.enabled ? '已启用' : '已禁用' }}
                 </span>
@@ -83,7 +83,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useSiteCatalog } from '@/composables/useSites';
-import { Card } from '@/components/common';
+import { Card } from '@/components/ui/card';
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import { Logger } from '@/utils/logger'
 
@@ -113,10 +113,10 @@ const siteSummaryText = computed(() => {
 });
 
 const siteSummaryDotClass = computed(() => {
-  if (siteLoading.value) return 'bg-color-info animate-pulse';
-  if (siteError.value) return 'bg-color-error animate-pulse';
-  if (!siteList.value.length) return 'bg-bg-elevated';
-  return 'bg-color-success';
+  if (siteLoading.value) return 'bg-blue-500 animate-pulse';
+  if (siteError.value) return 'bg-destructive animate-pulse';
+  if (!siteList.value.length) return 'bg-muted';
+  return 'bg-emerald-500';
 });
 
 onMounted(async () => {
@@ -156,24 +156,24 @@ const saveSiteEditor = async ({ slug, sitePayload }) => {
 <style scoped>
 .settings-card {
   @apply rounded-2xl shadow-sm;
-  background-color: var(--bg-secondary);
-  background-color: color-mix(in srgb, var(--bg-secondary) 60%, var(--bg-primary));
+  background-color: hsl(var(--card));
+  background-color: color-mix(in srgb, hsl(var(--card)) 60%, hsl(var(--background)));
 }
 
 .site-list {
-  @apply border border-border-secondary rounded-none overflow-hidden bg-bg-primary;
+  @apply border border-border rounded-none overflow-hidden bg-background;
 }
 
 .site-list-header {
-  @apply hidden sm:grid sm:grid-cols-[2.2fr_2.8fr_1fr] px-6 py-2 text-xs text-text-tertiary bg-bg-tertiary;
+  @apply hidden sm:grid sm:grid-cols-[2.2fr_2.8fr_1fr] px-6 py-2 text-xs text-muted-foreground/70 bg-muted;
 }
 
 .site-list-body {
-  @apply divide-y divide-border-secondary;
+  @apply divide-y divide-border;
 }
 
 .site-list-item {
-  @apply flex flex-col gap-3 px-6 py-4 text-sm hover:bg-bg-hover transition-colors sm:flex-row sm:items-center sm:justify-between;
+  @apply flex flex-col gap-3 px-6 py-4 text-sm hover:bg-accent transition-colors sm:flex-row sm:items-center sm:justify-between;
 }
 
 .site-list-main {
@@ -185,7 +185,7 @@ const saveSiteEditor = async ({ slug, sitePayload }) => {
 }
 
 .site-domain {
-  @apply text-sm text-text-muted truncate;
+  @apply text-sm text-muted-foreground truncate;
 }
 
 .site-list-meta {
@@ -197,6 +197,6 @@ const saveSiteEditor = async ({ slug, sitePayload }) => {
 }
 
 .site-table-action {
-  @apply px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover rounded-full text-xs font-medium transition-colors border border-border-primary text-text-primary;
+  @apply px-3 py-1.5 bg-muted hover:bg-accent rounded-full text-xs font-medium transition-colors border border-border text-foreground;
 }
 </style>

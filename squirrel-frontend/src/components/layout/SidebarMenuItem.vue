@@ -1,21 +1,26 @@
 <template>
-  <Tooltip :text="isCollapsed ? item.name : ''" placement="right" :delay="200">
-    <router-link
-      :to="item.path"
-      class="menu-item flex items-center h-10 px-3 text-text-accent rounded-lg mb-1"
-      :class="[
-        isActive ? 'menu-item-active' : 'menu-item-inactive',
-        { 'menu-item-collapsed': isCollapsed }
-      ]"
-    >
-      <component :is="item.icon" class="menu-icon w-5 h-5" />
-      <span class="menu-text text-xs">{{ item.name }}</span>
-    </router-link>
+  <Tooltip>
+    <TooltipTrigger as-child>
+      <router-link
+        :to="item.path"
+        class="menu-item flex items-center h-10 px-3 text-foreground rounded-lg mb-1"
+        :class="[
+          isActive ? 'menu-item-active' : 'menu-item-inactive',
+          { 'menu-item-collapsed': isCollapsed }
+        ]"
+      >
+        <component :is="item.icon" class="menu-icon w-5 h-5" />
+        <span class="menu-text text-xs">{{ item.name }}</span>
+      </router-link>
+    </TooltipTrigger>
+    <TooltipContent v-if="isCollapsed" side="right" :side-offset="10">
+      {{ item.name }}
+    </TooltipContent>
   </Tooltip>
 </template>
 
 <script setup>
-import { Tooltip } from '@/components/common'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 defineProps({
   item: {
@@ -40,11 +45,11 @@ defineProps({
 }
 
 .menu-item-inactive:hover {
-  background-color: var(--bg-hover);
+  background-color: hsl(var(--accent));
 }
 
 .menu-item-active {
-  background-color: var(--bg-elevated);
+  background-color: hsl(var(--muted));
 }
 
 .menu-icon {

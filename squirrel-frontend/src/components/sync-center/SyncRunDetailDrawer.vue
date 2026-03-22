@@ -1,123 +1,127 @@
 <template>
-  <Teleport to="body">
-    <transition name="sync-drawer">
-      <div
-        v-if="open && run"
-        class="fixed inset-0 z-50 flex justify-end bg-overlay-dark-50"
-        @click.self="emit('close')"
-      >
-        <div class="flex h-full w-full max-w-3xl flex-col border-l border-border-primary bg-bg-primary shadow-2xl">
-          <div class="px-6 py-5 border-b border-border-primary flex items-start justify-between gap-4">
+  <Sheet :open="open && !!run" @update:open="handleSheetToggle">
+    <SheetContent side="right" class="w-full max-w-3xl bg-background p-0">
+      <div v-if="run" class="flex h-full flex-col">
+        <div class="border-b border-border px-6 py-5">
+          <div class="flex items-start justify-between gap-4">
             <div class="flex min-w-0 items-start gap-3">
               <router-link :to="getSubscriptionLink(run.subscription_id)" class="shrink-0">
                 <img
                   :src="getAvatarSrc(run.subscription_avatar, `run-drawer-${run.run_id}`)"
                   :alt="run.subscription_name"
-                  class="h-12 w-12 rounded-full object-cover bg-bg-secondary ring-1 ring-border-primary"
+                  class="h-12 w-12 rounded-full object-cover bg-card ring-1 ring-border"
                   referrerpolicy="no-referrer"
                   @error="(e) => handleAvatarError(e, `run-drawer-${run?.run_id || 'unknown'}`)"
                 >
               </router-link>
+
               <div class="min-w-0">
                 <router-link
                   :to="getSubscriptionLink(run.subscription_id)"
-                  class="text-lg font-semibold leading-7 text-text-primary break-words hover:text-color-info"
+                  class="text-lg font-semibold leading-7 text-foreground break-words hover:text-primary"
                 >
                   {{ run.subscription_name }}
                 </router-link>
-                <div class="flex flex-wrap items-center gap-2 mt-2">
-                  <StatusBadge size="xs" :show-dot="false" :variant="getVariant(run.status)" :label="run.status" class="border-0" />
-                  <span class="px-2 py-0.5 rounded-full text-2xs bg-bg-secondary text-text-tertiary border border-border-primary">
-                    {{ run.sync_mode }}
-                  </span>
-                  <span class="text-2xs text-text-muted">{{ run.site || 'unknown' }}</span>
-                  <span class="text-2xs text-text-muted">run {{ run.run_id }}</span>
+
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge :variant="getBadgeVariant(run.status)">{{ getStatusLabel(run.status) }}</Badge>
+                  <Badge variant="outline">{{ getModeLabel(run.sync_mode) }}</Badge>
+                  <span class="text-2xs text-muted-foreground">{{ run.site || 'unknown' }}</span>
+                  <span class="text-2xs text-muted-foreground">run {{ run.run_id }}</span>
                 </div>
               </div>
             </div>
+
             <div class="flex items-center gap-2">
-              <router-link
-                :to="getSubscriptionLink(run.subscription_id)"
-                class="rounded-full border border-border-primary bg-bg-secondary px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
-              >
-                打开频道
-              </router-link>
-              <button
-                type="button"
-                class="h-9 w-9 rounded-full bg-bg-secondary text-text-secondary hover:bg-bg-hover transition-colors"
-                @click="emit('close')"
-              >
-                ✕
-              </button>
+              <Button as-child variant="secondary" size="sm" class="rounded-full">
+                <router-link :to="getSubscriptionLink(run.subscription_id)">打开频道</router-link>
+              </Button>
             </div>
-          </div>
-
-          <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-            <div class="grid grid-cols-2 gap-3">
-              <Card class="p-4">
-                <p class="text-2xs text-text-tertiary">开始时间</p>
-                <p class="text-sm text-text-primary mt-2">{{ run.started_at || '—' }}</p>
-              </Card>
-              <Card class="p-4">
-                <p class="text-2xs text-text-tertiary">耗时</p>
-                <p class="text-sm text-text-primary mt-2">{{ formatDurationMs(run.duration_ms) }}</p>
-              </Card>
-              <Card class="p-4">
-                <p class="text-2xs text-text-tertiary">{{ getVideoSummaryLabel(run.sync_mode) }}</p>
-                <p class="text-sm text-text-primary mt-2">{{ run.videos_found }} / {{ run.videos_enqueued }} / {{ run.videos_extracted }}</p>
-              </Card>
-              <Card class="p-4">
-                <p class="text-2xs text-text-tertiary">本次扫描视频数</p>
-                <p class="text-sm text-text-primary mt-2">{{ formatSourceVideoCount(run.source_video_count) }}</p>
-              </Card>
-              <Card class="p-4">
-                <p class="text-2xs text-text-tertiary">失败次数</p>
-                <p class="text-sm text-text-primary mt-2">{{ run.failure_count }}</p>
-              </Card>
-            </div>
-
-            <Card class="p-4">
-              <div class="space-y-2 text-xs">
-                <div class="flex items-center justify-between gap-4">
-                  <span class="text-text-tertiary">request_id</span>
-                  <span class="text-text-primary">{{ run.request_id || '—' }}</span>
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <span class="text-text-tertiary">trace_id</span>
-                  <span class="text-text-primary">{{ run.trace_id || '—' }}</span>
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <span class="text-text-tertiary">当前阶段</span>
-                  <span class="text-text-primary">{{ run.current_phase || '—' }}</span>
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <span class="text-text-tertiary">最后事件</span>
-                  <span class="text-text-primary">{{ run.last_event_at }}</span>
-                </div>
-              </div>
-            </Card>
-
-            <Card class="p-4">
-              <h3 class="text-sm font-medium text-text-primary mb-3">事件时间线</h3>
-              <div v-if="detailLoading" class="text-xs text-text-muted">加载事件中...</div>
-              <div v-else-if="detailError" class="text-xs text-color-error">{{ detailError }}</div>
-              <SyncEventTimeline v-else :events="events" />
-            </Card>
           </div>
         </div>
+
+        <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+          <div class="grid grid-cols-2 gap-3">
+            <Card>
+              <CardContent class="p-4">
+                <p class="text-2xs text-muted-foreground">开始时间</p>
+                <p class="mt-2 text-sm text-foreground">{{ run.started_at || '—' }}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent class="p-4">
+                <p class="text-2xs text-muted-foreground">耗时</p>
+                <p class="mt-2 text-sm text-foreground">{{ formatDurationMs(run.duration_ms) }}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent class="p-4">
+                <p class="text-2xs text-muted-foreground">{{ getVideoSummaryLabel(run.sync_mode) }}</p>
+                <p class="mt-2 text-sm text-foreground">{{ run.videos_found }} / {{ run.videos_enqueued }} / {{ run.videos_extracted }}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent class="p-4">
+                <p class="text-2xs text-muted-foreground">本次扫描视频数</p>
+                <p class="mt-2 text-sm text-foreground">{{ formatSourceVideoCount(run.source_video_count) }}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent class="p-4">
+                <p class="text-2xs text-muted-foreground">失败次数</p>
+                <p class="mt-2 text-sm text-foreground">{{ run.failure_count }}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardContent class="p-4">
+              <div class="space-y-2 text-xs">
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-muted-foreground">request_id</span>
+                  <span class="text-foreground">{{ run.request_id || '—' }}</span>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-muted-foreground">trace_id</span>
+                  <span class="text-foreground">{{ run.trace_id || '—' }}</span>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-muted-foreground">当前阶段</span>
+                  <span class="text-foreground">{{ run.current_phase || '—' }}</span>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-muted-foreground">最后事件</span>
+                  <span class="text-foreground">{{ run.last_event_at }}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent class="p-4">
+              <h3 class="mb-3 text-sm font-medium text-foreground">事件时间线</h3>
+              <div v-if="detailLoading" class="text-xs text-muted-foreground">加载事件中...</div>
+              <div v-else-if="detailError" class="text-xs text-destructive">{{ detailError }}</div>
+              <SyncEventTimeline v-else :events="events" />
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </transition>
-  </Teleport>
+    </SheetContent>
+  </Sheet>
 </template>
 
 <script setup lang="ts">
-import { Card, StatusBadge } from '@/components/common'
 import type { SyncRunEvent, SyncRunItem } from '@/composables/useSyncHistory'
 import SyncEventTimeline from '@/components/sync-center/SyncEventTimeline.vue'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 
-defineProps<{
+const props = defineProps<{
   detailError: string
   detailLoading: boolean
   events: SyncRunEvent[]
@@ -133,20 +137,52 @@ const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useIm
 
 const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
 
-const getVariant = (status: string) => {
+const handleSheetToggle = (value: boolean) => {
+  if (!value) {
+    emit('close')
+  }
+}
+
+const getBadgeVariant = (status: string) => {
   switch (status) {
     case 'success':
-      return 'success'
+      return 'secondary'
     case 'failed':
-      return 'error'
+      return 'destructive'
     case 'deferred':
-      return 'warning'
+    case 'timeout':
+      return 'outline'
     case 'running':
     case 'queued':
-      return 'info'
-    default:
       return 'default'
+    default:
+      return 'outline'
   }
+}
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'created':
+      return '已创建'
+    case 'queued':
+      return '排队中'
+    case 'running':
+      return '运行中'
+    case 'success':
+      return '成功'
+    case 'failed':
+      return '失败'
+    case 'deferred':
+      return '已延后'
+    case 'timeout':
+      return '超时'
+    default:
+      return status || '未知'
+  }
+}
+
+const getModeLabel = (mode: string) => {
+  return mode === 'incremental' ? '增量' : mode === 'full' ? '全量' : mode || '未知'
 }
 
 const getVideoSummaryLabel = (syncMode: string) => {
@@ -158,14 +194,3 @@ const formatSourceVideoCount = (value?: number | null) => {
 }
 </script>
 
-<style scoped>
-.sync-drawer-enter-active,
-.sync-drawer-leave-active {
-  transition: opacity 180ms ease;
-}
-
-.sync-drawer-enter-from,
-.sync-drawer-leave-to {
-  opacity: 0;
-}
-</style>

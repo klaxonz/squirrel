@@ -1,6 +1,6 @@
 <template>
   <button
-    :class="['px-3 py-1 text-xs rounded-full bg-bg-primary text-text-accent hover:bg-bg-elevated border border-border-primary flex items-center justify-center', customClass]"
+    :class="['px-3 py-1 text-xs rounded-full bg-background text-foreground hover:bg-muted border border-border flex items-center justify-center', customClass]"
     :title="title"
     :aria-label="ariaLabel || title"
     @click="$emit('click')"

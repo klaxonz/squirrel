@@ -1,68 +1,148 @@
 <template>
-  <div class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary" :class="embedded ? 'h-full' : ''">
+  <div class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card" :class="embedded ? 'h-full' : ''">
     <div
-      class="border-b border-border-primary"
+      class="border-b border-border"
       :class="embedded ? 'px-3 py-2.5' : 'px-4 py-3'"
     >
       <div v-if="embedded" class="space-y-3">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <div class="text-xs font-semibold tracking-[0.14em] text-text-tertiary">运行实例</div>
-            <div class="mt-1 text-2xs text-text-muted">共 {{ total }} 条</div>
+            <div class="text-xs font-semibold tracking-[0.14em] text-muted-foreground/70">运行实例</div>
+            <div class="mt-1 text-2xs text-muted-foreground">共 {{ total }} 条</div>
           </div>
           <div class="flex items-center gap-2">
             <slot name="header-action" />
-            <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">
+            <span class="rounded-full border border-border bg-background px-2 py-0.5 text-2xs text-muted-foreground/70">
               第 {{ page }} / {{ totalPages }} 页
             </span>
           </div>
         </div>
 
         <div class="grid grid-cols-1 gap-2 xl:grid-cols-2 2xl:grid-cols-5">
-          <Select size="sm" :model-value="filters.status" :options="statusOptions" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value || '') })" />
-          <Select size="sm" :model-value="filters.site" :options="siteOptions" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value || '') })" />
+          <Select :model-value="filters.status" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value ?? '') })">
+            <SelectTrigger class="h-8 text-xs">
+              <SelectValue placeholder="全部状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in statusOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select :model-value="filters.site" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value ?? '') })">
+            <SelectTrigger class="h-8 text-xs">
+              <SelectValue placeholder="全部站点" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in siteOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
           <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
-          <Select size="sm" :model-value="filters.mode" :options="modeOptions" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value || '') })" />
-          <Select size="sm" :model-value="filters.trigger" :options="triggerOptions" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value || '') })" />
+
+          <Select :model-value="filters.mode" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value ?? '') })">
+            <SelectTrigger class="h-8 text-xs">
+              <SelectValue placeholder="全部模式" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in modeOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select :model-value="filters.trigger" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value ?? '') })">
+            <SelectTrigger class="h-8 text-xs">
+              <SelectValue placeholder="全部触发" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in triggerOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div class="grid grid-cols-1 gap-2 xl:grid-cols-2">
-          <input :value="filters.dateFrom" type="datetime-local" class="w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary" @input="emitInput('dateFrom', $event)" />
-          <input :value="filters.dateTo" type="datetime-local" class="w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary" @input="emitInput('dateTo', $event)" />
+          <input :value="filters.dateFrom" type="datetime-local" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" @input="emitInput('dateFrom', $event)" />
+          <input :value="filters.dateTo" type="datetime-local" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" @input="emitInput('dateTo', $event)" />
         </div>
       </div>
 
       <div v-else class="space-y-3">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <div class="text-sm font-semibold text-text-primary">运行历史</div>
-            <div class="mt-1 text-2xs text-text-muted">共 {{ total }} 条</div>
+            <div class="text-sm font-semibold text-foreground">运行历史</div>
+            <div class="mt-1 text-2xs text-muted-foreground">共 {{ total }} 条</div>
           </div>
-          <span class="rounded-full border border-border-primary bg-bg-primary px-2.5 py-1 text-2xs text-text-tertiary">
+          <span class="rounded-full border border-border bg-background px-2.5 py-1 text-2xs text-muted-foreground/70">
             第 {{ page }} / {{ totalPages }} 页
           </span>
         </div>
 
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-7">
-          <Select size="sm" :model-value="filters.status" :options="statusOptions" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value || '') })" />
-          <Select size="sm" :model-value="filters.site" :options="siteOptions" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value || '') })" />
+          <Select :model-value="filters.status" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value ?? '') })">
+            <SelectTrigger class="h-9 text-xs">
+              <SelectValue placeholder="全部状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in statusOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select :model-value="filters.site" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value ?? '') })">
+            <SelectTrigger class="h-9 text-xs">
+              <SelectValue placeholder="全部站点" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in siteOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
           <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
-          <Select size="sm" :model-value="filters.mode" :options="modeOptions" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value || '') })" />
-          <Select size="sm" :model-value="filters.trigger" :options="triggerOptions" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value || '') })" />
-          <input :value="filters.dateFrom" type="datetime-local" class="w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary" @input="emitInput('dateFrom', $event)" />
-          <input :value="filters.dateTo" type="datetime-local" class="w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary" @input="emitInput('dateTo', $event)" />
+
+          <Select :model-value="filters.mode" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value ?? '') })">
+            <SelectTrigger class="h-9 text-xs">
+              <SelectValue placeholder="全部模式" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in modeOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select :model-value="filters.trigger" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value ?? '') })">
+            <SelectTrigger class="h-9 text-xs">
+              <SelectValue placeholder="全部触发" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in triggerOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <input :value="filters.dateFrom" type="datetime-local" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" @input="emitInput('dateFrom', $event)" />
+          <input :value="filters.dateTo" type="datetime-local" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" @input="emitInput('dateTo', $event)" />
         </div>
       </div>
     </div>
 
-    <div v-if="error" class="border-b border-border-primary px-3 py-2 text-2xs text-color-error">{{ error }}</div>
-    <div v-if="loading" class="flex flex-1 items-center justify-center px-4 py-14 text-sm text-text-muted">加载运行历史中...</div>
-    <div v-else-if="runs.length === 0" class="flex flex-1 items-center justify-center px-4 py-14 text-sm text-text-muted">暂无运行历史</div>
+    <div v-if="error" class="border-b border-border px-3 py-2 text-2xs text-destructive">{{ error }}</div>
+    <div v-if="loading" class="flex flex-1 items-center justify-center px-4 py-14 text-sm text-muted-foreground">加载运行历史中...</div>
+    <div v-else-if="runs.length === 0" class="flex flex-1 items-center justify-center px-4 py-14 text-sm text-muted-foreground">暂无运行历史</div>
 
     <div v-else class="flex-1 overflow-auto">
       <table class="w-full min-w-[1180px] text-sm">
-        <thead class="sticky top-0 z-10 bg-bg-secondary">
-          <tr class="border-b border-border-primary text-2xs text-text-tertiary">
+        <thead class="sticky top-0 z-10 bg-card">
+          <tr class="border-b border-border text-2xs text-muted-foreground/70">
             <th class="px-3 py-2 text-left font-medium">订阅</th>
             <th class="px-3 py-2 text-left font-medium">Run ID</th>
             <th class="px-3 py-2 text-left font-medium">运行状态</th>
@@ -75,12 +155,12 @@
             <th class="px-3 py-2 text-right font-medium">操作</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-border-primary">
+        <tbody class="divide-y divide-border">
           <tr
             v-for="run in runs"
             :key="run.run_id"
-            class="cursor-pointer transition-colors hover:bg-bg-hover"
-            :class="selectedRunId === run.run_id ? 'bg-bg-hover' : ''"
+            class="cursor-pointer transition-colors hover:bg-accent"
+            :class="selectedRunId === run.run_id ? 'bg-accent' : ''"
             @click="emit('open-run', run.run_id)"
           >
             <td class="px-3 py-2.5 align-middle">
@@ -93,36 +173,38 @@
                   <img
                     :src="getAvatarSrc(run.subscription_avatar, getAvatarKey(run))"
                     :alt="run.subscription_name"
-                    class="h-7 w-7 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
+                    class="h-7 w-7 rounded-full object-cover bg-background ring-1 ring-border"
                     referrerpolicy="no-referrer"
                     @error="(e) => handleAvatarError(e, getAvatarKey(run))"
                   >
                 </router-link>
                 <div class="min-w-0">
-                  <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ run.subscription_name }}</div>
+                  <div class="text-xs font-medium leading-5 text-foreground break-words">{{ run.subscription_name }}</div>
                 </div>
               </div>
             </td>
             <td class="px-3 py-2.5 align-middle">
-              <div class="max-w-[14rem] break-all font-mono text-2xs text-text-secondary">{{ run.run_id }}</div>
+              <div class="max-w-[14rem] break-all font-mono text-2xs text-muted-foreground">{{ run.run_id }}</div>
             </td>
             <td class="px-3 py-2.5 align-middle">
-              <StatusBadge size="xs" :show-dot="false" :variant="getVariant(run.status)" :label="getStatusLabel(run.status)" class="border-0" />
+              <Badge :variant="getBadgeVariant(run.status)" class="rounded-full">
+                {{ getStatusLabel(run.status) }}
+              </Badge>
             </td>
             <td class="px-3 py-2.5 align-middle">
-              <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">{{ getModeLabel(run.sync_mode) }}</span>
+              <span class="rounded-full border border-border bg-background px-2 py-0.5 text-2xs text-muted-foreground/70">{{ getModeLabel(run.sync_mode) }}</span>
             </td>
-            <td class="px-3 py-2.5 align-middle text-2xs text-text-secondary">{{ run.site || 'unknown' }}</td>
-            <td class="px-3 py-2.5 align-middle text-2xs text-text-secondary">{{ getTriggerLabel(run.trigger) }}</td>
-            <td class="px-3 py-2.5 align-middle text-2xs text-text-secondary">{{ getRunTime(run) }}</td>
-            <td class="px-3 py-2.5 align-middle text-2xs text-text-secondary">{{ formatDurationMs(run.duration_ms) }}</td>
-            <td class="px-3 py-2.5 align-middle text-2xs text-text-secondary">{{ formatRunVideoSummary(run) }}</td>
+            <td class="px-3 py-2.5 align-middle text-2xs text-muted-foreground">{{ run.site || 'unknown' }}</td>
+            <td class="px-3 py-2.5 align-middle text-2xs text-muted-foreground">{{ getTriggerLabel(run.trigger) }}</td>
+            <td class="px-3 py-2.5 align-middle text-2xs text-muted-foreground">{{ getRunTime(run) }}</td>
+            <td class="px-3 py-2.5 align-middle text-2xs text-muted-foreground">{{ formatDurationMs(run.duration_ms) }}</td>
+            <td class="px-3 py-2.5 align-middle text-2xs text-muted-foreground">{{ formatRunVideoSummary(run) }}</td>
             <td class="px-3 py-2.5 align-middle">
               <div class="flex items-center justify-end gap-2">
-                <Button size="xs" shape="pill" variant="secondary" @click.stop="emit('open-run', run.run_id)">详情</Button>
+                <Button variant="secondary" size="xs" class="rounded-full" @click.stop="emit('open-run', run.run_id)">详情</Button>
                 <router-link
                   :to="getSubscriptionLink(run.subscription_id)"
-                  class="inline-flex rounded-full border border-border-primary bg-bg-primary px-2.5 py-1 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                  class="inline-flex rounded-full border border-border bg-background px-2.5 py-1 text-2xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   @click.stop
                 >
                   频道
@@ -134,11 +216,11 @@
       </table>
     </div>
 
-    <div v-if="totalPages > 1" class="flex items-center justify-between border-t border-border-primary px-3 py-2.5">
-      <span class="text-2xs text-text-tertiary">第 {{ page }} / {{ totalPages }} 页</span>
+    <div v-if="totalPages > 1" class="flex items-center justify-between border-t border-border px-3 py-2.5">
+      <span class="text-2xs text-muted-foreground/70">第 {{ page }} / {{ totalPages }} 页</span>
       <div class="flex items-center gap-2">
-        <Button size="xs" shape="pill" variant="secondary" :disabled="page <= 1" @click="emit('change-page', page - 1)">上一页</Button>
-        <Button size="xs" shape="pill" variant="secondary" :disabled="page >= totalPages" @click="emit('change-page', page + 1)">下一页</Button>
+        <Button variant="secondary" size="xs" class="rounded-full" :disabled="page <= 1" @click="emit('change-page', page - 1)">上一页</Button>
+        <Button variant="secondary" size="xs" class="rounded-full" :disabled="page >= totalPages" @click="emit('change-page', page + 1)">下一页</Button>
       </div>
     </div>
   </div>
@@ -146,11 +228,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Button, Select, StatusBadge } from '@/components/common'
 import SyncSubscriptionSelect from '@/components/sync-center/SyncSubscriptionSelect.vue'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const props = withDefaults(defineProps<{
   embedded?: boolean
@@ -211,20 +295,20 @@ const emitInput = (key: string, event: Event) => {
   emit('set-filter', { key, value: target?.value || '' })
 }
 
-const getVariant = (status: string) => {
+const getBadgeVariant = (status: string) => {
   switch (status) {
     case 'success':
-      return 'success'
+      return 'secondary'
     case 'failed':
-      return 'error'
+      return 'destructive'
     case 'deferred':
     case 'timeout':
-      return 'warning'
+      return 'outline'
     case 'queued':
     case 'running':
-      return 'info'
-    default:
       return 'default'
+    default:
+      return 'outline'
   }
 }
 

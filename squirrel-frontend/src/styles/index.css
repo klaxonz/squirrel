@@ -30,42 +30,6 @@
     --font-size-lg: 1.125rem;
     --font-size-2xl: 1.5rem;
 
-    /* Design Tokens - Colors */
-    /* Background Colors */
-    --bg-primary: #0f0f0f;
-    --bg-secondary: #161616;
-    --bg-tertiary: #1f1f1f;
-    --bg-card: #212121;
-    --bg-elevated: #272727;
-    --bg-hover: #2a2a2a;
-    --bg-media: #000000;
-
-    /* Text Colors */
-    --text-primary: #e0e0e0;
-    --text-secondary: #888;
-    --text-tertiary: #666;
-    --text-muted: #aaa;
-    --text-accent: #f1f1f1;
-
-    /* Status Colors */
-    --color-primary: #ef4444;
-    --color-primary-hover: #dc2626;
-    --color-primary-active: #b91c1c;
-    --color-primary-rgb: 239, 68, 68;
-    --color-success: #22c55e;
-    --color-success-hover: #16a34a;
-    --color-error: #ef4444;
-    --color-error-hover: #dc2626;
-    --color-warning: #f59e0b;
-    --color-warning-hover: #d97706;
-    --color-info: #3b82f6;
-    --color-info-hover: #2563eb;
-
-    /* Border Colors */
-    --border-primary: rgba(255, 255, 255, 0.05);
-    --border-secondary: rgba(255, 255, 255, 0.1);
-    --border-hover: rgba(255, 255, 255, 0.15);
-
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -97,6 +61,31 @@
     --radius-xl: 0.75rem;
     --radius-2xl: 1rem;
     --radius-full: 9999px;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
   }
 
   /* Slightly narrower sidebar on smaller desktops */
@@ -151,8 +140,34 @@
   a:focus-visible,
   [role="button"]:focus-visible,
   [tabindex="0"]:focus-visible {
-    outline: 2px solid var(--color-info);
+    outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
@@ -160,7 +175,7 @@
 @layer components {
   /* 页面容器基础样式 */
   .page-container {
-    @apply flex flex-col h-full bg-bg-primary text-text-primary;
+    @apply flex flex-col h-full bg-background text-foreground;
     pointer-events: auto;
   }
 
@@ -208,5 +223,14 @@
   }
   .scrollbar::-webkit-scrollbar {
     display: none;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }

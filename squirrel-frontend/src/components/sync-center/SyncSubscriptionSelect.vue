@@ -2,7 +2,7 @@
   <div ref="rootRef" class="relative">
     <button
       type="button"
-      class="w-full rounded-md border border-border-primary bg-bg-secondary px-2.5 py-1.5 pr-8 text-left text-xs text-text-primary transition-colors duration-150 focus:border-border-hover focus:outline-none focus:ring-1 focus:ring-border-hover"
+      class="w-full rounded-md border border-border bg-card px-2.5 py-1.5 pr-8 text-left text-xs text-foreground transition-colors duration-150 focus:border-border focus:outline-none focus:ring-1 focus:ring-border"
       :aria-expanded="isOpen ? 'true' : 'false'"
       @click="toggle"
       @keydown="handleTriggerKeydown"
@@ -12,16 +12,16 @@
           v-if="selectedOption?.avatar"
           :src="getAvatarSrc(selectedOption.avatar, `subscription-trigger-${selectedOption.value}`)"
           :alt="selectedOption.label"
-          class="h-4 w-4 shrink-0 rounded-full object-cover ring-1 ring-border-primary"
+          class="h-4 w-4 shrink-0 rounded-full object-cover ring-1 ring-border"
           referrerpolicy="no-referrer"
           @error="(event) => handleAvatarError(event, `subscription-trigger-${selectedOption?.value || 'unknown'}`)"
         >
-        <span class="truncate" :class="selectedOption ? 'text-text-primary' : 'text-text-muted'">
+        <span class="truncate" :class="selectedOption ? 'text-foreground' : 'text-muted-foreground'">
           {{ selectedOption?.label || placeholder }}
         </span>
       </div>
       <span
-        class="pointer-events-none absolute right-3 top-1.5 text-text-muted transition-transform duration-150"
+        class="pointer-events-none absolute right-3 top-1.5 text-muted-foreground transition-transform duration-150"
         :class="isOpen ? 'rotate-180' : ''"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -33,15 +33,15 @@
     <transition name="select-fade">
       <div
         v-if="isOpen"
-        class="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-border-secondary bg-bg-secondary shadow-2xl"
+        class="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
       >
-        <div class="border-b border-border-primary p-2">
+        <div class="border-b border-border p-2">
           <input
             ref="searchInputRef"
             v-model="searchQuery"
             type="text"
             placeholder="搜索频道"
-            class="w-full rounded-md border border-border-primary bg-bg-primary px-3 py-2 text-xs text-text-primary outline-none transition-colors focus:border-border-hover focus:ring-1 focus:ring-border-hover"
+            class="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground outline-none transition-colors focus:border-border focus:ring-1 focus:ring-border"
             @keydown.escape.stop="close"
           >
         </div>
@@ -50,11 +50,11 @@
           <button
             type="button"
             class="mx-2 flex w-[calc(100%-1rem)] items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors"
-            :class="isSelected(allOption) ? 'bg-bg-elevated font-medium text-text-primary' : 'text-text-primary hover:bg-bg-hover'"
+            :class="isSelected(allOption) ? 'bg-muted font-medium text-foreground' : 'text-foreground hover:bg-accent'"
             @click="selectOption(allOption)"
           >
             <span class="truncate">{{ allOption.label }}</span>
-            <span v-if="isSelected(allOption)" class="text-xs text-text-tertiary">✓</span>
+            <span v-if="isSelected(allOption)" class="text-xs text-muted-foreground/70">✓</span>
           </button>
 
           <button
@@ -62,23 +62,23 @@
             :key="option.value"
             type="button"
             class="mx-2 mt-1 flex w-[calc(100%-1rem)] items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors"
-            :class="isSelected(option) ? 'bg-bg-elevated font-medium text-text-primary' : 'text-text-primary hover:bg-bg-hover'"
+            :class="isSelected(option) ? 'bg-muted font-medium text-foreground' : 'text-foreground hover:bg-accent'"
             @click="selectOption(option)"
           >
             <div class="flex min-w-0 items-center gap-2">
               <img
                 :src="getAvatarSrc(option.avatar, `subscription-option-${option.value}`)"
                 :alt="option.label"
-                class="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-border-primary"
+                class="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-border"
                 referrerpolicy="no-referrer"
                 @error="(event) => handleAvatarError(event, `subscription-option-${option.value}`)"
               >
               <span class="truncate">{{ option.label }}</span>
             </div>
-            <span v-if="isSelected(option)" class="text-xs text-text-tertiary">✓</span>
+            <span v-if="isSelected(option)" class="text-xs text-muted-foreground/70">✓</span>
           </button>
 
-          <div v-if="!filteredOptions.length" class="px-3 py-3 text-xs text-text-muted">
+          <div v-if="!filteredOptions.length" class="px-3 py-3 text-xs text-muted-foreground">
             没有匹配的频道
           </div>
         </div>

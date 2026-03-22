@@ -1,5 +1,5 @@
 <template>
-  <div class="subscribed-page flex flex-col h-full bg-bg-primary text-text-primary">
+  <div class="subscribed-page flex flex-col h-full bg-background text-foreground">
     <!-- 顶部操作栏 - 对齐全部视频页的标签样式 -->
     <div class="toolbar-container">
       <FeedToolbar
@@ -13,24 +13,22 @@
         @refresh="refreshList"
       >
         <Button
-          class="ml-2 whitespace-nowrap"
-          size="xs"
-          shape="pill"
           variant="secondary"
+          size="xs"
+          class="ml-2 whitespace-nowrap rounded-full"
           @click="showAddDialog = true"
         >
           <PlusIcon class="h-4 w-4" />
-          <span class="ml-1">添加订阅</span>
+          <span>添加订阅</span>
         </Button>
         <Button
-          class="ml-2 whitespace-nowrap"
+          variant="destructive"
           size="xs"
-          shape="pill"
-          variant="danger"
+          class="ml-2 whitespace-nowrap rounded-full"
           @click="showImportDialog = true"
         >
           <ArrowDownTrayIcon class="h-4 w-4" />
-          <span class="ml-1">导入订阅</span>
+          <span>导入订阅</span>
         </Button>
 
       </FeedToolbar>
@@ -42,27 +40,31 @@
       @scroll="handleScrollPosition"
     >
       <div class="content-container" v-if="loadError">
-        <InlineAlert
-          :message="`加载失败：${loadError?.message || loadError}`"
-          action-label="重试"
-          @action="refreshList"
-        />
+        <Alert variant="destructive" class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <AlertTitle>加载失败</AlertTitle>
+            <AlertDescription class="break-words">
+              {{ `加载失败：${loadError?.message || loadError}` }}
+            </AlertDescription>
+          </div>
+          <Button variant="secondary" size="sm" class="rounded-full" @click="refreshList">重试</Button>
+        </Alert>
       </div>
       <div class="content-container">
         <!-- 频道列表 -->
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
           <div v-for="subscription in subscriptions" :key="subscription.id"
-               class="channel-item bg-bg-card rounded-lg overflow-hidden hover:bg-bg-elevated transition-all duration-200 relative group cursor-pointer"
+               class="channel-item bg-card rounded-lg overflow-hidden hover:bg-muted transition-all duration-200 relative group cursor-pointer"
 
                :class="{ 'is-refreshing': isResetting }"
                @click="getSubscriptionVideos(subscription.id)"
           >
-            <div class="flex justify-center items-center p-3 bg-bg-secondary">
+            <div class="flex justify-center items-center p-3 bg-card">
               <div class="relative w-14 h-14">
                 <img
                   :alt="subscription.name"
                   :src="getAvatarSrc(subscription.avatar, subscription.id)"
-                  class="w-full h-full rounded-full object-cover ring-1 ring-border-primary transition-transform duration-300 group-hover:scale-105"
+                  class="w-full h-full rounded-full object-cover ring-1 ring-border transition-transform duration-300 group-hover:scale-105"
                   referrerpolicy="no-referrer"
                   @error="(e) => handleAvatarError(e, subscription.id)"
                 />
@@ -72,22 +74,22 @@
 
             <div class="p-2 text-center">
               <div class="flex items-center justify-center gap-1 mb-0.5">
-                <h3 class="text-xs font-semibold truncate text-text-primary">{{ subscription.name }}</h3>
+                <h3 class="text-xs font-semibold truncate text-foreground">{{ subscription.name }}</h3>
                 <span v-if="subscription.type === 'PLAYLIST'" 
-                      class="text-2xs px-1 py-0.5 rounded bg-color-info/20 text-color-info whitespace-nowrap"
+                      class="text-2xs px-1 py-0.5 rounded bg-blue-500/20 text-blue-500 whitespace-nowrap"
                       title="播放列表">
                   播放列表
                 </span>
               </div>
-              <p class="text-2xs text-text-muted mt-0.5">
+              <p class="text-2xs text-muted-foreground mt-0.5">
                 总视频: {{ subscription.total_videos }} | 已解析: {{ subscription.total_extract }}
               </p>
-              <p class="text-2xs text-text-muted mt-0.5">订阅时间: {{ formatDate(subscription.created_at) }}</p>
+              <p class="text-2xs text-muted-foreground mt-0.5">订阅时间: {{ formatDate(subscription.created_at) }}</p>
             </div>
 
-            <button class="settings-toggle absolute top-1 right-1 p-1 bg-bg-tertiary/50 rounded-full hover:bg-bg-tertiary/75 transition-colors duration-200 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+            <button class="settings-toggle absolute top-1 right-1 p-1 bg-muted/50 rounded-full hover:bg-muted/75 transition-colors duration-200 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                     @click.stop="openSettings(subscription)">
-              <svg class="h-3.5 w-3.5 text-text-primary" fill="currentColor" viewBox="0 0 20 20"
+              <svg class="h-3.5 w-3.5 text-foreground" fill="currentColor" viewBox="0 0 20 20"
                    xmlns="http://www.w3.org/2000/svg">
                 <path clip-rule="evenodd"
                       d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
@@ -97,7 +99,7 @@
 
             <!-- YouTube风格的更新状态指示器 -->
             <div v-if="getRefreshState(subscription.id).isRefreshing"
-                 class="absolute top-1.5 left-1.5 bg-bg-elevated text-text-primary/80 text-2xs px-1.5 py-0.5 rounded-md">
+                 class="absolute top-1.5 left-1.5 bg-muted text-foreground/80 text-2xs px-1.5 py-0.5 rounded-md">
               <span>{{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}</span>
             </div>
           </div>
@@ -110,34 +112,37 @@
             class="mt-4 mb-4 text-center loading-trigger h-20 flex items-center justify-center"
         >
           <div v-if="loading" class="flex items-center justify-center space-x-2">
-            <div class="w-2 h-2 bg-color-error rounded-full animate-bounce"></div>
-            <div class="w-2 h-2 bg-color-error rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-            <div class="w-2 h-2 bg-color-error rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+            <div class="w-2 h-2 bg-destructive rounded-full animate-bounce"></div>
+            <div class="w-2 h-2 bg-destructive rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+            <div class="w-2 h-2 bg-destructive rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
           </div>
         </div>
 
         <!-- 全部加载完毕 -->
-        <div v-if="allLoaded" class="mt-4 mb-4 text-center text-text-muted">
+        <div v-if="allLoaded" class="mt-4 mb-4 text-center text-muted-foreground">
           <p>已经到底啦</p>
         </div>
       </div>
     </div>
 
     <!-- 设置模态框 -->
-    <div v-if="showSettings" class="fixed inset-0 bg-overlay-dark-50 flex items-center justify-center z-50"
+    <div v-if="showSettings" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
          @click.self="closeSettings">
-      <div class="bg-bg-card border border-border-primary rounded-lg p-6 w-full max-w-md">
-        <h2 class="text-xl font-bold mb-4 text-text-primary">{{ selectedSubscription.name }} 设置</h2>
+      <div class="bg-card border border-border rounded-lg p-6 w-full max-w-md">
+        <h2 class="text-xl font-bold mb-4 text-foreground">{{ selectedSubscription.name }} 设置</h2>
         <div class="space-y-6">
           <div class="flex items-center justify-between">
-            <span class="text-text-primary">标记为敏感内容</span>
-            <ToggleSwitch v-model="selectedSubscription.is_nsfw" @update:modelValue="updateNsfwStatus"/>
+            <span class="text-foreground">标记为敏感内容</span>
+            <Switch
+              :checked="!!selectedSubscription.is_nsfw"
+              @update:checked="(value) => { selectedSubscription.is_nsfw = !!value; updateNsfwStatus(!!value) }"
+            />
           </div>
 
           <!-- 手动更新按钮 -->
           <div class="space-y-3">
             <button
-              class="w-full py-2 bg-bg-elevated text-text-primary rounded-lg hover:bg-bg-tertiary disabled:bg-bg-secondary disabled:cursor-not-allowed transition-colors duration-200 text-sm"
+              class="w-full py-2 bg-muted text-foreground rounded-lg hover:bg-muted disabled:bg-card disabled:cursor-not-allowed transition-colors duration-200 text-sm"
               :disabled="getRefreshState(selectedSubscription.id).isRefreshing"
               @click="handleRefreshSubscription(selectedSubscription.id)"
             >
@@ -151,9 +156,9 @@
 
             <!-- 错误状态和重试 -->
             <div v-if="getRefreshState(selectedSubscription.id).status === 'failed'" class="text-xs">
-              <p class="text-color-error mb-2">{{ getRefreshState(selectedSubscription.id).lastError || '更新失败' }}</p>
+              <p class="text-destructive mb-2">{{ getRefreshState(selectedSubscription.id).lastError || '更新失败' }}</p>
               <button
-                class="w-full py-1.5 bg-bg-elevated text-text-primary rounded hover:bg-bg-tertiary transition-colors duration-200"
+                class="w-full py-1.5 bg-muted text-foreground rounded hover:bg-muted transition-colors duration-200"
                 @click="handleRetryRefresh(selectedSubscription.id)"
               >
                 重试更新
@@ -164,18 +169,18 @@
           <button
             :disabled="getRefreshState(selectedSubscription.id).isRefreshing"
             :class="[
-              'w-full py-2 text-text-primary rounded-lg transition-colors duration-200 text-sm',
+              'w-full py-2 text-foreground rounded-lg transition-colors duration-200 text-sm',
               getRefreshState(selectedSubscription.id).isRefreshing
-                ? 'bg-bg-secondary cursor-not-allowed'
-                : 'bg-color-error hover:bg-color-error-hover'
+                ? 'bg-card cursor-not-allowed'
+                : 'bg-destructive hover:bg-destructive/90'
             ]"
             @click="unsubscribe(selectedSubscription.id)"
           >
             取消订阅
           </button>
-          <p v-if="unsubscribeError" class="mt-2 text-xs text-color-error">{{ unsubscribeError }}</p>
+          <p v-if="unsubscribeError" class="mt-2 text-xs text-destructive">{{ unsubscribeError }}</p>
         </div>
-        <button class="mt-6 w-full py-2 bg-bg-elevated text-text-primary rounded-lg hover:bg-bg-tertiary transition-colors duration-200 text-sm font-medium"
+        <button class="mt-6 w-full py-2 bg-muted text-foreground rounded-lg hover:bg-muted transition-colors duration-200 text-sm font-medium"
                 @click="closeSettings">
           关闭
         </button>
@@ -203,7 +208,9 @@
 <script setup>
 import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';       
 import FeedToolbar from '@/components/feed/FeedToolbar.vue';
-import { Button, InlineAlert, ToggleSwitch } from '@/components/common';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { PlusIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';        
 import {useRouter} from "vue-router";
 import { useRefreshTriggers } from '../composables/useRefreshTriggers';
@@ -644,6 +651,6 @@ onUnmounted(() => {
   @keyframes shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
 
   .avatar-sheen {
-    background: linear-gradient(to bottom, transparent, var(--bg-tertiary));
+    background: linear-gradient(to bottom, transparent, hsl(var(--muted)));
   }
 </style>

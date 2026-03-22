@@ -1,7 +1,7 @@
 /* 视频卡片公共样式 */
 
 .video-card {
-  @apply bg-bg-card rounded-lg overflow-hidden shadow-sm;
+  @apply bg-card rounded-lg overflow-hidden shadow-sm;
   @apply transition-all duration-300 ease-in-out;
   @apply relative;
   width: 100%;
@@ -18,7 +18,7 @@
   @apply relative cursor-pointer overflow-hidden;
   position: relative;
   padding-top: 56.25%; /* 16:9 宽高比 */
-  background-color: var(--bg-primary);
+  background-color: hsl(var(--background));
 }
 
 .video-card-thumbnail img {
@@ -33,23 +33,23 @@
 /* 视频时长标签 */
 .video-duration {
   @apply absolute bottom-1 right-1;
-  @apply bg-bg-tertiary/70 text-text-primary;
+  @apply bg-muted/70 text-foreground;
   @apply text-2xs px-1 py-0.5 rounded;
 }
 
 /* 进度条 */
 .video-progress-bar {
   @apply absolute bottom-0 left-0 right-0;
-  @apply h-[2px] bg-bg-tertiary/40 backdrop-blur-sm;
+  @apply h-[2px] bg-muted/40 backdrop-blur-sm;
 }
 
 .video-progress-indicator {
-  @apply h-full bg-color-primary/90 transition-all duration-200;
+  @apply h-full bg-primary/90 transition-all duration-200;
   border-radius: 1px;
 }
 
 .video-card:hover .video-progress-indicator {
-  @apply bg-color-primary-hover;
+  @apply bg-primary;
   height: 3px;
   margin-top: -1px;
 }
@@ -60,8 +60,8 @@
 }
 
 .video-title {
-  @apply text-2xs text-text-primary font-medium;
-  @apply cursor-pointer hover:text-color-info;
+  @apply text-2xs text-foreground font-medium;
+  @apply cursor-pointer hover:text-blue-500;
   @apply transition-colors duration-200;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -72,7 +72,7 @@
 
 .video-meta {
   @apply flex items-center justify-between;
-  @apply text-2xs text-text-muted pt-1;
+  @apply text-2xs text-muted-foreground pt-1;
 }
 
 /* 作者头像 */
@@ -82,11 +82,11 @@
 
 .author-avatar {
   @apply w-4 h-4 rounded-full object-cover flex-shrink-0;
-  @apply cursor-pointer ring-1 ring-bg-card;
+  @apply cursor-pointer ring-1 ring-card;
 }
 
 .author-avatar.default {
-  @apply bg-text-tertiary text-text-primary flex items-center justify-center;
+  @apply bg-muted-foreground/20 text-foreground flex items-center justify-center;
   @apply text-2xs font-medium;
 }
 
@@ -94,7 +94,7 @@
 .channel-popup {
   @apply opacity-0 invisible;
   @apply absolute left-0 bottom-full mb-2;
-  @apply bg-bg-card rounded-lg shadow-lg;
+  @apply bg-card rounded-lg shadow-lg;
   @apply transition-all duration-200 z-50;
   @apply w-max max-w-[300px] p-3;
   transform-origin: top left;
