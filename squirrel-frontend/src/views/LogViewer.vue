@@ -1,21 +1,26 @@
 <template>
   <div class="log-viewer-container bg-background text-foreground h-full flex flex-col min-h-0">
     <div class="toolbar-container pt-6 pb-4">
-      <!-- 顶部工具栏 -->
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 class="text-xl font-medium text-foreground">日志查看器</h1>
-          <p class="text-sm text-muted-foreground">查看后端运行与错误日志。</p>
+      <div class="log-hero">
+        <div class="log-hero__copy">
+          <span class="log-eyebrow">diagnostics desk</span>
+          <h1 class="log-hero__title">日志查看器</h1>
+          <p class="log-hero__description">把错误、链路和上下文折叠成一条连续的排障时间线，适合快速筛选 trace、定位异常和导出现场。</p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-full text-xs text-muted-foreground/70">
+        <div class="log-hero__meta">
+          <div class="log-hero__pill">
+            <span class="log-hero__label">总量</span>
             <span>共 {{ totalLogs }} 条</span>
-            <span v-if="filters.keyword || filters.level" class="text-amber-500">已筛选</span>
+            <span v-if="hasActiveFilters" class="text-warning">已筛选</span>
+          </div>
+          <div class="log-hero__pill">
+            <span class="log-hero__label">自动刷新</span>
+            <span>{{ autoRefresh ? '5s' : '关闭' }}</span>
           </div>
           <button
             @click="copyAllLogs"
             :disabled="logs.length === 0"
-            class="px-3 py-2 text-xs md:text-sm bg-muted hover:bg-accent rounded-full transition-colors disabled:opacity-50 flex items-center gap-1"
+            class="log-toolbar-button"
             :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
           >
             <ClipboardDocumentIcon class="h-4 w-4" />
@@ -23,15 +28,14 @@
           </button>
           <button
             @click="toggleAutoRefresh"
-            class="px-3 py-2 text-xs md:text-sm rounded-full transition-colors"
-            :class="autoRefresh ? 'bg-muted hover:bg-accent text-foreground' : 'bg-muted hover:bg-accent'"
+            class="log-toolbar-button"
           >
             {{ autoRefresh ? '停止自动刷新' : '开启自动刷新' }}
           </button>
           <button
             @click="loadLogs"
             :disabled="loading"
-            class="px-3 py-2 text-xs md:text-sm bg-muted hover:bg-accent rounded-full transition-colors disabled:opacity-50 flex items-center justify-center gap-2 w-20"
+            class="log-toolbar-button log-toolbar-button--primary"
           >
             <span
               v-if="loading"
@@ -44,24 +48,21 @@
     </div>
 
     <div class="content-container py-6 space-y-4 flex-1 flex flex-col min-h-0 overflow-hidden">
-      <!-- 搜索和过滤区域 - 紧凑版 -->
-      <div class="bg-card border border-border rounded-lg p-4">
+      <div class="log-filter-shell">
         <div class="flex flex-wrap gap-3 items-end">
-          <!-- 搜索框 -->
           <div class="flex-1 min-w-[200px]">
             <input
               v-model="filters.keyword"
               @keyup.enter="applyFilters"
               type="text"
               placeholder="搜索日志内容、trace_id..."
-              class="w-full bg-muted border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-border"
+              class="log-search-input"
             />
           </div>
 
-          <!-- 日志级别过滤 -->
           <div class="w-32">
             <Select :model-value="filters.level" @update:model-value="(value) => { filters.level = value; applyFilters(); }">
-              <SelectTrigger class="h-9 text-xs">
+              <SelectTrigger class="h-10 text-xs rounded-full border-border/80 bg-background/70">
                 <SelectValue placeholder="级别" />
               </SelectTrigger>
               <SelectContent>
@@ -72,10 +73,9 @@
             </Select>
           </div>
 
-          <!-- 日志文件选择 -->
           <div class="w-48">
             <Select :model-value="filters.filename" @update:model-value="(value) => { filters.filename = value; applyFilters(); }">
-              <SelectTrigger class="h-9 text-xs">
+              <SelectTrigger class="h-10 text-xs rounded-full border-border/80 bg-background/70">
                 <SelectValue placeholder="日志文件" />
               </SelectTrigger>
               <SelectContent>
@@ -86,17 +86,16 @@
             </Select>
           </div>
 
-          <!-- 操作按钮 -->
           <div class="flex gap-2">
             <button
               @click="clearFilters"
-              class="px-3 py-2 text-xs md:text-sm bg-muted hover:bg-accent rounded-full transition-colors whitespace-nowrap"
+              class="log-toolbar-button"
             >
               清空
             </button>
             <button
               @click="applyFilters"
-              class="px-3 py-2 text-xs md:text-sm bg-muted hover:bg-accent rounded-full transition-colors whitespace-nowrap"
+              class="log-toolbar-button log-toolbar-button--primary"
             >
               应用
             </button>
@@ -104,8 +103,7 @@
         </div>
       </div>
 
-      <!-- 日志列表 -->
-      <div class="bg-card border border-border rounded-lg overflow-hidden flex flex-col min-h-0 flex-1">
+      <div class="log-stream-shell overflow-hidden flex flex-col min-h-0 flex-1">
 
         <div v-if="loading && logs.length === 0" class="text-center py-8 text-sm text-muted-foreground">
           加载中...
@@ -130,24 +128,22 @@
               :data-index="index"
             >
               <div
-                class="log-entry border-b border-border px-3 py-2 hover:bg-muted transition-colors group relative"
+                class="log-entry border-b border-border px-3 py-3 group relative"
                 :class="getLogLevelClass(item.level)"
               >
-                <!-- 复制按钮 -->
                 <button
                   @click="copyLog(item)"
-                  class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-muted hover:bg-accent text-muted-foreground hover:text-foreground px-2 py-1 rounded text-2xs flex items-center gap-1"
+                  class="log-copy-button"
                   :title="'复制日志'"
                 >
                   <ClipboardDocumentIcon class="h-3 w-3" />
-                  <span v-if="copiedLogId === item.id" class="text-emerald-500">已复制</span>
+                  <span v-if="copiedLogId === item.id" class="text-success">已复制</span>
                   <span v-else>复制</span>
                 </button>
 
-                <!-- 日志头部 -->
                 <div class="flex items-center gap-2 mb-1 flex-wrap pr-16">
                   <span
-                    class="text-2xs font-semibold tracking-wide"
+                    class="log-level-badge"
                     :class="getLevelBadgeClass(item.level)"
                   >
                     {{ item.level }}
@@ -160,7 +156,7 @@
                   >
                     <span
                       @click="filterByTraceId(item.trace_id)"
-                      class="text-muted-foreground text-2xs font-mono bg-muted px-1.5 py-0.5 rounded cursor-pointer hover:bg-accent transition-colors" 
+                      class="log-trace-chip" 
                       :title="'点击筛选 Trace ID: ' + item.trace_id"
                   >
                       {{ item.trace_id.substring(0, 8) }}
@@ -170,8 +166,7 @@
                   <span class="text-muted-foreground text-2xs ml-auto">行 {{ item.line_num }}</span>
                 </div>
 
-                <!-- 日志内容 -->
-                <div class="log-message font-mono text-xs whitespace-pre-wrap break-all ml-1 pl-2 border-l-2"
+                <div class="log-message font-mono text-xs whitespace-pre-wrap break-all ml-1 pl-3 border-l-2"
                      :class="getMessageBorderClass(item.level)">
                   {{ item.message }}
                 </div>
@@ -225,6 +220,8 @@ const fileOptions = computed(() => {
     label: `${file.name} (${formatFileSize(file.size)})`
   }));
 });
+
+const hasActiveFilters = computed(() => Boolean(filters.value.keyword || filters.value.level))
 
 
 // 自动刷新定时器
@@ -437,29 +434,31 @@ function formatFileSize(bytes) {
 // 获取日志级别样式
 function getLevelBadgeClass(level) {
   const classes = {
-    DEBUG: 'text-muted-foreground/70',
-    INFO: 'text-blue-500',
-    WARNING: 'text-amber-500',
-    ERROR: 'text-destructive',
-    CRITICAL: 'text-destructive'
+    DEBUG: 'log-level-badge--debug',
+    INFO: 'log-level-badge--info',
+    WARNING: 'log-level-badge--warning',
+    ERROR: 'log-level-badge--error',
+    CRITICAL: 'log-level-badge--critical'
   };
-  return classes[level] || 'text-muted-foreground/70';
+  return classes[level] || 'log-level-badge--debug';
 }
 
 function getLogLevelClass(level) {
   const classes = {
-    ERROR: 'bg-destructive/10',
-    CRITICAL: 'bg-destructive/20',
-    WARNING: 'bg-amber-500/10'
+    DEBUG: 'log-entry--debug',
+    INFO: 'log-entry--info',
+    WARNING: 'log-entry--warning',
+    ERROR: 'log-entry--error',
+    CRITICAL: 'log-entry--critical'
   };
-  return classes[level] || '';
+  return classes[level] || 'log-entry--debug';
 }
 
 function getMessageBorderClass(level) {
   const classes = {
     DEBUG: 'border-border',
-    INFO: 'border-blue-500/40',
-    WARNING: 'border-amber-500/40',
+    INFO: 'border-info/40',
+    WARNING: 'border-warning/45',
     ERROR: 'border-destructive/60',
     CRITICAL: 'border-destructive'
   };
@@ -497,6 +496,116 @@ function getMessageBorderClass(level) {
   font-family: var(--font-sans);
 }
 
+.log-hero,
+.log-filter-shell,
+.log-stream-shell {
+  border: 1px solid hsl(var(--border) / 0.76);
+  background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
+  box-shadow: 0 20px 52px hsl(var(--foreground) / 0.045);
+}
+
+.log-hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.14), transparent 34%),
+    radial-gradient(circle at bottom right, hsl(var(--secondary) / 0.9), transparent 38%),
+    linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.94));
+}
+
+.log-eyebrow,
+.log-hero__label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: hsl(var(--muted-foreground));
+}
+
+.log-hero__title {
+  margin-top: 0.6rem;
+  font-size: clamp(1.85rem, 2vw, 2.45rem);
+  line-height: 1.05;
+  font-weight: 600;
+}
+
+.log-hero__description {
+  margin-top: 0.75rem;
+  max-width: 44rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.log-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.log-hero__pill,
+.log-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--background) / 0.72);
+  color: hsl(var(--foreground));
+  transition: transform 160ms ease, background-color 160ms ease, opacity 160ms ease;
+}
+
+.log-toolbar-button:hover:not(:disabled) {
+  background: hsl(var(--accent));
+}
+
+.log-toolbar-button:disabled {
+  opacity: 0.5;
+}
+
+.log-toolbar-button--primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: 0 16px 36px hsl(var(--primary) / 0.18);
+}
+
+.log-filter-shell {
+  padding: 1rem;
+  border-radius: 1.5rem;
+}
+
+.log-search-input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.72rem 1rem;
+  border: 1px solid hsl(var(--border) / 0.85);
+  border-radius: 999px;
+  background: hsl(var(--background) / 0.72);
+  color: hsl(var(--foreground));
+  font-size: 0.84rem;
+}
+
+.log-search-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.log-search-input:focus {
+  outline: none;
+  border-color: hsl(var(--primary) / 0.45);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.08);
+}
+
+.log-stream-shell {
+  border-radius: 1.5rem;
+}
+
 .scroller {
   overflow-y: auto;
 }
@@ -520,10 +629,119 @@ function getMessageBorderClass(level) {
 
 .log-message {
   color: hsl(var(--foreground));
+  line-height: 1.65;
 }
 
 .log-entry {
   cursor: default;
+  transition: background-color 160ms ease;
+}
+
+.log-entry--debug:hover,
+.log-entry--info:hover,
+.log-entry--warning:hover,
+.log-entry--error:hover,
+.log-entry--critical:hover {
+  background-color: hsl(var(--accent) / 0.55);
+}
+
+.log-entry--debug {
+  background: transparent;
+}
+
+.log-entry--info {
+  background: hsl(var(--info) / 0.06);
+}
+
+.log-entry--warning {
+  background: hsl(var(--warning) / 0.08);
+}
+
+.log-entry--error {
+  background: hsl(var(--destructive) / 0.08);
+}
+
+.log-entry--critical {
+  background: hsl(var(--destructive) / 0.12);
+}
+
+.log-copy-button {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  opacity: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--background) / 0.88);
+  color: hsl(var(--muted-foreground));
+  transition: opacity 160ms ease, background-color 160ms ease;
+}
+
+.group:hover .log-copy-button {
+  opacity: 1;
+}
+
+.log-copy-button:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.log-level-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  border: 1px solid transparent;
+}
+
+.log-level-badge--debug {
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
+}
+
+.log-level-badge--info {
+  color: hsl(var(--info));
+  background: hsl(var(--info) / 0.12);
+  border-color: hsl(var(--info) / 0.2);
+}
+
+.log-level-badge--warning {
+  color: hsl(var(--warning));
+  background: hsl(var(--warning) / 0.12);
+  border-color: hsl(var(--warning) / 0.2);
+}
+
+.log-level-badge--error,
+.log-level-badge--critical {
+  color: hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.12);
+  border-color: hsl(var(--destructive) / 0.24);
+}
+
+.log-trace-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.68rem;
+  font-family: var(--font-mono, monospace);
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.log-trace-chip:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
 
 select,

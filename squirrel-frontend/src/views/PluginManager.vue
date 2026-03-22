@@ -1,33 +1,32 @@
 <template>
   <div class="plugin-manager bg-background text-foreground h-full flex flex-col min-h-0">
-    <!-- 顶部操作区 -->
     <div class="toolbar-container pt-6 pb-4">
-      <div class="flex flex-col gap-4">
-        <div>
-          <h1 class="text-2xl font-semibold text-foreground">插件管理</h1>
-          <p class="text-sm text-muted-foreground mt-1">导入、启用或卸载插件，控制后端扩展能力。</p>
+      <div class="plugin-hero">
+        <div class="plugin-hero__copy">
+          <span class="plugin-eyebrow">extension control room</span>
+          <h1 class="plugin-hero__title">插件管理</h1>
+          <p class="plugin-hero__description">管理扩展资产与站点连通性，让插件状态、Cookie、登录检测和可访问性落在一套清晰的运营视图里。</p>
         </div>
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <!-- 标签页切换 -->
-          <div class="inline-flex items-center gap-1 p-1 rounded-full bg-card border border-border">
+        <div class="plugin-hero__controls">
+          <div class="plugin-tab-switch">
             <button
               @click="currentTab = 'plugins'"
-              class="px-4 py-2 text-sm font-medium rounded-full transition-colors"
-              :class="currentTab === 'plugins' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-accent'"
+              class="plugin-tab-switch__button"
+              :class="{ 'plugin-tab-switch__button--active': currentTab === 'plugins' }"
             >
               插件列表
             </button>
             <button
               @click="currentTab = 'connectivity'"
-              class="px-4 py-2 text-sm font-medium rounded-full transition-colors"
-              :class="currentTab === 'connectivity' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-accent'"
+              class="plugin-tab-switch__button"
+              :class="{ 'plugin-tab-switch__button--active': currentTab === 'connectivity' }"
             >
               站点连通性
             </button>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="plugin-hero__actions">
             <template v-if="currentTab === 'plugins'">
-              <label class="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:bg-accent rounded-full cursor-pointer transition-colors">
+              <label class="plugin-pill-button cursor-pointer">
                 <input
                   type="file"
                   accept=".zip"
@@ -38,14 +37,14 @@
                 <span class="text-sm font-medium">{{ selectedFile ? selectedFile.name : '选择文件' }}</span>
               </label>
               <button
-                class="px-4 py-2 bg-destructive hover:bg-destructive/90 rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                class="plugin-primary-action"
                 :disabled="!selectedFile || installing"
                 @click="handleInstall"
               >
                 {{ installing ? '安装中...' : '导入插件' }}
               </button>
               <button
-                class="p-2 bg-card border border-border hover:bg-accent rounded-full transition-colors disabled:opacity-40"
+                class="plugin-pill-icon"
                 :disabled="reloading || loading"
                 @click="handleReload"
                 title="重新加载插件"
@@ -54,7 +53,7 @@
               </button>
             </template>
             <template v-else>
-              <label class="flex items-center gap-2 px-3 py-2 bg-muted border border-border hover:bg-accent rounded-full cursor-pointer transition-colors text-xs md:text-sm">
+              <label class="plugin-pill-button cursor-pointer text-xs md:text-sm">
                 <input
                   type="file"
                   accept=".txt"
@@ -68,21 +67,21 @@
               <button
                 @click="handleImportAllCookies"
                 :disabled="!selectedCookiesFile || importingCookies"
-                class="px-3 py-2 bg-muted border border-border hover:bg-accent rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                class="plugin-pill-button text-xs md:text-sm"
               >
                 {{ importingCookies ? '导入中...' : '导入所有站点 Cookie' }}
               </button>
               <button
                 @click="handleSyncCookieCloud"
                 :disabled="syncingCookieCloud"
-                class="px-3 py-2 bg-muted border border-border hover:bg-accent rounded-full text-xs md:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                class="plugin-pill-button text-xs md:text-sm"
               >
                 {{ syncingCookieCloud ? '同步中...' : '从 CookieCloud 同步' }}
               </button>
               <button
                 @click="handleTestAll"
                 :disabled="testingAll || loadingSites"
-                class="px-4 py-2 bg-destructive hover:bg-destructive/90 rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                class="plugin-primary-action flex items-center gap-2"
               >
                 <ArrowPathIcon v-if="testingAll" class="w-4 h-4 animate-spin" />
                 <CheckCircleIcon v-else class="w-4 h-4" />
@@ -95,22 +94,42 @@
     </div>
 
     <div class="content-container pb-10 flex-1 min-h-0 space-y-6">
-      <!-- 插件列表 -->
       <div v-if="currentTab === 'plugins'" class="space-y-4">
-        <div v-if="loading" class="bg-card border border-border rounded-lg flex items-center justify-center py-20">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Card class="plugin-summary-card">
+            <CardContent class="p-4">
+              <p class="plugin-summary-card__label">总插件数</p>
+              <p class="plugin-summary-card__value">{{ pluginSummary.total }}</p>
+            </CardContent>
+          </Card>
+          <Card class="plugin-summary-card plugin-summary-card--accent">
+            <CardContent class="p-4">
+              <p class="plugin-summary-card__label">已启用</p>
+              <p class="plugin-summary-card__value text-success">{{ pluginSummary.enabled }}</p>
+            </CardContent>
+          </Card>
+          <Card class="plugin-summary-card">
+            <CardContent class="p-4">
+              <p class="plugin-summary-card__label">外部来源</p>
+              <p class="plugin-summary-card__value">{{ pluginSummary.external }}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div v-if="loading" class="plugin-loading-shell flex items-center justify-center py-20">
           <div class="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground"></div>
         </div>
 
-        <div v-else-if="plugins.length === 0" class="bg-card border border-border rounded-lg flex flex-col items-center justify-center py-20 text-muted-foreground">
+        <div v-else-if="plugins.length === 0" class="plugin-loading-shell flex flex-col items-center justify-center py-20 text-muted-foreground">
           <CubeIcon class="w-16 h-16 mb-4 opacity-40" />
           <p class="text-sm">暂无插件</p>
           <p class="text-xs mt-1">请导入插件 ZIP 包</p>
         </div>
 
-        <div v-else class="bg-card border border-border rounded-lg overflow-hidden">
+        <div v-else class="plugin-table-shell overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full">
-              <thead>
+              <thead class="plugin-table-shell__thead">
                 <tr class="border-b border-border">
                   <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">名称</th>
                   <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">版本</th>
@@ -124,29 +143,14 @@
                 <tr
                   v-for="plugin in plugins"
                   :key="plugin.name"
-                  class="border-b border-border hover:bg-accent transition-colors"
+                  class="plugin-table-shell__row border-b border-border"
                 >
                   <td class="py-4 px-4">
                     <div>
                       <div class="flex items-center gap-2">
                         <span class="font-medium">{{ plugin.name }}</span>
-                        <span
-                          v-if="plugin.state === 'missing'"
-                          class="px-2 py-0.5 text-2xs rounded bg-destructive/20 text-destructive font-medium"
-                        >
-                          配置缺失
-                        </span>
-                        <span
-                          v-else-if="plugin.source === 'external'"
-                          class="px-2 py-0.5 text-2xs rounded bg-blue-500/20 text-blue-500 font-medium"
-                        >
-                          外部
-                        </span>
-                        <span
-                          v-else-if="plugin.source === 'internal'"
-                          class="px-2 py-0.5 text-2xs rounded bg-amber-500/20 text-amber-500 font-medium"
-                        >
-                          内置
+                        <span v-if="pluginBadgeLabel(plugin)" class="plugin-tag" :class="getPluginBadgeClass(plugin)">
+                          {{ pluginBadgeLabel(plugin) }}
                         </span>
                       </div>
                       <div v-if="plugin.module" class="text-xs text-muted-foreground mt-0.5">{{ plugin.module }}</div>
@@ -159,10 +163,7 @@
                   </td>
                   <td class="py-4 px-4">
                     <div class="flex justify-center">
-                      <span
-                        class="px-2.5 py-1 rounded text-xs font-medium"
-                        :class="plugin.enabled ? 'bg-emerald-500/20 text-emerald-500' : 'bg-muted text-muted-foreground'"
-                      >
+                      <span class="plugin-tag" :class="plugin.enabled ? 'plugin-tag--success' : 'plugin-tag--muted'">
                         {{ plugin.enabled ? '已启用' : '已禁用' }}
                       </span>
                     </div>
@@ -171,7 +172,7 @@
                     <div class="flex items-center justify-end gap-2">
                       <button
                         v-if="!plugin.enabled"
-                        class="px-3 py-1.5 bg-muted hover:bg-accent rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        class="plugin-inline-action"
                         :disabled="actioning === plugin.name || plugin.state === 'missing'"
                         @click="handleEnable(plugin)"
                       >
@@ -179,7 +180,7 @@
                       </button>
                       <button
                         v-if="plugin.enabled"
-                        class="px-3 py-1.5 bg-muted hover:bg-accent rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        class="plugin-inline-action"
                         :disabled="actioning === plugin.name || plugin.state === 'missing'"
                         @click="handleDisable(plugin)"
                       >
@@ -187,7 +188,7 @@
                       </button>
                       <button
                         v-if="plugin.source === 'external'"
-                        class="px-3 py-1.5 bg-muted hover:bg-destructive/20 hover:text-destructive rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        class="plugin-inline-action plugin-inline-action--danger"
                         :disabled="actioning === plugin.name"
                         @click="handleUninstall(plugin)"
                       >
@@ -202,47 +203,46 @@
         </div>
       </div>
 
-      <!-- 站点连通性测试 -->
       <div v-if="currentTab === 'connectivity'" class="space-y-4">
-
-        <!-- 统计信息 -->
         <div v-if="connectivityResults.length > 0" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card>
+          <Card class="plugin-summary-card">
             <CardContent class="p-4">
-              <p class="text-2xs text-muted-foreground/70">总站点数</p>
-              <p class="mt-2 text-2xl font-semibold text-foreground">{{ connectivitySummary.total }}</p>
+              <p class="plugin-summary-card__label">总站点数</p>
+              <p class="plugin-summary-card__value text-foreground">{{ connectivitySummary.total }}</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card class="plugin-summary-card plugin-summary-card--accent">
             <CardContent class="p-4">
-              <p class="text-2xs text-muted-foreground/70">可访问</p>
-              <p class="mt-2 text-2xl font-semibold text-emerald-500">{{ connectivitySummary.accessible }}</p>
+              <p class="plugin-summary-card__label">可访问</p>
+              <p class="plugin-summary-card__value text-success">{{ connectivitySummary.accessible }}</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card class="plugin-summary-card">
             <CardContent class="p-4">
-              <p class="text-2xs text-muted-foreground/70">不可访问</p>
-              <p class="mt-2 text-2xl font-semibold text-destructive">{{ connectivitySummary.failed }}</p>
+              <p class="plugin-summary-card__label">不可访问</p>
+              <p class="plugin-summary-card__value text-destructive">{{ connectivitySummary.failed }}</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card class="plugin-summary-card">
             <CardContent class="p-4">
-              <p class="text-2xs text-muted-foreground/70">成功率</p>
-              <p class="mt-2 text-2xl font-semibold text-emerald-500">{{ connectivitySummary.success_rate }}%</p>
+              <p class="plugin-summary-card__label">成功率</p>
+              <p class="plugin-summary-card__value text-success">{{ connectivitySummary.success_rate }}%</p>
             </CardContent>
           </Card>
         </div>
 
-        <!-- 加载状态 -->
-        <div v-if="loadingSites" class="bg-card border border-border rounded-lg flex items-center justify-center py-20">
+        <div v-if="lastTestedAt" class="plugin-last-tested">
+          上次全量检测：{{ formatTime(lastTestedAt) }}
+        </div>
+
+        <div v-if="loadingSites" class="plugin-loading-shell flex items-center justify-center py-20">
           <div class="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground"></div>
         </div>
 
-        <!-- 站点列表 -->
-        <div v-else class="bg-card border border-border rounded-lg overflow-hidden">
+        <div v-else class="plugin-table-shell overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full">
-              <thead>
+              <thead class="plugin-table-shell__thead">
                 <tr class="border-b border-border">
                   <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">站点名称</th>
                   <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden lg:table-cell">支持域名</th>
@@ -257,14 +257,14 @@
                 <tr
                   v-for="site in displaySites"
                   :key="site.site_name"
-                  class="border-b border-border hover:bg-accent transition-colors"
+                  class="plugin-table-shell__row border-b border-border"
                 >
                   <td class="py-4 px-4">
                     <div class="font-medium flex items-center gap-2">
                       <span>{{ site.display_label || site.site_name || site.name }}</span>
                       <span
                         v-if="site.config_enabled === false"
-                        class="px-2 py-0.5 text-2xs rounded-full bg-destructive/10 text-destructive border border-destructive/30"
+                        class="plugin-tag plugin-tag--danger"
                       >
                         已禁用
                       </span>
@@ -279,13 +279,13 @@
                       <span
                         v-for="domain in site.domains?.slice(0, 3) || []"
                         :key="domain"
-                        class="px-2 py-0.5 text-2xs rounded bg-muted text-muted-foreground"
+                        class="plugin-tag plugin-tag--muted"
                       >
                         {{ domain }}
                       </span>
                       <span
                         v-if="site.domains?.length > 3"
-                        class="px-2 py-0.5 text-2xs rounded bg-muted text-muted-foreground"
+                        class="plugin-tag plugin-tag--muted"
                       >
                         +{{ site.domains.length - 3 }}
                       </span>
@@ -293,67 +293,49 @@
                   </td>
                   <td class="py-4 px-4">
                     <div class="flex justify-center">
-                      <span
-                        v-if="site.testing"
-                        class="px-2.5 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-500 flex items-center gap-1"
-                      >
+                      <span v-if="site.testing" class="plugin-tag plugin-tag--info flex items-center gap-1">
                         <ArrowPathIcon class="w-3 h-3 animate-spin" />
                         测试中
                       </span>
-                      <span
-                        v-else-if="site.accessible === true"
-                        class="px-2.5 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-500"
-                      >
+                      <span v-else-if="site.accessible === true" class="plugin-tag plugin-tag--success">
                         ✓ 可访问
                       </span>
                       <span
                         v-else-if="site.accessible === false"
-                        class="px-2.5 py-1 rounded text-xs font-medium bg-destructive/20 text-destructive"
+                        class="plugin-tag plugin-tag--danger"
                         :title="site.error_message"
                       >
                         ✗ 不可访问
                       </span>
-                      <span
-                        v-else
-                        class="px-2.5 py-1 rounded text-xs font-medium bg-muted text-muted-foreground"
-                      >
+                      <span v-else class="plugin-tag plugin-tag--muted">
                         未测试
                       </span>
                     </div>
                   </td>
                   <td class="py-4 px-4">
                     <div class="flex justify-center">
-                      <span
-                        v-if="!site.supports_login_status"
-                        class="px-2.5 py-1 rounded text-xs font-medium bg-muted text-muted-foreground"
-                      >
+                      <span v-if="!site.supports_login_status" class="plugin-tag plugin-tag--muted">
                         未接入
                       </span>
-                      <span
-                        v-else-if="site.loginTesting"
-                        class="px-2.5 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-500 flex items-center gap-1"
-                      >
+                      <span v-else-if="site.loginTesting" class="plugin-tag plugin-tag--info flex items-center gap-1">
                         <ArrowPathIcon class="w-3 h-3 animate-spin" />
                         检测中
                       </span>
                       <span
                         v-else-if="site.loginStatus?.logged_in"
-                        class="px-2.5 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-500"
+                        class="plugin-tag plugin-tag--success"
                         :title="site.loginStatus?.message || '已登录'"
                       >
                         已登录
                       </span>
                       <span
                         v-else-if="site.loginStatus"
-                        class="px-2.5 py-1 rounded text-xs font-medium bg-destructive/20 text-destructive"
+                        class="plugin-tag plugin-tag--danger"
                         :title="site.loginStatus?.message || '未登录'"
                       >
                         未登录
                       </span>
-                      <span
-                        v-else
-                        class="px-2.5 py-1 rounded text-xs font-medium bg-muted text-muted-foreground"
-                      >
+                      <span v-else class="plugin-tag plugin-tag--muted">
                         未检测
                       </span>
                     </div>
@@ -369,7 +351,7 @@
                       <button
                         @click="handleTestSingle(site)"
                         :disabled="site.testing || testingAll"
-                        class="px-3 py-1.5 bg-muted hover:bg-accent rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        class="plugin-inline-action"
                       >
                         {{ site.testing ? '测试中...' : '连通性' }}
                       </button>
@@ -377,14 +359,14 @@
                         v-if="site.supports_login_status"
                         @click="handleTestLogin(site)"
                         :disabled="site.loginTesting || testingAll"
-                        class="px-3 py-1.5 bg-muted hover:bg-accent rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        class="plugin-inline-action"
                       >
                         {{ site.loginTesting ? '检测中...' : '登录检测' }}
                       </button>
                       <button
                         @click="handleUploadCookies(site)"
                         :disabled="site.cookieUploading || testingAll"
-                        class="px-3 py-1.5 bg-muted hover:bg-accent rounded-full text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        class="plugin-inline-action"
                       >
                         {{ site.cookieUploading ? '上传中...' : '上传Cookie' }}
                       </button>
@@ -515,12 +497,32 @@ const siteEditorError = ref('');
 
 const siteCatalogMap = computed(() => siteCatalog.value || {});
 
+const pluginSummary = computed(() => ({
+  total: plugins.value.length,
+  enabled: plugins.value.filter(plugin => plugin.enabled).length,
+  external: plugins.value.filter(plugin => plugin.source === 'external').length,
+}));
+
 const connectivitySummary = computed(() => {
   if (connectivityResults.value.length === 0) {
     return { total: 0, accessible: 0, failed: 0, success_rate: 0 };
   }
   return connectivityResults.value[0]?.summary || { total: 0, accessible: 0, failed: 0, success_rate: 0 };
 });
+
+const pluginBadgeLabel = (plugin) => {
+  if (plugin.state === 'missing') return '配置缺失';
+  if (plugin.source === 'external') return '外部';
+  if (plugin.source === 'internal') return '内置';
+  return '';
+};
+
+const getPluginBadgeClass = (plugin) => {
+  if (plugin.state === 'missing') return 'plugin-tag--danger';
+  if (plugin.source === 'external') return 'plugin-tag--info';
+  if (plugin.source === 'internal') return 'plugin-tag--warning';
+  return 'plugin-tag--muted';
+};
 
 const displaySites = computed(() => {
   // 合并支持的站点列表和测试结果
@@ -722,6 +724,21 @@ const formatSource = (source) => {
       return '配置缺失';
     default:
       return '未知';
+  }
+};
+
+const formatTime = (value) => {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  } catch (error) {
+    return value;
   }
 };
 
@@ -942,6 +959,245 @@ onMounted(() => {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.plugin-hero,
+.plugin-summary-card,
+.plugin-loading-shell,
+.plugin-table-shell,
+.plugin-last-tested {
+  border: 1px solid hsl(var(--border) / 0.76);
+  background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
+  box-shadow: 0 20px 52px hsl(var(--foreground) / 0.045);
+}
+
+.plugin-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.14), transparent 34%),
+    radial-gradient(circle at bottom right, hsl(var(--accent) / 0.8), transparent 38%),
+    linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.94));
+}
+
+.plugin-eyebrow,
+.plugin-summary-card__label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: hsl(var(--muted-foreground));
+}
+
+.plugin-hero__title {
+  margin-top: 0.6rem;
+  font-size: clamp(1.95rem, 2vw, 2.55rem);
+  line-height: 1.05;
+  font-weight: 600;
+}
+
+.plugin-hero__description {
+  margin-top: 0.75rem;
+  max-width: 44rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.plugin-hero__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.plugin-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.plugin-tab-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--background) / 0.72);
+}
+
+.plugin-tab-switch__button {
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.plugin-tab-switch__button:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.plugin-tab-switch__button--active {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.08);
+}
+
+.plugin-pill-button,
+.plugin-pill-icon,
+.plugin-primary-action,
+.plugin-inline-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--background) / 0.72);
+  color: hsl(var(--foreground));
+  transition: background-color 160ms ease, transform 160ms ease, opacity 160ms ease;
+}
+
+.plugin-pill-button:hover,
+.plugin-pill-icon:hover,
+.plugin-inline-action:hover {
+  background: hsl(var(--accent));
+}
+
+.plugin-pill-icon {
+  width: 2.75rem;
+  padding-inline: 0;
+}
+
+.plugin-primary-action {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary) / 0.32);
+  box-shadow: 0 16px 36px hsl(var(--primary) / 0.18);
+}
+
+.plugin-primary-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.plugin-inline-action {
+  min-height: 2.1rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.plugin-inline-action--danger:hover {
+  background: hsl(var(--destructive) / 0.12);
+  color: hsl(var(--destructive));
+}
+
+.plugin-primary-action:disabled,
+.plugin-pill-button:disabled,
+.plugin-pill-icon:disabled,
+.plugin-inline-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.plugin-summary-card {
+  overflow: hidden;
+}
+
+.plugin-summary-card--accent {
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.14), transparent 35%),
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
+}
+
+.plugin-summary-card__value {
+  margin-top: 0.8rem;
+  font-size: 1.85rem;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.plugin-loading-shell,
+.plugin-table-shell {
+  border-radius: 1.5rem;
+}
+
+.plugin-table-shell__thead {
+  background: linear-gradient(180deg, hsl(var(--background) / 0.96), hsl(var(--card) / 0.92));
+}
+
+.plugin-table-shell__row {
+  transition: background-color 160ms ease;
+}
+
+.plugin-table-shell__row:hover {
+  background: hsl(var(--accent) / 0.58);
+}
+
+.plugin-last-tested {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.plugin-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.plugin-tag--muted {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  border-color: hsl(var(--border));
+}
+
+.plugin-tag--info {
+  background: hsl(var(--info) / 0.12);
+  color: hsl(var(--info));
+  border-color: hsl(var(--info) / 0.22);
+}
+
+.plugin-tag--warning {
+  background: hsl(var(--warning) / 0.12);
+  color: hsl(var(--warning));
+  border-color: hsl(var(--warning) / 0.22);
+}
+
+.plugin-tag--success {
+  background: hsl(var(--success) / 0.12);
+  color: hsl(var(--success));
+  border-color: hsl(var(--success) / 0.22);
+}
+
+.plugin-tag--danger {
+  background: hsl(var(--destructive) / 0.12);
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.24);
+}
+
+@media (min-width: 1024px) {
+  .plugin-hero {
+    padding: 1.75rem;
+  }
 }
 
 </style>

@@ -1,15 +1,18 @@
 <template>
-  <div class="flex flex-col h-full bg-background text-foreground">
-    <div class="flex-none px-6 pt-6 pb-3">
-      <!-- 标题和操作栏 -->
-      <div class="flex items-center justify-between mb-4">
-        <h1 class="text-xl font-bold text-foreground">定时任务管理</h1>
-        <div class="flex gap-2">
+  <div class="scheduled-page flex flex-col h-full bg-background text-foreground">
+    <div class="scheduled-shell flex-none px-6 pt-6 pb-3">
+      <section class="schedule-hero">
+        <div class="schedule-hero__copy">
+          <span class="schedule-eyebrow">automation control room</span>
+          <h1 class="schedule-hero__title">定时任务管理</h1>
+          <p class="schedule-hero__description">统一查看调度器状态、任务负载与执行结果，把“新增任务”和“处理异常”放在同一条操作链里。</p>
+        </div>
+        <div class="schedule-hero__actions">
           <Button
             @click="showCreateDialog = true"
             size="sm"
             variant="default"
-            class="rounded-full"
+            class="rounded-full shadow-lg shadow-primary/20"
           >
             创建任务
           </Button>
@@ -23,85 +26,94 @@
             刷新
           </Button>
         </div>
+      </section>
+
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4 mt-4">
+        <Card class="schedule-stat-card">
+          <CardContent class="p-4">
+            <p class="schedule-stat-card__label">总任务</p>
+            <p class="schedule-stat-card__value text-foreground">{{ statistics.total_tasks }}</p>
+          </CardContent>
+        </Card>
+        <Card class="schedule-stat-card schedule-stat-card--accent">
+          <CardContent class="p-4">
+            <p class="schedule-stat-card__label">活跃</p>
+            <p class="schedule-stat-card__value text-success">{{ statistics.active_tasks }}</p>
+          </CardContent>
+        </Card>
+        <Card class="schedule-stat-card">
+          <CardContent class="p-4">
+            <p class="schedule-stat-card__label">运行中</p>
+            <p class="schedule-stat-card__value text-foreground">{{ statistics.running_tasks }}</p>
+          </CardContent>
+        </Card>
+        <Card class="schedule-stat-card">
+          <CardContent class="p-4">
+            <p class="schedule-stat-card__label">错误</p>
+            <p class="schedule-stat-card__value text-destructive">{{ statistics.error_tasks }}</p>
+          </CardContent>
+        </Card>
+        <Card class="schedule-stat-card schedule-stat-card--muted">
+          <CardContent class="p-4">
+            <p class="schedule-stat-card__label">今日执行</p>
+            <p class="schedule-stat-card__value text-foreground">{{ statistics.today_executions }}</p>
+          </CardContent>
+        </Card>
       </div>
 
-      <!-- 统计卡片 -->
-      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-        <Card>
-          <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">总任务</p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{{ statistics.total_tasks }}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">活跃</p>
-            <p class="mt-2 text-2xl font-semibold text-emerald-500">{{ statistics.active_tasks }}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">运行中</p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{{ statistics.running_tasks }}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">错误</p>
-            <p class="mt-2 text-2xl font-semibold text-destructive">{{ statistics.error_tasks }}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">今日执行</p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{{ statistics.today_executions }}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <!-- 调度器状态和筛选 -->
-      <div class="bg-card border border-border rounded-lg p-3 mb-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <!-- 调度器状态 -->
-          <div class="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
-            <span class="text-2xs text-muted-foreground/70">调度器</span>
-            <Badge :variant="schedulerStatus?.running ? 'secondary' : 'destructive'" class="rounded-full">
-              {{ schedulerStatus?.running ? '运行中' : '已停止' }}
-            </Badge>
+      <div class="schedule-filter-shell mb-3">
+        <div class="schedule-filter-shell__row">
+          <div class="schedule-filter-shell__status">
+            <div class="schedule-filter-shell__status-copy">
+              <span class="schedule-filter-shell__label">调度器</span>
+              <Badge :variant="schedulerStatus?.running ? 'secondary' : 'destructive'" class="rounded-full">
+                {{ schedulerStatus?.running ? '运行中' : '已停止' }}
+              </Badge>
+            </div>
+            <p class="schedule-filter-shell__hint">
+              {{ schedulerStatus?.running ? '任务会按计划持续触发，适合关注异常和负载。' : '调度器已停用，所有计划任务都不会自动触发。' }}
+            </p>
           </div>
-          <Button
-            v-if="!schedulerStatus?.running"
-            @click="enableScheduler"
-            :disabled="loading"
-            size="xs"
-            variant="default"
-            class="rounded-full"
-          >
-            启用
-          </Button>
-          <Button
-            v-if="schedulerStatus?.running"
-            @click="disableScheduler"
-            :disabled="loading"
-            size="xs"
-            variant="ghost"
-            class="rounded-full"
-          >
-            禁用
-          </Button>
-          <!-- 搜索和过滤 -->
-          <div class="flex-1 min-w-[200px]">
+          <div class="schedule-filter-shell__controls">
+            <div class="schedule-inline-actions">
+              <span class="schedule-filter-shell__label">切换状态</span>
+              <Button
+                v-if="!schedulerStatus?.running"
+                @click="enableScheduler"
+                :disabled="loading"
+                size="xs"
+                variant="default"
+                class="rounded-full"
+              >
+                启用
+              </Button>
+              <Button
+                v-if="schedulerStatus?.running"
+                @click="disableScheduler"
+                :disabled="loading"
+                size="xs"
+                variant="ghost"
+                class="rounded-full"
+              >
+                禁用
+              </Button>
+            </div>
+            <div v-if="hasActiveFilters" class="schedule-filter-shell__active-tag">筛选已生效</div>
+          </div>
+        </div>
+        <div class="schedule-filter-shell__row schedule-filter-shell__row--filters">
+          <div class="flex-1 min-w-[220px]">
             <input
               v-model="searchQuery"
               @input="debouncedSearch"
               type="text"
-              placeholder="搜索任务..."
-              class="w-full px-3 py-1.5 bg-muted border border-border rounded text-foreground text-2xs placeholder:text-muted-foreground focus:outline-none focus:border-border focus:ring-1 focus:ring-border transition-colors"
+              placeholder="搜索任务、描述或错误..."
+              class="schedule-search-input"
             >
           </div>
-          <div class="w-28">
+          <div class="w-32">
             <Select :model-value="statusFilter" @update:model-value="(value) => { statusFilter = value; loadTasks(); }">
-              <SelectTrigger class="h-9 text-xs">
+              <SelectTrigger class="h-10 text-xs rounded-full border-border/80 bg-background/70">
                 <SelectValue placeholder="状态" />
               </SelectTrigger>
               <SelectContent>
@@ -111,9 +123,9 @@
               </SelectContent>
             </Select>
           </div>
-          <div class="w-32">
+          <div class="w-36">
             <Select :model-value="typeFilter" @update:model-value="(value) => { typeFilter = value; loadTasks(); }">
-              <SelectTrigger class="h-9 text-xs">
+              <SelectTrigger class="h-10 text-xs rounded-full border-border/80 bg-background/70">
                 <SelectValue placeholder="类型" />
               </SelectTrigger>
               <SelectContent>
@@ -127,12 +139,10 @@
       </div>
     </div>
 
-    <!-- 任务列表 -->
-    <div class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
-      <!-- 表格 -->
-      <div class="bg-card border border-border rounded-lg overflow-hidden">
+    <div class="scheduled-shell flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
+      <div class="schedule-table-shell overflow-hidden">
         <table class="w-full">
-          <thead class="bg-background border-b border-border">
+          <thead class="schedule-table-shell__thead border-b border-border">
             <tr>
               <th class="px-3 py-2 text-left text-2xs font-semibold text-muted-foreground/70 tracking-wider">任务名称</th>
               <th class="px-3 py-2 text-left text-2xs font-semibold text-muted-foreground/70 tracking-wider">状态</th>
@@ -148,48 +158,40 @@
             <tr
               v-for="task in tasks"
               :key="task.id"
-              class="hover:bg-muted transition-colors"
+              class="schedule-table-shell__row"
             >
-              <!-- 任务名称 -->
               <td class="px-3 py-2">
-                <div class="text-xs font-medium text-foreground">{{ task.name }}</div>
-                <div v-if="task.description" class="text-2xs text-muted-foreground/70 mt-0.5">{{ task.description }}</div>
+                <div class="schedule-task-name">{{ task.name }}</div>
+                <div v-if="task.description" class="text-2xs text-muted-foreground/70 mt-0.5 leading-5">{{ task.description }}</div>
                 <div v-if="task.last_error" class="text-2xs text-destructive mt-0.5" :title="task.last_error">错误: {{ task.last_error }}</div>
               </td>
 
-              <!-- 状态 -->
               <td class="px-3 py-2">
-                <Badge :variant="getStatusBadgeVariant(task.status)" class="rounded-full">
+                <Badge :variant="getStatusBadgeVariant(task.status)" class="rounded-full px-2.5 py-1">
                   {{ getStatusText(task.status) }}
                 </Badge>
               </td>
 
-              <!-- 类型 -->
               <td class="px-3 py-2">
-                <span class="text-2xs text-muted-foreground">{{ getTypeText(task.task_type) }}</span>
+                <span class="schedule-type-chip">{{ getTypeText(task.task_type) }}</span>
               </td>
 
-              <!-- 执行间隔 -->
               <td class="px-3 py-2">
                 <span class="text-2xs text-foreground">{{ task.interval }} {{ getUnitLabel(task.unit) }}</span>
               </td>
 
-              <!-- 最后执行 -->
               <td class="px-3 py-2">
                 <span class="text-2xs text-muted-foreground">{{ formatDateTime(task.last_run_at) || '从未' }}</span>
               </td>
 
-              <!-- 下次执行 -->
               <td class="px-3 py-2">
                 <span class="text-2xs text-muted-foreground">{{ formatDateTime(task.next_run_at) || '未知' }}</span>
               </td>
 
-              <!-- 成功/总数 -->
               <td class="px-3 py-2 text-center">
-                <span class="text-2xs text-foreground">{{ task.success_count }}/{{ task.run_count }}</span>
+                <span class="schedule-run-ratio">{{ task.success_count }}/{{ task.run_count }}</span>
               </td>
 
-              <!-- 操作 -->
               <td class="px-3 py-2">
                 <div class="flex gap-1 justify-end">
                   <Button
@@ -251,7 +253,6 @@
         </table>
       </div>
 
-      <!-- 分页 -->
       <div v-if="totalPages > 1" class="flex justify-center mt-6 mb-4">
         <div class="flex items-center gap-2">
           <Button
@@ -278,9 +279,8 @@
         </div>
       </div>
 
-      <!-- 空状态 -->
       <div v-if="tasks.length === 0 && !loading" class="text-center py-16">
-        <div class="bg-card border border-border rounded-lg p-8 max-w-md mx-auto">
+        <div class="schedule-empty-state max-w-md mx-auto">
           <ClockIcon class="w-20 h-20 mx-auto mb-4 text-muted-foreground" />
           <h3 class="text-lg font-semibold text-foreground mb-2">暂无定时任务</h3>
           <p class="text-sm text-muted-foreground/70 mb-6">点击下方按钮创建您的第一个定时任务</p>
@@ -295,16 +295,14 @@
         </div>
       </div>
 
-      <!-- 加载状态 -->
       <div v-if="loading" class="text-center py-16">
-        <div class="inline-flex items-center gap-3 bg-card border border-border rounded-lg px-6 py-4">
+        <div class="schedule-loading-state inline-flex items-center gap-3 px-6 py-4">
           <div class="animate-spin rounded-full h-5 w-5 border-2 border-muted-foreground/30 border-t-destructive"></div>
           <span class="text-sm text-muted-foreground font-medium">加载中...</span>
         </div>
       </div>
     </div>
 
-    <!-- 创建任务对话框 -->
     <TaskDialog
       v-if="showCreateDialog"
       :task-classes="taskClasses"
@@ -312,7 +310,6 @@
       @save="handleCreateTask"
     />
 
-    <!-- 编辑任务对话框 -->
     <TaskDialog
       v-if="editingTask"
       :task="editingTask"
@@ -324,7 +321,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ClockIcon } from '@heroicons/vue/24/outline'
 import TaskDialog from '@/components/dialogs/TaskDialog.vue'
 import { Badge } from '@/components/ui/badge'
@@ -384,6 +381,8 @@ const typeOptions = [
 ]
 
 const editingTask = ref(null)
+
+const hasActiveFilters = computed(() => Boolean(searchQuery.value || statusFilter.value || typeFilter.value))
 
 // 防抖搜索
 const debouncedSearch = debounce(() => {
@@ -589,6 +588,239 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.scheduled-page {
+  font-feature-settings: 'tnum';
+}
+
+.scheduled-shell {
+  max-width: var(--container-max-width, 2560px);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.schedule-hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.16), transparent 34%),
+    radial-gradient(circle at bottom right, hsl(var(--accent) / 0.8), transparent 42%),
+    linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.94));
+  box-shadow: 0 24px 60px hsl(var(--foreground) / 0.05);
+}
+
+.schedule-eyebrow,
+.schedule-filter-shell__label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: hsl(var(--muted-foreground));
+}
+
+.schedule-hero__title {
+  margin-top: 0.6rem;
+  font-size: clamp(1.85rem, 2vw, 2.5rem);
+  line-height: 1.05;
+  font-weight: 600;
+}
+
+.schedule-hero__description {
+  margin-top: 0.75rem;
+  max-width: 42rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.schedule-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.schedule-stat-card,
+.schedule-table-shell,
+.schedule-empty-state,
+.schedule-loading-state,
+.schedule-filter-shell {
+  border: 1px solid hsl(var(--border) / 0.76);
+  background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
+  box-shadow: 0 18px 46px hsl(var(--foreground) / 0.04);
+}
+
+.schedule-stat-card {
+  overflow: hidden;
+}
+
+.schedule-stat-card--accent {
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.14), transparent 35%),
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
+}
+
+.schedule-stat-card--muted {
+  background:
+    radial-gradient(circle at bottom right, hsl(var(--secondary) / 0.8), transparent 35%),
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
+}
+
+.schedule-stat-card__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: hsl(var(--muted-foreground));
+}
+
+.schedule-stat-card__value {
+  margin-top: 0.8rem;
+  font-size: 1.85rem;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.schedule-filter-shell {
+  padding: 1rem;
+  border-radius: 1.5rem;
+}
+
+.schedule-filter-shell__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.schedule-filter-shell__row + .schedule-filter-shell__row {
+  margin-top: 1rem;
+}
+
+.schedule-filter-shell__row--filters {
+  align-items: stretch;
+}
+
+.schedule-filter-shell__status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.schedule-filter-shell__status-copy {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.schedule-filter-shell__hint {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.82rem;
+}
+
+.schedule-filter-shell__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.85rem;
+}
+
+.schedule-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--background) / 0.7);
+}
+
+.schedule-filter-shell__active-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: hsl(var(--warning) / 0.12);
+  color: hsl(var(--warning));
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.schedule-search-input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid hsl(var(--border) / 0.85);
+  border-radius: 999px;
+  background: hsl(var(--background) / 0.72);
+  color: hsl(var(--foreground));
+  font-size: 0.8rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.schedule-search-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.schedule-search-input:focus {
+  outline: none;
+  border-color: hsl(var(--primary) / 0.45);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.08);
+}
+
+.schedule-table-shell {
+  border-radius: 1.6rem;
+}
+
+.schedule-table-shell__thead {
+  background: linear-gradient(180deg, hsl(var(--background) / 0.96), hsl(var(--card) / 0.92));
+}
+
+.schedule-table-shell__row {
+  transition: background-color 160ms ease;
+}
+
+.schedule-table-shell__row:hover {
+  background: hsl(var(--accent) / 0.58);
+}
+
+.schedule-task-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.schedule-type-chip,
+.schedule-run-ratio {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.85rem;
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--background) / 0.72);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+}
+
+.schedule-run-ratio {
+  color: hsl(var(--foreground));
+}
+
+.schedule-empty-state {
+  padding: 2rem;
+  border-radius: 1.5rem;
+}
+
+.schedule-loading-state {
+  border-radius: 999px;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
 }
@@ -604,5 +836,11 @@ onMounted(() => {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--border));
+}
+
+@media (max-width: 767px) {
+  .schedule-filter-shell__controls {
+    justify-content: flex-start;
+  }
 }
 </style>

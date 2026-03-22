@@ -1,159 +1,168 @@
 <template>
   <div class="monitoring-page bg-background text-foreground h-screen flex flex-col overflow-hidden">
-    <!-- 顶部状态栏 -->
     <div class="shrink-0">
       <div class="toolbar-container pt-6 pb-4">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 class="text-xl font-medium text-foreground">系统监控</h1>
-            <p class="text-sm text-muted-foreground">爬取与订阅的实时运行状态</p>
+        <div class="monitor-hero">
+          <div class="monitor-hero__copy">
+            <span class="monitor-eyebrow">operations overview</span>
+            <h1 class="monitor-hero__title">系统监控</h1>
+            <p class="monitor-hero__description">把爬取、订阅、队列与错误流收拢到同一个运行视图，方便快速判断现在是该扩容、排障，还是继续推进更新。</p>
           </div>
-          <div class="flex flex-wrap items-center gap-3 text-xs text-muted-foreground/70">
-            <div class="flex items-center gap-2 px-3 py-1.5 bg-card rounded-full">
-              <Badge :variant="healthBadgeVariant" class="rounded-full" :class="healthBadgeClass">{{ healthStatusText }}</Badge>
-              <span class="font-mono" :class="healthScoreClass">{{ dashboardData?.health?.score || 0 }}</span>
+          <div class="monitor-hero__meta">
+            <div class="monitor-hero__pill">
+              <span class="monitor-hero__label">健康状态</span>
+              <Badge :variant="healthBadgeVariant" class="rounded-full monitor-hero__badge" :class="healthBadgeClass">{{ healthStatusText }}</Badge>
+              <span class="font-mono text-lg" :class="healthScoreClass">{{ dashboardData?.health?.score || 0 }}</span>
             </div>
-            <div class="flex items-center gap-2 px-3 py-1.5 bg-card rounded-full">
-              <span>更新</span>
-              <span class="font-mono">{{ lastUpdateTime || '—' }}</span>
-              <button
-                @click="refreshData"
-                :disabled="loading"
-                class="p-1.5 hover:bg-accent rounded transition-colors"
-              >
-                <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': loading }" />
-              </button>
+            <div class="monitor-hero__pill">
+              <span class="monitor-hero__label">刷新节奏</span>
+              <span class="font-mono text-sm text-foreground">10s</span>
+              <span class="monitor-hero__divider"></span>
+              <span class="monitor-hero__label">最近更新</span>
+              <span class="font-mono text-sm text-foreground">{{ lastUpdateTime || '—' }}</span>
             </div>
+            <button
+              @click="refreshData"
+              :disabled="loading"
+              class="monitor-refresh"
+            >
+              <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': loading }" />
+              <span>{{ loading ? '同步中' : '立即刷新' }}</span>
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 主内容区 -->
     <div class="content-container py-6 space-y-5 flex-1 flex flex-col min-h-0 overflow-hidden">
-      
-      <!-- 概览指标 -->
       <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 shrink-0">
-        <Card>
+        <Card class="monitor-metric-card monitor-metric-card--warm">
           <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">爬取任务</p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{{ dashboardData?.crawl?.total || 0 }}</p>
-            <div class="mt-2 flex gap-3 text-xs text-muted-foreground/70">
+            <p class="monitor-metric-card__label">爬取任务</p>
+            <p class="monitor-metric-card__value">{{ dashboardData?.crawl?.total || 0 }}</p>
+            <div class="monitor-metric-card__meta">
               <span><span class="font-mono text-foreground">{{ dashboardData?.crawl?.success || 0 }}</span> 成功</span>
               <span><span class="font-mono" :class="getErrorNumberClass(dashboardData?.crawl?.error || 0)">{{ dashboardData?.crawl?.error || 0 }}</span> 失败</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card class="monitor-metric-card">
           <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">成功率</p>
-            <p class="mt-2 text-2xl font-semibold" :class="getSiteRateClass(dashboardData?.crawl?.success_rate || 0)">
+            <p class="monitor-metric-card__label">成功率</p>
+            <p class="monitor-metric-card__value" :class="getSiteRateClass(dashboardData?.crawl?.success_rate || 0)">
               {{ dashboardData?.crawl?.success_rate || 0 }}%
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card class="monitor-metric-card">
           <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">发现视频</p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{{ dashboardData?.crawl?.videos_discovered || 0 }}</p>
-            <p class="mt-2 text-xs text-muted-foreground/70">
+            <p class="monitor-metric-card__label">发现视频</p>
+            <p class="monitor-metric-card__value text-foreground">{{ dashboardData?.crawl?.videos_discovered || 0 }}</p>
+            <p class="monitor-metric-card__meta">
               <span class="font-mono text-foreground">{{ dashboardData?.crawl?.skipped || 0 }}</span> 跳过
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card class="monitor-metric-card">
           <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">队列积压</p>
-            <p class="mt-2 text-2xl font-semibold" :class="getQueueDepthTextClass(dashboardData?.queues?.total_depth || 0)">
+            <p class="monitor-metric-card__label">队列积压</p>
+            <p class="monitor-metric-card__value" :class="getQueueDepthTextClass(dashboardData?.queues?.total_depth || 0)">
               {{ dashboardData?.queues?.total_depth || 0 }}
             </p>
-            <p class="mt-2 text-xs text-muted-foreground/70">
+            <p class="monitor-metric-card__meta">
               <span class="font-mono text-foreground">{{ dashboardData?.queues?.total_messages || 0 }}</span> 消息
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card class="monitor-metric-card">
           <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">订阅更新</p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{{ dashboardData?.subscriptions?.total || 0 }}</p>
-            <div class="mt-2 flex gap-3 text-xs text-muted-foreground/70">
+            <p class="monitor-metric-card__label">订阅更新</p>
+            <p class="monitor-metric-card__value text-foreground">{{ dashboardData?.subscriptions?.total || 0 }}</p>
+            <div class="monitor-metric-card__meta">
               <span><span class="font-mono text-foreground">{{ dashboardData?.subscriptions?.success || 0 }}</span> 成功</span>
               <span><span class="font-mono" :class="getErrorNumberClass(dashboardData?.subscriptions?.error || 0)">{{ dashboardData?.subscriptions?.error || 0 }}</span> 失败</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card class="monitor-metric-card monitor-metric-card--ink">
           <CardContent class="p-4">
-            <p class="text-2xs text-muted-foreground/70">订阅发现</p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{{ dashboardData?.subscriptions?.videos_found || 0 }}</p>
-            <p class="mt-2 text-xs text-muted-foreground/70">
+            <p class="monitor-metric-card__label">订阅发现</p>
+            <p class="monitor-metric-card__value text-foreground">{{ dashboardData?.subscriptions?.videos_found || 0 }}</p>
+            <p class="monitor-metric-card__meta">
               <span class="font-mono text-foreground">{{ dashboardData?.subscriptions?.videos_enqueued || 0 }}</span> 已入队
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <!-- 性能和错误 -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
-        <Card class="p-4">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs text-muted-foreground/70">性能指标</span>
-            <span class="text-xs text-muted-foreground/70">单位: 秒</span>
+        <Card class="monitor-panel">
+          <div class="monitor-panel__header">
+            <div>
+              <span class="monitor-panel__eyebrow">runtime latency</span>
+              <h2 class="monitor-panel__title">性能指标</h2>
+            </div>
+            <span class="monitor-panel__caption">单位: 秒</span>
           </div>
-          <div class="grid grid-cols-4 gap-3 text-center">
-            <div>
-              <div class="text-lg font-mono text-foreground">{{ dashboardData?.crawl?.avg_duration || 0 }}</div>
-              <div class="text-xs text-muted-foreground/70">平均</div>
+          <div class="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+            <div class="monitor-stat-tile">
+              <div class="monitor-stat-tile__value">{{ dashboardData?.crawl?.avg_duration || 0 }}</div>
+              <div class="monitor-stat-tile__label">平均</div>
             </div>
-            <div>
-              <div class="text-lg font-mono text-foreground">{{ dashboardData?.crawl?.p50_duration || 0 }}</div>
-              <div class="text-xs text-muted-foreground/70">P50</div>
+            <div class="monitor-stat-tile">
+              <div class="monitor-stat-tile__value">{{ dashboardData?.crawl?.p50_duration || 0 }}</div>
+              <div class="monitor-stat-tile__label">P50</div>
             </div>
-            <div>
-              <div class="text-lg font-mono text-foreground">{{ dashboardData?.crawl?.p95_duration || 0 }}</div>
-              <div class="text-xs text-muted-foreground/70">P95</div>
+            <div class="monitor-stat-tile">
+              <div class="monitor-stat-tile__value">{{ dashboardData?.crawl?.p95_duration || 0 }}</div>
+              <div class="monitor-stat-tile__label">P95</div>
             </div>
-            <div>
-              <div class="text-lg font-mono text-foreground">{{ dashboardData?.crawl?.max_duration || 0 }}</div>
-              <div class="text-xs text-muted-foreground/70">最大</div>
+            <div class="monitor-stat-tile">
+              <div class="monitor-stat-tile__value">{{ dashboardData?.crawl?.max_duration || 0 }}</div>
+              <div class="monitor-stat-tile__label">最大</div>
             </div>
           </div>
         </Card>
 
-        <Card class="p-4">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs text-muted-foreground/70">错误统计</span>
+        <Card class="monitor-panel">
+          <div class="monitor-panel__header">
+            <div>
+              <span class="monitor-panel__eyebrow">error pressure</span>
+              <h2 class="monitor-panel__title">错误统计</h2>
+            </div>
             <span class="text-sm font-mono" :class="errorTotalClass">{{ dashboardData?.errors?.total || 0 }}</span>
           </div>
-          <div v-if="dashboardData?.errors?.by_type?.length" class="flex flex-wrap gap-1.5">
+          <div v-if="dashboardData?.errors?.by_type?.length" class="flex flex-wrap gap-2">
             <Badge
               v-for="error in dashboardData.errors.by_type.slice(0, 8)"
               :key="error.type"
               variant="destructive"
-              class="rounded-full"
+              class="rounded-full px-2.5 py-1"
             >
               {{ `${error.type}: ${error.count}` }}
             </Badge>
           </div>
-          <div v-else class="text-xs text-muted-foreground">暂无错误</div>
+          <div v-else class="monitor-panel__caption">暂无错误</div>
         </Card>
       </div>
-      
-      <!-- 站点统计表格 -->
+
       <div class="shrink-0">
-        <Card class="overflow-hidden">
-          <div class="px-4 py-2.5 border-b border-border flex items-center justify-between">
-            <span class="text-sm font-medium text-foreground">站点统计</span>
-            <span class="text-xs text-muted-foreground/70">{{ dashboardData?.crawl?.by_site?.length || 0 }} 个站点</span>
+        <Card class="monitor-table-card overflow-hidden">
+          <div class="monitor-table-card__header">
+            <div>
+              <span class="monitor-panel__eyebrow">site by site</span>
+              <h2 class="monitor-panel__title">站点统计</h2>
+            </div>
+            <span class="monitor-panel__caption">{{ dashboardData?.crawl?.by_site?.length || 0 }} 个站点</span>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full min-w-[1100px] text-sm">
-              <thead class="bg-card">
+              <thead class="monitor-table-card__thead">
                 <tr class="border-b border-border text-2xs text-muted-foreground/70">
                   <th class="px-3 py-2 text-left font-medium">站点</th>
                   <th class="px-3 py-2 text-right font-medium">成功率</th>
@@ -172,11 +181,11 @@
                 <tr
                   v-for="row in (dashboardData?.crawl?.by_site || [])"
                   :key="row.site"
-                  class="hover:bg-accent transition-colors"
+                  class="monitor-table-card__row"
                 >
                   <td class="px-3 py-2">
-                    <div class="flex items-center gap-2">
-                      <span class="w-6 h-6 rounded bg-muted flex items-center justify-center text-2xs font-bold uppercase text-muted-foreground">{{ row.site.slice(0, 2) }}</span>
+                    <div class="flex items-center gap-3">
+                      <span class="monitor-site-mark">{{ row.site.slice(0, 2) }}</span>
                       <span class="font-medium text-foreground">{{ row.site }}</span>
                     </div>
                   </td>
@@ -216,15 +225,17 @@
           </div>
         </Card>
       </div>
-      
-      <!-- 最近错误详情 -->
-      <Card v-if="dashboardData?.recent_errors?.length" class="overflow-hidden flex flex-col flex-1 min-h-0">
-        <div class="px-4 py-2.5 border-b border-border flex items-center justify-between">
-          <span class="text-sm font-medium text-foreground">最近错误</span>
-          <span class="text-xs text-muted-foreground/70">最近 {{ dashboardData.recent_errors.length }} 条</span>
+
+      <Card v-if="dashboardData?.recent_errors?.length" class="monitor-error-card overflow-hidden flex flex-col flex-1 min-h-0">
+        <div class="monitor-table-card__header">
+          <div>
+            <span class="monitor-panel__eyebrow">latest incidents</span>
+            <h2 class="monitor-panel__title">最近错误</h2>
+          </div>
+          <span class="monitor-panel__caption">最近 {{ dashboardData.recent_errors.length }} 条</span>
         </div>
         <div class="divide-y divide-border flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-          <div v-for="(err, idx) in dashboardData.recent_errors" :key="idx" class="px-4 py-2.5 hover:bg-accent">
+          <div v-for="(err, idx) in dashboardData.recent_errors" :key="idx" class="monitor-error-item">
             <div class="flex items-center justify-between text-xs mb-1">
               <div class="flex items-center gap-2">
                 <Badge variant="destructive" class="rounded-full">{{ err.type }}</Badge>
@@ -239,7 +250,7 @@
                 <span class="hidden group-open:inline">▼</span>
                 {{ getErrorSummary(err.msg) }}
               </summary>
-              <pre class="error-stack mt-2 p-3 bg-card rounded text-muted-foreground overflow-x-auto whitespace-pre-wrap text-xs leading-relaxed max-h-52 overflow-y-auto scrollbar-hide">{{ err.msg }}</pre>
+              <pre class="error-stack mt-2 p-3 bg-card/80 rounded-xl text-muted-foreground overflow-x-auto whitespace-pre-wrap text-xs leading-relaxed max-h-52 overflow-y-auto scrollbar-hide border border-border/70">{{ err.msg }}</pre>
             </details>
           </div>
         </div>
@@ -307,7 +318,7 @@ const healthBadgeVariant = computed(() => {
 
 const healthBadgeClass = computed(() => {
   const status = dashboardData.value?.health?.status
-  if (status === 'degraded') return 'border-amber-500/40 text-amber-500'
+  if (status === 'degraded') return 'border-warning/40 bg-warning/10 text-warning'
   return ''
 })
 
@@ -322,7 +333,7 @@ const healthStatusText = computed(() => {
 const healthScoreClass = computed(() => {
   const score = dashboardData.value?.health?.score || 0
   if (score >= 80) return 'text-foreground'
-  if (score >= 50) return 'text-amber-500'
+  if (score >= 50) return 'text-warning'
   return 'text-destructive'
 })
 
@@ -342,14 +353,14 @@ const getQueueDepthColor = () => {
 
 const getSiteRateClass = (rate) => {
   if (rate >= 80) return 'text-foreground'
-  if (rate >= 50) return 'text-amber-500'
+  if (rate >= 50) return 'text-warning'
   return 'text-destructive'
 }
 
 const getQueueDepthTextClass = (value) => {
   const depth = Number(value) || 0
   if (depth > 100) return 'text-destructive'
-  if (depth > 50) return 'text-amber-500'
+  if (depth > 50) return 'text-warning'
   return 'text-muted-foreground'
 }
 
@@ -394,6 +405,234 @@ onUnmounted(() => {
   font-feature-settings: "tnum";
 }
 
+.monitor-hero {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.16), transparent 42%),
+    radial-gradient(circle at bottom right, hsl(var(--accent) / 0.45), transparent 38%),
+    linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.92));
+  box-shadow: 0 24px 60px hsl(var(--foreground) / 0.06);
+}
+
+.monitor-hero__copy {
+  max-width: 56rem;
+}
+
+.monitor-eyebrow,
+.monitor-panel__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.monitor-hero__title {
+  margin-top: 0.65rem;
+  font-size: clamp(1.9rem, 2vw, 2.6rem);
+  line-height: 1.05;
+  font-weight: 600;
+}
+
+.monitor-hero__description {
+  margin-top: 0.75rem;
+  max-width: 48rem;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: hsl(var(--muted-foreground));
+}
+
+.monitor-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.monitor-hero__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--background) / 0.72);
+  backdrop-filter: blur(16px);
+}
+
+.monitor-hero__label,
+.monitor-panel__caption {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.monitor-hero__badge {
+  padding-inline: 0.75rem;
+}
+
+.monitor-hero__divider {
+  width: 1px;
+  height: 1rem;
+  background: hsl(var(--border));
+}
+
+.monitor-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.9rem 1.15rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--primary) / 0.2);
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  box-shadow: 0 18px 36px hsl(var(--primary) / 0.18);
+}
+
+.monitor-refresh:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.monitor-refresh:disabled {
+  opacity: 0.72;
+}
+
+.monitor-metric-card {
+  border-color: hsl(var(--border) / 0.7);
+  background:
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.92));
+  box-shadow: 0 18px 42px hsl(var(--foreground) / 0.04);
+}
+
+.monitor-metric-card--warm {
+  background:
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.92)),
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.14), transparent 38%);
+}
+
+.monitor-metric-card--ink {
+  background:
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.9)),
+    radial-gradient(circle at bottom right, hsl(var(--secondary) / 0.9), transparent 34%);
+}
+
+.monitor-metric-card__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: hsl(var(--muted-foreground));
+}
+
+.monitor-metric-card__value {
+  margin-top: 0.75rem;
+  font-size: 1.85rem;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.monitor-metric-card__meta {
+  margin-top: 0.8rem;
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.monitor-panel,
+.monitor-table-card,
+.monitor-error-card {
+  border-color: hsl(var(--border) / 0.72);
+  background:
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
+  box-shadow: 0 20px 50px hsl(var(--foreground) / 0.045);
+}
+
+.monitor-panel {
+  padding: 1rem;
+}
+
+.monitor-panel__header,
+.monitor-table-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.monitor-panel__title {
+  margin-top: 0.4rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.monitor-stat-tile {
+  padding: 0.95rem 0.8rem;
+  border-radius: 1rem;
+  border: 1px solid hsl(var(--border) / 0.7);
+  background: hsl(var(--background) / 0.72);
+}
+
+.monitor-stat-tile__value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.monitor-stat-tile__label {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.monitor-table-card__header {
+  padding: 1rem 1rem 0.9rem;
+  margin-bottom: 0;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.monitor-table-card__thead {
+  background:
+    linear-gradient(180deg, hsl(var(--background) / 0.95), hsl(var(--card) / 0.88));
+}
+
+.monitor-table-card__row {
+  transition: background-color 160ms ease;
+}
+
+.monitor-table-card__row:hover {
+  background: hsl(var(--accent) / 0.65);
+}
+
+.monitor-site-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.monitor-error-item {
+  padding: 0.9rem 1rem;
+  transition: background-color 160ms ease;
+}
+
+.monitor-error-item:hover {
+  background: hsl(var(--accent) / 0.6);
+}
+
 .toolbar-container,
 .content-container {
   max-width: var(--container-max-width, 2560px);
@@ -425,5 +664,12 @@ details summary::-webkit-details-marker {
 }
 details summary {
   list-style: none;
+}
+
+@media (min-width: 1024px) {
+  .monitor-hero {
+    grid-template-columns: minmax(0, 1.55fr) minmax(24rem, 1fr);
+    align-items: end;
+  }
 }
 </style>
