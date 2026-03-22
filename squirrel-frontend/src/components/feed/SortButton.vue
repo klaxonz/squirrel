@@ -1,91 +1,99 @@
 <template>
-  <div class="relative inline-block" ref="rootRef">
-    <button
-      @click="toggle"
-      class="flex items-center flex-nowrap px-2 py-1.5 text-foreground hover:bg-muted rounded-full transition-colors duration-150 border border-transparent"
-      :class="[{ 'bg-muted border-border': isOpen }, isMobile ? 'p-1.5' : 'space-x-1 px-2 text-xs']"
-    >
-      <Bars4Icon v-if="!isMobile" class="h-4 w-4" />
-      <span v-if="!isMobile">排序</span>
-      <span v-if="!isMobile" class="opacity-70">· {{ currentLabel }}</span>
-      <ChevronDownIcon
-        class="transition-transform duration-200"
-        :class="[
-          isMobile ? 'h-2.5 w-2.5 -mr-0.5' : 'h-3 w-3',
-          { 'transform rotate-180': isOpen }
-        ]"
-      />
-    </button>
-
-    <div
-      v-if="isOpen"
-      class="absolute right-0 mt-1 py-1 w-max min-w-full bg-card rounded-lg shadow-lg z-50 animate-fade-in border border-border"
-    >
-      <button
-        v-for="option in sortOptions"
-        :key="option.value"
-        @click="selectOption(option.value)"
-        class="w-full px-3 py-1.5 text-xs text-foreground hover:bg-muted flex items-center gap-2"
-      >
-        <span class="flex-1 truncate">{{ option.label }}</span>
-        <CheckIcon
-          v-if="modelValue === option.value"
-          class="h-3 w-3 text-blue-500 flex-shrink-0"
-        />
-        <span v-else class="h-3 w-3 flex-shrink-0"></span>
-      </button>
-    </div>
-
-  </div>
+  <Select :model-value="modelValue" @update:model-value="handleValueChange">
+    <SelectTrigger class="toolbar-select">
+      <div class="toolbar-select__copy">
+        <Bars4Icon class="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span v-if="!isMobile" class="toolbar-select__label">排序</span>
+        <span class="toolbar-select__value">{{ currentLabel }}</span>
+      </div>
+    </SelectTrigger>
+    <SelectContent class="toolbar-select__content">
+      <SelectItem v-for="option in sortOptions" :key="option.value" :value="option.value">
+        {{ option.label }}
+      </SelectItem>
+    </SelectContent>
+  </Select>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { isMobile } from '@/composables/useMobile';
-import { useDropdown } from '@/composables/useDropdown';
-import {
-  Bars4Icon,
-  ChevronDownIcon,
-  CheckIcon
-} from '@heroicons/vue/24/outline';
+import { computed } from 'vue'
+import { Bars4Icon } from '@heroicons/vue/24/outline'
+import { isMobile } from '@/composables/useMobile'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 
 const props = defineProps({
   modelValue: {
     type: String,
-    required: true
-  }
-});
+    required: true,
+  },
+})
 
-const emit = defineEmits(['update:modelValue']);
-
-const { isOpen, rootRef, toggle, close } = useDropdown();
+const emit = defineEmits(['update:modelValue'])
 
 const sortOptions = [
   { value: 'publish_date', label: '上传时间' },
-  { value: 'created_at', label: '添加时间' }
-];
+  { value: 'created_at', label: '添加时间' },
+]
 
-const currentLabel = computed(() => (sortOptions.find(o => o.value === props.modelValue)?.label) || sortOptions[0].label);
+const currentLabel = computed(() => {
+  return sortOptions.find((option) => option.value === props.modelValue)?.label || sortOptions[0].label
+})
 
-const selectOption = (value) => {
-  emit('update:modelValue', value);
-  close();
-};
+const handleValueChange = (value) => {
+  emit('update:modelValue', String(value))
+}
 </script>
 
 <style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
+.toolbar-select {
+  width: auto;
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-width: 7.5rem;
+  border-radius: 9999px;
+  border-color: hsl(var(--border) / 0.72);
+  background: hsl(var(--card) / 0.82);
+  box-shadow: 0 12px 28px hsl(var(--surface-shadow) / 0.08);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
+.toolbar-select__copy {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.toolbar-select__label {
+  font-size: var(--font-size-2xs);
+  color: hsl(var(--muted-foreground));
+}
+
+.toolbar-select__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-select__content {
+  border-radius: calc(var(--radius-xl) + 2px);
+}
+
+@media (max-width: 768px) {
+  .toolbar-select {
+    min-width: auto;
+    width: 3rem;
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .toolbar-select__copy {
+    justify-content: center;
+  }
+
+  .toolbar-select__value {
+    display: none;
   }
 }
-</style> 
+</style>

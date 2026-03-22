@@ -1,119 +1,83 @@
 <template>
-  <div
-    class="tab-bar flex items-center justify-between overflow-x-auto"
-    role="tablist"
-    aria-label="Tabs"
-    ref="containerRef"
-    @keydown="onKeydown"
+  <Tabs
+    :model-value="modelValue"
+    class="tab-bar"
+    @update:model-value="(value) => emit('update:modelValue', String(value))"
   >
-    <!-- 左侧标签 -->
-    <div class="flex space-x-1">
-      <button
-        v-for="(tab, index) in tabs"
+    <TabsList class="tab-bar__list">
+      <TabsTrigger
+        v-for="tab in tabs"
         :key="tab.value"
-        @click="$emit('update:modelValue', tab.value)"
-        @dblclick="$emit('tab-dblclick', tab.value)"
-        role="tab"
-        :aria-selected="modelValue === tab.value"
-        :tabindex="modelValue === tab.value ? 0 : -1"
-        ref="tabRefs"
-        :class="[
-          'px-3 py-1 text-xs font-medium rounded-full transition-colors duration-150 ease-in-out flex items-center',
-          modelValue === tab.value
-            ? 'bg-muted text-foreground'
-            : 'bg-background text-foreground hover:bg-muted'
-        ]"
+        :value="tab.value"
+        class="tab-bar__trigger"
+        @dblclick="emit('tab-dblclick', tab.value)"
       >
-        {{ tab.label }}
-        <span
-          v-if="tab.count !== undefined"
-          :class="[
-            'ml-1 text-2xs',
-            modelValue === tab.value
-              ? 'text-foreground'
-              : 'text-muted-foreground'
-          ]"
-        >
+        <span class="tab-bar__label">{{ tab.label }}</span>
+        <span v-if="tab.count !== undefined" class="tab-bar__count">
           {{ tab.count }}
         </span>
-      </button>
-    </div>
-  </div>
+      </TabsTrigger>
+    </TabsList>
+  </Tabs>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-const props = defineProps({
-  modelValue: String,
-  tabs: Array
-});
+defineProps({
+  modelValue: {
+    type: String,
+    default: 'all',
+  },
+  tabs: {
+    type: Array,
+    default: () => [],
+  },
+})
 
-const emit = defineEmits(['update:modelValue', 'tab-dblclick']);
-
-const containerRef = ref(null);
-const tabRefs = ref([]);
-
-const currentIndex = computed(() => (props.tabs || []).findIndex(t => t.value === props.modelValue));
-
-const focusTab = (idx) => {
-  const el = tabRefs.value[idx];
-  if (el && typeof el.focus === 'function') el.focus();
-};
-
-const setActiveByIndex = (idx) => {
-  const tabs = props.tabs || [];
-  if (idx >= 0 && idx < tabs.length) {
-    emit('update:modelValue', tabs[idx].value);
-    focusTab(idx);
-  }
-};
-
-const onKeydown = (e) => {
-  const tabs = props.tabs || [];
-  if (!tabs.length) return;
-  const idx = currentIndex.value >= 0 ? currentIndex.value : 0;
-  switch (e.key) {
-    case 'ArrowRight':
-      e.preventDefault();
-      setActiveByIndex((idx + 1) % tabs.length);
-      break;
-    case 'ArrowLeft':
-      e.preventDefault();
-      setActiveByIndex((idx - 1 + tabs.length) % tabs.length);
-      break;
-    case 'Home':
-      e.preventDefault();
-      setActiveByIndex(0);
-      break;
-    case 'End':
-      e.preventDefault();
-      setActiveByIndex(tabs.length - 1);
-      break;
-    case 'Enter':
-    case ' ':
-      // Already handled by update when focused tab changes; ensure click behavior
-      e.preventDefault();
-      setActiveByIndex(idx);
-      break;
-    default:
-      break;
-  }
-};
+const emit = defineEmits(['update:modelValue', 'tab-dblclick'])
 </script>
 
 <style scoped>
 .tab-bar {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
-  -ms-overflow-style: none;
-  background-color: hsl(var(--background));
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-bar__list {
+  display: inline-flex;
+  min-width: max-content;
 }
 
 .tab-bar::-webkit-scrollbar {
   display: none;
 }
 
-button {
+.tab-bar__trigger {
+  gap: 0.45rem;
+  padding-inline: 0.95rem;
+}
+
+.tab-bar__label {
   white-space: nowrap;
+}
+
+.tab-bar__count {
+  display: inline-flex;
+  min-width: 1.35rem;
+  justify-content: center;
+  border-radius: 9999px;
+  background: hsl(var(--background) / 0.72);
+  padding: 0.08rem 0.35rem;
+  font-size: var(--font-size-2xs);
+  color: hsl(var(--muted-foreground));
+}
+
+:deep(.tab-bar__trigger[data-state="active"] .tab-bar__count) {
+  background: hsl(var(--primary-foreground) / 0.16);
+  color: hsl(var(--primary-foreground));
 }
 </style>
