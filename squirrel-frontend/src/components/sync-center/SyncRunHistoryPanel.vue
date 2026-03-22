@@ -42,32 +42,55 @@
 
     <div v-else class="flex-1 overflow-y-auto">
       <div class="divide-y divide-border-primary">
-        <button
+        <div
           v-for="run in runs"
           :key="run.run_id"
-          type="button"
           class="w-full text-left transition-colors hover:bg-bg-hover"
-          :class="[embedded ? 'px-3 py-2.5' : 'px-4 py-3', selectedRunId === run.run_id ? 'bg-bg-hover' : '']"
-          @click="emit('open-run', run.run_id)"
         >
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="text-xs font-medium leading-5 text-text-primary break-words">{{ run.subscription_name }}</span>
-                <StatusBadge size="xs" :show-dot="false" :variant="getVariant(run.status)" :label="getStatusLabel(run.status)" class="border-0" />
-                <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">{{ getModeLabel(run.sync_mode) }}</span>
+          <div class="flex items-start gap-3" :class="[embedded ? 'px-3 py-2.5' : 'px-4 py-3', selectedRunId === run.run_id ? 'bg-bg-hover' : '']">
+            <router-link
+              :to="getSubscriptionLink(run.subscription_id)"
+              class="shrink-0"
+              @click.stop
+            >
+              <img
+                :src="getAvatarSrc(run.subscription_avatar, getAvatarKey(run))"
+                :alt="run.subscription_name"
+                class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
+                referrerpolicy="no-referrer"
+                @error="(e) => handleAvatarError(e, getAvatarKey(run))"
+              >
+            </router-link>
+            <button
+              type="button"
+              class="flex min-w-0 flex-1 items-start justify-between gap-3 text-left"
+              @click="emit('open-run', run.run_id)"
+            >
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-xs font-medium leading-5 text-text-primary break-words">{{ run.subscription_name }}</span>
+                  <StatusBadge size="xs" :show-dot="false" :variant="getVariant(run.status)" :label="getStatusLabel(run.status)" class="border-0" />
+                  <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">{{ getModeLabel(run.sync_mode) }}</span>
+                </div>
+                <div class="mt-1 text-2xs leading-5 text-text-tertiary break-words">
+                  {{ run.site || 'unknown' }} · {{ getTriggerLabel(run.trigger) }} {{ run.last_event_at || run.finished_at || run.started_at || '—' }}
+                </div>
+                <div v-if="run.error_message" class="mt-1 text-2xs leading-5 text-color-error break-words">{{ run.error_message }}</div>
               </div>
-              <div class="mt-1 text-2xs leading-5 text-text-tertiary break-words">
-                {{ run.site || 'unknown' }} · {{ getTriggerLabel(run.trigger) }} {{ run.last_event_at || run.finished_at || run.started_at || '—' }}
+              <div class="shrink-0 text-right text-2xs text-text-secondary">
+                <div>{{ formatDurationMs(run.duration_ms) }}</div>
+                <div class="mt-1">{{ formatRunVideoSummary(run) }}</div>
               </div>
-              <div v-if="run.error_message" class="mt-1 text-2xs leading-5 text-color-error break-words">{{ run.error_message }}</div>
-            </div>
-            <div class="shrink-0 text-right text-2xs text-text-secondary">
-              <div>{{ formatDurationMs(run.duration_ms) }}</div>
-              <div class="mt-1">{{ formatRunVideoSummary(run) }}</div>
-            </div>
+            </button>
+            <router-link
+              :to="getSubscriptionLink(run.subscription_id)"
+              class="mt-1 inline-flex shrink-0 rounded-full border border-border-primary bg-bg-primary px-2.5 py-1 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+              @click.stop
+            >
+              频道
+            </router-link>
           </div>
-        </button>
+        </div>
       </div>
     </div>
 
@@ -85,6 +108,7 @@
 import { computed } from 'vue'
 import { Button, Select, StatusBadge } from '@/components/common'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
+import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
 
 const props = withDefaults(defineProps<{
@@ -108,7 +132,12 @@ const emit = defineEmits<{
   (e: 'set-filter', payload: { key: string; value: string }): void
 }>()
 
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
+
+const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
+
+const getAvatarKey = (run: SyncRunItem) => `run-history-${run.run_id}`
 
 const statusOptions = [
   { value: '', label: '全部状态' },

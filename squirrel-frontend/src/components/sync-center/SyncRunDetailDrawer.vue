@@ -8,24 +8,48 @@
       >
         <div class="flex h-full w-full max-w-3xl flex-col border-l border-border-primary bg-bg-primary shadow-2xl">
           <div class="px-6 py-5 border-b border-border-primary flex items-start justify-between gap-4">
-            <div class="min-w-0">
-              <h2 class="text-lg font-semibold leading-7 text-text-primary break-words">{{ run.subscription_name }}</h2>
-              <div class="flex flex-wrap items-center gap-2 mt-2">
-                <StatusBadge size="xs" :show-dot="false" :variant="getVariant(run.status)" :label="run.status" class="border-0" />
-                <span class="px-2 py-0.5 rounded-full text-2xs bg-bg-secondary text-text-tertiary border border-border-primary">
-                  {{ run.sync_mode }}
-                </span>
-                <span class="text-2xs text-text-muted">{{ run.site || 'unknown' }}</span>
-                <span class="text-2xs text-text-muted">run {{ run.run_id }}</span>
+            <div class="flex min-w-0 items-start gap-3">
+              <router-link :to="getSubscriptionLink(run.subscription_id)" class="shrink-0">
+                <img
+                  :src="getAvatarSrc(run.subscription_avatar, `run-drawer-${run.run_id}`)"
+                  :alt="run.subscription_name"
+                  class="h-12 w-12 rounded-full object-cover bg-bg-secondary ring-1 ring-border-primary"
+                  referrerpolicy="no-referrer"
+                  @error="(e) => handleAvatarError(e, `run-drawer-${run.run_id}`)"
+                >
+              </router-link>
+              <div class="min-w-0">
+                <router-link
+                  :to="getSubscriptionLink(run.subscription_id)"
+                  class="text-lg font-semibold leading-7 text-text-primary break-words hover:text-color-info"
+                >
+                  {{ run.subscription_name }}
+                </router-link>
+                <div class="flex flex-wrap items-center gap-2 mt-2">
+                  <StatusBadge size="xs" :show-dot="false" :variant="getVariant(run.status)" :label="run.status" class="border-0" />
+                  <span class="px-2 py-0.5 rounded-full text-2xs bg-bg-secondary text-text-tertiary border border-border-primary">
+                    {{ run.sync_mode }}
+                  </span>
+                  <span class="text-2xs text-text-muted">{{ run.site || 'unknown' }}</span>
+                  <span class="text-2xs text-text-muted">run {{ run.run_id }}</span>
+                </div>
               </div>
             </div>
-            <button
-              type="button"
-              class="h-9 w-9 rounded-full bg-bg-secondary text-text-secondary hover:bg-bg-hover transition-colors"
-              @click="emit('close')"
-            >
-              ✕
-            </button>
+            <div class="flex items-center gap-2">
+              <router-link
+                :to="getSubscriptionLink(run.subscription_id)"
+                class="rounded-full border border-border-primary bg-bg-secondary px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+              >
+                打开频道
+              </router-link>
+              <button
+                type="button"
+                class="h-9 w-9 rounded-full bg-bg-secondary text-text-secondary hover:bg-bg-hover transition-colors"
+                @click="emit('close')"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
@@ -90,6 +114,7 @@
 import { Card, StatusBadge } from '@/components/common'
 import type { SyncRunEvent, SyncRunItem } from '@/composables/useSyncHistory'
 import SyncEventTimeline from '@/components/sync-center/SyncEventTimeline.vue'
+import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
 
 defineProps<{
@@ -103,6 +128,10 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
+
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
+
+const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
 
 const getVariant = (status: string) => {
   switch (status) {

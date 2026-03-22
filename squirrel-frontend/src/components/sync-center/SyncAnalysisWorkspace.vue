@@ -12,22 +12,40 @@
       </div>
 
       <div v-if="objectRows.length" class="min-h-0 flex-1 overflow-y-auto divide-y divide-border-primary">
-        <button
+        <div
           v-for="row in objectRows"
           :key="row.id"
-          type="button"
           class="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-bg-hover"
-          :class="row.active ? 'bg-bg-hover' : ''"
-          @click="handleObjectRowClick(row)"
         >
-          <div class="min-w-0">
-            <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ row.title }}</div>
-            <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">{{ row.meta }}</div>
-          </div>
-          <div class="flex shrink-0 items-center">
-            <span class="text-xs font-semibold" :class="getValueClass(row.tone)">{{ row.value }}</span>
-          </div>
-        </button>
+          <router-link
+            v-if="hasSubscription(row)"
+            :to="getSubscriptionLink(row.subscriptionId)"
+            class="shrink-0"
+            @click.stop
+          >
+            <img
+              :src="getAvatarSrc(row.avatar, getAvatarKey(row))"
+              :alt="row.title"
+              class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
+              referrerpolicy="no-referrer"
+              @error="(e) => handleAvatarError(e, getAvatarKey(row))"
+            >
+          </router-link>
+          <button
+            type="button"
+            class="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+            :class="row.active ? 'bg-bg-hover' : ''"
+            @click="handleObjectRowClick(row)"
+          >
+            <div class="min-w-0">
+              <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ row.title }}</div>
+              <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">{{ row.meta }}</div>
+            </div>
+            <div class="flex shrink-0 items-center">
+              <span class="text-xs font-semibold" :class="getValueClass(row.tone)">{{ row.value }}</span>
+            </div>
+          </button>
+        </div>
       </div>
       <div v-else class="px-3 py-6 text-center text-2xs text-text-muted">
         当前没有可分析对象
@@ -86,20 +104,44 @@
 
         <div v-if="selectedRun" class="border-t border-border-primary px-3 py-3">
           <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ selectedRun.subscription_name }}</div>
-              <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">
-                run {{ selectedRun.run_id }} · {{ selectedRun.site || 'unknown' }}
+            <div class="flex min-w-0 items-center gap-3">
+              <router-link :to="getSubscriptionLink(selectedRun.subscription_id)" class="shrink-0">
+                <img
+                  :src="getAvatarSrc(selectedRun.subscription_avatar, `selected-run-${selectedRun.run_id}`)"
+                  :alt="selectedRun.subscription_name"
+                  class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
+                  referrerpolicy="no-referrer"
+                  @error="(e) => handleAvatarError(e, `selected-run-${selectedRun.run_id}`)"
+                >
+              </router-link>
+              <div class="min-w-0">
+                <router-link
+                  :to="getSubscriptionLink(selectedRun.subscription_id)"
+                  class="text-xs font-medium leading-5 text-text-primary break-words hover:text-color-info"
+                >
+                  {{ selectedRun.subscription_name }}
+                </router-link>
+                <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">
+                  run {{ selectedRun.run_id }} · {{ selectedRun.site || 'unknown' }}
+                </div>
               </div>
             </div>
-            <Button
-              size="xs"
-              shape="pill"
-              variant="secondary"
-              @click="emit('open-run', selectedRun.run_id)"
-            >
-              事件
-            </Button>
+            <div class="flex items-center gap-2">
+              <router-link
+                :to="getSubscriptionLink(selectedRun.subscription_id)"
+                class="rounded-full border border-border-primary bg-bg-primary px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+              >
+                频道
+              </router-link>
+              <Button
+                size="xs"
+                shape="pill"
+                variant="secondary"
+                @click="emit('open-run', selectedRun.run_id)"
+              >
+                事件
+              </Button>
+            </div>
           </div>
           <div class="mt-2 text-2xs leading-5 text-text-muted break-words">
             {{ selectedRun.error_message || `${formatDurationMs(selectedRun.duration_ms)} · ${formatRunSummary(selectedRun)}` }}
@@ -108,20 +150,44 @@
 
         <div v-else-if="selectedItem" class="border-t border-border-primary px-3 py-3">
           <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ selectedItem.subscription_name }}</div>
-              <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">
-                {{ selectedItem.site || 'unknown' }} · {{ selectedItem.sync_mode }}
+            <div class="flex min-w-0 items-center gap-3">
+              <router-link :to="getSubscriptionLink(selectedItem.subscription_id)" class="shrink-0">
+                <img
+                  :src="getAvatarSrc(selectedItem.subscription_avatar, `selected-item-${selectedItem.subscription_id}`)"
+                  :alt="selectedItem.subscription_name"
+                  class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
+                  referrerpolicy="no-referrer"
+                  @error="(e) => handleAvatarError(e, `selected-item-${selectedItem.subscription_id}`)"
+                >
+              </router-link>
+              <div class="min-w-0">
+                <router-link
+                  :to="getSubscriptionLink(selectedItem.subscription_id)"
+                  class="text-xs font-medium leading-5 text-text-primary break-words hover:text-color-info"
+                >
+                  {{ selectedItem.subscription_name }}
+                </router-link>
+                <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">
+                  {{ selectedItem.site || 'unknown' }} · {{ selectedItem.sync_mode }}
+                </div>
               </div>
             </div>
-            <Button
-              size="xs"
-              shape="pill"
-              variant="secondary"
-              @click="emit('open-item', selectedItem)"
-            >
-              订阅
-            </Button>
+            <div class="flex items-center gap-2">
+              <router-link
+                :to="getSubscriptionLink(selectedItem.subscription_id)"
+                class="rounded-full border border-border-primary bg-bg-primary px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+              >
+                频道
+              </router-link>
+              <Button
+                size="xs"
+                shape="pill"
+                variant="secondary"
+                @click="emit('open-item', selectedItem)"
+              >
+                详情
+              </Button>
+            </div>
           </div>
           <div class="mt-2 text-2xs leading-5 text-text-muted break-words">
             {{ selectedItem.last_error_summary || `${selectedItem.pending_video_count || 0} 个待处理` }}
@@ -158,6 +224,7 @@ import type { SyncCenterItem, SyncCenterStatusFilter } from '@/composables/useSy
 import type { SyncFocusKind } from '@/composables/useSyncCenterWorkbench'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
 import type { SyncTrendPoint, SyncTrendSiteBreakdown } from '@/composables/useSyncTrends'
+import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
 
 interface RecoverySummary {
@@ -176,6 +243,8 @@ interface ObjectRow {
   value: string | number
   tone: AnalysisTone
   active?: boolean
+  avatar?: string | null
+  subscriptionId?: number | null
 }
 
 const props = defineProps<{
@@ -236,6 +305,7 @@ const highestP95 = computed(() => {
   }
   return Math.max(...props.trendSeries.map((item) => item.p95_duration_ms || 0))
 })
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 
 const workspaceLabel = computed(() => {
   switch (props.focus) {
@@ -286,6 +356,8 @@ const objectRows = computed<ObjectRow[]>(() => {
         value: formatDurationMs(run.duration_ms),
         tone: 'error',
         active: run.run_id === props.selectedRunId,
+        avatar: run.subscription_avatar,
+        subscriptionId: run.subscription_id,
       }))
     case 'slow-runs':
       return slowRuns.value.slice(0, 10).map((run) => ({
@@ -295,6 +367,8 @@ const objectRows = computed<ObjectRow[]>(() => {
         value: formatDurationMs(run.duration_ms),
         tone: run.status === 'failed' ? 'error' : 'warning',
         active: run.run_id === props.selectedRunId,
+        avatar: run.subscription_avatar,
+        subscriptionId: run.subscription_id,
       }))
     case 'recovery':
       return [
@@ -373,6 +447,12 @@ const handleObjectRowClick = (row: ObjectRow) => {
   }
   emit('open-run', row.id)
 }
+
+const hasSubscription = (row: ObjectRow) => row.subscriptionId != null
+
+const getSubscriptionLink = (subscriptionId: number | null | undefined) => `/subscription/${subscriptionId}/all`
+
+const getAvatarKey = (row: ObjectRow) => `${props.focus}-${row.id}`
 
 const getValueClass = (tone: AnalysisTone) => {
   switch (tone) {

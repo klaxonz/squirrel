@@ -396,6 +396,8 @@ const failedFocusRows = computed<SyncFocusRow[]>(() => {
     meta: `${run.site || 'unknown'} ${run.last_event_at || run.finished_at || '—'}`,
     value: formatDurationMs(run.duration_ms),
     tone: 'error',
+    avatar: run.subscription_avatar,
+    subscriptionId: run.subscription_id,
   }))
 })
 
@@ -406,6 +408,8 @@ const slowFocusRows = computed<SyncFocusRow[]>(() => {
     meta: `${run.site || 'unknown'} · ${run.status}`,
     value: formatDurationMs(run.duration_ms),
     tone: run.status === 'failed' ? 'error' : 'warning',
+    avatar: run.subscription_avatar,
+    subscriptionId: run.subscription_id,
   }))
 })
 

@@ -18,21 +18,39 @@
       </button>
 
       <div v-if="section.rows.length" class="divide-y divide-border-primary">
-        <button
+        <div
           v-for="row in section.rows"
           :key="`${section.key}-${row.id}`"
-          type="button"
           class="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-bg-hover"
-          @click="emit('open', { section: section.key, id: row.id })"
         >
-          <div class="min-w-0">
-            <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ row.title }}</div>
-            <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">{{ row.meta }}</div>
-          </div>
-          <div class="flex shrink-0 items-center">
-            <span class="text-xs font-semibold" :class="getValueClass(row.tone)">{{ row.value }}</span>
-          </div>
-        </button>
+          <router-link
+            v-if="hasSubscription(row)"
+            :to="getSubscriptionLink(row.subscriptionId)"
+            class="shrink-0"
+            @click.stop
+          >
+            <img
+              :src="getAvatarSrc(row.avatar, getAvatarKey(section.key, row))"
+              :alt="row.title"
+              class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
+              referrerpolicy="no-referrer"
+              @error="(e) => handleAvatarError(e, getAvatarKey(section.key, row))"
+            >
+          </router-link>
+          <button
+            type="button"
+            class="flex min-w-0 flex-1 items-start justify-between gap-3 text-left"
+            @click="emit('open', { section: section.key, id: row.id })"
+          >
+            <div class="min-w-0">
+              <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ row.title }}</div>
+              <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">{{ row.meta }}</div>
+            </div>
+            <div class="flex shrink-0 items-center">
+              <span class="text-xs font-semibold" :class="getValueClass(row.tone)">{{ row.value }}</span>
+            </div>
+          </button>
+        </div>
       </div>
 
       <div v-else class="px-3 py-6 text-center text-2xs text-text-muted">
@@ -45,6 +63,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { SyncFocusKind } from '@/composables/useSyncCenterWorkbench'
+import { useImageFallback } from '@/composables/useImageFallback'
 
 type FocusTone = 'neutral' | 'info' | 'warning' | 'error' | 'success'
 type FocusSectionKey = Extract<SyncFocusKind, 'site' | 'failed-runs' | 'slow-runs' | 'recovery'>
@@ -55,6 +74,8 @@ export interface SyncFocusRow {
   meta: string
   value: string | number
   tone: FocusTone
+  avatar?: string | null
+  subscriptionId?: number | null
 }
 
 const props = defineProps<{
@@ -75,6 +96,14 @@ const sections = computed<Array<{ key: FocusSectionKey; label: string; rows: Syn
   { key: 'slow-runs', label: '高延迟批次', rows: props.slowRuns },
   { key: 'recovery', label: '恢复事件', rows: props.recovery },
 ]))
+
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
+
+const hasSubscription = (row: SyncFocusRow) => row.subscriptionId != null
+
+const getSubscriptionLink = (subscriptionId: number | null | undefined) => `/subscription/${subscriptionId}/all`
+
+const getAvatarKey = (section: FocusSectionKey, row: SyncFocusRow) => `${section}-${row.id}`
 
 const getValueClass = (tone: FocusTone) => {
   switch (tone) {

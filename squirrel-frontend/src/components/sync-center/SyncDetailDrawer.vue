@@ -10,15 +10,22 @@
           <div class="px-6 py-5 border-b border-border-primary flex items-start justify-between gap-4">
             <div class="min-w-0">
               <div class="flex items-center gap-3">
-                <img
-                  v-if="item.subscription_avatar"
-                  :src="item.subscription_avatar"
-                  :alt="item.subscription_name"
-                  class="w-12 h-12 rounded-full object-cover bg-bg-secondary"
-                  referrerpolicy="no-referrer"
-                >
+                <router-link :to="getSubscriptionLink(item.subscription_id)" class="shrink-0">
+                  <img
+                    :src="getAvatarSrc(item.subscription_avatar, `detail-drawer-${item.subscription_id}`)"
+                    :alt="item.subscription_name"
+                    class="w-12 h-12 rounded-full object-cover bg-bg-secondary ring-1 ring-border-primary"
+                    referrerpolicy="no-referrer"
+                    @error="(e) => handleAvatarError(e, `detail-drawer-${item.subscription_id}`)"
+                  >
+                </router-link>
                 <div class="min-w-0">
-                  <h2 class="text-lg font-semibold text-text-primary truncate">{{ item.subscription_name }}</h2>
+                  <router-link
+                    :to="getSubscriptionLink(item.subscription_id)"
+                    class="text-lg font-semibold text-text-primary truncate hover:text-color-info"
+                  >
+                    {{ item.subscription_name }}
+                  </router-link>
                   <div class="flex items-center gap-2 mt-2">
                     <StatusBadge
                       size="xs"
@@ -126,6 +133,7 @@
 <script setup lang="ts">
 import { Button, StatusBadge } from '@/components/common'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
+import { useImageFallback } from '@/composables/useImageFallback'
 
 defineProps<{
   item: SyncCenterItem | null
@@ -137,6 +145,10 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'retry'): void
 }>()
+
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
+
+const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
 
 const getStatusLabel = (status: string) => {
   switch (status) {

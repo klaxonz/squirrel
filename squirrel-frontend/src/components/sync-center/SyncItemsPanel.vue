@@ -31,44 +31,81 @@
     <div v-else-if="items.length === 0" class="px-4 py-12 text-center text-sm text-text-muted">当前条件下没有同步项</div>
 
     <div v-else-if="embedded" class="min-h-0 flex-1 overflow-y-auto divide-y divide-border-primary">
-      <button
+      <div
         v-for="item in items"
         :key="`${item.subscription_id}-${item.sync_mode}-embedded`"
-        type="button"
-        class="w-full px-3 py-2.5 text-left transition-colors hover:bg-bg-hover"
+        class="flex items-start gap-3 px-3 py-2.5 transition-colors hover:bg-bg-hover"
         :class="selectedId === item.subscription_id ? 'bg-bg-hover' : ''"
-        @click="emit('open-item', item)"
       >
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-xs font-medium leading-5 text-text-primary break-words">{{ item.subscription_name }}</span>
-              <StatusBadge
-                size="xs"
-                :show-dot="false"
-                :variant="getStatusVariant(item.display_status)"
-                :label="getStatusLabel(item.display_status)"
-                class="border-0"
-              />
+        <router-link
+          :to="getSubscriptionLink(item.subscription_id)"
+          class="shrink-0"
+          @click.stop
+        >
+          <img
+            :src="getAvatarSrc(item.subscription_avatar, getAvatarKey(item, 'embedded'))"
+            :alt="item.subscription_name"
+            class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
+            referrerpolicy="no-referrer"
+            @error="(e) => handleAvatarError(e, getAvatarKey(item, 'embedded'))"
+          >
+        </router-link>
+        <button
+          type="button"
+          class="min-w-0 flex-1 text-left"
+          @click="emit('open-item', item)"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-medium leading-5 text-text-primary break-words">{{ item.subscription_name }}</span>
+                <StatusBadge
+                  size="xs"
+                  :show-dot="false"
+                  :variant="getStatusVariant(item.display_status)"
+                  :label="getStatusLabel(item.display_status)"
+                  class="border-0"
+                />
+              </div>
+              <div class="mt-1 text-2xs leading-5 text-text-tertiary break-words">
+                {{ item.site || 'unknown' }} · {{ item.sync_mode === 'full' ? '全量' : '增量' }}
+              </div>
+              <div class="mt-1 text-2xs leading-5 text-text-muted break-words">{{ getSummary(item) }}</div>
             </div>
-            <div class="mt-1 text-2xs leading-5 text-text-tertiary break-words">
-              {{ item.site || 'unknown' }} · {{ item.sync_mode === 'full' ? '全量' : '增量' }}
+            <div class="shrink-0 text-right text-2xs text-text-secondary">
+              <div>待处理 {{ item.pending_video_count || 0 }}</div>
+              <div class="mt-1">失败 {{ item.failure_count || 0 }}</div>
             </div>
-            <div class="mt-1 text-2xs leading-5 text-text-muted break-words">{{ getSummary(item) }}</div>
           </div>
-          <div class="shrink-0 text-right text-2xs text-text-secondary">
-            <div>待处理 {{ item.pending_video_count || 0 }}</div>
-            <div class="mt-1">失败 {{ item.failure_count || 0 }}</div>
-          </div>
-        </div>
-      </button>
+        </button>
+        <router-link
+          :to="getSubscriptionLink(item.subscription_id)"
+          class="mt-1 inline-flex shrink-0 rounded-full border border-border-primary bg-bg-primary px-2.5 py-1 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+          @click.stop
+        >
+          打开
+        </router-link>
+      </div>
     </div>
 
     <div v-else>
       <div class="md:hidden divide-y divide-border-primary">
         <div v-for="item in items" :key="`${item.subscription_id}-${item.sync_mode}-mobile`" class="px-4 py-3">
-          <button type="button" class="w-full text-left" @click="emit('open-item', item)">
-            <div class="flex items-start justify-between gap-3">
+          <div class="flex items-start gap-3">
+            <router-link
+              :to="getSubscriptionLink(item.subscription_id)"
+              class="shrink-0"
+              @click.stop
+            >
+              <img
+                :src="getAvatarSrc(item.subscription_avatar, getAvatarKey(item, 'mobile'))"
+                :alt="item.subscription_name"
+                class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
+                referrerpolicy="no-referrer"
+                @error="(e) => handleAvatarError(e, getAvatarKey(item, 'mobile'))"
+              >
+            </router-link>
+            <button type="button" class="min-w-0 flex-1 text-left" @click="emit('open-item', item)">
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
                   <span class="truncate text-sm font-medium text-text-primary">{{ item.subscription_name }}</span>
@@ -79,6 +116,8 @@
                 <div class="mt-1 text-2xs text-text-muted">{{ item.site || 'unknown' }}</div>
                 <div class="mt-2 text-xs text-text-primary">{{ getSummary(item) }}</div>
               </div>
+            </button>
+            <div class="flex shrink-0 flex-col items-end gap-2">
               <StatusBadge
                 size="xs"
                 :show-dot="false"
@@ -86,8 +125,15 @@
                 :label="getStatusLabel(item.display_status)"
                 class="border-0"
               />
+              <router-link
+                :to="getSubscriptionLink(item.subscription_id)"
+                class="inline-flex rounded-full border border-border-primary bg-bg-primary px-2.5 py-1 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                @click.stop
+              >
+                打开
+              </router-link>
             </div>
-          </button>
+          </div>
         </div>
       </div>
 
@@ -112,14 +158,35 @@
               @click="emit('open-item', item)"
             >
               <td class="px-4 py-3">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-medium leading-5 text-text-primary break-words">{{ item.subscription_name }}</span>
-                    <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">
-                      {{ item.sync_mode === 'full' ? '全量' : '增量' }}
-                    </span>
+                <div class="flex items-center gap-3 min-w-0">
+                  <router-link
+                    :to="getSubscriptionLink(item.subscription_id)"
+                    class="shrink-0"
+                    @click.stop
+                  >
+                    <img
+                      :src="getAvatarSrc(item.subscription_avatar, getAvatarKey(item, 'table'))"
+                      :alt="item.subscription_name"
+                      class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
+                      referrerpolicy="no-referrer"
+                      @error="(e) => handleAvatarError(e, getAvatarKey(item, 'table'))"
+                    >
+                  </router-link>
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <router-link
+                        :to="getSubscriptionLink(item.subscription_id)"
+                        class="text-xs font-medium leading-5 text-text-primary break-words hover:text-color-info"
+                        @click.stop
+                      >
+                        {{ item.subscription_name }}
+                      </router-link>
+                      <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">
+                        {{ item.sync_mode === 'full' ? '全量' : '增量' }}
+                      </span>
+                    </div>
+                    <div class="mt-1 text-2xs text-text-muted">{{ item.site || 'unknown' }}</div>
                   </div>
-                  <div class="mt-1 text-2xs text-text-muted">{{ item.site || 'unknown' }}</div>
                 </div>
               </td>
               <td class="px-4 py-3">
@@ -173,6 +240,7 @@
 import { computed } from 'vue'
 import { Button, StatusBadge } from '@/components/common'
 import type { SyncCenterItem, SyncCenterStatusFilter } from '@/composables/useSyncCenter'
+import { useImageFallback } from '@/composables/useImageFallback'
 
 const props = withDefaults(defineProps<{
   activeStatus: SyncCenterStatusFilter
@@ -204,7 +272,12 @@ const tabs: Array<{ value: SyncCenterStatusFilter; label: string }> = [
   { value: 'recent', label: '最近活动' },
 ]
 
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
+
+const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
+
+const getAvatarKey = (item: SyncCenterItem, layout: string) => `${layout}-${item.subscription_id}-${item.sync_mode}`
 
 const getStatusLabel = (status: string) => {
   switch (status) {
