@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary">
+  <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary">
     <div class="border-b border-border-primary px-3 py-2.5">
       <div class="flex items-center justify-between gap-3">
         <div>
@@ -23,11 +23,11 @@
     <div v-if="loading" class="px-4 py-12 text-center text-sm text-text-muted">加载趋势数据中...</div>
     <div v-else-if="series.length === 0" class="px-4 py-12 text-center text-sm text-text-muted">当前条件下没有趋势数据</div>
 
-    <div v-else class="grid grid-cols-1 gap-3 p-3" :class="embedded ? '2xl:grid-cols-[1.2fr_0.9fr]' : 'xl:grid-cols-[1.3fr_1fr]'">
-      <div class="overflow-hidden rounded-xl border border-border-primary bg-bg-primary">
+    <div v-else class="flex-1 min-h-0 grid grid-cols-1 gap-3 p-3" :class="embedded ? '' : 'xl:grid-cols-[1.3fr_1fr]'">
+      <div class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border-primary bg-bg-primary">
         <div class="border-b border-border-primary px-3 py-2 text-2xs font-semibold tracking-[0.12em] text-text-tertiary">时间序列</div>
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[560px]">
+        <div class="flex-1 overflow-auto">
+          <table class="w-full" :class="embedded ? 'min-w-[460px]' : 'min-w-[560px]'">
             <thead class="border-b border-border-primary">
               <tr class="text-left text-2xs text-text-tertiary">
                 <th class="px-3 py-2 font-semibold">时间桶</th>
@@ -45,17 +45,17 @@
                 <td class="px-3 py-2">{{ point.runs_success }}</td>
                 <td class="px-3 py-2">{{ point.runs_failed }}</td>
                 <td class="px-3 py-2">{{ point.videos_extracted }}</td>
-                <td class="px-3 py-2">{{ point.p95_duration_ms }}</td>
+                <td class="px-3 py-2">{{ formatDurationMs(point.p95_duration_ms) }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <div class="overflow-hidden rounded-xl border border-border-primary bg-bg-primary">
+      <div class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border-primary bg-bg-primary">
         <div class="border-b border-border-primary px-3 py-2 text-2xs font-semibold tracking-[0.12em] text-text-tertiary">站点分布</div>
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[320px]">
+        <div class="flex-1 overflow-auto">
+          <table class="w-full" :class="embedded ? 'min-w-[360px]' : 'min-w-[320px]'">
             <thead class="border-b border-border-primary">
               <tr class="text-left text-2xs text-text-tertiary">
                 <th class="px-3 py-2 font-semibold">站点</th>
@@ -83,6 +83,7 @@
 import { computed } from 'vue'
 import { Select } from '@/components/common'
 import type { SyncTrendPoint, SyncTrendSiteBreakdown } from '@/composables/useSyncTrends'
+import { formatDurationMs } from '@/utils/dateFormat'
 
 const props = withDefaults(defineProps<{
   embedded?: boolean

@@ -22,15 +22,14 @@
           v-for="row in section.rows"
           :key="`${section.key}-${row.id}`"
           type="button"
-          class="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-bg-hover"
+          class="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-bg-hover"
           @click="emit('open', { section: section.key, id: row.id })"
         >
           <div class="min-w-0">
-            <div class="truncate text-xs font-medium text-text-primary">{{ row.title }}</div>
-            <div class="mt-0.5 truncate text-2xs text-text-tertiary">{{ row.meta }}</div>
+            <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ row.title }}</div>
+            <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">{{ row.meta }}</div>
           </div>
-          <div class="flex shrink-0 items-center gap-2">
-            <span class="h-2 w-2 rounded-full" :class="getDotClass(row.tone)"></span>
+          <div class="flex shrink-0 items-center">
             <span class="text-xs font-semibold" :class="getValueClass(row.tone)">{{ row.value }}</span>
           </div>
         </button>
@@ -92,18 +91,4 @@ const getValueClass = (tone: FocusTone) => {
   }
 }
 
-const getDotClass = (tone: FocusTone) => {
-  switch (tone) {
-    case 'error':
-      return 'bg-color-error'
-    case 'info':
-      return 'bg-color-info'
-    case 'warning':
-      return 'bg-color-warning'
-    case 'success':
-      return 'bg-color-success'
-    default:
-      return 'bg-text-muted'
-  }
-}
 </script>

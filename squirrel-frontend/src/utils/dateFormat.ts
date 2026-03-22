@@ -1,5 +1,9 @@
 type DateLike = string | number | Date
 
+const trimDecimal = (value: string) => {
+  return value.replace(/\.0$/, '').replace(/(\.\d*[1-9])0+$/, '$1')
+}
+
 export const formatDate = (dateString: DateLike | null | undefined): string => {
   if (!dateString) return '未知日期'
 
@@ -98,6 +102,45 @@ export const formatDuration = (seconds: number | null | undefined) => {
   const minutes = Math.floor((seconds % 3600) / 60)
   const remainingSeconds = seconds % 60
   return `${hours ? hours + ':' : ''}${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+}
+
+export const formatDurationMs = (durationMs: number | null | undefined, fallback = '—') => {
+  if (durationMs == null || Number.isNaN(Number(durationMs))) {
+    return fallback
+  }
+
+  const raw = Number(durationMs)
+  const sign = raw < 0 ? '-' : ''
+  const absolute = Math.abs(raw)
+
+  if (absolute < 1000) {
+    return `${sign}${Math.round(absolute)}ms`
+  }
+
+  if (absolute < 60_000) {
+    const seconds = absolute / 1000
+    const display = seconds < 10 ? trimDecimal(seconds.toFixed(1)) : String(Math.round(seconds))
+    return `${sign}${display}秒`
+  }
+
+  if (absolute < 3_600_000) {
+    const minutes = Math.floor(absolute / 60_000)
+    const seconds = Math.round((absolute % 60_000) / 1000)
+    if (seconds >= 60) {
+      return `${sign}${minutes + 1}分钟`
+    }
+    return seconds > 0 ? `${sign}${minutes}分${seconds}秒` : `${sign}${minutes}分钟`
+  }
+
+  if (absolute < 86_400_000) {
+    const hours = Math.floor(absolute / 3_600_000)
+    const minutes = Math.floor((absolute % 3_600_000) / 60_000)
+    return minutes > 0 ? `${sign}${hours}小时${minutes}分` : `${sign}${hours}小时`
+  }
+
+  const days = Math.floor(absolute / 86_400_000)
+  const hours = Math.floor((absolute % 86_400_000) / 3_600_000)
+  return hours > 0 ? `${sign}${days}天${hours}小时` : `${sign}${days}天`
 }
 
 export const formatTime = (seconds: number) => {

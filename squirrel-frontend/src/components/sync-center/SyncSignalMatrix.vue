@@ -16,7 +16,6 @@
           <div class="text-2xs text-text-tertiary">{{ item.label }}</div>
           <div class="mt-1.5 flex items-center justify-between gap-3">
             <span class="text-base font-semibold" :class="getValueClass(item.tone)">{{ item.value }}</span>
-            <span class="h-2 w-2 rounded-full" :class="getDotClass(item.tone)"></span>
           </div>
           <div v-if="item.delta" class="mt-1 text-2xs text-text-muted">{{ item.delta }}</div>
         </button>
@@ -39,7 +38,6 @@
           <div class="text-2xs text-text-tertiary">{{ item.label }}</div>
           <div class="mt-1.5 flex items-center justify-between gap-3">
             <span class="text-base font-semibold" :class="getValueClass(item.tone)">{{ item.value }}</span>
-            <span class="h-2 w-2 rounded-full" :class="getDotClass(item.tone)"></span>
           </div>
           <div v-if="item.delta" class="mt-1 text-2xs text-text-muted">{{ item.delta }}</div>
         </button>
@@ -83,18 +81,4 @@ const getValueClass = (tone: SignalTone) => {
   }
 }
 
-const getDotClass = (tone: SignalTone) => {
-  switch (tone) {
-    case 'error':
-      return 'bg-color-error'
-    case 'info':
-      return 'bg-color-info'
-    case 'warning':
-      return 'bg-color-warning'
-    case 'success':
-      return 'bg-color-success'
-    default:
-      return 'bg-text-muted'
-  }
-}
 </script>

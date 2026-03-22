@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary">
+  <div class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary" :class="embedded ? 'h-full' : ''">
     <div
       class="border-b border-border-primary"
       :class="embedded ? 'px-3 py-2.5' : 'px-4 py-3'"
@@ -53,17 +53,17 @@
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
-                <span class="truncate text-xs font-medium text-text-primary">{{ run.subscription_name }}</span>
+                <span class="text-xs font-medium leading-5 text-text-primary break-words">{{ run.subscription_name }}</span>
                 <StatusBadge size="xs" :show-dot="false" :variant="getVariant(run.status)" :label="getStatusLabel(run.status)" class="border-0" />
                 <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">{{ getModeLabel(run.sync_mode) }}</span>
               </div>
-              <div class="mt-1 truncate text-2xs text-text-tertiary">
-                {{ run.site || 'unknown' }} · {{ getTriggerLabel(run.trigger) }} · {{ run.last_event_at || run.finished_at || run.started_at || '—' }}
+              <div class="mt-1 text-2xs leading-5 text-text-tertiary break-words">
+                {{ run.site || 'unknown' }} · {{ getTriggerLabel(run.trigger) }} {{ run.last_event_at || run.finished_at || run.started_at || '—' }}
               </div>
-              <div v-if="run.error_message" class="mt-1 truncate text-2xs text-color-error">{{ run.error_message }}</div>
+              <div v-if="run.error_message" class="mt-1 text-2xs leading-5 text-color-error break-words">{{ run.error_message }}</div>
             </div>
             <div class="shrink-0 text-right text-2xs text-text-secondary">
-              <div>{{ run.duration_ms }} ms</div>
+              <div>{{ formatDurationMs(run.duration_ms) }}</div>
               <div class="mt-1">{{ formatRunVideoSummary(run) }}</div>
             </div>
           </div>
@@ -85,6 +85,7 @@
 import { computed } from 'vue'
 import { Button, Select, StatusBadge } from '@/components/common'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
+import { formatDurationMs } from '@/utils/dateFormat'
 
 const props = withDefaults(defineProps<{
   embedded?: boolean

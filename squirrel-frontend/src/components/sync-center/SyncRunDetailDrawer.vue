@@ -6,10 +6,10 @@
         class="fixed inset-0 z-50 flex justify-end bg-overlay-dark-50"
         @click.self="emit('close')"
       >
-        <div class="w-full max-w-2xl h-full bg-bg-primary border-l border-border-primary shadow-2xl flex flex-col">
+        <div class="flex h-full w-full max-w-3xl flex-col border-l border-border-primary bg-bg-primary shadow-2xl">
           <div class="px-6 py-5 border-b border-border-primary flex items-start justify-between gap-4">
             <div class="min-w-0">
-              <h2 class="text-lg font-semibold text-text-primary truncate">{{ run.subscription_name }}</h2>
+              <h2 class="text-lg font-semibold leading-7 text-text-primary break-words">{{ run.subscription_name }}</h2>
               <div class="flex flex-wrap items-center gap-2 mt-2">
                 <StatusBadge size="xs" :show-dot="false" :variant="getVariant(run.status)" :label="run.status" class="border-0" />
                 <span class="px-2 py-0.5 rounded-full text-2xs bg-bg-secondary text-text-tertiary border border-border-primary">
@@ -36,7 +36,7 @@
               </Card>
               <Card class="p-4">
                 <p class="text-2xs text-text-tertiary">耗时</p>
-                <p class="text-sm text-text-primary mt-2">{{ run.duration_ms }} ms</p>
+                <p class="text-sm text-text-primary mt-2">{{ formatDurationMs(run.duration_ms) }}</p>
               </Card>
               <Card class="p-4">
                 <p class="text-2xs text-text-tertiary">{{ getVideoSummaryLabel(run.sync_mode) }}</p>
@@ -90,6 +90,7 @@
 import { Card, StatusBadge } from '@/components/common'
 import type { SyncRunEvent, SyncRunItem } from '@/composables/useSyncHistory'
 import SyncEventTimeline from '@/components/sync-center/SyncEventTimeline.vue'
+import { formatDurationMs } from '@/utils/dateFormat'
 
 defineProps<{
   detailError: string

@@ -1,6 +1,6 @@
 <template>
-  <section class="grid min-h-0 grid-cols-1 gap-3 xl:grid-cols-[17rem_minmax(0,1.25fr)_22rem]">
-    <aside class="overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary">
+  <section class="grid min-h-0 grid-cols-1 gap-3 xl:h-[min(44rem,calc(var(--app-content-height)-18rem))] xl:grid-cols-[minmax(18rem,0.95fr)_minmax(0,1.35fr)] 2xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.25fr)_minmax(22rem,1fr)]">
+    <aside class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary">
       <div class="flex items-center justify-between border-b border-border-primary px-3 py-2.5">
         <div>
           <div class="text-xs font-semibold tracking-[0.14em] text-text-tertiary">{{ workspaceLabel }}</div>
@@ -11,7 +11,7 @@
         </span>
       </div>
 
-      <div v-if="objectRows.length" class="divide-y divide-border-primary">
+      <div v-if="objectRows.length" class="min-h-0 flex-1 overflow-y-auto divide-y divide-border-primary">
         <button
           v-for="row in objectRows"
           :key="row.id"
@@ -21,11 +21,10 @@
           @click="handleObjectRowClick(row)"
         >
           <div class="min-w-0">
-            <div class="truncate text-xs font-medium text-text-primary">{{ row.title }}</div>
-            <div class="mt-0.5 truncate text-2xs text-text-tertiary">{{ row.meta }}</div>
+            <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ row.title }}</div>
+            <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">{{ row.meta }}</div>
           </div>
-          <div class="flex shrink-0 items-center gap-2">
-            <span class="h-2 w-2 rounded-full" :class="getDotClass(row.tone)"></span>
+          <div class="flex shrink-0 items-center">
             <span class="text-xs font-semibold" :class="getValueClass(row.tone)">{{ row.value }}</span>
           </div>
         </button>
@@ -35,7 +34,10 @@
       </div>
     </aside>
 
-    <div class="min-h-0 space-y-3">
+    <div
+      class="min-h-0 space-y-3 xl:grid xl:gap-3 xl:space-y-0"
+      :class="showTrendPanel ? 'xl:grid-rows-[minmax(0,18rem)_minmax(0,1fr)]' : 'xl:grid-rows-[minmax(0,1fr)]'"
+    >
       <SyncTrendCharts
         v-if="showTrendPanel"
         embedded
@@ -65,7 +67,7 @@
       />
     </div>
 
-    <aside class="min-h-0 space-y-3">
+    <aside class="min-h-0 space-y-3 xl:col-span-2 xl:grid xl:grid-rows-[auto_minmax(0,1fr)] xl:gap-3 xl:space-y-0 2xl:col-span-1">
       <div class="overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary">
         <div class="border-b border-border-primary px-3 py-2.5">
           <div class="text-xs font-semibold tracking-[0.14em] text-text-tertiary">分析摘要</div>
@@ -85,8 +87,8 @@
         <div v-if="selectedRun" class="border-t border-border-primary px-3 py-3">
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <div class="truncate text-xs font-medium text-text-primary">{{ selectedRun.subscription_name }}</div>
-              <div class="mt-0.5 truncate text-2xs text-text-tertiary">
+              <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ selectedRun.subscription_name }}</div>
+              <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">
                 run {{ selectedRun.run_id }} · {{ selectedRun.site || 'unknown' }}
               </div>
             </div>
@@ -99,16 +101,16 @@
               事件
             </Button>
           </div>
-          <div class="mt-2 text-2xs text-text-muted">
-            {{ selectedRun.error_message || `${selectedRun.duration_ms} ms · ${formatRunSummary(selectedRun)}` }}
+          <div class="mt-2 text-2xs leading-5 text-text-muted break-words">
+            {{ selectedRun.error_message || `${formatDurationMs(selectedRun.duration_ms)} · ${formatRunSummary(selectedRun)}` }}
           </div>
         </div>
 
         <div v-else-if="selectedItem" class="border-t border-border-primary px-3 py-3">
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <div class="truncate text-xs font-medium text-text-primary">{{ selectedItem.subscription_name }}</div>
-              <div class="mt-0.5 truncate text-2xs text-text-tertiary">
+              <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ selectedItem.subscription_name }}</div>
+              <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">
                 {{ selectedItem.site || 'unknown' }} · {{ selectedItem.sync_mode }}
               </div>
             </div>
@@ -121,7 +123,7 @@
               订阅
             </Button>
           </div>
-          <div class="mt-2 text-2xs text-text-muted">
+          <div class="mt-2 text-2xs leading-5 text-text-muted break-words">
             {{ selectedItem.last_error_summary || `${selectedItem.pending_video_count || 0} 个待处理` }}
           </div>
         </div>
@@ -156,6 +158,7 @@ import type { SyncCenterItem, SyncCenterStatusFilter } from '@/composables/useSy
 import type { SyncFocusKind } from '@/composables/useSyncCenterWorkbench'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
 import type { SyncTrendPoint, SyncTrendSiteBreakdown } from '@/composables/useSyncTrends'
+import { formatDurationMs } from '@/utils/dateFormat'
 
 interface RecoverySummary {
   last_reconcile_at: string
@@ -279,8 +282,8 @@ const objectRows = computed<ObjectRow[]>(() => {
       return failedRuns.value.slice(0, 10).map((run) => ({
         id: run.run_id,
         title: run.subscription_name,
-        meta: `${run.site || 'unknown'} · ${run.last_event_at || run.finished_at || '—'}`,
-        value: `${run.duration_ms} ms`,
+        meta: `${run.site || 'unknown'} ${run.last_event_at || run.finished_at || '—'}`,
+        value: formatDurationMs(run.duration_ms),
         tone: 'error',
         active: run.run_id === props.selectedRunId,
       }))
@@ -289,7 +292,7 @@ const objectRows = computed<ObjectRow[]>(() => {
         id: run.run_id,
         title: run.subscription_name,
         meta: `${run.site || 'unknown'} · ${run.status}`,
-        value: `${run.duration_ms} ms`,
+        value: formatDurationMs(run.duration_ms),
         tone: run.status === 'failed' ? 'error' : 'warning',
         active: run.run_id === props.selectedRunId,
       }))
@@ -343,8 +346,8 @@ const summaryMetrics = computed(() => {
     case 'slow-runs':
       return [
         { label: '慢批次', value: slowRuns.value.length },
-        { label: '最慢耗时', value: slowRuns.value[0] ? `${slowRuns.value[0].duration_ms} ms` : '—' },
-        { label: '最高 P95', value: `${highestP95.value} ms` },
+        { label: '最慢耗时', value: slowRuns.value[0] ? formatDurationMs(slowRuns.value[0].duration_ms) : '—' },
+        { label: '最高 P95', value: formatDurationMs(highestP95.value) },
         { label: '当前选中', value: props.selectedRun?.run_id || '—' },
       ]
     case 'recovery':
@@ -383,21 +386,6 @@ const getValueClass = (tone: AnalysisTone) => {
       return 'text-color-success'
     default:
       return 'text-text-primary'
-  }
-}
-
-const getDotClass = (tone: AnalysisTone) => {
-  switch (tone) {
-    case 'error':
-      return 'bg-color-error'
-    case 'info':
-      return 'bg-color-info'
-    case 'warning':
-      return 'bg-color-warning'
-    case 'success':
-      return 'bg-color-success'
-    default:
-      return 'bg-text-muted'
   }
 }
 

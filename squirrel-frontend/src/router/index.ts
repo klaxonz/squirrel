@@ -123,7 +123,7 @@ const routes = [
     path: '/sync-center',
     name: 'SyncCenter',
     component: SyncCenter,
-    meta: NO_SEARCH_META
+    meta: { showSearch: false, scrollable: true, hideScrollbar: true }
   },
   {
     path: '/monitoring',

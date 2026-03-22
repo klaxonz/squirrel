@@ -1,5 +1,5 @@
 <template>
-  <div class="sync-center-page flex h-full min-h-0 flex-col bg-bg-primary text-text-primary">
+  <div class="sync-center-page flex min-h-full flex-col bg-bg-primary text-text-primary">
     <div class="toolbar-container pb-4 pt-4">
       <SyncControlBar
         :auto-refresh="overviewAutoRefresh"
@@ -18,8 +18,8 @@
       />
     </div>
 
-    <div class="content-container flex-1 min-h-0 overflow-hidden pb-6">
-      <div class="flex h-full min-h-0 flex-col gap-3">
+    <div class="content-container h-auto flex-1 min-h-0 overflow-y-auto pb-6">
+      <div class="flex flex-col gap-3">
         <InlineAlert
           v-if="actionNotice.message"
           :message="actionNotice.message"
@@ -123,6 +123,7 @@ import { useSyncCenter } from '@/composables/useSyncCenter'
 import { type SyncHistoryFilters, type SyncRunItem, useSyncHistory } from '@/composables/useSyncHistory'
 import { type SyncFocusKind, type SyncTimeLens, useSyncCenterWorkbench } from '@/composables/useSyncCenterWorkbench'
 import { type SyncTrendFilters, useSyncTrends } from '@/composables/useSyncTrends'
+import { formatDurationMs } from '@/utils/dateFormat'
 
 type NoticeVariant = 'success' | 'warning' | 'error'
 
@@ -346,9 +347,9 @@ const recentSignals = computed<SyncSignalItem[]>(() => {
     {
       key: 'latest-p95',
       label: '最新 P95',
-      value: `${latestP95.value} ms`,
+      value: formatDurationMs(latestP95.value),
       tone: latestP95.value > 0 ? 'warning' : 'neutral',
-      delta: `最慢 ${slowRuns.value[0]?.duration_ms || 0} ms`,
+      delta: `最慢 ${formatDurationMs(slowRuns.value[0]?.duration_ms || 0)}`,
     },
     {
       key: 'recovered',
@@ -392,8 +393,8 @@ const failedFocusRows = computed<SyncFocusRow[]>(() => {
   return failedRuns.value.slice(0, 6).map((run) => ({
     id: run.run_id,
     title: run.subscription_name,
-    meta: `${run.site || 'unknown'} · ${run.last_event_at || run.finished_at || '—'}`,
-    value: `${run.duration_ms} ms`,
+    meta: `${run.site || 'unknown'} ${run.last_event_at || run.finished_at || '—'}`,
+    value: formatDurationMs(run.duration_ms),
     tone: 'error',
   }))
 })
@@ -403,7 +404,7 @@ const slowFocusRows = computed<SyncFocusRow[]>(() => {
     id: run.run_id,
     title: run.subscription_name,
     meta: `${run.site || 'unknown'} · ${run.status}`,
-    value: `${run.duration_ms} ms`,
+    value: formatDurationMs(run.duration_ms),
     tone: run.status === 'failed' ? 'error' : 'warning',
   }))
 })
@@ -446,7 +447,7 @@ const dashboardSummary = computed(() => {
   }
 
   if (overview.value.queued_count > 0) {
-    return `${overview.value.queued_count} 个排队中 · P95 ${latestP95.value} ms`
+    return `${overview.value.queued_count} 个排队中 · P95 ${formatDurationMs(latestP95.value)}`
   }
 
   return `当前稳定 · ${overview.value.running_count} 个运行中 · 成功率 ${recentSignals.value[0]?.value || '0%'}`

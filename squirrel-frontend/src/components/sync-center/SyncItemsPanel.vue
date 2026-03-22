@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary">
+  <div class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary" :class="embedded ? 'h-full' : ''">
     <div class="border-b border-border-primary px-3 py-2.5">
       <div class="flex items-center justify-between gap-3">
         <div>
@@ -30,7 +30,7 @@
     <div v-if="loading" class="px-4 py-12 text-center text-sm text-text-muted">加载同步项中...</div>
     <div v-else-if="items.length === 0" class="px-4 py-12 text-center text-sm text-text-muted">当前条件下没有同步项</div>
 
-    <div v-else-if="embedded" class="divide-y divide-border-primary">
+    <div v-else-if="embedded" class="min-h-0 flex-1 overflow-y-auto divide-y divide-border-primary">
       <button
         v-for="item in items"
         :key="`${item.subscription_id}-${item.sync_mode}-embedded`"
@@ -42,7 +42,7 @@
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
-              <span class="truncate text-xs font-medium text-text-primary">{{ item.subscription_name }}</span>
+              <span class="text-xs font-medium leading-5 text-text-primary break-words">{{ item.subscription_name }}</span>
               <StatusBadge
                 size="xs"
                 :show-dot="false"
@@ -51,10 +51,10 @@
                 class="border-0"
               />
             </div>
-            <div class="mt-1 truncate text-2xs text-text-tertiary">
+            <div class="mt-1 text-2xs leading-5 text-text-tertiary break-words">
               {{ item.site || 'unknown' }} · {{ item.sync_mode === 'full' ? '全量' : '增量' }}
             </div>
-            <div class="mt-1 truncate text-2xs text-text-muted">{{ getSummary(item) }}</div>
+            <div class="mt-1 text-2xs leading-5 text-text-muted break-words">{{ getSummary(item) }}</div>
           </div>
           <div class="shrink-0 text-right text-2xs text-text-secondary">
             <div>待处理 {{ item.pending_video_count || 0 }}</div>
@@ -114,7 +114,7 @@
               <td class="px-4 py-3">
                 <div class="min-w-0">
                   <div class="flex items-center gap-2">
-                    <span class="truncate text-xs font-medium text-text-primary">{{ item.subscription_name }}</span>
+                    <span class="text-xs font-medium leading-5 text-text-primary break-words">{{ item.subscription_name }}</span>
                     <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">
                       {{ item.sync_mode === 'full' ? '全量' : '增量' }}
                     </span>
