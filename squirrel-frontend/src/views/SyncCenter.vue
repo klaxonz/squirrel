@@ -39,8 +39,6 @@
         />
 
         <SyncAnalysisWorkspace
-          :focus="workbenchFocus"
-          :recovery-summary="recoverySummary"
           :run-filters="historyFilters"
           :run-page="historyPage"
           :run-page-size="historyPageSize"
@@ -49,14 +47,10 @@
           :runs-error="historyError"
           :runs-loading="historyLoading"
           :selected-run-id="selectedRunId"
-          :site="workbenchSite"
           :site-options="historySiteOptions"
           :subscription-options="historySubscriptionOptions"
-          :site-breakdown="trendSiteBreakdown"
           @change-history-filter="handleHistoryFilter"
           @change-history-page="historySetPage"
-          @focus-site="handleFocusSite"
-          @open-recovery="handleFocusRecovery"
           @open-run="handleSelectRun"
         />
       </div>
@@ -82,8 +76,8 @@ import SyncControlBar from '@/components/sync-center/SyncControlBar.vue'
 import SyncRunDetailDrawer from '@/components/sync-center/SyncRunDetailDrawer.vue'
 import SyncSignalMatrix, { type SyncSignalItem } from '@/components/sync-center/SyncSignalMatrix.vue'
 import { useSyncCenter } from '@/composables/useSyncCenter'
-import { type SyncHistoryFilters, type SyncRunItem, useSyncHistory } from '@/composables/useSyncHistory'
-import { type SyncFocusKind, type SyncTimeLens, useSyncCenterWorkbench } from '@/composables/useSyncCenterWorkbench'
+import { type SyncHistoryFilters, useSyncHistory } from '@/composables/useSyncHistory'
+import { type SyncTimeLens, useSyncCenterWorkbench } from '@/composables/useSyncCenterWorkbench'
 import { useSyncTrends } from '@/composables/useSyncTrends'
 import { formatDurationMs } from '@/utils/dateFormat'
 
@@ -100,15 +94,11 @@ const actionNotice = reactive<{
 })
 
 const {
-  focus: workbenchFocus,
   lens: workbenchLens,
   resetAnalysis,
   selectRun,
   selectedRunId,
-  setFocus,
   setLens,
-  setSite,
-  site: workbenchSite,
 } = useSyncCenterWorkbench()
 
 const {
@@ -129,7 +119,6 @@ const {
   selectStatus: overviewSelectStatus,
   total: overviewTotal,
   setPollingEnabled,
-  setSite: overviewSetSite,
 } = useSyncCenter()
 
 const {
@@ -158,13 +147,10 @@ const {
 
 const {
   error: trendError,
-  filters: trendFilters,
   lastUpdatedAt: trendLastUpdatedAt,
   loadTrends,
   loading: trendLoading,
-  range: trendRange,
   series: trendSeries,
-  setFilters: trendSetFilters,
   setRange: trendSetRange,
   siteBreakdown: trendSiteBreakdown,
 } = useSyncTrends()
@@ -407,14 +393,7 @@ const handleCloseRunDrawer = () => {
   historyCloseRun()
 }
 
-const handleFocusSite = async (site: string) => {
-  setFocus('site')
-  setSite(site)
-  await overviewSelectStatus('recent')
-}
-
 const handleFocusFailedRuns = async (runId = '') => {
-  setFocus('failed-runs')
   await Promise.all([
     syncHistoryFilters({ status: 'failed' }),
     overviewSelectStatus('failed'),
@@ -425,26 +404,6 @@ const handleFocusFailedRuns = async (runId = '') => {
   }
 }
 
-const handleFocusSlowRuns = async (runId = '') => {
-  setFocus('slow-runs')
-  await Promise.all([
-    syncHistoryFilters({ status: '' }),
-    overviewSelectStatus('recent'),
-  ])
-
-  if (runId) {
-    handleSelectRun(runId)
-  }
-}
-
-const handleFocusRecovery = async () => {
-  setFocus('recovery')
-  await Promise.all([
-    syncHistoryFilters({ status: '' }),
-    overviewSelectStatus('queued'),
-  ])
-}
-
 const applyHistoryStatusFilter = async (status: SyncHistoryFilters['status']) => {
   await syncHistoryFilters({ status })
 }
@@ -452,16 +411,6 @@ const applyHistoryStatusFilter = async (status: SyncHistoryFilters['status']) =>
 const handleSignalSelect = async (key: string) => {
   if (key === 'failed' || key === 'failed-runs' || key === 'success-rate') {
     await handleFocusFailedRuns()
-    return
-  }
-
-  if (key === 'latest-p95' || key === 'volatile-sites') {
-    await handleFocusSlowRuns()
-    return
-  }
-
-  if (key === 'recovered') {
-    await handleFocusRecovery()
     return
   }
 
@@ -530,14 +479,6 @@ watch(workbenchLens, async (lens) => {
   await Promise.all([
     historyChanged || !historyRuns.value.length ? historyLoadRuns() : Promise.resolve(),
     trendChanged || !trendSeries.value.length ? loadTrends() : Promise.resolve(),
-  ])
-}, { immediate: true })
-
-watch(workbenchSite, async (site) => {
-  await Promise.all([
-    overviewFilters.site !== site ? overviewSetSite(site) : Promise.resolve(),
-    historySetFilters({ site }) ? historyLoadRuns() : Promise.resolve(),
-    trendSetFilters({ site }) ? loadTrends() : Promise.resolve(),
   ])
 }, { immediate: true })
 
