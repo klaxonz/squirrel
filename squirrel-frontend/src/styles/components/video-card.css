@@ -1,154 +1,411 @@
-/* 视频卡片公共样式 */
-
 .video-card {
-  @apply bg-card rounded-lg overflow-hidden shadow-sm;
-  @apply transition-all duration-300 ease-in-out;
-  @apply relative;
+  position: relative;
+  z-index: 1;
+  display: flex;
   width: 100%;
   height: 100%;
+  cursor: pointer;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: calc(var(--radius-2xl) - 2px);
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.94));
+  box-shadow: 0 18px 40px hsl(var(--surface-shadow) / 0.08);
+  transition:
+    transform 0.24s ease,
+    box-shadow 0.24s ease,
+    border-color 0.24s ease,
+    background-color 0.24s ease;
   break-inside: avoid;
 }
 
 .video-card:hover {
-  @apply shadow-md;
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  border-color: hsl(var(--primary) / 0.26);
+  box-shadow: 0 28px 54px hsl(var(--surface-shadow) / 0.16);
 }
 
 .video-card-thumbnail {
-  @apply relative cursor-pointer overflow-hidden;
   position: relative;
-  padding-top: 56.25%; /* 16:9 宽高比 */
-  background-color: hsl(var(--background));
+  flex: none;
+  overflow: hidden;
+  padding-top: 56.25%;
+  background:
+    linear-gradient(180deg, hsl(var(--secondary) / 0.82), hsl(var(--muted) / 0.88));
 }
 
-.video-card-thumbnail img {
-  @apply absolute top-0 left-0 w-full h-full object-cover;
-  @apply transition-transform duration-300;
+.video-card__image,
+.video-card-thumbnail .video-player {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), filter 0.28s ease;
 }
 
-.video-card:hover .video-card-thumbnail img {
+.video-card:hover .video-card__image {
   transform: scale(1.05);
 }
 
-/* 视频时长标签 */
-.video-duration {
-  @apply absolute bottom-1 right-1;
-  @apply bg-muted/70 text-foreground;
-  @apply text-2xs px-1 py-0.5 rounded;
+.video-card__fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at top, hsl(var(--primary) / 0.08), transparent 44%),
+    linear-gradient(180deg, hsl(var(--secondary) / 0.94), hsl(var(--muted) / 0.9));
 }
 
-/* 进度条 */
+.video-card__fallback-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.video-card__fallback-icon {
+  font-size: 2rem;
+}
+
+.video-card__fallback-text {
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+}
+
+.video-card__overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, hsl(var(--background) / 0.04), transparent 34%, transparent 64%, hsl(var(--background) / 0.58));
+  opacity: 0.92;
+  transition: opacity 0.24s ease;
+  pointer-events: none;
+}
+
+.video-card:hover .video-card__overlay {
+  opacity: 1;
+}
+
+.video-card__topline {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  right: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.video-card__badge {
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 22px hsl(var(--surface-shadow) / 0.14);
+}
+
+.video-card__badge--unread {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background) / 0.78);
+  border-color: hsl(var(--border) / 0.78);
+}
+
+.video-card__badge--liked {
+  color: hsl(var(--primary));
+  background: hsl(var(--background) / 0.76);
+}
+
+.video-card__bottomline {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  left: 0.55rem;
+}
+
+.video-duration {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.45rem;
+  padding: 0.18rem 0.42rem;
+  border-radius: 9999px;
+  background: hsl(var(--background) / 0.76);
+  color: hsl(var(--foreground));
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(10px);
+}
+
 .video-progress-bar {
-  @apply absolute bottom-0 left-0 right-0;
-  @apply h-[2px] bg-muted/40 backdrop-blur-sm;
+  position: absolute;
+  right: 0;
+  bottom: 0.12rem;
+  left: 0;
+  height: 0.22rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: hsl(var(--background) / 0.3);
+  backdrop-filter: blur(10px);
 }
 
 .video-progress-indicator {
-  @apply h-full bg-primary/90 transition-all duration-200;
-  border-radius: 1px;
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, hsl(var(--primary) / 0.72), hsl(var(--primary)));
+  transition: width 0.22s ease;
 }
 
-.video-card:hover .video-progress-indicator {
-  @apply bg-primary;
-  height: 3px;
-  margin-top: -1px;
-}
-
-/* 视频信息区域 */
 .video-info {
-  @apply p-2;
+  display: flex;
+  min-height: 6.4rem;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.8rem 0.82rem 0.9rem;
 }
 
 .video-title {
-  @apply text-2xs text-foreground font-medium;
-  @apply cursor-pointer hover:text-blue-500;
-  @apply transition-colors duration-200;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  min-height: 2.65rem;
+  margin: 0;
   overflow: hidden;
-  height: 2rem; /* 32px, 刚好容纳两行文字 */
+  color: hsl(var(--foreground));
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  transition: color 0.18s ease;
 }
 
-.video-meta {
-  @apply flex items-center justify-between;
-  @apply text-2xs text-muted-foreground pt-1;
+.video-card:hover .video-title {
+  color: hsl(var(--primary));
 }
 
-/* 作者头像 */
+.video-card__meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-top: 0.55rem;
+  min-height: 1.15rem;
+}
+
+.video-card__channel-wrap {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+}
+
 .author-avatars {
-  @apply flex -space-x-2 relative;
+  display: flex;
+  position: relative;
+  margin-right: 0.55rem;
 }
 
 .author-avatar {
-  @apply w-4 h-4 rounded-full object-cover flex-shrink-0;
-  @apply cursor-pointer ring-1 ring-card;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-left: -0.34rem;
+  border: 1px solid hsl(var(--card));
+  border-radius: 9999px;
+  object-fit: cover;
+  box-shadow: 0 2px 6px hsl(var(--surface-shadow) / 0.12);
 }
 
-.author-avatar.default {
-  @apply bg-muted-foreground/20 text-foreground flex items-center justify-center;
-  @apply text-2xs font-medium;
+.author-avatar:first-child {
+  margin-left: 0;
 }
 
-/* 作者弹窗 */
+.author-avatar--front {
+  z-index: 3;
+}
+
+.author-avatar--middle {
+  z-index: 2;
+}
+
+.author-avatar--back {
+  z-index: 1;
+}
+
+.video-card__channel-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.16s ease;
+}
+
+.video-card__channel-name:hover {
+  color: hsl(var(--primary));
+}
+
+.actor-toggle {
+  margin-left: 0.4rem;
+  display: inline-flex;
+  min-height: 1.2rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.36rem;
+  border-radius: 9999px;
+  background: hsl(var(--secondary));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.66rem;
+  font-weight: 700;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.actor-toggle:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.video-card__date {
+  flex-shrink: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.69rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.video-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1rem;
+  margin-top: 0.45rem;
+}
+
+.video-card__resume,
+.video-card__status {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
 .channel-popup {
-  @apply opacity-0 invisible;
-  @apply absolute left-0 bottom-full mb-2;
-  @apply bg-card rounded-lg shadow-lg;
-  @apply transition-all duration-200 z-50;
-  @apply w-max max-w-[300px] p-3;
-  transform-origin: top left;
-  box-shadow: var(--shadow-popup);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 0.65rem);
+  z-index: 50;
+  width: min(16rem, 78vw);
+  padding: 0.4rem;
+  border: 1px solid hsl(var(--border) / 0.76);
+  border-radius: calc(var(--radius-xl) + 1px);
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.95));
+  box-shadow: 0 22px 44px hsl(var(--surface-shadow) / 0.18);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
 }
 
-.group:hover .channel-popup {
-  @apply opacity-100 visible;
-  z-index: 1000;
+.channel-popup.is-visible,
+.video-card__channel-wrap:hover .channel-popup,
+.video-card__channel-wrap:focus-within .channel-popup {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
-.group:focus-within .channel-popup {
-  @apply opacity-100 visible;
-  z-index: 1000;
+.channel-popup__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
-/* 添加延迟以避免误触 */
-.group-hover\:opacity-100 {
-  transition-delay: 200ms;
+.channel-popup__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.45rem;
+  border-radius: calc(var(--radius-lg) - 3px);
+  transition: background-color 0.16s ease;
 }
 
-.group:not(:hover) .channel-popup {
-  transition-delay: 0ms;
+.channel-popup__item:hover {
+  background: hsl(var(--accent) / 0.72);
 }
 
-/* NSFW 模糊效果 */
+.channel-popup__avatar {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 9999px;
+  object-fit: cover;
+}
+
+.channel-popup__name {
+  min-width: 0;
+  color: hsl(var(--foreground));
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.channel-popup__arrow {
+  position: absolute;
+  left: 1.1rem;
+  bottom: -0.42rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-right: 1px solid hsl(var(--border) / 0.76);
+  border-bottom: 1px solid hsl(var(--border) / 0.76);
+  background: hsl(var(--background) / 0.95);
+  transform: rotate(45deg);
+}
+
 .blur-thumbnail {
   filter: blur(20px);
-  transition: filter 0.3s ease-in-out;
 }
 
-.video-card-thumbnail:hover .blur-thumbnail {
-  filter: blur(0px);
+.video-card:hover .blur-thumbnail {
+  filter: blur(0);
 }
 
-/* 响应式调整 */
+@media (hover: none) {
+  .actor-toggle {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 768px) {
+  .video-info {
+    min-height: 5.85rem;
+    padding: 0.72rem 0.72rem 0.78rem;
+  }
+
   .video-title {
-    font-size: var(--font-size-2xs);
+    min-height: 2.45rem;
+    font-size: 0.78rem;
   }
-  
-  .video-meta {
-    font-size: var(--font-size-3xs);
+
+  .video-card__date,
+  .video-card__channel-name,
+  .video-card__resume,
+  .video-card__status {
+    font-size: 0.66rem;
   }
 }
-
-@media (max-width: 500px) {
-  .video-card {
-    width: 100%;
-    margin-bottom: 2px;
-  }
-  
-  .video-card-thumbnail {
-    padding-top: 56.25%; /* 保持16:9比例 */
-  }
-}
-

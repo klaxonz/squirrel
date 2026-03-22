@@ -1,188 +1,203 @@
 <template>
-  <div 
+  <div
     v-if="isOpen"
-    class="context-menu fixed bg-card border border-border shadow-xl rounded-lg py-2 z-50 w-56 overflow-visible transition-all duration-200 ease-in-out"
+    class="context-menu"
     :style="{ top: `${position.y}px`, left: `${position.x}px` }"
     @click.stop
   >
-    <div class="py-1">
-      <div class="relative group"
-           @mouseenter="showReadMenu = true" 
-           @mouseleave="showReadMenu = false"
-           @click.stop="toggleReadMenu">
-        <button class="option-item w-full flex justify-between items-center group">
-          <span class="flex items-center">
-            <CheckIcon class="h-5 w-5 mr-3 text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
-            <span class="text-foreground group-hover:text-foreground transition-colors duration-150">标记为已读</span>
-          </span>
-          <ChevronRightIcon class="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
-        </button>
-        <div v-show="showReadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-card border border-border shadow-lg rounded-lg overflow-hidden">
-          <button @click.stop="$emit('toggleReadStatus', true)" class="sub-option-item">
-            <span class="mr-2">✓</span>此项
-          </button>
-        </div>
-      </div>
-      <div class="relative group" 
-           @mouseenter="showUnreadMenu = true" 
-           @mouseleave="showUnreadMenu = false"
-           @click.stop="toggleUnreadMenu">
-        <button class="option-item w-full flex justify-between items-center group">
-          <span class="flex items-center">
-            <XMarkIcon class="h-5 w-5 mr-3 text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
-            <span class="text-foreground group-hover:text-foreground transition-colors duration-150">标记为未读</span>
-          </span>
-          <ChevronRightIcon class="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
-        </button>
-        <div v-if="showUnreadMenu" class="submenu absolute left-full top-0 ml-2 w-48 bg-card border border-border shadow-lg rounded-lg overflow-hidden">
-          <button @click.stop="$emit('toggleReadStatus', false)" class="sub-option-item">
-            <span class="mr-2">✓</span>此项
-          </button>
-        </div>
-      </div>
+    <div class="context-menu__section">
+      <button class="context-menu__item" @click="handleToggleRead(true)">
+        <span class="context-menu__icon-wrap">
+          <CheckIcon class="context-menu__icon" />
+        </span>
+        <span class="context-menu__label">标记为已读</span>
+      </button>
+
+      <button class="context-menu__item" @click="handleToggleRead(false)">
+        <span class="context-menu__icon-wrap">
+          <XMarkIcon class="context-menu__icon" />
+        </span>
+        <span class="context-menu__label">标记为未读</span>
+      </button>
     </div>
-    <div class="border-t border-border my-1"></div>
-    <div class="py-1">
-      <button @click="handleLiked" class="option-item group">
-        <HeartIcon v-if="video.is_liked === 1"
-             class="h-5 w-5 mr-3 text-destructive"
-             fill="currentColor" />
 
-        <HandThumbDownIcon v-else-if="video.is_liked === 0"
-             class="h-5 w-5 mr-3 text-amber-500" />
+    <div class="context-menu__divider"></div>
 
-        <HeartIcon v-else
-             class="h-5 w-5 mr-3 text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
-
-        <span class="text-foreground group-hover:text-foreground transition-colors duration-150">
-          {{ 
-            video.is_liked === 1 ? '已喜欢' : 
-            video.is_liked === 0 ? '不喜欢' : 
+    <div class="context-menu__section">
+      <button class="context-menu__item" @click="handleLiked">
+        <span class="context-menu__icon-wrap">
+          <HeartIcon
+            v-if="video.is_liked === 1"
+            class="context-menu__icon context-menu__icon--destructive"
+          />
+          <HandThumbDownIcon
+            v-else-if="video.is_liked === 0"
+            class="context-menu__icon context-menu__icon--warning"
+          />
+          <HeartIcon
+            v-else
+            class="context-menu__icon"
+          />
+        </span>
+        <span class="context-menu__label">
+          {{
+            video.is_liked === 1 ? '已喜欢' :
+            video.is_liked === 0 ? '不喜欢' :
             '喜欢'
           }}
         </span>
       </button>
-      <button @click="$emit('copyVideoLink')" class="option-item group">
-        <ClipboardDocumentIcon class="h-5 w-5 mr-3 text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
-        <span class="text-foreground group-hover:text-foreground transition-colors duration-150">复制链接</span>
+
+      <button class="context-menu__item" @click="handleCopyVideoLink">
+        <span class="context-menu__icon-wrap">
+          <ClipboardDocumentIcon class="context-menu__icon" />
+        </span>
+        <span class="context-menu__label">复制链接</span>
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import {
   CheckIcon,
-  ChevronRightIcon,
-  XMarkIcon,
+  ClipboardDocumentIcon,
   HeartIcon,
   HandThumbDownIcon,
-  ClipboardDocumentIcon
-} from '@heroicons/vue/24/outline';
+  XMarkIcon,
+} from '@heroicons/vue/24/outline'
 
 const props = defineProps({
   position: {
     type: Object,
-    required: true
+    required: true,
   },
   isOpen: {
     type: Boolean,
-    required: true
+    required: true,
   },
   video: {
     type: Object,
-    required: true
-  }
-});
+    required: true,
+  },
+})
 
 const emit = defineEmits([
   'close',
   'toggleReadStatus',
   'copyVideoLink',
-  'toggleLike'
-]);
+  'toggleLike',
+])
 
-const showReadMenu = ref(false);
-const showUnreadMenu = ref(false);
+const handleToggleRead = (isRead) => {
+  emit('toggleReadStatus', isRead)
+}
 
-const toggleReadMenu = (event) => {
-  event.stopPropagation();
-  showReadMenu.value = !showReadMenu.value;
-  showUnreadMenu.value = false;
-};
+const handleCopyVideoLink = async () => {
+  await emit('copyVideoLink')
+  emit('close')
+}
 
-const toggleUnreadMenu = (event) => {
-  event.stopPropagation();
-  showUnreadMenu.value = !showUnreadMenu.value;
-  showReadMenu.value = false;
-};
+const handleLiked = async () => {
+  await emit('toggleLike', props.video)
+  emit('close')
+}
 
 const handleClickOutside = (event) => {
   if (!event.target.closest('.context-menu')) {
-    emit('close');
-    showReadMenu.value = false;
-    showUnreadMenu.value = false;
+    emit('close')
   }
-};
-
-
-
-const handleLiked = async () => {
-  await emit('toggleLike', props.video);
-  await emit('close');
-};
+}
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
-});
+  document.addEventListener('click', handleClickOutside)
+})
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
-});
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
 .context-menu {
-  box-shadow: var(--shadow-popover);
-  animation: fadeIn 0.2s ease-out;
-}
-
-.option-item {
-  @apply flex items-center w-full px-3 py-2 text-sm font-medium transition-colors duration-150 ease-in-out;
-}
-
-.sub-option-item {
-  @apply w-full px-3 py-2 text-sm font-normal text-foreground hover:bg-muted transition-colors duration-150 ease-in-out flex items-center;
-}
-
-.option-item:hover {
-  @apply bg-muted;
-}
-
-.submenu {
-  animation: slideIn 0.2s ease-out;
-  box-shadow: var(--shadow-popover);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(-10px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.context-menu {
   position: fixed;
+  z-index: 60;
+  width: 13rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.82);
+  border-radius: calc(var(--radius-xl) + 2px);
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.94));
+  box-shadow: 0 26px 56px hsl(var(--surface-shadow) / 0.22);
+  backdrop-filter: blur(18px);
+  animation: context-menu-fade-in 0.18s ease-out;
 }
 
-.submenu {
-  position: absolute;
-  left: 100%;
-  top: 0;
-  z-index: 60;
+.context-menu__section {
+  padding: 0.35rem;
+}
+
+.context-menu__divider {
+  height: 1px;
+  margin: 0 0.65rem;
+  background: hsl(var(--border) / 0.78);
+}
+
+.context-menu__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: calc(var(--radius-lg) - 2px);
+  padding: 0.62rem 0.7rem;
+  color: hsl(var(--foreground));
+  transition: background-color 0.16s ease, transform 0.16s ease, color 0.16s ease;
+}
+
+.context-menu__item:hover {
+  background: hsl(var(--accent) / 0.72);
+  transform: translateX(2px);
+}
+
+.context-menu__icon-wrap {
+  display: inline-flex;
+  size: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: hsl(var(--secondary) / 0.9);
+  color: hsl(var(--muted-foreground));
+}
+
+.context-menu__icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.context-menu__icon--destructive {
+  color: hsl(var(--destructive));
+}
+
+.context-menu__icon--warning {
+  color: hsl(32 82% 52%);
+}
+
+.context-menu__label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+@keyframes context-menu-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 </style>

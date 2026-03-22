@@ -1,30 +1,32 @@
 <template>
-  <div class="latest-videos flex flex-col h-full">
+  <div class="latest-videos flex h-full flex-col">
     <ChannelHeader
       v-if="subscriptionId"
       :subscription-id="subscriptionId"
     />
-    <!-- 顶部操作栏 - TabBar 和 SortButton -->
-    <div class="toolbar-container">
-      <FeedToolbar
-        :active-tab="activeTab"
-        :nsfw="nsfw"
-        :sort-by="sortBy"
-        :site="site"
-        :subscription-id="subscriptionId"
-        :tabs-with-counts="tabsWithCounts"
-        :is-refreshing="isRefreshing"
-        @update:activeTab="(v) => activeTab = v"
-        @update:nsfw="(v) => nsfw = v"
-        @update:sortBy="(v) => sortBy = v"
-        @update:site="(v) => site = v"
-        @tab-dblclick="handleTabDoubleClick"
-        @refresh="refreshCurrentList"
-      />
-    </div>
+
+    <section class="latest-videos__toolbar-shell">
+      <div class="latest-videos__container">
+        <FeedToolbar
+          :active-tab="activeTab"
+          :nsfw="nsfw"
+          :sort-by="sortBy"
+          :site="site"
+          :subscription-id="subscriptionId"
+          :tabs-with-counts="tabsWithCounts"
+          :is-refreshing="isRefreshing"
+          @update:activeTab="(value) => activeTab = value"
+          @update:nsfw="(value) => nsfw = value"
+          @update:sortBy="(value) => sortBy = value"
+          @update:site="(value) => site = value"
+          @tab-dblclick="handleTabDoubleClick"
+          @refresh="refreshCurrentList"
+        />
+      </div>
+    </section>
 
     <div class="video-container flex-grow">
-      <div v-if="loadError" class="alert-container">
+      <div v-if="loadError" class="latest-videos__container latest-videos__alert">
         <Alert variant="destructive" class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <AlertTitle>加载失败</AlertTitle>
@@ -35,24 +37,23 @@
           <Button variant="secondary" size="sm" class="rounded-full" @click="refreshCurrentList">重试</Button>
         </Alert>
       </div>
+
       <router-view v-slot="{ Component }">
         <keep-alive :max="10">
           <component
-              :is="Component"
-              :filters="childFilters"
-              ref="videoChildRef"
-              @goToSubscription="goToChannelDetail"
-              @openModal="handleOpenModal"
-              @update-counts="updateCounts"
-              @error="(e) => (loadError = e)"
-              @loading-change="(val) => (isRefreshing = !!val)"
+            :is="Component"
+            :filters="childFilters"
+            ref="videoChildRef"
+            @goToSubscription="goToChannelDetail"
+            @openModal="handleOpenModal"
+            @update-counts="updateCounts"
+            @error="(error) => (loadError = error)"
+            @loading-change="(value) => (isRefreshing = !!value)"
           />
         </keep-alive>
       </router-view>
     </div>
   </div>
-
-  
 </template>
 
 <script setup>
@@ -67,108 +68,59 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { buildTabsWithCounts } from '../utils/feed'
 
-const router = useRouter();
-const emitter = inject('emitter');
+const router = useRouter()
+const route = useRoute()
+const emitter = inject('emitter')
 
-// Page-scoped filter state
-const route = useRoute();
-const subscriptionId = computed(() => route.params.id);
-const { activeTab, nsfw, sortBy, site, searchQuery, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId });
-const childFilters = computed(() => filters.value);
+const subscriptionId = computed(() => route.params.id)
+const { activeTab, nsfw, sortBy, site, searchQuery, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
 
-const tabsWithCounts = ref(buildTabsWithCounts({}));
+const tabsWithCounts = ref(buildTabsWithCounts({}))
+const isRefreshing = ref(false)
+const loadError = ref(null)
+const videoChildRef = ref(null)
 
-const isRefreshing = ref(false);
-const loadError = ref(null);
-
-const videoChildRef = ref(null);
+const childFilters = computed(() => filters.value)
 
 const refreshCurrentList = () => {
-  isRefreshing.value = true;
-  loadError.value = null;
-  videoChildRef.value?.refresh?.();
-};
-
-useRefreshTriggers({ onRefresh: () => refreshCurrentList() });
-
+  isRefreshing.value = true
+  loadError.value = null
+  videoChildRef.value?.refresh?.()
+}
 
 const updateCounts = (counts) => {
-  tabsWithCounts.value = buildTabsWithCounts(counts);
-};
+  tabsWithCounts.value = buildTabsWithCounts(counts)
+}
 
-// 处理全局搜索事件
 const handleGlobalSearch = (keyword) => {
-  searchQuery.value = keyword;
-};
+  searchQuery.value = keyword
+}
 
 const handleOpenModal = (video) => {
-  // 从列表页进入时，直接跳转，不传递复杂对象
   router.push(`/video/${video.id}`)
 }
 
-const goToChannelDetail = (subscriptionId) => {
-  router.push(`/subscription/${subscriptionId}/all`)
+const goToChannelDetail = (targetSubscriptionId) => {
+  router.push(`/subscription/${targetSubscriptionId}/all`)
 }
-
 
 const handleTabDoubleClick = (tab) => {
   if (tab === activeTab.value) {
-    isRefreshing.value = true;
-    videoChildRef.value?.refresh?.();
+    isRefreshing.value = true
+    videoChildRef.value?.refresh?.()
   }
-};
+}
 
-useRouteTabSync(router, route, activeTab, subscriptionId);
+useRefreshTriggers({ onRefresh: refreshCurrentList })
+useRouteTabSync(router, route, activeTab, subscriptionId)
 
 onActivated(() => {
-  emitter.on('search:home', handleGlobalSearch);
-});
+  emitter?.on?.('search:home', handleGlobalSearch)
+})
 
 onDeactivated(() => {
-  emitter.off('search:home', handleGlobalSearch);
-});
-
-// Tab-route sync moved to composable
-
+  emitter?.off?.('search:home', handleGlobalSearch)
+})
 </script>
 
 <style scoped src="../styles/components/LatestVideos.css"></style>
-
-<style scoped>
-.latest-videos {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.video-container {
-  flex: 1;
-  overflow: hidden;
-}
-
-.toolbar-container,
-.alert-container {
-  max-width: var(--container-max-width, 2560px);
-  margin: 0 auto;
-  padding: 0 1rem;
-  width: 100%;
-}
-
-@media (min-width: 640px) {
-  .toolbar-container,
-  .alert-container {
-    padding: 0 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .toolbar-container,
-  .alert-container {
-    padding: 0 2rem;
-  }
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-.spin-anim { animation: spin 0.8s linear infinite; }
-</style>
-
