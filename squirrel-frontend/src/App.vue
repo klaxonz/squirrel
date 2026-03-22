@@ -311,7 +311,10 @@ html, body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: hsl(var(--background));
+  background:
+    linear-gradient(180deg, hsl(var(--background) / 0.92), hsl(var(--background) / 0.72));
+  border-bottom: 1px solid hsl(var(--border) / 0.7);
+  backdrop-filter: blur(16px);
   padding: 0.75rem 1rem;
 }
 
@@ -334,7 +337,7 @@ html, body {
 
 .topbar-menu-btn:hover {
   background: hsl(var(--accent));
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 10px 24px hsl(var(--surface-shadow));
   transform: translateY(-1px);
 }
 
@@ -383,23 +386,24 @@ h1, h2, h3, h4, h5, h6 {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;
-  background: transparent;
+  background: hsl(var(--card) / 0.88);
   color: hsl(var(--foreground));
-  box-shadow: none;
+  box-shadow: 0 12px 32px hsl(var(--surface-shadow));
+  border: 1px solid hsl(var(--border) / 0.78);
   transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .sidebar-flyout-toggle:hover {
   background: hsl(var(--accent));
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 16px 36px hsl(var(--surface-shadow));
   transform: translateY(-1px);
 }
 
 .sidebar-flyout-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 10, 10, 0.45);
-  /* No backdrop blur: keep overlay simple and fast */
+  background: hsl(var(--overlay));
+  backdrop-filter: blur(10px);
   z-index: 50;
   display: flex;
   align-items: stretch;
@@ -408,7 +412,7 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-flyout-panel {
   height: 100%;
   max-width: 18rem;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 24px 54px hsl(var(--surface-shadow));
 }
 
 .sidebar-flyout-enter-active,

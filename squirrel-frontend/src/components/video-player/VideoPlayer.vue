@@ -906,6 +906,15 @@ watch(
   { immediate: true, deep: true }
 )
 
+watch(
+  () => props.theme,
+  (nextTheme) => {
+    if (!nextTheme || nextTheme === theme.value) return
+    setTheme(nextTheme)
+  },
+  { immediate: true }
+)
+
 const lastResumeKey = ref('')
 watch(
   () => [resolvedProgressKey.value, props.initialTime] as const,
@@ -1648,7 +1657,7 @@ defineExpose({
 }
 
 .sp-btn--toggled {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--sp-btn-toggled-bg);
   color: var(--sp-text);
 }
 
@@ -1775,9 +1784,9 @@ defineExpose({
 .sp-popup-surface {
   padding: 6px;
   background: var(--sp-menu-bg);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--sp-menu-border);
   border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--sp-menu-shadow);
   overflow: hidden;
 }
 
@@ -1801,7 +1810,7 @@ defineExpose({
 }
 
 .sp-popup-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--sp-menu-item-hover-bg);
 }
 
 .sp-popup-item-main {
@@ -1850,7 +1859,7 @@ defineExpose({
   width: 36px;
   height: 20px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--sp-switch-bg);
   flex-shrink: 0;
   transition: background 0.15s ease;
 }
@@ -1863,7 +1872,7 @@ defineExpose({
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--sp-switch-thumb);
   transition: transform 0.15s ease;
 }
 
@@ -1897,7 +1906,7 @@ defineExpose({
 }
 
 .sp-popup-back:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--sp-menu-item-hover-bg);
 }
 
 .sp-popup-back svg {
@@ -1946,7 +1955,7 @@ defineExpose({
 }
 
 .sp-popup-option:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--sp-menu-item-hover-bg);
   color: var(--sp-text);
 }
 
@@ -2117,7 +2126,7 @@ defineExpose({
 
 .sp-spinner-arc-circle {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.9);
+  stroke: var(--sp-spinner-stroke-color);
   stroke-width: var(--sp-spinner-stroke);
   stroke-linecap: round;
   /* arc length + gap to match YouTube look */
@@ -2153,7 +2162,7 @@ defineExpose({
   align-items: center;
   justify-content: center;
   padding: 22px;
-  background: rgba(0, 0, 0, 0.82);
+  background: var(--sp-error-bg);
   pointer-events: none;
 }
 
@@ -2203,8 +2212,8 @@ defineExpose({
   height: 32px;
   padding: 0 14px;
   border-radius: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--sp-error-btn-border);
+  background: var(--sp-error-btn-bg);
   color: var(--sp-text);
   font-size: var(--font-size-2xs);
   font-weight: 500;
@@ -2213,12 +2222,12 @@ defineExpose({
 }
 
 .sp-error-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--sp-error-btn-hover-bg);
+  border-color: var(--sp-border-hover);
 }
 
 .sp-error-btn:active {
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--sp-error-btn-active-bg);
 }
 
 .sp-error-btn--ghost {
@@ -2226,11 +2235,11 @@ defineExpose({
 }
 
 .sp-error-btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--sp-error-btn-bg);
 }
 
 .sp-error-btn--ghost:active {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--sp-error-btn-hover-bg);
 }
 
 

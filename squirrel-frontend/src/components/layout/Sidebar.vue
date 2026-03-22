@@ -1,10 +1,10 @@
 <template>
-  <div class="sidebar bg-background h-full flex flex-col" :class="{ collapsed: effectiveCollapsed }">
+  <div class="sidebar bg-sidebar text-sidebar-foreground h-full flex flex-col border-r border-sidebar-border/80" :class="{ collapsed: effectiveCollapsed }">
     <!-- 顶部菜单按钮 -->
     <div class="sidebar-header flex items-center h-14 px-3">
 <button
         @click="toggleCollapse"
-        class="toggle-btn p-2 hover:bg-accent rounded-full transition-all duration-200"
+        class="toggle-btn p-2 hover:bg-sidebar-accent rounded-full transition-all duration-200"
         :title="props.flyout ? '关闭侧边栏' : (effectiveCollapsed ? '展开侧边栏' : '收起侧边栏')"
       >
         <Bars3Icon
@@ -46,7 +46,7 @@
     <div class="sidebar-footer px-2 py-1 border-t border-border">
       <button
         @click="handleLogout"
-        class="logout-btn flex items-center h-10 px-3 text-foreground rounded-lg w-full"
+        class="logout-btn flex items-center h-10 px-3 text-sidebar-foreground rounded-xl w-full"
         :title="isCollapsed ? '退出' : ''"
       >
         <ArrowRightOnRectangleIcon class="logout-icon w-5 h-5" />
@@ -135,6 +135,9 @@ watch(route, () => {
   flex-shrink: 0;
   transition: width 0.18s ease-out;
   will-change: width;
+  background:
+    linear-gradient(180deg, hsl(var(--sidebar)), color-mix(in srgb, hsl(var(--sidebar)) 78%, hsl(var(--background))));
+  box-shadow: inset -1px 0 0 hsl(var(--sidebar-border) / 0.75);
 }
 
 .sidebar.collapsed {
@@ -184,7 +187,7 @@ watch(route, () => {
 }
 
 .logout-btn:hover {
-  background-color: hsl(var(--accent));
+  background-color: hsl(var(--sidebar-accent));
 }
 
 .logout-icon {

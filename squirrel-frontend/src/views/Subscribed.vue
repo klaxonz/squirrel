@@ -126,9 +126,9 @@
     </div>
 
     <!-- 设置模态框 -->
-    <div v-if="showSettings" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    <div v-if="showSettings" class="fixed inset-0 bg-overlay flex items-center justify-center z-50 backdrop-blur-sm"
          @click.self="closeSettings">
-      <div class="bg-card border border-border rounded-lg p-6 w-full max-w-md">
+      <div class="bg-card border border-border rounded-[1.5rem] p-6 w-full max-w-md shadow-xl">
         <h2 class="text-xl font-bold mb-4 text-foreground">{{ selectedSubscription.name }} 设置</h2>
         <div class="space-y-6">
           <div class="flex items-center justify-between">

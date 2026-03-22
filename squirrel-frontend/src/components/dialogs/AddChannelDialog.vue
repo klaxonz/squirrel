@@ -1,6 +1,6 @@
 <template>
-  <div v-if="show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-    <div class="bg-card border border-border rounded-lg w-full max-w-lg mx-4">
+  <div v-if="show" class="fixed inset-0 bg-overlay z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-card border border-border rounded-2xl w-full max-w-lg mx-4 shadow-xl">
       <!-- 标题栏 -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-border">
         <h3 class="text-lg font-medium">添加订阅</h3>

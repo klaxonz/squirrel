@@ -7,44 +7,44 @@
   /* ========== 颜色系统 ========== */
   
   /* 主色调 */
-  --sp-primary: #ff0000;
-  --sp-primary-hover: #ff3333;
-  --sp-primary-active: #cc0000;
-  --sp-primary-rgb: 255, 0, 0;
+  --sp-primary: #cc7a3d;
+  --sp-primary-hover: #de8951;
+  --sp-primary-active: #a85b2b;
+  --sp-primary-rgb: 204, 122, 61;
   
   /* 背景色 */
-  --sp-bg: rgba(0, 0, 0, 0.9);
-  --sp-bg-elevated: rgba(28, 28, 28, 0.95);
-  --sp-bg-overlay: rgba(0, 0, 0, 0.6);
-  --sp-surface: rgba(22, 22, 22, 0.78);
-  --sp-overlay-soft: rgba(0, 0, 0, 0.4);
-  --sp-overlay-weak: rgba(0, 0, 0, 0.55);
-  --sp-overlay: rgba(0, 0, 0, 0.75);
-  --sp-overlay-strong: rgba(0, 0, 0, 0.85);
-  --sp-bg-hover: rgba(255, 255, 255, 0.1);
-  --sp-bg-active: rgba(255, 255, 255, 0.15);
+  --sp-bg: rgba(13, 17, 22, 0.92);
+  --sp-bg-elevated: rgba(22, 28, 36, 0.96);
+  --sp-bg-overlay: rgba(12, 16, 21, 0.64);
+  --sp-surface: rgba(21, 27, 34, 0.8);
+  --sp-overlay-soft: rgba(10, 13, 18, 0.44);
+  --sp-overlay-weak: rgba(10, 13, 18, 0.58);
+  --sp-overlay: rgba(10, 13, 18, 0.74);
+  --sp-overlay-strong: rgba(9, 12, 16, 0.84);
+  --sp-bg-hover: rgba(244, 239, 231, 0.08);
+  --sp-bg-active: rgba(244, 239, 231, 0.14);
   
   /* 文字色 */
-  --sp-text: #ffffff;
-  --sp-text-strong: rgba(255, 255, 255, 0.9);
-  --sp-text-secondary: rgba(255, 255, 255, 0.7);
-  --sp-text-muted: rgba(255, 255, 255, 0.6);
-  --sp-text-tertiary: rgba(255, 255, 255, 0.5);
-  --sp-text-disabled: rgba(255, 255, 255, 0.3);
+  --sp-text: #f4efe7;
+  --sp-text-strong: rgba(244, 239, 231, 0.92);
+  --sp-text-secondary: rgba(244, 239, 231, 0.72);
+  --sp-text-muted: rgba(244, 239, 231, 0.58);
+  --sp-text-tertiary: rgba(244, 239, 231, 0.46);
+  --sp-text-disabled: rgba(244, 239, 231, 0.28);
   
   /* 边框色 */
-  --sp-border: rgba(255, 255, 255, 0.1);
-  --sp-border-hover: rgba(255, 255, 255, 0.2);
+  --sp-border: rgba(244, 239, 231, 0.12);
+  --sp-border-hover: rgba(244, 239, 231, 0.22);
   
   /* 状态色 */
-  --sp-success: #22c55e;
-  --sp-success-hover: #16a34a;
-  --sp-warning: #f59e0b;
-  --sp-warning-hover: #d97706;
-  --sp-error: #ef4444;
-  --sp-error-hover: #dc2626;
-  --sp-info: #3b82f6;
-  --sp-info-hover: #2563eb;
+  --sp-success: #53a97b;
+  --sp-success-hover: #67bd8d;
+  --sp-warning: #d09a43;
+  --sp-warning-hover: #e0aa55;
+  --sp-error: #cb6958;
+  --sp-error-hover: #d97a68;
+  --sp-info: #6f98c9;
+  --sp-info-hover: #88add9;
 
   /* ========== 控制栏 ========== */
   
@@ -53,9 +53,9 @@
   --sp-controls-gap: 8px;
   --sp-controls-bg: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0.78) 0%,
-    rgba(0, 0, 0, 0.36) 45%,
-    rgba(0, 0, 0, 0) 100%
+    rgba(8, 11, 16, 0.82) 0%,
+    rgba(8, 11, 16, 0.4) 45%,
+    rgba(8, 11, 16, 0) 100%
   );
 
   --sp-controls-row-padding: 0 12px;
@@ -67,8 +67,8 @@
   
   --sp-progress-height: 3px;
   --sp-progress-height-hover: 6px;
-  --sp-progress-bg: rgba(255, 255, 255, 0.2);
-  --sp-progress-buffered: rgba(255, 255, 255, 0.4);
+  --sp-progress-bg: rgba(244, 239, 231, 0.2);
+  --sp-progress-buffered: rgba(244, 239, 231, 0.34);
   --sp-progress-played: var(--sp-primary);
   --sp-progress-thumb-size: 12px;
   --sp-progress-thumb-color: var(--sp-primary);
@@ -86,17 +86,22 @@
   
   /* ========== 菜单 ========== */
   
-  --sp-menu-bg: rgba(28, 28, 28, 0.88);
+  --sp-menu-bg: rgba(20, 26, 33, 0.9);
+  --sp-menu-border: rgba(244, 239, 231, 0.08);
+  --sp-menu-shadow: 0 18px 40px rgba(4, 8, 12, 0.52);
   --sp-menu-width: 280px;
   --sp-menu-max-height: 400px;
   --sp-menu-item-height: 40px;
   --sp-menu-item-padding: 8px 12px;
   --sp-menu-item-hover-bg: var(--sp-bg-hover);
   --sp-menu-item-active-bg: var(--sp-bg-active);
+  --sp-btn-toggled-bg: rgba(244, 239, 231, 0.14);
+  --sp-switch-bg: rgba(244, 239, 231, 0.2);
+  --sp-switch-thumb: rgba(248, 244, 238, 0.96);
   
   /* ========== 提示/Toast ========== */
   
-  --sp-tooltip-bg: rgba(28, 28, 28, 0.95);
+  --sp-tooltip-bg: rgba(22, 28, 36, 0.96);
   --sp-tooltip-padding: 6px 10px;
   --sp-tooltip-font-size: 12px;
   
@@ -104,17 +109,23 @@
   
   --sp-subtitle-font-size: 24px;
   --sp-subtitle-font-weight: 500;
-  --sp-subtitle-color: #ffffff;
-  --sp-subtitle-highlight: #ffd54a;
-  --sp-subtitle-bg-rgb: 0, 0, 0;
+  --sp-subtitle-color: #f7f1ea;
+  --sp-subtitle-highlight: #e0aa55;
+  --sp-subtitle-bg-rgb: 10, 13, 18;
   --sp-subtitle-bg-opacity: 0.75;
   --sp-subtitle-bg: rgba(var(--sp-subtitle-bg-rgb), var(--sp-subtitle-bg-opacity));
   --sp-subtitle-padding: 4px 8px;
   --sp-subtitle-bottom: 60px;
-  --sp-subtitle-text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-  --sp-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --sp-drop-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --sp-drop-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --sp-subtitle-text-shadow: 2px 2px 4px rgba(6, 9, 12, 0.8);
+  --sp-text-shadow: 0 1px 2px rgba(6, 9, 12, 0.45);
+  --sp-drop-shadow-sm: 0 1px 2px rgba(6, 9, 12, 0.28);
+  --sp-drop-shadow-md: 0 2px 4px rgba(6, 9, 12, 0.32);
+  --sp-spinner-stroke-color: rgba(244, 239, 231, 0.9);
+  --sp-error-bg: rgba(9, 12, 16, 0.82);
+  --sp-error-btn-border: rgba(244, 239, 231, 0.26);
+  --sp-error-btn-bg: rgba(244, 239, 231, 0.12);
+  --sp-error-btn-hover-bg: rgba(244, 239, 231, 0.18);
+  --sp-error-btn-active-bg: rgba(244, 239, 231, 0.26);
   
   /* ========== 动画 ========== */
   
@@ -134,10 +145,10 @@
   
   /* ========== 阴影 ========== */
   
-  --sp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --sp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --sp-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --sp-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --sp-shadow-sm: 0 1px 2px rgba(6, 9, 12, 0.28);
+  --sp-shadow-md: 0 4px 12px rgba(6, 9, 12, 0.36);
+  --sp-shadow-lg: 0 8px 24px rgba(6, 9, 12, 0.46);
+  --sp-shadow-xl: 0 16px 48px rgba(6, 9, 12, 0.58);
   --sp-glow-primary: none;
   
   /* ========== 层级 (z-index) ========== */
@@ -152,7 +163,7 @@
   
   /* ========== 字体 ========== */
   
-  --sp-font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --sp-font-family: var(--font-sans), 'Noto Sans SC', sans-serif;
   --sp-font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
   --sp-font-size-xs: 12px;
   --sp-font-size-sm: 13px;

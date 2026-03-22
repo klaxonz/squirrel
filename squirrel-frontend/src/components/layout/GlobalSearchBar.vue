@@ -1,5 +1,5 @@
 <template>
-  <div class="global-search-bar bg-background px-4 py-3">
+  <div class="global-search-bar px-4 py-3">
     <div class="max-w-2xl mx-auto">
       <div class="relative flex items-center w-full">
         <input
@@ -9,11 +9,11 @@
           @input="handleInput"
           type="text"
           :placeholder="placeholder"
-          class="w-full h-10 pl-10 pr-12 text-sm bg-card border border-border rounded-full focus:outline-none focus:border-border text-foreground placeholder:text-muted-foreground transition-colors"
+          class="w-full h-11 pl-11 pr-12 text-sm bg-card/90 border border-border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background text-foreground placeholder:text-muted-foreground transition-all"
         >
         <button
           @click="handleSearch"
-          class="absolute left-3 top-1/2 transform -translate-y-1/2 focus:outline-none"
+          class="absolute left-3 top-1/2 transform -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors focus:outline-none"
         >
           <MagnifyingGlassIcon class="h-5 w-5 text-muted-foreground" />
         </button>
@@ -99,12 +99,11 @@ defineExpose({
 
 <style scoped>
 .global-search-bar {
-  /* 确保搜索框在最顶层 */
   z-index: 10;
+  background: transparent;
 }
 
-/* 添加平滑过渡效果 */
 input:focus {
-  box-shadow: 0 0 0 2px hsl(var(--border));
+  box-shadow: 0 0 0 4px hsl(var(--ring) / 0.14);
 }
 </style>

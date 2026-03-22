@@ -3,7 +3,7 @@
     <TooltipTrigger as-child>
       <router-link
         :to="item.path"
-        class="menu-item flex items-center h-10 px-3 text-foreground rounded-lg mb-1"
+        class="menu-item flex items-center h-10 px-3 text-sidebar-foreground rounded-xl mb-1"
         :class="[
           isActive ? 'menu-item-active' : 'menu-item-inactive',
           { 'menu-item-collapsed': isCollapsed }
@@ -41,15 +41,19 @@ defineProps({
 <style scoped>
 .menu-item {
   width: 100%;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.2s ease, color 0.2s ease;
 }
 
 .menu-item-inactive:hover {
-  background-color: hsl(var(--accent));
+  background-color: hsl(var(--sidebar-accent));
+  transform: translateX(2px);
 }
 
 .menu-item-active {
-  background-color: hsl(var(--muted));
+  background:
+    linear-gradient(135deg, hsl(var(--primary) / 0.16), hsl(var(--sidebar-accent)));
+  color: hsl(var(--foreground));
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.22);
 }
 
 .menu-icon {

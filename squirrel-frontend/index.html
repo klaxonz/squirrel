@@ -1,11 +1,22 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/squirrel-icon.png" />
     <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Squirrel</title>
+    <script>
+      try {
+        const storageKey = 'squirrel-app-theme';
+        const storedMode = window.localStorage.getItem(storageKey);
+        const isSystemMode = storedMode === 'system' || !storedMode || (storedMode !== 'light' && storedMode !== 'dark');
+        const isDark = storedMode === 'dark' || (isSystemMode && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+      } catch {}
+    </script>
   </head>
   <body style="overscroll-behavior: none;">
     <div id="app"></div>

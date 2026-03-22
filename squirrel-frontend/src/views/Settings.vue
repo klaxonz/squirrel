@@ -27,21 +27,21 @@
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-0 min-h-0 h-full">
         <aside class="lg:col-span-3 lg:sticky lg:top-0 self-start">
 
-          <div class="settings-nav bg-card/40 border border-border rounded-2xl p-2 lg:rounded-r-none lg:border-r-0">
+          <div class="settings-nav bg-card/75 border border-border rounded-2xl p-2 backdrop-blur-sm lg:rounded-r-none lg:border-r-0">
             <div class="flex lg:flex-col gap-2 overflow-x-auto scrollbar-hide">
               <button
                 v-for="tab in tabs"
                 :key="tab.key"
                 @click="currentTab = tab.key"
                 class="tab-button group relative text-left min-w-[11rem] flex-1 lg:flex-none px-4 py-3 rounded-xl border transition-colors"
-                :class="currentTab === tab.key
+                :class="isCurrentTab(tab.key)
                   ? 'bg-muted border-border text-foreground shadow-sm'
                   : 'bg-transparent border-border text-muted-foreground hover:bg-card/60'"
-                :aria-current="currentTab === tab.key ? 'page' : undefined"
+                :aria-current="isCurrentTab(tab.key) ? 'page' : undefined"
               >
                 <span
                   class="tab-accent absolute left-3 top-3 bottom-3 w-0.5 rounded-full transition-opacity"
-                  :class="currentTab === tab.key ? 'opacity-100 bg-destructive' : 'opacity-0 bg-muted'"
+                  :class="isCurrentTab(tab.key) ? 'opacity-100 bg-primary' : 'opacity-0 bg-muted'"
                 ></span>
                 <div class="relative z-10 flex items-start justify-between gap-3 w-full">
                   <div>
@@ -50,7 +50,7 @@
                   </div>
                   <span
                     class="mt-1 h-2 w-2 rounded-full"
-                    :class="currentTab === tab.key ? 'bg-destructive' : 'bg-muted'"
+                    :class="isCurrentTab(tab.key) ? 'bg-primary' : 'bg-muted'"
                   ></span>
                 </div>
               </button>
@@ -65,7 +65,43 @@
           class="lg:col-span-9 space-y-6 lg:pl-6 lg:border-l lg:border-border"
           :class="allowScroll ? 'overflow-y-auto min-h-0 pr-1' : ''"
         >
-            <Card v-if="currentTab === 'content'" class="settings-card">
+            <Card v-if="isCurrentTab('appearance')" class="settings-card">
+              <div class="settings-card-header">
+                <div>
+                  <h2 class="text-lg font-semibold">外观主题</h2>
+                  <p class="text-sm text-muted-foreground">切换浅色、深色或跟随系统主题。</p>
+                </div>
+                <span class="section-badge">
+                  当前生效: {{ effectiveThemeLabel }}
+                </span>
+              </div>
+              <div class="settings-card-body">
+                <div class="theme-choice-grid">
+                  <button
+                    v-for="option in themeOptions"
+                    :key="option.value"
+                    type="button"
+                    class="theme-choice"
+                    :class="themeMode === option.value ? 'theme-choice-active' : 'theme-choice-inactive'"
+                    @click="setThemeMode(option.value)"
+                  >
+                    <span class="theme-choice-preview" :class="`theme-choice-preview-${option.value}`">
+                      <span class="theme-choice-preview-chip"></span>
+                    </span>
+                    <span class="theme-choice-copy">
+                      <span class="theme-choice-label">{{ option.label }}</span>
+                      <span class="theme-choice-desc">{{ option.description }}</span>
+                    </span>
+                  </button>
+                </div>
+                <div class="theme-note">
+                  <span class="status-dot" :class="themeStatusDotClass"></span>
+                  <span>{{ themeStatusText }}</span>
+                </div>
+              </div>
+            </Card>
+
+            <Card v-if="isCurrentTab('content')" class="settings-card">
               <div class="settings-card-header">
                 <div>
                   <h2 class="text-lg font-semibold">内容设置</h2>
@@ -101,9 +137,9 @@
                   <label class="switch">
                     <input
                       type="checkbox"
-                      :checked="systemConfig?.blur_nsfw_thumbnails"
+                      :checked="Boolean(systemConfig?.blur_nsfw_thumbnails)"
                       :disabled="systemLoading || systemSaving"
-                      @change="onSystemToggle('blur_nsfw_thumbnails', $event.target.checked)"
+                      @change="onSystemToggle('blur_nsfw_thumbnails', readCheckbox($event))"
                     >
                     <span class="slider"></span>
                   </label>
@@ -111,7 +147,7 @@
               </div>
             </Card>
 
-            <Card v-if="currentTab === 'playback'" class="settings-card">
+            <Card v-if="isCurrentTab('playback')" class="settings-card">
               <div class="settings-card-header">
                 <div>
                   <h2 class="text-lg font-semibold">播放设置</h2>
@@ -173,7 +209,7 @@
               </div>
             </Card>
 
-            <Card v-if="currentTab === 'system'" class="settings-card">
+            <Card v-if="isCurrentTab('system')" class="settings-card">
               <div class="settings-card-header">
                 <div>
                   <h2 class="text-lg font-semibold">系统配置</h2>
@@ -193,9 +229,9 @@
                   <label class="switch">
                     <input
                       type="checkbox"
-                      :checked="systemConfig?.enable_scheduler"
+                      :checked="Boolean(systemConfig?.enable_scheduler)"
                       :disabled="systemLoading || systemSaving"
-                      @change="onSystemToggle('enable_scheduler', $event.target.checked)"
+                      @change="onSystemToggle('enable_scheduler', readCheckbox($event))"
                     >
                     <span class="slider"></span>
                   </label>
@@ -209,9 +245,9 @@
                   <label class="switch">
                     <input
                       type="checkbox"
-                      :checked="systemConfig?.enable_worker"
+                      :checked="Boolean(systemConfig?.enable_worker)"
                       :disabled="systemLoading || systemSaving"
-                      @change="onSystemToggle('enable_worker', $event.target.checked)"
+                      @change="onSystemToggle('enable_worker', readCheckbox($event))"
                     >
                     <span class="slider"></span>
                   </label>
@@ -219,29 +255,42 @@
               </div>
             </Card>
 
-            <SiteConfigSection v-if="currentTab === 'sites'" />
+            <SiteConfigSection v-if="isCurrentTab('sites')" />
         </section>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useSystemConfig } from '../composables/useSystemConfig';
 import { useUserSettings } from '../composables/useUserSettings';
+import { useAppTheme } from '@/composables/useAppTheme'
 import SiteConfigSection from '@/components/settings/SiteConfigSection.vue';
 import { Card } from '@/components/ui/card';
 import { Logger } from '@/utils/logger'
+import type { AppThemeMode } from '@/lib/theme'
+
+type SettingsTabKey = 'appearance' | 'content' | 'playback' | 'system' | 'sites'
 
 // Tabs 配置
-const tabs = [
+const tabs: Array<{ key: SettingsTabKey; label: string; description: string }> = [
+  { key: 'appearance', label: '外观主题', description: '浅色、深色与系统模式' },
   { key: 'content', label: '内容设置', description: '敏感内容与展示偏好' },
   { key: 'playback', label: '播放设置', description: '播放体验与自动行为' },
   { key: 'system', label: '系统配置', description: '后台任务与服务' },
   { key: 'sites', label: '站点配置', description: '站点来源与采集参数' },
 ];
-const currentTab = ref('content');
+const currentTab = ref<SettingsTabKey>('appearance');
+
+const themeOptions: Array<{ value: AppThemeMode; label: string; description: string }> = [
+  { value: 'light', label: '浅色', description: '暖灰画布，更适合白天浏览。' },
+  { value: 'dark', label: '深色', description: '墨色界面，更适合长时间观看。' },
+  { value: 'system', label: '跟随系统', description: '自动匹配当前系统主题。' },
+]
+
+const { themeMode, effectiveTheme, setThemeMode } = useAppTheme()
 
 // 用户设置
 const { settings, loading: userSaving, loadUserSettings, saveUserSettings } = useUserSettings();
@@ -257,20 +306,20 @@ const statusLabel = computed(() => {
 });
 
 const statusDotClass = computed(() => {
-  if (userSaving.value || systemSaving.value) return 'bg-amber-500 animate-pulse';
-  if (systemLoading.value) return 'bg-blue-500 animate-pulse';
-  return 'bg-emerald-500';
+  if (userSaving.value || systemSaving.value) return 'bg-warning animate-pulse';
+  if (systemLoading.value) return 'bg-info animate-pulse';
+  return 'bg-success';
 });
 
 const userStatusDotClass = computed(() => {
-  if (userSaving.value) return 'bg-amber-500 animate-pulse';
-  return 'bg-emerald-500';
+  if (userSaving.value) return 'bg-warning animate-pulse';
+  return 'bg-success';
 });
 
 const systemStatusDotClass = computed(() => {
-  if (systemSaving.value) return 'bg-amber-500 animate-pulse';
-  if (systemLoading.value) return 'bg-blue-500 animate-pulse';
-  return systemConfig.value ? 'bg-emerald-500' : 'bg-muted';
+  if (systemSaving.value) return 'bg-warning animate-pulse';
+  if (systemLoading.value) return 'bg-info animate-pulse';
+  return systemConfig.value ? 'bg-success' : 'bg-muted';
 });
 
 const systemStatusLabel = computed(() => {
@@ -279,7 +328,29 @@ const systemStatusLabel = computed(() => {
   return systemConfig.value ? '已同步' : '未同步';
 });
 
+const effectiveThemeLabel = computed(() => {
+  return effectiveTheme.value === 'dark' ? '深色' : '浅色'
+})
+
+const themeStatusText = computed(() => {
+  if (themeMode.value === 'system') {
+    return `当前跟随系统，正在使用${effectiveThemeLabel.value}主题。`
+  }
+
+  return `当前固定使用${effectiveThemeLabel.value}主题。`
+})
+
+const themeStatusDotClass = computed(() => {
+  return effectiveTheme.value === 'dark' ? 'theme-dot-dark' : 'theme-dot-light'
+})
+
 const allowScroll = computed(() => currentTab.value === 'sites');
+
+const isCurrentTab = (tab: SettingsTabKey) => currentTab.value === tab
+
+const readCheckbox = (event: Event) => {
+  return (event.target as HTMLInputElement | null)?.checked ?? false
+}
 
 onMounted(async () => {
   // 加载用户设置
@@ -297,7 +368,7 @@ const onUserSettingChange = async () => {
   await saveUserSettings();
 };
 
-const onSystemToggle = async (key, val) => {
+const onSystemToggle = async (key: string, val: boolean) => {
   systemSaving.value = true;
   const result = await updateSystemConfig({ [key]: val });
   if (result.error) {
@@ -369,6 +440,110 @@ const onSystemToggle = async (key, val) => {
 
 .settings-card-body {
   @apply px-6 pb-2;
+}
+
+.theme-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.theme-choice {
+  display: grid;
+  gap: 0.875rem;
+  padding: 1rem;
+  border-radius: calc(var(--radius-2xl) - 0.25rem);
+  border: 1px solid hsl(var(--border));
+  text-align: left;
+  background: hsl(var(--card));
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.theme-choice:hover {
+  transform: translateY(-1px);
+  border-color: hsl(var(--ring) / 0.35);
+  background: hsl(var(--accent) / 0.45);
+}
+
+.theme-choice-active {
+  border-color: hsl(var(--ring) / 0.6);
+  background: linear-gradient(180deg, hsl(var(--accent) / 0.9), hsl(var(--card)));
+  box-shadow: 0 18px 36px hsl(var(--foreground) / 0.08);
+}
+
+.theme-choice-inactive {
+  box-shadow: none;
+}
+
+.theme-choice-preview {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  min-height: 6rem;
+  padding: 0.875rem;
+  border-radius: calc(var(--radius-xl) - 0.125rem);
+  border: 1px solid hsl(var(--border) / 0.75);
+}
+
+.theme-choice-preview-light {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.08)),
+    linear-gradient(135deg, #f7efe6, #e9ded2 55%, #d2bc9e);
+}
+
+.theme-choice-preview-dark {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    linear-gradient(145deg, #10161d, #1a232d 58%, #745340);
+}
+
+.theme-choice-preview-system {
+  background:
+    linear-gradient(90deg, #f4ebe0 0 50%, #10161d 50% 100%);
+}
+
+.theme-choice-preview-chip {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #cc7a3d, #934125);
+  box-shadow: 0 12px 24px rgba(120, 56, 30, 0.28);
+}
+
+.theme-choice-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.theme-choice-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.theme-choice-desc {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: hsl(var(--muted-foreground));
+}
+
+.theme-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 1.5rem;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.theme-dot-light {
+  background: #cc7a3d;
+}
+
+.theme-dot-dark {
+  background: #526a82;
 }
 
 .setting-row {

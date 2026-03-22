@@ -19,7 +19,7 @@
               :external-error="externalError"
               :widescreen="isWidescreen"
               :adapter="playerAdapter"
-              :theme-options="{ persist: true, storageKey: 'sp-theme' }"
+              :theme="effectiveTheme"
               :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
               :enable-global-shortcuts="true"
               :enable-click-outside-close-menu="true"
@@ -263,6 +263,7 @@ import { useRoute, useRouter } from 'vue-router';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
 import { useDropdown } from '@/composables/useDropdown';
+import { useAppTheme } from '@/composables/useAppTheme'
 import VideoPlayer from '@/components/video-player/VideoPlayer.vue';
 import { LocalStorageAdapter } from '@/components/video-player/core';
 import { Icon } from '@iconify/vue';
@@ -282,6 +283,7 @@ const emitter = inject('emitter');
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
 const playerAdapter = new LocalStorageAdapter();
+const { effectiveTheme } = useAppTheme()
 
 
 // 内部切换不使用 router，所以不需要从 history.state 读取初始数据
@@ -838,11 +840,11 @@ onUnmounted(() => {
 .video-section {
   position: relative;
   width: 100%;
-  background: #000;
+  background: hsl(var(--card));
   margin: 0 auto;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: none;
+  box-shadow: 0 20px 44px hsl(var(--surface-shadow));
 }
 
 

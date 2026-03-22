@@ -1,7 +1,7 @@
 <template>
-  <div v-if="show" class="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4"
+  <div v-if="show" class="fixed inset-0 bg-overlay-strong flex items-center justify-center z-50 p-4 backdrop-blur-sm"
        @click.self="handleClose">
-    <div class="bg-card border border-border rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
+    <div class="bg-card border border-border rounded-[1.5rem] w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl">
       <!-- 头部 -->
       <div class="flex items-center justify-between p-6 border-b border-border">
         <h2 class="text-xl font-bold text-foreground">导入订阅</h2>

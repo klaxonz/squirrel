@@ -1,9 +1,9 @@
 <template>
   <div
     v-if="visible"
-    class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+    class="fixed inset-0 bg-overlay-strong flex items-center justify-center z-50 p-4 backdrop-blur-sm"
   >
-    <div class="bg-card rounded-2xl border border-border w-full max-w-3xl shadow-xl">
+    <div class="bg-card rounded-[1.75rem] border border-border w-full max-w-3xl shadow-2xl">
       <div class="flex items-center justify-between px-6 py-4 border-b border-border">
         <div>
           <h3 class="text-lg font-semibold">编辑站点配置</h3>

@@ -1,6 +1,6 @@
 <template>
-  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div class="bg-muted border border-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+  <div class="fixed inset-0 bg-overlay-strong backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-card border border-border rounded-[1.5rem] w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
       <div class="flex items-center justify-between px-6 py-4 border-b border-border">
         <h2 class="text-xl font-bold text-foreground">
           {{ isEditing ? '编辑任务' : '创建任务' }}
@@ -166,7 +166,7 @@
         <button
           type="button"
           @click="$emit('close')"
-          class="px-5 py-2.5 bg-muted hover:bg-accent text-foreground text-sm font-medium rounded-full transition-colors"
+          class="px-5 py-2.5 bg-secondary hover:bg-accent text-foreground text-sm font-medium rounded-full transition-colors"
         >
           取消
         </button>
