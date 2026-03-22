@@ -87,6 +87,7 @@
                 <RangeCalendar
                   :model-value="dateRange"
                   :number-of-months="2"
+                  locale="zh-CN"
                   @update:model-value="handleDateRangeUpdate"
                 />
               </PopoverContent>
@@ -172,6 +173,7 @@
                 <RangeCalendar
                   :model-value="dateRange"
                   :number-of-months="2"
+                  locale="zh-CN"
                   @update:model-value="handleDateRangeUpdate"
                 />
               </PopoverContent>
