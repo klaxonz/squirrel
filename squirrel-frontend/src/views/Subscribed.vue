@@ -52,42 +52,53 @@
       </div>
       <div class="content-container">
         <!-- 频道列表 -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
           <div v-for="subscription in subscriptions" :key="subscription.id"
-               class="channel-item bg-card rounded-lg overflow-hidden hover:bg-muted transition-all duration-200 relative group cursor-pointer"
+               class="channel-item relative group cursor-pointer"
 
                :class="{ 'is-refreshing': isResetting }"
                @click="getSubscriptionVideos(subscription.id)"
           >
-            <div class="flex justify-center items-center p-3 bg-card">
-              <div class="relative w-14 h-14">
+            <div class="channel-item__media">
+              <div class="channel-item__halo"></div>
+              <div class="relative w-16 h-16">
                 <img
                   :alt="subscription.name"
                   :src="getAvatarSrc(subscription.avatar, subscription.id)"
-                  class="w-full h-full rounded-full object-cover ring-1 ring-border transition-transform duration-300 group-hover:scale-105"
+                  class="w-full h-full rounded-[1.25rem] object-cover ring-1 ring-border transition-transform duration-300 group-hover:scale-105"
                   referrerpolicy="no-referrer"
                   @error="(e) => handleAvatarError(e, subscription.id)"
                 />
-                <div class="absolute -inset-0.5 avatar-sheen opacity-20 rounded-full"></div>
+                <div class="absolute -inset-1 avatar-sheen opacity-30 rounded-[1.5rem]"></div>
               </div>
             </div>
 
-            <div class="p-2 text-center">
-              <div class="flex items-center justify-center gap-1 mb-0.5">
-                <h3 class="text-xs font-semibold truncate text-foreground">{{ subscription.name }}</h3>
+            <div class="channel-item__body">
+              <div class="channel-item__header">
+                <div class="min-w-0">
+                  <h3 class="channel-item__title">{{ subscription.name }}</h3>
+                  <p class="channel-item__meta">订阅于 {{ formatDate(subscription.created_at) }}</p>
+                </div>
                 <span v-if="subscription.type === 'PLAYLIST'" 
-                      class="text-2xs px-1 py-0.5 rounded bg-blue-500/20 text-blue-500 whitespace-nowrap"
+                      class="channel-item__badge"
                       title="播放列表">
                   播放列表
                 </span>
               </div>
-              <p class="text-2xs text-muted-foreground mt-0.5">
-                总视频: {{ subscription.total_videos }} | 已解析: {{ subscription.total_extract }}
-              </p>
-              <p class="text-2xs text-muted-foreground mt-0.5">订阅时间: {{ formatDate(subscription.created_at) }}</p>
+
+              <div class="channel-item__stats">
+                <div class="channel-item__stat">
+                  <span class="channel-item__stat-label">总视频</span>
+                  <span class="channel-item__stat-value">{{ subscription.total_videos }}</span>
+                </div>
+                <div class="channel-item__stat">
+                  <span class="channel-item__stat-label">已解析</span>
+                  <span class="channel-item__stat-value">{{ subscription.total_extract }}</span>
+                </div>
+              </div>
             </div>
 
-            <button class="settings-toggle absolute top-1 right-1 p-1 bg-muted/50 rounded-full hover:bg-muted/75 transition-colors duration-200 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+            <button class="settings-toggle absolute top-3 right-3 p-2 bg-card/88 border border-border rounded-full hover:bg-accent transition-colors duration-200 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                     @click.stop="openSettings(subscription)">
               <svg class="h-3.5 w-3.5 text-foreground" fill="currentColor" viewBox="0 0 20 20"
                    xmlns="http://www.w3.org/2000/svg">
@@ -99,7 +110,7 @@
 
             <!-- YouTube风格的更新状态指示器 -->
             <div v-if="getRefreshState(subscription.id).isRefreshing"
-                 class="absolute top-1.5 left-1.5 bg-muted text-foreground/80 text-2xs px-1.5 py-0.5 rounded-md">
+                 class="absolute top-3 left-3 bg-card/92 border border-border text-foreground/80 text-2xs px-2 py-1 rounded-full shadow-sm">
               <span>{{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}</span>
             </div>
           </div>
@@ -142,7 +153,7 @@
           <!-- 手动更新按钮 -->
           <div class="space-y-3">
             <button
-              class="w-full py-2 bg-muted text-foreground rounded-lg hover:bg-muted disabled:bg-card disabled:cursor-not-allowed transition-colors duration-200 text-sm"
+              class="w-full py-2 bg-secondary text-foreground rounded-xl hover:bg-accent disabled:bg-card disabled:cursor-not-allowed transition-colors duration-200 text-sm"
               :disabled="getRefreshState(selectedSubscription.id).isRefreshing"
               @click="handleRefreshSubscription(selectedSubscription.id)"
             >
@@ -158,7 +169,7 @@
             <div v-if="getRefreshState(selectedSubscription.id).status === 'failed'" class="text-xs">
               <p class="text-destructive mb-2">{{ getRefreshState(selectedSubscription.id).lastError || '更新失败' }}</p>
               <button
-                class="w-full py-1.5 bg-muted text-foreground rounded hover:bg-muted transition-colors duration-200"
+                class="w-full py-1.5 bg-secondary text-foreground rounded-xl hover:bg-accent transition-colors duration-200"
                 @click="handleRetryRefresh(selectedSubscription.id)"
               >
                 重试更新
@@ -180,7 +191,7 @@
           </button>
           <p v-if="unsubscribeError" class="mt-2 text-xs text-destructive">{{ unsubscribeError }}</p>
         </div>
-        <button class="mt-6 w-full py-2 bg-muted text-foreground rounded-lg hover:bg-muted transition-colors duration-200 text-sm font-medium"
+        <button class="mt-6 w-full py-2 bg-secondary text-foreground rounded-xl hover:bg-accent transition-colors duration-200 text-sm font-medium"
                 @click="closeSettings">
           关闭
         </button>
@@ -596,11 +607,17 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid hsl(var(--border) / 0.78);
+  background:
+    linear-gradient(180deg, hsl(var(--card)), color-mix(in srgb, hsl(var(--card)) 72%, hsl(var(--secondary))));
+  box-shadow: 0 16px 36px hsl(var(--surface-shadow));
 }
 
 .channel-item:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow: 0 24px 48px hsl(var(--surface-shadow));
 }
 
 .channel-item img {
@@ -610,13 +627,95 @@ onUnmounted(() => {
 
 .channel-item:hover img {
   transform: scale(1.05);
-  box-shadow: 0 0 20px var(--overlay-light-10);
+  box-shadow: 0 22px 30px hsl(var(--surface-shadow));
 }
 
-.channel-item > div:nth-child(2) {
-  flex: 1;
+.channel-item__media {
+  position: relative;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 8.5rem;
+  padding: 1.35rem 1rem 0.75rem;
+  background:
+    radial-gradient(circle at top, hsl(var(--primary) / 0.14), transparent 58%),
+    linear-gradient(180deg, hsl(var(--background) / 0.34), transparent);
+}
+
+.channel-item__halo {
+  position: absolute;
+  inset: 1.15rem 1rem auto;
+  height: 4.4rem;
+  border-radius: 1.4rem;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.16), transparent 70%);
+  opacity: 0.8;
+}
+
+.channel-item__body {
+  flex: 1;
+  display: grid;
+  gap: 1rem;
+  padding: 0.2rem 1rem 1rem;
+}
+
+.channel-item__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.channel-item__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.channel-item__meta {
+  margin-top: 0.28rem;
+  font-size: 0.72rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.channel-item__badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.28rem 0.55rem;
+  border-radius: 9999px;
+  background: hsl(var(--info) / 0.12);
+  color: hsl(var(--info));
+  font-size: 0.67rem;
+  font-weight: 600;
+}
+
+.channel-item__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.channel-item__stat {
+  display: grid;
+  gap: 0.16rem;
+  padding: 0.7rem 0.78rem;
+  border-radius: 1rem;
+  background: hsl(var(--background) / 0.58);
+  border: 1px solid hsl(var(--border) / 0.68);
+}
+
+.channel-item__stat-label {
+  font-size: 0.68rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.channel-item__stat-value {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
 }
 
 .truncate {
@@ -651,6 +750,6 @@ onUnmounted(() => {
   @keyframes shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
 
   .avatar-sheen {
-    background: linear-gradient(to bottom, transparent, hsl(var(--muted)));
+    background: linear-gradient(180deg, transparent, hsl(var(--primary) / 0.2));
   }
 </style>

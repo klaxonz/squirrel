@@ -138,7 +138,7 @@
                   >
                   <router-link
                     :to="`/subscription/${video.subscriptions[0].id}/all`"
-                    class="video-channel__name text-xs md:text-sm lg:text-base text-foreground font-medium hover:text-blue-500 transition-colors"
+                    class="video-channel__name text-xs md:text-sm lg:text-base text-foreground font-medium transition-colors"
                   >
                     {{ video.subscriptions[0].name }}
                   </router-link>
@@ -166,7 +166,7 @@
                   <div
                     v-for="sub in video.subscriptions.slice(1)"
                     :key="sub.id"
-                    class="flex items-center px-2 py-1 rounded-full bg-muted/50 hover:bg-muted/70 cursor-pointer transition-colors text-xs text-foreground"
+                    class="video-channel__chip"
                     @click.stop="$router.push(`/subscription/${sub.id}/all`)"
                   >
                     <img
@@ -224,7 +224,7 @@
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="text-foreground text-xs leading-5 max-h-10 overflow-hidden group-hover:text-blue-500 transition-colors">
+                    <div class="text-foreground text-xs leading-5 max-h-10 overflow-hidden transition-colors group-hover:text-primary">
                       {{ relatedVideo.title }}
                     </div>
                     <div class="text-muted-foreground text-2xs mt-1 truncate">
@@ -232,7 +232,7 @@
                         v-if="relatedVideo.subscriptions?.[0]?.id"
                         :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
                         @click.stop
-                        class="hover:text-blue-500 transition-colors"
+                        class="hover:text-primary transition-colors"
                       >
                         {{ relatedVideo.subscriptions[0].name }}
                       </router-link>
@@ -906,21 +906,23 @@ onUnmounted(() => {
   gap: 0.5rem;
   min-height: 2.5rem;
   padding: 0 0.875rem;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid hsl(var(--border) / 0.8);
   border-radius: 9999px;
-  background: hsl(var(--card));
+  background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--secondary) / 0.65));
   color: hsl(var(--foreground));
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  box-shadow: 0 10px 24px hsl(var(--surface-shadow));
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .video-action:hover {
-  background: hsl(var(--muted));
-  border-color: hsl(var(--border));
+  background: hsl(var(--accent));
+  border-color: hsl(var(--ring) / 0.3);
   transform: translateY(-1px);
+  box-shadow: 0 14px 30px hsl(var(--surface-shadow));
 }
 
 .video-action--secondary {
-  background: transparent;
+  background: hsl(var(--background) / 0.3);
 }
 
 .video-action__icon {
@@ -936,15 +938,15 @@ onUnmounted(() => {
 }
 
 .video-action.is-active--like {
-  color: #fff5f5;
-  background: hsl(var(--primary) / 0.16);
-  border-color: hsl(var(--primary) / 0.42);
+  color: hsl(var(--primary));
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.18), hsl(var(--primary) / 0.08));
+  border-color: hsl(var(--primary) / 0.36);
 }
 
 .video-action.is-active--later {
-  color: #dbeafe;
-  background: rgba(59, 130, 246, 0.18);
-  border-color: rgba(59, 130, 246, 0.36);
+  color: hsl(var(--info));
+  background: linear-gradient(135deg, hsl(var(--info) / 0.18), hsl(var(--info) / 0.08));
+  border-color: hsl(var(--info) / 0.32);
 }
 
 .video-action-menu {
@@ -959,7 +961,7 @@ onUnmounted(() => {
   padding: 0.375rem;
   border: 1px solid hsl(var(--border));
   border-radius: 1rem;
-  background: hsl(var(--card));
+  background: hsl(var(--popover));
   box-shadow: var(--shadow-popup);
 }
 
@@ -980,8 +982,8 @@ onUnmounted(() => {
 }
 
 .video-action-menu__item:hover {
-  background: hsl(var(--muted));
-  border-color: hsl(var(--border));
+  background: hsl(var(--accent));
+  border-color: hsl(var(--ring) / 0.24);
 }
 
 .video-action-menu__main {
@@ -1008,9 +1010,9 @@ onUnmounted(() => {
 }
 
 .video-action-menu__item.is-active--danger {
-  background: rgba(239, 68, 68, 0.14);
-  border-color: rgba(239, 68, 68, 0.24);
-  color: #fee2e2;
+  background: hsl(var(--destructive) / 0.14);
+  border-color: hsl(var(--destructive) / 0.24);
+  color: hsl(var(--destructive));
 }
 
 .video-channel__primary {
@@ -1023,15 +1025,40 @@ onUnmounted(() => {
 .video-channel__name {
   min-width: 0;
   flex: 1 1 140px;
+  transition: color 0.2s ease;
+}
+
+.video-channel__name:hover {
+  color: hsl(var(--primary));
 }
 
 .video-channel__unsubscribe {
   flex-shrink: 0;
+  box-shadow: 0 8px 20px hsl(var(--surface-shadow));
 }
 
 .video-channel__stats,
 .video-channel__more {
   margin-left: 0;
+}
+
+.video-channel__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 9999px;
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  font-size: 0.76rem;
+  color: hsl(var(--foreground));
+}
+
+.video-channel__chip:hover {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--ring) / 0.24);
+  transform: translateY(-1px);
 }
 
 @media (min-width: 768px) {
