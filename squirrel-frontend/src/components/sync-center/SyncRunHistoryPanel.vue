@@ -67,8 +67,31 @@
         </div>
 
         <div class="grid grid-cols-1 gap-2 xl:grid-cols-2">
-          <input :value="filters.dateFrom" type="datetime-local" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" @input="emitInput('dateFrom', $event)" />
-          <input :value="filters.dateTo" type="datetime-local" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" @input="emitInput('dateTo', $event)" />
+          <div class="xl:col-span-2">
+            <Popover>
+              <PopoverTrigger as-child>
+                <Button
+                  variant="outline"
+                  class="h-9 w-full justify-start rounded-lg bg-background px-3 text-left text-xs font-normal"
+                >
+                  <CalendarIcon class="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span v-if="dateRangeLabel">{{ dateRangeLabel }}</span>
+                  <span v-else class="text-muted-foreground">选择日期范围</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent class="w-auto p-0" align="start">
+                <div class="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+                  <div class="text-2xs text-muted-foreground">筛选范围</div>
+                  <Button variant="ghost" size="xs" class="h-7 px-2" @click="clearDateRange">清除</Button>
+                </div>
+                <RangeCalendar
+                  :model-value="dateRange"
+                  :number-of-months="2"
+                  @update:model-value="handleDateRangeUpdate"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </div>
 
@@ -129,8 +152,31 @@
               </SelectItem>
             </SelectContent>
           </Select>
-          <input :value="filters.dateFrom" type="datetime-local" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" @input="emitInput('dateFrom', $event)" />
-          <input :value="filters.dateTo" type="datetime-local" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" @input="emitInput('dateTo', $event)" />
+          <div class="lg:col-span-2">
+            <Popover>
+              <PopoverTrigger as-child>
+                <Button
+                  variant="outline"
+                  class="h-9 w-full justify-start rounded-lg bg-background px-3 text-left text-xs font-normal"
+                >
+                  <CalendarIcon class="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span v-if="dateRangeLabel">{{ dateRangeLabel }}</span>
+                  <span v-else class="text-muted-foreground">选择日期范围</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent class="w-auto p-0" align="start">
+                <div class="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+                  <div class="text-2xs text-muted-foreground">筛选范围</div>
+                  <Button variant="ghost" size="xs" class="h-7 px-2" @click="clearDateRange">清除</Button>
+                </div>
+                <RangeCalendar
+                  :model-value="dateRange"
+                  :number-of-months="2"
+                  @update:model-value="handleDateRangeUpdate"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </div>
     </div>
@@ -227,14 +273,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import SyncSubscriptionSelect from '@/components/sync-center/SyncSubscriptionSelect.vue'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { RangeCalendar } from '@/components/ui/range-calendar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { fromDateToLocal, toCalendarDate } from '@internationalized/date'
+import { Calendar as CalendarIcon } from 'lucide-vue-next'
 
 const props = withDefaults(defineProps<{
   embedded?: boolean
@@ -290,9 +340,89 @@ const triggerOptions = [
   { value: 'api', label: '接口' },
 ]
 
-const emitInput = (key: string, event: Event) => {
-  const target = event.target as HTMLInputElement | null
-  emit('set-filter', { key, value: target?.value || '' })
+const toDateValue = (isoString: string) => {
+  if (!isoString) {
+    return undefined
+  }
+  const date = new Date(isoString)
+  if (Number.isNaN(date.getTime())) {
+    return undefined
+  }
+  return toCalendarDate(fromDateToLocal(date))
+}
+
+const dateRange = ref<any>({
+  start: toDateValue(props.filters.dateFrom),
+  end: toDateValue(props.filters.dateTo),
+})
+
+watch(() => [props.filters.dateFrom, props.filters.dateTo], ([nextFrom, nextTo]) => {
+  dateRange.value = {
+    start: toDateValue(nextFrom || ''),
+    end: toDateValue(nextTo || ''),
+  }
+})
+
+const formatDateValue = (value: any) => {
+  if (!value) {
+    return ''
+  }
+  const year = String(value.year).padStart(4, '0')
+  const month = String(value.month).padStart(2, '0')
+  const day = String(value.day).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const dateRangeLabel = computed(() => {
+  const start = dateRange.value.start
+  const end = dateRange.value.end
+  if (!start && !end) {
+    return ''
+  }
+  if (start && end) {
+    return `${formatDateValue(start)} ~ ${formatDateValue(end)}`
+  }
+  if (start) {
+    return `${formatDateValue(start)} ~ ${formatDateValue(start)}`
+  }
+  return `${formatDateValue(end)} ~ ${formatDateValue(end)}`
+})
+
+const toIsoStartOfDay = (value: any) => {
+  if (!value) {
+    return ''
+  }
+  return new Date(value.year, value.month - 1, value.day, 0, 0, 0, 0).toISOString()
+}
+
+const toIsoEndOfDay = (value: any) => {
+  if (!value) {
+    return ''
+  }
+  return new Date(value.year, value.month - 1, value.day, 23, 59, 59, 999).toISOString()
+}
+
+const emitDateRange = (range: any) => {
+  const start = range.start
+  const end = range.end || range.start
+  if (!start && !end) {
+    emit('set-filter', { key: 'dateFrom', value: '' })
+    emit('set-filter', { key: 'dateTo', value: '' })
+    return
+  }
+  emit('set-filter', { key: 'dateFrom', value: toIsoStartOfDay(start) })
+  emit('set-filter', { key: 'dateTo', value: toIsoEndOfDay(end) })
+}
+
+const handleDateRangeUpdate = (nextRange: any) => {
+  dateRange.value = nextRange
+  emitDateRange(nextRange)
+}
+
+const clearDateRange = () => {
+  const cleared = { start: undefined, end: undefined }
+  dateRange.value = cleared
+  emitDateRange(cleared)
 }
 
 const getBadgeVariant = (status: string) => {
