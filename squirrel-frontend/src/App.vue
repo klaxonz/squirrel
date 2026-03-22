@@ -3,16 +3,13 @@
     <router-view />
   </div>
   <TooltipProvider v-else :delay-duration="200">
-    <div class="flex h-screen min-h-0 overflow-x-hidden">
-      <!-- Sidebar for desktop -->
+    <div class="app-shell" :class="{ 'video-widescreen': isVideoWidescreen }">
       <Sidebar
         v-if="!isMobile && !isSidebarFlyout && !(isVideoWidescreen && !isVideoSidebarOpen)"
-        :routes="sidebarRoutes"
         :flyout="isVideoWidescreen"
         @requestClose="closeVideoSidebar"
       />
 
-      <!-- Floating sidebar for flyout routes -->
       <div v-if="!isMobile && isSidebarFlyout" class="sidebar-flyout">
         <button
           class="sidebar-flyout-toggle"
@@ -30,7 +27,6 @@
           >
             <Sidebar
               class="sidebar-flyout-panel"
-              :routes="sidebarRoutes"
               :flyout="true"
               @requestClose="closeSidebarFlyout"
             />
@@ -38,311 +34,266 @@
         </transition>
       </div>
 
-      <!-- Main content area -->
-      <main class="flex-1 relative flex flex-col min-h-0">
-        <!-- 全局搜索框 -->
-        <div v-if="showGlobalSearch" class="topbar" ref="topbarRef">
-          <button
-            v-if="isVideoWidescreen"
-            class="topbar-menu-btn"
-            :aria-label="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
-            :title="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
-            @click="toggleSidebarFlyout"
-          >
-            <Bars3Icon class="h-5 w-5" />
-          </button>
-          <GlobalSearchBar
-            ref="globalSearchBar"
-            v-model="searchQuery"
-            :placeholder="searchPlaceholder"
-            @search="handleGlobalSearch"
-            @clear="handleGlobalSearchClear"
-          />
+      <main class="app-main">
+        <div v-if="showGlobalSearch" class="topbar-shell" ref="topbarRef">
+          <div class="topbar">
+            <div class="topbar__lead">
+              <button
+                v-if="isVideoWidescreen"
+                class="topbar-menu-btn"
+                :aria-label="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
+                :title="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
+                @click="toggleSidebarFlyout"
+              >
+                <Bars3Icon class="h-5 w-5" />
+              </button>
+              <div v-if="!isMobile" class="topbar__copy">
+                <span class="topbar__eyebrow">{{ searchEyebrow }}</span>
+                <span class="topbar__title">{{ searchSectionTitle }}</span>
+              </div>
+            </div>
+
+            <GlobalSearchBar
+              ref="globalSearchBar"
+              v-model="searchQuery"
+              class="topbar__search"
+              :placeholder="searchPlaceholder"
+              @search="handleGlobalSearch"
+              @clear="handleGlobalSearchClear"
+            />
+          </div>
         </div>
 
-        <!-- 页面内容容器 -->
-        <div class="page-container flex-1 relative min-h-0">
-          <div class="content-container absolute inset-0" ref="contentContainerRef" :class="contentScrollClass">
+        <div class="page-container">
+          <div
+            ref="contentContainerRef"
+            class="content-container absolute inset-0"
+            :class="contentScrollClass"
+          >
             <router-view v-slot="{ Component }">
               <keep-alive :include="['LatestVideos', 'Subscribed']">
                 <component :is="Component" :key="routeCacheKey" />
               </keep-alive>
             </router-view>
           </div>
-          <!-- 全局同步中心 -->
           <RefreshCenter />
         </div>
       </main>
 
-      <!-- Mobile navigation -->
       <MobileNav v-if="isMobile" :routes="mobileRoutes" />
     </div>
   </TooltipProvider>
 </template>
 
 <script setup>
-import { provide, ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
-import mitt from 'mitt';
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
+import { Bars3Icon } from '@heroicons/vue/24/outline'
+import mitt from 'mitt'
+import { useRoute } from 'vue-router'
+import GlobalSearchBar from '@/components/layout/GlobalSearchBar.vue'
+import MobileNav from '@/components/layout/MobileNav.vue'
+import RefreshCenter from '@/components/layout/RefreshCenter.vue'
+import Sidebar from '@/components/layout/Sidebar.vue'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import MobileNav from '@/components/layout/MobileNav.vue';
-import Sidebar from '@/components/layout/Sidebar.vue';
-import GlobalSearchBar from '@/components/layout/GlobalSearchBar.vue';
-import RefreshCenter from '@/components/layout/RefreshCenter.vue';
-import { HomeIcon, BookmarkIcon, CogIcon, ClockIcon, DocumentTextIcon, ChartBarIcon, Bars3Icon, ArrowPathIcon } from '@heroicons/vue/24/outline';
-import { isMobile } from './composables/useMobile';
-import { useRoute } from 'vue-router';
-import { useUser } from './composables/useUser';
-import { useGlobalSearch } from './composables/useGlobalSearch';
-import { useSystemConfig } from './composables/useSystemConfig';
+import { MOBILE_NAV_ITEMS } from '@/constants/sidebar'
+import { isMobile } from './composables/useMobile'
+import { useGlobalSearch } from './composables/useGlobalSearch'
+import { useSystemConfig } from './composables/useSystemConfig'
+import { useUser } from './composables/useUser'
 import { Logger } from '@/utils/logger'
 
-const route = useRoute();
-const emitter = mitt();
-provide('emitter', emitter);
+const SEARCH_SECTION_TITLES = {
+  home: '内容片库',
+  subscribed: '订阅频道',
+  history: '观看历史',
+}
 
-const contentContainerRef = ref(null);
-const topbarRef = ref(null);
-let contentResizeObserver = null;
+const route = useRoute()
+const emitter = mitt()
+provide('emitter', emitter)
 
+const contentContainerRef = ref(null)
+const topbarRef = ref(null)
+const globalSearchBar = ref(null)
+let contentResizeObserver = null
 
-const isAuthPage = computed(() => {
-  return ['/login', '/register'].includes(route.path);
-});
+const isAuthPage = computed(() => ['/login', '/register'].includes(route.path))
 
-const sidebarMeta = computed(() => {
-  return route.meta?.sidebar || { mode: 'fixed', defaultOpen: false };
-});
+const sidebarMeta = computed(() => route.meta?.sidebar || { mode: 'fixed', defaultOpen: false })
+const isSidebarFlyout = computed(() => sidebarMeta.value?.mode === 'flyout')
 
-const isSidebarFlyout = computed(() => {
-  return sidebarMeta.value?.mode === 'flyout';
-});
+const isSidebarFlyoutOpen = ref(false)
+const isVideoWidescreen = ref(false)
+const isVideoSidebarOpen = ref(true)
 
-const isSidebarFlyoutOpen = ref(false);
-const closeVideoSidebar = () => {
-  isVideoSidebarOpen.value = false;
-};
+const { searchQuery, searchPlaceholder, handleSearch: handleGlobalSearch, handleClear: handleGlobalSearchClear } =
+  useGlobalSearch(emitter)
 
-const openSidebarFlyout = () => {
-  isSidebarFlyoutOpen.value = true;
-};
+const { getCurrentUser } = useUser()
+const { loadSystemConfig } = useSystemConfig()
 
-const closeSidebarFlyout = () => {
-  isSidebarFlyoutOpen.value = false;
-};
+const mobileRoutes = MOBILE_NAV_ITEMS
 
-const toggleSidebarFlyout = () => {
-  if (isVideoWidescreen.value) {
-    isVideoSidebarOpen.value = !isVideoSidebarOpen.value;
-    return;
-  }
-  isSidebarFlyoutOpen.value = !isSidebarFlyoutOpen.value;
-};
-
-// 控制全局搜索框显示：由路由 meta 控制
-const showGlobalSearch = computed(() => {
-  return !isAuthPage.value && !!route.meta?.showSearch;
-});
-
-const globalSearchBar = ref(null);
-const { searchQuery, searchPlaceholder, handleSearch: handleGlobalSearch, handleClear: handleGlobalSearchClear } = useGlobalSearch(emitter);
-
-const routes = ref([
-  { path: '/', name: '首页', icon: HomeIcon },
-  { path: '/subscribed', name: '订阅', icon: BookmarkIcon },
-  { path: '/history', name: '历史', icon: ClockIcon },
-  { path: '/sync-center', name: '同步', icon: ArrowPathIcon },
-  { path: '/monitoring', name: '监控', icon: ChartBarIcon },
-  { path: '/logs', name: '日志', icon: DocumentTextIcon },
-  { path: '/settings', name: '设置', icon: CogIcon },
-]);
-
-onUnmounted(() => {
-  emitter.all.clear();
-});
-
-const sidebarRoutes = computed(() => {
-  return routes.value.filter(route => !route.path.includes('/settings'))
-})
-
-const mobileRoutes = computed(() => {
-  return routes.value
-})
-
-const { getCurrentUser } = useUser();
-const { loadSystemConfig } = useSystemConfig();
-
-const isVideoWidescreen = ref(false);
-const isVideoSidebarOpen = ref(true);
-
-
-// 是否允许当前页面滚动（如视频播放页）
-const isScrollablePage = computed(() => {
-  return !!route.meta?.scrollable;
-});
+const showGlobalSearch = computed(() => !isAuthPage.value && !!route.meta?.showSearch)
+const isScrollablePage = computed(() => !!route.meta?.scrollable)
 
 const contentScrollClass = computed(() => {
-  if (!isScrollablePage.value) return 'overflow-hidden'
+  if (!isScrollablePage.value) {
+    return 'overflow-hidden'
+  }
   return route.meta?.hideScrollbar ? 'scrollbar-hide overflow-y-auto' : 'scrollbar overflow-y-auto'
 })
 
-const syncAppTopbarHeight = async () => {
-  await nextTick();
-  const root = document.documentElement;
+const searchSectionTitle = computed(() => {
+  const searchKey = route.meta?.search
+  if (searchKey && SEARCH_SECTION_TITLES[searchKey]) {
+    return SEARCH_SECTION_TITLES[searchKey]
+  }
+  return '搜索工作台'
+})
 
-  const contentContainer = contentContainerRef.value;
+const searchEyebrow = computed(() => {
+  if (route.meta?.search === 'history') {
+    return 'PLAYBACK DESK'
+  }
+  if (route.meta?.search === 'subscribed') {
+    return 'SUBSCRIPTION DESK'
+  }
+  return 'EDITORIAL SEARCH'
+})
+
+const syncAppTopbarHeight = async () => {
+  await nextTick()
+  const root = document.documentElement
+
+  const contentContainer = contentContainerRef.value
   if (contentContainer) {
-    const height = Math.ceil(contentContainer.getBoundingClientRect().height);
-    root.style.setProperty('--app-content-height', `${height}px`);
+    const height = Math.ceil(contentContainer.getBoundingClientRect().height)
+    root.style.setProperty('--app-content-height', `${height}px`)
   }
 
   if (!showGlobalSearch.value) {
-    root.style.setProperty('--app-topbar-height', '0px');
-    return;
+    root.style.setProperty('--app-topbar-height', '0px')
+    return
   }
 
-  const bar = topbarRef.value || globalSearchBar.value?.$el || document.querySelector('.global-search-bar');
+  const bar = topbarRef.value || globalSearchBar.value?.$el || document.querySelector('.global-search-bar')
   if (!bar) {
-    root.style.setProperty('--app-topbar-height', '0px');
-    return;
+    root.style.setProperty('--app-topbar-height', '0px')
+    return
   }
 
-  const height = Math.ceil(bar.getBoundingClientRect().height);
-  root.style.setProperty('--app-topbar-height', `${height}px`);
-};
+  const height = Math.ceil(bar.getBoundingClientRect().height)
+  root.style.setProperty('--app-topbar-height', `${height}px`)
+}
 
 const routeCacheKey = computed(() => {
   if (route.params.id) {
-    return `subscription-${route.params.id}`;
+    return `subscription-${route.params.id}`
   }
   if (route.path.startsWith('/videos')) {
-    return 'videos';
+    return 'videos'
   }
-  return route.name || route.path;
-});
+  return route.name || route.path
+})
 
+const closeVideoSidebar = () => {
+  isVideoSidebarOpen.value = false
+}
 
-watch(isScrollablePage, (newVal, oldVal) => {
-  if (oldVal && !newVal && contentContainerRef.value) {
-    contentContainerRef.value.scrollTop = 0;
+const closeSidebarFlyout = () => {
+  isSidebarFlyoutOpen.value = false
+}
+
+const toggleSidebarFlyout = () => {
+  if (isVideoWidescreen.value) {
+    isVideoSidebarOpen.value = !isVideoSidebarOpen.value
+    return
   }
-});
+  isSidebarFlyoutOpen.value = !isSidebarFlyoutOpen.value
+}
+
+watch(isScrollablePage, (nextValue, previousValue) => {
+  if (previousValue && !nextValue && contentContainerRef.value) {
+    contentContainerRef.value.scrollTop = 0
+  }
+})
 
 watch(
   () => route.meta?.sidebar,
   (sidebar) => {
     if (sidebar?.mode === 'flyout') {
-      isSidebarFlyoutOpen.value = !!sidebar.defaultOpen;
-    } else {
-      isSidebarFlyoutOpen.value = false;
+      isSidebarFlyoutOpen.value = !!sidebar.defaultOpen
+      return
     }
+    isSidebarFlyoutOpen.value = false
   },
-  { immediate: true }
-);
+  { immediate: true },
+)
+
+watch(showGlobalSearch, syncAppTopbarHeight)
+watch(() => route.path, syncAppTopbarHeight)
+
+watch(() => route.name, () => {
+  if (sidebarMeta.value?.mode !== 'flyout') {
+    isSidebarFlyoutOpen.value = false
+  }
+})
 
 emitter.on('videoWidescreenStateChanged', (enabled) => {
-  isVideoWidescreen.value = !!enabled;
+  isVideoWidescreen.value = !!enabled
   if (isVideoWidescreen.value) {
-    isSidebarFlyoutOpen.value = false;
-    isVideoSidebarOpen.value = false;
-  } else {
-    isVideoSidebarOpen.value = true;
+    isSidebarFlyoutOpen.value = false
+    isVideoSidebarOpen.value = false
+    return
   }
-});
-
-watch(showGlobalSearch, () => {
-  syncAppTopbarHeight();
-});
-
-watch(() => route.path, () => {
-  syncAppTopbarHeight();
-});
-
-watch(() => route.name, (newRoute) => {
-  if (sidebarMeta.value?.mode !== 'flyout') {
-    isSidebarFlyoutOpen.value = false;
-  }
-});
+  isVideoSidebarOpen.value = true
+})
 
 onMounted(async () => {
   if (localStorage.getItem('token')) {
-    const result = await getCurrentUser();
+    const result = await getCurrentUser()
     if (result.error) {
-      Logger.error('Failed to get user info', result.error);
+      Logger.error('Failed to get user info', result.error)
     }
   }
-  
-  // 加载系统配置
-  const configResult = await loadSystemConfig();
+
+  const configResult = await loadSystemConfig()
   if (configResult.error) {
-    Logger.error('Failed to load system config', configResult.error);
+    Logger.error('Failed to load system config', configResult.error)
   }
 
-  syncAppTopbarHeight();
+  syncAppTopbarHeight()
 
-  const handleResize = () => syncAppTopbarHeight();
-  window.addEventListener('resize', handleResize);
+  const handleResize = () => syncAppTopbarHeight()
+  window.addEventListener('resize', handleResize)
 
   if (contentContainerRef.value && !contentResizeObserver) {
     contentResizeObserver = new ResizeObserver(() => {
-      syncAppTopbarHeight();
-    });
-    contentResizeObserver.observe(contentContainerRef.value);
+      syncAppTopbarHeight()
+    })
+    contentResizeObserver.observe(contentContainerRef.value)
   }
 
   onUnmounted(() => {
-    window.removeEventListener('resize', handleResize);
+    window.removeEventListener('resize', handleResize)
     if (contentResizeObserver) {
-      contentResizeObserver.disconnect();
-      contentResizeObserver = null;
+      contentResizeObserver.disconnect()
+      contentResizeObserver = null
     }
-  });
-});
+  })
+})
 
-
+onUnmounted(() => {
+  emitter.all.clear()
+})
 </script>
 
 <style>
-html, body {
+html,
+body {
   @apply h-full overflow-hidden;
   overscroll-behavior: none;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background:
-    linear-gradient(180deg, hsl(var(--background) / 0.92), hsl(var(--background) / 0.72));
-  border-bottom: 1px solid hsl(var(--border) / 0.7);
-  backdrop-filter: blur(16px);
-  padding: 0.75rem 1rem;
-}
-
-.topbar .global-search-bar {
-  flex: 1;
-  padding: 0;
-  background: transparent;
-}
-
-.topbar-menu-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 9999px;
-  color: hsl(var(--foreground));
-  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.topbar-menu-btn:hover {
-  background: hsl(var(--accent));
-  box-shadow: 0 10px 24px hsl(var(--surface-shadow));
-  transform: translateY(-1px);
-}
-
-.topbar-menu-btn:active {
-  transform: translateY(0);
 }
 
 body {
@@ -350,8 +301,112 @@ body {
   @apply bg-background text-foreground;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-sans);
+}
+
+.app-shell {
+  display: flex;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 0% 0%, hsl(var(--primary) / 0.08), transparent 24%),
+    linear-gradient(180deg, hsl(var(--background) / 0.98), hsl(var(--background)));
+}
+
+.app-main {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.topbar-shell {
+  position: relative;
+  padding: 0.8rem 1rem 0.6rem;
+  background:
+    linear-gradient(180deg, hsl(var(--background) / 0.9), hsl(var(--background) / 0.7));
+  border-bottom: 1px solid hsl(var(--border) / 0.68);
+  backdrop-filter: blur(18px);
+}
+
+.topbar-shell::after {
+  content: '';
+  position: absolute;
+  inset: auto 1rem 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.18), transparent);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: min(var(--container-max-width, 2560px), calc(100vw - 2rem));
+  margin: 0 auto;
+}
+
+.topbar__lead {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-shrink: 0;
+}
+
+.topbar__copy {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.topbar__eyebrow {
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.topbar__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.topbar__search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.topbar-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--border) / 0.78);
+  background: hsl(var(--card) / 0.88);
+  color: hsl(var(--foreground));
+  box-shadow: 0 14px 32px hsl(var(--surface-shadow));
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.topbar-menu-btn:hover {
+  background: hsl(var(--accent));
+  box-shadow: 0 18px 40px hsl(var(--surface-shadow));
+  transform: translateY(-1px);
+}
+
+.page-container {
+  @apply flex-1 relative min-h-0;
 }
 
 .video-widescreen .sidebar {
@@ -374,8 +429,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .sidebar-flyout {
   position: fixed;
-  top: 0.75rem;
-  left: 0.75rem;
+  top: 0.9rem;
+  left: 0.9rem;
   z-index: 40;
 }
 
@@ -383,36 +438,36 @@ h1, h2, h3, h4, h5, h6 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 9999px;
-  background: hsl(var(--card) / 0.88);
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--card) / 0.9);
   color: hsl(var(--foreground));
-  box-shadow: 0 12px 32px hsl(var(--surface-shadow));
-  border: 1px solid hsl(var(--border) / 0.78);
+  box-shadow: 0 18px 40px hsl(var(--surface-shadow));
   transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .sidebar-flyout-toggle:hover {
   background: hsl(var(--accent));
-  box-shadow: 0 16px 36px hsl(var(--surface-shadow));
+  box-shadow: 0 22px 48px hsl(var(--surface-shadow));
   transform: translateY(-1px);
 }
 
 .sidebar-flyout-overlay {
   position: fixed;
   inset: 0;
-  background: hsl(var(--overlay));
-  backdrop-filter: blur(10px);
   z-index: 50;
   display: flex;
   align-items: stretch;
+  background: hsl(var(--overlay));
+  backdrop-filter: blur(12px);
 }
 
 .sidebar-flyout-panel {
   height: 100%;
-  max-width: 18rem;
-  box-shadow: 0 24px 54px hsl(var(--surface-shadow));
+  max-width: 19rem;
+  box-shadow: 0 30px 70px hsl(var(--surface-shadow));
 }
 
 .sidebar-flyout-enter-active,
@@ -428,5 +483,16 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-flyout-enter-to,
 .sidebar-flyout-leave-from {
   opacity: 1;
+}
+
+@media (max-width: 767px) {
+  .topbar-shell {
+    padding: 0.7rem 0.8rem 0.55rem;
+  }
+
+  .topbar {
+    gap: 0.75rem;
+    max-width: calc(100vw - 1.6rem);
+  }
 }
 </style>

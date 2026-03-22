@@ -8,7 +8,7 @@
 /* Base layer: variables, global selectors, and body defaults */
 @layer base {
   :root {
-    --mobile-nav-height: 64px;
+    --mobile-nav-height: 80px;
     /* Layout */
     --sidebar-width: 12rem;
     --sidebar-collapsed-width: 4rem;
