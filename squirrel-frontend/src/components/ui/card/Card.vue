@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { cn } from "@/lib/utils"
+import type { HTMLAttributes } from 'vue'
+import { cn } from '@/lib/utils'
 
 const props = defineProps<{
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }>()
 </script>
 
@@ -11,7 +11,7 @@ const props = defineProps<{
   <div
     :class="
       cn(
-        'rounded-[calc(var(--radius-xl)+2px)] border bg-card text-card-foreground shadow-md backdrop-blur-[1px]',
+        'rounded-[calc(var(--radius-2xl)-2px)] border border-border/75 bg-card/92 text-card-foreground shadow-[0_20px_46px_hsl(var(--surface-shadow))] backdrop-blur-[6px]',
         props.class,
       )
     "
