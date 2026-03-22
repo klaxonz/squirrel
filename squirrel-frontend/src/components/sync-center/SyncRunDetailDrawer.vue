@@ -15,7 +15,7 @@
                   :alt="run.subscription_name"
                   class="h-12 w-12 rounded-full object-cover bg-bg-secondary ring-1 ring-border-primary"
                   referrerpolicy="no-referrer"
-                  @error="(e) => handleAvatarError(e, `run-drawer-${run.run_id}`)"
+                  @error="(e) => handleAvatarError(e, `run-drawer-${run?.run_id || 'unknown'}`)"
                 >
               </router-link>
               <div class="min-w-0">

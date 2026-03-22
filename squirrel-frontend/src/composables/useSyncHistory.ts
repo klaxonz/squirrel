@@ -1,5 +1,5 @@
-import { reactive, ref } from 'vue'
-import { getSyncRunDetail, getSyncRunEvents, getSyncRuns } from '@/api'
+import { onMounted, reactive, ref } from 'vue'
+import { getSubscriptionOptions, getSupportedSites, getSyncRunDetail, getSyncRunEvents, getSyncRuns } from '@/api'
 import { Logger } from '@/utils/logger'
 
 export interface SyncRunItem {
@@ -53,6 +53,7 @@ export interface SyncRunEvent {
 export interface SyncHistoryFilters {
   status: string
   site: string
+  subscriptionId: string
   mode: string
   trigger: string
   dateFrom: string
@@ -66,6 +67,25 @@ interface SyncRunListResponse {
   data: SyncRunItem[]
 }
 
+interface SiteOption {
+  value: string
+  label: string
+}
+
+interface SubscriptionOption {
+  value: string
+  label: string
+  avatar: string | null
+}
+
+interface SubscriptionOptionListResponse {
+  data: Array<{
+    subscription_id: number
+    subscription_name: string
+    subscription_avatar: string | null
+  }>
+}
+
 export function useSyncHistory() {
   const loading = ref(false)
   const detailLoading = ref(false)
@@ -73,6 +93,8 @@ export function useSyncHistory() {
   const detailError = ref('')
   const lastUpdatedAt = ref('')
   const runs = ref<SyncRunItem[]>([])
+  const siteOptions = ref<SiteOption[]>([])
+  const subscriptionOptions = ref<SubscriptionOption[]>([{ value: '', label: '全部频道', avatar: null }])
   const total = ref(0)
   const page = ref(1)
   const pageSize = ref(20)
@@ -81,6 +103,7 @@ export function useSyncHistory() {
   const filters = reactive<SyncHistoryFilters>({
     status: '',
     site: '',
+    subscriptionId: '',
     mode: '',
     trigger: '',
     dateFrom: '',
@@ -88,6 +111,68 @@ export function useSyncHistory() {
   })
   let listRequestSeq = 0
   let detailRequestSeq = 0
+
+  const loadSubscriptionOptions = async () => {
+    const { data, error: requestError } = await getSubscriptionOptions<SubscriptionOptionListResponse>()
+    if (requestError) {
+      Logger.error('Failed to load sync history subscription options', requestError)
+      subscriptionOptions.value = [{ value: '', label: '全部频道', avatar: null }]
+      return
+    }
+
+    const normalized = (data?.data || []).map((item) => ({
+      value: String(item.subscription_id),
+      label: item.subscription_name,
+      avatar: item.subscription_avatar || null,
+    })).filter((option: SubscriptionOption) => option.value && option.label)
+
+    const deduped = normalized.filter((option: SubscriptionOption, index: number, arr: SubscriptionOption[]) => {
+      return arr.findIndex((item: SubscriptionOption) => item.value === option.value) === index
+    })
+
+    if (filters.subscriptionId && !deduped.some((option: SubscriptionOption) => option.value === filters.subscriptionId)) {
+      deduped.unshift({ value: filters.subscriptionId, label: filters.subscriptionId, avatar: null })
+    }
+
+    subscriptionOptions.value = [
+      { value: '', label: '全部频道', avatar: null },
+      ...deduped,
+    ]
+  }
+
+  const loadSiteOptions = async () => {
+    const { data, error: requestError } = await getSupportedSites()
+    if (requestError) {
+      Logger.error('Failed to load sync history site options', requestError)
+      siteOptions.value = [{ value: '', label: '全部站点' }]
+      return
+    }
+
+    const normalized = (data?.sites || []).map((site: Record<string, unknown> | string) => {
+      if (typeof site === 'string') {
+        return {
+          value: site.trim(),
+          label: site.trim(),
+        }
+      }
+      const value = String(site.site_name || site.name || '').trim()
+      const label = String(site.display_label || site.label || value).trim()
+      return { value, label }
+    }).filter((option: SiteOption) => option.value)
+
+    const deduped = normalized.filter((option: SiteOption, index: number, arr: SiteOption[]) => {
+      return arr.findIndex((item: SiteOption) => item.value === option.value) === index
+    })
+
+    if (filters.site && !deduped.some((option: SiteOption) => option.value === filters.site)) {
+      deduped.unshift({ value: filters.site, label: filters.site })
+    }
+
+    siteOptions.value = [
+      { value: '', label: '全部站点' },
+      ...deduped,
+    ]
+  }
 
   const updateLastRefreshTime = () => {
     lastUpdatedAt.value = new Date().toLocaleTimeString('zh-CN', {
@@ -104,6 +189,7 @@ export function useSyncHistory() {
     const { data, error: requestError } = await getSyncRuns<SyncRunListResponse>({
       status: filters.status || undefined,
       site: filters.site || undefined,
+      subscriptionId: filters.subscriptionId || undefined,
       mode: filters.mode || undefined,
       trigger: filters.trigger || undefined,
       dateFrom: filters.dateFrom || undefined,
@@ -209,6 +295,11 @@ export function useSyncHistory() {
     })
   }
 
+  onMounted(() => {
+    loadSiteOptions()
+    loadSubscriptionOptions()
+  })
+
   return {
     closeRun,
     detailError,
@@ -225,6 +316,8 @@ export function useSyncHistory() {
     runs,
     selectRun,
     selectedRun,
+    siteOptions,
+    subscriptionOptions,
     setDateRange,
     setFilters,
     setPage,

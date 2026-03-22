@@ -130,7 +130,7 @@ export function useSyncCenter() {
     window_hours: 24,
   })
   const filters = reactive({
-    status: 'failed' as SyncCenterStatusFilter,
+    status: 'recent' as SyncCenterStatusFilter,
     site: '',
     query: '',
   })

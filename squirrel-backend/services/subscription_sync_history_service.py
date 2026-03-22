@@ -67,6 +67,7 @@ def list_runs(
     *,
     status: Optional[str] = None,
     site: Optional[str] = None,
+    subscription_id: Optional[int] = None,
     mode: Optional[str] = None,
     trigger: Optional[str] = None,
     date_from: Optional[str] = None,
@@ -74,13 +75,15 @@ def list_runs(
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
-    query = _base_run_query(user_id)
+    base_query = _base_run_query(user_id)
     filters = []
 
     if status:
         filters.append(SubscriptionSyncRunProjection.status == str(status).strip().lower())
     if site:
         filters.append(SubscriptionSyncRunProjection.site == str(site).strip().lower())
+    if subscription_id:
+        filters.append(Subscription.id == subscription_id)
     if mode:
         filters.append(SubscriptionSyncRunProjection.sync_mode == str(mode).strip().lower())
     if trigger:
@@ -94,15 +97,15 @@ def list_runs(
         filters.append(SubscriptionSyncRunProjection.last_event_at <= parsed_to)
 
     if filters:
-        query = query.where(and_(*filters))
+        base_query = base_query.where(and_(*filters))
 
     with get_session() as session:
         rows = session.execute(
-            query.order_by(SubscriptionSyncRunProjection.last_event_at.desc())
+            base_query.order_by(SubscriptionSyncRunProjection.last_event_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         ).all()
-        all_rows = session.execute(query).all()
+        all_rows = session.execute(base_query).all()
 
     data = []
     for run, subscription in rows:
@@ -139,8 +142,6 @@ def list_runs(
         'pageSize': page_size,
         'data': data,
     }
-
-
 def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
     with get_session() as session:
         row = session.execute(

@@ -184,6 +184,30 @@ def get_subscription_detail(subscription_id: int) -> SubscriptionDto:
         return subscription
 
 
+def list_subscription_options(user_id: int) -> List[Dict[str, Any]]:
+    with get_session() as session:
+        rows = session.execute(
+            select(Subscription.id, Subscription.name, Subscription.avatar)
+            .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
+            .where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(False),
+                Subscription.is_deleted.is_(False),
+            )
+            .distinct()
+            .order_by(Subscription.name.asc(), Subscription.id.asc())
+        ).all()
+
+    return [
+        {
+            'subscription_id': subscription_id,
+            'subscription_name': subscription_name,
+            'subscription_avatar': subscription_avatar,
+        }
+        for subscription_id, subscription_name, subscription_avatar in rows
+    ]
+
+
 def update_subscription(
         subscription_id: int,
         update_data: Dict[str, Any]

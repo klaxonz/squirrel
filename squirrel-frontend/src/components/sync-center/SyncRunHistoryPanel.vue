@@ -4,14 +4,32 @@
       class="border-b border-border-primary"
       :class="embedded ? 'px-3 py-2.5' : 'px-4 py-3'"
     >
-      <div v-if="embedded" class="flex items-center justify-between gap-3">
-        <div>
-          <div class="text-xs font-semibold tracking-[0.14em] text-text-tertiary">运行实例</div>
-          <div class="mt-1 text-2xs text-text-muted">共 {{ total }} 条</div>
+      <div v-if="embedded" class="space-y-3">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="text-xs font-semibold tracking-[0.14em] text-text-tertiary">运行实例</div>
+            <div class="mt-1 text-2xs text-text-muted">共 {{ total }} 条</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <slot name="header-action" />
+            <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">
+              第 {{ page }} / {{ totalPages }} 页
+            </span>
+          </div>
         </div>
-        <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">
-          第 {{ page }} / {{ totalPages }} 页
-        </span>
+
+        <div class="grid grid-cols-1 gap-2 xl:grid-cols-2 2xl:grid-cols-5">
+          <Select size="sm" :model-value="filters.status" :options="statusOptions" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value || '') })" />
+          <Select size="sm" :model-value="filters.site" :options="siteOptions" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value || '') })" />
+          <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
+          <Select size="sm" :model-value="filters.mode" :options="modeOptions" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value || '') })" />
+          <Select size="sm" :model-value="filters.trigger" :options="triggerOptions" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value || '') })" />
+        </div>
+
+        <div class="grid grid-cols-1 gap-2 xl:grid-cols-2">
+          <input :value="filters.dateFrom" type="datetime-local" class="w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary" @input="emitInput('dateFrom', $event)" />
+          <input :value="filters.dateTo" type="datetime-local" class="w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary" @input="emitInput('dateTo', $event)" />
+        </div>
       </div>
 
       <div v-else class="space-y-3">
@@ -25,9 +43,10 @@
           </span>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 lg:grid-cols-6">
+        <div class="grid grid-cols-1 gap-3 lg:grid-cols-7">
           <Select size="sm" :model-value="filters.status" :options="statusOptions" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value || '') })" />
-          <input :value="filters.site" type="text" placeholder="站点" class="w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary" @input="emitInput('site', $event)" />
+          <Select size="sm" :model-value="filters.site" :options="siteOptions" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value || '') })" />
+          <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
           <Select size="sm" :model-value="filters.mode" :options="modeOptions" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value || '') })" />
           <Select size="sm" :model-value="filters.trigger" :options="triggerOptions" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value || '') })" />
           <input :value="filters.dateFrom" type="datetime-local" class="w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary" @input="emitInput('dateFrom', $event)" />
@@ -40,58 +59,79 @@
     <div v-if="loading" class="flex flex-1 items-center justify-center px-4 py-14 text-sm text-text-muted">加载运行历史中...</div>
     <div v-else-if="runs.length === 0" class="flex flex-1 items-center justify-center px-4 py-14 text-sm text-text-muted">暂无运行历史</div>
 
-    <div v-else class="flex-1 overflow-y-auto">
-      <div class="divide-y divide-border-primary">
-        <div
-          v-for="run in runs"
-          :key="run.run_id"
-          class="w-full text-left transition-colors hover:bg-bg-hover"
-        >
-          <div class="flex items-start gap-3" :class="[embedded ? 'px-3 py-2.5' : 'px-4 py-3', selectedRunId === run.run_id ? 'bg-bg-hover' : '']">
-            <router-link
-              :to="getSubscriptionLink(run.subscription_id)"
-              class="shrink-0"
-              @click.stop
-            >
-              <img
-                :src="getAvatarSrc(run.subscription_avatar, getAvatarKey(run))"
-                :alt="run.subscription_name"
-                class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
-                referrerpolicy="no-referrer"
-                @error="(e) => handleAvatarError(e, getAvatarKey(run))"
-              >
-            </router-link>
-            <button
-              type="button"
-              class="flex min-w-0 flex-1 items-start justify-between gap-3 text-left"
-              @click="emit('open-run', run.run_id)"
-            >
-              <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="text-xs font-medium leading-5 text-text-primary break-words">{{ run.subscription_name }}</span>
-                  <StatusBadge size="xs" :show-dot="false" :variant="getVariant(run.status)" :label="getStatusLabel(run.status)" class="border-0" />
-                  <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">{{ getModeLabel(run.sync_mode) }}</span>
+    <div v-else class="flex-1 overflow-auto">
+      <table class="w-full min-w-[1180px] text-sm">
+        <thead class="sticky top-0 z-10 bg-bg-secondary">
+          <tr class="border-b border-border-primary text-2xs text-text-tertiary">
+            <th class="px-3 py-2 text-left font-medium">订阅</th>
+            <th class="px-3 py-2 text-left font-medium">Run ID</th>
+            <th class="px-3 py-2 text-left font-medium">运行状态</th>
+            <th class="px-3 py-2 text-left font-medium">模式</th>
+            <th class="px-3 py-2 text-left font-medium">站点</th>
+            <th class="px-3 py-2 text-left font-medium">触发方式</th>
+            <th class="px-3 py-2 text-left font-medium">运行时间</th>
+            <th class="px-3 py-2 text-left font-medium">耗时</th>
+            <th class="px-3 py-2 text-left font-medium">结果</th>
+            <th class="px-3 py-2 text-right font-medium">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border-primary">
+          <tr
+            v-for="run in runs"
+            :key="run.run_id"
+            class="cursor-pointer transition-colors hover:bg-bg-hover"
+            :class="selectedRunId === run.run_id ? 'bg-bg-hover' : ''"
+            @click="emit('open-run', run.run_id)"
+          >
+            <td class="px-3 py-2.5 align-middle">
+              <div class="flex min-w-0 items-center gap-3">
+                <router-link
+                  :to="getSubscriptionLink(run.subscription_id)"
+                  class="shrink-0"
+                  @click.stop
+                >
+                  <img
+                    :src="getAvatarSrc(run.subscription_avatar, getAvatarKey(run))"
+                    :alt="run.subscription_name"
+                    class="h-7 w-7 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
+                    referrerpolicy="no-referrer"
+                    @error="(e) => handleAvatarError(e, getAvatarKey(run))"
+                  >
+                </router-link>
+                <div class="min-w-0">
+                  <div class="text-xs font-medium leading-5 text-text-primary break-words">{{ run.subscription_name }}</div>
                 </div>
-                <div class="mt-1 text-2xs leading-5 text-text-tertiary break-words">
-                  {{ run.site || 'unknown' }} · {{ getTriggerLabel(run.trigger) }} {{ run.last_event_at || run.finished_at || run.started_at || '—' }}
-                </div>
-                <div v-if="run.error_message" class="mt-1 text-2xs leading-5 text-color-error break-words">{{ run.error_message }}</div>
               </div>
-              <div class="shrink-0 text-right text-2xs text-text-secondary">
-                <div>{{ formatDurationMs(run.duration_ms) }}</div>
-                <div class="mt-1">{{ formatRunVideoSummary(run) }}</div>
+            </td>
+            <td class="px-3 py-2.5 align-middle">
+              <div class="max-w-[14rem] break-all font-mono text-2xs text-text-secondary">{{ run.run_id }}</div>
+            </td>
+            <td class="px-3 py-2.5 align-middle">
+              <StatusBadge size="xs" :show-dot="false" :variant="getVariant(run.status)" :label="getStatusLabel(run.status)" class="border-0" />
+            </td>
+            <td class="px-3 py-2.5 align-middle">
+              <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">{{ getModeLabel(run.sync_mode) }}</span>
+            </td>
+            <td class="px-3 py-2.5 align-middle text-2xs text-text-secondary">{{ run.site || 'unknown' }}</td>
+            <td class="px-3 py-2.5 align-middle text-2xs text-text-secondary">{{ getTriggerLabel(run.trigger) }}</td>
+            <td class="px-3 py-2.5 align-middle text-2xs text-text-secondary">{{ getRunTime(run) }}</td>
+            <td class="px-3 py-2.5 align-middle text-2xs text-text-secondary">{{ formatDurationMs(run.duration_ms) }}</td>
+            <td class="px-3 py-2.5 align-middle text-2xs text-text-secondary">{{ formatRunVideoSummary(run) }}</td>
+            <td class="px-3 py-2.5 align-middle">
+              <div class="flex items-center justify-end gap-2">
+                <Button size="xs" shape="pill" variant="secondary" @click.stop="emit('open-run', run.run_id)">详情</Button>
+                <router-link
+                  :to="getSubscriptionLink(run.subscription_id)"
+                  class="inline-flex rounded-full border border-border-primary bg-bg-primary px-2.5 py-1 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                  @click.stop
+                >
+                  频道
+                </router-link>
               </div>
-            </button>
-            <router-link
-              :to="getSubscriptionLink(run.subscription_id)"
-              class="mt-1 inline-flex shrink-0 rounded-full border border-border-primary bg-bg-primary px-2.5 py-1 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
-              @click.stop
-            >
-              频道
-            </router-link>
-          </div>
-        </div>
-      </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div v-if="totalPages > 1" class="flex items-center justify-between border-t border-border-primary px-3 py-2.5">
@@ -107,6 +147,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Button, Select, StatusBadge } from '@/components/common'
+import SyncSubscriptionSelect from '@/components/sync-center/SyncSubscriptionSelect.vue'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
@@ -120,6 +161,8 @@ const props = withDefaults(defineProps<{
   pageSize: number
   runs: SyncRunItem[]
   selectedRunId?: string
+  siteOptions: Array<{ value: string; label: string }>
+  subscriptionOptions: Array<{ value: string; label: string; avatar: string | null }>
   total: number
 }>(), {
   embedded: false,
@@ -223,7 +266,12 @@ const getTriggerLabel = (trigger: string | null) => {
   }
 }
 
+const getRunTime = (run: SyncRunItem) => run.last_event_at || run.finished_at || run.started_at || '—'
+
 const formatRunVideoSummary = (run: SyncRunItem) => {
+  if (run.status === 'failed') {
+    return '点击查看详情'
+  }
   const foundLabel = run.sync_mode === 'incremental' ? '新增' : '发现'
   return `${foundLabel} ${run.videos_found} · 提取 ${run.videos_extracted}`
 }

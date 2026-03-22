@@ -1,14 +1,42 @@
 <template>
-  <section class="grid min-h-0 grid-cols-1 gap-3 xl:h-[min(44rem,calc(var(--app-content-height)-18rem))] xl:grid-cols-[minmax(18rem,0.95fr)_minmax(0,1.35fr)] 2xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.25fr)_minmax(22rem,1fr)]">
-    <aside class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary">
+  <section class="grid min-h-0 grid-cols-1 gap-3 xl:h-[min(44rem,calc(var(--app-content-height)-18rem))] xl:grid-cols-[minmax(18rem,0.95fr)_minmax(0,1.35fr)]">
+    <div
+      class="min-h-0 xl:flex"
+      :class="focus === 'overview' || focus === 'failed-runs' ? 'xl:col-span-2' : ''"
+    >
+      <SyncRunHistoryPanel
+        class="min-h-0 flex-1"
+        embedded
+        :error="runsError"
+        :filters="runFilters"
+        :loading="runsLoading"
+        :page="runPage"
+        :page-size="runPageSize"
+        :runs="runs"
+        :selected-run-id="selectedRunId"
+        :site-options="siteOptions"
+        :subscription-options="subscriptionOptions"
+        :total="runTotal"
+        @change-page="emit('change-history-page', $event)"
+        @open-run="emit('open-run', $event)"
+        @set-filter="emit('change-history-filter', $event)"
+      />
+    </div>
+
+    <aside
+      v-if="focus !== 'overview' && focus !== 'failed-runs'"
+      class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary"
+    >
       <div class="flex items-center justify-between border-b border-border-primary px-3 py-2.5">
-        <div>
+        <div class="min-w-0">
           <div class="text-xs font-semibold tracking-[0.14em] text-text-tertiary">{{ workspaceLabel }}</div>
           <div class="mt-1 text-2xs text-text-muted">{{ workspaceMeta }}</div>
         </div>
-        <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">
-          {{ objectRows.length }}
-        </span>
+        <div class="flex items-center gap-2">
+          <span class="rounded-full border border-border-primary bg-bg-primary px-2 py-0.5 text-2xs text-text-tertiary">
+            {{ objectRows.length }}
+          </span>
+        </div>
       </div>
 
       <div v-if="objectRows.length" class="min-h-0 flex-1 overflow-y-auto divide-y divide-border-primary">
@@ -51,179 +79,15 @@
         当前没有可分析对象
       </div>
     </aside>
-
-    <div
-      class="min-h-0 space-y-3 xl:grid xl:gap-3 xl:space-y-0"
-      :class="showTrendPanel ? 'xl:grid-rows-[minmax(0,18rem)_minmax(0,1fr)]' : 'xl:grid-rows-[minmax(0,1fr)]'"
-    >
-      <SyncTrendCharts
-        v-if="showTrendPanel"
-        embedded
-        :error="trendError"
-        :filters="trendFilters"
-        :loading="trendLoading"
-        :range="trendRange"
-        :series="trendSeries"
-        :site-breakdown="siteBreakdown"
-        @set-filter="emit('change-trend-filter', $event)"
-        @set-range="emit('change-trend-range', $event)"
-      />
-
-      <SyncRunHistoryPanel
-        embedded
-        :error="runsError"
-        :filters="runFilters"
-        :loading="runsLoading"
-        :page="runPage"
-        :page-size="runPageSize"
-        :runs="runs"
-        :selected-run-id="selectedRunId"
-        :total="runTotal"
-        @change-page="emit('change-history-page', $event)"
-        @open-run="emit('open-run', $event)"
-        @set-filter="emit('change-history-filter', $event)"
-      />
-    </div>
-
-    <aside class="min-h-0 space-y-3 xl:col-span-2 xl:grid xl:grid-rows-[auto_minmax(0,1fr)] xl:gap-3 xl:space-y-0 2xl:col-span-1">
-      <div class="overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary">
-        <div class="border-b border-border-primary px-3 py-2.5">
-          <div class="text-xs font-semibold tracking-[0.14em] text-text-tertiary">分析摘要</div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-px bg-border-primary">
-          <div
-            v-for="metric in summaryMetrics"
-            :key="metric.label"
-            class="bg-bg-primary px-3 py-2.5"
-          >
-            <div class="text-2xs text-text-tertiary">{{ metric.label }}</div>
-            <div class="mt-1 text-xs font-semibold text-text-primary">{{ metric.value }}</div>
-          </div>
-        </div>
-
-        <div v-if="selectedRun" class="border-t border-border-primary px-3 py-3">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex min-w-0 items-center gap-3">
-              <router-link :to="getSubscriptionLink(selectedRun.subscription_id)" class="shrink-0">
-                <img
-                  :src="getAvatarSrc(selectedRun.subscription_avatar, `selected-run-${selectedRun.run_id}`)"
-                  :alt="selectedRun.subscription_name"
-                  class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
-                  referrerpolicy="no-referrer"
-                  @error="(e) => handleAvatarError(e, `selected-run-${selectedRun.run_id}`)"
-                >
-              </router-link>
-              <div class="min-w-0">
-                <router-link
-                  :to="getSubscriptionLink(selectedRun.subscription_id)"
-                  class="text-xs font-medium leading-5 text-text-primary break-words hover:text-color-info"
-                >
-                  {{ selectedRun.subscription_name }}
-                </router-link>
-                <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">
-                  run {{ selectedRun.run_id }} · {{ selectedRun.site || 'unknown' }}
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <router-link
-                :to="getSubscriptionLink(selectedRun.subscription_id)"
-                class="rounded-full border border-border-primary bg-bg-primary px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
-              >
-                频道
-              </router-link>
-              <Button
-                size="xs"
-                shape="pill"
-                variant="secondary"
-                @click="emit('open-run', selectedRun.run_id)"
-              >
-                事件
-              </Button>
-            </div>
-          </div>
-          <div class="mt-2 text-2xs leading-5 text-text-muted break-words">
-            {{ selectedRun.error_message || `${formatDurationMs(selectedRun.duration_ms)} · ${formatRunSummary(selectedRun)}` }}
-          </div>
-        </div>
-
-        <div v-else-if="selectedItem" class="border-t border-border-primary px-3 py-3">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex min-w-0 items-center gap-3">
-              <router-link :to="getSubscriptionLink(selectedItem.subscription_id)" class="shrink-0">
-                <img
-                  :src="getAvatarSrc(selectedItem.subscription_avatar, `selected-item-${selectedItem.subscription_id}`)"
-                  :alt="selectedItem.subscription_name"
-                  class="h-10 w-10 rounded-full object-cover bg-bg-primary ring-1 ring-border-primary"
-                  referrerpolicy="no-referrer"
-                  @error="(e) => handleAvatarError(e, `selected-item-${selectedItem.subscription_id}`)"
-                >
-              </router-link>
-              <div class="min-w-0">
-                <router-link
-                  :to="getSubscriptionLink(selectedItem.subscription_id)"
-                  class="text-xs font-medium leading-5 text-text-primary break-words hover:text-color-info"
-                >
-                  {{ selectedItem.subscription_name }}
-                </router-link>
-                <div class="mt-0.5 text-2xs leading-5 text-text-tertiary break-words">
-                  {{ selectedItem.site || 'unknown' }} · {{ selectedItem.sync_mode }}
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <router-link
-                :to="getSubscriptionLink(selectedItem.subscription_id)"
-                class="rounded-full border border-border-primary bg-bg-primary px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
-              >
-                频道
-              </router-link>
-              <Button
-                size="xs"
-                shape="pill"
-                variant="secondary"
-                @click="emit('open-item', selectedItem)"
-              >
-                详情
-              </Button>
-            </div>
-          </div>
-          <div class="mt-2 text-2xs leading-5 text-text-muted break-words">
-            {{ selectedItem.last_error_summary || `${selectedItem.pending_video_count || 0} 个待处理` }}
-          </div>
-        </div>
-      </div>
-
-      <SyncItemsPanel
-        embedded
-        :active-status="itemStatus"
-        :items="items"
-        :loading="itemsLoading"
-        :page="itemPage"
-        :page-size="itemPageSize"
-        :retrying-id="retryingId"
-        :selected-id="selectedSubscriptionId"
-        :total="itemTotal"
-        @change-page="emit('change-item-page', $event)"
-        @change-status="emit('change-item-status', $event)"
-        @open-item="emit('open-item', $event)"
-        @retry-item="emit('retry-item', $event)"
-      />
-    </aside>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Button } from '@/components/common'
-import SyncItemsPanel from '@/components/sync-center/SyncItemsPanel.vue'
 import SyncRunHistoryPanel from '@/components/sync-center/SyncRunHistoryPanel.vue'
-import SyncTrendCharts from '@/components/sync-center/SyncTrendCharts.vue'
-import type { SyncCenterItem, SyncCenterStatusFilter } from '@/composables/useSyncCenter'
 import type { SyncFocusKind } from '@/composables/useSyncCenterWorkbench'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
-import type { SyncTrendPoint, SyncTrendSiteBreakdown } from '@/composables/useSyncTrends'
+import type { SyncTrendSiteBreakdown } from '@/composables/useSyncTrends'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
 
@@ -257,83 +121,52 @@ const props = defineProps<{
   runPage: number
   runPageSize: number
   runTotal: number
-  trendError: string
-  trendFilters: Record<string, string>
-  trendLoading: boolean
-  trendRange: string
-  trendSeries: SyncTrendPoint[]
+  siteOptions: Array<{ value: string; label: string }>
+  subscriptionOptions: Array<{ value: string; label: string; avatar: string | null }>
   siteBreakdown: SyncTrendSiteBreakdown[]
-  items: SyncCenterItem[]
-  itemsLoading: boolean
-  itemPage: number
-  itemPageSize: number
-  itemStatus: SyncCenterStatusFilter
-  itemTotal: number
-  retryingId: number | null
-  selectedItem: SyncCenterItem | null
-  selectedRun: SyncRunItem | null
   selectedRunId: string
-  selectedSubscriptionId: number | null
   recoverySummary: RecoverySummary
 }>()
 
 const emit = defineEmits<{
   (e: 'change-history-filter', payload: { key: string; value: string }): void
   (e: 'change-history-page', page: number): void
-  (e: 'change-item-page', page: number): void
-  (e: 'change-item-status', status: SyncCenterStatusFilter): void
-  (e: 'change-trend-filter', payload: { key: string; value: string }): void
-  (e: 'change-trend-range', value: string): void
   (e: 'focus-site', site: string): void
-  (e: 'open-item', item: SyncCenterItem): void
   (e: 'open-recovery'): void
   (e: 'open-run', runId: string): void
-  (e: 'retry-item', item: SyncCenterItem): void
 }>()
 
 const failedRuns = computed(() => props.runs.filter((run) => run.status === 'failed'))
 const slowRuns = computed(() => [...props.runs].sort((left, right) => right.duration_ms - left.duration_ms))
-const selectedSiteBreakdown = computed(() => {
-  if (!props.site) {
-    return null
-  }
-  return props.siteBreakdown.find((item) => item.site === props.site) || null
-})
-const highestP95 = computed(() => {
-  if (!props.trendSeries.length) {
-    return 0
-  }
-  return Math.max(...props.trendSeries.map((item) => item.p95_duration_ms || 0))
-})
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 
 const workspaceLabel = computed(() => {
   switch (props.focus) {
     case 'site':
-      return '站点剖面'
+      return '站点异常明细'
     case 'failed-runs':
-      return '失败批次'
+      return '失败运行明细'
     case 'slow-runs':
-      return '高延迟批次'
+      return '高延迟运行明细'
     case 'recovery':
-      return '恢复分析'
+      return '恢复异常明细'
     default:
-      return '分析工作区'
+      return '处理工作台'
   }
 })
 
 const workspaceMeta = computed(() => {
   switch (props.focus) {
     case 'site':
-      return props.site ? `当前站点 ${props.site}` : '选择一个站点查看剖面'
+      return props.site ? `聚焦站点 ${props.site}` : '选择一个异常站点查看影响面'
     case 'failed-runs':
-      return '聚焦最近失败运行及其影响面'
+      return '查看最近失败运行与关联订阅'
     case 'slow-runs':
-      return '聚焦耗时偏高的运行批次'
+      return '查看耗时偏高的运行与关联订阅'
     case 'recovery':
-      return `最近 ${props.recoverySummary.window_hours}h 的恢复动作`
+      return `查看最近 ${props.recoverySummary.window_hours}h 的恢复动作`
     default:
-      return '从左侧对象流进入分析'
+      return '从总览进入具体处理模式'
   }
 })
 
@@ -399,43 +232,6 @@ const objectRows = computed<ObjectRow[]>(() => {
   }
 })
 
-const showTrendPanel = computed(() => props.focus !== 'failed-runs')
-
-const summaryMetrics = computed(() => {
-  switch (props.focus) {
-    case 'site':
-      return [
-        { label: '站点', value: props.site || '—' },
-        { label: '运行', value: selectedSiteBreakdown.value?.runs_total || 0 },
-        { label: '失败', value: selectedSiteBreakdown.value?.runs_failed || 0 },
-        { label: '提取', value: selectedSiteBreakdown.value?.videos_extracted || 0 },
-      ]
-    case 'failed-runs':
-      return [
-        { label: '失败批次', value: failedRuns.value.length },
-        { label: '当前选中', value: props.selectedRun?.run_id || '—' },
-        { label: '最新错误', value: props.selectedRun?.error_type || '—' },
-        { label: '待处理', value: props.selectedRun?.pending_video_count || 0 },
-      ]
-    case 'slow-runs':
-      return [
-        { label: '慢批次', value: slowRuns.value.length },
-        { label: '最慢耗时', value: slowRuns.value[0] ? formatDurationMs(slowRuns.value[0].duration_ms) : '—' },
-        { label: '最高 P95', value: formatDurationMs(highestP95.value) },
-        { label: '当前选中', value: props.selectedRun?.run_id || '—' },
-      ]
-    case 'recovery':
-      return [
-        { label: '最近对账', value: props.recoverySummary.last_reconcile_at || '—' },
-        { label: '恢复总数', value: props.recoverySummary.total_recovered || 0 },
-        { label: 'queued', value: props.recoverySummary.by_type?.stale_queued_recovered || 0 },
-        { label: 'running', value: props.recoverySummary.by_type?.stale_running_recovered || 0 },
-      ]
-    default:
-      return []
-  }
-})
-
 const handleObjectRowClick = (row: ObjectRow) => {
   if (props.focus === 'site') {
     emit('focus-site', row.id)
@@ -469,8 +265,4 @@ const getValueClass = (tone: AnalysisTone) => {
   }
 }
 
-const formatRunSummary = (run: SyncRunItem) => {
-  const foundLabel = run.sync_mode === 'incremental' ? '新增' : '发现'
-  return `${foundLabel} ${run.videos_found} · 入队 ${run.videos_enqueued} · 提取 ${run.videos_extracted}`
-}
 </script>

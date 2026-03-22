@@ -104,6 +104,13 @@ def list_subscriptions(
     })
 
 
+@router.get('/api/subscription/options')
+def get_subscription_options(current_user: User = Depends(get_current_user)):
+    return response.success({
+        'data': subscription_service.list_subscription_options(current_user.id)
+    })
+
+
 @router.get('/api/subscription/sync-center/overview')
 def get_sync_center_overview(current_user: User = Depends(get_current_user)):
     overview = subscription_sync_center_service.get_sync_center_overview(current_user.id)
@@ -243,6 +250,7 @@ def retry_failed_sync_items(
 def get_sync_center_runs(
         status: str = Query(None, description='运行状态筛选'),
         site: str = Query(None, description='站点筛选'),
+        subscription_id: int = Query(None, alias='subscriptionId', description='频道筛选'),
         mode: str = Query(None, description='同步模式筛选'),
         trigger: str = Query(None, description='触发方式筛选'),
         date_from: str = Query(None, alias='dateFrom', description='开始时间'),
@@ -259,6 +267,7 @@ def get_sync_center_runs(
         current_user.id,
         status=normalized_status,
         site=site,
+        subscription_id=subscription_id,
         mode=mode,
         trigger=trigger,
         date_from=date_from,
@@ -267,8 +276,6 @@ def get_sync_center_runs(
         page_size=page_size,
     )
     return response.success(result)
-
-
 @router.get('/api/subscription/sync-center/runs/{run_id}')
 def get_sync_center_run_detail(run_id: str, current_user: User = Depends(get_current_user)):
     result = subscription_sync_history_service.get_run_detail(run_id, current_user.id)

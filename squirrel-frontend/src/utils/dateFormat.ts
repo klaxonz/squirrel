@@ -110,6 +110,9 @@ export const formatDurationMs = (durationMs: number | null | undefined, fallback
   }
 
   const raw = Number(durationMs)
+  if (raw === 0) {
+    return fallback
+  }
   const sign = raw < 0 ? '-' : ''
   const absolute = Math.abs(raw)
 

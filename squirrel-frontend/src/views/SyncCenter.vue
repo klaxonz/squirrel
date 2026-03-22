@@ -38,25 +38,9 @@
           @select="handleSignalSelect"
         />
 
-        <SyncFocusBoard
-          :active-focus="workbenchFocus"
-          :failed-runs="failedFocusRows"
-          :recovery="recoveryFocusRows"
-          :sites="siteFocusRows"
-          :slow-runs="slowFocusRows"
-          @open="handleFocusBoardOpen"
-        />
-
         <SyncAnalysisWorkspace
           :focus="workbenchFocus"
-          :item-page="overviewPage"
-          :item-page-size="overviewPageSize"
-          :item-status="overviewFilters.status"
-          :item-total="overviewTotal"
-          :items="analysisItems"
-          :items-loading="overviewLoadingItems"
           :recovery-summary="recoverySummary"
-          :retrying-id="retryingItemId"
           :run-filters="historyFilters"
           :run-page="historyPage"
           :run-page-size="historyPageSize"
@@ -64,28 +48,16 @@
           :runs="historyRuns"
           :runs-error="historyError"
           :runs-loading="historyLoading"
-          :selected-item="selectedAnalysisItem"
-          :selected-run="historySelectedRun"
           :selected-run-id="selectedRunId"
-          :selected-subscription-id="selectedSubscriptionId"
           :site="workbenchSite"
+          :site-options="historySiteOptions"
+          :subscription-options="historySubscriptionOptions"
           :site-breakdown="trendSiteBreakdown"
-          :trend-error="trendError"
-          :trend-filters="trendFilters"
-          :trend-loading="trendLoading"
-          :trend-range="trendRange"
-          :trend-series="trendSeries"
           @change-history-filter="handleHistoryFilter"
           @change-history-page="historySetPage"
-          @change-item-page="overviewSetPage"
-          @change-item-status="handleOverviewStatusChange"
-          @change-trend-filter="handleTrendFilter"
-          @change-trend-range="handleTrendRange"
           @focus-site="handleFocusSite"
-          @open-item="handleOpenItem"
           @open-recovery="handleFocusRecovery"
           @open-run="handleSelectRun"
-          @retry-item="handleRetryItem"
         />
       </div>
     </div>
@@ -99,13 +71,6 @@
       @close="handleCloseRunDrawer"
     />
 
-    <SyncDetailDrawer
-      :item="overviewSelectedItem"
-      :open="!!overviewSelectedItem"
-      :retrying="retryingItemId === overviewSelectedItem?.subscription_id"
-      @close="handleCloseItemDrawer"
-      @retry="handleRetrySelected"
-    />
   </div>
 </template>
 
@@ -114,21 +79,17 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { InlineAlert } from '@/components/common'
 import SyncAnalysisWorkspace from '@/components/sync-center/SyncAnalysisWorkspace.vue'
 import SyncControlBar from '@/components/sync-center/SyncControlBar.vue'
-import SyncDetailDrawer from '@/components/sync-center/SyncDetailDrawer.vue'
-import SyncFocusBoard, { type SyncFocusRow } from '@/components/sync-center/SyncFocusBoard.vue'
 import SyncRunDetailDrawer from '@/components/sync-center/SyncRunDetailDrawer.vue'
 import SyncSignalMatrix, { type SyncSignalItem } from '@/components/sync-center/SyncSignalMatrix.vue'
-import type { SyncCenterItem, SyncCenterStatusFilter } from '@/composables/useSyncCenter'
 import { useSyncCenter } from '@/composables/useSyncCenter'
 import { type SyncHistoryFilters, type SyncRunItem, useSyncHistory } from '@/composables/useSyncHistory'
 import { type SyncFocusKind, type SyncTimeLens, useSyncCenterWorkbench } from '@/composables/useSyncCenterWorkbench'
-import { type SyncTrendFilters, useSyncTrends } from '@/composables/useSyncTrends'
+import { useSyncTrends } from '@/composables/useSyncTrends'
 import { formatDurationMs } from '@/utils/dateFormat'
 
 type NoticeVariant = 'success' | 'warning' | 'error'
 
 const historyFilterTimer = ref<ReturnType<typeof setTimeout> | null>(null)
-const trendFilterTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 
 const actionNotice = reactive<{
   message: string
@@ -139,14 +100,11 @@ const actionNotice = reactive<{
 })
 
 const {
-  analysisVisible,
   focus: workbenchFocus,
   lens: workbenchLens,
   resetAnalysis,
   selectRun,
-  selectSubscription,
   selectedRunId,
-  selectedSubscriptionId,
   setFocus,
   setLens,
   setSite,
@@ -155,34 +113,23 @@ const {
 
 const {
   autoRefresh: overviewAutoRefresh,
-  closeDetail: overviewCloseDetail,
   filters: overviewFilters,
   filteredFailedCount,
-  items: overviewItems,
   lastUpdatedAt: overviewLastUpdatedAt,
   loadingItems: overviewLoadingItems,
   loadingOverview,
-  openDetail: overviewOpenDetail,
   overview,
-  page: overviewPage,
   pageError: overviewPageError,
-  pageSize: overviewPageSize,
-  queuedPreview,
   refreshAll: overviewRefreshAll,
   retryFailed,
   retryingBatch,
-  retryingItemId,
-  retryItem,
-  runningPreview,
   reconcile,
   reconciling,
   recoverySummary,
   selectStatus: overviewSelectStatus,
-  selectedItem: overviewSelectedItem,
-  setPage: overviewSetPage,
+  total: overviewTotal,
   setPollingEnabled,
   setSite: overviewSetSite,
-  total: overviewTotal,
 } = useSyncCenter()
 
 const {
@@ -201,6 +148,8 @@ const {
   runs: historyRuns,
   selectRun: historySelectRun,
   selectedRun: historySelectedRun,
+  siteOptions: historySiteOptions,
+  subscriptionOptions: historySubscriptionOptions,
   setDateRange: historySetDateRange,
   setFilters: historySetFilters,
   setPage: historySetPage,
@@ -236,26 +185,6 @@ const retryTargetCount = computed(() => {
   return overviewFilters.status === 'failed' ? overviewTotal.value : filteredFailedCount.value
 })
 
-const allKnownItems = computed(() => {
-  const seen = new Map<number, SyncCenterItem>()
-
-  ;[...runningPreview.value, ...queuedPreview.value, ...overviewItems.value].forEach((item) => {
-    if (!seen.has(item.subscription_id)) {
-      seen.set(item.subscription_id, item)
-    }
-  })
-
-  return Array.from(seen.values())
-})
-
-const selectedAnalysisItem = computed(() => {
-  if (selectedSubscriptionId.value == null) {
-    return overviewSelectedItem.value
-  }
-
-  return allKnownItems.value.find((item) => item.subscription_id === selectedSubscriptionId.value) || overviewSelectedItem.value || null
-})
-
 const totalTrendRuns = computed(() => trendSeries.value.reduce((sum, point) => sum + point.runs_total, 0))
 const totalTrendSuccess = computed(() => trendSeries.value.reduce((sum, point) => sum + point.runs_success, 0))
 const totalTrendFailed = computed(() => trendSeries.value.reduce((sum, point) => sum + point.runs_failed, 0))
@@ -272,14 +201,6 @@ const volatileSiteCount = computed(() => {
 
 const failedRuns = computed(() => historyRuns.value.filter((run) => run.status === 'failed'))
 const slowRuns = computed(() => [...historyRuns.value].sort((left, right) => right.duration_ms - left.duration_ms))
-
-const analysisItems = computed(() => {
-  if (workbenchFocus.value === 'site' && workbenchSite.value) {
-    return overviewItems.value.filter((item) => item.site === workbenchSite.value)
-  }
-
-  return overviewItems.value
-})
 
 const currentSignals = computed<SyncSignalItem[]>(() => ([
   {
@@ -322,7 +243,7 @@ const currentSignals = computed<SyncSignalItem[]>(() => ([
     label: '待处理视频',
     value: overview.value.pending_videos,
     tone: overview.value.pending_videos > 0 ? 'info' : 'neutral',
-    delta: `预览 ${allKnownItems.value.length}`,
+    delta: `运行中 ${overview.value.running_count}`,
   },
 ]))
 
@@ -374,68 +295,6 @@ const recentSignals = computed<SyncSignalItem[]>(() => {
     },
   ]
 })
-
-const siteFocusRows = computed<SyncFocusRow[]>(() => {
-  return trendSiteBreakdown.value
-    .filter((item) => item.runs_failed > 0 || item.runs_deferred > 0)
-    .sort((left, right) => right.runs_failed - left.runs_failed || right.runs_total - left.runs_total)
-    .slice(0, 6)
-    .map((item) => ({
-      id: item.site,
-      title: item.site,
-      meta: `运行 ${item.runs_total} · 成功 ${item.runs_success}`,
-      value: item.runs_failed || item.runs_deferred,
-      tone: item.runs_failed > 0 ? 'error' : 'warning',
-    }))
-})
-
-const failedFocusRows = computed<SyncFocusRow[]>(() => {
-  return failedRuns.value.slice(0, 6).map((run) => ({
-    id: run.run_id,
-    title: run.subscription_name,
-    meta: `${run.site || 'unknown'} ${run.last_event_at || run.finished_at || '—'}`,
-    value: formatDurationMs(run.duration_ms),
-    tone: 'error',
-    avatar: run.subscription_avatar,
-    subscriptionId: run.subscription_id,
-  }))
-})
-
-const slowFocusRows = computed<SyncFocusRow[]>(() => {
-  return slowRuns.value.slice(0, 6).map((run) => ({
-    id: run.run_id,
-    title: run.subscription_name,
-    meta: `${run.site || 'unknown'} · ${run.status}`,
-    value: formatDurationMs(run.duration_ms),
-    tone: run.status === 'failed' ? 'error' : 'warning',
-    avatar: run.subscription_avatar,
-    subscriptionId: run.subscription_id,
-  }))
-})
-
-const recoveryFocusRows = computed<SyncFocusRow[]>(() => ([
-  {
-    id: 'total',
-    title: '恢复总数',
-    meta: recoverySummary.value.last_reconcile_at || '未执行对账',
-    value: recoverySummary.value.total_recovered || 0,
-    tone: recoverySummary.value.total_recovered ? 'warning' : 'neutral',
-  },
-  {
-    id: 'queued',
-    title: 'queued 恢复',
-    meta: '缺失消息或残留状态',
-    value: recoverySummary.value.by_type?.stale_queued_recovered || 0,
-    tone: 'warning',
-  },
-  {
-    id: 'running',
-    title: 'running 恢复',
-    meta: '超时或锁残留',
-    value: recoverySummary.value.by_type?.stale_running_recovered || 0,
-    tone: 'info',
-  },
-]))
 
 const dashboardSummary = computed(() => {
   if (overviewPageError.value || historyError.value || trendError.value) {
@@ -494,13 +353,6 @@ const syncHistoryFilters = async (patch: Partial<SyncHistoryFilters>) => {
   await historyLoadRuns()
 }
 
-const syncTrendFilters = async (patch: Partial<SyncTrendFilters>) => {
-  if (!trendSetFilters(patch)) {
-    return
-  }
-  await loadTrends()
-}
-
 const handleRefreshAll = async () => {
   await Promise.all([
     overviewRefreshAll(),
@@ -516,34 +368,6 @@ const handleLensChange = (lens: SyncTimeLens) => {
 
 const handleToggleAutoRefresh = (value: boolean) => {
   overviewAutoRefresh.value = value
-}
-
-const handleRetryItem = async (item: SyncCenterItem) => {
-  selectSubscription(item.subscription_id)
-  const result = await retryItem(item)
-  if (result.error) {
-    actionNotice.message = result.error.message || '重试失败'
-    actionNotice.variant = 'error'
-    return
-  }
-  actionNotice.message = `已提交重试：${item.subscription_name}`
-  actionNotice.variant = 'success'
-}
-
-const handleRetrySelected = async () => {
-  if (!overviewSelectedItem.value) {
-    return
-  }
-
-  const result = await retryItem(overviewSelectedItem.value)
-  if (result.error) {
-    actionNotice.message = result.error.message || '重试失败'
-    actionNotice.variant = 'error'
-    return
-  }
-
-  actionNotice.message = `已提交重试：${overviewSelectedItem.value.subscription_name}`
-  actionNotice.variant = 'success'
 }
 
 const handleRetryFailed = async () => {
@@ -574,10 +398,6 @@ const handleReconcile = async () => {
   }
 }
 
-const handleOverviewStatusChange = async (status: SyncCenterStatusFilter) => {
-  await overviewSelectStatus(status)
-}
-
 const handleSelectRun = (runId: string) => {
   selectRun(runId)
 }
@@ -585,16 +405,6 @@ const handleSelectRun = (runId: string) => {
 const handleCloseRunDrawer = () => {
   selectRun('')
   historyCloseRun()
-}
-
-const handleOpenItem = (item: SyncCenterItem) => {
-  selectSubscription(item.subscription_id)
-  overviewOpenDetail(item)
-}
-
-const handleCloseItemDrawer = () => {
-  selectSubscription(null)
-  overviewCloseDetail()
 }
 
 const handleFocusSite = async (site: string) => {
@@ -635,21 +445,8 @@ const handleFocusRecovery = async () => {
   ])
 }
 
-const handleFocusBoardOpen = async (payload: { section: Exclude<SyncFocusKind, 'overview'>; id?: string }) => {
-  switch (payload.section) {
-    case 'site':
-      await handleFocusSite(payload.id || siteFocusRows.value[0]?.id || workbenchSite.value)
-      return
-    case 'failed-runs':
-      await handleFocusFailedRuns(payload.id || '')
-      return
-    case 'slow-runs':
-      await handleFocusSlowRuns(payload.id || '')
-      return
-    case 'recovery':
-      await handleFocusRecovery()
-      return
-  }
+const applyHistoryStatusFilter = async (status: SyncHistoryFilters['status']) => {
+  await syncHistoryFilters({ status })
 }
 
 const handleSignalSelect = async (key: string) => {
@@ -670,24 +467,45 @@ const handleSignalSelect = async (key: string) => {
 
   if (key === 'running') {
     resetAnalysis()
-    await overviewSelectStatus('running')
+    await Promise.all([
+      applyHistoryStatusFilter('running'),
+      overviewSelectStatus('running'),
+    ])
     return
   }
 
   if (key === 'queued' || key === 'queue-depth') {
     resetAnalysis()
-    await overviewSelectStatus('queued')
+    await Promise.all([
+      applyHistoryStatusFilter('queued'),
+      overviewSelectStatus('queued'),
+    ])
     return
   }
 
   if (key === 'deferred') {
     resetAnalysis()
-    await overviewSelectStatus('scheduled')
+    await Promise.all([
+      applyHistoryStatusFilter('deferred'),
+      overviewSelectStatus('scheduled'),
+    ])
+    return
+  }
+
+  if (key === 'pending-videos') {
+    resetAnalysis()
+    await Promise.all([
+      applyHistoryStatusFilter('running'),
+      overviewSelectStatus('recent'),
+    ])
     return
   }
 
   resetAnalysis()
-  await overviewSelectStatus('recent')
+  await Promise.all([
+    applyHistoryStatusFilter(''),
+    overviewSelectStatus('recent'),
+  ])
 }
 
 const handleHistoryFilter = (payload: { key: string; value: string }) => {
@@ -702,27 +520,6 @@ const handleHistoryFilter = (payload: { key: string; value: string }) => {
   historyFilterTimer.value = setTimeout(async () => {
     await historyLoadRuns()
   }, 250)
-}
-
-const handleTrendFilter = (payload: { key: string; value: string }) => {
-  trendSetFilters({
-    [payload.key]: payload.value,
-  } as Partial<SyncTrendFilters>)
-
-  if (trendFilterTimer.value) {
-    clearTimeout(trendFilterTimer.value)
-  }
-
-  trendFilterTimer.value = setTimeout(async () => {
-    await loadTrends()
-  }, 250)
-}
-
-const handleTrendRange = async (value: string) => {
-  if (!trendSetRange(value)) {
-    return
-  }
-  await loadTrends()
 }
 
 watch(workbenchLens, async (lens) => {
@@ -752,25 +549,7 @@ watch(selectedRunId, async (runId) => {
   await historySelectRun(runId)
 }, { immediate: true })
 
-watch([selectedSubscriptionId, allKnownItems], ([subscriptionId, items]) => {
-  if (subscriptionId == null) {
-    overviewCloseDetail()
-    return
-  }
-
-  const nextItem = items.find((item) => item.subscription_id === subscriptionId)
-  if (nextItem) {
-    overviewOpenDetail(nextItem)
-    return
-  }
-
-  overviewCloseDetail()
-}, { immediate: true })
-
 onMounted(() => {
   setPollingEnabled(true)
-  if (!analysisVisible.value) {
-    void handleFocusFailedRuns()
-  }
 })
 </script>

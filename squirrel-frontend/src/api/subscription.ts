@@ -4,6 +4,10 @@ export const getSubscriptions = async (params: Record<string, unknown> = {}) => 
   return get('/api/subscription/list', params)
 }
 
+export const getSubscriptionOptions = async <T = any>() => {
+  return get<T>('/api/subscription/options')
+}
+
 export const getSubscriptionDetail = async (subscriptionId: string | number) => {
   return get(`/api/subscription/detail/${subscriptionId}`)
 }

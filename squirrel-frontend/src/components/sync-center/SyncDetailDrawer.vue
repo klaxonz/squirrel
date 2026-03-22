@@ -16,7 +16,7 @@
                     :alt="item.subscription_name"
                     class="w-12 h-12 rounded-full object-cover bg-bg-secondary ring-1 ring-border-primary"
                     referrerpolicy="no-referrer"
-                    @error="(e) => handleAvatarError(e, `detail-drawer-${item.subscription_id}`)"
+                    @error="(e) => handleAvatarError(e, `detail-drawer-${item?.subscription_id || 'unknown'}`)"
                   >
                 </router-link>
                 <div class="min-w-0">
