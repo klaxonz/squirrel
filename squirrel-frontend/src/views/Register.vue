@@ -3,7 +3,7 @@
     <div class="max-w-md w-full space-y-8">
       <!-- Logo -->
       <div class="flex flex-col items-center">
-        <img src="/squirrel-icon.svg" class="w-16 h-16" alt="Logo">
+        <img src="/squirrel-icon.png" class="w-16 h-16" alt="Logo">
         <h2 class="mt-6 text-3xl font-bold text-text-primary">创建新账号</h2>
       </div>
 

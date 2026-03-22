@@ -3,7 +3,7 @@ import { ref } from 'vue'
 type Identifier = string | number
 type MaybeIdentifier = Identifier | null | undefined
 
-export function useImageFallback(defaultImage = '/squirrel-icon.svg') {
+export function useImageFallback(defaultImage = '/default-avatar.svg') {
   const failedImages = ref(new Set<Identifier>())
 
   const handleImageError = (event: Event | null | undefined, identifier?: MaybeIdentifier) => {
