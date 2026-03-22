@@ -19,7 +19,7 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <div class="w-full sm:w-[10rem]">
+          <div class="w-full sm:w-[9rem]">
             <Select :model-value="filters.status" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value ?? '') })">
               <SelectTrigger class="h-8 text-xs">
                 <SelectValue placeholder="全部状态" />
@@ -32,7 +32,7 @@
             </Select>
           </div>
 
-          <div class="w-full sm:w-[10rem]">
+          <div class="w-full sm:w-[9rem]">
             <Select :model-value="filters.site" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value ?? '') })">
               <SelectTrigger class="h-8 text-xs">
                 <SelectValue placeholder="全部站点" />
@@ -45,7 +45,7 @@
             </Select>
           </div>
 
-          <div class="w-full sm:w-[14rem]">
+          <div class="w-full sm:w-[12rem]">
             <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
           </div>
 
@@ -75,16 +75,16 @@
             </Select>
           </div>
 
-          <div class="w-full sm:min-w-[14rem] sm:flex-1">
+          <div class="w-full sm:w-[14rem] md:w-[16rem]">
             <Popover>
               <PopoverTrigger as-child>
                 <Button
                   variant="outline"
-                  class="h-8 w-full justify-start rounded-lg bg-background px-3 text-left text-xs font-normal"
+                  class="h-8 w-full justify-start overflow-hidden rounded-lg bg-background px-3 text-left text-xs font-normal"
                 >
                   <CalendarIcon class="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span v-if="dateRangeLabel">{{ dateRangeLabel }}</span>
-                  <span v-else class="text-muted-foreground">选择日期范围</span>
+                  <span v-if="dateRangeLabel" class="truncate">{{ dateRangeLabel }}</span>
+                  <span v-else class="truncate text-muted-foreground">选择日期范围</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent class="w-auto p-0" align="start">
@@ -116,7 +116,7 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-          <div class="w-full sm:w-[11rem]">
+          <div class="w-full sm:w-[10rem]">
             <Select :model-value="filters.status" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value ?? '') })">
               <SelectTrigger class="h-9 text-xs">
                 <SelectValue placeholder="全部状态" />
@@ -129,7 +129,7 @@
             </Select>
           </div>
 
-          <div class="w-full sm:w-[11rem]">
+          <div class="w-full sm:w-[10rem]">
             <Select :model-value="filters.site" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value ?? '') })">
               <SelectTrigger class="h-9 text-xs">
                 <SelectValue placeholder="全部站点" />
@@ -142,7 +142,7 @@
             </Select>
           </div>
 
-          <div class="w-full sm:w-[18rem]">
+          <div class="w-full sm:w-[16rem]">
             <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
           </div>
 
@@ -172,16 +172,16 @@
             </Select>
           </div>
 
-          <div class="w-full sm:min-w-[18rem] sm:flex-1">
+          <div class="w-full sm:w-[16rem] md:w-[18rem]">
             <Popover>
               <PopoverTrigger as-child>
                 <Button
                   variant="outline"
-                  class="h-9 w-full justify-start rounded-lg bg-background px-3 text-left text-xs font-normal"
+                  class="h-9 w-full justify-start overflow-hidden rounded-lg bg-background px-3 text-left text-xs font-normal"
                 >
                   <CalendarIcon class="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span v-if="dateRangeLabel">{{ dateRangeLabel }}</span>
-                  <span v-else class="text-muted-foreground">选择日期范围</span>
+                  <span v-if="dateRangeLabel" class="truncate">{{ dateRangeLabel }}</span>
+                  <span v-else class="truncate text-muted-foreground">选择日期范围</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent class="w-auto p-0" align="start">
