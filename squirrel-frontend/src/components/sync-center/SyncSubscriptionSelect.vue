@@ -2,7 +2,8 @@
   <div ref="rootRef" class="relative">
     <button
       type="button"
-      class="w-full rounded-md border border-border bg-card px-2.5 py-1.5 pr-8 text-left text-xs text-foreground transition-colors duration-150 focus:border-border focus:outline-none focus:ring-1 focus:ring-border"
+      class="flex w-full items-center justify-between rounded-md border border-input bg-background px-3 pr-8 text-left text-xs text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      :class="props.size === 'sm' ? 'h-8' : 'h-9'"
       :aria-expanded="isOpen ? 'true' : 'false'"
       @click="toggle"
       @keydown="handleTriggerKeydown"
@@ -21,7 +22,7 @@
         </span>
       </div>
       <span
-        class="pointer-events-none absolute right-3 top-1.5 text-muted-foreground transition-transform duration-150"
+        class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-transform duration-150"
         :class="isOpen ? 'rotate-180' : ''"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -102,8 +103,10 @@ const props = withDefaults(defineProps<{
   modelValue: string
   options: SubscriptionOption[]
   placeholder?: string
+  size?: 'sm' | 'md'
 }>(), {
   placeholder: '全部频道',
+  size: 'md',
 })
 
 const emit = defineEmits<{

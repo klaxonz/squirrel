@@ -46,7 +46,7 @@
           </div>
 
           <div class="w-full sm:w-[12rem]">
-            <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
+            <SyncSubscriptionSelect size="sm" :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
           </div>
 
           <div class="w-full sm:w-[9rem]">
@@ -143,7 +143,7 @@
           </div>
 
           <div class="w-full sm:w-[16rem]">
-            <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
+            <SyncSubscriptionSelect size="md" :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
           </div>
 
           <div class="w-full sm:w-[10rem]">
