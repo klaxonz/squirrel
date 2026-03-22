@@ -1,19 +1,20 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LatestVideos from '../views/LatestVideos.vue'
-import Subscribed from '../views/Subscribed.vue'
-import Settings from '../views/Settings.vue'
-import VideoTab from '@/components/feed/VideoTab.vue'
-import History from '../views/History.vue'
-import VideoPlay from '../views/VideoPlay.vue'
-import Login from '../views/Login.vue'
-import Register from '../views/Register.vue'
-import PluginManager from '../views/PluginManager.vue'
-import LogViewer from '../views/LogViewer.vue'
-import Monitoring from '../views/Monitoring.vue'
-import ScheduledTasks from '../views/ScheduledTasks.vue'
-import SyncCenter from '../views/SyncCenter.vue'
 import { useUser } from '../composables/useUser'
 import { Logger } from '@/utils/logger'
+
+const LatestVideos = () => import('../views/LatestVideos.vue')
+const Subscribed = () => import('../views/Subscribed.vue')
+const Settings = () => import('../views/Settings.vue')
+const VideoTab = () => import('@/components/feed/VideoTab.vue')
+const History = () => import('../views/History.vue')
+const VideoPlay = () => import('../views/VideoPlay.vue')
+const Login = () => import('../views/Login.vue')
+const Register = () => import('../views/Register.vue')
+const PluginManager = () => import('../views/PluginManager.vue')
+const LogViewer = () => import('../views/LogViewer.vue')
+const Monitoring = () => import('../views/Monitoring.vue')
+const ScheduledTasks = () => import('../views/ScheduledTasks.vue')
+const SyncCenter = () => import('../views/SyncCenter.vue')
 
 const SEARCH_META = {
   showSearch: true,

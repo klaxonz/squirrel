@@ -862,8 +862,7 @@ onUnmounted(() => {
 }
 
 .video-container :deep(iframe),
-.video-container :deep(video),
-.video-container :deep(.xgplayer) {
+.video-container :deep(video) {
   position: absolute;
   top: 0;
   left: 0;
