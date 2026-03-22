@@ -27,9 +27,6 @@
       <div class="video-card__overlay"></div>
 
       <div class="video-card__topline">
-        <Badge v-if="isUnread" variant="secondary" class="video-card__badge video-card__badge--unread">
-          未读
-        </Badge>
         <Badge v-if="isNsfwVideo" variant="destructive" class="video-card__badge">
           NSFW
         </Badge>
@@ -38,20 +35,18 @@
         </Badge>
       </div>
 
-      <div class="video-card__bottomline">
+      <div
+        v-if="showProgress && progress > 0"
+        class="video-progress-bar"
+      >
         <div
-          v-if="showProgress && progress > 0"
-          class="video-progress-bar"
-        >
-          <div
-            class="video-progress-indicator"
-            :style="{ width: `${(progress * 100).toFixed(1)}%` }"
-          ></div>
-        </div>
+          class="video-progress-indicator"
+          :style="{ width: `${(progress * 100).toFixed(1)}%` }"
+        ></div>
+      </div>
         <div class="video-duration">
           {{ formatDuration(video.duration) }}
         </div>
-      </div>
     </div>
 
     <div class="video-item-content video-info">
@@ -61,7 +56,7 @@
 
       <div class="video-card__meta-row">
         <div class="video-card__channel-wrap">
-          <div v-if="showAvatar && displayAvatars.length" class="author-avatars">
+          <div v-if="displayAvatars.length" class="author-avatars">
             <img
               v-for="(avatar, index) in displayAvatars"
               :key="`avatar-${index}`"
@@ -127,11 +122,6 @@
         </div>
 
         <span class="video-card__date">{{ displayDateText }}</span>
-      </div>
-
-      <div class="video-card__footer">
-        <span v-if="resumeText" class="video-card__resume">{{ resumeText }}</span>
-        <span v-if="isDislikedVideo" class="video-card__status">已标记不喜欢</span>
       </div>
     </div>
 
@@ -204,9 +194,7 @@ const showDefaultThumbnail = ref(false)
 
 const isNsfwVideo = computed(() => props.video.subscriptions?.some((subscription) => subscription.is_nsfw) || false)
 const shouldBlurThumbnail = computed(() => systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value)
-const isUnread = computed(() => !props.video.is_read)
 const isLikedVideo = computed(() => props.video.is_liked === 1)
-const isDislikedVideo = computed(() => props.video.is_liked === 0)
 
 const displayDateText = computed(() => {
   const timestamp = props.sortBy === 'created_at'
@@ -250,18 +238,6 @@ const primarySubscriptionId = computed(() => {
 
 const hasActors = computed(() => (props.video.subscriptions?.length || 0) > 1)
 const hiddenActorCount = computed(() => Math.max((props.video.subscriptions?.length || 0) - 1, 0))
-
-const resumeText = computed(() => {
-  const duration = Number(props.video.duration || 0)
-  const lastPosition = Number(props.video.last_position || 0)
-
-  if (!duration || !lastPosition || props.video.is_read) {
-    return ''
-  }
-
-  const percent = Math.max(1, Math.min(99, Math.round((lastPosition / duration) * 100)))
-  return `已看到 ${percent}%`
-})
 
 const closeContextMenu = () => {
   showMenu.value = false
