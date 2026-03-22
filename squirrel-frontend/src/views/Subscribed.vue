@@ -1,45 +1,42 @@
 <template>
-  <div class="subscribed-page flex flex-col h-full bg-background text-foreground">
-    <!-- 顶部操作栏 - 对齐全部视频页的标签样式 -->
-    <div class="toolbar-container">
-      <FeedToolbar
-        :show-tabs="false"
-        :tabs-with-counts="[]"
-        :nsfw="nsfw"
-        :site="site"
-        :is-refreshing="isRefreshing"
-        @update:nsfw="(v) => { nsfw = v; }"
-        @update:site="(v) => { site = v; }"
-        @refresh="refreshList"
-      >
-        <Button
-          variant="secondary"
-          size="xs"
-          class="ml-2 whitespace-nowrap rounded-full"
-          @click="showAddDialog = true"
-        >
-          <PlusIcon class="h-4 w-4" />
-          <span>添加订阅</span>
-        </Button>
-        <Button
-          variant="destructive"
-          size="xs"
-          class="ml-2 whitespace-nowrap rounded-full"
-          @click="showImportDialog = true"
-        >
-          <ArrowDownTrayIcon class="h-4 w-4" />
-          <span>导入订阅</span>
-        </Button>
+  <div class="subscribed-page flex h-full flex-col bg-background text-foreground">
+    <section class="subscribed-shell">
+      <div class="toolbar-container subscribed-shell__header">
+        <div class="subscribed-shell__title-wrap">
+          <h1 class="subscribed-shell__title">订阅</h1>
+          <span class="subscribed-shell__count">{{ subscriptions.length }}</span>
+        </div>
+      </div>
 
-      </FeedToolbar>
-    </div>
+      <div class="toolbar-container">
+        <FeedToolbar
+          :show-tabs="false"
+          :tabs-with-counts="[]"
+          :nsfw="nsfw"
+          :site="site"
+          :is-refreshing="isRefreshing"
+          @update:nsfw="(value) => { nsfw = value }"
+          @update:site="(value) => { site = value }"
+          @refresh="refreshList"
+        >
+          <Button size="xs" class="whitespace-nowrap" @click="showAddDialog = true">
+            <PlusIcon class="h-4 w-4" />
+            <span>添加订阅</span>
+          </Button>
+          <Button size="xs" variant="secondary" class="whitespace-nowrap" @click="showImportDialog = true">
+            <ArrowDownTrayIcon class="h-4 w-4" />
+            <span>导入订阅</span>
+          </Button>
+        </FeedToolbar>
+      </div>
+    </section>
 
     <div
       ref="scrollContainer"
-      class="channel-container scrollbar-hide pt-0 flex-grow overflow-y-auto"
+      class="channel-container scrollbar-hide flex-grow overflow-y-auto"
       @scroll="handleScrollPosition"
     >
-      <div class="content-container" v-if="loadError">
+      <div v-if="loadError" class="content-container content-container--alert">
         <Alert variant="destructive" class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <AlertTitle>加载失败</AlertTitle>
@@ -50,26 +47,60 @@
           <Button variant="secondary" size="sm" class="rounded-full" @click="refreshList">重试</Button>
         </Alert>
       </div>
-      <div class="content-container">
-        <!-- 频道列表 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-          <div v-for="subscription in subscriptions" :key="subscription.id"
-               class="channel-item relative group cursor-pointer"
 
-               :class="{ 'is-refreshing': isResetting }"
-               @click="getSubscriptionVideos(subscription.id)"
+      <div class="content-container">
+        <div v-if="loading && !subscriptions.length" class="subscribed-empty-state">
+          <LoadingIndicator :loading="true" text="正在整理订阅..." size="lg" />
+        </div>
+
+        <div v-else-if="!loading && !subscriptions.length" class="subscribed-empty-card">
+          <p class="subscribed-empty-card__eyebrow">Subscription Library</p>
+          <h2 class="subscribed-empty-card__title">还没有可展示的订阅</h2>
+          <p class="subscribed-empty-card__copy">可以直接添加一个频道，或者从支持的站点批量导入。</p>
+          <div class="subscribed-empty-card__actions">
+            <Button size="sm" @click="showAddDialog = true">添加订阅</Button>
+            <Button size="sm" variant="secondary" @click="showImportDialog = true">导入订阅</Button>
+          </div>
+        </div>
+
+        <div v-else class="channel-grid">
+          <article
+            v-for="subscription in subscriptions"
+            :key="subscription.id"
+            class="channel-item group"
+            :class="{ 'is-refreshing': isResetting }"
+            @click="getSubscriptionVideos(subscription.id)"
           >
+            <div class="channel-item__topbar">
+              <Badge
+                v-if="getRefreshState(subscription.id).isRefreshing"
+                variant="outline"
+                class="channel-item__status-badge"
+              >
+                {{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}
+              </Badge>
+
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                class="settings-toggle"
+                @click.stop="openSettings(subscription)"
+              >
+                <Cog6ToothIcon class="h-4 w-4" />
+              </Button>
+            </div>
+
             <div class="channel-item__media">
               <div class="channel-item__halo"></div>
-              <div class="relative w-16 h-16">
+              <div class="channel-item__avatar-shell">
                 <img
                   :alt="subscription.name"
                   :src="getAvatarSrc(subscription.avatar, subscription.id)"
-                  class="w-full h-full rounded-[1.25rem] object-cover ring-1 ring-border transition-transform duration-300 group-hover:scale-105"
+                  class="channel-item__avatar"
                   referrerpolicy="no-referrer"
-                  @error="(e) => handleAvatarError(e, subscription.id)"
+                  @error="(event) => handleAvatarError(event, subscription.id)"
                 />
-                <div class="absolute -inset-1 avatar-sheen opacity-30 rounded-[1.5rem]"></div>
+                <div class="avatar-sheen"></div>
               </div>
             </div>
 
@@ -79,11 +110,10 @@
                   <h3 class="channel-item__title">{{ subscription.name }}</h3>
                   <p class="channel-item__meta">订阅于 {{ formatDate(subscription.created_at) }}</p>
                 </div>
-                <span v-if="subscription.type === 'PLAYLIST'" 
-                      class="channel-item__badge"
-                      title="播放列表">
-                  播放列表
-                </span>
+                <div class="channel-item__badges">
+                  <Badge v-if="subscription.type === 'PLAYLIST'" variant="secondary">播放列表</Badge>
+                  <Badge v-if="subscription.is_nsfw" variant="destructive">NSFW</Badge>
+                </div>
               </div>
 
               <div class="channel-item__stats">
@@ -97,565 +127,625 @@
                 </div>
               </div>
             </div>
-
-            <button class="settings-toggle absolute top-3 right-3 p-2 bg-card/88 border border-border rounded-full hover:bg-accent transition-colors duration-200 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                    @click.stop="openSettings(subscription)">
-              <svg class="h-3.5 w-3.5 text-foreground" fill="currentColor" viewBox="0 0 20 20"
-                   xmlns="http://www.w3.org/2000/svg">
-                <path clip-rule="evenodd"
-                      d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                      fill-rule="evenodd"/>
-              </svg>
-            </button>
-
-            <!-- YouTube风格的更新状态指示器 -->
-            <div v-if="getRefreshState(subscription.id).isRefreshing"
-                 class="absolute top-3 left-3 bg-card/92 border border-border text-foreground/80 text-2xs px-2 py-1 rounded-full shadow-sm">
-              <span>{{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}</span>
-            </div>
-          </div>
+          </article>
         </div>
 
-        <!-- 加载更多按钮 -->
         <div
-            v-if="!allLoaded"
-            ref="loadingTrigger"
-            class="mt-4 mb-4 text-center loading-trigger h-20 flex items-center justify-center"
+          v-if="!allLoaded"
+          ref="loadingTrigger"
+          class="subscribed-loading-trigger"
         >
-          <div v-if="loading" class="flex items-center justify-center space-x-2">
-            <div class="w-2 h-2 bg-destructive rounded-full animate-bounce"></div>
-            <div class="w-2 h-2 bg-destructive rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-            <div class="w-2 h-2 bg-destructive rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
-          </div>
+          <LoadingIndicator v-if="loading" :loading="true" text="继续加载中..." size="md" />
         </div>
 
-        <!-- 全部加载完毕 -->
-        <div v-if="allLoaded" class="mt-4 mb-4 text-center text-muted-foreground">
-          <p>已经到底啦</p>
+        <div v-if="allLoaded && subscriptions.length" class="subscribed-bottom-copy">
+          已经到底啦
         </div>
       </div>
     </div>
 
-    <!-- 设置模态框 -->
-    <div v-if="showSettings" class="fixed inset-0 bg-overlay flex items-center justify-center z-50 backdrop-blur-sm"
-         @click.self="closeSettings">
-      <div class="bg-card border border-border rounded-[1.5rem] p-6 w-full max-w-md shadow-xl">
-        <h2 class="text-xl font-bold mb-4 text-foreground">{{ selectedSubscription.name }} 设置</h2>
-        <div class="space-y-6">
-          <div class="flex items-center justify-between">
-            <span class="text-foreground">标记为敏感内容</span>
+    <Dialog :open="showSettings" @update:open="handleSettingsOpenChange">
+      <DialogContent class="max-w-lg gap-0 overflow-hidden p-0">
+        <div class="subscription-dialog__hero">
+          <DialogHeader class="space-y-2 px-6 pb-4 pt-6">
+            <DialogTitle class="text-xl font-semibold tracking-[-0.03em]">
+              {{ selectedSubscription?.name || '订阅设置' }}
+            </DialogTitle>
+            <DialogDescription>
+              调整频道设置、手动触发更新，或取消订阅。
+            </DialogDescription>
+          </DialogHeader>
+        </div>
+
+        <div v-if="selectedSubscription" class="space-y-5 px-6 py-5">
+          <div class="subscription-dialog__summary">
+            <img
+              :src="getAvatarSrc(selectedSubscription.avatar, selectedSubscription.id)"
+              :alt="selectedSubscription.name"
+              class="subscription-dialog__avatar"
+              referrerpolicy="no-referrer"
+              @error="(event) => handleAvatarError(event, selectedSubscription.id)"
+            />
+
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <p class="truncate text-sm font-semibold text-foreground">{{ selectedSubscription.name }}</p>
+                <Badge v-if="selectedSubscription.type === 'PLAYLIST'" variant="secondary">播放列表</Badge>
+                <Badge v-if="selectedSubscription.is_nsfw" variant="destructive">NSFW</Badge>
+              </div>
+              <p class="mt-1 text-xs text-muted-foreground">
+                {{ selectedRefreshState.status === 'failed'
+                  ? '最近一次同步失败'
+                  : getStatusText(selectedRefreshState.status, selectedRefreshState.phase) || '等待同步' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="subscription-dialog__row">
+            <div>
+              <p class="text-sm font-medium text-foreground">标记为敏感内容</p>
+              <p class="mt-1 text-xs text-muted-foreground">用于控制缩略图模糊和过滤行为。</p>
+            </div>
             <Switch
               :checked="!!selectedSubscription.is_nsfw"
               @update:checked="(value) => { selectedSubscription.is_nsfw = !!value; updateNsfwStatus(!!value) }"
             />
           </div>
 
-          <!-- 手动更新按钮 -->
-          <div class="space-y-3">
-            <button
-              class="w-full py-2 bg-secondary text-foreground rounded-xl hover:bg-accent disabled:bg-card disabled:cursor-not-allowed transition-colors duration-200 text-sm"
-              :disabled="getRefreshState(selectedSubscription.id).isRefreshing"
+          <div class="subscription-dialog__actions">
+            <Button
+              class="w-full"
+              :disabled="selectedRefreshState.isRefreshing"
               @click="handleRefreshSubscription(selectedSubscription.id)"
             >
-              <span v-if="getRefreshState(selectedSubscription.id).isRefreshing">
-                {{ getStatusText(getRefreshState(selectedSubscription.id).status, getRefreshState(selectedSubscription.id).phase) }}
-              </span>
-              <span v-else>手动更新</span>
-            </button>
+              {{ selectedRefreshState.isRefreshing
+                ? getStatusText(selectedRefreshState.status, selectedRefreshState.phase) || '更新中'
+                : '手动更新' }}
+            </Button>
 
-            <!-- 进度不再内嵌，转移到全局“同步中心”与卡片角标展示 -->
+            <Button
+              v-if="selectedRefreshState.status === 'failed'"
+              variant="secondary"
+              class="w-full"
+              @click="handleRetryRefresh(selectedSubscription.id)"
+            >
+              重试更新
+            </Button>
 
-            <!-- 错误状态和重试 -->
-            <div v-if="getRefreshState(selectedSubscription.id).status === 'failed'" class="text-xs">
-              <p class="text-destructive mb-2">{{ getRefreshState(selectedSubscription.id).lastError || '更新失败' }}</p>
-              <button
-                class="w-full py-1.5 bg-secondary text-foreground rounded-xl hover:bg-accent transition-colors duration-200"
-                @click="handleRetryRefresh(selectedSubscription.id)"
-              >
-                重试更新
-              </button>
-            </div>
+            <Alert v-if="selectedRefreshState.status === 'failed'" variant="destructive">
+              <AlertDescription>
+                {{ selectedRefreshState.lastError || '更新失败' }}
+              </AlertDescription>
+            </Alert>
+
+            <Button
+              variant="destructive"
+              class="w-full"
+              :disabled="selectedRefreshState.isRefreshing"
+              @click="unsubscribe(selectedSubscription.id)"
+            >
+              取消订阅
+            </Button>
+
+            <p v-if="unsubscribeError" class="text-xs text-destructive">{{ unsubscribeError }}</p>
           </div>
-
-          <button
-            :disabled="getRefreshState(selectedSubscription.id).isRefreshing"
-            :class="[
-              'w-full py-2 text-foreground rounded-lg transition-colors duration-200 text-sm',
-              getRefreshState(selectedSubscription.id).isRefreshing
-                ? 'bg-card cursor-not-allowed'
-                : 'bg-destructive hover:bg-destructive/90'
-            ]"
-            @click="unsubscribe(selectedSubscription.id)"
-          >
-            取消订阅
-          </button>
-          <p v-if="unsubscribeError" class="mt-2 text-xs text-destructive">{{ unsubscribeError }}</p>
         </div>
-        <button class="mt-6 w-full py-2 bg-secondary text-foreground rounded-xl hover:bg-accent transition-colors duration-200 text-sm font-medium"
-                @click="closeSettings">
-          关闭
-        </button>
-      </div>
-    </div>
 
-    <!-- 添加频道对话框 -->
+        <DialogFooter class="border-t border-border/70 bg-secondary/24 px-6 py-4 sm:justify-end">
+          <Button size="sm" variant="ghost" @click="closeSettings">关闭</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <AddChannelDialog
       :show="showAddDialog"
       @added="handleChannelAdded"
       @close="showAddDialog = false"
     />
 
-    <!-- 导入订阅对话框 -->
     <ImportSubscriptionDialog
       :show="showImportDialog"
       @close="showImportDialog = false"
       @imported="handleSubscriptionsImported"
     />
-
   </div>
-
 </template>
 
 <script setup>
-import {nextTick, onMounted, onUnmounted, ref, watch, inject} from 'vue';       
-import FeedToolbar from '@/components/feed/FeedToolbar.vue';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { PlusIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';        
-import {useRouter} from "vue-router";
-import { useRefreshTriggers } from '../composables/useRefreshTriggers';
-import AddChannelDialog from '@/components/dialogs/AddChannelDialog.vue';
-import ImportSubscriptionDialog from '@/components/dialogs/ImportSubscriptionDialog.vue';
-
-import {formatDate} from '../utils/dateFormat';
-import {useScrollPosition} from '../composables/useScrollPosition';
-import {useSubscriptionRefresh} from '../composables/useSubscriptionRefresh';
-import { useFeedFilters } from '../composables/useFeedFilters';
-import { useImageFallback } from '../composables/useImageFallback';
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { ArrowDownTrayIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import FeedToolbar from '@/components/feed/FeedToolbar.vue'
+import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
+import AddChannelDialog from '@/components/dialogs/AddChannelDialog.vue'
+import ImportSubscriptionDialog from '@/components/dialogs/ImportSubscriptionDialog.vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
+import { useRefreshTriggers } from '../composables/useRefreshTriggers'
+import { useScrollPosition } from '../composables/useScrollPosition'
+import { useSubscriptionRefresh } from '../composables/useSubscriptionRefresh'
+import { useFeedFilters } from '../composables/useFeedFilters'
+import { useImageFallback } from '../composables/useImageFallback'
+import { formatDate } from '../utils/dateFormat'
 import {
   getSubscriptions as apiGetSubscriptions,
   unsubscribe as apiUnsubscribe,
   updateNsfwStatus as apiUpdateNsfwStatus,
 } from '@/api'
 
-const router = useRouter();
+const router = useRouter()
+const emitter = inject('emitter')
 
-const isRefreshing = ref(false);
-const isResetting = ref(false);
+const isRefreshing = ref(false)
+const isResetting = ref(false)
+const { scrollContainer, handleScroll: handleScrollPosition, restoreScrollPosition } = useScrollPosition('subscribed-page')
 
-const emitter = inject('emitter');
+const subscriptions = ref([])
+const loadError = ref(null)
+const loading = ref(false)
+const allLoaded = ref(false)
+const currentPage = ref(1)
+const searchQuery = ref('')
+const { nsfw, site } = useFeedFilters()
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 
-// 滚动位置保持
-const { scrollContainer, handleScroll: handleScrollPosition, restoreScrollPosition } = useScrollPosition('subscribed-page');
+const showSettings = ref(false)
+const selectedSubscription = ref(null)
+const observer = ref(null)
+const loadingTrigger = ref(null)
+const showAddDialog = ref(false)
+const showImportDialog = ref(false)
+const unsubscribeError = ref('')
 
-const subscriptions = ref([]);
-const loadError = ref(null);
-const loading = ref(false);
-const allLoaded = ref(false);
-const currentPage = ref(1);
-const searchQuery = ref('');
-const { nsfw, site } = useFeedFilters();
-// Removed tabs on Subscribed page
-const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
-
-const showSettings = ref(false);
-const selectedSubscription = ref(null);
-
-const observer = ref(null);
-const loadingTrigger = ref(null);
-
-
-
-const showAddDialog = ref(false);
-const showImportDialog = ref(false);
-const unsubscribeError = ref('');
-
-// 订阅更新功能
 const {
   getRefreshState,
   triggerRefresh,
   retryRefresh,
   getStatusText,
-  cleanup: cleanupRefresh
-} = useSubscriptionRefresh();
+  cleanup: cleanupRefresh,
+  setSubscriptionMeta,
+} = useSubscriptionRefresh()
+
+const selectedRefreshState = computed(() => {
+  if (!selectedSubscription.value) {
+    return {
+      status: 'idle',
+      phase: null,
+      lastError: null,
+      isRefreshing: false,
+    }
+  }
+
+  return getRefreshState(selectedSubscription.value.id)
+})
 
 const setupIntersectionObserver = () => {
   observer.value = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loading.value && !allLoaded.value) {
-          loadMore();
-        }
-      },
-      {
-        root: scrollContainer.value,
-        rootMargin: '100px',
-        threshold: 0
+    (entries) => {
+      if (entries[0].isIntersecting && !loading.value && !allLoaded.value) {
+        loadMore()
       }
-  );
+    },
+    {
+      root: scrollContainer.value,
+      rootMargin: '100px',
+      threshold: 0,
+    },
+  )
 
-  // 确保在组件挂载后观察loading trigger
   if (loadingTrigger.value) {
-    observer.value.observe(loadingTrigger.value);
+    observer.value.observe(loadingTrigger.value)
   }
-};
+}
 
 const loadSubscriptions = async () => {
-  if (loading.value || allLoaded.value) return;
+  if (loading.value || allLoaded.value) return
 
-  loading.value = true;
+  loading.value = true
 
   const { data, error } = await apiGetSubscriptions({
     query: searchQuery.value,
     nsfw: nsfw.value,
     site: site.value,
     page: currentPage.value,
-    page_size: 100
-  });
+    page_size: 100,
+  })
 
   if (!error) {
-    const newSubscriptions = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
-    const mapped = newSubscriptions.map(subscription => ({
+    const newSubscriptions = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
+    const mapped = newSubscriptions.map((subscription) => ({
       ...subscription,
       total_videos: subscription.total_videos || 0,
-      total_extract: subscription.total_extract || 0
-    }));
+      total_extract: subscription.total_extract || 0,
+    }))
 
     if (currentPage.value === 1) {
-      // 首次页刷新：保留旧DOM，数据返回后整体替换
-      subscriptions.value = mapped;
+      subscriptions.value = mapped
     } else {
-      // 分页：追加且去重
-      const existingIds = new Set(subscriptions.value.map(s => s.id));
-      const deduped = mapped.filter(s => !existingIds.has(s.id));
-      subscriptions.value = [...subscriptions.value, ...deduped];
+      const existingIds = new Set(subscriptions.value.map((subscription) => subscription.id))
+      const deduped = mapped.filter((subscription) => !existingIds.has(subscription.id))
+      subscriptions.value = [...subscriptions.value, ...deduped]
     }
 
-    currentPage.value++;
+    currentPage.value++
     if (newSubscriptions.length < 20) {
-      allLoaded.value = true;
+      allLoaded.value = true
     }
 
     nextTick(() => {
       if (loadingTrigger.value && observer.value) {
-        observer.value.observe(loadingTrigger.value);
+        observer.value.observe(loadingTrigger.value)
       }
-      // 数据加载完成后恢复滚动位置
-      restoreScrollPosition();
-    });
+      restoreScrollPosition()
+    })
   } else {
-    loadError.value = error || '获取订阅列表失败';
+    loadError.value = error || '获取订阅列表失败'
   }
 
-  loading.value = false;
-};
+  loading.value = false
+}
 
+const MIN_SPIN_MS = 800
+const spinTimer = ref(null)
+const spinStartAt = ref(0)
 
-// 订阅页：键盘 R 刷新 + 页面切回自动刷新
-const MIN_SPIN_MS = 800;
-const spinTimer = ref(null);
-const spinStartAt = ref(0);
 const clearSpinTimer = () => {
   if (spinTimer.value) {
-    clearTimeout(spinTimer.value);
-    spinTimer.value = null;
+    clearTimeout(spinTimer.value)
+    spinTimer.value = null
   }
-};
+}
 
+useRefreshTriggers({ onRefresh: refreshList })
 
-useRefreshTriggers({ onRefresh: () => refreshList() });
-
-// 处理全局搜索事件
-
-const refreshList = async () => {
+async function refreshList() {
   if (observer.value && loadingTrigger.value) {
-    observer.value.unobserve(loadingTrigger.value);
+    observer.value.unobserve(loadingTrigger.value)
   }
-  clearSpinTimer();
-  isRefreshing.value = true;
-  isResetting.value = true;
-  loadError.value = null;
-  spinStartAt.value = Date.now();
-  currentPage.value = 1;
-  allLoaded.value = false;
+  clearSpinTimer()
+  isRefreshing.value = true
+  isResetting.value = true
+  loadError.value = null
+  currentPage.value = 1
+  allLoaded.value = false
+  spinStartAt.value = Date.now()
+
   try {
-    await loadSubscriptions();
+    await loadSubscriptions()
   } finally {
-    const elapsed = Date.now() - spinStartAt.value;
-    const remain = Math.max(0, MIN_SPIN_MS - elapsed);
-    clearSpinTimer();
+    const elapsed = Date.now() - spinStartAt.value
+    const remain = Math.max(0, MIN_SPIN_MS - elapsed)
+    clearSpinTimer()
     spinTimer.value = setTimeout(() => {
-      isRefreshing.value = false;
-      isResetting.value = false;
-      clearSpinTimer();
-    }, remain);
+      isRefreshing.value = false
+      isResetting.value = false
+      clearSpinTimer()
+    }, remain)
   }
-};
+}
 
 const handleGlobalSearch = (query) => {
   if (observer.value && loadingTrigger.value) {
-    observer.value.unobserve(loadingTrigger.value);
+    observer.value.unobserve(loadingTrigger.value)
   }
-  searchQuery.value = query;
-  subscriptions.value = [];
-  currentPage.value = 1;
-  allLoaded.value = false;
+  searchQuery.value = query
+  subscriptions.value = []
+  currentPage.value = 1
+  allLoaded.value = false
   loadSubscriptions().then(() => {
     nextTick(() => {
-      restoreScrollPosition();
-    });
-    isRefreshing.value = false;
-  });
-};
-
-// 监听筛选变化：重置并重新加载
-watch([nsfw, site], async () => {
-  if (observer.value && loadingTrigger.value) {
-    observer.value.unobserve(loadingTrigger.value);
-  }
-  subscriptions.value = [];
-  currentPage.value = 1;
-  allLoaded.value = false;
-  await loadSubscriptions();
-});
-
-const loadMore = () => {
-  loadSubscriptions();
-};
-
-// Removed tab interactions
-
-const openSettings = (subscription) => {
-  selectedSubscription.value = {...subscription};
-  // 向全局刷新中心补充元数据
-  try {
-    const { setSubscriptionMeta } = useSubscriptionRefresh();
-    setSubscriptionMeta(subscription.id, { name: subscription.name, avatar: subscription.avatar });
-  } catch (e) {}
-  showSettings.value = true;
-};
-
-const closeSettings = () => {
-  showSettings.value = false;
-  selectedSubscription.value = null;
-  unsubscribeError.value = '';
-};
-
-const unsubscribe = async (subscriptionId) => {
-  unsubscribeError.value = '';
-
-  const { error } = await apiUnsubscribe(subscriptionId);
-
-  if (!error) {
-    subscriptions.value = subscriptions.value.filter(subscription => subscription.id !== subscriptionId);
-    closeSettings();
-  } else {
-    unsubscribeError.value = error?.message || '取消订阅失败';
-  }
-};
-
-const getSubscriptionVideos = (subscriptionId) => {
-  router.push(`/subscription/${subscriptionId}/all`);
+      restoreScrollPosition()
+    })
+    isRefreshing.value = false
+  })
 }
 
+watch([nsfw, site], async () => {
+  if (observer.value && loadingTrigger.value) {
+    observer.value.unobserve(loadingTrigger.value)
+  }
+  subscriptions.value = []
+  currentPage.value = 1
+  allLoaded.value = false
+  await loadSubscriptions()
+})
 
+const loadMore = () => {
+  loadSubscriptions()
+}
 
-const handleChannelAdded = () => {
-  subscriptions.value = [];
-  currentPage.value = 1;
-  allLoaded.value = false;
-  loadSubscriptions();
-};
+const openSettings = (subscription) => {
+  selectedSubscription.value = { ...subscription }
+  setSubscriptionMeta(subscription.id, { name: subscription.name, avatar: subscription.avatar })
+  showSettings.value = true
+}
 
-const handleSubscriptionsImported = () => {
-  subscriptions.value = [];
-  currentPage.value = 1;
-  allLoaded.value = false;
-  loadSubscriptions();
-};
+const closeSettings = () => {
+  showSettings.value = false
+  selectedSubscription.value = null
+  unsubscribeError.value = ''
+}
 
-const updateNsfwStatus = async (isNsfw) => {
-  const { error } = await apiUpdateNsfwStatus(selectedSubscription.value.id, isNsfw);
+const handleSettingsOpenChange = (open) => {
+  if (!open) {
+    closeSettings()
+  }
+}
+
+const unsubscribe = async (subscriptionId) => {
+  unsubscribeError.value = ''
+
+  const { error } = await apiUnsubscribe(subscriptionId)
 
   if (!error) {
-    // 立即更新本地状态
-    const index = subscriptions.value.findIndex(s => s.id === selectedSubscription.value.id);
+    subscriptions.value = subscriptions.value.filter((subscription) => subscription.id !== subscriptionId)
+    closeSettings()
+  } else {
+    unsubscribeError.value = error?.message || '取消订阅失败'
+  }
+}
+
+const getSubscriptionVideos = (subscriptionId) => {
+  router.push(`/subscription/${subscriptionId}/all`)
+}
+
+const handleChannelAdded = () => {
+  subscriptions.value = []
+  currentPage.value = 1
+  allLoaded.value = false
+  loadSubscriptions()
+}
+
+const handleSubscriptionsImported = () => {
+  subscriptions.value = []
+  currentPage.value = 1
+  allLoaded.value = false
+  loadSubscriptions()
+}
+
+const updateNsfwStatus = async (isNsfw) => {
+  const { error } = await apiUpdateNsfwStatus(selectedSubscription.value.id, isNsfw)
+
+  if (!error) {
+    const index = subscriptions.value.findIndex((subscription) => subscription.id === selectedSubscription.value.id)
     if (index !== -1) {
-      subscriptions.value[index].is_nsfw = isNsfw;
+      subscriptions.value[index].is_nsfw = isNsfw
     }
   } else {
-    // 回滚UI状态
-    selectedSubscription.value.is_nsfw = !isNsfw;
+    selectedSubscription.value.is_nsfw = !isNsfw
   }
-};
+}
 
-// 处理手动更新订阅
 const handleRefreshSubscription = async (subscriptionId) => {
-  await triggerRefresh(subscriptionId);
-};
+  await triggerRefresh(subscriptionId)
+}
 
-// 处理重试更新
 const handleRetryRefresh = async (subscriptionId) => {
-  await retryRefresh(subscriptionId);
-};
+  await retryRefresh(subscriptionId)
+}
 
-// YouTube风格的状态文案
 const getYouTubeStyleStatusText = (status, phase) => {
-  if (status === 'queued') return '排队中';
+  if (status === 'queued') return '排队中'
   if (status === 'in_progress') {
     switch (phase) {
-      case 'init': return '准备中';
-      case 'fetching_feed': return '检查新内容';
-      case 'calculating_delta': return '分析更新';
-      case 'extracting': return '解析中';
-      case 'finalizing': return '即将完成';
-      default: return '更新中';
+      case 'init': return '准备中'
+      case 'fetching_feed': return '检查新内容'
+      case 'calculating_delta': return '分析更新'
+      case 'extracting': return '解析中'
+      case 'finalizing': return '即将完成'
+      default: return '更新中'
     }
   }
-  if (status === 'completed') return '已完成';
-  if (status === 'failed') return '更新失败';
-  return '更新中';
-};
-
-// 格式化时间为"X分钟前开始"
-const formatTimeAgo = (timeString) => {
-  if (!timeString) return '';
-  const now = new Date();
-  const time = new Date(timeString);
-  const diffInMinutes = Math.floor((now - time) / (1000 * 60));
-
-  if (diffInMinutes < 1) return '刚刚开始';
-  if (diffInMinutes < 60) return `${diffInMinutes}分钟前开始`;
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours}小时前开始`;
-  return `${Math.floor(diffInHours / 24)}天前开始`;
-};
+  if (status === 'completed') return '已完成'
+  if (status === 'failed') return '更新失败'
+  return '更新中'
+}
 
 onMounted(async () => {
   try {
-    const api = useSubscriptionRefresh();
-    await api.rehydrateFromServer();
-  } catch (e) {}
-  loadSubscriptions();
+    await useSubscriptionRefresh().rehydrateFromServer?.()
+  } catch (error) {}
+
+  loadSubscriptions()
   nextTick(() => {
-    setupIntersectionObserver();
-  });
+    setupIntersectionObserver()
+  })
 
-  // 监听全局搜索事件
-  emitter.on('search:subscribed', handleGlobalSearch);
+  emitter?.on?.('search:subscribed', handleGlobalSearch)
+})
 
-  // 键盘/可见性刷新改为 composable 统一管理
-});
-
-// 添加监听器以在内容变化时重新设置observer
 watch(subscriptions, () => {
   nextTick(() => {
     if (observer.value && loadingTrigger.value) {
-      observer.value.unobserve(loadingTrigger.value);
-      observer.value.observe(loadingTrigger.value);
+      observer.value.unobserve(loadingTrigger.value)
+      observer.value.observe(loadingTrigger.value)
     }
-  });
-}, { deep: true });
+  })
+}, { deep: true })
 
 onUnmounted(() => {
   if (observer.value) {
-    observer.value.disconnect();
+    observer.value.disconnect()
   }
 
-  // 移除全局搜索事件监听
-  emitter.off('search:subscribed', handleGlobalSearch);
-
-  // 清理订阅更新相关资源
-  cleanupRefresh();
-
-  // 键盘/可见性刷新由 composable 自动清理
-});
+  emitter?.off?.('search:subscribed', handleGlobalSearch)
+  cleanupRefresh()
+})
 </script>
 
 <style scoped>
 .subscribed-page {
-  height: 100vh;
+  min-height: 100%;
 }
 
 .toolbar-container,
 .content-container {
+  width: 100%;
   max-width: var(--container-max-width, 2560px);
   margin: 0 auto;
   padding: 0 1rem;
-  width: 100%;
 }
 
-@media (min-width: 640px) {
-  .toolbar-container,
-  .content-container {
-    padding: 0 1.5rem;
-  }
+.subscribed-shell {
+  position: relative;
+  padding-top: 0.4rem;
 }
 
-@media (min-width: 1024px) {
-  .toolbar-container,
-  .content-container {
-    padding: 0 2rem;
-  }
+.subscribed-shell__header {
+  padding-bottom: 0.55rem;
+}
+
+.subscribed-shell__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.subscribed-shell__title {
+  margin: 0;
+  font-size: clamp(1.4rem, 1.15rem + 0.55vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.subscribed-shell__count {
+  display: inline-flex;
+  min-height: 1.95rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.78rem;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--primary) / 0.16);
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--primary));
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .channel-container {
+  padding-top: 0.15rem;
+}
+
+.content-container--alert {
+  padding-bottom: 0.75rem;
+}
+
+.channel-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1rem;
 }
 
 .channel-item {
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  height: 100%;
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 1.5rem;
-  border: 1px solid hsl(var(--border) / 0.78);
+  min-height: 15rem;
+  border: 1px solid hsl(var(--border) / 0.76);
+  border-radius: calc(var(--radius-2xl) + 2px);
   background:
-    linear-gradient(180deg, hsl(var(--card)), color-mix(in srgb, hsl(var(--card)) 72%, hsl(var(--secondary))));
-  box-shadow: 0 16px 36px hsl(var(--surface-shadow));
+    radial-gradient(circle at top, hsl(var(--primary) / 0.08), transparent 42%),
+    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.94));
+  box-shadow: 0 20px 46px hsl(var(--surface-shadow) / 0.1);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
 .channel-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 24px 48px hsl(var(--surface-shadow));
+  transform: translateY(-4px);
+  border-color: hsl(var(--primary) / 0.22);
+  box-shadow: 0 28px 54px hsl(var(--surface-shadow) / 0.16);
 }
 
-.channel-item img {
-  transition: all 0.3s ease-in-out;
-  backface-visibility: hidden;
+.channel-item__topbar {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.8rem;
+  right: 0.8rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  z-index: 2;
 }
 
-.channel-item:hover img {
-  transform: scale(1.05);
-  box-shadow: 0 22px 30px hsl(var(--surface-shadow));
+.channel-item__status-badge {
+  background: hsl(var(--background) / 0.78);
+}
+
+.settings-toggle {
+  opacity: 0;
+  border-radius: 9999px;
+  background: hsl(var(--background) / 0.76);
+  backdrop-filter: blur(10px);
+  transition: opacity 0.18s ease, background-color 0.18s ease;
+}
+
+.group:hover .settings-toggle,
+.group:focus-within .settings-toggle {
+  opacity: 1;
 }
 
 .channel-item__media {
   position: relative;
   display: flex;
-  justify-content: center;
   align-items: center;
-  min-height: 8.5rem;
-  padding: 1.35rem 1rem 0.75rem;
-  background:
-    radial-gradient(circle at top, hsl(var(--primary) / 0.14), transparent 58%),
-    linear-gradient(180deg, hsl(var(--background) / 0.34), transparent);
+  justify-content: center;
+  min-height: 8.75rem;
+  padding: 1.5rem 1rem 0.7rem;
 }
 
 .channel-item__halo {
   position: absolute;
-  inset: 1.15rem 1rem auto;
-  height: 4.4rem;
+  inset: 1.15rem 1.1rem auto;
+  height: 4.7rem;
   border-radius: 1.4rem;
   background: linear-gradient(135deg, hsl(var(--primary) / 0.16), transparent 70%);
-  opacity: 0.8;
+  opacity: 0.92;
+}
+
+.channel-item__avatar-shell {
+  position: relative;
+  width: 4.8rem;
+  height: 4.8rem;
+}
+
+.channel-item__avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 1.4rem;
+  object-fit: cover;
+  border: 1px solid hsl(var(--border) / 0.7);
+  box-shadow: 0 18px 32px hsl(var(--surface-shadow) / 0.14);
+  transition: transform 0.22s ease;
+}
+
+.group:hover .channel-item__avatar {
+  transform: scale(1.04);
+}
+
+.avatar-sheen {
+  position: absolute;
+  inset: -0.32rem;
+  border-radius: 1.65rem;
+  background: linear-gradient(180deg, transparent, hsl(var(--primary) / 0.16));
+  pointer-events: none;
 }
 
 .channel-item__body {
-  flex: 1;
   display: grid;
+  flex: 1;
   gap: 1rem;
-  padding: 0.2rem 1rem 1rem;
+  padding: 0.1rem 1rem 1rem;
 }
 
 .channel-item__header {
@@ -666,30 +756,26 @@ onUnmounted(() => {
 }
 
 .channel-item__title {
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.96rem;
+  font-weight: 700;
   color: hsl(var(--foreground));
 }
 
 .channel-item__meta {
-  margin-top: 0.28rem;
+  margin: 0.28rem 0 0;
   font-size: 0.72rem;
   color: hsl(var(--muted-foreground));
 }
 
-.channel-item__badge {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  padding: 0.28rem 0.55rem;
-  border-radius: 9999px;
-  background: hsl(var(--info) / 0.12);
-  color: hsl(var(--info));
-  font-size: 0.67rem;
-  font-weight: 600;
+.channel-item__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
 }
 
 .channel-item__stats {
@@ -701,10 +787,10 @@ onUnmounted(() => {
 .channel-item__stat {
   display: grid;
   gap: 0.16rem;
-  padding: 0.7rem 0.78rem;
+  padding: 0.78rem 0.85rem;
+  border: 1px solid hsl(var(--border) / 0.72);
   border-radius: 1rem;
-  background: hsl(var(--background) / 0.58);
-  border: 1px solid hsl(var(--border) / 0.68);
+  background: hsl(var(--background) / 0.52);
 }
 
 .channel-item__stat-label {
@@ -713,19 +799,168 @@ onUnmounted(() => {
 }
 
 .channel-item__stat-value {
-  font-size: 0.92rem;
-  font-weight: 600;
+  font-size: 0.96rem;
+  font-weight: 700;
   color: hsl(var(--foreground));
 }
 
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.subscribed-empty-state,
+.subscribed-empty-card {
+  min-height: min(58vh, 32rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.channel-item .w-24 {
-  filter: drop-shadow(var(--shadow-drop-sm));
+.subscribed-empty-card {
+  flex-direction: column;
+  gap: 0.7rem;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: calc(var(--radius-3xl) - 2px);
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 34%),
+    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.94));
+  box-shadow: 0 24px 54px hsl(var(--surface-shadow) / 0.1);
+  text-align: center;
+  padding: 2rem 1.2rem;
+}
+
+.subscribed-empty-card__eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.subscribed-empty-card__title {
+  margin: 0;
+  font-size: clamp(1.15rem, 1rem + 0.3vw, 1.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.subscribed-empty-card__copy {
+  margin: 0;
+  max-width: 28rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.88rem;
+}
+
+.subscribed-empty-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.subscribed-loading-trigger {
+  min-height: 5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.subscribed-bottom-copy {
+  margin: 1rem 0 1.4rem;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.84rem;
+}
+
+.subscription-dialog__hero {
+  background:
+    radial-gradient(circle at top right, hsl(var(--primary) / 0.12), transparent 36%),
+    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.92));
+}
+
+.subscription-dialog__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+  padding: 0.9rem;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 1.1rem;
+  background: hsl(var(--card) / 0.82);
+}
+
+.subscription-dialog__avatar {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 1rem;
+  object-fit: cover;
+}
+
+.subscription-dialog__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 1rem;
+  background: hsl(var(--background) / 0.42);
+}
+
+.subscription-dialog__actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.channel-item.is-refreshing::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--overlay-light-06), transparent);
+  animation: shimmer 1.2s infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (min-width: 640px) {
+  .toolbar-container,
+  .content-container {
+    padding: 0 1.5rem;
+  }
+
+  .channel-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .toolbar-container,
+  .content-container {
+    padding: 0 2rem;
+  }
+
+  .channel-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1440px) {
+  .channel-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1840px) {
+  .channel-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
 
 @media (hover: none) {
@@ -733,23 +968,10 @@ onUnmounted(() => {
     opacity: 1;
   }
 }
-  /* 刷新图标旋转 */
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .spin-anim { animation: spin 0.8s linear infinite; }
 
-  /* 刷新蒙层，保留旧卡片 DOM，降低突变感 */
-  .channel-item.is-refreshing::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, var(--overlay-light-06), transparent);
-    animation: shimmer 1.2s infinite;
-    pointer-events: none;
-    border-radius: inherit;
+@media (max-width: 640px) {
+  .subscription-dialog__row {
+    align-items: flex-start;
   }
-  @keyframes shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
-
-  .avatar-sheen {
-    background: linear-gradient(180deg, transparent, hsl(var(--primary) / 0.2));
-  }
+}
 </style>

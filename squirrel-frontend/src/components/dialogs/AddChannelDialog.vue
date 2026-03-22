@@ -1,90 +1,109 @@
 <template>
-  <div v-if="show" class="fixed inset-0 bg-overlay z-50 flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-card border border-border rounded-2xl w-full max-w-lg mx-4 shadow-xl">
-      <!-- 标题栏 -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-border">
-        <h3 class="text-lg font-medium">添加订阅</h3>
-        <Button variant="ghost" size="icon" class="rounded-full" title="关闭" aria-label="关闭" @click="$emit('close')">
-          <XMarkIcon class="h-6 w-6" />
-        </Button>
+  <Dialog :open="show" @update:open="handleOpenChange">
+    <DialogContent class="max-w-xl gap-0 overflow-hidden p-0">
+      <div class="add-channel-dialog__hero">
+        <DialogHeader class="space-y-2 px-6 pb-4 pt-6">
+          <DialogTitle class="text-xl font-semibold tracking-[-0.03em]">添加订阅</DialogTitle>
+          <DialogDescription class="leading-6">
+            输入频道、空间、播放列表或收藏夹地址，系统会自动识别并建立订阅。
+          </DialogDescription>
+        </DialogHeader>
       </div>
 
-      <!-- 表单内容 -->
-      <div class="p-6">
-        <div class="space-y-4">
-          <!-- URL输入 -->
-          <div>
-            <label class="block text-sm font-medium text-muted-foreground mb-1">订阅地址</label>
-            <input 
-              v-model="channelUrl"
-              type="url"
-              placeholder="支持频道地址或播放列表地址"
-              class="w-full px-3 py-2 bg-muted rounded border border-border focus:border-ring focus:ring-2 focus:ring-ring focus:outline-none text-foreground text-sm"
-              :disabled="loading"
-            >
-            <p class="mt-2 text-xs text-muted-foreground">
-              支持：YouTube频道/播放列表、Bilibili用户空间/合集/收藏夹
-            </p>
-          </div>
-
-          <!-- 错误提示 -->
-          <p v-if="error" class="text-destructive text-sm">{{ error }}</p>
+      <div class="space-y-5 px-6 py-5">
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-foreground" for="add-channel-url">订阅地址</label>
+          <Input
+            id="add-channel-url"
+            v-model="channelUrl"
+            type="url"
+            placeholder="支持频道地址或播放列表地址"
+            :disabled="loading"
+          />
+          <p class="text-xs leading-5 text-muted-foreground">
+            支持：YouTube 频道/播放列表、Bilibili 用户空间/合集/收藏夹。
+          </p>
         </div>
+
+        <Alert v-if="error" variant="destructive">
+          <AlertDescription>{{ error }}</AlertDescription>
+        </Alert>
       </div>
 
-      <!-- 操作按钮 -->
-      <div class="px-6 py-4 border-t border-border flex justify-end space-x-4">
-        <Button size="sm" variant="ghost" :disabled="loading" @click="$emit('close')">取消</Button>
-        <Button size="sm" variant="destructive" :disabled="!channelUrl || loading" @click="handleSubmit">
+      <DialogFooter class="border-t border-border/70 bg-secondary/28 px-6 py-4 sm:justify-end">
+        <Button size="sm" variant="ghost" :disabled="loading" @click="emit('close')">取消</Button>
+        <Button size="sm" :disabled="!channelUrl || loading" @click="handleSubmit">
           <Loader2 v-if="loading" class="h-4 w-4 animate-spin" />
           确认添加
         </Button>
-      </div>
-    </div>
-  </div>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
-import { XMarkIcon } from '@heroicons/vue/24/outline';
+import { ref, watch } from 'vue'
 import { Loader2 } from 'lucide-vue-next'
 import { subscribe } from '@/api'
-import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 const props = defineProps({
-  show: Boolean
-});
+  show: Boolean,
+})
 
-const emit = defineEmits(['close', 'added']);
+const emit = defineEmits(['close', 'added'])
 
-const channelUrl = ref('');
-const loading = ref(false);
-const error = ref('');
+const channelUrl = ref('')
+const loading = ref(false)
+const error = ref('')
 
-// 监听 show 属性的变化，当对话框关闭时重置表单
-watch(() => props.show, (newVal) => {
-  if (!newVal) {
-    channelUrl.value = '';
-    error.value = '';
+watch(() => props.show, (visible) => {
+  if (!visible) {
+    channelUrl.value = ''
+    error.value = ''
   }
-});
+})
+
+const handleOpenChange = (open) => {
+  if (!open) {
+    emit('close')
+  }
+}
 
 const handleSubmit = async () => {
-  if (!channelUrl.value) return;
-  
-  loading.value = true;
-  error.value = '';
-  
+  if (!channelUrl.value) return
+
+  loading.value = true
+  error.value = ''
+
   const result = await subscribe(channelUrl.value)
 
   if (!result.error) {
-    emit('added');
-    emit('close');
+    emit('added')
+    emit('close')
     loading.value = false
     return
   }
 
   error.value = result.error?.message || '添加频道失败，请检查地址是否正确'
   loading.value = false
-};
-</script> 
+}
+</script>
+
+<style scoped>
+.add-channel-dialog__hero {
+  background:
+    radial-gradient(circle at top right, hsl(var(--primary) / 0.12), transparent 36%),
+    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.92));
+}
+</style>
