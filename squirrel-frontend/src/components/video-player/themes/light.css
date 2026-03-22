@@ -6,14 +6,14 @@
 .sp-player[data-sp-theme="light"] {
   
   /* 背景 */
-  --sp-bg: rgba(248, 243, 236, 0.96);
-  --sp-bg-elevated: rgba(252, 248, 242, 0.98);
-  --sp-bg-overlay: rgba(247, 240, 231, 0.82);
-  --sp-surface: rgba(252, 247, 241, 0.9);
-  --sp-overlay-soft: rgba(24, 31, 40, 0.08);
-  --sp-overlay-weak: rgba(24, 31, 40, 0.14);
-  --sp-overlay: rgba(24, 31, 40, 0.24);
-  --sp-overlay-strong: rgba(24, 31, 40, 0.38);
+  --sp-bg: rgba(248, 242, 234, 0.96);
+  --sp-bg-elevated: rgba(252, 247, 240, 0.98);
+  --sp-bg-overlay: rgba(246, 239, 230, 0.84);
+  --sp-surface: rgba(252, 246, 239, 0.92);
+  --sp-overlay-soft: rgba(29, 33, 40, 0.09);
+  --sp-overlay-weak: rgba(29, 33, 40, 0.15);
+  --sp-overlay: rgba(29, 33, 40, 0.26);
+  --sp-overlay-strong: rgba(29, 33, 40, 0.4);
   --sp-bg-hover: rgba(24, 31, 40, 0.05);
   --sp-bg-active: rgba(24, 31, 40, 0.1);
   
@@ -32,9 +32,9 @@
   /* 控制栏 */
   --sp-controls-bg: linear-gradient(
     to top,
-    rgba(248, 243, 236, 0.9) 0%,
-    rgba(248, 243, 236, 0.72) 50%,
-    rgba(248, 243, 236, 0.42) 75%,
+    rgba(248, 242, 234, 0.94) 0%,
+    rgba(248, 242, 234, 0.78) 48%,
+    rgba(248, 242, 234, 0.44) 76%,
     transparent 100%
   );
   
@@ -43,15 +43,15 @@
   --sp-progress-buffered: rgba(28, 37, 46, 0.24);
   
   /* 菜单 */
-  --sp-menu-bg: rgba(252, 248, 242, 0.98);
-  --sp-menu-border: rgba(28, 37, 46, 0.08);
-  --sp-menu-shadow: 0 18px 40px rgba(28, 37, 46, 0.16);
+  --sp-menu-bg: rgba(252, 247, 240, 0.98);
+  --sp-menu-border: rgba(28, 37, 46, 0.1);
+  --sp-menu-shadow: 0 20px 44px rgba(28, 37, 46, 0.16);
   --sp-btn-toggled-bg: rgba(28, 37, 46, 0.12);
   --sp-switch-bg: rgba(28, 37, 46, 0.18);
   --sp-switch-thumb: rgba(252, 248, 242, 0.95);
   
   /* 提示 */
-  --sp-tooltip-bg: rgba(24, 31, 40, 0.94);
+  --sp-tooltip-bg: rgba(29, 33, 40, 0.95);
   
   /* 字幕 */
   --sp-subtitle-color: #f7f1ea;
@@ -68,6 +68,6 @@
   
   /* 阴影 */
   --sp-shadow-sm: 0 1px 3px rgba(28, 37, 46, 0.12);
-  --sp-shadow-md: 0 4px 12px rgba(28, 37, 46, 0.16);
-  --sp-shadow-lg: 0 8px 24px rgba(28, 37, 46, 0.2);
+  --sp-shadow-md: 0 8px 18px rgba(28, 37, 46, 0.16);
+  --sp-shadow-lg: 0 14px 30px rgba(28, 37, 46, 0.2);
 }

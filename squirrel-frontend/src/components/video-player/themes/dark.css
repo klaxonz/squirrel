@@ -6,14 +6,14 @@
 .sp-player[data-sp-theme="dark"] {
   
   /* 背景 */
-  --sp-bg: rgba(13, 17, 22, 0.92);
-  --sp-bg-elevated: rgba(22, 28, 36, 0.96);
-  --sp-bg-overlay: rgba(12, 16, 21, 0.64);
-  --sp-surface: rgba(21, 27, 34, 0.8);
-  --sp-overlay-soft: rgba(10, 13, 18, 0.44);
-  --sp-overlay-weak: rgba(10, 13, 18, 0.58);
-  --sp-overlay: rgba(10, 13, 18, 0.74);
-  --sp-overlay-strong: rgba(9, 12, 16, 0.84);
+  --sp-bg: rgba(16, 19, 24, 0.92);
+  --sp-bg-elevated: rgba(24, 29, 36, 0.96);
+  --sp-bg-overlay: rgba(13, 16, 21, 0.68);
+  --sp-surface: rgba(25, 29, 36, 0.82);
+  --sp-overlay-soft: rgba(11, 13, 18, 0.46);
+  --sp-overlay-weak: rgba(11, 13, 18, 0.6);
+  --sp-overlay: rgba(11, 13, 18, 0.76);
+  --sp-overlay-strong: rgba(9, 11, 16, 0.86);
   --sp-bg-hover: rgba(244, 239, 231, 0.08);
   --sp-bg-active: rgba(244, 239, 231, 0.14);
   
@@ -32,8 +32,8 @@
   /* 控制栏 */
   --sp-controls-bg: linear-gradient(
     to top,
-    rgba(8, 11, 16, 0.82) 0%,
-    rgba(8, 11, 16, 0.42) 45%,
+    rgba(10, 12, 16, 0.9) 0%,
+    rgba(10, 12, 16, 0.54) 42%,
     rgba(8, 11, 16, 0) 100%
   );
   
@@ -42,15 +42,15 @@
   --sp-progress-buffered: rgba(244, 239, 231, 0.34);
   
   /* 菜单 */
-  --sp-menu-bg: rgba(20, 26, 33, 0.9);
-  --sp-menu-border: rgba(244, 239, 231, 0.08);
-  --sp-menu-shadow: 0 18px 40px rgba(4, 8, 12, 0.52);
+  --sp-menu-bg: rgba(26, 30, 37, 0.94);
+  --sp-menu-border: rgba(244, 239, 231, 0.1);
+  --sp-menu-shadow: 0 22px 46px rgba(4, 8, 12, 0.54);
   --sp-btn-toggled-bg: rgba(244, 239, 231, 0.14);
   --sp-switch-bg: rgba(244, 239, 231, 0.2);
   --sp-switch-thumb: rgba(248, 244, 238, 0.96);
   
   /* 提示 */
-  --sp-tooltip-bg: rgba(22, 28, 36, 0.96);
+  --sp-tooltip-bg: rgba(24, 28, 34, 0.96);
   
   /* 字幕 */
   --sp-subtitle-color: #f7f1ea;
@@ -67,6 +67,6 @@
   
   /* 阴影 */
   --sp-shadow-sm: 0 1px 2px rgba(6, 9, 12, 0.28);
-  --sp-shadow-md: 0 4px 12px rgba(6, 9, 12, 0.36);
-  --sp-shadow-lg: 0 8px 24px rgba(6, 9, 12, 0.46);
+  --sp-shadow-md: 0 8px 18px rgba(6, 9, 12, 0.36);
+  --sp-shadow-lg: 0 14px 32px rgba(6, 9, 12, 0.46);
 }

@@ -118,15 +118,11 @@
                     <h3 class="setting-title">显示敏感内容</h3>
                     <p class="setting-desc">显示可能包含成人内容的媒体</p>
                   </div>
-                  <label class="switch">
-                    <input
-                      type="checkbox"
-                      v-model="settings.showNsfw"
-                      :disabled="userSaving"
-                      @change="onUserSettingChange"
-                    >
-                    <span class="slider"></span>
-                  </label>
+                  <Switch
+                    :checked="!!settings.showNsfw"
+                    :disabled="userSaving"
+                    @update:checked="(value: boolean) => { settings.showNsfw = !!value; onUserSettingChange() }"
+                  />
                 </div>
 
                 <div class="setting-row">
@@ -134,15 +130,11 @@
                     <h3 class="setting-title">NSFW 视频封面模糊</h3>
                     <p class="setting-desc">自动模糊显示标记为 NSFW 的视频封面</p>
                   </div>
-                  <label class="switch">
-                    <input
-                      type="checkbox"
-                      :checked="Boolean(systemConfig?.blur_nsfw_thumbnails)"
-                      :disabled="systemLoading || systemSaving"
-                      @change="onSystemToggle('blur_nsfw_thumbnails', readCheckbox($event))"
-                    >
-                    <span class="slider"></span>
-                  </label>
+                  <Switch
+                    :checked="Boolean(systemConfig?.blur_nsfw_thumbnails)"
+                    :disabled="systemLoading || systemSaving"
+                    @update:checked="(value: boolean) => onSystemToggle('blur_nsfw_thumbnails', !!value)"
+                  />
                 </div>
               </div>
             </Card>
@@ -164,15 +156,11 @@
                     <h3 class="setting-title">自动播放</h3>
                     <p class="setting-desc">打开视频页面时自动开始播放</p>
                   </div>
-                  <label class="switch">
-                    <input
-                      type="checkbox"
-                      v-model="settings.autoplay"
-                      :disabled="userSaving"
-                      @change="onUserSettingChange"
-                    >
-                    <span class="slider"></span>
-                  </label>
+                  <Switch
+                    :checked="!!settings.autoplay"
+                    :disabled="userSaving"
+                    @update:checked="(value: boolean) => { settings.autoplay = !!value; onUserSettingChange() }"
+                  />
                 </div>
 
                 <div class="setting-row">
@@ -180,15 +168,11 @@
                     <h3 class="setting-title">自动播放下一个</h3>
                     <p class="setting-desc">当前视频播放完毕后自动播放下一个视频</p>
                   </div>
-                  <label class="switch">
-                    <input
-                      type="checkbox"
-                      v-model="settings.autoplayNext"
-                      :disabled="userSaving"
-                      @change="onUserSettingChange"
-                    >
-                    <span class="slider"></span>
-                  </label>
+                  <Switch
+                    :checked="!!settings.autoplayNext"
+                    :disabled="userSaving"
+                    @update:checked="(value: boolean) => { settings.autoplayNext = !!value; onUserSettingChange() }"
+                  />
                 </div>
 
                 <div class="setting-row">
@@ -196,15 +180,11 @@
                     <h3 class="setting-title">循环播放</h3>
                     <p class="setting-desc">视频播放完毕后自动重新播放</p>
                   </div>
-                  <label class="switch">
-                    <input
-                      type="checkbox"
-                      v-model="settings.loop"
-                      :disabled="userSaving"
-                      @change="onUserSettingChange"
-                    >
-                    <span class="slider"></span>
-                  </label>
+                  <Switch
+                    :checked="!!settings.loop"
+                    :disabled="userSaving"
+                    @update:checked="(value: boolean) => { settings.loop = !!value; onUserSettingChange() }"
+                  />
                 </div>
               </div>
             </Card>
@@ -226,15 +206,11 @@
                     <h3 class="setting-title">启用调度器（Scheduler）</h3>
                     <p class="setting-desc">按计划任务周期性执行订阅同步、重试等任务</p>
                   </div>
-                  <label class="switch">
-                    <input
-                      type="checkbox"
-                      :checked="Boolean(systemConfig?.enable_scheduler)"
-                      :disabled="systemLoading || systemSaving"
-                      @change="onSystemToggle('enable_scheduler', readCheckbox($event))"
-                    >
-                    <span class="slider"></span>
-                  </label>
+                  <Switch
+                    :checked="Boolean(systemConfig?.enable_scheduler)"
+                    :disabled="systemLoading || systemSaving"
+                    @update:checked="(value: boolean) => onSystemToggle('enable_scheduler', !!value)"
+                  />
                 </div>
 
                 <div class="setting-row">
@@ -242,15 +218,11 @@
                     <h3 class="setting-title">启用 Worker（队列消费）</h3>
                     <p class="setting-desc">开启后启动 Dramatiq Worker 进行队列消费</p>
                   </div>
-                  <label class="switch">
-                    <input
-                      type="checkbox"
-                      :checked="Boolean(systemConfig?.enable_worker)"
-                      :disabled="systemLoading || systemSaving"
-                      @change="onSystemToggle('enable_worker', readCheckbox($event))"
-                    >
-                    <span class="slider"></span>
-                  </label>
+                  <Switch
+                    :checked="Boolean(systemConfig?.enable_worker)"
+                    :disabled="systemLoading || systemSaving"
+                    @update:checked="(value: boolean) => onSystemToggle('enable_worker', !!value)"
+                  />
                 </div>
               </div>
             </Card>
@@ -269,6 +241,7 @@ import { useUserSettings } from '../composables/useUserSettings';
 import { useAppTheme } from '@/composables/useAppTheme'
 import SiteConfigSection from '@/components/settings/SiteConfigSection.vue';
 import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch'
 import { Logger } from '@/utils/logger'
 import type { AppThemeMode } from '@/lib/theme'
 
@@ -348,10 +321,6 @@ const allowScroll = computed(() => currentTab.value === 'sites');
 
 const isCurrentTab = (tab: SettingsTabKey) => currentTab.value === tab
 
-const readCheckbox = (event: Event) => {
-  return (event.target as HTMLInputElement | null)?.checked ?? false
-}
-
 onMounted(async () => {
   // 加载用户设置
   await loadUserSettings();
@@ -385,11 +354,12 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 .settings-hero {
-  @apply px-1 sm:px-2;
+  @apply rounded-[calc(var(--radius-2xl)+4px)] border border-border/70 px-4 py-5 shadow-[0_22px_50px_hsl(var(--surface-shadow))] sm:px-5;
+  background: linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--secondary) / 0.46));
 }
 
 .settings-nav {
-  @apply shadow-sm;
+  @apply shadow-[0_20px_48px_hsl(var(--surface-shadow))];
 }
 
 .toolbar-container,
@@ -430,12 +400,12 @@ const onSystemToggle = async (key: string, val: boolean) => {
   overflow: hidden;
   background-color: hsl(var(--card));
   background-color: color-mix(in srgb, hsl(var(--card)) 60%, hsl(var(--background)));
-  @apply shadow-sm;
+  @apply shadow-[0_22px_48px_hsl(var(--surface-shadow))];
 }
 
 
 .settings-card-header {
-  @apply flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between px-6 py-4 border-b border-border bg-muted;
+  @apply flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between px-6 py-4 border-b border-border bg-secondary/45;
 }
 
 .settings-card-body {
@@ -547,7 +517,7 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 .setting-row {
-  @apply -mx-6 px-6 flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between transition-colors hover:bg-accent;
+  @apply -mx-6 px-6 flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between transition-colors hover:bg-accent/45;
 }
 
 .setting-text {
@@ -562,53 +532,4 @@ const onSystemToggle = async (key: string, val: boolean) => {
   @apply text-xs text-muted-foreground;
 }
 
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 24px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: hsl(var(--muted));
-  transition: .4s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 20px;
-  width: 20px;
-  left: 2px;
-  bottom: 2px;
-  background-color: hsl(var(--foreground));
-  transition: .4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: hsl(var(--destructive));
-}
-
-input:checked + .slider:before {
-  transform: translateX(24px);
-}
-
-input:disabled + .slider {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 </style>
