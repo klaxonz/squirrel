@@ -164,4 +164,7 @@
 
 ### 子 Agent 输出契约（Output Contract）
 - Role / Conclusion / Evidence / Next steps / Risks / Changes(if any) / Verify
+
+### 心跳/进度汇报（避免主线程抓瞎）
+- 如果子 Agent 预计任务 > 90 秒，必须时间分片：先做 90 秒内能完成的一步，然后返回一个 Checkpoint，等待主 Agent 回复 CONTINUE 再继续。
 <!-- CODEX_MULTI_AGENT_END -->
