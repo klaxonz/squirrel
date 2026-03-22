@@ -18,61 +18,69 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-2 xl:grid-cols-2 2xl:grid-cols-5">
-          <Select :model-value="filters.status" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value ?? '') })">
-            <SelectTrigger class="h-8 text-xs">
-              <SelectValue placeholder="全部状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="option in statusOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="w-full sm:w-[10rem]">
+            <Select :model-value="filters.status" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value ?? '') })">
+              <SelectTrigger class="h-8 text-xs">
+                <SelectValue placeholder="全部状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="option in statusOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select :model-value="filters.site" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value ?? '') })">
-            <SelectTrigger class="h-8 text-xs">
-              <SelectValue placeholder="全部站点" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="option in siteOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div class="w-full sm:w-[10rem]">
+            <Select :model-value="filters.site" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value ?? '') })">
+              <SelectTrigger class="h-8 text-xs">
+                <SelectValue placeholder="全部站点" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="option in siteOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
+          <div class="w-full sm:w-[14rem]">
+            <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
+          </div>
 
-          <Select :model-value="filters.mode" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value ?? '') })">
-            <SelectTrigger class="h-8 text-xs">
-              <SelectValue placeholder="全部模式" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="option in modeOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div class="w-full sm:w-[9rem]">
+            <Select :model-value="filters.mode" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value ?? '') })">
+              <SelectTrigger class="h-8 text-xs">
+                <SelectValue placeholder="全部模式" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="option in modeOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select :model-value="filters.trigger" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value ?? '') })">
-            <SelectTrigger class="h-8 text-xs">
-              <SelectValue placeholder="全部触发" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="option in triggerOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          <div class="w-full sm:w-[9rem]">
+            <Select :model-value="filters.trigger" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value ?? '') })">
+              <SelectTrigger class="h-8 text-xs">
+                <SelectValue placeholder="全部触发" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="option in triggerOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div class="grid grid-cols-1 gap-2 xl:grid-cols-2">
-          <div class="xl:col-span-2">
+          <div class="w-full sm:min-w-[14rem] sm:flex-1">
             <Popover>
               <PopoverTrigger as-child>
                 <Button
                   variant="outline"
-                  class="h-9 w-full justify-start rounded-lg bg-background px-3 text-left text-xs font-normal"
+                  class="h-8 w-full justify-start rounded-lg bg-background px-3 text-left text-xs font-normal"
                 >
                   <CalendarIcon class="mr-2 h-4 w-4 text-muted-foreground" />
                   <span v-if="dateRangeLabel">{{ dateRangeLabel }}</span>
@@ -107,53 +115,64 @@
           </span>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 lg:grid-cols-7">
-          <Select :model-value="filters.status" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value ?? '') })">
-            <SelectTrigger class="h-9 text-xs">
-              <SelectValue placeholder="全部状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="option in statusOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="w-full sm:w-[11rem]">
+            <Select :model-value="filters.status" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value ?? '') })">
+              <SelectTrigger class="h-9 text-xs">
+                <SelectValue placeholder="全部状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="option in statusOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select :model-value="filters.site" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value ?? '') })">
-            <SelectTrigger class="h-9 text-xs">
-              <SelectValue placeholder="全部站点" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="option in siteOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div class="w-full sm:w-[11rem]">
+            <Select :model-value="filters.site" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value ?? '') })">
+              <SelectTrigger class="h-9 text-xs">
+                <SelectValue placeholder="全部站点" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="option in siteOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
+          <div class="w-full sm:w-[18rem]">
+            <SyncSubscriptionSelect :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
+          </div>
 
-          <Select :model-value="filters.mode" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value ?? '') })">
-            <SelectTrigger class="h-9 text-xs">
-              <SelectValue placeholder="全部模式" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="option in modeOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div class="w-full sm:w-[10rem]">
+            <Select :model-value="filters.mode" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value ?? '') })">
+              <SelectTrigger class="h-9 text-xs">
+                <SelectValue placeholder="全部模式" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="option in modeOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select :model-value="filters.trigger" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value ?? '') })">
-            <SelectTrigger class="h-9 text-xs">
-              <SelectValue placeholder="全部触发" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="option in triggerOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <div class="lg:col-span-2">
+          <div class="w-full sm:w-[10rem]">
+            <Select :model-value="filters.trigger" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value ?? '') })">
+              <SelectTrigger class="h-9 text-xs">
+                <SelectValue placeholder="全部触发" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="option in triggerOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="w-full sm:min-w-[18rem] sm:flex-1">
             <Popover>
               <PopoverTrigger as-child>
                 <Button
