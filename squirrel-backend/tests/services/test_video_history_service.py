@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import sys
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -13,6 +13,7 @@ from models.links import SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
 from models.video import Video
 from models.video_history import VideoHistory
+from schemas.video_history import HistoryCreate
 from services import video_history_service
 
 
@@ -31,19 +32,23 @@ def _managed_session(engine):
 
 def _seed_history(engine, histories):
     with Session(engine, expire_on_commit=False) as session:
+        seen_video_ids = set()
         for item in histories:
-            video = Video(
-                id=item['video_id'],
-                title=item.get('title', f"Video {item['video_id']}"),
-                url=item.get('url', f"https://{item['domain']}/watch/{item['video_id']}"),
-                domain=item['domain'],
-                duration=item.get('duration', 120),
-                thumbnail=item.get('thumbnail', f"https://img.example.com/{item['video_id']}.jpg"),
-                publish_date=item.get('publish_date', datetime(2024, 1, 1)),
-                created_at=item.get('video_created_at', datetime(2024, 1, 1)),
-                updated_at=item.get('video_updated_at', datetime(2024, 1, 1)),
-                is_deleted=False,
-            )
+            if item['video_id'] not in seen_video_ids:
+                seen_video_ids.add(item['video_id'])
+                video = Video(
+                    id=item['video_id'],
+                    title=item.get('title', f"Video {item['video_id']}"),
+                    url=item.get('url', f"https://{item['domain']}/watch/{item['video_id']}"),
+                    domain=item['domain'],
+                    duration=item.get('duration', 120),
+                    thumbnail=item.get('thumbnail', f"https://img.example.com/{item['video_id']}.jpg"),
+                    publish_date=item.get('publish_date', datetime(2024, 1, 1)),
+                    created_at=item.get('video_created_at', datetime(2024, 1, 1)),
+                    updated_at=item.get('video_updated_at', datetime(2024, 1, 1)),
+                    is_deleted=False,
+                )
+                session.add(video)
             history = VideoHistory(
                 user_id=item.get('user_id', 1),
                 video_id=item['video_id'],
@@ -55,7 +60,6 @@ def _seed_history(engine, histories):
                 created_at=item.get('history_created_at', item['end_time']),
                 updated_at=item.get('history_updated_at', item['end_time']),
             )
-            session.add(video)
             session.add(history)
 
         session.commit()
@@ -73,6 +77,8 @@ def _setup_test_env(monkeypatch):
             UserSubscription.__table__,
         ],
     )
+    with engine.begin() as connection:
+        connection.execute(text('DROP INDEX ux_video_history_user_video'))
 
     monkeypatch.setattr(video_history_service, 'get_session', lambda: _managed_session(engine))
     monkeypatch.setattr(
@@ -130,3 +136,43 @@ def test_list_histories_applies_site_filter_before_pagination(monkeypatch):
 
     assert result['total'] == 1
     assert [item['id'] for item in result['items']] == [2]
+
+
+def test_list_histories_deduplicates_same_video_id(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_history(
+        engine,
+        [
+            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 3, 12, 0, 0), 'last_position': 30},
+            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0), 'last_position': 10},
+            {'video_id': 2, 'domain': 'beta.example.com', 'end_time': datetime(2024, 1, 1, 12, 0, 0), 'last_position': 20},
+        ],
+    )
+
+    result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=10)
+
+    assert result['total'] == 2
+    assert [item['id'] for item in result['items']] == [1, 2]
+    assert result['items'][0]['last_position'] == 30
+
+
+def test_update_history_merges_duplicate_rows_for_same_video(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_history(
+        engine,
+        [
+            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 3, 12, 0, 0), 'last_position': 30},
+            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0), 'last_position': 10},
+        ],
+    )
+
+    video_history_service.update_history(
+        user_id=1,
+        data=HistoryCreate(video_id=1, last_position=88),
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        histories = session.query(VideoHistory).filter_by(user_id=1, video_id=1).order_by(VideoHistory.id.asc()).all()
+
+    assert len(histories) == 1
+    assert histories[0].last_position == 88

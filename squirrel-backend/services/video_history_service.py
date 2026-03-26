@@ -16,17 +16,24 @@ from core.extraction.services.thumbnail_downloader import thumbnail_downloader_s
 
 def update_history(user_id: int, data: HistoryCreate):
     with get_session() as session:
-        history = session.scalars(
+        histories = session.scalars(
             select(VideoHistory).where(
                 VideoHistory.user_id == user_id,
                 VideoHistory.video_id == data.video_id
             )
-        ).first()
+            .order_by(VideoHistory.end_time.desc(), VideoHistory.id.desc())
+        ).all()
 
-        if history:
+        if histories:
+            history = histories[0]
             history.watch_duration += 0
             history.last_position = data.last_position
             history.end_time = func.now()
+            duplicate_ids = [item.id for item in histories[1:]]
+            if duplicate_ids:
+                session.execute(
+                    delete(VideoHistory).where(VideoHistory.id.in_(duplicate_ids))
+                )
         else:
             history = VideoHistory(
                 user_id=user_id,
@@ -111,14 +118,36 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                 )
             )
 
+        ranked_histories = (
+            select(
+                VideoHistory.id.label('id'),
+                VideoHistory.end_time.label('end_time'),
+                func.row_number().over(
+                    partition_by=VideoHistory.video_id,
+                    order_by=(VideoHistory.end_time.desc(), VideoHistory.id.desc())
+                ).label('row_num')
+            )
+            .where(*conditions)
+            .subquery()
+        )
+
+        latest_history_ids = (
+            select(
+                ranked_histories.c.id,
+                ranked_histories.c.end_time
+            )
+            .where(ranked_histories.c.row_num == 1)
+            .subquery()
+        )
+
         total = session.scalar(
-            select(func.count(VideoHistory.id)).where(*conditions)
+            select(func.count()).select_from(latest_history_ids)
         )
 
         histories = session.scalars(
             select(VideoHistory)
-            .where(*conditions)
-            .order_by(VideoHistory.end_time.desc())
+            .join(latest_history_ids, latest_history_ids.c.id == VideoHistory.id)
+            .order_by(latest_history_ids.c.end_time.desc(), VideoHistory.id.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         ).all()

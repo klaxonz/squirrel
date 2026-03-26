@@ -16,7 +16,7 @@ class VideoHistory(Base, SerializerMixin):
     __tablename__ = "video_history"
 
     __table_args__ = (
-        Index('ix_video_history_user_video', 'user_id', 'video_id'),
+        Index('ux_video_history_user_video', 'user_id', 'video_id', unique=True),
         Index('ix_video_history_video_id', 'video_id'),
         Index('ix_video_history_user_end_time', 'user_id', 'end_time')
     )
