@@ -148,7 +148,7 @@ const mobileRoutes = MOBILE_NAV_ITEMS
 
 const showShellHeader = computed(() => !isAuthPage.value)
 const showGlobalSearch = computed(() => !isAuthPage.value && !!route.meta?.showSearch)
-const isCenteredSearchPage = computed(() => ['home', 'subscribed'].includes(String(route.meta?.search || '')))
+const isCenteredSearchPage = computed(() => ['home', 'subscribed', 'history'].includes(String(route.meta?.search || '')))
 const showTopbarCopy = computed(() => !isCenteredSearchPage.value)
 const isScrollablePage = computed(() => !!route.meta?.scrollable)
 
