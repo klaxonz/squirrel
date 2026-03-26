@@ -991,7 +991,7 @@ onUnmounted(() => {
 
 .video-meta__title {
   width: 100%;
-  font-size: clamp(1.05rem, 0.98rem + 0.38vw, 1.3rem);
+  font-size: clamp(0.96rem, 0.9rem + 0.28vw, 1.16rem);
   font-weight: 600;
   letter-spacing: -0.03em;
   line-height: 1.4;
