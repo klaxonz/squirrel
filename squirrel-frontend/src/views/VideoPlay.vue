@@ -206,10 +206,8 @@
         <div>
           <div class="video-aside__panel">
             <div class="video-aside__header">
-              <p class="video-aside__eyebrow">Up Next</p>
               <div class="video-aside__title-row">
                 <h2 class="video-aside__title">相关视频</h2>
-                <span v-if="relatedVideos.length" class="video-aside__count">{{ relatedVideos.length }}</span>
               </div>
             </div>
             <div>
@@ -742,6 +740,7 @@ onUnmounted(() => {
   .video-page__container {
     flex-direction: row;
     align-items: flex-start;
+    gap: 2rem;
     --video-main-offset: 16px;
   }
 }
@@ -798,13 +797,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  padding: 0.9rem;
-  border: 1px solid hsl(var(--border) / 0.75);
-  border-radius: calc(var(--radius-2xl) + 2px);
-  background:
-    radial-gradient(circle at top, hsl(var(--primary) / 0.08), transparent 58%),
-    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--secondary) / 0.52));
-  box-shadow: 0 22px 48px hsl(var(--surface-shadow));
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .video-aside__header {
@@ -884,7 +881,7 @@ onUnmounted(() => {
   }
 
   .video-aside__panel {
-    padding: 1rem;
+    padding: 0;
   }
 
   .related-videos-list {
@@ -919,12 +916,12 @@ onUnmounted(() => {
 .video-section {
   position: relative;
   width: 100%;
-  background: hsl(var(--card));
   margin: 0 auto;
-  border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: calc(var(--radius-2xl) + 2px);
+  background: transparent;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
-  box-shadow: 0 24px 54px hsl(var(--surface-shadow));
+  box-shadow: none;
 }
 
 
@@ -940,7 +937,22 @@ onUnmounted(() => {
   width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: #000;
+  background: transparent;
+  border-radius: 0;
+}
+
+.video-container :deep(.sp-player) {
+  background: hsl(var(--background));
+  --sp-controls-bg: linear-gradient(
+    to top,
+    hsl(var(--background)) 0%,
+    hsl(var(--background)) 32%,
+    hsl(var(--background) / 0.9) 56%,
+    hsl(var(--background) / 0.5) 78%,
+    transparent 100%
+  );
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .video-container :deep(iframe),
@@ -961,13 +973,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
-  padding: clamp(0.9rem, 0.78rem + 0.42vw, 1.2rem);
-  border: 1px solid hsl(var(--border) / 0.75);
-  border-radius: calc(var(--radius-2xl) + 2px);
-  background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 36%),
-    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--secondary) / 0.44));
-  box-shadow: 0 22px 48px hsl(var(--surface-shadow));
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .video-meta__header {
@@ -1314,18 +1324,16 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: minmax(7.5rem, 8.75rem) minmax(0, 1fr);
   gap: 0.875rem;
-  padding: 0.7rem;
-  border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: calc(var(--radius-xl) + 2px);
-  background: linear-gradient(180deg, hsl(var(--background) / 0.5), hsl(var(--secondary) / 0.68));
+  padding: 0.5rem 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  transition: color 0.18s ease, opacity 0.18s ease;
 }
 
 .related-video-card:hover {
-  transform: translateY(-1px);
-  border-color: hsl(var(--ring) / 0.26);
-  box-shadow: 0 18px 34px hsl(var(--surface-shadow));
+  opacity: 0.92;
 }
 
 .related-video-card__thumb {
@@ -1492,6 +1500,10 @@ onUnmounted(() => {
     aspect-ratio: 16 / 9;
   }
 
+  .video-container :deep(.sp-player) {
+    border-radius: 0;
+  }
+
   .video-meta__actions {
     gap: 0.375rem;
   }
@@ -1511,13 +1523,13 @@ onUnmounted(() => {
 
   .video-meta__panel,
   .video-aside__panel {
-    border-radius: calc(var(--radius-xl) + 2px);
+    border-radius: 0;
   }
 
   .related-video-card {
     grid-template-columns: minmax(6.8rem, 7.6rem) minmax(0, 1fr);
     gap: 0.7rem;
-    padding: 0.6rem;
+    padding: 0.45rem 0;
   }
 }
 
