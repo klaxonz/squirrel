@@ -100,7 +100,10 @@
 
             <div class="channel-item__body">
               <div class="channel-item__header">
-                <div class="min-w-0">
+                <div class="channel-item__copy min-w-0">
+                  <p class="channel-item__eyebrow">
+                    {{ subscription.type === 'PLAYLIST' ? 'Playlist' : 'Channel' }}
+                  </p>
                   <h3 class="channel-item__title">{{ subscription.name }}</h3>
                   <p class="channel-item__meta">订阅于 {{ formatDate(subscription.created_at) }}</p>
                 </div>
@@ -109,14 +112,15 @@
                 </div>
               </div>
 
-              <div class="channel-item__stats">
-                <div class="channel-item__stat">
-                  <span class="channel-item__stat-label">总视频</span>
-                  <span class="channel-item__stat-value">{{ subscription.total_videos }}</span>
+              <div class="channel-item__info-strip">
+                <div class="channel-item__metric">
+                  <span class="channel-item__metric-label">已解析</span>
+                  <span class="channel-item__metric-value">{{ subscription.total_extract }}</span>
                 </div>
-                <div class="channel-item__stat">
-                  <span class="channel-item__stat-label">已解析</span>
-                  <span class="channel-item__stat-value">{{ subscription.total_extract }}</span>
+                <span class="channel-item__metric-divider"></span>
+                <div class="channel-item__metric">
+                  <span class="channel-item__metric-label">总视频</span>
+                  <span class="channel-item__metric-value">{{ subscription.total_videos }}</span>
                 </div>
               </div>
             </div>
@@ -616,7 +620,9 @@ onUnmounted(() => {
   min-height: 13rem;
   border: 1px solid hsl(var(--border) / 0.76);
   border-radius: calc(var(--radius-xl) + 2px);
-  background: linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.94));
+  background:
+    radial-gradient(circle at 50% 18%, hsl(var(--primary) / 0.07), transparent 28%),
+    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.94));
   box-shadow: var(--shadow-sm);
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
@@ -661,19 +667,20 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   min-height: 7rem;
-  padding: 1.1rem 1rem 0.6rem;
+  padding: 0.95rem 1rem 0.3rem;
 }
 
 .channel-item__avatar-shell {
   position: relative;
-  width: 4rem;
-  height: 4rem;
+  width: 4.7rem;
+  height: 4.7rem;
+  filter: drop-shadow(0 10px 18px hsl(var(--surface-shadow) / 0.12));
 }
 
 .channel-item__avatar {
   width: 100%;
   height: 100%;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   object-fit: cover;
   border: 1px solid hsl(var(--border) / 0.7);
   box-shadow: var(--shadow-sm);
@@ -682,73 +689,111 @@ onUnmounted(() => {
 .avatar-sheen {
   position: absolute;
   inset: -0.32rem;
-  border-radius: 1.25rem;
-  background: linear-gradient(180deg, transparent, hsl(var(--primary) / 0.16));
+  border-radius: 1.45rem;
+  background:
+    radial-gradient(circle at top, hsl(var(--primary) / 0.18), transparent 58%),
+    linear-gradient(180deg, transparent, hsl(var(--primary) / 0.08));
   pointer-events: none;
-  opacity: 0.65;
+  opacity: 0.72;
 }
 
 .channel-item__body {
   display: grid;
   flex: 1;
-  gap: 0.875rem;
-  padding: 0.1rem 0.9rem 0.9rem;
+  gap: 0.55rem;
+  padding: 0 0.95rem 0.95rem;
+  margin-top: -0.15rem;
 }
 
 .channel-item__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.6rem;
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.channel-item__copy {
+  display: grid;
+  gap: 0.18rem;
+  justify-items: center;
+  max-width: 15rem;
+}
+
+.channel-item__eyebrow {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
 }
 
 .channel-item__title {
   margin: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.875rem;
-  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.08;
+  font-size: 1.06rem;
+  font-weight: 800;
+  letter-spacing: -0.045em;
   color: hsl(var(--foreground));
+  text-wrap: balance;
 }
 
 .channel-item__meta {
-  margin: 0.28rem 0 0;
+  margin: 0.1rem 0 0;
   font-size: 0.6875rem;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.95);
 }
 
 .channel-item__badges {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
-.channel-item__stats {
+.channel-item__info-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  margin-top: auto;
+  padding: 0.68rem 0.9rem;
+  border: 1px solid hsl(var(--border) / 0.38);
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, hsl(var(--background) / 0.72), hsl(var(--card) / 0.68));
+  box-shadow: inset 0 1px 0 hsl(var(--background) / 0.72);
+}
+
+.channel-item__metric {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: 0.12rem;
+  flex: 1 1 0;
+  justify-items: center;
 }
 
-.channel-item__stat {
-  display: grid;
-  gap: 0.16rem;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 0.75rem;
-  background: hsl(var(--background) / 0.52);
+.channel-item__metric-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground) / 0.82);
 }
 
-.channel-item__stat-label {
-  font-size: 0.625rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.channel-item__stat-value {
-  font-size: 0.875rem;
-  font-weight: 600;
+.channel-item__metric-value {
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
   color: hsl(var(--foreground));
+}
+
+.channel-item__metric-divider {
+  width: 1px;
+  align-self: stretch;
+  background: linear-gradient(180deg, transparent, hsl(var(--border)), transparent);
 }
 
 .subscribed-empty-state,
