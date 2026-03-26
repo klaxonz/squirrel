@@ -1,16 +1,15 @@
 <template>
   <aside class="sidebar bg-sidebar text-sidebar-foreground h-full flex flex-col border-r border-sidebar-border/80" :class="{ collapsed: effectiveCollapsed }">
-    <div class="sidebar-header">
+    <div class="sidebar-header" :class="{ 'sidebar-header--collapsed': effectiveCollapsed }">
       <router-link
+        v-if="!effectiveCollapsed"
         to="/"
         class="sidebar-brand"
-        :class="{ 'sidebar-brand--collapsed': effectiveCollapsed }"
       >
         <span class="sidebar-brand__mark">
           <img src="/squirrel-icon.png" alt="Squirrel" class="sidebar-brand__logo">
         </span>
         <span class="sidebar-brand__copy">
-          <span class="sidebar-brand__eyebrow">Content Workbench</span>
           <span class="sidebar-brand__title">Squirrel</span>
         </span>
       </router-link>
@@ -167,43 +166,37 @@ watch(route, () => {
 
 .sidebar-brand__mark {
   display: inline-flex;
-  height: 1.8rem;
-  width: 1.8rem;
+  height: 1.95rem;
+  width: 1.95rem;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: 0.55rem;
-  border: 1px solid hsl(var(--border) / 0.7);
-  background: hsl(var(--background));
+  border-radius: 0.65rem;
+  border: 1px solid hsl(var(--border) / 0.45);
+  background:
+    radial-gradient(circle at 30% 30%, hsl(var(--background)), hsl(var(--sidebar-accent) / 0.45));
+  box-shadow:
+    inset 0 1px 0 hsl(var(--background) / 0.85),
+    0 1px 2px hsl(20 20% 20% / 0.06);
 }
 
 .sidebar-brand__logo {
-  height: 1.15rem;
-  width: 1.15rem;
+  height: 1.28rem;
+  width: 1.28rem;
   object-fit: contain;
 }
 
 .sidebar-brand__copy {
-  display: grid;
+  display: flex;
   min-width: 0;
-  gap: 0.1rem;
-}
-
-.sidebar-brand__eyebrow {
-  font-size: 0.52rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
+  align-items: center;
 }
 
 .sidebar-brand__title {
-  font-size: 0.75rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: hsl(var(--foreground));
-}
-
-.sidebar-brand--collapsed .sidebar-brand__copy {
-  display: none;
+  line-height: 1;
 }
 
 .toggle-btn {
@@ -304,5 +297,9 @@ watch(route, () => {
 .sidebar.collapsed .sidebar-footer {
   padding-left: 0.35rem;
   padding-right: 0.35rem;
+}
+
+.sidebar.collapsed .sidebar-header--collapsed {
+  justify-content: center;
 }
 </style>

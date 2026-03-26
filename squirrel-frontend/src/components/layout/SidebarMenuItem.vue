@@ -1,29 +1,20 @@
 <template>
-  <Tooltip>
-    <TooltipTrigger as-child>
-      <router-link
-        :to="item.path"
-        class="menu-item"
-        :class="[
-          isActive ? 'menu-item-active' : 'menu-item-inactive',
-          { 'menu-item-collapsed': isCollapsed }
-        ]"
-      >
-        <component :is="item.icon" class="menu-icon w-4 h-4" />
-        <span class="menu-text">
-          <span class="menu-text__label">{{ item.name }}</span>
-        </span>
-      </router-link>
-    </TooltipTrigger>
-    <TooltipContent v-if="isCollapsed" side="right" :side-offset="10">
-      {{ item.name }}
-    </TooltipContent>
-  </Tooltip>
+  <router-link
+    :to="item.path"
+    class="menu-item"
+    :class="[
+      isActive ? 'menu-item-active' : 'menu-item-inactive',
+      { 'menu-item-collapsed': isCollapsed }
+    ]"
+  >
+    <component :is="item.icon" class="menu-icon w-4 h-4" />
+    <span class="menu-text">
+      <span class="menu-text__label">{{ item.name }}</span>
+    </span>
+  </router-link>
 </template>
 
 <script setup>
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-
 defineProps({
   item: {
     type: Object,
@@ -87,16 +78,16 @@ defineProps({
 }
 
 .menu-item-collapsed .menu-text {
-  opacity: 0;
-  transform: translateX(-0.5rem);
-  pointer-events: none;
-  width: 0;
-  overflow: hidden;
+  display: none;
 }
 
 .menu-item-collapsed {
-  padding-left: var(--sidebar-collapsed-item-padding, 0.75rem);
-  padding-right: var(--sidebar-collapsed-item-padding, 0.75rem);
+  width: 2.35rem;
+  min-height: 2.35rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0;
+  gap: 0;
   justify-content: center;
 }
 </style>
