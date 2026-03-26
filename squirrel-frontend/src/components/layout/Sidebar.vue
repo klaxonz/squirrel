@@ -21,7 +21,7 @@
         :title="props.flyout ? '关闭侧边栏' : (effectiveCollapsed ? '展开侧边栏' : '收起侧边栏')"
       >
         <Bars3Icon
-          class="h-6 w-6 text-foreground transition-transform duration-300"
+          class="h-4 w-4 text-foreground transition-transform duration-300"
           :class="{ 'rotate-180': !props.flyout && effectiveCollapsed }"
         />
       </button>
@@ -54,7 +54,7 @@
         class="logout-btn"
         :title="effectiveCollapsed ? '退出' : ''"
       >
-        <ArrowRightOnRectangleIcon class="logout-icon w-5 h-5" />
+        <ArrowRightOnRectangleIcon class="logout-icon w-4 h-4" />
         <span class="logout-text text-xs">退出</span>
       </button>
     </div>
@@ -152,34 +152,34 @@ watch(route, () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  min-height: 3.75rem;
-  padding: 0.75rem 0.625rem;
+  gap: 0.375rem;
+  min-height: 3rem;
+  padding: 0.5rem 0.375rem;
 }
 
 .sidebar-brand {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.5rem;
   color: hsl(var(--sidebar-foreground));
 }
 
 .sidebar-brand__mark {
   display: inline-flex;
-  height: 2.25rem;
-  width: 2.25rem;
+  height: 1.8rem;
+  width: 1.8rem;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: 0.75rem;
+  border-radius: 0.55rem;
   border: 1px solid hsl(var(--border) / 0.7);
   background: hsl(var(--background));
 }
 
 .sidebar-brand__logo {
-  height: 1.5rem;
-  width: 1.5rem;
+  height: 1.15rem;
+  width: 1.15rem;
   object-fit: contain;
 }
 
@@ -190,14 +190,14 @@ watch(route, () => {
 }
 
 .sidebar-brand__eyebrow {
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
+  font-size: 0.52rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
 }
 
 .sidebar-brand__title {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: hsl(var(--foreground));
 }
@@ -208,12 +208,12 @@ watch(route, () => {
 
 .toggle-btn {
   display: inline-flex;
-  height: 2rem;
-  width: 2rem;
+  height: 1.7rem;
+  width: 1.7rem;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: 0.625rem;
+  border-radius: 0.45rem;
   border: 1px solid hsl(var(--border) / 0.7);
   background: hsl(var(--background));
   transition: background-color 0.15s ease, border-color 0.15s ease;
@@ -229,10 +229,10 @@ watch(route, () => {
 }
 
 .sidebar-section__label {
-  margin: 0 0 0.5rem;
-  padding: 0 0.625rem;
-  font-size: 0.625rem;
-  letter-spacing: 0.16em;
+  margin: 0 0 0.35rem;
+  padding: 0 0.5rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
 }
@@ -249,7 +249,7 @@ watch(route, () => {
 }
 
 .sidebar-footer {
-  padding: 0.625rem;
+  padding: 0.375rem;
   border-top: 1px solid hsl(var(--border) / 0.55);
 }
 
@@ -257,10 +257,10 @@ watch(route, () => {
   display: flex;
   width: 100%;
   align-items: center;
-  min-height: 2.5rem;
-  padding: 0 0.75rem;
+  min-height: 2rem;
+  padding: 0 0.55rem;
   color: hsl(var(--sidebar-foreground));
-  border-radius: 0.75rem;
+  border-radius: 0.55rem;
   border: 1px solid hsl(var(--border) / 0.7);
   background: hsl(var(--background));
   transition: background-color 0.15s ease, border-color 0.15s ease;
@@ -272,7 +272,7 @@ watch(route, () => {
 }
 
 .logout-icon {
-  margin-right: 0.75rem;
+  margin-right: 0.5rem;
 }
 
 .sidebar.collapsed .logout-icon {
@@ -296,13 +296,13 @@ watch(route, () => {
 }
 
 .sidebar.collapsed .logout-btn {
-  padding-left: calc(var(--sidebar-collapsed-item-padding, 0.875rem) - 0.125rem);
-  padding-right: calc(var(--sidebar-collapsed-item-padding, 0.875rem) - 0.125rem);
+  padding-left: calc(var(--sidebar-collapsed-item-padding, 0.75rem) - 0.125rem);
+  padding-right: calc(var(--sidebar-collapsed-item-padding, 0.75rem) - 0.125rem);
 }
 
 .sidebar.collapsed .sidebar-header,
 .sidebar.collapsed .sidebar-footer {
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
 }
 </style>

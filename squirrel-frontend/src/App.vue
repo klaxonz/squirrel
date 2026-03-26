@@ -349,7 +349,7 @@ h6 {
 
 .topbar-shell {
   position: relative;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.8rem;
   border-bottom: 1px solid hsl(var(--border) / 0.72);
   background: hsl(var(--background) / 0.96);
 }
@@ -357,16 +357,16 @@ h6 {
 .topbar {
   display: flex;
   align-items: center;
-  gap: 0.875rem;
+  gap: 0.625rem;
   width: 100%;
-  max-width: min(var(--container-max-width, 2560px), calc(100vw - 2rem));
+  max-width: min(var(--container-max-width, 2560px), calc(100vw - 1.6rem));
   margin: 0 auto;
 }
 
 .topbar__lead {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex-shrink: 0;
   min-width: 0;
 }
@@ -378,14 +378,14 @@ h6 {
 }
 
 .topbar__eyebrow {
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
+  font-size: 0.54rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
 }
 
 .topbar__title {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: hsl(var(--foreground));
   white-space: nowrap;
@@ -402,9 +402,9 @@ h6 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.625rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 0.45rem;
   border: 1px solid hsl(var(--border) / 0.78);
   background: hsl(var(--background));
   color: hsl(var(--foreground));
@@ -440,8 +440,8 @@ h6 {
 
 .sidebar-flyout {
   position: fixed;
-  top: 0.75rem;
-  left: 0.75rem;
+  top: 0.5rem;
+  left: 0.5rem;
   z-index: 40;
 }
 
@@ -449,9 +449,9 @@ h6 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.625rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 0.45rem;
   border: 1px solid hsl(var(--border) / 0.8);
   background: hsl(var(--background));
   color: hsl(var(--foreground));
@@ -496,12 +496,12 @@ h6 {
 
 @media (max-width: 767px) {
   .topbar-shell {
-    padding: 0.625rem 0.8rem;
+    padding: 0.45rem 0.65rem;
   }
 
   .topbar {
-    gap: 0.625rem;
-    max-width: calc(100vw - 1.6rem);
+    gap: 0.5rem;
+    max-width: calc(100vw - 1.3rem);
   }
 
   .topbar__lead {
@@ -513,7 +513,7 @@ h6 {
   }
 
   .topbar__title {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
   }
 
   .topbar__search {

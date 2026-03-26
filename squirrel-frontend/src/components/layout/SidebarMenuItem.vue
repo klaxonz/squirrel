@@ -45,12 +45,12 @@ defineProps({
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  min-height: 2.375rem;
-  padding: 0 0.625rem;
-  margin-bottom: 0.2rem;
+  gap: 0.45rem;
+  min-height: 1.95rem;
+  padding: 0 0.5rem;
+  margin-bottom: 0.15rem;
   color: hsl(var(--sidebar-foreground));
-  border-radius: 0.75rem;
+  border-radius: 0.55rem;
   border: 1px solid transparent;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
@@ -82,7 +82,7 @@ defineProps({
 
 .menu-text__label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 500;
 }
 
@@ -95,8 +95,8 @@ defineProps({
 }
 
 .menu-item-collapsed {
-  padding-left: var(--sidebar-collapsed-item-padding, 0.875rem);
-  padding-right: var(--sidebar-collapsed-item-padding, 0.875rem);
+  padding-left: var(--sidebar-collapsed-item-padding, 0.75rem);
+  padding-right: var(--sidebar-collapsed-item-padding, 0.75rem);
   justify-content: center;
 }
 </style>
