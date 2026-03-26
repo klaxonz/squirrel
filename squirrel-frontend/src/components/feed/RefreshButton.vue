@@ -2,7 +2,7 @@
   <Button
     variant="outline"
     size="sm"
-    :class="['refresh-button rounded-full', customClass]"
+    :class="['refresh-button', customClass]"
     :title="title"
     :aria-label="ariaLabel || title"
     @click="$emit('click')"
@@ -65,7 +65,7 @@ onUnmounted(() => {
 
 <style scoped>
 .refresh-button {
-  min-width: 2.75rem;
+  min-width: 2rem;
 }
 
 @keyframes spin {

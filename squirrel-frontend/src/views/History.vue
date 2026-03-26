@@ -1,6 +1,19 @@
 <template>
   <div class="history-page flex flex-col h-full">
-    <!-- 顶部操作栏 -->
+    <div class="toolbar-container">
+      <PageHeader
+        title="观看历史"
+        description="回看最近播放记录，继续处理未完成的视频。"
+      >
+        <template #actions>
+          <Button size="sm" variant="outline" @click="showClearConfirm">
+            <TrashIcon class="h-4 w-4" />
+            <span>清空历史</span>
+          </Button>
+        </template>
+      </PageHeader>
+    </div>
+
     <div class="toolbar-container">
       <FeedToolbar
         :show-tabs="false"
@@ -15,18 +28,9 @@
         @update:nsfw="(v) => nsfw = v"
         @update:site="(v) => site = v"
         @refresh="refreshList"
-      >
-        <button
-          @click="showClearConfirm"
-          class="ml-2 px-3 py-1.5 min-w-[100px] bg-muted hover:bg-accent text-foreground rounded-full flex items-center justify-center transition-colors whitespace-nowrap text-xs font-medium"
-        >
-          <TrashIcon class="h-4 w-4" />
-          <span class="ml-1">清空历史</span>
-        </button>
-      </FeedToolbar>
+      />
     </div>
 
-    <!-- 视频列表容器 -->
     <div class="video-container flex-grow">
       <VideoList
         :videos="processedVideos"
@@ -47,6 +51,8 @@ import {useRouter} from 'vue-router';
 import { TrashIcon } from '@heroicons/vue/24/outline';
 import VideoList from '@/components/feed/VideoList.vue';
 import FeedToolbar from '@/components/feed/FeedToolbar.vue';
+import PageHeader from '@/components/layout/PageHeader.vue'
+import { Button } from '@/components/ui/button'
 import useVideoHistory from '../composables/useVideoHistory';
 import { Logger } from '@/utils/logger'
 

@@ -84,21 +84,19 @@ watch(localSite, (value) => emit('update:site', value))
 
 <style scoped>
 .feed-toolbar-shell {
-  padding-block: 0.85rem;
+  padding-block: 0.55rem 0.75rem;
 }
 
 .feed-toolbar__inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.5rem;
+  gap: 0.75rem;
+  padding: 0.375rem;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: calc(var(--radius-2xl) + 0.2rem);
-  background:
-    linear-gradient(180deg, hsl(var(--card) / 0.94), hsl(var(--background) / 0.9));
-  box-shadow: 0 22px 48px hsl(var(--surface-shadow) / 0.12);
-  backdrop-filter: blur(18px);
+  border-radius: calc(var(--radius-xl) + 2px);
+  background: hsl(var(--card) / 0.98);
+  box-shadow: var(--shadow-sm);
 }
 
 .feed-toolbar__inner--compact {
@@ -115,9 +113,9 @@ watch(localSite, (value) => emit('update:site', value))
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.6rem;
+  gap: 0.45rem;
   flex-shrink: 0;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 1024px) {
@@ -133,17 +131,17 @@ watch(localSite, (value) => emit('update:site', value))
 
 @media (max-width: 640px) {
   .feed-toolbar-shell {
-    padding-block: 0.65rem;
+    padding-block: 0.45rem 0.65rem;
   }
 
   .feed-toolbar__inner {
-    gap: 0.75rem;
-    padding: 0.4rem;
-    border-radius: 1.4rem;
+    gap: 0.625rem;
+    padding: 0.35rem;
+    border-radius: 0.875rem;
   }
 
   .feed-toolbar__actions {
-    gap: 0.45rem;
+    gap: 0.35rem;
   }
 }
 </style>

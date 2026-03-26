@@ -49,11 +49,10 @@ const handleValueChange = (value) => {
   width: auto;
   flex: 0 0 auto;
   max-width: 100%;
-  min-width: 7.5rem;
-  border-radius: 9999px;
+  min-width: 6.75rem;
   border-color: hsl(var(--border) / 0.72);
-  background: hsl(var(--card) / 0.82);
-  box-shadow: 0 12px 28px hsl(var(--surface-shadow) / 0.08);
+  background: hsl(var(--background));
+  box-shadow: none;
 }
 
 .toolbar-select__copy {
@@ -77,15 +76,15 @@ const handleValueChange = (value) => {
 }
 
 .toolbar-select__content {
-  border-radius: calc(var(--radius-xl) + 2px);
+  border-radius: calc(var(--radius-lg) + 2px);
 }
 
 @media (max-width: 768px) {
   .toolbar-select {
     min-width: auto;
-    width: 3rem;
-    padding-left: 0.7rem;
-    padding-right: 0.7rem;
+    width: 2.5rem;
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
   }
 
   .toolbar-select__copy {

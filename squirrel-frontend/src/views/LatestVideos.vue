@@ -5,6 +5,15 @@
       :subscription-id="subscriptionId"
     />
 
+    <section v-else class="latest-videos__toolbar-shell">
+      <div class="latest-videos__container">
+        <PageHeader
+          title="最新内容"
+          description="统一查看最新视频、未读内容和稍后处理队列。"
+        />
+      </div>
+    </section>
+
     <section class="latest-videos__toolbar-shell">
       <div class="latest-videos__container">
         <FeedToolbar
@@ -66,6 +75,7 @@ import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/components/feed/ChannelHeader.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import { buildTabsWithCounts } from '../utils/feed'
 
 const router = useRouter()

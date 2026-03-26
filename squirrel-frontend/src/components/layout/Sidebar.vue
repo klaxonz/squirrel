@@ -10,7 +10,7 @@
           <img src="/squirrel-icon.png" alt="Squirrel" class="sidebar-brand__logo">
         </span>
         <span class="sidebar-brand__copy">
-          <span class="sidebar-brand__eyebrow">Cinematic Desk</span>
+          <span class="sidebar-brand__eyebrow">Content Workbench</span>
           <span class="sidebar-brand__title">Squirrel</span>
         </span>
       </router-link>
@@ -27,29 +27,24 @@
       </button>
     </div>
 
-    <nav class="sidebar-nav flex-1 overflow-y-auto py-3 scrollbar-hide">
-      <div class="sidebar-section px-2">
-        <p v-if="!effectiveCollapsed" class="sidebar-section__label">Content</p>
+    <nav class="sidebar-nav flex-1 overflow-y-auto py-2 scrollbar-hide">
+      <div
+        v-for="group in NAV_GROUPS"
+        :key="group.key"
+        class="sidebar-section px-2"
+      >
+        <p v-if="!effectiveCollapsed" class="sidebar-section__label">{{ group.label }}</p>
         <SidebarMenuItem
-          v-for="item in MENU_ITEMS.main"
+          v-for="item in group.items"
           :key="item.path"
           :item="item"
           :is-collapsed="effectiveCollapsed"
           :is-active="isNavigationItemActive(item, $route.path)"
         />
-      </div>
-
-      <div class="sidebar-divider my-2 mx-2"></div>
-
-      <div class="sidebar-section px-2">
-        <p v-if="!effectiveCollapsed" class="sidebar-section__label">System</p>
-        <SidebarMenuItem
-          v-for="item in MENU_ITEMS.bottom"
-          :key="item.path"
-          :item="item"
-          :is-collapsed="effectiveCollapsed"
-          :is-active="isNavigationItemActive(item, $route.path)"
-        />
+        <div
+          v-if="group.key !== NAV_GROUPS[NAV_GROUPS.length - 1].key"
+          class="sidebar-divider my-2 mx-1"
+        ></div>
       </div>
     </nav>
 
@@ -57,7 +52,7 @@
       <button
         @click="handleLogout"
         class="logout-btn"
-        :title="isCollapsed ? '退出' : ''"
+        :title="effectiveCollapsed ? '退出' : ''"
       >
         <ArrowRightOnRectangleIcon class="logout-icon w-5 h-5" />
         <span class="logout-text text-xs">退出</span>
@@ -75,7 +70,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { useUser } from '@/composables/useUser'
 import SidebarMenuItem from './SidebarMenuItem.vue'
-import { MENU_ITEMS, isNavigationItemActive } from '@/constants/sidebar'
+import { NAV_GROUPS, isNavigationItemActive } from '@/constants/sidebar'
 
 const route = useRoute()
 const router = useRouter()
@@ -145,11 +140,8 @@ watch(route, () => {
   flex-shrink: 0;
   transition: width 0.18s ease-out;
   will-change: width;
-  background:
-    linear-gradient(180deg, hsl(var(--sidebar)), color-mix(in srgb, hsl(var(--sidebar)) 84%, hsl(var(--background))));
-  box-shadow:
-    inset -1px 0 0 hsl(var(--sidebar-border) / 0.75),
-    18px 0 40px hsl(var(--surface-shadow) / 0.08);
+  background: hsl(var(--sidebar));
+  box-shadow: inset -1px 0 0 hsl(var(--sidebar-border) / 0.75);
 }
 
 .sidebar.collapsed {
@@ -160,36 +152,34 @@ watch(route, () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  min-height: 4.5rem;
-  padding: 1rem 0.75rem 0.75rem;
+  gap: 0.5rem;
+  min-height: 3.75rem;
+  padding: 0.75rem 0.625rem;
 }
 
 .sidebar-brand {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 0.8rem;
+  gap: 0.7rem;
   color: hsl(var(--sidebar-foreground));
 }
 
 .sidebar-brand__mark {
   display: inline-flex;
-  height: 2.75rem;
-  width: 2.75rem;
+  height: 2.25rem;
+  width: 2.25rem;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   border: 1px solid hsl(var(--border) / 0.7);
-  background:
-    linear-gradient(135deg, hsl(var(--card)), hsl(var(--secondary) / 0.76));
-  box-shadow: 0 16px 36px hsl(var(--surface-shadow));
+  background: hsl(var(--background));
 }
 
 .sidebar-brand__logo {
-  height: 1.85rem;
-  width: 1.85rem;
+  height: 1.5rem;
+  width: 1.5rem;
   object-fit: contain;
 }
 
@@ -200,14 +190,14 @@ watch(route, () => {
 }
 
 .sidebar-brand__eyebrow {
-  font-size: 0.64rem;
+  font-size: 0.6rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
 }
 
 .sidebar-brand__title {
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: hsl(var(--foreground));
 }
@@ -218,22 +208,20 @@ watch(route, () => {
 
 .toggle-btn {
   display: inline-flex;
-  height: 2.75rem;
-  width: 2.75rem;
+  height: 2rem;
+  width: 2rem;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: 9999px;
+  border-radius: 0.625rem;
   border: 1px solid hsl(var(--border) / 0.7);
-  background: hsl(var(--card) / 0.76);
-  box-shadow: 0 12px 28px hsl(var(--surface-shadow));
-  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  background: hsl(var(--background));
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .toggle-btn:hover {
   background: hsl(var(--sidebar-accent));
-  box-shadow: 0 18px 34px hsl(var(--surface-shadow));
-  transform: translateY(-1px);
+  border-color: hsl(var(--border));
 }
 
 .rotate-180 {
@@ -242,8 +230,8 @@ watch(route, () => {
 
 .sidebar-section__label {
   margin: 0 0 0.5rem;
-  padding: 0 0.75rem;
-  font-size: 0.67rem;
+  padding: 0 0.625rem;
+  font-size: 0.625rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
@@ -251,7 +239,7 @@ watch(route, () => {
 
 .sidebar-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(var(--sidebar-border) / 0.72), transparent);
+  background: hsl(var(--sidebar-border) / 0.7);
 }
 
 .sidebar.collapsed .sidebar-divider {
@@ -261,7 +249,7 @@ watch(route, () => {
 }
 
 .sidebar-footer {
-  padding: 0.75rem;
+  padding: 0.625rem;
   border-top: 1px solid hsl(var(--border) / 0.55);
 }
 
@@ -269,23 +257,22 @@ watch(route, () => {
   display: flex;
   width: 100%;
   align-items: center;
-  min-height: 2.875rem;
-  padding: 0 0.9rem;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
   color: hsl(var(--sidebar-foreground));
-  border-radius: 1rem;
-  border: 1px solid transparent;
-  background: hsl(var(--card) / 0.72);
-  transition: background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.7);
+  background: hsl(var(--background));
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .logout-btn:hover {
-  background-color: hsl(var(--sidebar-accent));
-  border-color: hsl(var(--border) / 0.7);
-  transform: translateY(-1px);
+  background-color: hsl(var(--sidebar-accent) / 0.85);
+  border-color: hsl(var(--border));
 }
 
 .logout-icon {
-  margin-right: 1rem;
+  margin-right: 0.75rem;
 }
 
 .sidebar.collapsed .logout-icon {
@@ -309,8 +296,8 @@ watch(route, () => {
 }
 
 .sidebar.collapsed .logout-btn {
-  padding-left: var(--sidebar-collapsed-item-padding, 0.875rem);
-  padding-right: var(--sidebar-collapsed-item-padding, 0.875rem);
+  padding-left: calc(var(--sidebar-collapsed-item-padding, 0.875rem) - 0.125rem);
+  padding-right: calc(var(--sidebar-collapsed-item-padding, 0.875rem) - 0.125rem);
 }
 
 .sidebar.collapsed .sidebar-header,

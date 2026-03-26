@@ -57,8 +57,8 @@ const emit = defineEmits(['update:modelValue', 'tab-dblclick'])
 }
 
 .tab-bar__trigger {
-  gap: 0.45rem;
-  padding-inline: 0.95rem;
+  gap: 0.35rem;
+  padding-inline: 0.75rem;
 }
 
 .tab-bar__label {
@@ -67,12 +67,12 @@ const emit = defineEmits(['update:modelValue', 'tab-dblclick'])
 
 .tab-bar__count {
   display: inline-flex;
-  min-width: 1.35rem;
+  min-width: 1.2rem;
   justify-content: center;
   border-radius: 9999px;
   background: hsl(var(--background) / 0.72);
-  padding: 0.08rem 0.35rem;
-  font-size: var(--font-size-2xs);
+  padding: 0.05rem 0.3rem;
+  font-size: 0.6875rem;
   color: hsl(var(--muted-foreground));
 }
 

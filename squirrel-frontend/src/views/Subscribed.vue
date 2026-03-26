@@ -2,10 +2,24 @@
   <div class="subscribed-page flex h-full flex-col bg-background text-foreground">
     <section class="subscribed-shell">
       <div class="toolbar-container subscribed-shell__header">
-        <div class="subscribed-shell__title-wrap">
-          <h1 class="subscribed-shell__title">订阅</h1>
-          <span class="subscribed-shell__count">{{ subscriptions.length }}</span>
-        </div>
+        <PageHeader
+          title="订阅库"
+          description="管理频道、播放列表和导入来源，统一维护你的内容入口。"
+        >
+          <template #meta>
+            <span class="subscribed-shell__count">{{ subscriptions.length }}</span>
+          </template>
+          <template #actions>
+            <Button size="sm" class="whitespace-nowrap" @click="showAddDialog = true">
+              <PlusIcon class="h-4 w-4" />
+              <span>添加订阅</span>
+            </Button>
+            <Button size="sm" variant="secondary" class="whitespace-nowrap" @click="showImportDialog = true">
+              <ArrowDownTrayIcon class="h-4 w-4" />
+              <span>导入订阅</span>
+            </Button>
+          </template>
+        </PageHeader>
       </div>
 
       <div class="toolbar-container">
@@ -18,16 +32,7 @@
           @update:nsfw="(value) => { nsfw = value }"
           @update:site="(value) => { site = value }"
           @refresh="refreshList"
-        >
-          <Button size="xs" class="whitespace-nowrap" @click="showAddDialog = true">
-            <PlusIcon class="h-4 w-4" />
-            <span>添加订阅</span>
-          </Button>
-          <Button size="xs" variant="secondary" class="whitespace-nowrap" @click="showImportDialog = true">
-            <ArrowDownTrayIcon class="h-4 w-4" />
-            <span>导入订阅</span>
-          </Button>
-        </FeedToolbar>
+        />
       </div>
     </section>
 
@@ -91,7 +96,6 @@
             </div>
 
             <div class="channel-item__media">
-              <div class="channel-item__halo"></div>
               <div class="channel-item__avatar-shell">
                 <img
                   :alt="subscription.name"
@@ -277,6 +281,7 @@ import { useSubscriptionRefresh } from '../composables/useSubscriptionRefresh'
 import { useFeedFilters } from '../composables/useFeedFilters'
 import { useImageFallback } from '../composables/useImageFallback'
 import { formatDate } from '../utils/dateFormat'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import {
   getSubscriptions as apiGetSubscriptions,
   unsubscribe as apiUnsubscribe,
@@ -598,38 +603,25 @@ onUnmounted(() => {
 
 .subscribed-shell {
   position: relative;
-  padding-top: 0.4rem;
+  padding-top: 0.25rem;
 }
 
 .subscribed-shell__header {
-  padding-bottom: 0.55rem;
-}
-
-.subscribed-shell__title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-}
-
-.subscribed-shell__title {
-  margin: 0;
-  font-size: clamp(1.4rem, 1.15rem + 0.55vw, 1.85rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
+  padding-bottom: 0.2rem;
 }
 
 .subscribed-shell__count {
   display: inline-flex;
-  min-height: 1.95rem;
+  min-height: 1.5rem;
   align-items: center;
   justify-content: center;
-  padding: 0.3rem 0.78rem;
+  padding: 0.15rem 0.5rem;
   border-radius: 9999px;
-  border: 1px solid hsl(var(--primary) / 0.16);
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--primary));
-  font-size: 0.76rem;
-  font-weight: 700;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--secondary) / 0.88);
+  color: hsl(var(--secondary-foreground));
+  font-size: 0.6875rem;
+  font-weight: 600;
 }
 
 .channel-container {
@@ -643,7 +635,7 @@ onUnmounted(() => {
 .channel-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
 .channel-item {
@@ -651,20 +643,17 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: 15rem;
+  min-height: 13rem;
   border: 1px solid hsl(var(--border) / 0.76);
-  border-radius: calc(var(--radius-2xl) + 2px);
-  background:
-    radial-gradient(circle at top, hsl(var(--primary) / 0.08), transparent 42%),
-    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.94));
-  box-shadow: 0 20px 46px hsl(var(--surface-shadow) / 0.1);
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  border-radius: calc(var(--radius-xl) + 2px);
+  background: linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.94));
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .channel-item:hover {
-  transform: translateY(-4px);
-  border-color: hsl(var(--primary) / 0.22);
-  box-shadow: 0 28px 54px hsl(var(--surface-shadow) / 0.16);
+  border-color: hsl(var(--border));
+  box-shadow: var(--shadow-md);
 }
 
 .channel-item__topbar {
@@ -700,52 +689,39 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 8.75rem;
-  padding: 1.5rem 1rem 0.7rem;
-}
-
-.channel-item__halo {
-  position: absolute;
-  inset: 1.15rem 1.1rem auto;
-  height: 4.7rem;
-  border-radius: 1.4rem;
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.16), transparent 70%);
-  opacity: 0.92;
+  min-height: 7rem;
+  padding: 1.1rem 1rem 0.6rem;
 }
 
 .channel-item__avatar-shell {
   position: relative;
-  width: 4.8rem;
-  height: 4.8rem;
+  width: 4rem;
+  height: 4rem;
 }
 
 .channel-item__avatar {
   width: 100%;
   height: 100%;
-  border-radius: 1.4rem;
+  border-radius: 1rem;
   object-fit: cover;
   border: 1px solid hsl(var(--border) / 0.7);
-  box-shadow: 0 18px 32px hsl(var(--surface-shadow) / 0.14);
-  transition: transform 0.22s ease;
-}
-
-.group:hover .channel-item__avatar {
-  transform: scale(1.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .avatar-sheen {
   position: absolute;
   inset: -0.32rem;
-  border-radius: 1.65rem;
+  border-radius: 1.25rem;
   background: linear-gradient(180deg, transparent, hsl(var(--primary) / 0.16));
   pointer-events: none;
+  opacity: 0.65;
 }
 
 .channel-item__body {
   display: grid;
   flex: 1;
-  gap: 1rem;
-  padding: 0.1rem 1rem 1rem;
+  gap: 0.875rem;
+  padding: 0.1rem 0.9rem 0.9rem;
 }
 
 .channel-item__header {
@@ -760,14 +736,14 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.96rem;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 600;
   color: hsl(var(--foreground));
 }
 
 .channel-item__meta {
   margin: 0.28rem 0 0;
-  font-size: 0.72rem;
+  font-size: 0.6875rem;
   color: hsl(var(--muted-foreground));
 }
 
@@ -781,26 +757,26 @@ onUnmounted(() => {
 .channel-item__stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
+  gap: 0.5rem;
 }
 
 .channel-item__stat {
   display: grid;
   gap: 0.16rem;
-  padding: 0.78rem 0.85rem;
+  padding: 0.65rem 0.75rem;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   background: hsl(var(--background) / 0.52);
 }
 
 .channel-item__stat-label {
-  font-size: 0.68rem;
+  font-size: 0.625rem;
   color: hsl(var(--muted-foreground));
 }
 
 .channel-item__stat-value {
-  font-size: 0.96rem;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 600;
   color: hsl(var(--foreground));
 }
 

@@ -9,9 +9,7 @@
           { 'menu-item-collapsed': isCollapsed }
         ]"
       >
-        <span class="menu-icon-wrap">
-          <component :is="item.icon" class="menu-icon w-5 h-5" />
-        </span>
+        <component :is="item.icon" class="menu-icon w-4 h-4" />
         <span class="menu-text">
           <span class="menu-text__label">{{ item.name }}</span>
         </span>
@@ -47,46 +45,30 @@ defineProps({
   width: 100%;
   display: flex;
   align-items: center;
-  min-height: 3rem;
-  padding: 0 0.75rem;
-  margin-bottom: 0.35rem;
+  gap: 0.625rem;
+  min-height: 2.375rem;
+  padding: 0 0.625rem;
+  margin-bottom: 0.2rem;
   color: hsl(var(--sidebar-foreground));
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   border: 1px solid transparent;
-  transition: background-color 0.2s ease, transform 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.menu-icon-wrap {
-  display: inline-flex;
-  width: 2rem;
-  height: 2rem;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: 0.85rem;
-  background: hsl(var(--card) / 0.65);
-  border: 1px solid hsl(var(--border) / 0.55);
-  box-shadow: 0 10px 22px hsl(var(--surface-shadow) / 0.08);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .menu-item-inactive:hover {
-  background-color: hsl(var(--sidebar-accent) / 0.68);
+  background-color: hsl(var(--sidebar-accent) / 0.72);
   border-color: hsl(var(--border) / 0.68);
-  transform: translateX(2px);
 }
 
 .menu-item-active {
-  background:
-    linear-gradient(135deg, hsl(var(--primary) / 0.16), hsl(var(--sidebar-accent)));
+  background: hsl(var(--accent) / 0.9);
   color: hsl(var(--foreground));
-  border-color: hsl(var(--primary) / 0.18);
-  box-shadow:
-    inset 0 0 0 1px hsl(var(--primary) / 0.18),
-    0 16px 32px hsl(var(--surface-shadow) / 0.12);
+  border-color: hsl(var(--border));
 }
 
 .menu-icon {
   flex-shrink: 0;
+  color: currentColor;
 }
 
 .menu-text {
@@ -96,13 +78,12 @@ defineProps({
   white-space: nowrap;
   will-change: opacity, transform;
   min-width: 0;
-  margin-left: 0.8rem;
 }
 
 .menu-text__label {
   display: block;
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .menu-item-collapsed .menu-text {
@@ -116,9 +97,6 @@ defineProps({
 .menu-item-collapsed {
   padding-left: var(--sidebar-collapsed-item-padding, 0.875rem);
   padding-right: var(--sidebar-collapsed-item-padding, 0.875rem);
-}
-
-.menu-item-collapsed .menu-icon-wrap {
-  margin: 0;
+  justify-content: center;
 }
 </style>

@@ -16,14 +16,15 @@ export interface NavigationItem {
   mobileLabel?: string
   path: string
   icon: Component
-  section: 'main' | 'bottom'
+  group: 'content' | 'operations' | 'system'
   showOnMobile?: boolean
   activePrefixes?: string[]
 }
 
-export interface MenuItems {
-  main: NavigationItem[]
-  bottom: NavigationItem[]
+export interface NavigationGroup {
+  key: NavigationItem['group']
+  label: string
+  items: NavigationItem[]
 }
 
 export const NAV_ITEMS: NavigationItem[] = [
@@ -32,7 +33,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '首页',
     path: '/',
     icon: HomeIcon,
-    section: 'main',
+    group: 'content',
     showOnMobile: true,
     activePrefixes: ['/videos'],
   },
@@ -41,7 +42,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '订阅',
     path: '/subscribed',
     icon: BookmarkIcon,
-    section: 'main',
+    group: 'content',
     showOnMobile: true,
     activePrefixes: ['/subscription/'],
   },
@@ -50,7 +51,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '历史',
     path: '/history',
     icon: ClockIcon,
-    section: 'main',
+    group: 'content',
     showOnMobile: true,
   },
   {
@@ -58,7 +59,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '同步',
     path: '/sync-center',
     icon: ArrowPathIcon,
-    section: 'main',
+    group: 'operations',
     showOnMobile: true,
   },
   {
@@ -66,7 +67,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '监控',
     path: '/monitoring',
     icon: ChartBarIcon,
-    section: 'main',
+    group: 'operations',
     showOnMobile: true,
   },
   {
@@ -74,7 +75,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '定时',
     path: '/scheduled-tasks',
     icon: CpuChipIcon,
-    section: 'main',
+    group: 'operations',
     showOnMobile: false,
   },
   {
@@ -82,7 +83,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '插件',
     path: '/plugins',
     icon: PuzzlePieceIcon,
-    section: 'main',
+    group: 'system',
     showOnMobile: false,
   },
   {
@@ -90,7 +91,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '日志',
     path: '/logs',
     icon: DocumentTextIcon,
-    section: 'bottom',
+    group: 'system',
     showOnMobile: true,
   },
   {
@@ -98,15 +99,28 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '设置',
     path: '/settings',
     icon: CogIcon,
-    section: 'bottom',
+    group: 'system',
     showOnMobile: true,
   },
 ]
 
-export const MENU_ITEMS: MenuItems = {
-  main: NAV_ITEMS.filter((item) => item.section === 'main'),
-  bottom: NAV_ITEMS.filter((item) => item.section === 'bottom'),
-}
+export const NAV_GROUPS: NavigationGroup[] = [
+  {
+    key: 'content',
+    label: 'Content',
+    items: NAV_ITEMS.filter((item) => item.group === 'content'),
+  },
+  {
+    key: 'operations',
+    label: 'Operations',
+    items: NAV_ITEMS.filter((item) => item.group === 'operations'),
+  },
+  {
+    key: 'system',
+    label: 'System',
+    items: NAV_ITEMS.filter((item) => item.group === 'system'),
+  },
+]
 
 export const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) => item.showOnMobile)
 

@@ -31,49 +31,50 @@ defineProps({
 <style scoped>
 .mobile-nav-shell {
   position: fixed;
-  left: 0.8rem;
-  right: 0.8rem;
-  bottom: 0.45rem;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 0.35rem;
   z-index: 45;
 }
 
 .mobile-nav-list {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.25rem;
-  min-height: calc(var(--mobile-nav-height) - 1.1rem);
+  gap: 0.3rem;
+  min-height: calc(var(--mobile-nav-height) - 1.4rem);
   margin: 0;
-  padding: 0.45rem;
+  padding: 0.35rem;
   list-style: none;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 1.6rem;
-  background:
-    linear-gradient(180deg, hsl(var(--card) / 0.94), hsl(var(--background) / 0.9));
-  box-shadow: 0 24px 48px hsl(var(--surface-shadow));
-  backdrop-filter: blur(18px);
+  border-radius: 1rem;
+  background: hsl(var(--card) / 0.98);
+  box-shadow: var(--shadow-lg);
+  overflow-x: auto;
 }
 
 .mobile-nav-list li {
-  flex: 1 1 0;
+  flex: 0 0 auto;
 }
 
 .mobile-nav-link {
   display: flex;
-  min-height: 3rem;
+  min-width: 4.25rem;
+  min-height: 2.75rem;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.2rem;
-  border-radius: 1.2rem;
+  padding: 0 0.5rem;
+  border-radius: 0.75rem;
   color: hsl(var(--muted-foreground));
-  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  border: 1px solid transparent;
 }
 
 .mobile-nav-link--active {
   color: hsl(var(--foreground));
-  background: linear-gradient(180deg, hsl(var(--primary) / 0.16), hsl(var(--card) / 0.92));
-  box-shadow: 0 14px 30px hsl(var(--surface-shadow));
+  background: hsl(var(--accent) / 0.92);
+  border-color: hsl(var(--border));
 }
 
 .mobile-nav-link__icon {
@@ -83,19 +84,20 @@ defineProps({
 }
 
 .mobile-nav-link__label {
-  font-size: var(--font-size-2xs);
-  font-weight: 600;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 @media (max-width: 420px) {
   .mobile-nav-shell {
     left: 0.5rem;
     right: 0.5rem;
-    bottom: 0.35rem;
+    bottom: 0.25rem;
   }
 
   .mobile-nav-list {
-    border-radius: 1.3rem;
+    border-radius: 0.875rem;
   }
 }
 </style>

@@ -129,12 +129,10 @@ onUnmounted(() => {
 }
 
 .global-search-bar__input {
-  min-height: 3.25rem;
-  padding-left: 3.25rem;
-  padding-right: 3.25rem;
+  min-height: 2.5rem;
+  padding-left: 2.5rem;
+  padding-right: 2.5rem;
   border-color: hsl(var(--border) / 0.72);
-  background:
-    linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--background) / 0.86));
 }
 
 .global-search-bar__icon,
@@ -146,16 +144,16 @@ onUnmounted(() => {
 }
 
 .global-search-bar__icon {
-  left: 0.4rem;
+  left: 0.25rem;
 }
 
 .global-search-bar__clear {
-  right: 0.4rem;
+  right: 0.25rem;
 }
 
 @media (max-width: 640px) {
   .global-search-bar__input {
-    min-height: 3rem;
+    min-height: 2.375rem;
   }
 }
 </style>

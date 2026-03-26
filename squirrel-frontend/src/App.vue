@@ -35,7 +35,7 @@
       </div>
 
       <main class="app-main">
-        <div v-if="showGlobalSearch" class="topbar-shell" ref="topbarRef">
+        <div v-if="showShellHeader" class="topbar-shell" ref="topbarRef">
           <div class="topbar">
             <div class="topbar__lead">
               <button
@@ -45,15 +45,16 @@
                 :title="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
                 @click="toggleSidebarFlyout"
               >
-                <Bars3Icon class="h-5 w-5" />
+                <Bars3Icon class="h-4 w-4" />
               </button>
-              <div v-if="!isMobile" class="topbar__copy">
-                <span class="topbar__eyebrow">{{ searchEyebrow }}</span>
-                <span class="topbar__title">{{ searchSectionTitle }}</span>
+              <div class="topbar__copy">
+                <span class="topbar__eyebrow">{{ pageGroupLabel }}</span>
+                <span class="topbar__title">{{ pageTitle }}</span>
               </div>
             </div>
 
             <GlobalSearchBar
+              v-if="showGlobalSearch"
               ref="globalSearchBar"
               v-model="searchQuery"
               class="topbar__search"
@@ -95,7 +96,7 @@ import MobileNav from '@/components/layout/MobileNav.vue'
 import RefreshCenter from '@/components/layout/RefreshCenter.vue'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { MOBILE_NAV_ITEMS } from '@/constants/sidebar'
+import { MOBILE_NAV_ITEMS, NAV_ITEMS, isNavigationItemActive } from '@/constants/sidebar'
 import { isMobile } from './composables/useMobile'
 import { useGlobalSearch } from './composables/useGlobalSearch'
 import { useSystemConfig } from './composables/useSystemConfig'
@@ -106,6 +107,16 @@ const SEARCH_SECTION_TITLES = {
   home: '内容片库',
   subscribed: '订阅频道',
   history: '观看历史',
+}
+
+const STATIC_PAGE_TITLES = {
+  SyncCenter: '同步中心',
+  Monitoring: '监控',
+  ScheduledTasks: '定时任务',
+  Plugins: '插件',
+  Logs: '日志',
+  Settings: '设置',
+  VideoPlay: '播放页',
 }
 
 const route = useRoute()
@@ -134,6 +145,7 @@ const { loadSystemConfig } = useSystemConfig()
 
 const mobileRoutes = MOBILE_NAV_ITEMS
 
+const showShellHeader = computed(() => !isAuthPage.value)
 const showGlobalSearch = computed(() => !isAuthPage.value && !!route.meta?.showSearch)
 const isScrollablePage = computed(() => !!route.meta?.scrollable)
 
@@ -144,22 +156,30 @@ const contentScrollClass = computed(() => {
   return route.meta?.hideScrollbar ? 'scrollbar-hide overflow-y-auto' : 'scrollbar overflow-y-auto'
 })
 
-const searchSectionTitle = computed(() => {
+const pageTitle = computed(() => {
   const searchKey = route.meta?.search
   if (searchKey && SEARCH_SECTION_TITLES[searchKey]) {
     return SEARCH_SECTION_TITLES[searchKey]
   }
-  return '搜索工作台'
+  if (route.name && STATIC_PAGE_TITLES[route.name]) {
+    return STATIC_PAGE_TITLES[route.name]
+  }
+  const matchedNav = NAV_ITEMS.find((item) => isNavigationItemActive(item, route.path))
+  return matchedNav?.name || '工作台'
 })
 
-const searchEyebrow = computed(() => {
-  if (route.meta?.search === 'history') {
-    return 'PLAYBACK DESK'
+const pageGroupLabel = computed(() => {
+  const matchedNav = NAV_ITEMS.find((item) => isNavigationItemActive(item, route.path))
+  if (!matchedNav) {
+    return 'Workspace'
   }
-  if (route.meta?.search === 'subscribed') {
-    return 'SUBSCRIPTION DESK'
+  if (matchedNav.group === 'operations') {
+    return 'Operations'
   }
-  return 'EDITORIAL SEARCH'
+  if (matchedNav.group === 'system') {
+    return 'System'
+  }
+  return 'Content'
 })
 
 const syncAppTopbarHeight = async () => {
@@ -172,7 +192,7 @@ const syncAppTopbarHeight = async () => {
     root.style.setProperty('--app-content-height', `${height}px`)
   }
 
-  if (!showGlobalSearch.value) {
+  if (!showShellHeader.value) {
     root.style.setProperty('--app-topbar-height', '0px')
     return
   }
@@ -231,7 +251,7 @@ watch(
   { immediate: true },
 )
 
-watch(showGlobalSearch, syncAppTopbarHeight)
+watch(showShellHeader, syncAppTopbarHeight)
 watch(() => route.path, syncAppTopbarHeight)
 
 watch(() => route.name, () => {
@@ -315,9 +335,7 @@ h6 {
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 0% 0%, hsl(var(--primary) / 0.08), transparent 24%),
-    linear-gradient(180deg, hsl(var(--background) / 0.98), hsl(var(--background)));
+  background: hsl(var(--background));
 }
 
 .app-main {
@@ -331,25 +349,15 @@ h6 {
 
 .topbar-shell {
   position: relative;
-  padding: 0.8rem 1rem 0.6rem;
-  background:
-    linear-gradient(180deg, hsl(var(--background) / 0.9), hsl(var(--background) / 0.7));
-  border-bottom: 1px solid hsl(var(--border) / 0.68);
-  backdrop-filter: blur(18px);
-}
-
-.topbar-shell::after {
-  content: '';
-  position: absolute;
-  inset: auto 1rem 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.18), transparent);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.72);
+  background: hsl(var(--background) / 0.96);
 }
 
 .topbar {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.875rem;
   width: 100%;
   max-width: min(var(--container-max-width, 2560px), calc(100vw - 2rem));
   margin: 0 auto;
@@ -358,26 +366,31 @@ h6 {
 .topbar__lead {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.75rem;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .topbar__copy {
   display: grid;
-  gap: 0.12rem;
+  gap: 0.08rem;
+  min-width: 0;
 }
 
 .topbar__eyebrow {
-  font-size: 0.66rem;
-  letter-spacing: 0.16em;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
 }
 
 .topbar__title {
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar__search {
@@ -389,20 +402,18 @@ h6 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 9999px;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
   border: 1px solid hsl(var(--border) / 0.78);
-  background: hsl(var(--card) / 0.88);
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
-  box-shadow: 0 14px 32px hsl(var(--surface-shadow));
-  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .topbar-menu-btn:hover {
   background: hsl(var(--accent));
-  box-shadow: 0 18px 40px hsl(var(--surface-shadow));
-  transform: translateY(-1px);
+  border-color: hsl(var(--border));
 }
 
 .page-container {
@@ -429,8 +440,8 @@ h6 {
 
 .sidebar-flyout {
   position: fixed;
-  top: 0.9rem;
-  left: 0.9rem;
+  top: 0.75rem;
+  left: 0.75rem;
   z-index: 40;
 }
 
@@ -438,20 +449,18 @@ h6 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 9999px;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
   border: 1px solid hsl(var(--border) / 0.8);
-  background: hsl(var(--card) / 0.9);
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
-  box-shadow: 0 18px 40px hsl(var(--surface-shadow));
-  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .sidebar-flyout-toggle:hover {
   background: hsl(var(--accent));
-  box-shadow: 0 22px 48px hsl(var(--surface-shadow));
-  transform: translateY(-1px);
+  border-color: hsl(var(--border));
 }
 
 .sidebar-flyout-overlay {
@@ -461,13 +470,13 @@ h6 {
   display: flex;
   align-items: stretch;
   background: hsl(var(--overlay));
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
 }
 
 .sidebar-flyout-panel {
   height: 100%;
   max-width: 19rem;
-  box-shadow: 0 30px 70px hsl(var(--surface-shadow));
+  box-shadow: var(--shadow-popup);
 }
 
 .sidebar-flyout-enter-active,
@@ -487,12 +496,28 @@ h6 {
 
 @media (max-width: 767px) {
   .topbar-shell {
-    padding: 0.7rem 0.8rem 0.55rem;
+    padding: 0.625rem 0.8rem;
   }
 
   .topbar {
-    gap: 0.75rem;
+    gap: 0.625rem;
     max-width: calc(100vw - 1.6rem);
+  }
+
+  .topbar__lead {
+    flex: 1 1 auto;
+  }
+
+  .topbar__eyebrow {
+    display: none;
+  }
+
+  .topbar__title {
+    font-size: 0.8125rem;
+  }
+
+  .topbar__search {
+    min-width: 0;
   }
 }
 </style>
