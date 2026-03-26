@@ -31,7 +31,6 @@ from routes.system_config import router as system_config_router
 from routes.plugins import router as plugins_router
 from routes.logs import router as logs_router
 from routes.connectivity import router as connectivity_router
-from routes.metrics import router as metrics_router
 from routes.scheduler import router as scheduler_router
 
 logger = logging.getLogger()
@@ -104,7 +103,6 @@ def create_app() -> FastAPI:
 
     # 注册路由
     app.include_router(health_router)  # 健康检查路由（无需认证）
-    app.include_router(metrics_router)  # 监控指标路由
     app.include_router(video_router)
     app.include_router(subscription_router)
     app.include_router(user_router)

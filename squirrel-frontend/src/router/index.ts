@@ -12,7 +12,6 @@ const Login = () => import('../views/Login.vue')
 const Register = () => import('../views/Register.vue')
 const PluginManager = () => import('../views/PluginManager.vue')
 const LogViewer = () => import('../views/LogViewer.vue')
-const Monitoring = () => import('../views/Monitoring.vue')
 const ScheduledTasks = () => import('../views/ScheduledTasks.vue')
 const SyncCenter = () => import('../views/SyncCenter.vue')
 
@@ -124,12 +123,6 @@ const routes = [
     path: '/sync-center',
     name: 'SyncCenter',
     component: SyncCenter,
-    meta: { showSearch: false, scrollable: true, hideScrollbar: true }
-  },
-  {
-    path: '/monitoring',
-    name: 'Monitoring',
-    component: Monitoring,
     meta: { showSearch: false, scrollable: true, hideScrollbar: true }
   },
   {

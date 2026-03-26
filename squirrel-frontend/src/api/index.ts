@@ -1,4 +1,3 @@
-export * from './metrics'
 export * from './plugins'
 export * from './scheduler'
 export * from './logs'

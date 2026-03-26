@@ -2,7 +2,6 @@ import type { Component } from 'vue'
 import {
   ArrowPathIcon,
   BookmarkIcon,
-  ChartBarIcon,
   ClockIcon,
   Cog6ToothIcon as CogIcon,
   CpuChipIcon,
@@ -59,14 +58,6 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '同步',
     path: '/sync-center',
     icon: ArrowPathIcon,
-    group: 'operations',
-    showOnMobile: true,
-  },
-  {
-    name: '监控',
-    mobileLabel: '监控',
-    path: '/monitoring',
-    icon: ChartBarIcon,
     group: 'operations',
     showOnMobile: true,
   },
