@@ -1,6 +1,13 @@
 <template>
   <div class="sync-center-page flex min-h-full flex-col bg-background text-foreground">
-    <div class="toolbar-container pb-4 pt-4">
+    <div class="toolbar-container pb-2 pt-4">
+      <PageHeader
+        title="同步中心"
+        description="集中查看运行信号、失败恢复和历史批次，把刷新与排障收敛到一个工作区。"
+      />
+    </div>
+
+    <div class="toolbar-container pb-4 pt-0">
       <SyncControlBar
         :auto-refresh="overviewAutoRefresh"
         :can-retry-failed="retryTargetCount > 0"
@@ -18,8 +25,8 @@
       />
     </div>
 
-    <div class="content-container h-auto flex-1 min-h-0 overflow-y-auto pb-6">
-      <div class="flex flex-col gap-3">
+    <div class="content-container h-auto flex-1 min-h-0 overflow-y-auto pb-5">
+      <div class="flex flex-col gap-2.5">
         <Alert
           v-if="actionNotice.message"
           :variant="actionNoticeVariant"
@@ -73,6 +80,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import SyncAnalysisWorkspace from '@/components/sync-center/SyncAnalysisWorkspace.vue'
 import SyncControlBar from '@/components/sync-center/SyncControlBar.vue'
 import SyncRunDetailDrawer from '@/components/sync-center/SyncRunDetailDrawer.vue'

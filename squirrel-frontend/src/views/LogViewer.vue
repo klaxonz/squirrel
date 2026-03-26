@@ -1,13 +1,11 @@
 <template>
   <div class="log-viewer-container bg-background text-foreground h-full flex flex-col min-h-0">
-    <div class="toolbar-container pt-6 pb-4">
-      <div class="log-hero">
-        <div class="log-hero__copy">
-          <span class="log-eyebrow">diagnostics desk</span>
-          <h1 class="log-hero__title">日志查看器</h1>
-          <p class="log-hero__description">把错误、链路和上下文折叠成一条连续的排障时间线，适合快速筛选 trace、定位异常和导出现场。</p>
-        </div>
-        <div class="log-hero__meta">
+    <div class="toolbar-container pt-4 pb-4">
+      <PageHeader
+        title="日志查看器"
+        description="把错误、链路和上下文折叠成连续的排障时间线，适合快速筛选 trace、定位异常和导出现场。"
+      >
+        <template #actions>
           <div class="log-hero__pill">
             <span class="log-hero__label">总量</span>
             <span>共 {{ totalLogs }} 条</span>
@@ -17,41 +15,46 @@
             <span class="log-hero__label">自动刷新</span>
             <span>{{ autoRefresh ? '5s' : '关闭' }}</span>
           </div>
-          <button
+          <Button
             @click="copyAllLogs"
             :disabled="logs.length === 0"
+            size="sm"
+            variant="outline"
             class="log-toolbar-button"
             :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
           >
             <ClipboardDocumentIcon class="h-4 w-4" />
             {{ allCopied ? '已复制全部' : '复制全部' }}
-          </button>
-          <button
+          </Button>
+          <Button
             @click="toggleAutoRefresh"
+            size="sm"
+            :variant="autoRefresh ? 'secondary' : 'outline'"
             class="log-toolbar-button"
           >
             {{ autoRefresh ? '停止自动刷新' : '开启自动刷新' }}
-          </button>
-          <button
+          </Button>
+          <Button
             @click="loadLogs"
             :disabled="loading"
-            class="log-toolbar-button log-toolbar-button--primary"
+            size="sm"
+            class="log-toolbar-button"
           >
             <span
               v-if="loading"
               class="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground"
             ></span>
             <span>刷新</span>
-          </button>
-        </div>
-      </div>
+          </Button>
+        </template>
+      </PageHeader>
     </div>
 
-    <div class="content-container py-6 space-y-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div class="content-container py-5 space-y-4 flex-1 flex flex-col min-h-0 overflow-hidden">
       <div class="log-filter-shell">
         <div class="flex flex-wrap gap-3 items-end">
           <div class="flex-1 min-w-[200px]">
-            <input
+            <Input
               v-model="filters.keyword"
               @keyup.enter="applyFilters"
               type="text"
@@ -62,7 +65,7 @@
 
           <div class="w-32">
             <Select :model-value="filters.level" @update:model-value="(value) => { filters.level = value; applyFilters(); }">
-              <SelectTrigger class="h-10 text-xs rounded-full border-border/80 bg-background/70">
+              <SelectTrigger class="h-8 text-xs border-border/80 bg-background/80">
                 <SelectValue placeholder="级别" />
               </SelectTrigger>
               <SelectContent>
@@ -75,7 +78,7 @@
 
           <div class="w-48">
             <Select :model-value="filters.filename" @update:model-value="(value) => { filters.filename = value; applyFilters(); }">
-              <SelectTrigger class="h-10 text-xs rounded-full border-border/80 bg-background/70">
+              <SelectTrigger class="h-8 text-xs border-border/80 bg-background/80">
                 <SelectValue placeholder="日志文件" />
               </SelectTrigger>
               <SelectContent>
@@ -87,18 +90,21 @@
           </div>
 
           <div class="flex gap-2">
-            <button
+            <Button
               @click="clearFilters"
+              size="sm"
+              variant="outline"
               class="log-toolbar-button"
             >
               清空
-            </button>
-            <button
+            </Button>
+            <Button
               @click="applyFilters"
-              class="log-toolbar-button log-toolbar-button--primary"
+              size="sm"
+              class="log-toolbar-button"
             >
               应用
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -131,15 +137,17 @@
                 class="log-entry border-b border-border px-3 py-3 group relative"
                 :class="getLogLevelClass(item.level)"
               >
-                <button
+                <Button
                   @click="copyLog(item)"
+                  size="xs"
+                  variant="outline"
                   class="log-copy-button"
                   :title="'复制日志'"
                 >
                   <ClipboardDocumentIcon class="h-3 w-3" />
                   <span v-if="copiedLogId === item.id" class="text-success">已复制</span>
                   <span v-else>复制</span>
-                </button>
+                </Button>
 
                 <div class="flex items-center gap-2 mb-1 flex-wrap pr-16">
                   <span
@@ -183,6 +191,9 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
+import PageHeader from '@/components/layout/PageHeader.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import { getLogFiles, queryLogs } from '@/api'
@@ -496,28 +507,13 @@ function getMessageBorderClass(level) {
   font-family: var(--font-sans);
 }
 
-.log-hero,
 .log-filter-shell,
 .log-stream-shell {
   border: 1px solid hsl(var(--border) / 0.76);
   background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
-  box-shadow: 0 20px 52px hsl(var(--foreground) / 0.045);
+  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.035);
 }
 
-.log-hero {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.5rem;
-  border-radius: 1.75rem;
-  background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.14), transparent 34%),
-    radial-gradient(circle at bottom right, hsl(var(--secondary) / 0.9), transparent 38%),
-    linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.94));
-}
-
-.log-eyebrow,
 .log-hero__label {
   font-size: 0.68rem;
   text-transform: uppercase;
@@ -525,40 +521,18 @@ function getMessageBorderClass(level) {
   color: hsl(var(--muted-foreground));
 }
 
-.log-hero__title {
-  margin-top: 0.6rem;
-  font-size: clamp(1.85rem, 2vw, 2.45rem);
-  line-height: 1.05;
-  font-weight: 600;
-}
-
-.log-hero__description {
-  margin-top: 0.75rem;
-  max-width: 44rem;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.7;
-  font-size: 0.95rem;
-}
-
-.log-hero__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: flex-start;
-}
-
 .log-hero__pill,
 .log-toolbar-button {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  min-height: 2.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 999px;
+  gap: 0.5rem;
+  min-height: 2rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.625rem;
   border: 1px solid hsl(var(--border) / 0.8);
-  background: hsl(var(--background) / 0.72);
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
-  transition: transform 160ms ease, background-color 160ms ease, opacity 160ms ease;
+  transition: background-color 160ms ease, opacity 160ms ease;
 }
 
 .log-toolbar-button:hover:not(:disabled) {
@@ -569,41 +543,17 @@ function getMessageBorderClass(level) {
   opacity: 0.5;
 }
 
-.log-toolbar-button--primary {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-color: hsl(var(--primary) / 0.3);
-  box-shadow: 0 16px 36px hsl(var(--primary) / 0.18);
-}
-
 .log-filter-shell {
-  padding: 1rem;
-  border-radius: 1.5rem;
-}
-
-.log-search-input {
-  width: 100%;
-  min-height: 2.75rem;
-  padding: 0.72rem 1rem;
-  border: 1px solid hsl(var(--border) / 0.85);
-  border-radius: 999px;
-  background: hsl(var(--background) / 0.72);
-  color: hsl(var(--foreground));
-  font-size: 0.84rem;
+  padding: 0.9rem;
+  border-radius: 0.875rem;
 }
 
 .log-search-input::placeholder {
   color: hsl(var(--muted-foreground));
 }
 
-.log-search-input:focus {
-  outline: none;
-  border-color: hsl(var(--primary) / 0.45);
-  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.08);
-}
-
 .log-stream-shell {
-  border-radius: 1.5rem;
+  border-radius: 0.875rem;
 }
 
 .scroller {
@@ -667,27 +617,14 @@ function getMessageBorderClass(level) {
 
 .log-copy-button {
   position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
+  top: 0.65rem;
+  right: 0.65rem;
   opacity: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.35rem 0.55rem;
-  border-radius: 999px;
-  border: 1px solid hsl(var(--border) / 0.8);
-  background: hsl(var(--background) / 0.88);
-  color: hsl(var(--muted-foreground));
-  transition: opacity 160ms ease, background-color 160ms ease;
+  transition: opacity 160ms ease;
 }
 
 .group:hover .log-copy-button {
   opacity: 1;
-}
-
-.log-copy-button:hover {
-  background: hsl(var(--accent));
-  color: hsl(var(--foreground));
 }
 
 .log-level-badge {
@@ -730,7 +667,7 @@ function getMessageBorderClass(level) {
   display: inline-flex;
   align-items: center;
   padding: 0.25rem 0.55rem;
-  border-radius: 999px;
+  border-radius: 0.625rem;
   background: hsl(var(--muted));
   color: hsl(var(--muted-foreground));
   font-size: 0.68rem;

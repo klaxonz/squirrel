@@ -1,39 +1,36 @@
 <template>
   <div class="settings-page bg-background text-foreground h-full flex flex-col min-h-0">
-    <div class="toolbar-container pt-6 pb-6">
-      <div class="settings-hero">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 class="text-2xl font-semibold text-foreground">设置</h1>
-            <p class="text-sm text-muted-foreground mt-1">管理内容偏好、播放体验与系统服务。</p>
+    <div class="toolbar-container pt-4 pb-4">
+      <PageHeader
+        title="设置"
+        description="管理内容偏好、播放体验与系统服务。"
+      >
+        <template #actions>
+          <div class="settings-header-pill">
+            <span class="h-2 w-2 rounded-full" :class="statusDotClass"></span>
+            <span>{{ statusLabel }}</span>
           </div>
-          <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground/70">
-            <div class="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-full">
-              <span class="h-2 w-2 rounded-full" :class="statusDotClass"></span>
-              <span>{{ statusLabel }}</span>
-            </div>
-            <div class="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-full">
-              <span class="text-muted-foreground/70">系统配置</span>
-              <span class="text-foreground">{{ systemStatusLabel }}</span>
-            </div>
+          <div class="settings-header-pill">
+            <span class="text-muted-foreground/70">系统配置</span>
+            <span class="text-foreground">{{ systemStatusLabel }}</span>
           </div>
-        </div>
-      </div>
+        </template>
+      </PageHeader>
     </div>
 
     <div
       class="content-container pb-10 flex-1 min-h-0 overflow-hidden"
     >
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-0 min-h-0 h-full">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-0 min-h-0 h-full">
         <aside class="lg:col-span-3 lg:sticky lg:top-0 self-start">
 
-          <div class="settings-nav bg-card/75 border border-border rounded-2xl p-2 backdrop-blur-sm lg:rounded-r-none lg:border-r-0">
+          <div class="settings-nav bg-card/80 border border-border rounded-xl p-1.5 lg:rounded-r-none lg:border-r-0">
             <div class="flex lg:flex-col gap-2 overflow-x-auto scrollbar-hide">
               <button
                 v-for="tab in tabs"
                 :key="tab.key"
                 @click="currentTab = tab.key"
-                class="tab-button group relative text-left min-w-[11rem] flex-1 lg:flex-none px-4 py-3 rounded-xl border transition-colors"
+                class="tab-button group relative text-left min-w-[10rem] flex-1 lg:flex-none px-3 py-2.5 rounded-lg border transition-colors"
                 :class="isCurrentTab(tab.key)
                   ? 'bg-muted border-border text-foreground shadow-sm'
                   : 'bg-transparent border-border text-muted-foreground hover:bg-card/60'"
@@ -239,6 +236,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useSystemConfig } from '../composables/useSystemConfig';
 import { useUserSettings } from '../composables/useUserSettings';
 import { useAppTheme } from '@/composables/useAppTheme'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import SiteConfigSection from '@/components/settings/SiteConfigSection.vue';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch'
@@ -353,13 +351,12 @@ const onSystemToggle = async (key: string, val: boolean) => {
   font-feature-settings: "tnum";
 }
 
-.settings-hero {
-  @apply rounded-[calc(var(--radius-2xl)+4px)] border border-border/70 px-4 py-5 shadow-[0_22px_50px_hsl(var(--surface-shadow))] sm:px-5;
-  background: linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--secondary) / 0.46));
+.settings-header-pill {
+  @apply inline-flex items-center gap-2 text-xs text-muted-foreground/70 bg-card border border-border rounded-md px-3 py-1.5;
 }
 
 .settings-nav {
-  @apply shadow-[0_20px_48px_hsl(var(--surface-shadow))];
+  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.035);
 }
 
 .toolbar-container,
@@ -388,7 +385,7 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 .section-badge {
-  @apply inline-flex items-center gap-2 text-xs text-muted-foreground/70 bg-card border border-border rounded-full px-3 py-1;
+  @apply inline-flex items-center gap-2 text-xs text-muted-foreground/70 bg-card border border-border rounded-md px-3 py-1;
 }
 
 .status-dot {
@@ -396,43 +393,42 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 .settings-card {
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background-color: hsl(var(--card));
   background-color: color-mix(in srgb, hsl(var(--card)) 60%, hsl(var(--background)));
-  @apply shadow-[0_22px_48px_hsl(var(--surface-shadow))];
+  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.035);
 }
 
 
 .settings-card-header {
-  @apply flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between px-6 py-4 border-b border-border bg-secondary/45;
+  @apply flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between px-5 py-3.5 border-b border-border bg-secondary/45;
 }
 
 .settings-card-body {
-  @apply px-6 pb-2;
+  @apply px-5 pb-2;
 }
 
 .theme-choice-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: 1rem;
-  padding-top: 1.5rem;
-  padding-bottom: 1.5rem;
+  gap: 0.875rem;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
 }
 
 .theme-choice {
   display: grid;
-  gap: 0.875rem;
-  padding: 1rem;
-  border-radius: calc(var(--radius-2xl) - 0.25rem);
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border-radius: calc(var(--radius-lg) - 0.125rem);
   border: 1px solid hsl(var(--border));
   text-align: left;
   background: hsl(var(--card));
-  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .theme-choice:hover {
-  transform: translateY(-1px);
   border-color: hsl(var(--ring) / 0.35);
   background: hsl(var(--accent) / 0.45);
 }
@@ -440,7 +436,7 @@ const onSystemToggle = async (key: string, val: boolean) => {
 .theme-choice-active {
   border-color: hsl(var(--ring) / 0.6);
   background: linear-gradient(180deg, hsl(var(--accent) / 0.9), hsl(var(--card)));
-  box-shadow: 0 18px 36px hsl(var(--foreground) / 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .theme-choice-inactive {
@@ -451,9 +447,9 @@ const onSystemToggle = async (key: string, val: boolean) => {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: end;
-  min-height: 6rem;
-  padding: 0.875rem;
-  border-radius: calc(var(--radius-xl) - 0.125rem);
+  min-height: 5.5rem;
+  padding: 0.75rem;
+  border-radius: calc(var(--radius-lg) - 0.125rem);
   border: 1px solid hsl(var(--border) / 0.75);
 }
 
@@ -475,8 +471,8 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 .theme-choice-preview-chip {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 9999px;
   background: linear-gradient(135deg, #cc7a3d, #934125);
   box-shadow: 0 12px 24px rgba(120, 56, 30, 0.28);
@@ -517,7 +513,7 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 .setting-row {
-  @apply -mx-6 px-6 flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between transition-colors hover:bg-accent/45;
+  @apply -mx-5 px-5 flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between transition-colors hover:bg-accent/45;
 }
 
 .setting-text {

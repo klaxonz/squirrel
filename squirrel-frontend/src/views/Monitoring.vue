@@ -1,17 +1,15 @@
 <template>
   <div class="monitoring-page bg-background text-foreground h-screen flex flex-col overflow-hidden">
     <div class="shrink-0">
-      <div class="toolbar-container pt-6 pb-4">
-        <div class="monitor-hero">
-          <div class="monitor-hero__copy">
-            <span class="monitor-eyebrow">operations overview</span>
-            <h1 class="monitor-hero__title">系统监控</h1>
-            <p class="monitor-hero__description">把爬取、订阅、队列与错误流收拢到同一个运行视图，方便快速判断现在是该扩容、排障，还是继续推进更新。</p>
-          </div>
-          <div class="monitor-hero__meta">
+      <div class="toolbar-container pt-4 pb-4">
+        <PageHeader
+          title="系统监控"
+          description="把爬取、订阅、队列与错误流收拢到同一个运行视图，方便快速判断现在是该扩容、排障，还是继续推进更新。"
+        >
+          <template #actions>
             <div class="monitor-hero__pill">
               <span class="monitor-hero__label">健康状态</span>
-              <Badge :variant="healthBadgeVariant" class="rounded-full monitor-hero__badge" :class="healthBadgeClass">{{ healthStatusText }}</Badge>
+              <Badge :variant="healthBadgeVariant" class="monitor-hero__badge" :class="healthBadgeClass">{{ healthStatusText }}</Badge>
               <span class="font-mono text-lg" :class="healthScoreClass">{{ dashboardData?.health?.score || 0 }}</span>
             </div>
             <div class="monitor-hero__pill">
@@ -21,23 +19,24 @@
               <span class="monitor-hero__label">最近更新</span>
               <span class="font-mono text-sm text-foreground">{{ lastUpdateTime || '—' }}</span>
             </div>
-            <button
+            <Button
               @click="refreshData"
               :disabled="loading"
+              size="sm"
               class="monitor-refresh"
             >
               <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': loading }" />
               <span>{{ loading ? '同步中' : '立即刷新' }}</span>
-            </button>
-          </div>
-        </div>
+            </Button>
+          </template>
+        </PageHeader>
       </div>
     </div>
 
-    <div class="content-container py-6 space-y-5 flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div class="content-container py-5 space-y-4 flex-1 flex flex-col min-h-0 overflow-hidden">
       <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 shrink-0">
         <Card class="monitor-metric-card monitor-metric-card--warm">
-          <CardContent class="p-4">
+          <CardContent class="p-3.5">
             <p class="monitor-metric-card__label">爬取任务</p>
             <p class="monitor-metric-card__value">{{ dashboardData?.crawl?.total || 0 }}</p>
             <div class="monitor-metric-card__meta">
@@ -48,7 +47,7 @@
         </Card>
 
         <Card class="monitor-metric-card">
-          <CardContent class="p-4">
+          <CardContent class="p-3.5">
             <p class="monitor-metric-card__label">成功率</p>
             <p class="monitor-metric-card__value" :class="getSiteRateClass(dashboardData?.crawl?.success_rate || 0)">
               {{ dashboardData?.crawl?.success_rate || 0 }}%
@@ -57,7 +56,7 @@
         </Card>
 
         <Card class="monitor-metric-card">
-          <CardContent class="p-4">
+          <CardContent class="p-3.5">
             <p class="monitor-metric-card__label">发现视频</p>
             <p class="monitor-metric-card__value text-foreground">{{ dashboardData?.crawl?.videos_discovered || 0 }}</p>
             <p class="monitor-metric-card__meta">
@@ -67,7 +66,7 @@
         </Card>
 
         <Card class="monitor-metric-card">
-          <CardContent class="p-4">
+          <CardContent class="p-3.5">
             <p class="monitor-metric-card__label">队列积压</p>
             <p class="monitor-metric-card__value" :class="getQueueDepthTextClass(dashboardData?.queues?.total_depth || 0)">
               {{ dashboardData?.queues?.total_depth || 0 }}
@@ -79,7 +78,7 @@
         </Card>
 
         <Card class="monitor-metric-card">
-          <CardContent class="p-4">
+          <CardContent class="p-3.5">
             <p class="monitor-metric-card__label">订阅更新</p>
             <p class="monitor-metric-card__value text-foreground">{{ dashboardData?.subscriptions?.total || 0 }}</p>
             <div class="monitor-metric-card__meta">
@@ -90,7 +89,7 @@
         </Card>
 
         <Card class="monitor-metric-card monitor-metric-card--ink">
-          <CardContent class="p-4">
+          <CardContent class="p-3.5">
             <p class="monitor-metric-card__label">订阅发现</p>
             <p class="monitor-metric-card__value text-foreground">{{ dashboardData?.subscriptions?.videos_found || 0 }}</p>
             <p class="monitor-metric-card__meta">
@@ -142,7 +141,7 @@
               v-for="error in dashboardData.errors.by_type.slice(0, 8)"
               :key="error.type"
               variant="destructive"
-              class="rounded-full px-2.5 py-1"
+              class="rounded-md px-2 py-0.5"
             >
               {{ `${error.type}: ${error.count}` }}
             </Badge>
@@ -238,7 +237,7 @@
           <div v-for="(err, idx) in dashboardData.recent_errors" :key="idx" class="monitor-error-item">
             <div class="flex items-center justify-between text-xs mb-1">
               <div class="flex items-center gap-2">
-                <Badge variant="destructive" class="rounded-full">{{ err.type }}</Badge>
+                <Badge variant="destructive" class="rounded-md px-2 py-0.5">{{ err.type }}</Badge>
                 <span class="text-muted-foreground/70">{{ err.site }}</span>
               </div>
               <span class="text-muted-foreground/70">{{ formatTime(err.time) }}</span>
@@ -250,7 +249,7 @@
                 <span class="hidden group-open:inline">▼</span>
                 {{ getErrorSummary(err.msg) }}
               </summary>
-              <pre class="error-stack mt-2 p-3 bg-card/80 rounded-xl text-muted-foreground overflow-x-auto whitespace-pre-wrap text-xs leading-relaxed max-h-52 overflow-y-auto scrollbar-hide border border-border/70">{{ err.msg }}</pre>
+              <pre class="error-stack mt-2 rounded-lg border border-border/70 bg-card/80 p-3 text-xs leading-relaxed text-muted-foreground overflow-x-auto whitespace-pre-wrap max-h-52 overflow-y-auto scrollbar-hide">{{ err.msg }}</pre>
             </details>
           </div>
         </div>
@@ -263,7 +262,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { Logger } from '@/utils/logger'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getDashboard } from '@/api'
 
@@ -405,24 +406,6 @@ onUnmounted(() => {
   font-feature-settings: "tnum";
 }
 
-.monitor-hero {
-  display: grid;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 1.75rem;
-  background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.16), transparent 42%),
-    radial-gradient(circle at bottom right, hsl(var(--accent) / 0.45), transparent 38%),
-    linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.92));
-  box-shadow: 0 24px 60px hsl(var(--foreground) / 0.06);
-}
-
-.monitor-hero__copy {
-  max-width: 56rem;
-}
-
-.monitor-eyebrow,
 .monitor-panel__eyebrow {
   display: inline-flex;
   align-items: center;
@@ -432,37 +415,14 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground));
 }
 
-.monitor-hero__title {
-  margin-top: 0.65rem;
-  font-size: clamp(1.9rem, 2vw, 2.6rem);
-  line-height: 1.05;
-  font-weight: 600;
-}
-
-.monitor-hero__description {
-  margin-top: 0.75rem;
-  max-width: 48rem;
-  font-size: 0.95rem;
-  line-height: 1.7;
-  color: hsl(var(--muted-foreground));
-}
-
-.monitor-hero__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.85rem;
-  align-items: center;
-}
-
 .monitor-hero__pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  border-radius: 999px;
+  gap: 0.6rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.625rem;
   border: 1px solid hsl(var(--border) / 0.8);
-  background: hsl(var(--background) / 0.72);
-  backdrop-filter: blur(16px);
+  background: hsl(var(--background));
 }
 
 .monitor-hero__label,
@@ -471,42 +431,22 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground));
 }
 
-.monitor-hero__badge {
-  padding-inline: 0.75rem;
-}
-
 .monitor-hero__divider {
   width: 1px;
-  height: 1rem;
+  height: 0.875rem;
   background: hsl(var(--border));
 }
 
 .monitor-refresh {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.9rem 1.15rem;
-  border-radius: 999px;
-  border: 1px solid hsl(var(--primary) / 0.2);
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
-  box-shadow: 0 18px 36px hsl(var(--primary) / 0.18);
-}
-
-.monitor-refresh:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.monitor-refresh:disabled {
-  opacity: 0.72;
+  gap: 0.5rem;
+  box-shadow: none;
 }
 
 .monitor-metric-card {
   border-color: hsl(var(--border) / 0.7);
   background:
     linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.92));
-  box-shadow: 0 18px 42px hsl(var(--foreground) / 0.04);
+  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.035);
 }
 
 .monitor-metric-card--warm {
@@ -529,16 +469,16 @@ onUnmounted(() => {
 }
 
 .monitor-metric-card__value {
-  margin-top: 0.75rem;
-  font-size: 1.85rem;
+  margin-top: 0.6rem;
+  font-size: 1.65rem;
   line-height: 1;
   font-weight: 600;
 }
 
 .monitor-metric-card__meta {
-  margin-top: 0.8rem;
+  margin-top: 0.65rem;
   display: flex;
-  gap: 0.9rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
@@ -550,11 +490,11 @@ onUnmounted(() => {
   border-color: hsl(var(--border) / 0.72);
   background:
     linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
-  box-shadow: 0 20px 50px hsl(var(--foreground) / 0.045);
+  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.035);
 }
 
 .monitor-panel {
-  padding: 1rem;
+  padding: 0.9rem;
 }
 
 .monitor-panel__header,
@@ -563,18 +503,18 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.85rem;
 }
 
 .monitor-panel__title {
-  margin-top: 0.4rem;
-  font-size: 1rem;
+  margin-top: 0.3rem;
+  font-size: 0.95rem;
   font-weight: 600;
 }
 
 .monitor-stat-tile {
-  padding: 0.95rem 0.8rem;
-  border-radius: 1rem;
+  padding: 0.8rem 0.7rem;
+  border-radius: 0.75rem;
   border: 1px solid hsl(var(--border) / 0.7);
   background: hsl(var(--background) / 0.72);
 }
@@ -592,7 +532,7 @@ onUnmounted(() => {
 }
 
 .monitor-table-card__header {
-  padding: 1rem 1rem 0.9rem;
+  padding: 0.9rem 0.9rem 0.8rem;
   margin-bottom: 0;
   border-bottom: 1px solid hsl(var(--border));
 }
@@ -614,9 +554,9 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
   background: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
   font-size: 0.68rem;
@@ -625,7 +565,7 @@ onUnmounted(() => {
 }
 
 .monitor-error-item {
-  padding: 0.9rem 1rem;
+  padding: 0.8rem 0.9rem;
   transition: background-color 160ms ease;
 }
 
@@ -666,10 +606,4 @@ details summary {
   list-style: none;
 }
 
-@media (min-width: 1024px) {
-  .monitor-hero {
-    grid-template-columns: minmax(0, 1.55fr) minmax(24rem, 1fr);
-    align-items: end;
-  }
-}
 </style>

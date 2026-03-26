@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card" :class="embedded ? 'h-full' : ''">
+  <div class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card" :class="embedded ? 'h-full' : ''">
     <div
       class="border-b border-border"
       :class="embedded ? 'px-3 py-2.5' : 'px-4 py-3'"
@@ -12,7 +12,7 @@
           </div>
           <div class="flex items-center gap-2">
             <slot name="header-action" />
-            <span class="rounded-full border border-border bg-background px-2 py-0.5 text-2xs text-muted-foreground/70">
+            <span class="rounded-md border border-border bg-background px-2 py-0.5 text-2xs text-muted-foreground/70">
               第 {{ page }} / {{ totalPages }} 页
             </span>
           </div>
@@ -80,7 +80,7 @@
               <PopoverTrigger as-child>
                 <Button
                   variant="outline"
-                  class="h-8 w-full justify-start overflow-hidden rounded-lg bg-background px-3 text-left text-xs font-normal"
+                  class="h-8 w-full justify-start overflow-hidden bg-background px-3 text-left text-xs font-normal"
                 >
                   <CalendarIcon class="mr-2 h-4 w-4 text-muted-foreground" />
                   <span v-if="dateRangeLabel" class="truncate">{{ dateRangeLabel }}</span>
@@ -110,9 +110,9 @@
             <div class="text-sm font-semibold text-foreground">运行历史</div>
             <div class="mt-1 text-2xs text-muted-foreground">共 {{ total }} 条</div>
           </div>
-          <span class="rounded-full border border-border bg-background px-2.5 py-1 text-2xs text-muted-foreground/70">
-            第 {{ page }} / {{ totalPages }} 页
-          </span>
+            <span class="rounded-md border border-border bg-background px-2.5 py-1 text-2xs text-muted-foreground/70">
+              第 {{ page }} / {{ totalPages }} 页
+            </span>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
@@ -177,7 +177,7 @@
               <PopoverTrigger as-child>
                 <Button
                   variant="outline"
-                  class="h-9 w-full justify-start overflow-hidden rounded-lg bg-background px-3 text-left text-xs font-normal"
+                  class="h-8 w-full justify-start overflow-hidden bg-background px-3 text-left text-xs font-normal"
                 >
                   <CalendarIcon class="mr-2 h-4 w-4 text-muted-foreground" />
                   <span v-if="dateRangeLabel" class="truncate">{{ dateRangeLabel }}</span>
@@ -254,12 +254,12 @@
               <div class="max-w-[14rem] break-all font-mono text-2xs text-muted-foreground">{{ run.run_id }}</div>
             </td>
             <td class="px-3 py-2.5 align-middle">
-              <Badge :variant="getBadgeVariant(run.status)" class="rounded-full">
+              <Badge :variant="getBadgeVariant(run.status)" class="rounded-md px-2 py-0.5">
                 {{ getStatusLabel(run.status) }}
               </Badge>
             </td>
             <td class="px-3 py-2.5 align-middle">
-              <span class="rounded-full border border-border bg-background px-2 py-0.5 text-2xs text-muted-foreground/70">{{ getModeLabel(run.sync_mode) }}</span>
+              <span class="rounded-md border border-border bg-background px-2 py-0.5 text-2xs text-muted-foreground/70">{{ getModeLabel(run.sync_mode) }}</span>
             </td>
             <td class="px-3 py-2.5 align-middle text-2xs text-muted-foreground">{{ run.site || 'unknown' }}</td>
             <td class="px-3 py-2.5 align-middle text-2xs text-muted-foreground">{{ getTriggerLabel(run.trigger) }}</td>
@@ -268,10 +268,10 @@
             <td class="px-3 py-2.5 align-middle text-2xs text-muted-foreground">{{ formatRunVideoSummary(run) }}</td>
             <td class="px-3 py-2.5 align-middle">
               <div class="flex items-center justify-end gap-2">
-                <Button variant="secondary" size="xs" class="rounded-full" @click.stop="emit('open-run', run.run_id)">详情</Button>
+                <Button variant="secondary" size="xs" @click.stop="emit('open-run', run.run_id)">详情</Button>
                 <router-link
                   :to="getSubscriptionLink(run.subscription_id)"
-                  class="inline-flex rounded-full border border-border bg-background px-2.5 py-1 text-2xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  class="inline-flex rounded-md border border-border bg-background px-2.5 py-1 text-2xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   @click.stop
                 >
                   频道
@@ -286,8 +286,8 @@
     <div v-if="totalPages > 1" class="flex items-center justify-between border-t border-border px-3 py-2.5">
       <span class="text-2xs text-muted-foreground/70">第 {{ page }} / {{ totalPages }} 页</span>
       <div class="flex items-center gap-2">
-        <Button variant="secondary" size="xs" class="rounded-full" :disabled="page <= 1" @click="emit('change-page', page - 1)">上一页</Button>
-        <Button variant="secondary" size="xs" class="rounded-full" :disabled="page >= totalPages" @click="emit('change-page', page + 1)">下一页</Button>
+        <Button variant="secondary" size="xs" :disabled="page <= 1" @click="emit('change-page', page - 1)">上一页</Button>
+        <Button variant="secondary" size="xs" :disabled="page >= totalPages" @click="emit('change-page', page + 1)">下一页</Button>
       </div>
     </div>
   </div>

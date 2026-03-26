@@ -1,18 +1,16 @@
 <template>
   <div class="scheduled-page flex flex-col h-full bg-background text-foreground">
-    <div class="scheduled-shell flex-none px-6 pt-6 pb-3">
-      <section class="schedule-hero">
-        <div class="schedule-hero__copy">
-          <span class="schedule-eyebrow">automation control room</span>
-          <h1 class="schedule-hero__title">定时任务管理</h1>
-          <p class="schedule-hero__description">统一查看调度器状态、任务负载与执行结果，把“新增任务”和“处理异常”放在同一条操作链里。</p>
-        </div>
-        <div class="schedule-hero__actions">
+    <div class="scheduled-shell flex-none px-5 pt-5 pb-3">
+      <PageHeader
+        title="定时任务管理"
+        description="统一查看调度器状态、任务负载与执行结果，把新增任务和处理异常放在同一条操作链里。"
+      >
+        <template #actions>
           <Button
             @click="showCreateDialog = true"
             size="sm"
             variant="default"
-            class="rounded-full shadow-lg shadow-primary/20"
+            class="shadow-none"
           >
             创建任务
           </Button>
@@ -21,12 +19,11 @@
             :disabled="loading"
             size="sm"
             variant="secondary"
-            class="rounded-full"
           >
             刷新
           </Button>
-        </div>
-      </section>
+        </template>
+      </PageHeader>
 
       <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4 mt-4">
         <Card class="schedule-stat-card">
@@ -66,7 +63,7 @@
           <div class="schedule-filter-shell__status">
             <div class="schedule-filter-shell__status-copy">
               <span class="schedule-filter-shell__label">调度器</span>
-              <Badge :variant="schedulerStatus?.running ? 'secondary' : 'destructive'" class="rounded-full">
+              <Badge :variant="schedulerStatus?.running ? 'secondary' : 'destructive'" class="rounded-md px-2 py-0.5">
                 {{ schedulerStatus?.running ? '运行中' : '已停止' }}
               </Badge>
             </div>
@@ -83,7 +80,6 @@
                 :disabled="loading"
                 size="xs"
                 variant="default"
-                class="rounded-full"
               >
                 启用
               </Button>
@@ -93,7 +89,6 @@
                 :disabled="loading"
                 size="xs"
                 variant="ghost"
-                class="rounded-full"
               >
                 禁用
               </Button>
@@ -103,17 +98,17 @@
         </div>
         <div class="schedule-filter-shell__row schedule-filter-shell__row--filters">
           <div class="flex-1 min-w-[220px]">
-            <input
+            <Input
               v-model="searchQuery"
               @input="debouncedSearch"
               type="text"
               placeholder="搜索任务、描述或错误..."
               class="schedule-search-input"
-            >
+            />
           </div>
           <div class="w-32">
             <Select :model-value="statusFilter" @update:model-value="(value) => { statusFilter = value; loadTasks(); }">
-              <SelectTrigger class="h-10 text-xs rounded-full border-border/80 bg-background/70">
+              <SelectTrigger class="h-8 text-xs border-border/80 bg-background/80">
                 <SelectValue placeholder="状态" />
               </SelectTrigger>
               <SelectContent>
@@ -125,7 +120,7 @@
           </div>
           <div class="w-36">
             <Select :model-value="typeFilter" @update:model-value="(value) => { typeFilter = value; loadTasks(); }">
-              <SelectTrigger class="h-10 text-xs rounded-full border-border/80 bg-background/70">
+              <SelectTrigger class="h-8 text-xs border-border/80 bg-background/80">
                 <SelectValue placeholder="类型" />
               </SelectTrigger>
               <SelectContent>
@@ -139,7 +134,7 @@
       </div>
     </div>
 
-    <div class="scheduled-shell flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
+    <div class="scheduled-shell flex-1 overflow-y-auto px-5 py-4 custom-scrollbar">
       <div class="schedule-table-shell overflow-hidden">
         <table class="w-full">
           <thead class="schedule-table-shell__thead border-b border-border">
@@ -167,7 +162,7 @@
               </td>
 
               <td class="px-3 py-2">
-                <Badge :variant="getStatusBadgeVariant(task.status)" class="rounded-full px-2.5 py-1">
+                <Badge :variant="getStatusBadgeVariant(task.status)" class="rounded-md px-2 py-0.5">
                   {{ getStatusText(task.status) }}
                 </Badge>
               </td>
@@ -200,7 +195,6 @@
                     :disabled="loading"
                     size="xs"
                     variant="secondary"
-                    class="rounded-full"
                     title="立即执行"
                   >
                     执行
@@ -210,7 +204,6 @@
                     @click="editTask(task)"
                     size="xs"
                     variant="ghost"
-                    class="rounded-full"
                     title="编辑"
                   >
                     编辑
@@ -220,7 +213,6 @@
                     @click="disableTask(task.id)"
                     size="xs"
                     variant="ghost"
-                    class="rounded-full"
                     title="禁用"
                   >
                     禁用
@@ -230,7 +222,6 @@
                     @click="enableTask(task.id)"
                     size="xs"
                     variant="ghost"
-                    class="rounded-full"
                     title="启用"
                   >
                     启用
@@ -240,12 +231,11 @@
                     @click="deleteTask(task.id)"
                     size="xs"
                     variant="destructive"
-                    class="rounded-full"
                     title="删除"
                   >
                     删除
                   </Button>
-                  <Badge v-if="task.is_legacy" variant="outline" class="rounded-full" title="系统内置任务，不可修改">系统</Badge>
+                  <Badge v-if="task.is_legacy" variant="outline" class="rounded-md px-2 py-0.5" title="系统内置任务，不可修改">系统</Badge>
                 </div>
               </td>
             </tr>
@@ -260,7 +250,6 @@
             :disabled="currentPage <= 1"
             size="sm"
             variant="secondary"
-            class="rounded-full"
           >
             上一页
           </Button>
@@ -272,7 +261,6 @@
             :disabled="currentPage >= totalPages"
             size="sm"
             variant="secondary"
-            class="rounded-full"
           >
             下一页
           </Button>
@@ -288,7 +276,6 @@
             @click="showCreateDialog = true"
             size="sm"
             variant="default"
-            class="rounded-full"
           >
             创建第一个任务
           </Button>
@@ -323,10 +310,12 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { ClockIcon } from '@heroicons/vue/24/outline'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import TaskDialog from '@/components/dialogs/TaskDialog.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { debounce } from '../utils/debounce'
 import { Logger } from '@/utils/logger'
@@ -598,49 +587,11 @@ onMounted(() => {
   width: 100%;
 }
 
-.schedule-hero {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 1.75rem;
-  background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.16), transparent 34%),
-    radial-gradient(circle at bottom right, hsl(var(--accent) / 0.8), transparent 42%),
-    linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.94));
-  box-shadow: 0 24px 60px hsl(var(--foreground) / 0.05);
-}
-
-.schedule-eyebrow,
 .schedule-filter-shell__label {
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: hsl(var(--muted-foreground));
-}
-
-.schedule-hero__title {
-  margin-top: 0.6rem;
-  font-size: clamp(1.85rem, 2vw, 2.5rem);
-  line-height: 1.05;
-  font-weight: 600;
-}
-
-.schedule-hero__description {
-  margin-top: 0.75rem;
-  max-width: 42rem;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.7;
-  font-size: 0.95rem;
-}
-
-.schedule-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: flex-start;
 }
 
 .schedule-stat-card,
@@ -650,7 +601,7 @@ onMounted(() => {
 .schedule-filter-shell {
   border: 1px solid hsl(var(--border) / 0.76);
   background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
-  box-shadow: 0 18px 46px hsl(var(--foreground) / 0.04);
+  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.035);
 }
 
 .schedule-stat-card {
@@ -677,15 +628,15 @@ onMounted(() => {
 }
 
 .schedule-stat-card__value {
-  margin-top: 0.8rem;
-  font-size: 1.85rem;
+  margin-top: 0.65rem;
+  font-size: 1.65rem;
   line-height: 1;
   font-weight: 600;
 }
 
 .schedule-filter-shell {
-  padding: 1rem;
-  border-radius: 1.5rem;
+  padding: 0.9rem;
+  border-radius: 0.875rem;
 }
 
 .schedule-filter-shell__row {
@@ -733,47 +684,29 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.6rem 0.8rem;
-  border-radius: 999px;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.625rem;
   border: 1px solid hsl(var(--border) / 0.8);
-  background: hsl(var(--background) / 0.7);
+  background: hsl(var(--background));
 }
 
 .schedule-filter-shell__active-tag {
   display: inline-flex;
   align-items: center;
-  padding: 0.55rem 0.9rem;
-  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.625rem;
   background: hsl(var(--warning) / 0.12);
   color: hsl(var(--warning));
   font-size: 0.78rem;
   font-weight: 500;
 }
 
-.schedule-search-input {
-  width: 100%;
-  min-height: 2.75rem;
-  padding: 0.7rem 1rem;
-  border: 1px solid hsl(var(--border) / 0.85);
-  border-radius: 999px;
-  background: hsl(var(--background) / 0.72);
-  color: hsl(var(--foreground));
-  font-size: 0.8rem;
-  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
-}
-
 .schedule-search-input::placeholder {
   color: hsl(var(--muted-foreground));
 }
 
-.schedule-search-input:focus {
-  outline: none;
-  border-color: hsl(var(--primary) / 0.45);
-  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.08);
-}
-
 .schedule-table-shell {
-  border-radius: 1.6rem;
+  border-radius: 0.875rem;
 }
 
 .schedule-table-shell__thead {
@@ -799,9 +732,9 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 1.85rem;
-  padding: 0.2rem 0.75rem;
-  border-radius: 999px;
+  min-height: 1.65rem;
+  padding: 0.15rem 0.65rem;
+  border-radius: 0.5rem;
   border: 1px solid hsl(var(--border) / 0.8);
   background: hsl(var(--background) / 0.72);
   color: hsl(var(--muted-foreground));
@@ -813,8 +746,8 @@ onMounted(() => {
 }
 
 .schedule-empty-state {
-  padding: 2rem;
-  border-radius: 1.5rem;
+  padding: 1.75rem;
+  border-radius: 0.875rem;
 }
 
 .schedule-loading-state {

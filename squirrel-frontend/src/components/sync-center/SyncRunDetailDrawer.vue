@@ -24,8 +24,8 @@
                 </router-link>
 
                 <div class="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge :variant="getBadgeVariant(run.status)">{{ getStatusLabel(run.status) }}</Badge>
-                  <Badge variant="outline">{{ getModeLabel(run.sync_mode) }}</Badge>
+                  <Badge :variant="getBadgeVariant(run.status)" class="rounded-md px-2 py-0.5">{{ getStatusLabel(run.status) }}</Badge>
+                  <Badge variant="outline" class="rounded-md px-2 py-0.5">{{ getModeLabel(run.sync_mode) }}</Badge>
                   <span class="text-2xs text-muted-foreground">{{ run.site || 'unknown' }}</span>
                   <span class="text-2xs text-muted-foreground">run {{ run.run_id }}</span>
                 </div>
@@ -33,7 +33,7 @@
             </div>
 
             <div class="flex items-center gap-2">
-              <Button as-child variant="secondary" size="sm" class="rounded-full">
+              <Button as-child variant="secondary" size="sm">
                 <router-link :to="getSubscriptionLink(run.subscription_id)">打开频道</router-link>
               </Button>
             </div>

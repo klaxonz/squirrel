@@ -1,13 +1,11 @@
 <template>
   <div class="plugin-manager bg-background text-foreground h-full flex flex-col min-h-0">
-    <div class="toolbar-container pt-6 pb-4">
-      <div class="plugin-hero">
-        <div class="plugin-hero__copy">
-          <span class="plugin-eyebrow">extension control room</span>
-          <h1 class="plugin-hero__title">插件管理</h1>
-          <p class="plugin-hero__description">管理扩展资产与站点连通性，让插件状态、Cookie、登录检测和可访问性落在一套清晰的运营视图里。</p>
-        </div>
-        <div class="plugin-hero__controls">
+    <div class="toolbar-container pt-4 pb-4">
+      <PageHeader
+        title="插件管理"
+        description="管理扩展资产与站点连通性，把插件状态、Cookie、登录检测和可访问性放在同一套运营视图里。"
+      >
+        <template #actions>
           <div class="plugin-tab-switch">
             <button
               @click="currentTab = 'plugins'"
@@ -26,71 +24,83 @@
           </div>
           <div class="plugin-hero__actions">
             <template v-if="currentTab === 'plugins'">
-              <label class="plugin-pill-button cursor-pointer">
-                <input
-                  type="file"
-                  accept=".zip"
-                  class="hidden"
-                  @change="handleFileChange"
-                />
-                <CloudArrowUpIcon class="w-5 h-5" />
-                <span class="text-sm font-medium">{{ selectedFile ? selectedFile.name : '选择文件' }}</span>
-              </label>
-              <button
-                class="plugin-primary-action"
+              <Button as-child variant="outline" size="sm" class="plugin-upload-button cursor-pointer">
+                <label>
+                  <input
+                    type="file"
+                    accept=".zip"
+                    class="hidden"
+                    @change="handleFileChange"
+                  />
+                  <CloudArrowUpIcon class="w-4 h-4" />
+                  <span class="truncate max-w-[180px]">{{ selectedFile ? selectedFile.name : '选择文件' }}</span>
+                </label>
+              </Button>
+              <Button
                 :disabled="!selectedFile || installing"
                 @click="handleInstall"
+                size="sm"
+                class="plugin-primary-action"
               >
                 {{ installing ? '安装中...' : '导入插件' }}
-              </button>
-              <button
-                class="plugin-pill-icon"
+              </Button>
+              <Button
                 :disabled="reloading || loading"
                 @click="handleReload"
+                size="icon-sm"
+                variant="outline"
+                class="plugin-pill-icon"
                 title="重新加载插件"
               >
-                <ArrowPathIcon class="w-5 h-5" :class="{ 'animate-spin': reloading }" />
-              </button>
+                <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': reloading }" />
+              </Button>
             </template>
             <template v-else>
-              <label class="plugin-pill-button cursor-pointer text-xs md:text-sm">
-                <input
-                  type="file"
-                  accept=".txt"
-                  class="hidden"
-                  @change="handleCookiesFileChange"
-                />
-                <span class="truncate max-w-[180px]" :title="cookiesFileName || '选择 cookies.txt 文件'">
-                  {{ cookiesFileName || '选择 cookies.txt 文件' }}
-                </span>
-              </label>
-              <button
+              <Button as-child variant="outline" size="sm" class="plugin-upload-button cursor-pointer text-xs md:text-sm">
+                <label>
+                  <input
+                    type="file"
+                    accept=".txt"
+                    class="hidden"
+                    @change="handleCookiesFileChange"
+                  />
+                  <span class="truncate max-w-[180px]" :title="cookiesFileName || '选择 cookies.txt 文件'">
+                    {{ cookiesFileName || '选择 cookies.txt 文件' }}
+                  </span>
+                </label>
+              </Button>
+              <Button
                 @click="handleImportAllCookies"
                 :disabled="!selectedCookiesFile || importingCookies"
-                class="plugin-pill-button text-xs md:text-sm"
+                size="sm"
+                variant="outline"
+                class="text-xs md:text-sm"
               >
                 {{ importingCookies ? '导入中...' : '导入所有站点 Cookie' }}
-              </button>
-              <button
+              </Button>
+              <Button
                 @click="handleSyncCookieCloud"
                 :disabled="syncingCookieCloud"
-                class="plugin-pill-button text-xs md:text-sm"
+                size="sm"
+                variant="outline"
+                class="text-xs md:text-sm"
               >
                 {{ syncingCookieCloud ? '同步中...' : '从 CookieCloud 同步' }}
-              </button>
-              <button
+              </Button>
+              <Button
                 @click="handleTestAll"
                 :disabled="testingAll || loadingSites"
-                class="plugin-primary-action flex items-center gap-2"
+                size="sm"
+                class="plugin-primary-action"
               >
                 <ArrowPathIcon v-if="testingAll" class="w-4 h-4 animate-spin" />
                 <CheckCircleIcon v-else class="w-4 h-4" />
                 {{ testingAll ? '测试中...' : '测试全部' }}
-              </button>
+              </Button>
             </template>
           </div>
-        </div>
-      </div>
+        </template>
+      </PageHeader>
     </div>
 
     <div class="content-container pb-10 flex-1 min-h-0 space-y-6">
@@ -170,30 +180,36 @@
                   </td>
                   <td class="py-4 px-4">
                     <div class="flex items-center justify-end gap-2">
-                      <button
+                      <Button
                         v-if="!plugin.enabled"
-                        class="plugin-inline-action"
                         :disabled="actioning === plugin.name || plugin.state === 'missing'"
                         @click="handleEnable(plugin)"
+                        size="xs"
+                        variant="outline"
+                        class="plugin-inline-action"
                       >
                         启用
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         v-if="plugin.enabled"
-                        class="plugin-inline-action"
                         :disabled="actioning === plugin.name || plugin.state === 'missing'"
                         @click="handleDisable(plugin)"
+                        size="xs"
+                        variant="ghost"
+                        class="plugin-inline-action"
                       >
                         禁用
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         v-if="plugin.source === 'external'"
-                        class="plugin-inline-action plugin-inline-action--danger"
                         :disabled="actioning === plugin.name"
                         @click="handleUninstall(plugin)"
+                        size="xs"
+                        variant="destructive"
+                        class="plugin-inline-action plugin-inline-action--danger"
                       >
                         卸载
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -348,28 +364,34 @@
                   </td>
                   <td class="py-4 px-4">
                     <div class="flex items-center justify-end gap-2">
-                      <button
+                      <Button
                         @click="handleTestSingle(site)"
                         :disabled="site.testing || testingAll"
+                        size="xs"
+                        variant="outline"
                         class="plugin-inline-action"
                       >
                         {{ site.testing ? '测试中...' : '连通性' }}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         v-if="site.supports_login_status"
                         @click="handleTestLogin(site)"
                         :disabled="site.loginTesting || testingAll"
+                        size="xs"
+                        variant="ghost"
                         class="plugin-inline-action"
                       >
                         {{ site.loginTesting ? '检测中...' : '登录检测' }}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         @click="handleUploadCookies(site)"
                         :disabled="site.cookieUploading || testingAll"
+                        size="xs"
+                        variant="outline"
                         class="plugin-inline-action"
                       >
                         {{ site.cookieUploading ? '上传中...' : '上传Cookie' }}
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -400,7 +422,9 @@ import {
   CubeIcon,
   CheckCircleIcon
 } from '@heroicons/vue/24/outline';
+import PageHeader from '@/components/layout/PageHeader.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card';
 import { Logger } from '@/utils/logger'
 import { useSiteCatalog } from '@/composables/useSites';
@@ -961,29 +985,15 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.plugin-hero,
 .plugin-summary-card,
 .plugin-loading-shell,
 .plugin-table-shell,
 .plugin-last-tested {
   border: 1px solid hsl(var(--border) / 0.76);
   background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
-  box-shadow: 0 20px 52px hsl(var(--foreground) / 0.045);
+  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.035);
 }
 
-.plugin-hero {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  border-radius: 1.75rem;
-  background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.14), transparent 34%),
-    radial-gradient(circle at bottom right, hsl(var(--accent) / 0.8), transparent 38%),
-    linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.94));
-}
-
-.plugin-eyebrow,
 .plugin-summary-card__label {
   font-size: 0.68rem;
   text-transform: uppercase;
@@ -991,51 +1001,28 @@ onMounted(() => {
   color: hsl(var(--muted-foreground));
 }
 
-.plugin-hero__title {
-  margin-top: 0.6rem;
-  font-size: clamp(1.95rem, 2vw, 2.55rem);
-  line-height: 1.05;
-  font-weight: 600;
-}
-
-.plugin-hero__description {
-  margin-top: 0.75rem;
-  max-width: 44rem;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.7;
-  font-size: 0.95rem;
-}
-
-.plugin-hero__controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
 .plugin-hero__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .plugin-tab-switch {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.35rem;
-  border-radius: 999px;
+  padding: 0.25rem;
+  border-radius: 0.625rem;
   border: 1px solid hsl(var(--border) / 0.8);
-  background: hsl(var(--background) / 0.72);
+  background: hsl(var(--background));
 }
 
 .plugin-tab-switch__button {
-  padding: 0.7rem 1rem;
-  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.5rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   font-weight: 500;
   transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
@@ -1048,66 +1035,28 @@ onMounted(() => {
 .plugin-tab-switch__button--active {
   background: hsl(var(--card));
   color: hsl(var(--foreground));
-  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
-.plugin-pill-button,
-.plugin-pill-icon,
 .plugin-primary-action,
 .plugin-inline-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  min-height: 2.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 999px;
-  border: 1px solid hsl(var(--border) / 0.8);
-  background: hsl(var(--background) / 0.72);
-  color: hsl(var(--foreground));
-  transition: background-color 160ms ease, transform 160ms ease, opacity 160ms ease;
-}
-
-.plugin-pill-button:hover,
-.plugin-pill-icon:hover,
-.plugin-inline-action:hover {
-  background: hsl(var(--accent));
+  transition: opacity 160ms ease;
 }
 
 .plugin-pill-icon {
-  width: 2.75rem;
-  padding-inline: 0;
+  box-shadow: none;
+}
+
+.plugin-upload-button {
+  max-width: 16rem;
 }
 
 .plugin-primary-action {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-color: hsl(var(--primary) / 0.32);
-  box-shadow: 0 16px 36px hsl(var(--primary) / 0.18);
-}
-
-.plugin-primary-action:hover:not(:disabled) {
-  transform: translateY(-1px);
+  box-shadow: none;
 }
 
 .plugin-inline-action {
-  min-height: 2.1rem;
-  padding: 0.45rem 0.9rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.plugin-inline-action--danger:hover {
-  background: hsl(var(--destructive) / 0.12);
-  color: hsl(var(--destructive));
-}
-
-.plugin-primary-action:disabled,
-.plugin-pill-button:disabled,
-.plugin-pill-icon:disabled,
-.plugin-inline-action:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .plugin-summary-card {
@@ -1121,15 +1070,15 @@ onMounted(() => {
 }
 
 .plugin-summary-card__value {
-  margin-top: 0.8rem;
-  font-size: 1.85rem;
+  margin-top: 0.65rem;
+  font-size: 1.65rem;
   line-height: 1;
   font-weight: 600;
 }
 
 .plugin-loading-shell,
 .plugin-table-shell {
-  border-radius: 1.5rem;
+  border-radius: 0.875rem;
 }
 
 .plugin-table-shell__thead {
@@ -1147,9 +1096,9 @@ onMounted(() => {
 .plugin-last-tested {
   display: inline-flex;
   align-items: center;
-  padding: 0.7rem 1rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 0.625rem;
+  font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
 }
 
@@ -1157,8 +1106,8 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.28rem 0.7rem;
-  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  border-radius: 0.5rem;
   border: 1px solid transparent;
   font-size: 0.68rem;
   font-weight: 600;
@@ -1192,12 +1141,6 @@ onMounted(() => {
   background: hsl(var(--destructive) / 0.12);
   color: hsl(var(--destructive));
   border-color: hsl(var(--destructive) / 0.24);
-}
-
-@media (min-width: 1024px) {
-  .plugin-hero {
-    padding: 1.75rem;
-  }
 }
 
 </style>

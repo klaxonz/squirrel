@@ -1,10 +1,10 @@
 <template>
-  <section class="flex flex-col gap-3 border-b border-border pb-3">
-    <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+  <section class="flex flex-col gap-2.5 border-b border-border pb-3">
+    <div class="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
       <div class="min-w-0">
         <div class="flex flex-wrap items-center gap-3">
           <h1 class="text-lg font-semibold tracking-tight text-foreground">同步中心</h1>
-          <Badge variant="secondary" class="rounded-full px-2.5 py-1 text-2xs font-medium">
+          <Badge variant="secondary" class="rounded-md px-2 py-0.5 text-2xs font-medium">
             {{ summary }}
           </Badge>
         </div>
@@ -12,34 +12,34 @@
 
       <div class="flex flex-wrap items-center gap-2">
         <Tabs :model-value="lens" class="w-auto" @update:model-value="handleLensUpdate">
-          <TabsList class="h-auto rounded-full border border-border bg-card p-1">
-            <TabsTrigger value="now" class="rounded-full px-3 py-1.5 text-xs">现在</TabsTrigger>
-            <TabsTrigger value="24h" class="rounded-full px-3 py-1.5 text-xs">24h</TabsTrigger>
-            <TabsTrigger value="7d" class="rounded-full px-3 py-1.5 text-xs">7d</TabsTrigger>
+          <TabsList class="h-auto rounded-md border border-border bg-card p-0.5">
+            <TabsTrigger value="now" class="rounded-sm px-2.5 py-1 text-xs">现在</TabsTrigger>
+            <TabsTrigger value="24h" class="rounded-sm px-2.5 py-1 text-xs">24h</TabsTrigger>
+            <TabsTrigger value="7d" class="rounded-sm px-2.5 py-1 text-xs">7d</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <label class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
+        <label class="inline-flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
           <Switch :checked="autoRefresh" @update:checked="handleAutoRefreshUpdate" />
           <span>自动刷新</span>
         </label>
 
-        <Button variant="secondary" size="sm" class="rounded-full" :disabled="refreshing" @click="emit('refresh')">
+        <Button variant="secondary" size="sm" :disabled="refreshing" @click="emit('refresh')">
           <Loader2 v-if="refreshing" class="h-4 w-4 animate-spin" />
           刷新
         </Button>
 
-        <Button :disabled="!canRetryFailed || retryingBatch" size="sm" class="rounded-full" @click="emit('retry-failed')">
+        <Button :disabled="!canRetryFailed || retryingBatch" size="sm" @click="emit('retry-failed')">
           <Loader2 v-if="retryingBatch" class="h-4 w-4 animate-spin" />
           重试失败项
         </Button>
 
-        <Button variant="ghost" size="sm" class="rounded-full" :disabled="reconciling" @click="emit('reconcile')">
+        <Button variant="ghost" size="sm" :disabled="reconciling" @click="emit('reconcile')">
           <Loader2 v-if="reconciling" class="h-4 w-4 animate-spin" />
           对账
         </Button>
 
-        <Badge variant="outline" class="rounded-full px-3 py-1.5 text-2xs font-medium text-muted-foreground">
+        <Badge variant="outline" class="rounded-md px-2.5 py-1 text-2xs font-medium text-muted-foreground">
           更新 {{ lastUpdatedAt || '—' }}
         </Badge>
       </div>
