@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import select, func, delete
+from sqlalchemy import and_, delete, exists, func, select
 
 from core.database import get_session
 from models.video_history import VideoHistory
@@ -8,6 +8,8 @@ from models.video import Video
 from models.subscription import Subscription
 from models.links import SubscriptionVideo, UserSubscription
 from schemas.video_history import HistoryCreate
+from utils import url_helper
+from utils.site_catalog import SiteCatalog
 from utils.url_helper import get_site_from_url
 from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
@@ -42,7 +44,14 @@ def update_history(user_id: int, data: HistoryCreate):
 
 def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> dict:
     with get_session() as session:
-        conditions = [VideoHistory.user_id == user_id]
+        conditions = [
+            VideoHistory.user_id == user_id,
+            exists(
+                select(1)
+                .select_from(Video)
+                .where(Video.id == VideoHistory.video_id)
+            )
+        ]
 
         if filters.get('video_id'):
             conditions.append(VideoHistory.video_id == filters['video_id'])
@@ -52,6 +61,55 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
             conditions.append(VideoHistory.created_at >= filters['start_date'])
         if filters.get('end_date'):
             conditions.append(VideoHistory.created_at <= filters['end_date'])
+        if filters.get('nsfw') and filters['nsfw'] != 'all':
+            nsfw_history_exists = exists(
+                select(1)
+                .select_from(SubscriptionVideo)
+                .join(
+                    UserSubscription,
+                    UserSubscription.subscription_id == SubscriptionVideo.subscription_id
+                )
+                .where(
+                    SubscriptionVideo.video_id == VideoHistory.video_id,
+                    UserSubscription.user_id == user_id,
+                    UserSubscription.is_nsfw == True
+                )
+            )
+            nsfw_filter = filters['nsfw']
+            if nsfw_filter in ('yes', 'true'):
+                conditions.append(nsfw_history_exists)
+            elif nsfw_filter in ('no', 'false'):
+                conditions.append(~nsfw_history_exists)
+        if filters.get('site'):
+            resolved_domains = SiteCatalog.resolve_domains(filters['site'])
+            normalized_domains = [
+                domain
+                for domain in {
+                    url_helper.normalize_domain(raw_domain)
+                    for raw_domain in resolved_domains
+                    if raw_domain
+                }
+                if domain
+            ]
+            if not normalized_domains:
+                return {
+                    'items': [],
+                    'total': 0,
+                    'page': page,
+                    'page_size': page_size
+                }
+            conditions.append(
+                exists(
+                    select(1)
+                    .select_from(Video)
+                    .where(
+                        and_(
+                            Video.id == VideoHistory.video_id,
+                            Video.domain.in_(normalized_domains)
+                        )
+                    )
+                )
+            )
 
         total = session.scalar(
             select(func.count(VideoHistory.id)).where(*conditions)
@@ -128,19 +186,6 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                         if video_site:
                             break
 
-            if filters.get('nsfw') and filters['nsfw'] != 'all':
-                nsfw_filter = filters['nsfw']
-                is_nsfw = any(s.get('is_nsfw') for s in subs_for_video)
-                if nsfw_filter in ('yes', 'true') and not is_nsfw:
-                    continue
-                if nsfw_filter in ('no', 'false') and is_nsfw:
-                    continue
-
-            if filters.get('site'):
-                site_filter = filters['site']
-                if video_site != site_filter:
-                    continue
-
             item = {
                 'id': v.id,
                 'title': v.title,
@@ -157,7 +202,7 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
 
         return {
             "items": items,
-            "total": len(items),
+            "total": total,
             "page": page,
             "page_size": page_size
         }
