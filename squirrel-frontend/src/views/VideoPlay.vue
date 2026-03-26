@@ -121,7 +121,7 @@
 
                 <!-- 操作按钮组 -->
                 <div class="video-meta__actions">
-                  <template v-for="action in videoPrimaryActions" :key="action.key">
+                  <template v-for="action in videoActions" :key="action.key">
                     <a
                       v-if="action.href"
                       :href="action.href"
@@ -150,50 +150,12 @@
                       ]"
                       :aria-pressed="action.active ? 'true' : 'false'"
                       :title="action.label"
-                      @click="handlePrimaryAction(action)"
+                      @click="handleVideoAction(action)"
                     >
                       <Icon :icon="action.icon" class="video-action__icon" />
                       <span class="video-action__label">{{ action.label }}</span>
                     </button>
                   </template>
-
-                  <div ref="moreOptionsRef" class="relative">
-                    <button
-                      type="button"
-                      @click="handleMoreOptionsClick"
-                      class="video-action video-action--secondary"
-                      :aria-expanded="showMoreOptions ? 'true' : 'false'"
-                      aria-haspopup="menu"
-                    >
-                      <Icon icon="material-symbols:more-horiz" class="video-action__icon" />
-                      <span class="video-action__label">更多</span>
-                    </button>
-
-                    <div
-                      v-if="showMoreOptions"
-                      class="video-action-menu"
-                      @click.stop
-                    >
-                      <button
-                        v-for="action in videoOverflowActions"
-                        :key="action.key"
-                        type="button"
-                        class="video-action-menu__item"
-                        :class="[
-                          action.active ? 'is-active' : '',
-                          action.active ? `is-active--${action.tone}` : ''
-                        ]"
-                        :aria-pressed="action.active ? 'true' : 'false'"
-                        @click="handleOverflowAction(action)"
-                      >
-                        <span class="video-action-menu__main">
-                          <Icon :icon="action.icon" class="video-action-menu__icon" />
-                          <span class="video-action-menu__label">{{ action.label }}</span>
-                        </span>
-                        <span v-if="action.hint" class="video-action-menu__hint">{{ action.hint }}</span>
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </transition>
@@ -210,7 +172,7 @@
                 <h2 class="video-aside__title">相关视频</h2>
               </div>
             </div>
-            <div>
+            <div class="video-aside__content">
               <div v-if="!relatedVideos.length && !loadingRelated" class="video-aside__empty">暂无推荐</div>
               <div v-if="relatedVideos.length" class="related-videos-list">
                 <article
@@ -281,7 +243,6 @@ import { ref, onMounted, onUnmounted, watch, computed, nextTick, reactive, injec
 import { useRoute, useRouter } from 'vue-router';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
-import { useDropdown } from '@/composables/useDropdown';
 import { useAppTheme } from '@/composables/useAppTheme'
 import VideoPlayer from '@/components/video-player/VideoPlayer.vue';
 import { LocalStorageAdapter } from '@/components/video-player/core';
@@ -310,17 +271,6 @@ const { video, startTime, relatedVideos, loadingRelated, playbackSource, subtitl
 const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
-const {
-  isOpen: showMoreOptions,
-  rootRef: moreOptionsRef,
-  toggle: toggleMoreOptions,
-  close: closeMoreOptions,
-} = useDropdown({ closeOnEscape: true });
-
-const handleMoreOptionsClick = (event) => {
-  event.stopPropagation();
-  toggleMoreOptions();
-};
 
 const currentInteractionType = computed(() => video.value?.interaction_type ?? null);
 
@@ -328,7 +278,7 @@ const videoPrimaryActions = computed(() => {
   const actions = [
     {
       key: 'like',
-      label: currentInteractionType.value === INTERACTION_TYPE.LIKE ? '已喜欢' : '喜欢',
+      label: '喜欢',
       icon: currentInteractionType.value === INTERACTION_TYPE.LIKE ? 'material-symbols:thumb-up' : 'material-symbols:thumb-up-outline',
       active: currentInteractionType.value === INTERACTION_TYPE.LIKE,
       tone: 'like',
@@ -336,8 +286,17 @@ const videoPrimaryActions = computed(() => {
       onClick: () => video.value && handleLike(video.value, INTERACTION_TYPE.LIKE)
     },
     {
+      key: 'dislike',
+      label: '不喜欢',
+      icon: currentInteractionType.value === INTERACTION_TYPE.DISLIKE ? 'material-symbols:thumb-down' : 'material-symbols:thumb-down-outline',
+      active: currentInteractionType.value === INTERACTION_TYPE.DISLIKE,
+      tone: 'danger',
+      variant: 'secondary',
+      onClick: () => video.value && handleLike(video.value, INTERACTION_TYPE.DISLIKE)
+    },
+    {
       key: 'later',
-      label: currentInteractionType.value === INTERACTION_TYPE.LATER ? '已稍后看' : '稍后看',
+      label: '稍后看',
       icon: currentInteractionType.value === INTERACTION_TYPE.LATER ? 'material-symbols:schedule' : 'material-symbols:schedule-outline',
       active: currentInteractionType.value === INTERACTION_TYPE.LATER,
       tone: 'later',
@@ -371,27 +330,14 @@ const videoOverflowActions = computed(() => {
       tone: 'neutral',
       hint: '',
       onClick: () => handlePlayRandom()
-    },
-    {
-      key: 'dislike',
-      label: currentInteractionType.value === INTERACTION_TYPE.DISLIKE ? '取消不喜欢' : '不喜欢',
-      icon: currentInteractionType.value === INTERACTION_TYPE.DISLIKE ? 'material-symbols:thumb-down' : 'material-symbols:thumb-down-outline',
-      active: currentInteractionType.value === INTERACTION_TYPE.DISLIKE,
-      tone: 'danger',
-      hint: currentInteractionType.value === INTERACTION_TYPE.DISLIKE ? '当前' : '',
-      onClick: () => video.value && handleLike(video.value, INTERACTION_TYPE.DISLIKE)
     }
   ];
 });
 
-const handlePrimaryAction = async (action) => {
-  if (action.href || !action.onClick) return;
-  await action.onClick();
-};
+const videoActions = computed(() => [...videoPrimaryActions.value, ...videoOverflowActions.value]);
 
-const handleOverflowAction = async (action) => {
-  closeMoreOptions();
-  if (!action.onClick) return;
+const handleVideoAction = async (action) => {
+  if (action.href || !action.onClick) return;
   await action.onClick();
 };
 
@@ -852,10 +798,19 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground));
 }
 
+.video-aside__content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .related-videos-list {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 0.75rem;
+  min-height: 0;
   max-height: none;
   overflow: visible;
   padding-right: 0;
@@ -881,11 +836,12 @@ onUnmounted(() => {
   }
 
   .video-aside__panel {
+    min-height: var(--related-panel-height, 75vh);
+    height: var(--related-panel-height, 75vh);
     padding: 0;
   }
 
   .related-videos-list {
-    max-height: var(--related-panel-height, 75vh);
     overflow-y: auto;
     padding-right: 6px;
   }
@@ -945,10 +901,10 @@ onUnmounted(() => {
   background: hsl(var(--background));
   --sp-controls-bg: linear-gradient(
     to top,
-    hsl(var(--background)) 0%,
-    hsl(var(--background)) 32%,
-    hsl(var(--background) / 0.9) 56%,
-    hsl(var(--background) / 0.5) 78%,
+    hsl(var(--background) / 0.9) 0%,
+    hsl(var(--background) / 0.84) 18%,
+    hsl(var(--background) / 0.62) 34%,
+    hsl(var(--background) / 0.28) 56%,
     transparent 100%
   );
   border-radius: 12px;
@@ -1047,7 +1003,7 @@ onUnmounted(() => {
   width: 100%;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.4rem;
   justify-content: flex-start;
   padding-top: 0.75rem;
   border-top: 1px solid hsl(var(--border) / 0.68);
@@ -1056,118 +1012,54 @@ onUnmounted(() => {
 .video-action {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 2.45rem;
-  padding: 0 0.85rem;
+  gap: 0.24rem;
+  min-height: 1.52rem;
+  padding: 0 0.38rem;
   border: 1px solid hsl(var(--border) / 0.78);
-  border-radius: 9999px;
-  background: linear-gradient(180deg, hsl(var(--background) / 0.7), hsl(var(--secondary) / 0.72));
+  border-radius: 0.42rem;
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
-  box-shadow: 0 12px 24px hsl(var(--surface-shadow));
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: none;
+  transition: none;
 }
 
 .video-action:hover {
-  background: hsl(var(--accent));
-  border-color: hsl(var(--ring) / 0.28);
-  transform: translateY(-1px);
-  box-shadow: 0 16px 28px hsl(var(--surface-shadow));
+  background: hsl(var(--background));
+  border-color: hsl(var(--border) / 0.78);
 }
 
 .video-action--secondary {
-  background: hsl(var(--background) / 0.4);
+  background: hsl(var(--background));
 }
 
 .video-action__icon {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 0.72rem;
+  height: 0.72rem;
   flex-shrink: 0;
 }
 
 .video-action__label {
-  font-size: 0.74rem;
+  font-size: 0.54rem;
   font-weight: 500;
   white-space: nowrap;
 }
 
 .video-action.is-active--like {
   color: hsl(var(--primary));
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.09));
+  background: hsl(var(--primary) / 0.1);
   border-color: hsl(var(--primary) / 0.36);
 }
 
 .video-action.is-active--later {
   color: hsl(var(--info));
-  background: linear-gradient(135deg, hsl(var(--info) / 0.18), hsl(var(--info) / 0.08));
+  background: hsl(var(--info) / 0.1);
   border-color: hsl(var(--info) / 0.32);
 }
 
-.video-action-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.5rem);
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 13rem;
-  padding: 0.375rem;
-  border: 1px solid hsl(var(--border) / 0.82);
-  border-radius: calc(var(--radius-xl) + 2px);
-  background:
-    linear-gradient(180deg, hsl(var(--popover) / 0.98), hsl(var(--secondary) / 0.92));
-  box-shadow: var(--shadow-popup);
-  backdrop-filter: blur(14px);
-}
-
-.video-action-menu__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  width: 100%;
-  min-height: 2.75rem;
-  padding: 0.625rem 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 0.75rem;
-  background: transparent;
-  color: hsl(var(--foreground));
-  text-align: left;
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
-}
-
-.video-action-menu__item:hover {
-  background: hsl(var(--accent));
-  border-color: hsl(var(--ring) / 0.24);
-}
-
-.video-action-menu__main {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.625rem;
-  min-width: 0;
-}
-
-.video-action-menu__icon {
-  width: 1.125rem;
-  height: 1.125rem;
-  flex-shrink: 0;
-}
-
-.video-action-menu__label {
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-}
-
-.video-action-menu__hint {
-  font-size: var(--font-size-2xs);
-  color: hsl(var(--muted-foreground));
-}
-
-.video-action-menu__item.is-active--danger {
-  background: hsl(var(--destructive) / 0.14);
-  border-color: hsl(var(--destructive) / 0.24);
+.video-action.is-active--danger {
   color: hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.08);
+  border-color: hsl(var(--destructive) / 0.24);
 }
 
 .video-channel__primary {
@@ -1463,7 +1355,9 @@ onUnmounted(() => {
 
   .video-meta__actions {
     width: auto;
-    max-width: min(26rem, 34vw);
+    max-width: min(28rem, 38vw);
+    flex-wrap: nowrap;
+    gap: 0.35rem;
     justify-content: flex-end;
     align-self: start;
     padding-top: 0;
@@ -1509,16 +1403,12 @@ onUnmounted(() => {
   }
 
   .video-action {
-    padding: 0 0.75rem;
+    min-height: 1.42rem;
+    padding: 0 0.34rem;
   }
 
   .video-action__label {
     font-size: var(--font-size-2xs);
-  }
-
-  .video-action-menu {
-    min-width: min(13rem, calc(100vw - 2rem));
-    max-width: calc(100vw - 1.5rem);
   }
 
   .video-meta__panel,
