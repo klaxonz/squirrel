@@ -1,27 +1,6 @@
 <template>
   <div class="subscribed-page flex h-full flex-col bg-background text-foreground">
     <section class="subscribed-shell">
-      <div class="toolbar-container subscribed-shell__header">
-        <PageHeader
-          title="订阅库"
-          description="管理频道、播放列表和导入来源，统一维护你的内容入口。"
-        >
-          <template #meta>
-            <span class="subscribed-shell__count">{{ subscriptions.length }}</span>
-          </template>
-          <template #actions>
-            <Button size="sm" class="whitespace-nowrap" @click="showAddDialog = true">
-              <PlusIcon class="h-4 w-4" />
-              <span>添加订阅</span>
-            </Button>
-            <Button size="sm" variant="secondary" class="whitespace-nowrap" @click="showImportDialog = true">
-              <ArrowDownTrayIcon class="h-4 w-4" />
-              <span>导入订阅</span>
-            </Button>
-          </template>
-        </PageHeader>
-      </div>
-
       <div class="toolbar-container">
         <FeedToolbar
           :show-tabs="false"
@@ -32,7 +11,18 @@
           @update:nsfw="(value) => { nsfw = value }"
           @update:site="(value) => { site = value }"
           @refresh="refreshList"
-        />
+        >
+          <template #actions>
+            <Button size="sm" class="whitespace-nowrap" @click="showAddDialog = true">
+              <PlusIcon class="h-4 w-4" />
+              <span>添加订阅</span>
+            </Button>
+            <Button size="sm" variant="secondary" class="whitespace-nowrap" @click="showImportDialog = true">
+              <ArrowDownTrayIcon class="h-4 w-4" />
+              <span>导入订阅</span>
+            </Button>
+          </template>
+        </FeedToolbar>
       </div>
     </section>
 
@@ -116,7 +106,6 @@
                 </div>
                 <div class="channel-item__badges">
                   <Badge v-if="subscription.type === 'PLAYLIST'" variant="secondary">播放列表</Badge>
-                  <Badge v-if="subscription.is_nsfw" variant="destructive">NSFW</Badge>
                 </div>
               </div>
 
@@ -281,7 +270,6 @@ import { useSubscriptionRefresh } from '../composables/useSubscriptionRefresh'
 import { useFeedFilters } from '../composables/useFeedFilters'
 import { useImageFallback } from '../composables/useImageFallback'
 import { formatDate } from '../utils/dateFormat'
-import PageHeader from '@/components/layout/PageHeader.vue'
 import {
   getSubscriptions as apiGetSubscriptions,
   unsubscribe as apiUnsubscribe,
@@ -606,24 +594,6 @@ onUnmounted(() => {
   padding-top: 0.25rem;
 }
 
-.subscribed-shell__header {
-  padding-bottom: 0.2rem;
-}
-
-.subscribed-shell__count {
-  display: inline-flex;
-  min-height: 1.5rem;
-  align-items: center;
-  justify-content: center;
-  padding: 0.15rem 0.5rem;
-  border-radius: 9999px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--secondary) / 0.88);
-  color: hsl(var(--secondary-foreground));
-  font-size: 0.6875rem;
-  font-weight: 600;
-}
-
 .channel-container {
   padding-top: 0.15rem;
 }
@@ -672,6 +642,7 @@ onUnmounted(() => {
 }
 
 .settings-toggle {
+  margin-left: auto;
   opacity: 0;
   border-radius: 9999px;
   background: hsl(var(--background) / 0.76);

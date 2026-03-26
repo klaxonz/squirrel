@@ -5,7 +5,7 @@
     @update:model-value="handleValueChange"
     @update:open="handleOpenChange"
   >
-    <SelectTrigger class="toolbar-select" :style="triggerStyle">
+    <SelectTrigger class="toolbar-select h-7 px-2.5 py-1 text-[0.6875rem]" :style="triggerStyle">
       <div class="toolbar-select__copy">
         <component :is="icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
         <span v-if="!isMobile && label" class="toolbar-select__label">{{ label }}</span>
@@ -94,7 +94,7 @@ const handleOpenChange = (value) => {
 }
 
 .toolbar-select__label {
-  font-size: var(--font-size-2xs);
+  font-size: 0.6875rem;
   color: hsl(var(--muted-foreground));
 }
 

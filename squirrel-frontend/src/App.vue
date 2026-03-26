@@ -36,7 +36,7 @@
 
       <main class="app-main">
         <div v-if="showShellHeader" class="topbar-shell" ref="topbarRef">
-          <div class="topbar" :class="{ 'topbar--home-search': isHomeSearchPage }">
+          <div class="topbar" :class="{ 'topbar--centered-search': isCenteredSearchPage }">
             <div class="topbar__lead">
               <button
                 v-if="isVideoWidescreen"
@@ -58,7 +58,7 @@
               ref="globalSearchBar"
               v-model="searchQuery"
               class="topbar__search"
-              :class="{ 'topbar__search--home': isHomeSearchPage }"
+              :class="{ 'topbar__search--centered': isCenteredSearchPage }"
               :placeholder="searchPlaceholder"
               @search="handleGlobalSearch"
               @clear="handleGlobalSearchClear"
@@ -148,8 +148,8 @@ const mobileRoutes = MOBILE_NAV_ITEMS
 
 const showShellHeader = computed(() => !isAuthPage.value)
 const showGlobalSearch = computed(() => !isAuthPage.value && !!route.meta?.showSearch)
-const isHomeSearchPage = computed(() => route.meta?.search === 'home')
-const showTopbarCopy = computed(() => route.meta?.search !== 'home')
+const isCenteredSearchPage = computed(() => ['home', 'subscribed'].includes(String(route.meta?.search || '')))
+const showTopbarCopy = computed(() => !isCenteredSearchPage.value)
 const isScrollablePage = computed(() => !!route.meta?.scrollable)
 
 const contentScrollClass = computed(() => {
@@ -401,11 +401,11 @@ h6 {
   min-width: 0;
 }
 
-.topbar--home-search {
+.topbar--centered-search {
   justify-content: center;
 }
 
-.topbar__search--home {
+.topbar__search--centered {
   flex: 0 1 40rem;
   width: min(40rem, 100%);
   max-width: min(40rem, calc(100vw - 1.6rem));
@@ -534,7 +534,7 @@ h6 {
     min-width: 0;
   }
 
-  .topbar__search--home {
+  .topbar__search--centered {
     flex: 1 1 auto;
     width: 100%;
     max-width: none;

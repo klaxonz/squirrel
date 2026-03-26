@@ -11,6 +11,10 @@
         />
       </div>
 
+      <div v-if="$slots.actions" class="feed-toolbar__extras">
+        <slot name="actions" />
+      </div>
+
       <div class="feed-toolbar__actions">
         <NsfwFilter
           v-if="showNsfw"
@@ -37,7 +41,6 @@
           aria-label="刷新"
           @click="$emit('refresh')"
         />
-        <slot />
       </div>
     </div>
   </section>
@@ -121,6 +124,15 @@ const handleOpenChange = (key, value) => {
   flex: 1 1 auto;
   min-width: 0;
   overflow: visible;
+}
+
+.feed-toolbar__extras {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  margin-right: auto;
 }
 
 .feed-toolbar__actions {
