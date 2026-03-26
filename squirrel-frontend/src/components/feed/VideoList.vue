@@ -59,9 +59,9 @@ import VideoItem from './VideoItem.vue'
 import VirtualList from './VirtualList.vue'
 
 const ASPECT_RATIO = 9 / 16
-const GRID_ITEM_HORIZONTAL_PADDING = 12
-const GRID_ITEM_VERTICAL_PADDING = 12
-const CARD_INFO_HEIGHT = 104
+const GRID_ITEM_HORIZONTAL_PADDING = 10
+const GRID_ITEM_VERTICAL_PADDING = 10
+const CARD_INFO_HEIGHT = 92
 const BUFFER_PX = 400
 const PRERENDER_COUNT = 50
 const RANGE_CHANGE_THROTTLE_MS = 60
@@ -139,21 +139,21 @@ defineExpose({
   height: 100%;
   overflow: hidden;
   margin: 0 auto;
-  padding: 0 1rem 0.35rem;
+  padding: 0 1rem 0.25rem;
   max-width: var(--container-max-width, 2560px);
 }
 
 .scroller {
   height: 100%;
   overflow-y: auto;
-  padding-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
   box-sizing: border-box;
 }
 
 .grid-item {
   width: 100%;
   height: 100%;
-  padding: 0.35rem;
+  padding: 0.25rem;
   box-sizing: border-box;
 }
 
@@ -166,32 +166,30 @@ defineExpose({
 }
 
 .video-list__empty {
-  border-radius: calc(var(--radius-3xl) - 2px);
+  border-radius: calc(var(--radius-2xl) - 2px);
   border-color: hsl(var(--border) / 0.72);
-  background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 32%),
-    linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--background) / 0.9));
-  box-shadow: 0 22px 52px hsl(var(--surface-shadow) / 0.1);
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-sm);
 }
 
 .video-list__empty-content {
-  padding: 2rem 1.2rem;
+  padding: 1.5rem 1rem;
   text-align: center;
 }
 
 .video-list__empty-eyebrow {
   margin: 0 0 0.4rem;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
 }
 
 .video-list__empty-title {
   margin: 0;
-  font-size: clamp(1.15rem, 1rem + 0.3vw, 1.35rem);
-  font-weight: 800;
+  font-size: clamp(1rem, 0.95rem + 0.2vw, 1.15rem);
+  font-weight: 700;
   letter-spacing: -0.03em;
   color: hsl(var(--foreground));
 }
@@ -199,7 +197,7 @@ defineExpose({
 .video-list__empty-copy {
   margin: 0.45rem 0 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.88rem;
+  font-size: 0.8rem;
 }
 
 .video-list__loading-more {
@@ -244,11 +242,11 @@ defineExpose({
 
 @media (max-width: 640px) {
   .grid-item {
-    padding: 0.22rem;
+    padding: 0.18rem;
   }
 
   .video-list__empty-content {
-    padding: 1.6rem 1rem;
+    padding: 1.35rem 0.9rem;
   }
 }
 </style>
