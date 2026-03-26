@@ -179,7 +179,7 @@ def play_video(request: Request, video_id: int):
 
 
 @router.get("/api/video/proxy")
-async def proxy_video(domain: str, url: str, request: Request):
+async def proxy_video(domain: str, url: str, request: Request, referer: str | None = None):
     """代理视频文件，用于解决跨域问题"""
     from core.streaming.proxy import VideoProxy
 
@@ -198,7 +198,7 @@ async def proxy_video(domain: str, url: str, request: Request):
             proxy = VideoProxy(request, domain=domain)
     else:
         proxy = VideoProxy(request, domain=domain)
-    return await proxy.handle_stream(url)
+    return await proxy.handle_stream(url, referer=referer)
 
 
 @router.get("/api/video/subtitles")

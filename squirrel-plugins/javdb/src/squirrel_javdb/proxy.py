@@ -21,7 +21,7 @@ class JavdbProxy:
     domain = 'javdb.com'
     site_slug = SITE_SLUG
 
-    async def handle_m3u8(self, url: str, content: bytes) -> StreamingResponse:
+    async def handle_m3u8(self, url: str, content: bytes, referer: str | None = None) -> StreamingResponse:
         content_text = content.decode(errors='ignore')
         base_url = url.rsplit('/', 1)[0]
 
@@ -31,6 +31,7 @@ class JavdbProxy:
             query = urlencode({
                 'domain': self.domain,
                 'url': full_url,
+                **({'referer': referer} if referer else {}),
             })
             return f"/api/video/proxy?{query}"
 
@@ -66,6 +67,33 @@ class JavdbProxy:
         http2_enabled = bool(proxy_cfg.get('enable_http2', True))
         return timeout_config, limits, follow_redirects, http2_enabled
 
+    def _build_upstream_headers(self, referer: str | None = None) -> dict[str, str]:
+        proxy_config_registry = get_proxy_config_registry()
+        provider_cls = proxy_config_registry.get(self.domain)
+        headers = get_http_headers(
+            self.site_slug,
+            (provider_cls.get_site_headers() or {}) if provider_cls else {},
+        )
+
+        request = getattr(self, '_request', None)
+        if request is not None:
+            range_header = request.headers.get('range')
+            if range_header:
+                headers['Range'] = range_header
+
+        headers.setdefault('Accept', '*/*')
+        headers.setdefault('Cache-Control', 'no-cache')
+        headers.setdefault('Pragma', 'no-cache')
+
+        effective_referer = referer or headers.get('Referer') or headers.get('referer')
+        if effective_referer:
+            headers['Referer'] = effective_referer
+            parsed = urlparse(effective_referer)
+            if parsed.scheme and parsed.netloc:
+                headers['Origin'] = f'{parsed.scheme}://{parsed.netloc}'
+
+        return headers
+
     async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:
         try:
             timeout_config, limits, follow_redirects, http2_enabled = self._build_client_params()
@@ -77,13 +105,8 @@ class JavdbProxy:
                 "http2": http2_enabled,
             }
 
-            # Build headers from registered site config
-            proxy_config_registry = get_proxy_config_registry()
-            provider_cls = proxy_config_registry.get(self.domain)
-            headers = get_http_headers(
-                self.site_slug,
-                (provider_cls.get_site_headers() or {}) if provider_cls else {},
-            )
+            upstream_referer = kwargs.get('referer')
+            headers = self._build_upstream_headers(upstream_referer)
 
             async with httpx.AsyncClient(**client_config) as client:
                 parsed = urlparse(url)
@@ -96,7 +119,7 @@ class JavdbProxy:
                     content_type = response.headers.get('content-type', '')
 
                     if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
-                        return await self.handle_m3u8(url, content)
+                        return await self.handle_m3u8(url, content, referer=upstream_referer)
 
                     return StreamingResponse(
                         iter([content]),
