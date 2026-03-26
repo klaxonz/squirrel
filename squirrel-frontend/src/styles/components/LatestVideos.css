@@ -11,7 +11,7 @@
 
 .latest-videos__toolbar-shell {
   position: relative;
-  padding-top: 0.55rem;
+  padding-top: 0.2rem;
 }
 
 .latest-videos__alert {
@@ -88,6 +88,6 @@
 
 @media (max-width: 640px) {
   .latest-videos__toolbar-shell {
-    padding-top: 0.35rem;
+    padding-top: 0.15rem;
   }
 }

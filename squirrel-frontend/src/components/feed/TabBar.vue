@@ -77,7 +77,7 @@ const emit = defineEmits(['update:modelValue', 'tab-dblclick'])
 }
 
 :deep(.tab-bar__trigger[data-state="active"] .tab-bar__count) {
-  background: hsl(var(--primary-foreground) / 0.16);
-  color: hsl(var(--primary-foreground));
+  background: hsl(var(--accent) / 0.92);
+  color: hsl(var(--foreground));
 }
 </style>

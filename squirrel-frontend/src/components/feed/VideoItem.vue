@@ -27,9 +27,6 @@
       <div class="video-card__overlay"></div>
 
       <div class="video-card__topline">
-        <Badge v-if="isNsfwVideo" variant="destructive" class="video-card__badge">
-          NSFW
-        </Badge>
         <Badge v-if="isLikedVideo" variant="outline" class="video-card__badge video-card__badge--liked">
           喜欢
         </Badge>

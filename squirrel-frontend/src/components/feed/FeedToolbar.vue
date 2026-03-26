@@ -12,14 +12,23 @@
       </div>
 
       <div class="feed-toolbar__actions">
-        <NsfwFilter v-if="showNsfw" v-model="localNsfw" />
+        <NsfwFilter
+          v-if="showNsfw"
+          v-model="localNsfw"
+          :open="openSelectKey === 'nsfw'"
+          @update:open="(value) => handleOpenChange('nsfw', value)"
+        />
         <SiteFilter
           v-if="showSite && !subscriptionId"
           v-model="localSite"
+          :open="openSelectKey === 'site'"
+          @update:open="(value) => handleOpenChange('site', value)"
         />
         <SortButton
           v-if="showSort"
           v-model="localSortBy"
+          :open="openSelectKey === 'sort'"
+          @update:open="(value) => handleOpenChange('sort', value)"
         />
         <RefreshButton
           v-if="showRefresh"
@@ -70,6 +79,7 @@ const localActiveTab = ref(props.activeTab)
 const localNsfw = ref(props.nsfw)
 const localSortBy = ref(props.sortBy)
 const localSite = ref(props.site)
+const openSelectKey = ref('')
 
 watch(() => props.activeTab, (value) => localActiveTab.value = value)
 watch(() => props.nsfw, (value) => localNsfw.value = value)
@@ -80,11 +90,15 @@ watch(localActiveTab, (value) => emit('update:activeTab', value))
 watch(localNsfw, (value) => emit('update:nsfw', value))
 watch(localSortBy, (value) => emit('update:sortBy', value))
 watch(localSite, (value) => emit('update:site', value))
+
+const handleOpenChange = (key, value) => {
+  openSelectKey.value = value ? key : (openSelectKey.value === key ? '' : openSelectKey.value)
+}
 </script>
 
 <style scoped>
 .feed-toolbar-shell {
-  padding-block: 0.55rem 0.75rem;
+  padding-block: 0.25rem 0.75rem;
 }
 
 .feed-toolbar__inner {
@@ -93,10 +107,10 @@ watch(localSite, (value) => emit('update:site', value))
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.375rem;
-  border: 1px solid hsl(var(--border) / 0.72);
+  border: none;
   border-radius: calc(var(--radius-xl) + 2px);
-  background: hsl(var(--card) / 0.98);
-  box-shadow: var(--shadow-sm);
+  background: transparent;
+  box-shadow: none;
 }
 
 .feed-toolbar__inner--compact {
@@ -131,7 +145,7 @@ watch(localSite, (value) => emit('update:site', value))
 
 @media (max-width: 640px) {
   .feed-toolbar-shell {
-    padding-block: 0.45rem 0.65rem;
+    padding-block: 0.2rem 0.65rem;
   }
 
   .feed-toolbar__inner {

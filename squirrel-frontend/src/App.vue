@@ -36,7 +36,7 @@
 
       <main class="app-main">
         <div v-if="showShellHeader" class="topbar-shell" ref="topbarRef">
-          <div class="topbar">
+          <div class="topbar" :class="{ 'topbar--home-search': isHomeSearchPage }">
             <div class="topbar__lead">
               <button
                 v-if="isVideoWidescreen"
@@ -47,7 +47,7 @@
               >
                 <Bars3Icon class="h-4 w-4" />
               </button>
-              <div class="topbar__copy">
+              <div v-if="showTopbarCopy" class="topbar__copy">
                 <span class="topbar__eyebrow">{{ pageGroupLabel }}</span>
                 <span class="topbar__title">{{ pageTitle }}</span>
               </div>
@@ -58,6 +58,7 @@
               ref="globalSearchBar"
               v-model="searchQuery"
               class="topbar__search"
+              :class="{ 'topbar__search--home': isHomeSearchPage }"
               :placeholder="searchPlaceholder"
               @search="handleGlobalSearch"
               @clear="handleGlobalSearchClear"
@@ -147,6 +148,8 @@ const mobileRoutes = MOBILE_NAV_ITEMS
 
 const showShellHeader = computed(() => !isAuthPage.value)
 const showGlobalSearch = computed(() => !isAuthPage.value && !!route.meta?.showSearch)
+const isHomeSearchPage = computed(() => route.meta?.search === 'home')
+const showTopbarCopy = computed(() => route.meta?.search !== 'home')
 const isScrollablePage = computed(() => !!route.meta?.scrollable)
 
 const contentScrollClass = computed(() => {
@@ -398,6 +401,17 @@ h6 {
   min-width: 0;
 }
 
+.topbar--home-search {
+  justify-content: center;
+}
+
+.topbar__search--home {
+  flex: 0 1 40rem;
+  width: min(40rem, 100%);
+  max-width: min(40rem, calc(100vw - 1.6rem));
+  margin-inline: auto;
+}
+
 .topbar-menu-btn {
   display: inline-flex;
   align-items: center;
@@ -518,6 +532,12 @@ h6 {
 
   .topbar__search {
     min-width: 0;
+  }
+
+  .topbar__search--home {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
   }
 }
 </style>

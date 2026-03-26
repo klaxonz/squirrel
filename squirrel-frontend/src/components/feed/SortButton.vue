@@ -1,34 +1,34 @@
 <template>
-  <Select :model-value="modelValue" @update:model-value="handleValueChange">
-    <SelectTrigger class="toolbar-select">
-      <div class="toolbar-select__copy">
-        <Bars4Icon class="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span v-if="!isMobile" class="toolbar-select__label">排序</span>
-        <span class="toolbar-select__value">{{ currentLabel }}</span>
-      </div>
-    </SelectTrigger>
-    <SelectContent class="toolbar-select__content">
-      <SelectItem v-for="option in sortOptions" :key="option.value" :value="option.value">
-        {{ option.label }}
-      </SelectItem>
-    </SelectContent>
-  </Select>
+  <ToolbarSelect
+    :model-value="modelValue"
+    :open="open"
+    label="排序"
+    :current-label="currentLabel"
+    :options="sortOptions"
+    :icon="Bars4Icon"
+    min-width="6.75rem"
+    @update:model-value="handleValueChange"
+    @update:open="(value) => emit('update:open', value)"
+  />
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { Bars4Icon } from '@heroicons/vue/24/outline'
-import { isMobile } from '@/composables/useMobile'
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
+import ToolbarSelect from './ToolbarSelect.vue'
 
 const props = defineProps({
   modelValue: {
     type: String,
     required: true,
   },
+  open: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'update:open'])
 
 const sortOptions = [
   { value: 'publish_date', label: '上传时间' },
@@ -43,56 +43,3 @@ const handleValueChange = (value) => {
   emit('update:modelValue', String(value))
 }
 </script>
-
-<style scoped>
-.toolbar-select {
-  width: auto;
-  flex: 0 0 auto;
-  max-width: 100%;
-  min-width: 6.75rem;
-  border-color: hsl(var(--border) / 0.72);
-  background: hsl(var(--background));
-  box-shadow: none;
-}
-
-.toolbar-select__copy {
-  display: inline-flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.toolbar-select__label {
-  font-size: var(--font-size-2xs);
-  color: hsl(var(--muted-foreground));
-}
-
-.toolbar-select__value {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.toolbar-select__content {
-  border-radius: calc(var(--radius-lg) + 2px);
-}
-
-@media (max-width: 768px) {
-  .toolbar-select {
-    min-width: auto;
-    width: 2.5rem;
-    padding-left: 0.55rem;
-    padding-right: 0.55rem;
-  }
-
-  .toolbar-select__copy {
-    justify-content: center;
-  }
-
-  .toolbar-select__value {
-    display: none;
-  }
-}
-</style>
