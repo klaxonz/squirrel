@@ -8,11 +8,12 @@
         <div class="flex items-center justify-between gap-3">
           <div>
             <div class="text-xs font-semibold tracking-[0.14em] text-muted-foreground/70">运行实例</div>
-            <div class="mt-1 text-2xs text-muted-foreground">共 {{ total }} 条</div>
           </div>
           <div class="flex items-center gap-2">
             <slot name="header-action" />
             <span class="rounded-md border border-border bg-background px-2 py-0.5 text-2xs text-muted-foreground/70">
+              共 {{ total }} 条
+              <span class="mx-1 text-muted-foreground/50">·</span>
               第 {{ page }} / {{ totalPages }} 页
             </span>
           </div>
@@ -20,7 +21,7 @@
 
         <div class="flex flex-wrap items-center gap-2">
           <div class="w-full sm:w-[9rem]">
-            <Select :model-value="filters.status" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value ?? '') })">
+            <Select :model-value="draftFilters.status" @update:model-value="(value) => updateDraftFilter('status', String(value ?? ''))">
               <SelectTrigger class="h-8 text-xs">
                 <SelectValue placeholder="全部状态" />
               </SelectTrigger>
@@ -33,7 +34,7 @@
           </div>
 
           <div class="w-full sm:w-[9rem]">
-            <Select :model-value="filters.site" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value ?? '') })">
+            <Select :model-value="draftFilters.site" @update:model-value="(value) => updateDraftFilter('site', String(value ?? ''))">
               <SelectTrigger class="h-8 text-xs">
                 <SelectValue placeholder="全部站点" />
               </SelectTrigger>
@@ -46,11 +47,11 @@
           </div>
 
           <div class="w-full sm:w-[12rem]">
-            <SyncSubscriptionSelect size="sm" :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
+            <SyncSubscriptionSelect size="sm" :model-value="draftFilters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => updateDraftFilter('subscriptionId', String(value || ''))" />
           </div>
 
           <div class="w-full sm:w-[9rem]">
-            <Select :model-value="filters.mode" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value ?? '') })">
+            <Select :model-value="draftFilters.mode" @update:model-value="(value) => updateDraftFilter('mode', String(value ?? ''))">
               <SelectTrigger class="h-8 text-xs">
                 <SelectValue placeholder="全部模式" />
               </SelectTrigger>
@@ -63,7 +64,7 @@
           </div>
 
           <div class="w-full sm:w-[9rem]">
-            <Select :model-value="filters.trigger" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value ?? '') })">
+            <Select :model-value="draftFilters.trigger" @update:model-value="(value) => updateDraftFilter('trigger', String(value ?? ''))">
               <SelectTrigger class="h-8 text-xs">
                 <SelectValue placeholder="全部触发" />
               </SelectTrigger>
@@ -101,6 +102,10 @@
               </PopoverContent>
             </Popover>
           </div>
+
+          <Button class="h-8 px-3 text-xs" :disabled="loading" @click="applyFilters">
+            查询
+          </Button>
         </div>
       </div>
 
@@ -108,16 +113,17 @@
         <div class="flex items-center justify-between gap-3">
           <div>
             <div class="text-sm font-semibold text-foreground">运行历史</div>
-            <div class="mt-1 text-2xs text-muted-foreground">共 {{ total }} 条</div>
           </div>
-            <span class="rounded-md border border-border bg-background px-2.5 py-1 text-2xs text-muted-foreground/70">
-              第 {{ page }} / {{ totalPages }} 页
-            </span>
+          <span class="rounded-md border border-border bg-background px-2.5 py-1 text-2xs text-muted-foreground/70">
+            共 {{ total }} 条
+            <span class="mx-1 text-muted-foreground/50">·</span>
+            第 {{ page }} / {{ totalPages }} 页
+          </span>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
           <div class="w-full sm:w-[10rem]">
-            <Select :model-value="filters.status" @update:model-value="(value) => emit('set-filter', { key: 'status', value: String(value ?? '') })">
+            <Select :model-value="draftFilters.status" @update:model-value="(value) => updateDraftFilter('status', String(value ?? ''))">
               <SelectTrigger class="h-9 text-xs">
                 <SelectValue placeholder="全部状态" />
               </SelectTrigger>
@@ -130,7 +136,7 @@
           </div>
 
           <div class="w-full sm:w-[10rem]">
-            <Select :model-value="filters.site" @update:model-value="(value) => emit('set-filter', { key: 'site', value: String(value ?? '') })">
+            <Select :model-value="draftFilters.site" @update:model-value="(value) => updateDraftFilter('site', String(value ?? ''))">
               <SelectTrigger class="h-9 text-xs">
                 <SelectValue placeholder="全部站点" />
               </SelectTrigger>
@@ -143,11 +149,11 @@
           </div>
 
           <div class="w-full sm:w-[16rem]">
-            <SyncSubscriptionSelect size="md" :model-value="filters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => emit('set-filter', { key: 'subscriptionId', value: String(value || '') })" />
+            <SyncSubscriptionSelect size="md" :model-value="draftFilters.subscriptionId" :options="subscriptionOptions" @update:model-value="(value) => updateDraftFilter('subscriptionId', String(value || ''))" />
           </div>
 
           <div class="w-full sm:w-[10rem]">
-            <Select :model-value="filters.mode" @update:model-value="(value) => emit('set-filter', { key: 'mode', value: String(value ?? '') })">
+            <Select :model-value="draftFilters.mode" @update:model-value="(value) => updateDraftFilter('mode', String(value ?? ''))">
               <SelectTrigger class="h-9 text-xs">
                 <SelectValue placeholder="全部模式" />
               </SelectTrigger>
@@ -160,7 +166,7 @@
           </div>
 
           <div class="w-full sm:w-[10rem]">
-            <Select :model-value="filters.trigger" @update:model-value="(value) => emit('set-filter', { key: 'trigger', value: String(value ?? '') })">
+            <Select :model-value="draftFilters.trigger" @update:model-value="(value) => updateDraftFilter('trigger', String(value ?? ''))">
               <SelectTrigger class="h-9 text-xs">
                 <SelectValue placeholder="全部触发" />
               </SelectTrigger>
@@ -198,6 +204,10 @@
               </PopoverContent>
             </Popover>
           </div>
+
+          <Button class="h-8 px-3 text-xs" :disabled="loading" @click="applyFilters">
+            查询
+          </Button>
         </div>
       </div>
     </div>
@@ -294,9 +304,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import SyncSubscriptionSelect from '@/components/sync-center/SyncSubscriptionSelect.vue'
-import type { SyncRunItem } from '@/composables/useSyncHistory'
+import type { SyncHistoryFilters, SyncRunItem } from '@/composables/useSyncHistory'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
 import { Badge } from '@/components/ui/badge'
@@ -325,13 +335,25 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
+  (e: 'apply-filters', payload: SyncHistoryFilters): void
   (e: 'change-page', page: number): void
   (e: 'open-run', runId: string): void
-  (e: 'set-filter', payload: { key: string; value: string }): void
 }>()
 
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
+
+const normalizeFilters = (filters: Record<string, string>): SyncHistoryFilters => ({
+  status: filters.status || '',
+  site: filters.site || '',
+  subscriptionId: filters.subscriptionId || '',
+  mode: filters.mode || '',
+  trigger: filters.trigger || '',
+  dateFrom: filters.dateFrom || '',
+  dateTo: filters.dateTo || '',
+})
+
+const draftFilters = reactive<SyncHistoryFilters>(normalizeFilters(props.filters))
 
 const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
 
@@ -373,16 +395,21 @@ const toDateValue = (isoString: string) => {
 }
 
 const dateRange = ref<any>({
-  start: toDateValue(props.filters.dateFrom),
-  end: toDateValue(props.filters.dateTo),
+  start: toDateValue(draftFilters.dateFrom),
+  end: toDateValue(draftFilters.dateTo),
 })
 
-watch(() => [props.filters.dateFrom, props.filters.dateTo], ([nextFrom, nextTo]) => {
-  dateRange.value = {
-    start: toDateValue(nextFrom || ''),
-    end: toDateValue(nextTo || ''),
-  }
-})
+watch(
+  () => props.filters,
+  (nextFilters) => {
+    Object.assign(draftFilters, normalizeFilters(nextFilters))
+    dateRange.value = {
+      start: toDateValue(nextFilters.dateFrom || ''),
+      end: toDateValue(nextFilters.dateTo || ''),
+    }
+  },
+  { deep: true, immediate: true },
+)
 
 const formatDateValue = (value: any) => {
   if (!value) {
@@ -404,9 +431,9 @@ const dateRangeLabel = computed(() => {
     return `${formatDateValue(start)} ~ ${formatDateValue(end)}`
   }
   if (start) {
-    return `${formatDateValue(start)} ~ ${formatDateValue(start)}`
+    return `${formatDateValue(start)} ~ 选择结束日期`
   }
-  return `${formatDateValue(end)} ~ ${formatDateValue(end)}`
+  return `${formatDateValue(end)} ~ 选择结束日期`
 })
 
 const toIsoStartOfDay = (value: any) => {
@@ -425,25 +452,45 @@ const toIsoEndOfDay = (value: any) => {
 
 const emitDateRange = (range: any) => {
   const start = range.start
-  const end = range.end || range.start
+  const end = range.end
   if (!start && !end) {
-    emit('set-filter', { key: 'dateFrom', value: '' })
-    emit('set-filter', { key: 'dateTo', value: '' })
+    draftFilters.dateFrom = ''
+    draftFilters.dateTo = ''
     return
   }
-  emit('set-filter', { key: 'dateFrom', value: toIsoStartOfDay(start) })
-  emit('set-filter', { key: 'dateTo', value: toIsoEndOfDay(end) })
+  if (start && !end) {
+    draftFilters.dateFrom = toIsoStartOfDay(start)
+    draftFilters.dateTo = ''
+    return
+  }
+  draftFilters.dateFrom = toIsoStartOfDay(start)
+  draftFilters.dateTo = toIsoEndOfDay(end)
 }
 
 const handleDateRangeUpdate = (nextRange: any) => {
   dateRange.value = nextRange
-  emitDateRange(nextRange)
+  emitDateRange(nextRange || {})
 }
 
 const clearDateRange = () => {
   const cleared = { start: undefined, end: undefined }
   dateRange.value = cleared
   emitDateRange(cleared)
+}
+
+const updateDraftFilter = (key: keyof SyncHistoryFilters, value: string) => {
+  draftFilters[key] = value ?? ''
+}
+
+const applyFilters = () => {
+  const payload = { ...draftFilters }
+
+  if (dateRange.value.start && !dateRange.value.end) {
+    payload.dateFrom = toIsoStartOfDay(dateRange.value.start)
+    payload.dateTo = toIsoEndOfDay(dateRange.value.start)
+  }
+
+  emit('apply-filters', payload)
 }
 
 const getBadgeVariant = (status: string) => {

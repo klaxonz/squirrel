@@ -37,9 +37,8 @@
       <main class="app-main">
         <div v-if="showShellHeader" class="topbar-shell" ref="topbarRef">
           <div class="topbar" :class="{ 'topbar--centered-search': isCenteredSearchPage }">
-            <div class="topbar__lead">
+            <div v-if="isVideoWidescreen" class="topbar__lead">
               <button
-                v-if="isVideoWidescreen"
                 class="topbar-menu-btn"
                 :aria-label="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
                 :title="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
@@ -47,10 +46,6 @@
               >
                 <Bars3Icon class="h-4 w-4" />
               </button>
-              <div v-if="showTopbarCopy" class="topbar__copy">
-                <span class="topbar__eyebrow">{{ pageGroupLabel }}</span>
-                <span class="topbar__title">{{ pageTitle }}</span>
-              </div>
             </div>
 
             <GlobalSearchBar
@@ -97,28 +92,12 @@ import MobileNav from '@/components/layout/MobileNav.vue'
 import RefreshCenter from '@/components/layout/RefreshCenter.vue'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { MOBILE_NAV_ITEMS, NAV_ITEMS, isNavigationItemActive } from '@/constants/sidebar'
+import { MOBILE_NAV_ITEMS } from '@/constants/sidebar'
 import { isMobile } from './composables/useMobile'
 import { useGlobalSearch } from './composables/useGlobalSearch'
 import { useSystemConfig } from './composables/useSystemConfig'
 import { useUser } from './composables/useUser'
 import { Logger } from '@/utils/logger'
-
-const SEARCH_SECTION_TITLES = {
-  home: '内容片库',
-  subscribed: '订阅频道',
-  history: '观看历史',
-}
-
-const STATIC_PAGE_TITLES = {
-  SyncCenter: '同步中心',
-  Monitoring: '监控',
-  ScheduledTasks: '定时任务',
-  Plugins: '插件',
-  Logs: '日志',
-  Settings: '设置',
-  VideoPlay: '播放页',
-}
 
 const route = useRoute()
 const emitter = mitt()
@@ -146,10 +125,9 @@ const { loadSystemConfig } = useSystemConfig()
 
 const mobileRoutes = MOBILE_NAV_ITEMS
 
-const showShellHeader = computed(() => !isAuthPage.value)
 const showGlobalSearch = computed(() => !isAuthPage.value && !!route.meta?.showSearch)
+const showShellHeader = computed(() => showGlobalSearch.value || isVideoWidescreen.value)
 const isCenteredSearchPage = computed(() => ['home', 'subscribed', 'history'].includes(String(route.meta?.search || '')))
-const showTopbarCopy = computed(() => !isCenteredSearchPage.value)
 const isScrollablePage = computed(() => !!route.meta?.scrollable)
 
 const contentScrollClass = computed(() => {
@@ -157,32 +135,6 @@ const contentScrollClass = computed(() => {
     return 'overflow-hidden'
   }
   return route.meta?.hideScrollbar ? 'scrollbar-hide overflow-y-auto' : 'scrollbar overflow-y-auto'
-})
-
-const pageTitle = computed(() => {
-  const searchKey = route.meta?.search
-  if (searchKey && SEARCH_SECTION_TITLES[searchKey]) {
-    return SEARCH_SECTION_TITLES[searchKey]
-  }
-  if (route.name && STATIC_PAGE_TITLES[route.name]) {
-    return STATIC_PAGE_TITLES[route.name]
-  }
-  const matchedNav = NAV_ITEMS.find((item) => isNavigationItemActive(item, route.path))
-  return matchedNav?.name || '工作台'
-})
-
-const pageGroupLabel = computed(() => {
-  const matchedNav = NAV_ITEMS.find((item) => isNavigationItemActive(item, route.path))
-  if (!matchedNav) {
-    return 'Workspace'
-  }
-  if (matchedNav.group === 'operations') {
-    return 'Operations'
-  }
-  if (matchedNav.group === 'system') {
-    return 'System'
-  }
-  return 'Content'
 })
 
 const syncAppTopbarHeight = async () => {
@@ -374,28 +326,6 @@ h6 {
   min-width: 0;
 }
 
-.topbar__copy {
-  display: grid;
-  gap: 0.08rem;
-  min-width: 0;
-}
-
-.topbar__eyebrow {
-  font-size: 0.54rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-}
-
-.topbar__title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .topbar__search {
   flex: 1 1 auto;
   min-width: 0;
@@ -520,14 +450,6 @@ h6 {
 
   .topbar__lead {
     flex: 1 1 auto;
-  }
-
-  .topbar__eyebrow {
-    display: none;
-  }
-
-  .topbar__title {
-    font-size: 0.75rem;
   }
 
   .topbar__search {

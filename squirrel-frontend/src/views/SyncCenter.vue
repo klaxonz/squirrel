@@ -1,13 +1,6 @@
 <template>
   <div class="sync-center-page flex min-h-full flex-col bg-background text-foreground">
-    <div class="toolbar-container pb-2 pt-4">
-      <PageHeader
-        title="同步中心"
-        description="集中查看运行信号、失败恢复和历史批次，把刷新与排障收敛到一个工作区。"
-      />
-    </div>
-
-    <div class="toolbar-container pb-4 pt-0">
+    <div class="toolbar-container pb-4 pt-4">
       <SyncControlBar
         :auto-refresh="overviewAutoRefresh"
         :can-retry-failed="retryTargetCount > 0"
@@ -59,7 +52,7 @@
           :selected-run-id="selectedRunId"
           :site-options="historySiteOptions"
           :subscription-options="historySubscriptionOptions"
-          @change-history-filter="handleHistoryFilter"
+          @apply-history-filters="handleHistoryFiltersApply"
           @change-history-page="historySetPage"
           @open-run="handleSelectRun"
         />
@@ -80,7 +73,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import PageHeader from '@/components/layout/PageHeader.vue'
 import SyncAnalysisWorkspace from '@/components/sync-center/SyncAnalysisWorkspace.vue'
 import SyncControlBar from '@/components/sync-center/SyncControlBar.vue'
 import SyncRunDetailDrawer from '@/components/sync-center/SyncRunDetailDrawer.vue'
@@ -93,8 +85,6 @@ import { useSyncTrends } from '@/composables/useSyncTrends'
 import { formatDurationMs } from '@/utils/dateFormat'
 
 type NoticeVariant = 'success' | 'warning' | 'error'
-
-const historyFilterTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 
 const actionNotice = reactive<{
   message: string
@@ -478,18 +468,9 @@ const handleSignalSelect = async (key: string) => {
   ])
 }
 
-const handleHistoryFilter = (payload: { key: string; value: string }) => {
-  historySetFilters({
-    [payload.key]: payload.value,
-  } as Partial<SyncHistoryFilters>)
-
-  if (historyFilterTimer.value) {
-    clearTimeout(historyFilterTimer.value)
-  }
-
-  historyFilterTimer.value = setTimeout(async () => {
-    await historyLoadRuns()
-  }, 250)
+const handleHistoryFiltersApply = async (payload: SyncHistoryFilters) => {
+  historySetFilters(payload as Partial<SyncHistoryFilters>)
+  await historyLoadRuns()
 }
 
 watch(workbenchLens, async (lens) => {
@@ -515,3 +496,30 @@ onMounted(() => {
   setPollingEnabled(true)
 })
 </script>
+
+<style scoped>
+.toolbar-container,
+.content-container {
+  max-width: var(--container-max-width, 2560px);
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .toolbar-container,
+  .content-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .toolbar-container,
+  .content-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+</style>

@@ -19,11 +19,8 @@
             class="group min-h-[4.75rem] rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             @click="emit('select', item.key)"
           >
-            <div class="flex items-center justify-between gap-2">
-              <div class="text-2xs text-muted-foreground/70">{{ item.label }}</div>
-              <span class="h-2 w-2 rounded-full" :class="getDotClass(item.tone)"></span>
-            </div>
-            <div class="mt-1.5 text-lg font-semibold tabular-nums" :class="getValueClass(item.tone)">
+            <div class="text-2xs text-muted-foreground/70">{{ item.label }}</div>
+            <div class="mt-1.5 text-lg font-semibold tabular-nums text-foreground">
               {{ item.value }}
             </div>
             <div v-if="item.delta" class="mt-1 line-clamp-1 text-2xs text-muted-foreground">
@@ -53,11 +50,8 @@
             class="group min-h-[4.75rem] rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             @click="emit('select', item.key)"
           >
-            <div class="flex items-center justify-between gap-2">
-              <div class="text-2xs text-muted-foreground/70">{{ item.label }}</div>
-              <span class="h-2 w-2 rounded-full" :class="getDotClass(item.tone)"></span>
-            </div>
-            <div class="mt-1.5 text-lg font-semibold tabular-nums" :class="getValueClass(item.tone)">
+            <div class="text-2xs text-muted-foreground/70">{{ item.label }}</div>
+            <div class="mt-1.5 text-lg font-semibold tabular-nums text-foreground">
               {{ item.value }}
             </div>
             <div v-if="item.delta" class="mt-1 line-clamp-1 text-2xs text-muted-foreground">
@@ -92,35 +86,5 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'select', key: string): void
 }>()
-
-const getValueClass = (tone: SignalTone) => {
-  switch (tone) {
-    case 'error':
-      return 'text-destructive'
-    case 'info':
-      return 'text-blue-500'
-    case 'warning':
-      return 'text-amber-500'
-    case 'success':
-      return 'text-emerald-500'
-    default:
-      return 'text-foreground'
-  }
-}
-
-const getDotClass = (tone: SignalTone) => {
-  switch (tone) {
-    case 'error':
-      return 'bg-destructive'
-    case 'info':
-      return 'bg-blue-500'
-    case 'warning':
-      return 'bg-amber-500'
-    case 'success':
-      return 'bg-emerald-500'
-    default:
-      return 'bg-muted-foreground/40'
-  }
-}
 
 </script>

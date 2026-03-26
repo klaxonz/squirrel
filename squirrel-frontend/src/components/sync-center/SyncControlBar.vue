@@ -11,35 +11,35 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <Tabs :model-value="lens" class="w-auto" @update:model-value="handleLensUpdate">
-          <TabsList class="h-auto rounded-md border border-border bg-card p-0.5">
-            <TabsTrigger value="now" class="rounded-sm px-2.5 py-1 text-xs">现在</TabsTrigger>
-            <TabsTrigger value="24h" class="rounded-sm px-2.5 py-1 text-xs">24h</TabsTrigger>
-            <TabsTrigger value="7d" class="rounded-sm px-2.5 py-1 text-xs">7d</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <label class="inline-flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
-          <Switch :checked="autoRefresh" @update:checked="handleAutoRefreshUpdate" />
-          <span>自动刷新</span>
-        </label>
-
-        <Button variant="secondary" size="sm" :disabled="refreshing" @click="emit('refresh')">
+        <Button variant="secondary" size="default" :disabled="refreshing" @click="emit('refresh')">
           <Loader2 v-if="refreshing" class="h-4 w-4 animate-spin" />
           刷新
         </Button>
 
-        <Button :disabled="!canRetryFailed || retryingBatch" size="sm" @click="emit('retry-failed')">
+        <Tabs :model-value="lens" class="w-auto" @update:model-value="handleLensUpdate">
+          <TabsList class="h-8 rounded-md border border-border bg-card p-0.5">
+            <TabsTrigger value="now" class="h-7 min-w-10 rounded-sm px-3 text-xs">现在</TabsTrigger>
+            <TabsTrigger value="24h" class="h-7 min-w-10 rounded-sm px-3 text-xs">24h</TabsTrigger>
+            <TabsTrigger value="7d" class="h-7 min-w-10 rounded-sm px-3 text-xs">7d</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <label class="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-card px-3 text-xs font-medium text-muted-foreground">
+          <Switch :checked="autoRefresh" @update:checked="handleAutoRefreshUpdate" />
+          <span>自动刷新</span>
+        </label>
+
+        <Button variant="secondary" :disabled="!canRetryFailed || retryingBatch" size="default" @click="emit('retry-failed')">
           <Loader2 v-if="retryingBatch" class="h-4 w-4 animate-spin" />
           重试失败项
         </Button>
 
-        <Button variant="ghost" size="sm" :disabled="reconciling" @click="emit('reconcile')">
+        <Button variant="outline" size="default" :disabled="reconciling" @click="emit('reconcile')">
           <Loader2 v-if="reconciling" class="h-4 w-4 animate-spin" />
           对账
         </Button>
 
-        <Badge variant="outline" class="rounded-md px-2.5 py-1 text-2xs font-medium text-muted-foreground">
+        <Badge variant="outline" class="h-8 rounded-md px-3 text-xs font-medium text-muted-foreground">
           更新 {{ lastUpdatedAt || '—' }}
         </Badge>
       </div>

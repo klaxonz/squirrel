@@ -9,20 +9,20 @@
       :page="runPage"
       :page-size="runPageSize"
       :runs="runs"
-      :selected-run-id="selectedRunId"
-      :site-options="siteOptions"
-      :subscription-options="subscriptionOptions"
-      :total="runTotal"
-      @change-page="emit('change-history-page', $event)"
-      @open-run="emit('open-run', $event)"
-      @set-filter="emit('change-history-filter', $event)"
-    />
+        :selected-run-id="selectedRunId"
+        :site-options="siteOptions"
+        :subscription-options="subscriptionOptions"
+        @apply-filters="emit('apply-history-filters', $event)"
+        :total="runTotal"
+        @change-page="emit('change-history-page', $event)"
+        @open-run="emit('open-run', $event)"
+      />
   </section>
 </template>
 
 <script setup lang="ts">
 import SyncRunHistoryPanel from '@/components/sync-center/SyncRunHistoryPanel.vue'
-import type { SyncRunItem } from '@/composables/useSyncHistory'
+import type { SyncHistoryFilters, SyncRunItem } from '@/composables/useSyncHistory'
 
 const props = defineProps<{
   runs: SyncRunItem[]
@@ -38,7 +38,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'change-history-filter', payload: { key: string; value: string }): void
+  (e: 'apply-history-filters', payload: SyncHistoryFilters): void
   (e: 'change-history-page', page: number): void
   (e: 'open-run', runId: string): void
 }>()
