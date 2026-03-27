@@ -1,20 +1,27 @@
-"""
-Plugins framework for squirrel-backend.
+"""Runtime V2 plugin entry points for squirrel-backend."""
 
-Provides:
-- Base plugin interface
-- Registry and decorator for registration
-- Loader to discover and initialize plugins
-"""
-
-from .base import Plugin
-from .registry import register_plugin
-from .loader import init_plugins
+from .gateway import PluginGateway
+from .installer import PluginInstaller
+from .manager import (
+    PluginManager,
+    bootstrap_plugin_runtime,
+    get_plugin_manager,
+    reload_plugin_runtime,
+    shutdown_plugin_runtime,
+)
+from .store import PluginInstallStore
+from .supervisor import PluginRuntimeSupervisor
 
 __all__ = [
-    "Plugin",
-    "register_plugin",
-    "init_plugins",
+    'PluginGateway',
+    'PluginInstaller',
+    'PluginInstallStore',
+    'PluginManager',
+    'PluginRuntimeSupervisor',
+    'bootstrap_plugin_runtime',
+    'get_plugin_manager',
+    'reload_plugin_runtime',
+    'shutdown_plugin_runtime',
 ]
 
 

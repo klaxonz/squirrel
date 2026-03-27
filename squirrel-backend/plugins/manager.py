@@ -16,6 +16,7 @@ from .models import (
 from .store import PluginInstallStore
 from .supervisor import PluginRuntimeSupervisor
 
+
 class PluginManager:
     """Coordinate plugin installation records, runtime state, and routing."""
 
@@ -137,3 +138,55 @@ class PluginManager:
             runtimes=self._supervisor.list_handles(),
             registrations=self._gateway.list_registrations(),
         )
+
+    def bootstrap_enabled_plugins(self) -> List[PluginInstallRecord]:
+        started: List[PluginInstallRecord] = []
+        for record in self._store.list_records():
+            if not record.enabled:
+                continue
+            self._gateway.register_manifest(
+                plugin_id=record.plugin_id,
+                version=record.version,
+                manifest=PluginManifest.from_dict(record.manifest),
+            )
+            self._supervisor.start_runtime(record)
+            record.status = PluginInstallStatus.RUNNING
+            self._store.upsert(record)
+            started.append(record)
+        return started
+
+    def shutdown_all(self) -> None:
+        records = self._store.list_records()
+        for record in records:
+            handle = self._supervisor.stop_runtime(record.plugin_id, record.version)
+            if handle is not None and record.enabled:
+                record.status = PluginInstallStatus.STOPPED
+                self._store.upsert(record)
+        for record in records:
+            self._gateway.unregister_plugin(record.plugin_id)
+
+    def reload_enabled_plugins(self) -> List[PluginInstallRecord]:
+        self.shutdown_all()
+        return self.bootstrap_enabled_plugins()
+
+
+_plugin_manager: Optional[PluginManager] = None
+
+
+def get_plugin_manager() -> PluginManager:
+    global _plugin_manager
+    if _plugin_manager is None:
+        _plugin_manager = PluginManager()
+    return _plugin_manager
+
+
+def bootstrap_plugin_runtime() -> List[PluginInstallRecord]:
+    return get_plugin_manager().bootstrap_enabled_plugins()
+
+
+def shutdown_plugin_runtime() -> None:
+    get_plugin_manager().shutdown_all()
+
+
+def reload_plugin_runtime() -> List[PluginInstallRecord]:
+    return get_plugin_manager().reload_enabled_plugins()

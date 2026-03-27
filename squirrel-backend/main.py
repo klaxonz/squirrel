@@ -9,7 +9,7 @@ from common.log import init_logging
 from core.config import settings
 from core.database_upgrade import upgrade_database
 from core.site_config_manager import apply_site_config_overrides
-from plugins.loader import init_plugins, app_start, app_stop
+from plugins.manager import bootstrap_plugin_runtime, shutdown_plugin_runtime
 
 logger = logging.getLogger()
 
@@ -20,9 +20,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     FastAPI 应用生命周期管理
 
     启动时按顺序执行：
-    1. 加载插件（注册到 SDK 注册表）
+    1. 启动插件 runtime manager
     2. 初始化队列配置
-    3. 触发插件启动钩子
 
     关闭时优雅停止所有服务
     """
@@ -49,16 +48,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning(f"[0.5/5] ⚠ Failed to configure Cloudflare bypass client: {e}")
 
-    # 1. 加载插件（必须先加载，注册到 SDK 注册表）
-    logger.info("[1/4] Loading plugins...")
+    # 1. 启动插件 runtime manager
+    logger.info("[1/4] Bootstrapping plugin runtime manager...")
     try:
-        init_plugins()
-        logger.info("[1/4] ✓ Plugins loaded")
+        bootstrap_plugin_runtime()
+        logger.info("[1/4] ✓ Plugin runtime manager bootstrapped")
     except Exception as e:
-        logger.exception(f"[1/4] ✗ Failed to load plugins: {e}")
+        logger.exception(f"[1/4] ✗ Failed to bootstrap plugin runtime manager: {e}")
         raise
 
-    # 2. 初始化队列配置（基于插件注册表）
+    # 2. 初始化队列配置
     logger.info("[2/4] Initializing queue configuration...")
     try:
         from queues.queue_config import ensure_queue_config_initialized
@@ -67,15 +66,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.exception(f"[2/4] ✗ Failed to initialize queue config: {e}")
         raise
-
-    # 3. 触发插件启动钩子
-    logger.info("[3/4] Triggering plugin startup hooks...")
-    try:
-        app_start()
-        logger.info("[3/4] ✓ Plugin startup hooks completed")
-    except Exception as e:
-        logger.warning(f"[3/4] ⚠ Plugin startup hooks failed (ignored): {e}")
-    
 
     logger.info("=" * 60)
     logger.info("✓ Application startup completed successfully")
@@ -89,12 +79,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("=" * 60)
     
     # 优雅停止所有服务（逆序）
-    logger.info("[2/3] Stopping plugins...")
+    logger.info("[2/3] Stopping plugin runtime manager...")
     try:
-        app_stop()
-        logger.info("[2/3] ✓ Plugins stopped")
+        shutdown_plugin_runtime()
+        logger.info("[2/3] ✓ Plugin runtime manager stopped")
     except Exception as e:
-        logger.warning(f"[2/3] ⚠ Error stopping plugins (ignored): {e}")
+        logger.warning(f"[2/3] ⚠ Error stopping plugin runtime manager (ignored): {e}")
 
     logger.info("=" * 60)
     logger.info("✓ Application shutdown completed")

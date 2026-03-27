@@ -2,7 +2,7 @@ import logging
 import threading
 
 from core.cache import create_redis_client
-from plugins.loader import reload_plugins
+from plugins.manager import reload_plugin_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +27,10 @@ def _listen_for_reload_signals(component: str):
             if message["type"] == "message":
                 logger.info("[%s] received plugin reload signal", component)
                 try:
-                    reload_plugins()
-                    logger.info("[%s] plugins reloaded successfully", component)
+                    reload_plugin_runtime()
+                    logger.info("[%s] plugin runtime reloaded successfully", component)
                 except Exception as e:
-                    logger.error("[%s] failed to reload plugins: %s", component, e, exc_info=True)
+                    logger.error("[%s] failed to reload plugin runtime: %s", component, e, exc_info=True)
     except Exception as e:
         logger.error("[%s] plugin reload listener error: %s", component, e, exc_info=True)
     finally:
