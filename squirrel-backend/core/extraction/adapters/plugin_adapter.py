@@ -12,6 +12,7 @@ from datetime import datetime
 
 from crawl import VideoMeta, ActorMeta
 from ..dto import VideoDTO, ActorDTO
+from ..dto.validators import parse_publish_date
 from ..exceptions import DataTransformError
 
 logger = logging.getLogger(__name__)
@@ -143,10 +144,7 @@ class PluginDataAdapter:
         """
         # VideoMeta 的 publish_date 字段
         if video.publish_date is not None:
-            if isinstance(video.publish_date, datetime):
-                return video.publish_date
-            # 如果是字符串或整数，尝试转换（这里可能需要根据实际情况调整）
-            # 暂时只返回 datetime 类型
+            return parse_publish_date(video.publish_date)
         
         return None
     

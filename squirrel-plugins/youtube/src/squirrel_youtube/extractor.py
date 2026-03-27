@@ -10,6 +10,8 @@ from crawl import (
     YoutubeDLExtractorBase,
     register_extractor,
     apply_ytdlp_rate_limit,
+    filter_cookies_to_query_string,
+    resolve_cookie_file_path,
     AuthError,
     NetworkError,
     NotFoundError,
@@ -83,12 +85,38 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             },
         }
 
+        cookie_file = resolve_cookie_file_path(url)
+        if cookie_file:
+            ydl_opts['cookiefile'] = cookie_file
+        else:
+            cookies = filter_cookies_to_query_string(url)
+            if cookies:
+                ydl_opts['cookie'] = cookies
+
         return apply_ytdlp_rate_limit(self.site_name, ydl_opts)
 
     def _process_youtube_info(self, video_info: dict) -> None:
         """处理YouTube特定信息"""
         try:
-            if 'timestamp' in video_info:
-                video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
+            publish_date = self._resolve_publish_date(video_info)
+            if publish_date is not None:
+                video_info['publish_date'] = publish_date
         except Exception as e:
             logger.warning(f"处理YouTube特定信息失败: {e}")
+
+    def _resolve_publish_date(self, video_info: Dict[str, Any]) -> Optional[datetime]:
+        """Resolve the most accurate publish date from yt-dlp metadata."""
+        for timestamp_key in ('release_timestamp', 'timestamp'):
+            timestamp = video_info.get(timestamp_key)
+            if timestamp:
+                return datetime.fromtimestamp(timestamp)
+
+        for date_key in ('release_date', 'upload_date'):
+            date_text = video_info.get(date_key)
+            if isinstance(date_text, str) and date_text:
+                try:
+                    return datetime.strptime(date_text, '%Y%m%d')
+                except ValueError:
+                    continue
+
+        return None

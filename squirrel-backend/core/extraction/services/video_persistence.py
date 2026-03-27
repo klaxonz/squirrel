@@ -60,13 +60,16 @@ class VideoPersistenceService:
 
             if is_new:
                 # 创建新视频
+                if publish_date is None:
+                    logger.warning("Missing publish_date when creating video: url=%s", url)
+
                 video = VideoModel(
                     url=url,
                     domain=url_helper.normalize_domain(url),
                     title=title,
                     thumbnail=thumbnail,
                     duration=duration,
-                    publish_date=publish_date or datetime.now(),
+                    publish_date=publish_date,
                     description=description,
                 )
 
