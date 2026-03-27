@@ -48,9 +48,7 @@ def subscribe_content(req: SubscribeRequest, current_user: User = Depends(get_cu
 
 @router.post("/api/subscription/unsubscribe")
 def unsubscribe_content(req: UnsubscribeRequest, current_user: User = Depends(get_current_user)):
-    if not req.subscription_id and not req.url:
-        return response.error("Invalid request parameters")
-    subscription_service.unsubscribe_by_id_or_url(current_user.id, req.subscription_id, req.url)
+    subscription_service.unsubscribe_by_id(current_user.id, req.subscription_id)
     return response.success()
 
 

@@ -8,8 +8,7 @@ class SubscribeRequest(BaseModel):
 
 
 class UnsubscribeRequest(BaseModel):
-    subscription_id: Optional[int] = None
-    url: Optional[str] = None
+    subscription_id: int
 
 
 class ImportSubscriptionsRequest(BaseModel):

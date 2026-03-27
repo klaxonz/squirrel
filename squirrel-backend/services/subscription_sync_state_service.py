@@ -114,6 +114,31 @@ def ensure_incremental_sync_state(subscription_id: int, url: Optional[str]) -> S
         return _get_or_create_sync_state_in_session(session, subscription_id, SyncMode.INCREMENTAL.value, url)
 
 
+def deactivate_sync_states(subscription_id: int, *, reason: str = 'deactivated') -> int:
+    now = datetime.now()
+    updated_count = 0
+
+    with get_session() as session:
+        states = session.execute(
+            select(SubscriptionSyncState).where(
+                SubscriptionSyncState.subscription_id == subscription_id,
+            )
+        ).scalars().all()
+
+        for state in states:
+            state.sync_status = SyncStatus.IDLE.value
+            state.last_error = reason
+            state.queue_token = None
+            state.queued_at = None
+            state.locked_at = None
+            state.pending_video_count = 0
+            state.last_sync_at = now
+            state.version += 1
+            updated_count += 1
+
+    return updated_count
+
+
 def prepare_sync_state_for_enqueue(
     subscription_id: int,
     url: Optional[str],

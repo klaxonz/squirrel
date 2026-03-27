@@ -355,32 +355,51 @@ def create_subscribe_message(url: str, user_id: int) -> Dict[str, Any]:
     return dump_json
 
 
-def unsubscribe_by_id_or_url(user_id: int, subscription_id: int = None, url: str = None) -> bool:
+def unsubscribe_by_id(user_id: int, subscription_id: int) -> bool:
     with get_session() as session:
-        if subscription_id:
-            subscription_filter = Subscription.id == subscription_id
-        elif url:
-            subscription_filter = Subscription.url == url
-        else:
+        if not subscription_id:
             return False
 
         subscription = session.scalars(
-            select(Subscription).where(subscription_filter)
+            select(Subscription).where(Subscription.id == subscription_id)
         ).first()
 
-        if subscription:
-            user_subscription = session.scalars(
-                select(UserSubscription).where(
-                    UserSubscription.user_id == user_id,
-                    UserSubscription.subscription_id == subscription.id
-                )
-            ).first()
+        if not subscription:
+            return False
 
-            if user_subscription:
-                user_subscription.is_deleted = True
-                session.commit()
-                return True
-        return False
+        user_subscription = session.scalars(
+            select(UserSubscription).where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.subscription_id == subscription.id,
+                UserSubscription.is_deleted.is_(False),
+            )
+        ).first()
+
+        if not user_subscription:
+            return False
+
+        user_subscription.is_deleted = True
+
+        remaining_active_subscription = session.scalars(
+            select(UserSubscription).where(
+                UserSubscription.subscription_id == subscription.id,
+                UserSubscription.is_deleted.is_(False),
+            )
+        ).first()
+
+        should_deactivate_subscription = remaining_active_subscription is None
+        if should_deactivate_subscription:
+            subscription.is_deleted = True
+
+        session.commit()
+
+    if should_deactivate_subscription:
+        subscription_sync_state_service.deactivate_sync_states(
+            subscription_id,
+            reason='no_active_subscribers',
+        )
+
+    return True
 
 
 def check_subscription_status(user_id: int, url: str) -> bool:
