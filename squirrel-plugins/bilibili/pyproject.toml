@@ -14,8 +14,8 @@ dependencies = [
   "squirrel-sdk>=2.0.0",
 ]
 
-[project.entry-points]
-"squirrel.crawl.plugins" = { bilibili = "squirrel_bilibili" }
+[project.entry-points."squirrel.plugins"]
+bilibili = "squirrel_bilibili.runtime:get_plugin_runtime"
 
 [tool.setuptools.packages.find]
 where = ["src"]

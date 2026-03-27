@@ -1,0 +1,57 @@
+{
+  "entrypoint": "squirrel_bilibili.runtime:get_plugin_runtime",
+  "manifest": {
+    "plugin_id": "bilibili",
+    "version": "0.1.0",
+    "sdk_api_version": "2.0",
+    "display_name": "Bilibili",
+    "description": "Bilibili crawl integration",
+    "capabilities": [
+      {
+        "name": "check_login_status",
+        "description": "Check the current Bilibili login state.",
+        "response_schema": {
+          "type": "object"
+        },
+        "timeout_ms": 15000
+      },
+      {
+        "name": "import_subscriptions",
+        "description": "Import followed Bilibili creators for the current account.",
+        "response_schema": {
+          "type": "object"
+        },
+        "timeout_ms": 30000
+      }
+    ],
+    "sites": [
+      {
+        "site_name": "bilibili",
+        "domains": [
+          "bilibili.com",
+          "b23.tv"
+        ],
+        "test_url": "https://www.bilibili.com",
+        "features": [
+          "check_login_status",
+          "import_subscriptions"
+        ]
+      }
+    ],
+    "permissions": [
+      {
+        "name": "network:http",
+        "description": "Access Bilibili APIs over HTTP.",
+        "required": true
+      },
+      {
+        "name": "cookies:read:site/bilibili",
+        "description": "Read Bilibili cookies for authenticated requests.",
+        "required": true
+      }
+    ],
+    "health_policy": {
+      "startup_timeout_ms": 10000
+    }
+  }
+}
