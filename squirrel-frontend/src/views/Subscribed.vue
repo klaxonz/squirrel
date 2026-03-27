@@ -58,7 +58,7 @@
           </div>
         </div>
 
-        <div v-else class="channel-grid">
+        <TransitionGroup v-else name="subscription-card" tag="div" class="channel-grid">
           <article
             v-for="subscription in subscriptions"
             :key="subscription.id"
@@ -125,7 +125,7 @@
               </div>
             </div>
           </article>
-        </div>
+        </TransitionGroup>
 
         <div
           v-if="!allLoaded"
@@ -218,10 +218,11 @@
             <Button
               variant="destructive"
               class="w-full"
-              :disabled="selectedRefreshState.isRefreshing"
+              :disabled="selectedRefreshState.isRefreshing || isUnsubscribing"
               @click="unsubscribe(selectedSubscription.id)"
             >
-              取消订阅
+              <span v-if="isUnsubscribing" class="subscription-dialog__spinner" aria-hidden="true"></span>
+              <span>{{ isUnsubscribing ? '取消中' : '取消订阅' }}</span>
             </Button>
 
             <p v-if="unsubscribeError" class="text-xs text-destructive">{{ unsubscribeError }}</p>
@@ -229,7 +230,7 @@
         </div>
 
         <DialogFooter class="border-t border-border/70 bg-secondary/24 px-6 py-4 sm:justify-end">
-          <Button size="sm" variant="ghost" @click="closeSettings">关闭</Button>
+          <Button size="sm" variant="ghost" :disabled="isUnsubscribing" @click="closeSettings">关闭</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -303,6 +304,12 @@ const loadingTrigger = ref(null)
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
 const unsubscribeError = ref('')
+const unsubscribingId = ref(null)
+const SUBSCRIPTION_REMOVE_DELAY_MS = 120
+
+const wait = (ms) => new Promise((resolve) => {
+  window.setTimeout(resolve, ms)
+})
 
 const {
   getRefreshState,
@@ -325,6 +332,8 @@ const selectedRefreshState = computed(() => {
 
   return getRefreshState(selectedSubscription.value.id)
 })
+
+const isUnsubscribing = computed(() => unsubscribingId.value === selectedSubscription.value?.id)
 
 const setupIntersectionObserver = () => {
   observer.value = new IntersectionObserver(
@@ -474,22 +483,33 @@ const closeSettings = () => {
 }
 
 const handleSettingsOpenChange = (open) => {
+  if (unsubscribingId.value) {
+    return
+  }
+
   if (!open) {
     closeSettings()
   }
 }
 
 const unsubscribe = async (subscriptionId) => {
+  if (!subscriptionId || unsubscribingId.value) return
+
   unsubscribeError.value = ''
+  unsubscribingId.value = subscriptionId
 
   const { error } = await apiUnsubscribe(subscriptionId)
 
-  if (!error) {
-    subscriptions.value = subscriptions.value.filter((subscription) => subscription.id !== subscriptionId)
-    closeSettings()
-  } else {
+  if (error) {
     unsubscribeError.value = error?.message || '取消订阅失败'
+    unsubscribingId.value = null
+    return
   }
+
+  closeSettings()
+  await wait(SUBSCRIPTION_REMOVE_DELAY_MS)
+  subscriptions.value = subscriptions.value.filter((subscription) => subscription.id !== subscriptionId)
+  unsubscribingId.value = null
 }
 
 const getSubscriptionVideos = (subscriptionId) => {
@@ -901,6 +921,30 @@ onUnmounted(() => {
   gap: 0.75rem;
 }
 
+.subscription-dialog__spinner {
+  width: 0.78rem;
+  height: 0.78rem;
+  border: 1.5px solid hsl(var(--destructive-foreground) / 0.28);
+  border-top-color: hsl(var(--destructive-foreground));
+  border-radius: 9999px;
+  animation: subscription-dialog-spin 0.7s linear infinite;
+}
+
+.subscription-card-enter-active,
+.subscription-card-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.subscription-card-enter-from,
+.subscription-card-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.985);
+}
+
+.subscription-card-move {
+  transition: transform 0.18s ease;
+}
+
 .channel-item.is-refreshing::after {
   content: '';
   position: absolute;
@@ -918,6 +962,12 @@ onUnmounted(() => {
 
   100% {
     transform: translateX(100%);
+  }
+}
+
+@keyframes subscription-dialog-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

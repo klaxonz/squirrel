@@ -56,8 +56,8 @@
                     </span>
                   </div>
                   <h1 class="video-meta__title text-foreground">{{ video?.title }}</h1>
-                  <transition name="fade" mode="out-in">
-                    <div v-if="video?.subscriptions?.length" :key="video?.id" class="video-channel">
+                  <transition name="channel-dismiss" mode="out-in">
+                    <div v-if="video?.subscriptions?.length && isVideoChannelVisible" :key="`${video?.id}-${isVideoChannelVisible}`" class="video-channel">
                       <div class="video-channel__content">
                         <div class="video-channel__primary">
                           <img
@@ -78,9 +78,14 @@
                               <button
                                 class="video-channel__unsubscribe"
                                 @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
+                                :disabled="isChannelUnsubscribing"
+                                :aria-busy="isChannelUnsubscribing ? 'true' : 'false'"
                                 :title="`取消订阅 ${video.subscriptions[0].name}`"
                                 :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
-                              >取消订阅</button>
+                              >
+                                <span v-if="isChannelUnsubscribing" class="video-channel__spinner" aria-hidden="true"></span>
+                                <span>{{ isChannelUnsubscribing ? '取消中' : '取消订阅' }}</span>
+                              </button>
                             </div>
 
                             <div class="video-channel__stats">
@@ -91,6 +96,7 @@
                                 已解析 {{ video.subscriptions[0].total_extract || 0 }}
                               </span>
                             </div>
+                            <p v-if="videoChannelError" class="video-channel__error">{{ videoChannelError }}</p>
                           </div>
                         </div>
 
@@ -388,6 +394,14 @@ const syncWidescreenSidebarState = (enabled) => {
 
 
 const relatedThumbnailErrorIds = reactive(new Set());
+const isVideoChannelVisible = ref(true)
+const isChannelUnsubscribing = ref(false)
+const videoChannelError = ref('')
+const VIDEO_CHANNEL_DISMISS_MS = 180
+
+const wait = (ms) => new Promise((resolve) => {
+  window.setTimeout(resolve, ms)
+})
 
 const handlePlayerRetry = async () => {
   if (!video.value?.id) return;
@@ -446,10 +460,22 @@ const handleNextVideo = async () => {
 };
 
 const handleUnsubscribe = async (subscriptionId) => {
-  if (!subscriptionId) return;
-  try {
-    await apiUnsubscribe(subscriptionId);
-  } catch (e) {}
+  if (!subscriptionId || isChannelUnsubscribing.value) return
+
+  isChannelUnsubscribing.value = true
+  videoChannelError.value = ''
+
+  const { error } = await apiUnsubscribe(subscriptionId)
+
+  if (error) {
+    videoChannelError.value = error?.message || '取消订阅失败'
+    isChannelUnsubscribing.value = false
+    return
+  }
+
+  isVideoChannelVisible.value = false
+  await wait(VIDEO_CHANNEL_DISMISS_MS)
+  isChannelUnsubscribing.value = false
 };
 
 const handleLike = async (video, interactionType) => {
@@ -617,6 +643,12 @@ watch(() => route.params.videoId, async (newId, oldId) => {
     syncVideoMetaHeight();
   }
 });
+
+watch(() => video.value?.id, () => {
+  isVideoChannelVisible.value = true
+  isChannelUnsubscribing.value = false
+  videoChannelError.value = ''
+})
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
@@ -1120,6 +1152,10 @@ onUnmounted(() => {
 }
 
 .video-channel__unsubscribe {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   flex-shrink: 0;
   min-height: 1.7rem;
   padding: 0 0.5rem;
@@ -1133,10 +1169,24 @@ onUnmounted(() => {
   transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
-.video-channel__unsubscribe:hover {
+.video-channel__unsubscribe:hover:not(:disabled) {
   background: hsl(var(--accent));
   border-color: hsl(var(--ring) / 0.28);
   transform: translateY(-1px);
+}
+
+.video-channel__unsubscribe:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.video-channel__spinner {
+  width: 0.68rem;
+  height: 0.68rem;
+  border: 1.5px solid hsl(var(--foreground) / 0.22);
+  border-top-color: hsl(var(--foreground));
+  border-radius: 9999px;
+  animation: video-channel-spin 0.7s linear infinite;
 }
 
 .video-channel__stats {
@@ -1175,6 +1225,12 @@ onUnmounted(() => {
   border-radius: 9999px;
   background: hsl(var(--border));
   transform: translateY(-50%);
+}
+
+.video-channel__error {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  color: hsl(var(--destructive));
 }
 
 .video-channel__more {
@@ -1446,5 +1502,31 @@ onUnmounted(() => {
 
 .fade-enter-to, .fade-leave-from {
   opacity: 1;
+}
+
+.channel-dismiss-enter-active,
+.channel-dismiss-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease, max-height 0.18s ease, margin 0.18s ease, padding 0.18s ease;
+  overflow: hidden;
+}
+
+.channel-dismiss-enter-from,
+.channel-dismiss-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+  max-height: 0;
+}
+
+.channel-dismiss-enter-to,
+.channel-dismiss-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 12rem;
+}
+
+@keyframes video-channel-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
