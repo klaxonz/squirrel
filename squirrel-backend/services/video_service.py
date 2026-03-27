@@ -9,14 +9,12 @@ from services.video_query import build_base_video_query, build_video_count_sourc
 
 
 from core.exceptions.video_exceptions import UnsupportedDomainError
-from crawl import VideoUrlHandler, get_handler_registry
-
 from models.links import SubscriptionVideo, UserSubscription
-
 from models.subscription import Subscription
 from models.video import Video
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
+from plugins.manager import get_plugin_manager
 from schemas.video.dto.video_dto import VideoExtractDto, VideoUrlDto
 
 from services import download_service, subscription_video_service, user_config_service
@@ -140,24 +138,24 @@ def get_video_url(video_id: int, force_refresh: bool = False) -> VideoUrlDto:
                 except Exception:
                     pass
 
-    handler_registry = get_handler_registry()
-    handler_key = handler_registry.get_by_domain(video_domain)
-    if not handler_key:
-        raise UnsupportedDomainError(f"No handler found for domain: {video_domain}")
-    handler_plugin = handler_registry.get(handler_key)
-    if not handler_plugin:
-        raise UnsupportedDomainError(f"No handler found for domain: {video_domain}")
-    # handler_plugin 可能是类或实例
-    if isinstance(handler_plugin, type):
-        handler: VideoUrlHandler = handler_plugin()
-    else:
-        handler: VideoUrlHandler = handler_plugin
-    result = handler.get_video_url(video)
+    response = get_plugin_manager().gateway.invoke(
+        'resolve_playback',
+        site_name=site_slug,
+        domain=video_domain,
+        payload={
+            'video_id': video.id,
+            'url': video.url,
+            'domain': video_domain,
+        },
+    )
+    if not response.ok:
+        message = response.error.message if response.error else f'No playback handler found for domain: {video_domain}'
+        raise UnsupportedDomainError(message)
 
-    if not isinstance(result, dict):
-        raise TypeError("Handler.get_video_url must return a dict")
+    if not isinstance(response.data, dict):
+        raise TypeError('Plugin resolve_playback must return an object payload')
 
-    dto = VideoUrlDto.model_validate(result)
+    dto = VideoUrlDto.model_validate(response.data)
 
     if enable_cache and cache_key is not None:
         try:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import shutil
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -100,4 +101,10 @@ class PluginInstaller:
     def stage_distribution(self, plan: PluginInstallPlan) -> Path:
         if plan.staging_path.resolve() != plan.package_path.resolve():
             shutil.copy2(plan.package_path, plan.staging_path)
+        if zipfile.is_zipfile(plan.staging_path):
+            if plan.install_path.exists():
+                shutil.rmtree(plan.install_path)
+            plan.install_path.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(plan.staging_path, 'r') as archive:
+                archive.extractall(plan.install_path)
         return plan.staging_path

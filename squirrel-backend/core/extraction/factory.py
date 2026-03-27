@@ -1,147 +1,150 @@
 """
-提取器工厂 - 使用 SDK 统一注册表
+Gateway-backed extractor factory.
 """
 import logging
-import time
-from typing import Dict, Optional, List, Tuple, Type
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
-from crawl import Extractor, get_extractor_registry, PluginRegistry
+from crawl import ExtractionResult, ExtractionTask, PluginRegistry, VideoMeta
+
+from plugins.manager import get_plugin_manager
 from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger(__name__)
 
 
-class ExtractorFactory:
-    """提取器工厂"""
+class GatewayExtractorAdapter:
+    """Adapter that exposes plugin runtime capabilities as Extractor protocol."""
 
-    def __init__(self, registry: PluginRegistry, cache_ttl: int = 3600):
-        self.registry = registry
-        self._instances: Dict[str, Tuple[Extractor, float]] = {}
-        self._test_urls: Dict[str, str] = {}
-        self._cache_ttl = cache_ttl
+    def __init__(self, site_name: str, supported_domains: List[str]):
+        self.site_name = site_name
+        self.supported_domains = list(supported_domains)
 
-    def _get_cached(self, site_name: str) -> Optional[Extractor]:
-        if site_name in self._instances:
-            instance, timestamp = self._instances[site_name]
-            if time.time() - timestamp < self._cache_ttl:
-                return instance
-            del self._instances[site_name]
-            logger.debug(f"缓存过期，移除提取器: {site_name}")
-        return None
+    def can_handle(self, url: str) -> bool:
+        try:
+            domain = urlparse(url).netloc.lower().split(':')[0]
+        except Exception:
+            return False
+        return any(domain == item or domain.endswith(f'.{item}') for item in self.supported_domains)
 
-    def _set_cached(self, site_name: str, instance: Extractor) -> None:
-        self._instances[site_name] = (instance, time.time())
-
-    def _create_instance(self, site_name: str) -> Optional[Extractor]:
-        extractor_class = self.registry.get(site_name)
-        if not extractor_class:
-            logger.error(f"提取器类未找到: {site_name}")
-            return None
-        if isinstance(extractor_class, type):
-            return extractor_class()
-        return extractor_class
-
-    def create_extractor(self, url: str) -> Optional[Extractor]:
-        """根据URL创建提取器实例"""
+    def validate_url(self, url: str) -> bool:
         try:
             parsed = urlparse(url)
-            domain = parsed.netloc.lower()
+            return bool(parsed.scheme and parsed.netloc)
+        except Exception:
+            return False
 
-            if not SiteCatalog.is_site_enabled(domain=domain):
-                logger.info(f"站点已禁用，跳过提取器创建: {domain}")
-                return None
+    def extract(self, task: ExtractionTask) -> ExtractionResult:
+        response = get_plugin_manager().gateway.invoke(
+            'extract_video',
+            site_name=self.site_name,
+            payload={
+                'url': task.url,
+                'site_name': task.site_name,
+                'task_id': task.task_id,
+                'retry_count': task.retry_count,
+                'max_retries': task.max_retries,
+                'metadata': dict(task.metadata or {}),
+            },
+        )
+        if not response.ok:
+            message = response.error.message if response.error else f'Extraction failed for site: {self.site_name}'
+            return ExtractionResult(
+                success=False,
+                error=message,
+                retryable=response.error.retryable if response.error else False,
+                error_context=response.error.details if response.error else None,
+            )
 
-            site_name = self.registry.get_by_domain(domain)
+        payload = response.data
+        if isinstance(payload, dict) and 'success' in payload:
+            return ExtractionResult.from_dict(payload)
+        if isinstance(payload, dict):
+            return ExtractionResult.success_result(VideoMeta.from_dict(payload))
+        return ExtractionResult(success=False, error='Plugin extract_video returned an invalid payload')
 
-            if not site_name:
-                domain_parts = domain.split('.')
-                for i in range(1, len(domain_parts)):
-                    parent_domain = '.'.join(domain_parts[i:])
-                    site_name = self.registry.get_by_domain(parent_domain)
-                    if site_name:
-                        break
 
-            if not site_name:
-                logger.warning(f"未找到支持的提取器: {domain}")
-                return None
+class ExtractorFactory:
+    """Resolve extractors from plugin runtime registrations."""
 
-            cached = self._get_cached(site_name)
-            if cached:
-                return cached
+    def __init__(self, registry: Optional[PluginRegistry] = None):
+        self.registry = registry
+        self._instances: Dict[str, GatewayExtractorAdapter] = {}
 
-            instance = self._create_instance(site_name)
-            if instance:
-                self._set_cached(site_name, instance)
-            return instance
-
-        except Exception as e:
-            logger.error(f"创建提取器失败: {url}, error: {e}")
+    def _create_adapter(self, site_name: str) -> Optional[GatewayExtractorAdapter]:
+        route = get_plugin_manager().gateway.resolve_route('extract_video', site_name=site_name)
+        if route is None:
+            logger.info(f'No extract_video capability found for site: {site_name}')
             return None
 
-    def get_extractor_by_site(self, site_name: str) -> Optional[Extractor]:
-        """根据网站名获取提取器实例"""
-        if not SiteCatalog.is_site_enabled(site=site_name):
-            logger.info(f"站点已禁用，跳过提取器获取: {site_name}")
+        site_info = SiteCatalog.get_catalog().get(site_name) or {}
+        domains = list(site_info.get('domains') or [])
+        if not domains:
+            logger.warning(f'No site domains configured for extractor site: {site_name}')
             return None
 
-        cached = self._get_cached(site_name)
-        if cached:
+        return GatewayExtractorAdapter(site_name=site_name, supported_domains=domains)
+
+    def create_extractor(self, url: str) -> Optional[GatewayExtractorAdapter]:
+        try:
+            domain = urlparse(url).netloc.lower().split(':')[0]
+        except Exception as exc:
+            logger.error(f'Failed to parse extractor URL: {url}, error: {exc}')
+            return None
+
+        if not SiteCatalog.is_site_enabled(domain=domain):
+            logger.info(f'Site disabled, skip extractor creation: {domain}')
+            return None
+
+        site_name, _ = SiteCatalog.find_site_by_domain(domain)
+        if not site_name:
+            logger.warning(f'No supported extractor site found for domain: {domain}')
+            return None
+
+        cached = self._instances.get(site_name)
+        if cached is not None:
             return cached
 
-        instance = self._create_instance(site_name)
-        if instance:
-            self._set_cached(site_name, instance)
-        return instance
+        adapter = self._create_adapter(site_name)
+        if adapter is not None:
+            self._instances[site_name] = adapter
+        return adapter
+
+    def get_extractor_by_site(self, site_name: str) -> Optional[GatewayExtractorAdapter]:
+        if not SiteCatalog.is_site_enabled(site=site_name):
+            logger.info(f'Site disabled, skip extractor lookup: {site_name}')
+            return None
+
+        cached = self._instances.get(site_name)
+        if cached is not None:
+            return cached
+
+        adapter = self._create_adapter(site_name)
+        if adapter is not None:
+            self._instances[site_name] = adapter
+        return adapter
 
     def clear_cache(self) -> None:
-        """清空实例缓存"""
         self._instances.clear()
 
-    def register(self, site_name: str, extractor_class: Type[Extractor], domains: List[str]) -> None:
-        """注册提取器到 SDK 注册表"""
-        self.registry.register(site_name, extractor_class, domains)
-
-        test_url = None
-        if hasattr(extractor_class, 'test_url'):
-            test_url = getattr(extractor_class, 'test_url', None)
-        elif hasattr(extractor_class, 'get_test_url'):
-            try:
-                test_url = extractor_class.get_test_url()
-            except Exception as e:
-                logger.warning(f"调用 {site_name}.get_test_url() 失败: {e}")
-
-        if test_url:
-            self._test_urls[site_name] = test_url
-            logger.info(f"✓ 注册提取器: {site_name}, 支持域名: {domains}, 测试URL: {test_url}")
-        else:
-            logger.info(f"✗ 注册提取器: {site_name}, 支持域名: {domains} (无测试URL)")
+    def register(self, site_name: str, extractor_class, domains: List[str]) -> None:
+        logger.info(f'Ignoring legacy extractor registration for site: {site_name}, domains: {domains}')
 
     def get_test_url(self, site_name: str) -> Optional[str]:
-        """获取站点的测试URL"""
-        if site_name in self._test_urls:
-            return self._test_urls[site_name]
-
-        extractor_class = self.registry.get(site_name)
-        if extractor_class:
-            if hasattr(extractor_class, 'test_url'):
-                return getattr(extractor_class, 'test_url', None)
-        return None
+        site_info = SiteCatalog.get_catalog().get(site_name) or {}
+        return site_info.get('test_url')
 
     def get_all_sites(self) -> List[str]:
-        """获取所有支持的网站"""
-        return self.registry.get_all_keys()
+        return list(SiteCatalog.get_catalog().keys())
 
     def get_all_domains(self) -> List[str]:
-        """获取所有支持的域名"""
-        return self.registry.get_all_domains()
+        return SiteCatalog.get_all_domains()
 
 
 _global_factory: Optional[ExtractorFactory] = None
 
 
 def get_extractor_factory() -> ExtractorFactory:
-    """获取全局提取器工厂"""
     global _global_factory
     if _global_factory is None:
         _global_factory = ExtractorFactory(get_extractor_registry())
@@ -149,14 +152,13 @@ def get_extractor_factory() -> ExtractorFactory:
 
 
 def get_extractor_registry() -> PluginRegistry:
-    """获取全局提取器注册表 (来自 SDK)"""
     from crawl import get_extractor_registry as sdk_get_extractor_registry
+
     return sdk_get_extractor_registry()
 
 
 def reset_factory() -> None:
-    """重置工厂实例"""
     global _global_factory
-    if _global_factory:
+    if _global_factory is not None:
         _global_factory.clear_cache()
     _global_factory = None

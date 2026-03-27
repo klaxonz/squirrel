@@ -22,6 +22,30 @@
           "type": "object"
         },
         "timeout_ms": 30000
+      },
+      {
+        "name": "sync_subscription",
+        "description": "Fetch subscription video URLs for a Bilibili subscription.",
+        "response_schema": {
+          "type": "object"
+        },
+        "timeout_ms": 30000
+      },
+      {
+        "name": "extract_video",
+        "description": "Extract structured metadata for a Bilibili video URL.",
+        "response_schema": {
+          "type": "object"
+        },
+        "timeout_ms": 30000
+      },
+      {
+        "name": "resolve_playback",
+        "description": "Resolve playback URLs for a Bilibili video.",
+        "response_schema": {
+          "type": "object"
+        },
+        "timeout_ms": 30000
       }
     ],
     "sites": [
@@ -34,7 +58,10 @@
         "test_url": "https://www.bilibili.com",
         "features": [
           "check_login_status",
-          "import_subscriptions"
+          "import_subscriptions",
+          "sync_subscription",
+          "extract_video",
+          "resolve_playback"
         ]
       }
     ],

@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Tuple, List, Dict, Any
 
 from sqlalchemy import select
@@ -8,10 +9,13 @@ from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from models.links import UserSubscription
 from models.message import Message
 from models.subscription import Subscription, ContentType
+from plugins.manager import get_plugin_manager
 from services import user_config_service
 from services import subscription_sync_state_service
 from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql, get_subscription_sql
 from utils.sql_parser import parse_dynamic_sql
+
+logger = logging.getLogger(__name__)
 
 
 def _detect_subscription_type(url: str) -> str:
@@ -467,6 +471,30 @@ def _dedupe_import_items(subscriptions: List[SubscriptionImportItem]) -> List[Su
     return result
 
 
+def _load_runtime_import_items(site_name: str) -> List[SubscriptionImportItem]:
+    response = get_plugin_manager().gateway.invoke(
+        'import_subscriptions',
+        site_name=site_name,
+    )
+    if not response.ok:
+        message = response.error.message if response.error else f'Plugin import failed for site: {site_name}'
+        raise ValueError(message)
+
+    payload = response.data
+    if not isinstance(payload, dict):
+        raise ValueError(f'Plugin import payload must be an object for site: {site_name}')
+
+    items = payload.get('items') or []
+    if not isinstance(items, list):
+        raise ValueError(f'Plugin import items must be a list for site: {site_name}')
+
+    return _dedupe_import_items([
+        item if isinstance(item, SubscriptionImportItem) else SubscriptionImportItem.from_dict(item)
+        for item in items
+        if isinstance(item, (dict, SubscriptionImportItem))
+    ])
+
+
 def preview_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
     """
     预览用户在指定站点的订阅列表（不实际导入）
@@ -482,25 +510,8 @@ def preview_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
             'subscriptions': 订阅列表 [{'url': '...', 'name': '...', 'avatar': '...'}, ...]
         }
     """
-    import logging
-    from crawl import get_importer_registry
-    
-    logger = logging.getLogger()
-    
     try:
-        # 获取对应站点的 importer
-        importer_registry = get_importer_registry()
-        importer_plugin = importer_registry.get(site_name)
-        
-        if not importer_plugin:
-            raise ValueError(f"No importer found for site: {site_name}")
-        
-        # 创建 importer 实例并获取订阅列表
-        if isinstance(importer_plugin, type):
-            importer = importer_plugin()
-        else:
-            importer = importer_plugin
-        subscriptions = _dedupe_import_items(importer.get_user_subscriptions())
+        subscriptions = _load_runtime_import_items(site_name)
 
         logger.info(f"Found {len(subscriptions)} subscriptions from {site_name} for preview")
 
@@ -598,26 +609,10 @@ def import_user_subscriptions(
             'total': 总数
         }
     """
-    import logging
     import threading
-    from crawl import get_importer_registry
-    
-    logger = logging.getLogger()
-    
+
     try:
-        # 获取对应站点的 importer
-        importer_registry = get_importer_registry()
-        importer_plugin = importer_registry.get(site_name)
-        
-        if not importer_plugin:
-            raise ValueError(f"No importer found for site: {site_name}")
-        
-        # 创建 importer 实例并获取订阅列表
-        if isinstance(importer_plugin, type):
-            importer = importer_plugin()
-        else:
-            importer = importer_plugin
-        all_subscriptions = _dedupe_import_items(importer.get_user_subscriptions())
+        all_subscriptions = _load_runtime_import_items(site_name)
         found_total = len(all_subscriptions)
 
         logger.info(f"Found {found_total} subscriptions from {site_name}")

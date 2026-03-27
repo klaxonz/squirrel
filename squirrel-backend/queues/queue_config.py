@@ -7,6 +7,7 @@ import logging
 from typing import Dict, List
 from enum import Enum
 
+from plugins.manager import get_plugin_manager
 from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger()
@@ -36,24 +37,25 @@ class QueueConfigManager:
     
     def initialize(self):
         """
-        从插件注册表初始化配置
+        从插件运行时快照初始化配置
         必须在插件加载后调用
         """
         if self._initialized:
             return
         
         try:
-            from core.extraction import get_extractor_registry
-            registry = get_extractor_registry()
-            
-            # 从注册表获取所有站点和域名映射
-            for domain in registry.get_all_domains():
-                site = registry.get_by_domain(domain)
-                if site:
-                    if not SiteCatalog.is_site_enabled(site, domain):
-                        logger.info(f"Skipping disabled site in queue config: site={site}, domain={domain}")
+            snapshot = get_plugin_manager().get_snapshot()
+
+            for registration in snapshot.registrations:
+                if not registration.site_name:
+                    continue
+                for domain in registration.domains:
+                    if not SiteCatalog.is_site_enabled(registration.site_name, domain):
+                        logger.info(
+                            f"Skipping disabled site in queue config: site={registration.site_name}, domain={domain}"
+                        )
                         continue
-                    self._domain_to_site[domain] = site
+                    self._domain_to_site[domain] = registration.site_name
             
             self._initialized = True
             logger.info(f"Queue config initialized with {len(self._domain_to_site)} domains")

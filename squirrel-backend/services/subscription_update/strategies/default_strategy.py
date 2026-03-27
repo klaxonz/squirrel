@@ -8,14 +8,16 @@ from typing import Optional
 from sqlalchemy import update
 from core.config import settings
 from core.database import get_session
-from crawl import get_subscription_registry, SubscriptionSyncContext, SubscriptionSyncResult
+from crawl import SubscriptionSyncResult
 from urllib.parse import urlparse
 from models.subscription import Subscription as SubscriptionModel
 from models.subscription_sync_state import SyncMode, SyncStatus
+from plugins.manager import get_plugin_manager
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, subscription_sync_state_service, video_service
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncRunStatus
+from utils.site_catalog import SiteCatalog
 from utils.metrics import metrics
 from .base import UpdateStrategy
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode, UpdateTrigger
@@ -60,25 +62,32 @@ class DefaultUpdateStrategy(UpdateStrategy):
     
     def fetch_videos(self, request: SubscriptionUpdateRequest) -> SubscriptionSyncResult:
         """获取视频列表"""
-        subscription_registry = get_subscription_registry()
         parsed_url = urlparse(request.url)
         domain = parsed_url.netloc.lower().split(':')[0]
-        subscription_key = subscription_registry.get_by_domain(domain)
-        if not subscription_key:
-            raise ValueError(f"No subscription handler found for domain: {domain}")
-        subscription_cls = subscription_registry.get(subscription_key)
-        if not subscription_cls or not isinstance(subscription_cls, type):
-            raise ValueError(f"Invalid subscription class for key: {subscription_key}")
-        subscribe_channel = subscription_cls(url=request.url)
+        site_name, _ = SiteCatalog.find_site_by_domain(domain)
+        if not site_name:
+            raise ValueError(f'No subscription route found for domain: {domain}')
 
         sync_mode = UpdateMode.FULL if request.mode == UpdateMode.FULL else UpdateMode.INCREMENTAL
-        context = SubscriptionSyncContext(
-            mode=sync_mode.value,
-            cursor_payload=request.cursor_payload or {},
-            last_seen_video_url=request.last_seen_video_url,
-            limit=None if sync_mode == UpdateMode.FULL else settings.CHANNEL_UPDATE_DEFAULT_SIZE,
+        response = get_plugin_manager().gateway.invoke(
+            'sync_subscription',
+            site_name=site_name,
+            domain=domain,
+            payload={
+                'url': request.url,
+                'mode': sync_mode.value,
+                'cursor_payload': request.cursor_payload or {},
+                'last_seen_video_url': request.last_seen_video_url,
+                'limit': None if sync_mode == UpdateMode.FULL else settings.CHANNEL_UPDATE_DEFAULT_SIZE,
+            },
         )
-        result = subscribe_channel.sync_videos(context)
+        if not response.ok:
+            message = response.error.message if response.error else f'Subscription sync failed for domain: {domain}'
+            raise ValueError(message)
+        if not isinstance(response.data, dict):
+            raise ValueError(f'Subscription sync payload must be an object for domain: {domain}')
+
+        result = SubscriptionSyncResult.from_dict(response.data)
 
         if sync_mode == UpdateMode.FULL and result.total_available is not None:
             self._update_total_videos(request.subscription_id, result.total_available)

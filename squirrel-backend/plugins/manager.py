@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import List, Optional
 
@@ -30,19 +31,22 @@ class PluginManager:
         self._store = store or PluginInstallStore()
         self._installer = installer or PluginInstaller()
         self._supervisor = supervisor or PluginRuntimeSupervisor()
-        self._gateway = gateway or PluginGateway()
+        self._gateway = gateway or PluginGateway(invocation_client=self._supervisor)
 
     @property
     def gateway(self) -> PluginGateway:
         return self._gateway
 
     def list_plugins(self) -> List[PluginInstallRecord]:
+        self.discover_plugins()
         return self._store.list_records()
 
     def discover_plugins(self) -> List[PluginInstallRecord]:
-        return self.list_plugins()
+        self._discover_local_runtime_plugins()
+        return self._store.list_records()
 
     def get_plugin(self, plugin_id: str) -> Optional[PluginInstallRecord]:
+        self.discover_plugins()
         return self._store.get_record(plugin_id)
 
     def install_plugin(
@@ -133,6 +137,7 @@ class PluginManager:
         )
 
     def get_snapshot(self) -> PluginManagerSnapshot:
+        self.discover_plugins()
         return PluginManagerSnapshot(
             records=self._store.list_records(),
             runtimes=self._supervisor.list_handles(),
@@ -140,6 +145,7 @@ class PluginManager:
         )
 
     def bootstrap_enabled_plugins(self) -> List[PluginInstallRecord]:
+        self.discover_plugins()
         started: List[PluginInstallRecord] = []
         for record in self._store.list_records():
             if not record.enabled:
@@ -168,6 +174,43 @@ class PluginManager:
     def reload_enabled_plugins(self) -> List[PluginInstallRecord]:
         self.shutdown_all()
         return self.bootstrap_enabled_plugins()
+
+    def _discover_local_runtime_plugins(self) -> None:
+        plugins_root = self._installer._base_dir.parent.parent / 'squirrel-plugins'
+        if not plugins_root.exists():
+            return
+
+        for metadata_path in plugins_root.glob('*/plugin-runtime.json'):
+            try:
+                payload = json.loads(metadata_path.read_text(encoding='utf-8'))
+                manifest_payload = payload.get('manifest') or {}
+                entrypoint = str(payload.get('entrypoint', '')).strip()
+                manifest = PluginManifest.from_dict(manifest_payload)
+                if not manifest.plugin_id or not entrypoint:
+                    continue
+
+                existing = self._store.get_record(manifest.plugin_id)
+                if existing is not None:
+                    continue
+
+                plugin_root = metadata_path.parent
+                runtime_path = plugin_root / 'src'
+                record = PluginInstallRecord(
+                    plugin_id=manifest.plugin_id,
+                    version=manifest.version,
+                    install_path=str(plugin_root),
+                    entrypoint=entrypoint,
+                    enabled=True,
+                    status=PluginInstallStatus.INSTALLED,
+                    granted_permissions=[item.name for item in manifest.permissions],
+                    manifest=manifest.to_dict(),
+                    package_path=str(metadata_path),
+                    runtime_path=str(runtime_path if runtime_path.exists() else plugin_root),
+                    metadata={'source': 'workspace'},
+                )
+                self._store.upsert(record)
+            except Exception:
+                continue
 
 
 _plugin_manager: Optional[PluginManager] = None
