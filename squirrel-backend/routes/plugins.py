@@ -14,7 +14,7 @@ from services.site_login_status_service import (
     test_site_login_status,
 )
 from services.cookiecloud_service import CookieCloudSyncError, sync_cookiecloud_to_site_files
-from plugins.loader import reload_plugins
+from plugins.manager import reload_plugin_runtime
 from utils.redis_client import publish_plugin_reload_signal
 from common.response import success, error, param_error
 from core.extraction import get_extractor_registry
@@ -133,13 +133,8 @@ def install_plugin(file: UploadFile = File(...)):
         return param_error("file must be a zip archive")
     ok, data_or_err = install_from_upload(file)
     if ok:
-        try:
-            reload_plugins()
-            publish_plugin_reload_signal()
-            return success(data_or_err, msg="installed and loaded")
-        except Exception as e:
-            logger.error("failed to reload plugins after install: %s", e, exc_info=True)
-            return success(data_or_err, msg="installed but reload failed, please reload manually")
+        publish_plugin_reload_signal()
+        return success(data_or_err, msg="installed and enabled")
     return error(data_or_err or "install failed")
 
 
@@ -152,6 +147,7 @@ def list_plugins():
 def enable_plugin(name: str):
     ok = set_enabled_by_name(name, True)
     if ok:
+        publish_plugin_reload_signal()
         return success(msg="enabled")
     return error("invalid plugin name or not found")
 
@@ -160,6 +156,7 @@ def enable_plugin(name: str):
 def disable_plugin(name: str):
     ok = set_enabled_by_name(name, False)
     if ok:
+        publish_plugin_reload_signal()
         return success(msg="disabled")
     return error("invalid plugin name or not found")
 
@@ -168,13 +165,14 @@ def disable_plugin(name: str):
 def uninstall_plugin(name: str):
     ok = uninstall_by_name(name)
     if ok:
+        publish_plugin_reload_signal()
         return success(msg="uninstalled")
-    return error("invalid plugin name or not found, or not in plugins_ext")
+    return error("invalid plugin id or not found")
 
 
 @router.post("/reload")
 def reload_all_plugins():
-    reload_plugins()
+    reload_plugin_runtime()
     publish_plugin_reload_signal()
     return success(msg="reloaded")
 
