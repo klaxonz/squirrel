@@ -2,6 +2,10 @@ import json
 import os
 from typing import Dict, List, Optional, Set
 
+from crawl import PluginManifest
+
+from plugins.manager import get_plugin_manager
+
 
 class SiteCatalog:
     """
@@ -70,55 +74,32 @@ class SiteCatalog:
         return None
 
     @classmethod
-    def _build_from_registries(cls) -> Dict[str, dict]:
-        # best-effort fallback: aggregate domains from various registries
-        domains: Set[str] = set()
-        try:
-            from crawl import (
-                get_extractor_registry,
-                get_handler_registry,
-                get_mpd_registry,
-                get_proxy_registry,
-                get_subtitles_registry,
-                get_subscription_registry,
-                get_id_extractor_registry,
-            )
-
-            # 收集所有注册表的域名
-            registries = [
-                get_extractor_registry(),
-                get_handler_registry(),
-                get_mpd_registry(),
-                get_proxy_registry(),
-                get_subtitles_registry(),
-                get_subscription_registry(),
-                get_id_extractor_registry(),
-            ]
-            
-            for reg in registries:
-                try:
-                    domains.update(reg.get_all_domains())
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-        # Group by top-level host second-level e.g. youtube.com
+    def _build_from_manifests(cls) -> Dict[str, dict]:
         catalog: Dict[str, dict] = {}
-        for d in sorted(domains):
-            parts = d.split('.')
-            if len(parts) >= 2:
-                slug = parts[-2]
-            else:
-                slug = d
-            item = catalog.setdefault(slug, {
-                'label': slug,
-                'domains': [],
-                'aliases': [],
-                'enabled': True
-            })
-            if d not in item['domains']:
-                item['domains'].append(d)
+        snapshot = get_plugin_manager().get_snapshot()
+        for record in snapshot.records:
+            manifest = PluginManifest.from_dict(record.manifest)
+            for site in manifest.sites:
+                slug = site.site_name.strip().lower()
+                item = catalog.setdefault(slug, {
+                    'label': site.site_name,
+                    'domains': [],
+                    'aliases': [],
+                    'enabled': record.enabled,
+                    'features': [],
+                })
+                item['enabled'] = item.get('enabled', False) or record.enabled
+                if site.test_url:
+                    item['test_url'] = site.test_url
+                existing_features = set(item.get('features') or [])
+                for feature in site.features:
+                    if feature not in existing_features:
+                        item.setdefault('features', []).append(feature)
+                        existing_features.add(feature)
+                for domain in site.domains:
+                    normalized = str(domain).strip().lower()
+                    if normalized and normalized not in item['domains']:
+                        item['domains'].append(normalized)
         return catalog
 
     @classmethod
@@ -132,7 +113,7 @@ class SiteCatalog:
                 cls._catalog = file_catalog
                 cls._catalog_mtime = config_mtime
             else:
-                cls._catalog = cls._build_from_registries()
+                cls._catalog = cls._build_from_manifests()
                 cls._catalog_mtime = config_mtime
         return cls._catalog
 

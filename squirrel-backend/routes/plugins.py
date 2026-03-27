@@ -17,7 +17,6 @@ from services.cookiecloud_service import CookieCloudSyncError, sync_cookiecloud_
 from plugins.manager import reload_plugin_runtime
 from utils.redis_client import publish_plugin_reload_signal
 from common.response import success, error, param_error
-from core.extraction import get_extractor_registry
 from routes.connectivity import test_site_connectivity
 from core.cookie_config import (
     get_site_cookies_dir,
@@ -59,19 +58,12 @@ def select_primary_domain(domains: list) -> str:
     return min(domains, key=len)
 
 
-def merge_site_names(registry, catalog: dict) -> list[str]:
+def merge_site_names(catalog: dict) -> list[str]:
     """
     合并提取器注册表与站点配置中的站点名称，避免遗漏被禁用的站点
     """
     names: list[str] = []
     seen = set()
-
-    for site_name in registry.get_all_keys():
-        key = site_name.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        names.append(site_name)
 
     for slug in catalog.keys():
         key = slug.lower()
@@ -83,7 +75,7 @@ def merge_site_names(registry, catalog: dict) -> list[str]:
     return names
 
 
-def build_site_info(site_name: str, registry, catalog: dict) -> dict | None:
+def build_site_info(site_name: str, catalog: dict) -> dict | None:
     """
     基于注册表与站点配置汇总站点信息，优先使用配置文件中的域名/测试URL
     """
@@ -92,12 +84,7 @@ def build_site_info(site_name: str, registry, catalog: dict) -> dict | None:
 
     slug = site_name.lower()
     catalog_entry = catalog.get(slug, {})
-    domain_mapping = registry._domain_mapping
-
-    site_domains = catalog_entry.get("domains") or [
-        domain for domain, mapped_site in domain_mapping.items()
-        if str(mapped_site).lower() == slug
-    ]
+    site_domains = catalog_entry.get("domains") or []
 
     # 去重但保持顺序
     seen = set()
@@ -185,16 +172,15 @@ def get_supported_sites():
     Returns:
         每个站点的详细信息，包括名称和对应的域名列表
     """
-    registry = get_extractor_registry()
     catalog = SiteCatalog.get_catalog() or {}
     login_supported_sites = get_login_supported_sites()
     login_supported_sites_lower = {s.lower() for s in login_supported_sites}
-    site_names = merge_site_names(registry, catalog)
+    site_names = merge_site_names(catalog)
     
     # 构建每个站点的完整信息
     sites_info = []
     for site_name in site_names:
-        info = build_site_info(site_name, registry, catalog)
+        info = build_site_info(site_name, catalog)
         if not info:
             continue
         info["supports_login_status"] = site_name.lower() in login_supported_sites_lower
@@ -218,9 +204,8 @@ async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(1
     Returns:
         连通性测试结果
     """
-    registry = get_extractor_registry()
     catalog = SiteCatalog.get_catalog() or {}
-    site_info = build_site_info(site_name, registry, catalog)
+    site_info = build_site_info(site_name, catalog)
 
     if not site_info:
         return param_error(f"不支持的站点: {site_name}")
@@ -255,9 +240,8 @@ async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(1
 
 @router.get("/sites/{site_name}/login-status")
 def get_site_login_status(site_name: str):
-    registry = get_extractor_registry()
     catalog = SiteCatalog.get_catalog() or {}
-    site_info = build_site_info(site_name, registry, catalog)
+    site_info = build_site_info(site_name, catalog)
     if not site_info:
         return param_error(f"不支持的站点: {site_name}")
 
@@ -271,9 +255,8 @@ async def upload_site_cookies(
     file: UploadFile = File(...),
     target: Literal["default", "http"] = Query("default")
 ):
-    registry = get_extractor_registry()
     catalog = SiteCatalog.get_catalog() or {}
-    site_info = build_site_info(site_name, registry, catalog)
+    site_info = build_site_info(site_name, catalog)
     if not site_info:
         return param_error(f"不支持的站点: {site_name}")
 
@@ -339,14 +322,13 @@ async def import_cookies_for_all_sites(file: UploadFile = File(...)):
     text = data.decode("utf-8", errors="ignore")
     lines = text.splitlines()
 
-    registry = get_extractor_registry()
     catalog = SiteCatalog.get_catalog() or {}
-    site_names = merge_site_names(registry, catalog)
+    site_names = merge_site_names(catalog)
 
     domain_to_sites: Dict[str, List[str]] = {}
     site_to_domains: Dict[str, List[str]] = {}
     for site_name in site_names:
-        info = build_site_info(site_name, registry, catalog)
+        info = build_site_info(site_name, catalog)
         if not info:
             continue
         domains = [d.strip().lstrip(".").lower() for d in (info.get("domains") or []) if d]
@@ -440,13 +422,12 @@ async def test_batch_sites_connectivity(
     if not site_names:
         return param_error("站点列表不能为空")
     
-    registry = get_extractor_registry()
     catalog = SiteCatalog.get_catalog() or {}
     
     # 过滤有效的站点
     valid_sites = []
     for site_name in site_names:
-        site_info = build_site_info(site_name, registry, catalog)
+        site_info = build_site_info(site_name, catalog)
         if not site_info or not site_info.get("test_url"):
             continue
         valid_sites.append((site_info["name"], site_info["test_url"], site_info.get("domains") or []))
@@ -535,9 +516,8 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
     Returns:
         所有站点的测试结果
     """
-    registry = get_extractor_registry()
     catalog = SiteCatalog.get_catalog() or {}
-    site_names = merge_site_names(registry, catalog)
+    site_names = merge_site_names(catalog)
     
     if not site_names:
         return success({
@@ -553,7 +533,7 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
     
     test_sites = []
     for site_name in site_names:
-        site_info = build_site_info(site_name, registry, catalog)
+        site_info = build_site_info(site_name, catalog)
         if not site_info:
             continue
         test_url = site_info.get("test_url")
