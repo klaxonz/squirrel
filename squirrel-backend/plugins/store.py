@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
 from pathlib import Path
+import tempfile
 from typing import Dict, List, Optional
 
 from core.config import settings
 
 from .models import PluginInstallRecord, PluginInstallStatus, utcnow_iso
+
+logger = logging.getLogger(__name__)
 
 
 class PluginInstallStore:
@@ -24,16 +29,33 @@ class PluginInstallStore:
     def _load_raw(self) -> Dict[str, Dict]:
         if not self._data_path.exists():
             return {}
-        with self._data_path.open('r', encoding='utf-8') as handle:
-            payload = json.load(handle)
+        raw_text = self._data_path.read_text(encoding='utf-8')
+        if not raw_text.strip():
+            return {}
+        try:
+            payload = json.loads(raw_text)
+        except json.JSONDecodeError as exc:
+            logger.warning('Plugin installation store is unreadable, treating it as empty: %s', exc)
+            return {}
         if not isinstance(payload, dict):
             return {}
         return payload
 
     def _save_raw(self, records: Dict[str, Dict]) -> None:
         self._data_path.parent.mkdir(parents=True, exist_ok=True)
-        with self._data_path.open('w', encoding='utf-8') as handle:
+        with tempfile.NamedTemporaryFile(
+            'w',
+            encoding='utf-8',
+            dir=self._data_path.parent,
+            delete=False,
+            prefix=f'{self._data_path.stem}.',
+            suffix='.tmp',
+        ) as handle:
             json.dump(records, handle, ensure_ascii=False, indent=2, sort_keys=True)
+            handle.flush()
+            os.fsync(handle.fileno())
+            temp_path = Path(handle.name)
+        os.replace(temp_path, self._data_path)
 
     def list_records(self) -> List[PluginInstallRecord]:
         payload = self._load_raw()

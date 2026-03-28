@@ -18,18 +18,23 @@ def build_runtime_proxy_config(
     effective_domain = str(domain or site_domain).strip().lower() or site_domain
     config = dict(default_proxy_config)
     config.update(get_proxy_config(site_slug))
+    domain_config = {
+        'domain': effective_domain,
+        'connect_timeout': float(config['connect_timeout']),
+        'read_timeout': float(config['read_timeout']),
+        'max_retries': int(config['max_retries']),
+        'chunk_size': int(config['chunk_size']),
+        'max_connections': int(config['max_connections']),
+        'keepalive_expiry': float(config['keepalive_expiry']),
+        'enable_http2': bool(config['enable_http2']),
+    }
+    bypass_mode = str(config.get('bypass_mode') or '').strip().lower()
+    if bypass_mode:
+        domain_config['bypass_mode'] = bypass_mode
+
     return {
         'site_headers': get_http_headers(site_slug, dict(default_site_headers)),
-        'domain_configs': [{
-            'domain': effective_domain,
-            'connect_timeout': float(config['connect_timeout']),
-            'read_timeout': float(config['read_timeout']),
-            'max_retries': int(config['max_retries']),
-            'chunk_size': int(config['chunk_size']),
-            'max_connections': int(config['max_connections']),
-            'keepalive_expiry': float(config['keepalive_expiry']),
-            'enable_http2': bool(config['enable_http2']),
-        }],
+        'domain_configs': [domain_config],
     }
 
 

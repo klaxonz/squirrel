@@ -16,6 +16,7 @@ from core.exceptions.proxy_exceptions import (
     UnsupportedDomainException,
 )
 from plugins.manager import get_plugin_manager
+from utils.runtime_http import get_cloudflare_bypass_client
 
 logger = logging.getLogger()
 
@@ -191,33 +192,64 @@ class HttpRequester:
         self.domain = domain
         self.retry_strategy = retry_strategy
 
+    @staticmethod
+    def _bypass_mode(domain_config: Optional[Dict[str, Any]]) -> Optional[str]:
+        mode = str((domain_config or {}).get('bypass_mode') or '').strip().lower()
+        return mode if mode in {'html', 'mirror'} else None
+
+    async def _execute_bypass_request(
+        self,
+        proxy_request: ProxyRequest,
+        headers: Dict[str, str],
+        bypass_mode: str,
+    ):
+        client = get_cloudflare_bypass_client()
+        if client is None:
+            raise ProxyConfigurationException(self.domain, 'cloudflare bypass client is not configured')
+
+        bypass_method = client.html if bypass_mode == 'html' else client.mirror
+        return await asyncio.to_thread(bypass_method, proxy_request.url, headers=headers)
+
     async def execute_request(
         self,
         client: httpx.AsyncClient,
         proxy_request: ProxyRequest,
-        headers: Dict[str, str]
-    ) -> httpx.Response:
+        headers: Dict[str, str],
+        domain_config: Optional[Dict[str, Any]] = None,
+    ):
         last_exception = None
+        bypass_mode = self._bypass_mode(domain_config)
 
         for attempt in range(proxy_request.max_retries + 1):
             try:
-                response = await client.get(
-                    proxy_request.url,
-                    headers=headers,
-                    timeout=proxy_request.timeout,
-                    follow_redirects=proxy_request.follow_redirects,
-                )
+                if bypass_mode:
+                    response = await self._execute_bypass_request(proxy_request, headers, bypass_mode)
+                else:
+                    response = await client.get(
+                        proxy_request.url,
+                        headers=headers,
+                        timeout=proxy_request.timeout,
+                        follow_redirects=proxy_request.follow_redirects,
+                    )
 
                 if response.status_code >= 400:
                     if self.retry_strategy.is_terminal_error(response.status_code):
-                        response.raise_for_status()
+                        raise httpx.HTTPStatusError(
+                            f'HTTP {response.status_code}',
+                            request=None,
+                            response=response,
+                        )
 
                     if self.retry_strategy.should_retry(attempt, response.status_code):
                         logger.warning(f"HTTP {response.status_code} on attempt {attempt + 1}, retrying...")
                         await asyncio.sleep(self.retry_strategy.get_wait_time(attempt))
                         continue
 
-                    response.raise_for_status()
+                    raise httpx.HTTPStatusError(
+                        f'HTTP {response.status_code}',
+                        request=None,
+                        response=response,
+                    )
 
                 return response
 
@@ -344,7 +376,7 @@ class VideoProxy:
                 headers.update(proxy_request.headers)
 
             async with self._get_http_client() as client:
-                response = await requester.execute_request(client, proxy_request, headers)
+                response = await requester.execute_request(client, proxy_request, headers, self.domain_config)
                 content_type = response.headers.get('content-type', '')
                 path_lower = urlparse(url).path.lower()
                 if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():

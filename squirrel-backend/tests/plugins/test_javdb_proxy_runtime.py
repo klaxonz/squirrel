@@ -44,11 +44,13 @@ def test_javdb_handler_builds_proxy_url_with_upstream_referer():
 def test_javdb_proxy_builds_upstream_headers_from_referer(monkeypatch):
     monkeypatch.setattr(
         javdb_proxy_module,
-        'get_http_headers',
-        lambda slug, base: {
-            **dict(base or {}),
-            'User-Agent': 'Base UA',
-            'Referer': 'https://javdb.com/',
+        'build_runtime_proxy_config',
+        lambda domain=None: {
+            'site_headers': {
+                'User-Agent': 'Base UA',
+                'Referer': 'https://javdb.com/',
+            },
+            'domain_configs': [],
         },
     )
 

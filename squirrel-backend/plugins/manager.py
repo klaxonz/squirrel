@@ -196,12 +196,24 @@ class PluginManager:
                 if not manifest.plugin_id or not entrypoint:
                     continue
 
-                existing = self._store.get_record(manifest.plugin_id)
-                if existing is not None:
-                    continue
-
                 plugin_root = metadata_path.parent
                 runtime_path = plugin_root / 'src'
+                existing = self._store.get_record(manifest.plugin_id)
+                if existing is not None:
+                    if existing.metadata.get('source') != 'workspace':
+                        continue
+
+                    existing.version = manifest.version
+                    existing.install_path = str(plugin_root)
+                    existing.entrypoint = entrypoint
+                    existing.granted_permissions = [item.name for item in manifest.permissions]
+                    existing.manifest = manifest.to_dict()
+                    existing.package_path = str(metadata_path)
+                    existing.runtime_path = str(runtime_path if runtime_path.exists() else plugin_root)
+                    existing.metadata = {'source': 'workspace'}
+                    self._store.upsert(existing)
+                    continue
+
                 record = PluginInstallRecord(
                     plugin_id=manifest.plugin_id,
                     version=manifest.version,

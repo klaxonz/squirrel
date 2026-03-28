@@ -130,7 +130,7 @@ def test_video_proxy_rewrites_playlist_via_runtime_capability(monkeypatch):
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
-    async def _fake_execute_request(self, client, proxy_request, headers):
+    async def _fake_execute_request(self, client, proxy_request, headers, domain_config=None):
         return _FakeResponse(content=b'#EXTM3U\nseg.ts\n')
 
     @asynccontextmanager
@@ -151,3 +151,86 @@ def test_video_proxy_rewrites_playlist_via_runtime_capability(monkeypatch):
 
     assert _read_stream(response).decode('utf-8').startswith('#EXTM3U')
     assert response.headers['cache-control'] == 'no-cache'
+
+
+def test_video_proxy_uses_cloudflare_bypass_for_configured_domains(monkeypatch):
+    bypass_calls = []
+
+    class _BypassClient:
+        def mirror(self, url, headers=None):
+            bypass_calls.append({
+                'url': url,
+                'headers': dict(headers or {}),
+            })
+            return _FakeResponse(content=b'#EXTM3U\nseg.ts\n')
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            if capability == 'resolve_proxy_config':
+                return PluginInvokeResponse(
+                    request_id='proxy-config-1',
+                    ok=True,
+                    data={
+                        'site_headers': {
+                            'User-Agent': 'Runtime UA',
+                            'Referer': 'https://javdb.com/',
+                        },
+                        'domain_configs': [{
+                            'domain': 'javdb.com',
+                            'connect_timeout': 10.0,
+                            'read_timeout': 20.0,
+                            'max_retries': 0,
+                            'chunk_size': 8192,
+                            'max_connections': 5,
+                            'keepalive_expiry': 30.0,
+                            'enable_http2': True,
+                            'bypass_mode': 'mirror',
+                        }],
+                    },
+                )
+            if capability == 'rewrite_proxy_playlist':
+                return PluginInvokeResponse(
+                    request_id='playlist-1',
+                    ok=True,
+                    data={
+                        'content': '#EXTM3U\n/api/video/proxy?domain=javdb.com&url=https%3A%2F%2Fsurrit.com%2Fseg.ts\n',
+                        'media_type': 'application/vnd.apple.mpegurl',
+                        'headers': {'Cache-Control': 'no-cache'},
+                    },
+                )
+            raise AssertionError(f'unexpected capability: {capability}')
+
+        def resolve_route(self, capability, site_name=None, domain=None):
+            if capability == 'rewrite_proxy_playlist':
+                return SimpleNamespace(plugin_id='javdb')
+            return None
+
+    monkeypatch.setattr(
+        'core.streaming.proxy.get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+    monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
+
+    @asynccontextmanager
+    async def _fake_client_context():
+        yield object()
+
+    proxy = VideoProxy(SimpleNamespace(headers={}), domain='javdb.com')
+    proxy._get_http_client = _fake_client_context
+
+    response = asyncio.run(
+        proxy.handle_stream(
+            'https://surrit.com/example/video.m3u8',
+            referer='https://missav.ai/en/example-video',
+        )
+    )
+
+    assert bypass_calls == [{
+        'url': 'https://surrit.com/example/video.m3u8',
+        'headers': {
+            'User-Agent': 'Runtime UA',
+            'Referer': 'https://missav.ai/en/example-video',
+            'Origin': 'https://missav.ai',
+        },
+    }]
+    assert _read_stream(response).decode('utf-8').startswith('#EXTM3U')

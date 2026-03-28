@@ -33,6 +33,7 @@ DEFAULT_PROXY_CONFIG = {
     'keepalive_expiry': 60.0,
     'follow_redirects': True,
     'enable_http2': True,
+    'bypass_mode': 'mirror',
 }
 
 
