@@ -7,6 +7,7 @@
     @pointerleave="onPointerLeave"
     @pointermove="onPointerMove"
     @pointerdown="handlePointerDown"
+    @click="handleVideoClick"
     @focus="markPlayerActive"
     @keydown="handleKeyDown"
     tabindex="0"
@@ -22,7 +23,6 @@
       crossorigin="anonymous"
       playsinline
       webkit-playsinline
-      @click="handleVideoClick"
       @dblclick="toggleFullscreen"
     />
 
@@ -192,6 +192,7 @@ interface Props {
   source?: MediaSource | null
   subtitles?: SubtitleTrack[]
   poster?: string
+  title?: string
   autoplay?: boolean
   theme?: ThemeName
   initialTime?: number
@@ -202,6 +203,7 @@ const props = withDefaults(defineProps<Props>(), {
   source: null,
   subtitles: () => [],
   poster: '',
+  title: '',
   autoplay: true,
   theme: 'dark',
   widescreen: false
@@ -396,6 +398,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   flex-direction: column;
   justify-content: flex-end;
   z-index: 20;
+  pointer-events: none;
 }
 
 .sp-controls-content {
@@ -403,6 +406,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   margin: 0;
   position: relative;
   z-index: 25;
+  pointer-events: auto;
 }
 
 /* 进度条容器 */
