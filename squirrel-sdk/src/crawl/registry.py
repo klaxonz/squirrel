@@ -1,10 +1,8 @@
-"""Unified plugin registry system for Squirrel SDK.
+"""Legacy in-process registry helpers.
 
-This module provides the registry system for all plugin types.
-All plugins use Protocol-based interfaces.
-
-The actual registry instances are managed by RegistryManager in registries.py.
-This module provides convenience functions for backward compatibility only.
+Runtime V2 plugins should expose capabilities through ``create_plugin_runtime()``
+and manifest metadata. The helpers in this module remain only for compatibility
+with older in-process plugin code that has not yet been migrated.
 """
 from __future__ import annotations
 
@@ -26,7 +24,7 @@ from .registries import (
 
 
 class LegacyRegistryApiWarning(DeprecationWarning):
-    """Warning emitted when a legacy in-process registry API is used."""
+    """Warning emitted when legacy in-process registry helpers are used."""
 
 
 warnings.simplefilter('default', LegacyRegistryApiWarning)
@@ -44,31 +42,31 @@ def _warn_legacy_api(api_name: str) -> None:
 
 
 def get_extractor_registry() -> PluginRegistry[Extractor]:
-    """Get the legacy global extractor registry."""
+    """Get the legacy global extractor registry for compatibility-only callers."""
     _warn_legacy_api('get_extractor_registry()')
     return get_registry_manager().extractor
 
 
 def get_subscription_registry() -> PluginRegistry[Subscription]:
-    """Get the legacy global subscription registry."""
+    """Get the legacy global subscription registry for compatibility-only callers."""
     _warn_legacy_api('get_subscription_registry()')
     return get_registry_manager().subscription
 
 
 def get_importer_registry() -> PluginRegistry[UserSubscriptionImporter]:
-    """Get the legacy global user subscription importer registry."""
+    """Get the legacy global importer registry for compatibility-only callers."""
     _warn_legacy_api('get_importer_registry()')
     return get_registry_manager().importer
 
 
 def get_login_checker_registry() -> PluginRegistry[Callable[[], LoginStatusResult]]:
-    """Get the legacy global login checker registry."""
+    """Get the legacy global login-checker registry for compatibility-only callers."""
     _warn_legacy_api('get_login_checker_registry()')
     return get_registry_manager().login_checker
 
 
 def reset_all_registries() -> None:
-    """Reset all legacy global registries."""
+    """Reset all legacy global registries used by compatibility paths."""
     _warn_legacy_api('reset_all_registries()')
     reset_registry_manager()
 
@@ -77,7 +75,7 @@ ExtractorFactory = ComponentFactory
 
 
 def get_extractor_factory() -> ComponentFactory:
-    """Get the legacy global extractor factory."""
+    """Get the legacy global extractor factory for compatibility-only callers."""
     _warn_legacy_api('get_extractor_factory()')
     return get_registry_manager().get_extractor_factory()
 
@@ -85,7 +83,7 @@ def get_extractor_factory() -> ComponentFactory:
 # Convenience decorators
 def register_extractor(site_name: str, domains: List[str]):
     """Legacy decorator to register an extractor plugin in-process.
-    
+
     Usage:
         @register_extractor("youtube", ["youtube.com", "youtu.be"])
         class MyExtractor:
@@ -102,7 +100,7 @@ def register_extractor(site_name: str, domains: List[str]):
 
 
 def register_subscription(site_name: str, domains: List[str]):
-    """Legacy decorator to register a subscription plugin in-process."""
+    """Legacy decorator for older in-process subscription implementations."""
     def decorator(cls: Type[Subscription]):
         _warn_legacy_api('register_subscription()')
         registry = get_subscription_registry()
@@ -112,7 +110,7 @@ def register_subscription(site_name: str, domains: List[str]):
 
 
 def register_user_subscription_importer(site_name: str):
-    """Legacy decorator to register a user subscription importer in-process."""
+    """Legacy decorator for older in-process importer implementations."""
     def decorator(cls_or_func: Union[Type[UserSubscriptionImporter], UserSubscriptionImporter]):
         _warn_legacy_api('register_user_subscription_importer()')
         registry = get_importer_registry()
@@ -122,7 +120,7 @@ def register_user_subscription_importer(site_name: str):
 
 
 def register_login_checker(site_name: str):
-    """Legacy decorator to register a login status checker in-process."""
+    """Legacy decorator for older in-process login-checker implementations."""
     def decorator(func: Callable[[], LoginStatusResult]):
         _warn_legacy_api('register_login_checker()')
         registry = get_login_checker_registry()

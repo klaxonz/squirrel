@@ -7,6 +7,7 @@ The backend now uses a runtime V2 plugin model:
 - each plugin exposes a `create_plugin_runtime()` entrypoint
 - host-side routing goes through `PluginManager` and `PluginGateway`
 - plugin capabilities are declared in the manifest instead of inferred from SDK registries
+- the old `plugins_ext` compatibility tree has been removed from the backend repository
 
 Runtime V2 packages are expected to ship a `plugin-runtime.json` file containing:
 

@@ -19,7 +19,6 @@ from .base import BaseExtractor, BaseTaskProcessor, BaseResultHandler
 from .factory import (
     ExtractorFactory,
     get_extractor_factory,
-    get_extractor_registry,
     reset_factory,
 )
 
@@ -33,7 +32,7 @@ __all__ = [
 
     # 工厂和注册
     'ExtractorFactory',
-    'get_extractor_factory', 'get_extractor_registry',
+    'get_extractor_factory',
     'reset_factory',
 
     # 任务管理

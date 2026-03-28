@@ -19,7 +19,7 @@ class PluginRegistry(Generic[T]):
     """Legacy generic plugin registry with thread-safe operations.
 
     This registry can store both Protocol-compatible objects and traditional classes,
-    but new plugin packages should not depend on it.
+    but supported Runtime V2 plugins should not depend on it.
     """
 
     def __init__(self, name: str) -> None:
@@ -152,7 +152,8 @@ class ComponentFactory(Generic[T]):
 class RegistryManager:
     """Compatibility manager for legacy in-process registries.
 
-    Runtime V2 host code should route through PluginManager and PluginGateway instead.
+    Runtime V2 host code should route through PluginManager and PluginGateway instead,
+    and Runtime V2 plugin packages should expose capabilities via manifests.
     """
 
     def __init__(self):

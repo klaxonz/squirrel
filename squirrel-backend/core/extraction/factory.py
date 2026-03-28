@@ -5,7 +5,7 @@ import logging
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
-from crawl import ExtractionResult, ExtractionTask, PluginRegistry, VideoMeta
+from crawl import ExtractionResult, ExtractionTask, VideoMeta
 
 from plugins.manager import get_plugin_manager
 from utils.site_catalog import SiteCatalog
@@ -67,8 +67,7 @@ class GatewayExtractorAdapter:
 class ExtractorFactory:
     """Resolve extractors from plugin runtime registrations."""
 
-    def __init__(self, registry: Optional[PluginRegistry] = None):
-        self.registry = registry
+    def __init__(self):
         self._instances: Dict[str, GatewayExtractorAdapter] = {}
 
     def _create_adapter(self, site_name: str) -> Optional[GatewayExtractorAdapter]:
@@ -147,14 +146,8 @@ _global_factory: Optional[ExtractorFactory] = None
 def get_extractor_factory() -> ExtractorFactory:
     global _global_factory
     if _global_factory is None:
-        _global_factory = ExtractorFactory(get_extractor_registry())
+        _global_factory = ExtractorFactory()
     return _global_factory
-
-
-def get_extractor_registry() -> PluginRegistry:
-    from crawl import get_extractor_registry as sdk_get_extractor_registry
-
-    return sdk_get_extractor_registry()
 
 
 def reset_factory() -> None:

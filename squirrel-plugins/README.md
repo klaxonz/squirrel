@@ -7,7 +7,7 @@ Runtime V2 package shape
 ------------------------
 
 Each site folder is a standalone Python package. New plugins should target runtime V2
-instead of host-side registry decorators.
+instead of host-side registry decorators or backend-local compatibility packages.
 
 Minimal structure:
 
@@ -22,6 +22,9 @@ my-site/
       extractor.py
       subscription.py
 ```
+
+`__init__.py` should stay minimal and export runtime metadata plus
+`get_plugin_runtime`. Avoid import side effects or host-side registration hooks.
 
 Entrypoint
 ----------

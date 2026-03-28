@@ -4,9 +4,9 @@ Light-weight SDK for building crawl / extraction plugins that can be loaded by
 Squirrel backend and other Squirrel compatible runtimes.
 
 Design principles:
+- Runtime V2 first
 - Protocol-based interfaces (structural typing)
 - VideoMeta as the primary data model
-- Unified plugin registry system
 - Composition over inheritance
 """
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
@@ -70,7 +70,7 @@ from .core import (
     SubscriptionSyncResult,
 )
 
-# Unified plugin registry system
+# Legacy in-process compatibility API
 from .registries import (
     PluginRegistry,
     ComponentFactory,
@@ -222,7 +222,7 @@ __all__ = [
     'Subscription',
     'UserSubscriptionImporter',
     'LoginStatusResult',
-    # Registry system
+    # Legacy in-process compatibility API
     'PluginRegistry',
     'ComponentFactory',
     'RegistryManager',

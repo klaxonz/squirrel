@@ -5,6 +5,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import ExtractionTask, PluginInvokeResponse
+import core.extraction.factory as factory_module
 from core.extraction.factory import ExtractorFactory
 
 
@@ -94,3 +95,17 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
     assert result.success is True
     assert result.data is not None
     assert result.data.title == 'Test video'
+
+
+def test_get_extractor_factory_initializes_without_legacy_registry(monkeypatch):
+    factory_module.reset_factory()
+
+    monkeypatch.setattr(
+        'core.extraction.factory.SiteCatalog.get_catalog',
+        lambda: {},
+    )
+
+    factory = factory_module.get_extractor_factory()
+
+    assert isinstance(factory, ExtractorFactory)
+    assert factory is factory_module.get_extractor_factory()
