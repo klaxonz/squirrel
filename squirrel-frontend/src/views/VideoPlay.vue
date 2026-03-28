@@ -772,23 +772,17 @@ onUnmounted(() => {
   transform: none;
 }
 
-.video-main.is-widescreen .video-container {
-  aspect-ratio: auto;
-  height: min(
-    calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 0px) - 24px - 12px),
-    calc(100vw * 9 / 16)
-  );
-  max-height: min(
-    calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 0px) - 24px - 12px),
-    calc(100vw * 9 / 16)
-  );
-  padding-bottom: 0; /* 覆盖 16:9 padding hack，避免高度叠加 */
-  min-height: 0;
-}
-
+.video-main.is-widescreen .video-container,
 .video-main:not(.is-widescreen) .video-container {
-  height: auto;
-  max-height: none;
+  aspect-ratio: auto;
+  /* 核心修复：限制播放器最大高度，确保下方信息可见 */
+  height: min(
+    calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 280px) - 40px),
+    calc(100vw * 9 / 16)
+  );
+  max-height: calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 280px) - 40px);
+  padding-bottom: 0;
+  min-height: 200px;
 }
 
 
@@ -1079,7 +1073,43 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.6rem; /* 压缩间距 */
+}
+
+.video-meta__title {
+  width: 100%;
+  font-size: clamp(0.9rem, 0.85rem + 0.2vw, 1.05rem); /* 缩小标题 */
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  word-break: break-word;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 77, 0, 0.25);
+  margin-bottom: 0.5rem;
+}
+
+.video-channel {
+  padding: 0.75rem 1rem; /* 压缩 ID 卡内边距 */
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 2px solid #ff4d00;
+  border-radius: 2px;
+  position: relative;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.video-meta__actions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem; /* 更紧凑的动作栏 */
+  justify-content: flex-start;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .video-meta__copy {
