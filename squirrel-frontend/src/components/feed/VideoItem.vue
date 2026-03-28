@@ -51,11 +51,26 @@
     <div class="video-terminal-info">
       <h5 class="video-terminal-title">{{ video.title }}</h5>
       <div class="video-terminal-meta">
-        <span class="meta-channel" @click.stop="goToSubscription(primarySubscriptionId)">
-          {{ displayNames }}
-        </span>
-        <span class="meta-divider">|</span>
-        <span class="meta-date">{{ displayDateText }}</span>
+        <div class="meta-left">
+          <div v-if="displayAvatars.length" class="meta-avatar-frame">
+            <img
+              v-for="(avatar, index) in displayAvatars"
+              :key="`avatar-${index}`"
+              :src="getAvatarSrc(avatar.avatar, `video-avatar-${video.id}-${index}`)"
+              class="meta-avatar"
+              referrerpolicy="no-referrer"
+              :alt="avatar.name"
+              @error="(event) => handleAvatarError(event, `video-avatar-${video.id}-${index}`)"
+              @click.stop="goToSubscription(avatar.id)"
+            >
+          </div>
+          <span class="meta-channel" @click.stop="goToSubscription(primarySubscriptionId)">
+            {{ displayNames }}
+          </span>
+        </div>
+        <div class="meta-right">
+          <span class="meta-date">{{ displayDateText }}</span>
+        </div>
       </div>
     </div>
 
@@ -323,12 +338,10 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: grayscale(1) contrast(1.1);
   transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .video-terminal-item:hover .video-terminal-image {
-  filter: grayscale(0) contrast(1);
   transform: scale(1.05);
 }
 
@@ -417,6 +430,7 @@ onUnmounted(() => {
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.4;
+  height: 2.8em; /* 固定两行高度 */
   color: #fff;
   margin-bottom: 0.5rem;
   letter-spacing: 0.02em;
@@ -429,12 +443,45 @@ onUnmounted(() => {
 .video-terminal-meta {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: space-between;
+  gap: 0.6rem;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.6rem;
   color: rgba(255, 255, 255, 0.3);
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+
+.meta-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.meta-right {
+  flex-shrink: 0;
+}
+
+.meta-avatar-frame {
+  display: flex;
+  align-items: center;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1px;
+}
+
+.meta-avatar {
+  width: 14px;
+  height: 14px;
+  object-fit: cover;
+  filter: grayscale(0.5);
+  transition: all 0.3s;
+}
+
+.video-terminal-item:hover .meta-avatar {
+  filter: grayscale(0);
 }
 
 .meta-channel:hover {
