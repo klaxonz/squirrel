@@ -1,78 +1,58 @@
 <template>
-  <div class="auth-shell auth-shell--login">
-    <div class="auth-shell__glow auth-shell__glow--primary"></div>
-    <div class="auth-shell__glow auth-shell__glow--secondary"></div>
+  <div class="auth-shell">
+    <div class="auth-divider-line"></div>
 
     <div class="auth-layout">
-      <section class="auth-hero">
-        <div class="auth-badge">Cinematic Feed Reader</div>
-        <img src="/squirrel-icon.png" class="auth-logo" alt="Logo">
-        <h1 class="auth-title">登录后继续你的观看流。</h1>
-        <p class="auth-copy">
-          把订阅、播放记录和同步状态放在同一条内容工作流里，少一点后台味，多一点内容质感。
-        </p>
+      <!-- 左侧：品牌展示区 -->
+      <aside class="auth-sidebar">
+        <div class="auth-sidebar__status">System Ready</div>
+        <h1 class="auth-sidebar__brand">SQRL</h1>
+        <div class="auth-sidebar__status" style="margin-top: auto; opacity: 0.1">00:00:00 // CINEMA</div>
+      </aside>
 
-        <div class="auth-metrics">
-          <div class="auth-metric">
-            <span class="auth-metric__label">订阅面板</span>
-            <span class="auth-metric__value">统一追踪站点与更新。</span>
-          </div>
-          <div class="auth-metric">
-            <span class="auth-metric__label">播放器</span>
-            <span class="auth-metric__value">沉浸式浅深双主题。</span>
-          </div>
-          <div class="auth-metric">
-            <span class="auth-metric__label">同步中心</span>
-            <span class="auth-metric__value">把刷新和修复变成可见流程。</span>
-          </div>
-        </div>
-      </section>
-
-      <Card class="auth-panel">
-        <div class="auth-panel__header">
-          <p class="auth-panel__eyebrow">Welcome back</p>
-          <h2 class="auth-panel__title">登录到 Squirrel</h2>
-          <p class="auth-panel__desc">继续你的订阅、历史记录和播放器偏好。</p>
-        </div>
-
-        <form class="auth-form" @submit.prevent="handleSubmit">
-          <Alert v-if="errorMessage" variant="destructive">
+      <!-- 右侧：交互表单区 -->
+      <main class="auth-main">
+        <form class="auth-form-minimal" @submit.prevent="handleSubmit">
+          <Alert v-if="errorMessage" variant="destructive" class="auth-error-minimal mb-8">
             <AlertDescription>{{ errorMessage }}</AlertDescription>
           </Alert>
 
-          <div class="auth-field">
-            <Label for="email" class="auth-label">邮箱</Label>
-            <Input
+          <div class="auth-field-minimal">
+            <span class="auth-field-index">01</span>
+            <input
               id="email"
               v-model="form.email"
               type="email"
               required
-              placeholder="name@example.com"
+              placeholder=" "
+              class="auth-input-minimal"
             />
+            <label for="email" class="auth-label-floating">Identity / Email</label>
           </div>
 
-          <div class="auth-field">
-            <Label for="password" class="auth-label">密码</Label>
-            <Input
+          <div class="auth-field-minimal">
+            <span class="auth-field-index">02</span>
+            <input
               id="password"
               v-model="form.password"
               type="password"
               required
-              placeholder="输入密码"
+              placeholder=" "
+              class="auth-input-minimal"
             />
+            <label for="password" class="auth-label-floating">Access / Key</label>
           </div>
 
-          <Button type="submit" size="lg" class="auth-submit w-full" :disabled="loading">
-            <span v-if="loading">登录中...</span>
-            <span v-else>进入工作台</span>
+          <Button type="submit" class="auth-submit-minimal" :disabled="loading">
+            {{ loading ? 'Authenticating...' : 'Enter System' }}
           </Button>
 
-          <div class="auth-panel__footer">
-            <span class="text-muted-foreground">还没有账号？</span>
-            <router-link to="/register" class="auth-link">立即注册</router-link>
+          <div class="auth-footer-minimal">
+            <span>Unauthorized?</span>
+            <router-link to="/register" class="auth-link-minimal">Request Access</router-link>
           </div>
         </form>
-      </Card>
+      </main>
     </div>
   </div>
 </template>
@@ -83,9 +63,6 @@ import { useRouter } from 'vue-router'
 import { useUser } from '../composables/useUser'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 
 const router = useRouter()
 const { login } = useUser()

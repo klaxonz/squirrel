@@ -9,23 +9,23 @@
       :style="{ height: totalHeight + 'px' }"
     ></div>
 
-    <div 
+    <div
       class="visible-items"
       :style="itemStyle"
     >
-      <div
-        v-for="item in visibleItems"
-        :key="item[keyField]"
-        class="list-item"
-      >
-        <slot 
-          name="item" 
-          :item="item"
-          :index="item._index"
-          :row="item._row"
-          :column="item._column"
-        ></slot>
-      </div>
+        <div
+          v-for="item in visibleItems"
+          :key="item[keyField]"
+          class="list-item"
+        >
+          <slot
+            name="item"
+            :item="item"
+            :index="item._index"
+            :row="item._row"
+            :column="item._column"
+          ></slot>
+        </div>
     </div>
   </div>
 </template>

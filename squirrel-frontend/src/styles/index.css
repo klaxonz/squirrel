@@ -61,31 +61,25 @@
     --radius-xl: 0.75rem;
     --radius-2xl: 0.95rem;
     --radius-full: 9999px;
-    --background: 32 30% 95%;
-    --foreground: 220 24% 14%;
-    --card: 34 24% 97%;
-    --card-foreground: 220 23% 15%;
-    --popover: 34 31% 97%;
-    --popover-foreground: 220 23% 15%;
-    --primary: 24 66% 48%;
-    --primary-foreground: 32 46% 97%;
-    --secondary: 30 20% 89%;
-    --secondary-foreground: 220 22% 19%;
-    --muted: 31 23% 90%;
-    --muted-foreground: 220 13% 38%;
-    --accent: 30 26% 88%;
-    --accent-foreground: 220 22% 18%;
-    --destructive: 4 66% 53%;
-    --destructive-foreground: 32 46% 97%;
-    --success: 148 36% 43%;
-    --success-foreground: 38 33% 97%;
-    --warning: 31 79% 52%;
-    --warning-foreground: 28 37% 15%;
-    --info: 212 48% 48%;
-    --info-foreground: 32 46% 97%;
-    --border: 26 20% 78%;
-    --input: 30 20% 82%;
-    --ring: 25 84% 56%;
+    --background: 0 0% 2%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 3%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 3%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 24 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 15%;
+    --input: 0 0% 10%;
+    --ring: 24 100% 50%;
     --sidebar: 33 30% 97%;
     --sidebar-foreground: 220 24% 16%;
     --sidebar-border: 28 21% 82%;
@@ -138,10 +132,13 @@
   body {
     margin: 0;
     font-family: var(--font-sans);
-    color: hsl(var(--foreground));
-    background:
-      radial-gradient(circle at top left, hsl(var(--primary) / 0.04), transparent 20%),
-      linear-gradient(180deg, hsl(var(--background)), color-mix(in srgb, hsl(var(--background)) 88%, hsl(var(--muted))));
+    color: #fff;
+    background: #050505;
+    /* 终端氛围网格 */
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
   }
 
   /* Hide scrollbars globally while keeping scroll behavior. */
@@ -164,46 +161,25 @@
     outline-offset: 2px;
   }
   .dark {
-    --background: 218 25% 10%;
-    --foreground: 34 24% 92%;
-    --card: 220 20% 13%;
-    --card-foreground: 34 21% 93%;
-    --popover: 220 21% 15%;
-    --popover-foreground: 34 21% 93%;
-    --primary: 29 80% 61%;
-    --primary-foreground: 220 28% 10%;
-    --secondary: 220 17% 18%;
-    --secondary-foreground: 34 22% 91%;
-    --muted: 220 15% 16%;
-    --muted-foreground: 32 15% 70%;
-    --accent: 220 15% 19%;
-    --accent-foreground: 34 22% 92%;
-    --destructive: 5 72% 58%;
+    --background: 0 0% 2%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 3%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 3%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 24 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
-    --success: 148 40% 48%;
-    --success-foreground: 220 28% 10%;
-    --warning: 34 87% 60%;
-    --warning-foreground: 220 28% 10%;
-    --info: 206 74% 64%;
-    --info-foreground: 220 28% 10%;
-    --border: 220 14% 24%;
-    --input: 220 15% 21%;
-    --ring: 29 92% 65%;
-    --sidebar: 220 22% 12%;
-    --sidebar-foreground: 34 22% 92%;
-    --sidebar-border: 220 14% 24%;
-    --sidebar-accent: 220 16% 18%;
-    --sidebar-accent-foreground: 34 22% 92%;
-    --overlay: 220 32% 6% / 0.7;
-    --overlay-soft: 220 32% 6% / 0.5;
-    --overlay-strong: 220 32% 6% / 0.84;
-    --surface-glow: 27 72% 54% / 0.16;
-    --surface-shadow: 220 44% 2% / 0.28;
-    --chart-1: 29 80% 61%;
-    --chart-2: 198 48% 60%;
-    --chart-3: 160 33% 49%;
-    --chart-4: 42 82% 64%;
-    --chart-5: 346 57% 61%;
+    --border: 0 0% 15%;
+    --input: 0 0% 10%;
+    --ring: 24 100% 50%;
   }
 }
 

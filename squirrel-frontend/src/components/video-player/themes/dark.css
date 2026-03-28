@@ -6,67 +6,63 @@
 .sp-player[data-sp-theme="dark"] {
   
   /* 背景 */
-  --sp-bg: rgba(16, 19, 24, 0.92);
-  --sp-bg-elevated: rgba(24, 29, 36, 0.96);
-  --sp-bg-overlay: rgba(13, 16, 21, 0.68);
-  --sp-surface: rgba(25, 29, 36, 0.82);
-  --sp-overlay-soft: rgba(11, 13, 18, 0.46);
-  --sp-overlay-weak: rgba(11, 13, 18, 0.6);
-  --sp-overlay: rgba(11, 13, 18, 0.76);
-  --sp-overlay-strong: rgba(9, 11, 16, 0.86);
-  --sp-bg-hover: rgba(244, 239, 231, 0.08);
-  --sp-bg-active: rgba(244, 239, 231, 0.14);
+  --sp-bg: #050505;
+  --sp-bg-elevated: rgba(18, 18, 18, 0.85);
+  --sp-bg-overlay: rgba(0, 0, 0, 0.65);
+  --sp-surface: rgba(30, 30, 30, 0.6);
+  --sp-overlay-soft: rgba(0, 0, 0, 0.4);
+  --sp-overlay-weak: rgba(0, 0, 0, 0.55);
+  --sp-overlay: rgba(0, 0, 0, 0.7);
+  --sp-overlay-strong: rgba(0, 0, 0, 0.85);
+  --sp-bg-hover: rgba(255, 77, 0, 0.12);
+  --sp-bg-active: rgba(255, 77, 0, 0.2);
   
   /* 文字 */
-  --sp-text: #f4efe7;
-  --sp-text-strong: rgba(244, 239, 231, 0.92);
-  --sp-text-secondary: rgba(244, 239, 231, 0.72);
-  --sp-text-muted: rgba(244, 239, 231, 0.58);
-  --sp-text-tertiary: rgba(244, 239, 231, 0.46);
-  --sp-text-disabled: rgba(244, 239, 231, 0.28);
+  --sp-text: #ffffff;
+  --sp-text-strong: #ffffff;
+  --sp-text-secondary: rgba(255, 255, 255, 0.75);
+  --sp-text-muted: rgba(255, 255, 255, 0.55);
+  --sp-text-tertiary: rgba(255, 255, 255, 0.4);
+  --sp-text-disabled: rgba(255, 255, 255, 0.25);
   
   /* 边框 */
-  --sp-border: rgba(244, 239, 231, 0.12);
-  --sp-border-hover: rgba(244, 239, 231, 0.22);
+  --sp-border: rgba(255, 77, 0, 0.18);
+  --sp-border-hover: rgba(255, 77, 0, 0.32);
   
   /* 控制栏 */
-  --sp-controls-bg: linear-gradient(
-    to top,
-    rgba(10, 12, 16, 0.9) 0%,
-    rgba(10, 12, 16, 0.54) 42%,
-    rgba(8, 11, 16, 0) 100%
-  );
+  --sp-controls-bg: transparent;
+  --sp-controls-group-bg: rgba(0, 0, 0, 0.72);
   
   /* 进度条 */
-  --sp-progress-bg: rgba(244, 239, 231, 0.2);
-  --sp-progress-buffered: rgba(244, 239, 231, 0.34);
+  --sp-progress-bg: rgba(255, 255, 255, 0.12);
+  --sp-progress-buffered: rgba(255, 255, 255, 0.2);
   
   /* 菜单 */
-  --sp-menu-bg: rgba(26, 30, 37, 0.94);
-  --sp-menu-border: rgba(244, 239, 231, 0.1);
-  --sp-menu-shadow: 0 22px 46px rgba(4, 8, 12, 0.54);
-  --sp-btn-toggled-bg: rgba(244, 239, 231, 0.14);
-  --sp-switch-bg: rgba(244, 239, 231, 0.2);
-  --sp-switch-thumb: rgba(248, 244, 238, 0.96);
+  --sp-menu-bg: rgba(10, 10, 10, 0.88);
+  --sp-menu-border: rgba(255, 77, 0, 0.24);
+  --sp-menu-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
+  --sp-btn-toggled-bg: rgba(255, 77, 0, 0.2);
+  --sp-switch-bg: rgba(255, 255, 255, 0.15);
+  --sp-switch-thumb: #fff;
   
   /* 提示 */
-  --sp-tooltip-bg: rgba(24, 28, 34, 0.96);
+  --sp-tooltip-bg: rgba(255, 77, 0, 0.95);
   
   /* 字幕 */
-  --sp-subtitle-color: #f7f1ea;
-  --sp-subtitle-highlight: #e0aa55;
-  --sp-subtitle-bg-rgb: 10, 13, 18;
-  --sp-subtitle-bg-opacity: 0.75;
+  --sp-subtitle-color: #ffffff;
+  --sp-subtitle-highlight: #ff4d00;
+  --sp-subtitle-bg-rgb: 0, 0, 0;
+  --sp-subtitle-bg-opacity: 0.8;
   --sp-subtitle-bg: rgba(var(--sp-subtitle-bg-rgb), var(--sp-subtitle-bg-opacity));
-  --sp-spinner-stroke-color: rgba(244, 239, 231, 0.9);
-  --sp-error-bg: rgba(9, 12, 16, 0.82);
-  --sp-error-btn-border: rgba(244, 239, 231, 0.26);
-  --sp-error-btn-bg: rgba(244, 239, 231, 0.12);
-  --sp-error-btn-hover-bg: rgba(244, 239, 231, 0.18);
-  --sp-error-btn-active-bg: rgba(244, 239, 231, 0.26);
+  --sp-spinner-stroke-color: #ff4d00;
+  --sp-error-bg: rgba(10, 10, 10, 0.9);
+  --sp-error-btn-border: rgba(255, 77, 0, 0.3);
+  --sp-error-btn-bg: rgba(255, 77, 0, 0.1);
+  --sp-error-btn-hover-bg: rgba(255, 77, 0, 0.2);
+  --sp-error-btn-active-bg: rgba(255, 77, 0, 0.3);
   
   /* 阴影 */
-  --sp-shadow-sm: 0 1px 2px rgba(6, 9, 12, 0.28);
-  --sp-shadow-md: 0 8px 18px rgba(6, 9, 12, 0.36);
-  --sp-shadow-lg: 0 14px 32px rgba(6, 9, 12, 0.46);
+  --sp-shadow-sm: 0 0 10px rgba(255, 77, 0, 0.2);
+  --sp-shadow-md: 0 0 20px rgba(255, 77, 0, 0.35);
+  --sp-shadow-lg: 0 0 40px rgba(255, 77, 0, 0.45);
 }

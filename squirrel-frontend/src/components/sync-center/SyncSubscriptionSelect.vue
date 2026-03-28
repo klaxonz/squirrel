@@ -3,7 +3,11 @@
     <button
       type="button"
       class="flex w-full items-center justify-between rounded-md border border-input bg-background px-3 pr-8 text-left text-xs text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      :class="props.size === 'sm' ? 'h-8' : 'h-9'"
+      :class="{
+        'h-7 px-2': props.size === 'xs',
+        'h-8 px-3': props.size === 'sm',
+        'h-9 px-3': props.size === 'md'
+      }"
       :aria-expanded="isOpen ? 'true' : 'false'"
       @click="toggle"
       @keydown="handleTriggerKeydown"
@@ -103,7 +107,7 @@ const props = withDefaults(defineProps<{
   modelValue: string
   options: SubscriptionOption[]
   placeholder?: string
-  size?: 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md'
 }>(), {
   placeholder: '全部频道',
   size: 'md',

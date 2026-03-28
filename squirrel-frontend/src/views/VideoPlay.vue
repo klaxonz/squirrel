@@ -1,39 +1,46 @@
 <template>
-  <div ref="videoPageRef" class="video-page bg-background scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
+  <div ref="videoPageRef" class="video-page terminal-viewport scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
     <div :class="['video-page__container', isWidescreen ? 'is-widescreen' : '']">
       <!-- 左侧主内容区域 -->
       <div :class="['video-main', isWidescreen ? 'is-widescreen' : '']">
         <!-- 视频播放区域 -->
         <div ref="videoSectionRef" class="video-section">
           <div class="video-container">
-            <VideoPlayer
-              ref="videoPlayerRef"
-              v-if="video"
-              :source="playbackSource"
-              :subtitles="subtitleTracks"
-              :poster="video?.thumbnail"
-              :title="video?.title"
-              :initialTime="startTime"
-              :has-prev="hasPrevVideo"
-              :has-next="hasNextVideo"
-              :external-error="externalError"
-              :widescreen="isWidescreen"
-              :adapter="playerAdapter"
-              :theme="effectiveTheme"
-              :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
-              :enable-global-shortcuts="true"
-              :enable-click-outside-close-menu="true"
-              :enable-window-resize="true"
+            <div class="viewfinder-box">
+              <div class="viewfinder-label">[MONITOR_ACTIVE]</div>
+              <div class="viewfinder-corner viewfinder-corner--top-left"></div>
+              <div class="viewfinder-corner viewfinder-corner--top-right"></div>
+              <div class="viewfinder-corner viewfinder-corner--bottom-left"></div>
+              <div class="viewfinder-corner viewfinder-corner--bottom-right"></div>
+              <VideoPlayer
+                ref="videoPlayerRef"
+                v-if="video"
+                :source="playbackSource"
+                :subtitles="subtitleTracks"
+                :poster="video?.thumbnail"
+                :title="video?.title"
+                :initialTime="startTime"
+                :has-prev="hasPrevVideo"
+                :has-next="hasNextVideo"
+                :external-error="externalError"
+                :widescreen="isWidescreen"
+                :adapter="playerAdapter"
+                :theme="effectiveTheme"
+                :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
+                :enable-global-shortcuts="true"
+                :enable-click-outside-close-menu="true"
+                :enable-window-resize="true"
 
-              @play="onVideoPlay"
-              @pause="onVideoPause"
-              @ended="handleAutoplayNext"
-              @timeupdate="onVideoTimeUpdate"
-              @prev="handlePrevVideo"
-              @next="handleNextVideo"
-              @widescreenChange="toggleWidescreen"
-              @retry="handlePlayerRetry"
-            />
+                @play="onVideoPlay"
+                @pause="onVideoPause"
+                @ended="handleAutoplayNext"
+                @timeupdate="onVideoTimeUpdate"
+                @prev="handlePrevVideo"
+                @next="handleNextVideo"
+                @widescreenChange="toggleWidescreen"
+                @retry="handlePlayerRetry"
+              />
+            </div>
           </div>
         </div>
 
@@ -55,18 +62,22 @@
                       推荐 {{ relatedVideos.length }}
                     </span>
                   </div>
-                  <h1 class="video-meta__title text-foreground">{{ video?.title }}</h1>
+                  <h1 class="video-meta__title text-foreground">
+                    <span class="video-meta__title-prefix">[FILE_ENTRY]</span> {{ video?.title }}
+                  </h1>
                   <transition name="channel-dismiss" mode="out-in">
                     <div v-if="video?.subscriptions?.length && isVideoChannelVisible" :key="`${video?.id}-${isVideoChannelVisible}`" class="video-channel">
                       <div class="video-channel__content">
                         <div class="video-channel__primary">
-                          <img
-                            :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
-                            :alt="video.subscriptions[0].name"
-                            class="video-channel__avatar"
-                            referrerpolicy="no-referrer"
-                            @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
-                          >
+                          <div class="video-channel__avatar-wrapper">
+                            <img
+                              :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
+                              :alt="video.subscriptions[0].name"
+                              class="video-channel__avatar"
+                              referrerpolicy="no-referrer"
+                              @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
+                            >
+                          </div>
                           <div class="video-channel__summary">
                             <div class="video-channel__identity">
                               <router-link
@@ -84,7 +95,7 @@
                                 :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
                               >
                                 <span v-if="isChannelUnsubscribing" class="video-channel__spinner" aria-hidden="true"></span>
-                                <span>{{ isChannelUnsubscribing ? '取消中' : '取消订阅' }}</span>
+                                <span class="video-action__label">{{ isChannelUnsubscribing ? '正在取消' : '取消订阅' }}</span>
                               </button>
                             </div>
 
@@ -171,22 +182,22 @@
 
       <!-- 右侧区域 - 相关视频 -->
       <div :class="['video-aside', isWidescreen ? 'hidden' : '']">
-        <div>
-          <div class="video-aside__panel">
-            <div class="video-aside__header">
-              <div class="video-aside__title-row">
-                <h2 class="video-aside__title">相关视频</h2>
-              </div>
-            </div>
-            <div class="video-aside__content">
-              <div v-if="!relatedVideos.length && !loadingRelated" class="video-aside__empty">暂无推荐</div>
-              <div v-if="relatedVideos.length" class="related-videos-list">
-                <article
-                  v-for="relatedVideo in relatedVideos"
-                  :key="relatedVideo.id"
-                  class="related-video-card group"
-                  @click="goToVideo(relatedVideo.id, relatedVideo)"
-                >
+        <div class="video-aside__panel">
+          <div class="video-aside__header">
+            <h2 class="video-aside__title">相关视频</h2>
+            <div class="video-aside__status">[LINK_ESTABLISHED]</div>
+          </div>
+          <div class="video-aside__content scrollbar-hide">
+            <div v-if="!relatedVideos.length && !loadingRelated" class="video-aside__empty">暂无推荐</div>
+            <div v-if="relatedVideos.length" class="related-videos-list">
+              <article
+                v-for="(relatedVideo, index) in relatedVideos"
+                :key="relatedVideo.id"
+                class="related-video-card group"
+                @click="goToVideo(relatedVideo.id, relatedVideo)"
+              >
+                <!-- 保持之前的卡片设计内容不变 -->
+                <div class="related-video-card__thumb-container">
                   <div class="related-video-card__thumb">
                     <img
                       v-if="relatedVideo.thumbnail && !relatedThumbnailErrorIds.has(relatedVideo.id)"
@@ -197,45 +208,43 @@
                       :alt="relatedVideo.title"
                       @error="() => relatedThumbnailErrorIds.add(relatedVideo.id)"
                     >
-                    <div
-                      v-else
-                      class="related-video-card__fallback"
-                    >
+                    <div v-else class="related-video-card__fallback">
                       <div class="related-video-card__fallback-copy">
                         <Icon icon="material-symbols:image" class="related-video-card__fallback-icon" />
-                        <span class="text-2xs">暂无封面</span>
+                        <span class="text-2xs">NO_SIGNAL</span>
                       </div>
                     </div>
+                    <div class="related-video-card__scanline"></div>
+                    
                     <div class="related-video-card__duration">
                       {{ formatDuration(relatedVideo.duration) }}
                     </div>
                   </div>
-                  <div class="related-video-card__body">
-                    <div class="related-video-card__title">
-                      {{ relatedVideo.title }}
-                    </div>
-                    <div class="related-video-card__channel">
-                      <router-link
-                        v-if="relatedVideo.subscriptions?.[0]?.id"
-                        :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
-                        @click.stop
-                        class="related-video-card__channel-link"
-                      >
-                        {{ relatedVideo.subscriptions[0].name }}
-                      </router-link>
-                      <span v-else class="truncate">
-                        {{ relatedVideo.site }}
-                      </span>
-                    </div>
-                    <div
-                      v-if="relatedVideo.uploaded_at"
-                      class="related-video-card__date"
-                    >
-                      {{ formatDate(relatedVideo.uploaded_at) }}
-                    </div>
+                </div>
+
+                <div class="related-video-card__body">
+                  <div class="related-video-card__title">
+                    {{ relatedVideo.title }}
                   </div>
-                </article>
-              </div>
+                  <div class="related-video-card__meta">
+                    <router-link
+                      v-if="relatedVideo.subscriptions?.[0]?.id"
+                      :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
+                      @click.stop
+                      class="related-video-card__channel"
+                    >
+                      {{ relatedVideo.subscriptions[0].name }}
+                    </router-link>
+                    <span v-else class="related-video-card__site">
+                      {{ relatedVideo.site }}
+                    </span>
+                    <span class="related-video-card__separator">/</span>
+                    <span v-if="relatedVideo.uploaded_at" class="related-video-card__date">
+                      {{ formatDate(relatedVideo.uploaded_at) }}
+                    </span>
+                  </div>
+                </div>
+              </article>
             </div>
           </div>
         </div>
@@ -285,7 +294,7 @@ const videoPrimaryActions = computed(() => {
     {
       key: 'like',
       label: '喜欢',
-      icon: currentInteractionType.value === INTERACTION_TYPE.LIKE ? 'material-symbols:thumb-up' : 'material-symbols:thumb-up-outline',
+      icon: currentInteractionType.value === INTERACTION_TYPE.LIKE ? 'lucide:thumbs-up' : 'lucide:thumbs-up',
       active: currentInteractionType.value === INTERACTION_TYPE.LIKE,
       tone: 'like',
       variant: 'primary',
@@ -294,7 +303,7 @@ const videoPrimaryActions = computed(() => {
     {
       key: 'dislike',
       label: '不喜欢',
-      icon: currentInteractionType.value === INTERACTION_TYPE.DISLIKE ? 'material-symbols:thumb-down' : 'material-symbols:thumb-down-outline',
+      icon: 'lucide:thumbs-down',
       active: currentInteractionType.value === INTERACTION_TYPE.DISLIKE,
       tone: 'danger',
       variant: 'secondary',
@@ -303,7 +312,7 @@ const videoPrimaryActions = computed(() => {
     {
       key: 'later',
       label: '稍后看',
-      icon: currentInteractionType.value === INTERACTION_TYPE.LATER ? 'material-symbols:schedule' : 'material-symbols:schedule-outline',
+      icon: currentInteractionType.value === INTERACTION_TYPE.LATER ? 'lucide:list-plus' : 'lucide:list-plus',
       active: currentInteractionType.value === INTERACTION_TYPE.LATER,
       tone: 'later',
       variant: 'primary',
@@ -315,7 +324,7 @@ const videoPrimaryActions = computed(() => {
     actions.push({
       key: 'source',
       label: '原视频',
-      icon: 'material-symbols:open-in-new',
+      icon: 'lucide:external-link',
       active: false,
       tone: 'neutral',
       variant: 'secondary',
@@ -359,6 +368,9 @@ const syncVideoMetaHeight = () => {
   const root = document.documentElement;
   const metaEl = videoMetaRef.value;
   const sectionEl = videoSectionRef.value;
+  const pageContainer = document.querySelector('.video-page__container');
+  const videoMain = document.querySelector('.video-main');
+  
   if (!metaEl || !sectionEl) return;
 
   const metaHeight = Math.ceil(metaEl.getBoundingClientRect().height);
@@ -368,9 +380,16 @@ const syncVideoMetaHeight = () => {
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
   const availableHeight = Math.max(0, Math.floor(viewportHeight - sectionTop));
 
+  // 计算 video-main 的总高度
+  let mainTotalHeight = sectionHeight + metaHeight + 14; // 14px 是间距补偿
+  if (videoMain) {
+    mainTotalHeight = Math.ceil(videoMain.getBoundingClientRect().height);
+  }
+
   root.style.setProperty('--video-meta-height', `${metaHeight}px`);
   root.style.setProperty('--video-page-available-height', `${availableHeight}px`);
   root.style.setProperty('--related-panel-height', `${sectionHeight}px`);
+  root.style.setProperty('--video-main-total-height', `${mainTotalHeight}px`);
 };
 
 const handleResize = () => syncVideoMetaHeight();
@@ -663,6 +682,15 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.terminal-viewport {
+  background-color: #050505;
+  background-image: 
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 2px, 3px 100%;
+  color: rgba(255, 255, 255, 0.8);
+}
+
 .video-page {
   min-height: 100%;
 }
@@ -675,10 +703,29 @@ onUnmounted(() => {
   max-width: min(1840px, calc(100vw - 32px));
   margin: 0 auto;
   width: 100%;
-  padding: 0.75rem 0.75rem calc(var(--mobile-nav-height, 64px) + 1rem);
+  padding: 0.75rem 0.75rem 0; /* 移除底部 padding */
   --video-main-offset: 0px;
-  --video-aside-width: clamp(320px, 22vw, 360px);
+  --video-aside-width: clamp(280px, 18vw, 320px);
 }
+
+@media (min-width: 640px) {
+  .video-page__container {
+    gap: 1.25rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-bottom: 0; /* 移除底部 padding */
+  }
+}
+
+@media (min-width: 1024px) {
+  .video-page__container {
+    gap: 1.5rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    padding-bottom: 0; /* 移除底部 padding */
+  }
+}
+
 
 .video-page__container.is-widescreen {
   --video-main-offset: 0px;
@@ -746,157 +793,127 @@ onUnmounted(() => {
   transform: none;
 }
 
-.video-main.is-widescreen .video-container {
-  aspect-ratio: auto;
-  height: min(
-    calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 0px) - 24px - 12px),
-    calc(100vw * 9 / 16)
-  );
-  max-height: min(
-    calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 0px) - 24px - 12px),
-    calc(100vw * 9 / 16)
-  );
-  padding-bottom: 0; /* 覆盖 16:9 padding hack，避免高度叠加 */
-  min-height: 0;
-}
-
+.video-main.is-widescreen .video-container,
 .video-main:not(.is-widescreen) .video-container {
-  height: auto;
-  max-height: none;
+  aspect-ratio: auto;
+  /* 核心修复：增加底部信息的保留空间（从 40px 增加到 120px 以上），确保频道信息可见 */
+  height: min(
+    calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 280px) - 80px),
+    calc(100vw * 9 / 16)
+  );
+  max-height: calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 280px) - 80px);
+  padding-bottom: 0;
+  min-height: 200px;
 }
-
 
 .video-aside {
   width: 100%;
   flex: none;
 }
 
-.video-aside__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.video-aside__header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.video-aside__eyebrow {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-}
-
-.video-aside__title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.video-aside__title {
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: hsl(var(--foreground));
-}
-
-.video-aside__count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.9rem;
-  height: 1.9rem;
-  padding: 0 0.625rem;
-  border-radius: 9999px;
-  border: 1px solid hsl(var(--border) / 0.8);
-  background: hsl(var(--background) / 0.6);
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.video-aside__empty {
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.video-aside__content {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.related-videos-list {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 0.75rem;
-  min-height: 0;
-  max-height: none;
-  overflow: visible;
-  padding-right: 0;
-}
-
-.related-videos-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.related-videos-list::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
-  border-radius: 999px;
-}
-
-.related-videos-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
 @media (min-width: 1280px) {
   .video-aside {
     width: var(--video-aside-width, 360px);
     flex: 0 0 var(--video-aside-width, 360px);
+    padding-top: 0;
   }
+}
 
-  .video-aside__panel {
-    min-height: var(--related-panel-height, 75vh);
-    height: var(--related-panel-height, 75vh);
-    padding: 0;
-  }
-
-  .related-videos-list {
-    overflow-y: auto;
-    padding-right: 6px;
-  }
+.video-aside__panel {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+  height: auto;
+  margin-bottom: 0;
 }
 
 @media (min-width: 1280px) {
-  .video-page__container {
-    --video-aside-width: clamp(340px, 24vw, 420px);
-  }
-
-  .video-main {
-    max-width: clamp(1260px, 72vw, 1500px);
+  .video-aside__panel {
+    /* 核心修复：强制侧边栏高度与左侧 video-main 的总高度一致 */
+    height: var(--video-main-total-height, 800px);
+    max-height: var(--video-main-total-height, 800px);
   }
 }
 
-@media (min-width: 1536px) {
-  .video-page__container {
-    --video-aside-width: clamp(380px, 22vw, 460px);
-  }
+.video-aside__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.45rem 0.75rem; /* 减小头部内边距 */
+  background: rgba(255, 77, 0, 0.04);
+  border-bottom: 1px solid rgba(255, 77, 0, 0.15);
+}
 
-  .video-main {
-    max-width: clamp(1320px, 70vw, 1560px);
+.video-aside__title {
+  font-size: 0.72rem; /* 减小标题字号 */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #ff4d00;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.video-aside__status {
+  font-size: 0.55rem; /* 减小状态字号 */
+  color: rgba(255, 77, 0, 0.4);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.video-aside__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.video-aside__footer {
+  height: 4px;
+  background: linear-gradient(to right, #ff4d00 0%, transparent 100%);
+  opacity: 0.3;
+}
+
+.related-videos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* 极致压缩间距 */
+}
+
+.related-video-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 110px 1fr; /* 左侧固定宽度，右侧自适应 */
+  gap: 0.6rem;
+  padding: 0.25rem;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0.1, 1);
+  align-items: flex-start;
+}
+
+@media (min-width: 1280px) {
+  .related-video-card {
+    grid-template-columns: 100px 1fr; /* 侧边栏更窄时微调比例 */
+    padding: 0.25rem;
   }
+}
+
+/* 调整平板端的紧凑比例 */
+@media (min-width: 640px) and (max-width: 1279px) {
+  .related-video-card {
+    grid-template-columns: 140px 1fr;
+    gap: 0.8rem;
+    padding: 0.35rem;
+  }
+}
+
+.related-video-card:hover {
+  background: rgba(255, 77, 0, 0.04);
+  border-color: rgba(255, 77, 0, 0.2);
+  transform: translateX(4px);
 }
 
 
@@ -912,14 +929,6 @@ onUnmounted(() => {
   box-shadow: none;
 }
 
-
-
-
-
-
-
-
-
 .video-container {
   position: relative;
   width: 100%;
@@ -929,32 +938,65 @@ onUnmounted(() => {
   border-radius: 0;
 }
 
+.viewfinder-box {
+  position: relative;
+  padding: 12px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 640px) {
+  .viewfinder-box {
+    padding: 6px;
+  }
+}
+
+.viewfinder-label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.68rem;
+  color: #ff4d00;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  z-index: 10;
+  text-shadow: 0 0 8px rgba(255, 77, 0, 0.4);
+}
+
+.viewfinder-corner {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #ff4d00;
+  z-index: 10;
+  pointer-events: none;
+  box-shadow: 0 0 5px rgba(255, 77, 0, 0.2);
+}
+
+.viewfinder-corner--top-left { top: 0; left: 0; border-right: none; border-bottom: none; }
+.viewfinder-corner--top-right { top: 0; right: 0; border-left: none; border-bottom: none; }
+.viewfinder-corner--bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; }
+.viewfinder-corner--bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; }
+
 .video-container :deep(.sp-player) {
   background: hsl(var(--background));
-  --sp-controls-bg: linear-gradient(
-    to top,
-    hsl(var(--background) / 0.9) 0%,
-    hsl(var(--background) / 0.84) 18%,
-    hsl(var(--background) / 0.62) 34%,
-    hsl(var(--background) / 0.28) 56%,
-    transparent 100%
-  );
   border-radius: 12px;
   overflow: hidden;
 }
 
-.video-container :deep(iframe),
-.video-container :deep(video) {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-}
-
 .video-meta {
   margin-top: 0.875rem;
+  padding: 0 12px;
+}
+
+@media (max-width: 640px) {
+  .video-meta {
+    padding: 0 6px;
+  }
 }
 
 .video-meta__panel {
@@ -962,22 +1004,13 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.8rem;
   padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 .video-meta__header {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.video-meta__copy {
-  width: 100%;
-  min-width: 0;
+  gap: 0.6rem;
 }
 
 .video-meta__eyebrow {
@@ -991,43 +1024,67 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   min-height: 1.2rem;
-  padding: 0;
-  border: none;
-  background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.video-meta__pill + .video-meta__pill {
-  position: relative;
-  margin-left: 0.6rem;
-}
-
-.video-meta__pill + .video-meta__pill::before {
-  content: '';
-  position: absolute;
-  left: -0.36rem;
-  top: 50%;
-  width: 3px;
-  height: 3px;
-  border-radius: 9999px;
-  background: hsl(var(--border));
-  transform: translateY(-50%);
-}
-
-.video-meta__pill--muted {
-  color: hsl(var(--primary));
 }
 
 .video-meta__title {
   width: 100%;
-  font-size: clamp(0.96rem, 0.9rem + 0.28vw, 1.16rem);
+  font-size: clamp(0.96rem, 0.9rem + 0.2rem, 1.1rem);
   font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.4;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
   word-break: break-word;
+  padding-bottom: 0.4rem; /* 减小底部 padding */
+  border-bottom: none;
+  margin-bottom: 0.4rem; /* 显著减小底部 margin */
+}
+
+.video-meta__eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-bottom: 0.25rem; /* 减小间距 */
+}
+
+.video-channel {
+  padding: 0.25rem 0; /* 压缩频道区域高度 */
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.video-channel__avatar {
+  width: 2.2rem; /* 缩小头像 */
+  height: 2.2rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.video-channel__name {
+  font-size: 0.85rem; /* 稍微缩小字体 */
+  font-weight: 600;
+}
+
+.video-meta__actions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-start;
+  padding-top: 0.5rem; /* 压缩动作栏顶部间距 */
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+
+.video-meta__title-prefix {
+  opacity: 0.45;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8em;
+  margin-right: 0.5rem;
+  color: #ff4d00;
 }
 
 .video-meta__actions {
@@ -1046,341 +1103,268 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.24rem;
   min-height: 1.52rem;
-  padding: 0 0.38rem;
-  border: 1px solid hsl(var(--border) / 0.78);
-  border-radius: 0.42rem;
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  box-shadow: none;
-  transition: none;
+  padding: 0 0.5rem;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  transition: all 0.2s;
 }
 
-.video-action:hover {
-  background: hsl(var(--background));
-  border-color: hsl(var(--border) / 0.78);
+.video-action:hover, .video-action.is-active {
+  color: #ff4d00;
+  background: rgba(255, 77, 0, 0.08);
 }
 
-.video-action--secondary {
-  background: hsl(var(--background));
-}
+.video-action__label::before { content: '['; opacity: 0.5; }
+.video-action__label::after { content: ']'; opacity: 0.5; }
 
-.video-action__icon {
-  width: 0.72rem;
-  height: 0.72rem;
-  flex-shrink: 0;
-}
-
-.video-action__label {
-  font-size: 0.54rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.video-action.is-active--like {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.36);
-}
-
-.video-action.is-active--later {
-  color: hsl(var(--info));
-  background: hsl(var(--info) / 0.1);
-  border-color: hsl(var(--info) / 0.32);
-}
-
-.video-action.is-active--danger {
-  color: hsl(var(--destructive));
-  background: hsl(var(--destructive) / 0.08);
-  border-color: hsl(var(--destructive) / 0.24);
+.video-channel {
+  padding: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .video-channel__primary {
   display: flex;
   align-items: center;
-  gap: 0.875rem;
-  flex-wrap: wrap;
-}
-
-.video-channel__content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-  padding-top: 0.1rem;
+  gap: 1rem;
 }
 
 .video-channel__avatar {
   width: 2.6rem;
   height: 2.6rem;
-  border-radius: 9999px;
+  border-radius: 50%;
   object-fit: cover;
-  flex-shrink: 0;
-  box-shadow: 0 10px 24px hsl(var(--surface-shadow));
-}
-
-.video-channel__summary {
-  display: flex;
-  flex: 1 1 220px;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.video-channel__identity {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.video-channel {
-  padding-top: 0.15rem;
 }
 
 .video-channel__name {
-  min-width: 0;
-  width: fit-content;
-  max-width: 100%;
   font-size: 0.92rem;
   font-weight: 600;
-  letter-spacing: -0.02em;
-  transition: color 0.2s ease;
-}
-
-.video-channel__name:hover {
-  color: hsl(var(--primary));
 }
 
 .video-channel__unsubscribe {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  flex-shrink: 0;
-  min-height: 1.7rem;
-  padding: 0 0.5rem;
-  border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 9999px;
-  background: hsl(var(--background) / 0.52);
-  color: hsl(var(--foreground));
-  font-size: 0.64rem;
-  font-weight: 600;
-  box-shadow: 0 3px 8px hsl(var(--surface-shadow) / 0.45);
-  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
-}
-
-.video-channel__unsubscribe:hover:not(:disabled) {
-  background: hsl(var(--accent));
-  border-color: hsl(var(--ring) / 0.28);
-  transform: translateY(-1px);
-}
-
-.video-channel__unsubscribe:disabled {
-  cursor: default;
-  opacity: 0.72;
-}
-
-.video-channel__spinner {
-  width: 0.68rem;
-  height: 0.68rem;
-  border: 1.5px solid hsl(var(--foreground) / 0.22);
-  border-top-color: hsl(var(--foreground));
-  border-radius: 9999px;
-  animation: video-channel-spin 0.7s linear infinite;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .video-channel__stats {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  color: hsl(var(--muted-foreground));
+  gap: 0.6rem;
   font-size: 0.74rem;
-  font-weight: 500;
+  color: hsl(var(--muted-foreground));
 }
 
-.video-channel__stat-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.1rem;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-}
-
-.video-channel__stat-pill + .video-channel__stat-pill {
-  position: relative;
-  margin-left: 0.6rem;
-}
-
-.video-channel__stat-pill + .video-channel__stat-pill::before {
-  content: '';
-  position: absolute;
-  left: -0.36rem;
-  top: 50%;
-  width: 3px;
-  height: 3px;
-  border-radius: 9999px;
-  background: hsl(var(--border));
-  transform: translateY(-50%);
-}
-
-.video-channel__error {
-  margin-top: 0.35rem;
-  font-size: 0.72rem;
-  color: hsl(var(--destructive));
-}
-
-.video-channel__more {
+.related-videos-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.video-channel__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.42rem 0.78rem 0.42rem 0.42rem;
-  border-radius: 9999px;
-  background: hsl(var(--background) / 0.52);
-  border: 1px solid hsl(var(--border) / 0.78);
-  cursor: pointer;
-  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-}
-
-.video-channel__chip:hover {
-  background: hsl(var(--accent));
-  border-color: hsl(var(--ring) / 0.24);
-  transform: translateY(-1px);
-}
-
-.video-channel__chip-avatar {
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 9999px;
-  object-fit: cover;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .related-video-card {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(7.5rem, 8.75rem) minmax(0, 1fr);
-  gap: 0.875rem;
-  padding: 0.5rem 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
+  grid-template-columns: 110px 1fr; /* 强制左封面右标题布局 */
+  gap: 0.6rem;
+  padding: 0.35rem;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.03);
   cursor: pointer;
-  transition: color 0.18s ease, opacity 0.18s ease;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0.1, 1);
+  align-items: flex-start;
 }
 
+@media (min-width: 1280px) {
+  .related-video-card {
+    grid-template-columns: 100px 1fr; /* 侧边栏模式下微调 */
+    padding: 0.35rem;
+    flex-direction: row; /* 覆盖之前的 column */
+  }
+}
+
+/* 调整平板端的布局比例 */
+@media (min-width: 640px) and (max-width: 1279px) {
+  .related-video-card {
+    grid-template-columns: 140px 1fr;
+    gap: 0.8rem;
+    padding: 0.35rem;
+  }
+}
+
+
 .related-video-card:hover {
-  opacity: 0.92;
+  background: rgba(255, 77, 0, 0.04);
+  border-color: rgba(255, 77, 0, 0.2);
+  transform: translateX(4px);
 }
 
 .related-video-card__thumb {
   position: relative;
   overflow: hidden;
-  border-radius: calc(var(--radius-lg) + 2px);
-  background: hsl(var(--muted) / 0.6);
-  aspect-ratio: 16 / 10;
-}
-
-.related-video-card__image,
-.related-video-card__fallback {
+  border-radius: 2px;
+  background: #000;
+  aspect-ratio: 16 / 9;
   width: 100%;
-  height: 100%;
 }
 
 .related-video-card__image {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  pointer-events: none;
-  user-select: none;
+  transition: transform 0.6s cubic-bezier(0.2, 0, 0.1, 1);
 }
 
-.related-video-card__fallback {
+.related-video-card:hover .related-video-card__image {
+  transform: scale(1.08);
+}
+
+.related-video-card__scanline {
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: hsl(var(--card));
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 77, 0, 0.3);
+  box-shadow: 0 0 8px rgba(255, 77, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
 }
 
-.related-video-card__fallback-copy {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: hsl(var(--muted-foreground));
+.related-video-card:hover .related-video-card__scanline {
+  animation: scanline-anim 1.5s linear infinite;
+  opacity: 1;
 }
 
-.related-video-card__fallback-icon {
-  font-size: 1.75rem;
-  margin-bottom: 0.2rem;
+@keyframes scanline-anim {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+.related-video-card__data-overlay {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.4rem;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  border-radius: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  color: #ff4d00;
+  border: 1px solid rgba(255, 77, 0, 0.2);
+}
+
+.related-video-card__status-dot {
+  width: 5px;
+  height: 5px;
+  background: #ff4d00;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #ff4d00;
+  animation: status-pulse 1s ease infinite alternate;
+}
+
+@keyframes status-pulse {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
 }
 
 .related-video-card__duration {
   position: absolute;
-  right: 0.45rem;
-  bottom: 0.45rem;
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.45rem;
-  padding: 0 0.45rem;
-  border-radius: 9999px;
-  background: hsl(var(--background) / 0.82);
-  color: hsl(var(--foreground));
-  font-size: 0.68rem;
-  font-weight: 600;
-  backdrop-filter: blur(10px);
-}
-
-.related-video-card__body {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  padding: 0.15rem 0.35rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  border-radius: 2px;
 }
 
 .related-video-card__title {
   display: -webkit-box;
-  overflow: hidden;
-  color: hsl(var(--foreground));
-  font-size: 0.83rem;
-  font-weight: 600;
-  line-height: 1.45;
-  transition: color 0.18s ease;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-}
-
-.related-video-card:hover .related-video-card__title {
-  color: hsl(var(--primary));
-}
-
-.related-video-card__channel,
-.related-video-card__date {
-  margin-top: 0.35rem;
-  font-size: 0.72rem;
-  color: hsl(var(--muted-foreground));
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.75rem; /* 极致字号压缩 */
+  font-weight: 500;
+  line-height: 1.3;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.25rem;
 }
 
-.related-video-card__channel-link {
-  transition: color 0.18s ease;
+.related-video-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem; /* 极致字号压缩 */
+  color: rgba(255, 255, 255, 0.3);
 }
 
-.related-video-card__channel-link:hover {
-  color: hsl(var(--primary));
+.related-video-card__duration {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  padding: 0.05rem 0.25rem;
+  background: rgba(0, 0, 0, 0.85);
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55rem;
+  border-radius: 1px;
 }
+
+.related-video-card__data-overlay {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.05rem 0.25rem;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  border-radius: 1px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  color: #ff4d00;
+  border: 1px solid rgba(255, 77, 0, 0.15);
+}
+
+
+.related-video-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.related-video-card__channel:hover {
+  color: #ff4d00;
+}
+
+.video-aside__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.video-aside__title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 
 @media (min-width: 768px) {
   .video-meta__header {
@@ -1467,16 +1451,43 @@ onUnmounted(() => {
     font-size: var(--font-size-2xs);
   }
 
-  .video-meta__panel,
-  .video-aside__panel {
-    border-radius: 0;
+  .video-meta__title {
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
   }
 
-  .related-video-card {
-    grid-template-columns: minmax(6.8rem, 7.6rem) minmax(0, 1fr);
-    gap: 0.7rem;
-    padding: 0.45rem 0;
+  .video-meta__title-prefix {
+    font-size: 0.7rem;
   }
+
+  .video-channel {
+    padding: 0.85rem;
+  }
+
+  .video-channel::before {
+    font-size: 8px;
+  }
+
+  .video-channel__avatar-wrapper,
+  .related-video-card__fallback-icon {
+    font-size: 1.25rem;
+  }
+
+  .related-video-card__title {
+    font-size: 0.78rem;
+  }
+
+  .related-video-card__channel,
+  .related-video-card__date {
+    font-size: 0.6rem;
+  }
+}
+
+.related-video-card {
+  grid-template-columns: minmax(6.8rem, 7.6rem) minmax(0, 1fr);
+  gap: 0.7rem;
+  padding: 0.45rem 0;
 }
 
 @supports not (aspect-ratio: 1 / 1) {
@@ -1489,39 +1500,41 @@ onUnmounted(() => {
 
 /* 平滑过渡动画 - 快速淡入淡出 */
 .fade-enter-active {
-  transition: opacity 0.1s ease-out;
+  transition: opacity 0.15s cubic-bezier(0.2, 0, 0, 1), transform 0.15s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .fade-leave-active {
-  transition: opacity 0.08s ease-in;
+  transition: opacity 0.1s cubic-bezier(0.2, 0, 0, 1), transform 0.1s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from {
   opacity: 0;
+  transform: translateY(4px) scale(0.995);
 }
 
-.fade-enter-to, .fade-leave-from {
-  opacity: 1;
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.995);
 }
 
 .channel-dismiss-enter-active,
 .channel-dismiss-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease, max-height 0.18s ease, margin 0.18s ease, padding 0.18s ease;
+  transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.2s cubic-bezier(0.2, 0, 0, 1), max-height 0.2s ease;
   overflow: hidden;
 }
 
 .channel-dismiss-enter-from,
 .channel-dismiss-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateX(-10px);
   max-height: 0;
 }
 
 .channel-dismiss-enter-to,
 .channel-dismiss-leave-from {
   opacity: 1;
-  transform: translateY(0);
-  max-height: 12rem;
+  transform: translateX(0);
+  max-height: 20rem;
 }
 
 @keyframes video-channel-spin {

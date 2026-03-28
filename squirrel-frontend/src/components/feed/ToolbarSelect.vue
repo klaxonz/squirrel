@@ -1,20 +1,20 @@
 <template>
   <Select
     :model-value="modelValue"
-    :open="open"
     @update:model-value="handleValueChange"
-    @update:open="handleOpenChange"
   >
-    <SelectTrigger class="toolbar-select h-7 px-2.5 py-1 text-[0.6875rem]" :style="triggerStyle">
-      <div class="toolbar-select__copy">
-        <component :is="icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span v-if="!isMobile && label" class="toolbar-select__label">{{ label }}</span>
-        <span class="toolbar-select__value">{{ currentLabel }}</span>
+    <SelectTrigger class="filter-trigger-minimal" :style="triggerStyle">
+      <div class="filter-trigger-content">
+        <span class="filter-label">{{ label }} //</span>
+        <span class="filter-value">{{ currentLabel }}</span>
       </div>
     </SelectTrigger>
-    <SelectContent class="toolbar-select__content">
-      <SelectItem v-for="option in options" :key="option.value" :value="option.value">
-        {{ option.label }}
+    <SelectContent class="filter-content-minimal" :side-offset="8">
+      <SelectItem v-for="option in options" :key="option.value" :value="option.value" class="filter-item-minimal">
+        <div class="item-inner">
+          <span class="item-status"></span>
+          <span class="select-item-text">{{ option.label }}</span>
+        </div>
       </SelectItem>
     </SelectContent>
   </Select>
@@ -22,7 +22,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import { isMobile } from '@/composables/useMobile'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 
 const props = defineProps({
@@ -50,79 +49,126 @@ const props = defineProps({
     type: String,
     default: '7rem',
   },
-  open: {
-    type: Boolean,
-    default: false,
-  },
 })
 
-const emit = defineEmits(['update:modelValue', 'update:open'])
+const emit = defineEmits(['update:modelValue'])
 
 const triggerStyle = computed(() => ({
-  '--toolbar-select-min-width': props.minWidth,
+  '--filter-min-width': props.minWidth,
 }))
 
 const handleValueChange = (value) => {
   emit('update:modelValue', String(value))
-  emit('update:open', false)
-}
-
-const handleOpenChange = (value) => {
-  emit('update:open', !!value)
 }
 </script>
 
 <style scoped>
-.toolbar-select {
-  width: auto;
-  flex: 0 0 auto;
-  max-width: 100%;
-  min-width: var(--toolbar-select-min-width, 7rem);
-  border-color: hsl(var(--border) / 0.82);
-  background: hsl(var(--card));
-  box-shadow:
-    inset 0 1px 0 hsl(var(--background) / 0.9),
-    0 1px 2px hsl(20 20% 20% / 0.04);
+.filter-trigger-minimal {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  height: auto !important;
+  min-width: var(--filter-min-width, 6rem);
+  box-shadow: none !important;
+  outline: none !important;
 }
 
-.toolbar-select__copy {
-  display: inline-flex;
-  width: 100%;
+.filter-trigger-content {
+  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
+  gap: 0.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.3);
+  transition: color 0.3s;
 }
 
-.toolbar-select__label {
-  font-size: 0.6875rem;
-  color: hsl(var(--muted-foreground));
+.filter-trigger-minimal:hover .filter-trigger-content {
+  color: #fff;
 }
 
-.toolbar-select__value {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.filter-label {
+  font-weight: 400;
 }
 
-.toolbar-select__content {
-  border-radius: calc(var(--radius-lg) + 2px);
+.filter-value {
+  color: #ff4d00;
+  font-weight: 700;
 }
 
-@media (max-width: 768px) {
-  .toolbar-select {
-    min-width: auto;
-    width: 2.5rem;
-    padding-left: 0.55rem;
-    padding-right: 0.55rem;
-  }
+/* 下拉菜单容器：强制覆盖底层组件样式 */
+:deep([data-radix-popper-content-wrapper]) {
+  z-index: 100 !important;
+}
 
-  .toolbar-select__copy {
-    justify-content: center;
-  }
+:deep(.filter-content-minimal) {
+  background-color: #050505 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  min-width: 180px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9) !important;
+}
 
-  .toolbar-select__value {
-    display: none;
-  }
+/* 内部视图容器也需要强制黑色 */
+:deep(.filter-content-minimal [data-radix-select-viewport]) {
+  background-color: #050505 !important;
+  padding: 0 !important;
+}
+
+.content-header-minimal,
+.content-footer-minimal {
+  padding: 0.6rem 1rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* 选项样式强制覆盖 */
+:deep(.filter-item-minimal) {
+  padding: 0.8rem 1rem !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  cursor: pointer !important;
+  outline: none !important;
+}
+
+/* 移除 shadcn 默认的 Check 图标区域，我们使用自定义的 item-status */
+:deep(.filter-item-minimal span:last-child) {
+  right: auto !important;
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+/* 悬停状态 */
+:deep(.filter-item-minimal[data-highlighted]),
+:deep(.filter-item-minimal:hover) {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+:deep(.filter-item-minimal[data-highlighted]) .select-item-text,
+:deep(.filter-item-minimal:hover) .select-item-text {
+  color: #fff !important;
+}
+
+/* 选中状态 */
+:deep(.filter-item-minimal[data-state="checked"]) {
+  background-color: rgba(255, 77, 0, 0.08) !important;
+}
+
+:deep(.filter-item-minimal[data-state="checked"]) .select-item-text {
+  color: #ff4d00 !important;
+  font-weight: 700 !important;
+}
+
+:deep(.filter-item-minimal[data-state="checked"]) .item-status {
+  background-color: #ff4d00 !important;
+  box-shadow: 0 0 8px #ff4d00;
 }
 </style>

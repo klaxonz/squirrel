@@ -1,46 +1,43 @@
 <template>
-  <section class="feed-toolbar-shell">
-    <div class="feed-toolbar__inner" :class="{ 'feed-toolbar__inner--compact': !showTabs }">
-      <div v-if="showTabs" class="feed-toolbar__tabs">
-        <TabBar
-          v-if="showTabs"
-          v-model="localActiveTab"
-          :tabs="tabsWithCounts"
-          class="w-full"
-          @tab-dblclick="$emit('tab-dblclick', $event)"
-        />
+  <section class="toolbar-minimal">
+    <div class="toolbar-inner">
+      <div v-if="showTabs" class="toolbar-tabs">
+        <button
+          v-for="tab in tabsWithCounts"
+          :key="tab.value"
+          class="tab-item-minimal"
+          :class="{ 'is-active': localActiveTab === tab.value }"
+          @click="localActiveTab = tab.value"
+        >
+          <span class="tab-label">{{ tab.label }}</span>
+          <span v-if="tab.count > 0" class="tab-count">{{ tab.count }}</span>
+        </button>
       </div>
 
-      <div v-if="$slots.actions" class="feed-toolbar__extras">
-        <slot name="actions" />
-      </div>
-
-      <div class="feed-toolbar__actions">
+      <div class="toolbar-actions">
         <NsfwFilter
           v-if="showNsfw"
           v-model="localNsfw"
-          :open="openSelectKey === 'nsfw'"
-          @update:open="(value) => handleOpenChange('nsfw', value)"
+          class="filter-minimal"
         />
         <SiteFilter
           v-if="showSite && !subscriptionId"
           v-model="localSite"
-          :open="openSelectKey === 'site'"
-          @update:open="(value) => handleOpenChange('site', value)"
+          class="filter-minimal"
         />
         <SortButton
           v-if="showSort"
           v-model="localSortBy"
-          :open="openSelectKey === 'sort'"
-          @update:open="(value) => handleOpenChange('sort', value)"
+          class="filter-minimal"
         />
-        <RefreshButton
+        <button
           v-if="showRefresh"
-          :loading="isRefreshing"
-          title="刷新 (R)"
-          aria-label="刷新"
+          class="refresh-minimal"
+          :class="{ 'is-loading': isRefreshing }"
           @click="$emit('refresh')"
-        />
+        >
+          REFRESH
+        </button>
       </div>
     </div>
   </section>
@@ -49,10 +46,8 @@
 <script setup>
 import { ref, watch } from 'vue'
 import NsfwFilter from './NsfwFilter.vue'
-import RefreshButton from './RefreshButton.vue'
 import SiteFilter from './SiteFilter.vue'
 import SortButton from './SortButton.vue'
-import TabBar from './TabBar.vue'
 
 const props = defineProps({
   activeTab: { type: String, default: 'all' },
@@ -82,7 +77,6 @@ const localActiveTab = ref(props.activeTab)
 const localNsfw = ref(props.nsfw)
 const localSortBy = ref(props.sortBy)
 const localSite = ref(props.site)
-const openSelectKey = ref('')
 
 watch(() => props.activeTab, (value) => localActiveTab.value = value)
 watch(() => props.nsfw, (value) => localNsfw.value = value)
@@ -93,81 +87,90 @@ watch(localActiveTab, (value) => emit('update:activeTab', value))
 watch(localNsfw, (value) => emit('update:nsfw', value))
 watch(localSortBy, (value) => emit('update:sortBy', value))
 watch(localSite, (value) => emit('update:site', value))
-
-const handleOpenChange = (key, value) => {
-  openSelectKey.value = value ? key : (openSelectKey.value === key ? '' : openSelectKey.value)
-}
 </script>
 
 <style scoped>
-.feed-toolbar-shell {
-  padding-block: 0.25rem 0.75rem;
+.toolbar-minimal {
+  padding: 1rem 2rem;
+  background: transparent;
 }
 
-.feed-toolbar__inner {
+.toolbar-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.375rem;
-  border: none;
-  border-radius: calc(var(--radius-xl) + 2px);
+  gap: 2rem;
+}
+
+.toolbar-tabs {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.tab-item-minimal {
   background: transparent;
-  box-shadow: none;
-}
-
-.feed-toolbar__inner--compact {
-  justify-content: flex-end;
-}
-
-.feed-toolbar__tabs {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: visible;
-}
-
-.feed-toolbar__extras {
+  border: none;
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  margin-right: auto;
+  gap: 0.4rem;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.3s;
+  padding: 0.5rem 0;
 }
 
-.feed-toolbar__actions {
+.tab-item-minimal:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tab-item-minimal.is-active {
+  color: #fff;
+  border-bottom: 1px solid #ff4d00;
+}
+
+.tab-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.tab-count {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.55rem;
+  opacity: 0.5;
+}
+
+.toolbar-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.45rem;
-  flex-shrink: 0;
-  flex-wrap: wrap;
+  gap: 1.25rem;
 }
 
-@media (max-width: 1024px) {
-  .feed-toolbar__inner {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .feed-toolbar__actions {
-    justify-content: flex-start;
-  }
+.refresh-minimal {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s;
 }
 
-@media (max-width: 640px) {
-  .feed-toolbar-shell {
-    padding-block: 0.2rem 0.65rem;
-  }
+.refresh-minimal:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
 
-  .feed-toolbar__inner {
-    gap: 0.625rem;
-    padding: 0.35rem;
-    border-radius: 0.875rem;
-  }
+.is-loading {
+  animation: pulse 1.5s infinite;
+  color: #ff4d00;
+}
 
-  .feed-toolbar__actions {
-    gap: 0.35rem;
-  }
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 </style>

@@ -1,14 +1,12 @@
 <template>
   <ToolbarSelect
     :model-value="selectedValue"
-    :open="open"
     label="站点"
     :current-label="currentLabel"
     :options="options"
     :icon="Bars4Icon"
     min-width="7rem"
     @update:model-value="handleValueChange"
-    @update:open="(value) => emit('update:open', value)"
   />
 </template>
 
@@ -25,13 +23,9 @@ const props = defineProps({
     type: String,
     default: undefined,
   },
-  open: {
-    type: Boolean,
-    default: false,
-  },
 })
 
-const emit = defineEmits(['update:modelValue', 'update:open'])
+const emit = defineEmits(['update:modelValue'])
 
 const options = ref([{ value: ALL_SITES_VALUE, label: '全部站点' }])
 const { options: cachedOptions, fetchSites } = useSites()

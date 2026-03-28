@@ -1,59 +1,67 @@
 <template>
-  <div class="space-y-3">
+  <div class="relative space-y-8 pl-4 before:absolute before:left-0 before:top-2 before:h-[calc(100%-8px)] before:w-px before:bg-border/30">
     <div
       v-for="event in events"
       :key="event.id"
-      class="rounded-xl bg-background border border-border p-3"
+      class="group relative"
     >
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2 min-w-0">
-          <Badge :variant="getVariant(event.event_status)">
-            {{ getEventLabel(event.event_type) }}
-          </Badge>
-          <span class="text-2xs text-muted-foreground/70 truncate">{{ event.event_phase || 'phase:unknown' }}</span>
+      <!-- Timeline Dot -->
+      <div class="absolute -left-[21px] top-1.5 h-3 w-3 rounded-full border-2 border-background shadow-sm" :class="getToneBgClass(event.event_status)"></div>
+
+      <div class="flex flex-col gap-1 px-2">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-foreground/80">{{ getEventLabel(event.event_type) }}</span>
+            <span class="text-[10px] font-bold text-muted-foreground/30 px-1.5 py-0.5 rounded bg-muted/30 uppercase tracking-tighter">{{ event.event_phase }}</span>
+          </div>
+          <span class="text-[10px] font-medium tabular-nums text-muted-foreground/40">{{ event.occurred_at }}</span>
         </div>
-        <span class="text-2xs text-muted-foreground">{{ event.occurred_at }}</span>
+
+        <p class="text-[11px] leading-relaxed text-muted-foreground/60 max-w-[90%]">{{ event.message || 'Processing event captured.' }}</p>
+
+        <!-- Payload Preview -->
+        <div v-if="hasPayload(event.payload)" class="mt-4 overflow-hidden rounded-lg border border-border/10 bg-muted/10 opacity-60 group-hover:opacity-100 transition-opacity">
+          <div class="flex items-center justify-between px-3 py-1.5 border-b border-border/10 bg-muted/20">
+            <span class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40">Data Payload</span>
+          </div>
+          <pre class="overflow-x-auto p-3 text-[10px] font-mono leading-relaxed text-muted-foreground/80">{{ formatPayload(event.payload) }}</pre>
+        </div>
       </div>
-      <div class="text-xs text-muted-foreground mt-2">{{ event.message || '无附加消息' }}</div>
-      <pre class="mt-3 whitespace-pre-wrap break-all text-2xs text-muted-foreground bg-card rounded-lg p-3">{{ formatPayload(event.payload) }}</pre>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { SyncRunEvent } from '@/composables/useSyncHistory'
-import { Badge } from '@/components/ui/badge'
 
 defineProps<{
   events: SyncRunEvent[]
 }>()
 
-const getVariant = (status: string | null) => {
+const getToneBgClass = (status: string | null) => {
   switch (status) {
-    case 'success':
-      return 'secondary'
-    case 'failed':
-      return 'destructive'
-    case 'deferred':
-      return 'outline'
-    case 'running':
-      return 'default'
-    default:
-      return 'outline'
+    case 'success': return 'bg-emerald-400'
+    case 'failed': return 'bg-rose-500'
+    case 'running': return 'bg-blue-500'
+    default: return 'bg-slate-300'
   }
 }
 
 const getEventLabel = (eventType: string) => {
-  switch (eventType) {
-    case 'stale_queued_recovered':
-      return '恢复 queued'
-    case 'stale_running_recovered':
-      return '恢复 running'
-    case 'manual_reconcile_triggered':
-      return '手动对账'
-    default:
-      return eventType
+  const map: Record<string, string> = {
+    'stale_queued_recovered': 'Queued Recovered',
+    'stale_running_recovered': 'Running Recovered',
+    'manual_reconcile_triggered': 'Manual Reconcile',
+    'subscription_sync_started': 'Sync Started',
+    'subscription_sync_finished': 'Sync Finished',
+    'subscription_sync_failed': 'Sync Failed',
   }
+  return map[eventType] || eventType.replace(/_/g, ' ').toUpperCase()
+}
+
+const hasPayload = (payload: any) => {
+  if (!payload) return false
+  return Object.keys(payload).length > 0
 }
 
 const formatPayload = (payload: Record<string, unknown>) => {

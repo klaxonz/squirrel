@@ -1,48 +1,28 @@
 <template>
-  <div ref="rootRef" class="global-search-bar">
-    <div class="global-search-bar__field">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        class="global-search-bar__icon"
-        aria-label="执行搜索"
-        @click="handleSearch"
-      >
-        <MagnifyingGlassIcon class="h-4 w-4" />
-      </Button>
-
-      <Input
-        v-model="inputValue"
-        type="text"
-        :placeholder="placeholder"
-        class="global-search-bar__input"
-        @keyup.enter="handleSearch"
-        @keyup.esc="clearSearch"
-        @input="handleInput"
-      />
-
-      <Button
-        v-if="inputValue"
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        class="global-search-bar__clear"
-        title="清除搜索 (ESC)"
-        aria-label="清除搜索"
-        @click="clearSearch"
-      >
-        <XMarkIcon class="h-4 w-4" />
-      </Button>
+  <div ref="rootRef" class="search-terminal-box">
+    <div class="search-prefix">
+      <span class="prefix-symbol">></span>
+      <span class="prefix-index">00</span>
     </div>
+    <input
+      v-model="inputValue"
+      type="text"
+      :placeholder="placeholder"
+      class="search-input-minimal"
+      @keyup.enter="handleSearch"
+      @keyup.esc="clearSearch"
+      @input="handleInput"
+    />
+    <div class="search-suffix">
+      <span v-if="inputValue" class="char-count">{{ inputValue.length }}CH</span>
+      <span class="cmd-hint">/</span>
+    </div>
+    <div class="search-border"></div>
   </div>
 </template>
 
 <script setup>
 import { onUnmounted, ref, watch } from 'vue'
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 
 const props = defineProps({
   modelValue: {
@@ -51,7 +31,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: '搜索...',
+    default: 'EXECUTE_QUERY',
   },
   debounceMs: {
     type: Number,
@@ -117,44 +97,87 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.global-search-bar {
-  width: 100%;
-}
-
-.global-search-bar__field {
+.search-terminal-box {
   position: relative;
   display: flex;
-  width: 100%;
   align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
 }
 
-.global-search-bar__input {
-  min-height: 2.125rem;
-  padding-left: 2.15rem;
-  padding-right: 2.15rem;
-  border-color: hsl(var(--border) / 0.72);
+.search-terminal-box:focus-within {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 77, 0, 0.3);
+  box-shadow: 0 0 20px rgba(255, 77, 0, 0.05);
+}
+
+.search-prefix {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.75rem;
+  pointer-events: none;
+}
+
+.prefix-symbol {
+  color: #ff4d00;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+.prefix-index {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.search-input-minimal {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
   font-size: 0.75rem;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.05em;
+  outline: none;
+  padding: 0;
+  width: 100%;
 }
 
-.global-search-bar__icon,
-.global-search-bar__clear {
-  position: absolute;
-  top: 50%;
-  z-index: 1;
-  transform: translateY(-50%);
+.search-input-minimal::placeholder {
+  color: rgba(255, 255, 255, 0.1);
+  text-transform: uppercase;
 }
 
-.global-search-bar__icon {
-  left: 0.125rem;
+.search-suffix {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: 0.75rem;
+  pointer-events: none;
 }
 
-.global-search-bar__clear {
-  right: 0.125rem;
+.char-count {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.5rem;
+  color: #ff4d00;
+  opacity: 0.6;
 }
 
-@media (max-width: 640px) {
-  .global-search-bar__input {
-    min-height: 2rem;
-  }
+.cmd-hint {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.search-terminal-box:focus-within .cmd-hint {
+  color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 </style>

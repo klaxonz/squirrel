@@ -1,14 +1,12 @@
 <template>
   <ToolbarSelect
     :model-value="modelValue"
-    :open="open"
     label="排序"
     :current-label="currentLabel"
     :options="sortOptions"
     :icon="Bars4Icon"
     min-width="6.75rem"
     @update:model-value="handleValueChange"
-    @update:open="(value) => emit('update:open', value)"
   />
 </template>
 
@@ -22,13 +20,9 @@ const props = defineProps({
     type: String,
     required: true,
   },
-  open: {
-    type: Boolean,
-    default: false,
-  },
 })
 
-const emit = defineEmits(['update:modelValue', 'update:open'])
+const emit = defineEmits(['update:modelValue'])
 
 const sortOptions = [
   { value: 'publish_date', label: '上传时间' },
