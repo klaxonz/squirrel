@@ -7,7 +7,6 @@ from typing import Dict, Any, Optional
 
 from crawl import (
     VideoExtractorBase,
-    register_extractor,
     AuthError,
     VipError,
     NotFoundError,
@@ -18,7 +17,6 @@ from .downloader import JavdbDownloader
 logger = logging.getLogger(__name__)
 
 
-@register_extractor('javdb', ['javdb.com'])
 class JavdbExtractor(VideoExtractorBase):
     """JavDB视频提取器"""
 

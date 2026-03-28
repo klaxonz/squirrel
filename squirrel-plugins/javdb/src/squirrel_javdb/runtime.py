@@ -56,6 +56,18 @@ PLUGIN_MANIFEST = PluginManifest(
             response_schema={'type': 'object'},
             timeout_ms=30000,
         ),
+        PluginCapability(
+            name='resolve_proxy_config',
+            description='Resolve proxy headers and transport settings for JavDB streams.',
+            response_schema={'type': 'object'},
+            timeout_ms=15000,
+        ),
+        PluginCapability(
+            name='rewrite_proxy_playlist',
+            description='Rewrite proxied JavDB playlists to point back to the backend proxy.',
+            response_schema={'type': 'object'},
+            timeout_ms=15000,
+        ),
     ],
     sites=[
         PluginSiteManifest(
@@ -69,6 +81,8 @@ PLUGIN_MANIFEST = PluginManifest(
                 'sync_subscription',
                 'extract_video',
                 'resolve_playback',
+                'resolve_proxy_config',
+                'rewrite_proxy_playlist',
             ],
         )
     ],
@@ -162,6 +176,25 @@ def _resolve_playback(payload: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
+def _resolve_proxy_config(payload: Dict[str, Any]) -> Dict[str, Any]:
+    from .proxy import build_runtime_proxy_config
+
+    return build_runtime_proxy_config(payload.get('domain'))
+
+
+def _rewrite_proxy_playlist(payload: Dict[str, Any]) -> Dict[str, Any]:
+    from .proxy import rewrite_proxy_playlist
+
+    url = str(payload.get('url') or '').strip()
+    if not url:
+        raise ValueError('Missing playlist url')
+    return rewrite_proxy_playlist(
+        url,
+        payload.get('content') or '',
+        referer=payload.get('referer'),
+    )
+
+
 def _health_check() -> PluginHealthStatus:
     return PluginHealthStatus(
         healthy=True,
@@ -180,6 +213,8 @@ def get_plugin_runtime():
             'sync_subscription': _sync_subscription,
             'extract_video': _extract_video,
             'resolve_playback': _resolve_playback,
+            'resolve_proxy_config': _resolve_proxy_config,
+            'rewrite_proxy_playlist': _rewrite_proxy_playlist,
         },
         health_check=_health_check,
     )

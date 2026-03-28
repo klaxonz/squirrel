@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import Optional, Dict, Any
 
-from crawl import Downloader, register_downloader
+from crawl import Downloader
 
 
-@register_downloader
 class PornhubDownloader:
     """Pornhub下载器，实现Downloader Protocol"""
     

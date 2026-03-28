@@ -54,6 +54,22 @@
           "type": "object"
         },
         "timeout_ms": 30000
+      },
+      {
+        "name": "resolve_proxy_config",
+        "description": "Resolve proxy headers and transport settings for Pornhub streams.",
+        "response_schema": {
+          "type": "object"
+        },
+        "timeout_ms": 15000
+      },
+      {
+        "name": "rewrite_proxy_playlist",
+        "description": "Rewrite proxied Pornhub playlists to point back to the backend proxy.",
+        "response_schema": {
+          "type": "object"
+        },
+        "timeout_ms": 15000
       }
     ],
     "sites": [
@@ -69,7 +85,9 @@
           "resolve_subscription",
           "sync_subscription",
           "extract_video",
-          "resolve_playback"
+          "resolve_playback",
+          "resolve_proxy_config",
+          "rewrite_proxy_playlist"
         ]
       }
     ],

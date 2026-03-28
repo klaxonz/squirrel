@@ -56,6 +56,30 @@ PLUGIN_MANIFEST = PluginManifest(
             response_schema={'type': 'object'},
             timeout_ms=30000,
         ),
+        PluginCapability(
+            name='fetch_subtitles',
+            description='Fetch subtitles for a YouTube video.',
+            response_schema={'type': 'object'},
+            timeout_ms=30000,
+        ),
+        PluginCapability(
+            name='build_mpd',
+            description='Build an MPD document for a YouTube video.',
+            response_schema={'type': 'object'},
+            timeout_ms=30000,
+        ),
+        PluginCapability(
+            name='resolve_proxy_config',
+            description='Resolve proxy headers and transport settings for YouTube streams.',
+            response_schema={'type': 'object'},
+            timeout_ms=15000,
+        ),
+        PluginCapability(
+            name='rewrite_proxy_playlist',
+            description='Rewrite proxied YouTube playlists to point back to the backend proxy.',
+            response_schema={'type': 'object'},
+            timeout_ms=15000,
+        ),
     ],
     sites=[
         PluginSiteManifest(
@@ -69,6 +93,10 @@ PLUGIN_MANIFEST = PluginManifest(
                 'sync_subscription',
                 'extract_video',
                 'resolve_playback',
+                'fetch_subtitles',
+                'build_mpd',
+                'resolve_proxy_config',
+                'rewrite_proxy_playlist',
             ],
         )
     ],
@@ -145,7 +173,6 @@ def _extract_video(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _resolve_playback(payload: Dict[str, Any]) -> Dict[str, Any]:
-    from . import mpd as _mpd  # noqa: F401
     from .handler import YouTubeHandler
 
     url = str(payload.get('url') or '').strip()
@@ -160,6 +187,62 @@ def _resolve_playback(payload: Dict[str, Any]) -> Dict[str, Any]:
             url=url,
             title=payload.get('title'),
         )
+    )
+
+
+def _fetch_subtitles(payload: Dict[str, Any]) -> Dict[str, Any]:
+    from .subtitles import YoutubeSubtitlesProvider
+
+    url = str(payload.get('url') or '').strip()
+    lang = str(payload.get('lang') or 'en').strip() or 'en'
+    fmt = str(payload.get('fmt') or 'srt').strip() or 'srt'
+    if not url:
+        raise ValueError('Missing video url')
+
+    provider = YoutubeSubtitlesProvider()
+    content, filename = provider.get_subtitles(
+        SimpleNamespace(id=payload.get('video_id'), url=url),
+        lang,
+        fmt,
+    )
+    return {
+        'content': content,
+        'filename': filename,
+        'media_type': 'text/plain; charset=utf-8',
+    }
+
+
+def _build_mpd(payload: Dict[str, Any]) -> Dict[str, Any]:
+    from .mpd import YouTubeMpdBuilder
+
+    url = str(payload.get('url') or '').strip()
+    if not url:
+        raise ValueError('Missing video url')
+
+    builder = YouTubeMpdBuilder()
+    content = builder.build_mpd(SimpleNamespace(id=payload.get('video_id'), url=url, duration=payload.get('duration')))
+    return {
+        'content': content,
+        'media_type': 'application/dash+xml',
+    }
+
+
+def _resolve_proxy_config(payload: Dict[str, Any]) -> Dict[str, Any]:
+    from .proxy import build_runtime_proxy_config
+
+    return build_runtime_proxy_config(payload.get('domain'))
+
+
+def _rewrite_proxy_playlist(payload: Dict[str, Any]) -> Dict[str, Any]:
+    from .proxy import rewrite_proxy_playlist
+
+    url = str(payload.get('url') or '').strip()
+    if not url:
+        raise ValueError('Missing playlist url')
+    return rewrite_proxy_playlist(
+        url,
+        payload.get('content') or '',
+        referer=payload.get('referer'),
     )
 
 
@@ -181,6 +264,10 @@ def get_plugin_runtime():
             'sync_subscription': _sync_subscription,
             'extract_video': _extract_video,
             'resolve_playback': _resolve_playback,
+            'fetch_subtitles': _fetch_subtitles,
+            'build_mpd': _build_mpd,
+            'resolve_proxy_config': _resolve_proxy_config,
+            'rewrite_proxy_playlist': _rewrite_proxy_playlist,
         },
         health_check=_health_check,
     )

@@ -7,7 +7,6 @@ from bs4 import BeautifulSoup
 
 from crawl import (
     SubscriptionImportItem,
-    register_user_subscription_importer,
 )
 
 from .html_client import fetch_javdb_html
@@ -16,7 +15,6 @@ from .html_client import fetch_javdb_html
 logger = logging.getLogger(__name__)
 
 
-@register_user_subscription_importer("javdb")
 class JavdbUserSubscriptionImporter:
     """
     从 JavDB 导入用户的订阅列表

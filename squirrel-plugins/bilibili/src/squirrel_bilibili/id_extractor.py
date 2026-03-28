@@ -1,7 +1,6 @@
-from crawl import RegexIdExtractor, register_id_extractor
+from crawl import RegexIdExtractor
 
 
-@register_id_extractor
 class BilibiliIdExtractor(RegexIdExtractor):
     domain = 'bilibili.com'
     pattern = r'BV[0-9A-Za-z]+'

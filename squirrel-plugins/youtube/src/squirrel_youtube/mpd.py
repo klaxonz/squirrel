@@ -12,8 +12,6 @@ import requests
 from yt_dlp import YoutubeDL
 
 from crawl import (
-    MpdBuilder,
-    register_mpd,
     filter_cookies_to_query_string,
     resolve_cookie_file_path,
     get_http_headers,
@@ -620,7 +618,6 @@ def _format_to_rep(fmt: dict) -> dict | None:
     return rep
 
 
-@register_mpd
 class YouTubeMpdBuilder:
     """YouTube MPD构建器，实现MpdBuilder Protocol"""
     

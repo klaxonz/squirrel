@@ -8,7 +8,7 @@ import httpx
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
-from crawl import VideoProxy, register_proxy, get_http_headers, get_proxy_config, get_proxy_config_registry
+from crawl import get_http_headers, get_proxy_config
 
 try:
     from utils.cookie import filter_cookies_to_query_string_by_domain as _cookie_for
@@ -17,85 +17,129 @@ except Exception:  # pragma: no cover
 
     def _cookie_for(domain_or_url: str) -> str:
         if not domain_or_url:
-            return ""
+            return ''
         target = domain_or_url
-        if "://" not in target:
-            target = f"https://{str(domain_or_url).lstrip('.')}"
+        if '://' not in target:
+            target = f'https://{str(domain_or_url).lstrip(".")}'
         try:
             return _sdk_cookie_for(target)
         except Exception:
-            return ""
+            return ''
 
 
 logger = logging.getLogger(__name__)
 
-
 SITE_SLUG = 'youtube'
+SITE_DOMAIN = 'youtube.com'
+DEFAULT_SITE_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'Referer': 'https://www.youtube.com',
+    'Accept': '*/*',
+}
+DEFAULT_PROXY_CONFIG = {
+    'connect_timeout': 30.0,
+    'read_timeout': 180.0,
+    'write_timeout': 30.0,
+    'pool_timeout': 30.0,
+    'chunk_size': 2 * 1024 * 1024,
+    'max_retries': 5,
+    'max_keepalive_connections': 50,
+    'max_connections': 100,
+    'keepalive_expiry': 60.0,
+    'follow_redirects': True,
+    'enable_http2': True,
+}
 
 
-@register_proxy
+def _proxy_config_values() -> dict:
+    config = dict(DEFAULT_PROXY_CONFIG)
+    config.update(get_proxy_config(SITE_SLUG))
+    return config
+
+
+def build_runtime_proxy_config(domain: str | None = None) -> dict[str, object]:
+    effective_domain = str(domain or SITE_DOMAIN).strip().lower() or SITE_DOMAIN
+    config = _proxy_config_values()
+    return {
+        'site_headers': get_http_headers(SITE_SLUG, DEFAULT_SITE_HEADERS),
+        'domain_configs': [{
+            'domain': effective_domain,
+            'connect_timeout': float(config['connect_timeout']),
+            'read_timeout': float(config['read_timeout']),
+            'max_retries': int(config['max_retries']),
+            'chunk_size': int(config['chunk_size']),
+            'max_connections': int(config['max_connections']),
+            'keepalive_expiry': float(config['keepalive_expiry']),
+            'enable_http2': bool(config['enable_http2']),
+        }],
+    }
+
+
+def rewrite_proxy_playlist(url: str, content: str | bytes, referer: str | None = None) -> dict[str, object]:
+    content_text = content.decode(errors='ignore') if isinstance(content, (bytes, bytearray)) else str(content)
+    base_url = url.rsplit('/', 1)[0]
+
+    def replace_url(match):
+        path = match.group(1).strip()
+        if not path or path.startswith('#'):
+            return path
+        full_url = path if path.startswith('http') else urljoin(base_url + '/', path)
+        query = {
+            'domain': SITE_DOMAIN,
+            'url': full_url,
+        }
+        if referer:
+            query['referer'] = referer
+        return f'/api/video/proxy?{urlencode(query)}'
+
+    rewritten = re.sub(
+        r'^(?!#)(.+\.(?:ts|m4s|mp4|m3u8|jpg|jpeg|vtt)[^\s]*)$',
+        lambda m: replace_url(m),
+        content_text,
+        flags=re.MULTILINE,
+    )
+
+    return {
+        'content': rewritten,
+        'media_type': 'application/vnd.apple.mpegurl',
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-cache',
+        },
+    }
+
+
 class YouTubeProxy:
-    """YouTube视频代理，实现VideoProxy Protocol"""
-    
-    domain = 'youtube.com'
+    """YouTube video proxy implementation."""
+
+    domain = SITE_DOMAIN
     site_slug = SITE_SLUG
-    _request = None  # Request对象由backend传入，这里保留兼容性
+    _request = None
 
-    async def handle_m3u8(self, url: str, content: bytes) -> StreamingResponse:
-        content_text = content.decode(errors='ignore')
-        base_url = url.rsplit('/', 1)[0]
-
-        def replace_url(match):
-            path = match.group(1).strip()
-            if not path or path.startswith('#'):
-                return path
-            full_url = path if path.startswith('http') else urljoin(base_url + '/', path)
-            query = urlencode({
-                'domain': self.domain,
-                'url': full_url,
-            })
-            return f"/api/video/proxy?{query}"
-
-        content_text = re.sub(
-            r'^(?!#)(.+\.(?:ts|m4s|mp4|m3u8|jpg|jpeg|vtt)[^\s]*)$',
-            lambda m: replace_url(m),
-            content_text,
-            flags=re.MULTILINE
-        )
-
+    async def handle_m3u8(self, url: str, content: bytes, referer: str | None = None) -> StreamingResponse:
+        rewritten = rewrite_proxy_playlist(url, content, referer=referer)
         return StreamingResponse(
-            iter([content_text.encode()]),
-            media_type='application/vnd.apple.mpegurl',
-            headers={
-                'Access-Control-Allow-Origin': '*',
-                'Cache-Control': 'no-cache',
-            }
+            iter([str(rewritten['content']).encode()]),
+            media_type=str(rewritten['media_type']),
+            headers=dict(rewritten['headers']),
         )
 
     def _build_client_params(self):
-        proxy_cfg = get_proxy_config(self.site_slug)
-        connect_timeout = float(proxy_cfg.get('connect_timeout', 30.0))
-        read_timeout = float(proxy_cfg.get('read_timeout', 180.0))
-        write_timeout = float(proxy_cfg.get('write_timeout', 30.0))
-        pool_timeout = float(proxy_cfg.get('pool_timeout', 30.0))
-        max_keepalive = int(proxy_cfg.get('max_keepalive_connections', 50))
-        max_connections = int(proxy_cfg.get('max_connections', 100))
-        keepalive_expiry = float(proxy_cfg.get('keepalive_expiry', 60.0))
-        follow_redirects = bool(proxy_cfg.get('follow_redirects', True))
-        http2_enabled = bool(proxy_cfg.get('enable_http2', True))
-
+        proxy_cfg = _proxy_config_values()
         timeout_config = httpx.Timeout(
-            connect=connect_timeout,
-            read=read_timeout,
-            write=write_timeout,
-            pool=pool_timeout,
+            connect=float(proxy_cfg.get('connect_timeout', 30.0)),
+            read=float(proxy_cfg.get('read_timeout', 180.0)),
+            write=float(proxy_cfg.get('write_timeout', 30.0)),
+            pool=float(proxy_cfg.get('pool_timeout', 30.0)),
         )
 
         limits = httpx.Limits(
-            max_keepalive_connections=max_keepalive,
-            max_connections=max_connections,
-            keepalive_expiry=keepalive_expiry,
+            max_keepalive_connections=int(proxy_cfg.get('max_keepalive_connections', 50)),
+            max_connections=int(proxy_cfg.get('max_connections', 100)),
+            keepalive_expiry=float(proxy_cfg.get('keepalive_expiry', 60.0)),
         )
+        follow_redirects = bool(proxy_cfg.get('follow_redirects', True))
+        http2_enabled = bool(proxy_cfg.get('enable_http2', True))
         return timeout_config, limits, follow_redirects, http2_enabled
 
     async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:
@@ -103,24 +147,19 @@ class YouTubeProxy:
             timeout_config, limits, follow_redirects, http2_enabled = self._build_client_params()
 
             client_config = {
-                "timeout": timeout_config,
-                "limits": limits,
-                "follow_redirects": follow_redirects,
-                "http2": http2_enabled,
+                'timeout': timeout_config,
+                'limits': limits,
+                'follow_redirects': follow_redirects,
+                'http2': http2_enabled,
             }
 
-            proxy_config_registry = get_proxy_config_registry()
-            provider_cls = proxy_config_registry.get(self.domain)
-            headers = get_http_headers(
-                self.site_slug,
-                (provider_cls.get_site_headers() or {}) if provider_cls else {},
-            )
+            headers = dict(build_runtime_proxy_config(self.domain)['site_headers'])
             if self._request:
                 range_header = self._request.headers.get('range')
                 if range_header:
                     headers['Range'] = range_header
             headers.update({
-                "Cookie": _cookie_for(url),
+                'Cookie': _cookie_for(url),
             })
 
             async with httpx.AsyncClient(**client_config) as client:
@@ -132,13 +171,18 @@ class YouTubeProxy:
 
                 content_type = response.headers.get('content-type', '')
                 if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
-                    return await self.handle_m3u8(url, response.content)
+                    return await self.handle_m3u8(url, response.content, referer=kwargs.get('referer'))
 
                 forward_headers = {
                     k: v for k, v in response.headers.items()
                     if k.lower() in {
-                        'content-type', 'content-length', 'content-range',
-                        'accept-ranges', 'last-modified', 'etag', 'cache-control'
+                        'content-type',
+                        'content-length',
+                        'content-range',
+                        'accept-ranges',
+                        'last-modified',
+                        'etag',
+                        'cache-control',
                     }
                 }
                 forward_headers.setdefault('Access-Control-Allow-Origin', '*')
@@ -151,11 +195,11 @@ class YouTubeProxy:
                 )
 
         except httpx.HTTPStatusError as e:
-            logger.error("YouTube proxy HTTP error for %s: %s", url, e)
-            raise HTTPException(status_code=e.response.status_code, detail=f"Error fetching content: {str(e)}")
+            logger.error('YouTube proxy HTTP error for %s: %s', url, e)
+            raise HTTPException(status_code=e.response.status_code, detail=f'Error fetching content: {str(e)}')
         except httpx.HTTPError as e:
-            logger.error("YouTube proxy transport error for %s: %s", url, e)
-            raise HTTPException(status_code=502, detail=f"Error fetching content: {str(e)}")
+            logger.error('YouTube proxy transport error for %s: %s', url, e)
+            raise HTTPException(status_code=502, detail=f'Error fetching content: {str(e)}')
         except Exception as e:  # pragma: no cover
-            logger.exception("YouTube proxy unexpected error for %s", url)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logger.exception('YouTube proxy unexpected error for %s', url)
+            raise HTTPException(status_code=500, detail='Internal server error')

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import List
 
-from crawl import SubscriptionImportItem, register_user_subscription_importer
+from crawl import SubscriptionImportItem
 from .sign import build_cookies, fetch_followings, fetch_nav
 
 
@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 SITE_SLUG = "bilibili"
 
 
-@register_user_subscription_importer("bilibili")
 class BilibiliUserSubscriptionImporter:
     """
     从 Bilibili 导入用户的关注列表

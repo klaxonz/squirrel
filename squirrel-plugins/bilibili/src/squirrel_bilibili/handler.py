@@ -4,9 +4,6 @@ import logging
 from typing import Any, List, Optional
 from urllib.parse import quote
 
-from crawl import (
-    register_handler,
-)
 from .sign import fetch_play_data
 
 logger = logging.getLogger(__name__)
@@ -26,7 +23,6 @@ def get_dash_data(url: str) -> dict:
     return dash_data
 
 
-@register_handler
 class BilibiliHandler:
     """Bilibili视频URL处理器，实现VideoUrlHandler Protocol"""
     

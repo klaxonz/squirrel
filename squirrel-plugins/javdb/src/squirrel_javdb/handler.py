@@ -4,7 +4,7 @@ import re
 from typing import Any, Optional
 from urllib.parse import urlencode
 from bs4 import BeautifulSoup
-from crawl import register_handler, request_without_limit
+from crawl import request_without_limit
 
 
 def fetch_html(link: str) -> str:
@@ -12,7 +12,6 @@ def fetch_html(link: str) -> str:
 	return response.text
 
 
-@register_handler
 class JavdbHandler:
     """JavDB视频URL处理器，实现VideoUrlHandler Protocol"""
 

@@ -5,12 +5,11 @@ from typing import Dict, Optional, Any
 
 from bs4 import BeautifulSoup
 
-from crawl import register_downloader, AuthError, VipError, ParseError
+from crawl import AuthError, VipError, ParseError
 
 from .html_client import fetch_javdb_html
 
 
-@register_downloader
 class JavdbDownloader:
     """JavDB下载器，实现Downloader Protocol"""
 

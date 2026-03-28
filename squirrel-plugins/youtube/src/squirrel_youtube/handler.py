@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from crawl import VideoUrlHandler, register_handler, get_mpd_registry
+from crawl import VideoUrlHandler
 from .mpd import _extract_video_info, _proxy, _format_to_rep
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,6 @@ def _codec_label(rep: dict) -> str | None:
     return codec_family.upper() if codec_family else None
 
 
-@register_handler
 class YouTubeHandler:
     """YouTube视频URL处理器，实现VideoUrlHandler Protocol"""
     
@@ -63,12 +62,6 @@ class YouTubeHandler:
         raise RuntimeError("未能获取到可用的 DASH、HLS 或 MP4 播放链接")
 
     def _build_mpd_payload(self, video: Any, info: dict) -> dict | None:
-        mpd_registry = get_mpd_registry()
-        builder_cls = mpd_registry.get(self.domain)
-        if not builder_cls:
-            logger.warning("MPD builder not registered for domain %s", self.domain)
-            return None
-
         kept_by_itag: dict[str, dict] = {}
         for fmt in info.get('formats') or []:
             rep = _format_to_rep(fmt)

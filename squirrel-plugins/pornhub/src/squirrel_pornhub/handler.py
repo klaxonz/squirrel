@@ -5,10 +5,9 @@ from urllib.parse import quote
 
 import phub
 
-from crawl import VideoUrlHandler, register_handler
+from crawl import VideoUrlHandler
 
 
-@register_handler
 class PornhubHandler:
     """Pornhub视频URL处理器，实现VideoUrlHandler Protocol"""
     

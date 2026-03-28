@@ -42,21 +42,15 @@ def test_javdb_handler_builds_proxy_url_with_upstream_referer():
 
 
 def test_javdb_proxy_builds_upstream_headers_from_referer(monkeypatch):
-    class FakeProvider:
-        @classmethod
-        def get_site_headers(cls):
-            return {
-                'User-Agent': 'Base UA',
-                'Referer': 'https://javdb.com/',
-            }
-
-    class FakeRegistry:
-        def get(self, domain):
-            assert domain == 'javdb.com'
-            return FakeProvider
-
-    monkeypatch.setattr(javdb_proxy_module, 'get_proxy_config_registry', lambda: FakeRegistry())
-    monkeypatch.setattr(javdb_proxy_module, 'get_http_headers', lambda slug, base: dict(base or {}))
+    monkeypatch.setattr(
+        javdb_proxy_module,
+        'get_http_headers',
+        lambda slug, base: {
+            **dict(base or {}),
+            'User-Agent': 'Base UA',
+            'Referer': 'https://javdb.com/',
+        },
+    )
 
     proxy = JavdbProxy()
     proxy._request = SimpleNamespace(headers={})

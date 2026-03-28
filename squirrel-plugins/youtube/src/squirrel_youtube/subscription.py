@@ -7,12 +7,11 @@ from typing import List, Optional
 from pytubefix import Channel as YouTubeChannel
 from pytubefix import Playlist as YouTubePlaylist
 
-from crawl import register_subscription, SubscriptionMeta, SubscriptionSyncContext, SubscriptionSyncResult
+from crawl import SubscriptionMeta, SubscriptionSyncContext, SubscriptionSyncResult
 
 logger = logging.getLogger(__name__)
 
 
-@register_subscription("youtube", ["youtube.com", "youtu.be"])
 class YoutubeSubscription:
     def __init__(self, url: str) -> None:
         self.url = url

@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from crawl import Downloader, register_downloader
+from crawl import Downloader
 from .sign import fetch_video_info, build_base_info
 
 
-@register_downloader
 class BilibiliDownloader:
     """Bilibili下载器，实现Downloader Protocol"""
     

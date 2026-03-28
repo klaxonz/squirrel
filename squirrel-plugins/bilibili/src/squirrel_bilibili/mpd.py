@@ -3,11 +3,9 @@ from __future__ import annotations
 from urllib.parse import quote
 from xml.etree import ElementTree as ET
 
-from crawl import register_mpd
 from .handler import get_dash_data, _base_url
 
 
-@register_mpd
 class BilibiliMpdBuilder:
     """Bilibili MPD构建器，实现MpdBuilder Protocol"""
     

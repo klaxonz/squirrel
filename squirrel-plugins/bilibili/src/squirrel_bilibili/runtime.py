@@ -5,6 +5,8 @@ from typing import Any, Dict
 
 from crawl import (
     ExtractionResult,
+    get_http_headers,
+    get_proxy_config,
     PluginCapability,
     PluginHealthStatus,
     PluginManifest,
@@ -57,6 +59,24 @@ PLUGIN_MANIFEST = PluginManifest(
             response_schema={'type': 'object'},
             timeout_ms=30000,
         ),
+        PluginCapability(
+            name='fetch_subtitles',
+            description='Fetch subtitles for a Bilibili video.',
+            response_schema={'type': 'object'},
+            timeout_ms=30000,
+        ),
+        PluginCapability(
+            name='build_mpd',
+            description='Build an MPD document for a Bilibili video.',
+            response_schema={'type': 'object'},
+            timeout_ms=30000,
+        ),
+        PluginCapability(
+            name='resolve_proxy_config',
+            description='Resolve proxy headers and transport settings for Bilibili streams.',
+            response_schema={'type': 'object'},
+            timeout_ms=15000,
+        ),
     ],
     sites=[
         PluginSiteManifest(
@@ -70,6 +90,9 @@ PLUGIN_MANIFEST = PluginManifest(
                 'sync_subscription',
                 'extract_video',
                 'resolve_playback',
+                'fetch_subtitles',
+                'build_mpd',
+                'resolve_proxy_config',
             ],
         )
     ],
@@ -175,6 +198,73 @@ def _resolve_playback(payload: Dict[str, Any]) -> Dict[str, Any]:
     return handler.get_video_url(SimpleNamespace(id=video_id, url=url, title=payload.get('title')))
 
 
+def _fetch_subtitles(payload: Dict[str, Any]) -> Dict[str, Any]:
+    from .subtitles import BilibiliSubtitlesProvider
+
+    url = str(payload.get('url') or '').strip()
+    lang = str(payload.get('lang') or 'ai-zh').strip() or 'ai-zh'
+    fmt = str(payload.get('fmt') or 'srt').strip() or 'srt'
+    if not url:
+        raise ValueError('Missing video url')
+
+    provider = BilibiliSubtitlesProvider()
+    content, filename = provider.get_subtitles(
+        SimpleNamespace(id=payload.get('video_id'), url=url),
+        lang,
+        fmt,
+    )
+    return {
+        'content': content,
+        'filename': filename,
+        'media_type': 'text/plain; charset=utf-8',
+    }
+
+
+def _build_mpd(payload: Dict[str, Any]) -> Dict[str, Any]:
+    from .mpd import BilibiliMpdBuilder
+
+    url = str(payload.get('url') or '').strip()
+    if not url:
+        raise ValueError('Missing video url')
+
+    builder = BilibiliMpdBuilder()
+    content = builder.build_mpd(SimpleNamespace(id=payload.get('video_id'), url=url))
+    return {
+        'content': content,
+        'media_type': 'application/dash+xml',
+    }
+
+
+def _resolve_proxy_config(payload: Dict[str, Any]) -> Dict[str, Any]:
+    config = {
+        'connect_timeout': 30.0,
+        'read_timeout': 120.0,
+        'max_retries': 5,
+        'chunk_size': 2 * 1024 * 1024,
+        'max_connections': 50,
+        'keepalive_expiry': 30.0,
+        'enable_http2': True,
+    }
+    config.update(get_proxy_config('bilibili'))
+
+    return {
+        'site_headers': get_http_headers('bilibili', {
+            'Referer': 'https://www.bilibili.com',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+        }),
+        'domain_configs': [{
+            'domain': str(payload.get('domain') or 'bilibili.com').strip().lower() or 'bilibili.com',
+            'connect_timeout': float(config['connect_timeout']),
+            'read_timeout': float(config['read_timeout']),
+            'max_retries': int(config['max_retries']),
+            'chunk_size': int(config['chunk_size']),
+            'max_connections': int(config['max_connections']),
+            'keepalive_expiry': float(config['keepalive_expiry']),
+            'enable_http2': bool(config['enable_http2']),
+        }],
+    }
+
+
 def _health_check() -> PluginHealthStatus:
     return PluginHealthStatus(
         healthy=True,
@@ -193,6 +283,9 @@ def get_plugin_runtime():
             'sync_subscription': _sync_subscription,
             'extract_video': _extract_video,
             'resolve_playback': _resolve_playback,
+            'fetch_subtitles': _fetch_subtitles,
+            'build_mpd': _build_mpd,
+            'resolve_proxy_config': _resolve_proxy_config,
         },
         health_check=_health_check,
     )

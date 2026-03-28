@@ -5,7 +5,6 @@ import re
 
 from crawl import (
     LoginStatusResult,
-    register_login_checker,
     get_login_config,
 )
 
@@ -17,7 +16,6 @@ _CHECK_URL = "https://javdb.com/users/collection_actors"
 _LOGIN_REDIRECT = re.compile(r"/(users/)?(sign_in|login)")
 
 
-@register_login_checker("javdb")
 def check_javdb_login_status() -> LoginStatusResult:
     site_name = "javdb"
     login_config = get_login_config(site_name)

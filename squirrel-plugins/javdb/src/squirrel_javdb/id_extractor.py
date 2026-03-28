@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from crawl import IdExtractor, register_id_extractor
+from crawl import IdExtractor
 
 
-@register_id_extractor
 class JavdbIdExtractor(IdExtractor):
     domain = 'javdb.com'
 

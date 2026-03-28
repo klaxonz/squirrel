@@ -52,6 +52,10 @@ from the manifest and only routes requests through explicit capabilities such as
 - `import_subscriptions`
 - `resolve_subscription`
 - `check_login_status`
+- `fetch_subtitles`
+- `build_mpd`
+- `resolve_proxy_config`
+- `rewrite_proxy_playlist`
 
 Legacy in-process SDK registries remain only as a compatibility layer for code that
 has not yet been migrated. New backend integrations should not use host-side

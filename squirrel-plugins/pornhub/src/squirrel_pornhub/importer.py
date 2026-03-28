@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 
 from crawl import (
     SubscriptionImportItem,
-    register_user_subscription_importer,
     filter_cookies_to_query_string,
     request_without_limit,
     get_http_headers,
@@ -17,7 +16,6 @@ logger = logging.getLogger(__name__)
 SITE_SLUG = 'pornhub'
 
 
-@register_user_subscription_importer("pornhub")
 class PornhubUserSubscriptionImporter:
     """
     从 Pornhub 导入用户的订阅列表

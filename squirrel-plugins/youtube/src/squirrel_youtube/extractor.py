@@ -8,7 +8,6 @@ from yt_dlp import YoutubeDL
 
 from crawl import (
     YoutubeDLExtractorBase,
-    register_extractor,
     apply_ytdlp_rate_limit,
     filter_cookies_to_query_string,
     resolve_cookie_file_path,
@@ -22,7 +21,6 @@ logger = logging.getLogger(__name__)
 YOUTUBE_PLAYER_CLIENT = 'android'
 
 
-@register_extractor('youtube', ['youtube.com', 'youtu.be'])
 class YoutubeExtractor(YoutubeDLExtractorBase):
     """YouTube视频提取器"""
 

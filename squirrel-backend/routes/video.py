@@ -14,13 +14,18 @@ from services.site_catalog_service import save_sites
 from typing import List
 from utils.site_catalog import SiteCatalog
 from core.site_config_manager import get_effective_site_catalog
-from crawl import DownloaderFactory, get_proxy_registry, get_subtitles_registry, get_mpd_registry
+from crawl import DownloaderFactory
+from plugins.manager import get_plugin_manager
 from utils.jwt_helper import get_current_user
-from utils.url_helper import extract_top_level_domain
+from utils.url_helper import normalize_domain
 
 logger = logging.getLogger()
 
 router = APIRouter(tags=['频道视频接口'])
+
+
+def _video_domain(url: str) -> str:
+    return normalize_domain(url) or ''
 
 
 @router.get("/api/video/url")
@@ -183,21 +188,7 @@ async def proxy_video(domain: str, url: str, request: Request, referer: str | No
     """代理视频文件，用于解决跨域问题"""
     from core.streaming.proxy import VideoProxy
 
-    proxy_registry = get_proxy_registry()
-    proxy_key = proxy_registry.get_by_domain(domain)
-    if proxy_key:
-        proxy_cls = proxy_registry.get(proxy_key)
-        if proxy_cls and isinstance(proxy_cls, type):
-            # 尝试用 request 参数实例化，如果失败则不带参数实例化
-            try:
-                proxy = proxy_cls(request)
-            except TypeError:
-                proxy = proxy_cls()
-                proxy._request = request
-        else:
-            proxy = VideoProxy(request, domain=domain)
-    else:
-        proxy = VideoProxy(request, domain=domain)
+    proxy = VideoProxy(request, domain=domain)
     return await proxy.handle_stream(url, referer=referer)
 
 
@@ -215,23 +206,34 @@ def get_video_subtitles(
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
 
+    domain = _video_domain(video.url)
     try:
-        subtitles_registry = get_subtitles_registry()
-        subtitles_key = subtitles_registry.get_by_domain(extract_top_level_domain(video.url))
-        if not subtitles_key:
+        result = get_plugin_manager().gateway.invoke(
+            'fetch_subtitles',
+            domain=domain,
+            payload={
+                'video_id': video.id,
+                'url': video.url,
+                'title': getattr(video, 'title', None),
+                'duration': getattr(video, 'duration', None),
+                'lang': lang,
+                'fmt': fmt,
+            },
+        )
+        if not result.ok or not isinstance(result.data, dict):
             raise HTTPException(status_code=400, detail="Subtitles provider not available for this domain")
-        subtitles_provider_cls = subtitles_registry.get(subtitles_key)
-        if not subtitles_provider_cls or not isinstance(subtitles_provider_cls, type):
-            raise HTTPException(status_code=400, detail="Subtitles provider not available for this domain")
-        provider = subtitles_provider_cls()
-        srt_text, filename = provider.get_subtitles(video, lang, fmt)
+        srt_text = str(result.data.get('content') or '')
+        filename = str(result.data.get('filename') or f'{video.id}.{lang}.srt')
+        media_type = str(result.data.get('media_type') or 'text/plain; charset=utf-8')
         return PlainTextResponse(
             content=srt_text,
-            media_type="text/plain; charset=utf-8",
+            media_type=media_type,
             headers={
                 "Content-Disposition": f"inline; filename=\"{filename}\""
             }
         )
+    except HTTPException:
+        raise
     except ValueError as e:
         detail = str(e)
         if 'No subtitles available' in detail:
@@ -256,25 +258,33 @@ def get_video_mpd(
     if video is None:
         raise HTTPException(status_code=404, detail="Video not found")
 
+    domain = _video_domain(video.url)
     try:
-        mpd_registry = get_mpd_registry()
-        mpd_key = mpd_registry.get_by_domain(extract_top_level_domain(video.url))
-        if not mpd_key:
+        result = get_plugin_manager().gateway.invoke(
+            'build_mpd',
+            domain=domain,
+            payload={
+                'video_id': video.id,
+                'url': video.url,
+                'title': getattr(video, 'title', None),
+                'duration': getattr(video, 'duration', None),
+            },
+        )
+        if not result.ok or not isinstance(result.data, dict):
             raise HTTPException(status_code=400, detail="MPD builder not available for this domain")
-        mpd_builder_cls = mpd_registry.get(mpd_key)
-        if not mpd_builder_cls or not isinstance(mpd_builder_cls, type):
-            raise HTTPException(status_code=400, detail="MPD builder not available for this domain")
-        mpd_xml = mpd_builder_cls().build_mpd(video)
+        mpd_xml = str(result.data.get('content') or '')
         if not mpd_xml:
             raise HTTPException(status_code=500, detail="Failed to build MPD")
         return Response(
             content=mpd_xml,
-            media_type="application/dash+xml",
+            media_type=str(result.data.get('media_type') or 'application/dash+xml'),
             headers={
                 "Cache-Control": "no-store, max-age=0",
                 "Pragma": "no-cache"
             }
         )
+    except HTTPException:
+        raise
     except ValueError as e:
         # 未注册对应站点的 MPD 构建器
         raise HTTPException(status_code=400, detail=str(e))

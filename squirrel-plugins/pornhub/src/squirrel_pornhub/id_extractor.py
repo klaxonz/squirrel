@@ -1,7 +1,6 @@
-from crawl import RegexIdExtractor, register_id_extractor
+from crawl import RegexIdExtractor
 
 
-@register_id_extractor
 class PornhubIdExtractor(RegexIdExtractor):
     domain = 'pornhub.com'
     pattern = r"viewkey=([^&]+)"

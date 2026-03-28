@@ -15,7 +15,7 @@ from core.exceptions.proxy_exceptions import (
     ProxyConfigurationException,
     UnsupportedDomainException,
 )
-from crawl import get_proxy_config_registry
+from plugins.manager import get_plugin_manager
 
 logger = logging.getLogger()
 
@@ -108,20 +108,13 @@ class ConnectionManager:
         self._locks: Dict[str, asyncio.Lock] = {}
         self._main_lock = asyncio.Lock()
 
-    def _extract_domain_config(self, provider_cls: Any, domain: str) -> Optional[Any]:
-        configs = provider_cls.get_domain_configs() or []
-        for config in configs:
-            if getattr(config, "domain", None) == domain:
-                return config
-        return None
-
-    def _build_client_config(self, domain_config: Optional[Any]) -> Dict[str, Any]:
+    def _build_client_config(self, domain_config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         if domain_config:
-            connect_timeout = getattr(domain_config, "connect_timeout", 10.0)
-            read_timeout = getattr(domain_config, "read_timeout", 120.0)
-            max_connections = getattr(domain_config, "max_connections", 50)
-            keepalive_expiry = getattr(domain_config, "keepalive_expiry", 30.0)
-            enable_http2 = getattr(domain_config, "enable_http2", True)
+            connect_timeout = float(domain_config.get("connect_timeout", 10.0))
+            read_timeout = float(domain_config.get("read_timeout", 120.0))
+            max_connections = int(domain_config.get("max_connections", 50))
+            keepalive_expiry = float(domain_config.get("keepalive_expiry", 30.0))
+            enable_http2 = bool(domain_config.get("enable_http2", True))
         else:
             connect_timeout = 10.0
             read_timeout = 120.0
@@ -144,7 +137,7 @@ class ConnectionManager:
             "follow_redirects": True,
         }
 
-    async def get_client(self, domain: str, provider_cls: Any) -> httpx.AsyncClient:
+    async def get_client(self, domain: str, domain_config: Optional[Dict[str, Any]]) -> httpx.AsyncClient:
         if domain in self._clients:
             return self._clients[domain]
 
@@ -157,7 +150,6 @@ class ConnectionManager:
                 return self._clients[domain]
 
             try:
-                domain_config = self._extract_domain_config(provider_cls, domain)
                 client_config = self._build_client_config(domain_config)
                 self._clients[domain] = httpx.AsyncClient(**client_config)
                 logger.info(f"Created new HTTP client for domain: {domain}")
@@ -260,14 +252,59 @@ class VideoProxy:
         self.domain = domain or self.domain or self._extract_domain_from_request(request)
         if not self.domain:
             raise UnsupportedDomainException("unknown")
-
-        provider_cls = get_proxy_config_registry().get(self.domain)
-        if not provider_cls:
-            raise ProxyConfigurationException(self.domain, "no proxy config provider")
-        self.provider_cls = provider_cls
+        self.site_headers, self.domain_config = self._load_runtime_proxy_config()
 
     def _extract_domain_from_request(self, request: Request) -> Optional[str]:
         return None
+
+    def _load_runtime_proxy_config(self) -> tuple[Dict[str, str], Optional[Dict[str, Any]]]:
+        response = get_plugin_manager().gateway.invoke(
+            'resolve_proxy_config',
+            domain=self.domain,
+            payload={'domain': self.domain},
+        )
+        if not response.ok or not isinstance(response.data, dict):
+            raise ProxyConfigurationException(self.domain, 'no runtime proxy config provider')
+
+        payload = dict(response.data)
+        domain_configs = payload.get('domain_configs') or []
+        domain_config = None
+        for item in domain_configs:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get('domain', '')).lower() == self.domain:
+                domain_config = dict(item)
+                break
+
+        return dict(payload.get('site_headers') or {}), domain_config
+
+    def _build_runtime_headers(self, referer: Optional[str] = None) -> Dict[str, str]:
+        custom_headers: Dict[str, str] = {}
+        if referer:
+            custom_headers['Referer'] = referer
+            parsed = urlparse(referer)
+            if parsed.scheme and parsed.netloc:
+                custom_headers['Origin'] = f'{parsed.scheme}://{parsed.netloc}'
+        return HeaderBuilder.build_headers(self.request, self.site_headers, custom_headers)
+
+    def _rewrite_playlist(self, url: str, content: bytes, referer: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        manager = get_plugin_manager()
+        route = manager.gateway.resolve_route('rewrite_proxy_playlist', domain=self.domain)
+        if route is None:
+            return None
+
+        response = manager.gateway.invoke(
+            'rewrite_proxy_playlist',
+            domain=self.domain,
+            payload={
+                'url': url,
+                'content': content.decode('utf-8', errors='ignore'),
+                'referer': referer,
+            },
+        )
+        if not response.ok or not isinstance(response.data, dict):
+            return None
+        return dict(response.data)
 
     async def _stream_response(self, response: httpx.Response, chunk_size: int) -> AsyncIterator[bytes]:
         try:
@@ -280,7 +317,7 @@ class VideoProxy:
 
     @asynccontextmanager
     async def _get_http_client(self):
-        client = await self._connection_manager.get_client(self.domain, self.provider_cls)
+        client = await self._connection_manager.get_client(self.domain, self.domain_config)
         try:
             yield client
         except Exception as e:
@@ -301,12 +338,26 @@ class VideoProxy:
 
             retry_strategy = RetryStrategy(max_retries=proxy_request.max_retries)
             requester = HttpRequester(self.domain, retry_strategy)
-
-            site_headers = self.provider_cls.get_site_headers()
-            headers = HeaderBuilder.build_headers(self.request, site_headers, proxy_request.headers)
+            referer = kwargs.get('referer')
+            headers = self._build_runtime_headers(referer)
+            if proxy_request.headers:
+                headers.update(proxy_request.headers)
 
             async with self._get_http_client() as client:
                 response = await requester.execute_request(client, proxy_request, headers)
+                content_type = response.headers.get('content-type', '')
+                path_lower = urlparse(url).path.lower()
+                if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
+                    rewritten = self._rewrite_playlist(url, response.content, referer=referer)
+                    if rewritten is not None:
+                        body = str(rewritten.get('content') or '').encode('utf-8')
+                        return StreamingResponse(
+                            iter([body]),
+                            status_code=response.status_code,
+                            headers=dict(rewritten.get('headers') or {}),
+                            media_type=str(rewritten.get('media_type') or content_type or 'application/vnd.apple.mpegurl'),
+                        )
+
                 response_headers = ResponseBuilder.build_response_headers(response)
                 stream = self._stream_response(response, proxy_request.chunk_size)
 
@@ -314,7 +365,7 @@ class VideoProxy:
                     stream,
                     status_code=response.status_code,
                     headers=response_headers,
-                    media_type=response.headers.get('content-type', 'application/octet-stream'),
+                    media_type=content_type or 'application/octet-stream',
                 )
 
         except ProxyException:

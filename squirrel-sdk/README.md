@@ -76,7 +76,7 @@ def get_plugin_runtime():
     )
     return create_plugin_runtime(
         manifest=manifest,
-        handlers={'extract_video': _extract_video},
+        capability_handlers={'extract_video': _extract_video},
     )
 ```
 
@@ -101,6 +101,7 @@ The following APIs are legacy-only and should not be used for new plugins:
 - `get_extractor_registry()` and other `get_*_registry()` helpers
 
 They are kept only to avoid breaking older in-process plugin modules during migration.
+They are intentionally de-emphasized from the primary export surface.
 
 ## Requirements
 

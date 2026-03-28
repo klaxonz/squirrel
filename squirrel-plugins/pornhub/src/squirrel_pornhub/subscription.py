@@ -7,7 +7,6 @@ from urllib.parse import urlparse, urlunparse
 from bs4 import BeautifulSoup
 
 from crawl import (
-    register_subscription,
     SubscriptionMeta,
     SubscriptionSyncContext,
     SubscriptionSyncResult,
@@ -16,7 +15,6 @@ from crawl import (
 )
 
 
-@register_subscription("pornhub", ["pornhub.com"])
 class PornhubSubscription:
     def __init__(self, url: str) -> None:
         parsed = urlparse(url)

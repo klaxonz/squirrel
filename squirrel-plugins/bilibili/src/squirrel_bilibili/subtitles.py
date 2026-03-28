@@ -8,10 +8,9 @@ from typing import Tuple
 
 from yt_dlp import YoutubeDL
 
-from crawl import register_subtitles, SubtitlesProvider
+from crawl import SubtitlesProvider
 
 
-@register_subtitles
 class BilibiliSubtitlesProvider:
     """Bilibili字幕提供者，实现SubtitlesProvider Protocol"""
     

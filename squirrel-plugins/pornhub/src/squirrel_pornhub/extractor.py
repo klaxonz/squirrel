@@ -9,12 +9,10 @@ from yt_dlp import YoutubeDL
 
 from crawl import (
     YoutubeDLExtractorBase,
-    register_extractor,
     apply_ytdlp_rate_limit,
     filter_cookies_to_query_string,
     resolve_cookie_file_path,
     get_http_headers,
-    get_proxy_config_registry,
     AuthError,
     NetworkError,
     NotFoundError,
@@ -33,7 +31,6 @@ AGE_GATE_COOKIES = {
 }
 
 
-@register_extractor('pornhub', ['pornhub.com'])
 class PornhubExtractor(YoutubeDLExtractorBase):
     """Pornhub视频提取器"""
 
@@ -107,10 +104,11 @@ class PornhubExtractor(YoutubeDLExtractorBase):
             logger.warning(f"处理Pornhub特定信息失败: {e}")
 
     def _build_ytdlp_headers(self, url: str, cookie_file: Optional[str]) -> Dict[str, str]:
-        proxy_config_registry = get_proxy_config_registry()
-        provider_cls = proxy_config_registry.get(SITE_DOMAIN)
-        base_headers = provider_cls.get_site_headers() if provider_cls else {}
-        headers = get_http_headers(self.site_name, base_headers)
+        headers = get_http_headers(self.site_name, {
+            'User-Agent': DEFAULT_USER_AGENT,
+            'Referer': f'{SITE_URL}/',
+            'Accept-Language': 'en-US,en;q=0.9',
+        })
         headers.setdefault('User-Agent', DEFAULT_USER_AGENT)
         headers.setdefault('Accept-Language', 'en-US,en;q=0.9')
         headers.setdefault('Origin', SITE_URL)

@@ -83,6 +83,10 @@ Depending on the site, implement one or more of these runtime V2 capability hand
 - `import_subscriptions`
 - `resolve_subscription`
 - `check_login_status`
+- `fetch_subtitles`
+- `build_mpd`
+- `resolve_proxy_config`
+- `rewrite_proxy_playlist`
 
 Legacy registry decorators such as `register_extractor()` and `register_subscription()`
 still exist only for compatibility with older plugin modules. Do not use them for new

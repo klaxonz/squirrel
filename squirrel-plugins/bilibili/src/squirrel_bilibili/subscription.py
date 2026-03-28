@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
-from crawl import register_subscription, SubscriptionMeta, SubscriptionSyncContext, SubscriptionSyncResult
+from crawl import SubscriptionMeta, SubscriptionSyncContext, SubscriptionSyncResult
 
 from .sign import (
     build_cookies,
@@ -21,7 +21,6 @@ from .sign import (
 logger = logging.getLogger(__name__)
 
 
-@register_subscription("bilibili", ["bilibili.com"])
 class BilibiliSubscription:
     def __init__(self, url: str) -> None:
         self.url = url

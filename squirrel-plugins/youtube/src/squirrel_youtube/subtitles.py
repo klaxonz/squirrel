@@ -8,12 +8,11 @@ from typing import Tuple
 
 from yt_dlp import YoutubeDL
 
-from crawl import SubtitlesProvider, register_subtitles
+from crawl import SubtitlesProvider
 
 YOUTUBE_PLAYER_CLIENT = 'android'
 
 
-@register_subtitles
 class YoutubeSubtitlesProvider:
     """YouTube字幕提供者，实现SubtitlesProvider Protocol"""
     

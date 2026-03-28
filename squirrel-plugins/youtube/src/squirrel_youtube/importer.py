@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 
 from crawl import (
     SubscriptionImportItem,
-    register_user_subscription_importer,
     filter_cookies_to_query_string,
     request_without_limit,
     get_http_headers,
@@ -19,7 +18,6 @@ from crawl import (
 logger = logging.getLogger(__name__)
 
 
-@register_user_subscription_importer("youtube")
 class YoutubeUserSubscriptionImporter:
     """
     从 YouTube 导入用户的订阅列表

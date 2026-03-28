@@ -3,7 +3,6 @@ from typing import Optional, Dict, Any
 
 from crawl import (
     VideoExtractorBase,
-    register_extractor,
     AuthError,
     NetworkError,
     NotFoundError,
@@ -14,7 +13,6 @@ from .sign import fetch_video_info, build_base_info
 logger = logging.getLogger(__name__)
 
 
-@register_extractor('bilibili', ['bilibili.com', 'b23.tv'])
 class BilibiliExtractor(VideoExtractorBase):
     """Bilibili video extractor."""
 

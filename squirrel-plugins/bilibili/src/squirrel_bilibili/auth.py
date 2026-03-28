@@ -5,7 +5,6 @@ import logging
 from crawl import (
     LoginStatusResult,
     filter_cookies_to_query_string,
-    register_login_checker,
     request_without_limit,
     get_login_config,
     get_login_headers,
@@ -21,7 +20,6 @@ _HEADERS = {
 }
 
 
-@register_login_checker("bilibili")
 def check_bilibili_login_status() -> LoginStatusResult:
     site_name = "bilibili"
     login_config = get_login_config(site_name)

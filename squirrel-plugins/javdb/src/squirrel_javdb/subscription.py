@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 from crawl import (
-    register_subscription,
     SubscriptionMeta,
     SubscriptionSyncContext,
     SubscriptionSyncResult,
@@ -16,7 +15,6 @@ from crawl import (
 from .html_client import fetch_javdb_html
 
 
-@register_subscription("javdb", ["javdb.com"])
 class JavdbSubscription:
     def __init__(self, url: str) -> None:
         self.url = url
