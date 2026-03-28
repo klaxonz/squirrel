@@ -29,6 +29,12 @@ logs
 *.so
 *.dylib
 .pycache/
+__pycache__/
+**/__pycache__/
+runtime-logs/
+**/runtime-logs/
+runtime-audit/
+**/runtime-audit/
 
 # Test related
 *.test
