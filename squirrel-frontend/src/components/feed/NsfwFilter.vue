@@ -1,14 +1,12 @@
 <template>
   <ToolbarSelect
     :model-value="modelValue"
-    :open="open"
     label="敏感内容"
     :current-label="currentLabel"
     :options="nsfwOptions"
     :icon="ShieldCheckIcon"
     min-width="7.5rem"
     @update:model-value="handleValueChange"
-    @update:open="(value) => emit('update:open', value)"
   />
 </template>
 
@@ -22,13 +20,9 @@ const props = defineProps({
     type: String,
     required: true,
   },
-  open: {
-    type: Boolean,
-    default: false,
-  },
 })
 
-const emit = defineEmits(['update:modelValue', 'update:open'])
+const emit = defineEmits(['update:modelValue'])
 
 const nsfwOptions = [
   { value: 'all', label: '全部' },

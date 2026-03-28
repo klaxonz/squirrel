@@ -1,16 +1,23 @@
 <template>
-  <div ref="rootRef" class="search-minimal">
-    <span class="search-index">00</span>
+  <div ref="rootRef" class="search-terminal-box">
+    <div class="search-prefix">
+      <span class="prefix-symbol">></span>
+      <span class="prefix-index">00</span>
+    </div>
     <input
       v-model="inputValue"
       type="text"
       :placeholder="placeholder"
-      class="search-input"
+      class="search-input-minimal"
       @keyup.enter="handleSearch"
       @keyup.esc="clearSearch"
       @input="handleInput"
     />
-    <div class="search-line"></div>
+    <div class="search-suffix">
+      <span v-if="inputValue" class="char-count">{{ inputValue.length }}CH</span>
+      <span class="cmd-hint">/</span>
+    </div>
+    <div class="search-border"></div>
   </div>
 </template>
 
@@ -24,7 +31,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'SEARCH /',
+    default: 'EXECUTE_QUERY',
   },
   debounceMs: {
     type: Number,
@@ -90,49 +97,87 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.search-minimal {
+.search-terminal-box {
   position: relative;
-  width: 100%;
   display: flex;
   align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
 }
 
-.search-index {
-  position: absolute;
-  left: -1.5rem;
+.search-terminal-box:focus-within {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 77, 0, 0.3);
+  box-shadow: 0 0 20px rgba(255, 77, 0, 0.05);
+}
+
+.search-prefix {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.75rem;
+  pointer-events: none;
+}
+
+.prefix-symbol {
+  color: #ff4d00;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 0.6rem;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+.prefix-index {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.55rem;
   color: rgba(255, 255, 255, 0.2);
 }
 
-.search-input {
-  width: 100%;
+.search-input-minimal {
+  flex: 1;
   background: transparent;
   border: none;
-  padding: 0.5rem 0;
   color: #fff;
-  font-size: 0.8rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.05em;
   outline: none;
-}
-
-.search-input::placeholder {
-  color: rgba(255, 255, 255, 0.1);
-}
-
-.search-line {
-  position: absolute;
-  bottom: 0;
-  left: 0;
+  padding: 0;
   width: 100%;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.05);
-  transition: all 0.5s ease;
 }
 
-.search-input:focus ~ .search-line {
-  background: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+.search-input-minimal::placeholder {
+  color: rgba(255, 255, 255, 0.1);
+  text-transform: uppercase;
+}
+
+.search-suffix {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: 0.75rem;
+  pointer-events: none;
+}
+
+.char-count {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.5rem;
+  color: #ff4d00;
+  opacity: 0.6;
+}
+
+.cmd-hint {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.search-terminal-box:focus-within .cmd-hint {
+  color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 </style>

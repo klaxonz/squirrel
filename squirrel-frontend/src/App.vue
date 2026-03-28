@@ -41,8 +41,9 @@
             class="content-container absolute inset-0"
             :class="contentScrollClass"
           >
-            <!-- 顶部装饰栏：极简搜索 + 状态 -->
+            <!-- 顶部装饰栏：极简搜索（居中） + 状态 -->
             <div v-if="showGlobalSearch" class="minimal-header">
+              <div class="header-left-spacer"></div>
               <GlobalSearchBar
                 ref="globalSearchBar"
                 v-model="searchQuery"
@@ -313,9 +314,19 @@ h6 {
   pointer-events: none;
 }
 
+.header-left-spacer {
+  width: 120px; /* 与右侧系统时间保持视觉平衡，使搜索框居中 */
+  flex-shrink: 0;
+}
+
 .minimal-search {
-  width: 400px;
+  width: 320px;
   pointer-events: auto;
+  transition: width 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.minimal-search:focus-within {
+  width: 480px;
 }
 
 .system-time {

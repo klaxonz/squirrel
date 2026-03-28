@@ -46,10 +46,8 @@
 <script setup>
 import { ref, watch } from 'vue'
 import NsfwFilter from './NsfwFilter.vue'
-import RefreshButton from './RefreshButton.vue'
 import SiteFilter from './SiteFilter.vue'
 import SortButton from './SortButton.vue'
-import TabBar from './TabBar.vue'
 
 const props = defineProps({
   activeTab: { type: String, default: 'all' },
@@ -79,7 +77,6 @@ const localActiveTab = ref(props.activeTab)
 const localNsfw = ref(props.nsfw)
 const localSortBy = ref(props.sortBy)
 const localSite = ref(props.site)
-const openSelectKey = ref('')
 
 watch(() => props.activeTab, (value) => localActiveTab.value = value)
 watch(() => props.nsfw, (value) => localNsfw.value = value)
@@ -90,10 +87,6 @@ watch(localActiveTab, (value) => emit('update:activeTab', value))
 watch(localNsfw, (value) => emit('update:nsfw', value))
 watch(localSortBy, (value) => emit('update:sortBy', value))
 watch(localSite, (value) => emit('update:site', value))
-
-const handleOpenChange = (key, value) => {
-  openSelectKey.value = value ? key : (openSelectKey.value === key ? '' : openSelectKey.value)
-}
 </script>
 
 <style scoped>
