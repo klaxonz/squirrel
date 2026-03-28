@@ -152,6 +152,7 @@ watch(() => props.subscriptionId, () => {
   background: #000;
   border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 4px;
+  border-radius: 8px; /* 频道页大头像圆角 */
 }
 
 .channel-avatar-minimal {
@@ -159,6 +160,7 @@ watch(() => props.subscriptionId, () => {
   height: 100%;
   object-fit: cover;
   filter: grayscale(0.5);
+  border-radius: 4px;
 }
 
 .avatar-scan {
