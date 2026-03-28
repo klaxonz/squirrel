@@ -67,7 +67,7 @@ const zhCN: LocaleConfig = {
     
     // 自动播放
     autoplay: '自动播放',
-    autoplayNext: '自动播放下一个',
+    autoplayNext: '自动播放',
     
     // 加载状态
     loading: '加载中...',
