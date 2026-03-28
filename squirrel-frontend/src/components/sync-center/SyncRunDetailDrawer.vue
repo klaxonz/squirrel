@@ -1,110 +1,88 @@
 <template>
   <Sheet :open="open && !!run" @update:open="handleSheetToggle">
-    <SheetContent side="right" class="w-full max-w-3xl bg-background p-0">
-      <div v-if="run" class="flex h-full flex-col">
-        <div class="border-b border-border px-6 py-5">
-          <div class="flex items-start justify-between gap-4">
-            <div class="flex min-w-0 items-start gap-3">
-              <router-link :to="getSubscriptionLink(run.subscription_id)" class="shrink-0">
-                <img
-                  :src="getAvatarSrc(run.subscription_avatar, `run-drawer-${run.run_id}`)"
-                  :alt="run.subscription_name"
-                  class="h-12 w-12 rounded-full object-cover bg-card ring-1 ring-border"
-                  referrerpolicy="no-referrer"
-                  @error="(e) => handleAvatarError(e, `run-drawer-${run?.run_id || 'unknown'}`)"
-                >
-              </router-link>
-
-              <div class="min-w-0">
-                <router-link
-                  :to="getSubscriptionLink(run.subscription_id)"
-                  class="text-lg font-semibold leading-7 text-foreground break-words hover:text-primary"
-                >
+    <SheetContent side="right" class="w-full max-w-2xl border-l border-border/40 bg-background p-0 shadow-2xl">
+      <div v-if="run" class="flex h-full flex-col overflow-hidden">
+        <!-- Drawer Header -->
+        <div class="px-8 pt-10 pb-6">
+          <div class="flex items-start justify-between gap-6">
+            <div class="flex min-w-0 items-center gap-4">
+              <img
+                :src="getAvatarSrc(run.subscription_avatar, `run-drawer-${run.run_id}`)"
+                :alt="run.subscription_name"
+                class="h-14 w-14 rounded-xl object-cover ring-1 ring-border/40 shadow-sm"
+                referrerpolicy="no-referrer"
+                @error="(e) => handleAvatarError(e, `run-drawer-${run?.run_id || 'unknown'}`)"
+              >
+              <div class="min-w-0 space-y-1">
+                <h2 class="text-xl font-bold tracking-tight text-foreground/90 truncate max-w-[18rem]">
                   {{ run.subscription_name }}
-                </router-link>
-
-                <div class="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge :variant="getBadgeVariant(run.status)" class="rounded-md px-2 py-0.5">{{ getStatusLabel(run.status) }}</Badge>
-                  <Badge variant="outline" class="rounded-md px-2 py-0.5">{{ getModeLabel(run.sync_mode) }}</Badge>
-                  <span class="text-2xs text-muted-foreground">{{ run.site || 'unknown' }}</span>
-                  <span class="text-2xs text-muted-foreground">run {{ run.run_id }}</span>
+                </h2>
+                <div class="flex items-center gap-2">
+                  <div :class="[getStatusToneClass(run.status), 'h-2 w-2 rounded-full']"></div>
+                  <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
+                    {{ getStatusLabel(run.status) }} · {{ run.site }}
+                  </span>
                 </div>
               </div>
             </div>
-
-            <div class="flex items-center gap-2">
-              <Button as-child variant="secondary" size="sm">
-                <router-link :to="getSubscriptionLink(run.subscription_id)">打开频道</router-link>
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" class="h-8 rounded-lg text-[11px] font-bold uppercase tracking-wider" as-child>
+              <router-link :to="getSubscriptionLink(run.subscription_id)">Channel</router-link>
+            </Button>
           </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-          <div class="grid grid-cols-2 gap-3">
-            <Card>
-              <CardContent class="p-4">
-                <p class="text-2xs text-muted-foreground">开始时间</p>
-                <p class="mt-2 text-sm text-foreground">{{ run.started_at || '—' }}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent class="p-4">
-                <p class="text-2xs text-muted-foreground">耗时</p>
-                <p class="mt-2 text-sm text-foreground">{{ formatDurationMs(run.duration_ms) }}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent class="p-4">
-                <p class="text-2xs text-muted-foreground">{{ getVideoSummaryLabel(run.sync_mode) }}</p>
-                <p class="mt-2 text-sm text-foreground">{{ run.videos_found }} / {{ run.videos_enqueued }} / {{ run.videos_extracted }}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent class="p-4">
-                <p class="text-2xs text-muted-foreground">本次扫描视频数</p>
-                <p class="mt-2 text-sm text-foreground">{{ formatSourceVideoCount(run.source_video_count) }}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent class="p-4">
-                <p class="text-2xs text-muted-foreground">失败次数</p>
-                <p class="mt-2 text-sm text-foreground">{{ run.failure_count }}</p>
-              </CardContent>
-            </Card>
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto px-8 py-4 space-y-10 selection:bg-primary/10">
+          <!-- Quick Stats -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="rounded-xl border border-border/40 bg-muted/10 p-4 transition-colors hover:bg-muted/20">
+              <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">Duration</p>
+              <p class="mt-2 text-lg font-bold tabular-nums text-foreground/80">{{ formatDurationMs(run.duration_ms) }}</p>
+            </div>
+            <div class="rounded-xl border border-border/40 bg-muted/10 p-4 transition-colors hover:bg-muted/20">
+              <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">Extracted</p>
+              <p class="mt-2 text-lg font-bold tabular-nums text-foreground/80">{{ run.videos_extracted }} items</p>
+            </div>
           </div>
 
-          <Card>
-            <CardContent class="p-4">
-              <div class="space-y-2 text-xs">
-                <div class="flex items-center justify-between gap-4">
-                  <span class="text-muted-foreground">request_id</span>
-                  <span class="text-foreground">{{ run.request_id || '—' }}</span>
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <span class="text-muted-foreground">trace_id</span>
-                  <span class="text-foreground">{{ run.trace_id || '—' }}</span>
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <span class="text-muted-foreground">当前阶段</span>
-                  <span class="text-foreground">{{ run.current_phase || '—' }}</span>
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <span class="text-muted-foreground">最后事件</span>
-                  <span class="text-foreground">{{ run.last_event_at }}</span>
-                </div>
+          <!-- Technical Specs -->
+          <section class="space-y-4">
+            <div class="flex items-center gap-2 px-1">
+              <div class="h-px flex-1 bg-border/40"></div>
+              <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30 whitespace-nowrap">Specifications</span>
+              <div class="h-px flex-1 bg-border/40"></div>
+            </div>
+            <div class="grid grid-cols-1 gap-y-3 px-1">
+              <div class="flex items-center justify-between py-1 border-b border-border/10">
+                <span class="text-[11px] font-semibold text-muted-foreground/50">Run ID</span>
+                <span class="text-[11px] font-mono font-medium text-foreground/70">{{ run.run_id }}</span>
               </div>
-            </CardContent>
-          </Card>
+              <div class="flex items-center justify-between py-1 border-b border-border/10">
+                <span class="text-[11px] font-semibold text-muted-foreground/50">Sync Mode</span>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-foreground/70">{{ run.sync_mode }}</span>
+              </div>
+              <div class="flex items-center justify-between py-1 border-b border-border/10">
+                <span class="text-[11px] font-semibold text-muted-foreground/50">Timestamp</span>
+                <span class="text-[11px] font-medium text-foreground/70 tabular-nums">{{ run.started_at }}</span>
+              </div>
+              <div class="flex items-center justify-between py-1 border-b border-border/10">
+                <span class="text-[11px] font-semibold text-muted-foreground/50">Trace ID</span>
+                <span class="text-[11px] font-mono text-muted-foreground/60">{{ run.trace_id || '—' }}</span>
+              </div>
+            </div>
+          </section>
 
-          <Card>
-            <CardContent class="p-4">
-              <h3 class="mb-3 text-sm font-medium text-foreground">事件时间线</h3>
-              <div v-if="detailLoading" class="text-xs text-muted-foreground">加载事件中...</div>
-              <div v-else-if="detailError" class="text-xs text-destructive">{{ detailError }}</div>
-              <SyncEventTimeline v-else :events="events" />
-            </CardContent>
-          </Card>
+          <!-- Timeline -->
+          <section class="space-y-6 pb-10">
+             <div class="flex items-center justify-between px-1">
+               <h3 class="text-xs font-bold uppercase tracking-[0.15em] text-foreground/80">Event Timeline</h3>
+               <span v-if="detailLoading" class="text-[10px] font-medium text-blue-500 animate-pulse">Streaming...</span>
+             </div>
+             <div v-if="detailError" class="rounded-lg bg-rose-500/10 p-3 text-[11px] text-rose-600 font-medium">
+               {{ detailError }}
+             </div>
+             <SyncEventTimeline v-else :events="events" />
+          </section>
         </div>
       </div>
     </SheetContent>
@@ -116,9 +94,7 @@ import type { SyncRunEvent, SyncRunItem } from '@/composables/useSyncHistory'
 import SyncEventTimeline from '@/components/sync-center/SyncEventTimeline.vue'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 
 const props = defineProps<{
@@ -143,54 +119,24 @@ const handleSheetToggle = (value: boolean) => {
   }
 }
 
-const getBadgeVariant = (status: string) => {
+const getStatusToneClass = (status: string) => {
   switch (status) {
-    case 'success':
-      return 'secondary'
-    case 'failed':
-      return 'destructive'
-    case 'deferred':
-    case 'timeout':
-      return 'outline'
-    case 'running':
-    case 'queued':
-      return 'default'
-    default:
-      return 'outline'
+    case 'success': return 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]'
+    case 'failed': return 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]'
+    case 'running': return 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]'
+    case 'queued': return 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]'
+    default: return 'bg-slate-300'
   }
 }
 
 const getStatusLabel = (status: string) => {
   switch (status) {
-    case 'created':
-      return '已创建'
-    case 'queued':
-      return '排队中'
-    case 'running':
-      return '运行中'
-    case 'success':
-      return '成功'
-    case 'failed':
-      return '失败'
-    case 'deferred':
-      return '已延后'
-    case 'timeout':
-      return '超时'
-    default:
-      return status || '未知'
+    case 'success': return 'Success'
+    case 'failed': return 'Failed'
+    case 'running': return 'Running'
+    case 'queued': return 'Queued'
+    case 'deferred': return 'Deferred'
+    default: return status || 'Unknown'
   }
 }
-
-const getModeLabel = (mode: string) => {
-  return mode === 'incremental' ? '增量' : mode === 'full' ? '全量' : mode || '未知'
-}
-
-const getVideoSummaryLabel = (syncMode: string) => {
-  return syncMode === 'incremental' ? '新增发现 / 入队 / 提取' : '发现 / 入队 / 提取'
-}
-
-const formatSourceVideoCount = (value?: number | null) => {
-  return value == null ? '—' : String(value)
-}
 </script>
-
