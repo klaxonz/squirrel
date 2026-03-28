@@ -103,179 +103,159 @@
       </PageHeader>
     </div>
 
-    <div class="content-container pb-10 flex-1 min-h-0 space-y-6">
-      <div v-if="currentTab === 'plugins'" class="space-y-4">
-        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Card class="plugin-summary-card">
-            <CardContent class="p-4">
-              <p class="plugin-summary-card__label">总插件数</p>
-              <p class="plugin-summary-card__value">{{ pluginSummary.total }}</p>
-            </CardContent>
-          </Card>
-          <Card class="plugin-summary-card plugin-summary-card--accent">
-            <CardContent class="p-4">
-              <p class="plugin-summary-card__label">运行中</p>
-              <p class="plugin-summary-card__value text-success">{{ pluginSummary.running }}</p>
-            </CardContent>
-          </Card>
-          <Card class="plugin-summary-card">
-            <CardContent class="p-4">
-              <p class="plugin-summary-card__label">异常或停用</p>
-              <p class="plugin-summary-card__value text-warning">{{ pluginSummary.attention }}</p>
-            </CardContent>
-          </Card>
+    <div class="content-container pb-10 flex-1 min-h-0 space-y-8">
+      <div v-if="currentTab === 'plugins'" class="space-y-6">
+        <!-- Summary Stats -->
+        <div class="flex flex-wrap items-end justify-between gap-6 py-2 border-b border-border/50">
+          <div class="flex flex-wrap gap-8">
+            <div class="flex flex-col">
+              <span class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">总插件数</span>
+              <span class="text-2xl font-semibold tabular-nums">{{ pluginSummary.total }}</span>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">运行中</span>
+              <span class="text-2xl font-semibold tabular-nums">{{ pluginSummary.running }}</span>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">异常或停用</span>
+              <span class="text-2xl font-semibold text-warning tabular-nums">{{ pluginSummary.attention }}</span>
+            </div>
+          </div>
+          
+          <div class="relative w-full md:w-64">
+            <MagnifyingGlassIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+            <Input 
+              v-model="searchQuery" 
+              placeholder="搜索插件..." 
+              class="pl-9 h-8 text-xs bg-muted/20 border-border/40 focus:bg-background transition-all"
+            />
+          </div>
         </div>
 
-        <div v-if="loading" class="plugin-loading-shell flex items-center justify-center py-20">
+        <div v-if="loading" class="flex items-center justify-center py-20">
           <div class="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground"></div>
         </div>
 
-        <div v-else-if="plugins.length === 0" class="plugin-loading-shell flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <CubeIcon class="w-16 h-16 mb-4 opacity-40" />
+        <div v-else-if="plugins.length === 0" class="flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed border-border rounded-lg">
+          <CubeIcon class="w-12 h-12 mb-4 opacity-20" />
           <p class="text-sm">暂无插件</p>
           <p class="text-xs mt-1">请导入插件 ZIP 包</p>
         </div>
 
-        <div v-else class="plugin-table-shell overflow-hidden">
+        <div v-else class="overflow-hidden">
           <div class="overflow-x-auto">
-            <table class="w-full">
-              <thead class="plugin-table-shell__thead">
-                <tr class="border-b border-border">
-                  <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">名称</th>
-                  <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">版本</th>
-                  <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden lg:table-cell">能力与站点</th>
-                  <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden xl:table-cell">权限</th>
-                  <th class="text-center py-3 px-4 text-sm font-medium text-muted-foreground">运行时</th>
-                  <th class="text-right py-3 px-4 text-sm font-medium text-muted-foreground">操作</th>
+            <table class="w-full border-collapse">
+              <thead>
+                <tr class="border-b border-border text-left">
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">插件信息</th>
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">版本 / 运行时</th>
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 hidden lg:table-cell">能力范围</th>
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 hidden xl:table-cell">安全权限</th>
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 text-center">系统状态</th>
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 text-right">控制</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="divide-y divide-border/40">
                 <tr
                   v-for="plugin in displayPlugins"
                   :key="plugin.plugin_id"
-                  class="plugin-table-shell__row border-b border-border"
+                  class="group hover:bg-muted/20 transition-colors"
                 >
-                  <td class="py-4 px-4">
-                    <div class="space-y-2">
-                      <div class="flex flex-wrap items-center gap-2">
-                        <span class="font-medium">{{ plugin.display_name }}</span>
-                        <span class="plugin-tag plugin-tag--muted">{{ plugin.plugin_id }}</span>
+                  <td class="py-4 px-2">
+                    <div class="flex flex-col">
+                      <div class="flex items-center gap-2 mb-1">
+                        <span class="font-semibold text-sm tracking-tight text-foreground/90">{{ plugin.display_name }}</span>
+                        <code class="text-[9px] px-1.5 py-0.5 bg-muted/60 text-muted-foreground/80 rounded font-mono">{{ plugin.plugin_id }}</code>
                       </div>
-                      <div class="text-xs text-muted-foreground">
+                      <div class="text-[11px] text-muted-foreground line-clamp-1 max-w-md opacity-80">
                         {{ plugin.description || '未提供插件描述' }}
                       </div>
-                      <div class="flex flex-wrap gap-1 lg:hidden">
-                        <span class="plugin-tag plugin-tag--muted">{{ plugin.capabilityCount }} 个能力</span>
-                        <span class="plugin-tag plugin-tag--muted">{{ plugin.siteCount }} 个站点</span>
-                        <span class="plugin-tag" :class="getPluginStatusClass(plugin)">
-                          {{ getPluginStatusLabel(plugin) }}
-                        </span>
-                        <span class="plugin-tag" :class="getPluginHealthClass(plugin)">
-                          {{ getPluginHealthLabel(plugin) }}
-                        </span>
-                      </div>
                     </div>
                   </td>
-                  <td class="py-4 px-4 text-muted-foreground text-sm">
-                    <div class="font-medium text-foreground">{{ plugin.version || '—' }}</div>
-                    <div class="mt-1 text-xs text-muted-foreground">
-                      {{ plugin.active_runtime?.endpoint || '运行时未启动' }}
+                  <td class="py-4 px-2">
+                    <div class="text-xs font-medium text-foreground/80">{{ plugin.version || '—' }}</div>
+                    <div class="text-[10px] text-muted-foreground/50 mt-1 font-mono">
+                      {{ plugin.active_runtime?.endpoint || 'offline' }}
                     </div>
                   </td>
-                  <td class="py-4 px-4 hidden lg:table-cell">
-                    <div class="space-y-2">
-                      <div class="flex flex-wrap gap-1">
-                        <span class="plugin-tag plugin-tag--muted">{{ plugin.capabilityCount }} 个能力</span>
-                        <span class="plugin-tag plugin-tag--muted">{{ plugin.siteCount }} 个站点</span>
-                      </div>
+                  <td class="py-4 px-2 hidden lg:table-cell">
+                    <div class="flex flex-col gap-2">
                       <div class="flex flex-wrap gap-1">
                         <span
-                          v-for="capability in plugin.capabilities.slice(0, 2)"
+                          v-for="capability in plugin.capabilities.slice(0, 3)"
                           :key="`${plugin.plugin_id}-${capability.name}`"
-                          class="plugin-tag plugin-tag--info"
+                          class="text-[9px] font-bold px-1.5 py-0 border border-border/60 text-muted-foreground/70 rounded-[3px] uppercase tracking-tighter"
                         >
                           {{ capability.name }}
                         </span>
                         <span
-                          v-if="plugin.capabilities.length > 2"
-                          class="plugin-tag plugin-tag--muted"
+                          v-if="plugin.capabilities.length > 3"
+                          class="text-[9px] text-muted-foreground/40 font-bold"
                         >
-                          +{{ plugin.capabilities.length - 2 }}
+                          +{{ plugin.capabilities.length - 3 }}
                         </span>
                       </div>
-                      <div class="text-xs text-muted-foreground">
+                      <div class="text-[10px] text-muted-foreground/60 truncate max-w-[180px]">
                         {{ formatSiteNames(plugin.sites) }}
                       </div>
                     </div>
                   </td>
-                  <td class="py-4 px-4 hidden xl:table-cell">
-                    <div class="space-y-2">
-                      <div class="flex flex-wrap gap-1">
-                        <span class="plugin-tag plugin-tag--muted">
-                          {{ plugin.permissionCount }} 项权限
-                        </span>
+                  <td class="py-4 px-2 hidden xl:table-cell">
+                    <div class="flex flex-wrap gap-1">
+                      <span
+                        v-for="permission in plugin.permissions.slice(0, 2)"
+                        :key="`${plugin.plugin_id}-${permission.name}`"
+                        class="text-[9px] font-bold px-1.5 py-0 border border-border/60 text-muted-foreground/70 rounded-[3px] uppercase tracking-tighter"
+                        :title="permission.description || permission.name"
+                      >
+                        {{ permission.name }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="py-4 px-2">
+                    <div class="flex flex-col items-center gap-1.5">
+                      <div class="flex items-center gap-2">
+                        <div 
+                          class="w-1.5 h-1.5 rounded-full" 
+                          :class="getPluginStatusIndicator(plugin)"
+                        ></div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-foreground/70">{{ getPluginStatusLabel(plugin) }}</span>
                       </div>
-                      <div class="flex flex-wrap gap-1">
-                        <span
-                          v-for="permission in plugin.permissions.slice(0, 2)"
-                          :key="`${plugin.plugin_id}-${permission.name}`"
-                          class="plugin-tag plugin-tag--warning"
-                          :title="permission.description || permission.name"
-                        >
-                          {{ permission.name }}
-                        </span>
-                        <span
-                          v-if="plugin.permissions.length > 2"
-                          class="plugin-tag plugin-tag--muted"
-                        >
-                          +{{ plugin.permissions.length - 2 }}
-                        </span>
+                      <div class="text-[9px] text-muted-foreground/40 text-center max-w-[100px] truncate">
+                        {{ plugin.health?.message || plugin.active_runtime?.last_error || 'System Ready' }}
                       </div>
                     </div>
                   </td>
-                  <td class="py-4 px-4">
-                    <div class="flex flex-col items-center gap-2 text-center">
-                      <span class="plugin-tag" :class="getPluginStatusClass(plugin)">
-                        {{ getPluginStatusLabel(plugin) }}
-                      </span>
-                      <span class="plugin-tag" :class="getPluginHealthClass(plugin)">
-                        {{ getPluginHealthLabel(plugin) }}
-                      </span>
-                      <div class="text-xs text-muted-foreground max-w-[200px]">
-                        {{ plugin.health?.message || plugin.active_runtime?.last_error || plugin.runtimeStateLabel }}
-                      </div>
-                    </div>
-                  </td>
-                  <td class="py-4 px-4">
-                    <div class="flex items-center justify-end gap-2">
+                  <td class="py-4 px-2">
+                    <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
                         v-if="!plugin.enabled"
                         :disabled="actioning === plugin.plugin_id"
                         @click="handleEnable(plugin)"
-                        size="xs"
-                        variant="outline"
-                        class="plugin-inline-action"
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 text-[11px] px-2 font-bold uppercase tracking-tight hover:bg-success/10 hover:text-success"
                       >
-                        启用
+                        Enable
                       </Button>
                       <Button
                         v-if="plugin.enabled"
                         :disabled="actioning === plugin.plugin_id"
                         @click="handleDisable(plugin)"
-                        size="xs"
                         variant="ghost"
-                        class="plugin-inline-action"
+                        size="sm"
+                        class="h-7 text-[11px] px-2 font-bold uppercase tracking-tight hover:bg-muted"
                       >
-                        禁用
+                        Disable
                       </Button>
                       <Button
                         :disabled="actioning === plugin.plugin_id"
                         @click="handleUninstall(plugin)"
-                        size="xs"
-                        variant="destructive"
-                        class="plugin-inline-action plugin-inline-action--danger"
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 text-[11px] px-2 font-bold uppercase tracking-tight text-destructive/60 hover:text-destructive hover:bg-destructive/10"
                       >
-                        卸载
+                        Purge
                       </Button>
                     </div>
                   </td>
@@ -286,178 +266,179 @@
         </div>
       </div>
 
-      <div v-if="currentTab === 'connectivity'" class="space-y-4">
-        <div v-if="connectivityResults.length > 0" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card class="plugin-summary-card">
-            <CardContent class="p-4">
-              <p class="plugin-summary-card__label">总站点数</p>
-              <p class="plugin-summary-card__value text-foreground">{{ connectivitySummary.total }}</p>
-            </CardContent>
-          </Card>
-          <Card class="plugin-summary-card plugin-summary-card--accent">
-            <CardContent class="p-4">
-              <p class="plugin-summary-card__label">可访问</p>
-              <p class="plugin-summary-card__value text-success">{{ connectivitySummary.accessible }}</p>
-            </CardContent>
-          </Card>
-          <Card class="plugin-summary-card">
-            <CardContent class="p-4">
-              <p class="plugin-summary-card__label">不可访问</p>
-              <p class="plugin-summary-card__value text-destructive">{{ connectivitySummary.failed }}</p>
-            </CardContent>
-          </Card>
-          <Card class="plugin-summary-card">
-            <CardContent class="p-4">
-              <p class="plugin-summary-card__label">成功率</p>
-              <p class="plugin-summary-card__value text-success">{{ connectivitySummary.success_rate }}%</p>
-            </CardContent>
-          </Card>
+      <div v-if="currentTab === 'connectivity'" class="space-y-6">
+        <!-- Connectivity Summary -->
+        <div class="flex flex-wrap items-end justify-between gap-6 py-2 border-b border-border/50">
+          <div v-if="connectivityResults.length > 0" class="flex flex-wrap gap-10">
+            <div class="flex flex-col">
+              <span class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">总站点数</span>
+              <span class="text-2xl font-semibold tabular-nums">{{ connectivitySummary.total }}</span>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">可访问</span>
+              <span class="text-2xl font-semibold text-success tabular-nums">{{ connectivitySummary.accessible }}</span>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">不可访问</span>
+              <span class="text-2xl font-semibold text-destructive tabular-nums">{{ connectivitySummary.failed }}</span>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">成功率</span>
+              <span class="text-2xl font-semibold tabular-nums">{{ connectivitySummary.success_rate }}%</span>
+            </div>
+          </div>
+          
+          <div class="relative w-full md:w-64">
+            <MagnifyingGlassIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+            <Input 
+              v-model="siteSearchQuery" 
+              placeholder="搜索站点或域名..." 
+              class="pl-9 h-8 text-xs bg-muted/20 border-border/40 focus:bg-background transition-all"
+            />
+          </div>
         </div>
 
-        <div v-if="lastTestedAt" class="plugin-last-tested">
-          上次全量检测：{{ formatTime(lastTestedAt) }}
+        <div v-if="lastTestedAt" class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 bg-muted/20 px-3 py-1.5 rounded border border-border/30 inline-block">
+          Latest Audit: {{ formatTime(lastTestedAt) }}
         </div>
 
-        <div v-if="loadingSites" class="plugin-loading-shell flex items-center justify-center py-20">
+        <div v-if="loadingSites" class="flex items-center justify-center py-20">
           <div class="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground"></div>
         </div>
 
-        <div v-else class="plugin-table-shell overflow-hidden">
+        <div v-else class="overflow-hidden">
           <div class="overflow-x-auto">
-            <table class="w-full">
-              <thead class="plugin-table-shell__thead">
-                <tr class="border-b border-border">
-                  <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">站点名称</th>
-                  <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden lg:table-cell">支持域名</th>
-                  <th class="text-center py-3 px-4 text-sm font-medium text-muted-foreground">状态</th>
-                  <th class="text-center py-3 px-4 text-sm font-medium text-muted-foreground">登录状态</th>
-                  <th class="text-center py-3 px-4 text-sm font-medium text-muted-foreground">响应时间</th>
-                  <th class="text-center py-3 px-4 text-sm font-medium text-muted-foreground hidden md:table-cell">IP地址</th>
-                  <th class="text-right py-3 px-4 text-sm font-medium text-muted-foreground">操作</th>
+            <table class="w-full border-collapse">
+              <thead>
+                <tr class="border-b border-border text-left">
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">站点标识</th>
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 hidden lg:table-cell">解析范围</th>
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 text-center">网络通路</th>
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 text-center">凭据验证</th>
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 text-center">响应延迟</th>
+                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 text-right">操作</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="divide-y divide-border/40">
                 <tr
                   v-for="site in displaySites"
                   :key="site.site_name"
-                  class="plugin-table-shell__row border-b border-border"
+                  class="group hover:bg-muted/20 transition-colors"
                 >
-                  <td class="py-4 px-4">
-                    <div class="font-medium flex items-center gap-2">
-                      <span>{{ site.display_label || site.site_name || site.name }}</span>
-                      <span
-                        v-if="site.config_enabled === false"
-                        class="plugin-tag plugin-tag--danger"
-                      >
-                        已禁用
-                      </span>
+                  <td class="py-4 px-2">
+                    <div class="flex flex-col">
+                      <div class="flex items-center gap-2 mb-0.5">
+                        <span class="text-sm font-semibold tracking-tight text-foreground/90">{{ site.display_label || site.site_name || site.name }}</span>
+                        <span
+                          v-if="site.config_enabled === false"
+                          class="text-[9px] font-bold px-1 py-0 bg-destructive/10 text-destructive rounded-[3px] uppercase tracking-tighter"
+                        >
+                          Disabled
+                        </span>
+                      </div>
+                      <div class="text-[10px] text-muted-foreground/60 flex items-center gap-2 font-mono">
+                        <span>{{ site.site_name || site.name }}</span>
+                        <span v-if="site.test_url" class="opacity-30">•</span>
+                        <span v-if="site.test_url" class="truncate max-w-[150px] opacity-50">{{ site.test_url }}</span>
+                      </div>
                     </div>
-                    <div class="text-xs text-muted-foreground mt-0.5">
-                      标识：{{ site.site_name || site.name }}
-                    </div>
-                    <div v-if="site.test_url" class="text-xs text-muted-foreground mt-0.5">{{ site.test_url }}</div>
                   </td>
-                  <td class="py-4 px-4 hidden lg:table-cell">
+                  <td class="py-4 px-2 hidden lg:table-cell">
                     <div class="flex flex-wrap gap-1">
                       <span
-                        v-for="domain in site.domains?.slice(0, 3) || []"
+                        v-for="domain in site.domains?.slice(0, 2) || []"
                         :key="domain"
-                        class="plugin-tag plugin-tag--muted"
+                        class="text-[9px] font-bold px-1.5 py-0 bg-muted/60 text-muted-foreground/60 rounded-[3px]"
                       >
                         {{ domain }}
                       </span>
                       <span
-                        v-if="site.domains?.length > 3"
-                        class="plugin-tag plugin-tag--muted"
+                        v-if="site.domains?.length > 2"
+                        class="text-[9px] text-muted-foreground/30 font-bold"
                       >
-                        +{{ site.domains.length - 3 }}
+                        +{{ site.domains.length - 2 }}
                       </span>
                     </div>
                   </td>
-                  <td class="py-4 px-4">
+                  <td class="py-4 px-2">
                     <div class="flex justify-center">
-                      <span v-if="site.testing" class="plugin-tag plugin-tag--info flex items-center gap-1">
+                      <div v-if="site.testing" class="flex items-center gap-2 text-muted-foreground/40 animate-pulse">
                         <ArrowPathIcon class="w-3 h-3 animate-spin" />
-                        测试中
-                      </span>
-                      <span v-else-if="site.accessible === true" class="plugin-tag plugin-tag--success">
-                        ✓ 可访问
-                      </span>
-                      <span
-                        v-else-if="site.accessible === false"
-                        class="plugin-tag plugin-tag--danger"
-                        :title="site.error_message"
-                      >
-                        ✗ 不可访问
-                      </span>
-                      <span v-else class="plugin-tag plugin-tag--muted">
-                        未测试
-                      </span>
+                        <span class="text-[10px] font-bold uppercase">Audit...</span>
+                      </div>
+                      <div v-else-if="site.accessible === true" class="flex items-center gap-2 text-success/80">
+                        <div class="w-1.5 h-1.5 rounded-full bg-success"></div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Pass</span>
+                      </div>
+                      <div v-else-if="site.accessible === false" class="flex items-center gap-2 text-destructive/80" :title="site.error_message">
+                        <div class="w-1.5 h-1.5 rounded-full bg-destructive"></div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Fail</span>
+                      </div>
+                      <span v-else class="text-[10px] font-bold uppercase text-muted-foreground/30">None</span>
                     </div>
                   </td>
-                  <td class="py-4 px-4">
+                  <td class="py-4 px-2">
                     <div class="flex justify-center">
-                      <span v-if="!site.supports_login_status" class="plugin-tag plugin-tag--muted">
-                        未接入
-                      </span>
-                      <span v-else-if="site.loginTesting" class="plugin-tag plugin-tag--info flex items-center gap-1">
+                      <div v-if="!site.supports_login_status" class="text-[10px] font-bold text-muted-foreground/20 uppercase tracking-widest">
+                        N/A
+                      </div>
+                      <div v-else-if="site.loginTesting" class="flex items-center gap-2 text-muted-foreground/40 animate-pulse">
                         <ArrowPathIcon class="w-3 h-3 animate-spin" />
-                        检测中
-                      </span>
-                      <span
+                        <span class="text-[10px] font-bold uppercase">Auth...</span>
+                      </div>
+                      <div
                         v-else-if="site.loginStatus?.logged_in"
-                        class="plugin-tag plugin-tag--success"
-                        :title="site.loginStatus?.message || '已登录'"
+                        class="flex items-center gap-2 text-success/80"
+                        :title="site.loginStatus?.message || 'Logged in'"
                       >
-                        已登录
-                      </span>
-                      <span
+                        <CheckCircleIcon class="w-3.5 h-3.5" />
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Valid</span>
+                      </div>
+                      <div
                         v-else-if="site.loginStatus"
-                        class="plugin-tag plugin-tag--danger"
-                        :title="site.loginStatus?.message || '未登录'"
+                        class="flex items-center gap-2 text-muted-foreground/40"
+                        :title="site.loginStatus?.message || 'Not logged in'"
                       >
-                        未登录
-                      </span>
-                      <span v-else class="plugin-tag plugin-tag--muted">
-                        未检测
-                      </span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Expired</span>
+                      </div>
+                      <span v-else class="text-[10px] font-bold uppercase text-muted-foreground/30 tracking-wider">Untested</span>
                     </div>
                   </td>
-                  <td class="py-4 px-4 text-center text-sm text-muted-foreground">
-                    {{ site.response_time ? `${site.response_time}ms` : '—' }}
+                  <td class="py-4 px-2 text-center">
+                    <span v-if="site.response_time" class="text-[10px] font-bold font-mono text-muted-foreground/70 tabular-nums" :class="site.response_time > 1000 ? 'text-warning/80' : ''">
+                      {{ site.response_time }}ms
+                    </span>
+                    <span v-else class="text-muted-foreground/20 font-mono">—</span>
                   </td>
-                  <td class="py-4 px-4 text-center text-sm text-muted-foreground hidden md:table-cell">
-                    {{ site.ip_address || '—' }}
-                  </td>
-                  <td class="py-4 px-4">
-                    <div class="flex items-center justify-end gap-2">
+                  <td class="py-4 px-2">
+                    <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
                         @click="handleTestSingle(site)"
                         :disabled="site.testing || testingAll"
-                        size="xs"
-                        variant="outline"
-                        class="plugin-inline-action"
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 text-[10px] px-2 font-bold uppercase tracking-tight"
                       >
-                        {{ site.testing ? '测试中...' : '连通性' }}
+                        Test
                       </Button>
                       <Button
                         v-if="site.supports_login_status"
                         @click="handleTestLogin(site)"
                         :disabled="site.loginTesting || testingAll"
-                        size="xs"
                         variant="ghost"
-                        class="plugin-inline-action"
+                        size="sm"
+                        class="h-7 text-[10px] px-2 font-bold uppercase tracking-tight"
                       >
-                        {{ site.loginTesting ? '检测中...' : '登录检测' }}
+                        Auth
                       </Button>
                       <Button
                         @click="handleUploadCookies(site)"
                         :disabled="site.cookieUploading || testingAll"
-                        size="xs"
-                        variant="outline"
-                        class="plugin-inline-action"
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 text-[10px] px-2 font-bold uppercase tracking-tight"
                       >
-                        {{ site.cookieUploading ? '上传中...' : '上传Cookie' }}
+                        Cookie
                       </Button>
                     </div>
                   </td>
@@ -487,12 +468,13 @@ import {
   CloudArrowUpIcon,
   ArrowPathIcon,
   CubeIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline';
 import PageHeader from '@/components/layout/PageHeader.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input'
 import { Logger } from '@/utils/logger'
 import { useSiteCatalog } from '@/composables/useSites';
 import {
@@ -609,8 +591,11 @@ const runtimeStateLabels = {
   failed: '运行时异常',
 };
 
-const displayPlugins = computed(() => (
-  (plugins.value || []).map((plugin) => {
+const searchQuery = ref('');
+const siteSearchQuery = ref('');
+
+const displayPlugins = computed(() => {
+  let list = (plugins.value || []).map((plugin) => {
     const capabilities = Array.isArray(plugin.capabilities) ? plugin.capabilities : [];
     const sites = Array.isArray(plugin.sites) ? plugin.sites : [];
     const permissions = Array.isArray(plugin.permissions) ? plugin.permissions : [];
@@ -629,8 +614,19 @@ const displayPlugins = computed(() => (
       permissionCount: permissions.length,
       runtimeStateLabel: runtimeStateLabels[activeRuntime?.state] || '运行时未启动',
     };
-  })
-));
+  });
+
+  if (searchQuery.value.trim()) {
+    const keyword = searchQuery.value.trim().toLowerCase();
+    list = list.filter(p => 
+      p.display_name?.toLowerCase().includes(keyword) || 
+      p.plugin_id?.toLowerCase().includes(keyword) ||
+      p.description?.toLowerCase().includes(keyword)
+    );
+  }
+  
+  return list;
+});
 
 const pluginSummary = computed(() => ({
   total: displayPlugins.value.length,
@@ -651,15 +647,15 @@ const connectivitySummary = computed(() => {
   return connectivityResults.value[0]?.summary || { total: 0, accessible: 0, failed: 0, success_rate: 0 };
 });
 
-const getPluginStatusLabel = (plugin) => pluginStatusLabels[plugin.status] || plugin.status || '未知状态';
-
-const getPluginStatusClass = (plugin) => {
-  if (['running'].includes(plugin.status)) return 'plugin-tag--success';
-  if (['starting', 'installed', 'validated', 'uploaded'].includes(plugin.status)) return 'plugin-tag--info';
-  if (['degraded'].includes(plugin.status)) return 'plugin-tag--warning';
-  if (['failed'].includes(plugin.status)) return 'plugin-tag--danger';
-  return 'plugin-tag--muted';
+const getPluginStatusIndicator = (plugin) => {
+  if (['running'].includes(plugin.status)) return 'bg-success';
+  if (['starting', 'installed', 'validated', 'uploaded'].includes(plugin.status)) return 'bg-info';
+  if (['degraded'].includes(plugin.status)) return 'bg-warning';
+  if (['failed'].includes(plugin.status)) return 'bg-destructive';
+  return 'bg-muted-foreground/30';
 };
+
+const getPluginStatusLabel = (plugin) => pluginStatusLabels[plugin.status] || plugin.status || '未知状态';
 
 const getPluginHealthLabel = (plugin) => {
   if (!plugin.enabled) return '未启用';
@@ -702,7 +698,7 @@ const displaySites = computed(() => {
   const loginResultMap = loginStatusResults.value || {};
   const loginTestingMap = loginStatusTesting.value || {};
 
-  return supportedSites.value.map(siteInfo => {
+  let list = supportedSites.value.map(siteInfo => {
     const siteName = siteInfo.name;
     const result = resultsMap.get(siteName);
     const catalogInfo = siteCatalogMap.value[siteName?.toLowerCase()] || null;
@@ -726,6 +722,17 @@ const displaySites = computed(() => {
       config_aliases: catalogInfo?.aliases || [],
     };
   });
+
+  if (siteSearchQuery.value.trim()) {
+    const keyword = siteSearchQuery.value.trim().toLowerCase();
+    list = list.filter(s => 
+      s.site_name?.toLowerCase().includes(keyword) || 
+      s.display_label?.toLowerCase().includes(keyword) ||
+      (s.domains && s.domains.some(d => d.toLowerCase().includes(keyword)))
+    );
+  }
+
+  return list;
 });
 
 const handleCookiesFileChange = (event) => {
@@ -1083,17 +1090,9 @@ onMounted(() => {
 .content-container {
   max-width: var(--container-max-width, 2560px);
   margin: 0 auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
   width: 100%;
-}
-
-@media (min-width: 640px) {
-  .toolbar-container,
-  .content-container {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
 }
 
 @media (min-width: 1024px) {
@@ -1104,170 +1103,50 @@ onMounted(() => {
   }
 }
 
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.plugin-tab-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.5);
 }
 
-.plugin-summary-card,
-.plugin-loading-shell,
-.plugin-table-shell,
-.plugin-last-tested {
-  border: 1px solid hsl(var(--border) / 0.76);
-  background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
-  box-shadow: 0 12px 28px hsl(var(--foreground) / 0.035);
-}
-
-.plugin-summary-card__label {
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
+.plugin-tab-switch__button {
+  padding: 4px 12px;
+  border-radius: 4px;
   color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 150ms ease;
+}
+
+.plugin-tab-switch__button:hover {
+  color: hsl(var(--foreground));
+}
+
+.plugin-tab-switch__button--active {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .plugin-hero__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
-.plugin-tab-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem;
-  border-radius: 0.625rem;
-  border: 1px solid hsl(var(--border) / 0.8);
-  background: hsl(var(--background));
-}
-
-.plugin-tab-switch__button {
-  padding: 0.45rem 0.75rem;
-  border-radius: 0.5rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
-}
-
-.plugin-tab-switch__button:hover {
-  background: hsl(var(--accent));
-  color: hsl(var(--foreground));
-}
-
-.plugin-tab-switch__button--active {
-  background: hsl(var(--card));
-  color: hsl(var(--foreground));
-  box-shadow: var(--shadow-sm);
-}
-
-.plugin-primary-action,
-.plugin-inline-action {
-  transition: opacity 160ms ease;
-}
-
-.plugin-pill-icon {
-  box-shadow: none;
-}
-
-.plugin-upload-button {
-  max-width: 16rem;
-}
-
-.plugin-primary-action {
-  box-shadow: none;
-}
-
-.plugin-inline-action {
-  box-shadow: none;
-}
-
-.plugin-summary-card {
-  overflow: hidden;
-}
-
-.plugin-summary-card--accent {
-  background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.14), transparent 35%),
-    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.94));
-}
-
-.plugin-summary-card__value {
-  margin-top: 0.65rem;
-  font-size: 1.65rem;
-  line-height: 1;
-  font-weight: 600;
-}
-
-.plugin-loading-shell,
-.plugin-table-shell {
-  border-radius: 0.875rem;
-}
-
-.plugin-table-shell__thead {
-  background: linear-gradient(180deg, hsl(var(--background) / 0.96), hsl(var(--card) / 0.92));
-}
-
-.plugin-table-shell__row {
-  transition: background-color 160ms ease;
-}
-
-.plugin-table-shell__row:hover {
-  background: hsl(var(--accent) / 0.58);
-}
-
-.plugin-last-tested {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.55rem 0.8rem;
-  border-radius: 0.625rem;
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.plugin-tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.22rem 0.55rem;
-  border-radius: 0.5rem;
-  border: 1px solid transparent;
-  font-size: 0.68rem;
-  font-weight: 600;
-}
-
-.plugin-tag--muted {
-  background: hsl(var(--muted));
-  color: hsl(var(--muted-foreground));
-  border-color: hsl(var(--border));
-}
-
-.plugin-tag--info {
-  background: hsl(var(--info) / 0.12);
-  color: hsl(var(--info));
-  border-color: hsl(var(--info) / 0.22);
-}
-
-.plugin-tag--warning {
-  background: hsl(var(--warning) / 0.12);
-  color: hsl(var(--warning));
-  border-color: hsl(var(--warning) / 0.22);
-}
-
-.plugin-tag--success {
-  background: hsl(var(--success) / 0.12);
-  color: hsl(var(--success));
-  border-color: hsl(var(--success) / 0.22);
-}
-
-.plugin-tag--danger {
-  background: hsl(var(--destructive) / 0.12);
-  color: hsl(var(--destructive));
-  border-color: hsl(var(--destructive) / 0.24);
-}
+/* Status colors using standard variables */
+.text-success { color: hsl(var(--success)); }
+.bg-success { background-color: hsl(var(--success)); }
+.text-warning { color: hsl(var(--warning)); }
+.bg-warning { background-color: hsl(var(--warning)); }
+.text-info { color: hsl(var(--info)); }
+.bg-info { background-color: hsl(var(--info)); }
+.text-destructive { color: hsl(var(--destructive)); }
+.bg-destructive { background-color: hsl(var(--destructive)); }
 
 </style>
