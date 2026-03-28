@@ -7,9 +7,8 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from crawl import PluginManifest
-
 from plugins.manager import get_plugin_manager
+from plugins.runtime_models import PluginManifest
 
 InstallResult = Tuple[bool, Optional[Dict[str, Any] | str]]
 

@@ -2,9 +2,8 @@ import json
 import os
 from typing import Dict, List, Optional, Set
 
-from crawl import PluginManifest
-
 from plugins.manager import get_plugin_manager
+from plugins.runtime_models import PluginManifest
 
 
 class SiteCatalog:

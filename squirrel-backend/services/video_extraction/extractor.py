@@ -6,7 +6,8 @@
 """
 import logging
 import re
-from crawl import ExtractionTask, TaskPriority, ExtractionResult
+
+from core.extraction.contracts import ExtractionResult, ExtractionTask, TaskPriority
 from schemas.video.dto.video_dto import VideoExtractDto
 from core.extraction.handlers.video_handler import VideoExtractionHandler
 from core.extraction.task_manager import TaskManager

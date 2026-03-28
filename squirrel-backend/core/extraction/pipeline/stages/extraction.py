@@ -4,9 +4,9 @@ ExtractionStage - 从插件提取视频数据
 import logging
 from typing import Optional
 
-from crawl import Extractor
 from ..base import PipelineStage
 from ..context import PipelineContext
+from ...contracts import Extractor
 from ...exceptions import (
     ExtractionError,
     NetworkError,

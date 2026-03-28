@@ -90,6 +90,11 @@ def get_plugin_runtime():
 `VideoMeta`, `ExtractionTask`, and `ExtractionResult` remain available for plugin
 logic and payload shaping inside handlers.
 
+The SDK remains the plugin-facing contract and helper package. Backend runtime
+bootstrap state such as host-owned cookie resolution, site config projection,
+and Cloudflare bypass client injection should be owned by `squirrel-backend`
+instead of mutating SDK-global state.
+
 ## Removed legacy APIs
 
 The SDK no longer exposes the old in-process plugin registration helpers or the

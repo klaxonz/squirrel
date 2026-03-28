@@ -6,11 +6,11 @@ from typing import Dict, List, Optional, Protocol
 from crawl import (
     PluginInvokeRequest,
     PluginInvokeResponse,
-    PluginManifest,
     PluginRuntimeError,
 )
 
 from .models import PluginCapabilityRegistration, PluginRoutingTarget
+from .runtime_models import PluginManifest
 
 
 class PluginInvocationClient(Protocol):

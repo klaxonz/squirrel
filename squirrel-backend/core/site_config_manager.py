@@ -5,8 +5,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Dict, Any
 
-from crawl import configure_rate_limit, configure_rate_limit_enabled, set_site_configs
 from utils.rate_limiter import rate_limiter as backend_rate_limiter
+from utils.runtime_site_config import set_site_configs
 from utils.site_catalog import SiteCatalog
 from .site_config_defaults import SITE_CONFIG_DEFAULTS
 
@@ -53,7 +53,7 @@ def _parse_bool(value: Any, default: bool = True) -> bool:
 
 
 def apply_site_config_overrides(catalog: Dict[str, dict] | None = None) -> None:
-    """Apply the current site catalog to the shared SDK configuration."""
+    """Apply the current site catalog to backend-owned runtime state."""
     effective_catalog = get_effective_site_catalog(catalog)
 
     set_site_configs(effective_catalog)
@@ -77,13 +77,11 @@ def apply_site_config_overrides(catalog: Dict[str, dict] | None = None) -> None:
             if not domain:
                 continue
             try:
-                configure_rate_limit_enabled(domain, rate_limit_enabled)
                 backend_rate_limiter.set_domain_enabled(domain, rate_limit_enabled)
                 if not rate_limit_enabled:
                     continue
                 if min_value is None or max_value is None:
                     continue
-                configure_rate_limit(domain, min_value, max_value)
                 backend_rate_limiter.add_rate_limit(domain, min_value, max_value)
             except Exception:
                 continue

@@ -5,12 +5,12 @@ from urllib.parse import urlparse
 from sqlalchemy import select
 from sqlalchemy.sql import text
 from core.database import get_session
-from crawl import SubscriptionMeta, SubscriptionImportItem
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from models.links import UserSubscription
 from models.message import Message
 from models.subscription import Subscription, ContentType
 from plugins.manager import get_plugin_manager
+from services.subscription_runtime_models import SubscriptionImportItem, SubscriptionMeta
 from services import user_config_service
 from services import subscription_sync_state_service
 from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql, get_subscription_sql

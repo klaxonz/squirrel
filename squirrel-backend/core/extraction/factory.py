@@ -5,7 +5,8 @@ import logging
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
-from crawl import ExtractionResult, ExtractionTask, VideoMeta
+from .contracts import ExtractionResult, ExtractionTask
+from .plugin_payloads import PluginVideoData
 
 from plugins.manager import get_plugin_manager
 from utils.site_catalog import SiteCatalog
@@ -60,7 +61,7 @@ class GatewayExtractorAdapter:
         if isinstance(payload, dict) and 'success' in payload:
             return ExtractionResult.from_dict(payload)
         if isinstance(payload, dict):
-            return ExtractionResult.success_result(VideoMeta.from_dict(payload))
+            return ExtractionResult.success_result(PluginVideoData.from_dict(payload))
         return ExtractionResult(success=False, error='Plugin extract_video returned an invalid payload')
 
 

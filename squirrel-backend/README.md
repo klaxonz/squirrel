@@ -18,6 +18,12 @@ Runtime V2 packages are expected to ship a `plugin-runtime.json` file containing
 - `manifest.sites`
 - `manifest.permissions`
 
+The backend owns runtime bootstrap state for the host process, including
+Cloudflare bypass client wiring, site config projection, backend rate-limit
+policy, and backend-side cookie resolution. `squirrel-sdk` remains the plugin
+contract and helper package, but backend runtime startup should not depend on
+SDK-global mutable state.
+
 Install and activation
 ----------------------
 

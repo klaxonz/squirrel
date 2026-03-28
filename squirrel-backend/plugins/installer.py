@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Optional
 
 from core.config import settings
-from crawl import PluginManifest
+
+from .runtime_models import PluginManifest
 
 
 class PluginPackageValidationError(ValueError):

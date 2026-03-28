@@ -1,10 +1,8 @@
+import http.cookiejar as cookielib
+from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-from crawl import (
-    filter_cookies_to_query_string as sdk_filter_cookies_to_query_string,
-    configure_cookie_file_resolver,
-)
 from core.cookie_config import get_site_cookies_file_path
 from utils.site_catalog import SiteCatalog
 
@@ -56,22 +54,62 @@ def resolve_cookie_file_for_url(target_url: str) -> Optional[str]:
     return str(path)
 
 
-configure_cookie_file_resolver(resolve_cookie_file_for_url)
+def _extract_top_level_domain_from_url(target_url: str) -> str:
+    host = _extract_host_from_url(target_url) or ''
+    parts = [part for part in host.split('.') if part]
+    if len(parts) >= 2:
+        return '.'.join(parts[-2:])
+    return host
 
 
-def filter_cookies_to_query_string(target_url):
-    return sdk_filter_cookies_to_query_string(target_url)
+def _read_cookie_file_as_query_string(path: Optional[str], target_url: str) -> str:
+    if not path:
+        return ''
+
+    try:
+        cookie_path = Path(path).expanduser()
+    except Exception:
+        return ''
+
+    if not cookie_path.is_file():
+        return ''
+
+    jar = cookielib.MozillaCookieJar()
+
+    try:
+        jar.load(str(cookie_path), ignore_discard=True, ignore_expires=True)
+    except Exception:
+        return ''
+
+    domain = _extract_top_level_domain_from_url(target_url)
+    if not domain:
+        return ''
+
+    filtered = []
+    for item in jar:
+        try:
+            if item.domain.endswith(domain):
+                filtered.append(f'{item.name}={item.value}')
+        except Exception:
+            continue
+
+    return '; '.join(filtered)
 
 
-def filter_cookies_to_query_string_by_domain(domain_or_url):
+def filter_cookies_to_query_string(target_url: str) -> str:
+    cookie_file = resolve_cookie_file_for_url(target_url)
+    return _read_cookie_file_as_query_string(cookie_file, target_url)
+
+
+def filter_cookies_to_query_string_by_domain(domain_or_url: str) -> str:
     if not domain_or_url:
-        return ""
+        return ''
 
     target_url = domain_or_url
-    if "://" not in target_url:
+    if '://' not in target_url:
         target_url = f"https://{domain_or_url.lstrip('.')}"
 
-    return sdk_filter_cookies_to_query_string(target_url)
+    return filter_cookies_to_query_string(target_url)
 
 
 def json_cookie_to_netscape(cookies: dict, domain_list: list, output_file):

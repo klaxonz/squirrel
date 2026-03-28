@@ -10,6 +10,7 @@ from core.config import settings
 from core.database_upgrade import upgrade_database
 from core.site_config_manager import apply_site_config_overrides
 from plugins.manager import bootstrap_plugin_runtime, shutdown_plugin_runtime
+from utils.runtime_http import set_cloudflare_bypass_client
 
 logger = logging.getLogger()
 
@@ -41,9 +42,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 0.5. 配置 Cloudflare bypass 客户端
     logger.info("[0.5/5] Configuring Cloudflare bypass client...")
     try:
-        from crawl import configure_cloudflare_bypass_client
         from utils.cloudflare_bypass import get_default_client
-        configure_cloudflare_bypass_client(get_default_client())
+        set_cloudflare_bypass_client(get_default_client())
         logger.info("[0.5/5] ✓ Cloudflare bypass client configured")
     except Exception as e:
         logger.warning(f"[0.5/5] ⚠ Failed to configure Cloudflare bypass client: {e}")

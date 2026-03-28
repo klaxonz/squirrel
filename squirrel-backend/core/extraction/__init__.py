@@ -14,6 +14,16 @@
 """
 
 
+from .contracts import (
+    ExtractionResult,
+    ExtractionTask,
+    Extractor,
+    ResultHandler,
+    TaskPriority,
+    TaskProcessor,
+    TaskStatus,
+)
+from .plugin_payloads import PluginActorData, PluginVideoData
 from .base import BaseExtractor, BaseTaskProcessor, BaseResultHandler
 
 from .factory import (
@@ -27,6 +37,15 @@ from .task_manager import TaskManager, TaskRouter
 from .handlers.video_handler import VideoExtractionHandler
 
 __all__ = [
+    'TaskStatus',
+    'TaskPriority',
+    'ExtractionTask',
+    'ExtractionResult',
+    'Extractor',
+    'TaskProcessor',
+    'ResultHandler',
+    'PluginVideoData',
+    'PluginActorData',
     # 基础类
     'BaseExtractor', 'BaseTaskProcessor', 'BaseResultHandler',
 

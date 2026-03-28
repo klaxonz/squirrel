@@ -10,10 +10,10 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-from crawl import VideoMeta, ActorMeta
 from ..dto import VideoDTO, ActorDTO
 from ..dto.validators import parse_publish_date
 from ..exceptions import DataTransformError
+from ..plugin_payloads import PluginActorData, PluginVideoData
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class PluginDataAdapter:
     def __init__(self):
         self.logger = logger
     
-    def adapt(self, video: VideoMeta, site_name: str) -> VideoDTO:
+    def adapt(self, video: PluginVideoData, site_name: str) -> VideoDTO:
         """
         将插件的Video对象转换为VideoDTO
         
@@ -98,7 +98,7 @@ class PluginDataAdapter:
                 }
             ) from e
     
-    def _extract_base_fields(self, video: VideoMeta, site_name: str) -> Dict[str, Any]:
+    def _extract_base_fields(self, video: PluginVideoData, site_name: str) -> Dict[str, Any]:
         """
         提取基础字段
         
@@ -132,7 +132,7 @@ class PluginDataAdapter:
         
         return base_data
     
-    def _extract_publish_date(self, video: VideoMeta) -> Optional[datetime]:
+    def _extract_publish_date(self, video: PluginVideoData) -> Optional[datetime]:
         """
         提取发布时间（兼容多种格式）
         
@@ -148,7 +148,7 @@ class PluginDataAdapter:
         
         return None
     
-    def _extract_actors(self, video: VideoMeta) -> List[ActorDTO]:
+    def _extract_actors(self, video: PluginVideoData) -> List[ActorDTO]:
         """
         提取actors信息
         
@@ -170,9 +170,9 @@ class PluginDataAdapter:
                 if raw_actors and isinstance(raw_actors, list):
                     for actor in raw_actors:
                         try:
-                            # 如果是字典，转换为 ActorMeta
+                            # Convert dictionary payloads to backend-local actor data.
                             if isinstance(actor, dict):
-                                actor = ActorMeta(
+                                actor = PluginActorData(
                                     url=actor.get('url', ''),
                                     name=actor.get('name'),
                                     avatar=actor.get('avatar'),
@@ -203,7 +203,7 @@ class PluginDataAdapter:
         
         return actors
     
-    def _convert_actor(self, actor: ActorMeta) -> Optional[ActorDTO]:
+    def _convert_actor(self, actor: PluginActorData) -> Optional[ActorDTO]:
         """
         转换单个Actor对象为ActorDTO
         
@@ -213,7 +213,7 @@ class PluginDataAdapter:
         Returns:
             ActorDTO或None
         """
-        if not isinstance(actor, ActorMeta):
+        if not isinstance(actor, PluginActorData):
             return None
         
         # 确保有url和name
@@ -229,7 +229,7 @@ class PluginDataAdapter:
             avatar=getattr(actor, 'avatar', None)
         )
     
-    def _extract_raw_data(self, video: VideoMeta) -> Dict[str, Any]:
+    def _extract_raw_data(self, video: PluginVideoData) -> Dict[str, Any]:
         """
         提取原始数据（用于调试和审计）
         

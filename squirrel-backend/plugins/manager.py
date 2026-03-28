@@ -4,8 +4,6 @@ import json
 from pathlib import Path
 from typing import List, Optional
 
-from crawl import PluginManifest
-
 from .gateway import PluginGateway
 from .installer import PluginInstaller
 from .models import (
@@ -14,6 +12,7 @@ from .models import (
     PluginManagerSnapshot,
     utcnow_iso,
 )
+from .runtime_models import PluginManifest
 from .store import PluginInstallStore
 from .supervisor import PluginRuntimeSupervisor
 

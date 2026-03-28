@@ -4,7 +4,8 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import ExtractionTask, PluginInvokeResponse
+from crawl import PluginInvokeResponse
+from core.extraction.contracts import ExtractionTask
 import core.extraction.factory as factory_module
 from core.extraction.factory import ExtractorFactory
 

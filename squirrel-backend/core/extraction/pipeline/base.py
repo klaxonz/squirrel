@@ -5,7 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional, TYPE_CHECKING
 
-from crawl import ExtractionResult
+from ..contracts import ExtractionResult
 from .context import PipelineContext
 from ..exceptions import StageExecutionError
 

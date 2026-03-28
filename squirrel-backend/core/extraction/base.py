@@ -4,7 +4,8 @@ Base extraction implementations.
 import logging
 from typing import List, Optional
 from urllib.parse import urlparse
-from crawl import Extractor, ExtractionTask, ExtractionResult, TaskProcessor, ResultHandler
+
+from .contracts import Extractor, ExtractionTask, ExtractionResult, ResultHandler, TaskProcessor
 
 logger = logging.getLogger()
 

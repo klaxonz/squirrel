@@ -9,6 +9,7 @@ from core.database_upgrade import upgrade_database
 from queues.queue_config import ensure_queue_config_initialized
 from plugins.manager import bootstrap_plugin_runtime, shutdown_plugin_runtime
 from plugins.reload_listener import start_reload_listener, stop_reload_listener
+from utils.runtime_http import set_cloudflare_bypass_client
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +35,8 @@ def bootstrap_runtime(component: str):
         logger.warning("[%s] Failed to apply site config overrides: %s", component, exc)
 
     try:
-        from crawl import configure_cloudflare_bypass_client
         from utils.cloudflare_bypass import get_default_client
-        configure_cloudflare_bypass_client(get_default_client())
+        set_cloudflare_bypass_client(get_default_client())
         logger.info("[%s] Cloudflare bypass client configured", component)
     except Exception as exc:
         logger.warning("[%s] Failed to configure Cloudflare bypass client: %s", component, exc)

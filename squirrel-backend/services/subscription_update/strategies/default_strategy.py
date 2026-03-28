@@ -8,13 +8,13 @@ from typing import Optional
 from sqlalchemy import update
 from core.config import settings
 from core.database import get_session
-from crawl import SubscriptionSyncResult
 from urllib.parse import urlparse
 from models.subscription import Subscription as SubscriptionModel
 from models.subscription_sync_state import SyncMode, SyncStatus
 from plugins.manager import get_plugin_manager
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, subscription_sync_state_service, video_service
+from services.subscription_runtime_models import SubscriptionSyncResult
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncRunStatus
 from utils.site_catalog import SiteCatalog

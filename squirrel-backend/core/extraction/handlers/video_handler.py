@@ -8,8 +8,8 @@
 """
 import logging
 
-from crawl import ExtractionTask, ExtractionResult
 from ..base import BaseResultHandler
+from ..contracts import ExtractionResult, ExtractionTask
 from ..pipeline import PipelineContext
 from ..pipeline.factory import pipeline_factory
 from ..factory import get_extractor_factory

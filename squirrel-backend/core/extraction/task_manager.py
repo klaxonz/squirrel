@@ -4,7 +4,8 @@
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
-from crawl import ExtractionTask, TaskProcessor, TaskPriority, ExtractionResult
+
+from .contracts import ExtractionResult, ExtractionTask, TaskPriority, TaskProcessor
 from .factory import get_extractor_factory
 
 logger = logging.getLogger()

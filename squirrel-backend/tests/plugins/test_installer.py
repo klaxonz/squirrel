@@ -3,8 +3,9 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import PluginManifest, PluginSiteManifest, PluginCapability
 from plugins.installer import PluginInstallPlan, PluginInstaller
+from plugins.runtime_models import PluginCapability, PluginManifest, PluginSiteManifest
+
 
 
 def test_provision_runtime_environment_creates_venv_and_installs_runner_sdk_and_plugin(monkeypatch, tmp_path):

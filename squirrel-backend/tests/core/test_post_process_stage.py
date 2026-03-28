@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import ExtractionTask
+from core.extraction.contracts import ExtractionTask
 from core.extraction.dto import VideoDTO
 from core.extraction.pipeline.context import PipelineContext
 from core.extraction.pipeline.stages.post_process import PostProcessStage

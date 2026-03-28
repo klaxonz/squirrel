@@ -39,6 +39,11 @@ my_site = "my_site.runtime:get_plugin_runtime"
 The runtime factory should return `create_plugin_runtime(...)` and declare all
 capabilities in the manifest explicitly.
 
+`squirrel-sdk` remains the supported plugin-facing contract and helper package.
+Backend-owned runtime bootstrap state such as host cookie resolution, site
+config projection, and Cloudflare bypass wiring lives in `squirrel-backend`,
+not in SDK-global mutable state.
+
 Uploaded runtime V2 plugins are installed into a dedicated virtual environment
 by the backend together with the `squirrel-plugin-runner` bridge package. During
 workspace development, the backend can still load sibling plugin folders directly.
