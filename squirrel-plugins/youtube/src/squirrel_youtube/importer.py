@@ -66,7 +66,7 @@ class YoutubeUserSubscriptionImporter:
                 channel_ids = re.findall(pattern, html_content)
 
                 # 去重
-                channel_ids = list(set(channel_ids))
+                channel_ids = list(dict.fromkeys(channel_ids))
 
                 for channel_id in channel_ids:
                     # 过滤掉一些系统频道
@@ -155,8 +155,11 @@ class YoutubeUserSubscriptionImporter:
 
             # 解析频道信息
             for channel_item in channel_renderers:
-                channel_info = channel_item.get('channelRenderer') or channel_item.get('gridChannelRenderer')
-                if channel_info:
+                try:
+                    channel_info = channel_item.get('channelRenderer') or channel_item.get('gridChannelRenderer')
+                    if not channel_info:
+                        continue
+
                     channel_id = channel_info.get('channelId')
                     title = channel_info.get('title', {}).get('simpleText', '')
                     thumbnail_url = None
@@ -164,13 +167,21 @@ class YoutubeUserSubscriptionImporter:
                     # 获取头像
                     thumbnails = channel_info.get('thumbnail', {}).get('thumbnails', [])
                     if thumbnails:
+                        valid_thumbnails = [
+                            thumb for thumb in thumbnails
+                            if isinstance(thumb, dict) and thumb.get('url')
+                        ]
+                        if not valid_thumbnails:
+                            logger.debug('Skipping malformed YouTube channel renderer without valid thumbnails')
+                            continue
+
                         # 选择中等大小的缩略图
-                        for thumb in thumbnails:
-                            if thumb.get('width', 0) >= 88:  # 选择合适大小的头像
+                        for thumb in valid_thumbnails:
+                            if thumb.get('width', 0) >= 88:
                                 thumbnail_url = thumb.get('url')
                                 break
-                        if not thumbnail_url and thumbnails:
-                            thumbnail_url = thumbnails[0].get('url')
+                        if not thumbnail_url:
+                            thumbnail_url = valid_thumbnails[0].get('url')
 
                     if channel_id and channel_id.startswith('UC') and title:
                         channel_url = f'https://www.youtube.com/channel/{channel_id}'
@@ -179,6 +190,8 @@ class YoutubeUserSubscriptionImporter:
                             name=title,
                             avatar=thumbnail_url
                         ))
+                except Exception as exc:
+                    logger.debug('Skipping malformed YouTube channel renderer: %s', exc, exc_info=True)
 
             # 去重
             seen_urls = set()

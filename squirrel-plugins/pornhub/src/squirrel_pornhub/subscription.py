@@ -10,7 +10,10 @@ from crawl import (
     SubscriptionMeta,
     SubscriptionSyncContext,
     SubscriptionSyncResult,
+    append_subscription_video_url,
+    build_subscription_sync_result,
     filter_cookies_to_query_string,
+    resolve_subscription_limit,
     request,
 )
 
@@ -96,13 +99,27 @@ class PornhubSubscription:
         parsed_url = urlparse(self.url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         video_list: List[str] = []
+        seen_urls: set[str] = set()
         latest_video_url: Optional[str] = None
-        limit = None if context.mode == 'full' else (context.limit or 30)
+        limit = resolve_subscription_limit(context)
 
         bs4 = BeautifulSoup(response.text, 'html.parser')
-        stop_reason, latest_video_url = self._extract_video_urls(bs4, base_url, video_list, context, latest_video_url, limit)
+        stop_reason, latest_video_url = self._extract_video_urls(
+            bs4,
+            base_url,
+            video_list,
+            seen_urls,
+            context,
+            latest_video_url,
+            limit,
+        )
         if stop_reason:
-            return self._build_sync_result(video_list, latest_video_url, context, stop_reason)
+            return build_subscription_sync_result(
+                video_urls=video_list,
+                latest_video_url=latest_video_url,
+                context=context,
+                stop_reason=stop_reason,
+            )
 
         page_next_list = bs4.select('.page_next')
         page = int(bs4.select('.page_next')[0].find_previous().text) if len(page_next_list) > 0 else 1
@@ -113,21 +130,41 @@ class PornhubSubscription:
             response = request('GET', self.url + f'?page={current_page}', headers=headers, timeout=15)
             response.raise_for_status()
             bs4 = BeautifulSoup(response.text, 'html.parser')
-            stop_reason, latest_video_url = self._extract_video_urls(bs4, base_url, video_list, context, latest_video_url, limit)
+            stop_reason, latest_video_url = self._extract_video_urls(
+                bs4,
+                base_url,
+                video_list,
+                seen_urls,
+                context,
+                latest_video_url,
+                limit,
+            )
             if stop_reason:
-                return self._build_sync_result(video_list, latest_video_url, context, stop_reason)
+                return build_subscription_sync_result(
+                    video_urls=video_list,
+                    latest_video_url=latest_video_url,
+                    context=context,
+                    stop_reason=stop_reason,
+                )
 
-            new_page = int(bs4.select('.page_next')[0].find_previous().text) if len(page_next_list) > 0 else 1
+            page_next_list = bs4.select('.page_next')
+            new_page = int(page_next_list[0].find_previous().text) if len(page_next_list) > 0 else 1
             if new_page > page:
                 page = new_page
 
-        return self._build_sync_result(video_list, latest_video_url, context, 'source_exhausted')
+        return build_subscription_sync_result(
+            video_urls=video_list,
+            latest_video_url=latest_video_url,
+            context=context,
+            stop_reason='source_exhausted',
+        )
 
     def _extract_video_urls(
         self,
         bs4: BeautifulSoup,
         base_url: str,
         video_list: list,
+        seen_urls: set[str],
         context: SubscriptionSyncContext,
         latest_video_url: Optional[str],
         limit: Optional[int],
@@ -138,28 +175,16 @@ class PornhubSubscription:
         video_els.extend(bs4.select('#pornstarsVideoSection .videoPreviewBg'))
         for el in video_els:
             video_url = f'{base_url}{el["href"]}'
-            if latest_video_url is None:
-                latest_video_url = video_url
-            if context.mode != 'full' and video_url == context.last_seen_video_url:
-                return 'cursor_hit', latest_video_url
-            video_list.append(video_url)
-            if limit is not None and len(video_list) >= limit:
-                return 'limit_reached', latest_video_url
+            latest_video_url, stop_reason = append_subscription_video_url(
+                video_url,
+                video_urls=video_list,
+                seen_urls=seen_urls,
+                context=context,
+                latest_video_url=latest_video_url,
+                limit=limit,
+            )
+            if stop_reason:
+                return stop_reason, latest_video_url
         return None, latest_video_url
-
-    def _build_sync_result(
-        self,
-        video_list: List[str],
-        latest_video_url: Optional[str],
-        context: SubscriptionSyncContext,
-        stop_reason: str,
-    ) -> SubscriptionSyncResult:
-        return SubscriptionSyncResult(
-            video_urls=video_list,
-            latest_video_url=latest_video_url,
-            cursor_payload={'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload,
-            stop_reason=stop_reason,
-            total_available=len(video_list),
-        )
 
 

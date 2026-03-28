@@ -4,16 +4,12 @@ import logging
 from urllib.parse import urlparse
 
 from crawl import (
+    filter_cookies_to_query_string,
     get_http_headers,
     get_login_headers,
     request,
     request_without_limit,
 )
-
-try:
-    from utils.cookie import filter_cookies_to_query_string
-except ImportError:
-    from crawl import filter_cookies_to_query_string
 
 logger = logging.getLogger(__name__)
 

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-from typing import Any, Dict
+from importlib import import_module
 
 from crawl import (
-    ExtractionTask,
     PluginCapability,
-    PluginHealthStatus,
     PluginManifest,
     PluginPermission,
     PluginSiteManifest,
-    SubscriptionSyncContext,
-    create_plugin_runtime,
+    create_site_runtime,
 )
+
+
+def _load_local_attr(module_name: str, attr_name: str):
+    return getattr(import_module(f'{__package__}.{module_name}'), attr_name)
 
 PLUGIN_MANIFEST = PluginManifest(
     plugin_id='pornhub',
@@ -100,121 +100,20 @@ PLUGIN_MANIFEST = PluginManifest(
 )
 
 
-def _check_login_status(_payload: Dict[str, Any]) -> Dict[str, Any]:
-    from .auth import check_pornhub_login_status
-
-    result = check_pornhub_login_status()
-    return result.to_dict()
-
-
-def _import_subscriptions(_payload: Dict[str, Any]) -> Dict[str, Any]:
-    from .importer import PornhubUserSubscriptionImporter
-
-    importer = PornhubUserSubscriptionImporter()
-    items = importer.get_user_subscriptions()
-    return {
-        'items': [item.to_dict() for item in items],
-        'total': len(items),
-    }
-
-
-def _resolve_subscription(payload: Dict[str, Any]) -> Dict[str, Any]:
-    from .subscription import PornhubSubscription
-
-    url = str(payload.get('url') or '').strip()
-    if not url:
-        raise ValueError('Missing subscription url')
-
-    subscription = PornhubSubscription(url=url)
-    return subscription.get_subscribe_info().to_dict()
-
-
-def _sync_subscription(payload: Dict[str, Any]) -> Dict[str, Any]:
-    from .subscription import PornhubSubscription
-
-    url = str(payload.get('url') or '').strip()
-    if not url:
-        raise ValueError('Missing subscription url')
-
-    subscription = PornhubSubscription(url=url)
-    context = SubscriptionSyncContext(
-        mode=str(payload.get('mode') or 'incremental'),
-        cursor_payload=dict(payload.get('cursor_payload') or {}),
-        last_seen_video_url=payload.get('last_seen_video_url'),
-        limit=payload.get('limit'),
-    )
-    return subscription.sync_videos(context).to_dict()
-
-
-def _extract_video(payload: Dict[str, Any]) -> Dict[str, Any]:
-    from .extractor import PornhubExtractor
-
-    url = str(payload.get('url') or '').strip()
-    if not url:
-        raise ValueError('Missing video url')
-
-    extractor = PornhubExtractor()
-    result = extractor.extract(ExtractionTask(url=url, site_name='pornhub'))
-    return result.to_dict()
-
-
-def _resolve_playback(payload: Dict[str, Any]) -> Dict[str, Any]:
-    from .handler import PornhubHandler
-
-    url = str(payload.get('url') or '').strip()
-    video_id = payload.get('video_id')
-    if not url:
-        raise ValueError('Missing playback url')
-
-    handler = PornhubHandler()
-    return handler.get_video_url(
-        SimpleNamespace(
-            id=video_id,
-            url=url,
-            title=payload.get('title'),
-        )
-    )
-
-
-def _resolve_proxy_config(payload: Dict[str, Any]) -> Dict[str, Any]:
-    from .proxy import build_runtime_proxy_config
-
-    return build_runtime_proxy_config(payload.get('domain'))
-
-
-def _rewrite_proxy_playlist(payload: Dict[str, Any]) -> Dict[str, Any]:
-    from .proxy import rewrite_proxy_playlist
-
-    url = str(payload.get('url') or '').strip()
-    if not url:
-        raise ValueError('Missing playlist url')
-    return rewrite_proxy_playlist(
-        url,
-        payload.get('content') or '',
-        referer=payload.get('referer'),
-    )
-
-
-def _health_check() -> PluginHealthStatus:
-    return PluginHealthStatus(
-        healthy=True,
-        status='ready',
-        message='Pornhub runtime is configured',
-    )
-
-
 def get_plugin_runtime():
-    return create_plugin_runtime(
+    return create_site_runtime(
         manifest=PLUGIN_MANIFEST,
-        capability_handlers={
-            'check_login_status': _check_login_status,
-            'import_subscriptions': _import_subscriptions,
-            'resolve_subscription': _resolve_subscription,
-            'sync_subscription': _sync_subscription,
-            'extract_video': _extract_video,
-            'resolve_playback': _resolve_playback,
-            'resolve_proxy_config': _resolve_proxy_config,
-            'rewrite_proxy_playlist': _rewrite_proxy_playlist,
-        },
-        health_check=_health_check,
+        health_message='Pornhub runtime is configured',
+        check_login=lambda: _load_local_attr('auth', 'check_pornhub_login_status')(),
+        importer_factory=lambda: _load_local_attr('importer', 'PornhubUserSubscriptionImporter')(),
+        subscription_factory=lambda url: _load_local_attr('subscription', 'PornhubSubscription')(url=url),
+        extractor_factory=lambda: _load_local_attr('extractor', 'PornhubExtractor')(),
+        extractor_site_name='pornhub',
+        playback_handler_factory=lambda: _load_local_attr('handler', 'PornhubHandler')(),
+        proxy_config_builder=lambda domain: _load_local_attr('proxy', 'build_runtime_proxy_config')(domain),
+        playlist_rewriter=lambda url, content, referer=None: _load_local_attr('proxy', 'rewrite_proxy_playlist')(
+            url,
+            content,
+            referer=referer,
+        ),
     )

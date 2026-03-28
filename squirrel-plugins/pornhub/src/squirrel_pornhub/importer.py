@@ -94,9 +94,15 @@ class PornhubUserSubscriptionImporter:
 
                         new_count = 0
                         for item in items:
-                            href = item.select('.usernameWrap .usernameBadgesWrapper a.usernameLink')[0].get('href')
-                            name = item.select('.usernameWrap .usernameBadgesWrapper a.usernameLink')[0].get('title')
-                            avatar = item.select('.userLink .avatar')[0].get('src')
+                            user_links = item.select('.usernameWrap .usernameBadgesWrapper a.usernameLink')
+                            avatars = item.select('.userLink .avatar')
+                            if not user_links or not avatars:
+                                logger.debug('Skipping malformed Pornhub subscription item on page %s', page)
+                                continue
+
+                            href = user_links[0].get('href')
+                            name = user_links[0].get('title')
+                            avatar = avatars[0].get('src')
                             if not href:
                                 continue
 

@@ -60,8 +60,14 @@ class JavdbUserSubscriptionImporter:
                     
                     for item in actor_items:
                         href = item.get('href')
-                        avatar = item.select('img')[0].get('src')
-                        name = item.select('strong')[0].text.strip()
+                        avatars = item.select('img')
+                        names = item.select('strong')
+                        if not avatars or not names:
+                            logger.debug('Skipping malformed JavDB actor item on page %s', page)
+                            continue
+
+                        avatar = avatars[0].get('src')
+                        name = names[0].text.strip()
                         if href and '/actors/' in href:
                             full_url = f'{base_url}{href}' if href.startswith('/') else href
                             # 去掉查询参数，只保留演员页面 URL

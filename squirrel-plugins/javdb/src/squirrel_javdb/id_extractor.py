@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from crawl import IdExtractor
+from crawl import RegexIdExtractor
 
 
-class JavdbIdExtractor(IdExtractor):
+class JavdbIdExtractor(RegexIdExtractor):
     domain = 'javdb.com'
-
-    def extract_id(self) -> str:
-        return self.url.split('/')[-1]
+    pattern = r'/v/([^/?#]+)/?$'
 
 

@@ -1,0 +1,473 @@
+from __future__ import annotations
+
+import importlib.util
+import sys
+import types
+import unittest
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PORNHUB_SUBSCRIPTION_PATH = (
+    REPO_ROOT / 'squirrel-plugins' / 'pornhub' / 'src' / 'squirrel_pornhub' / 'subscription.py'
+)
+JAVDB_SUBSCRIPTION_PATH = (
+    REPO_ROOT / 'squirrel-plugins' / 'javdb' / 'src' / 'squirrel_javdb' / 'subscription.py'
+)
+YOUTUBE_SUBSCRIPTION_PATH = (
+    REPO_ROOT / 'squirrel-plugins' / 'youtube' / 'src' / 'squirrel_youtube' / 'subscription.py'
+)
+
+
+@dataclass
+class _SubscriptionSyncContext:
+    mode: str
+    cursor_payload: dict = field(default_factory=dict)
+    last_seen_video_url: str | None = None
+    limit: int | None = None
+
+
+@dataclass
+class _SubscriptionSyncResult:
+    video_urls: list[str]
+    latest_video_url: str | None
+    cursor_payload: dict
+    stop_reason: str
+    total_available: int
+
+
+def _resolve_subscription_limit(context):
+    if context.mode == 'full':
+        return None
+    return context.limit or 30
+
+
+def _append_subscription_video_url(
+    video_url,
+    *,
+    video_urls,
+    context,
+    latest_video_url,
+    limit,
+    seen_urls=None,
+):
+    updated_latest_video_url = latest_video_url or video_url
+    if context.mode != 'full' and video_url == context.last_seen_video_url:
+        return updated_latest_video_url, 'cursor_hit'
+    if seen_urls is not None:
+        if video_url in seen_urls:
+            return updated_latest_video_url, None
+        seen_urls.add(video_url)
+    elif video_url in video_urls:
+        return updated_latest_video_url, None
+    video_urls.append(video_url)
+    if limit is not None and len(video_urls) >= limit:
+        return updated_latest_video_url, 'limit_reached'
+    return updated_latest_video_url, None
+
+
+def _build_subscription_sync_result(*, video_urls, latest_video_url, context, stop_reason, source_video_count=None):
+    return _SubscriptionSyncResult(
+        video_urls=list(video_urls),
+        latest_video_url=latest_video_url,
+        cursor_payload={'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload,
+        stop_reason=stop_reason,
+        total_available=len(video_urls),
+    )
+
+
+@contextmanager
+def _stub_pornhub_subscription_dependencies():
+    originals = {
+        name: sys.modules.get(name)
+        for name in ('crawl', 'bs4')
+    }
+
+    response_queue: list[object] = []
+    soup_registry: dict[str, object] = {}
+
+    crawl_module = types.ModuleType('crawl')
+    crawl_module.SubscriptionMeta = object
+    crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
+    crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
+    crawl_module.append_subscription_video_url = _append_subscription_video_url
+    crawl_module.build_subscription_sync_result = _build_subscription_sync_result
+    crawl_module.filter_cookies_to_query_string = lambda _url: ''
+    crawl_module.resolve_subscription_limit = _resolve_subscription_limit
+
+    def request(_method, _url, **_kwargs):
+        if not response_queue:
+            raise AssertionError('No queued response for request')
+        return response_queue.pop(0)
+
+    crawl_module.request = request
+
+    bs4_module = types.ModuleType('bs4')
+
+    def BeautifulSoup(html, _parser):
+        return soup_registry[html]
+
+    bs4_module.BeautifulSoup = BeautifulSoup
+
+    try:
+        sys.modules['crawl'] = crawl_module
+        sys.modules['bs4'] = bs4_module
+        yield response_queue, soup_registry
+    finally:
+        for name, original in originals.items():
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
+
+
+def _load_pornhub_subscription_module():
+    module_name = '_subscription_test_pornhub'
+    sys.modules.pop(module_name, None)
+    module_spec = importlib.util.spec_from_file_location(module_name, PORNHUB_SUBSCRIPTION_PATH)
+    module = importlib.util.module_from_spec(module_spec)
+    assert module_spec is not None and module_spec.loader is not None
+    sys.modules[module_name] = module
+    module_spec.loader.exec_module(module)
+    return module
+
+
+@contextmanager
+def _stub_javdb_subscription_dependencies():
+    originals = {
+        name: sys.modules.get(name)
+        for name in ('crawl', 'bs4', 'squirrel_javdb', 'squirrel_javdb.html_client')
+    }
+
+    response_queue: list[object] = []
+    soup_registry: dict[str, object] = {}
+
+    crawl_module = types.ModuleType('crawl')
+    crawl_module.SubscriptionMeta = object
+    crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
+    crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
+    crawl_module.append_subscription_video_url = _append_subscription_video_url
+    crawl_module.build_subscription_sync_result = _build_subscription_sync_result
+    crawl_module.resolve_subscription_limit = _resolve_subscription_limit
+
+    bs4_module = types.ModuleType('bs4')
+
+    def BeautifulSoup(html, _parser):
+        return soup_registry[html]
+
+    bs4_module.BeautifulSoup = BeautifulSoup
+
+    package_module = types.ModuleType('squirrel_javdb')
+    package_module.__path__ = [str(JAVDB_SUBSCRIPTION_PATH.parent)]
+
+    html_client_module = types.ModuleType('squirrel_javdb.html_client')
+
+    def fetch_javdb_html(_url, **_kwargs):
+        if not response_queue:
+            raise AssertionError('No queued response for fetch_javdb_html')
+        return response_queue.pop(0)
+
+    html_client_module.fetch_javdb_html = fetch_javdb_html
+
+    try:
+        sys.modules['crawl'] = crawl_module
+        sys.modules['bs4'] = bs4_module
+        sys.modules['squirrel_javdb'] = package_module
+        sys.modules['squirrel_javdb.html_client'] = html_client_module
+        yield response_queue, soup_registry
+    finally:
+        for name, original in originals.items():
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
+
+
+def _load_javdb_subscription_module():
+    module_name = 'squirrel_javdb.subscription'
+    sys.modules.pop(module_name, None)
+    module_spec = importlib.util.spec_from_file_location(module_name, JAVDB_SUBSCRIPTION_PATH)
+    module = importlib.util.module_from_spec(module_spec)
+    assert module_spec is not None and module_spec.loader is not None
+    sys.modules[module_name] = module
+    module_spec.loader.exec_module(module)
+    return module
+
+
+@contextmanager
+def _stub_youtube_subscription_dependencies():
+    originals = {
+        name: sys.modules.get(name)
+        for name in ('crawl', 'pytubefix')
+    }
+
+    crawl_module = types.ModuleType('crawl')
+    crawl_module.SubscriptionMeta = object
+    crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
+    crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
+    crawl_module.append_subscription_video_url = _append_subscription_video_url
+    crawl_module.build_subscription_sync_result = _build_subscription_sync_result
+    crawl_module.resolve_subscription_limit = _resolve_subscription_limit
+
+    pytubefix_module = types.ModuleType('pytubefix')
+    channel_factory = {'value': None}
+    playlist_factory = {'value': None}
+
+    class Channel:
+        def __new__(cls, *args, **kwargs):
+            factory = channel_factory['value']
+            if factory is None:
+                raise AssertionError('Channel factory not configured')
+            return factory(*args, **kwargs)
+
+    class Playlist:
+        def __new__(cls, *args, **kwargs):
+            factory = playlist_factory['value']
+            if factory is None:
+                raise AssertionError('Playlist factory not configured')
+            return factory(*args, **kwargs)
+
+    pytubefix_module.Channel = Channel
+    pytubefix_module.Playlist = Playlist
+
+    try:
+        sys.modules['crawl'] = crawl_module
+        sys.modules['pytubefix'] = pytubefix_module
+        yield channel_factory, playlist_factory
+    finally:
+        for name, original in originals.items():
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
+
+
+def _load_youtube_subscription_module():
+    module_name = '_subscription_test_youtube'
+    sys.modules.pop(module_name, None)
+    module_spec = importlib.util.spec_from_file_location(module_name, YOUTUBE_SUBSCRIPTION_PATH)
+    module = importlib.util.module_from_spec(module_spec)
+    assert module_spec is not None and module_spec.loader is not None
+    sys.modules[module_name] = module
+    module_spec.loader.exec_module(module)
+    return module
+
+
+class _FakeResponse:
+    def __init__(self, text: str, status_code: int = 200):
+        self.text = text
+        self.status_code = status_code
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f'HTTP {self.status_code}')
+
+
+class _FakeVideoElement:
+    def __init__(self, href: str):
+        self.href = href
+
+    def __getitem__(self, key: str):
+        if key != 'href':
+            raise KeyError(key)
+        return self.href
+
+
+class _FakePageLabel:
+    def __init__(self, text: str):
+        self.text = text
+
+
+class _FakeNextButton:
+    def __init__(self, previous_text: str):
+        self._previous = _FakePageLabel(previous_text)
+
+    def find_previous(self):
+        return self._previous
+
+
+class _FakeSoup:
+    def __init__(self, selector_map: dict[str, list[object]]):
+        self.selector_map = selector_map
+
+    def select(self, selector: str):
+        return list(self.selector_map.get(selector, []))
+
+
+class _FakeYoutubeItem:
+    def __init__(self, watch_url: str | None):
+        self.watch_url = watch_url
+
+
+class _FakeYoutubeChannel:
+    def __init__(self, videos: list[_FakeYoutubeItem], shorts: list[_FakeYoutubeItem], channel_id: str = 'channel-1'):
+        self.videos = videos
+        self.shorts = shorts
+        self.channel_id = channel_id
+        self.channel_name = 'Demo Channel'
+        self.thumbnail_url = 'https://cdn.example/thumb.jpg'
+
+
+class SubscriptionSyncTests(unittest.TestCase):
+    def test_javdb_full_sync_deduplicates_video_urls_across_pages(self):
+        with _stub_javdb_subscription_dependencies() as (responses, soups):
+            module = _load_javdb_subscription_module()
+
+            responses.extend([
+                _FakeResponse('javdb-page-1'),
+                _FakeResponse('javdb-page-2'),
+            ])
+            soups['javdb-page-1'] = _FakeSoup({
+                '.movie-list .item a.box': [
+                    _FakeVideoElement('/v/one'),
+                    _FakeVideoElement('/v/shared'),
+                ],
+                'a.pagination-link[rel="next"]': [_FakePageLabel('2')],
+            })
+            soups['javdb-page-2'] = _FakeSoup({
+                '.movie-list .item a.box': [
+                    _FakeVideoElement('/v/shared'),
+                    _FakeVideoElement('/v/two'),
+                ],
+                'a.pagination-link[rel="next"]': [],
+            })
+
+            subscription = module.JavdbSubscription('https://javdb.com/actors/demo')
+            result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
+
+            self.assertEqual(
+                result.video_urls,
+                [
+                    'https://javdb.com/v/one',
+                    'https://javdb.com/v/shared',
+                    'https://javdb.com/v/two',
+                ],
+            )
+            self.assertEqual(result.latest_video_url, 'https://javdb.com/v/one')
+            self.assertEqual(result.stop_reason, 'source_exhausted')
+
+    def test_pornhub_full_sync_handles_last_page_without_next_button(self):
+        with _stub_pornhub_subscription_dependencies() as (responses, soups):
+            module = _load_pornhub_subscription_module()
+
+            responses.extend([
+                _FakeResponse('page-1'),
+                _FakeResponse('page-2'),
+            ])
+            soups['page-1'] = _FakeSoup({
+                '#channelsProfile .videos a.videoPreviewBg': [_FakeVideoElement('/view_video.php?viewkey=one')],
+                '#profileContent .videos:not(#privateVideosSection) a.videoPreviewBg': [],
+                '#pornstarsVideoSection .videoPreviewBg': [],
+                '.page_next': [_FakeNextButton('2')],
+            })
+            soups['page-2'] = _FakeSoup({
+                '#channelsProfile .videos a.videoPreviewBg': [_FakeVideoElement('/view_video.php?viewkey=two')],
+                '#profileContent .videos:not(#privateVideosSection) a.videoPreviewBg': [],
+                '#pornstarsVideoSection .videoPreviewBg': [],
+                '.page_next': [],
+            })
+
+            subscription = module.PornhubSubscription('https://www.pornhub.com/channels/demo')
+            result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
+
+            self.assertEqual(
+                result.video_urls,
+                [
+                    'https://www.pornhub.com/view_video.php?viewkey=one',
+                    'https://www.pornhub.com/view_video.php?viewkey=two',
+                ],
+            )
+            self.assertEqual(result.latest_video_url, 'https://www.pornhub.com/view_video.php?viewkey=one')
+            self.assertEqual(result.stop_reason, 'source_exhausted')
+
+    def test_pornhub_full_sync_deduplicates_video_urls_across_sections(self):
+        with _stub_pornhub_subscription_dependencies() as (responses, soups):
+            module = _load_pornhub_subscription_module()
+
+            responses.append(_FakeResponse('pornhub-page'))
+            soups['pornhub-page'] = _FakeSoup({
+                '#channelsProfile .videos a.videoPreviewBg': [
+                    _FakeVideoElement('/view_video.php?viewkey=one'),
+                    _FakeVideoElement('/view_video.php?viewkey=shared'),
+                ],
+                '#profileContent .videos:not(#privateVideosSection) a.videoPreviewBg': [
+                    _FakeVideoElement('/view_video.php?viewkey=shared'),
+                    _FakeVideoElement('/view_video.php?viewkey=two'),
+                ],
+                '#pornstarsVideoSection .videoPreviewBg': [],
+                '.page_next': [],
+            })
+
+            subscription = module.PornhubSubscription('https://www.pornhub.com/channels/demo')
+            result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
+
+            self.assertEqual(
+                result.video_urls,
+                [
+                    'https://www.pornhub.com/view_video.php?viewkey=one',
+                    'https://www.pornhub.com/view_video.php?viewkey=shared',
+                    'https://www.pornhub.com/view_video.php?viewkey=two',
+                ],
+            )
+            self.assertEqual(result.latest_video_url, 'https://www.pornhub.com/view_video.php?viewkey=one')
+            self.assertEqual(result.stop_reason, 'source_exhausted')
+
+    def test_youtube_channel_sync_deduplicates_overlapping_video_and_short_urls(self):
+        with _stub_youtube_subscription_dependencies() as (channel_factory, _playlist_factory):
+            module = _load_youtube_subscription_module()
+
+            channel_factory['value'] = lambda _url, use_oauth=False: _FakeYoutubeChannel(
+                videos=[
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video001aaa'),
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=shared00001'),
+                ],
+                shorts=[
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=shared00001'),
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=short000002'),
+                ],
+            )
+
+            subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
+            result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
+
+            self.assertEqual(
+                result.video_urls,
+                [
+                    'https://www.youtube.com/watch?v=video001aaa',
+                    'https://www.youtube.com/watch?v=shared00001',
+                    'https://www.youtube.com/watch?v=short000002',
+                ],
+            )
+            self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=video001aaa')
+            self.assertEqual(result.stop_reason, 'source_exhausted')
+
+    def test_youtube_incremental_sync_stops_at_cursor_before_appending_seen_item(self):
+        with _stub_youtube_subscription_dependencies() as (channel_factory, _playlist_factory):
+            module = _load_youtube_subscription_module()
+
+            channel_factory['value'] = lambda _url, use_oauth=False: _FakeYoutubeChannel(
+                videos=[
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=new00000001'),
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=seen0000002'),
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=old00000003'),
+                ],
+                shorts=[],
+            )
+
+            subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
+            result = subscription.sync_videos(
+                _SubscriptionSyncContext(
+                    mode='incremental',
+                    last_seen_video_url='https://www.youtube.com/watch?v=seen0000002',
+                )
+            )
+
+            self.assertEqual(result.video_urls, ['https://www.youtube.com/watch?v=new00000001'])
+            self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=new00000001')
+            self.assertEqual(result.stop_reason, 'cursor_hit')
+
+
+if __name__ == '__main__':
+    unittest.main()

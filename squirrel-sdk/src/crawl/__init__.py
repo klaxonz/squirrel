@@ -43,6 +43,21 @@ from .runtime_protocol import (
     PluginRuntimeFactory,
 )
 from .plugin import create_plugin_runtime
+from .runtime_helpers import create_site_runtime
+from .proxy_helpers import (
+    build_proxy_config_values,
+    build_runtime_proxy_config,
+    safe_cookie_header_value,
+)
+from .playlist_rewrite import (
+    rewrite_playlist_for_proxy,
+    rewrite_proxy_playlist_content,
+)
+from .subscription_helpers import (
+    append_subscription_video_url,
+    build_subscription_sync_result,
+    resolve_subscription_limit,
+)
 
 # Core interfaces and data models
 from .core import (
@@ -154,6 +169,7 @@ __all__ = [
     'PluginRuntime',
     'PluginRuntimeFactory',
     'create_plugin_runtime',
+    'create_site_runtime',
     # Core interfaces
     'TaskStatus',
     'TaskPriority',
@@ -178,6 +194,14 @@ __all__ = [
     'filter_cookies_to_query_string',
     'configure_cookie_file_resolver',
     'resolve_cookie_file_path',
+    'build_proxy_config_values',
+    'build_runtime_proxy_config',
+    'safe_cookie_header_value',
+    'rewrite_playlist_for_proxy',
+    'rewrite_proxy_playlist_content',
+    'append_subscription_video_url',
+    'build_subscription_sync_result',
+    'resolve_subscription_limit',
     # HTTP utilities
     'RateLimit',
     'RateLimiter',

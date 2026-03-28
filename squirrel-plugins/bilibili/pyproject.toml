@@ -12,6 +12,7 @@ license = "MIT"
 authors = [{ name = "Squirrel" }]
 dependencies = [
   "squirrel-sdk>=2.0.0",
+  "yt-dlp>=2024.3.10",
 ]
 
 [project.entry-points."squirrel.plugins"]

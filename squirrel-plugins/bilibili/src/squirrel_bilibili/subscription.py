@@ -3,7 +3,14 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
-from crawl import SubscriptionMeta, SubscriptionSyncContext, SubscriptionSyncResult
+from crawl import (
+    SubscriptionMeta,
+    SubscriptionSyncContext,
+    SubscriptionSyncResult,
+    append_subscription_video_url,
+    build_subscription_sync_result,
+    resolve_subscription_limit,
+)
 
 from .sign import (
     build_cookies,
@@ -78,34 +85,19 @@ class BilibiliSubscription:
             video_urls, latest_video_url, stop_reason = self._get_channel_videos(context)
         else:
             video_urls, latest_video_url, stop_reason = self._get_space_videos(context)
-        return SubscriptionSyncResult(
+        return build_subscription_sync_result(
             video_urls=video_urls,
             latest_video_url=latest_video_url,
-            cursor_payload={'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload,
+            context=context,
             stop_reason=stop_reason,
-            total_available=len(video_urls),
         )
-
-    def _append_video(
-        self,
-        video_list: List[str],
-        video_url: str,
-        context: SubscriptionSyncContext,
-        latest_video_url: Optional[str],
-    ) -> tuple[bool, Optional[str], Optional[str]]:
-        latest_video_url = latest_video_url or video_url
-        if context.mode != 'full' and video_url == context.last_seen_video_url:
-            return False, latest_video_url, 'cursor_hit'
-        video_list.append(video_url)
-        if context.mode != 'full' and len(video_list) >= (context.limit or 30):
-            return False, latest_video_url, 'limit_reached'
-        return True, latest_video_url, None
 
     def _get_space_videos(self, context: SubscriptionSyncContext) -> tuple[List[str], Optional[str], str]:
         if not self.target.mid:
             raise ValueError('Missing user id')
         video_list: List[str] = []
         latest_video_url: Optional[str] = None
+        limit = resolve_subscription_limit(context)
         page = 1
         page_size = 50
 
@@ -120,14 +112,15 @@ class BilibiliSubscription:
                     continue
                 bvid = v.get("bvid")
                 if bvid:
-                    keep_going, latest_video_url, stop_reason = self._append_video(
-                        video_list,
+                    latest_video_url, stop_reason = append_subscription_video_url(
                         f"https://www.bilibili.com/video/{bvid}",
-                        context,
-                        latest_video_url,
+                        video_urls=video_list,
+                        context=context,
+                        latest_video_url=latest_video_url,
+                        limit=limit,
                     )
-                    if not keep_going:
-                        return video_list, latest_video_url, stop_reason or 'cursor_hit'
+                    if stop_reason:
+                        return video_list, latest_video_url, stop_reason
 
             if context.mode != 'full':
                 break
@@ -147,6 +140,7 @@ class BilibiliSubscription:
 
         video_list: List[str] = []
         latest_video_url: Optional[str] = None
+        limit = resolve_subscription_limit(context)
         page = 1
 
         while True:
@@ -158,14 +152,15 @@ class BilibiliSubscription:
             for media in medias:
                 bvid = media.get("bvid")
                 if bvid:
-                    keep_going, latest_video_url, stop_reason = self._append_video(
-                        video_list,
+                    latest_video_url, stop_reason = append_subscription_video_url(
                         f"https://www.bilibili.com/video/{bvid}",
-                        context,
-                        latest_video_url,
+                        video_urls=video_list,
+                        context=context,
+                        latest_video_url=latest_video_url,
+                        limit=limit,
                     )
-                    if not keep_going:
-                        return video_list, latest_video_url, stop_reason or 'cursor_hit'
+                    if stop_reason:
+                        return video_list, latest_video_url, stop_reason
 
             has_more = data.get('has_more', False)
             if context.mode != 'full' or not has_more:
@@ -184,6 +179,7 @@ class BilibiliSubscription:
 
         video_list: List[str] = []
         latest_video_url: Optional[str] = None
+        limit = resolve_subscription_limit(context)
         page = 1
         page_size = 100
 
@@ -206,14 +202,15 @@ class BilibiliSubscription:
             for archive in archives:
                 bvid = archive.get("bvid") or (archive.get('archive') or {}).get('bvid')
                 if bvid:
-                    keep_going, latest_video_url, stop_reason = self._append_video(
-                        video_list,
+                    latest_video_url, stop_reason = append_subscription_video_url(
                         f"https://www.bilibili.com/video/{bvid}",
-                        context,
-                        latest_video_url,
+                        video_urls=video_list,
+                        context=context,
+                        latest_video_url=latest_video_url,
+                        limit=limit,
                     )
-                    if not keep_going:
-                        return video_list, latest_video_url, stop_reason or 'cursor_hit'
+                    if stop_reason:
+                        return video_list, latest_video_url, stop_reason
 
             if context.mode != 'full' or len(archives) < page_size:
                 break

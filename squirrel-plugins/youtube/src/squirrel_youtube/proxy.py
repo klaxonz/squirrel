@@ -1,30 +1,18 @@
 from __future__ import annotations
 
 import logging
-import re
-from urllib.parse import urlencode, urljoin, urlparse
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
-from crawl import get_http_headers, get_proxy_config
-
-try:
-    from utils.cookie import filter_cookies_to_query_string_by_domain as _cookie_for
-except Exception:  # pragma: no cover
-    from crawl import filter_cookies_to_query_string as _sdk_cookie_for
-
-    def _cookie_for(domain_or_url: str) -> str:
-        if not domain_or_url:
-            return ''
-        target = domain_or_url
-        if '://' not in target:
-            target = f'https://{str(domain_or_url).lstrip(".")}'
-        try:
-            return _sdk_cookie_for(target)
-        except Exception:
-            return ''
+from crawl import (
+    build_proxy_config_values,
+    build_runtime_proxy_config as build_shared_runtime_proxy_config,
+    rewrite_playlist_for_proxy,
+    safe_cookie_header_value,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -52,61 +40,27 @@ DEFAULT_PROXY_CONFIG = {
 
 
 def _proxy_config_values() -> dict:
-    config = dict(DEFAULT_PROXY_CONFIG)
-    config.update(get_proxy_config(SITE_SLUG))
-    return config
+    return build_proxy_config_values(SITE_SLUG, DEFAULT_PROXY_CONFIG)
 
 
 def build_runtime_proxy_config(domain: str | None = None) -> dict[str, object]:
-    effective_domain = str(domain or SITE_DOMAIN).strip().lower() or SITE_DOMAIN
-    config = _proxy_config_values()
-    return {
-        'site_headers': get_http_headers(SITE_SLUG, DEFAULT_SITE_HEADERS),
-        'domain_configs': [{
-            'domain': effective_domain,
-            'connect_timeout': float(config['connect_timeout']),
-            'read_timeout': float(config['read_timeout']),
-            'max_retries': int(config['max_retries']),
-            'chunk_size': int(config['chunk_size']),
-            'max_connections': int(config['max_connections']),
-            'keepalive_expiry': float(config['keepalive_expiry']),
-            'enable_http2': bool(config['enable_http2']),
-        }],
-    }
+    return build_shared_runtime_proxy_config(
+        site_slug=SITE_SLUG,
+        site_domain=SITE_DOMAIN,
+        default_site_headers=DEFAULT_SITE_HEADERS,
+        default_proxy_config=DEFAULT_PROXY_CONFIG,
+        domain=domain,
+    )
 
 
 def rewrite_proxy_playlist(url: str, content: str | bytes, referer: str | None = None) -> dict[str, object]:
-    content_text = content.decode(errors='ignore') if isinstance(content, (bytes, bytearray)) else str(content)
-    base_url = url.rsplit('/', 1)[0]
-
-    def replace_url(match):
-        path = match.group(1).strip()
-        if not path or path.startswith('#'):
-            return path
-        full_url = path if path.startswith('http') else urljoin(base_url + '/', path)
-        query = {
-            'domain': SITE_DOMAIN,
-            'url': full_url,
-        }
-        if referer:
-            query['referer'] = referer
-        return f'/api/video/proxy?{urlencode(query)}'
-
-    rewritten = re.sub(
-        r'^(?!#)(.+\.(?:ts|m4s|mp4|m3u8|jpg|jpeg|vtt)[^\s]*)$',
-        lambda m: replace_url(m),
-        content_text,
-        flags=re.MULTILINE,
+    return rewrite_playlist_for_proxy(
+        url=url,
+        content=content,
+        site_domain=SITE_DOMAIN,
+        referer=referer,
+        extensions=('ts', 'm4s', 'mp4', 'm3u8', 'jpg', 'jpeg', 'vtt'),
     )
-
-    return {
-        'content': rewritten,
-        'media_type': 'application/vnd.apple.mpegurl',
-        'headers': {
-            'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'no-cache',
-        },
-    }
 
 
 class YouTubeProxy:
@@ -159,7 +113,7 @@ class YouTubeProxy:
                 if range_header:
                     headers['Range'] = range_header
             headers.update({
-                'Cookie': _cookie_for(url),
+                'Cookie': safe_cookie_header_value(url),
             })
 
             async with httpx.AsyncClient(**client_config) as client:
