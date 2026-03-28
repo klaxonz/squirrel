@@ -62,18 +62,22 @@
                       推荐 {{ relatedVideos.length }}
                     </span>
                   </div>
-                  <h1 class="video-meta__title text-foreground">{{ video?.title }}</h1>
+                  <h1 class="video-meta__title text-foreground">
+                    <span class="video-meta__title-prefix">[FILE_ENTRY]</span> {{ video?.title }}
+                  </h1>
                   <transition name="channel-dismiss" mode="out-in">
                     <div v-if="video?.subscriptions?.length && isVideoChannelVisible" :key="`${video?.id}-${isVideoChannelVisible}`" class="video-channel">
                       <div class="video-channel__content">
                         <div class="video-channel__primary">
-                          <img
-                            :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
-                            :alt="video.subscriptions[0].name"
-                            class="video-channel__avatar"
-                            referrerpolicy="no-referrer"
-                            @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
-                          >
+                          <div class="video-channel__avatar-wrapper">
+                            <img
+                              :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
+                              :alt="video.subscriptions[0].name"
+                              class="video-channel__avatar"
+                              referrerpolicy="no-referrer"
+                              @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
+                            >
+                          </div>
                           <div class="video-channel__summary">
                             <div class="video-channel__identity">
                               <router-link
@@ -1103,6 +1107,17 @@ onUnmounted(() => {
   letter-spacing: -0.03em;
   line-height: 1.4;
   word-break: break-word;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 77, 0, 0.4);
+  margin-bottom: 1rem;
+}
+
+.video-meta__title-prefix {
+  opacity: 0.45;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8em;
+  margin-right: 0.5rem;
+  color: #ff4d00;
 }
 
 .video-meta__actions {
@@ -1121,22 +1136,31 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.24rem;
   min-height: 1.52rem;
-  padding: 0 0.38rem;
-  border: 1px solid hsl(var(--border) / 0.78);
-  border-radius: 0.42rem;
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
+  padding: 0 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.7);
   box-shadow: none;
-  transition: none;
+  transition: all 0.2s ease;
 }
 
 .video-action:hover {
-  background: hsl(var(--background));
-  border-color: hsl(var(--border) / 0.78);
+  background: rgba(255, 77, 0, 0.05);
+  border-color: #ff4d00;
+  color: #ff4d00;
+  box-shadow: 0 0 10px rgba(255, 77, 0, 0.2);
+}
+
+.video-action.is-active {
+  background: rgba(255, 77, 0, 0.1);
+  border-color: #ff4d00;
+  color: #ff4d00;
+  box-shadow: 0 0 12px rgba(255, 77, 0, 0.3);
 }
 
 .video-action--secondary {
-  background: hsl(var(--background));
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .video-action__icon {
@@ -1149,24 +1173,6 @@ onUnmounted(() => {
   font-size: 0.54rem;
   font-weight: 500;
   white-space: nowrap;
-}
-
-.video-action.is-active--like {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.36);
-}
-
-.video-action.is-active--later {
-  color: hsl(var(--info));
-  background: hsl(var(--info) / 0.1);
-  border-color: hsl(var(--info) / 0.32);
-}
-
-.video-action.is-active--danger {
-  color: hsl(var(--destructive));
-  background: hsl(var(--destructive) / 0.08);
-  border-color: hsl(var(--destructive) / 0.24);
 }
 
 .video-channel__primary {
@@ -1209,7 +1215,50 @@ onUnmounted(() => {
 }
 
 .video-channel {
-  padding-top: 0.15rem;
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid #ff4d00;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.video-channel::before {
+  content: 'SEC_ID_CARD';
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(255, 77, 0, 0.3);
+  letter-spacing: 1px;
+}
+
+.video-channel__avatar-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+}
+
+.video-channel__avatar-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border: 1px solid #ff4d00;
+  border-radius: 50%;
+  opacity: 0;
+  animation: scanning-ring 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes scanning-ring {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { opacity: 0.4; }
+  100% { transform: scale(1.3); opacity: 0; }
 }
 
 .video-channel__name {
@@ -1233,20 +1282,24 @@ onUnmounted(() => {
   gap: 0.35rem;
   flex-shrink: 0;
   min-height: 1.7rem;
-  padding: 0 0.5rem;
-  border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 9999px;
-  background: hsl(var(--background) / 0.52);
-  color: hsl(var(--foreground));
+  padding: 0 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.64rem;
-  font-weight: 600;
-  box-shadow: 0 3px 8px hsl(var(--surface-shadow) / 0.45);
-  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .video-channel__unsubscribe:hover:not(:disabled) {
-  background: hsl(var(--accent));
-  border-color: hsl(var(--ring) / 0.28);
+  border-color: #ff4d00;
+  color: #ff4d00;
+  background: rgba(255, 77, 0, 0.05);
+  box-shadow: 0 0 12px rgba(255, 77, 0, 0.2);
   transform: translateY(-1px);
 }
 
