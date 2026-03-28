@@ -3,6 +3,8 @@ from urllib.parse import urlparse
 import logging
 import ipaddress
 
+from plugins.manager import get_plugin_manager
+
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +78,7 @@ def normalize_domain(domain_or_url: str) -> Optional[str]:
 
 def get_site_from_url(url: str) -> Optional[str]:
     """
-    Get site name from URL using registered extractor mapping
+    Get site name from URL using runtime capability registrations.
 
     :param url: Full URL string
     :return: Site name, or None if not found
@@ -84,19 +86,22 @@ def get_site_from_url(url: str) -> Optional[str]:
     if not url:
         return None
     try:
-        from core.extraction.factory import get_extractor_registry
-
         parsed = urlparse(url)
-        domain = parsed.netloc.lower()
+        domain = (parsed.hostname or '').lower()
+        if not domain:
+            return None
 
-        registry = get_extractor_registry()
-        site_name = registry.get_by_domain(domain)
-
-        if not site_name and domain.startswith('www.'):
-            domain = domain[4:]
-            site_name = registry.get_by_domain(domain)
-
-        return site_name
+        registrations = get_plugin_manager().get_snapshot().registrations
+        for registration in registrations:
+            if not registration.site_name:
+                continue
+            for candidate in registration.domains:
+                normalized = str(candidate).strip().lower()
+                if not normalized:
+                    continue
+                if domain == normalized or domain.endswith(f'.{normalized}'):
+                    return registration.site_name
+        return None
     except Exception as e:
         logger.error(f"get_site_from_url exception occurred: url={url}, error={str(e)}", exc_info=True)
         return None
