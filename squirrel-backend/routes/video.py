@@ -43,10 +43,10 @@ def get_video_url(
 
     except UnsupportedDomainError as e:
         logger.warning(f"Unsupported domain for video {video_id}: {e}")
-        return response.param_error("不支持的域名 (UNSUPPORTED_DOMAIN)")
+        return response.param_error(f"{e} (UNSUPPORTED_DOMAIN)")
     except VideoUrlExtractionError as e:
         logger.error(f"Video URL extraction failed for {video_id}: {e}")
-        return response.server_error("播放链接提取失败 (EXTRACT_FAILED)")
+        return response.server_error(f"{e} (EXTRACT_FAILED)")
     except ValueError as e:
         # 包括视频不存在等
         msg = str(e)

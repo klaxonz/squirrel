@@ -9,7 +9,9 @@ from core.database_upgrade import upgrade_database
 from queues.queue_config import ensure_queue_config_initialized
 from plugins.manager import bootstrap_plugin_runtime, shutdown_plugin_runtime
 from plugins.reload_listener import start_reload_listener, stop_reload_listener
+from utils.cookie import resolve_cookie_file_for_url
 from utils.runtime_http import set_cloudflare_bypass_client
+from utils.runtime_http import set_cookie_file_resolver
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,7 @@ def bootstrap_runtime(component: str):
     try:
         from utils.cloudflare_bypass import get_default_client
         set_cloudflare_bypass_client(get_default_client())
+        set_cookie_file_resolver(resolve_cookie_file_for_url)
         logger.info("[%s] Cloudflare bypass client configured", component)
     except Exception as exc:
         logger.warning("[%s] Failed to configure Cloudflare bypass client: %s", component, exc)

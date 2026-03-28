@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from crawl import VideoUrlHandler
+from crawl import ParseError, VideoUrlHandler
 from .mpd import _extract_video_info, _proxy, _format_to_rep
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class YouTubeHandler:
     def get_video_url(self, video: Any) -> dict:
         info = _extract_video_info(video.url)
         if not info:
-            raise RuntimeError("无法获取 YouTube 视频信息")
+            raise ParseError(f'无法获取 YouTube 视频信息: {video.url}')
 
         mpd_payload = self._build_mpd_payload(video, info)
         if mpd_payload:
@@ -59,7 +59,7 @@ class YouTubeHandler:
         if progressive_payload:
             return progressive_payload
 
-        raise RuntimeError("未能获取到可用的 DASH、HLS 或 MP4 播放链接")
+        raise ParseError(f'未能获取到可用的 DASH、HLS 或 MP4 播放链接: {video.url}')
 
     def _build_mpd_payload(self, video: Any, info: dict) -> dict | None:
         kept_by_itag: dict[str, dict] = {}

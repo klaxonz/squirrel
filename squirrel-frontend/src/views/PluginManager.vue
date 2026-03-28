@@ -366,13 +366,14 @@
                         <ArrowPathIcon class="w-3 h-3 animate-spin" />
                         <span class="text-[10px] font-bold uppercase">Audit...</span>
                       </div>
-                      <div v-else-if="site.accessible === true" class="flex items-center gap-2 text-success/80">
-                        <div class="w-1.5 h-1.5 rounded-full bg-success"></div>
-                        <span class="text-[10px] font-bold uppercase tracking-wider">Pass</span>
-                      </div>
-                      <div v-else-if="site.accessible === false" class="flex items-center gap-2 text-destructive/80" :title="site.error_message">
-                        <div class="w-1.5 h-1.5 rounded-full bg-destructive"></div>
-                        <span class="text-[10px] font-bold uppercase tracking-wider">Fail</span>
+                      <div
+                        v-else-if="site.accessible === true || site.accessible === false"
+                        class="flex items-center gap-2"
+                        :class="getSiteConnectivityClass(site)"
+                        :title="getSiteConnectivityBadge(site).title"
+                      >
+                        <div class="w-1.5 h-1.5 rounded-full" :class="getSiteConnectivityIndicatorClass(site)"></div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">{{ getSiteConnectivityBadge(site).label }}</span>
                       </div>
                       <span v-else class="text-[10px] font-bold uppercase text-muted-foreground/30">None</span>
                     </div>
@@ -396,10 +397,12 @@
                       </div>
                       <div
                         v-else-if="site.loginStatus"
-                        class="flex items-center gap-2 text-muted-foreground/40"
-                        :title="site.loginStatus?.message || 'Not logged in'"
+                        class="flex items-center gap-2"
+                        :class="getSiteLoginStatusClass(site)"
+                        :title="getSiteLoginBadge(site).title"
                       >
-                        <span class="text-[10px] font-bold uppercase tracking-wider">Expired</span>
+                        <div class="w-1.5 h-1.5 rounded-full" :class="getSiteLoginStatusIndicatorClass(site)"></div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">{{ getSiteLoginBadge(site).label }}</span>
                       </div>
                       <span v-else class="text-[10px] font-bold uppercase text-muted-foreground/30 tracking-wider">Untested</span>
                     </div>
@@ -475,7 +478,9 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { getConnectivityBadge } from '@/utils/plugin-connectivity-status'
 import { Logger } from '@/utils/logger'
+import { getLoginStatusBadge, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/plugin-login-status'
 import { useSiteCatalog } from '@/composables/useSites';
 import {
   disablePlugin,
@@ -517,6 +522,15 @@ const CACHE_KEY_CONNECTIVITY = 'squirrel_connectivity_results';
 const CACHE_KEY_LOGIN_STATUS = 'squirrel_login_status_results';
 const CACHE_KEY_LAST_TESTED = 'squirrel_last_tested_at';
 
+const clearLoginStatusCache = () => {
+  loginStatusResults.value = {};
+  try {
+    localStorage.removeItem(CACHE_KEY_LOGIN_STATUS);
+  } catch (e) {
+    Logger.warn('Failed to clear login status cache', e);
+  }
+};
+
 // 缓存函数
 const saveResultsToCache = () => {
   try {
@@ -552,6 +566,42 @@ const loadResultsFromCache = () => {
   } catch (e) {
     Logger.warn('Failed to load connectivity cache', e);
   }
+};
+
+const getSiteConnectivityBadge = (site) => getConnectivityBadge(site);
+
+const getSiteConnectivityClass = (site) => {
+  const tone = getSiteConnectivityBadge(site).tone;
+  if (tone === 'success') return 'text-success/80';
+  if (tone === 'warning') return 'text-warning/80';
+  if (tone === 'danger') return 'text-destructive/80';
+  return 'text-muted-foreground/40';
+};
+
+const getSiteConnectivityIndicatorClass = (site) => {
+  const tone = getSiteConnectivityBadge(site).tone;
+  if (tone === 'success') return 'bg-success';
+  if (tone === 'warning') return 'bg-warning';
+  if (tone === 'danger') return 'bg-destructive';
+  return 'bg-muted-foreground/30';
+};
+
+const getSiteLoginBadge = (site) => getLoginStatusBadge(site?.loginStatus);
+
+const getSiteLoginStatusClass = (site) => {
+  const tone = getSiteLoginBadge(site).tone;
+  if (tone === 'success') return 'text-success/80';
+  if (tone === 'warning') return 'text-warning/80';
+  if (tone === 'danger') return 'text-destructive/80';
+  return 'text-muted-foreground/40';
+};
+
+const getSiteLoginStatusIndicatorClass = (site) => {
+  const tone = getSiteLoginBadge(site).tone;
+  if (tone === 'success') return 'bg-success';
+  if (tone === 'warning') return 'bg-warning';
+  if (tone === 'danger') return 'bg-destructive';
+  return 'bg-muted-foreground/30';
 };
 
 // Cookies 导入（全局 / 单站点复用）
@@ -747,6 +797,13 @@ const handleImportAllCookies = async () => {
   const result = await importAllSiteCookies(selectedCookiesFile.value);
   if (result.error) {
     Logger.error('Failed to import cookies for all sites', result.error);
+  } else if (shouldRefreshLoginStatusesAfterCookieImport(result.data)) {
+    if (supportedSites.value.length === 0) {
+      await fetchSupportedSites();
+    }
+    clearLoginStatusCache();
+    await testLoginForAllSupportedSites();
+    saveResultsToCache();
   }
   importingCookies.value = false;
 };
@@ -762,6 +819,14 @@ const handleSyncCookieCloud = async () => {
   }
 
   const updatedSites = data?.updated_sites ?? 0;
+  if (updatedSites > 0) {
+    if (supportedSites.value.length === 0) {
+      await fetchSupportedSites();
+    }
+    clearLoginStatusCache();
+    await testLoginForAllSupportedSites();
+    saveResultsToCache();
+  }
   alert(`CookieCloud 同步完成，更新 ${updatedSites} 个站点`);
   syncingCookieCloud.value = false;
 };
@@ -1006,6 +1071,7 @@ const handleUploadCookies = (site) => {
           ...loginStatusResults.value,
           [siteName]: result.data.login_status
         };
+        saveResultsToCache();
       }
     } finally {
       setCookieUploading(siteName, false);

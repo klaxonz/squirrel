@@ -24,7 +24,7 @@ PLUGIN_MANIFEST = PluginManifest(
             name='check_login_status',
             description='Check the current JavDB login state.',
             response_schema={'type': 'object'},
-            timeout_ms=15000,
+            timeout_ms=30000,
         ),
         PluginCapability(
             name='import_subscriptions',

@@ -507,6 +507,24 @@ class PluginRuntimeSupervisor:
                     details={'plugin_id': target.plugin_id, 'capability': target.capability, 'reason': str(exc)},
                 ),
             )
+        except (TimeoutError, socket.timeout) as exc:
+            self.mark_failed(target.plugin_id, target.version, str(exc))
+            record = self._records.get(self._key(target.plugin_id, target.version))
+            if record is not None:
+                self._append_audit_event(
+                    record,
+                    event='invoke_failed',
+                    details={'capability': target.capability, 'reason': str(exc)},
+                )
+            return PluginInvokeResponse(
+                request_id=request.request_id,
+                ok=False,
+                error=PluginRuntimeError.timeout(
+                    'Plugin runtime request timed out',
+                    details={'plugin_id': target.plugin_id, 'capability': target.capability, 'reason': str(exc)},
+                ),
+                retryable=True,
+            )
         except Exception as exc:
             self.mark_failed(target.plugin_id, target.version, str(exc))
             record = self._records.get(self._key(target.plugin_id, target.version))

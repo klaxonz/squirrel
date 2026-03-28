@@ -71,13 +71,6 @@ class _GeneratedPluginRuntime:
             if isinstance(result, PluginInvokeResponse):
                 return result
             return PluginInvokeResponse(request_id=request_id, ok=True, data=result)
-        except PluginRuntimeError as exc:
-            return PluginInvokeResponse(
-                request_id=request_id,
-                ok=False,
-                error=exc,
-                retryable=exc.retryable,
-            )
         except AuthError as exc:
             error = PluginRuntimeError.auth_required(exc.message, details=exc.context)
         except (NetworkError, RateLimitError) as exc:

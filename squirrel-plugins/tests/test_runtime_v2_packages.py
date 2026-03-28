@@ -227,6 +227,23 @@ class RuntimeV2PackageTests(unittest.TestCase):
                     [item['site_name'] for item in expected_manifest['sites']],
                 )
 
+    def test_javdb_login_status_timeout_budget_is_large_enough_for_cloudflare_bypass(self):
+        plugin_dir = PLUGINS_ROOT / 'javdb'
+        runtime_json = json.loads((plugin_dir / 'plugin-runtime.json').read_text(encoding='utf-8'))
+        metadata_capability = next(
+            item for item in runtime_json['manifest']['capabilities'] if item['name'] == 'check_login_status'
+        )
+
+        with _stub_crawl_module(), _import_paths(plugin_dir / 'src'):
+            module = importlib.import_module('squirrel_javdb.runtime')
+            runtime = module.get_plugin_runtime()
+            runtime_capability = next(
+                item.to_dict() for item in runtime.manifest().capabilities if item.name == 'check_login_status'
+            )
+
+        self.assertGreaterEqual(runtime_capability['timeout_ms'], 30000)
+        self.assertGreaterEqual(metadata_capability['timeout_ms'], 30000)
+
 
 if __name__ == '__main__':
     unittest.main()

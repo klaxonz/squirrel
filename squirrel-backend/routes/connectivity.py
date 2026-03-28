@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, status
+from utils.runtime_http import get_cloudflare_bypass_client
 
 from schemas.connectivity import (
     ConnectivityTestRequest,
@@ -71,8 +72,25 @@ async def fetch_with_fallback(
         if fallback_response.status_code not in RESTRICTED_STATUS_CODES:
             logger.info("Aggressive headers resolved restriction for %s", url)
             return fallback_response
+        bypass_response = await _fetch_with_cloudflare_bypass(url)
+        if bypass_response is not None and bypass_response.status_code not in RESTRICTED_STATUS_CODES:
+            logger.info("Cloudflare bypass resolved restriction for %s", url)
+            return bypass_response
         response = fallback_response
     return response
+
+
+async def _fetch_with_cloudflare_bypass(url: str):
+    client = get_cloudflare_bypass_client()
+    if client is None:
+        return None
+
+    headers = build_browser_headers(url, aggressive=True)
+    try:
+        return await asyncio.to_thread(client.html, url, headers=headers)
+    except Exception as exc:
+        logger.warning("Cloudflare bypass connectivity test failed for %s: %s", url, exc)
+        return None
 
 
 async def test_site_connectivity(

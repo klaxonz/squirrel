@@ -38,6 +38,7 @@ class PluginGateway:
                         capability=capability.name,
                         site_name=site.site_name,
                         domains=list(site.domains),
+                        timeout_ms=capability.timeout_ms,
                         metadata={'display_name': manifest.display_name},
                     )
                 )
@@ -48,32 +49,38 @@ class PluginGateway:
     def list_registrations(self) -> List[PluginCapabilityRegistration]:
         return list(self._registrations)
 
+    def _resolve_registration(
+        self,
+        capability: str,
+        site_name: Optional[str] = None,
+        domain: Optional[str] = None,
+    ) -> Optional[PluginCapabilityRegistration]:
+        normalized_domain = domain.lower() if domain else None
+        for registration in self._registrations:
+            if registration.capability != capability:
+                continue
+            if site_name and registration.site_name == site_name:
+                return registration
+            if normalized_domain and normalized_domain in {item.lower() for item in registration.domains}:
+                return registration
+        return None
+
     def resolve_route(
         self,
         capability: str,
         site_name: Optional[str] = None,
         domain: Optional[str] = None,
     ) -> Optional[PluginRoutingTarget]:
-        normalized_domain = domain.lower() if domain else None
-        for registration in self._registrations:
-            if registration.capability != capability:
-                continue
-            if site_name and registration.site_name == site_name:
-                return PluginRoutingTarget(
-                    plugin_id=registration.plugin_id,
-                    version=registration.version,
-                    capability=capability,
-                    site_name=registration.site_name,
-                )
-            if normalized_domain and normalized_domain in {item.lower() for item in registration.domains}:
-                return PluginRoutingTarget(
-                    plugin_id=registration.plugin_id,
-                    version=registration.version,
-                    capability=capability,
-                    site_name=registration.site_name,
-                    domain=normalized_domain,
-                )
-        return None
+        registration = self._resolve_registration(capability=capability, site_name=site_name, domain=domain)
+        if registration is None:
+            return None
+        return PluginRoutingTarget(
+            plugin_id=registration.plugin_id,
+            version=registration.version,
+            capability=capability,
+            site_name=registration.site_name,
+            domain=domain.lower() if domain else None,
+        )
 
     def invoke(
         self,
@@ -83,8 +90,8 @@ class PluginGateway:
         domain: Optional[str] = None,
         timeout_ms: Optional[int] = None,
     ) -> PluginInvokeResponse:
-        route = self.resolve_route(capability=capability, site_name=site_name, domain=domain)
-        if route is None:
+        registration = self._resolve_registration(capability=capability, site_name=site_name, domain=domain)
+        if registration is None:
             return PluginInvokeResponse(
                 request_id='',
                 ok=False,
@@ -93,13 +100,21 @@ class PluginGateway:
                     details={'capability': capability, 'site_name': site_name, 'domain': domain},
                 ),
             )
+        route = PluginRoutingTarget(
+            plugin_id=registration.plugin_id,
+            version=registration.version,
+            capability=capability,
+            site_name=registration.site_name,
+            domain=domain.lower() if domain else None,
+        )
+        effective_timeout_ms = timeout_ms if timeout_ms is not None else registration.timeout_ms
 
         request = PluginInvokeRequest(
             request_id=str(uuid.uuid4()),
             capability=capability,
             payload=dict(payload or {}),
             site_name=site_name or route.site_name,
-            timeout_ms=timeout_ms,
+            timeout_ms=effective_timeout_ms,
             metadata={'domain': domain},
         )
         if self._invocation_client is None:

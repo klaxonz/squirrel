@@ -13,6 +13,18 @@ from typing import Any
 from crawl import PluginHealthStatus, PluginInvokeRequest, PluginInvokeResponse, PluginRuntime, PluginRuntimeError
 
 
+def _configure_backend_runtime_state() -> None:
+    try:
+        from utils.cloudflare_bypass import get_default_client
+        from utils.cookie import resolve_cookie_file_for_url
+        from utils.runtime_http import set_cloudflare_bypass_client, set_cookie_file_resolver
+
+        set_cloudflare_bypass_client(get_default_client())
+        set_cookie_file_resolver(resolve_cookie_file_for_url)
+    except Exception:
+        pass
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Squirrel plugin runtime bridge')
     parser.add_argument('--entrypoint', required=True)
@@ -137,6 +149,7 @@ def main() -> int:
         if import_path and import_path not in sys.path:
             sys.path.insert(0, import_path)
 
+    _configure_backend_runtime_state()
     runtime = _load_runtime(args.entrypoint)
     runtime.start({
         'plugin_id': args.plugin_id,

@@ -102,6 +102,36 @@ class _FakeMpdBuilder:
 
 
 class SharedSdkHelperTests(unittest.TestCase):
+    def test_plugin_runtime_wraps_generic_handler_exceptions(self):
+        with _stub_sdk_crawl_package():
+            plugin_module = importlib.import_module('crawl.plugin')
+            runtime_models = importlib.import_module('crawl.runtime_models')
+            runtime_errors = importlib.import_module('crawl.runtime_errors')
+
+        manifest = runtime_models.PluginManifest(
+            plugin_id='demo',
+            version='0.1.0',
+            display_name='Demo',
+            capabilities=[],
+            sites=[],
+            permissions=[],
+        )
+        runtime = plugin_module.create_plugin_runtime(
+            manifest=manifest,
+            capability_handlers={
+                'resolve_playback': lambda _payload: (_ for _ in ()).throw(RuntimeError('boom')),
+            },
+        )
+
+        response = runtime.invoke('resolve_playback', {'request_id': 'req-1'})
+
+        self.assertFalse(response.ok)
+        self.assertEqual(response.request_id, 'req-1')
+        self.assertIsNotNone(response.error)
+        self.assertEqual(response.error.code, runtime_errors.RuntimeErrorCode.CRASHED)
+        self.assertEqual(response.error.message, 'boom')
+        self.assertEqual(response.error.details, {'exception_type': 'RuntimeError'})
+
     def test_playlist_rewrite_helper_rewrites_media_lines_and_uri_attributes(self):
         with _stub_sdk_crawl_package():
             module = importlib.import_module('crawl.playlist_rewrite')

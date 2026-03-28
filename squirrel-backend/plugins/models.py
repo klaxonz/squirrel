@@ -151,6 +151,7 @@ class PluginCapabilityRegistration:
     capability: str
     site_name: Optional[str] = None
     domains: List[str] = field(default_factory=list)
+    timeout_ms: Optional[int] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 

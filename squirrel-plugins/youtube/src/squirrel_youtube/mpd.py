@@ -12,6 +12,10 @@ import requests
 from yt_dlp import YoutubeDL
 
 from crawl import (
+    AuthError,
+    NetworkError,
+    ParseError,
+    apply_ytdlp_rate_limit,
     filter_cookies_to_query_string,
     resolve_cookie_file_path,
     get_http_headers,
@@ -19,6 +23,7 @@ from crawl import (
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115 Safari/537.36'
 SITE_SLUG = 'youtube'
+YOUTUBE_PLAYER_CLIENT = 'android'
 SESSION = requests.Session()
 logger = logging.getLogger(__name__)
 VIDEO_INFO_CACHE_TTL_SECONDS = 30
@@ -420,11 +425,21 @@ def _build_js_runtimes() -> dict:
 
 def _build_ytdlp_opts(url: str) -> dict:
     opts = {
-        'quiet': False,
+        'quiet': True,
         'skip_download': True,
         'noplaylist': True,
         'ignoreerrors': False,
         'extract_flat': False,
+        'socket_timeout': 30,
+        'retries': 5,
+        'extractor_retries': 3,
+        'fragment_retries': 5,
+        'file_access_retries': 3,
+        'extractor_args': {
+            'youtube': {
+                'player_client': [YOUTUBE_PLAYER_CLIENT],
+            }
+        },
     }
     js_runtimes = _build_js_runtimes()
     if js_runtimes:
@@ -437,7 +452,7 @@ def _build_ytdlp_opts(url: str) -> dict:
         cookies = filter_cookies_to_query_string(url)
         if cookies:
             opts['cookie'] = cookies
-    return opts
+    return apply_ytdlp_rate_limit(SITE_SLUG, opts)
 
 
 def _get_cached_video_info(url: str) -> dict | None:
@@ -495,8 +510,16 @@ def _extract_video_info(url: str) -> dict | None:
                 _set_cached_video_info(url, info)
             return info
     except Exception as exc:
-        logger.error("yt-dlp failed to extract info for %s: %s", url, exc)
-        return None
+        error_msg = str(exc).lower()
+        context = {'url': url, 'original_error': str(exc)}
+
+        if any(token in error_msg for token in ('sign in', 'private video', 'members-only', 'not a bot', 'confirm your age')):
+            raise AuthError(f'需要登录或通过风控校验后才能播放: {url}', context=context)
+        if any(token in error_msg for token in ('timeout', 'connection', 'network', 'closed file', 'i/o operation')):
+            raise NetworkError(f'YouTube playback network request failed: {url}', context=context)
+
+        logger.error('yt-dlp failed to extract info for %s: %s', url, exc)
+        raise ParseError(f'无法获取 YouTube 视频播放信息: {url}', context=context)
 
 
 def _range_to_str(range_dict) -> str | None:

@@ -13,7 +13,7 @@
         "response_schema": {
           "type": "object"
         },
-        "timeout_ms": 15000
+        "timeout_ms": 30000
       },
       {
         "name": "import_subscriptions",
