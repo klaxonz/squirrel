@@ -325,7 +325,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 }
 
 .sp-player.is-active {
-  cursor: default;
+  cursor: pointer;
 }
 
 .sp-video {
