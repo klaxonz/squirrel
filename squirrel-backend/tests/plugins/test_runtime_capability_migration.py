@@ -190,3 +190,11 @@ def test_runtime_plugins_no_longer_ship_downloader_modules(module_name, plugin_n
     assert response.ok is True
     assert response.data['success'] is True
     assert response.data['data']['title'] == 'ABP-123 Demo Title'
+
+
+@pytest.mark.parametrize(
+    'module_name',
+    ['squirrel_bilibili', 'squirrel_javdb', 'squirrel_pornhub', 'squirrel_youtube'],
+)
+def test_runtime_plugins_no_longer_ship_config_modules(module_name):
+    assert importlib.util.find_spec(f'{module_name}.config') is None

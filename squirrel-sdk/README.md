@@ -10,7 +10,7 @@ New plugins should:
 - expose `create_plugin_runtime()`
 - let the backend discover them from `plugin-runtime.json`
 
-Legacy in-process registries still exist only for compatibility with older code.
+Legacy in-process registries and helper decorators have been removed.
 
 ## Installation
 

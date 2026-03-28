@@ -115,37 +115,24 @@ from .config import (
     get_rate_limit_config,
 )
 
-# Other plugin types (Protocol-based interfaces with unified registry)
+# Other plugin types (Protocol-based interfaces)
 from .url_handler import (
     VideoUrlHandler,
-    get_handler_registry,
-    register_handler,
 )
 from .mpd import (
     MpdBuilder,
-    get_mpd_registry,
-    register_mpd,
 )
 from .subtitles import (
     SubtitlesProvider,
-    get_subtitles_registry,
-    register_subtitles,
 )
 from .id_extractor import (
     IdExtractor,
     RegexIdExtractor,
-    get_id_extractor_registry,
-    register_id_extractor,
 )
 from .proxy import (
     VideoProxy,
-    get_proxy_registry,
-    register_proxy,
     ProxyConfigProvider,
     ProxyDomainConfig,
-    get_proxy_config_registry,
-    register_site_config,
-    create_site_config,
 )
 from .importer import (
     BaseImporter,
@@ -223,7 +210,6 @@ __all__ = [
     'VideoProxy',
     'ProxyConfigProvider',
     'ProxyDomainConfig',
-    'create_site_config',
     # Exceptions
     'ErrorCategory',
     'PluginError',

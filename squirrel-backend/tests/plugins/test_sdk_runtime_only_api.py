@@ -32,6 +32,19 @@ LEGACY_EXPORTS = {
     'get_downloader_registry',
     'get_downloader_factory',
     'register_downloader',
+    'get_handler_registry',
+    'register_handler',
+    'get_mpd_registry',
+    'register_mpd',
+    'get_subtitles_registry',
+    'register_subtitles',
+    'get_proxy_registry',
+    'register_proxy',
+    'get_proxy_config_registry',
+    'register_site_config',
+    'create_site_config',
+    'get_id_extractor_registry',
+    'register_id_extractor',
 }
 
 
@@ -40,7 +53,7 @@ def test_crawl_package_does_not_export_legacy_runtime_v1_symbols(name):
     assert not hasattr(crawl, name)
 
 
-@pytest.mark.parametrize('module_name', ['crawl.registry', 'crawl.downloader'])
+@pytest.mark.parametrize('module_name', ['crawl.registry', 'crawl.downloader', 'crawl.registries'])
 def test_removed_legacy_sdk_modules_are_not_importable(module_name):
     with pytest.raises(ModuleNotFoundError):
         importlib.import_module(module_name)
