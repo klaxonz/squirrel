@@ -1,47 +1,26 @@
 <template>
-  <div class="sync-center-page flex min-h-full flex-col bg-background text-foreground">
-    <div class="toolbar-container pb-4 pt-4">
-      <SyncControlBar
-        :auto-refresh="overviewAutoRefresh"
-        :can-retry-failed="retryTargetCount > 0"
-        :last-updated-at="toolbarLastUpdatedAt"
-        :lens="workbenchLens"
-        :reconciling="reconciling"
-        :refreshing="dashboardRefreshing"
-        :retrying-batch="retryingBatch"
-        :summary="dashboardSummary"
-        @reconcile="handleReconcile"
-        @refresh="handleRefreshAll"
-        @retry-failed="handleRetryFailed"
-        @set-lens="handleLensChange"
-        @toggle-auto-refresh="handleToggleAutoRefresh"
-      />
-    </div>
-
-    <div class="content-container h-auto flex-1 min-h-0 overflow-y-auto pb-5">
-      <div class="flex flex-col gap-2.5">
-        <Alert
-          v-if="actionNotice.message"
-          :variant="actionNoticeVariant"
-          :class="actionNoticeClass"
-        >
-          <AlertDescription>{{ actionNotice.message }}</AlertDescription>
-        </Alert>
-
-        <Alert
-          v-if="loadNotice"
-          class="border-amber-500/40"
-        >
-          <AlertDescription>{{ loadNotice }}</AlertDescription>
-        </Alert>
-
-        <SyncSignalMatrix
-          :current="currentSignals"
-          :recent="recentSignals"
-          @select="handleSignalSelect"
+  <div class="sync-center-page flex min-h-full flex-col bg-background text-foreground selection:bg-primary/10">
+    <div class="toolbar-container py-8">
+      <div class="flex flex-col gap-10">
+        <SyncControlBar
+          :auto-refresh="overviewAutoRefresh"
+          :can-retry-failed="retryTargetCount > 0"
+          :last-updated-at="toolbarLastUpdatedAt"
+          :lens="workbenchLens"
+          :reconciling="reconciling"
+          :refreshing="dashboardRefreshing"
+          :retrying-batch="retryingBatch"
+          :summary="dashboardSummary"
+          @reconcile="handleReconcile"
+          @refresh="handleRefreshAll"
+          @retry-failed="handleRetryFailed"
+          @set-lens="handleLensChange"
+          @toggle-auto-refresh="handleToggleAutoRefresh"
         />
 
         <SyncAnalysisWorkspace
+          :current="currentSignals"
+          :recent="recentSignals"
           :run-filters="historyFilters"
           :run-page="historyPage"
           :run-page-size="historyPageSize"
@@ -52,6 +31,7 @@
           :selected-run-id="selectedRunId"
           :site-options="historySiteOptions"
           :subscription-options="historySubscriptionOptions"
+          @signal-select="handleSignalSelect"
           @apply-history-filters="handleHistoryFiltersApply"
           @change-history-page="historySetPage"
           @open-run="handleSelectRun"
@@ -67,7 +47,6 @@
       :run="historySelectedRun"
       @close="handleCloseRunDrawer"
     />
-
   </div>
 </template>
 
@@ -76,33 +55,12 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import SyncAnalysisWorkspace from '@/components/sync-center/SyncAnalysisWorkspace.vue'
 import SyncControlBar from '@/components/sync-center/SyncControlBar.vue'
 import SyncRunDetailDrawer from '@/components/sync-center/SyncRunDetailDrawer.vue'
-import SyncSignalMatrix, { type SyncSignalItem } from '@/components/sync-center/SyncSignalMatrix.vue'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { type SyncSignalItem } from '@/components/sync-center/SyncSignalMatrix.vue'
 import { useSyncCenter } from '@/composables/useSyncCenter'
 import { type SyncHistoryFilters, useSyncHistory } from '@/composables/useSyncHistory'
 import { type SyncTimeLens, useSyncCenterWorkbench } from '@/composables/useSyncCenterWorkbench'
 import { useSyncTrends } from '@/composables/useSyncTrends'
 import { formatDurationMs } from '@/utils/dateFormat'
-
-type NoticeVariant = 'success' | 'warning' | 'error'
-
-const actionNotice = reactive<{
-  message: string
-  variant: NoticeVariant
-}>({
-  message: '',
-  variant: 'success',
-})
-
-const actionNoticeVariant = computed(() => {
-  return actionNotice.variant === 'error' ? 'destructive' : 'default'
-})
-
-const actionNoticeClass = computed(() => {
-  if (actionNotice.variant === 'success') return 'border-emerald-500/40'
-  if (actionNotice.variant === 'warning') return 'border-amber-500/40'
-  return ''
-})
 
 const {
   lens: workbenchLens,
@@ -163,7 +121,6 @@ const {
   loading: trendLoading,
   series: trendSeries,
   setRange: trendSetRange,
-  siteBreakdown: trendSiteBreakdown,
 } = useSyncTrends()
 
 const dashboardRefreshing = computed(() => {
@@ -174,10 +131,6 @@ const toolbarLastUpdatedAt = computed(() => {
   return overviewLastUpdatedAt.value || historyLastUpdatedAt.value || trendLastUpdatedAt.value || ''
 })
 
-const loadNotice = computed(() => {
-  return [overviewPageError.value, historyError.value, trendError.value].filter(Boolean).join(' · ')
-})
-
 const retryTargetCount = computed(() => {
   return overviewFilters.status === 'failed' ? overviewTotal.value : filteredFailedCount.value
 })
@@ -186,61 +139,31 @@ const totalTrendRuns = computed(() => trendSeries.value.reduce((sum, point) => s
 const totalTrendSuccess = computed(() => trendSeries.value.reduce((sum, point) => sum + point.runs_success, 0))
 const totalTrendFailed = computed(() => trendSeries.value.reduce((sum, point) => sum + point.runs_failed, 0))
 const totalTrendExtracted = computed(() => trendSeries.value.reduce((sum, point) => sum + point.videos_extracted, 0))
-const latestP95 = computed(() => {
-  if (!trendSeries.value.length) {
-    return 0
-  }
-  return trendSeries.value[trendSeries.value.length - 1]?.p95_duration_ms || 0
-})
-const volatileSiteCount = computed(() => {
-  return trendSiteBreakdown.value.filter((item) => item.runs_failed > 0 || item.runs_deferred > 0).length
-})
-
-const failedRuns = computed(() => historyRuns.value.filter((run) => run.status === 'failed'))
-const slowRuns = computed(() => [...historyRuns.value].sort((left, right) => right.duration_ms - left.duration_ms))
 
 const currentSignals = computed<SyncSignalItem[]>(() => ([
   {
+    key: 'failed',
+    label: 'Failed',
+    value: overview.value.failed_count,
+    tone: overview.value.failed_count ? 'error' : 'success',
+  },
+  {
     key: 'running',
-    label: '运行中',
+    label: 'Running',
     value: overview.value.running_count,
     tone: overview.value.running_count ? 'info' : 'neutral',
-    delta: `待处理 ${overview.value.pending_videos}`,
   },
   {
     key: 'queued',
-    label: '排队中',
+    label: 'Queued',
     value: overview.value.queued_count,
     tone: overview.value.queued_count ? 'warning' : 'neutral',
-    delta: `队列消息 ${overview.value.queue_messages}`,
-  },
-  {
-    key: 'failed',
-    label: '失败待处理',
-    value: overview.value.failed_count,
-    tone: overview.value.failed_count ? 'error' : 'success',
-    delta: `候选 ${retryTargetCount.value}`,
-  },
-  {
-    key: 'deferred',
-    label: '延后执行',
-    value: overview.value.deferred_count,
-    tone: overview.value.deferred_count ? 'warning' : 'neutral',
-    delta: `即将执行 ${overview.value.due_soon_count}`,
-  },
-  {
-    key: 'queue-depth',
-    label: '队列深度',
-    value: overview.value.queue_depth,
-    tone: overview.value.queue_depth > 0 ? 'warning' : 'neutral',
-    delta: `消息 ${overview.value.queue_messages}`,
   },
   {
     key: 'pending-videos',
-    label: '待处理视频',
+    label: 'Pending Videos',
     value: overview.value.pending_videos,
     tone: overview.value.pending_videos > 0 ? 'info' : 'neutral',
-    delta: `运行中 ${overview.value.running_count}`,
   },
 ]))
 
@@ -250,104 +173,39 @@ const recentSignals = computed<SyncSignalItem[]>(() => {
   return [
     {
       key: 'success-rate',
-      label: '成功率',
+      label: 'Success Rate',
       value: successRate,
       tone: totalTrendFailed.value > 0 ? 'warning' : 'success',
-      delta: `运行 ${totalTrendRuns.value}`,
-    },
-    {
-      key: 'failed-runs',
-      label: '失败运行',
-      value: totalTrendFailed.value,
-      tone: totalTrendFailed.value > 0 ? 'error' : 'success',
-      delta: `批次 ${failedRuns.value.length}`,
-    },
-    {
-      key: 'latest-p95',
-      label: '最新 P95',
-      value: formatDurationMs(latestP95.value),
-      tone: latestP95.value > 0 ? 'warning' : 'neutral',
-      delta: `最慢 ${formatDurationMs(slowRuns.value[0]?.duration_ms || 0)}`,
-    },
-    {
-      key: 'recovered',
-      label: '恢复次数',
-      value: recoverySummary.value.total_recovered || 0,
-      tone: recoverySummary.value.total_recovered ? 'warning' : 'neutral',
-      delta: recoverySummary.value.last_reconcile_at || '未执行',
-    },
-    {
-      key: 'volatile-sites',
-      label: '波动站点',
-      value: volatileSiteCount.value,
-      tone: volatileSiteCount.value > 0 ? 'warning' : 'success',
-      delta: `覆盖 ${trendSiteBreakdown.value.length}`,
     },
     {
       key: 'extracted',
-      label: '提取量',
+      label: 'Extracted',
       value: totalTrendExtracted.value,
       tone: totalTrendExtracted.value > 0 ? 'info' : 'neutral',
-      delta: `当前 ${workbenchLens.value}`,
     },
   ]
 })
 
 const dashboardSummary = computed(() => {
   if (overviewPageError.value || historyError.value || trendError.value) {
-    return '存在部分数据不可用'
+    return 'Partial data unavailable'
   }
-
-  if (overview.value.failed_count > 0) {
-    return `${overview.value.failed_count} 个失败待处理 · ${overview.value.running_count} 个运行中`
-  }
-
-  if (volatileSiteCount.value > 0) {
-    return `当前稳定，但有 ${volatileSiteCount.value} 个站点出现波动`
-  }
-
-  if (overview.value.queued_count > 0) {
-    return `${overview.value.queued_count} 个排队中 · P95 ${formatDurationMs(latestP95.value)}`
-  }
-
-  return `当前稳定 · ${overview.value.running_count} 个运行中 · 成功率 ${recentSignals.value[0]?.value || '0%'}`
+  return `Stable · ${overview.value.running_count} active workers`
 })
 
 const getLensWindow = (lens: SyncTimeLens) => {
   const now = new Date()
   const start = new Date(now)
-
   if (lens === '7d') {
     start.setDate(start.getDate() - 7)
-    return {
-      dateFrom: start.toISOString(),
-      dateTo: now.toISOString(),
-      trendRange: '7d',
-    }
+    return { dateFrom: start.toISOString(), dateTo: now.toISOString(), trendRange: '7d' }
   }
-
   if (lens === '24h') {
     start.setHours(start.getHours() - 24)
-    return {
-      dateFrom: start.toISOString(),
-      dateTo: now.toISOString(),
-      trendRange: '24h',
-    }
+    return { dateFrom: start.toISOString(), dateTo: now.toISOString(), trendRange: '24h' }
   }
-
   start.setHours(start.getHours() - 6)
-  return {
-    dateFrom: start.toISOString(),
-    dateTo: now.toISOString(),
-    trendRange: '24h',
-  }
-}
-
-const syncHistoryFilters = async (patch: Partial<SyncHistoryFilters>) => {
-  if (!historySetFilters(patch)) {
-    return
-  }
-  await historyLoadRuns()
+  return { dateFrom: start.toISOString(), dateTo: now.toISOString(), trendRange: '24h' }
 }
 
 const handleRefreshAll = async () => {
@@ -368,31 +226,13 @@ const handleToggleAutoRefresh = (value: boolean) => {
 }
 
 const handleRetryFailed = async () => {
-  const { data, error } = await retryFailed()
-  if (error) {
-    actionNotice.message = error.message || '批量重试失败'
-    actionNotice.variant = 'error'
-    return
-  }
-
-  if (data) {
-    actionNotice.message = `已处理 ${data.total} 项，入队 ${data.queued} 项，执行中 ${data.in_progress} 项，失败 ${data.failed} 项`
-    actionNotice.variant = data.failed > 0 ? 'warning' : 'success'
-  }
+  await retryFailed()
+  await handleRefreshAll()
 }
 
 const handleReconcile = async () => {
-  const { data, error } = await reconcile()
-  if (error) {
-    actionNotice.message = error.message || '状态对账失败'
-    actionNotice.variant = 'error'
-    return
-  }
-
-  if (data) {
-    actionNotice.message = `对账完成：queued 恢复 ${data.queuedRecovered}，running 恢复 ${data.runningRecovered}`
-    actionNotice.variant = data.queuedRecovered || data.runningRecovered ? 'warning' : 'success'
-  }
+  await reconcile()
+  await handleRefreshAll()
 }
 
 const handleSelectRun = (runId: string) => {
@@ -404,84 +244,28 @@ const handleCloseRunDrawer = () => {
   historyCloseRun()
 }
 
-const handleFocusFailedRuns = async (runId = '') => {
-  await Promise.all([
-    syncHistoryFilters({ status: 'failed' }),
-    overviewSelectStatus('failed'),
-  ])
-
-  if (runId) {
-    handleSelectRun(runId)
-  }
-}
-
-const applyHistoryStatusFilter = async (status: SyncHistoryFilters['status']) => {
-  await syncHistoryFilters({ status })
-}
-
 const handleSignalSelect = async (key: string) => {
-  if (key === 'failed' || key === 'failed-runs' || key === 'success-rate') {
-    await handleFocusFailedRuns()
-    return
-  }
-
-  if (key === 'running') {
-    resetAnalysis()
-    await Promise.all([
-      applyHistoryStatusFilter('running'),
-      overviewSelectStatus('running'),
-    ])
-    return
-  }
-
-  if (key === 'queued' || key === 'queue-depth') {
-    resetAnalysis()
-    await Promise.all([
-      applyHistoryStatusFilter('queued'),
-      overviewSelectStatus('queued'),
-    ])
-    return
-  }
-
-  if (key === 'deferred') {
-    resetAnalysis()
-    await Promise.all([
-      applyHistoryStatusFilter('deferred'),
-      overviewSelectStatus('scheduled'),
-    ])
-    return
-  }
-
-  if (key === 'pending-videos') {
-    resetAnalysis()
-    await Promise.all([
-      applyHistoryStatusFilter('running'),
-      overviewSelectStatus('recent'),
-    ])
-    return
-  }
-
   resetAnalysis()
-  await Promise.all([
-    applyHistoryStatusFilter(''),
-    overviewSelectStatus('recent'),
-  ])
+  const statusMap: Record<string, any> = {
+    'failed': 'failed',
+    'running': 'running',
+    'queued': 'queued',
+  }
+  const status = statusMap[key] || ''
+  historySetFilters({ status })
+  await historyLoadRuns()
 }
 
 const handleHistoryFiltersApply = async (payload: SyncHistoryFilters) => {
-  historySetFilters(payload as Partial<SyncHistoryFilters>)
+  historySetFilters(payload)
   await historyLoadRuns()
 }
 
 watch(workbenchLens, async (lens) => {
   const windowConfig = getLensWindow(lens)
-  const historyChanged = historySetDateRange(windowConfig.dateFrom, windowConfig.dateTo)
-  const trendChanged = trendSetRange(windowConfig.trendRange)
-
-  await Promise.all([
-    historyChanged || !historyRuns.value.length ? historyLoadRuns() : Promise.resolve(),
-    trendChanged || !trendSeries.value.length ? loadTrends() : Promise.resolve(),
-  ])
+  historySetDateRange(windowConfig.dateFrom, windowConfig.dateTo)
+  trendSetRange(windowConfig.trendRange)
+  await Promise.all([historyLoadRuns(), loadTrends()])
 }, { immediate: true })
 
 watch(selectedRunId, async (runId) => {
@@ -498,28 +282,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.toolbar-container,
-.content-container {
-  max-width: var(--container-max-width, 2560px);
+.toolbar-container {
+  max-width: 1440px;
   margin: 0 auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
   width: 100%;
-}
-
-@media (min-width: 640px) {
-  .toolbar-container,
-  .content-container {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .toolbar-container,
-  .content-container {
-    padding-left: 2rem;
-    padding-right: 2rem;
-  }
 }
 </style>

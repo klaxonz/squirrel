@@ -1,72 +1,25 @@
 <template>
-  <section class="grid grid-cols-1 gap-3 2xl:grid-cols-[1.25fr_1fr]">
-    <Card class="rounded-lg">
-      <CardHeader class="flex flex-row items-center justify-between space-y-0 px-4 py-3">
-        <div class="space-y-0.5">
-          <CardTitle class="text-sm">当前态势</CardTitle>
-          <CardDescription class="text-2xs">点击任意指标快速过滤</CardDescription>
-        </div>
-        <Badge variant="secondary" class="rounded-md px-2 py-0.5 text-2xs font-normal text-muted-foreground/80">
-          {{ current.length }} 项
-        </Badge>
-      </CardHeader>
-      <CardContent class="px-4 pb-4 pt-0">
-        <div class="grid grid-cols-2 gap-2 lg:grid-cols-3">
-          <button
-            v-for="item in current"
-            :key="item.key"
-            type="button"
-            class="group min-h-[4.75rem] rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            @click="emit('select', item.key)"
-          >
-            <div class="text-2xs text-muted-foreground/70">{{ item.label }}</div>
-            <div class="mt-1.5 text-lg font-semibold tabular-nums text-foreground">
-              {{ item.value }}
-            </div>
-            <div v-if="item.delta" class="mt-1 line-clamp-1 text-2xs text-muted-foreground">
-              {{ item.delta }}
-            </div>
-          </button>
-        </div>
-      </CardContent>
-    </Card>
-
-    <Card class="rounded-lg">
-      <CardHeader class="flex flex-row items-center justify-between space-y-0 px-4 py-3">
-        <div class="space-y-0.5">
-          <CardTitle class="text-sm">最近变化</CardTitle>
-          <CardDescription class="text-2xs">聚合最近窗口内的成功率与波动</CardDescription>
-        </div>
-        <Badge variant="secondary" class="rounded-md px-2 py-0.5 text-2xs font-normal text-muted-foreground/80">
-          {{ recent.length }} 项
-        </Badge>
-      </CardHeader>
-      <CardContent class="px-4 pb-4 pt-0">
-        <div class="grid grid-cols-2 gap-2 lg:grid-cols-3">
-          <button
-            v-for="item in recent"
-            :key="item.key"
-            type="button"
-            class="group min-h-[4.75rem] rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            @click="emit('select', item.key)"
-          >
-            <div class="text-2xs text-muted-foreground/70">{{ item.label }}</div>
-            <div class="mt-1.5 text-lg font-semibold tabular-nums text-foreground">
-              {{ item.value }}
-            </div>
-            <div v-if="item.delta" class="mt-1 line-clamp-1 text-2xs text-muted-foreground">
-              {{ item.delta }}
-            </div>
-          </button>
-        </div>
-      </CardContent>
-    </Card>
+  <section class="flex flex-wrap items-center gap-6 px-1">
+    <div
+      v-for="item in displaySignals"
+      :key="item.key"
+      class="flex items-center gap-2.5 cursor-pointer group"
+      @click="emit('select', item.key)"
+    >
+      <div :class="[getToneBgClass(item.tone), 'flex h-8 w-8 items-center justify-center rounded-lg transition-colors group-hover:bg-opacity-80']">
+        <component :is="item.icon" :class="[getToneTextClass(item.tone), 'h-4 w-4']" />
+      </div>
+      <div class="flex flex-col">
+        <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">{{ item.label }}</span>
+        <span class="text-sm font-semibold tabular-nums text-foreground">{{ item.value }}</span>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { computed } from 'vue'
+import { AlertCircle, Activity, CheckCircle2, Clock, Layers, PlayCircle } from 'lucide-vue-next'
 
 type SignalTone = 'neutral' | 'info' | 'warning' | 'error' | 'success'
 
@@ -78,7 +31,7 @@ export interface SyncSignalItem {
   delta?: string
 }
 
-defineProps<{
+const props = defineProps<{
   current: SyncSignalItem[]
   recent: SyncSignalItem[]
 }>()
@@ -87,4 +40,47 @@ const emit = defineEmits<{
   (e: 'select', key: string): void
 }>()
 
+const displaySignals = computed(() => {
+  const all = [...props.current, ...props.recent]
+  const map: Record<string, { label: string; icon: any }> = {
+    'failed': { label: 'Errors', icon: AlertCircle },
+    'running': { label: 'Processing', icon: Activity },
+    'queued': { label: 'In Queue', icon: Clock },
+    'success-rate': { label: 'Success Rate', icon: CheckCircle2 },
+    'pending-videos': { label: 'Pending', icon: Layers },
+    'extracted': { label: 'Extracted', icon: PlayCircle },
+  }
+
+  return all
+    .filter(item => map[item.key])
+    .map(item => ({
+      ...item,
+      label: map[item.key].label,
+      icon: map[item.key].icon,
+    }))
+    .sort((a, b) => {
+      const order = ['failed', 'running', 'queued', 'pending-videos', 'success-rate', 'extracted']
+      return order.indexOf(a.key) - order.indexOf(b.key)
+    })
+})
+
+const getToneBgClass = (tone: SignalTone) => {
+  switch (tone) {
+    case 'success': return 'bg-emerald-500/10'
+    case 'error': return 'bg-rose-500/10'
+    case 'warning': return 'bg-amber-500/10'
+    case 'info': return 'bg-blue-500/10'
+    default: return 'bg-slate-500/10'
+  }
+}
+
+const getToneTextClass = (tone: SignalTone) => {
+  switch (tone) {
+    case 'success': return 'text-emerald-600'
+    case 'error': return 'text-rose-600'
+    case 'warning': return 'text-amber-600'
+    case 'info': return 'text-blue-600'
+    default: return 'text-slate-600'
+  }
+}
 </script>
