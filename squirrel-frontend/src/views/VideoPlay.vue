@@ -964,6 +964,12 @@ onUnmounted(() => {
   flex-direction: column;
 }
 
+@media (max-width: 640px) {
+  .viewfinder-box {
+    padding: 6px;
+  }
+}
+
 .viewfinder-label {
   position: absolute;
   top: 0;
@@ -975,6 +981,14 @@ onUnmounted(() => {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   z-index: 10;
+  text-shadow: 0 0 8px rgba(255, 77, 0, 0.4);
+}
+
+@media (max-width: 640px) {
+  .viewfinder-label {
+    font-size: 0.55rem;
+    top: -2px;
+  }
 }
 
 .viewfinder-corner {
@@ -984,6 +998,14 @@ onUnmounted(() => {
   border: 1px solid #ff4d00;
   z-index: 10;
   pointer-events: none;
+  box-shadow: 0 0 5px rgba(255, 77, 0, 0.2);
+}
+
+@media (max-width: 640px) {
+  .viewfinder-corner {
+    width: 10px;
+    height: 10px;
+  }
 }
 
 .viewfinder-corner--top-left {
@@ -1491,6 +1513,13 @@ onUnmounted(() => {
   opacity: 0;
   transition: opacity 0.2s ease;
   pointer-events: none;
+  text-shadow: 0 0 8px rgba(255, 77, 0, 0.6);
+}
+
+@media (max-width: 640px) {
+  .related-video-card__data-overlay {
+    font-size: 0.5rem;
+  }
 }
 
 .related-video-card:hover .related-video-card__data-overlay {
@@ -1643,10 +1672,39 @@ onUnmounted(() => {
     font-size: var(--font-size-2xs);
   }
 
-  .video-meta__panel,
-  .video-aside__panel {
-    border-radius: 0;
+  .video-meta__title {
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
   }
+
+  .video-meta__title-prefix {
+    font-size: 0.7rem;
+  }
+
+  .video-channel {
+    padding: 0.85rem;
+  }
+
+  .video-channel::before {
+    font-size: 8px;
+  }
+
+  .video-channel__avatar-wrapper,
+  .related-video-card__fallback-icon {
+    font-size: 1.25rem;
+  }
+
+  .related-video-card__title {
+    font-size: 0.78rem;
+  }
+
+  .related-video-card__channel,
+  .related-video-card__date {
+    font-size: 0.6rem;
+  }
+}
+
 
   .related-video-card {
     grid-template-columns: minmax(6.8rem, 7.6rem) minmax(0, 1fr);
@@ -1665,39 +1723,41 @@ onUnmounted(() => {
 
 /* 平滑过渡动画 - 快速淡入淡出 */
 .fade-enter-active {
-  transition: opacity 0.1s ease-out;
+  transition: opacity 0.15s cubic-bezier(0.2, 0, 0, 1), transform 0.15s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .fade-leave-active {
-  transition: opacity 0.08s ease-in;
+  transition: opacity 0.1s cubic-bezier(0.2, 0, 0, 1), transform 0.1s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from {
   opacity: 0;
+  transform: translateY(4px) scale(0.995);
 }
 
-.fade-enter-to, .fade-leave-from {
-  opacity: 1;
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.995);
 }
 
 .channel-dismiss-enter-active,
 .channel-dismiss-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease, max-height 0.18s ease, margin 0.18s ease, padding 0.18s ease;
+  transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.2s cubic-bezier(0.2, 0, 0, 1), max-height 0.2s ease;
   overflow: hidden;
 }
 
 .channel-dismiss-enter-from,
 .channel-dismiss-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateX(-10px);
   max-height: 0;
 }
 
 .channel-dismiss-enter-to,
 .channel-dismiss-leave-from {
   opacity: 1;
-  transform: translateY(0);
-  max-height: 12rem;
+  transform: translateX(0);
+  max-height: 20rem;
 }
 
 @keyframes video-channel-spin {
