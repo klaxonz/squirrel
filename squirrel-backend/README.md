@@ -34,6 +34,11 @@ Installed plugin subprocesses receive a reduced inherited environment and explic
 `SQUIRREL_PLUGIN_*` variables for plugin id, version, granted permissions, and
 data directory.
 
+Operators can also define `manifest.metadata.runtime_policy` and
+`manifest.metadata.network_policy` to control runtime limits and outbound
+network access. Runtime stdout/stderr and audit events are written under the
+plugin data directory.
+
 Permissions and trust model
 ---------------------------
 

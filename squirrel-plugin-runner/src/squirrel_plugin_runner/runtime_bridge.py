@@ -4,6 +4,7 @@ import argparse
 from datetime import date, datetime
 import importlib
 import json
+import socket
 import sys
 import threading
 from http import HTTPStatus
@@ -22,8 +23,117 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument('--port', type=int, required=True)
     parser.add_argument('--data-dir')
     parser.add_argument('--granted-permission', action='append', default=[])
+    parser.add_argument('--network-policy')
+    parser.add_argument('--max-runtime-seconds', type=float)
+    parser.add_argument('--memory-limit-mb', type=int)
+    parser.add_argument('--cpu-time-limit-seconds', type=int)
+    parser.add_argument('--max-open-files', type=int)
     parser.add_argument('--import-path', action='append', default=[])
     return parser.parse_args()
+
+
+def normalize_network_policy(raw_policy: Any, granted_permissions: list[str]) -> dict[str, Any]:
+    granted = {str(item).strip().lower() for item in granted_permissions if item}
+    if 'network:http' not in granted:
+        return {
+            'mode': 'deny_all',
+            'allow_hosts': [],
+            'deny_hosts': [],
+        }
+
+    if not isinstance(raw_policy, dict):
+        return {
+            'mode': 'allow_all',
+            'allow_hosts': [],
+            'deny_hosts': [],
+        }
+
+    mode = str(raw_policy.get('mode') or 'allow_all').strip().lower()
+    allow_hosts = [
+        str(item).strip().lower()
+        for item in list(raw_policy.get('allow_hosts') or [])
+        if str(item).strip()
+    ]
+    deny_hosts = [
+        str(item).strip().lower()
+        for item in list(raw_policy.get('deny_hosts') or [])
+        if str(item).strip()
+    ]
+    return {
+        'mode': mode,
+        'allow_hosts': allow_hosts,
+        'deny_hosts': deny_hosts,
+    }
+
+
+def host_is_allowed(policy: dict[str, Any], host: str | None) -> bool:
+    hostname = str(host or '').strip().lower()
+    if not hostname:
+        return False
+
+    deny_hosts = [str(item).strip().lower() for item in list(policy.get('deny_hosts') or []) if item]
+    allow_hosts = [str(item).strip().lower() for item in list(policy.get('allow_hosts') or []) if item]
+
+    if _matches_host(hostname, deny_hosts):
+        return False
+
+    mode = str(policy.get('mode') or 'allow_all').strip().lower()
+    if mode == 'deny_all':
+        return False
+    if mode == 'allow_list':
+        return _matches_host(hostname, allow_hosts)
+    return True
+
+
+def _matches_host(hostname: str, candidates: list[str]) -> bool:
+    for candidate in candidates:
+        if hostname == candidate or hostname.endswith(f'.{candidate}'):
+            return True
+    return False
+
+
+def _install_network_guard(policy: dict[str, Any]) -> None:
+    original_create_connection = socket.create_connection
+    original_socket_connect = socket.socket.connect
+
+    def _guard_host(host: str | None) -> None:
+        if not host_is_allowed(policy, host):
+            raise PermissionError(f'Network access denied for host: {host}')
+
+    def guarded_create_connection(address, *args, **kwargs):
+        host = address[0] if isinstance(address, tuple) and address else None
+        _guard_host(host)
+        return original_create_connection(address, *args, **kwargs)
+
+    def guarded_socket_connect(self, address):
+        host = address[0] if isinstance(address, tuple) and address else None
+        _guard_host(host)
+        return original_socket_connect(self, address)
+
+    socket.create_connection = guarded_create_connection
+    socket.socket.connect = guarded_socket_connect
+
+
+def _apply_resource_limits(args: argparse.Namespace) -> dict[str, Any]:
+    applied = {
+        'max_runtime_seconds': args.max_runtime_seconds,
+        'memory_limit_mb': args.memory_limit_mb,
+        'cpu_time_limit_seconds': args.cpu_time_limit_seconds,
+        'max_open_files': args.max_open_files,
+    }
+    try:
+        import resource  # type: ignore[import-not-found]
+    except Exception:
+        return applied
+
+    if args.cpu_time_limit_seconds is not None:
+        resource.setrlimit(resource.RLIMIT_CPU, (int(args.cpu_time_limit_seconds), int(args.cpu_time_limit_seconds)))
+    if args.memory_limit_mb is not None:
+        memory_bytes = int(args.memory_limit_mb) * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
+    if args.max_open_files is not None:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (int(args.max_open_files), int(args.max_open_files)))
+    return applied
 
 
 def _load_runtime(entrypoint: str) -> PluginRuntime:
@@ -132,12 +242,19 @@ def main() -> int:
         if import_path and import_path not in sys.path:
             sys.path.insert(0, import_path)
 
+    raw_network_policy = json.loads(args.network_policy) if args.network_policy else None
+    network_policy = normalize_network_policy(raw_network_policy, list(args.granted_permission or []))
+    _install_network_guard(network_policy)
+    runtime_policy = _apply_resource_limits(args)
+
     runtime = _load_runtime(args.entrypoint)
     runtime.start({
         'plugin_id': args.plugin_id,
         'version': args.version,
         'data_dir': args.data_dir,
         'granted_permissions': list(args.granted_permission or []),
+        'network_policy': network_policy,
+        'runtime_policy': runtime_policy,
         'isolated': True,
     })
 

@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -109,7 +110,21 @@ def test_supervisor_uses_isolated_runtime_python_for_installed_plugins(tmp_path)
         data_path=str(tmp_path / 'data'),
         entrypoint='sample_runtime:get_plugin_runtime',
         enabled=True,
-        manifest={},
+        manifest={
+            'metadata': {
+                'runtime_policy': {
+                    'max_runtime_seconds': 3600,
+                    'memory_limit_mb': 256,
+                    'cpu_time_limit_seconds': 600,
+                    'max_open_files': 128,
+                },
+                'network_policy': {
+                    'mode': 'allow_list',
+                    'allow_hosts': ['sample.test'],
+                    'deny_hosts': ['blocked.test'],
+                },
+            }
+        },
         granted_permissions=['network:http', 'cookies:read:site/sample'],
         runtime_env_path=str(tmp_path / 'venv'),
         runtime_python=str(runtime_python),
@@ -128,6 +143,22 @@ def test_supervisor_uses_isolated_runtime_python_for_installed_plugins(tmp_path)
     assert '--data-dir' in command
     assert str(tmp_path / 'data') in command
     assert '--granted-permission' in command
+    assert '--network-policy' in command
+    network_policy_index = command.index('--network-policy') + 1
+    assert json.loads(command[network_policy_index]) == {
+        'mode': 'allow_list',
+        'allow_hosts': ['sample.test'],
+        'deny_hosts': ['blocked.test'],
+    }
+    assert '--max-runtime-seconds' in command
+    assert '--memory-limit-mb' in command
+    assert '--cpu-time-limit-seconds' in command
+    assert '--max-open-files' in command
+
+    artifact_paths = supervisor._resolve_artifact_paths(record)
+    assert artifact_paths['stdout'].name == 'stdout.log'
+    assert artifact_paths['stderr'].name == 'stderr.log'
+    assert artifact_paths['audit'].name == 'audit.jsonl'
 
 
 def test_supervisor_restricts_environment_for_installed_plugins(monkeypatch, tmp_path):
@@ -166,5 +197,34 @@ def test_supervisor_restricts_environment_for_installed_plugins(monkeypatch, tmp
     assert process_env['SQUIRREL_PLUGIN_DATA_DIR'] == str(tmp_path / 'data')
     assert process_env['SQUIRREL_PLUGIN_GRANTED_PERMISSIONS'] == 'network:http'
     assert process_env['SQUIRREL_PLUGIN_ISOLATED'] == '1'
+    assert process_env['SQUIRREL_PLUGIN_SOURCE'] == 'upload'
     assert 'POSTGRES_PASSWORD' not in process_env
     assert 'PYTHONPATH' not in process_env
+
+
+def test_supervisor_appends_audit_events(tmp_path):
+    record = PluginInstallRecord(
+        plugin_id='sample',
+        version='0.1.0',
+        install_path=str(tmp_path / 'sample_plugin'),
+        runtime_path=str(tmp_path / 'sample_plugin'),
+        data_path=str(tmp_path / 'data'),
+        entrypoint='sample_runtime:get_plugin_runtime',
+        enabled=True,
+        manifest={},
+    )
+    supervisor = PluginRuntimeSupervisor()
+
+    audit_path = supervisor._append_audit_event(
+        record,
+        event='runtime_started',
+        details={'pid': 1234},
+    )
+
+    lines = audit_path.read_text(encoding='utf-8').strip().splitlines()
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload['plugin_id'] == 'sample'
+    assert payload['version'] == '0.1.0'
+    assert payload['event'] == 'runtime_started'
+    assert payload['details'] == {'pid': 1234}

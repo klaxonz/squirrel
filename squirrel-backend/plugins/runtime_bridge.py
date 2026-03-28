@@ -22,6 +22,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument('--port', type=int, required=True)
     parser.add_argument('--data-dir')
     parser.add_argument('--granted-permission', action='append', default=[])
+    parser.add_argument('--network-policy')
+    parser.add_argument('--max-runtime-seconds', type=float)
+    parser.add_argument('--memory-limit-mb', type=int)
+    parser.add_argument('--cpu-time-limit-seconds', type=int)
+    parser.add_argument('--max-open-files', type=int)
     parser.add_argument('--import-path', action='append', default=[])
     return parser.parse_args()
 
@@ -138,6 +143,13 @@ def main() -> int:
         'version': args.version,
         'data_dir': args.data_dir,
         'granted_permissions': list(args.granted_permission or []),
+        'network_policy': json.loads(args.network_policy) if args.network_policy else None,
+        'runtime_policy': {
+            'max_runtime_seconds': args.max_runtime_seconds,
+            'memory_limit_mb': args.memory_limit_mb,
+            'cpu_time_limit_seconds': args.cpu_time_limit_seconds,
+            'max_open_files': args.max_open_files,
+        },
         'isolated': False,
     })
 

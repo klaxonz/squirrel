@@ -43,6 +43,14 @@ Runtime processes can read contextual values from `SQUIRREL_PLUGIN_*`
 environment variables, including the granted permission list and plugin data
 directory.
 
+Optional manifest metadata keys:
+
+- `metadata.runtime_policy`
+- `metadata.network_policy`
+
+These values are passed into the isolated runtime context and can be enforced by
+the host runner.
+
 Runtime metadata
 ----------------
 
