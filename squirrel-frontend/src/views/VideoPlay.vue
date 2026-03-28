@@ -1,5 +1,5 @@
 <template>
-  <div ref="videoPageRef" class="video-page bg-background scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
+  <div ref="videoPageRef" class="video-page terminal-viewport scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
     <div :class="['video-page__container', isWidescreen ? 'is-widescreen' : '']">
       <!-- 左侧主内容区域 -->
       <div :class="['video-main', isWidescreen ? 'is-widescreen' : '']">
@@ -663,6 +663,15 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.terminal-viewport {
+  background-color: #050505;
+  background-image: 
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 2px, 3px 100%;
+  color: rgba(255, 255, 255, 0.8);
+}
+
 .video-page {
   min-height: 100%;
 }
