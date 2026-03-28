@@ -95,8 +95,8 @@
                                 :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
                               >
                                 <span v-if="isChannelUnsubscribing" class="video-channel__spinner" aria-hidden="true"></span>
-                                <Icon v-else icon="lucide:user-minus" class="video-channel__unsub-icon" />
-                                <span class="video-channel__unsub-label">{{ isChannelUnsubscribing ? 'ABORTING' : 'DISCONNECT' }}</span>
+                                <Icon v-else icon="lucide:user-minus" class="video-action__icon" />
+                                <span class="video-action__label">{{ isChannelUnsubscribing ? '正在取消' : '取消订阅' }}</span>
                               </button>
                             </div>
 
@@ -302,7 +302,7 @@ const videoPrimaryActions = computed(() => {
   const actions = [
     {
       key: 'like',
-      label: 'LIKE',
+      label: '喜欢',
       icon: currentInteractionType.value === INTERACTION_TYPE.LIKE ? 'lucide:thumbs-up' : 'lucide:thumbs-up',
       active: currentInteractionType.value === INTERACTION_TYPE.LIKE,
       tone: 'like',
@@ -311,7 +311,7 @@ const videoPrimaryActions = computed(() => {
     },
     {
       key: 'dislike',
-      label: 'SKIP',
+      label: '不喜欢',
       icon: 'lucide:thumbs-down',
       active: currentInteractionType.value === INTERACTION_TYPE.DISLIKE,
       tone: 'danger',
@@ -320,7 +320,7 @@ const videoPrimaryActions = computed(() => {
     },
     {
       key: 'later',
-      label: 'QUEUE',
+      label: '稍后看',
       icon: currentInteractionType.value === INTERACTION_TYPE.LATER ? 'lucide:list-plus' : 'lucide:list-plus',
       active: currentInteractionType.value === INTERACTION_TYPE.LATER,
       tone: 'later',
@@ -332,7 +332,7 @@ const videoPrimaryActions = computed(() => {
   if (video.value?.url) {
     actions.push({
       key: 'source',
-      label: 'ORIGIN',
+      label: '原视频',
       icon: 'lucide:external-link',
       active: false,
       tone: 'neutral',
@@ -348,7 +348,7 @@ const videoOverflowActions = computed(() => {
   return [
     {
       key: 'random',
-      label: 'SHUFFLE',
+      label: '随机播放',
       icon: 'lucide:shuffle',
       active: false,
       tone: 'neutral',
@@ -1393,37 +1393,25 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.24rem; /* 统一间距 */
   flex-shrink: 0;
-  min-height: 1.6rem;
-  padding: 0 0.6rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+  min-height: 1.52rem; /* 统一高度 */
+  padding: 0 0.5rem; /* 统一内边距 */
+  border: 1px solid transparent; /* 统一默认边框 */
+  border-radius: 4px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.45); /* 统一默认颜色 */
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .video-channel__unsubscribe:hover:not(:disabled) {
-  border-color: #ff4d00;
+  background: rgba(255, 77, 0, 0.04);
+  border-color: rgba(255, 77, 0, 0.3);
   color: #ff4d00;
-  background: rgba(255, 77, 0, 0.05);
   box-shadow: 0 0 10px rgba(255, 77, 0, 0.2);
-}
-
-.video-channel__unsub-icon {
-  width: 0.75rem;
-  height: 0.75rem;
-  opacity: 0.8;
-}
-
-.video-channel__unsub-label {
-  line-height: 1;
+  text-shadow: 0 0 8px rgba(255, 77, 0, 0.4);
 }
 
 .video-channel__unsubscribe:disabled {
