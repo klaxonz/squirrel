@@ -58,71 +58,73 @@
           </div>
         </div>
 
-        <TransitionGroup v-else name="subscription-card" tag="div" class="channel-grid">
+        <TransitionGroup v-else name="subscription-row" tag="div" class="subscription-stream">
           <article
             v-for="subscription in subscriptions"
             :key="subscription.id"
-            class="channel-item group"
+            class="subscription-row group"
             :class="{ 'is-refreshing': isResetting }"
             @click="getSubscriptionVideos(subscription.id)"
           >
-            <div class="channel-item__topbar">
-              <Badge
-                v-if="getRefreshState(subscription.id).isRefreshing"
-                variant="outline"
-                class="channel-item__status-badge"
-              >
-                {{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}
-              </Badge>
+            <!-- Left: Avatar with Status -->
+            <div class="subscription-row__media">
+              <div class="subscription-row__avatar-wrapper">
+                <img
+                  :alt="subscription.name"
+                  :src="getAvatarSrc(subscription.avatar, subscription.id)"
+                  class="subscription-row__avatar"
+                  referrerpolicy="no-referrer"
+                  @error="(event) => handleAvatarError(event, subscription.id)"
+                />
+                <div v-if="getRefreshState(subscription.id).isRefreshing" class="subscription-row__avatar-pulse"></div>
+              </div>
+            </div>
 
+            <!-- Center: Identity & Metadata -->
+            <div class="subscription-row__main">
+              <div class="subscription-row__identity">
+                <h3 class="subscription-row__name" :title="subscription.name">{{ subscription.name }}</h3>
+                <span class="subscription-row__type-tag">
+                  {{ subscription.type === 'PLAYLIST' ? 'PLAYLIST' : 'CHANNEL' }}
+                </span>
+              </div>
+              <div class="subscription-row__meta">
+                <div class="subscription-row__status">
+                  <span
+                    v-if="getRefreshState(subscription.id).isRefreshing"
+                    class="h-1 w-1 animate-pulse rounded-full bg-primary"
+                  ></span>
+                  <span class="text-[10px] uppercase tracking-tighter opacity-60">
+                    {{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}
+                  </span>
+                </div>
+                <span class="subscription-row__dot"></span>
+                <span class="subscription-row__date">{{ formatDate(subscription.created_at) }}</span>
+              </div>
+            </div>
+
+            <!-- Right: Stats (Desktop Only mostly) -->
+            <div class="subscription-row__stats">
+              <div class="subscription-row__stat">
+                <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_extract }}</span>
+                <span class="subscription-row__stat-label">EXTRACTED</span>
+              </div>
+              <div class="subscription-row__stat">
+                <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_videos }}</span>
+                <span class="subscription-row__stat-label">TOTAL</span>
+              </div>
+            </div>
+
+            <!-- Far Right: Actions -->
+            <div class="subscription-row__actions">
               <Button
                 variant="ghost"
                 size="icon-sm"
-                class="settings-toggle"
+                class="subscription-row__settings-trigger"
                 @click.stop="openSettings(subscription)"
               >
                 <Cog6ToothIcon class="h-4 w-4" />
               </Button>
-            </div>
-
-            <div class="channel-item__media">
-              <div class="channel-item__avatar-shell">
-                <img
-                  :alt="subscription.name"
-                  :src="getAvatarSrc(subscription.avatar, subscription.id)"
-                  class="channel-item__avatar"
-                  referrerpolicy="no-referrer"
-                  @error="(event) => handleAvatarError(event, subscription.id)"
-                />
-                <div class="avatar-sheen"></div>
-              </div>
-            </div>
-
-            <div class="channel-item__body">
-              <div class="channel-item__header">
-                <div class="channel-item__copy min-w-0">
-                  <p class="channel-item__eyebrow">
-                    {{ subscription.type === 'PLAYLIST' ? 'Playlist' : 'Channel' }}
-                  </p>
-                  <h3 class="channel-item__title">{{ subscription.name }}</h3>
-                  <p class="channel-item__meta">订阅于 {{ formatDate(subscription.created_at) }}</p>
-                </div>
-                <div class="channel-item__badges">
-                  <Badge v-if="subscription.type === 'PLAYLIST'" variant="secondary">播放列表</Badge>
-                </div>
-              </div>
-
-              <div class="channel-item__info-strip">
-                <div class="channel-item__metric">
-                  <span class="channel-item__metric-label">已解析</span>
-                  <span class="channel-item__metric-value">{{ subscription.total_extract }}</span>
-                </div>
-                <span class="channel-item__metric-divider"></span>
-                <div class="channel-item__metric">
-                  <span class="channel-item__metric-label">总视频</span>
-                  <span class="channel-item__metric-value">{{ subscription.total_videos }}</span>
-                </div>
-              </div>
             </div>
           </article>
         </TransitionGroup>
@@ -608,217 +610,187 @@ onUnmounted(() => {
 .toolbar-container,
 .content-container {
   width: 100%;
-  max-width: var(--container-max-width, 2560px);
+  max-width: var(--container-max-width, 1440px);
   margin: 0 auto;
   padding: 0 1rem;
 }
 
 .subscribed-shell {
-  position: relative;
-  padding-top: 0.25rem;
+  padding-top: 0.5rem;
 }
 
 .channel-container {
-  padding-top: 0.15rem;
+  padding-top: 0.5rem;
 }
 
-.content-container--alert {
-  padding-bottom: 0.75rem;
-}
-
-.channel-grid {
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 0.875rem;
-}
-
-.channel-item {
-  position: relative;
+/* Fluid Stream Layout */
+.subscription-stream {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  min-height: 13rem;
-  border: 1px solid hsl(var(--border) / 0.76);
-  border-radius: calc(var(--radius-xl) + 2px);
-  background:
-    radial-gradient(circle at 50% 18%, hsl(var(--primary) / 0.07), transparent 28%),
-    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.94));
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  border-top: 1px solid hsl(var(--border) / 0.5);
+  margin-top: 0.5rem;
 }
 
-.channel-item:hover {
-  border-color: hsl(var(--border));
-  box-shadow: var(--shadow-md);
-}
-
-.channel-item__topbar {
-  position: absolute;
-  top: 0.8rem;
-  left: 0.8rem;
-  right: 0.8rem;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  z-index: 2;
-}
-
-.channel-item__status-badge {
-  background: hsl(var(--background) / 0.78);
-}
-
-.settings-toggle {
-  margin-left: auto;
-  opacity: 0;
-  border-radius: 9999px;
-  background: hsl(var(--background) / 0.76);
-  backdrop-filter: blur(10px);
-  transition: opacity 0.18s ease, background-color 0.18s ease;
-}
-
-.group:hover .settings-toggle,
-.group:focus-within .settings-toggle {
-  opacity: 1;
-}
-
-.channel-item__media {
-  position: relative;
+.subscription-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 7rem;
-  padding: 0.95rem 1rem 0.3rem;
+  gap: 1.25rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.1s ease;
 }
 
-.channel-item__avatar-shell {
+.subscription-row:hover {
+  background: hsl(var(--secondary) / 0.15);
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+/* Avatar Wrapper */
+.subscription-row__media {
+  flex-shrink: 0;
+}
+
+.subscription-row__avatar-wrapper {
   position: relative;
-  width: 4.7rem;
-  height: 4.7rem;
-  filter: drop-shadow(0 10px 18px hsl(var(--surface-shadow) / 0.12));
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
-.channel-item__avatar {
+.subscription-row__avatar {
   width: 100%;
   height: 100%;
-  border-radius: 1.25rem;
+  border-radius: var(--radius-sm);
   object-fit: cover;
-  border: 1px solid hsl(var(--border) / 0.7);
-  box-shadow: var(--shadow-sm);
+  filter: grayscale(0.2);
+  transition: filter 0.2s ease;
+  border: 1px solid hsl(var(--border) / 0.4);
 }
 
-.avatar-sheen {
+.subscription-row:hover .subscription-row__avatar {
+  filter: grayscale(0);
+}
+
+.subscription-row__avatar-pulse {
   position: absolute;
-  inset: -0.32rem;
-  border-radius: 1.45rem;
-  background:
-    radial-gradient(circle at top, hsl(var(--primary) / 0.18), transparent 58%),
-    linear-gradient(180deg, transparent, hsl(var(--primary) / 0.08));
-  pointer-events: none;
-  opacity: 0.72;
+  inset: -3px;
+  border: 2px solid hsl(var(--primary) / 0.6);
+  border-radius: calc(var(--radius-sm) + 3px);
+  animation: stream-pulse 1.5s ease-in-out infinite;
 }
 
-.channel-item__body {
-  display: grid;
+/* Identity & Metadata */
+.subscription-row__main {
   flex: 1;
-  gap: 0.55rem;
-  padding: 0 0.95rem 0.95rem;
-  margin-top: -0.15rem;
-}
-
-.channel-item__header {
-  display: grid;
-  gap: 0.45rem;
-  justify-items: center;
-  text-align: center;
-}
-
-.channel-item__copy {
-  display: grid;
-  gap: 0.18rem;
-  justify-items: center;
-  max-width: 15rem;
-}
-
-.channel-item__eyebrow {
-  margin: 0;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-}
-
-.channel-item__title {
-  margin: 0;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  line-height: 1.08;
-  font-size: 1.06rem;
-  font-weight: 800;
-  letter-spacing: -0.045em;
-  color: hsl(var(--foreground));
-  text-wrap: balance;
-}
-
-.channel-item__meta {
-  margin: 0.1rem 0 0;
-  font-size: 0.6875rem;
-  color: hsl(var(--muted-foreground) / 0.95);
-}
-
-.channel-item__badges {
+  min-width: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  justify-content: center;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
-.channel-item__info-strip {
+.subscription-row__identity {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  min-height: 2.75rem;
-  margin-top: auto;
-  padding: 0.68rem 0.9rem;
-  border: 1px solid hsl(var(--border) / 0.38);
-  border-radius: 999px;
-  background:
-    linear-gradient(90deg, hsl(var(--background) / 0.72), hsl(var(--card) / 0.68));
-  box-shadow: inset 0 1px 0 hsl(var(--background) / 0.72);
 }
 
-.channel-item__metric {
-  display: grid;
-  gap: 0.12rem;
-  flex: 1 1 0;
-  justify-items: center;
+.subscription-row__name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.channel-item__metric-label {
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground) / 0.82);
-}
-
-.channel-item__metric-value {
-  font-size: 0.98rem;
+.subscription-row__type-tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.55rem;
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted-foreground) / 0.8);
+  padding: 0.05rem 0.25rem;
+  background: hsl(var(--secondary) / 0.5);
+  border-radius: 2px;
+}
+
+.subscription-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+
+.subscription-row__status {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.subscription-row__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+/* Stats (Single Column Grid feel) */
+.subscription-row__stats {
+  display: none;
+  gap: 3rem;
+  margin: 0 2rem;
+}
+
+.subscription-row__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 5rem;
+}
+
+.subscription-row__stat-value {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.875rem;
+  font-weight: 600;
   color: hsl(var(--foreground));
 }
 
-.channel-item__metric-divider {
-  width: 1px;
-  align-self: stretch;
-  background: linear-gradient(180deg, transparent, hsl(var(--border)), transparent);
+.subscription-row__stat-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted-foreground) / 0.6);
 }
 
+/* Actions */
+.subscription-row__actions {
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.subscription-row:hover .subscription-row__actions {
+  opacity: 1;
+}
+
+.subscription-row__settings-trigger {
+  color: hsl(var(--muted-foreground));
+}
+
+.subscription-row__settings-trigger:hover {
+  color: hsl(var(--foreground));
+}
+
+/* Empty State (Minimal) */
 .subscribed-empty-state,
 .subscribed-empty-card {
-  min-height: min(58vh, 32rem);
+  min-height: 40vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -826,159 +798,104 @@ onUnmounted(() => {
 
 .subscribed-empty-card {
   flex-direction: column;
-  gap: 0.7rem;
-  border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: calc(var(--radius-3xl) - 2px);
-  background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 34%),
-    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.94));
-  box-shadow: 0 24px 54px hsl(var(--surface-shadow) / 0.1);
   text-align: center;
-  padding: 2rem 1.2rem;
+  gap: 1.5rem;
+  padding: 2rem;
+  border: 1px dashed hsl(var(--border) / 0.6);
+  border-radius: var(--radius-lg);
 }
 
 .subscribed-empty-card__eyebrow {
-  margin: 0;
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  color: hsl(var(--primary));
   letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
 }
 
 .subscribed-empty-card__title {
-  margin: 0;
-  font-size: clamp(1.15rem, 1rem + 0.3vw, 1.4rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .subscribed-empty-card__copy {
-  margin: 0;
-  max-width: 28rem;
+  max-width: 22rem;
+  font-size: 0.875rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.88rem;
+  line-height: 1.6;
 }
 
 .subscribed-empty-card__actions {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.6rem;
-  margin-top: 0.4rem;
-}
-
-.subscribed-loading-trigger {
-  min-height: 5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 0.75rem;
 }
 
 .subscribed-bottom-copy {
-  margin: 1rem 0 1.4rem;
+  margin: 3rem 0;
   text-align: center;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.84rem;
+  font-family: var(--font-mono, monospace);
+  color: hsl(var(--muted-foreground) / 0.4);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.subscription-dialog__hero {
-  background:
-    radial-gradient(circle at top right, hsl(var(--primary) / 0.12), transparent 36%),
-    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.92));
-}
-
+/* Dialog Styling */
 .subscription-dialog__summary {
   display: flex;
   align-items: center;
-  gap: 0.95rem;
-  padding: 0.9rem;
-  border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 1.1rem;
-  background: hsl(var(--card) / 0.82);
+  gap: 1.25rem;
+  padding: 1.5rem;
+  background: hsl(var(--secondary) / 0.1);
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
 }
 
 .subscription-dialog__avatar {
-  width: 3.25rem;
-  height: 3.25rem;
-  border-radius: 1rem;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-sm);
   object-fit: cover;
+  border: 1px solid hsl(var(--border) / 0.4);
 }
 
 .subscription-dialog__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem;
-  border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 1rem;
-  background: hsl(var(--background) / 0.42);
+  padding: 1rem 1.5rem;
 }
 
 .subscription-dialog__actions {
   display: grid;
   gap: 0.75rem;
+  padding: 0 1.5rem 1.5rem;
 }
 
-.subscription-dialog__spinner {
-  width: 0.78rem;
-  height: 0.78rem;
-  border: 1.5px solid hsl(var(--destructive-foreground) / 0.28);
-  border-top-color: hsl(var(--destructive-foreground));
-  border-radius: 9999px;
-  animation: subscription-dialog-spin 0.7s linear infinite;
+/* Animation */
+@keyframes stream-pulse {
+  0% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.4; }
 }
 
-.subscription-card-enter-active,
-.subscription-card-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+.subscription-row-enter-active,
+.subscription-row-leave-active {
+  transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
-.subscription-card-enter-from,
-.subscription-card-leave-to {
+.subscription-row-enter-from {
   opacity: 0;
-  transform: translateY(-8px) scale(0.985);
+  transform: translateX(-10px);
 }
 
-.subscription-card-move {
-  transition: transform 0.18s ease;
+.subscription-row-leave-to {
+  opacity: 0;
+  transform: translateX(10px);
 }
 
-.channel-item.is-refreshing::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(90deg, transparent, var(--overlay-light-06), transparent);
-  animation: shimmer 1.2s infinite;
-  pointer-events: none;
-}
-
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-@keyframes subscription-dialog-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (min-width: 640px) {
-  .toolbar-container,
-  .content-container {
-    padding: 0 1.5rem;
-  }
-
-  .channel-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (min-width: 768px) {
+  .subscription-row__stats {
+    display: flex;
   }
 }
 
@@ -987,33 +904,11 @@ onUnmounted(() => {
   .content-container {
     padding: 0 2rem;
   }
-
-  .channel-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1440px) {
-  .channel-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1840px) {
-  .channel-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
 }
 
 @media (hover: none) {
-  .settings-toggle {
+  .subscription-row__actions {
     opacity: 1;
-  }
-}
-
-@media (max-width: 640px) {
-  .subscription-dialog__row {
-    align-items: flex-start;
   }
 }
 </style>
