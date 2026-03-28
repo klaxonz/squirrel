@@ -106,9 +106,11 @@ def test_supervisor_uses_isolated_runtime_python_for_installed_plugins(tmp_path)
         version='0.1.0',
         install_path=str(tmp_path / 'sample_plugin'),
         runtime_path=str(tmp_path / 'sample_plugin'),
+        data_path=str(tmp_path / 'data'),
         entrypoint='sample_runtime:get_plugin_runtime',
         enabled=True,
         manifest={},
+        granted_permissions=['network:http', 'cookies:read:site/sample'],
         runtime_env_path=str(tmp_path / 'venv'),
         runtime_python=str(runtime_python),
     )
@@ -123,3 +125,46 @@ def test_supervisor_uses_isolated_runtime_python_for_installed_plugins(tmp_path)
         'squirrel_plugin_runner.runtime_bridge',
     ]
     assert '--import-path' not in command
+    assert '--data-dir' in command
+    assert str(tmp_path / 'data') in command
+    assert '--granted-permission' in command
+
+
+def test_supervisor_restricts_environment_for_installed_plugins(monkeypatch, tmp_path):
+    runtime_python = tmp_path / 'venv' / 'Scripts' / 'python.exe'
+    runtime_python.parent.mkdir(parents=True, exist_ok=True)
+    runtime_python.write_text('', encoding='utf-8')
+
+    monkeypatch.setenv('PATH', r'C:\Windows\System32')
+    monkeypatch.setenv('SystemRoot', r'C:\Windows')
+    monkeypatch.setenv('TEMP', r'C:\Temp')
+    monkeypatch.setenv('TMP', r'C:\Temp')
+    monkeypatch.setenv('POSTGRES_PASSWORD', 'super-secret')
+    monkeypatch.setenv('PYTHONPATH', r'D:\Code\init\squirrel')
+
+    record = PluginInstallRecord(
+        plugin_id='sample',
+        version='0.1.0',
+        install_path=str(tmp_path / 'sample_plugin'),
+        runtime_path=str(tmp_path / 'sample_plugin'),
+        data_path=str(tmp_path / 'data'),
+        entrypoint='sample_runtime:get_plugin_runtime',
+        enabled=True,
+        manifest={},
+        granted_permissions=['network:http'],
+        runtime_env_path=str(tmp_path / 'venv'),
+        runtime_python=str(runtime_python),
+        metadata={'source': 'upload'},
+    )
+
+    supervisor = PluginRuntimeSupervisor()
+
+    process_env = supervisor._build_process_env(record)
+
+    assert process_env['SQUIRREL_PLUGIN_ID'] == 'sample'
+    assert process_env['SQUIRREL_PLUGIN_VERSION'] == '0.1.0'
+    assert process_env['SQUIRREL_PLUGIN_DATA_DIR'] == str(tmp_path / 'data')
+    assert process_env['SQUIRREL_PLUGIN_GRANTED_PERMISSIONS'] == 'network:http'
+    assert process_env['SQUIRREL_PLUGIN_ISOLATED'] == '1'
+    assert 'POSTGRES_PASSWORD' not in process_env
+    assert 'PYTHONPATH' not in process_env

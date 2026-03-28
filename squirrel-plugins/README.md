@@ -39,6 +39,9 @@ capabilities in the manifest explicitly.
 Uploaded runtime V2 plugins are installed into a dedicated virtual environment
 by the backend together with the `squirrel-plugin-runner` bridge package. During
 workspace development, the backend can still load sibling plugin folders directly.
+Runtime processes can read contextual values from `SQUIRREL_PLUGIN_*`
+environment variables, including the granted permission list and plugin data
+directory.
 
 Runtime metadata
 ----------------

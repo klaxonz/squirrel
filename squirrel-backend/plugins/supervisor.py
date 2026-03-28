@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import socket
 import subprocess
 import sys
@@ -88,9 +89,71 @@ class PluginRuntimeSupervisor:
             '--port',
             str(port),
         ]
+        if record.data_path:
+            command.extend(['--data-dir', record.data_path])
+        for permission in record.granted_permissions:
+            command.extend(['--granted-permission', permission])
         for import_path in self._candidate_import_paths(record):
             command.extend(['--import-path', import_path])
         return command
+
+    def _build_process_env(self, record: PluginInstallRecord) -> dict[str, str]:
+        if not record.runtime_python:
+            return dict(os.environ)
+
+        whitelist = {
+            'SYSTEMROOT',
+            'SystemRoot',
+            'WINDIR',
+            'COMSPEC',
+            'ComSpec',
+            'TEMP',
+            'TMP',
+            'PATH',
+            'PATHEXT',
+            'OS',
+            'NUMBER_OF_PROCESSORS',
+            'PROCESSOR_ARCHITECTURE',
+            'PROCESSOR_IDENTIFIER',
+            'PROGRAMDATA',
+            'PUBLIC',
+            'USERPROFILE',
+            'HOME',
+            'HOMEDRIVE',
+            'HOMEPATH',
+            'LOCALAPPDATA',
+            'APPDATA',
+        }
+        process_env = {
+            key: value
+            for key, value in os.environ.items()
+            if key in whitelist
+        }
+        runtime_bin = str(Path(record.runtime_python).resolve().parent)
+        existing_path = process_env.get('PATH', '')
+        process_env['PATH'] = runtime_bin if not existing_path else os.pathsep.join([runtime_bin, existing_path])
+        process_env.pop('PYTHONPATH', None)
+        process_env.pop('VIRTUAL_ENV', None)
+        process_env['SQUIRREL_PLUGIN_ID'] = record.plugin_id
+        process_env['SQUIRREL_PLUGIN_VERSION'] = record.version
+        process_env['SQUIRREL_PLUGIN_ISOLATED'] = '1'
+        process_env['SQUIRREL_PLUGIN_SOURCE'] = str(record.metadata.get('source') or 'upload')
+        process_env['SQUIRREL_PLUGIN_GRANTED_PERMISSIONS'] = ','.join(record.granted_permissions)
+        process_env['SQUIRREL_PLUGIN_DECLARED_PERMISSIONS'] = ','.join(
+            str(item.get('name'))
+            for item in ((record.manifest or {}).get('permissions') or [])
+            if isinstance(item, dict) and item.get('name')
+        )
+        if record.data_path:
+            process_env['SQUIRREL_PLUGIN_DATA_DIR'] = record.data_path
+        return process_env
+
+    def _resolve_runtime_cwd(self, record: PluginInstallRecord) -> Path:
+        if record.runtime_python and record.data_path:
+            return Path(record.data_path)
+        if record.runtime_python:
+            return Path(record.install_path)
+        return self._backend_root
 
     def _request_json(
         self,
@@ -173,11 +236,13 @@ class PluginRuntimeSupervisor:
         runtime_endpoint = endpoint or f'http://{host}:{port}'
         process_command = list(command) if command else self._build_runtime_command(record, host, port)
         startup_timeout_ms = int(((record.manifest or {}).get('health_policy') or {}).get('startup_timeout_ms') or 10000)
-        process_cwd = cwd or (Path(record.install_path) if record.runtime_python else self._backend_root)
+        process_cwd = cwd or self._resolve_runtime_cwd(record)
+        process_env = self._build_process_env(record)
 
         process = subprocess.Popen(  # noqa: S603
             process_command,
             cwd=str(process_cwd),
+            env=process_env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )

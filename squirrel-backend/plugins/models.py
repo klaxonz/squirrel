@@ -45,6 +45,7 @@ class PluginInstallRecord:
     runtime_path: Optional[str] = None
     runtime_env_path: Optional[str] = None
     runtime_python: Optional[str] = None
+    data_path: Optional[str] = None
     checksum_sha256: Optional[str] = None
     installed_at: str = field(default_factory=utcnow_iso)
     updated_at: str = field(default_factory=utcnow_iso)
@@ -64,6 +65,7 @@ class PluginInstallRecord:
             'runtime_path': self.runtime_path,
             'runtime_env_path': self.runtime_env_path,
             'runtime_python': self.runtime_python,
+            'data_path': self.data_path,
             'checksum_sha256': self.checksum_sha256,
             'installed_at': self.installed_at,
             'updated_at': self.updated_at,
@@ -91,6 +93,7 @@ class PluginInstallRecord:
             runtime_path=data.get('runtime_path'),
             runtime_env_path=data.get('runtime_env_path'),
             runtime_python=data.get('runtime_python'),
+            data_path=data.get('data_path'),
             checksum_sha256=data.get('checksum_sha256'),
             installed_at=str(data.get('installed_at', utcnow_iso())),
             updated_at=str(data.get('updated_at', utcnow_iso())),

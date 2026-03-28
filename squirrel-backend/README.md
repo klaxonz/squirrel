@@ -30,6 +30,9 @@ For workspace development, plugins under `../squirrel-plugins/<site>/plugin-runt
 are auto-discovered and bootstrapped as local runtime V2 plugins. Workspace plugins
 still use the backend interpreter as a development convenience; uploaded plugins use
 their own isolated Python environment.
+Installed plugin subprocesses receive a reduced inherited environment and explicit
+`SQUIRREL_PLUGIN_*` variables for plugin id, version, granted permissions, and
+data directory.
 
 Permissions and trust model
 ---------------------------

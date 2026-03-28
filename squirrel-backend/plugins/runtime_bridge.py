@@ -20,6 +20,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument('--version', required=True)
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, required=True)
+    parser.add_argument('--data-dir')
+    parser.add_argument('--granted-permission', action='append', default=[])
     parser.add_argument('--import-path', action='append', default=[])
     return parser.parse_args()
 
@@ -134,6 +136,9 @@ def main() -> int:
     runtime.start({
         'plugin_id': args.plugin_id,
         'version': args.version,
+        'data_dir': args.data_dir,
+        'granted_permissions': list(args.granted_permission or []),
+        'isolated': False,
     })
 
     server = _BridgeServer((args.host, args.port), _BridgeHandler)

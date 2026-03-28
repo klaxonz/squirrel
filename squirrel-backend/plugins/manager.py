@@ -78,6 +78,7 @@ class PluginManager:
             runtime_path=str(plan.runtime_path),
             runtime_env_path=str(runtime_env_path),
             runtime_python=str(runtime_python),
+            data_path=str(plan.data_path),
             checksum_sha256=plan.checksum_sha256,
             installed_at=utcnow_iso(),
             updated_at=utcnow_iso(),
@@ -118,6 +119,7 @@ class PluginManager:
         if record.metadata.get('source') != 'workspace':
             self._installer.remove_runtime_environment(record.runtime_env_path)
             self._installer.remove_installation(record.install_path)
+            self._installer.remove_installation(record.data_path)
         record.status = PluginInstallStatus.UNINSTALLED
         record.enabled = False
         self._store.delete(plugin_id)

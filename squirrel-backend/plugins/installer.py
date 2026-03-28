@@ -26,6 +26,7 @@ class PluginInstallPlan:
     staging_path: Path
     install_path: Path
     runtime_path: Path
+    data_path: Path
     entrypoint: str
     checksum_sha256: str
     manifest: PluginManifest
@@ -40,7 +41,8 @@ class PluginInstaller:
         self._packages_dir = self._base_dir / 'packages'
         self._install_root = self._base_dir / 'installs'
         self._runtime_root = self._base_dir / 'runtime'
-        for path in (self._packages_dir, self._install_root, self._runtime_root):
+        self._data_root = self._base_dir / 'data'
+        for path in (self._packages_dir, self._install_root, self._runtime_root, self._data_root):
             path.mkdir(parents=True, exist_ok=True)
 
     def compute_checksum(self, package_path: Path) -> str:
@@ -84,9 +86,11 @@ class PluginInstaller:
         staging_path = self._packages_dir / manifest.plugin_id / manifest.version / package_name
         install_path = self._install_root / manifest.plugin_id / manifest.version
         runtime_path = self._runtime_root / manifest.plugin_id / manifest.version
+        data_path = self._data_root / manifest.plugin_id / manifest.version
         staging_path.parent.mkdir(parents=True, exist_ok=True)
         install_path.mkdir(parents=True, exist_ok=True)
         runtime_path.mkdir(parents=True, exist_ok=True)
+        data_path.mkdir(parents=True, exist_ok=True)
 
         return PluginInstallPlan(
             plugin_id=manifest.plugin_id,
@@ -95,6 +99,7 @@ class PluginInstaller:
             staging_path=staging_path,
             install_path=install_path,
             runtime_path=runtime_path,
+            data_path=data_path,
             entrypoint=entrypoint,
             checksum_sha256=checksum,
             manifest=manifest,
@@ -116,6 +121,7 @@ class PluginInstaller:
         runtime_env_path = plan.runtime_path
         if runtime_env_path.exists():
             shutil.rmtree(runtime_env_path)
+        plan.data_path.mkdir(parents=True, exist_ok=True)
 
         builder = venv.EnvBuilder(with_pip=True, clear=True)
         builder.create(runtime_env_path)

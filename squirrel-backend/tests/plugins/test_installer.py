@@ -23,6 +23,7 @@ def test_provision_runtime_environment_creates_venv_and_installs_runner_sdk_and_
         staging_path=tmp_path / 'staging' / 'plugin.zip',
         install_path=install_path,
         runtime_path=tmp_path / 'runtime' / 'sample' / '0.1.0',
+        data_path=tmp_path / 'data' / 'sample' / '0.1.0',
         entrypoint='sample_runtime:get_plugin_runtime',
         checksum_sha256='deadbeef',
         manifest=PluginManifest(
@@ -59,6 +60,7 @@ def test_provision_runtime_environment_creates_venv_and_installs_runner_sdk_and_
     assert created_paths == [plan.runtime_path]
     assert runtime_env_path == plan.runtime_path
     assert runtime_python == plan.runtime_path / 'Scripts' / 'python.exe'
+    assert plan.data_path.exists()
     assert [target.name for _, target in installed_targets] == [
         'squirrel-sdk',
         'squirrel-plugin-runner',
