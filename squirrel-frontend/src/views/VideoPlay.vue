@@ -193,11 +193,14 @@
               <div v-if="!relatedVideos.length && !loadingRelated" class="video-aside__empty">暂无推荐</div>
               <div v-if="relatedVideos.length" class="related-videos-list">
                 <article
-                  v-for="relatedVideo in relatedVideos"
+                  v-for="(relatedVideo, index) in relatedVideos"
                   :key="relatedVideo.id"
                   class="related-video-card group"
                   @click="goToVideo(relatedVideo.id, relatedVideo)"
                 >
+                  <div class="related-video-card__index-bg">
+                    {{ String(index + 1).padStart(2, '0') }}
+                  </div>
                   <div class="related-video-card__thumb">
                     <img
                       v-if="relatedVideo.thumbnail && !relatedThumbnailErrorIds.has(relatedVideo.id)"
@@ -216,6 +219,9 @@
                         <Icon icon="material-symbols:image" class="related-video-card__fallback-icon" />
                         <span class="text-2xs">暂无封面</span>
                       </div>
+                    </div>
+                    <div class="related-video-card__data-overlay">
+                      [DATA_READING...]
                     </div>
                     <div class="related-video-card__duration">
                       {{ formatDuration(relatedVideo.duration) }}
@@ -1397,6 +1403,7 @@ onUnmounted(() => {
 }
 
 .related-video-card {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(7.5rem, 8.75rem) minmax(0, 1fr);
   gap: 0.875rem;
@@ -1406,6 +1413,22 @@ onUnmounted(() => {
   background: transparent;
   cursor: pointer;
   transition: color 0.18s ease, opacity 0.18s ease;
+  overflow: hidden;
+}
+
+.related-video-card__index-bg {
+  position: absolute;
+  left: -0.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 4rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.05);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 0;
+  user-select: none;
 }
 
 .related-video-card:hover {
@@ -1415,9 +1438,10 @@ onUnmounted(() => {
 .related-video-card__thumb {
   position: relative;
   overflow: hidden;
-  border-radius: calc(var(--radius-lg) + 2px);
+  border-radius: 2px;
   background: hsl(var(--muted) / 0.6);
   aspect-ratio: 16 / 10;
+  z-index: 1;
 }
 
 .related-video-card__image,
@@ -1453,6 +1477,26 @@ onUnmounted(() => {
   margin-bottom: 0.2rem;
 }
 
+.related-video-card__data-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  color: #ff4d00;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.related-video-card:hover .related-video-card__data-overlay {
+  opacity: 1;
+}
+
 .related-video-card__duration {
   position: absolute;
   right: 0.45rem;
@@ -1461,19 +1505,22 @@ onUnmounted(() => {
   align-items: center;
   min-height: 1.45rem;
   padding: 0 0.45rem;
-  border-radius: 9999px;
+  border-radius: 2px;
   background: hsl(var(--background) / 0.82);
-  color: hsl(var(--foreground));
-  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.65rem;
   font-weight: 600;
   backdrop-filter: blur(10px);
 }
 
 .related-video-card__body {
+  position: relative;
   min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  z-index: 1;
 }
 
 .related-video-card__title {
@@ -1495,8 +1542,9 @@ onUnmounted(() => {
 .related-video-card__channel,
 .related-video-card__date {
   margin-top: 0.35rem;
-  font-size: 0.72rem;
-  color: hsl(var(--muted-foreground));
+  font-size: 0.65rem;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  color: rgba(255, 255, 255, 0.5);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
