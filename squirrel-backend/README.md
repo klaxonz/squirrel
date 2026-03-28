@@ -1,42 +1,58 @@
-Plugins and SDK
-===============
+Plugin Runtime V2
+=================
 
-The backend discovers crawl plugins via Python entry points. Install packages
-that expose the `squirrel.crawl.plugins` group. The `squirrel-sdk` provides
-the plugin-facing API and registries used by both backend and plugins.
+The backend now uses a runtime V2 plugin model:
 
-Plugins are mandatory – legacy `sites/` are no longer bridged. Ensure the
-corresponding plugins are installed for the domains you need.
+- plugins are discovered from runtime metadata plus backend-managed install records
+- each plugin exposes a `create_plugin_runtime()` entrypoint
+- host-side routing goes through `PluginManager` and `PluginGateway`
+- plugin capabilities are declared in the manifest instead of inferred from SDK registries
 
-Install dependencies
---------------------
+Runtime V2 packages are expected to ship a `plugin-runtime.json` file containing:
 
-### 1. Install Python dependencies
+- `entrypoint`
+- `manifest.plugin_id`
+- `manifest.version`
+- `manifest.capabilities`
+- `manifest.sites`
+- `manifest.permissions`
+
+Install and activation
+----------------------
+
+Plugin installation is handled by the backend plugin API. Upload a plugin zip that
+contains `plugin-runtime.json`; once validated, the backend stages the package,
+starts the runtime, registers capabilities, and makes the plugin effective without
+restarting the service.
+
+For workspace development, plugins under `../squirrel-plugins/<site>/plugin-runtime.json`
+are auto-discovered and bootstrapped as local runtime V2 plugins.
+
+Permissions and trust model
+---------------------------
+
+Runtime V2 assumes plugins may be untrusted. The host tracks declared permissions
+from the manifest and only routes requests through explicit capabilities such as:
+
+- `extract_video`
+- `resolve_playback`
+- `sync_subscription`
+- `import_subscriptions`
+- `check_login_status`
+
+Legacy in-process SDK registries remain only as a compatibility layer for code that
+has not yet been migrated. New backend integrations should not use host-side
+registry lookups as their primary path.
+
+Development setup
+-----------------
 
 ```bash
-# Install all dependencies from Pipfile
 pipenv install
-
-# Install squirrel-sdk in editable mode (for development)
 pipenv run pip install -e ../squirrel-sdk
 ```
 
-**Note**: `squirrel-sdk` is installed separately because it's a local dependency 
-not available on PyPI. The `-e` flag enables editable mode, so changes to the SDK 
-will be reflected immediately without reinstalling.
-
-### 2. Install plugin packages
-
-```bash
-# Install from plugin packages (if built)
-pipenv run pip install ../plugin_packages/bilibili_plugin.zip
-pipenv run pip install ../plugin_packages/youtube_plugin.zip
-# ... other plugins
-```
-
-### For Production/Docker
-
-In production environments, install the SDK directly from the local path:
+For production environments, install the SDK from the local package path or wheel:
 
 ```bash
 pip install /path/to/squirrel-sdk

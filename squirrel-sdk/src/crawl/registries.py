@@ -1,7 +1,7 @@
-"""Unified registry manager for all plugin types.
+"""Legacy in-process registry manager for compatibility-only plugin paths.
 
-This module provides a centralized RegistryManager that manages all plugin registries
-in a single place, making it easier to reset, query, and manage plugins across the system.
+Runtime V2 plugins should use manifests, explicit capabilities, and create_plugin_runtime().
+This module remains only for legacy in-process components that have not yet been migrated.
 """
 from __future__ import annotations
 
@@ -16,9 +16,10 @@ T = TypeVar('T')
 
 
 class PluginRegistry(Generic[T]):
-    """Generic plugin registry with thread-safe operations.
+    """Legacy generic plugin registry with thread-safe operations.
 
-    This registry can store both Protocol-compatible objects and traditional classes.
+    This registry can store both Protocol-compatible objects and traditional classes,
+    but new plugin packages should not depend on it.
     """
 
     def __init__(self, name: str) -> None:
@@ -105,7 +106,7 @@ class PluginRegistry(Generic[T]):
 
 
 class ComponentFactory(Generic[T]):
-    """Generic factory for creating component instances."""
+    """Legacy factory for creating in-process component instances."""
 
     def __init__(self, registry: PluginRegistry[T], name: str):
         self.registry = registry
@@ -149,10 +150,9 @@ class ComponentFactory(Generic[T]):
 
 
 class RegistryManager:
-    """Unified manager for all plugin registries.
+    """Compatibility manager for legacy in-process registries.
 
-    This class provides a single point of access to all plugin registries,
-    making it easier to manage, reset, and query plugins across the system.
+    Runtime V2 host code should route through PluginManager and PluginGateway instead.
     """
 
     def __init__(self):
