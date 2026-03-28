@@ -1277,16 +1277,36 @@ onUnmounted(() => {
 }
 
 .video-channel {
-  padding: 1.25rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-left: 3px solid #ff4d00;
-  border-radius: 4px;
+  padding: 0.5rem 0; /* 移除大内边距，仅保留垂直间距 */
+  background: transparent; /* 移除背景色 */
+  border: none; /* 移除所有边框 */
+  border-radius: 0;
   position: relative;
-  overflow: visible; /* 改为可见以防内容截断 */
+  overflow: visible;
   display: flex;
   flex-direction: column;
+  gap: 0.75rem;
+}
+
+.video-channel__primary {
+  display: flex;
+  align-items: center; /* 恢复居中对齐，更自然 */
   gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.video-channel::before {
+  display: none; /* 移除 SEC_ID_CARD 装饰 */
+}
+
+.video-channel__avatar-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: -4px; /* 缩小圈范围 */
+  border: 1px solid rgba(255, 77, 0, 0.4); /* 调淡颜色 */
+  border-radius: 50%;
+  opacity: 0;
+  animation: scanning-ring 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .video-channel__primary {
