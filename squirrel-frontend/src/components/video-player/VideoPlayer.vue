@@ -105,11 +105,17 @@
             </div>
 
             <div class="sp-controls-right">
+              <div v-if="qualities.length > 0" class="sp-quality-tag" @click.stop="toggleQualityMenu">
+                {{ currentQualityLabel || 'AUTO' }}
+              </div>
               <button v-if="subtitleTracks.length > 0" class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
                 <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
               </button>
               <button class="sp-icon-btn" @click.stop="toggleSettingsMenu" :title="t('settings')">
                 <PlayerIcon name="settings" />
+              </button>
+              <button class="sp-icon-btn" @click="toggleWidescreen" :title="props.widescreen ? t('exitWidescreen') : t('widescreen')">
+                <PlayerIcon :name="props.widescreen ? 'widescreenExit' : 'widescreen'" />
               </button>
               <button class="sp-icon-btn" @click="toggleFullscreen" :title="isFullscreen ? t('exitFullscreen') : t('fullscreen')">
                 <PlayerIcon :name="isFullscreen ? 'fullscreenExit' : 'fullscreen'" />
@@ -137,6 +143,10 @@
               <span>{{ t('playbackSpeed') }}</span>
               <span class="sp-menu-val">{{ store.playbackRate }}x</span>
             </div>
+            <div v-if="qualities.length > 0" class="sp-menu-item" @click="settingsView = 'quality'">
+              <span>{{ t('quality') }}</span>
+              <span class="sp-menu-val">{{ currentQualityLabel || 'AUTO' }}</span>
+            </div>
           </div>
         </template>
         <template v-else-if="settingsView === 'speed'">
@@ -148,6 +158,18 @@
                  class="sp-menu-item" :class="{ 'is-active': store.playbackRate === rate }"
                  @click="handleSpeedSelect(rate)">
               {{ rate }}x
+            </div>
+          </div>
+        </template>
+        <template v-else-if="settingsView === 'quality'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('quality') }}
+          </div>
+          <div class="sp-menu-list">
+            <div v-for="q in qualities" :key="q.id" 
+                 class="sp-menu-item" :class="{ 'is-active': currentQualityId === q.id }"
+                 @click="handleQualitySelect(q)">
+              {{ q.label }}
             </div>
           </div>
         </template>
@@ -173,6 +195,7 @@ interface Props {
   autoplay?: boolean
   theme?: ThemeName
   initialTime?: number
+  widescreen?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -180,15 +203,17 @@ const props = withDefaults(defineProps<Props>(), {
   subtitles: () => [],
   poster: '',
   autoplay: true,
-  theme: 'dark'
+  theme: 'dark',
+  widescreen: false
 })
 
-const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'fullscreenChange', 'retry'])
+const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'fullscreenChange', 'retry', 'widescreenChange'])
 
 const {
   store, videoElement, containerElement, isPlaying, currentTime, duration, volume, isMuted, isFullscreen,
   play, pause, seek, setVolume, toggleMute, setPlaybackRate, toggleFullscreen,
-  subtitleTracks, currentSubtitle, setSubtitle, setSubtitleTracks, loadSource, theme, t
+  subtitleTracks, currentSubtitle, setSubtitle, setSubtitleTracks, loadSource, theme, t,
+  qualities, currentQualityLabel, currentQualityId, setQuality
 } = usePlayer({
   autoplay: props.autoplay,
   theme: props.theme,
@@ -221,7 +246,10 @@ watch(() => props.subtitles, (ts) => { setSubtitleTracks(ts || []) }, { immediat
 
 const togglePlay = () => isPlaying.value ? pause() : play()
 const toggleSettingsMenu = () => { showSettingsMenu.value = !showSettingsMenu.value; settingsView.value = 'main' }
+const toggleQualityMenu = () => { showSettingsMenu.value = true; settingsView.value = 'quality' }
 const handleSpeedSelect = (rate: number) => { setPlaybackRate(rate); showSettingsMenu.value = false }
+const handleQualitySelect = (q: any) => { setQuality(q.id); showSettingsMenu.value = false }
+const toggleWidescreen = () => emit('widescreenChange', !props.widescreen)
 const toggleAutoplayNext = () => store.setAutoplayNext(!store.autoplayNext)
 const toggleLoop = () => store.setLoop(!store.loop)
 const toggleSubtitlesQuick = () => setSubtitle(store.subtitlesEnabled ? null : (subtitleTracks.value[0] || null))
@@ -480,6 +508,29 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* 画质标签 */
+.sp-quality-tag {
+  font-family: var(--sp-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.05);
+  letter-spacing: 0.05em;
+  margin-right: 4px;
+}
+
+.sp-quality-tag:hover {
+  color: var(--sp-primary);
+  border-color: var(--sp-primary);
+  background: rgba(var(--sp-primary-rgb), 0.1);
+  box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.3);
 }
 
 /* 按钮样式优化 */
