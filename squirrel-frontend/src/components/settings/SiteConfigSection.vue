@@ -1,62 +1,56 @@
 <template>
-  <Card class="settings-card">
-    <div class="px-6 py-4 border-b border-border bg-muted flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h2 class="text-lg font-semibold">站点配置</h2>
-        <p class="text-sm text-muted-foreground">管理各站点的域名、代理与抓取参数，用于订阅与视频来源识别。</p>
+  <div class="settings-section slide-up">
+    <div class="settings-section-header">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold tracking-tight text-foreground">采集源配置</h2>
+        <div class="text-[11px] font-black text-muted-foreground/20 uppercase tracking-[0.2em]">
+          {{ siteSummaryText }}
+        </div>
       </div>
-      <span class="inline-flex items-center gap-2 text-xs text-muted-foreground/70 bg-card border border-border rounded-full px-3 py-1">
-        <span class="h-2 w-2 rounded-full" :class="siteSummaryDotClass"></span>
-        {{ siteSummaryText }}
-      </span>
     </div>
 
-    <div class="space-y-4">
-      <div v-if="siteLoading" class="px-6 py-6 text-sm text-muted-foreground">
-        正在加载站点配置...
+    <div class="settings-section-content mt-10">
+      <div v-if="siteLoading" class="py-12 flex flex-col items-center justify-center gap-3">
+        <Loader2 class="h-5 w-5 animate-spin text-muted-foreground/10" />
       </div>
 
       <div v-else>
-        <div v-if="siteError" class="px-6 mb-3 text-sm text-destructive">
+        <div v-if="siteError" class="mb-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-[13px] text-destructive flex items-center gap-3">
+          <AlertCircle class="h-4 w-4 shrink-0" />
           {{ siteError.message || siteError }}
         </div>
 
-        <div v-if="siteList.length === 0" class="px-6 py-6 text-sm text-muted-foreground">
-          暂无站点配置。
+        <div v-if="siteList.length === 0" class="py-16 text-center border-2 border-dashed border-border/40 rounded-2xl">
+          <Globe class="h-6 w-6 mx-auto text-muted-foreground/10" />
+          <p class="mt-3 text-xs text-muted-foreground/30 font-medium">未发现可用站点配置</p>
         </div>
 
-        <!-- 列表外框：与页面背景接近的深灰，弱化存在感 -->
-        <div v-else class="site-list">
-          <div class="site-list-header">
-            <span>站点</span>
-            <span>域名</span>
-            <span class="text-right">状态</span>
-          </div>
-          <div class="site-list-body">
-            <div
-              v-for="site in siteList"
-              :key="site.slug"
-              class="site-list-item"
-            >
-              <div class="site-list-main">
-                <div class="site-title">
-                  <span class="font-medium">{{ site.label }}</span>
-                  <span class="text-xs text-muted-foreground/70">({{ site.slug }})</span>
-                </div>
-                <div class="site-domain">
-                  <span v-if="site.domains && site.domains.length">{{ site.domains.join(', ') }}</span>
-                  <span v-else class="italic">未配置</span>
+        <div v-else class="site-grid grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div
+            v-for="site in siteList"
+            :key="site.slug"
+            class="site-item group p-4 rounded-2xl border border-border/40 bg-muted/[0.04] hover:bg-muted/[0.1] hover:border-border/60 transition-all duration-300"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0">
+                <div class="flex items-center gap-3">
+                  <div class="h-8 w-8 rounded-xl bg-background border border-border/40 flex items-center justify-center shadow-sm shrink-0 transition-transform group-hover:scale-105">
+                    <span class="text-[11px] font-black text-muted-foreground/40">{{ site.slug.substring(0, 2).toUpperCase() }}</span>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-[14px] font-bold text-foreground tracking-tight truncate">{{ site.label }}</div>
+                    <div class="text-[11px] text-muted-foreground/30 font-medium mt-0.5 uppercase">{{ site.slug }}</div>
+                  </div>
                 </div>
               </div>
-              <div class="site-list-meta">
-                <span
-                  class="site-status"
-                  :class="site.enabled ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground'"
-                >
-                  {{ site.enabled ? '已启用' : '已禁用' }}
-                </span>
+
+              <div class="flex flex-col items-end gap-2 shrink-0">
+                <div
+                  class="h-1 w-1 rounded-full"
+                  :class="site.enabled ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-muted-foreground/10'"
+                ></div>
                 <button
-                  class="site-table-action"
+                  class="text-[11px] font-bold text-primary/40 hover:text-primary transition-colors mt-3"
                   @click="openSiteEditor(site)"
                 >
                   配置
@@ -77,13 +71,19 @@
       @close="closeSiteEditor"
       @save="saveSiteEditor"
     />
-  </Card>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { 
+  Loader2, 
+  Globe, 
+  AlertCircle, 
+  Settings2,
+  ExternalLink
+} from 'lucide-vue-next';
 import { useSiteCatalog } from '@/composables/useSites';
-import { Card } from '@/components/ui/card';
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import { Logger } from '@/utils/logger'
 
@@ -154,49 +154,11 @@ const saveSiteEditor = async ({ slug, sitePayload }) => {
 </script>
 
 <style scoped>
-.settings-card {
-  @apply rounded-2xl shadow-sm;
-  background-color: hsl(var(--card));
-  background-color: color-mix(in srgb, hsl(var(--card)) 60%, hsl(var(--background)));
+.site-item {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
-.site-list {
-  @apply border border-border rounded-none overflow-hidden bg-background;
-}
-
-.site-list-header {
-  @apply hidden sm:grid sm:grid-cols-[2.2fr_2.8fr_1fr] px-6 py-2 text-xs text-muted-foreground/70 bg-muted;
-}
-
-.site-list-body {
-  @apply divide-y divide-border;
-}
-
-.site-list-item {
-  @apply flex flex-col gap-3 px-6 py-4 text-sm hover:bg-accent transition-colors sm:flex-row sm:items-center sm:justify-between;
-}
-
-.site-list-main {
-  @apply flex flex-col gap-2 min-w-0 sm:flex-row sm:items-center sm:gap-6 sm:flex-1;
-}
-
-.site-title {
-  @apply flex items-center gap-2 min-w-0 sm:min-w-[12rem];
-}
-
-.site-domain {
-  @apply text-sm text-muted-foreground truncate;
-}
-
-.site-list-meta {
-  @apply flex items-center justify-between gap-3 sm:justify-end sm:min-w-[10rem];
-}
-
-.site-status {
-  @apply px-2 py-0.5 rounded-full text-xs font-medium;
-}
-
-.site-table-action {
-  @apply px-3 py-1.5 bg-muted hover:bg-accent rounded-full text-xs font-medium transition-colors border border-border text-foreground;
+.site-item:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 </style>
