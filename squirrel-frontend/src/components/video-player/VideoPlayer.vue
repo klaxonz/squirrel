@@ -14,6 +14,15 @@
   >
     <!-- 全屏视觉增强层 -->
     <div class="sp-vignette-overlay"></div>
+    <div class="sp-grid-overlay"></div>
+
+    <!-- 战术边角装饰 -->
+    <div class="sp-tactical-corners">
+      <div class="corner-tl"></div>
+      <div class="corner-tr"></div>
+      <div class="corner-bl"></div>
+      <div class="corner-br"></div>
+    </div>
 
     <!-- 视频核心 -->
     <video
@@ -383,15 +392,55 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 /* 全屏视觉增强层 */
 .sp-vignette-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.4) 100%);
+  background: radial-gradient(circle, transparent 60%, rgba(0,0,0,0.5) 100%);
   pointer-events: none;
   z-index: 5;
+}
+
+.sp-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255, 77, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 77, 0, 0.02) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.is-active .sp-grid-overlay {
+  opacity: 1;
+}
+
+/* 战术边角 */
+.sp-tactical-corners div {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(255, 77, 0, 0.3);
+  z-index: 10;
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.corner-tl { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+.corner-tr { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+.corner-bl { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+.corner-br { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+
+.is-active .sp-tactical-corners div {
+  width: 24px;
+  height: 24px;
+  border-color: rgba(255, 77, 0, 0.6);
 }
 
 /* 中央 HUD 指示器 */
@@ -408,42 +457,48 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(8px);
-  padding: 8px 16px;
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(12px);
+  padding: 8px 18px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255, 77, 0, 0.3);
+  box-shadow: 0 0 30px rgba(255, 77, 0, 0.15);
 }
 
 .sp-central-hud-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   color: var(--sp-primary);
+  filter: drop-shadow(0 0 5px var(--sp-primary));
 }
 
 .sp-central-hud-value {
   color: #fff;
   font-family: var(--sp-font-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
 }
 
 .sp-hud-fade-enter-active, .sp-hud-fade-leave-active {
-  transition: opacity 0.15s, transform 0.15s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: opacity 0.1s, transform 0.1s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-.sp-hud-fade-enter-from { opacity: 0; transform: translate(-50%, -30%) scale(0.95); }
-.sp-hud-fade-leave-to { opacity: 0; transform: translate(-50%, -70%) scale(1.05); }
+.sp-hud-fade-enter-from { opacity: 0; transform: translate(-50%, -45%) scale(0.98); }
+.sp-hud-fade-leave-to { opacity: 0; transform: translate(-50%, -55%) scale(1.02); }
 
 /* HUD 系统状态 */
 .sp-hud-overlay {
   position: absolute;
-  top: 16px;
-  left: 16px;
+  top: 24px;
+  left: 24px;
   z-index: 10;
   pointer-events: none;
+  transition: transform 0.3s ease;
+}
+
+.is-active .sp-hud-overlay {
+  transform: translateX(10px);
 }
 
 .sp-hud-tag {
@@ -451,10 +506,21 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   align-items: center;
   gap: 8px;
   padding: 4px 12px;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 77, 0, 0.25);
+  border: 1px solid rgba(255, 77, 0, 0.2);
   border-radius: 4px;
+  position: relative;
+}
+
+.sp-hud-tag::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 4px;
+  background: linear-gradient(45deg, var(--sp-primary), transparent, var(--sp-primary));
+  opacity: 0.1;
+  pointer-events: none;
 }
 
 .sp-hud-dot {
@@ -491,20 +557,21 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 }
 
 .sp-hud-code {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.5);
   font-family: var(--sp-font-mono);
-  font-size: 10px;
-  width: 60px;
+  font-size: 9px;
+  width: 55px;
 }
 
 /* 底部渐变遮罩 */
 .sp-gradient-overlay {
   position: absolute;
   inset: auto 0 0 0;
-  height: 120px;
-  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
+  height: 140px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
   pointer-events: none;
   z-index: 15;
+  transition: opacity 0.3s ease;
 }
 
 .sp-controls-wrapper {
@@ -518,17 +585,43 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 }
 
 .sp-controls-content {
-  padding: 0 10px 6px;
+  padding: 0 16px 12px;
   margin: 0;
   position: relative;
   z-index: 25;
   pointer-events: auto;
+  transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.sp-controls-wrapper:not(.is-active) .sp-controls-content {
+  transform: translateY(10px);
+}
+
+/* 模块化控制栏设计 */
+.sp-controls-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  margin-top: 4px;
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.sp-controls-left, .sp-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* 进度条容器 */
 .sp-progress-container {
-  padding: 6px 0;
-  margin: 0 -4px;
+  padding: 8px 0;
+  margin: 0 4px;
   cursor: pointer;
   position: relative;
 }
@@ -543,15 +636,16 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 .sp-progress-rail {
   width: 100%;
   height: 2px;
-  background: rgba(255, 255, 255, 0.12);
-  transition: height 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.25s cubic-bezier(0.19, 1, 0.22, 1);
   border-radius: 2px;
   overflow: hidden;
   position: relative;
 }
 
 .sp-progress-container:hover .sp-progress-rail {
-  height: 4px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .sp-progress-buffered {
@@ -559,13 +653,14 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   height: 100%;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .sp-progress-played {
   position: absolute;
   height: 100%;
   background: var(--sp-primary, #ff4d00);
-  box-shadow: 0 0 10px rgba(var(--sp-primary-rgb), 0.5);
+  box-shadow: 0 0 15px rgba(var(--sp-primary-rgb), 0.6);
   border-radius: 2px;
   display: flex;
   align-items: center;
@@ -573,144 +668,101 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 }
 
 .sp-progress-dot {
-  width: 10px;
+  width: 2px;
   height: 100%;
   background: #fff;
   position: absolute;
   right: 0;
-  transform: scaleX(0);
-  transform-origin: right;
+  transform: scaleY(0);
   transition: transform 0.2s ease;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 10px #fff;
 }
 
 .sp-progress-container:hover .sp-progress-dot {
-  transform: scaleX(1);
-  width: 2px;
+  transform: scaleY(1.5);
 }
 
 /* 预览时间提示 */
 .sp-preview-hint {
   position: absolute;
-  bottom: 20px;
+  bottom: 24px;
   transform: translateX(-50%);
   pointer-events: none;
-  animation: hint-fade 0.2s ease-out;
-}
-
-@keyframes hint-fade {
-  from { opacity: 0; transform: translateX(-50%) translateY(5px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .sp-preview-hint-inner {
-  padding: 3px 8px;
-  background: rgba(10, 10, 10, 0.95);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 77, 0, 0.25);
+  padding: 4px 10px;
+  background: rgba(10, 10, 10, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--sp-primary);
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--sp-font-mono);
   border-radius: 4px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.6);
-}
-
-/* 控制按钮主区域 */
-.sp-controls-main {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 36px;
-  margin-top: 0;
-}
-
-.sp-controls-left, .sp-controls-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  box-shadow: 0 0 15px rgba(255, 77, 0, 0.3);
 }
 
 /* 画质标签 */
 .sp-quality-tag {
   font-family: var(--sp-font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
-  padding: 2px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--sp-primary);
+  padding: 1px 5px;
+  border: 1px solid rgba(255, 77, 0, 0.4);
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 77, 0, 0.05);
   letter-spacing: 0.05em;
-  margin-right: 4px;
 }
 
 .sp-quality-tag:hover {
-  color: var(--sp-primary);
-  border-color: var(--sp-primary);
-  background: rgba(var(--sp-primary-rgb), 0.1);
-  box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.3);
+  background: var(--sp-primary);
+  color: #000;
+  box-shadow: 0 0 12px var(--sp-primary);
 }
 
 /* 按钮样式优化 */
 .sp-icon-btn {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
   position: relative;
 }
 
-.sp-icon-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 77, 0, 0.1);
-  border: 1px solid rgba(255, 77, 0, 0.15);
-  border-radius: 6px;
-  transform: scale(0.85);
-  opacity: 0;
-  transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
-}
-
 .sp-icon-btn:hover {
-  color: var(--sp-primary, #ff4d00);
-  transform: translateY(-1px);
-}
-
-.sp-icon-btn:hover::after {
-  transform: scale(1);
-  opacity: 1;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
 }
 
 .sp-icon-btn :deep(svg) {
   width: 18px;
   height: 18px;
-  filter: drop-shadow(0 0 4px rgba(0,0,0,0.4));
 }
 
 /* 时间显示 */
 .sp-time-display {
   font-family: var(--sp-font-mono);
-  font-size: 12px;
+  font-size: 11px;
   color: #fff;
   display: flex;
   align-items: center;
-  padding-left: 6px;
+  padding-left: 4px;
   letter-spacing: 0.02em;
-  font-weight: 700;
 }
 
 .sp-time-separator {
-  margin: 0 6px;
+  margin: 0 4px;
   opacity: 0.2;
 }
 
@@ -722,7 +774,6 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 .sp-volume-group {
   display: flex;
   align-items: center;
-  gap: 2px;
 }
 
 .sp-volume-slider-wrap {
@@ -737,16 +788,16 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 
 .sp-volume-group:hover .sp-volume-slider-wrap,
 .sp-volume-group.is-active .sp-volume-slider-wrap {
-  width: 76px;
+  width: 70px;
   opacity: 1;
   padding: 0 8px;
 }
 
 .sp-volume-bar {
   width: 100%;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 1.5px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 1px;
   position: relative;
   cursor: pointer;
 }
@@ -754,101 +805,54 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 .sp-volume-fill {
   height: 100%;
   background: var(--sp-primary);
-  border-radius: 1.5px;
-  position: relative;
+  border-radius: 1px;
+  box-shadow: 0 0 8px var(--sp-primary);
 }
 
-.sp-volume-glow {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: 100%;
-  box-shadow: 0 0 10px rgba(var(--sp-primary-rgb), 0.6);
-}
-
-/* 设置菜单提示框 */
+/* 设置菜单 */
 .sp-settings-pop {
   position: absolute;
-  bottom: 52px;
-  right: 12px;
-  width: 220px;
-  background: rgba(10, 10, 10, 0.95);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 77, 0, 0.2);
-  border-radius: 8px;
+  bottom: 64px;
+  right: 16px;
+  width: 200px;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 77, 0, 0.3);
+  border-radius: 12px;
   padding: 6px;
   z-index: 100;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.85);
-  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.8);
 }
 
 .sp-settings-pop::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(255, 77, 0, 0.05) 50%);
-  background-size: 100% 4px;
+  background: linear-gradient(rgba(255, 77, 0, 0.03) 50%, transparent 50%);
+  background-size: 100% 2px;
   pointer-events: none;
-  opacity: 0.2;
 }
 
 .sp-menu-item {
+  padding: 10px 14px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-family: var(--sp-font-family);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 12px;
-  font-family: var(--sp-font-family);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-  z-index: 1;
-  letter-spacing: 0.03em;
 }
 
 .sp-menu-item:hover {
   background: rgba(255, 77, 0, 0.15);
   color: #fff;
+  transform: translateX(4px);
 }
 
-.sp-menu-item.is-active {
-  color: var(--sp-primary);
-  background: rgba(var(--sp-primary-rgb), 0.1);
-}
-
-.sp-simple-switch {
-  width: 30px;
-  height: 16px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  position: relative;
-  transition: background 0.3s;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.sp-simple-switch.is-on { 
-  background: var(--sp-primary);
-  border-color: rgba(255, 77, 0, 0.5);
-}
-
-.sp-simple-switch::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform 0.25s cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.sp-simple-switch.is-on::after { transform: translateX(14px); }
-
-/* 加载动画 - 极致简约 */
+/* 加载动画 */
 .sp-loading {
   position: absolute;
   inset: 0;
@@ -856,38 +860,37 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   align-items: center;
   justify-content: center;
   z-index: 5;
-  background: rgba(0,0,0,0.1);
 }
 
 .sp-loader-ring {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   position: relative;
-  animation: loader-rotate 1.5s linear infinite;
+  animation: loader-rotate 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 }
 
 .sp-loader-segment {
   position: absolute;
   inset: 0;
   border: 2px solid transparent;
-  border-top-color: rgba(255, 255, 255, 0.3);
+  border-top-color: var(--sp-primary);
   border-radius: 50%;
+  filter: drop-shadow(0 0 5px var(--sp-primary));
 }
 
-.sp-loader-segment:nth-child(1) { border-top-color: var(--sp-primary); }
-.sp-loader-segment:nth-child(2) { transform: rotate(120deg); }
-.sp-loader-segment:nth-child(3) { transform: rotate(240deg); }
+.sp-loader-segment:nth-child(2) { transform: rotate(120deg); opacity: 0.5; }
+.sp-loader-segment:nth-child(3) { transform: rotate(240deg); opacity: 0.2; }
 
 @keyframes loader-rotate {
   to { transform: rotate(360deg); }
 }
 
 .sp-ui-fade-enter-active, .sp-ui-fade-leave-active {
-  transition: opacity 0.3s cubic-bezier(0.19, 1, 0.22, 1), transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .sp-ui-fade-enter-from, .sp-ui-fade-leave-to {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(15px);
 }
 </style>
