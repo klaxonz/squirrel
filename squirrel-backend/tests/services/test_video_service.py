@@ -101,6 +101,7 @@ def test_get_video_url_reads_playback_from_plugin_gateway(monkeypatch):
             'video_id': 1,
             'url': 'https://www.bilibili.com/video/BV1xx411c7mD',
             'domain': 'bilibili.com',
+            'title': 'Test video',
         },
         'site_name': 'bilibili',
         'domain': 'bilibili.com',

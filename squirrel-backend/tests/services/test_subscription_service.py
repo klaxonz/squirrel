@@ -198,6 +198,73 @@ def test_preview_user_subscriptions_reads_items_from_plugin_gateway(monkeypatch)
     assert result['subscriptions'][1]['is_imported'] is False
 
 
+def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(monkeypatch):
+    _setup_test_env(monkeypatch)
+
+    calls = []
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            calls.append({
+                'capability': capability,
+                'payload': payload,
+                'site_name': site_name,
+                'domain': domain,
+                'timeout_ms': timeout_ms,
+            })
+            return PluginInvokeResponse(
+                request_id='subscribe-1',
+                ok=True,
+                data={
+                    'id': 'UC123',
+                    'name': 'Runtime channel',
+                    'avatar': 'https://img/runtime.jpg',
+                    'url': 'https://www.youtube.com/channel/UC123',
+                },
+            )
+
+    monkeypatch.setattr(
+        subscription_service,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+
+    result = subscription_service.handle_subscribe_request(
+        url='https://www.youtube.com/channel/UC123',
+        user_id=1,
+    )
+
+    assert calls == [{
+        'capability': 'resolve_subscription',
+        'payload': {
+            'url': 'https://www.youtube.com/channel/UC123',
+            'domain': 'youtube.com',
+        },
+        'site_name': None,
+        'domain': 'youtube.com',
+        'timeout_ms': None,
+    }]
+    assert result.name == 'Runtime channel'
+    assert result.url == 'https://www.youtube.com/channel/UC123'
+
+
+def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(monkeypatch):
+    registrations = [
+        SimpleNamespace(capability='import_subscriptions', site_name='youtube'),
+        SimpleNamespace(capability='import_subscriptions', site_name='bilibili'),
+        SimpleNamespace(capability='resolve_playback', site_name='youtube'),
+        SimpleNamespace(capability='import_subscriptions', site_name='youtube'),
+    ]
+
+    monkeypatch.setattr(
+        subscription_service,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(get_snapshot=lambda: SimpleNamespace(registrations=registrations)),
+    )
+
+    assert subscription_service.get_runtime_supported_sites('import_subscriptions') == ['bilibili', 'youtube']
+
+
 def test_import_user_subscriptions_filters_gateway_items_before_enqueue(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     _seed_subscription(engine, user_ids=[1])

@@ -38,6 +38,7 @@ from the manifest and only routes requests through explicit capabilities such as
 - `resolve_playback`
 - `sync_subscription`
 - `import_subscriptions`
+- `resolve_subscription`
 - `check_login_status`
 
 Legacy in-process SDK registries remain only as a compatibility layer for code that

@@ -1,15 +1,15 @@
 {
-  "entrypoint": "squirrel_bilibili.runtime:get_plugin_runtime",
+  "entrypoint": "squirrel_pornhub.runtime:get_plugin_runtime",
   "manifest": {
-    "plugin_id": "bilibili",
+    "plugin_id": "pornhub",
     "version": "0.1.0",
     "sdk_api_version": "2.0",
-    "display_name": "Bilibili",
-    "description": "Bilibili crawl integration",
+    "display_name": "Pornhub",
+    "description": "Pornhub crawl integration",
     "capabilities": [
       {
         "name": "check_login_status",
-        "description": "Check the current Bilibili login state.",
+        "description": "Check the current Pornhub login state.",
         "response_schema": {
           "type": "object"
         },
@@ -17,7 +17,7 @@
       },
       {
         "name": "import_subscriptions",
-        "description": "Import followed Bilibili creators for the current account.",
+        "description": "Import followed Pornhub creators for the current account.",
         "response_schema": {
           "type": "object"
         },
@@ -25,7 +25,7 @@
       },
       {
         "name": "resolve_subscription",
-        "description": "Resolve subscription metadata for a Bilibili creator or collection URL.",
+        "description": "Resolve subscription metadata for a Pornhub creator URL.",
         "response_schema": {
           "type": "object"
         },
@@ -33,7 +33,7 @@
       },
       {
         "name": "sync_subscription",
-        "description": "Fetch subscription video URLs for a Bilibili subscription.",
+        "description": "Fetch subscription video URLs for a Pornhub subscription.",
         "response_schema": {
           "type": "object"
         },
@@ -41,7 +41,7 @@
       },
       {
         "name": "extract_video",
-        "description": "Extract structured metadata for a Bilibili video URL.",
+        "description": "Extract structured metadata for a Pornhub video URL.",
         "response_schema": {
           "type": "object"
         },
@@ -49,7 +49,7 @@
       },
       {
         "name": "resolve_playback",
-        "description": "Resolve playback URLs for a Bilibili video.",
+        "description": "Resolve playback URLs for a Pornhub video.",
         "response_schema": {
           "type": "object"
         },
@@ -58,12 +58,11 @@
     ],
     "sites": [
       {
-        "site_name": "bilibili",
+        "site_name": "pornhub",
         "domains": [
-          "bilibili.com",
-          "b23.tv"
+          "pornhub.com"
         ],
-        "test_url": "https://www.bilibili.com",
+        "test_url": "https://www.pornhub.com",
         "features": [
           "check_login_status",
           "import_subscriptions",
@@ -77,12 +76,12 @@
     "permissions": [
       {
         "name": "network:http",
-        "description": "Access Bilibili APIs over HTTP.",
+        "description": "Access Pornhub APIs and web pages over HTTP.",
         "required": true
       },
       {
-        "name": "cookies:read:site/bilibili",
-        "description": "Read Bilibili cookies for authenticated requests.",
+        "name": "cookies:read:site/pornhub",
+        "description": "Read Pornhub cookies for authenticated requests.",
         "required": true
       }
     ],

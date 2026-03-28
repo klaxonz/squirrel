@@ -138,15 +138,12 @@ class SubscriptionOrchestrator:
     
     def _resolve_site(self, url: str) -> str:
         """解析站点名称"""
-        from crawl import get_subscription_registry
-        
         domain = url_helper.extract_top_level_domain(url)
-        
-        subscription_registry = get_subscription_registry()
-        site_key = subscription_registry.get_by_domain(domain)
+
+        site_key, _ = SiteCatalog.find_site_by_domain(domain)
         if site_key:
             return site_key
-        
+
         return "default"
     
     def _select_strategy(self, site_name: str) -> 'UpdateStrategy':

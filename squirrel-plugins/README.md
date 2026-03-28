@@ -63,6 +63,7 @@ Depending on the site, implement one or more of these runtime V2 capability hand
 - `resolve_playback`
 - `sync_subscription`
 - `import_subscriptions`
+- `resolve_subscription`
 - `check_login_status`
 
 Legacy registry decorators such as `register_extractor()` and `register_subscription()`

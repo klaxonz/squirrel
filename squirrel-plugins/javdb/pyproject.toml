@@ -15,8 +15,8 @@ dependencies = [
   "beautifulsoup4>=4.12.0",
 ]
 
-[project.entry-points]
-"squirrel.crawl.plugins" = { javdb = "squirrel_javdb" }
+[project.entry-points."squirrel.plugins"]
+javdb = "squirrel_javdb.runtime:get_plugin_runtime"
 
 [tool.setuptools.packages.find]
 where = ["src"]

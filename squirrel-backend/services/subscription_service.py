@@ -1,5 +1,6 @@
 import logging
 from typing import Optional, Tuple, List, Dict, Any
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.sql import text
@@ -14,6 +15,7 @@ from services import user_config_service
 from services import subscription_sync_state_service
 from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql, get_subscription_sql
 from utils.sql_parser import parse_dynamic_sql
+from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger(__name__)
 
@@ -273,25 +275,11 @@ def handle_subscribe_request(url: str, user_id: int) -> Subscription:
     Returns:
         订阅对象
     """
-    from crawl import get_subscription_registry, Subscription
-    from urllib.parse import urlparse
-
     existing_subscription = get_active_user_subscription_by_url(user_id=user_id, url=url)
     if existing_subscription:
         return existing_subscription
 
-    # 使用新的注册表 API 创建 Subscription
-    subscription_registry = get_subscription_registry()
-    parsed_url = urlparse(url)
-    domain = parsed_url.netloc.lower().split(':')[0]
-    subscription_key = subscription_registry.get_by_domain(domain)
-    if not subscription_key:
-        raise ValueError(f"No subscription handler found for domain: {domain}")
-    subscription_cls = subscription_registry.get(subscription_key)
-    if not subscription_cls or not isinstance(subscription_cls, type):
-        raise ValueError(f"Invalid subscription class for key: {subscription_key}")
-    subscribe_channel: Subscription = subscription_cls(url=url)
-    subscribe_info = subscribe_channel.get_subscribe_info()
+    subscribe_info = _load_runtime_subscription_meta(url)
 
     subscription = get_subscription_by_url_and_name(url, subscribe_info.name)
 
@@ -493,6 +481,37 @@ def _load_runtime_import_items(site_name: str) -> List[SubscriptionImportItem]:
         for item in items
         if isinstance(item, (dict, SubscriptionImportItem))
     ])
+
+
+def get_runtime_supported_sites(capability: str) -> List[str]:
+    snapshot = get_plugin_manager().get_snapshot()
+    return sorted({
+        registration.site_name
+        for registration in snapshot.registrations
+        if registration.capability == capability and registration.site_name
+    })
+
+
+def _load_runtime_subscription_meta(url: str) -> SubscriptionMeta:
+    domain = extract_top_level_domain(url)
+    parsed_url = urlparse(url)
+    payload = {
+        'url': url,
+        'domain': domain or parsed_url.netloc.lower().split(':')[0],
+    }
+    response = get_plugin_manager().gateway.invoke(
+        'resolve_subscription',
+        payload=payload,
+        domain=domain or None,
+    )
+    if not response.ok:
+        message = response.error.message if response.error else f'Plugin subscription resolution failed for url: {url}'
+        raise ValueError(message)
+
+    if not isinstance(response.data, dict):
+        raise ValueError(f'Plugin resolve_subscription payload must be an object for url: {url}')
+
+    return SubscriptionMeta.from_dict(response.data)
 
 
 def preview_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:

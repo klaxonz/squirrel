@@ -146,6 +146,7 @@ def get_video_url(video_id: int, force_refresh: bool = False) -> VideoUrlDto:
             'video_id': video.id,
             'url': video.url,
             'domain': video_domain,
+            'title': video.title,
         },
     )
     if not response.ok:
