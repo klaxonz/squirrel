@@ -1165,30 +1165,34 @@ onUnmounted(() => {
   gap: 0.24rem;
   min-height: 1.52rem;
   padding: 0 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid transparent;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(255, 255, 255, 0.7);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
   box-shadow: none;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .video-action:hover {
-  background: rgba(255, 77, 0, 0.05);
-  border-color: #ff4d00;
+  background: rgba(255, 77, 0, 0.04);
+  border-color: rgba(255, 77, 0, 0.3);
   color: #ff4d00;
-  box-shadow: 0 0 10px rgba(255, 77, 0, 0.2);
+  text-shadow: 0 0 8px rgba(255, 77, 0, 0.4);
 }
 
 .video-action.is-active {
-  background: rgba(255, 77, 0, 0.1);
+  background: rgba(255, 77, 0, 0.08);
   border-color: #ff4d00;
   color: #ff4d00;
-  box-shadow: 0 0 12px rgba(255, 77, 0, 0.3);
+  box-shadow: 0 0 15px rgba(255, 77, 0, 0.15);
+  text-shadow: 0 0 10px rgba(255, 77, 0, 0.5);
 }
 
 .video-action--secondary {
-  background: rgba(255, 255, 255, 0.02);
+  opacity: 0.8;
 }
 
 .video-action__icon {
@@ -1249,7 +1253,17 @@ onUnmounted(() => {
   border-left: 3px solid #ff4d00;
   border-radius: 4px;
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* 改为可见以防内容截断 */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.video-channel__primary {
+  display: flex;
+  align-items: flex-start; /* 顶部对齐，防止头像比例问题 */
+  gap: 1.25rem;
+  flex-wrap: wrap; /* 允许在窄屏时换行 */
 }
 
 .video-channel::before {
@@ -1461,21 +1475,22 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
   border-radius: 2px;
-  background: hsl(var(--muted) / 0.6);
-  aspect-ratio: 16 / 10;
+  background: #000; /* 背景全黑，确保无白边 */
+  aspect-ratio: 16 / 9; /* 修正比例 */
   z-index: 1;
 }
 
-.related-video-card__image,
-.related-video-card__fallback {
+.related-video-card__image {
   width: 100%;
   height: 100%;
-}
-
-.related-video-card__image {
-  object-fit: cover;
+  object-fit: cover; /* 封面自适应拉伸铺满 */
   pointer-events: none;
   user-select: none;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.related-video-card:hover .related-video-card__image {
+  transform: scale(1.05); /* 悬停时稍微放大，更有沉浸感 */
 }
 
 .related-video-card__fallback {
