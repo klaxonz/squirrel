@@ -106,12 +106,12 @@
             <!-- Right: Stats (Desktop Only mostly) -->
             <div class="subscription-row__stats">
               <div class="subscription-row__stat">
-                <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_extract }}</span>
-                <span class="subscription-row__stat-label">EXTRACTED</span>
-              </div>
-              <div class="subscription-row__stat">
                 <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_videos }}</span>
                 <span class="subscription-row__stat-label">TOTAL</span>
+              </div>
+              <div class="subscription-row__stat">
+                <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_extract }}</span>
+                <span class="subscription-row__stat-label">EXTRACTED</span>
               </div>
             </div>
 
