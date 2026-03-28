@@ -327,18 +327,6 @@ def reconcile_sync_center(current_user: User = Depends(get_current_user)):
     })
 
 
-@router.post("/api/subscription/toggle-auto-download")
-def toggle_auto_download(req: ToggleStatusRequest):
-    success = subscription_service.toggle_status(req.subscription_id, req.is_enable, "is_auto_download")
-    return response.success({"success": success})
-
-
-@router.post("/api/subscription/toggle-download-all")
-def toggle_download_all(req: ToggleStatusRequest):
-    success = subscription_service.toggle_status(req.subscription_id, req.is_enable, "is_download_all")
-    return response.success({"success": success})
-
-
 @router.post("/api/subscription/toggle-nsfw")
 def toggle_nsfw(
         req: ToggleStatusRequest,

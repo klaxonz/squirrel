@@ -1,20 +1,15 @@
 import logging
-import os
-import time
 from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response, Body
 from fastapi.responses import PlainTextResponse
 import common.response as response
-from common.video_stream import create_stream_response, find_video_file
-from core import download_config
 from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExtractionError
 from models.user import User
-from schemas.video.request.video import SortBy, DownloadVideoRequest
-from services import video_service, subscription_video_service, subscription_service
+from schemas.video.request.video import SortBy
+from services import video_service
 from services.site_catalog_service import save_sites
 from typing import List
 from utils.site_catalog import SiteCatalog
 from core.site_config_manager import get_effective_site_catalog
-from crawl import DownloaderFactory
 from plugins.manager import get_plugin_manager
 from utils.jwt_helper import get_current_user
 from utils.url_helper import normalize_domain
@@ -131,12 +126,6 @@ def get_video_counts(
     return response.success(counts)
 
 
-@router.post("/api/video/download")
-def download_video(req: DownloadVideoRequest):
-    video_service.download_video(req.video_id)
-    return response.success()
-
-
 @router.get("/api/video/random")
 def get_random_video(
         category: str = Query('all', description="类别：all|read|unread|preview|liked|later"),
@@ -165,22 +154,6 @@ def get_random_video(
     # 返回完整视频详情，便于前端直接播放
     detail = video_service.get_video(current_user.id, video.id)
     return response.success(detail)
-
-
-@router.get("/api/video/play/{video_id}")
-def play_video(request: Request, video_id: int):
-    video = video_service.get_video_by_id(video_id)
-    downloader = DownloaderFactory.create_downloader(video.url)
-    video_info = downloader.get_video_info()
-    # VideoFactory 在 SDK v2.0 中已移除，直接使用 video 对象
-    subscription_video = subscription_video_service.get_subscription_video_by_video_id(video.id)
-    subscription = subscription_service.get_subscription_by_id(subscription_video.subscription_id)
-    output_dir = download_config.get_download_full_path(subscription.name, video.season)
-    filename = download_config.get_valid_filename(video.title)
-    video_path = find_video_file(output_dir, filename)
-    if not video_path:
-        raise HTTPException(status_code=404, detail="Video file not found")
-    return create_stream_response(request, video_path)
 
 
 @router.get("/api/video/proxy")

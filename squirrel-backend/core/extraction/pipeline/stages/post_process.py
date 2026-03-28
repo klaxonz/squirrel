@@ -1,5 +1,5 @@
 """
-PostProcessStage - 后处理（缩略图、下载任务等）
+PostProcessStage - 后处理（缩略图等）
 """
 import logging
 
@@ -15,18 +15,15 @@ class PostProcessStage(PipelineStage):
     
     职责：
     - 异步下载缩略图
-    - 创建下载任务
     - 其他后处理操作
     """
     
-    def __init__(self, thumbnail_service, task_service):
+    def __init__(self, thumbnail_service):
         """
         Args:
             thumbnail_service: 缩略图下载服务
-            task_service: 下载任务服务
         """
         self.thumbnail_service = thumbnail_service
-        self.task_service = task_service
     
     @property
     def stage_name(self) -> str:
@@ -43,8 +40,6 @@ class PostProcessStage(PipelineStage):
         
         video_model = context.video_model
         video_dto = context.video_dto
-        task = context.task
-        
         # 检查前置条件
         if video_model is None or video_dto is None:
             logger.warning(
@@ -68,21 +63,6 @@ class PostProcessStage(PipelineStage):
                 # 缩略图下载失败不应中断流程
                 logger.warning(
                     f"Failed to enqueue thumbnail download: "
-                    f"video_id={video_model.id}, error={e}"
-                )
-        
-        # 2. 创建下载任务
-        only_extract = task.metadata.get('only_extract', True)
-        if not only_extract:
-            try:
-                self.task_service.create_download_task(video_model)
-                logger.info(
-                    f"Download task created: video_id={video_model.id}"
-                )
-            except Exception as e:
-                # 任务创建失败不应中断流程
-                logger.warning(
-                    f"Failed to create download task: "
                     f"video_id={video_model.id}, error={e}"
                 )
         

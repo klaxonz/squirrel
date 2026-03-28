@@ -16,7 +16,6 @@ logger = logging.getLogger()
 class QueueMode(str, Enum):
     """队列模式枚举"""
     MANUAL = 'manual'  # 手动触发（最高优先级）
-    SCHEDULED = 'scheduled'  # 定时任务（用于 VIDEO_DOWNLOAD 等队列，VIDEO_EXTRACT 已弃用）
     INCREMENTAL = 'incr'  # 增量更新（高优先级，用于 SUBSCRIPTION_UPDATE 和 VIDEO_EXTRACT）
     FULL = 'full'  # 全量更新（低优先级，用于 SUBSCRIPTION_UPDATE 和 VIDEO_EXTRACT）
 
@@ -25,7 +24,6 @@ class QueueType(str, Enum):
     """队列类型枚举"""
     VIDEO_EXTRACT = 'video:extract'
     SUBSCRIPTION_UPDATE = 'subscription:update'
-    VIDEO_DOWNLOAD = 'video:download'
 
 
 class QueueConfigManager:
@@ -103,13 +101,10 @@ class QueueConfigManager:
         mapping = {}
         
         # 根据队列类型选择对应的模式
-        if queue_type == QueueType.SUBSCRIPTION_UPDATE:
-            modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
-        elif queue_type == QueueType.VIDEO_EXTRACT:
-            # 视频提取也支持三种模式：手动、增量、全量
+        if queue_type in {QueueType.SUBSCRIPTION_UPDATE, QueueType.VIDEO_EXTRACT}:
             modes = [QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL]
         else:
-            modes = [QueueMode.MANUAL, QueueMode.SCHEDULED]
+            raise ValueError(f'Unsupported queue type: {queue_type}')
         
         for domain, site in self._domain_to_site.items():
             mapping[domain] = {

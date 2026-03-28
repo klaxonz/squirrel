@@ -29,7 +29,6 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = 'postgres'
     POSTGRES_PASSWORD: str = 'postgres'
     POSTGRES_DATABASE: str = 'squirrel'
-    MEDIA_DOWNLOAD_PATH: str = str(base_dir.parent / 'downloads')
     THUMBNAILS_PATH: str = ''
     CLOUDFLARE_BYPASS_SERVICE_URL: str = ''
     COOKIECLOUD_URL: str = ''

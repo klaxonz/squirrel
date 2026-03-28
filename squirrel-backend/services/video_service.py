@@ -15,9 +15,9 @@ from models.video import Video
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
 from plugins.manager import get_plugin_manager
-from schemas.video.dto.video_dto import VideoExtractDto, VideoUrlDto
+from schemas.video.dto.video_dto import VideoUrlDto
 
-from services import download_service, subscription_video_service, user_config_service
+from services import user_config_service
 from utils import url_helper
 from utils.url_helper import extract_top_level_domain
 from utils.site_catalog import SiteCatalog
@@ -388,22 +388,6 @@ def list_videos(
             video_list.append(video_data)
 
         return video_list, total_count
-
-
-
-def download_video(video_id: int):
-    video = get_video_by_id(video_id)
-    subscription_video = subscription_video_service.get_subscription_video_by_video_id(video_id)
-    if not video:
-        raise ValueError("Video not found")
-    params = VideoExtractDto(
-        url=video.url,
-        only_extract=False,
-        subscribed=True,
-        subscription_id=subscription_video.subscription_id
-    )
-    download_service.enqueue_video_extraction(params)
-
 
 def get_video(user_id, video_id):
     with get_session() as session:

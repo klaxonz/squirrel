@@ -41,7 +41,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/redoc",
             "/openapi.json",
             "/api/video/proxy",
-            "/api/video/play",
             "/api/video/mpd",
             "/api/video/thumbnail",
             "/health",

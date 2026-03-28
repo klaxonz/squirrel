@@ -63,8 +63,7 @@ class MessageRouter:
             # 全量更新 -> FULL（低优先级，慢慢处理历史视频）
             mode = QueueMode.FULL if is_extract_all else QueueMode.INCREMENTAL
         else:
-            # 其他队列类型（如 VIDEO_DOWNLOAD）：使用 SCHEDULED 作为兜底
-            mode = QueueMode.SCHEDULED
+            raise ValueError(f'Unsupported queue type: {self.queue_type}')
         
         return self.config.build_queue_name(self.queue_type, site, mode)
 

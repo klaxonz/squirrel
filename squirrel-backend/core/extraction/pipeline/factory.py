@@ -17,7 +17,6 @@ from ..services import (
     video_persistence_service,
     actor_processor_service,
     thumbnail_downloader_service,
-    download_task_creator_service,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,10 +51,7 @@ class PipelineFactory:
         )
 
     def _build_post_process_stage(self, stage_config: StageConfig, extractor_factory) -> PipelineStage:
-        return PostProcessStage(
-            thumbnail_downloader_service,
-            download_task_creator_service
-        )
+        return PostProcessStage(thumbnail_downloader_service)
 
     def _build_stage(self, stage_config: StageConfig, extractor_factory) -> Optional[PipelineStage]:
         builder = self._stage_builders.get(stage_config.stage_class)
