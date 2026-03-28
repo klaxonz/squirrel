@@ -1072,25 +1072,10 @@ onUnmounted(() => {
   letter-spacing: -0.02em;
   line-height: 1.3;
   word-break: break-word;
-  padding-bottom: 0.75rem;
+  padding-bottom: 0.25rem; /* 减少底部留白 */
   margin-bottom: 0.5rem;
   position: relative;
   border-bottom: none;
-}
-
-/* 缩短且更柔和的渐变线 */
-.video-meta__title::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 160px; /* 限制长度，不再贯穿全屏 */
-  height: 1px;
-  background: linear-gradient(to right, 
-    rgba(255, 77, 0, 0.35) 0%, 
-    rgba(255, 77, 0, 0.1) 60%, 
-    transparent 100%
-  );
 }
 
 .video-meta__actions {
@@ -1099,21 +1084,9 @@ onUnmounted(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.35rem;
-  padding-top: 1rem;
+  padding-top: 0.5rem; /* 减少顶部留白 */
   border-top: none;
   position: relative;
-}
-
-/* 更精致的微标 */
-.video-meta__actions::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 8px; /* 缩小 */
-  height: 2px;
-  background: #ff4d00;
-  opacity: 0.25; /* 降低亮度 */
 }
 
 .video-meta__panel {
