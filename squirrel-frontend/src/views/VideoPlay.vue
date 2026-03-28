@@ -1072,10 +1072,10 @@ onUnmounted(() => {
   letter-spacing: -0.02em;
   line-height: 1.3;
   word-break: break-word;
-  padding-bottom: 0.25rem; /* 减少底部留白 */
+  padding-bottom: 0.25rem;
   margin-bottom: 0.5rem;
   position: relative;
-  border-bottom: none;
+  border-bottom: none !important; /* 强制移除任何残留或继承的下划线 */
 }
 
 .video-meta__actions {
