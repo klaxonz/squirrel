@@ -1,7 +1,67 @@
 import { ApiError, get, post } from '@/utils/request'
 
+export interface PluginCapability {
+  name: string
+  description?: string
+  request_schema?: Record<string, unknown>
+  response_schema?: Record<string, unknown>
+  timeout_ms?: number | null
+  requires?: string[]
+  metadata?: Record<string, unknown>
+}
+
+export interface PluginSite {
+  site_name: string
+  domains: string[]
+  test_url?: string | null
+  features?: string[]
+  metadata?: Record<string, unknown>
+}
+
+export interface PluginPermission {
+  name: string
+  description?: string
+  required?: boolean
+  scope?: string | null
+  metadata?: Record<string, unknown>
+}
+
+export interface PluginHealth {
+  healthy: boolean
+  status?: string
+  message?: string
+  checked_at?: string | null
+  details?: Record<string, unknown>
+}
+
+export interface PluginRuntimeInfo {
+  plugin_id: string
+  version: string
+  state: string
+  process_id?: number | null
+  endpoint?: string | null
+  started_at?: string | null
+  drained_at?: string | null
+  last_error?: string | null
+  health?: PluginHealth | null
+}
+
+export interface PluginListItem {
+  plugin_id: string
+  display_name: string
+  description?: string
+  version: string
+  enabled: boolean
+  status: string
+  capabilities: PluginCapability[]
+  sites: PluginSite[]
+  permissions: PluginPermission[]
+  health?: PluginHealth | null
+  active_runtime?: PluginRuntimeInfo | null
+}
+
 export const getPlugins = async () => {
-  return get('/api/plugins/')
+  return get<PluginListItem[]>('/api/plugins/')
 }
 
 export const installPlugin = async (file: File | null | undefined) => {

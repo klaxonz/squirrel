@@ -114,14 +114,14 @@
           </Card>
           <Card class="plugin-summary-card plugin-summary-card--accent">
             <CardContent class="p-4">
-              <p class="plugin-summary-card__label">已启用</p>
-              <p class="plugin-summary-card__value text-success">{{ pluginSummary.enabled }}</p>
+              <p class="plugin-summary-card__label">运行中</p>
+              <p class="plugin-summary-card__value text-success">{{ pluginSummary.running }}</p>
             </CardContent>
           </Card>
           <Card class="plugin-summary-card">
             <CardContent class="p-4">
-              <p class="plugin-summary-card__label">外部来源</p>
-              <p class="plugin-summary-card__value">{{ pluginSummary.external }}</p>
+              <p class="plugin-summary-card__label">异常或停用</p>
+              <p class="plugin-summary-card__value text-warning">{{ pluginSummary.attention }}</p>
             </CardContent>
           </Card>
         </div>
@@ -143,46 +143,114 @@
                 <tr class="border-b border-border">
                   <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">名称</th>
                   <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">版本</th>
-                  <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">来源</th>
-                  <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden lg:table-cell">描述</th>
-                  <th class="text-center py-3 px-4 text-sm font-medium text-muted-foreground">状态</th>
+                  <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden lg:table-cell">能力与站点</th>
+                  <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden xl:table-cell">权限</th>
+                  <th class="text-center py-3 px-4 text-sm font-medium text-muted-foreground">运行时</th>
                   <th class="text-right py-3 px-4 text-sm font-medium text-muted-foreground">操作</th>
                 </tr>
               </thead>
               <tbody>
                 <tr
-                  v-for="plugin in plugins"
-                  :key="plugin.name"
+                  v-for="plugin in displayPlugins"
+                  :key="plugin.plugin_id"
                   class="plugin-table-shell__row border-b border-border"
                 >
                   <td class="py-4 px-4">
-                    <div>
-                      <div class="flex items-center gap-2">
-                        <span class="font-medium">{{ plugin.name }}</span>
-                        <span v-if="pluginBadgeLabel(plugin)" class="plugin-tag" :class="getPluginBadgeClass(plugin)">
-                          {{ pluginBadgeLabel(plugin) }}
+                    <div class="space-y-2">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="font-medium">{{ plugin.display_name }}</span>
+                        <span class="plugin-tag plugin-tag--muted">{{ plugin.plugin_id }}</span>
+                      </div>
+                      <div class="text-xs text-muted-foreground">
+                        {{ plugin.description || '未提供插件描述' }}
+                      </div>
+                      <div class="flex flex-wrap gap-1 lg:hidden">
+                        <span class="plugin-tag plugin-tag--muted">{{ plugin.capabilityCount }} 个能力</span>
+                        <span class="plugin-tag plugin-tag--muted">{{ plugin.siteCount }} 个站点</span>
+                        <span class="plugin-tag" :class="getPluginStatusClass(plugin)">
+                          {{ getPluginStatusLabel(plugin) }}
+                        </span>
+                        <span class="plugin-tag" :class="getPluginHealthClass(plugin)">
+                          {{ getPluginHealthLabel(plugin) }}
                         </span>
                       </div>
-                      <div v-if="plugin.module" class="text-xs text-muted-foreground mt-0.5">{{ plugin.module }}</div>
                     </div>
                   </td>
-                  <td class="py-4 px-4 text-muted-foreground text-sm">{{ plugin.version || '—' }}</td>
-                  <td class="py-4 px-4 text-muted-foreground text-sm">{{ formatSource(plugin.source) }}</td>
-                  <td class="py-4 px-4 text-muted-foreground text-sm hidden lg:table-cell max-w-md">
-                    <div class="line-clamp-2">{{ plugin.description || '暂无描述' }}</div>
+                  <td class="py-4 px-4 text-muted-foreground text-sm">
+                    <div class="font-medium text-foreground">{{ plugin.version || '—' }}</div>
+                    <div class="mt-1 text-xs text-muted-foreground">
+                      {{ plugin.active_runtime?.endpoint || '运行时未启动' }}
+                    </div>
+                  </td>
+                  <td class="py-4 px-4 hidden lg:table-cell">
+                    <div class="space-y-2">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="plugin-tag plugin-tag--muted">{{ plugin.capabilityCount }} 个能力</span>
+                        <span class="plugin-tag plugin-tag--muted">{{ plugin.siteCount }} 个站点</span>
+                      </div>
+                      <div class="flex flex-wrap gap-1">
+                        <span
+                          v-for="capability in plugin.capabilities.slice(0, 2)"
+                          :key="`${plugin.plugin_id}-${capability.name}`"
+                          class="plugin-tag plugin-tag--info"
+                        >
+                          {{ capability.name }}
+                        </span>
+                        <span
+                          v-if="plugin.capabilities.length > 2"
+                          class="plugin-tag plugin-tag--muted"
+                        >
+                          +{{ plugin.capabilities.length - 2 }}
+                        </span>
+                      </div>
+                      <div class="text-xs text-muted-foreground">
+                        {{ formatSiteNames(plugin.sites) }}
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-4 px-4 hidden xl:table-cell">
+                    <div class="space-y-2">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="plugin-tag plugin-tag--muted">
+                          {{ plugin.permissionCount }} 项权限
+                        </span>
+                      </div>
+                      <div class="flex flex-wrap gap-1">
+                        <span
+                          v-for="permission in plugin.permissions.slice(0, 2)"
+                          :key="`${plugin.plugin_id}-${permission.name}`"
+                          class="plugin-tag plugin-tag--warning"
+                          :title="permission.description || permission.name"
+                        >
+                          {{ permission.name }}
+                        </span>
+                        <span
+                          v-if="plugin.permissions.length > 2"
+                          class="plugin-tag plugin-tag--muted"
+                        >
+                          +{{ plugin.permissions.length - 2 }}
+                        </span>
+                      </div>
+                    </div>
                   </td>
                   <td class="py-4 px-4">
-                    <div class="flex justify-center">
-                      <span class="plugin-tag" :class="plugin.enabled ? 'plugin-tag--success' : 'plugin-tag--muted'">
-                        {{ plugin.enabled ? '已启用' : '已禁用' }}
+                    <div class="flex flex-col items-center gap-2 text-center">
+                      <span class="plugin-tag" :class="getPluginStatusClass(plugin)">
+                        {{ getPluginStatusLabel(plugin) }}
                       </span>
+                      <span class="plugin-tag" :class="getPluginHealthClass(plugin)">
+                        {{ getPluginHealthLabel(plugin) }}
+                      </span>
+                      <div class="text-xs text-muted-foreground max-w-[200px]">
+                        {{ plugin.health?.message || plugin.active_runtime?.last_error || plugin.runtimeStateLabel }}
+                      </div>
                     </div>
                   </td>
                   <td class="py-4 px-4">
                     <div class="flex items-center justify-end gap-2">
                       <Button
                         v-if="!plugin.enabled"
-                        :disabled="actioning === plugin.name || plugin.state === 'missing'"
+                        :disabled="actioning === plugin.plugin_id"
                         @click="handleEnable(plugin)"
                         size="xs"
                         variant="outline"
@@ -192,7 +260,7 @@
                       </Button>
                       <Button
                         v-if="plugin.enabled"
-                        :disabled="actioning === plugin.name || plugin.state === 'missing'"
+                        :disabled="actioning === plugin.plugin_id"
                         @click="handleDisable(plugin)"
                         size="xs"
                         variant="ghost"
@@ -201,8 +269,7 @@
                         禁用
                       </Button>
                       <Button
-                        v-if="plugin.source === 'external'"
-                        :disabled="actioning === plugin.name"
+                        :disabled="actioning === plugin.plugin_id"
                         @click="handleUninstall(plugin)"
                         size="xs"
                         variant="destructive"
@@ -521,10 +588,60 @@ const siteEditorError = ref('');
 
 const siteCatalogMap = computed(() => siteCatalog.value || {});
 
+const pluginStatusLabels = {
+  uploaded: '已上传',
+  validated: '已校验',
+  installed: '已安装',
+  starting: '启动中',
+  running: '运行中',
+  degraded: '降级',
+  disabled: '已禁用',
+  failed: '异常',
+  stopped: '已停止',
+  uninstalled: '已卸载',
+};
+
+const runtimeStateLabels = {
+  starting: '运行时启动中',
+  running: '运行时正常',
+  draining: '运行时回收中',
+  stopped: '运行时已停止',
+  failed: '运行时异常',
+};
+
+const displayPlugins = computed(() => (
+  (plugins.value || []).map((plugin) => {
+    const capabilities = Array.isArray(plugin.capabilities) ? plugin.capabilities : [];
+    const sites = Array.isArray(plugin.sites) ? plugin.sites : [];
+    const permissions = Array.isArray(plugin.permissions) ? plugin.permissions : [];
+    const activeRuntime = plugin.active_runtime || null;
+    const health = plugin.health || activeRuntime?.health || null;
+
+    return {
+      ...plugin,
+      capabilities,
+      sites,
+      permissions,
+      active_runtime: activeRuntime,
+      health,
+      capabilityCount: capabilities.length,
+      siteCount: sites.length,
+      permissionCount: permissions.length,
+      runtimeStateLabel: runtimeStateLabels[activeRuntime?.state] || '运行时未启动',
+    };
+  })
+));
+
 const pluginSummary = computed(() => ({
-  total: plugins.value.length,
-  enabled: plugins.value.filter(plugin => plugin.enabled).length,
-  external: plugins.value.filter(plugin => plugin.source === 'external').length,
+  total: displayPlugins.value.length,
+  running: displayPlugins.value.filter(plugin => plugin.enabled && plugin.active_runtime?.state === 'running').length,
+  attention: displayPlugins.value.filter((plugin) => {
+    if (!plugin.enabled) return true;
+    if (!plugin.active_runtime) return true;
+    if (plugin.health?.healthy === false) return true;
+    return ['failed', 'degraded', 'disabled', 'stopped', 'uninstalled'].includes(plugin.status)
+      || ['failed', 'stopped', 'draining'].includes(plugin.active_runtime?.state);
+  }).length,
 }));
 
 const connectivitySummary = computed(() => {
@@ -534,18 +651,43 @@ const connectivitySummary = computed(() => {
   return connectivityResults.value[0]?.summary || { total: 0, accessible: 0, failed: 0, success_rate: 0 };
 });
 
-const pluginBadgeLabel = (plugin) => {
-  if (plugin.state === 'missing') return '配置缺失';
-  if (plugin.source === 'external') return '外部';
-  if (plugin.source === 'internal') return '内置';
-  return '';
+const getPluginStatusLabel = (plugin) => pluginStatusLabels[plugin.status] || plugin.status || '未知状态';
+
+const getPluginStatusClass = (plugin) => {
+  if (['running'].includes(plugin.status)) return 'plugin-tag--success';
+  if (['starting', 'installed', 'validated', 'uploaded'].includes(plugin.status)) return 'plugin-tag--info';
+  if (['degraded'].includes(plugin.status)) return 'plugin-tag--warning';
+  if (['failed'].includes(plugin.status)) return 'plugin-tag--danger';
+  return 'plugin-tag--muted';
 };
 
-const getPluginBadgeClass = (plugin) => {
-  if (plugin.state === 'missing') return 'plugin-tag--danger';
-  if (plugin.source === 'external') return 'plugin-tag--info';
-  if (plugin.source === 'internal') return 'plugin-tag--warning';
+const getPluginHealthLabel = (plugin) => {
+  if (!plugin.enabled) return '未启用';
+  if (plugin.health?.healthy === true) {
+    if (plugin.health?.status === 'ready') return '健康';
+    if (plugin.health?.status === 'running') return '运行中';
+    return plugin.health?.status || '健康';
+  }
+  if (plugin.health?.healthy === false) {
+    if (plugin.health?.status === 'failed') return '异常';
+    return plugin.health?.status || '不健康';
+  }
+  return plugin.runtimeStateLabel;
+};
+
+const getPluginHealthClass = (plugin) => {
+  if (!plugin.enabled) return 'plugin-tag--muted';
+  if (plugin.health?.healthy === true) return 'plugin-tag--success';
+  if (plugin.health?.healthy === false) return 'plugin-tag--danger';
+  if (plugin.active_runtime?.state === 'starting') return 'plugin-tag--info';
   return 'plugin-tag--muted';
+};
+
+const formatSiteNames = (sites) => {
+  const names = (sites || []).map(site => site.site_name).filter(Boolean);
+  if (!names.length) return '未声明站点';
+  if (names.length <= 2) return names.join(' / ');
+  return `${names.slice(0, 2).join(' / ')} +${names.length - 2}`;
 };
 
 const displaySites = computed(() => {
@@ -710,8 +852,8 @@ const handleReload = async () => {
 };
 
 const handleEnable = async (plugin) => {
-  actioning.value = plugin.name;
-  const res = await enablePlugin(plugin.name);
+  actioning.value = plugin.plugin_id;
+  const res = await enablePlugin(plugin.plugin_id);
   if (!res.error) {
     await fetchPlugins();
   }
@@ -719,8 +861,8 @@ const handleEnable = async (plugin) => {
 };
 
 const handleDisable = async (plugin) => {
-  actioning.value = plugin.name;
-  const res = await disablePlugin(plugin.name);
+  actioning.value = plugin.plugin_id;
+  const res = await disablePlugin(plugin.plugin_id);
   if (!res.error) {
     await fetchPlugins();
   }
@@ -728,27 +870,12 @@ const handleDisable = async (plugin) => {
 };
 
 const handleUninstall = async (plugin) => {
-  actioning.value = plugin.name;
-  const res = await uninstallPlugin(plugin.name);
+  actioning.value = plugin.plugin_id;
+  const res = await uninstallPlugin(plugin.plugin_id);
   if (!res.error) {
     await fetchPlugins();
   }
   actioning.value = null;
-};
-
-const formatSource = (source) => {
-  switch (source) {
-    case 'external':
-      return '外部目录';
-    case 'internal':
-      return '内置插件';
-    case 'package':
-      return '环境安装';
-    case 'missing':
-      return '配置缺失';
-    default:
-      return '未知';
-  }
 };
 
 const formatTime = (value) => {
