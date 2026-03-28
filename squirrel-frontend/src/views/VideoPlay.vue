@@ -301,8 +301,8 @@ const videoPrimaryActions = computed(() => {
   const actions = [
     {
       key: 'like',
-      label: '喜欢',
-      icon: currentInteractionType.value === INTERACTION_TYPE.LIKE ? 'material-symbols:thumb-up' : 'material-symbols:thumb-up-outline',
+      label: 'LIKE',
+      icon: currentInteractionType.value === INTERACTION_TYPE.LIKE ? 'lucide:thumbs-up' : 'lucide:thumbs-up',
       active: currentInteractionType.value === INTERACTION_TYPE.LIKE,
       tone: 'like',
       variant: 'primary',
@@ -310,8 +310,8 @@ const videoPrimaryActions = computed(() => {
     },
     {
       key: 'dislike',
-      label: '不喜欢',
-      icon: currentInteractionType.value === INTERACTION_TYPE.DISLIKE ? 'material-symbols:thumb-down' : 'material-symbols:thumb-down-outline',
+      label: 'SKIP',
+      icon: 'lucide:thumbs-down',
       active: currentInteractionType.value === INTERACTION_TYPE.DISLIKE,
       tone: 'danger',
       variant: 'secondary',
@@ -319,8 +319,8 @@ const videoPrimaryActions = computed(() => {
     },
     {
       key: 'later',
-      label: '稍后看',
-      icon: currentInteractionType.value === INTERACTION_TYPE.LATER ? 'material-symbols:schedule' : 'material-symbols:schedule-outline',
+      label: 'QUEUE',
+      icon: currentInteractionType.value === INTERACTION_TYPE.LATER ? 'lucide:list-plus' : 'lucide:list-plus',
       active: currentInteractionType.value === INTERACTION_TYPE.LATER,
       tone: 'later',
       variant: 'primary',
@@ -331,8 +331,8 @@ const videoPrimaryActions = computed(() => {
   if (video.value?.url) {
     actions.push({
       key: 'source',
-      label: '原视频',
-      icon: 'material-symbols:open-in-new',
+      label: 'ORIGIN',
+      icon: 'lucide:external-link',
       active: false,
       tone: 'neutral',
       variant: 'secondary',
@@ -347,7 +347,7 @@ const videoOverflowActions = computed(() => {
   return [
     {
       key: 'random',
-      label: '随机播放',
+      label: 'SHUFFLE',
       icon: 'lucide:shuffle',
       active: false,
       tone: 'neutral',
@@ -1232,9 +1232,30 @@ onUnmounted(() => {
 }
 
 .video-action__label {
-  font-size: 0.54rem;
-  font-weight: 500;
+  font-size: 0.6rem; /* 稍微增大一点提高可读性 */
+  font-weight: 600;
   white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.video-action__label::before {
+  content: '[';
+  margin-right: 2px;
+  opacity: 0.5;
+}
+
+.video-action__label::after {
+  content: ']';
+  margin-left: 2px;
+  opacity: 0.5;
+}
+
+.video-action:hover .video-action__label::before,
+.video-action:hover .video-action__label::after,
+.video-action.is-active .video-action__label::before,
+.video-action.is-active .video-action__label::after {
+  opacity: 1;
+  color: #ff4d00;
 }
 
 .video-channel__primary {
