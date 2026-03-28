@@ -41,6 +41,9 @@ class PluginRuntimeSupervisor:
         return f'{plugin_id}:{version}'
 
     def _candidate_import_paths(self, record: PluginInstallRecord) -> list[str]:
+        if record.runtime_python:
+            return []
+
         candidates: list[Path] = []
         if record.runtime_path:
             candidates.append(Path(record.runtime_path))
@@ -68,10 +71,12 @@ class PluginRuntimeSupervisor:
             return int(sock.getsockname()[1])
 
     def _build_runtime_command(self, record: PluginInstallRecord, host: str, port: int) -> list[str]:
+        python_executable = record.runtime_python or sys.executable
+        module_name = 'squirrel_plugin_runner.runtime_bridge' if record.runtime_python else 'plugins.runtime_bridge'
         command = [
-            sys.executable,
+            python_executable,
             '-m',
-            'plugins.runtime_bridge',
+            module_name,
             '--entrypoint',
             record.entrypoint,
             '--plugin-id',
@@ -168,10 +173,11 @@ class PluginRuntimeSupervisor:
         runtime_endpoint = endpoint or f'http://{host}:{port}'
         process_command = list(command) if command else self._build_runtime_command(record, host, port)
         startup_timeout_ms = int(((record.manifest or {}).get('health_policy') or {}).get('startup_timeout_ms') or 10000)
+        process_cwd = cwd or (Path(record.install_path) if record.runtime_python else self._backend_root)
 
         process = subprocess.Popen(  # noqa: S603
             process_command,
-            cwd=str(cwd or self._backend_root),
+            cwd=str(process_cwd),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )

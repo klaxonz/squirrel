@@ -94,3 +94,32 @@ def get_plugin_runtime():
 
     assert stopped is not None
     assert stopped.state == PluginRuntimeState.STOPPED
+
+
+def test_supervisor_uses_isolated_runtime_python_for_installed_plugins(tmp_path):
+    runtime_python = tmp_path / 'venv' / 'Scripts' / 'python.exe'
+    runtime_python.parent.mkdir(parents=True, exist_ok=True)
+    runtime_python.write_text('', encoding='utf-8')
+
+    record = PluginInstallRecord(
+        plugin_id='sample',
+        version='0.1.0',
+        install_path=str(tmp_path / 'sample_plugin'),
+        runtime_path=str(tmp_path / 'sample_plugin'),
+        entrypoint='sample_runtime:get_plugin_runtime',
+        enabled=True,
+        manifest={},
+        runtime_env_path=str(tmp_path / 'venv'),
+        runtime_python=str(runtime_python),
+    )
+
+    supervisor = PluginRuntimeSupervisor()
+
+    command = supervisor._build_runtime_command(record, host='127.0.0.1', port=9001)
+
+    assert command[:3] == [
+        str(runtime_python),
+        '-m',
+        'squirrel_plugin_runner.runtime_bridge',
+    ]
+    assert '--import-path' not in command

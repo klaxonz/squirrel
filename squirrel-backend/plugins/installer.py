@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import shutil
+import subprocess
+import sys
+import venv
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -108,3 +111,63 @@ class PluginInstaller:
             with zipfile.ZipFile(plan.staging_path, 'r') as archive:
                 archive.extractall(plan.install_path)
         return plan.staging_path
+
+    def provision_runtime_environment(self, plan: PluginInstallPlan) -> tuple[Path, Path]:
+        runtime_env_path = plan.runtime_path
+        if runtime_env_path.exists():
+            shutil.rmtree(runtime_env_path)
+
+        builder = venv.EnvBuilder(with_pip=True, clear=True)
+        builder.create(runtime_env_path)
+
+        runtime_python = self._resolve_runtime_python(runtime_env_path)
+        self._run_pip_install(runtime_python, self._sdk_package_dir())
+        self._run_pip_install(runtime_python, self._runner_package_dir())
+        self._run_pip_install(runtime_python, self._plugin_install_target(plan))
+        return runtime_env_path, runtime_python
+
+    def remove_runtime_environment(self, runtime_env_path: Path | str | None) -> None:
+        if not runtime_env_path:
+            return
+        env_path = Path(runtime_env_path)
+        if env_path.exists():
+            shutil.rmtree(env_path)
+
+    def remove_installation(self, install_path: Path | str | None) -> None:
+        if not install_path:
+            return
+        path = Path(install_path)
+        if path.exists():
+            shutil.rmtree(path)
+
+    def _resolve_runtime_python(self, runtime_env_path: Path) -> Path:
+        if sys.platform == 'win32':
+            return runtime_env_path / 'Scripts' / 'python.exe'
+        return runtime_env_path / 'bin' / 'python'
+
+    def _repo_root(self) -> Path:
+        return settings.base_dir.parent
+
+    def _sdk_package_dir(self) -> Path:
+        sdk_dir = self._repo_root() / 'squirrel-sdk'
+        if not sdk_dir.exists():
+            raise PluginPackageValidationError(f'SDK package path not found: {sdk_dir}')
+        return sdk_dir
+
+    def _runner_package_dir(self) -> Path:
+        runner_dir = self._repo_root() / 'squirrel-plugin-runner'
+        if not runner_dir.exists():
+            raise PluginPackageValidationError(f'Plugin runner package path not found: {runner_dir}')
+        return runner_dir
+
+    def _plugin_install_target(self, plan: PluginInstallPlan) -> Path:
+        pyproject_path = plan.install_path / 'pyproject.toml'
+        return plan.install_path if pyproject_path.exists() else plan.staging_path
+
+    def _run_pip_install(self, python_executable: Path, target: Path) -> None:
+        subprocess.run(
+            [str(python_executable), '-m', 'pip', 'install', str(target)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )

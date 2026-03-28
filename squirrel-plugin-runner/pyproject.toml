@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "squirrel-plugin-runner"
+version = "0.1.0"
+description = "Runtime bridge package for isolated Squirrel plugins"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Squirrel" }]
+dependencies = [
+  "squirrel-sdk>=2.0.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

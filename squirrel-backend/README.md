@@ -22,11 +22,14 @@ Install and activation
 
 Plugin installation is handled by the backend plugin API. Upload a plugin zip that
 contains `plugin-runtime.json`; once validated, the backend stages the package,
-starts the runtime, registers capabilities, and makes the plugin effective without
-restarting the service.
+creates a dedicated virtual environment, installs the plugin together with the
+runtime bridge package, starts the runtime, registers capabilities, and makes the
+plugin effective without restarting the service.
 
 For workspace development, plugins under `../squirrel-plugins/<site>/plugin-runtime.json`
-are auto-discovered and bootstrapped as local runtime V2 plugins.
+are auto-discovered and bootstrapped as local runtime V2 plugins. Workspace plugins
+still use the backend interpreter as a development convenience; uploaded plugins use
+their own isolated Python environment.
 
 Permissions and trust model
 ---------------------------

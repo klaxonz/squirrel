@@ -64,6 +64,7 @@ class PluginManager:
             replace_existing=replace_existing,
         )
         self._installer.stage_distribution(plan)
+        runtime_env_path, runtime_python = self._installer.provision_runtime_environment(plan)
         record = PluginInstallRecord(
             plugin_id=plan.plugin_id,
             version=plan.version,
@@ -75,6 +76,8 @@ class PluginManager:
             manifest=plan.manifest.to_dict(),
             package_path=str(plan.staging_path),
             runtime_path=str(plan.runtime_path),
+            runtime_env_path=str(runtime_env_path),
+            runtime_python=str(runtime_python),
             checksum_sha256=plan.checksum_sha256,
             installed_at=utcnow_iso(),
             updated_at=utcnow_iso(),
@@ -112,6 +115,9 @@ class PluginManager:
         if record is None:
             return None
         self.disable_plugin(plugin_id)
+        if record.metadata.get('source') != 'workspace':
+            self._installer.remove_runtime_environment(record.runtime_env_path)
+            self._installer.remove_installation(record.install_path)
         record.status = PluginInstallStatus.UNINSTALLED
         record.enabled = False
         self._store.delete(plugin_id)
