@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 from urllib.parse import urlparse
 import logging
@@ -7,6 +8,12 @@ from plugins.manager import get_plugin_manager
 
 
 logger = logging.getLogger(__name__)
+
+_SITE_REGISTRATION_INDEX_TTL = 30.0
+_DOMAIN_SITE_CACHE_TTL = 300.0
+_site_registration_index: dict[str, str] = {}
+_site_registration_index_cached_at = 0.0
+_domain_site_cache: dict[str, tuple[Optional[str], float]] = {}
 
 
 def extract_top_level_domain(url):
@@ -75,6 +82,66 @@ def normalize_domain(domain_or_url: str) -> Optional[str]:
     return hostname
 
 
+def _normalize_registration_domain(domain: str) -> str:
+    value = str(domain or '').strip().lower()
+    if not value:
+        return ''
+    return value.lstrip('.')
+
+
+def _build_site_registration_index() -> dict[str, str]:
+    registrations = get_plugin_manager().get_snapshot().registrations
+    index: dict[str, str] = {}
+    for registration in registrations:
+        if not registration.site_name:
+            continue
+        for candidate in registration.domains:
+            normalized = _normalize_registration_domain(candidate)
+            if normalized:
+                index.setdefault(normalized, registration.site_name)
+    return index
+
+
+def _get_site_registration_index() -> dict[str, str]:
+    global _site_registration_index, _site_registration_index_cached_at
+
+    now = time.time()
+    if _site_registration_index and now - _site_registration_index_cached_at <= _SITE_REGISTRATION_INDEX_TTL:
+        return _site_registration_index
+
+    _site_registration_index = _build_site_registration_index()
+    _site_registration_index_cached_at = now
+    return _site_registration_index
+
+
+def _resolve_site_from_domain(domain: str) -> Optional[str]:
+    now = time.time()
+    cached = _domain_site_cache.get(domain)
+    if cached is not None:
+        site_name, cached_at = cached
+        if now - cached_at <= _DOMAIN_SITE_CACHE_TTL:
+            return site_name
+
+    index = _get_site_registration_index()
+    parts = domain.split('.')
+    site_name = None
+    for start in range(len(parts)):
+        candidate = '.'.join(parts[start:])
+        if candidate in index:
+            site_name = index[candidate]
+            break
+
+    _domain_site_cache[domain] = (site_name, now)
+    return site_name
+
+
+def reset_site_lookup_cache() -> None:
+    _domain_site_cache.clear()
+    global _site_registration_index, _site_registration_index_cached_at
+    _site_registration_index = {}
+    _site_registration_index_cached_at = 0.0
+
+
 
 def get_site_from_url(url: str) -> Optional[str]:
     """
@@ -91,17 +158,7 @@ def get_site_from_url(url: str) -> Optional[str]:
         if not domain:
             return None
 
-        registrations = get_plugin_manager().get_snapshot().registrations
-        for registration in registrations:
-            if not registration.site_name:
-                continue
-            for candidate in registration.domains:
-                normalized = str(candidate).strip().lower()
-                if not normalized:
-                    continue
-                if domain == normalized or domain.endswith(f'.{normalized}'):
-                    return registration.site_name
-        return None
+        return _resolve_site_from_domain(domain)
     except Exception as e:
         logger.error(f"get_site_from_url exception occurred: url={url}, error={str(e)}", exc_info=True)
         return None

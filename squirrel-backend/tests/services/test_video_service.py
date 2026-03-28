@@ -11,7 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import PluginInvokeResponse
 from models import Base
+from models.creator import Creator
+from models.links import SubscriptionVideo, UserSubscription
+from models.subscription import Subscription
 from models.video import Video
+from models.video_history import VideoHistory
+from models.video_interaction import VideoInteraction
+from models.user_video_feed import UserVideoFeed
+from models.links import VideoCreator
 from services import video_service
 
 
@@ -30,10 +37,33 @@ def _managed_session(engine):
 
 def _setup_test_env(monkeypatch):
     engine = create_engine('sqlite:///:memory:')
-    Base.metadata.create_all(engine, tables=[Video.__table__])
+    Base.metadata.create_all(
+        engine,
+        tables=[
+            Video.__table__,
+            Subscription.__table__,
+            SubscriptionVideo.__table__,
+            Creator.__table__,
+            VideoCreator.__table__,
+            UserSubscription.__table__,
+            VideoHistory.__table__,
+            VideoInteraction.__table__,
+            UserVideoFeed.__table__,
+        ],
+    )
     monkeypatch.setattr(video_service, 'get_session', lambda: _managed_session(engine))
     monkeypatch.setattr(video_service.redis_client, 'get', lambda key: None)
     monkeypatch.setattr(video_service.redis_client, 'setex', lambda key, ttl, value: None)
+    monkeypatch.setattr(
+        video_service.user_config_service,
+        'get_config',
+        lambda user_id: {'showNsfw': False},
+    )
+    monkeypatch.setattr(
+        video_service.thumbnail_downloader_service,
+        'get_thumbnail_url',
+        lambda video_id, remote_url, video_url=None: remote_url,
+    )
     monkeypatch.setattr(
         video_service.SiteCatalog,
         'find_site_by_domain',
@@ -111,3 +141,202 @@ def test_get_video_url_reads_playback_from_plugin_gateway(monkeypatch):
     assert result.audio_url == 'https://cdn.example.com/audio.m4s'
     assert result.mpd_url == '/api/video/mpd?video_id=1'
     assert result.qualities[0].value == '1080p'
+
+
+def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Subscription(
+                id=1,
+                type='CHANNEL',
+                name='Feed A',
+                url='https://www.youtube.com/channel/A',
+                avatar='https://img.example.com/a.jpg',
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            Subscription(
+                id=2,
+                type='CHANNEL',
+                name='Feed B',
+                url='https://www.youtube.com/channel/B',
+                avatar='https://img.example.com/b.jpg',
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(id=1, user_id=7, subscription_id=1, is_deleted=False, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 1)),
+            UserSubscription(id=2, user_id=7, subscription_id=2, is_deleted=False, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 1)),
+            Video(
+                id=101,
+                title='Newest video',
+                url='https://www.youtube.com/watch?v=101',
+                domain='youtube.com',
+                duration=240,
+                thumbnail='https://img.example.com/101.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            Video(
+                id=100,
+                title='Older video',
+                url='https://www.youtube.com/watch?v=100',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/100.jpg',
+                publish_date=datetime(2024, 1, 2, 12, 0, 0),
+                created_at=datetime(2024, 1, 2, 12, 0, 0),
+                updated_at=datetime(2024, 1, 2, 12, 0, 0),
+                is_deleted=False,
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=1,
+                video_id=101,
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 3, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=2,
+                video_id=101,
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 3, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=1,
+                video_id=100,
+                publish_date=datetime(2024, 1, 2, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 2, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 2, 12, 0, 0),
+                updated_at=datetime(2024, 1, 2, 12, 0, 0),
+            ),
+            VideoHistory(
+                user_id=7,
+                video_id=101,
+                start_time=datetime(2024, 1, 3, 12, 10, 0),
+                end_time=datetime(2024, 1, 3, 12, 14, 0),
+                duration=240,
+                watch_duration=120,
+                last_position=91,
+                created_at=datetime(2024, 1, 3, 12, 14, 0),
+                updated_at=datetime(2024, 1, 3, 12, 14, 0),
+            ),
+        ])
+        session.commit()
+
+    videos, total = video_service.list_videos(
+        user_id=7,
+        query=None,
+        subscription_id=None,
+        category='all',
+        sort_by='publish_date',
+        nsfw='all',
+        domains=None,
+        page=1,
+        page_size=2,
+        with_total=True,
+    )
+
+    assert total == 2
+    assert [video['id'] for video in videos] == [101, 100]
+    assert videos[0]['last_position'] == 91
+    assert {sub['id'] for sub in videos[0]['subscriptions']} == {1, 2}
+
+
+def test_get_video_counts_uses_feed_rows_for_realtime_counts(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Video(
+                id=201,
+                title='Read video',
+                url='https://www.youtube.com/watch?v=201',
+                domain='youtube.com',
+                duration=100,
+                thumbnail='https://img.example.com/201.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            Video(
+                id=202,
+                title='Unread video',
+                url='https://www.youtube.com/watch?v=202',
+                domain='youtube.com',
+                duration=100,
+                thumbnail='https://img.example.com/202.jpg',
+                publish_date=datetime(2024, 1, 2, 12, 0, 0),
+                created_at=datetime(2024, 1, 2, 12, 0, 0),
+                updated_at=datetime(2024, 1, 2, 12, 0, 0),
+                is_deleted=False,
+            ),
+            Video(
+                id=203,
+                title='Preview video',
+                url='https://www.youtube.com/watch?v=203',
+                domain='youtube.com',
+                duration=100,
+                thumbnail='https://img.example.com/203.jpg',
+                publish_date=datetime(2999, 1, 1, 12, 0, 0),
+                created_at=datetime(2024, 1, 1, 12, 0, 0),
+                updated_at=datetime(2024, 1, 1, 12, 0, 0),
+                is_deleted=False,
+            ),
+            UserVideoFeed(user_id=7, subscription_id=1, video_id=201, publish_date=datetime(2024, 1, 3, 12, 0, 0), video_created_at=datetime(2024, 1, 3, 12, 0, 0), domain='youtube.com', is_nsfw=False, created_at=datetime(2024, 1, 3, 12, 0, 0), updated_at=datetime(2024, 1, 3, 12, 0, 0)),
+            UserVideoFeed(user_id=7, subscription_id=1, video_id=202, publish_date=datetime(2024, 1, 2, 12, 0, 0), video_created_at=datetime(2024, 1, 2, 12, 0, 0), domain='youtube.com', is_nsfw=False, created_at=datetime(2024, 1, 2, 12, 0, 0), updated_at=datetime(2024, 1, 2, 12, 0, 0)),
+            UserVideoFeed(user_id=7, subscription_id=1, video_id=203, publish_date=datetime(2999, 1, 1, 12, 0, 0), video_created_at=datetime(2024, 1, 1, 12, 0, 0), domain='youtube.com', is_nsfw=False, created_at=datetime(2024, 1, 1, 12, 0, 0), updated_at=datetime(2024, 1, 1, 12, 0, 0)),
+            VideoHistory(
+                user_id=7,
+                video_id=201,
+                start_time=datetime(2024, 1, 3, 12, 10, 0),
+                end_time=datetime(2024, 1, 3, 12, 14, 0),
+                duration=100,
+                watch_duration=90,
+                last_position=90,
+                created_at=datetime(2024, 1, 3, 12, 14, 0),
+                updated_at=datetime(2024, 1, 3, 12, 14, 0),
+            ),
+        ])
+        session.commit()
+
+    counts = video_service.get_video_counts(
+        user_id=7,
+        query=None,
+        subscription_id=None,
+        nsfw='all',
+        domains=None,
+    )
+
+    assert counts == {
+        'all': 2,
+        'read': 1,
+        'unread': 1,
+        'preview': 1,
+        'liked': 0,
+        'later': 0,
+    }

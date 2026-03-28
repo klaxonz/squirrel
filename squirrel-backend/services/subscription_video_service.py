@@ -3,6 +3,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.database import get_session
 from models.links import SubscriptionVideo
+from services import user_video_feed_service
 
 
 def get_subscription_video_by_video_id(video_id: int):
@@ -32,6 +33,7 @@ def create_subscription_video(subscription_id, video_id):
         session.commit()
         if row is not None:
             # 新建时直接返回对象
+            user_video_feed_service.add_video_to_active_subscribers(subscription_id, video_id)
             return session.scalars(select(SubscriptionVideo).where(
                 SubscriptionVideo.subscription_id == subscription_id,
                 SubscriptionVideo.video_id == video_id

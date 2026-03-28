@@ -12,11 +12,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import PluginInvokeResponse
 from models import Base
-from models.links import UserSubscription
+from models.links import SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState
+from models.video import Video
+from models.user_video_feed import UserVideoFeed
 from services import subscription_service
 from services import subscription_sync_state_service
+from services import user_video_feed_service
 
 
 @contextmanager
@@ -38,13 +41,17 @@ def _setup_test_env(monkeypatch):
         engine,
         tables=[
             Subscription.__table__,
+            Video.__table__,
+            SubscriptionVideo.__table__,
             UserSubscription.__table__,
+            UserVideoFeed.__table__,
             SubscriptionSyncState.__table__,
         ],
     )
 
     monkeypatch.setattr(subscription_service, 'get_session', lambda: _managed_session(engine))
     monkeypatch.setattr(subscription_sync_state_service, 'get_session', lambda: _managed_session(engine))
+    monkeypatch.setattr(user_video_feed_service, 'get_session', lambda: _managed_session(engine))
     return engine
 
 
@@ -119,6 +126,36 @@ def test_unsubscribe_by_id_deactivates_subscription_when_last_user_leaves(monkey
     assert sync_state.locked_at is None
     assert sync_state.pending_video_count == 0
     assert sync_state.last_error == 'no_active_subscribers'
+
+
+def test_unsubscribe_by_id_removes_user_feed_rows(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            UserVideoFeed(
+                user_id=1,
+                subscription_id=1,
+                video_id=99,
+                publish_date=datetime(2024, 1, 1),
+                video_created_at=datetime(2024, 1, 1),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            )
+        )
+        session.commit()
+
+    result = subscription_service.unsubscribe_by_id(user_id=1, subscription_id=1)
+
+    assert result is True
+
+    with Session(engine, expire_on_commit=False) as session:
+        remaining_rows = session.query(UserVideoFeed).filter_by(user_id=1, subscription_id=1).all()
+
+    assert remaining_rows == []
 
 
 def test_unsubscribe_by_id_keeps_subscription_active_when_other_users_remain(monkeypatch):

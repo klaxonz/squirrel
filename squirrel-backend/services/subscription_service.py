@@ -13,6 +13,7 @@ from plugins.manager import get_plugin_manager
 from services.subscription_runtime_models import SubscriptionImportItem, SubscriptionMeta
 from services import user_config_service
 from services import subscription_sync_state_service
+from services import user_video_feed_service
 from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql, get_subscription_sql
 from utils.sql_parser import parse_dynamic_sql
 from utils.url_helper import extract_top_level_domain
@@ -85,6 +86,7 @@ def get_active_user_subscription_url_map(user_id: int) -> Dict[str, int]:
 
 def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):  
     with get_session() as session:
+        user_subscription = None
         subscription = get_subscription_by_url_and_name(url=subscribe_info.url, name=subscribe_info.name)
         if subscription:
             subscription_sync_state_service.ensure_sync_states(subscription.id, subscription.url)
@@ -121,6 +123,8 @@ def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):
             )
             session.add(user_subscription)
         session.commit()
+    if user_subscription is not None:
+        user_video_feed_service.backfill_user_subscription_feed(user_id, subscription.id, user_subscription.is_nsfw)
     subscription_sync_state_service.ensure_sync_states(subscription.id, subscription.url)
     return subscription
 
@@ -261,7 +265,8 @@ def toggle_nsfw_status(user_id: int, subscription_id: int, is_nsfw: bool) -> boo
         
         user_sub.is_nsfw = is_nsfw
         session.commit()
-        return True
+    user_video_feed_service.update_user_subscription_nsfw(user_id, subscription_id, is_nsfw)
+    return True
 
 
 def handle_subscribe_request(url: str, user_id: int) -> Subscription:
@@ -319,11 +324,13 @@ def restore_subscription(subscription_id: int, user_id: int) -> None:
             user_subscription = UserSubscription(
                 subscription_id=subscription_id,
                 user_id=user_id,
-                is_deleted=False
+                is_deleted=False,
+                is_nsfw=False,
             )
             session.add(user_subscription)
         
         session.commit()
+    user_video_feed_service.backfill_user_subscription_feed(user_id, subscription_id, user_subscription.is_nsfw)
     subscription = get_subscription_by_id(subscription_id)
     if subscription:
         subscription_sync_state_service.ensure_sync_states(subscription.id, subscription.url)
@@ -384,6 +391,8 @@ def unsubscribe_by_id(user_id: int, subscription_id: int) -> bool:
             subscription.is_deleted = True
 
         session.commit()
+
+    user_video_feed_service.remove_user_subscription_feed(user_id, subscription_id)
 
     if should_deactivate_subscription:
         subscription_sync_state_service.deactivate_sync_states(

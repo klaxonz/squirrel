@@ -2,15 +2,17 @@ import json
 import logging
 from datetime import datetime
 from typing import List, Tuple, Optional, Dict
-from sqlalchemy import select, func, and_, case
+from sqlalchemy import select, func, and_, case, exists
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from core.database import get_session
 from services.video_query import build_base_video_query, build_video_count_source_query, category_predicate, resolve_sort_column
 
 
 from core.exceptions.video_exceptions import UnsupportedDomainError
-from models.links import SubscriptionVideo, UserSubscription
+from models.creator import Creator
+from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
+from models.user_video_feed import UserVideoFeed
 from models.video import Video
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
@@ -170,10 +172,19 @@ def get_video_url(video_id: int, force_refresh: bool = False) -> VideoUrlDto:
 
 def _get_video_counts_in_session(session, user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
                                  query: Optional[str] = None, nsfw: str = 'all', domains: Optional[List[str]] = None):
-    """获取各类别视频数量 - 统一与列表筛选逻辑"""
+    """获取各类别视频数量 - 基于实时 feed 表统计"""
     candidate_videos = (
-        build_video_count_source_query(user_id, show_nsfw, subscription_id, query, nsfw, domains)
-        .cte('candidate_videos')
+        _build_feed_query(
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            query=query,
+            category=None,
+            sort_by='publish_date',
+            nsfw=nsfw,
+            domains=domains,
+        )
+        .subquery('candidate_videos')
     )
 
     published = candidate_videos.c.publish_date <= func.now()
@@ -265,6 +276,136 @@ def get_video_counts(
         return _get_video_counts_in_session(session, user_id, show_nsfw, subscription_id, query, nsfw, domains)
 
 
+def _feed_sort_column(sort_by: str):
+    if sort_by == 'created_at':
+        return UserVideoFeed.video_created_at
+    return UserVideoFeed.publish_date
+
+
+def _feed_category_predicate(user_id: int, category: str):
+    published = and_(
+        UserVideoFeed.publish_date.is_not(None),
+        UserVideoFeed.publish_date <= func.now(),
+    )
+
+    if category == 'preview':
+        return UserVideoFeed.publish_date > func.now()
+    if category == 'read':
+        return and_(
+            published,
+            exists(
+                select(1).where(
+                    and_(
+                        VideoHistory.user_id == user_id,
+                        VideoHistory.video_id == UserVideoFeed.video_id,
+                    )
+                )
+            ),
+        )
+    if category == 'unread':
+        return and_(
+            published,
+            ~exists(
+                select(1).where(
+                    and_(
+                        VideoHistory.user_id == user_id,
+                        VideoHistory.video_id == UserVideoFeed.video_id,
+                    )
+                )
+            ),
+        )
+    if category == 'liked':
+        return and_(
+            published,
+            exists(
+                select(1).where(
+                    and_(
+                        VideoInteraction.user_id == user_id,
+                        VideoInteraction.video_id == UserVideoFeed.video_id,
+                        VideoInteraction.interaction_type == 1,
+                    )
+                )
+            ),
+        )
+    if category == 'later':
+        return and_(
+            published,
+            exists(
+                select(1).where(
+                    and_(
+                        VideoInteraction.user_id == user_id,
+                        VideoInteraction.video_id == UserVideoFeed.video_id,
+                        VideoInteraction.interaction_type == 3,
+                    )
+                )
+            ),
+        )
+
+    return published
+
+
+def _build_feed_query(
+    user_id: int,
+    show_nsfw: bool,
+    subscription_id: Optional[int],
+    query: Optional[str],
+    category: Optional[str],
+    sort_by: str,
+    nsfw: str,
+    domains: Optional[List[str]],
+):
+    feed_query = select(
+        UserVideoFeed.video_id.label('video_id'),
+        UserVideoFeed.publish_date.label('publish_date'),
+        UserVideoFeed.video_created_at.label('video_created_at'),
+    ).where(
+        UserVideoFeed.user_id == user_id,
+    )
+
+    if subscription_id:
+        feed_query = feed_query.where(UserVideoFeed.subscription_id == subscription_id)
+
+    if nsfw == 'yes':
+        feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(True))
+    elif nsfw == 'no':
+        feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(False))
+    elif not show_nsfw:
+        feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(False))
+
+    if domains:
+        normalized_domains = [
+            domain for domain in {url_helper.normalize_domain(item) for item in domains if item} if domain
+        ]
+        if normalized_domains:
+            feed_query = feed_query.where(UserVideoFeed.domain.in_(normalized_domains))
+
+    if query:
+        feed_query = feed_query.join(Video, Video.id == UserVideoFeed.video_id).where(
+            Video.title.like(f'%{query}%'),
+            Video.is_deleted.is_(False),
+        )
+
+    if category:
+        feed_query = feed_query.where(_feed_category_predicate(user_id, category))
+
+    feed_source = feed_query.subquery()
+    if sort_by == 'created_at':
+        sort_value = func.max(feed_source.c.video_created_at).label('sort_value')
+    else:
+        sort_value = func.max(feed_source.c.publish_date).label('sort_value')
+
+    return (
+        select(
+            feed_source.c.video_id,
+            func.max(feed_source.c.publish_date).label('publish_date'),
+            func.max(feed_source.c.video_created_at).label('video_created_at'),
+            sort_value,
+        )
+        .group_by(feed_source.c.video_id)
+        .order_by(sort_value.desc(), feed_source.c.video_id.desc())
+    )
+
+
 def list_videos(
         user_id: int,
         query: str,
@@ -281,17 +422,15 @@ def list_videos(
     show_nsfw = user_config.get('showNsfw', False)
 
     with get_session() as session:
-        base_query = build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw, domains)
-        base_query = base_query.where(category_predicate(user_id, category))
-
-        order_column = resolve_sort_column(sort_by).desc()
-
-
-        base_ids_query = (
-            base_query
-            .with_only_columns(Video.id, order_column)
-            .distinct()
-            .order_by(order_column)
+        base_ids_query = _build_feed_query(
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            query=query,
+            category=category,
+            sort_by=sort_by,
+            nsfw=nsfw,
+            domains=domains,
         )
 
         id_rows = session.execute(
@@ -304,12 +443,7 @@ def list_videos(
         total_count = None
         if with_total:
             total_count = session.execute(
-                select(func.count()).select_from(
-                    base_ids_query
-                    .with_only_columns(Video.id)
-                    .order_by(None)
-                    .subquery()
-                )
+                select(func.count()).select_from(base_ids_query.order_by(None).subquery())
             ).scalar() or 0
 
         if not video_ids:
@@ -323,67 +457,81 @@ def list_videos(
         videos = session.scalars(
             select(Video)
             .where(Video.id.in_(video_ids))
-            .options(
-                selectinload(Video.subscription_links)
-                .selectinload(SubscriptionVideo.subscription)
-                .selectinload(Subscription.user_subscriptions),
-                selectinload(Video.creators),
-                selectinload(Video.histories),
-            )
-            .options(
-                with_loader_criteria(
-                    UserSubscription,
-                    and_(
-                        UserSubscription.user_id == user_id,
-                        UserSubscription.is_deleted == False
-                    ),
-                    include_aliases=True,
-                ),
-                with_loader_criteria(
-                    VideoHistory,
-                    VideoHistory.user_id == user_id,
-                    include_aliases=True,
-                ),
-            )
             .order_by(order_case)
         ).all()
+        video_map = {video.id: video for video in videos}
 
-        def _history_sort_key(history: VideoHistory):
-            return history.updated_at or history.end_time or history.created_at
+        history_rows = session.execute(
+            select(VideoHistory.video_id, VideoHistory.last_position).where(
+                VideoHistory.user_id == user_id,
+                VideoHistory.video_id.in_(video_ids),
+            )
+        ).all()
+        history_map = {row.video_id: row.last_position for row in history_rows}
+
+        subscription_rows = session.execute(
+            select(
+                UserVideoFeed.video_id,
+                Subscription.id,
+                Subscription.name,
+                Subscription.url,
+                Subscription.type,
+                Subscription.avatar,
+                UserVideoFeed.is_nsfw,
+            )
+            .join(Subscription, Subscription.id == UserVideoFeed.subscription_id)
+            .where(
+                UserVideoFeed.user_id == user_id,
+                UserVideoFeed.video_id.in_(video_ids),
+                Subscription.is_deleted.is_(False),
+            )
+            .order_by(UserVideoFeed.video_id.asc(), Subscription.id.asc())
+        ).all()
+        subscriptions_map: Dict[int, List[dict]] = {}
+        seen_subscription_keys = set()
+        for row in subscription_rows:
+            key = (row.video_id, row.id)
+            if key in seen_subscription_keys:
+                continue
+            seen_subscription_keys.add(key)
+            subscriptions_map.setdefault(row.video_id, []).append({
+                'id': row.id,
+                'name': row.name,
+                'url': row.url,
+                'type': row.type,
+                'avatar': row.avatar,
+                'is_nsfw': row.is_nsfw,
+            })
+
+        creator_rows = session.execute(
+            select(VideoCreator.video_id, Creator)
+            .join(Creator, Creator.id == VideoCreator.creator_id)
+            .where(
+                VideoCreator.video_id.in_(video_ids),
+                Creator.is_deleted.is_(False),
+            )
+            .order_by(VideoCreator.video_id.asc(), Creator.id.asc())
+        ).all()
+        actors_map: Dict[int, List[dict]] = {}
+        for video_id, creator in creator_rows:
+            actors_map.setdefault(video_id, []).append(creator.to_dict())
 
         video_list = []
-        for video in videos:
-            subscriptions_list = []
-            for link in video.subscription_links:
-                subscription = link.subscription
-                if not subscription:
-                    continue
-                user_subscriptions = subscription.user_subscriptions or []
-                if not user_subscriptions:
-                    continue
-                user_subscription = user_subscriptions[0]
-                subscriptions_list.append({
-                    'id': subscription.id,
-                    'name': subscription.name,
-                    'url': subscription.url,
-                    'type': subscription.type,
-                    'avatar': subscription.avatar,
-                    'is_nsfw': user_subscription.is_nsfw
-                })
-
-            history = max(video.histories, key=_history_sort_key, default=None)
-
+        for video_id in video_ids:
+            video = video_map.get(video_id)
+            if not video:
+                continue
             video_data = {
                 'id': video.id,
                 'title': video.title,
                 'url': video.url,
                 'thumbnail': thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
                 'duration': video.duration,
-                'last_position': history.last_position if history else 0,
+                'last_position': history_map.get(video.id, 0),
                 'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
                 'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'subscriptions': subscriptions_list,
-                'actors': [creator.to_dict() for creator in video.creators]
+                'subscriptions': subscriptions_map.get(video.id, []),
+                'actors': actors_map.get(video.id, []),
             }
             video_list.append(video_data)
 

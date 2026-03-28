@@ -9,6 +9,7 @@ from sqlalchemy import select
 from core.database import get_session
 from models.video import Video as VideoModel
 from services import subscription_video_service
+from services import user_video_feed_service
 from utils import url_helper
 
 
@@ -110,6 +111,7 @@ class VideoPersistenceService:
                 if updated:
                     session.commit()
                     session.refresh(video)
+                    user_video_feed_service.refresh_video_feed_metadata(video.id)
                     logger.info(f"Updated video: id={video.id}, url={url}")
                 else:
                     logger.debug(f"Video already exists: id={video.id}, url={url}") 
