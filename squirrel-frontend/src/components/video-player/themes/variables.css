@@ -158,7 +158,7 @@
   
   /* ========== 字体 ========== */
   
-  --sp-font-family: 'JetBrains Mono', 'Segoe UI Mono', 'Roboto Mono', monospace;
+  --sp-font-family: 'JetBrains Mono', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --sp-font-mono: 'JetBrains Mono', monospace;
   --sp-font-size-xs: 11px;
   --sp-font-size-sm: 13px;

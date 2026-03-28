@@ -291,6 +291,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   cursor: none;
   font-family: var(--sp-font-family);
   user-select: none;
+  letter-spacing: 0.015em;
 }
 
 .sp-player.is-active {
@@ -627,13 +628,14 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   justify-content: space-between;
   padding: 10px 14px;
   color: rgba(255, 255, 255, 0.85);
-  font-size: 12px;
-  font-family: var(--sp-font-mono);
+  font-size: 13px;
+  font-family: var(--sp-font-family);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
   z-index: 1;
+  letter-spacing: 0.03em;
 }
 
 .sp-menu-item:hover {
