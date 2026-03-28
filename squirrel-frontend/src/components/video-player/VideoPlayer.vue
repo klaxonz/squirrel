@@ -26,9 +26,23 @@
       @dblclick="toggleFullscreen"
     />
 
+    <!-- HUD 系统状态 -->
+    <div class="sp-hud-overlay">
+      <div class="sp-hud-tag">
+        <span class="sp-hud-dot" :class="{ 'is-pulsing': isPlaying }"></span>
+        <span class="sp-hud-text">LIVE_DECODE::{{ isPlaying ? 'ACTIVE' : 'STANDBY' }}</span>
+      </div>
+    </div>
+
     <!-- 加载状态 -->
     <div v-if="store.loading && store.loadingStage !== 'buffering' && !errorState.show" class="sp-loading">
-      <div class="sp-spinner-pulse"></div>
+      <div class="sp-loader-ring">
+        <div class="sp-loader-segment"></div>
+        <div class="sp-loader-segment"></div>
+        <div class="sp-loader-segment"></div>
+        <div class="sp-loader-segment"></div>
+      </div>
+      <div class="sp-loading-text">SYNCING_DATA...</div>
     </div>
 
     <!-- 极简控制层 -->
@@ -76,7 +90,9 @@
                      @pointermove="onVolumePointerMove"
                      @pointerup="onVolumePointerUp">
                   <div class="sp-volume-bar">
-                    <div class="sp-volume-fill" :style="{ width: `${isMuted ? 0 : volume}%` }"></div>
+                    <div class="sp-volume-fill" :style="{ width: `${isMuted ? 0 : volume}%` }">
+                      <div class="sp-volume-glow"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -287,6 +303,53 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   object-fit: contain;
 }
 
+/* HUD 系统状态 */
+.sp-hud-overlay {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.sp-hud-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 77, 0, 0.2);
+  border-radius: 4px;
+}
+
+.sp-hud-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--sp-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--sp-primary);
+}
+
+.sp-hud-dot.is-pulsing {
+  animation: hud-pulse 1.5s infinite;
+}
+
+@keyframes hud-pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.sp-hud-text {
+  color: var(--sp-primary);
+  font-size: 10px;
+  font-family: var(--sp-font-mono);
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  text-shadow: 0 0 4px rgba(255, 77, 0, 0.4);
+}
+
 /* 底部渐变遮罩 */
 .sp-gradient-overlay {
   position: absolute;
@@ -307,15 +370,15 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 }
 
 .sp-controls-content {
-  padding: 0 10px 4px;
+  padding: 0 10px 6px;
   margin: 0;
   position: relative;
   z-index: 25;
 }
 
-/* 进度条容器 - 增加点击感知范围 */
+/* 进度条容器 */
 .sp-progress-container {
-  padding: 4px 0;
+  padding: 6px 0;
   margin: 0 -4px;
   cursor: pointer;
   position: relative;
@@ -369,6 +432,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   transform: scaleX(0);
   transform-origin: right;
   transition: transform 0.2s ease;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
 }
 
 .sp-progress-container:hover .sp-progress-dot {
@@ -392,14 +456,14 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 
 .sp-preview-hint-inner {
   padding: 3px 8px;
-  background: rgba(15, 15, 15, 0.9);
+  background: rgba(10, 10, 10, 0.95);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 77, 0, 0.25);
   color: #fff;
   font-size: 10px;
   font-family: var(--sp-font-mono);
   border-radius: 4px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.6);
 }
 
 /* 控制按钮主区域 */
@@ -414,7 +478,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 .sp-controls-left, .sp-controls-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 /* 按钮样式优化 */
@@ -429,7 +493,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all 0.25s cubic-bezier(0.19, 1, 0.22, 1);
   position: relative;
 }
 
@@ -437,15 +501,17 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 77, 0, 0.1);
+  border: 1px solid rgba(255, 77, 0, 0.15);
   border-radius: 6px;
-  transform: scale(0.8);
+  transform: scale(0.85);
   opacity: 0;
   transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .sp-icon-btn:hover {
   color: var(--sp-primary, #ff4d00);
+  transform: translateY(-1px);
 }
 
 .sp-icon-btn:hover::after {
@@ -456,12 +522,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 .sp-icon-btn :deep(svg) {
   width: 18px;
   height: 18px;
-  filter: drop-shadow(0 0 4px rgba(0,0,0,0.2));
-}
-
-.sp-btn--play :deep(svg) {
-  width: 20px;
-  height: 20px;
+  filter: drop-shadow(0 0 4px rgba(0,0,0,0.4));
 }
 
 /* 时间显示 */
@@ -471,17 +532,18 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   color: #fff;
   display: flex;
   align-items: center;
-  padding-left: 4px;
-  letter-spacing: 0.01em;
+  padding-left: 6px;
+  letter-spacing: 0.02em;
+  font-weight: 700;
 }
 
 .sp-time-separator {
-  margin: 0 4px;
-  opacity: 0.25;
+  margin: 0 6px;
+  opacity: 0.2;
 }
 
 .sp-time-total {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 /* 音量控制 */
@@ -503,9 +565,9 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 
 .sp-volume-group:hover .sp-volume-slider-wrap,
 .sp-volume-group.is-active .sp-volume-slider-wrap {
-  width: 70px;
+  width: 76px;
   opacity: 1;
-  padding: 0 6px;
+  padding: 0 8px;
 }
 
 .sp-volume-bar {
@@ -519,23 +581,44 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 
 .sp-volume-fill {
   height: 100%;
-  background: #fff;
+  background: var(--sp-primary);
   border-radius: 1.5px;
+  position: relative;
+}
+
+.sp-volume-glow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 100%;
+  box-shadow: 0 0 10px rgba(var(--sp-primary-rgb), 0.6);
 }
 
 /* 设置菜单提示框 */
 .sp-settings-pop {
   position: absolute;
-  bottom: 56px;
-  right: 10px;
-  width: 200px;
-  background: rgba(10, 10, 10, 0.94);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 5px;
+  bottom: 52px;
+  right: 12px;
+  width: 220px;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 77, 0, 0.2);
+  border-radius: 8px;
+  padding: 6px;
   z-index: 100;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.85);
+  overflow: hidden;
+}
+
+.sp-settings-pop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(255, 77, 0, 0.05) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  opacity: 0.2;
 }
 
 .sp-menu-item {
@@ -544,14 +627,17 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   justify-content: space-between;
   padding: 10px 14px;
   color: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
-  border-radius: 8px;
+  font-size: 12px;
+  font-family: var(--sp-font-mono);
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
+  z-index: 1;
 }
 
 .sp-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 77, 0, 0.15);
   color: #fff;
 }
 
@@ -561,52 +647,84 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 }
 
 .sp-simple-switch {
-  width: 32px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 9px;
+  width: 30px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   position: relative;
   transition: background 0.3s;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.sp-simple-switch.is-on { background: var(--sp-primary); }
+.sp-simple-switch.is-on { 
+  background: var(--sp-primary);
+  border-color: rgba(255, 77, 0, 0.5);
+}
 
 .sp-simple-switch::after {
   content: '';
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 12px;
-  height: 12px;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
   background: #fff;
   border-radius: 50%;
   transition: transform 0.25s cubic-bezier(0.19, 1, 0.22, 1);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 .sp-simple-switch.is-on::after { transform: translateX(14px); }
 
-/* 加载动画 */
+/* 加载动画 - 终端旋转环 */
 .sp-loading {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 5;
+  gap: 16px;
+  background: rgba(0,0,0,0.2);
 }
 
-.sp-spinner-pulse {
-  width: 48px;
-  height: 48px;
-  border: 3px solid var(--sp-primary);
+.sp-loader-ring {
+  width: 54px;
+  height: 54px;
+  position: relative;
+  animation: loader-rotate 2s linear infinite;
+}
+
+.sp-loader-segment {
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  border-top-color: var(--sp-primary);
   border-radius: 50%;
-  animation: sp-pulse 1.2s ease-out infinite;
+  opacity: 0.3;
 }
 
-@keyframes sp-pulse {
-  0% { transform: scale(0.6); opacity: 1; }
-  100% { transform: scale(1.6); opacity: 0; }
+.sp-loader-segment:nth-child(1) { transform: rotate(0deg); opacity: 1; }
+.sp-loader-segment:nth-child(2) { transform: rotate(120deg); }
+.sp-loader-segment:nth-child(3) { transform: rotate(240deg); }
+
+.sp-loading-text {
+  color: var(--sp-primary);
+  font-family: var(--sp-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(255, 77, 0, 0.4);
+  animation: text-pulse 1.5s infinite;
+}
+
+@keyframes loader-rotate {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes text-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
 }
 
 .sp-ui-fade-enter-active, .sp-ui-fade-leave-active {
