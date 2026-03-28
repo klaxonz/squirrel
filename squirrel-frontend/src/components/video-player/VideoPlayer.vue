@@ -12,6 +12,9 @@
     @keydown="handleKeyDown"
     tabindex="0"
   >
+    <!-- 全屏视觉增强层 -->
+    <div class="sp-vignette-overlay"></div>
+
     <!-- 视频核心 -->
     <video
       ref="videoRef"
@@ -26,23 +29,38 @@
       @dblclick="toggleFullscreen"
     />
 
+    <!-- 中央 HUD 指示器 -->
+    <transition name="sp-hud-fade">
+      <div v-if="centralHud.visible" class="sp-central-hud">
+        <div class="sp-central-hud-content">
+          <PlayerIcon :name="centralHud.icon" class="sp-central-hud-icon" />
+          <div class="sp-central-hud-value">{{ centralHud.value }}</div>
+          <div v-if="centralHud.type === 'volume'" class="sp-central-hud-bar">
+            <div class="sp-central-hud-fill" :style="{ width: `${centralHud.percent}%` }"></div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- HUD 系统状态 -->
     <div class="sp-hud-overlay">
       <div class="sp-hud-tag">
         <span class="sp-hud-dot" :class="{ 'is-pulsing': isPlaying }"></span>
         <span class="sp-hud-text">LIVE_DECODE::{{ isPlaying ? 'ACTIVE' : 'STANDBY' }}</span>
+        <span class="sp-hud-separator">|</span>
+        <span class="sp-hud-code">{{ simulateBitrate }}kbps</span>
       </div>
     </div>
 
     <!-- 加载状态 -->
-    <div v-if="store.loading && store.loadingStage !== 'buffering' && !errorState.show" class="sp-loading">
+    <div v-if="store.loading && !errorState.show" class="sp-loading">
       <div class="sp-loader-ring">
         <div class="sp-loader-segment"></div>
         <div class="sp-loader-segment"></div>
         <div class="sp-loader-segment"></div>
         <div class="sp-loader-segment"></div>
       </div>
-      <div class="sp-loading-text">SYNCING_DATA...</div>
+      <div class="sp-loading-text">{{ store.loadingStage === 'buffering' ? 'RE-BUFFERING' : 'SYNCING_DATA' }}...</div>
     </div>
 
     <!-- 极简控制层 -->
@@ -183,6 +201,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { usePlayer } from './runtime/usePlayer'
 import type { MediaSource, SubtitleTrack } from './core'
 import type { ThemeName } from './themes'
+import type { IconName } from './core/useIcons'
 import PlayerIcon from './PlayerIcon.vue'
 
 // 基础变量
@@ -236,6 +255,39 @@ const previewPercent = ref(0)
 const isScrubbing = ref(false)
 const isVolumeScrubbing = ref(false)
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
+const centralHud = ref<{ visible: boolean; type: string; value: string; icon: IconName; percent: number }>({ 
+  visible: false, type: '', value: '', icon: 'play', percent: 0 
+})
+const simulateBitrate = ref(0)
+
+let centralHudTimer: any
+const showCentralHud = (type: string, value: string, icon: IconName, percent: number = 0) => {
+  clearTimeout(centralHudTimer)
+  centralHud.value = { visible: true, type, value, icon, percent }
+  centralHudTimer = setTimeout(() => { centralHud.value.visible = false }, 1500)
+}
+
+// 模拟码率跳动
+let bitrateInterval: any
+const updateBitrate = () => {
+  if (!isPlaying.value) { simulateBitrate.value = 0; return }
+  const base = currentQualityLabel.value?.includes('1080') ? 4500 : 2500
+  simulateBitrate.value = base + Math.floor(Math.random() * 800)
+}
+
+watch(isPlaying, (val) => {
+  if (val) {
+    bitrateInterval = setInterval(updateBitrate, 1000)
+  } else {
+    clearInterval(bitrateInterval)
+    simulateBitrate.value = 0
+  }
+})
+
+watch(volume, (newVol, oldVol) => {
+  if (Math.abs(newVol - oldVol) < 0.1) return
+  showCentralHud('volume', `${Math.round(newVol)}%`, volumeIconName.value, newVol)
+})
 
 const playbackRates = [0.5, 0.75, 1, 1.25, 1.5, 2]
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
@@ -295,6 +347,10 @@ const updateVol = (e: PointerEvent) => {
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === ' ') { e.preventDefault(); togglePlay() }
   if (e.key === 'f') toggleFullscreen()
+  if (e.key === 'ArrowLeft') { seek(currentTime.value - 10); showCentralHud('seek', '-10s', 'skipBackward') }
+  if (e.key === 'ArrowRight') { seek(currentTime.value + 10); showCentralHud('seek', '+10s', 'skipForward') }
+  if (e.key === 'ArrowUp') { setVolume(Math.min(100, volume.value + 5)) }
+  if (e.key === 'ArrowDown') { setVolume(Math.max(0, volume.value - 5)) }
 }
 
 const formatTime = (s: number) => {
@@ -334,6 +390,76 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   object-fit: contain;
 }
 
+/* 全屏视觉增强层 */
+.sp-vignette-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.4) 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 中央 HUD 指示器 */
+.sp-central-hud {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.sp-central-hud-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  padding: 24px 32px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 77, 0, 0.3);
+  box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  min-width: 120px;
+}
+
+.sp-central-hud-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--sp-primary);
+  filter: drop-shadow(0 0 12px rgba(var(--sp-primary-rgb), 0.6));
+}
+
+.sp-central-hud-value {
+  color: #fff;
+  font-family: var(--sp-font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.sp-central-hud-bar {
+  width: 80px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.sp-central-hud-fill {
+  height: 100%;
+  background: var(--sp-primary);
+  box-shadow: 0 0 10px var(--sp-primary);
+}
+
+.sp-hud-fade-enter-active, .sp-hud-fade-leave-active {
+  transition: opacity 0.2s, transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.sp-hud-fade-enter-from { opacity: 0; transform: translate(-50%, -40%) scale(0.9); }
+.sp-hud-fade-leave-to { opacity: 0; transform: translate(-50%, -60%) scale(1.1); }
+
 /* HUD 系统状态 */
 .sp-hud-overlay {
   position: absolute;
@@ -347,10 +473,10 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 77, 0, 0.2);
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 77, 0, 0.25);
   border-radius: 4px;
 }
 
@@ -379,6 +505,19 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   letter-spacing: 0.1em;
   font-weight: 700;
   text-shadow: 0 0 4px rgba(255, 77, 0, 0.4);
+}
+
+.sp-hud-separator {
+  opacity: 0.2;
+  color: #fff;
+  font-size: 10px;
+}
+
+.sp-hud-code {
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--sp-font-mono);
+  font-size: 10px;
+  width: 60px;
 }
 
 /* 底部渐变遮罩 */
