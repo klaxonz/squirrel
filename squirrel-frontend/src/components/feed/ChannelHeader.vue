@@ -1,39 +1,54 @@
 <template>
   <transition name="channel-dismiss">
-    <div v-if="isVisible" class="channel-header w-full">
-      <div class="channel-header-content pt-4">
-        <div class="flex items-start gap-4 pb-3">
-          <div class="flex items-center min-w-0 flex-1">
-            <img v-if="detail" :src="getAvatarSrc(detail.avatar, subscriptionId)" class="w-12 h-12 rounded-full object-cover mr-4" alt="avatar" referrerpolicy="no-referrer" @error="(e) => handleAvatarError(e, subscriptionId)" />
-            <div class="min-w-0 flex-1">
-              <div class="channel-header__title-row">
-                <h2 class="channel-header__title">{{ detail?.name || '频道' }}</h2>
-                <button
-                  type="button"
-                  class="channel-header__unsubscribe"
-                  :disabled="isUnsubscribing"
-                  :aria-busy="isUnsubscribing ? 'true' : 'false'"
-                  @click="handleUnsubscribe"
-                >
-                  <span v-if="isUnsubscribing" class="channel-header__spinner" aria-hidden="true"></span>
-                  <span>{{ isUnsubscribing ? '取消中' : '取消订阅' }}</span>
-                </button>
-                <span v-if="detail?.is_nsfw" class="text-2xs font-medium px-1.5 py-0.5 rounded bg-destructive/20 text-destructive">NSFW</span>
+    <div v-if="isVisible" class="channel-terminal-header">
+      <div class="header-overlay"></div>
+      <div class="header-content">
+        <div class="channel-main-info">
+          <div class="avatar-frame">
+            <img
+              v-if="detail"
+              :src="getAvatarSrc(detail.avatar, subscriptionId)"
+              class="channel-avatar-minimal"
+              alt="avatar"
+              referrerpolicy="no-referrer"
+              @error="(e) => handleAvatarError(e, subscriptionId)"
+            />
+            <div class="avatar-scan"></div>
+          </div>
+
+          <div class="channel-text-minimal">
+            <div class="channel-top-row">
+              <span class="tech-index">SOURCE_ID // {{ String(subscriptionId).slice(-4).toUpperCase() }}</span>
+              <h2 class="channel-title-minimal">{{ detail?.name || 'UNKNOWN_CHANNEL' }}</h2>
+              <span v-if="detail?.is_nsfw" class="nsfw-tag">NSFW_RESTRICTED</span>
+            </div>
+
+            <div class="channel-stats-minimal">
+              <div class="stat-item">
+                <span class="stat-label">TOTAL_VIDEOS</span>
+                <span class="stat-value">{{ detail?.total_videos || 0 }}</span>
               </div>
-              <div class="text-xs text-muted-foreground mt-0.5 truncate">
-                <span class="mr-3">共 {{ detail?.total_videos || 0 }} 个视频</span>
-                <span>已抓取 {{ detail?.total_extract || 0 }}</span>
+              <div class="stat-item">
+                <span class="stat-label">EXTRACTED</span>
+                <span class="stat-value">{{ detail?.total_extract || 0 }}</span>
               </div>
-              <p v-if="unsubscribeError" class="channel-header__error">{{ unsubscribeError }}</p>
             </div>
           </div>
         </div>
+
+        <button
+          type="button"
+          class="unsubscribe-minimal"
+          :disabled="isUnsubscribing"
+          @click="handleUnsubscribe"
+        >
+          {{ isUnsubscribing ? 'DISCONNECTING...' : 'TERMINATE_SUBSCRIPTION' }}
+        </button>
       </div>
-    </div>
-  </transition>
-  <transition name="channel-dismiss">
-    <div v-if="detail?.description && isVisible" class="channel-description pb-3 text-sm text-muted-foreground">
-      <p class="whitespace-pre-line line-clamp-3">{{ detail.description }}</p>
+
+      <div v-if="detail?.description" class="channel-desc-minimal">
+        <p>{{ detail.description }}</p>
+      </div>
     </div>
   </transition>
 </template>
@@ -97,130 +112,164 @@ watch(() => props.subscriptionId, () => {
 </script>
 
 <style scoped>
-.channel-header { backdrop-filter: blur(6px); }
-
-.channel-header-content,
-.channel-description {
-  max-width: var(--container-max-width, 2560px);
-  margin: 0 auto;
-  padding: 0 1rem;
-  width: 100%;
-}
-
-.channel-header__title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.channel-header__title {
-  min-width: 0;
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1.2;
+.channel-terminal-header {
+  position: relative;
+  padding: 3rem 2rem 1.5rem 2rem;
+  background: transparent;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
-.channel-header__unsubscribe {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  flex-shrink: 0;
-  min-width: 5.2rem;
-  min-height: 1.8rem;
-  padding: 0 0.72rem;
-  border: 1px solid hsl(var(--border) / 0.82);
-  border-radius: 9999px;
-  background: hsl(var(--background) / 0.8);
-  color: hsl(var(--foreground));
-  font-size: 0.7rem;
-  font-weight: 600;
-  transition: background-color 0.18s ease, border-color 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+.header-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, rgba(255, 77, 0, 0.02) 0%, transparent 50%);
+  pointer-events: none;
 }
 
-.channel-header__unsubscribe:hover:not(:disabled) {
-  background: hsl(var(--accent));
-  border-color: hsl(var(--ring) / 0.28);
-  transform: translateY(-1px);
+.header-content {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  z-index: 1;
 }
 
-.channel-header__unsubscribe:disabled {
-  cursor: default;
-  opacity: 0.72;
+.channel-main-info {
+  display: flex;
+  gap: 2rem;
+  flex: 1;
 }
 
-.channel-header__spinner {
-  width: 0.72rem;
-  height: 0.72rem;
-  border: 1.5px solid hsl(var(--foreground) / 0.24);
-  border-top-color: hsl(var(--foreground));
-  border-radius: 9999px;
-  animation: channel-header-spin 0.7s linear infinite;
+.avatar-frame {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px;
 }
 
-.channel-header__error {
-  margin-top: 0.4rem;
+.channel-avatar-minimal {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(0.5);
+}
+
+.avatar-scan {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #ff4d00;
+  opacity: 0.3;
+  animation: scan-avatar 3s linear infinite;
+}
+
+@keyframes scan-avatar {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+.channel-text-minimal {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.channel-top-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tech-index {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.6rem;
+  color: #ff4d00;
+  letter-spacing: 0.2em;
+}
+
+.channel-title-minimal {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.nsfw-tag {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.55rem;
+  color: #ff4d00;
+  border: 1px solid #ff4d00;
+  padding: 2px 6px;
+  width: fit-content;
+  margin-top: 0.5rem;
+}
+
+.channel-stats-minimal {
+  display: flex;
+  gap: 2.5rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.5rem;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.1em;
+}
+
+.stat-value {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.unsubscribe-minimal {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.6rem;
+  padding: 0.6rem 1.2rem;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.unsubscribe-minimal:hover {
+  border-color: #ff4d00;
+  color: #ff4d00;
+}
+
+.channel-desc-minimal {
+  margin-top: 1.5rem;
+  max-width: 600px;
   font-size: 0.75rem;
-  color: hsl(var(--destructive));
+  color: rgba(255, 255, 255, 0.3);
+  line-height: 1.6;
 }
 
 .channel-dismiss-enter-active,
 .channel-dismiss-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease, max-height 0.18s ease, margin 0.18s ease, padding 0.18s ease;
-  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .channel-dismiss-enter-from,
 .channel-dismiss-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
-  max-height: 0;
-}
-
-.channel-dismiss-enter-to,
-.channel-dismiss-leave-from {
-  opacity: 1;
-  transform: translateY(0);
-  max-height: 12rem;
-}
-
-@keyframes channel-header-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (min-width: 640px) {
-  .channel-header-content,
-  .channel-description {
-    padding: 0 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .channel-header-content,
-  .channel-description {
-    padding: 0 2rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .channel-header__title {
-    width: 100%;
-    white-space: normal;
-  }
-
-  .channel-header__unsubscribe {
-    min-width: 4.8rem;
-    min-height: 1.7rem;
-    padding: 0 0.64rem;
-  }
+  transform: translateY(-20px);
 }
 </style>
 

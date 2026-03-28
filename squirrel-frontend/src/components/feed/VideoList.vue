@@ -4,13 +4,10 @@
       <LoadingIndicator :loading="true" text="正在整理内容..." size="lg" />
     </div>
 
-    <Card v-else-if="!props.loading && !hasVideos" class="video-list__empty">
-      <CardContent class="video-list__empty-content">
-        <p class="video-list__empty-eyebrow">空列表</p>
-        <h3 class="video-list__empty-title">当前筛选下没有内容</h3>
-        <p class="video-list__empty-copy">切换分类、站点或排序后再看。</p>
-      </CardContent>
-    </Card>
+    <div v-else-if="!props.loading && !hasVideos" class="video-list-empty-minimal">
+      <div class="empty-status">EMPTY / NO_DATA</div>
+      <div class="empty-copy">SYSTEM CLEAR / RETRY_FILTER</div>
+    </div>
 
     <template v-else>
       <VirtualList
@@ -59,13 +56,13 @@ import VideoItem from './VideoItem.vue'
 import VirtualList from './VirtualList.vue'
 
 const ASPECT_RATIO = 9 / 16
-const GRID_ITEM_HORIZONTAL_PADDING = 10
-const GRID_ITEM_VERTICAL_PADDING = 10
-const CARD_INFO_HEIGHT = 92
-const BUFFER_PX = 400
-const PRERENDER_COUNT = 50
-const RANGE_CHANGE_THROTTLE_MS = 60
-const PRELOAD_ROWS = 3
+const GRID_ITEM_HORIZONTAL_PADDING = 16
+const GRID_ITEM_VERTICAL_PADDING = 24
+const CARD_INFO_HEIGHT = 70
+const BUFFER_PX = 1200
+const PRERENDER_COUNT = 40
+const RANGE_CHANGE_THROTTLE_MS = 30
+const PRELOAD_ROWS = 4
 
 const props = defineProps({
   videos: Array,
@@ -137,67 +134,52 @@ defineExpose({
 <style scoped>
 .video-list-container {
   height: 100%;
+  width: 100%;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  margin: 0 auto;
-  padding: 0 1rem 0.25rem;
-  max-width: var(--container-max-width, 2560px);
+  margin: 0;
+  padding: 0 2rem;
+  max-width: 100%;
 }
 
 .scroller {
   height: 100%;
   overflow-y: auto;
-  padding-bottom: 1.25rem;
+  padding-bottom: 5rem;
   box-sizing: border-box;
 }
 
 .grid-item {
   width: 100%;
   height: 100%;
-  padding: 0.25rem;
+  padding: 0.5rem;
   box-sizing: border-box;
 }
 
-.video-list__state,
-.video-list__empty {
+.video-list-empty-minimal {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: min(58vh, 32rem);
+  height: 60vh;
+  gap: 1rem;
 }
 
-.video-list__empty {
-  border-radius: calc(var(--radius-2xl) - 2px);
-  border-color: hsl(var(--border) / 0.72);
-  background: hsl(var(--card));
-  box-shadow: var(--shadow-sm);
+.empty-status {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: rgba(255, 255, 255, 0.05);
 }
 
-.video-list__empty-content {
-  padding: 1.5rem 1rem;
-  text-align: center;
-}
-
-.video-list__empty-eyebrow {
-  margin: 0 0 0.4rem;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+.empty-copy {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.4em;
+  color: rgba(255, 255, 255, 0.15);
   text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-}
-
-.video-list__empty-title {
-  margin: 0;
-  font-size: clamp(1rem, 0.95rem + 0.2vw, 1.15rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: hsl(var(--foreground));
-}
-
-.video-list__empty-copy {
-  margin: 0.45rem 0 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8rem;
 }
 
 .video-list__loading-more {

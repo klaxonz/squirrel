@@ -1,48 +1,21 @@
 <template>
-  <div ref="rootRef" class="global-search-bar">
-    <div class="global-search-bar__field">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        class="global-search-bar__icon"
-        aria-label="执行搜索"
-        @click="handleSearch"
-      >
-        <MagnifyingGlassIcon class="h-4 w-4" />
-      </Button>
-
-      <Input
-        v-model="inputValue"
-        type="text"
-        :placeholder="placeholder"
-        class="global-search-bar__input"
-        @keyup.enter="handleSearch"
-        @keyup.esc="clearSearch"
-        @input="handleInput"
-      />
-
-      <Button
-        v-if="inputValue"
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        class="global-search-bar__clear"
-        title="清除搜索 (ESC)"
-        aria-label="清除搜索"
-        @click="clearSearch"
-      >
-        <XMarkIcon class="h-4 w-4" />
-      </Button>
-    </div>
+  <div ref="rootRef" class="search-minimal">
+    <span class="search-index">00</span>
+    <input
+      v-model="inputValue"
+      type="text"
+      :placeholder="placeholder"
+      class="search-input"
+      @keyup.enter="handleSearch"
+      @keyup.esc="clearSearch"
+      @input="handleInput"
+    />
+    <div class="search-line"></div>
   </div>
 </template>
 
 <script setup>
 import { onUnmounted, ref, watch } from 'vue'
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 
 const props = defineProps({
   modelValue: {
@@ -51,7 +24,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: '搜索...',
+    default: 'SEARCH /',
   },
   debounceMs: {
     type: Number,
@@ -117,44 +90,49 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.global-search-bar {
-  width: 100%;
-}
-
-.global-search-bar__field {
+.search-minimal {
   position: relative;
-  display: flex;
   width: 100%;
+  display: flex;
   align-items: center;
 }
 
-.global-search-bar__input {
-  min-height: 2.125rem;
-  padding-left: 2.15rem;
-  padding-right: 2.15rem;
-  border-color: hsl(var(--border) / 0.72);
-  font-size: 0.75rem;
-}
-
-.global-search-bar__icon,
-.global-search-bar__clear {
+.search-index {
   position: absolute;
-  top: 50%;
-  z-index: 1;
-  transform: translateY(-50%);
+  left: -1.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.2);
 }
 
-.global-search-bar__icon {
-  left: 0.125rem;
+.search-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0;
+  color: #fff;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  outline: none;
 }
 
-.global-search-bar__clear {
-  right: 0.125rem;
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.1);
 }
 
-@media (max-width: 640px) {
-  .global-search-bar__input {
-    min-height: 2rem;
-  }
+.search-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.5s ease;
+}
+
+.search-input:focus ~ .search-line {
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
 }
 </style>

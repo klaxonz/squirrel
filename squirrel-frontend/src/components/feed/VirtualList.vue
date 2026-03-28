@@ -9,24 +9,26 @@
       :style="{ height: totalHeight + 'px' }"
     ></div>
 
-    <div 
-      class="visible-items"
-      :style="itemStyle"
-    >
-      <div
-        v-for="item in visibleItems"
-        :key="item[keyField]"
-        class="list-item"
+      <transition-group 
+        name="terminal-stagger"
+        tag="div"
+        class="visible-items"
+        :style="itemStyle"
       >
-        <slot 
-          name="item" 
-          :item="item"
-          :index="item._index"
-          :row="item._row"
-          :column="item._column"
-        ></slot>
-      </div>
-    </div>
+        <div
+          v-for="item in visibleItems"
+          :key="item[keyField]"
+          class="list-item"
+        >
+          <slot 
+            name="item" 
+            :item="item"
+            :index="item._index"
+            :row="item._row"
+            :column="item._column"
+          ></slot>
+        </div>
+      </transition-group>
   </div>
 </template>
 
@@ -357,4 +359,16 @@ defineExpose({ scrollToOffset, scrollToIndex, reset, container, range, totalHeig
   content: '';
 }
 
+.terminal-stagger-enter-active {
+  transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.terminal-stagger-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+}
+
+.terminal-stagger-move {
+  transition: transform 0.4s ease;
+}
 </style>

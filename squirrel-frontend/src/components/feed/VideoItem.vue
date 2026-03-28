@@ -1,124 +1,61 @@
 <template>
   <div
-    class="video-item video-card"
+    class="video-terminal-item"
     @contextmenu.prevent="showContextMenu"
     @click="handleClick"
   >
-    <div class="video-thumbnail video-card-thumbnail group">
+    <!-- 背景大数字索引 -->
+    <div class="video-bg-index">{{ videoBgIndex }}</div>
+
+    <div class="video-viewer-frame group">
+      <!-- 四角取景框线 -->
+      <div class="corner-mark top-left"></div>
+      <div class="corner-mark top-right"></div>
+      <div class="corner-mark bottom-left"></div>
+      <div class="corner-mark bottom-right"></div>
+
       <img
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
-        class="video-card__image"
+        class="video-terminal-image"
         :class="{ 'blur-thumbnail': shouldBlurThumbnail }"
         :alt="video.title"
         @error="handleThumbnailError"
       >
 
-      <div
-        v-if="showDefaultThumbnail"
-        class="video-card__fallback"
-      >
-        <div class="video-card__fallback-inner">
-          <Icon icon="material-symbols:image" class="video-card__fallback-icon" />
-          <span class="video-card__fallback-text">暂无封面</span>
+      <!-- 动态扫描线（仅悬停显示） -->
+      <div class="scanline"></div>
+
+      <div class="video-status-overlay">
+        <div class="status-top">
+          <span class="tech-tag">REC // {{ videoCardId }}</span>
+          <div v-if="isLikedVideo" class="fav-dot"></div>
+        </div>
+        <div class="status-bottom">
+          <span class="tech-time">{{ formatDuration(video.duration) }}</span>
         </div>
       </div>
 
-      <div class="video-card__overlay"></div>
-
-      <div class="video-card__topline">
-        <Badge v-if="isLikedVideo" variant="outline" class="video-card__badge video-card__badge--liked">
-          喜欢
-        </Badge>
-      </div>
-
+      <!-- 进度条改到顶部，极细 -->
       <div
         v-if="showProgress && progress > 0"
-        class="video-progress-bar"
+        class="tech-progress-bar"
       >
         <div
-          class="video-progress-indicator"
+          class="tech-progress-fill"
           :style="{ width: `${(progress * 100).toFixed(1)}%` }"
         ></div>
       </div>
-        <div class="video-duration">
-          {{ formatDuration(video.duration) }}
-        </div>
     </div>
 
-    <div class="video-item-content video-info">
-      <h5 class="video-title">
-        {{ video.title }}
-      </h5>
-
-      <div class="video-card__meta-row">
-        <div class="video-card__channel-wrap">
-          <div v-if="displayAvatars.length" class="author-avatars">
-            <img
-              v-for="(avatar, index) in displayAvatars"
-              :key="`avatar-${index}`"
-              :src="getAvatarSrc(avatar.avatar, `video-avatar-${video.id}-${index}`)"
-              class="author-avatar"
-              :class="{
-                'author-avatar--front': index === 0,
-                'author-avatar--middle': index === 1,
-                'author-avatar--back': index === 2,
-              }"
-              referrerpolicy="no-referrer"
-              :alt="avatar.name"
-              @error="(event) => handleAvatarError(event, `video-avatar-${video.id}-${index}`)"
-              @click.stop="goToSubscription(avatar.id)"
-            >
-          </div>
-
-          <button
-            type="button"
-            class="video-card__channel-name"
-            :title="displayNames"
-            @click.stop="goToSubscription(primarySubscriptionId)"
-          >
-            {{ displayNames }}
-          </button>
-
-          <button
-            v-if="hasActors"
-            type="button"
-            class="actor-toggle"
-            :aria-expanded="showActors"
-            aria-label="显示订阅列表"
-            @click.stop="toggleActors"
-          >
-            +{{ hiddenActorCount }}
-          </button>
-
-          <div
-            v-if="hasActors"
-            class="channel-popup"
-            :class="{ 'is-visible': showActors }"
-          >
-            <div class="channel-popup__list">
-              <button
-                v-for="subscription in video.subscriptions"
-                :key="subscription.subscription_id"
-                type="button"
-                class="channel-popup__item"
-                @click.stop="goToSubscription(subscription.id)"
-              >
-                <img
-                  :src="getAvatarSrc(subscription.avatar, `video-popup-avatar-${subscription.subscription_id}`)"
-                  alt="subscription avatar"
-                  class="channel-popup__avatar"
-                  referrerpolicy="no-referrer"
-                  @error="(event) => handleAvatarError(event, `video-popup-avatar-${subscription.subscription_id}`)"
-                >
-                <span class="channel-popup__name">{{ subscription.name }}</span>
-              </button>
-            </div>
-            <div class="channel-popup__arrow"></div>
-          </div>
-        </div>
-
-        <span class="video-card__date">{{ displayDateText }}</span>
+    <div class="video-terminal-info">
+      <h5 class="video-terminal-title">{{ video.title }}</h5>
+      <div class="video-terminal-meta">
+        <span class="meta-channel" @click.stop="goToSubscription(primarySubscriptionId)">
+          {{ displayNames }}
+        </span>
+        <span class="meta-divider">|</span>
+        <span class="meta-date">{{ displayDateText }}</span>
       </div>
     </div>
 
@@ -137,9 +74,9 @@
   </div>
 </template>
 
+
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
-import { Icon } from '@iconify/vue'
 import { Badge } from '@/components/ui/badge'
 import ContextMenu from './ContextMenu.vue'
 import useOptionsMenu from '@/composables/useOptionsMenu'
@@ -147,6 +84,7 @@ import useVideoHistory from '@/composables/useVideoHistory'
 import useVideoInteraction from '@/composables/useVideoInteraction'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { useSystemConfig } from '@/composables/useSystemConfig'
+import { formatVideoCardId } from '@/utils/videoCard'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
 import { Logger } from '@/utils/logger'
 
@@ -192,6 +130,8 @@ const showDefaultThumbnail = ref(false)
 const isNsfwVideo = computed(() => props.video.subscriptions?.some((subscription) => subscription.is_nsfw) || false)
 const shouldBlurThumbnail = computed(() => systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value)
 const isLikedVideo = computed(() => props.video.is_liked === 1)
+const videoCardId = computed(() => formatVideoCardId(props.video?.id))
+const videoBgIndex = computed(() => formatVideoCardId(props.video?.id, { length: 2, placeholder: '--' }))
 
 const displayDateText = computed(() => {
   const timestamp = props.sortBy === 'created_at'
@@ -223,18 +163,15 @@ const displayNames = computed(() => {
   const names = displayAvatars.value.map((avatar) => avatar.name)
 
   if (!names.length) {
-    return '未知频道'
+    return 'UNKNOWN'
   }
 
-  return names.join(' · ')
+  return names.join(' / ')
 })
 
 const primarySubscriptionId = computed(() => {
   return props.video.subscriptions?.[0]?.id ?? displayAvatars.value[0]?.id
 })
-
-const hasActors = computed(() => (props.video.subscriptions?.length || 0) > 1)
-const hiddenActorCount = computed(() => Math.max((props.video.subscriptions?.length || 0) - 1, 0))
 
 const closeContextMenu = () => {
   showMenu.value = false
@@ -267,10 +204,6 @@ const handleClick = () => {
 const goToSubscription = (subscriptionId) => {
   if (!subscriptionId) return
   emit('goToSubscription', subscriptionId)
-}
-
-const toggleActors = () => {
-  showActors.value = !showActors.value
 }
 
 const toggleReadStatus = async (isRead) => {
@@ -335,4 +268,184 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped src="../../styles/components/video-card.css"></style>
+<style scoped>
+.video-terminal-item {
+  position: relative;
+  cursor: pointer;
+  padding: 1.5rem;
+  transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.video-bg-index {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 6rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.03);
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.video-viewer-frame {
+  position: relative;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  background: #000;
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* 取景框线 */
+.corner-mark {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.top-left { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+.top-right { top: 10px; right: 10px; border-left: none; border-bottom: none; }
+.bottom-left { bottom: 10px; left: 10px; border-right: none; border-top: none; }
+.bottom-right { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+
+.video-terminal-item:hover .corner-mark {
+  border-color: #ff4d00;
+  width: 15px;
+  height: 15px;
+}
+
+.video-terminal-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.1);
+  transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.video-terminal-item:hover .video-terminal-image {
+  filter: grayscale(0) contrast(1);
+  transform: scale(1.05);
+}
+
+/* 扫描线动画 */
+.scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.video-terminal-item:hover .scanline {
+  animation: scan 2s linear infinite;
+  opacity: 1;
+}
+
+@keyframes scan {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+.video-status-overlay {
+  position: absolute;
+  inset: 0;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 4;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.6) 100%);
+  opacity: 0.8;
+}
+
+.tech-tag {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.55rem;
+  color: #fff;
+  letter-spacing: 0.2em;
+}
+
+.fav-dot {
+  width: 6px;
+  height: 6px;
+  background: #ff4d00;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #ff4d00;
+}
+
+.tech-time {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.6rem;
+  color: #fff;
+  background: rgba(0,0,0,0.5);
+  padding: 2px 5px;
+}
+
+.tech-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 5;
+}
+
+.tech-progress-fill {
+  height: 100%;
+  background: #ff4d00;
+  box-shadow: 0 0 5px #ff4d00;
+}
+
+.video-terminal-info {
+  margin-top: 1rem;
+  z-index: 1;
+  position: relative;
+}
+
+.video-terminal-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #fff;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.video-terminal-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.meta-channel:hover {
+  color: #fff;
+}
+
+.meta-divider {
+  opacity: 0.2;
+}
+
+.blur-thumbnail {
+  filter: blur(25px) grayscale(1);
+}
+</style>

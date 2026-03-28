@@ -35,38 +35,25 @@
       </div>
 
       <main class="app-main">
-        <div v-if="showShellHeader" class="topbar-shell" ref="topbarRef">
-          <div class="topbar" :class="{ 'topbar--centered-search': isCenteredSearchPage }">
-            <div v-if="isVideoWidescreen" class="topbar__lead">
-              <button
-                class="topbar-menu-btn"
-                :aria-label="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
-                :title="isVideoSidebarOpen ? '关闭侧边栏' : '打开侧边栏'"
-                @click="toggleSidebarFlyout"
-              >
-                <Bars3Icon class="h-4 w-4" />
-              </button>
-            </div>
-
-            <GlobalSearchBar
-              v-if="showGlobalSearch"
-              ref="globalSearchBar"
-              v-model="searchQuery"
-              class="topbar__search"
-              :class="{ 'topbar__search--centered': isCenteredSearchPage }"
-              :placeholder="searchPlaceholder"
-              @search="handleGlobalSearch"
-              @clear="handleGlobalSearchClear"
-            />
-          </div>
-        </div>
-
         <div class="page-container">
           <div
             ref="contentContainerRef"
             class="content-container absolute inset-0"
             :class="contentScrollClass"
           >
+            <!-- 顶部装饰栏：极简搜索 + 状态 -->
+            <div v-if="showGlobalSearch" class="minimal-header">
+              <GlobalSearchBar
+                ref="globalSearchBar"
+                v-model="searchQuery"
+                class="minimal-search"
+                :placeholder="searchPlaceholder"
+                @search="handleGlobalSearch"
+                @clear="handleGlobalSearchClear"
+              />
+              <div class="system-time">{{ systemTime }}</div>
+            </div>
+
             <router-view v-slot="{ Component }">
               <keep-alive :include="['LatestVideos', 'Subscribed']">
                 <component :is="Component" :key="routeCacheKey" />
@@ -119,6 +106,17 @@ const isVideoSidebarOpen = ref(true)
 
 const { searchQuery, searchPlaceholder, handleSearch: handleGlobalSearch, handleClear: handleGlobalSearchClear } =
   useGlobalSearch(emitter)
+
+const systemTime = ref('00:00:00')
+const updateTime = () => {
+  const now = new Date()
+  systemTime.value = now.toTimeString().split(' ')[0]
+}
+
+onMounted(() => {
+  const timer = setInterval(updateTime, 1000)
+  onUnmounted(() => clearInterval(timer))
+})
 
 const { getCurrentUser } = useUser()
 const { loadSystemConfig } = useSystemConfig()
@@ -290,7 +288,7 @@ h6 {
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: hsl(var(--background));
+  background: #050505;
 }
 
 .app-main {
@@ -302,66 +300,36 @@ h6 {
   overflow: hidden;
 }
 
-.topbar-shell {
-  position: relative;
-  padding: 0.5rem 0.8rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.72);
-  background: hsl(var(--background) / 0.96);
-}
-
-.topbar {
+/* 极简页头 */
+.minimal-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  width: 100%;
-  max-width: min(var(--container-max-width, 2560px), calc(100vw - 1.6rem));
-  margin: 0 auto;
+  justify-content: space-between;
+  padding: 2.5rem 2rem 1rem 2rem;
+  background: linear-gradient(to bottom, #050505 0%, rgba(5, 5, 5, 0.8) 60%, transparent 100%);
+  pointer-events: none;
 }
 
-.topbar__lead {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-  min-width: 0;
+.minimal-search {
+  width: 400px;
+  pointer-events: auto;
 }
 
-.topbar__search {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.topbar--centered-search {
-  justify-content: center;
-}
-
-.topbar__search--centered {
-  flex: 0 1 40rem;
-  width: min(40rem, 100%);
-  max-width: min(40rem, calc(100vw - 1.6rem));
-  margin-inline: auto;
-}
-
-.topbar-menu-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.7rem;
-  height: 1.7rem;
-  border-radius: 0.45rem;
-  border: 1px solid hsl(var(--border) / 0.78);
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.topbar-menu-btn:hover {
-  background: hsl(var(--accent));
-  border-color: hsl(var(--border));
+.system-time {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  color: rgba(255, 255, 255, 0.2);
+  text-transform: uppercase;
+  pointer-events: none;
 }
 
 .page-container {
   @apply flex-1 relative min-h-0;
+  height: 100%;
 }
 
 .video-widescreen .sidebar {

@@ -25,7 +25,7 @@
       </div>
     </section>
 
-    <div class="video-container flex-grow">
+    <div class="video-container flex-grow relative">
       <div v-if="loadError" class="latest-videos__container latest-videos__alert">
         <Alert variant="destructive" class="flex items-start justify-between gap-3">
           <div class="min-w-0">
@@ -43,6 +43,7 @@
           <component
             :is="Component"
             :filters="childFilters"
+            class="absolute inset-0"
             ref="videoChildRef"
             @goToSubscription="goToChannelDetail"
             @openModal="handleOpenModal"
