@@ -95,7 +95,6 @@
                                 :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
                               >
                                 <span v-if="isChannelUnsubscribing" class="video-channel__spinner" aria-hidden="true"></span>
-                                <Icon v-else icon="lucide:user-minus" class="video-action__icon" />
                                 <span class="video-action__label">{{ isChannelUnsubscribing ? '正在取消' : '取消订阅' }}</span>
                               </button>
                             </div>
@@ -1084,9 +1083,48 @@ onUnmounted(() => {
   letter-spacing: -0.02em;
   line-height: 1.3;
   word-break: break-word;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255, 77, 0, 0.25);
+  padding-bottom: 0.75rem;
   margin-bottom: 0.5rem;
+  position: relative;
+  border-bottom: none; /* 移除实线 */
+}
+
+/* 渐变衰减分割线 */
+.video-meta__title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, 
+    rgba(255, 77, 0, 0.4) 0%, 
+    rgba(255, 77, 0, 0.1) 50%, 
+    transparent 100%
+  );
+}
+
+.video-meta__actions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem; /* 更紧凑的动作栏 */
+  padding-top: 1rem;
+  border-top: none; /* 移除顶部实线 */
+  position: relative;
+}
+
+/* 用微标代替分割线 */
+.video-meta__actions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 2px;
+  background: #ff4d00;
+  opacity: 0.3;
 }
 
 .video-channel {
