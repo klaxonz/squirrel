@@ -1056,6 +1056,64 @@ onUnmounted(() => {
 
 .video-meta {
   margin-top: 0.875rem;
+  padding: 0 12px; /* 与播放器对齐 */
+}
+
+@media (max-width: 640px) {
+  .video-meta {
+    padding: 0 6px; /* 移动端与播放器对齐 */
+  }
+}
+
+.video-meta__title {
+  width: 100%;
+  font-size: clamp(0.9rem, 0.85rem + 0.2vw, 1.05rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  word-break: break-word;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+  border-bottom: none;
+}
+
+/* 缩短且更柔和的渐变线 */
+.video-meta__title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 160px; /* 限制长度，不再贯穿全屏 */
+  height: 1px;
+  background: linear-gradient(to right, 
+    rgba(255, 77, 0, 0.35) 0%, 
+    rgba(255, 77, 0, 0.1) 60%, 
+    transparent 100%
+  );
+}
+
+.video-meta__actions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-top: 1rem;
+  border-top: none;
+  position: relative;
+}
+
+/* 更精致的微标 */
+.video-meta__actions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px; /* 缩小 */
+  height: 2px;
+  background: #ff4d00;
+  opacity: 0.25; /* 降低亮度 */
 }
 
 .video-meta__panel {
