@@ -5,6 +5,8 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+from bs4 import BeautifulSoup
+
 from crawl import (
     VideoExtractorBase,
     AuthError,
@@ -12,9 +14,63 @@ from crawl import (
     NotFoundError,
     ParseError,
 )
-from .downloader import JavdbDownloader
+from .html_client import fetch_javdb_html
 
 logger = logging.getLogger(__name__)
+
+
+def _fetch_video_info(url: str) -> Dict[str, Any]:
+    response = fetch_javdb_html(url)
+    html = response.text
+    soup = BeautifulSoup(html, 'html.parser')
+    video_info: Dict[str, Any] = {}
+
+    vip_keywords = ['永久VIP', 'Join VIP']
+    login_keywords = ['欢迎登入', '歡迎登入', 'requires login to view']
+    if any(keyword in html for keyword in vip_keywords):
+        raise VipError('需要永久VIP权限', context={'url': url, 'reason': 'vip_required'})
+    if any(keyword in html for keyword in login_keywords):
+        raise AuthError('需要登录访问', context={'url': url, 'reason': 'login_required'})
+
+    title_nodes = soup.select('.title strong')
+    if not title_nodes:
+        raise ParseError('无法解析视频标题，页面结构可能已变化', context={'url': url, 'reason': 'title_not_found'})
+    title_parts = [node.get_text(strip=True) for node in title_nodes if node.get_text(strip=True)]
+    video_info['title'] = ' '.join(title_parts) if title_parts else None
+
+    thumb_node = soup.select_one('.video-cover')
+    if thumb_node and thumb_node.has_attr('src'):
+        raw_src = thumb_node['src']
+        if str(raw_src).startswith('http'):
+            video_info['thumbnail'] = raw_src
+        else:
+            from urllib.parse import urljoin
+
+            video_info['thumbnail'] = urljoin(url, raw_src)
+    else:
+        video_info['thumbnail'] = None
+
+    try:
+        duration_node = soup.select_one('.movie-panel-info .panel-block:nth-of-type(3) span')
+        if duration_node:
+            duration_text = duration_node.get_text(strip=True).split(' ')[0]
+            video_info['duration'] = int(duration_text) * 60
+        else:
+            video_info['duration'] = None
+    except Exception:
+        video_info['duration'] = None
+
+    try:
+        date_node = soup.select_one('.movie-panel-info .panel-block:nth-of-type(2) span')
+        if date_node:
+            timestamp = int(datetime.strptime(date_node.get_text(strip=True), '%Y-%m-%d').timestamp())
+            video_info['timestamp'] = timestamp
+        else:
+            video_info['timestamp'] = None
+    except Exception:
+        video_info['timestamp'] = None
+
+    return video_info
 
 
 class JavdbExtractor(VideoExtractorBase):
@@ -33,8 +89,7 @@ class JavdbExtractor(VideoExtractorBase):
     def _get_video_info(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """获取JavDB视频信息"""
         try:
-            javdb_downloader = JavdbDownloader(url)
-            video_info = javdb_downloader.get_video_info(queue_name)
+            video_info = _fetch_video_info(url)
             self._process_javdb_info(video_info)
             return video_info
 

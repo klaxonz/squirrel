@@ -10,7 +10,6 @@ from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
 
 from .core import ExtractionTask, ExtractionResult, VideoMeta, Extractor
-from .registry import register_extractor
 from .exceptions import PluginError, ParseError
 
 logger = logging.getLogger(__name__)

@@ -42,13 +42,7 @@ from .runtime_protocol import (
     PluginRuntime,
     PluginRuntimeFactory,
 )
-from .plugin import (
-    PluginDescriptor,
-    create_plugin,
-    create_plugin_runtime,
-    discover_components,
-    register_plugin_components,
-)
+from .plugin import create_plugin_runtime
 
 # Core interfaces and data models
 from .core import (
@@ -70,30 +64,6 @@ from .core import (
     SubscriptionSyncResult,
 )
 
-# Legacy in-process compatibility API
-from .registries import (
-    PluginRegistry,
-    ComponentFactory,
-    RegistryManager,
-    get_registry_manager,
-    reset_registry_manager,
-)
-from .registry import (
-    get_extractor_registry,
-    get_subscription_registry,
-    get_importer_registry,
-    get_login_checker_registry,
-    reset_all_registries,
-    ExtractorFactory,
-    get_extractor_factory,
-    register_extractor,
-    register_subscription,
-    register_user_subscription_importer,
-    register_login_checker,
-)
-
-# Base classes (optional, for convenience)
-from .base import BaseExtractor
 from .extractor import (
     VideoExtractorBase,
     YoutubeDLExtractorBase,
@@ -177,13 +147,6 @@ from .proxy import (
     register_site_config,
     create_site_config,
 )
-from .downloader import (
-    Downloader,
-    get_downloader_registry,
-    DownloaderFactory,
-    get_downloader_factory,
-    register_downloader,
-)
 from .importer import (
     BaseImporter,
     PaginatedImporter,
@@ -203,11 +166,7 @@ __all__ = [
     'PluginSiteManifest',
     'PluginRuntime',
     'PluginRuntimeFactory',
-    'PluginDescriptor',
-    'create_plugin',
     'create_plugin_runtime',
-    'discover_components',
-    'register_plugin_components',
     # Core interfaces
     'TaskStatus',
     'TaskPriority',
@@ -223,7 +182,6 @@ __all__ = [
     'UserSubscriptionImporter',
     'LoginStatusResult',
     # Base classes
-    'BaseExtractor',
     'VideoExtractorBase',
     'YoutubeDLExtractorBase',
     # Utilities
@@ -266,8 +224,6 @@ __all__ = [
     'ProxyConfigProvider',
     'ProxyDomainConfig',
     'create_site_config',
-    'Downloader',
-    'DownloaderFactory',
     # Exceptions
     'ErrorCategory',
     'PluginError',

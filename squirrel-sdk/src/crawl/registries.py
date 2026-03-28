@@ -167,12 +167,10 @@ class RegistryManager:
         self.mpd: PluginRegistry = PluginRegistry("mpd")
         self.subtitles: PluginRegistry = PluginRegistry("subtitles")
         self.id_extractor: PluginRegistry = PluginRegistry("id_extractor")
-        self.downloader: PluginRegistry = PluginRegistry("downloader")
         self.proxy: PluginRegistry = PluginRegistry("proxy")
         self.proxy_config: PluginRegistry = PluginRegistry("proxy_config")
 
         self._extractor_factory: Optional[ComponentFactory] = None
-        self._downloader_factory: Optional[ComponentFactory] = None
 
     def _all_registries(self) -> List[PluginRegistry]:
         """Get all registries as a list."""
@@ -185,7 +183,6 @@ class RegistryManager:
             self.mpd,
             self.subtitles,
             self.id_extractor,
-            self.downloader,
             self.proxy,
             self.proxy_config,
         ]
@@ -198,8 +195,6 @@ class RegistryManager:
 
             if self._extractor_factory:
                 self._extractor_factory.clear_cache()
-            if self._downloader_factory:
-                self._downloader_factory.clear_cache()
 
             logger.info("All registries have been reset")
 
@@ -209,13 +204,6 @@ class RegistryManager:
             if self._extractor_factory is None:
                 self._extractor_factory = ComponentFactory(self.extractor, "ExtractorFactory")
             return self._extractor_factory
-
-    def get_downloader_factory(self) -> ComponentFactory:
-        """Get the downloader factory."""
-        with self._lock:
-            if self._downloader_factory is None:
-                self._downloader_factory = ComponentFactory(self.downloader, "DownloaderFactory")
-            return self._downloader_factory
 
     def get_all_for_site(self, site_name: str) -> Dict[str, Any]:
         """Get all registered components for a specific site."""
@@ -237,8 +225,6 @@ class RegistryManager:
             result['subtitles'] = self.subtitles.get(site_name)
         if self.id_extractor.get(site_name):
             result['id_extractor'] = self.id_extractor.get(site_name)
-        if self.downloader.get(site_name):
-            result['downloader'] = self.downloader.get(site_name)
         if self.proxy.get(site_name):
             result['proxy'] = self.proxy.get(site_name)
         if self.proxy_config.get(site_name):

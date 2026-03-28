@@ -1,12 +1,11 @@
 import importlib
+import importlib.util
 import json
 from pathlib import Path
 import sys
 import warnings
 
 import pytest
-
-from crawl.registry import LegacyRegistryApiWarning
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -120,7 +119,7 @@ def test_bilibili_runtime_media_capabilities_do_not_emit_legacy_registry_warning
     assert subtitles_response.data['filename'] == 'demo.ai-zh.srt'
     assert mpd_response.ok is True
     assert mpd_response.data['content'] == '<MPD></MPD>'
-    assert not [item for item in caught if issubclass(item.category, LegacyRegistryApiWarning)]
+    assert not [item for item in caught if 'legacy' in str(item.message).lower()]
 
 
 def test_javdb_runtime_proxy_capabilities_do_not_emit_legacy_registry_warnings():
@@ -150,4 +149,44 @@ def test_javdb_runtime_proxy_capabilities_do_not_emit_legacy_registry_warnings()
     assert rewrite_response.ok is True
     assert '/api/video/proxy?domain=javdb.com' in rewrite_response.data['content']
     assert 'referer=https%3A%2F%2Fmissav.ai%2Fen%2Fexample-video' in rewrite_response.data['content']
-    assert not [item for item in caught if issubclass(item.category, LegacyRegistryApiWarning)]
+    assert not [item for item in caught if 'legacy' in str(item.message).lower()]
+
+
+@pytest.mark.parametrize(
+    ('module_name', 'plugin_name', 'video_url'),
+    [
+        ('squirrel_bilibili', 'bilibili', 'https://www.bilibili.com/video/BV1xx411c7mD'),
+        ('squirrel_javdb', 'javdb', 'https://javdb.com/v/test-video'),
+        ('squirrel_pornhub', 'pornhub', 'https://www.pornhub.com/view_video.php?viewkey=ph-test'),
+    ],
+)
+def test_runtime_plugins_no_longer_ship_downloader_modules(module_name, plugin_name, video_url, monkeypatch):
+    assert importlib.util.find_spec(f'{module_name}.downloader') is None
+
+    if plugin_name != 'javdb':
+        return
+
+    runtime_module = importlib.import_module(f'{module_name}.runtime')
+    html_client = importlib.import_module(f'{module_name}.html_client')
+
+    class _Response:
+        text = '''
+        <html>
+          <div class="title"><strong>ABP-123</strong><strong>Demo Title</strong></div>
+          <img class="video-cover" src="/images/demo.jpg" />
+          <div class="movie-panel-info">
+            <div class="panel-block"><span>ignore</span></div>
+            <div class="panel-block"><span>2026-03-28</span></div>
+            <div class="panel-block"><span>120 分鍾</span></div>
+          </div>
+        </html>
+        '''
+
+    monkeypatch.setattr(html_client, 'fetch_javdb_html', lambda *args, **kwargs: _Response())
+
+    runtime = runtime_module.get_plugin_runtime()
+    response = runtime.invoke('extract_video', {'url': video_url})
+
+    assert response.ok is True
+    assert response.data['success'] is True
+    assert response.data['data']['title'] == 'ABP-123 Demo Title'

@@ -90,18 +90,11 @@ def get_plugin_runtime():
 `VideoMeta`, `ExtractionTask`, and `ExtractionResult` remain available for plugin
 logic and payload shaping inside handlers.
 
-## Legacy compatibility
+## Removed legacy APIs
 
-The following APIs are legacy-only and should not be used for new plugins:
-
-- `register_extractor()`
-- `register_subscription()`
-- `register_user_subscription_importer()`
-- `register_login_checker()`
-- `get_extractor_registry()` and other `get_*_registry()` helpers
-
-They are kept only to avoid breaking older in-process plugin modules during migration.
-They are intentionally de-emphasized from the primary export surface.
+The SDK no longer exposes the old in-process plugin registration helpers or the
+legacy downloader registry. Runtime V2 plugins must declare capabilities in the
+manifest and expose `create_plugin_runtime()`.
 
 ## Requirements
 

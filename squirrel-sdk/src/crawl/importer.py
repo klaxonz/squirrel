@@ -23,7 +23,6 @@ class BaseImporter(ABC):
     import logic in `get_user_subscriptions()`.
 
     Example:
-        @register_user_subscription_importer("mysite")
         class MySiteImporter(BaseImporter):
             domain = 'mysite.com'
             site_slug = 'mysite'
@@ -126,7 +125,6 @@ class PaginatedImporter(BaseImporter):
     subclasses only need to implement a few methods:
 
     Example:
-        @register_user_subscription_importer("mysite")
         class MySiteImporter(PaginatedImporter):
             domain = 'mysite.com'
             site_slug = 'mysite'

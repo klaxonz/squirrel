@@ -88,8 +88,8 @@ Depending on the site, implement one or more of these runtime V2 capability hand
 - `resolve_proxy_config`
 - `rewrite_proxy_playlist`
 
-Legacy registry decorators such as `register_extractor()` and `register_subscription()`
-still exist only for compatibility with older plugin modules. Do not use them for new
-plugins unless you are intentionally maintaining a legacy in-process path.
+Legacy in-process registration helpers have been removed from the SDK export
+surface. Runtime V2 packages should instantiate their components directly inside
+`runtime.py` handlers instead of relying on host-side registries.
 
 
