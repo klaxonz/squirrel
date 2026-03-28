@@ -6,34 +6,41 @@
         <!-- 视频播放区域 -->
         <div ref="videoSectionRef" class="video-section">
           <div class="video-container">
-            <VideoPlayer
-              ref="videoPlayerRef"
-              v-if="video"
-              :source="playbackSource"
-              :subtitles="subtitleTracks"
-              :poster="video?.thumbnail"
-              :title="video?.title"
-              :initialTime="startTime"
-              :has-prev="hasPrevVideo"
-              :has-next="hasNextVideo"
-              :external-error="externalError"
-              :widescreen="isWidescreen"
-              :adapter="playerAdapter"
-              :theme="effectiveTheme"
-              :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
-              :enable-global-shortcuts="true"
-              :enable-click-outside-close-menu="true"
-              :enable-window-resize="true"
+            <div class="viewfinder-box">
+              <div class="viewfinder-label">[MONITOR_ACTIVE]</div>
+              <div class="viewfinder-corner viewfinder-corner--top-left"></div>
+              <div class="viewfinder-corner viewfinder-corner--top-right"></div>
+              <div class="viewfinder-corner viewfinder-corner--bottom-left"></div>
+              <div class="viewfinder-corner viewfinder-corner--bottom-right"></div>
+              <VideoPlayer
+                ref="videoPlayerRef"
+                v-if="video"
+                :source="playbackSource"
+                :subtitles="subtitleTracks"
+                :poster="video?.thumbnail"
+                :title="video?.title"
+                :initialTime="startTime"
+                :has-prev="hasPrevVideo"
+                :has-next="hasNextVideo"
+                :external-error="externalError"
+                :widescreen="isWidescreen"
+                :adapter="playerAdapter"
+                :theme="effectiveTheme"
+                :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
+                :enable-global-shortcuts="true"
+                :enable-click-outside-close-menu="true"
+                :enable-window-resize="true"
 
-              @play="onVideoPlay"
-              @pause="onVideoPause"
-              @ended="handleAutoplayNext"
-              @timeupdate="onVideoTimeUpdate"
-              @prev="handlePrevVideo"
-              @next="handleNextVideo"
-              @widescreenChange="toggleWidescreen"
-              @retry="handlePlayerRetry"
-            />
+                @play="onVideoPlay"
+                @pause="onVideoPause"
+                @ended="handleAutoplayNext"
+                @timeupdate="onVideoTimeUpdate"
+                @prev="handlePrevVideo"
+                @next="handleNextVideo"
+                @widescreenChange="toggleWidescreen"
+                @retry="handlePlayerRetry"
+              />
+            </div>
           </div>
         </div>
 
@@ -936,6 +943,65 @@ onUnmounted(() => {
   overflow: hidden;
   background: transparent;
   border-radius: 0;
+}
+
+.viewfinder-box {
+  position: relative;
+  padding: 12px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.viewfinder-label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.68rem;
+  color: #ff4d00;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  z-index: 10;
+}
+
+.viewfinder-corner {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #ff4d00;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.viewfinder-corner--top-left {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+}
+
+.viewfinder-corner--top-right {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+}
+
+.viewfinder-corner--bottom-left {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
+}
+
+.viewfinder-corner--bottom-right {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
 }
 
 .video-container :deep(.sp-player) {
