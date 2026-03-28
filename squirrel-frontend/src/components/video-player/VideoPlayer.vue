@@ -7,7 +7,6 @@
     @pointerleave="onPointerLeave"
     @pointermove="onPointerMove"
     @pointerdown="handlePointerDown"
-    @click="handleVideoClick"
     @focus="markPlayerActive"
     @keydown="handleKeyDown"
     tabindex="0"
@@ -26,6 +25,7 @@
       crossorigin="anonymous"
       playsinline
       webkit-playsinline
+      @click="handleVideoClick"
       @dblclick="toggleFullscreen"
     />
 
