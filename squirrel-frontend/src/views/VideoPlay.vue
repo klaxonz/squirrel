@@ -95,7 +95,8 @@
                                 :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
                               >
                                 <span v-if="isChannelUnsubscribing" class="video-channel__spinner" aria-hidden="true"></span>
-                                <span>{{ isChannelUnsubscribing ? '取消中' : '取消订阅' }}</span>
+                                <Icon v-else icon="lucide:user-minus" class="video-channel__unsub-icon" />
+                                <span class="video-channel__unsub-label">{{ isChannelUnsubscribing ? 'ABORTING' : 'DISCONNECT' }}</span>
                               </button>
                             </div>
 
@@ -1394,15 +1395,15 @@ onUnmounted(() => {
   justify-content: center;
   gap: 0.35rem;
   flex-shrink: 0;
-  min-height: 1.7rem;
-  padding: 0 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0;
+  min-height: 1.6rem;
+  padding: 0 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.4);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.64rem;
-  font-weight: 500;
+  font-size: 0.6rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1412,8 +1413,17 @@ onUnmounted(() => {
   border-color: #ff4d00;
   color: #ff4d00;
   background: rgba(255, 77, 0, 0.05);
-  box-shadow: 0 0 12px rgba(255, 77, 0, 0.2);
-  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(255, 77, 0, 0.2);
+}
+
+.video-channel__unsub-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  opacity: 0.8;
+}
+
+.video-channel__unsub-label {
+  line-height: 1;
 }
 
 .video-channel__unsubscribe:disabled {
