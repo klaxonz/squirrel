@@ -35,9 +35,6 @@
         <div class="sp-central-hud-content">
           <PlayerIcon :name="centralHud.icon" class="sp-central-hud-icon" />
           <div class="sp-central-hud-value">{{ centralHud.value }}</div>
-          <div v-if="centralHud.type === 'volume'" class="sp-central-hud-bar">
-            <div class="sp-central-hud-fill" :style="{ width: `${centralHud.percent}%` }"></div>
-          </div>
         </div>
       </div>
     </transition>
@@ -58,9 +55,7 @@
         <div class="sp-loader-segment"></div>
         <div class="sp-loader-segment"></div>
         <div class="sp-loader-segment"></div>
-        <div class="sp-loader-segment"></div>
       </div>
-      <div class="sp-loading-text">{{ store.loadingStage === 'buffering' ? 'RE-BUFFERING' : 'SYNCING_DATA' }}...</div>
     </div>
 
     <!-- 极简控制层 -->
@@ -411,54 +406,36 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 
 .sp-central-hud-content {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  padding: 16px 24px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 77, 0, 0.2);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  min-width: 90px;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 .sp-central-hud-icon {
-  width: 32px;
-  height: 32px;
+  width: 20px;
+  height: 20px;
   color: var(--sp-primary);
-  filter: drop-shadow(0 0 8px rgba(var(--sp-primary-rgb), 0.5));
 }
 
 .sp-central-hud-value {
   color: #fff;
   font-family: var(--sp-font-mono);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-.sp-central-hud-bar {
-  width: 60px;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 1.5px;
-  overflow: hidden;
-  margin-top: 2px;
-}
-
-.sp-central-hud-fill {
-  height: 100%;
-  background: var(--sp-primary);
-  box-shadow: 0 0 10px var(--sp-primary);
+  letter-spacing: 0.02em;
 }
 
 .sp-hud-fade-enter-active, .sp-hud-fade-leave-active {
-  transition: opacity 0.2s, transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: opacity 0.15s, transform 0.15s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-.sp-hud-fade-enter-from { opacity: 0; transform: translate(-50%, -40%) scale(0.9); }
-.sp-hud-fade-leave-to { opacity: 0; transform: translate(-50%, -60%) scale(1.1); }
+.sp-hud-fade-enter-from { opacity: 0; transform: translate(-50%, -30%) scale(0.95); }
+.sp-hud-fade-leave-to { opacity: 0; transform: translate(-50%, -70%) scale(1.05); }
 
 /* HUD 系统状态 */
 .sp-hud-overlay {
@@ -822,7 +799,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   justify-content: space-between;
   padding: 10px 14px;
   color: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
+  font-size: 12px;
   font-family: var(--sp-font-family);
   border-radius: 6px;
   cursor: pointer;
@@ -871,56 +848,38 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 
 .sp-simple-switch.is-on::after { transform: translateX(14px); }
 
-/* 加载动画 - 终端旋转环 */
+/* 加载动画 - 极致简约 */
 .sp-loading {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 5;
-  gap: 16px;
-  background: rgba(0,0,0,0.2);
+  background: rgba(0,0,0,0.1);
 }
 
 .sp-loader-ring {
-  width: 54px;
-  height: 54px;
+  width: 32px;
+  height: 32px;
   position: relative;
-  animation: loader-rotate 2s linear infinite;
+  animation: loader-rotate 1.5s linear infinite;
 }
 
 .sp-loader-segment {
   position: absolute;
   inset: 0;
-  border: 3px solid transparent;
-  border-top-color: var(--sp-primary);
+  border: 2px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  opacity: 0.3;
 }
 
-.sp-loader-segment:nth-child(1) { transform: rotate(0deg); opacity: 1; }
+.sp-loader-segment:nth-child(1) { border-top-color: var(--sp-primary); }
 .sp-loader-segment:nth-child(2) { transform: rotate(120deg); }
 .sp-loader-segment:nth-child(3) { transform: rotate(240deg); }
 
-.sp-loading-text {
-  color: var(--sp-primary);
-  font-family: var(--sp-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  font-weight: 700;
-  text-shadow: 0 0 10px rgba(255, 77, 0, 0.4);
-  animation: text-pulse 1.5s infinite;
-}
-
 @keyframes loader-rotate {
   to { transform: rotate(360deg); }
-}
-
-@keyframes text-pulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
 }
 
 .sp-ui-fade-enter-active, .sp-ui-fade-leave-active {
