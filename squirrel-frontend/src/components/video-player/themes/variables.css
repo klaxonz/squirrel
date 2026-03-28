@@ -6,150 +6,145 @@
 .sp-player {
   /* ========== 颜色系统 ========== */
   
-  /* 主色调 */
-  --sp-primary: #c78452;
-  --sp-primary-hover: #d89a69;
-  --sp-primary-active: #ab6938;
-  --sp-primary-rgb: 199, 132, 82;
+  /* 主色调 - Cyber Orange */
+  --sp-primary: #ff4d00;
+  --sp-primary-hover: #ff6a26;
+  --sp-primary-active: #cc3d00;
+  --sp-primary-rgb: 255, 77, 0;
   
-  /* 背景色 */
-  --sp-bg: rgba(16, 19, 24, 0.92);
-  --sp-bg-elevated: rgba(24, 29, 36, 0.96);
-  --sp-bg-overlay: rgba(13, 16, 21, 0.68);
-  --sp-surface: rgba(25, 29, 36, 0.82);
-  --sp-overlay-soft: rgba(11, 13, 18, 0.46);
-  --sp-overlay-weak: rgba(11, 13, 18, 0.6);
-  --sp-overlay: rgba(11, 13, 18, 0.76);
-  --sp-overlay-strong: rgba(9, 11, 16, 0.86);
-  --sp-bg-hover: rgba(244, 239, 231, 0.08);
-  --sp-bg-active: rgba(244, 239, 231, 0.14);
+  /* 背景色 - Glassmorphic */
+  --sp-bg: #050505;
+  --sp-bg-elevated: rgba(18, 18, 18, 0.85);
+  --sp-bg-overlay: rgba(0, 0, 0, 0.65);
+  --sp-surface: rgba(30, 30, 30, 0.6);
+  --sp-overlay-soft: rgba(0, 0, 0, 0.4);
+  --sp-overlay-weak: rgba(0, 0, 0, 0.55);
+  --sp-overlay: rgba(0, 0, 0, 0.7);
+  --sp-overlay-strong: rgba(0, 0, 0, 0.85);
+  --sp-bg-hover: rgba(255, 77, 0, 0.12);
+  --sp-bg-active: rgba(255, 77, 0, 0.2);
   
   /* 文字色 */
-  --sp-text: #f4efe7;
-  --sp-text-strong: rgba(244, 239, 231, 0.92);
-  --sp-text-secondary: rgba(244, 239, 231, 0.72);
-  --sp-text-muted: rgba(244, 239, 231, 0.58);
-  --sp-text-tertiary: rgba(244, 239, 231, 0.46);
-  --sp-text-disabled: rgba(244, 239, 231, 0.28);
+  --sp-text: #ffffff;
+  --sp-text-strong: #ffffff;
+  --sp-text-secondary: rgba(255, 255, 255, 0.75);
+  --sp-text-muted: rgba(255, 255, 255, 0.55);
+  --sp-text-tertiary: rgba(255, 255, 255, 0.4);
+  --sp-text-disabled: rgba(255, 255, 255, 0.25);
   
   /* 边框色 */
-  --sp-border: rgba(244, 239, 231, 0.12);
-  --sp-border-hover: rgba(244, 239, 231, 0.22);
+  --sp-border: rgba(255, 77, 0, 0.18);
+  --sp-border-hover: rgba(255, 77, 0, 0.32);
   
   /* 状态色 */
-  --sp-success: #53a97b;
-  --sp-success-hover: #67bd8d;
-  --sp-warning: #d09a43;
-  --sp-warning-hover: #e0aa55;
-  --sp-error: #cb6958;
-  --sp-error-hover: #d97a68;
-  --sp-info: #6f98c9;
-  --sp-info-hover: #88add9;
+  --sp-success: #00ff9d;
+  --sp-success-hover: #33ffb1;
+  --sp-warning: #ffcc00;
+  --sp-warning-hover: #ffd633;
+  --sp-error: #ff3e3e;
+  --sp-error-hover: #ff6565;
+  --sp-info: #00e5ff;
+  --sp-info-hover: #33eaff;
 
   /* ========== 控制栏 ========== */
   
-  --sp-controls-height: 50px;
-  --sp-controls-padding: 0 12px;
-  --sp-controls-gap: 8px;
-  --sp-controls-bg: linear-gradient(
-    to top,
-    rgba(10, 12, 16, 0.9) 0%,
-    rgba(10, 12, 16, 0.54) 42%,
-    rgba(8, 11, 16, 0) 100%
-  );
+  --sp-controls-height: 60px;
+  --sp-controls-padding: 0 20px;
+  --sp-controls-gap: 12px;
+  --sp-controls-bg: transparent;
 
-  --sp-controls-row-padding: 0 12px;
-  --sp-controls-group-bg: transparent;
-  --sp-controls-group-padding: 0;
-  --sp-controls-group-radius: 0;
+  --sp-controls-row-padding: 0 20px;
+  --sp-controls-group-bg: rgba(0, 0, 0, 0.72);
+  --sp-controls-group-padding: 6px 14px;
+  --sp-controls-group-radius: 8px;
   
   /* ========== 进度条 ========== */
   
-  --sp-progress-height: 3px;
-  --sp-progress-height-hover: 5px;
-  --sp-progress-bg: rgba(244, 239, 231, 0.2);
-  --sp-progress-buffered: rgba(244, 239, 231, 0.34);
+  --sp-progress-height: 2px;
+  --sp-progress-height-hover: 4px;
+  --sp-progress-bg: rgba(255, 255, 255, 0.12);
+  --sp-progress-buffered: rgba(255, 255, 255, 0.2);
   --sp-progress-played: var(--sp-primary);
-  --sp-progress-thumb-size: 12px;
-  --sp-progress-thumb-color: var(--sp-primary);
+  --sp-progress-thumb-size: 10px;
+  --sp-progress-thumb-color: #fff;
   
   /* ========== 按钮 ========== */
   
-  --sp-btn-size: 40px;
-  --sp-btn-size-sm: 32px;
-  --sp-btn-size-lg: 48px;
-  --sp-btn-icon-size: 24px;
-  --sp-btn-icon-size-sm: 20px;
-  --sp-btn-icon-size-lg: 28px;
+  --sp-btn-size: 38px;
+  --sp-btn-size-sm: 30px;
+  --sp-btn-size-lg: 52px;
+  --sp-btn-icon-size: 22px;
+  --sp-btn-icon-size-sm: 18px;
+  --sp-btn-icon-size-lg: 32px;
   --sp-btn-hover-bg: var(--sp-bg-hover);
   --sp-btn-active-bg: var(--sp-bg-active);
   
   /* ========== 菜单 ========== */
   
-  --sp-menu-bg: rgba(26, 30, 37, 0.94);
-  --sp-menu-border: rgba(244, 239, 231, 0.1);
-  --sp-menu-shadow: 0 22px 46px rgba(4, 8, 12, 0.54);
-  --sp-menu-width: 280px;
-  --sp-menu-max-height: 400px;
-  --sp-menu-item-height: 40px;
-  --sp-menu-item-padding: 8px 12px;
-  --sp-menu-item-hover-bg: var(--sp-bg-hover);
-  --sp-menu-item-active-bg: var(--sp-bg-active);
-  --sp-btn-toggled-bg: rgba(244, 239, 231, 0.14);
-  --sp-switch-bg: rgba(244, 239, 231, 0.2);
-  --sp-switch-thumb: rgba(248, 244, 238, 0.96);
+  --sp-menu-bg: rgba(10, 10, 10, 0.88);
+  --sp-menu-border: rgba(255, 77, 0, 0.24);
+  --sp-menu-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
+  --sp-menu-width: 260px;
+  --sp-menu-max-height: 420px;
+  --sp-menu-item-height: 44px;
+  --sp-menu-item-padding: 10px 16px;
+  --sp-menu-item-hover-bg: rgba(255, 77, 0, 0.15);
+  --sp-menu-item-active-bg: rgba(255, 77, 0, 0.25);
+  --sp-btn-toggled-bg: rgba(255, 77, 0, 0.2);
+  --sp-switch-bg: rgba(255, 255, 255, 0.15);
+  --sp-switch-thumb: #fff;
   
   /* ========== 提示/Toast ========== */
   
-  --sp-tooltip-bg: rgba(24, 28, 34, 0.96);
-  --sp-tooltip-padding: 6px 10px;
-  --sp-tooltip-font-size: 12px;
+  --sp-tooltip-bg: rgba(255, 77, 0, 0.95);
+  --sp-tooltip-padding: 4px 12px;
+  --sp-tooltip-font-size: 11px;
   
   /* ========== 字幕 ========== */
   
-  --sp-subtitle-font-size: 24px;
-  --sp-subtitle-font-weight: 500;
-  --sp-subtitle-color: #f7f1ea;
-  --sp-subtitle-highlight: #e0aa55;
-  --sp-subtitle-bg-rgb: 10, 13, 18;
-  --sp-subtitle-bg-opacity: 0.75;
+  --sp-subtitle-font-size: 26px;
+  --sp-subtitle-font-weight: 700;
+  --sp-subtitle-color: #ffffff;
+  --sp-subtitle-highlight: #ff4d00;
+  --sp-subtitle-bg-rgb: 0, 0, 0;
+  --sp-subtitle-bg-opacity: 0.8;
   --sp-subtitle-bg: rgba(var(--sp-subtitle-bg-rgb), var(--sp-subtitle-bg-opacity));
-  --sp-subtitle-padding: 4px 8px;
-  --sp-subtitle-bottom: 60px;
-  --sp-subtitle-text-shadow: 2px 2px 4px rgba(6, 9, 12, 0.8);
-  --sp-text-shadow: 0 1px 2px rgba(6, 9, 12, 0.45);
-  --sp-drop-shadow-sm: 0 1px 2px rgba(6, 9, 12, 0.28);
-  --sp-drop-shadow-md: 0 2px 4px rgba(6, 9, 12, 0.32);
-  --sp-spinner-stroke-color: rgba(244, 239, 231, 0.9);
-  --sp-error-bg: rgba(9, 12, 16, 0.82);
-  --sp-error-btn-border: rgba(244, 239, 231, 0.26);
-  --sp-error-btn-bg: rgba(244, 239, 231, 0.12);
-  --sp-error-btn-hover-bg: rgba(244, 239, 231, 0.18);
-  --sp-error-btn-active-bg: rgba(244, 239, 231, 0.26);
+  --sp-subtitle-padding: 6px 12px;
+  --sp-subtitle-bottom: 80px;
+  --sp-subtitle-text-shadow: 0 0 12px rgba(255, 77, 0, 0.4);
+  --sp-text-shadow: 0 0 10px rgba(255, 77, 0, 0.3);
+  --sp-drop-shadow-sm: 0 0 8px rgba(255, 77, 0, 0.4);
+  --sp-drop-shadow-md: 0 0 12px rgba(255, 77, 0, 0.6);
+  --sp-spinner-stroke-color: #ff4d00;
+  --sp-error-bg: rgba(10, 10, 10, 0.9);
+  --sp-error-btn-border: rgba(255, 77, 0, 0.3);
+  --sp-error-btn-bg: rgba(255, 77, 0, 0.1);
+  --sp-error-btn-hover-bg: rgba(255, 77, 0, 0.2);
+  --sp-error-btn-active-bg: rgba(255, 77, 0, 0.3);
   
   /* ========== 动画 ========== */
   
-  --sp-transition-fast: 150ms ease;
-  --sp-transition-normal: 250ms ease;
-  --sp-transition-slow: 400ms ease;
-  --sp-transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --sp-transition-fast: 120ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --sp-transition-normal: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --sp-transition-slow: 350ms cubic-bezier(0.19, 1, 0.22, 1);
+  --sp-transition-spring: 400ms cubic-bezier(0.68, -0.6, 0.32, 1.6);
   
   /* ========== 圆角 ========== */
   
-  --sp-radius-xs: 2px;
-  --sp-radius-sm: 4px;
-  --sp-radius-md: 8px;
-  --sp-radius-lg: 12px;
-  --sp-radius-xl: 16px;
+  --sp-radius-xs: 1px;
+  --sp-radius-sm: 2px;
+  --sp-radius-md: 4px;
+  --sp-radius-lg: 8px;
+  --sp-radius-xl: 12px;
   --sp-radius-full: 9999px;
   
   /* ========== 阴影 ========== */
   
-  --sp-shadow-sm: 0 1px 2px rgba(6, 9, 12, 0.28);
-  --sp-shadow-md: 0 8px 18px rgba(6, 9, 12, 0.36);
-  --sp-shadow-lg: 0 14px 32px rgba(6, 9, 12, 0.46);
-  --sp-shadow-xl: 0 20px 56px rgba(6, 9, 12, 0.58);
-  --sp-glow-primary: none;
+  --sp-shadow-sm: 0 0 10px rgba(255, 77, 0, 0.2);
+  --sp-shadow-md: 0 0 20px rgba(255, 77, 0, 0.35);
+  --sp-shadow-lg: 0 0 40px rgba(255, 77, 0, 0.45);
+  --sp-shadow-xl: 0 0 60px rgba(255, 77, 0, 0.6);
+  --sp-glow-primary: 0 0 15px rgba(255, 77, 0, 0.5);
   
   /* ========== 层级 (z-index) ========== */
   
@@ -163,9 +158,9 @@
   
   /* ========== 字体 ========== */
   
-  --sp-font-family: var(--font-sans), 'Noto Sans SC', sans-serif;
-  --sp-font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
-  --sp-font-size-xs: 12px;
+  --sp-font-family: 'JetBrains Mono', 'Segoe UI Mono', 'Roboto Mono', monospace;
+  --sp-font-mono: 'JetBrains Mono', monospace;
+  --sp-font-size-xs: 11px;
   --sp-font-size-sm: 13px;
   --sp-font-size-md: 14px;
   --sp-font-size-lg: 16px;
