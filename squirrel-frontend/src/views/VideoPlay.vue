@@ -1705,12 +1705,10 @@ onUnmounted(() => {
   }
 }
 
-
-  .related-video-card {
-    grid-template-columns: minmax(6.8rem, 7.6rem) minmax(0, 1fr);
-    gap: 0.7rem;
-    padding: 0.45rem 0;
-  }
+.related-video-card {
+  grid-template-columns: minmax(6.8rem, 7.6rem) minmax(0, 1fr);
+  gap: 0.7rem;
+  padding: 0.45rem 0;
 }
 
 @supports not (aspect-ratio: 1 / 1) {
