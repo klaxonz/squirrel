@@ -413,38 +413,38 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(12px);
-  padding: 24px 32px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 77, 0, 0.3);
-  box-shadow: 0 0 40px rgba(0,0,0,0.5);
-  min-width: 120px;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  padding: 16px 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 77, 0, 0.2);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  min-width: 90px;
 }
 
 .sp-central-hud-icon {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
   color: var(--sp-primary);
-  filter: drop-shadow(0 0 12px rgba(var(--sp-primary-rgb), 0.6));
+  filter: drop-shadow(0 0 8px rgba(var(--sp-primary-rgb), 0.5));
 }
 
 .sp-central-hud-value {
   color: #fff;
   font-family: var(--sp-font-mono);
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.05em;
 }
 
 .sp-central-hud-bar {
-  width: 80px;
-  height: 4px;
+  width: 60px;
+  height: 3px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+  border-radius: 1.5px;
   overflow: hidden;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .sp-central-hud-fill {
