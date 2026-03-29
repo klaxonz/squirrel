@@ -241,6 +241,7 @@ class SubscriptionSyncResult:
     video_urls: List[str]
     latest_video_url: Optional[str] = None
     cursor_payload: Optional[Dict[str, Any]] = None
+    has_more: bool = False
     stop_reason: Optional[str] = None
     source_video_count: Optional[int] = None
     total_available: Optional[int] = None

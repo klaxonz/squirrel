@@ -206,6 +206,29 @@ class SharedSdkHelperTests(unittest.TestCase):
         self.assertEqual(result.cursor_payload, {'latest_video_url': 'https://example.com/watch?v=new'})
         self.assertEqual(result.total_available, 1)
 
+    def test_build_subscription_sync_result_preserves_explicit_batch_cursor(self):
+        with _stub_sdk_crawl_package():
+            module = importlib.import_module('crawl.subscription_helpers')
+            core_module = importlib.import_module('crawl.core')
+
+        context = core_module.SubscriptionSyncContext(
+            mode='full',
+            cursor_payload={'page': 1},
+        )
+
+        result = module.build_subscription_sync_result(
+            video_urls=['https://example.com/watch?v=1'],
+            latest_video_url='https://example.com/watch?v=1',
+            context=context,
+            stop_reason='batch_exhausted',
+            cursor_payload={'page': 2},
+            has_more=True,
+        )
+
+        self.assertTrue(result.has_more)
+        self.assertEqual(result.cursor_payload, {'page': 2})
+        self.assertEqual(result.stop_reason, 'batch_exhausted')
+
     def test_runtime_helper_builds_common_runtime_handlers(self):
         with _stub_sdk_crawl_package():
             module = importlib.import_module('crawl.runtime_helpers')

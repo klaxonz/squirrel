@@ -1,7 +1,7 @@
 """Helpers for subscription synchronization flows."""
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from .core import SubscriptionSyncContext, SubscriptionSyncResult
 
@@ -50,12 +50,19 @@ def build_subscription_sync_result(
     latest_video_url: Optional[str],
     context: SubscriptionSyncContext,
     stop_reason: str,
+    cursor_payload: Optional[dict[str, Any]] = None,
+    has_more: bool = False,
     source_video_count: Optional[int] = None,
 ) -> SubscriptionSyncResult:
     return SubscriptionSyncResult(
         video_urls=video_urls,
         latest_video_url=latest_video_url,
-        cursor_payload={'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload,
+        cursor_payload=(
+            cursor_payload
+            if cursor_payload is not None
+            else ({'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload)
+        ),
+        has_more=has_more,
         stop_reason=stop_reason,
         source_video_count=source_video_count,
         total_available=len(video_urls),
