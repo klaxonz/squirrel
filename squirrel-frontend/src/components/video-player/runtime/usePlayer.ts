@@ -59,8 +59,11 @@ export interface PlayerReturn {
   isMuted: ComputedRef<boolean>
   isFullscreen: ComputedRef<boolean>
   qualities: Ref<QualityLevel[]>
+  codecFamilies: Ref<string[]>
+  selectedCodecFamily: Ref<string>
+  currentCodecFamily: Ref<string | null>
   currentQualityLabel: Ref<string | null>
-  currentQualityId: Ref<number | null>
+  currentQualityId: Ref<string | number | null>
 
   isHlsStream: ComputedRef<boolean>
   isDashStream: ComputedRef<boolean>
@@ -72,6 +75,7 @@ export interface PlayerReturn {
   toggleMute: () => void
   setPlaybackRate: (rate: number) => void
   setQuality: (quality: string | number) => void
+  setCodecFamily: (codecFamily: string) => void
   setAutoplayNext: (autoplayNext: boolean) => void
   setLoop: (loop: boolean) => void
   toggleFullscreen: () => Promise<void>
@@ -139,8 +143,11 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const isReady = ref(false)
 
   const qualities = ref<QualityLevel[]>([])
+  const codecFamilies = ref<string[]>([])
+  const selectedCodecFamily = ref<string>('auto')
+  const currentCodecFamily = ref<string | null>(null)
   const currentQualityLabel = ref<string | null>(null)
-  const currentQualityId = ref<number | null>(null)
+  const currentQualityId = ref<string | number | null>(null)
 
   const subtitleTracks = ref<SubtitleTrack[]>([])
   const currentSubtitle = ref<SubtitleTrack | null>(null)
@@ -189,6 +196,26 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     onTimeUpdate,
     onQualityChange,
   })
+
+  const syncCodecFamilies = (): void => {
+    const dashPlugin = engine.getPlugin<any>('dash')
+    if (!dashPlugin) {
+      codecFamilies.value = []
+      selectedCodecFamily.value = 'auto'
+      currentCodecFamily.value = null
+      return
+    }
+
+    codecFamilies.value = typeof dashPlugin.getAvailableCodecFamilies === 'function'
+      ? dashPlugin.getAvailableCodecFamilies()
+      : []
+    selectedCodecFamily.value = typeof dashPlugin.getSelectedCodecFamily === 'function'
+      ? dashPlugin.getSelectedCodecFamily()
+      : 'auto'
+    currentCodecFamily.value = typeof dashPlugin.getCurrentCodecFamily === 'function'
+      ? dashPlugin.getCurrentCodecFamily()
+      : null
+  }
 
   const updateStoreFromConfig = (cfg: UserConfig) => {
     if (cfg.autoplay !== undefined) store.setAutoplay(!!cfg.autoplay)
@@ -257,16 +284,25 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   engine.on('sourcetypechange', (type) => {
     sourceType.value = type
+    if (type !== 'dash') {
+      codecFamilies.value = []
+      selectedCodecFamily.value = 'auto'
+      currentCodecFamily.value = null
+      return
+    }
+    syncCodecFamilies()
   })
 
   engine.on('qualitiesloaded', (qs) => {
     qualities.value = qs
+    syncCodecFamilies()
   })
 
   engine.on('qualitychange', ({ quality, id }) => {
     currentQualityLabel.value = quality
-    store.setCurrentQuality(quality, typeof id === 'number' ? id : null)
-    currentQualityId.value = typeof id === 'number' ? id : null
+    store.setCurrentQuality(quality, id ?? null)
+    currentQualityId.value = id ?? null
+    syncCodecFamilies()
   })
 
   engine.on('error', () => {
@@ -321,6 +357,14 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     engine.setQuality(quality)
   }
 
+  const setCodecFamily = (codecFamily: string): void => {
+    const dashPlugin = engine.getPlugin<any>('dash')
+    if (dashPlugin && typeof dashPlugin.setCodecFamily === 'function') {
+      dashPlugin.setCodecFamily(codecFamily)
+      syncCodecFamilies()
+    }
+  }
+
   const toggleFullscreen = async (): Promise<void> => {
     await engine.toggleFullscreen()
   }
@@ -357,6 +401,9 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     store.setLoading(true, 'fetching')
     currentQualityLabel.value = null
     currentQualityId.value = null
+    codecFamilies.value = []
+    selectedCodecFamily.value = 'auto'
+    currentCodecFamily.value = null
     store.setCurrentQuality(null, null)
     engine.loadSource(source)
   }
@@ -409,6 +456,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     await engine.init()
 
     updateStoreFromConfig(engine.getConfig())
+    syncCodecFamilies()
     isReady.value = true
   })
 
@@ -433,6 +481,9 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     isMuted,
     isFullscreen,
     qualities,
+    codecFamilies,
+    selectedCodecFamily,
+    currentCodecFamily,
     currentQualityLabel,
     currentQualityId,
     isHlsStream,
@@ -444,6 +495,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     toggleMute,
     setPlaybackRate,
     setQuality,
+    setCodecFamily,
     setAutoplayNext,
     setLoop,
     toggleFullscreen,

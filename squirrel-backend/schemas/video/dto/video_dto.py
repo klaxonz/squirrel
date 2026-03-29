@@ -44,6 +44,7 @@ class QualityOptionDto(BaseModel):
     label: str  # display label
     height: Optional[int] = None  # for video tracks
     bandwidth: Optional[int] = None  # bps
+    codec: Optional[str] = None  # normalized codec family such as av1/vp9/avc
     id: Optional[str] = None  # representation id / itag etc.
     index: Optional[int] = None  # quality index in dash.js bitrateList or hls.js levels (0-based)
 

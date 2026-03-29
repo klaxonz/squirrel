@@ -4,21 +4,32 @@ YouTube视频提取器
 import logging
 from datetime import datetime
 from typing import Optional, Dict, Any
-from yt_dlp import YoutubeDL
 
 from crawl import (
     YoutubeDLExtractorBase,
     apply_ytdlp_rate_limit,
-    filter_cookies_to_query_string,
-    resolve_cookie_file_path,
     AuthError,
     NetworkError,
     NotFoundError,
     ParseError,
 )
+try:
+    from . import ytdlp_support as youtube_ytdlp_support
+except ImportError:  # pragma: no cover - fallback for direct module loading
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    _HELPER_PATH = Path(__file__).with_name('ytdlp_support.py')
+    _HELPER_SPEC = importlib.util.spec_from_file_location('_youtube_ytdlp_support', _HELPER_PATH)
+    youtube_ytdlp_support = importlib.util.module_from_spec(_HELPER_SPEC)
+    assert _HELPER_SPEC is not None and _HELPER_SPEC.loader is not None
+    sys.modules['_youtube_ytdlp_support'] = youtube_ytdlp_support
+    _HELPER_SPEC.loader.exec_module(youtube_ytdlp_support)
 
 logger = logging.getLogger(__name__)
-YOUTUBE_PLAYER_CLIENT = 'android'
+YOUTUBE_PLAYER_CLIENT = youtube_ytdlp_support.YOUTUBE_PLAYER_CLIENT
+YOUTUBE_COOKIE_PLAYER_CLIENTS = youtube_ytdlp_support.YOUTUBE_COOKIE_PLAYER_CLIENTS
 
 
 class YoutubeExtractor(YoutubeDLExtractorBase):
@@ -40,14 +51,12 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
         """使用yt-dlp获取YouTube视频信息"""
         try:
             ydl_opts = self._build_ytdlp_opts(url, queue_name)
+            video_info = youtube_ytdlp_support.extract_info_with_player_responses(url, ydl_opts)
 
-            with YoutubeDL(ydl_opts) as ydl:
-                video_info = ydl.extract_info(url, download=False)
+            if video_info:
+                self._process_youtube_info(video_info)
 
-                if video_info:
-                    self._process_youtube_info(video_info)
-
-                return video_info
+            return video_info
 
         except Exception as e:
             error_msg = str(e).lower()
@@ -83,13 +92,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             },
         }
 
-        cookie_file = resolve_cookie_file_path(url)
-        if cookie_file:
-            ydl_opts['cookiefile'] = cookie_file
-        else:
-            cookies = filter_cookies_to_query_string(url)
-            if cookies:
-                ydl_opts['cookie'] = cookies
+        youtube_ytdlp_support.apply_youtube_player_strategy(url, ydl_opts)
 
         return apply_ytdlp_rate_limit(self.site_name, ydl_opts)
 

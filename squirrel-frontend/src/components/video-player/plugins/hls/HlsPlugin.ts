@@ -75,7 +75,8 @@ export class HlsPlugin implements PlayerPlugin {
                   (source.type === 'auto' && HlsPlugin.isHlsSource(source.src))
     
     if (!isHls) {
-      this.destroy()
+      this.destroyHls()
+      this.currentSource = null
       return
     }
 

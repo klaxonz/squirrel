@@ -19,6 +19,7 @@ type VideoUrlInfo = {
     label: string
     height?: number
     bandwidth?: number
+    codec?: string
     id?: string | number
     index?: number
   }>
@@ -49,11 +50,18 @@ export default function useVideoOperations() {
       const mpdUrl = data?.mpd_url
       const videoUrl = data?.video_url
       const audioUrl = data?.audio_url
+      const qualities = (data?.qualities || []).map((item) => ({
+        id: item.id ?? item.value,
+        label: item.label,
+        height: item.height,
+        bitrate: item.bandwidth,
+        codec: item.codec
+      }))
 
       const key = `${videoId}:${Date.now()}`
       const progressKey = String(videoId)
 
-      if (mpdUrl) return { src: mpdUrl, type: 'auto', key, progressKey }
+      if (mpdUrl) return { src: mpdUrl, type: 'auto', key, progressKey, qualities }
 
       if (!videoUrl && !audioUrl) {
         throw Object.assign(new Error('无法获取播放链接'), { code: 'NO_STREAM_URL' })
@@ -63,7 +71,8 @@ export default function useVideoOperations() {
         src: videoUrl || audioUrl || '',
         type: 'auto',
         key,
-        progressKey
+        progressKey,
+        qualities
       }
     } catch (err) {
       throw err

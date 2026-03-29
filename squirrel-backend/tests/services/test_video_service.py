@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import PluginInvokeResponse
+from crawl.runtime_errors import PluginRuntimeError, RuntimeErrorCode
+from core.exceptions.video_exceptions import VideoUrlExtractionError
 from models import Base
 from models.creator import Creator
 from models.links import SubscriptionVideo, UserSubscription
@@ -113,7 +115,7 @@ def test_get_video_url_reads_playback_from_plugin_gateway(monkeypatch):
                     'video_url': 'https://cdn.example.com/video.m4s',
                     'audio_url': 'https://cdn.example.com/audio.m4s',
                     'mpd_url': '/api/video/mpd?video_id=1',
-                    'qualities': [{'value': '1080p', 'label': '1080p', 'height': 1080}],
+                    'qualities': [{'value': '1080p', 'label': '1080p', 'height': 1080, 'codec': 'avc'}],
                 },
             )
 
@@ -141,6 +143,42 @@ def test_get_video_url_reads_playback_from_plugin_gateway(monkeypatch):
     assert result.audio_url == 'https://cdn.example.com/audio.m4s'
     assert result.mpd_url == '/api/video/mpd?video_id=1'
     assert result.qualities[0].value == '1080p'
+    assert result.qualities[0].codec == 'avc'
+
+
+def test_get_video_url_raises_extraction_error_when_plugin_parse_fails(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_video(engine, url='https://www.youtube.com/watch?v=demo')
+    monkeypatch.setattr(
+        video_service.SiteCatalog,
+        'find_site_by_domain',
+        lambda domain: ('youtube', {'metadata': {}}),
+    )
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            return PluginInvokeResponse(
+                request_id='video-1',
+                ok=False,
+                error=PluginRuntimeError(
+                    code=RuntimeErrorCode.PARSE_ERROR,
+                    message='无法获取 YouTube 视频播放信息: https://www.youtube.com/watch?v=demo',
+                    retryable=False,
+                    details={'url': 'https://www.youtube.com/watch?v=demo'},
+                ),
+            )
+
+    monkeypatch.setattr(
+        video_service,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+
+    try:
+        video_service.get_video_url(video_id=1)
+        assert False, 'expected VideoUrlExtractionError'
+    except VideoUrlExtractionError as exc:
+        assert '无法获取 YouTube 视频播放信息' in str(exc)
 
 
 def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):

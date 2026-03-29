@@ -7,6 +7,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import PluginInvokeResponse
+from core.exceptions.proxy_exceptions import ProxyNetworkException
 from core.streaming.proxy import VideoProxy
 
 
@@ -234,3 +235,59 @@ def test_video_proxy_uses_cloudflare_bypass_for_configured_domains(monkeypatch):
         },
     }]
     assert _read_stream(response).decode('utf-8').startswith('#EXTM3U')
+
+
+def test_video_proxy_keeps_shared_client_open_on_proxy_exception(monkeypatch):
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            if capability == 'resolve_proxy_config':
+                return PluginInvokeResponse(
+                    request_id='proxy-config-1',
+                    ok=True,
+                    data={
+                        'site_headers': {'User-Agent': 'Runtime UA'},
+                        'domain_configs': [{
+                            'domain': 'youtube.com',
+                            'connect_timeout': 10.0,
+                            'read_timeout': 20.0,
+                            'max_retries': 3,
+                            'chunk_size': 8192,
+                            'max_connections': 5,
+                            'keepalive_expiry': 30.0,
+                            'enable_http2': True,
+                        }],
+                    },
+                )
+            raise AssertionError(f'unexpected capability: {capability}')
+
+    monkeypatch.setattr(
+        'core.streaming.proxy.get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+
+    proxy = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+
+    class _FakeConnectionManager:
+        def __init__(self):
+            self.close_calls = []
+            self.client = object()
+
+        async def get_client(self, domain, domain_config):
+            return self.client
+
+        async def close_client(self, domain):
+            self.close_calls.append(domain)
+
+    fake_manager = _FakeConnectionManager()
+    proxy._connection_manager = fake_manager
+
+    async def _run():
+        try:
+            async with proxy._get_http_client():
+                raise ProxyNetworkException('youtube.com', 'HTTP 403')
+        except ProxyNetworkException:
+            pass
+
+    asyncio.run(_run())
+
+    assert fake_manager.close_calls == []

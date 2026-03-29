@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     COOKIECLOUD_URL: str = ''
     COOKIECLOUD_UUID: str = ''
     COOKIECLOUD_PASSWORD: str = ''
+    SQUIRREL_YOUTUBE_POT_PROVIDER_MODE: str = 'auto'
+    SQUIRREL_YOUTUBE_POT_PROVIDER_BASE_URL: str = ''
+    SQUIRREL_YOUTUBE_POT_PROVIDER_SERVER_HOME: str = ''
 
     POOL_SIZE: int = 30
     POOL_MAX_SIZE: int = 60

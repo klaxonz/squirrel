@@ -38,6 +38,8 @@ const zhCN: LocaleConfig = {
     settings: '设置',
     quality: '画质',
     qualityAuto: '自动',
+    codec: '编码',
+    codecAuto: '自动选择',
     playbackSpeed: '播放速度',
     speedNormal: '正常',
     

@@ -22,7 +22,7 @@ export type PlayerRuntimeStore = {
   pictureInPicture: boolean
   hasStartedPlayback: boolean
   currentQuality: string | null
-  currentQualityId: number | null
+  currentQualityId: string | number | null
   currentSubtitle: SubtitleTrack | null
   autoplay: boolean
   autoplayNext: boolean
@@ -44,8 +44,8 @@ export type PlayerRuntimeStore = {
   setDuration: (value: number) => void
   setBufferedProgress: (value: number) => void
   setPlaybackRate: (value: number) => void
-  setCurrentQuality: (value: string | null, id?: number | null) => void
-  setCurrentQualityId: (value: number | null) => void
+  setCurrentQuality: (value: string | null, id?: string | number | null) => void
+  setCurrentQualityId: (value: string | number | null) => void
   setSubtitlesEnabled: (value: boolean) => void
   setCurrentSubtitle: (value: SubtitleTrack | null) => void
   setAutoplay: (value: boolean) => void
@@ -77,7 +77,7 @@ export function createPlayerRuntimeStore(): PlayerRuntimeStore {
     pictureInPicture: false,
     hasStartedPlayback: false,
     currentQuality: null as string | null,
-    currentQualityId: null as number | null,
+    currentQualityId: null as string | number | null,
     currentSubtitle: null as SubtitleTrack | null,
     autoplay: false,
     autoplayNext: true,
@@ -135,13 +135,13 @@ export function createPlayerRuntimeStore(): PlayerRuntimeStore {
     store.playbackRate = value
   }
 
-  store.setCurrentQuality = (value: string | null, id?: number | null): void => {
+  store.setCurrentQuality = (value: string | null, id?: string | number | null): void => {
     store.currentQuality = value
-    if (typeof id === 'number') store.currentQualityId = id
+    if (typeof id === 'string' || typeof id === 'number') store.currentQualityId = id
     else if (id === null) store.currentQualityId = null
   }
 
-  store.setCurrentQualityId = (value: number | null): void => {
+  store.setCurrentQualityId = (value: string | number | null): void => {
     store.currentQualityId = value
   }
 

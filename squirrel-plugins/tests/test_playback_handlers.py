@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import types
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
+from xml.etree import ElementTree as ET
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -125,10 +128,22 @@ def _load_javdb_handler_module():
 
 
 @contextmanager
-def _stub_youtube_mpd_dependencies(*, extract_exception: Exception | None = None):
+def _stub_youtube_mpd_dependencies(
+    *,
+    extract_exception: Exception | None = None,
+    extract_callback=None,
+    install_youtube_extractor: bool = False,
+):
     originals = {
         name: sys.modules.get(name)
-        for name in ('crawl', 'requests', 'yt_dlp')
+        for name in (
+            'crawl',
+            'requests',
+            'yt_dlp',
+            'yt_dlp.extractor',
+            'yt_dlp.extractor.youtube',
+            'yt_dlp.extractor.youtube._video',
+        )
     }
 
     crawl_module = types.ModuleType('crawl')
@@ -168,6 +183,7 @@ def _stub_youtube_mpd_dependencies(*, extract_exception: Exception | None = None
     requests_module.Session = Session
 
     yt_dlp_module = types.ModuleType('yt_dlp')
+    yt_dlp_module.__path__ = []  # type: ignore[attr-defined]
 
     class FakeYoutubeDL:
         last_opts = None
@@ -184,14 +200,49 @@ def _stub_youtube_mpd_dependencies(*, extract_exception: Exception | None = None
         def extract_info(self, _url: str, download: bool = False):
             if extract_exception is not None:
                 raise extract_exception
+            if extract_callback is not None:
+                return extract_callback(_url, download)
             return {'formats': []}
 
     yt_dlp_module.YoutubeDL = FakeYoutubeDL
+
+    yt_dlp_extractor_module = types.ModuleType('yt_dlp.extractor')
+    yt_dlp_extractor_module.__path__ = []  # type: ignore[attr-defined]
+    yt_dlp_youtube_module = types.ModuleType('yt_dlp.extractor.youtube')
+    yt_dlp_youtube_module.__path__ = []  # type: ignore[attr-defined]
+    yt_dlp_youtube_video_module = types.ModuleType('yt_dlp.extractor.youtube._video')
+
+    if install_youtube_extractor:
+        class YoutubeIE:
+            def _extract_player_responses(self, *_args, **_kwargs):
+                return ([
+                    {
+                        'streamingData': {
+                            'adaptiveFormats': [{
+                                'itag': 313,
+                                'url': 'https://cdn.example.com/313.webm',
+                                'initRange': {'start': '0', 'end': '1'},
+                                'indexRange': {'start': '2', 'end': '3'},
+                            }],
+                            '__yt_dlp_fetch_gvs_po_token': lambda: 'token',
+                        },
+                        'responseContext': {'visitorData': 'visitor-data'},
+                    }
+                ], 'https://youtube.com/s/player/demo.js')
+
+            def _real_extract(self, url):
+                self._extract_player_responses(None, None, None, None, None, None)
+                return {'id': 'demo', 'webpage_url': url, 'formats': []}
+
+        yt_dlp_youtube_video_module.YoutubeIE = YoutubeIE
 
     try:
         sys.modules['crawl'] = crawl_module
         sys.modules['requests'] = requests_module
         sys.modules['yt_dlp'] = yt_dlp_module
+        sys.modules['yt_dlp.extractor'] = yt_dlp_extractor_module
+        sys.modules['yt_dlp.extractor.youtube'] = yt_dlp_youtube_module
+        sys.modules['yt_dlp.extractor.youtube._video'] = yt_dlp_youtube_video_module
         yield FakeYoutubeDL, AuthError, NetworkError, ParseError
     finally:
         for name, original in originals.items():
@@ -248,7 +299,7 @@ class PlaybackHandlerTests(unittest.TestCase):
             with self.assertRaises(ParseError):
                 module.JavdbHandler().get_video_url(types.SimpleNamespace(title='ABP-123 Demo Title'))
 
-    def test_youtube_mpd_opts_use_android_player_client_for_playback(self):
+    def test_youtube_mpd_opts_use_default_player_client_without_cookies(self):
         with _stub_youtube_mpd_dependencies() as (FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
             module = _load_youtube_mpd_module()
 
@@ -259,6 +310,73 @@ class PlaybackHandlerTests(unittest.TestCase):
             self.assertEqual(opts['retries'], 5)
             self.assertEqual(FakeYoutubeDL.last_opts, None)
 
+    def test_youtube_mpd_opts_use_cookie_compatible_clients_when_pot_provider_disabled(self):
+        with _stub_youtube_mpd_dependencies() as (FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+            module.youtube_ytdlp_support.resolve_cookie_file_path = lambda _url: 'C:/tmp/youtube.txt'
+
+            with patch.dict('os.environ', {'SQUIRREL_YOUTUBE_POT_PROVIDER_MODE': 'off'}, clear=False):
+                opts = module._build_ytdlp_opts('https://youtube.com/watch?v=demo')
+
+            self.assertEqual(opts['extractor_args']['youtube']['player_client'], module.YOUTUBE_COOKIE_PLAYER_CLIENTS)
+            self.assertEqual(opts['cookiefile'], 'C:/tmp/youtube.txt')
+            self.assertNotIn('youtubepot-bgutilscript', opts['extractor_args'])
+            self.assertEqual(FakeYoutubeDL.last_opts, None)
+
+    def test_youtube_mpd_opts_use_mweb_when_script_provider_is_available(self):
+        with _stub_youtube_mpd_dependencies() as (FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+            module.youtube_ytdlp_support.resolve_cookie_file_path = lambda _url: 'C:/tmp/youtube.txt'
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                server_home = Path(tmpdir)
+                build_dir = server_home / 'build'
+                build_dir.mkdir(parents=True, exist_ok=True)
+                (build_dir / 'generate_once.js').write_text('// test helper\n', encoding='utf-8')
+
+                with patch.dict('os.environ', {
+                    'SQUIRREL_YOUTUBE_POT_PROVIDER_MODE': 'script',
+                    'SQUIRREL_YOUTUBE_POT_PROVIDER_SERVER_HOME': str(server_home),
+                }, clear=False):
+                    module.youtube_ytdlp_support._has_bgutil_script_plugin = lambda: True
+                    module.youtube_ytdlp_support._has_bgutil_http_plugin = lambda: False
+                    module.youtube_ytdlp_support.shutil.which = lambda name: 'C:/node.exe' if name == 'node' else None
+
+                    opts = module._build_ytdlp_opts('https://youtube.com/watch?v=demo')
+
+            self.assertEqual(opts['extractor_args']['youtube']['player_client'], ['mweb'])
+            self.assertEqual(
+                opts['extractor_args']['youtubepot-bgutilscript']['server_home'],
+                [str(server_home)]
+            )
+            self.assertEqual(opts['cookiefile'], 'C:/tmp/youtube.txt')
+            self.assertEqual(FakeYoutubeDL.last_opts, None)
+
+    def test_youtube_extract_info_with_player_responses_preserves_streaming_data(self):
+        def _extract_callback(url: str, _download: bool = False):
+            YoutubeIE = sys.modules['yt_dlp.extractor.youtube._video'].YoutubeIE
+            return YoutubeIE()._real_extract(url)
+
+        with _stub_youtube_mpd_dependencies(
+            extract_callback=_extract_callback,
+            install_youtube_extractor=True,
+        ) as (_FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+
+            info = module.youtube_ytdlp_support.extract_info_with_player_responses(
+                'https://youtube.com/watch?v=demo',
+                {'quiet': True},
+            )
+
+            self.assertEqual(info[module.youtube_ytdlp_support.YOUTUBE_PLAYER_URL_INFO_KEY], 'https://youtube.com/s/player/demo.js')
+            player_responses = info[module.youtube_ytdlp_support.YOUTUBE_PLAYER_RESPONSES_INFO_KEY]
+            self.assertEqual(player_responses[0]['streamingData']['adaptiveFormats'][0]['itag'], 313)
+            self.assertEqual(
+                player_responses[0]['streamingData']['adaptiveFormats'][0]['initRange'],
+                {'start': '0', 'end': '1'},
+            )
+            self.assertNotIn('__yt_dlp_fetch_gvs_po_token', player_responses[0]['streamingData'])
+
     def test_youtube_extract_video_info_raises_auth_error_for_sign_in_failures(self):
         with _stub_youtube_mpd_dependencies(
             extract_exception=RuntimeError('Sign in to confirm you’re not a bot'),
@@ -267,6 +385,140 @@ class PlaybackHandlerTests(unittest.TestCase):
 
             with self.assertRaises(AuthError):
                 module._extract_video_info('https://youtube.com/watch?v=demo')
+
+    def test_youtube_format_to_rep_skips_probe_when_disabled(self):
+        with _stub_youtube_mpd_dependencies() as (_FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+            probe_calls = {'count': 0}
+
+            def _probe(*_args, **_kwargs):
+                probe_calls['count'] += 1
+                return ('0-1', '2-3')
+
+            module._probe_webm_ranges = _probe
+
+            rep = module._format_to_rep({
+                'format_id': '244',
+                'url': 'https://cdn.example.com/video.webm',
+                'ext': 'webm',
+                'vcodec': 'vp9',
+                'acodec': 'none',
+                'height': 720,
+                'mime_type': 'video/webm',
+            }, allow_probe=False)
+
+            self.assertIsNone(rep)
+            self.assertEqual(probe_calls['count'], 0)
+
+    def test_youtube_select_dash_probe_formats_limits_candidates(self):
+        with _stub_youtube_mpd_dependencies() as (_FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+
+            selected = module._select_dash_probe_formats([
+                {'format_id': '299', 'url': 'https://cdn.example.com/299.mp4', 'ext': 'mp4', 'height': 1080, 'tbr': 1700, 'vcodec': 'avc1.64002a', 'acodec': 'none'},
+                {'format_id': '303', 'url': 'https://cdn.example.com/303.webm', 'ext': 'webm', 'height': 1080, 'tbr': 1110, 'vcodec': 'vp9', 'acodec': 'none'},
+                {'format_id': '136', 'url': 'https://cdn.example.com/136.mp4', 'ext': 'mp4', 'height': 720, 'tbr': 680, 'vcodec': 'avc1.64001f', 'acodec': 'none'},
+                {'format_id': '247', 'url': 'https://cdn.example.com/247.webm', 'ext': 'webm', 'height': 720, 'tbr': 490, 'vcodec': 'vp9', 'acodec': 'none'},
+                {'format_id': '135', 'url': 'https://cdn.example.com/135.mp4', 'ext': 'mp4', 'height': 480, 'tbr': 360, 'vcodec': 'avc1.4d401f', 'acodec': 'none'},
+                {'format_id': '134', 'url': 'https://cdn.example.com/134.mp4', 'ext': 'mp4', 'height': 360, 'tbr': 210, 'vcodec': 'avc1.4d401e', 'acodec': 'none'},
+                {'format_id': '133', 'url': 'https://cdn.example.com/133.mp4', 'ext': 'mp4', 'height': 240, 'tbr': 100, 'vcodec': 'avc1.4d4015', 'acodec': 'none'},
+                {'format_id': '251-drc', 'url': 'https://cdn.example.com/251.webm', 'ext': 'webm', 'abr': 141, 'format_note': 'English original default, medium, DRC', 'language': 'en-US', 'vcodec': 'none', 'acodec': 'opus'},
+                {'format_id': '140-7', 'url': 'https://cdn.example.com/140.m4a', 'ext': 'm4a', 'abr': 129, 'format_note': 'English original default, medium', 'language': 'en-US', 'vcodec': 'none', 'acodec': 'mp4a.40.2'},
+            ])
+
+            self.assertEqual([fmt['format_id'] for fmt in selected], ['299', '136', '135', '134', '140-7'])
+
+    def test_youtube_select_dash_probe_formats_keeps_high_res_codec_fallback(self):
+        with _stub_youtube_mpd_dependencies() as (_FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+
+            selected = module._select_dash_probe_formats([
+                {'format_id': '401', 'url': 'https://cdn.example.com/401.mp4', 'ext': 'mp4', 'height': 2160, 'tbr': 11962, 'vcodec': 'av01.0.12M.08', 'acodec': 'none'},
+                {'format_id': '313', 'url': 'https://cdn.example.com/313.webm', 'ext': 'webm', 'height': 2160, 'tbr': 10828, 'vcodec': 'vp9', 'acodec': 'none'},
+                {'format_id': '400', 'url': 'https://cdn.example.com/400.mp4', 'ext': 'mp4', 'height': 1440, 'tbr': 6487, 'vcodec': 'av01.0.12M.08', 'acodec': 'none'},
+                {'format_id': '271', 'url': 'https://cdn.example.com/271.webm', 'ext': 'webm', 'height': 1440, 'tbr': 5542, 'vcodec': 'vp9', 'acodec': 'none'},
+                {'format_id': '137', 'url': 'https://cdn.example.com/137.mp4', 'ext': 'mp4', 'height': 1080, 'tbr': 4270, 'vcodec': 'avc1.640028', 'acodec': 'none'},
+                {'format_id': '399', 'url': 'https://cdn.example.com/399.mp4', 'ext': 'mp4', 'height': 1080, 'tbr': 2545, 'vcodec': 'av01.0.08M.08', 'acodec': 'none'},
+                {'format_id': '136', 'url': 'https://cdn.example.com/136.mp4', 'ext': 'mp4', 'height': 720, 'tbr': 2063, 'vcodec': 'avc1.64001f', 'acodec': 'none'},
+                {'format_id': '140-7', 'url': 'https://cdn.example.com/140.m4a', 'ext': 'm4a', 'abr': 129, 'format_note': 'English original default, medium', 'language': 'en-US', 'vcodec': 'none', 'acodec': 'mp4a.40.2'},
+            ])
+
+            self.assertEqual(
+                [fmt['format_id'] for fmt in selected],
+                ['401', '313', '400', '271', '137', '136', '140-7']
+            )
+
+    def test_youtube_build_dash_representations_prefers_streaming_data(self):
+        with _stub_youtube_mpd_dependencies() as (_FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+            module._probe_mp4_ranges = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError('mp4 probe should not run'))
+            module._probe_webm_ranges = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError('webm probe should not run'))
+
+            info = {
+                'formats': [
+                    {'format_id': '401', 'url': 'https://cdn.example.com/401.mp4?pot=video-pot', 'ext': 'mp4', 'height': 2160, 'tbr': 11962, 'vcodec': 'av01.0.12M.08', 'acodec': 'none'},
+                    {'format_id': '313', 'url': 'https://cdn.example.com/313.webm?pot=video-pot', 'ext': 'webm', 'height': 2160, 'tbr': 10828, 'vcodec': 'vp9', 'acodec': 'none'},
+                    {'format_id': '137', 'url': 'https://cdn.example.com/137.mp4?pot=video-pot', 'ext': 'mp4', 'height': 1080, 'tbr': 4270, 'vcodec': 'avc1.640028', 'acodec': 'none'},
+                    {'format_id': '136', 'url': 'https://cdn.example.com/136.mp4?pot=video-pot', 'ext': 'mp4', 'height': 720, 'tbr': 2063, 'vcodec': 'avc1.64001f', 'acodec': 'none'},
+                    {'format_id': '140', 'url': 'https://cdn.example.com/140.m4a?pot=audio-pot', 'ext': 'm4a', 'abr': 129, 'vcodec': 'none', 'acodec': 'mp4a.40.2', 'language': 'en-US', 'format_note': 'English original default'},
+                ],
+                module.youtube_ytdlp_support.YOUTUBE_PLAYER_RESPONSES_INFO_KEY: [
+                    {
+                        'streamingData': {
+                            'adaptiveFormats': [
+                                {'itag': 313, 'url': 'https://cdn.example.com/313.webm', 'mimeType': 'video/webm; codecs="vp9"', 'qualityLabel': '2160p', 'width': 2160, 'height': 3840, 'bitrate': 10828000, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                                {'itag': 401, 'url': 'https://cdn.example.com/401.mp4', 'mimeType': 'video/mp4; codecs="av01.0.12M.08"', 'qualityLabel': '2160p', 'width': 2160, 'height': 3840, 'bitrate': 11962000, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                                {'itag': 271, 'url': 'https://cdn.example.com/271.webm', 'mimeType': 'video/webm; codecs="vp9"', 'qualityLabel': '1440p', 'width': 1440, 'height': 2560, 'bitrate': 5542000, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                                {'itag': 400, 'url': 'https://cdn.example.com/400.mp4', 'mimeType': 'video/mp4; codecs="av01.0.12M.08"', 'qualityLabel': '1440p', 'width': 1440, 'height': 2560, 'bitrate': 6487000, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                                {'itag': 137, 'url': 'https://cdn.example.com/137.mp4', 'mimeType': 'video/mp4; codecs="avc1.640028"', 'qualityLabel': '1080p', 'width': 1080, 'height': 1920, 'bitrate': 4270000, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                                {'itag': 248, 'url': 'https://cdn.example.com/248.webm', 'mimeType': 'video/webm; codecs="vp9"', 'qualityLabel': '1080p', 'width': 1080, 'height': 1920, 'bitrate': 3012000, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                                {'itag': 399, 'url': 'https://cdn.example.com/399.mp4', 'mimeType': 'video/mp4; codecs="av01.0.08M.08"', 'qualityLabel': '1080p', 'width': 1080, 'height': 1920, 'bitrate': 2545000, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                                {'itag': 136, 'url': 'https://cdn.example.com/136.mp4', 'mimeType': 'video/mp4; codecs="avc1.64001f"', 'qualityLabel': '720p', 'width': 720, 'height': 1280, 'bitrate': 2063000, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                                {'itag': 140, 'url': 'https://cdn.example.com/140.m4a', 'mimeType': 'audio/mp4; codecs="mp4a.40.2"', 'bitrate': 129000, 'audioSampleRate': '44100', 'audioChannels': 2, 'audioTrack': {'id': 'en-US.1', 'displayName': 'English original', 'audioIsDefault': True}, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                            ],
+                        },
+                    },
+                ],
+            }
+
+            reps = module._build_dash_representations(info)
+
+            self.assertEqual(
+                {rep['id'] for rep in reps if rep['kind'] == 'video'},
+                {'401', '313', '400', '271', '137', '248', '399', '136'},
+            )
+            self.assertEqual({rep['id'] for rep in reps if rep['kind'] == 'audio'}, {'140'})
+            self.assertTrue(all(rep.get('initRange') and rep.get('indexRange') for rep in reps))
+            self.assertEqual(next(rep['url'] for rep in reps if rep['id'] == '401'), 'https://cdn.example.com/401.mp4?pot=video-pot')
+            self.assertEqual(next(rep['url'] for rep in reps if rep['id'] == '140'), 'https://cdn.example.com/140.m4a?pot=audio-pot')
+
+    def test_youtube_mpd_builder_includes_upstream_referer_in_proxy_urls(self):
+        with _stub_youtube_mpd_dependencies() as (_FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+
+            info = {
+                'webpage_url': 'https://m.youtube.com/watch?v=demo',
+                module.youtube_ytdlp_support.YOUTUBE_PLAYER_RESPONSES_INFO_KEY: [
+                    {
+                        'streamingData': {
+                            'adaptiveFormats': [
+                                {'itag': 401, 'url': 'https://cdn.example.com/401.mp4', 'mimeType': 'video/mp4; codecs="av01.0.12M.08"', 'qualityLabel': '2160p', 'width': 2160, 'height': 3840, 'bitrate': 11962000, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                                {'itag': 140, 'url': 'https://cdn.example.com/140.m4a', 'mimeType': 'audio/mp4; codecs="mp4a.40.2"', 'bitrate': 129000, 'audioSampleRate': '44100', 'audioChannels': 2, 'audioTrack': {'id': 'en-US.1', 'displayName': 'English original', 'audioIsDefault': True}, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                            ],
+                        },
+                    },
+                ],
+            }
+
+            module._extract_video_info = lambda _url: info
+            xml_text = module.YouTubeMpdBuilder().build_mpd(types.SimpleNamespace(url='https://youtube.com/watch?v=demo'))
+            root = ET.fromstring(xml_text)
+            base_urls = [node.text for node in root.findall('.//{urn:mpeg:dash:schema:mpd:2011}BaseURL')]
+
+            self.assertTrue(base_urls)
+            parsed = urlparse(base_urls[0])
+            query = parse_qs(parsed.query)
+            self.assertEqual(query['referer'], ['https://m.youtube.com/watch?v=demo'])
 
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from crawl import ParseError, VideoUrlHandler
-from .mpd import _extract_video_info, _proxy, _format_to_rep
+from .mpd import _build_dash_representations, _extract_video_info, _proxy
 
 logger = logging.getLogger(__name__)
 
@@ -51,28 +51,23 @@ class YouTubeHandler:
         if mpd_payload:
             return mpd_payload
 
-        hls_payload = self._build_hls_payload(info)
+        hls_payload = self._build_hls_payload(video, info)
         if hls_payload:
             return hls_payload
 
-        progressive_payload = self._build_progressive_payload(info)
+        progressive_payload = self._build_progressive_payload(video, info)
         if progressive_payload:
             return progressive_payload
 
         raise ParseError(f'未能获取到可用的 DASH、HLS 或 MP4 播放链接: {video.url}')
 
-    def _build_mpd_payload(self, video: Any, info: dict) -> dict | None:
-        kept_by_itag: dict[str, dict] = {}
-        for fmt in info.get('formats') or []:
-            rep = _format_to_rep(fmt)
-            if not rep:
-                continue
-            itag = rep['id']
-            if itag not in kept_by_itag:
-                kept_by_itag[itag] = rep
+    @staticmethod
+    def _upstream_referer(video: Any, info: dict) -> str | None:
+        return info.get('webpage_url') or getattr(video, 'url', None)
 
+    def _build_mpd_payload(self, video: Any, info: dict) -> dict | None:
         video_reps = [
-            r for r in kept_by_itag.values()
+            r for r in _build_dash_representations(info)
             if isinstance(r.get('mime'), str) and r['kind'] == 'video' and r['mime'].startswith('video/')
         ]
         if not video_reps:
@@ -98,6 +93,7 @@ class YouTubeHandler:
                 "label": label,
                 "height": int(height) if height else None,
                 "bandwidth": int(rep['bandwidth']) if rep.get('bandwidth') else None,
+                "codec": rep.get('codecFamily'),
                 "id": str(rep['id']),
                 "index": idx,
             })
@@ -107,7 +103,7 @@ class YouTubeHandler:
             "qualities": qualities or None,
         }
 
-    def _build_progressive_payload(self, info: dict) -> dict | None:
+    def _build_progressive_payload(self, video: Any, info: dict) -> dict | None:
         formats = info.get('formats') or []
         progressive_formats = [
             fmt for fmt in formats
@@ -122,16 +118,17 @@ class YouTubeHandler:
             reverse=True,
         )
         best = progressive_sorted[0]
+        referer = self._upstream_referer(video, info)
 
         logger.warning("YouTube falling back to progressive MP4 stream")
         return {
-            "video_url": _proxy(best['url']),
+            "video_url": _proxy(best['url'], referer=referer),
             "audio_url": None,
             "mpd_url": None,
             "qualities": None,
         }
 
-    def _build_hls_payload(self, info) -> dict | None:
+    def _build_hls_payload(self, video: Any, info) -> dict | None:
         formats = info.get('formats') or []
         hls_formats = [
             fmt for fmt in formats
@@ -150,7 +147,8 @@ class YouTubeHandler:
             return (original, language_pref, height, bitrate)
 
         best = max(hls_formats, key=score)
-        proxied_url = _proxy(best['url'])
+        referer = self._upstream_referer(video, info)
+        proxied_url = _proxy(best['url'], referer=referer)
         lang = best.get('language')
 
         qualities = []

@@ -39,6 +39,8 @@ export interface LocaleMessages {
   settings: string
   quality: string
   qualityAuto: string
+  codec: string
+  codecAuto: string
   playbackSpeed: string
   speedNormal: string
   

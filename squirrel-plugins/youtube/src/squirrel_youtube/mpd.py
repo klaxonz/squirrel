@@ -9,21 +9,33 @@ from urllib.parse import urlencode
 from xml.etree import ElementTree as ET
 
 import requests
-from yt_dlp import YoutubeDL
 
 from crawl import (
     AuthError,
     NetworkError,
     ParseError,
     apply_ytdlp_rate_limit,
-    filter_cookies_to_query_string,
-    resolve_cookie_file_path,
     get_http_headers,
 )
+try:
+    from . import ytdlp_support as youtube_ytdlp_support
+except ImportError:  # pragma: no cover - fallback for direct module loading in tests
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    _HELPER_PATH = Path(__file__).with_name('ytdlp_support.py')
+    _HELPER_SPEC = importlib.util.spec_from_file_location('_youtube_ytdlp_support', _HELPER_PATH)
+    youtube_ytdlp_support = importlib.util.module_from_spec(_HELPER_SPEC)
+    assert _HELPER_SPEC is not None and _HELPER_SPEC.loader is not None
+    sys.modules['_youtube_ytdlp_support'] = youtube_ytdlp_support
+    _HELPER_SPEC.loader.exec_module(youtube_ytdlp_support)
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115 Safari/537.36'
 SITE_SLUG = 'youtube'
-YOUTUBE_PLAYER_CLIENT = 'android'
+YOUTUBE_PLAYER_CLIENT = youtube_ytdlp_support.YOUTUBE_PLAYER_CLIENT
+YOUTUBE_COOKIE_PLAYER_CLIENTS = youtube_ytdlp_support.YOUTUBE_COOKIE_PLAYER_CLIENTS
+YOUTUBE_PLAYER_RESPONSES_INFO_KEY = youtube_ytdlp_support.YOUTUBE_PLAYER_RESPONSES_INFO_KEY
 SESSION = requests.Session()
 logger = logging.getLogger(__name__)
 VIDEO_INFO_CACHE_TTL_SECONDS = 30
@@ -32,6 +44,8 @@ _VIDEO_INFO_CACHE: dict[str, tuple[float, dict]] = {}
 _VIDEO_INFO_CACHE_LOCK = threading.Lock()
 ISOBMFF_ON_DEMAND_PROFILE = 'urn:mpeg:dash:profile:isoff-on-demand:2011'
 WEBM_ON_DEMAND_PROFILE = 'urn:mpeg:dash:profile:webm-on-demand:2012'
+MAX_DASH_VIDEO_CANDIDATES = 4
+HIGH_RES_CODEC_FALLBACK_MIN_HEIGHT = 1440
 _WEBM_EBML_ID = 0x1A45DFA3
 _WEBM_SEGMENT_ID = 0x18538067
 _WEBM_SEEKHEAD_ID = 0x114D9B74
@@ -335,11 +349,14 @@ def _probe_webm_ranges(url: str, max_tries: int = 3, chunk_sizes=(1024 * 1024, 4
     return None, None
 
 
-def _proxy(u: str) -> str:
-    return '/api/video/proxy?' + urlencode({
+def _proxy(u: str, referer: str | None = None) -> str:
+    query = {
         'domain': 'youtube.com',
         'url': u,
-    })
+    }
+    if referer:
+        query['referer'] = referer
+    return '/api/video/proxy?' + urlencode(query)
 
 def _safe_int(x, default=0):
     try:
@@ -409,6 +426,90 @@ def _group_representations(reps: list[dict], kind: str) -> list[list[dict]]:
     return sorted(grouped.values(), key=_group_sort_key, reverse=True)
 
 
+def _video_candidate_sort_key(fmt: dict) -> tuple[int, int, int, float]:
+    ext = (fmt.get('ext') or '').lower()
+    codec_family = _codec_family(fmt.get('vcodec'))
+    ext_score = 1 if ext == 'mp4' else 0
+    codec_score = 0
+    if codec_family == 'avc':
+        codec_score = 3
+    elif codec_family == 'vp9':
+        codec_score = 2
+    elif codec_family == 'av1':
+        codec_score = 1
+    bitrate = float(fmt.get('tbr') or 0)
+    return ext_score, codec_score, _safe_int(fmt.get('fps')), bitrate
+
+
+def _audio_candidate_sort_key(fmt: dict) -> tuple[int, int, int, float]:
+    ext = (fmt.get('ext') or '').lower()
+    format_note = (fmt.get('format_note') or '').lower()
+    language = (fmt.get('language') or '').lower()
+    is_default = 1 if ('original' in format_note or 'default' in format_note or language in ('en', 'en-us')) else 0
+    non_drc = 0 if 'drc' in format_note else 1
+    ext_score = 1 if ext in ('m4a', 'mp4') else 0
+    bitrate = float(fmt.get('abr') or fmt.get('tbr') or 0)
+    return is_default, non_drc, ext_score, bitrate
+
+
+def _select_dash_probe_formats(formats: list[dict]) -> list[dict]:
+    video_candidates_by_height: dict[int, list[dict]] = {}
+    best_audio: dict | None = None
+
+    for fmt in formats:
+        if not isinstance(fmt, dict) or not fmt.get('url'):
+            continue
+
+        vcodec = (fmt.get('vcodec') or '').lower()
+        acodec = (fmt.get('acodec') or '').lower()
+        has_video = vcodec not in ('', 'none')
+        has_audio = acodec not in ('', 'none')
+
+        if has_video and not has_audio:
+            height = _safe_int(fmt.get('height'))
+            if height <= 0:
+                continue
+            video_candidates_by_height.setdefault(height, []).append(fmt)
+            continue
+
+        if has_audio and not has_video:
+            if best_audio is None or _audio_candidate_sort_key(fmt) > _audio_candidate_sort_key(best_audio):
+                best_audio = fmt
+
+    selected: list[dict] = []
+    for height in sorted(video_candidates_by_height.keys(), reverse=True)[:MAX_DASH_VIDEO_CANDIDATES]:
+        candidates = sorted(
+            video_candidates_by_height[height],
+            key=_video_candidate_sort_key,
+            reverse=True,
+        )
+        if not candidates:
+            continue
+
+        primary = candidates[0]
+        selected.append(primary)
+
+        # Keep one alternate codec for high-resolution ladders so browsers that
+        # cannot decode the primary codec can still reach 1440p/2160p.
+        if height < HIGH_RES_CODEC_FALLBACK_MIN_HEIGHT:
+            continue
+
+        primary_codec_family = _codec_family(primary.get('vcodec'))
+        secondary = next(
+            (
+                candidate for candidate in candidates[1:]
+                if _codec_family(candidate.get('vcodec')) != primary_codec_family
+            ),
+            None,
+        )
+        if secondary is not None:
+            selected.append(secondary)
+
+    if best_audio is not None:
+        selected.append(best_audio)
+    return selected
+
+
 def _build_js_runtimes() -> dict:
     runtimes = {}
 
@@ -445,13 +546,7 @@ def _build_ytdlp_opts(url: str) -> dict:
     if js_runtimes:
         opts['js_runtimes'] = js_runtimes
 
-    cookie_file = resolve_cookie_file_path(url)
-    if cookie_file:
-        opts['cookiefile'] = cookie_file
-    else:
-        cookies = filter_cookies_to_query_string(url)
-        if cookies:
-            opts['cookie'] = cookies
+    youtube_ytdlp_support.apply_youtube_player_strategy(url, opts)
     return apply_ytdlp_rate_limit(SITE_SLUG, opts)
 
 
@@ -497,18 +592,17 @@ def _extract_video_info(url: str) -> dict | None:
 
     try:
         opts = _build_ytdlp_opts(url)
-        with YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            if not info:
-                return None
-            if info.get('_type') == 'playlist':
-                entries = info.get('entries') or []
-                if entries:
-                    info = entries[0]
+        info = youtube_ytdlp_support.extract_info_with_player_responses(url, opts)
+        if not info:
+            return None
+        if info.get('_type') == 'playlist':
+            entries = info.get('entries') or []
+            if entries:
+                info = entries[0]
 
-            if isinstance(info, dict):
-                _set_cached_video_info(url, info)
-            return info
+        if isinstance(info, dict):
+            _set_cached_video_info(url, info)
+        return info
     except Exception as exc:
         error_msg = str(exc).lower()
         context = {'url': url, 'original_error': str(exc)}
@@ -534,7 +628,233 @@ def _range_to_str(range_dict) -> str | None:
     return None
 
 
-def _format_to_rep(fmt: dict) -> dict | None:
+def _iter_streaming_data(info: dict) -> list[dict]:
+    player_responses = info.get(YOUTUBE_PLAYER_RESPONSES_INFO_KEY) or []
+    if not isinstance(player_responses, list):
+        return []
+    return [
+        streaming_data
+        for player_response in player_responses
+        if isinstance(player_response, dict)
+        for streaming_data in [player_response.get('streamingData')]
+        if isinstance(streaming_data, dict)
+    ]
+
+
+def _parse_mime_type_codecs(mime_type: str | None) -> tuple[str | None, list[str]]:
+    if not isinstance(mime_type, str) or not mime_type:
+        return None, []
+    base_type, _, params = mime_type.partition(';')
+    codecs_text = ''
+    if 'codecs=' in params:
+        codecs_text = params.split('codecs=', 1)[1].strip()
+        if codecs_text.startswith('"') and '"' in codecs_text[1:]:
+            codecs_text = codecs_text[1:codecs_text.find('"', 1)]
+        else:
+            codecs_text = codecs_text.strip('"')
+    codecs = [item.strip() for item in codecs_text.split(',') if item.strip()]
+    return base_type.strip().lower() or None, codecs
+
+
+def _normalize_streaming_format(fmt_stream: dict) -> dict | None:
+    if not isinstance(fmt_stream, dict):
+        return None
+    stream_url = fmt_stream.get('url')
+    itag = fmt_stream.get('itag')
+    if not stream_url or itag is None:
+        return None
+
+    mime_type, codec_values = _parse_mime_type_codecs(fmt_stream.get('mimeType'))
+    if not mime_type:
+        return None
+
+    media_type, _, subtype = mime_type.partition('/')
+    media_type = media_type.lower()
+    subtype = subtype.lower()
+    if media_type not in ('audio', 'video'):
+        return None
+
+    video_codec = 'none'
+    audio_codec = 'none'
+    if media_type == 'video':
+        if codec_values:
+            video_codec = codec_values[0]
+            if len(codec_values) > 1:
+                audio_codec = codec_values[1]
+    else:
+        if codec_values:
+            audio_codec = codec_values[0]
+
+    bitrate = fmt_stream.get('averageBitrate') or fmt_stream.get('bitrate')
+    bitrate_kbps = None
+    if bitrate is not None:
+        try:
+            bitrate_kbps = float(bitrate) / 1000.0
+        except Exception:
+            bitrate_kbps = None
+
+    audio_track = fmt_stream.get('audioTrack') or {}
+    language = None
+    if isinstance(audio_track, dict):
+        language = str(audio_track.get('id') or '').split('.', 1)[0] or None
+
+    note_parts = []
+    display_name = audio_track.get('displayName') if isinstance(audio_track, dict) else None
+    if display_name:
+        note_parts.append(str(display_name))
+    quality_label = fmt_stream.get('qualityLabel')
+    if quality_label:
+        note_parts.append(str(quality_label))
+
+    ext = 'webm' if subtype == 'webm' else 'mp4'
+    if media_type == 'audio' and subtype == 'mp4':
+        ext = 'm4a'
+
+    normalized = {
+        'format_id': str(itag),
+        'url': stream_url,
+        'ext': ext,
+        'video_ext': ext if video_codec != 'none' else 'none',
+        'audio_ext': ext if audio_codec != 'none' else 'none',
+        'vcodec': video_codec,
+        'acodec': audio_codec,
+        'codecs': ', '.join(codec_values) if codec_values else None,
+        'mime_type': mime_type,
+        'initRange': fmt_stream.get('initRange'),
+        'indexRange': fmt_stream.get('indexRange'),
+        'width': fmt_stream.get('width'),
+        'height': fmt_stream.get('height'),
+        'fps': fmt_stream.get('fps'),
+        'audio_channels': fmt_stream.get('audioChannels'),
+        'asr': fmt_stream.get('audioSampleRate'),
+        'language': language,
+        'format_note': ', '.join(note_parts) if note_parts else None,
+        'tbr': bitrate_kbps if video_codec != 'none' else None,
+        'abr': bitrate_kbps if video_codec == 'none' and audio_codec != 'none' else None,
+    }
+    return normalized
+
+
+def _build_streaming_data_dash_formats(info: dict) -> list[dict]:
+    video_formats_by_id: dict[str, dict] = {}
+    audio_formats_by_id: dict[str, dict] = {}
+    processed_formats_by_id = {
+        str(fmt.get('format_id')): fmt
+        for fmt in (info.get('formats') or [])
+        if isinstance(fmt, dict) and fmt.get('format_id')
+    }
+
+    for streaming_data in _iter_streaming_data(info):
+        raw_formats = []
+        for key in ('adaptiveFormats', 'formats'):
+            values = streaming_data.get(key) or []
+            if isinstance(values, list):
+                raw_formats.extend(values)
+
+        for fmt_stream in raw_formats:
+            normalized = _normalize_streaming_format(fmt_stream)
+            if not normalized:
+                continue
+
+            processed = processed_formats_by_id.get(normalized['format_id'])
+            if isinstance(processed, dict):
+                merged = dict(processed)
+                merged['initRange'] = normalized.get('initRange')
+                merged['indexRange'] = normalized.get('indexRange')
+                for key in (
+                    'mime_type',
+                    'codecs',
+                    'audio_channels',
+                    'asr',
+                    'language',
+                    'format_note',
+                    'width',
+                    'height',
+                    'fps',
+                ):
+                    if normalized.get(key) is not None and merged.get(key) in (None, ''):
+                        merged[key] = normalized.get(key)
+                normalized = merged
+
+            format_id = normalized['format_id']
+            vcodec = (normalized.get('vcodec') or '').lower()
+            acodec = (normalized.get('acodec') or '').lower()
+            is_video_only = vcodec not in ('', 'none') and acodec in ('', 'none')
+            is_audio_only = acodec not in ('', 'none') and vcodec in ('', 'none')
+
+            if is_video_only:
+                current = video_formats_by_id.get(format_id)
+                if current is None or float(normalized.get('tbr') or 0) > float(current.get('tbr') or 0):
+                    video_formats_by_id[format_id] = normalized
+                continue
+
+            if is_audio_only:
+                current = audio_formats_by_id.get(format_id)
+                if current is None or _audio_candidate_sort_key(normalized) > _audio_candidate_sort_key(current):
+                    audio_formats_by_id[format_id] = normalized
+
+    selected_video_formats = sorted(
+        video_formats_by_id.values(),
+        key=lambda fmt: (_safe_int(fmt.get('height')), float(fmt.get('tbr') or 0)),
+        reverse=True,
+    )
+    best_audio = max(audio_formats_by_id.values(), key=_audio_candidate_sort_key, default=None)
+
+    result = list(selected_video_formats)
+    if best_audio is not None:
+        result.append(best_audio)
+    return result
+
+
+def _build_dash_representations(info: dict) -> list[dict]:
+    kept_by_itag: dict[str, dict] = {}
+
+    def add_formats(formats: list[dict], *, allow_probe: bool) -> None:
+        for fmt in formats:
+            rep = _format_to_rep(fmt, allow_probe=allow_probe)
+            if not rep:
+                continue
+            itag = rep['id']
+            if itag not in kept_by_itag:
+                kept_by_itag[itag] = rep
+
+    streaming_data_formats = _build_streaming_data_dash_formats(info)
+    if streaming_data_formats:
+        add_formats(streaming_data_formats, allow_probe=False)
+
+    has_video = any(rep.get('kind') == 'video' for rep in kept_by_itag.values())
+    has_audio = any(rep.get('kind') == 'audio' for rep in kept_by_itag.values())
+
+    if not has_video or not has_audio:
+        fallback_reps: dict[str, dict] = {}
+        for fmt in _select_dash_probe_formats(info.get('formats') or []):
+            rep = _format_to_rep(fmt, allow_probe=True)
+            if not rep:
+                continue
+            fallback_reps.setdefault(rep['id'], rep)
+
+        if not has_video:
+            for rep in fallback_reps.values():
+                if rep.get('kind') == 'video':
+                    kept_by_itag.setdefault(rep['id'], rep)
+
+        if not has_audio:
+            for rep in fallback_reps.values():
+                if rep.get('kind') == 'audio':
+                    kept_by_itag.setdefault(rep['id'], rep)
+
+    return sorted(
+        kept_by_itag.values(),
+        key=lambda rep: (
+            1 if rep.get('kind') == 'video' else 0,
+            rep.get('height') or 0,
+            rep.get('bandwidth') or 0,
+        ),
+        reverse=True,
+    )
+
+
+def _format_to_rep(fmt: dict, allow_probe: bool = True) -> dict | None:
     if not isinstance(fmt, dict):
         return None
     stream_url = fmt.get('url')
@@ -572,7 +892,7 @@ def _format_to_rep(fmt: dict) -> dict | None:
 
     init_range = _range_to_str(fmt.get('init_range') or fmt.get('initRange'))
     index_range = _range_to_str(fmt.get('index_range') or fmt.get('indexRange'))
-    if (is_video or is_audio) and (init_range is None or index_range is None):
+    if allow_probe and (is_video or is_audio) and (init_range is None or index_range is None):
         if ext == 'webm':
             probed_init, probed_index = _probe_webm_ranges(stream_url)
         else:
@@ -648,17 +968,11 @@ class YouTubeMpdBuilder:
 
     def build_mpd(self, video) -> str:
         info = _extract_video_info(video.url)
-        if not info or not info.get('formats'):
+        if not info or (not info.get('formats') and not _iter_streaming_data(info)):
             raise RuntimeError("Failed to fetch YouTube stream metadata via yt-dlp")
+        upstream_referer = info.get('webpage_url') or getattr(video, 'url', None)
 
-        kept_by_itag: dict[str, dict] = {}
-        for fmt in info.get('formats', []):
-            rep = _format_to_rep(fmt)
-            if not rep:
-                continue
-            itag = rep['id']
-            if itag not in kept_by_itag:
-                kept_by_itag[itag] = rep
+        kept_by_itag = {rep['id']: rep for rep in _build_dash_representations(info)}
 
         video_reps = []
         audio_reps = []
@@ -719,7 +1033,7 @@ class YouTubeMpdBuilder:
 
             if r.get('url'):
                 base = ET.SubElement(rep_el, 'BaseURL')
-                base.text = _proxy(r['url'])
+                base.text = _proxy(r['url'], referer=upstream_referer)
 
             if r.get('initRange') or r.get('indexRange'):
                 seg = ET.SubElement(rep_el, 'SegmentBase')

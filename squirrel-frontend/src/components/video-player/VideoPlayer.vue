@@ -118,7 +118,7 @@
             </div>
 
             <div class="sp-controls-right">
-              <div v-if="qualities.length > 0" class="sp-quality-tag" @click.stop="toggleQualityMenu">
+              <div v-if="displayedQualities.length > 0" class="sp-quality-tag" @click.stop="toggleQualityMenu">
                 {{ currentQualityLabel || 'AUTO' }}
               </div>
               <button v-if="subtitleTracks.length > 0" class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
@@ -156,7 +156,11 @@
               <span>{{ t('playbackSpeed') }}</span>
               <span class="sp-menu-val">{{ store.playbackRate }}x</span>
             </div>
-            <div v-if="qualities.length > 0" class="sp-menu-item" @click="settingsView = 'quality'">
+            <div v-if="codecFamilies.length > 1" class="sp-menu-item" @click="settingsView = 'codec'">
+              <span>{{ t('codec') }}</span>
+              <span class="sp-menu-val">{{ codecMenuLabel }}</span>
+            </div>
+            <div v-if="displayedQualities.length > 0" class="sp-menu-item" @click="settingsView = 'quality'">
               <span>{{ t('quality') }}</span>
               <span class="sp-menu-val">{{ currentQualityLabel || 'AUTO' }}</span>
             </div>
@@ -174,12 +178,35 @@
             </div>
           </div>
         </template>
+        <template v-else-if="settingsView === 'codec'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('codec') }}
+          </div>
+          <div class="sp-menu-list">
+            <div
+              class="sp-menu-item"
+              :class="{ 'is-active': selectedCodecFamily === 'auto' }"
+              @click="handleCodecFamilySelect('auto')"
+            >
+              {{ codecAutoLabel }}
+            </div>
+            <div
+              v-for="codecFamily in codecFamilies"
+              :key="codecFamily"
+              class="sp-menu-item"
+              :class="{ 'is-active': selectedCodecFamily === codecFamily }"
+              @click="handleCodecFamilySelect(codecFamily)"
+            >
+              {{ formatCodecFamilyLabel(codecFamily) }}
+            </div>
+          </div>
+        </template>
         <template v-else-if="settingsView === 'quality'">
           <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
             <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('quality') }}
           </div>
           <div class="sp-menu-list">
-            <div v-for="q in qualities" :key="q.id" 
+            <div v-for="q in displayedQualities" :key="q.id" 
                  class="sp-menu-item" :class="{ 'is-active': currentQualityId === q.id }"
                  @click="handleQualitySelect(q)">
               {{ q.label }}
@@ -229,7 +256,8 @@ const {
   store, videoElement, containerElement, isPlaying, currentTime, duration, volume, isMuted, isFullscreen,
   play, pause, seek, setVolume, toggleMute, setPlaybackRate, toggleFullscreen,
   subtitleTracks, currentSubtitle, setSubtitle, setSubtitleTracks, loadSource, theme, t,
-  qualities, currentQualityLabel, currentQualityId, setQuality
+  qualities, codecFamilies, selectedCodecFamily, currentCodecFamily,
+  currentQualityLabel, currentQualityId, setQuality, setCodecFamily
 } = usePlayer({
   autoplay: props.autoplay,
   theme: props.theme,
@@ -287,6 +315,27 @@ watch(volume, (newVol, oldVol) => {
 const playbackRates = [0.5, 0.75, 1, 1.25, 1.5, 2]
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
 const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh')
+const visibleCodecFamily = computed(() => (
+  selectedCodecFamily.value !== 'auto'
+    ? selectedCodecFamily.value
+    : currentCodecFamily.value || inferCodecFamilyFromLabel(currentQualityLabel.value)
+))
+const displayedQualities = computed(() => {
+  if (!visibleCodecFamily.value) return qualities.value
+  const codecMatchedQualities = qualities.value.filter((quality) => getCodecFamily(quality.codec) === visibleCodecFamily.value)
+  return codecMatchedQualities.length > 0 ? codecMatchedQualities : qualities.value
+})
+const codecAutoLabel = computed(() => {
+  if (currentCodecFamily.value) {
+    return `${t('codecAuto')} · ${formatCodecFamilyLabel(currentCodecFamily.value)}`
+  }
+  return t('codecAuto')
+})
+const codecMenuLabel = computed(() => (
+  selectedCodecFamily.value === 'auto'
+    ? codecAutoLabel.value
+    : formatCodecFamilyLabel(selectedCodecFamily.value)
+))
 
 watch(videoRef, (el) => { videoElement.value = el }, { immediate: true })
 watch(containerRef, (el) => { containerElement.value = el }, { immediate: true })
@@ -297,6 +346,7 @@ const togglePlay = () => isPlaying.value ? pause() : play()
 const toggleSettingsMenu = () => { showSettingsMenu.value = !showSettingsMenu.value; settingsView.value = 'main' }
 const toggleQualityMenu = () => { showSettingsMenu.value = true; settingsView.value = 'quality' }
 const handleSpeedSelect = (rate: number) => { setPlaybackRate(rate); showSettingsMenu.value = false }
+const handleCodecFamilySelect = (codecFamily: string) => { setCodecFamily(codecFamily); showSettingsMenu.value = false }
 const handleQualitySelect = (q: any) => { setQuality(q.id); showSettingsMenu.value = false }
 const toggleWidescreen = () => emit('widescreenChange', !props.widescreen)
 const toggleAutoplayNext = () => store.setAutoplayNext(!store.autoplayNext)
@@ -352,6 +402,29 @@ const formatTime = (s: number) => {
   if (!isFinite(s)) return '0:00'
   const m = Math.floor(s / 60), sec = Math.floor(s % 60)
   return `${m}:${sec.toString().padStart(2, '0')}`
+}
+
+const getCodecFamily = (codec: string | null | undefined) => {
+  if (!codec) return null
+  const normalized = String(codec).toLowerCase()
+  if (normalized.includes('av01') || normalized.includes('av1')) return 'av1'
+  if (normalized.includes('vp09') || normalized.includes('vp9')) return 'vp9'
+  if (normalized.includes('avc1') || normalized.includes('avc') || normalized.includes('h264')) return 'avc'
+  return normalized
+}
+
+const inferCodecFamilyFromLabel = (label: string | null | undefined) => {
+  if (!label) return null
+  return getCodecFamily(label)
+}
+
+const formatCodecFamilyLabel = (codecFamily: string | null | undefined) => {
+  if (!codecFamily) return t('codecAuto')
+  const normalized = String(codecFamily).toLowerCase()
+  if (normalized === 'av1') return 'AV1'
+  if (normalized === 'vp9') return 'VP9'
+  if (normalized === 'avc') return 'AVC'
+  return normalized.toUpperCase()
 }
 
 const markPlayerActive = () => {}

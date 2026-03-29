@@ -2,13 +2,14 @@ import json
 import logging
 from datetime import datetime
 from typing import List, Tuple, Optional, Dict
+from crawl.runtime_errors import RuntimeErrorCode
 from sqlalchemy import select, func, and_, case, exists
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from core.database import get_session
 from services.video_query import build_base_video_query, build_video_count_source_query, category_predicate, resolve_sort_column
 
 
-from core.exceptions.video_exceptions import UnsupportedDomainError
+from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExtractionError
 from models.creator import Creator
 from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
@@ -153,7 +154,13 @@ def get_video_url(video_id: int, force_refresh: bool = False) -> VideoUrlDto:
     )
     if not response.ok:
         message = response.error.message if response.error else f'No playback handler found for domain: {video_domain}'
-        raise UnsupportedDomainError(message)
+        error_code = getattr(response.error, 'code', None)
+        if (
+            error_code == RuntimeErrorCode.BAD_RESPONSE
+            and message.startswith('No runtime route found for capability:')
+        ):
+            raise UnsupportedDomainError(message)
+        raise VideoUrlExtractionError(message)
 
     if not isinstance(response.data, dict):
         raise TypeError('Plugin resolve_playback must return an object payload')

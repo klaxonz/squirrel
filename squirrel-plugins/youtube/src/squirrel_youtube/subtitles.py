@@ -9,8 +9,22 @@ from typing import Tuple
 from yt_dlp import YoutubeDL
 
 from crawl import SubtitlesProvider
+try:
+    from . import ytdlp_support as youtube_ytdlp_support
+except ImportError:  # pragma: no cover - fallback for direct module loading
+    import importlib.util
+    import sys
+    from pathlib import Path
 
-YOUTUBE_PLAYER_CLIENT = 'android'
+    _HELPER_PATH = Path(__file__).with_name('ytdlp_support.py')
+    _HELPER_SPEC = importlib.util.spec_from_file_location('_youtube_ytdlp_support', _HELPER_PATH)
+    youtube_ytdlp_support = importlib.util.module_from_spec(_HELPER_SPEC)
+    assert _HELPER_SPEC is not None and _HELPER_SPEC.loader is not None
+    sys.modules['_youtube_ytdlp_support'] = youtube_ytdlp_support
+    _HELPER_SPEC.loader.exec_module(youtube_ytdlp_support)
+
+YOUTUBE_PLAYER_CLIENT = youtube_ytdlp_support.YOUTUBE_PLAYER_CLIENT
+YOUTUBE_COOKIE_PLAYER_CLIENTS = youtube_ytdlp_support.YOUTUBE_COOKIE_PLAYER_CLIENTS
 
 
 class YoutubeSubtitlesProvider:
@@ -43,6 +57,8 @@ class YoutubeSubtitlesProvider:
                 }],
                 'outtmpl': os.path.join(tmpdir, '%(id)s.%(ext)s'),
             }
+
+            youtube_ytdlp_support.apply_youtube_player_strategy(video.url, ydl_opts)
 
             with YoutubeDL(ydl_opts) as ydl:
                 ydl.download([video.url])

@@ -71,7 +71,7 @@ export type PlayerEngine = {
   getConfig: () => UserConfig
   getQualities: () => QualityLevel[]
   getCurrentQualityLabel: () => string | null
-  getCurrentQualityId: () => number | null
+  getCurrentQualityId: () => string | number | null
   getSubtitleTracks: () => SubtitleTrack[]
   getCurrentSubtitle: () => SubtitleTrack | null
 
@@ -114,8 +114,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   let qualities: QualityLevel[] = []
   let currentQualityLabel: string | null = null
-  let currentQualityId: number | null = null
-  let registeredQualityId: number | null = null
+  let currentQualityId: string | number | null = null
+  let registeredQualityId: string | number | null = null
 
   let subtitleTracks: SubtitleTrack[] = []
   let currentSubtitle: SubtitleTrack | null = null
@@ -321,8 +321,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
         }
       }
     },
-    registerCurrentQualityId(id?: number) {
-      registeredQualityId = typeof id === 'number' ? id : null
+    registerCurrentQualityId(id?: string | number) {
+      registeredQualityId = typeof id === 'string' || typeof id === 'number' ? id : null
       if (registeredQualityId === null) return
       const match = qualities.find((item) => item.id === registeredQualityId)
       if (match?.label) {
@@ -707,13 +707,18 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   }
 
   const setQuality = (quality: string | number): void => {
-    const qualityLabel = String(quality)
-    if (typeof quality === 'number') {
-      currentQualityId = quality
-      registeredQualityId = quality
+    const directMatch = qualities.find((item) => String(item.id) === String(quality))
+    if (directMatch) {
+      currentQualityId = directMatch.id
+      registeredQualityId = directMatch.id
+      currentQualityLabel = directMatch.label
+    } else {
+      if (typeof quality === 'number') {
+        currentQualityId = quality
+        registeredQualityId = quality
+      }
+      currentQualityLabel = String(quality)
     }
-
-    currentQualityLabel = qualityLabel
 
     const getQualityController = (): any => {
       if (currentSourceType === 'hls') return pluginManager.get<any>('hls')
@@ -726,8 +731,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       controller.setQuality(quality)
     }
 
-    events.emit('qualitychange', { quality: qualityLabel, auto: qualityLabel === 'auto', id: currentQualityId ?? undefined })
-    options.onQualityChange?.(qualityLabel)
+    const emittedLabel = currentQualityLabel || String(quality)
+    events.emit('qualitychange', { quality: emittedLabel, auto: emittedLabel === 'auto', id: currentQualityId ?? undefined })
+    options.onQualityChange?.(emittedLabel)
   }
 
   const toggleFullscreen = async (): Promise<void> => {

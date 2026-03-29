@@ -354,7 +354,8 @@ class VideoProxy:
             yield client
         except Exception as e:
             logger.error(f"Error in HTTP client context: {e}")
-            await self._connection_manager.close_client(self.domain)
+            if not isinstance(e, ProxyException):
+                await self._connection_manager.close_client(self.domain)
             raise
 
     async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:

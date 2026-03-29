@@ -38,6 +38,8 @@ const jaJP: LocaleConfig = {
     settings: '設定',
     quality: '画質',
     qualityAuto: '自動',
+    codec: 'コーデック',
+    codecAuto: '自動選択',
     playbackSpeed: '再生速度',
     speedNormal: '標準',
     

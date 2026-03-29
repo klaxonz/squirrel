@@ -27,6 +27,12 @@ export class DashPlugin implements PlayerPlugin {
   private context: PluginContext | null = null
   private options: DashPluginOptions = {}
   private currentSource: string | null = null
+  private sourceQualityHints: QualityLevel[] = []
+  private selectedCodecFamily: string = 'auto'
+  private currentVisibleCodecFamily: string | null = null
+  private hintedSelectionsById = new Map<string, { trackIndex: number; qualityIndex: number }>()
+  private currentTrackIndex: number | null = null
+  private pendingHintedSelection: { trackIndex: number; qualityIndex: number } | null = null
 
   /**
    * 检测是否为 DASH 源
@@ -55,13 +61,20 @@ export class DashPlugin implements PlayerPlugin {
 
   onSourceChange(source: MediaSource): void {
     if (!this.context) return
+    this.sourceQualityHints = Array.isArray(source.qualities) ? source.qualities : []
+    this.selectedCodecFamily = 'auto'
+    this.currentVisibleCodecFamily = null
+    this.hintedSelectionsById.clear()
+    this.currentTrackIndex = null
+    this.pendingHintedSelection = null
 
     // 检查是否为 DASH 源
     const isDash = source.type === 'dash' || 
                    (source.type === 'auto' && DashPlugin.isDashSource(source.src))
     
     if (!isDash) {
-      this.destroy()
+      this.destroyPlayer()
+      this.currentSource = null
       return
     }
 
@@ -112,7 +125,8 @@ export class DashPlugin implements PlayerPlugin {
           longFormContentDurationThreshold: 600,
           bufferToKeep: 12,
           bufferPruningInterval: 10,
-          fastSwitchEnabled: true
+          fastSwitchEnabled: true,
+          flushBufferAtTrackSwitch: true
         },
         manifestRequestTimeout: 60000,
         ...this.options.settings?.streaming
@@ -161,15 +175,39 @@ export class DashPlugin implements PlayerPlugin {
     player.on('qualityChangeRendered', (e: any) => {
       if (e?.mediaType === 'video') {
         const qualities = this.getAvailableQualities()
-        const quality = qualities.find(q => q.id === e.newQuality)
+        const currentTrackIndex = this.resolveTrackIndex((this.player as any)?.getCurrentTrackFor?.('video'))
+          ?? this.currentTrackIndex
+        const quality = this.findHintForSelection(currentTrackIndex, e.newQuality)
+          || qualities.find(q => q.id === e.newQuality)
+        const qualityId = quality?.id ?? (typeof e.newQuality === 'number' ? e.newQuality : undefined)
         this.context?.emit('qualitychange', {
           quality: quality?.label || `level_${e.newQuality}`,
           auto: this.isAutoQuality(),
-          id: typeof e.newQuality === 'number' ? e.newQuality : undefined
+          id: qualityId
         })
-        this.context?.registerCurrentQualityId?.(
-          typeof e.newQuality === 'number' ? e.newQuality : undefined
-        )
+        this.context?.registerCurrentQualityId?.(qualityId)
+        this.updateQualities()
+      }
+    })
+
+    player.on('trackChangeRendered', (e: any) => {
+      if (e?.mediaType === 'video') {
+        this.currentTrackIndex = this.resolveTrackIndex(e.newMediaInfo)
+        if (
+          this.pendingHintedSelection &&
+          this.currentTrackIndex !== null &&
+          this.pendingHintedSelection.trackIndex === this.currentTrackIndex
+        ) {
+          try {
+            player.setQualityFor?.('video', this.pendingHintedSelection.qualityIndex, true)
+            this.context?.logger.debug('[DashPlugin] Applied pending quality after track change', this.pendingHintedSelection)
+          } catch (error) {
+            this.context?.logger.warn('[DashPlugin] Failed to apply pending quality after track change', error)
+          } finally {
+            this.pendingHintedSelection = null
+          }
+        }
+        this.updateQualities()
       }
     })
 
@@ -204,13 +242,43 @@ export class DashPlugin implements PlayerPlugin {
     if (!this.player) return []
 
     try {
-      const bitrateList = (this.player as any).getBitrateInfoListFor?.('video') || []
+      const player = this.player as any
+      const bitrateList = player.getBitrateInfoListFor?.('video') || []
+      this.currentTrackIndex = this.resolveTrackIndex(player.getCurrentTrackFor?.('video'))
+      this.updateHintSelections()
+
+      if (this.sourceQualityHints.length > 0) {
+        const hintedQualities: QualityLevel[] = this.sourceQualityHints
+          .filter((hint) => this.hintedSelectionsById.has(String(hint.id)))
+          .map((hint) => ({
+            id: hint.id,
+            label: hint.label,
+            width: hint.width,
+            height: hint.height,
+            bitrate: hint.bitrate,
+            codec: hint.codec
+          }))
+        if (hintedQualities.length > 0) {
+          const visibleCodecFamily = this.resolveVisibleCodecFamily()
+          if (visibleCodecFamily) {
+            const activeCodecQualities = hintedQualities.filter(
+              (hint) => this.getCodecFamily(hint.codec) === visibleCodecFamily
+            )
+            if (activeCodecQualities.length > 0) {
+              return activeCodecQualities
+            }
+          }
+          return hintedQualities
+        }
+      }
+
       const qualities: QualityLevel[] = bitrateList.map((info: any, index: number) => ({
-        id: index,
+        id: typeof info?.qualityIndex === 'number' ? info.qualityIndex : index,
         label: info.height ? `${info.height}p` : `${Math.round(info.bitrate / 1000)}kbps`,
         width: info.width,
         height: info.height,
-        bitrate: info.bitrate
+        bitrate: info.bitrate,
+        codec: player.getCurrentTrackFor?.('video')?.codec || undefined
       }))
 
       const heightCounts = new Map<number, number>()
@@ -241,6 +309,7 @@ export class DashPlugin implements PlayerPlugin {
     if (!this.context) return
 
     const qualities = this.getAvailableQualities()
+    this.currentVisibleCodecFamily = this.resolveVisibleCodecFamily()
     
     // 按高度、码率降序排列
     qualities.sort((a, b) => {
@@ -256,6 +325,46 @@ export class DashPlugin implements PlayerPlugin {
     if (!this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
       this.context.setQuality(qualities[0].id ?? qualities[0].label)
     }
+  }
+
+  getAvailableCodecFamilies(): string[] {
+    const hintedFamilies = Array.from(new Set(
+      this.sourceQualityHints
+        .filter((hint) => this.hintedSelectionsById.has(String(hint.id)))
+        .map((hint) => this.getCodecFamily(hint.codec))
+        .filter((family): family is string => !!family)
+    ))
+    if (hintedFamilies.length > 0) {
+      return hintedFamilies.sort((left, right) => this.compareCodecFamilies(left, right))
+    }
+
+    const trackFamilies = Array.from(new Set(
+      this.getVideoTracks()
+        .map((track) => this.getCodecFamily(track?.codec))
+        .filter((family): family is string => !!family)
+    ))
+    return trackFamilies.sort((left, right) => this.compareCodecFamilies(left, right))
+  }
+
+  getSelectedCodecFamily(): string {
+    return this.selectedCodecFamily
+  }
+
+  getCurrentCodecFamily(): string | null {
+    return this.currentVisibleCodecFamily || this.resolveVisibleCodecFamily()
+  }
+
+  setCodecFamily(codecFamily: string): void {
+    this.selectedCodecFamily = this.normalizeCodecFamilySelection(codecFamily)
+    this.updateQualities()
+
+    const targetCodecFamily = this.resolveVisibleCodecFamily()
+    if (!targetCodecFamily) return
+
+    const targetHint = this.pickCodecFamilyHint(targetCodecFamily)
+    if (!targetHint) return
+
+    this.setQuality(String(targetHint.id))
   }
 
   /**
@@ -277,6 +386,7 @@ export class DashPlugin implements PlayerPlugin {
   setQuality(quality: string | number): void {
     if (!this.player) return
 
+    const player = this.player as any
     const qStr = String(quality).toLowerCase()
     const isAuto = quality === 'auto' || quality === -1 || qStr === '自动'
 
@@ -305,6 +415,43 @@ export class DashPlugin implements PlayerPlugin {
     // 设置指定质量
     let targetIndex: number = -1
 
+    if (typeof quality === 'string') {
+      const hintedSelection = this.hintedSelectionsById.get(String(quality))
+      if (hintedSelection) {
+        try {
+          const tracks = this.getVideoTracks()
+          const targetTrack = tracks[hintedSelection.trackIndex]
+          const currentTrackIndex = this.resolveTrackIndex(player.getCurrentTrackFor?.('video')) ?? this.currentTrackIndex
+          if (targetTrack && typeof player.setCurrentTrack === 'function') {
+            if (currentTrackIndex !== hintedSelection.trackIndex) {
+              this.pendingHintedSelection = hintedSelection
+              player.setCurrentTrack(targetTrack)
+              this.context?.logger.debug('[DashPlugin] Waiting for target track before applying quality', hintedSelection)
+              return
+            }
+            player.setCurrentTrack(targetTrack)
+            this.currentTrackIndex = hintedSelection.trackIndex
+          }
+          if (typeof player.setQualityFor === 'function') {
+            player.setQualityFor('video', hintedSelection.qualityIndex, true)
+          }
+          this.pendingHintedSelection = null
+          this.context?.logger.debug('[DashPlugin] Quality set via hinted selection', hintedSelection)
+          return
+        } catch (e) {
+          this.pendingHintedSelection = null
+          this.context?.logger.warn('[DashPlugin] Failed to set hinted dash quality', e)
+        }
+      }
+
+      try {
+        const numericQuality = Number.parseInt(String(quality), 10)
+        if (Number.isFinite(numericQuality)) {
+          targetIndex = numericQuality
+        }
+      } catch {}
+    }
+
     if (typeof quality === 'number' && quality >= 0) {
       targetIndex = quality
     } else {
@@ -328,7 +475,7 @@ export class DashPlugin implements PlayerPlugin {
       try {
         const p = this.player as any
         if (typeof p.setQualityFor === 'function') {
-          p.setQualityFor('video', targetIndex)
+          p.setQualityFor('video', targetIndex, true)
         } else if (typeof p.setRepresentationForTypeByIndex === 'function') {
           p.setRepresentationForTypeByIndex('video', targetIndex, true)
         }
@@ -352,7 +499,8 @@ export class DashPlugin implements PlayerPlugin {
       const index = typeof p.getQualityFor === 'function' ? p.getQualityFor('video') : -1
       if (index >= 0) {
         const qualities = this.getAvailableQualities()
-        const quality = qualities.find(q => q.id === index)
+        const trackIndex = this.resolveTrackIndex(p.getCurrentTrackFor?.('video')) ?? this.currentTrackIndex
+        const quality = this.findHintForSelection(trackIndex, index) || qualities.find(q => q.id === index)
         return quality?.label || `level_${index}`
       }
     } catch {
@@ -374,6 +522,191 @@ export class DashPlugin implements PlayerPlugin {
       }
       this.player = null
     }
+    this.hintedSelectionsById.clear()
+    this.currentVisibleCodecFamily = null
+    this.currentTrackIndex = null
+    this.pendingHintedSelection = null
+  }
+
+  private getVideoTracks(): any[] {
+    if (!this.player) return []
+    const player = this.player as any
+    return player.getTracksFor?.('video') || []
+  }
+
+  private resolveTrackIndex(track: any): number | null {
+    if (!track) return null
+    const tracks = this.getVideoTracks()
+    const directIndex = tracks.findIndex((item) => item === track)
+    if (directIndex >= 0) return directIndex
+
+    const matchedIndex = tracks.findIndex((item) =>
+      item?.id === track?.id &&
+      item?.codec === track?.codec &&
+      item?.mimeType === track?.mimeType
+    )
+    return matchedIndex >= 0 ? matchedIndex : null
+  }
+
+  private updateHintSelections(): void {
+    this.hintedSelectionsById.clear()
+    if (this.sourceQualityHints.length === 0) return
+
+    const tracks = this.getVideoTracks()
+    for (const hint of this.sourceQualityHints) {
+      let bestMatch: { trackIndex: number; qualityIndex: number; score: number } | null = null
+      const hintCodecFamily = this.getCodecFamily(hint.codec)
+
+      for (const [trackIndex, track] of tracks.entries()) {
+        const bitrateList = Array.isArray(track?.bitrateList) ? track.bitrateList : []
+        const trackCodecFamily = this.getCodecFamily(track?.codec)
+        for (const [index, bitrateInfo] of bitrateList.entries()) {
+          const height = Number(bitrateInfo?.height || 0)
+          const bitrate = Number(bitrateInfo?.bitrate || 0)
+          const hintHeight = Number(hint.height || 0)
+          const hintBitrate = Number(hint.bitrate || 0)
+          const qualityIndex = typeof bitrateInfo?.qualityIndex === 'number' ? bitrateInfo.qualityIndex : index
+          const codecPenalty = (
+            hintCodecFamily &&
+            trackCodecFamily &&
+            hintCodecFamily !== trackCodecFamily
+          ) ? 1_000_000_000 : 0
+          const score = codecPenalty + Math.abs(height - hintHeight) * 1_000_000 + Math.abs(bitrate - hintBitrate)
+
+          if (!bestMatch || score < bestMatch.score) {
+            bestMatch = { trackIndex, qualityIndex, score }
+          }
+        }
+      }
+
+      if (bestMatch) {
+        this.hintedSelectionsById.set(String(hint.id), {
+          trackIndex: bestMatch.trackIndex,
+          qualityIndex: bestMatch.qualityIndex
+        })
+      }
+    }
+  }
+
+  private findHintForSelection(trackIndex: number | null, qualityIndex: number): QualityLevel | null {
+    if (trackIndex === null) return null
+    for (const hint of this.sourceQualityHints) {
+      const selection = this.hintedSelectionsById.get(String(hint.id))
+      if (selection && selection.trackIndex === trackIndex && selection.qualityIndex === qualityIndex) {
+        return hint
+      }
+    }
+    return null
+  }
+
+  private resolveVisibleCodecFamily(): string | null {
+    const availableFamilies = this.getAvailableCodecFamilies()
+    if (availableFamilies.length === 0) {
+      return this.getActiveCodecFamily()
+    }
+
+    if (this.selectedCodecFamily !== 'auto' && availableFamilies.includes(this.selectedCodecFamily)) {
+      return this.selectedCodecFamily
+    }
+
+    for (const family of ['av1', 'vp9', 'avc']) {
+      if (availableFamilies.includes(family) && this.isCodecFamilySupported(family)) {
+        return family
+      }
+    }
+
+    return availableFamilies[0] || this.getActiveCodecFamily()
+  }
+
+  private normalizeCodecFamilySelection(codecFamily: string | null | undefined): string {
+    if (!codecFamily) return 'auto'
+    const normalized = String(codecFamily).toLowerCase()
+    if (normalized === 'auto' || normalized === '自动') return 'auto'
+    return this.getCodecFamily(normalized) || normalized
+  }
+
+  private pickCodecFamilyHint(codecFamily: string): QualityLevel | null {
+    const candidates = this.sourceQualityHints
+      .filter((hint) => this.hintedSelectionsById.has(String(hint.id)))
+      .filter((hint) => this.getCodecFamily(hint.codec) === codecFamily)
+
+    if (candidates.length === 0) return null
+
+    const currentHint = this.getCurrentHint()
+    if (currentHint?.height) {
+      return [...candidates].sort((left, right) => {
+        const heightDistance = Math.abs((left.height || 0) - currentHint.height!) - Math.abs((right.height || 0) - currentHint.height!)
+        if (heightDistance !== 0) return heightDistance
+        return (right.bitrate || 0) - (left.bitrate || 0)
+      })[0] || null
+    }
+
+    return [...candidates].sort((left, right) => {
+      const heightDelta = (right.height || 0) - (left.height || 0)
+      if (heightDelta !== 0) return heightDelta
+      return (right.bitrate || 0) - (left.bitrate || 0)
+    })[0] || null
+  }
+
+  private getCurrentHint(): QualityLevel | null {
+    if (!this.player) return null
+
+    try {
+      const player = this.player as any
+      const qualityIndex = typeof player.getQualityFor === 'function' ? player.getQualityFor('video') : -1
+      if (qualityIndex < 0) return null
+      const trackIndex = this.resolveTrackIndex(player.getCurrentTrackFor?.('video')) ?? this.currentTrackIndex
+      return this.findHintForSelection(trackIndex, qualityIndex)
+    } catch {
+      return null
+    }
+  }
+
+  private compareCodecFamilies(left: string, right: string): number {
+    const order = ['av1', 'vp9', 'avc']
+    const leftIndex = order.indexOf(left)
+    const rightIndex = order.indexOf(right)
+    const safeLeftIndex = leftIndex >= 0 ? leftIndex : order.length
+    const safeRightIndex = rightIndex >= 0 ? rightIndex : order.length
+    if (safeLeftIndex !== safeRightIndex) return safeLeftIndex - safeRightIndex
+    return left.localeCompare(right)
+  }
+
+  private isCodecFamilySupported(codecFamily: string): boolean {
+    if (typeof window === 'undefined') return true
+    const mediaSourceCtor = window.MediaSource as typeof MediaSource | undefined
+    if (!mediaSourceCtor?.isTypeSupported) return true
+
+    const mimeTypeByCodecFamily: Record<string, string> = {
+      av1: 'video/mp4; codecs="av01.0.08M.08"',
+      vp9: 'video/webm; codecs="vp09.00.10.08"',
+      avc: 'video/mp4; codecs="avc1.640028"'
+    }
+    const mimeType = mimeTypeByCodecFamily[codecFamily]
+    return mimeType ? mediaSourceCtor.isTypeSupported(mimeType) : true
+  }
+
+  private getCodecFamily(codec: string | null | undefined): string | null {
+    if (!codec) return null
+    const normalized = String(codec).toLowerCase()
+    if (normalized.includes('av01') || normalized.includes('av1')) return 'av1'
+    if (normalized.includes('vp09') || normalized.includes('vp9')) return 'vp9'
+    if (normalized.includes('avc1') || normalized.includes('avc') || normalized.includes('h264')) return 'avc'
+    if (normalized.includes('mp4a') || normalized.includes('aac')) return 'aac'
+    if (normalized.includes('opus')) return 'opus'
+    return normalized
+  }
+
+  private getActiveCodecFamily(): string | null {
+    if (!this.player) return null
+    const player = this.player as any
+    const currentTrack = player.getCurrentTrackFor?.('video')
+    const currentTrackCodecFamily = this.getCodecFamily(currentTrack?.codec)
+    if (currentTrackCodecFamily) return currentTrackCodecFamily
+
+    if (this.currentTrackIndex === null) return null
+    const track = this.getVideoTracks()[this.currentTrackIndex]
+    return this.getCodecFamily(track?.codec)
   }
 
   onDestroy(): void {
