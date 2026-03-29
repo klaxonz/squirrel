@@ -17,6 +17,17 @@ export default {
           'Arial',
           'sans-serif',
         ],
+        mono: [
+          'JetBrains Mono',
+          'ui-monospace',
+          'SFMono-Regular',
+          'Menlo',
+          'Monaco',
+          'Consolas',
+          'Liberation Mono',
+          'Courier New',
+          'monospace',
+        ],
       },
       colors: {
         background: 'hsl(var(--background))',
