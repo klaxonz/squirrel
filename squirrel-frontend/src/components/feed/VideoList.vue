@@ -1,49 +1,58 @@
 <template>
   <div class="video-list-container relative" ref="containerRef">
-    <div v-if="props.loading && !hasVideos" class="video-list__state">
-      <LoadingIndicator :loading="true" text="正在整理内容..." size="lg" />
-    </div>
-
-    <div v-else-if="!props.loading && !hasVideos" class="video-list-empty-minimal">
-      <div class="empty-status">EMPTY / NO_DATA</div>
-      <div class="empty-copy">SYSTEM CLEAR / RETRY_FILTER</div>
-    </div>
-
-    <template v-else>
-      <VirtualList
-        class="scroller scrollbar-hide"
-        :items="props.videos"
-        :item-size="layout.itemSize"
-        key-field="id"
-        :buffer="BUFFER_PX"
-        buffer-mode="px"
-        :gridItems="layout.gridItems"
-        :prerender="PRERENDER_COUNT"
-        :range-change-throttle-ms="RANGE_CHANGE_THROTTLE_MS"
-        :bottom-padding="80"
-        ref="virtualList"
-        @scroll="handleScroll"
-      >
-        <template #item="{ item: video }">
-          <div class="grid-item">
-            <VideoItem
-              :video="video"
-              :show-avatar="showAvatar"
-              :sort-by="sortBy"
-              :show-progress="video.showProgress"
-              :progress="video.progress"
-              :class="{ 'is-refreshing': refreshing }"
-              @goToSubscription="$emit('goToSubscription', $event)"
-              @openModal="$emit('openModal', video)"
-            />
-          </div>
-        </template>
-      </VirtualList>
-
-      <div v-if="props.loading" class="video-list__loading-more">
-        <LoadingIndicator :loading="true" text="继续加载中..." size="md" />
+    <Transition name="fade-list" mode="out-in">
+      <div v-if="props.loading && !hasVideos" key="skeleton" class="video-list-skeleton-grid">
+        <div 
+          v-for="i in layout.gridItems * 3" 
+          :key="i" 
+          class="grid-item"
+          :style="{ width: `${100 / layout.gridItems}%` }"
+        >
+          <VideoSkeleton :delay="i * 100" />
+        </div>
       </div>
-    </template>
+
+      <div v-else-if="!props.loading && !hasVideos" key="empty" class="video-list-empty-minimal">
+        <div class="empty-status">EMPTY / NO_DATA</div>
+        <div class="empty-copy">SYSTEM CLEAR / RETRY_FILTER</div>
+      </div>
+
+      <div v-else key="list" class="h-full w-full">
+        <VirtualList
+          class="scroller scrollbar-hide"
+          :items="props.videos"
+          :item-size="layout.itemSize"
+          key-field="id"
+          :buffer="BUFFER_PX"
+          buffer-mode="px"
+          :gridItems="layout.gridItems"
+          :prerender="PRERENDER_COUNT"
+          :range-change-throttle-ms="RANGE_CHANGE_THROTTLE_MS"
+          :bottom-padding="80"
+          ref="virtualList"
+          @scroll="handleScroll"
+        >
+          <template #item="{ item: video }">
+            <div class="grid-item">
+              <VideoItem
+                :video="video"
+                :show-avatar="showAvatar"
+                :sort-by="sortBy"
+                :show-progress="video.showProgress"
+                :progress="video.progress"
+                :class="{ 'is-refreshing': refreshing }"
+                @goToSubscription="$emit('goToSubscription', $event)"
+                @openModal="$emit('openModal', video)"
+              />
+            </div>
+          </template>
+        </VirtualList>
+
+        <div v-if="props.loading" class="video-list__loading-more">
+          <LoadingIndicator :loading="true" text="SYNCING_NEW_DATA" size="sm" />
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -53,6 +62,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useElementSize } from '@/composables/useElementSize'
 import LoadingIndicator from './LoadingIndicator.vue'
 import VideoItem from './VideoItem.vue'
+import VideoSkeleton from './VideoSkeleton.vue'
 import VirtualList from './VirtualList.vue'
 
 const ASPECT_RATIO = 9 / 16
@@ -157,6 +167,23 @@ defineExpose({
   box-sizing: border-box;
 }
 
+.video-list-skeleton-grid {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  padding-top: 0.5rem;
+}
+
+.fade-list-enter-active,
+.fade-list-leave-active {
+  transition: opacity 0.4s ease;
+}
+
+.fade-list-enter-from,
+.fade-list-leave-to {
+  opacity: 0;
+}
+
 .video-list-empty-minimal {
   display: flex;
   flex-direction: column;
@@ -188,16 +215,19 @@ defineExpose({
   right: 0;
   bottom: 0;
   pointer-events: none;
-  padding-bottom: 0.2rem;
+  padding: 2rem 0 1rem;
+  background: linear-gradient(to top, hsl(var(--background)) 20%, transparent 100%);
+  z-index: 20;
 }
 
 .grid-item :deep(.video-item.is-refreshing)::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, hsl(var(--background) / 0.32), transparent);
-  animation: shimmer 1.2s infinite;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  animation: shimmer 1.5s infinite;
   pointer-events: none;
+  z-index: 10;
 }
 
 @keyframes shimmer {

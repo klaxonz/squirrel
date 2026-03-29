@@ -1,15 +1,17 @@
 <template>
-  <div v-if="loading" class="loading-container" :class="sizeClass">
-    <div class="loading-spinner">
-      <div 
-        v-for="i in 3" 
-        :key="i" 
-        class="bounce-dot" 
-        :style="{ animationDelay: `${(i - 1) * 0.2}s` }" 
-      />
+  <Transition name="fade">
+    <div v-if="loading" class="loading-container" :class="sizeClass">
+      <div class="loading-spinner">
+        <div 
+          v-for="i in 3" 
+          :key="i" 
+          class="bounce-dot" 
+          :style="{ animationDelay: `${(i - 1) * 0.2}s` }" 
+        />
+      </div>
+      <p v-if="text" class="loading-text">{{ text }}</p>
     </div>
-    <p v-if="text" class="loading-text">{{ text }}</p>
-  </div>
+  </Transition>
 </template>
 
 <script setup>
@@ -68,22 +70,37 @@ const sizeClass = computed(() => `size-${props.size}`);
 }
 
 .bounce-dot {
-  @apply bg-destructive rounded-full;
+  background-color: #ff4d00;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ff4d00;
   animation: bounce 1.4s infinite ease-in-out both;
 }
 
 .loading-text {
-  @apply mt-2 text-sm text-muted-foreground;
+  @apply mt-2 text-xs text-muted-foreground uppercase;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.2em;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 @keyframes bounce {
   0%, 80%, 100% { 
-    transform: scale(0);
-    opacity: 0.5;
+    transform: scale(0.6) translateY(0);
+    opacity: 0.3;
   }
   40% { 
-    transform: scale(1);
+    transform: scale(1) translateY(-4px);
     opacity: 1;
+    box-shadow: 0 0 12px #ff4d00;
   }
 }
 </style>

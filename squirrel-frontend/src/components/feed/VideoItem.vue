@@ -10,8 +10,12 @@
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
         class="video-terminal-image"
-        :class="{ 'blur-thumbnail': shouldBlurThumbnail }"
+        :class="{ 
+          'blur-thumbnail': shouldBlurThumbnail,
+          'image-loaded': imageLoaded 
+        }"
         :alt="video.title"
+        @load="handleImageLoad"
         @error="handleThumbnailError"
       >
 
@@ -142,6 +146,7 @@ const showMenu = ref(false)
 const menuPosition = ref({ x: 0, y: 0 })
 const showActors = ref(false)
 const showDefaultThumbnail = ref(false)
+const imageLoaded = ref(false)
 
 const isNsfwVideo = computed(() => props.video.subscriptions?.some((subscription) => subscription.is_nsfw) || false)
 const shouldBlurThumbnail = computed(() => systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value)
@@ -265,6 +270,10 @@ const handleThumbnailError = () => {
   showDefaultThumbnail.value = true
 }
 
+const handleImageLoad = () => {
+  imageLoaded.value = true
+}
+
 watch(showMenu, (isOpen) => {
   if (isOpen) {
     nextTick(() => {
@@ -289,7 +298,19 @@ onUnmounted(() => {
   position: relative;
   cursor: pointer;
   padding: 1rem;
-  transition: all 0.4s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: item-appear 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes item-appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .video-viewer-frame {
@@ -314,10 +335,15 @@ onUnmounted(() => {
   height: 100%;
   object-fit: cover;
   filter: contrast(1.05) brightness(0.9);
-  transition: all 0.4s ease;
+  opacity: 0;
+  transition: opacity 0.6s ease, transform 0.4s ease, filter 0.4s ease;
 }
 
-.video-terminal-item:hover .video-terminal-image {
+.video-terminal-image.image-loaded {
+  opacity: 1;
+}
+
+.video-terminal-item:hover .video-terminal-image.image-loaded {
   filter: contrast(1.1) brightness(1.1);
   transform: scale(1.02);
 }
