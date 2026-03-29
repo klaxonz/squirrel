@@ -14,27 +14,22 @@
               v-for="tab in tabs"
               :key="tab.key"
               @click="currentTab = tab.key"
-              class="tab-button w-full px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 group relative overflow-hidden"
+              class="tab-button w-full px-4 py-2.5 rounded-xl text-[13px] font-bold transition-all flex items-center gap-3 group relative"
               :class="isCurrentTab(tab.key)
-                ? 'text-primary'
-                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'"
+                ? 'text-primary bg-primary/[0.04]'
+                : 'text-muted-foreground/60 hover:bg-muted/40 hover:text-foreground'"
               :aria-current="isCurrentTab(tab.key) ? 'page' : undefined"
             >
-              <div 
-                v-if="isCurrentTab(tab.key)" 
-                class="absolute inset-0 bg-primary/[0.06] transition-opacity"
-              ></div>
-              <div 
-                v-if="isCurrentTab(tab.key)" 
-                class="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-r-full"
-              ></div>
-              
               <component 
                 :is="tab.icon" 
-                class="h-4 w-4 shrink-0 z-10"
-                :class="isCurrentTab(tab.key) ? 'text-primary' : 'text-muted-foreground/50 group-hover:text-muted-foreground/80'"
+                class="h-4 w-4 shrink-0 transition-transform group-hover:scale-110"
+                :class="isCurrentTab(tab.key) ? 'text-primary' : 'text-muted-foreground/40 group-hover:text-muted-foreground/70'"
               />
-              <span class="flex-1 text-left z-10">{{ tab.label }}</span>
+              <span class="flex-1 text-left">{{ tab.label }}</span>
+              <div 
+                v-if="isCurrentTab(tab.key)" 
+                class="absolute right-2 h-1.5 w-1.5 rounded-full bg-primary"
+              ></div>
             </button>
           </nav>
         </aside>
@@ -45,11 +40,12 @@
         >
             <div v-if="isCurrentTab('appearance')" class="settings-section slide-up">
               <div class="settings-section-header">
-                <h2 class="text-xl font-bold tracking-tight text-foreground">外观与主题</h2>
+                <h2 class="text-2xl font-black tracking-tight text-foreground">外观与主题</h2>
+                <p class="text-[13px] text-muted-foreground/50 mt-1 font-medium italic">定制您的视觉体验，选择最适合的主题模式。</p>
               </div>
 
-              <div class="settings-section-content mt-10">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="settings-section-content mt-12">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <button
                     v-for="option in themeOptions"
                     :key="option.value"
@@ -74,13 +70,15 @@
 
             <div v-if="isCurrentTab('content')" class="settings-section slide-up">
               <div class="settings-section-header">
-                <h2 class="text-xl font-bold tracking-tight text-foreground">内容偏好</h2>
+                <h2 class="text-2xl font-black tracking-tight text-foreground">内容偏好</h2>
+                <p class="text-[13px] text-muted-foreground/50 mt-1 font-medium italic">管理内容展示方式与隐私偏好。</p>
               </div>
-              <div class="settings-section-content mt-6">
-                <div class="divide-y divide-border/30">
+              <div class="settings-section-content mt-8">
+                <div class="divide-y divide-border/20">
                   <div class="setting-item group">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">显示敏感内容</h3>
+                      <p class="setting-item-desc">启用此项后，将显示标记为 NSFW 的内容。</p>
                     </div>
                     <Switch
                       :checked="!!settings.showNsfw"
@@ -92,6 +90,7 @@
                   <div class="setting-item group">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">自动模糊封面</h3>
+                      <p class="setting-item-desc">对标记为 NSFW 的封面图进行模糊处理。</p>
                     </div>
                     <Switch
                       :checked="Boolean(systemConfig?.blur_nsfw_thumbnails)"
@@ -105,13 +104,15 @@
 
             <div v-if="isCurrentTab('playback')" class="settings-section slide-up">
               <div class="settings-section-header">
-                <h2 class="text-xl font-bold tracking-tight text-foreground">播放控制</h2>
+                <h2 class="text-2xl font-black tracking-tight text-foreground">播放控制</h2>
+                <p class="text-[13px] text-muted-foreground/50 mt-1 font-medium italic">配置媒体播放器的交互行为。</p>
               </div>
-              <div class="settings-section-content mt-6">
-                <div class="divide-y divide-border/30">
+              <div class="settings-section-content mt-8">
+                <div class="divide-y divide-border/20">
                   <div class="setting-item group">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">进入页面自动播放</h3>
+                      <p class="setting-item-desc">进入详情页时立即开始播放视频或音频。</p>
                     </div>
                     <Switch
                       :checked="!!settings.autoplay"
@@ -123,6 +124,7 @@
                   <div class="setting-item group">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">自动播放下一个</h3>
+                      <p class="setting-item-desc">当前播放结束后，自动跳转并开始播放下一个项目。</p>
                     </div>
                     <Switch
                       :checked="!!settings.autoplayNext"
@@ -134,6 +136,7 @@
                   <div class="setting-item group">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">循环播放</h3>
+                      <p class="setting-item-desc">播放结束后，重新开始播放当前项目。</p>
                     </div>
                     <Switch
                       :checked="!!settings.loop"
@@ -147,13 +150,15 @@
 
             <div v-if="isCurrentTab('system')" class="settings-section slide-up">
               <div class="settings-section-header">
-                <h2 class="text-xl font-bold tracking-tight text-foreground">核心引擎</h2>
+                <h2 class="text-2xl font-black tracking-tight text-foreground">核心引擎</h2>
+                <p class="text-[13px] text-muted-foreground/50 mt-1 font-medium italic">管理后台服务与核心调度系统。</p>
               </div>
-              <div class="settings-section-content mt-6">
-                <div class="divide-y divide-border/30">
+              <div class="settings-section-content mt-8">
+                <div class="divide-y divide-border/20">
                   <div class="setting-item group">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">任务调度器</h3>
+                      <p class="setting-item-desc">负责后台任务的定期执行与状态监控。</p>
                     </div>
                     <Switch
                       :checked="Boolean(systemConfig?.enable_scheduler)"
@@ -165,6 +170,7 @@
                   <div class="setting-item group">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">异步工作流</h3>
+                      <p class="setting-item-desc">启用异步处理引擎以提高并发处理效率。</p>
                     </div>
                     <Switch
                       :checked="Boolean(systemConfig?.enable_worker)"
