@@ -35,32 +35,25 @@
         >
             <div v-if="isCurrentTab('appearance')" class="settings-section slide-up">
               <div class="settings-section-header">
-                <h2 class="text-2xl font-black tracking-tight text-foreground">外观与主题</h2>
-                <p class="text-[13px] text-muted-foreground/50 mt-1 font-medium italic">定制您的视觉体验，选择最适合的主题模式。</p>
+                <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">外观与主题</h2>
+                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">VISUAL EXPERIENCE & INTERFACE THEME</p>
               </div>
 
-              <div class="settings-section-content mt-12">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="settings-section-content mt-12 border-t border-border/5">
+                <div class="grid grid-cols-1 sm:grid-cols-3">
                   <button
                     v-for="option in themeOptions"
                     :key="option.value"
                     type="button"
-                    class="theme-card group"
+                    class="theme-card"
                     :class="themeMode === option.value ? 'theme-card-active' : 'theme-card-inactive'"
                     @click="setThemeMode(option.value)"
                   >
-                    <div class="flex items-center justify-between w-full">
-                      <div class="theme-card-icon">
-                        <component :is="option.icon" class="h-5 w-5" />
-                      </div>
-                      <div v-if="themeMode === option.value" class="theme-card-check">
-                        <CheckCircle2 class="h-3 w-3" />
-                      </div>
-                    </div>
-                    <div class="mt-4">
-                      <div class="text-[14px] font-black tracking-tight">{{ option.label }}</div>
-                      <div class="text-[11px] text-muted-foreground/40 font-medium mt-0.5">{{ option.description }}</div>
-                    </div>
+                    <div class="text-[12px] font-bold tracking-widest uppercase">{{ option.label }}</div>
+                    <div class="text-[10px] text-muted-foreground/30 font-medium mt-1 uppercase">{{ option.description }}</div>
+                    
+                    <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-primary transition-transform duration-700 origin-left"
+                      :class="themeMode === option.value ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-50'"></div>
                   </button>
                 </div>
               </div>
@@ -68,33 +61,37 @@
 
             <div v-if="isCurrentTab('content')" class="settings-section slide-up">
               <div class="settings-section-header">
-                <h2 class="text-2xl font-black tracking-tight text-foreground">内容偏好</h2>
-                <p class="text-[13px] text-muted-foreground/50 mt-1 font-medium italic">管理内容展示方式与隐私偏好。</p>
+                <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">内容偏好</h2>
+                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">CONTENT PREFERENCES & PRIVACY</p>
               </div>
-              <div class="settings-section-content mt-8">
-                <div class="divide-y divide-border/20">
-                  <div class="setting-item group">
+              <div class="settings-section-content mt-12 border-t border-border/5">
+                <div class="divide-y divide-border/5">
+                  <div class="setting-item">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">显示敏感内容</h3>
-                      <p class="setting-item-desc">启用此项后，将显示标记为 NSFW 的内容。</p>
+                      <p class="setting-item-desc">Enable to display content marked as NSFW across the platform.</p>
                     </div>
                     <Switch
                       :checked="!!settings.showNsfw"
                       :disabled="userSaving"
                       @update:checked="(value: boolean) => { settings.showNsfw = !!value; onUserSettingChange() }"
                     />
+                    <div class="absolute top-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
+                    <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
 
-                  <div class="setting-item group">
+                  <div class="setting-item">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">自动模糊封面</h3>
-                      <p class="setting-item-desc">对标记为 NSFW 的封面图进行模糊处理。</p>
+                      <p class="setting-item-desc">Apply Gaussian blur to NSFW thumbnails in gallery views.</p>
                     </div>
                     <Switch
                       :checked="Boolean(systemConfig?.blur_nsfw_thumbnails)"
                       :disabled="systemLoading || systemSaving"
                       @update:checked="(value: boolean) => onSystemToggle('blur_nsfw_thumbnails', !!value)"
                     />
+                    <div class="absolute top-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
+                    <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
                 </div>
               </div>
@@ -102,45 +99,51 @@
 
             <div v-if="isCurrentTab('playback')" class="settings-section slide-up">
               <div class="settings-section-header">
-                <h2 class="text-2xl font-black tracking-tight text-foreground">播放控制</h2>
-                <p class="text-[13px] text-muted-foreground/50 mt-1 font-medium italic">配置媒体播放器的交互行为。</p>
+                <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">播放控制</h2>
+                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">MEDIA PLAYER & INTERACTION</p>
               </div>
-              <div class="settings-section-content mt-8">
-                <div class="divide-y divide-border/20">
-                  <div class="setting-item group">
+              <div class="settings-section-content mt-12 border-t border-border/5">
+                <div class="divide-y divide-border/5">
+                  <div class="setting-item">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">进入页面自动播放</h3>
-                      <p class="setting-item-desc">进入详情页时立即开始播放视频或音频。</p>
+                      <p class="setting-item-desc">Automatically start media playback when entering detail pages.</p>
                     </div>
                     <Switch
                       :checked="!!settings.autoplay"
                       :disabled="userSaving"
                       @update:checked="(value: boolean) => { settings.autoplay = !!value; onUserSettingChange() }"
                     />
+                    <div class="absolute top-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
+                    <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
 
-                  <div class="setting-item group">
+                  <div class="setting-item">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">自动播放下一个</h3>
-                      <p class="setting-item-desc">当前播放结束后，自动跳转并开始播放下一个项目。</p>
+                      <p class="setting-item-desc">Sequential playback of items in the current collection.</p>
                     </div>
                     <Switch
                       :checked="!!settings.autoplayNext"
                       :disabled="userSaving"
                       @update:checked="(value: boolean) => { settings.autoplayNext = !!value; onUserSettingChange() }"
                     />
+                    <div class="absolute top-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
+                    <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
 
-                  <div class="setting-item group">
+                  <div class="setting-item">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">循环播放</h3>
-                      <p class="setting-item-desc">播放结束后，重新开始播放当前项目。</p>
+                      <p class="setting-item-desc">Restart current media item automatically upon completion.</p>
                     </div>
                     <Switch
                       :checked="!!settings.loop"
                       :disabled="userSaving"
                       @update:checked="(value: boolean) => { settings.loop = !!value; onUserSettingChange() }"
                     />
+                    <div class="absolute top-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
+                    <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
                 </div>
               </div>
@@ -148,33 +151,37 @@
 
             <div v-if="isCurrentTab('system')" class="settings-section slide-up">
               <div class="settings-section-header">
-                <h2 class="text-2xl font-black tracking-tight text-foreground">核心引擎</h2>
-                <p class="text-[13px] text-muted-foreground/50 mt-1 font-medium italic">管理后台服务与核心调度系统。</p>
+                <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">核心引擎</h2>
+                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">SYSTEM SCHEDULER & WORKER ENGINE</p>
               </div>
-              <div class="settings-section-content mt-8">
-                <div class="divide-y divide-border/20">
-                  <div class="setting-item group">
+              <div class="settings-section-content mt-12 border-t border-border/5">
+                <div class="divide-y divide-border/5">
+                  <div class="setting-item">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">任务调度器</h3>
-                      <p class="setting-item-desc">负责后台任务的定期执行与状态监控。</p>
+                      <p class="setting-item-desc">Background task orchestration and state synchronization.</p>
                     </div>
                     <Switch
                       :checked="Boolean(systemConfig?.enable_scheduler)"
                       :disabled="systemLoading || systemSaving"
                       @update:checked="(value: boolean) => onSystemToggle('enable_scheduler', !!value)"
                     />
+                    <div class="absolute top-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
+                    <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
 
-                  <div class="setting-item group">
+                  <div class="setting-item">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">异步工作流</h3>
-                      <p class="setting-item-desc">启用异步处理引擎以提高并发处理效率。</p>
+                      <p class="setting-item-desc">High-concurrency processing engine for extraction tasks.</p>
                     </div>
                     <Switch
                       :checked="Boolean(systemConfig?.enable_worker)"
                       :disabled="systemLoading || systemSaving"
                       @update:checked="(value: boolean) => onSystemToggle('enable_worker', !!value)"
                     />
+                    <div class="absolute top-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
+                    <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
                 </div>
               </div>
