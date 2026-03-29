@@ -33,10 +33,16 @@
         <button
           v-if="showRefresh"
           class="refresh-minimal"
-          :class="{ 'is-loading': isRefreshing }"
           @click="$emit('refresh')"
         >
-          REFRESH
+          <div class="refresh-content">
+            <ArrowPathIcon 
+              class="refresh-icon" 
+              :class="{ 'is-spinning': isRefreshing }" 
+            />
+            <span class="refresh-label">SYNC //</span>
+            <span class="refresh-action">REFRESH</span>
+          </div>
         </button>
       </div>
     </div>
@@ -45,6 +51,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import NsfwFilter from './NsfwFilter.vue'
 import SiteFilter from './SiteFilter.vue'
 import SortButton from './SortButton.vue'
@@ -149,28 +156,55 @@ watch(localSite, (value) => emit('update:site', value))
 
 .refresh-minimal {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.55rem;
-  letter-spacing: 0.2em;
-  padding: 0.4rem 0.8rem;
+  border: none;
+  padding: 0;
   cursor: pointer;
   transition: all 0.3s;
 }
 
-.refresh-minimal:hover {
-  border-color: rgba(255, 255, 255, 0.3);
+.refresh-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.refresh-minimal:hover .refresh-content {
   color: #fff;
 }
 
-.is-loading {
-  animation: pulse 1.5s infinite;
+.refresh-label {
+  font-weight: 400;
+}
+
+.refresh-action {
+  color: #ff4d00;
+  font-weight: 700;
+}
+
+.refresh-icon {
+  width: 0.8rem;
+  height: 0.8rem;
+  opacity: 0.5;
+  transition: all 0.3s;
+}
+
+.refresh-minimal:hover .refresh-icon {
+  opacity: 1;
+}
+
+.is-spinning {
+  animation: spin 1s linear infinite;
+  opacity: 1;
   color: #ff4d00;
 }
 
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>
