@@ -48,16 +48,6 @@
       </div>
     </transition>
 
-    <!-- HUD 系统状态 -->
-    <div class="sp-hud-overlay">
-      <div class="sp-hud-tag">
-        <span class="sp-hud-dot" :class="{ 'is-pulsing': isPlaying }"></span>
-        <span class="sp-hud-text">LIVE_DECODE::{{ isPlaying ? 'ACTIVE' : 'STANDBY' }}</span>
-        <span class="sp-hud-separator">|</span>
-        <span class="sp-hud-code">{{ simulateBitrate }}kbps</span>
-      </div>
-    </div>
-
     <!-- 加载状态 -->
     <div v-if="store.loading && !errorState.show" class="sp-loading">
       <div class="sp-loader-ring">
@@ -290,7 +280,6 @@ const errorState = ref({ show: false, title: '', message: '', code: '', canRetry
 const centralHud = ref<{ visible: boolean; type: string; value: string; icon: IconName; percent: number }>({ 
   visible: false, type: '', value: '', icon: 'play', percent: 0 
 })
-const simulateBitrate = ref(0)
 
 let centralHudTimer: any
 const showCentralHud = (type: string, value: string, icon: IconName, percent: number = 0) => {
@@ -298,23 +287,6 @@ const showCentralHud = (type: string, value: string, icon: IconName, percent: nu
   centralHud.value = { visible: true, type, value, icon, percent }
   centralHudTimer = setTimeout(() => { centralHud.value.visible = false }, 1500)
 }
-
-// 模拟码率跳动
-let bitrateInterval: any
-const updateBitrate = () => {
-  if (!isPlaying.value) { simulateBitrate.value = 0; return }
-  const base = currentQualityLabel.value?.includes('1080') ? 4500 : 2500
-  simulateBitrate.value = base + Math.floor(Math.random() * 800)
-}
-
-watch(isPlaying, (val) => {
-  if (val) {
-    bitrateInterval = setInterval(updateBitrate, 1000)
-  } else {
-    clearInterval(bitrateInterval)
-    simulateBitrate.value = 0
-  }
-})
 
 watch(volume, (newVol, oldVol) => {
   if (Math.abs(newVol - oldVol) < 0.1) return

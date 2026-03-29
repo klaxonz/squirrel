@@ -613,7 +613,7 @@ onUnmounted(() => {
 .video-section {
   width: 100%;
   background: #000;
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   /* 移除之前的 padding 和 border，让视频更沉浸 */
 }
@@ -873,7 +873,7 @@ onUnmounted(() => {
 
 .video-container :deep(.sp-player) {
   background: hsl(var(--background));
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
 }
 
