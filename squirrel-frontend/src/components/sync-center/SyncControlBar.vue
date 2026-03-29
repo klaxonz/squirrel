@@ -1,44 +1,49 @@
 <template>
-  <section class="flex flex-col gap-4 border-b border-border/60 pb-6">
+  <section class="flex flex-col gap-4 border-b border-border/10 pb-6">
     <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
       <div class="min-w-0">
-        <h1 class="text-xl font-bold tracking-tight text-foreground/90">Dashboard</h1>
-        <p class="text-xs font-medium text-muted-foreground/60">{{ summary }}</p>
+        <h1 class="text-xl font-bold tracking-tighter text-foreground/90 uppercase font-mono">Signal Monitoring</h1>
+        <p class="text-[10px] font-medium text-orange-500/60 uppercase tracking-[0.2em] font-mono">{{ summary }}</p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-1.5 rounded-xl border border-border/40 bg-muted/20 p-1">
+      <div class="flex flex-wrap items-center gap-3">
         <Tabs :model-value="lens" class="w-auto" @update:model-value="handleLensUpdate">
-          <TabsList class="h-8 border-none bg-transparent p-0">
-            <TabsTrigger value="now" class="h-7 rounded-lg px-4 text-[11px] font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Now</TabsTrigger>
-            <TabsTrigger value="24h" class="h-7 rounded-lg px-4 text-[11px] font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">24H</TabsTrigger>
-            <TabsTrigger value="7d" class="h-7 rounded-lg px-4 text-[11px] font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">7D</TabsTrigger>
+          <TabsList class="h-8 border border-white/5 bg-black/40 p-1">
+            <TabsTrigger value="now" class="h-6 rounded px-3 text-[10px] font-bold uppercase tracking-wider data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-500">Now</TabsTrigger>
+            <TabsTrigger value="24h" class="h-6 rounded px-3 text-[10px] font-bold uppercase tracking-wider data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-500">24H</TabsTrigger>
+            <TabsTrigger value="7d" class="h-6 rounded px-3 text-[10px] font-bold uppercase tracking-wider data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-500">7D</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div class="mx-1 h-4 w-px bg-border/40"></div>
+        <div class="flex items-center gap-2">
+          <button 
+            class="tactical-btn" 
+            :disabled="refreshing" 
+            @click="emit('refresh')"
+          >
+            [ {{ refreshing ? 'REFRESHING...' : 'REFRESH_ALL' }} ]
+          </button>
 
-        <Button variant="ghost" size="sm" class="h-8 w-8 p-0 text-muted-foreground/60 hover:text-foreground" :disabled="refreshing" @click="emit('refresh')">
-          <Loader2 v-if="refreshing" class="h-4 w-4 animate-spin" />
-          <RefreshCcw v-else class="h-4 w-4" />
-        </Button>
+          <button 
+            class="tactical-btn" 
+            :disabled="!canRetryFailed || retryingBatch" 
+            @click="emit('retry-failed')"
+          >
+            [ {{ retryingBatch ? 'RETRYING...' : 'RETRY_FAILED' }} ]
+          </button>
 
-        <Button variant="ghost" size="sm" class="h-8 text-[11px] font-semibold text-muted-foreground/80 hover:bg-rose-500/10 hover:text-rose-600" :disabled="!canRetryFailed || retryingBatch" @click="emit('retry-failed')">
-          <RotateCcw v-if="!retryingBatch" class="mr-2 h-3.5 w-3.5" />
-          <Loader2 v-else class="mr-2 h-3.5 w-3.5 animate-spin" />
-          Retry Failures
-        </Button>
+          <button 
+            class="tactical-btn" 
+            :disabled="reconciling" 
+            @click="emit('reconcile')"
+          >
+            [ {{ reconciling ? 'RECONCILING...' : 'RECONCILE' }} ]
+          </button>
+        </div>
 
-        <Button variant="ghost" size="sm" class="h-8 text-[11px] font-semibold text-muted-foreground/80 hover:text-foreground" :disabled="reconciling" @click="emit('reconcile')">
-          <Scale v-if="!reconciling" class="mr-2 h-3.5 w-3.5" />
-          <Loader2 v-else class="mr-2 h-3.5 w-3.5 animate-spin" />
-          Reconcile
-        </Button>
-
-        <div class="mx-1 h-4 w-px bg-border/40"></div>
-
-        <div class="flex items-center gap-2 px-2">
+        <div class="flex items-center gap-3 px-3 py-1 border border-white/5 bg-black/40 rounded">
+          <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Live_Feed</span>
           <Switch :checked="autoRefresh" @update:checked="handleAutoRefreshUpdate" />
-          <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Live</span>
         </div>
       </div>
     </div>
@@ -47,8 +52,6 @@
 
 <script setup lang="ts">
 import type { SyncTimeLens } from '@/composables/useSyncCenterWorkbench'
-import { Loader2, RefreshCcw, RotateCcw, Scale } from 'lucide-vue-next'
-import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
@@ -79,3 +82,25 @@ const handleAutoRefreshUpdate = (value: boolean) => {
   emit('toggle-auto-refresh', !!value)
 }
 </script>
+
+<style scoped>
+.tactical-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s ease;
+  letter-spacing: 0.1em;
+}
+
+.tactical-btn:hover:not(:disabled) {
+  color: #ff4d00;
+  text-shadow: 0 0 10px rgba(255, 77, 0, 0.5);
+}
+
+.tactical-btn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+</style>

@@ -1,6 +1,7 @@
 <template>
-  <div class="sync-center-page flex min-h-full flex-col bg-background text-foreground selection:bg-primary/10">
-    <div class="toolbar-container py-8">
+  <div class="sync-center-page tactical-terminal min-h-full selection:bg-primary/10">
+    <div class="matrix-bg"></div>
+    <div class="toolbar-container py-8 relative z-10">
       <div class="flex flex-col gap-10">
         <SyncControlBar
           :auto-refresh="overviewAutoRefresh"
@@ -282,6 +283,20 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.tactical-terminal {
+  background-color: #050505;
+  position: relative;
+  overflow: hidden;
+}
+
+.matrix-bg {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+
 .toolbar-container {
   max-width: 1440px;
   margin: 0 auto;
