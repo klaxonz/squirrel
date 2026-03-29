@@ -284,17 +284,17 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 .slide-up {
-  animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slide-up {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px) scale(0.99);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
