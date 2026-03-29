@@ -44,97 +44,101 @@
       </div>
 
       <div class="content-container">
-        <div v-if="loading && !subscriptions.length" class="subscribed-empty-state">
-          <LoadingIndicator :loading="true" text="正在整理订阅..." size="lg" />
-        </div>
-
-        <div v-else-if="!loading && !subscriptions.length" class="subscribed-empty-card">
-          <p class="subscribed-empty-card__eyebrow">Subscription Library</p>
-          <h2 class="subscribed-empty-card__title">还没有可展示的订阅</h2>
-          <p class="subscribed-empty-card__copy">可以直接添加一个频道，或者从支持的站点批量导入。</p>
-          <div class="subscribed-empty-card__actions">
-            <Button size="sm" @click="showAddDialog = true">添加订阅</Button>
-            <Button size="sm" variant="secondary" @click="showImportDialog = true">导入订阅</Button>
+        <Transition name="fade-list" mode="out-in">
+          <div v-if="loading && !subscriptions.length" key="skeleton" class="subscription-stream">
+            <SubscriptionSkeleton v-for="i in 10" :key="i" :delay="i * 50" />
           </div>
-        </div>
 
-        <TransitionGroup v-else name="subscription-row" tag="div" class="subscription-stream">
-          <article
-            v-for="subscription in subscriptions"
-            :key="subscription.id"
-            class="subscription-row group"
-            :class="{ 'is-refreshing': isResetting }"
-            @click="getSubscriptionVideos(subscription.id)"
-          >
-            <!-- Left: Avatar with Status -->
-            <div class="subscription-row__media">
-              <div class="subscription-row__avatar-wrapper">
-                <img
-                  :alt="subscription.name"
-                  :src="getAvatarSrc(subscription.avatar, subscription.id)"
-                  class="subscription-row__avatar"
-                  referrerpolicy="no-referrer"
-                  @error="(event) => handleAvatarError(event, subscription.id)"
-                />
-                <div v-if="getRefreshState(subscription.id).isRefreshing" class="subscription-row__avatar-pulse"></div>
-              </div>
+          <div v-else-if="!loading && !subscriptions.length" key="empty" class="subscribed-empty-card">
+            <p class="subscribed-empty-card__eyebrow">订阅库</p>
+            <h2 class="subscribed-empty-card__title">还没有可展示的订阅</h2>
+            <p class="subscribed-empty-card__copy">可以直接添加一个频道，或者从支持的站点批量导入。</p>
+            <div class="subscribed-empty-card__actions">
+              <Button size="sm" @click="showAddDialog = true">添加订阅</Button>
+              <Button size="sm" variant="secondary" @click="showImportDialog = true">导入订阅</Button>
             </div>
+          </div>
 
-            <!-- Center: Identity & Metadata -->
-            <div class="subscription-row__main">
-              <div class="subscription-row__identity">
-                <h3 class="subscription-row__name" :title="subscription.name">{{ subscription.name }}</h3>
-                <span class="subscription-row__type-tag">
-                  {{ subscription.type === 'PLAYLIST' ? 'PLAYLIST' : 'CHANNEL' }}
-                </span>
+          <TransitionGroup v-else key="list" name="subscription-row" tag="div" class="subscription-stream">
+            <article
+              v-for="subscription in subscriptions"
+              :key="subscription.id"
+              class="subscription-row group"
+              :class="{ 'is-refreshing': isResetting }"
+              @click="getSubscriptionVideos(subscription.id)"
+            >
+              <!-- Left: Avatar with Status -->
+              <div class="subscription-row__media">
+                <div class="subscription-row__avatar-wrapper">
+                  <img
+                    :alt="subscription.name"
+                    :src="getAvatarSrc(subscription.avatar, subscription.id)"
+                    class="subscription-row__avatar"
+                    :class="{ 'image-loaded': avatarsLoaded[subscription.id] }"
+                    referrerpolicy="no-referrer"
+                    @load="avatarsLoaded[subscription.id] = true"
+                    @error="(event) => handleAvatarError(event, subscription.id)"
+                  />
+                  <div v-if="getRefreshState(subscription.id).isRefreshing" class="subscription-row__avatar-pulse"></div>
+                </div>
               </div>
-              <div class="subscription-row__meta">
-                <div class="subscription-row__status">
-                  <span
-                    v-if="getRefreshState(subscription.id).isRefreshing"
-                    class="h-1 w-1 animate-pulse rounded-full bg-primary"
-                  ></span>
-                  <span class="text-[10px] uppercase tracking-tighter opacity-60">
-                    {{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}
+
+              <!-- Center: Identity & Metadata -->
+              <div class="subscription-row__main">
+                <div class="subscription-row__identity">
+                  <h3 class="subscription-row__name" :title="subscription.name">{{ subscription.name }}</h3>
+                  <span class="subscription-row__type-tag">
+                    {{ subscription.type === 'PLAYLIST' ? '播放列表' : '频道' }}
                   </span>
                 </div>
-                <span class="subscription-row__dot"></span>
-                <span class="subscription-row__date">{{ formatDate(subscription.created_at) }}</span>
+                <div class="subscription-row__meta">
+                  <div class="subscription-row__status">
+                    <span
+                      v-if="getRefreshState(subscription.id).isRefreshing"
+                      class="h-1 w-1 animate-pulse rounded-full bg-primary"
+                    ></span>
+                    <span class="text-[10px] uppercase tracking-tighter opacity-60">
+                      {{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}
+                    </span>
+                  </div>
+                  <span class="subscription-row__dot"></span>
+                  <span class="subscription-row__date">{{ formatDate(subscription.created_at) }}</span>
+                </div>
               </div>
-            </div>
 
-            <!-- Right: Stats (Desktop Only mostly) -->
-            <div class="subscription-row__stats">
-              <div class="subscription-row__stat">
-                <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_videos }}</span>
-                <span class="subscription-row__stat-label">TOTAL</span>
+              <!-- Right: Stats (Desktop Only mostly) -->
+              <div class="subscription-row__stats">
+                <div class="subscription-row__stat">
+                  <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_videos }}</span>
+                  <span class="subscription-row__stat-label">全部</span>
+                </div>
+                <div class="subscription-row__stat">
+                  <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_extract }}</span>
+                  <span class="subscription-row__stat-label">已解析</span>
+                </div>
               </div>
-              <div class="subscription-row__stat">
-                <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_extract }}</span>
-                <span class="subscription-row__stat-label">EXTRACTED</span>
-              </div>
-            </div>
 
-            <!-- Far Right: Actions -->
-            <div class="subscription-row__actions">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                class="subscription-row__settings-trigger"
-                @click.stop="openSettings(subscription)"
-              >
-                <Cog6ToothIcon class="h-4 w-4" />
-              </Button>
-            </div>
-          </article>
-        </TransitionGroup>
+              <!-- Far Right: Actions -->
+              <div class="subscription-row__actions">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  class="subscription-row__settings-trigger"
+                  @click.stop="openSettings(subscription)"
+                >
+                  <Cog6ToothIcon class="h-4 w-4" />
+                </Button>
+              </div>
+            </article>
+          </TransitionGroup>
+        </Transition>
 
         <div
           v-if="!allLoaded"
           ref="loadingTrigger"
           class="subscribed-loading-trigger"
         >
-          <LoadingIndicator v-if="loading" :loading="true" text="继续加载中..." size="md" />
+          <LoadingIndicator v-if="loading" :loading="true" text="正在同步订阅库" size="sm" />
         </div>
 
         <div v-if="allLoaded && subscriptions.length" class="subscribed-bottom-copy">
@@ -257,6 +261,7 @@ import { useRouter } from 'vue-router'
 import { ArrowDownTrayIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
+import SubscriptionSkeleton from '@/components/feed/SubscriptionSkeleton.vue'
 import AddChannelDialog from '@/components/dialogs/AddChannelDialog.vue'
 import ImportSubscriptionDialog from '@/components/dialogs/ImportSubscriptionDialog.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -291,6 +296,7 @@ const isResetting = ref(false)
 const { scrollContainer, handleScroll: handleScrollPosition, restoreScrollPosition } = useScrollPosition('subscribed-page')
 
 const subscriptions = ref([])
+const avatarsLoaded = ref({})
 const loadError = ref(null)
 const loading = ref(false)
 const allLoaded = ref(false)
@@ -665,8 +671,13 @@ onUnmounted(() => {
   border-radius: var(--radius-sm);
   object-fit: cover;
   filter: grayscale(0.2);
-  transition: filter 0.2s ease;
+  opacity: 0;
+  transition: opacity 0.5s ease, filter 0.2s ease;
   border: 1px solid hsl(var(--border) / 0.4);
+}
+
+.subscription-row__avatar.image-loaded {
+  opacity: 1;
 }
 
 .subscription-row:hover .subscription-row__avatar {
@@ -891,6 +902,22 @@ onUnmounted(() => {
 .subscription-row-leave-to {
   opacity: 0;
   transform: translateX(10px);
+}
+
+.fade-list-enter-active,
+.fade-list-leave-active {
+  transition: opacity 0.4s ease;
+}
+
+.fade-list-enter-from,
+.fade-list-leave-to {
+  opacity: 0;
+}
+
+.subscribed-loading-trigger {
+  padding: 2rem 0;
+  display: flex;
+  justify-content: center;
 }
 
 @media (min-width: 768px) {

@@ -23,7 +23,7 @@
       <div v-else class="video-terminal-fallback">
         <div class="fallback-noise"></div>
         <div class="fallback-content">
-          <span class="fallback-status">SIGNAL_LOST</span>
+          <span class="fallback-status">信号丢失</span>
           <span class="fallback-id">ID: {{ videoCardId }}</span>
         </div>
       </div>
@@ -31,7 +31,7 @@
       <div class="scanline"></div>
       <div class="video-status-overlay">
         <div class="flex justify-between items-start w-full">
-          <div class="tech-tag">[SIGNAL_LOCKED]</div>
+          <div class="tech-tag">[信号锁定]</div>
           <div v-if="isLikedVideo" class="fav-dot"></div>
         </div>
         <div class="flex justify-between items-end w-full">
@@ -184,7 +184,7 @@ const displayNames = computed(() => {
   const names = displayAvatars.value.map((avatar) => avatar.name)
 
   if (!names.length) {
-    return 'UNKNOWN'
+    return '未知'
   }
 
   return names.join(' / ')

@@ -13,8 +13,8 @@
       </div>
 
       <div v-else-if="!props.loading && !hasVideos" key="empty" class="video-list-empty-minimal">
-        <div class="empty-status">EMPTY / NO_DATA</div>
-        <div class="empty-copy">SYSTEM CLEAR / RETRY_FILTER</div>
+        <div class="empty-status">暂无内容</div>
+        <div class="empty-copy">系统就绪 / 请尝试重置过滤条件</div>
       </div>
 
       <div v-else key="list" class="h-full w-full">
@@ -49,7 +49,7 @@
         </VirtualList>
 
         <div v-if="props.loading" class="video-list__loading-more">
-          <LoadingIndicator :loading="true" text="SYNCING_NEW_DATA" size="sm" />
+          <LoadingIndicator :loading="true" text="正在同步新数据" size="sm" />
         </div>
       </div>
     </Transition>
