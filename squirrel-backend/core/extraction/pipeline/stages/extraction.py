@@ -4,6 +4,8 @@ ExtractionStage - 从插件提取视频数据
 import logging
 from typing import Optional
 
+from services.blocked_video_service import record_blocked_video
+
 from ..base import PipelineStage
 from ..context import PipelineContext
 from ...contracts import Extractor
@@ -96,19 +98,24 @@ class ExtractionStage(PipelineStage):
         # 调用父类的错误处理
         super().on_error(context, error)
 
-        # 如果是VIP权限错误，记录到VIP视频表
+        reason_code = None
         if isinstance(error, VipError):
-            try:
-                from services.vip_video_service import record_vip_video
-                record_vip_video(
-                    url=context.task.url,
-                    error_message=str(error),
-                    error_type=type(error).__name__
-                )
-            except Exception as record_error:
-                logger.warning(
-                    f"Failed to record VIP video: {record_error}"
-                )
+            reason_code = 'vip_required'
+        elif isinstance(getattr(error, 'context', None), dict):
+            reason_code = error.context.get('blocked_reason_code')
+
+        if not reason_code:
+            return
+
+        try:
+            record_blocked_video(
+                url=context.task.url,
+                reason_code=reason_code,
+                error_message=str(error),
+                error_type=type(error).__name__,
+            )
+        except Exception as record_error:
+            logger.warning(f'Failed to record blocked video: {record_error}')
 
     def _get_extractor(self, url: str) -> Optional[Extractor]:
         """获取提取器"""

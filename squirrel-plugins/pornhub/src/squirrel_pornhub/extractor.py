@@ -3,8 +3,10 @@ Pornhub视频提取器
 """
 import logging
 from datetime import datetime
+from urllib.parse import urljoin, urlparse
 from typing import Optional, Dict, Any
 
+import requests
 from yt_dlp import YoutubeDL
 
 from crawl import (
@@ -61,6 +63,14 @@ class PornhubExtractor(YoutubeDLExtractorBase):
         except Exception as e:
             error_msg = str(e).lower()
             context = {"url": url, "original_error": str(e)}
+            cookie_file = resolve_cookie_file_path(url)
+
+            if 'unable to extract encoded url' in error_msg:
+                redirect_target = self._resolve_redirect_target(url, cookie_file)
+                if self._is_shorties_url(redirect_target):
+                    context['blocked_reason_code'] = 'unsupported_short_redirect'
+                    context['redirect_target'] = redirect_target
+                    raise ParseError(f'暂不支持 Pornhub short 视频: {url}', context=context)
 
             if 'sign in' in error_msg or 'login' in error_msg or 'private' in error_msg:
                 raise AuthError(f"需要登录访问: {url}", context=context)
@@ -135,3 +145,30 @@ class PornhubExtractor(YoutubeDLExtractorBase):
             cookies.setdefault(name, value)
 
         return '; '.join(f'{name}={value}' for name, value in cookies.items())
+
+    def _resolve_redirect_target(self, url: str, cookie_file: Optional[str]) -> Optional[str]:
+        headers = self._build_ytdlp_headers(url, cookie_file)
+
+        try:
+            response = requests.get(
+                url,
+                headers=headers,
+                allow_redirects=False,
+                timeout=15,
+            )
+        except Exception as exc:
+            logger.warning('Failed to inspect Pornhub redirect target: %s', exc)
+            return None
+
+        if response.is_redirect or response.is_permanent_redirect:
+            location = response.headers.get('location')
+            if location:
+                return urljoin(url, location)
+        return response.url
+
+    @staticmethod
+    def _is_shorties_url(target_url: Optional[str]) -> bool:
+        if not target_url:
+            return False
+        parsed = urlparse(target_url)
+        return parsed.netloc.endswith(SITE_DOMAIN) and parsed.path.startswith('/shorties/')

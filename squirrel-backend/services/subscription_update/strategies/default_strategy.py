@@ -14,6 +14,7 @@ from models.subscription_sync_state import SyncMode, SyncStatus
 from plugins.manager import get_plugin_manager
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, subscription_sync_state_service, video_service
+from services.blocked_video_service import is_blocked_video
 from services.subscription_runtime_models import SubscriptionSyncResult
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncRunStatus
@@ -99,7 +100,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
         enqueued = 0
         existing_count = 0
         failed_count = 0
-        vip_count = 0
+        blocked_count = 0
         is_full_update = request.mode == UpdateMode.FULL
         video_urls = fetch_result.video_urls
         total = len(fetch_result.video_urls)
@@ -108,22 +109,21 @@ class DefaultUpdateStrategy(UpdateStrategy):
         # 获取站点信息用于指标
         domain = subscription_sync_state_service._resolve_site(request.url) or "unknown"
 
-        # 批量检查VIP视频
-        from services.vip_video_service import is_vip_video
-        vip_video_urls = set()
+        # Batch check blocked videos to avoid repeated unsupported extractions.
+        blocked_video_urls = set()
         with get_session() as session:
             for video_url in video_urls:
-                if is_vip_video(video_url, session):
-                    vip_video_urls.add(video_url)
+                if is_blocked_video(video_url, session):
+                    blocked_video_urls.add(video_url)
 
         for video_url in video_urls:
             existing_video = existing_videos.get(video_url)
             if existing_video:
                 existing_count += 1
                 metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_in_db"})
-            elif video_url in vip_video_urls:
-                vip_count += 1
-                metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "vip_video"})
+            elif video_url in blocked_video_urls:
+                blocked_count += 1
+                metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "blocked_video"})
             else:
                 try:
                     params = VideoExtractDto(
@@ -178,7 +178,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
                     payload={'videos_enqueued_delta': enqueued, 'videos_enqueued': enqueued},
                 )
             )
-            skipped_total = existing_count + vip_count
+            skipped_total = existing_count + blocked_count
             if skipped_total > 0:
                 append_event(
                     SyncEventInput(
@@ -198,7 +198,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
                 )
 
         logger.debug(
-            "Enqueue summary subscription_id=%s domain=%s trigger=%s mode=%s total=%s queued=%s existed=%s vip=%s failed=%s",
+            "Enqueue summary subscription_id=%s domain=%s trigger=%s mode=%s total=%s queued=%s existed=%s blocked=%s failed=%s",
             request.subscription_id,
             domain,
             request.trigger.value,
@@ -206,7 +206,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
             total,
             enqueued,
             existing_count,
-            vip_count,
+            blocked_count,
             failed_count,
         )
         return enqueued
