@@ -125,11 +125,12 @@ export default function useVideoHistory() {
     nsfw?: string
     site?: string
     pageSize?: number
+    query?: string
   }
 
   const getWatchHistory = async (page = 1, filters: WatchHistoryFilters = {}) => {
     try {
-      const { nsfw, site, pageSize = 20 } = filters
+      const { nsfw, site, pageSize = 20, query } = filters
       const params: Record<string, unknown> = { page, page_size: pageSize }
       
       if (nsfw && nsfw !== 'all') {
@@ -137,6 +138,9 @@ export default function useVideoHistory() {
       }
       if (site && site !== 'all') {
         params.site = site
+      }
+      if (query) {
+        params.query = query
       }
       
       const { data, error } = (await listVideoHistory(params)) as ApiResult<any>
