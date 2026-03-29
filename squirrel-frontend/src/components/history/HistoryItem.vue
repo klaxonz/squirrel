@@ -1,6 +1,6 @@
 <template>
   <div
-    class="history-item flex items-center gap-4 p-3 hover:bg-accent/50 rounded-lg group transition-all cursor-pointer border border-transparent hover:border-accent/30"
+    class="history-item flex items-center gap-4 p-3 hover:bg-accent/10 rounded-lg group transition-all cursor-pointer border border-transparent hover:border-accent/20"
     @click="$emit('open', video)"
   >
     <!-- Thumbnail Section -->
@@ -9,8 +9,10 @@
         v-if="video.thumbnail && !showDefaultThumbnail"
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
-        class="w-full h-full object-cover transition-transform group-hover:scale-105"
+        class="w-full h-full object-cover transition-all duration-500"
+        :class="{ 'opacity-0': !imageLoaded, 'opacity-100': imageLoaded, 'group-hover:scale-105': imageLoaded }"
         :alt="video.title"
+        @load="imageLoaded = true"
         @error="handleThumbnailError"
       />
       
@@ -114,6 +116,7 @@ defineEmits(['open', 'delete'])
 
 const { getImageSrc, handleImageError } = useImageFallback()
 const showDefaultThumbnail = ref(false)
+const imageLoaded = ref(false)
 const videoCardId = computed(() => formatVideoCardId(props.video?.id))
 
 const handleThumbnailError = () => {

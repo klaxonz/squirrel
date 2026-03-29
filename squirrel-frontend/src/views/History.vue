@@ -4,7 +4,7 @@
     <div class="toolbar-container border-b border-accent/10 bg-background/50 backdrop-blur-md sticky top-0 z-10">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 max-w-[1400px] mx-auto w-full">
         <div class="flex items-center gap-4 flex-grow">
-          <h1 class="text-xl font-bold tracking-tight hidden sm:block">播放历史</h1>
+          <!-- Removed "播放历史" header per user request -->
         </div>
 
         <div class="flex items-center gap-3">
@@ -39,55 +39,59 @@
     <!-- Content Area -->
     <div class="history-content flex-grow overflow-y-auto scrollbar-hide" ref="scrollContainer" @scroll="handleScroll">
       <div class="max-w-[1000px] mx-auto w-full p-4 pb-20">
-        <!-- Loading State -->
-        <div v-if="loading && videos.length === 0" class="space-y-4 mt-8">
-          <div v-for="i in 5" :key="i" class="h-24 bg-accent/10 rounded-lg animate-pulse"></div>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else-if="groupedVideos.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
-          <div class="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center mb-4">
-            <ClockIcon class="h-10 w-10 text-muted-foreground/40" />
+        <Transition name="fade-list" mode="out-in">
+          <!-- Loading State -->
+          <div v-if="loading && videos.length === 0" key="skeleton" class="space-y-1 mt-8">
+            <HistorySkeleton v-for="i in 10" :key="i" :delay="i * 50" />
           </div>
-          <h3 class="text-lg font-medium">暂无播放历史</h3>
-          <p class="text-sm text-muted-foreground mt-1">
-            {{ searchQuery ? '未找到符合搜索条件的记录' : '你观看过的视频会出现在这里' }}
-          </p>
-        </div>
 
-        <!-- History Groups -->
-        <div v-else class="space-y-8">
-          <div v-for="group in groupedVideos" :key="group.date" class="history-group">
-            <h3 class="text-sm font-bold text-muted-foreground mb-4 sticky top-0 py-2 bg-background/95 backdrop-blur-sm z-[5] flex items-center gap-2">
-              <CalendarIcon class="h-4 w-4" />
-              {{ group.date }}
-              <span class="text-[10px] font-normal opacity-50 ml-1">({{ group.items.length }})</span>
-            </h3>
+          <!-- Empty State -->
+          <div v-else-if="groupedVideos.length === 0" key="empty" class="flex flex-col items-center justify-center py-20 text-center">
+            <div class="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center mb-4">
+              <ClockIcon class="h-10 w-10 text-muted-foreground/40" />
+            </div>
+            <h3 class="text-lg font-medium">暂无播放历史</h3>
+            <p class="text-sm text-muted-foreground mt-1">
+              {{ searchQuery ? '未找到符合搜索条件的记录' : '你观看过的视频会出现在这里' }}
+            </p>
+          </div>
+
+          <!-- History Groups -->
+          <div v-else key="list" class="space-y-8">
+            <div v-for="group in groupedVideos" :key="group.date" class="history-group">
+              <h3 class="text-sm font-bold text-muted-foreground mb-4 sticky top-0 py-2 bg-background/95 backdrop-blur-sm z-[5] flex items-center gap-2">
+                <CalendarIcon class="h-4 w-4" />
+                {{ group.date }}
+                <span class="text-[10px] font-normal opacity-50 ml-1">({{ group.items.length }})</span>
+              </h3>
+              
+              <div class="space-y-1">
+                <TransitionGroup name="history-list">
+                  <HistoryItem
+                    v-for="video in group.items"
+                    :key="video.history_id || video.id"
+                    :video="video"
+                    @open="handleOpenModal"
+                    @delete="handleDeleteItem"
+                  />
+                </TransitionGroup>
+              </div>
+            </div>
+
+            <!-- Loading More Indicator -->
+            <div v-if="loading" class="py-8 flex justify-center">
+              <div class="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-widest">
+                <ArrowPathIcon class="h-3 w-3 animate-spin" />
+                正在加载更多
+              </div>
+            </div>
             
-            <div class="space-y-1">
-              <HistoryItem
-                v-for="video in group.items"
-                :key="video.id"
-                :video="video"
-                @open="handleOpenModal"
-                @delete="handleDeleteItem"
-              />
+            <!-- All Loaded -->
+            <div v-if="allLoaded && groupedVideos.length > 0" class="py-12 text-center text-[10px] text-muted-foreground/30 uppercase tracking-[0.4em]">
+              没有更多历史记录了
             </div>
           </div>
-
-          <!-- Loading More Indicator -->
-          <div v-if="loading" class="py-8 flex justify-center">
-            <div class="flex items-center gap-2 text-muted-foreground text-sm">
-              <ArrowPathIcon class="h-4 w-4 animate-spin" />
-              正在加载更多...
-            </div>
-          </div>
-          
-          <!-- All Loaded -->
-          <div v-if="allLoaded && groupedVideos.length > 0" class="py-12 text-center text-xs text-muted-foreground/30 uppercase tracking-[0.2em]">
-            没有更多历史记录了
-          </div>
-        </div>
+        </Transition>
       </div>
     </div>
   </div>
@@ -103,6 +107,7 @@ import {
   CalendarIcon
 } from '@heroicons/vue/24/outline';
 import HistoryItem from '@/components/history/HistoryItem.vue';
+import HistorySkeleton from '@/components/history/HistorySkeleton.vue';
 import SiteFilter from '@/components/feed/SiteFilter.vue';
 import NsfwFilter from '@/components/feed/NsfwFilter.vue';
 import useVideoHistory from '../composables/useVideoHistory';
@@ -268,6 +273,25 @@ onUnmounted(() => {
 .history-group h3 {
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.fade-list-enter-active,
+.fade-list-leave-active {
+  transition: opacity 0.4s ease;
+}
+
+.fade-list-enter-from,
+.fade-list-leave-to {
+  opacity: 0;
+}
+
+.history-list-enter-active {
+  transition: all 0.3s ease;
+}
+
+.history-list-enter-from {
+  opacity: 0;
+  transform: translateX(-10px);
 }
 
 /* Minimal Terminal Buttons */
