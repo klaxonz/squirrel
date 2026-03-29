@@ -36,7 +36,7 @@
             <div v-if="isCurrentTab('appearance')" class="settings-section slide-up">
               <div class="settings-section-header">
                 <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">外观与主题</h2>
-                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">VISUAL EXPERIENCE & INTERFACE THEME</p>
+                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">视觉体验与界面主题</p>
               </div>
 
               <div class="settings-section-content mt-12 border-t border-border/5">
@@ -63,14 +63,14 @@
             <div v-if="isCurrentTab('content')" class="settings-section slide-up">
               <div class="settings-section-header">
                 <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">内容偏好</h2>
-                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">CONTENT PREFERENCES & PRIVACY</p>
+                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">内容偏好与隐私</p>
               </div>
               <div class="settings-section-content mt-12 border-t border-border/5">
                 <TransitionGroup name="staggered-reveal" tag="div" class="divide-y divide-border/5">
                   <div class="setting-item" :key="'nsfw'" :style="{ '--delay': '0s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">显示敏感内容</h3>
-                      <p class="setting-item-desc">Enable to display content marked as NSFW across the platform.</p>
+                      <p class="setting-item-desc">启用后将在平台显示标记为 NSFW 的内容。</p>
                     </div>
                     <Switch
                       :checked="!!settings.showNsfw"
@@ -84,7 +84,7 @@
                   <div class="setting-item" :key="'blur'" :style="{ '--delay': '0.1s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">自动模糊封面</h3>
-                      <p class="setting-item-desc">Apply Gaussian blur to NSFW thumbnails in gallery views.</p>
+                      <p class="setting-item-desc">在画廊视图中对 NSFW 缩略图应用高斯模糊。</p>
                     </div>
                     <Switch
                       :checked="Boolean(systemConfig?.blur_nsfw_thumbnails)"
@@ -101,14 +101,14 @@
             <div v-if="isCurrentTab('playback')" class="settings-section slide-up">
               <div class="settings-section-header">
                 <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">播放控制</h2>
-                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">MEDIA PLAYER & INTERACTION</p>
+                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">媒体播放器与交互</p>
               </div>
               <div class="settings-section-content mt-12 border-t border-border/5">
                 <TransitionGroup name="staggered-reveal" tag="div" class="divide-y divide-border/5">
                   <div class="setting-item" :key="'autoplay'" :style="{ '--delay': '0s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">进入页面自动播放</h3>
-                      <p class="setting-item-desc">Automatically start media playback when entering detail pages.</p>
+                      <p class="setting-item-desc">进入详情页时自动开始媒体播放。</p>
                     </div>
                     <Switch
                       :checked="!!settings.autoplay"
@@ -122,7 +122,7 @@
                   <div class="setting-item" :key="'autoplayNext'" :style="{ '--delay': '0.1s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">自动播放下一个</h3>
-                      <p class="setting-item-desc">Sequential playback of items in the current collection.</p>
+                      <p class="setting-item-desc">按顺序播放当前收藏夹中的项目。</p>
                     </div>
                     <Switch
                       :checked="!!settings.autoplayNext"
@@ -136,7 +136,7 @@
                   <div class="setting-item" :key="'loop'" :style="{ '--delay': '0.2s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">循环播放</h3>
-                      <p class="setting-item-desc">Restart current media item automatically upon completion.</p>
+                      <p class="setting-item-desc">播放完成后自动重新开始当前媒体项目。</p>
                     </div>
                     <Switch
                       :checked="!!settings.loop"
@@ -153,14 +153,14 @@
             <div v-if="isCurrentTab('system')" class="settings-section slide-up">
               <div class="settings-section-header">
                 <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">核心引擎</h2>
-                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">SYSTEM SCHEDULER & WORKER ENGINE</p>
+                <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">系统调度与工作引擎</p>
               </div>
               <div class="settings-section-content mt-12 border-t border-border/5">
                 <TransitionGroup name="staggered-reveal" tag="div" class="divide-y divide-border/5">
                   <div class="setting-item" :key="'scheduler'" :style="{ '--delay': '0s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">任务调度器</h3>
-                      <p class="setting-item-desc">Background task orchestration and state synchronization.</p>
+                      <p class="setting-item-desc">后台任务编排与状态同步。</p>
                     </div>
                     <Switch
                       :checked="Boolean(systemConfig?.enable_scheduler)"
@@ -174,7 +174,7 @@
                   <div class="setting-item" :key="'worker'" :style="{ '--delay': '0.1s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">异步工作流</h3>
-                      <p class="setting-item-desc">High-concurrency processing engine for extraction tasks.</p>
+                      <p class="setting-item-desc">用于采集任务的高并发处理引擎。</p>
                     </div>
                     <Switch
                       :checked="Boolean(systemConfig?.enable_worker)"

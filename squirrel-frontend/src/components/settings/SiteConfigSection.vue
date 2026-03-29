@@ -4,7 +4,7 @@
       <div class="flex items-end justify-between">
         <div class="min-w-0">
           <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">采集源配置</h2>
-          <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">SOURCE CATALOG & EXTRACTION PARAMETERS</p>
+          <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">源目录与采集参数</p>
         </div>
         <div class="text-[10px] font-black text-muted-foreground/10 uppercase tracking-[0.3em] pb-1">
           {{ siteSummaryText }}
@@ -25,7 +25,7 @@
 
         <div v-if="siteList.length === 0" class="py-20 text-center border border-dashed border-border/10">
           <Globe class="h-8 w-8 mx-auto text-muted-foreground/10" />
-          <p class="mt-4 text-[11px] text-muted-foreground/20 font-bold uppercase tracking-widest">NO SOURCE DETECTED</p>
+          <p class="mt-4 text-[11px] text-muted-foreground/20 font-bold uppercase tracking-widest">未发现可用站点</p>
         </div>
 
         <div v-else class="site-grid grid grid-cols-1 md:grid-cols-2">
@@ -56,7 +56,7 @@
                   class="text-[10px] font-black text-muted-foreground/30 hover:text-primary transition-all uppercase tracking-widest"
                   @click="openSiteEditor(site)"
                 >
-                  Configure
+                  配置
                 </button>
               </div>
             </div>
