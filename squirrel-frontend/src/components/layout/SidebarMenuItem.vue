@@ -1,12 +1,19 @@
 <template>
   <router-link
     :to="item.path"
-    class="menu-item-minimal"
+    class="menu-item-neon"
     :class="{ 'is-active': isActive }"
   >
-    <span class="menu-index">{{ index < 10 ? '0' + index : index }}</span>
-    <span class="menu-label">{{ item.name }}</span>
-    <div class="menu-active-line"></div>
+    <div class="menu-item-content">
+      <div class="icon-wrapper">
+        <component :is="item.icon" class="menu-icon" />
+      </div>
+      <div class="label-wrapper">
+        <span class="menu-index">{{ index < 10 ? '0' + index : index }}</span>
+        <span class="menu-label">{{ item.name }}</span>
+      </div>
+    </div>
+    <div class="menu-active-glow"></div>
   </router-link>
 </template>
 
@@ -28,59 +35,98 @@ defineProps({
 </script>
 
 <style scoped>
-.menu-item-minimal {
+.menu-item-neon {
   position: relative;
   display: flex;
-  flex-direction: column;
-  padding: 1.5rem 0.5rem;
+  padding: 1.25rem 1rem;
   color: rgba(255, 255, 255, 0.3);
   text-decoration: none;
   transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  overflow: hidden;
 }
 
-.menu-item-minimal:hover {
-  color: #fff;
+.menu-item-neon:hover {
+  color: rgba(255, 255, 255, 0.8);
   background: rgba(255, 255, 255, 0.02);
+}
+
+.menu-item-neon:hover .menu-icon {
+  transform: translateX(2px);
+  color: #fff;
 }
 
 .is-active {
   color: #fff;
+  background: linear-gradient(90deg, rgba(255, 77, 0, 0.05) 0%, transparent 100%);
+}
+
+.menu-item-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 2;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.menu-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  transition: all 0.3s ease;
+}
+
+.is-active .menu-icon {
+  color: #ff4d00;
+  filter: drop-shadow(0 0 5px rgba(255, 77, 0, 0.8));
+  animation: pulse 2s infinite ease-in-out;
+}
+
+.label-wrapper {
+  display: flex;
+  flex-direction: column;
 }
 
 .menu-index {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   letter-spacing: 0.1em;
-  margin-bottom: 0.25rem;
-  opacity: 0.5;
+  opacity: 0.4;
+  margin-bottom: -0.1rem;
 }
 
 .menu-label {
-  font-size: 0.75rem;
-  font-weight: 400;
-  letter-spacing: 0.2em;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
-.menu-active-line {
+.menu-active-glow {
   position: absolute;
   left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
   width: 2px;
-  height: 0;
   background: #ff4d00;
-  transition: height 0.4s ease;
-  box-shadow: 0 0 10px #ff4d00;
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+  box-shadow: 0 0 15px #ff4d00;
 }
 
-.is-active .menu-active-line {
-  height: 60%;
-}
-
-.is-active .menu-index {
-  color: #ff4d00;
+.is-active .menu-active-glow {
   opacity: 1;
+  height: 100%;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
 }
 </style>
