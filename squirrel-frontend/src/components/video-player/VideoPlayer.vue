@@ -29,6 +29,15 @@
       @dblclick="toggleFullscreen"
     />
 
+    <!-- 封面占位 (当没有封面且未播放时显示) -->
+    <div v-if="!(source?.poster || poster) && !isPlaying" class="sp-poster-fallback">
+      <div class="sp-poster-noise"></div>
+      <div class="sp-poster-content">
+        <div class="sp-poster-status">SIGNAL_LOST</div>
+        <div class="sp-poster-hint">READY_TO_DECODE</div>
+      </div>
+    </div>
+
     <!-- 中央 HUD 指示器 -->
     <transition name="sp-hud-fade">
       <div v-if="centralHud.visible" class="sp-central-hud">
@@ -456,6 +465,57 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* 封面占位样式 */
+.sp-poster-fallback {
+  position: absolute;
+  inset: 0;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.sp-poster-noise {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+}
+
+.sp-poster-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 2;
+}
+
+.sp-poster-status {
+  font-family: var(--sp-font-mono);
+  font-size: 14px;
+  color: var(--sp-primary);
+  letter-spacing: 0.3em;
+  font-weight: 800;
+  opacity: 0.8;
+  text-shadow: 0 0 10px var(--sp-primary);
+}
+
+.sp-poster-hint {
+  font-family: var(--sp-font-mono);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.1em;
+}
+
+@keyframes noise-move {
+  0% { transform: translate(0,0); }
+  50% { transform: translate(-5%,-5%); }
+  100% { transform: translate(5%,5%); }
 }
 
 /* 全屏视觉增强层 */
