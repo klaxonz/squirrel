@@ -6,111 +6,134 @@
         <!-- 视频播放区域 -->
         <div ref="videoSectionRef" class="video-section">
           <div class="video-container">
-            <div class="viewfinder-box">
-              <div class="viewfinder-label">[MONITOR_ACTIVE]</div>
-              <div class="viewfinder-corner viewfinder-corner--top-left"></div>
-              <div class="viewfinder-corner viewfinder-corner--top-right"></div>
-              <div class="viewfinder-corner viewfinder-corner--bottom-left"></div>
-              <div class="viewfinder-corner viewfinder-corner--bottom-right"></div>
-              <VideoPlayer
-                ref="videoPlayerRef"
-                v-if="video"
-                :source="playbackSource"
-                :subtitles="subtitleTracks"
-                :poster="video?.thumbnail"
-                :title="video?.title"
-                :initialTime="startTime"
-                :has-prev="hasPrevVideo"
-                :has-next="hasNextVideo"
-                :external-error="externalError"
-                :widescreen="isWidescreen"
-                :adapter="playerAdapter"
-                :theme="effectiveTheme"
-                :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
-                :enable-global-shortcuts="true"
-                :enable-click-outside-close-menu="true"
-                :enable-window-resize="true"
+            <Transition name="fade-player" appear>
+              <div class="viewfinder-box">
+                <div class="viewfinder-label">[正在监视]</div>
+                <div class="viewfinder-corner viewfinder-corner--top-left"></div>
+                <div class="viewfinder-corner viewfinder-corner--top-right"></div>
+                <div class="viewfinder-corner viewfinder-corner--bottom-left"></div>
+                <div class="viewfinder-corner viewfinder-corner--bottom-right"></div>
+                <VideoPlayer
+                  ref="videoPlayerRef"
+                  v-if="video"
+                  :source="playbackSource"
+                  :subtitles="subtitleTracks"
+                  :poster="video?.thumbnail"
+                  :title="video?.title"
+                  :initialTime="startTime"
+                  :has-prev="hasPrevVideo"
+                  :has-next="hasNextVideo"
+                  :external-error="externalError"
+                  :widescreen="isWidescreen"
+                  :adapter="playerAdapter"
+                  :theme="effectiveTheme"
+                  :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
+                  :enable-global-shortcuts="true"
+                  :enable-click-outside-close-menu="true"
+                  :enable-window-resize="true"
 
-                @play="onVideoPlay"
-                @pause="onVideoPause"
-                @ended="handleAutoplayNext"
-                @timeupdate="onVideoTimeUpdate"
-                @prev="handlePrevVideo"
-                @next="handleNextVideo"
-                @widescreenChange="toggleWidescreen"
-                @retry="handlePlayerRetry"
-              />
-            </div>
+                  @play="onVideoPlay"
+                  @pause="onVideoPause"
+                  @ended="handleAutoplayNext"
+                  @timeupdate="onVideoTimeUpdate"
+                  @prev="handlePrevVideo"
+                  @next="handleNextVideo"
+                  @widescreenChange="toggleWidescreen"
+                  @retry="handlePlayerRetry"
+                />
+              </div>
+            </Transition>
           </div>
         </div>
 
         <!-- 视频信息区域 -->
         <div ref="videoMetaRef" class="video-meta">
-          <!-- 标题 -->
-          <h1 class="video-meta__title">
-            {{ video?.title }}
-          </h1>
+          <Transition name="fade-meta" mode="out-in">
+            <div v-if="video" :key="video.id">
+              <!-- 标题 -->
+              <h1 class="video-meta__title">
+                {{ video?.title }}
+              </h1>
 
-          <div class="video-meta__header">
-            <!-- 频道信息与订阅按钮 -->
-            <div class="video-channel">
-              <div class="video-channel__primary">
-                <div class="video-channel__avatar-wrapper">
-                  <img
-                    v-if="video?.subscriptions?.[0]"
-                    :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
-                    :alt="video.subscriptions[0].name"
-                    class="video-channel__avatar"
-                    referrerpolicy="no-referrer"
-                    @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
-                  >
-                </div>
-                <div class="video-channel__identity">
-                  <router-link
-                    v-if="video?.subscriptions?.[0]"
-                    :to="`/subscription/${video.subscriptions[0].id}/all`"
-                    class="video-channel__name"
-                  >
-                    {{ video.subscriptions[0].name }}
-                  </router-link>
-                  <div class="video-channel__stats">
-                    {{ video?.subscriptions?.[0]?.total_videos || 0 }} 视频
+              <div class="video-meta__header">
+                <!-- 频道信息与订阅按钮 -->
+                <div class="video-channel">
+                  <div class="video-channel__primary">
+                    <div class="video-channel__avatar-wrapper">
+                      <img
+                        v-if="video?.subscriptions?.[0]"
+                        :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
+                        :alt="video.subscriptions[0].name"
+                        class="video-channel__avatar"
+                        :class="{ 'image-loaded': videoAvatarLoaded }"
+                        referrerpolicy="no-referrer"
+                        @load="videoAvatarLoaded = true"
+                        @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
+                      >
+                    </div>
+                    <div class="video-channel__identity">
+                      <router-link
+                        v-if="video?.subscriptions?.[0]"
+                        :to="`/subscription/${video.subscriptions[0].id}/all`"
+                        class="video-channel__name"
+                      >
+                        {{ video.subscriptions[0].name }}
+                      </router-link>
+                      <div class="video-channel__stats">
+                        {{ video?.subscriptions?.[0]?.total_videos || 0 }} 视频
+                      </div>
+                    </div>
+                    <button
+                      v-if="video?.subscriptions?.[0]"
+                      class="video-action video-action--primary is-active"
+                      @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
+                    >
+                      <span class="video-action__label">订阅</span>
+                    </button>
                   </div>
                 </div>
-                <button
-                  v-if="video?.subscriptions?.[0]"
-                  class="video-action video-action--primary is-active"
-                  @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
-                >
-                  <span class="video-action__label">订阅</span>
-                </button>
+
+                <!-- 操作按钮组 -->
+                <div class="video-meta__actions">
+                  <template v-for="action in videoActions" :key="action.key">
+                    <button
+                      v-if="!action.href"
+                      class="video-action video-action--secondary"
+                      :class="{ 'is-active': action.active }"
+                      @click="handleVideoAction(action)"
+                    >
+                      <Icon :icon="action.icon" class="video-action__icon" />
+                      <span class="video-action__label">{{ action.label }}</span>
+                    </button>
+                    <a
+                      v-else
+                      :href="action.href"
+                      target="_blank"
+                      class="video-action video-action--secondary"
+                    >
+                      <Icon :icon="action.icon" class="video-action__icon" />
+                      <span class="video-action__label">{{ action.label }}</span>
+                    </a>
+                  </template>
+                </div>
               </div>
             </div>
-
-            <!-- 操作按钮组 -->
-            <div class="video-meta__actions">
-              <template v-for="action in videoActions" :key="action.key">
-                <button
-                  v-if="!action.href"
-                  class="video-action video-action--secondary"
-                  :class="{ 'is-active': action.active }"
-                  @click="handleVideoAction(action)"
-                >
-                  <Icon :icon="action.icon" class="video-action__icon" />
-                  <span class="video-action__label">{{ action.label }}</span>
-                </button>
-                <a
-                  v-else
-                  :href="action.href"
-                  target="_blank"
-                  class="video-action video-action--secondary"
-                >
-                  <Icon :icon="action.icon" class="video-action__icon" />
-                  <span class="video-action__label">{{ action.label }}</span>
-                </a>
-              </template>
+            <div v-else class="video-meta-skeleton">
+              <div class="skeleton-title w-3/4 h-8 bg-white/5 rounded"></div>
+              <div class="flex items-center justify-between mt-6">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-white/5"></div>
+                  <div class="space-y-2">
+                    <div class="w-24 h-4 bg-white/5 rounded"></div>
+                    <div class="w-16 h-3 bg-white/5 rounded"></div>
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <div v-for="i in 4" :key="i" class="w-20 h-8 bg-white/5 rounded"></div>
+                </div>
+              </div>
             </div>
-          </div>
+          </Transition>
         </div>
       </div>
 
@@ -119,68 +142,77 @@
         <div class="video-aside__panel">
           <div class="video-aside__header">
             <h2 class="video-aside__title">相关视频</h2>
-            <div class="video-aside__status">[LINK_ESTABLISHED]</div>
+            <div class="video-aside__status">[链路已建立]</div>
           </div>
           <div class="video-aside__content scrollbar-hide">
-            <div v-if="!relatedVideos.length && !loadingRelated" class="video-aside__empty">暂无推荐</div>
-            <div v-if="relatedVideos.length" class="related-videos-list">
-              <article
-                v-for="(relatedVideo, index) in relatedVideos"
-                :key="relatedVideo.id"
-                class="related-video-card group"
-                @click="goToVideo(relatedVideo.id, relatedVideo)"
-              >
-                <!-- 保持之前的卡片设计内容不变 -->
-                <div class="related-video-card__thumb-container">
-                  <div class="related-video-card__thumb">
-                    <img
-                      v-if="relatedVideo.thumbnail && !relatedThumbnailErrorIds.has(relatedVideo.id)"
-                      :src="relatedVideo.thumbnail"
-                      referrerpolicy="no-referrer"
-                      class="related-video-card__image"
-                      draggable="false"
-                      :alt="relatedVideo.title"
-                      @error="() => relatedThumbnailErrorIds.add(relatedVideo.id)"
-                    >
-                    <div v-else class="related-video-card__fallback">
-                      <div class="fallback-noise"></div>
-                      <div class="fallback-content">
-                        <span class="fallback-status">SIGNAL_LOST</span>
-                        <span class="fallback-id">ID: {{ formatVideoCardId(relatedVideo.id) }}</span>
+            <Transition name="fade-aside" mode="out-in">
+              <div v-if="loadingRelated && !relatedVideos.length" key="skeleton" class="related-videos-list">
+                <RelatedVideoSkeleton v-for="i in 8" :key="i" :delay="i * 100" />
+              </div>
+              <div v-else-if="!relatedVideos.length && !loadingRelated" key="empty" class="video-aside__empty">暂无推荐</div>
+              <div v-else key="list" class="related-videos-list">
+                <TransitionGroup name="related-list">
+                  <article
+                    v-for="(relatedVideo, index) in relatedVideos"
+                    :key="relatedVideo.id"
+                    class="related-video-card group"
+                    @click="goToVideo(relatedVideo.id, relatedVideo)"
+                  >
+                    <!-- 保持之前的卡片设计内容不变 -->
+                    <div class="related-video-card__thumb-container">
+                      <div class="related-video-card__thumb">
+                        <img
+                          v-if="relatedVideo.thumbnail && !relatedThumbnailErrorIds.has(relatedVideo.id)"
+                          :src="relatedVideo.thumbnail"
+                          referrerpolicy="no-referrer"
+                          class="related-video-card__image"
+                          :class="{ 'image-loaded': relatedImagesLoaded[relatedVideo.id] }"
+                          draggable="false"
+                          :alt="relatedVideo.title"
+                          @load="relatedImagesLoaded[relatedVideo.id] = true"
+                          @error="() => relatedThumbnailErrorIds.add(relatedVideo.id)"
+                        >
+                        <div v-else class="related-video-card__fallback">
+                          <div class="fallback-noise"></div>
+                          <div class="fallback-content">
+                            <span class="fallback-status">信号丢失</span>
+                            <span class="fallback-id">ID: {{ formatVideoCardId(relatedVideo.id) }}</span>
+                          </div>
+                        </div>
+                        <div class="related-video-card__scanline"></div>
+                        
+                        <div class="related-video-card__duration">
+                          {{ formatDuration(relatedVideo.duration) }}
+                        </div>
                       </div>
                     </div>
-                    <div class="related-video-card__scanline"></div>
-                    
-                    <div class="related-video-card__duration">
-                      {{ formatDuration(relatedVideo.duration) }}
-                    </div>
-                  </div>
-                </div>
 
-                <div class="related-video-card__body">
-                  <div class="related-video-card__title">
-                    {{ relatedVideo.title }}
-                  </div>
-                  <div class="related-video-card__meta">
-                    <router-link
-                      v-if="relatedVideo.subscriptions?.[0]?.id"
-                      :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
-                      @click.stop
-                      class="related-video-card__channel"
-                    >
-                      {{ relatedVideo.subscriptions[0].name }}
-                    </router-link>
-                    <span v-else class="related-video-card__site">
-                      {{ relatedVideo.site }}
-                    </span>
-                    <span class="related-video-card__separator">/</span>
-                    <span v-if="relatedVideo.uploaded_at" class="related-video-card__date">
-                      {{ formatDate(relatedVideo.uploaded_at) }}
-                    </span>
-                  </div>
-                </div>
-              </article>
-            </div>
+                    <div class="related-video-card__body">
+                      <div class="related-video-card__title">
+                        {{ relatedVideo.title }}
+                      </div>
+                      <div class="related-video-card__meta">
+                        <router-link
+                          v-if="relatedVideo.subscriptions?.[0]?.id"
+                          :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
+                          @click.stop
+                          class="related-video-card__channel"
+                        >
+                          {{ relatedVideo.subscriptions[0].name }}
+                        </router-link>
+                        <span v-else class="related-video-card__site">
+                          {{ relatedVideo.site }}
+                        </span>
+                        <span class="related-video-card__separator">/</span>
+                        <span v-if="relatedVideo.uploaded_at" class="related-video-card__date">
+                          {{ formatDate(relatedVideo.uploaded_at) }}
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                </TransitionGroup>
+              </div>
+            </Transition>
           </div>
         </div>
       </div>
@@ -195,6 +227,7 @@ import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
 import { useAppTheme } from '@/composables/useAppTheme'
 import VideoPlayer from '@/components/video-player/VideoPlayer.vue';
+import RelatedVideoSkeleton from '@/components/video-player/RelatedVideoSkeleton.vue';
 import { LocalStorageAdapter } from '@/components/video-player/core';
 import { Icon } from '@iconify/vue';
 import useVideoHistory from "../composables/useVideoHistory";
@@ -319,6 +352,8 @@ const syncWidescreenSidebarState = (enabled) => {
 
 
 const relatedThumbnailErrorIds = reactive(new Set());
+const videoAvatarLoaded = ref(false)
+const relatedImagesLoaded = reactive({})
 const isVideoChannelVisible = ref(true)
 const isChannelUnsubscribing = ref(false)
 const videoChannelError = ref('')
@@ -561,7 +596,12 @@ watch(() => video.value?.id, () => {
   isVideoChannelVisible.value = true
   isChannelUnsubscribing.value = false
   videoChannelError.value = ''
+  videoAvatarLoaded.value = false
 })
+
+watch(() => relatedVideos.value, () => {
+  Object.keys(relatedImagesLoaded).forEach(key => delete relatedImagesLoaded[key])
+}, { deep: true })
 
 onUnmounted(() => {
   setWidescreenClass(false);
@@ -678,6 +718,14 @@ onUnmounted(() => {
 .video-channel__avatar {
   width: 2.5rem;
   height: 2.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.video-channel__avatar.image-loaded {
+  opacity: 1;
 }
 
 .video-meta__actions {
@@ -1147,7 +1195,12 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.2, 0, 0.1, 1);
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.2, 0, 0.1, 1);
+}
+
+.related-video-card__image.image-loaded {
+  opacity: 1;
 }
 
 .related-video-card:hover .related-video-card__image {
@@ -1429,6 +1482,36 @@ onUnmounted(() => {
 
 
 /* 平滑过渡动画 - 快速淡入淡出 */
+.fade-meta-enter-active,
+.fade-meta-leave-active,
+.fade-aside-enter-active,
+.fade-aside-leave-active,
+.fade-player-enter-active {
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.fade-meta-enter-from,
+.fade-meta-leave-to,
+.fade-aside-enter-from,
+.fade-aside-leave-to,
+.fade-player-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.related-list-enter-active {
+  transition: all 0.4s ease;
+}
+
+.related-list-enter-from {
+  opacity: 0;
+  transform: translateX(10px);
+}
+
+.video-meta-skeleton {
+  @apply animate-pulse;
+}
+
 .fade-enter-active {
   transition: opacity 0.15s cubic-bezier(0.2, 0, 0, 1), transform 0.15s cubic-bezier(0.2, 0, 0, 1);
 }
