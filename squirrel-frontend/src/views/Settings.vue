@@ -40,13 +40,14 @@
               </div>
 
               <div class="settings-section-content mt-12 border-t border-border/5">
-                <div class="grid grid-cols-1 sm:grid-cols-3">
+                <TransitionGroup name="staggered-reveal" tag="div" class="grid grid-cols-1 sm:grid-cols-3">
                   <button
-                    v-for="option in themeOptions"
+                    v-for="(option, index) in themeOptions"
                     :key="option.value"
                     type="button"
                     class="theme-card"
                     :class="themeMode === option.value ? 'theme-card-active' : 'theme-card-inactive'"
+                    :style="{ '--delay': `${index * 0.1}s` }"
                     @click="setThemeMode(option.value)"
                   >
                     <div class="text-[12px] font-bold tracking-widest uppercase">{{ option.label }}</div>
@@ -55,7 +56,7 @@
                     <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-primary transition-transform duration-700 origin-left"
                       :class="themeMode === option.value ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-50'"></div>
                   </button>
-                </div>
+                </TransitionGroup>
               </div>
             </div>
 
@@ -65,8 +66,8 @@
                 <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">CONTENT PREFERENCES & PRIVACY</p>
               </div>
               <div class="settings-section-content mt-12 border-t border-border/5">
-                <div class="divide-y divide-border/5">
-                  <div class="setting-item">
+                <TransitionGroup name="staggered-reveal" tag="div" class="divide-y divide-border/5">
+                  <div class="setting-item" :key="'nsfw'" :style="{ '--delay': '0s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">显示敏感内容</h3>
                       <p class="setting-item-desc">Enable to display content marked as NSFW across the platform.</p>
@@ -80,7 +81,7 @@
                     <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
 
-                  <div class="setting-item">
+                  <div class="setting-item" :key="'blur'" :style="{ '--delay': '0.1s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">自动模糊封面</h3>
                       <p class="setting-item-desc">Apply Gaussian blur to NSFW thumbnails in gallery views.</p>
@@ -93,7 +94,7 @@
                     <div class="absolute top-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                     <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
-                </div>
+                </TransitionGroup>
               </div>
             </div>
 
@@ -103,8 +104,8 @@
                 <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">MEDIA PLAYER & INTERACTION</p>
               </div>
               <div class="settings-section-content mt-12 border-t border-border/5">
-                <div class="divide-y divide-border/5">
-                  <div class="setting-item">
+                <TransitionGroup name="staggered-reveal" tag="div" class="divide-y divide-border/5">
+                  <div class="setting-item" :key="'autoplay'" :style="{ '--delay': '0s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">进入页面自动播放</h3>
                       <p class="setting-item-desc">Automatically start media playback when entering detail pages.</p>
@@ -118,7 +119,7 @@
                     <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
 
-                  <div class="setting-item">
+                  <div class="setting-item" :key="'autoplayNext'" :style="{ '--delay': '0.1s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">自动播放下一个</h3>
                       <p class="setting-item-desc">Sequential playback of items in the current collection.</p>
@@ -132,7 +133,7 @@
                     <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
 
-                  <div class="setting-item">
+                  <div class="setting-item" :key="'loop'" :style="{ '--delay': '0.2s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">循环播放</h3>
                       <p class="setting-item-desc">Restart current media item automatically upon completion.</p>
@@ -145,7 +146,7 @@
                     <div class="absolute top-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                     <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
-                </div>
+                </TransitionGroup>
               </div>
             </div>
 
@@ -155,8 +156,8 @@
                 <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">SYSTEM SCHEDULER & WORKER ENGINE</p>
               </div>
               <div class="settings-section-content mt-12 border-t border-border/5">
-                <div class="divide-y divide-border/5">
-                  <div class="setting-item">
+                <TransitionGroup name="staggered-reveal" tag="div" class="divide-y divide-border/5">
+                  <div class="setting-item" :key="'scheduler'" :style="{ '--delay': '0s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">任务调度器</h3>
                       <p class="setting-item-desc">Background task orchestration and state synchronization.</p>
@@ -170,7 +171,7 @@
                     <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
 
-                  <div class="setting-item">
+                  <div class="setting-item" :key="'worker'" :style="{ '--delay': '0.1s' }">
                     <div class="setting-item-copy">
                       <h3 class="setting-item-title">异步工作流</h3>
                       <p class="setting-item-desc">High-concurrency processing engine for extraction tasks.</p>
@@ -183,7 +184,7 @@
                     <div class="absolute top-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                     <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-foreground/5 transition-transform duration-700 scale-x-0 group-hover:scale-x-100 origin-center"></div>
                   </div>
-                </div>
+                </TransitionGroup>
               </div>
             </div>
 
@@ -289,46 +290,19 @@ const onSystemToggle = async (key: string, val: boolean) => {
   animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes slide-up {
+.staggered-reveal-enter-active {
+  animation: staggered-reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--delay);
+}
+
+@keyframes staggered-reveal {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.99);
+    transform: translateY(20px) rotateX(10deg);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0) rotateX(0);
   }
-}
-
-.settings-section-header {
-  @apply pb-4;
-}
-
-.theme-card {
-  @apply relative flex flex-col p-6 border-b border-border/10 transition-all duration-700 text-left overflow-hidden group;
-}
-
-.theme-card-active {
-  @apply text-foreground;
-}
-
-.theme-card-inactive {
-  @apply text-muted-foreground/30 hover:text-muted-foreground/60;
-}
-
-.setting-item {
-  @apply flex items-center justify-between py-10 gap-12 relative group;
-}
-
-.setting-item-copy {
-  @apply flex-1 min-w-0 transition-transform duration-500 group-hover:translate-x-2;
-}
-
-.setting-item-title {
-  @apply text-[14px] font-bold text-foreground tracking-widest uppercase;
-}
-
-.setting-item-desc {
-  @apply text-[12px] text-muted-foreground/40 mt-2 leading-relaxed font-medium;
 }
 </style>
