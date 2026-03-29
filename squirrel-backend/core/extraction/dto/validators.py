@@ -95,6 +95,15 @@ def parse_publish_date(value: Any) -> Optional[datetime]:
         
         if not value:
             return None
+
+        iso_value = value
+        if iso_value.endswith('Z'):
+            iso_value = f'{iso_value[:-1]}+00:00'
+
+        try:
+            return datetime.fromisoformat(iso_value)
+        except ValueError:
+            pass
         
         # 尝试多种日期格式
         date_formats = [
