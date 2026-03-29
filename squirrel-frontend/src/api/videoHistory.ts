@@ -1,4 +1,4 @@
-import { get, post } from '@/utils/request'
+import { del, get, post } from '@/utils/request'
 
 type VideoId = string | number
 
@@ -17,4 +17,8 @@ export const listVideoHistory = async (params: Record<string, unknown> = {}) => 
 export const clearVideoHistory = async (videoIds: VideoId[] | null = null) => {
   const body = Array.isArray(videoIds) && videoIds.length ? videoIds : null
   return post('/api/video-history/clear', body)
+}
+
+export const deleteVideoHistory = async (historyId: VideoId) => {
+  return del(`/api/video-history/${historyId}`)
 }

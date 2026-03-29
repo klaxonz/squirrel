@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import and_, delete, exists, func, select
+from sqlalchemy import and_, delete, exists, func, or_, select
 
 from core.database import get_session
 from models.video_history import VideoHistory
@@ -59,6 +59,41 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                 .where(Video.id == VideoHistory.video_id)
             )
         ]
+
+        if filters.get('query'):
+            search_term = filters['query'].strip()
+            if search_term:
+                search_pattern = f'%{search_term}%'
+                title_match = exists(
+                    select(1)
+                    .select_from(Video)
+                    .where(
+                        and_(
+                            Video.id == VideoHistory.video_id,
+                            Video.title.ilike(search_pattern)
+                        )
+                    )
+                )
+                subscription_match = exists(
+                    select(1)
+                    .select_from(SubscriptionVideo)
+                    .join(
+                        Subscription,
+                        Subscription.id == SubscriptionVideo.subscription_id
+                    )
+                    .join(
+                        UserSubscription,
+                        UserSubscription.subscription_id == Subscription.id
+                    )
+                    .where(
+                        SubscriptionVideo.video_id == VideoHistory.video_id,
+                        UserSubscription.user_id == user_id,
+                        UserSubscription.is_deleted == False,
+                        Subscription.is_deleted == False,
+                        Subscription.name.ilike(search_pattern)
+                    )
+                )
+                conditions.append(or_(title_match, subscription_match))
 
         if filters.get('video_id'):
             conditions.append(VideoHistory.video_id == filters['video_id'])
@@ -217,6 +252,7 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
 
             item = {
                 'id': v.id,
+                'history_id': h.id,
                 'title': v.title,
                 'url': v.url,
                 'thumbnail': thumbnail_downloader_service.get_thumbnail_url(v.id, v.thumbnail, v.url),
@@ -257,6 +293,18 @@ def get_video_history(user_id: int, video_id: int) -> VideoHistory:
             )
         ).first()
         return video_history
+
+
+def delete_history(user_id: int, history_id: int) -> int:
+    with get_session() as session:
+        result = session.execute(
+            delete(VideoHistory).where(
+                VideoHistory.id == history_id,
+                VideoHistory.user_id == user_id
+            )
+        )
+        session.commit()
+        return result.rowcount
 
 
 def clear_histories(user_id: int, video_ids: List[int] = None):

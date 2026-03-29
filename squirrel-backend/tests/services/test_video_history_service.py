@@ -65,6 +65,38 @@ def _seed_history(engine, histories):
         session.commit()
 
 
+def _seed_subscription_links(engine, items):
+    with Session(engine, expire_on_commit=False) as session:
+        for item in items:
+            subscription = Subscription(
+                id=item['subscription_id'],
+                type=item.get('type', 'CHANNEL'),
+                name=item['subscription_name'],
+                url=item.get('subscription_url', f"https://sub.example.com/{item['subscription_id']}"),
+                avatar=item.get('subscription_avatar'),
+                is_deleted=False,
+            )
+            session.merge(subscription)
+
+            session.merge(
+                SubscriptionVideo(
+                    subscription_id=item['subscription_id'],
+                    video_id=item['video_id'],
+                )
+            )
+            session.merge(
+                UserSubscription(
+                    id=item.get('user_subscription_id', item['subscription_id']),
+                    user_id=item.get('user_id', 1),
+                    subscription_id=item['subscription_id'],
+                    is_deleted=False,
+                    is_nsfw=item.get('is_nsfw', False),
+                )
+            )
+
+        session.commit()
+
+
 def _setup_test_env(monkeypatch):
     engine = create_engine('sqlite:///:memory:')
     Base.metadata.create_all(
@@ -154,6 +186,100 @@ def test_list_histories_deduplicates_same_video_id(monkeypatch):
     assert result['total'] == 2
     assert [item['id'] for item in result['items']] == [1, 2]
     assert result['items'][0]['last_position'] == 30
+
+
+def test_list_histories_returns_latest_history_id(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    latest_end_time = datetime(2024, 1, 3, 12, 0, 0)
+    _seed_history(
+        engine,
+        [
+            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': latest_end_time, 'last_position': 30},
+            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0), 'last_position': 10},
+        ],
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        latest_history = session.query(VideoHistory).filter_by(user_id=1, video_id=1, end_time=latest_end_time).one()
+
+    result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=10)
+
+    assert result['items'][0]['id'] == 1
+    assert result['items'][0]['history_id'] == latest_history.id
+
+
+def test_list_histories_filters_by_video_title_query(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_history(
+        engine,
+        [
+            {'video_id': 1, 'domain': 'alpha.example.com', 'title': 'Daily Coding Notes', 'end_time': datetime(2024, 1, 3, 12, 0, 0)},
+            {'video_id': 2, 'domain': 'beta.example.com', 'title': 'Weekend Travel Log', 'end_time': datetime(2024, 1, 2, 12, 0, 0)},
+        ],
+    )
+
+    result = video_history_service.list_histories(
+        user_id=1,
+        filters={'query': 'coding'},
+        page=1,
+        page_size=10,
+    )
+
+    assert result['total'] == 1
+    assert [item['id'] for item in result['items']] == [1]
+
+
+def test_delete_history_removes_only_target_history_for_current_user(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_history(
+        engine,
+        [
+            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 3, 12, 0, 0), 'user_id': 1},
+            {'video_id': 2, 'domain': 'beta.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0), 'user_id': 1},
+            {'video_id': 3, 'domain': 'gamma.example.com', 'end_time': datetime(2024, 1, 1, 12, 0, 0), 'user_id': 2},
+        ],
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        target_history = session.query(VideoHistory).filter_by(user_id=1, video_id=1).one()
+        other_user_history = session.query(VideoHistory).filter_by(user_id=2, video_id=3).one()
+
+    deleted_count = video_history_service.delete_history(user_id=1, history_id=target_history.id)
+
+    with Session(engine, expire_on_commit=False) as session:
+        remaining_histories = session.query(VideoHistory).order_by(VideoHistory.id.asc()).all()
+
+    assert deleted_count == 1
+    assert [history.video_id for history in remaining_histories] == [2, 3]
+    assert remaining_histories[1].id == other_user_history.id
+
+
+def test_list_histories_filters_by_subscription_name_query(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_history(
+        engine,
+        [
+            {'video_id': 1, 'domain': 'alpha.example.com', 'title': 'Episode One', 'end_time': datetime(2024, 1, 3, 12, 0, 0)},
+            {'video_id': 2, 'domain': 'beta.example.com', 'title': 'Episode Two', 'end_time': datetime(2024, 1, 2, 12, 0, 0)},
+        ],
+    )
+    _seed_subscription_links(
+        engine,
+        [
+            {'subscription_id': 101, 'subscription_name': 'Search Match Channel', 'video_id': 1, 'user_id': 1},
+            {'subscription_id': 102, 'subscription_name': 'Another Channel', 'video_id': 2, 'user_id': 1},
+        ],
+    )
+
+    result = video_history_service.list_histories(
+        user_id=1,
+        filters={'query': 'match'},
+        page=1,
+        page_size=1,
+    )
+
+    assert result['total'] == 1
+    assert [item['id'] for item in result['items']] == [1]
 
 
 def test_update_history_merges_duplicate_rows_for_same_video(monkeypatch):

@@ -1,5 +1,5 @@
 import { reactive, ref } from 'vue'
-import { batchUpdateVideoHistory, clearVideoHistory, listVideoHistory, updateVideoHistory } from '@/api'
+import { batchUpdateVideoHistory, clearVideoHistory, deleteVideoHistory, listVideoHistory, updateVideoHistory } from '@/api'
 import { Logger } from '@/utils/logger'
 
 type VideoId = string | number
@@ -177,6 +177,20 @@ export default function useVideoHistory() {
     }
   }
 
+  const deleteHistoryEntry = async (historyId: VideoId) => {
+    try {
+      const { error } = (await deleteVideoHistory(historyId)) as ApiResult<unknown>
+      if (error) {
+        const message = typeof error?.message === 'string' ? error.message : '删除历史失败'
+        throw new Error(message)
+      }
+      return true
+    } catch (error: unknown) {
+      const message = typeof (error as any)?.message === 'string' ? (error as any).message : '删除历史失败'
+      throw new Error(message)
+    }
+  }
+
   const getLocalHistory = (video_id: VideoId) => {
     return localHistory.get(video_id)
   }
@@ -298,6 +312,7 @@ export default function useVideoHistory() {
     sendBatchReport,
     getWatchHistory,
     clearHistory,
+    deleteHistoryEntry,
     getLocalHistory,
     getAllLocalHistory,
     updateLocalHistory,

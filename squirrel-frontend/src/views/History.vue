@@ -111,7 +111,7 @@ import { Logger } from '@/utils/logger';
 
 const router = useRouter();
 const emitter = inject('emitter');
-const { getWatchHistory, clearHistory } = useVideoHistory();
+const { getWatchHistory, clearHistory, deleteHistoryEntry } = useVideoHistory();
 
 const videos = ref([]);
 const currentPage = ref(1);
@@ -199,10 +199,10 @@ const showClearConfirm = async () => {
   }
 };
 
-const handleDeleteItem = async (videoId) => {
+const handleDeleteItem = async (historyId) => {
   try {
-    await clearHistory([videoId]);
-    videos.value = videos.value.filter(v => v.id !== videoId);
+    await deleteHistoryEntry(historyId);
+    videos.value = videos.value.filter(v => v.history_id !== historyId);
   } catch (err) {
     Logger.error('Failed to delete history item', err);
   }

@@ -29,6 +29,7 @@ def get_history_list(
         min_duration: int = Query(None),
         start_date: datetime = Query(None),
         end_date: datetime = Query(None),
+        query: str = Query(None, description='搜索关键词'),
         nsfw: str = Query(None, description="NSFW筛选: all/yes/no"),
         site: str = Query(None, description="站点筛选"),
         page: int = Query(1, ge=1),
@@ -40,6 +41,7 @@ def get_history_list(
         "min_duration": min_duration,
         "start_date": start_date,
         "end_date": end_date,
+        "query": query,
         "nsfw": nsfw,
         "site": site
     }
@@ -61,4 +63,15 @@ def clear_history(
         user_id=user['id'],
         video_ids=video_ids
     )
+    return response.success()
+
+
+@router.delete("/api/video-history/{history_id}")
+def delete_history(
+        history_id: int,
+        user: User = Depends(get_current_user)
+):
+    deleted_count = video_history_service.delete_history(user.id, history_id)
+    if deleted_count == 0:
+        return response.not_found('历史记录不存在')
     return response.success()

@@ -87,7 +87,7 @@
         size="icon"
         class="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
         title="从历史记录中移除"
-        @click.stop="$emit('delete', video.id)"
+        @click.stop="$emit('delete', video.history_id ?? video.id)"
       >
         <TrashIcon class="h-4 w-4" />
       </Button>
