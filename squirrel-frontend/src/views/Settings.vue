@@ -5,37 +5,32 @@
     </div>
 
     <div
-      class="content-container pb-20 flex-1 min-h-0 overflow-hidden"
+      class="content-container pb-20 flex-1 min-h-0 overflow-hidden mt-12"
     >
-      <div class="flex flex-col lg:flex-row gap-16 min-h-0 h-full">
-        <aside class="lg:w-56 lg:shrink-0 lg:sticky lg:top-0 self-start">
-          <nav class="settings-nav space-y-0.5">
+      <div class="flex flex-col lg:flex-row gap-24 min-h-0 h-full">
+        <aside class="lg:w-48 lg:shrink-0 lg:sticky lg:top-0 self-start">
+          <nav class="settings-nav space-y-8">
             <button
               v-for="tab in tabs"
               :key="tab.key"
               @click="currentTab = tab.key"
-              class="tab-button w-full px-4 py-2.5 rounded-xl text-[13px] font-bold transition-all flex items-center gap-3 group relative"
+              class="tab-button w-full py-1 text-[13px] font-bold tracking-widest uppercase transition-all flex items-center group relative text-left"
               :class="isCurrentTab(tab.key)
-                ? 'text-primary bg-primary/[0.04]'
-                : 'text-muted-foreground/60 hover:bg-muted/40 hover:text-foreground'"
+                ? 'text-foreground'
+                : 'text-muted-foreground/40 hover:text-foreground/60'"
               :aria-current="isCurrentTab(tab.key) ? 'page' : undefined"
             >
-              <component 
-                :is="tab.icon" 
-                class="h-4 w-4 shrink-0 transition-transform group-hover:scale-110"
-                :class="isCurrentTab(tab.key) ? 'text-primary' : 'text-muted-foreground/40 group-hover:text-muted-foreground/70'"
-              />
-              <span class="flex-1 text-left">{{ tab.label }}</span>
+              <span class="flex-1">{{ tab.label }}</span>
               <div 
-                v-if="isCurrentTab(tab.key)" 
-                class="absolute right-2 h-1.5 w-1.5 rounded-full bg-primary"
+                class="absolute -left-8 top-0 bottom-0 w-[1px] bg-primary transition-transform duration-500 origin-top"
+                :class="isCurrentTab(tab.key) ? 'scale-y-100' : 'scale-y-0'"
               ></div>
             </button>
           </nav>
         </aside>
 
         <section
-          class="flex-1 max-w-xl space-y-16"
+          class="flex-1 space-y-24"
           :class="allowScroll ? 'overflow-y-auto min-h-0 pr-6 -mr-6' : ''"
         >
             <div v-if="isCurrentTab('appearance')" class="settings-section slide-up">
@@ -299,46 +294,34 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 .settings-section-header {
-  @apply pb-6 border-b border-border/20;
+  @apply pb-4;
 }
 
 .theme-card {
-  @apply relative flex flex-col p-5 rounded-[24px] border transition-all duration-500 text-left overflow-hidden;
+  @apply relative flex flex-col p-6 border-b border-border/10 transition-all duration-700 text-left overflow-hidden group;
 }
 
 .theme-card-active {
-  @apply border-primary bg-primary/[0.03] shadow-[0_8px_24px_-12px_hsl(var(--primary)/0.3)];
+  @apply text-foreground;
 }
 
 .theme-card-inactive {
-  @apply border-border/40 bg-muted/5 hover:border-border/80 hover:bg-muted/20;
-}
-
-.theme-card-icon {
-  @apply h-10 w-10 rounded-2xl bg-background border border-border/40 flex items-center justify-center text-muted-foreground transition-all duration-500;
-}
-
-.theme-card-active .theme-card-icon {
-  @apply border-primary/20 bg-primary/10 text-primary rotate-[10deg] scale-110;
-}
-
-.theme-card-check {
-  @apply h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/20;
+  @apply text-muted-foreground/30 hover:text-muted-foreground/60;
 }
 
 .setting-item {
-  @apply flex items-center justify-between py-8 gap-10;
+  @apply flex items-center justify-between py-10 gap-12 relative group;
 }
 
 .setting-item-copy {
-  @apply flex-1 min-w-0;
+  @apply flex-1 min-w-0 transition-transform duration-500 group-hover:translate-x-2;
 }
 
 .setting-item-title {
-  @apply text-[15px] font-bold text-foreground tracking-tight;
+  @apply text-[14px] font-bold text-foreground tracking-widest uppercase;
 }
 
 .setting-item-desc {
-  @apply text-[13px] text-muted-foreground/60 mt-1.5 leading-relaxed;
+  @apply text-[12px] text-muted-foreground/40 mt-2 leading-relaxed font-medium;
 }
 </style>
