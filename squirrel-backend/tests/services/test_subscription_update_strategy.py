@@ -3,6 +3,7 @@ import sys
 from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'squirrel-sdk' / 'src'))
 
 from crawl import PluginInvokeResponse
 from services.subscription_update.models import SubscriptionUpdateRequest, UpdateMode, UpdateTrigger
@@ -125,3 +126,134 @@ def test_enqueue_extraction_skips_blocked_video_urls(monkeypatch):
     assert enqueued == 1
     assert enqueue_calls == ['https://www.pornhub.com/view_video.php?viewkey=normal']
     assert ('crawl.tasks.total', {'site': 'pornhub.com', 'status': 'skipped', 'reason': 'blocked_video'}) in counter_calls
+
+
+def test_execute_full_sync_with_more_batches_continues_without_marking_success(monkeypatch):
+    continuation_calls = []
+    success_calls = []
+
+    monkeypatch.setattr(DefaultUpdateStrategy, '_schedule_total_video_backfill', staticmethod(lambda request: None))
+    monkeypatch.setattr(DefaultUpdateStrategy, 'should_update', lambda self, request: (True, None))
+    monkeypatch.setattr(
+        DefaultUpdateStrategy,
+        'fetch_videos',
+        lambda self, request: SimpleNamespace(
+            video_urls=['https://example.com/a', 'https://example.com/b'],
+            latest_video_url='https://example.com/a',
+            cursor_payload={'page': 2},
+            source_video_count=2,
+            total_available=2,
+            has_more=True,
+        ),
+    )
+    monkeypatch.setattr(DefaultUpdateStrategy, 'enqueue_extraction', lambda self, fetch_result, request: 2)
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.base.subscription_sync_state_service.mark_sync_success',
+        lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs)),
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch',
+        lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs)),
+        raising=False,
+    )
+    monkeypatch.setattr('services.subscription_update.strategies.base.metrics.counter', lambda *args, **kwargs: None)
+    monkeypatch.setattr('services.subscription_update.strategies.base.append_event', lambda *args, **kwargs: None)
+
+    request = SubscriptionUpdateRequest(
+        subscription_id=1,
+        sync_state_id=2,
+        url='https://space.bilibili.com/42',
+        trigger=UpdateTrigger.MANUAL,
+        mode=UpdateMode.FULL,
+        cursor_payload={'page': 1},
+        run_id='run-1',
+        request_id='req-1',
+        trace_id='trace-1',
+    )
+
+    result = DefaultUpdateStrategy().execute(request)
+
+    assert result.success is True
+    assert result.cursor_payload == {'page': 2}
+    assert success_calls == []
+    assert continuation_calls == [
+        (
+            2,
+            {
+                'cursor_payload': {'page': 2},
+                'latest_video_url': 'https://example.com/a',
+                'source_video_count': 2,
+                'videos_found': 2,
+                'videos_enqueued': 2,
+                'run_id': 'run-1',
+                'request_id': 'req-1',
+                'trace_id': 'trace-1',
+                'trigger': 'manual',
+            },
+        )
+    ]
+
+
+def test_execute_final_full_sync_batch_marks_success(monkeypatch):
+    success_calls = []
+    continuation_calls = []
+
+    monkeypatch.setattr(DefaultUpdateStrategy, '_schedule_total_video_backfill', staticmethod(lambda request: None))
+    monkeypatch.setattr(DefaultUpdateStrategy, 'should_update', lambda self, request: (True, None))
+    monkeypatch.setattr(
+        DefaultUpdateStrategy,
+        'fetch_videos',
+        lambda self, request: SimpleNamespace(
+            video_urls=['https://example.com/c'],
+            latest_video_url='https://example.com/c',
+            cursor_payload={'page': 3},
+            source_video_count=1,
+            total_available=3,
+            has_more=False,
+        ),
+    )
+    monkeypatch.setattr(DefaultUpdateStrategy, 'enqueue_extraction', lambda self, fetch_result, request: 1)
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.base.subscription_sync_state_service.mark_sync_success',
+        lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs)),
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch',
+        lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs)),
+        raising=False,
+    )
+    monkeypatch.setattr('services.subscription_update.strategies.base.metrics.counter', lambda *args, **kwargs: None)
+    monkeypatch.setattr('services.subscription_update.strategies.base.append_event', lambda *args, **kwargs: None)
+
+    request = SubscriptionUpdateRequest(
+        subscription_id=1,
+        sync_state_id=2,
+        url='https://space.bilibili.com/42',
+        trigger=UpdateTrigger.MANUAL,
+        mode=UpdateMode.FULL,
+        cursor_payload={'page': 2},
+        run_id='run-1',
+        request_id='req-2',
+        trace_id='trace-1',
+    )
+
+    result = DefaultUpdateStrategy().execute(request)
+
+    assert result.success is True
+    assert continuation_calls == []
+    assert success_calls == [
+        (
+            2,
+            {
+                'cursor_payload': {'page': 3},
+                'latest_video_url': 'https://example.com/c',
+                'source_video_count': 1,
+                'videos_found': 1,
+                'videos_enqueued': 1,
+                'run_id': 'run-1',
+                'request_id': 'req-2',
+                'trace_id': 'trace-1',
+                'trigger': 'manual',
+            },
+        )
+    ]
