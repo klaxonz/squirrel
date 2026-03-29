@@ -3,16 +3,16 @@
     <div class="settings-section-header">
       <div class="flex items-end justify-between">
         <div class="min-w-0">
-          <h2 class="text-2xl font-black tracking-tight text-foreground">采集源配置</h2>
-          <p class="text-[13px] text-muted-foreground/50 mt-1 font-medium italic">配置与管理各站点的采集参数。</p>
+          <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">采集源配置</h2>
+          <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">SOURCE CATALOG & EXTRACTION PARAMETERS</p>
         </div>
-        <div class="text-[11px] font-black text-muted-foreground/20 uppercase tracking-[0.2em] pb-1">
+        <div class="text-[10px] font-black text-muted-foreground/10 uppercase tracking-[0.3em] pb-1">
           {{ siteSummaryText }}
         </div>
       </div>
     </div>
 
-    <div class="settings-section-content mt-12">
+    <div class="settings-section-content mt-12 border-t border-border/5">
       <div v-if="siteLoading" class="py-12 flex flex-col items-center justify-center gap-3">
         <Loader2 class="h-6 w-6 animate-spin text-primary/20" />
       </div>
@@ -23,43 +23,45 @@
           <span class="font-bold">{{ siteError.message || siteError }}</span>
         </div>
 
-        <div v-if="siteList.length === 0" class="py-20 text-center border-2 border-dashed border-border/20 rounded-[32px] bg-muted/[0.02]">
+        <div v-if="siteList.length === 0" class="py-20 text-center border border-dashed border-border/10">
           <Globe class="h-8 w-8 mx-auto text-muted-foreground/10" />
-          <p class="mt-4 text-[13px] text-muted-foreground/30 font-bold uppercase tracking-widest">未发现可用站点配置</p>
+          <p class="mt-4 text-[11px] text-muted-foreground/20 font-bold uppercase tracking-widest">NO SOURCE DETECTED</p>
         </div>
 
-        <div v-else class="site-grid grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div v-else class="site-grid grid grid-cols-1 md:grid-cols-2">
           <div
             v-for="site in siteList"
             :key="site.slug"
-            class="site-item group p-5 rounded-[24px] border border-border/40 bg-muted/[0.02] hover:bg-muted/[0.06] hover:border-primary/20 hover:shadow-xl hover:shadow-primary/[0.02] transition-all duration-500"
+            class="site-item group p-8 border-b border-border/5 md:odd:border-r transition-all duration-700 relative overflow-hidden"
           >
-            <div class="flex items-start justify-between gap-4">
+            <div class="flex items-start justify-between gap-6 relative z-10">
               <div class="min-w-0">
-                <div class="flex items-center gap-4">
-                  <div class="h-10 w-10 rounded-2xl bg-background border border-border/40 flex items-center justify-center shadow-sm shrink-0 transition-all duration-500 group-hover:scale-110 group-hover:rotate-[-5deg] group-hover:border-primary/20">
-                    <span class="text-[12px] font-black text-muted-foreground/40 group-hover:text-primary/60">{{ site.slug.substring(0, 2).toUpperCase() }}</span>
+                <div class="flex items-center gap-6">
+                  <div class="h-12 w-12 border border-border/10 flex items-center justify-center shrink-0 transition-all duration-700 group-hover:rotate-90 group-hover:border-primary/40">
+                    <span class="text-[11px] font-black text-muted-foreground/20 group-hover:text-primary/60">{{ site.slug.substring(0, 2).toUpperCase() }}</span>
                   </div>
-                  <div class="min-w-0">
-                    <div class="text-[15px] font-black text-foreground tracking-tight truncate">{{ site.label }}</div>
-                    <div class="text-[11px] text-muted-foreground/30 font-bold mt-0.5 uppercase tracking-wider">{{ site.slug }}</div>
+                  <div class="min-w-0 transition-transform duration-500 group-hover:translate-x-2">
+                    <div class="text-[14px] font-bold text-foreground tracking-widest uppercase truncate">{{ site.label }}</div>
+                    <div class="text-[10px] text-muted-foreground/20 font-bold mt-1 uppercase tracking-[0.2em]">{{ site.slug }}</div>
                   </div>
                 </div>
               </div>
 
-              <div class="flex flex-col items-end justify-between h-10 shrink-0">
+              <div class="flex flex-col items-end justify-between h-12 shrink-0">
                 <div
-                  class="h-1.5 w-1.5 rounded-full transition-all duration-500"
-                  :class="site.enabled ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)] scale-110' : 'bg-muted-foreground/10'"
+                  class="h-1 w-1 rounded-full transition-all duration-700"
+                  :class="site.enabled ? 'bg-primary' : 'bg-muted-foreground/10'"
                 ></div>
                 <button
-                  class="text-[11px] font-black text-primary/30 hover:text-primary transition-all uppercase tracking-widest"
+                  class="text-[10px] font-black text-muted-foreground/30 hover:text-primary transition-all uppercase tracking-widest"
                   @click="openSiteEditor(site)"
                 >
                   Configure
                 </button>
               </div>
             </div>
+            
+            <div class="absolute inset-0 bg-primary/[0.01] translate-y-full group-hover:translate-y-0 transition-transform duration-700"></div>
           </div>
         </div>
       </div>
@@ -157,11 +159,18 @@ const saveSiteEditor = async ({ slug, sitePayload }) => {
 </script>
 
 <style scoped>
-.site-item {
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.02);
+.slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.site-item:hover {
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 </style>
