@@ -24,11 +24,17 @@
         </div>
       </div>
 
-      <!-- 仅在悬停时显示的极简时长 -->
-      <div class="video-duration-tag">{{ formatDuration(video.duration) }}</div>
-
-      <!-- 极其隐蔽的喜欢状态 -->
-      <div v-if="isLikedVideo" class="fav-status-dot"></div>
+      <div class="scanline"></div>
+      <div class="video-status-overlay">
+        <div class="flex justify-between items-start w-full">
+          <div class="tech-tag">[SIGNAL_LOCKED]</div>
+          <div v-if="isLikedVideo" class="fav-dot"></div>
+        </div>
+        <div class="flex justify-between items-end w-full">
+          <div class="tech-tag">ID: {{ videoCardId }}</div>
+          <div class="tech-time">{{ formatDuration(video.duration) }}</div>
+        </div>
+      </div>
 
       <!-- 进度条：1px 极细线 -->
       <div
@@ -291,160 +297,16 @@ onUnmounted(() => {
   aspect-ratio: 16/9;
   overflow: hidden;
   background: #000;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.03); /* 极细边框，默认几乎看不见 */
-  transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.video-terminal-item:hover .video-viewer-frame {
-  /* 移除边框颜色变化，改为背光发光 (Backlight Glow) */
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.6),
-    0 0 20px rgba(255, 77, 0, 0.1); 
-  transform: translateY(-5px);
-}
-
-.video-terminal-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: brightness(0.8) saturate(0.9); /* 默认稍暗、低饱和，更有电影质感 */
-  transition: all 0.5s ease;
-}
-
-.video-terminal-item:hover .video-terminal-image {
-  filter: brightness(1.1) saturate(1.1); /* 悬停时“点亮”画面 */
-}
-
-.video-terminal-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1.4;
-  height: 2.8em;
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 0.4rem;
-  letter-spacing: 0.01em;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  transition: color 0.3s ease;
-}
-
-.video-terminal-item:hover .video-terminal-title {
-  color: #fff; /* 悬停时标题变亮 */
-}
-
-
-.video-terminal-item:hover .video-viewer-frame {
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  transform: translateY(-2px);
-}
-
-.video-terminal-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: brightness(0.85) contrast(1.05);
-  transition: all 0.5s ease;
-}
-
-.video-terminal-item:hover .video-terminal-image {
-  filter: brightness(1) contrast(1.1);
-}
-
-/* 极简时长：仅悬停显示 */
-.video-duration-tag {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  color: #fff;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.6rem;
-  padding: 2px 6px;
-  border-radius: 2px;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: all 0.3s ease;
-  z-index: 4;
-}
-
-.video-terminal-item:hover .video-duration-tag {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* 喜欢状态点 */
-.fav-status-dot {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 6px;
-  height: 6px;
-  background: #ff4d00;
-  border-radius: 50%;
-  box-shadow: 0 0 10px #ff4d00;
-  z-index: 4;
-}
-
-/* 进度条：极细 1px 线 */
-.tech-progress-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.05);
-  z-index: 5;
-}
-
-.tech-progress-fill {
-  height: 100%;
-  background: #ff4d00;
-}
-
-.video-terminal-info {
-  margin-top: 0.75rem;
-}
-
-
-.video-bg-index {
-  position: absolute;
-  top: 0;
-  left: 0;
-  font-size: 6rem;
-  font-weight: 900;
-  color: rgba(255, 255, 255, 0.03);
-  font-family: 'Courier New', Courier, monospace;
-  line-height: 1;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.video-viewer-frame {
-  position: relative;
-  aspect-ratio: 16/9;
-  overflow: hidden;
-  background: #000;
-  z-index: 1;
+  border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 4px; /* 添加微圆角 */
+  transition: all 0.3s ease;
 }
 
-/* 取景框线也需要相应调整 */
-.top-left { top: 10px; left: 10px; border-right: none; border-bottom: none; border-top-left-radius: 2px; }
-.top-right { top: 10px; right: 10px; border-left: none; border-bottom: none; border-top-right-radius: 2px; }
-.bottom-left { bottom: 10px; left: 10px; border-right: none; border-top: none; border-bottom-left-radius: 2px; }
-.bottom-right { bottom: 10px; right: 10px; border-left: none; border-top: none; border-bottom-right-radius: 2px; }
-
-.video-terminal-item:hover .corner-mark {
-  border-color: #ff4d00;
-  width: 15px;
-  height: 15px;
+.video-terminal-item:hover .video-viewer-frame {
+  border-color: rgba(255, 77, 0, 0.4);
+  box-shadow: 
+    0 0 30px rgba(255, 77, 0, 0.15),
+    inset 0 0 15px rgba(255, 77, 0, 0.05);
 }
 
 .video-terminal-image {
@@ -456,60 +318,10 @@ onUnmounted(() => {
 }
 
 .video-terminal-item:hover .video-terminal-image {
-  filter: contrast(1.1) brightness(1.05);
-  /* 移除 transform: scale */
-}
-
-/* 像素点阵遮罩（仅悬停） */
-.video-viewer-frame::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 3px 3px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.video-terminal-item:hover .video-viewer-frame::after {
-  opacity: 1;
-}
-
-.video-viewer-frame {
-  position: relative;
-  aspect-ratio: 16/9;
-  overflow: hidden;
-  background: #000;
-  z-index: 1;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-  transition: all 0.3s ease;
-}
-
-/* 边缘点燃效果 */
-.video-terminal-item:hover .video-viewer-frame {
-  border-color: rgba(255, 77, 0, 0.5);
-  box-shadow: 
-    0 0 20px rgba(255, 77, 0, 0.1),
-    inset 0 0 15px rgba(255, 77, 0, 0.05);
-}
-
-/* 取景框线扩张动画 */
-.video-terminal-item:hover .corner-mark {
-  border-color: #ff4d00;
-  transform: scale(1.1); /* 边角线向外扩张而非压缩图片 */
-  filter: drop-shadow(0 0 5px #ff4d00);
-}
-
-
-.video-terminal-item:hover .video-terminal-image {
   filter: contrast(1.1) brightness(1.1);
   transform: scale(1.02);
 }
 
-/* 扫描线动画 */
 .scanline {
   position: absolute;
   top: 0;
@@ -536,20 +348,27 @@ onUnmounted(() => {
 .video-status-overlay {
   position: absolute;
   inset: 0;
-  padding: 1.25rem;
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   z-index: 4;
   background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.6) 100%);
-  opacity: 0.8;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.video-terminal-item:hover .video-status-overlay {
+  opacity: 1;
 }
 
 .tech-tag {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.55rem;
-  color: #fff;
-  letter-spacing: 0.2em;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  color: #ff4d00;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
 }
 
 .fav-dot {
@@ -561,7 +380,7 @@ onUnmounted(() => {
 }
 
 .tech-time {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
   color: #fff;
   background: rgba(0,0,0,0.5);
@@ -594,7 +413,7 @@ onUnmounted(() => {
   font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.4;
-  height: 2.8em; /* 固定两行高度 */
+  height: 2.8em;
   color: #fff;
   margin-bottom: 0.4rem;
   letter-spacing: 0.01em;
@@ -609,7 +428,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
   color: rgba(255, 255, 255, 0.3);
   text-transform: uppercase;
@@ -654,10 +473,6 @@ onUnmounted(() => {
   color: #fff;
 }
 
-.meta-divider {
-  opacity: 0.2;
-}
-
 .video-terminal-fallback {
   position: absolute;
   inset: 0;
@@ -685,7 +500,7 @@ onUnmounted(() => {
 }
 
 .fallback-status {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
   color: #ff4d00;
   letter-spacing: 0.3em;
@@ -694,7 +509,7 @@ onUnmounted(() => {
 }
 
 .fallback-id {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.5rem;
   color: rgba(255, 255, 255, 0.15);
   letter-spacing: 0.1em;
