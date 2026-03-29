@@ -4,12 +4,16 @@
       <router-link to="/" class="sidebar-brand-minimal">SQRL</router-link>
     </div>
 
-    <nav class="sidebar-nav-minimal flex-1 overflow-y-auto py-8 scrollbar-hide">
+    <nav class="sidebar-nav-neon flex-1 overflow-y-auto py-4 scrollbar-hide">
       <div
         v-for="(group, groupIdx) in NAV_GROUPS"
         :key="group.key"
-        class="sidebar-section-minimal"
+        class="sidebar-section-neon mb-6"
       >
+        <div class="section-header-neon">
+          <span class="section-title">{{ group.label }}</span>
+          <div class="section-line"></div>
+        </div>
         <SidebarMenuItem
           v-for="(item, itemIdx) in group.items"
           :key="item.path"
@@ -46,7 +50,7 @@ const handleLogout = () => {
 
 <style scoped>
 .sidebar-minimal {
-  width: var(--sidebar-width, 8rem);
+  width: var(--sidebar-width, 11rem);
   background: #050505;
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
@@ -54,8 +58,8 @@ const handleLogout = () => {
 }
 
 .sidebar-header-minimal {
-  padding: 2.5rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 2rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .sidebar-brand-minimal {
@@ -67,7 +71,29 @@ const handleLogout = () => {
   opacity: 0.9;
 }
 
-.sidebar-nav-minimal {
+.section-header-neon {
+  padding: 0 1rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.section-title {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.15);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.section-line {
+  height: 1px;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sidebar-nav-neon {
   padding-bottom: 2rem;
 }
 
