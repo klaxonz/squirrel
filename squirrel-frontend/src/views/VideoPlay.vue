@@ -46,136 +46,70 @@
 
         <!-- 视频信息区域 -->
         <div ref="videoMetaRef" class="video-meta">
-          <div class="video-meta__panel">
-            <!-- 标题与操作按钮 -->
-            <transition name="fade" mode="out-in">
-              <div :key="video?.id" class="video-meta__header">
-                <div class="video-meta__copy">
-                  <div
-                    v-if="video?.site || video?.duration || video?.publish_date || relatedVideos.length"
-                    class="video-meta__eyebrow"
+          <!-- 标题 -->
+          <h1 class="video-meta__title">
+            {{ video?.title }}
+          </h1>
+
+          <div class="video-meta__header">
+            <!-- 频道信息与订阅按钮 -->
+            <div class="video-channel">
+              <div class="video-channel__primary">
+                <div class="video-channel__avatar-wrapper">
+                  <img
+                    v-if="video?.subscriptions?.[0]"
+                    :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
+                    :alt="video.subscriptions[0].name"
+                    class="video-channel__avatar"
+                    referrerpolicy="no-referrer"
+                    @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
                   >
-                    <span v-if="video?.site" class="video-meta__pill">{{ video.site }}</span>
-                    <span v-if="video?.duration" class="video-meta__pill">{{ formatDuration(video.duration) }}</span>
-                    <span v-if="video?.publish_date" class="video-meta__pill">{{ formatDate(video.publish_date) }}</span>
-                    <span v-if="relatedVideos.length" class="video-meta__pill video-meta__pill--muted">
-                      推荐 {{ relatedVideos.length }}
-                    </span>
+                </div>
+                <div class="video-channel__identity">
+                  <router-link
+                    v-if="video?.subscriptions?.[0]"
+                    :to="`/subscription/${video.subscriptions[0].id}/all`"
+                    class="video-channel__name"
+                  >
+                    {{ video.subscriptions[0].name }}
+                  </router-link>
+                  <div class="video-channel__stats">
+                    {{ video?.subscriptions?.[0]?.total_videos || 0 }} 视频
                   </div>
-                  <h1 class="video-meta__title text-foreground">
-                    <span class="video-meta__title-prefix">[FILE_ENTRY]</span> {{ video?.title }}
-                  </h1>
-                  <transition name="channel-dismiss" mode="out-in">
-                    <div v-if="video?.subscriptions?.length && isVideoChannelVisible" :key="`${video?.id}-${isVideoChannelVisible}`" class="video-channel">
-                      <div class="video-channel__content">
-                        <div class="video-channel__primary">
-                          <div class="video-channel__avatar-wrapper">
-                            <img
-                              :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
-                              :alt="video.subscriptions[0].name"
-                              class="video-channel__avatar"
-                              referrerpolicy="no-referrer"
-                              @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
-                            >
-                          </div>
-                          <div class="video-channel__summary">
-                            <div class="video-channel__identity">
-                              <router-link
-                                :to="`/subscription/${video.subscriptions[0].id}/all`"
-                                class="video-channel__name"
-                              >
-                                {{ video.subscriptions[0].name }}
-                              </router-link>
-                              <button
-                                class="video-channel__unsubscribe"
-                                @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
-                                :disabled="isChannelUnsubscribing"
-                                :aria-busy="isChannelUnsubscribing ? 'true' : 'false'"
-                                :title="`取消订阅 ${video.subscriptions[0].name}`"
-                                :aria-label="`取消订阅 ${video.subscriptions[0].name}`"
-                              >
-                                <span v-if="isChannelUnsubscribing" class="video-channel__spinner" aria-hidden="true"></span>
-                                <span class="video-action__label">{{ isChannelUnsubscribing ? '正在取消' : '取消订阅' }}</span>
-                              </button>
-                            </div>
-
-                            <div class="video-channel__stats">
-                              <span class="video-channel__stat-pill">
-                                总视频 {{ video.subscriptions[0].total_videos || 0 }}
-                              </span>
-                              <span class="video-channel__stat-pill">
-                                已解析 {{ video.subscriptions[0].total_extract || 0 }}
-                              </span>
-                            </div>
-                            <p v-if="videoChannelError" class="video-channel__error">{{ videoChannelError }}</p>
-                          </div>
-                        </div>
-
-                        <div
-                          v-if="video.subscriptions.length > 1"
-                          class="video-channel__more"
-                        >
-                          <div
-                            v-for="sub in video.subscriptions.slice(1)"
-                            :key="sub.id"
-                            class="video-channel__chip"
-                            @click.stop="$router.push(`/subscription/${sub.id}/all`)"
-                          >
-                            <img
-                              :src="getAvatarSrc(sub.avatar, sub.id)"
-                              :alt="sub.name"
-                              class="video-channel__chip-avatar"
-                              referrerpolicy="no-referrer"
-                              @error="(e) => handleAvatarError(e, sub.id)"
-                            >
-                            <span class="truncate max-w-[140px]">{{ sub.name }}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </transition>
                 </div>
-
-                <!-- 操作按钮组 -->
-                <div class="video-meta__actions">
-                  <template v-for="action in videoActions" :key="action.key">
-                    <a
-                      v-if="action.href"
-                      :href="action.href"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      :class="[
-                        'video-action',
-                        `video-action--${action.variant}`,
-                        action.active ? 'is-active' : '',
-                        action.active ? `is-active--${action.tone}` : ''
-                      ]"
-                      :aria-label="action.label"
-                      :title="action.label"
-                    >
-                      <Icon :icon="action.icon" class="video-action__icon" />
-                      <span class="video-action__label">{{ action.label }}</span>
-                    </a>
-                    <button
-                      v-else
-                      type="button"
-                      :class="[
-                        'video-action',
-                        `video-action--${action.variant}`,
-                        action.active ? 'is-active' : '',
-                        action.active ? `is-active--${action.tone}` : ''
-                      ]"
-                      :aria-pressed="action.active ? 'true' : 'false'"
-                      :title="action.label"
-                      @click="handleVideoAction(action)"
-                    >
-                      <Icon :icon="action.icon" class="video-action__icon" />
-                      <span class="video-action__label">{{ action.label }}</span>
-                    </button>
-                  </template>
-                </div>
+                <button
+                  v-if="video?.subscriptions?.[0]"
+                  class="video-action video-action--primary is-active"
+                  @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
+                >
+                  <span class="video-action__label">订阅</span>
+                </button>
               </div>
-            </transition>
+            </div>
+
+            <!-- 操作按钮组 -->
+            <div class="video-meta__actions">
+              <template v-for="action in videoActions" :key="action.key">
+                <button
+                  v-if="!action.href"
+                  class="video-action video-action--secondary"
+                  :class="{ 'is-active': action.active }"
+                  @click="handleVideoAction(action)"
+                >
+                  <Icon :icon="action.icon" class="video-action__icon" />
+                  <span class="video-action__label">{{ action.label }}</span>
+                </button>
+                <a
+                  v-else
+                  :href="action.href"
+                  target="_blank"
+                  class="video-action video-action--secondary"
+                >
+                  <Icon :icon="action.icon" class="video-action__icon" />
+                  <span class="video-action__label">{{ action.label }}</span>
+                </a>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -654,140 +588,144 @@ onUnmounted(() => {
 .video-page__container {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  max-width: min(1840px, calc(100vw - 32px));
+  gap: 1.5rem;
+  max-width: 1720px; /* YouTube 风格的最大宽度约束 */
   margin: 0 auto;
   width: 100%;
-  padding: 0.75rem 0.75rem 0; /* 移除底部 padding */
-  --video-main-offset: 0px;
-  --video-aside-width: clamp(280px, 18vw, 320px);
-}
-
-@media (min-width: 640px) {
-  .video-page__container {
-    gap: 1.25rem;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-    padding-bottom: 0; /* 移除底部 padding */
-  }
-}
-
-@media (min-width: 1024px) {
-  .video-page__container {
-    gap: 1.5rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
-    padding-bottom: 0; /* 移除底部 padding */
-  }
-}
-
-
-.video-page__container.is-widescreen {
-  --video-main-offset: 0px;
-}
-
-.video-page__container.is-widescreen {
-  max-width: 100%;
-  padding-left: 0;
-  padding-right: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.video-page__container.is-widescreen .video-section {
-  border-radius: 0;
-}
-
-@media (min-width: 640px) {
-  .video-page__container {
-    gap: 1.25rem;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-    padding-bottom: 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .video-page__container {
-    gap: 1.5rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
-    padding-bottom: 2rem;
-  }
+  padding: 1rem;
 }
 
 @media (min-width: 1280px) {
   .video-page__container {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 2rem;
-    --video-main-offset: 16px;
+    display: grid;
+    /* 左侧主内容占大头，右侧相关视频固定宽度 */
+    grid-template-columns: minmax(0, 1fr) 400px;
+    align-items: start;
+    padding: 1.5rem 2rem;
   }
 }
 
 .video-main {
-  flex: 1 1 auto;
-  min-width: 0;
   width: 100%;
-  max-width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  transform: none;
+  min-width: 0;
 }
 
-@media (min-width: 1280px) {
-  .video-main {
-    flex: 1 1 0%;
-    max-width: clamp(1200px, 78vw, 1440px);
-    transform: translateX(var(--video-main-offset, 0px));
+.video-section {
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  /* 移除之前的 padding 和 border，让视频更沉浸 */
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+/* 优化取景框，使其成为轻量级叠加层而非容器 */
+.viewfinder-box {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.video-container :deep(.sp-player) {
+  border-radius: 0; /* 视频内部填满容器 */
+}
+
+.video-meta {
+  margin-top: 1rem;
+  padding: 0;
+}
+
+.video-meta__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+  color: #fff;
+}
+
+/* 重新排列：频道信息和操作按钮在同一行 */
+.video-meta__header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .video-meta__header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
   }
 }
 
-.video-main.is-widescreen {
-  max-width: 100%;
-  transform: none;
+.video-channel {
+  padding: 0;
+  border: none;
 }
 
-.video-main.is-widescreen .video-container,
-.video-main:not(.is-widescreen) .video-container {
-  aspect-ratio: 16 / 9;
-  height: auto;
-  width: 100%;
-  max-height: calc(100svh - 260px);
-  min-height: 200px;
+.video-channel__primary {
+  gap: 0.75rem;
+}
+
+.video-channel__avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.video-meta__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
 }
 
 .video-aside {
   width: 100%;
-  flex: none;
 }
 
 @media (min-width: 1280px) {
   .video-aside {
-    width: var(--video-aside-width, 360px);
-    flex: 0 0 var(--video-aside-width, 360px);
-    padding-top: 0;
     position: sticky;
-    top: 1rem;
+    top: 1.5rem;
   }
 }
 
 .video-aside__panel {
-  display: flex;
-  flex-direction: column;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  overflow: hidden;
   height: auto;
-  margin-bottom: 0;
 }
 
-@media (min-width: 1280px) {
-  .video-aside__panel {
-    height: calc(100vh - 2rem);
-  }
+.related-video-card {
+  grid-template-columns: 160px 1fr; /* 侧边栏卡片更宽一点，更像 YouTube */
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  background: transparent;
+  border: none;
 }
+
+.related-video-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: none;
+}
+
+.related-video-card__thumb {
+  border-radius: 8px;
+}
+
+.related-video-card__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  -webkit-line-clamp: 2;
+}
+
 
 .video-aside__header {
   display: flex;
