@@ -364,37 +364,7 @@ const videoPlayerRef = ref(null);
 const videoPageRef = ref(null);
 const videoSectionRef = ref(null);
 const videoMetaRef = ref(null);
-let metaResizeObserver = null;
 
-const syncVideoMetaHeight = () => {
-  const root = document.documentElement;
-  const metaEl = videoMetaRef.value;
-  const sectionEl = videoSectionRef.value;
-  const pageContainer = document.querySelector('.video-page__container');
-  const videoMain = document.querySelector('.video-main');
-  
-  if (!metaEl || !sectionEl) return;
-
-  const metaHeight = Math.ceil(metaEl.getBoundingClientRect().height);
-  const sectionRect = sectionEl.getBoundingClientRect();
-  const sectionTop = sectionRect.top;
-  const sectionHeight = Math.ceil(sectionRect.height);
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-  const availableHeight = Math.max(0, Math.floor(viewportHeight - sectionTop));
-
-  // 计算 video-main 的总高度
-  let mainTotalHeight = sectionHeight + metaHeight + 14; // 14px 是间距补偿
-  if (videoMain) {
-    mainTotalHeight = Math.ceil(videoMain.getBoundingClientRect().height);
-  }
-
-  root.style.setProperty('--video-meta-height', `${metaHeight}px`);
-  root.style.setProperty('--video-page-available-height', `${availableHeight}px`);
-  root.style.setProperty('--related-panel-height', `${sectionHeight}px`);
-  root.style.setProperty('--video-main-total-height', `${mainTotalHeight}px`);
-};
-
-const handleResize = () => syncVideoMetaHeight();
 
 // 宽屏模式
 const isWidescreen = ref(false);
@@ -640,16 +610,6 @@ onMounted(async () => {
   await loadAndPlayById(route.params.videoId);
   await focusVideoPlayer();
 
-  await nextTick();
-  syncVideoMetaHeight();
-  window.addEventListener('resize', handleResize);
-  if (videoMetaRef.value) {
-    metaResizeObserver = new ResizeObserver(() => {
-      syncVideoMetaHeight();
-    });
-    metaResizeObserver.observe(videoMetaRef.value);
-  }
-
   setWidescreenClass(isWidescreen.value);
   syncWidescreenSidebarState(isWidescreen.value);
 });
@@ -660,8 +620,6 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   if (newId && newId !== oldId && video.value?.id !== newId) {
     await loadAndPlayById(newId);
     await focusVideoPlayer();
-    await nextTick();
-    syncVideoMetaHeight();
   }
 });
 
@@ -672,11 +630,6 @@ watch(() => video.value?.id, () => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize);
-  if (metaResizeObserver) {
-    metaResizeObserver.disconnect();
-    metaResizeObserver = null;
-  }
   setWidescreenClass(false);
   syncWidescreenSidebarState(false);
 });
@@ -797,14 +750,10 @@ onUnmounted(() => {
 
 .video-main.is-widescreen .video-container,
 .video-main:not(.is-widescreen) .video-container {
-  aspect-ratio: auto;
-  /* 核心修复：增加底部信息的保留空间（从 40px 增加到 120px 以上），确保频道信息可见 */
-  height: min(
-    calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 280px) - 80px),
-    calc(100vw * 9 / 16)
-  );
-  max-height: calc(var(--video-page-available-height, 100vh) - var(--video-meta-height, 280px) - 80px);
-  padding-bottom: 0;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  width: 100%;
+  max-height: calc(100svh - 260px);
   min-height: 200px;
 }
 
@@ -818,6 +767,8 @@ onUnmounted(() => {
     width: var(--video-aside-width, 360px);
     flex: 0 0 var(--video-aside-width, 360px);
     padding-top: 0;
+    position: sticky;
+    top: 1rem;
   }
 }
 
@@ -834,9 +785,7 @@ onUnmounted(() => {
 
 @media (min-width: 1280px) {
   .video-aside__panel {
-    /* 核心修复：强制侧边栏高度与左侧 video-main 的总高度一致 */
-    height: var(--video-main-total-height, 800px);
-    max-height: var(--video-main-total-height, 800px);
+    height: calc(100vh - 2rem);
   }
 }
 
