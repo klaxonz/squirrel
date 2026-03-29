@@ -142,126 +142,75 @@
           <p class="text-xs mt-1">请导入插件 ZIP 包</p>
         </div>
 
-        <div v-else class="overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full border-collapse">
-              <thead>
-                <tr class="border-b border-border text-left">
-                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">插件信息</th>
-                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">版本 / 运行时</th>
-                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 hidden lg:table-cell">能力范围</th>
-                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 hidden xl:table-cell">安全权限</th>
-                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 text-center">系统状态</th>
-                  <th class="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 text-right">控制</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-border/40">
-                <tr
-                  v-for="plugin in displayPlugins"
-                  :key="plugin.plugin_id"
-                  class="group hover:bg-muted/20 transition-colors"
+        <div v-else class="plugin-rack space-y-3">
+          <div v-for="plugin in displayPlugins" :key="plugin.plugin_id" class="rack-unit group transition-all duration-300 hover:bg-white/[0.04]">
+            <div class="unit-handle" :class="plugin.enabled ? 'bg-orange-500' : 'bg-white/10'"></div>
+            <div class="unit-content flex-1 p-4 flex items-center gap-6">
+              <div class="flex flex-col items-center gap-1">
+                <div class="led-indicator" :class="getLedClass(plugin)"></div>
+                <span class="text-[8px] font-bold opacity-30 uppercase tracking-tighter">Status</span>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-3 mb-1">
+                  <span class="unit-title text-sm font-bold uppercase tracking-tight text-foreground/90">{{ plugin.display_name }}</span>
+                  <div class="unit-id px-1.5 py-0.5 border border-white/10 rounded bg-black/40">
+                    {{ plugin.plugin_id }} v{{ plugin.version }}
+                  </div>
+                </div>
+                <div class="text-[10px] text-muted-foreground/60 font-mono truncate max-w-xl">
+                  {{ plugin.description || 'NO_DESCRIPTION_PROVIDED' }} // ENDPOINT: {{ plugin.active_runtime?.endpoint || 'OFFLINE' }}
+                </div>
+              </div>
+
+              <div class="flex items-center gap-8 px-6 border-x border-white/5 hidden lg:flex">
+                <div class="flex flex-col gap-1">
+                  <span class="text-[8px] font-bold opacity-30 uppercase tracking-widest">Capabilities</span>
+                  <div class="flex gap-1">
+                    <span v-for="cap in plugin.capabilities.slice(0, 3)" :key="cap.name" class="text-[9px] font-mono text-orange-500/80">[{{ cap.name }}]</span>
+                  </div>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <span class="text-[8px] font-bold opacity-30 uppercase tracking-widest">Target_Sites</span>
+                  <div class="text-[9px] font-mono text-white/40">{{ formatSiteNames(plugin.sites) }}</div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  v-if="!plugin.enabled"
+                  :disabled="actioning === plugin.plugin_id"
+                  @click="handleEnable(plugin)"
+                  variant="ghost"
+                  size="sm"
+                  class="h-7 text-[10px] px-3 font-bold uppercase tracking-tight bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
                 >
-                  <td class="py-4 px-2">
-                    <div class="flex flex-col">
-                      <div class="flex items-center gap-2 mb-1">
-                        <span class="font-semibold text-sm tracking-tight text-foreground/90">{{ plugin.display_name }}</span>
-                        <code class="text-[9px] px-1.5 py-0.5 bg-muted/60 text-muted-foreground/80 rounded font-mono">{{ plugin.plugin_id }}</code>
-                      </div>
-                      <div class="text-[11px] text-muted-foreground line-clamp-1 max-w-md opacity-80">
-                        {{ plugin.description || '未提供插件描述' }}
-                      </div>
-                    </div>
-                  </td>
-                  <td class="py-4 px-2">
-                    <div class="text-xs font-medium text-foreground/80">{{ plugin.version || '—' }}</div>
-                    <div class="text-[10px] text-muted-foreground/50 mt-1 font-mono">
-                      {{ plugin.active_runtime?.endpoint || 'offline' }}
-                    </div>
-                  </td>
-                  <td class="py-4 px-2 hidden lg:table-cell">
-                    <div class="flex flex-col gap-2">
-                      <div class="flex flex-wrap gap-1">
-                        <span
-                          v-for="capability in plugin.capabilities.slice(0, 3)"
-                          :key="`${plugin.plugin_id}-${capability.name}`"
-                          class="text-[9px] font-bold px-1.5 py-0 border border-border/60 text-muted-foreground/70 rounded-[3px] uppercase tracking-tighter"
-                        >
-                          {{ capability.name }}
-                        </span>
-                        <span
-                          v-if="plugin.capabilities.length > 3"
-                          class="text-[9px] text-muted-foreground/40 font-bold"
-                        >
-                          +{{ plugin.capabilities.length - 3 }}
-                        </span>
-                      </div>
-                      <div class="text-[10px] text-muted-foreground/60 truncate max-w-[180px]">
-                        {{ formatSiteNames(plugin.sites) }}
-                      </div>
-                    </div>
-                  </td>
-                  <td class="py-4 px-2 hidden xl:table-cell">
-                    <div class="flex flex-wrap gap-1">
-                      <span
-                        v-for="permission in plugin.permissions.slice(0, 2)"
-                        :key="`${plugin.plugin_id}-${permission.name}`"
-                        class="text-[9px] font-bold px-1.5 py-0 border border-border/60 text-muted-foreground/70 rounded-[3px] uppercase tracking-tighter"
-                        :title="permission.description || permission.name"
-                      >
-                        {{ permission.name }}
-                      </span>
-                    </div>
-                  </td>
-                  <td class="py-4 px-2">
-                    <div class="flex flex-col items-center gap-1.5">
-                      <div class="flex items-center gap-2">
-                        <div 
-                          class="w-1.5 h-1.5 rounded-full" 
-                          :class="getPluginStatusIndicator(plugin)"
-                        ></div>
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-foreground/70">{{ getPluginStatusLabel(plugin) }}</span>
-                      </div>
-                      <div class="text-[9px] text-muted-foreground/40 text-center max-w-[100px] truncate">
-                        {{ plugin.health?.message || plugin.active_runtime?.last_error || 'System Ready' }}
-                      </div>
-                    </div>
-                  </td>
-                  <td class="py-4 px-2">
-                    <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        v-if="!plugin.enabled"
-                        :disabled="actioning === plugin.plugin_id"
-                        @click="handleEnable(plugin)"
-                        variant="ghost"
-                        size="sm"
-                        class="h-7 text-[11px] px-2 font-bold uppercase tracking-tight hover:bg-success/10 hover:text-success"
-                      >
-                        Enable
-                      </Button>
-                      <Button
-                        v-if="plugin.enabled"
-                        :disabled="actioning === plugin.plugin_id"
-                        @click="handleDisable(plugin)"
-                        variant="ghost"
-                        size="sm"
-                        class="h-7 text-[11px] px-2 font-bold uppercase tracking-tight hover:bg-muted"
-                      >
-                        Disable
-                      </Button>
-                      <Button
-                        :disabled="actioning === plugin.plugin_id"
-                        @click="handleUninstall(plugin)"
-                        variant="ghost"
-                        size="sm"
-                        class="h-7 text-[11px] px-2 font-bold uppercase tracking-tight text-destructive/60 hover:text-destructive hover:bg-destructive/10"
-                      >
-                        Purge
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  Enable
+                </Button>
+                <Button
+                  v-if="plugin.enabled"
+                  :disabled="actioning === plugin.plugin_id"
+                  @click="handleDisable(plugin)"
+                  variant="ghost"
+                  size="sm"
+                  class="h-7 text-[10px] px-3 font-bold uppercase tracking-tight bg-white/5 text-white/60 hover:bg-white/10"
+                >
+                  Disable
+                </Button>
+                <Button
+                  :disabled="actioning === plugin.plugin_id"
+                  @click="handleUninstall(plugin)"
+                  variant="ghost"
+                  size="sm"
+                  class="h-7 text-[10px] px-3 font-bold uppercase tracking-tight text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10"
+                >
+                  Purge
+                </Button>
+              </div>
+            </div>
+            <div class="unit-vents flex flex-col justify-center gap-1 px-3 border-l border-white/5">
+              <div v-for="i in 4" :key="i" class="w-6 h-[1px] bg-white/10"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -706,6 +655,13 @@ const getPluginStatusIndicator = (plugin) => {
 };
 
 const getPluginStatusLabel = (plugin) => pluginStatusLabels[plugin.status] || plugin.status || '未知状态';
+
+const getLedClass = (plugin) => {
+  if (!plugin.enabled) return 'led-off';
+  if (plugin.active_runtime?.state === 'running' && plugin.health?.healthy !== false) return 'led-running';
+  if (plugin.active_runtime?.state === 'failed' || plugin.health?.healthy === false) return 'led-failed';
+  return 'led-starting';
+};
 
 const getPluginHealthLabel = (plugin) => {
   if (!plugin.enabled) return '未启用';
@@ -1196,6 +1152,66 @@ onMounted(() => {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.rack-unit {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  height: 84px;
+  position: relative;
+  overflow: hidden;
+}
+
+.unit-handle {
+  width: 4px;
+  transition: all 0.3s ease;
+}
+
+.led-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.led-running { 
+  background-color: #10b981; 
+  box-shadow: 0 0 10px #10b981; 
+  animation: pulse 2s infinite; 
+}
+
+.led-failed { 
+  background-color: #ef4444; 
+  box-shadow: 0 0 10px #ef4444; 
+  animation: flash 0.5s infinite; 
+}
+
+.led-starting { 
+  background-color: #f59e0b; 
+  box-shadow: 0 0 10px #f59e0b; 
+  opacity: 0.6;
+}
+
+.led-off {
+  background-color: #374151;
+  box-shadow: none;
+}
+
+.unit-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+}
+
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
 }
 
 .plugin-hero__actions {
