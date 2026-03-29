@@ -16,6 +16,7 @@ class SyncEventType:
     QUEUED = 'queued'
     CLAIMED = 'claimed'
     STARTED = 'started'
+    CONTINUED = 'continued'
     PHASE_CHANGED = 'phase_changed'
     PROGRESS_UPDATED = 'progress_updated'
     VIDEO_FOUND = 'video_found'

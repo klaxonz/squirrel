@@ -45,6 +45,7 @@ class SubscriptionUpdateResult:
     success: bool
     videos_found: int
     videos_enqueued: int
+    has_more: bool = False
     error_message: Optional[str] = None
     skipped_reason: Optional[str] = None
     cursor_payload: Optional[dict] = None

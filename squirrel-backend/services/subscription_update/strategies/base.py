@@ -9,7 +9,7 @@ from services.subscription_sync_event_service import SyncEventInput, append_even
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus
 from services import subscription_sync_state_service
 from utils.metrics import metrics
-from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult
+from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode
 
 
 def _append_request_event(
@@ -144,22 +144,55 @@ class UpdateStrategy(ABC):
                     'source_video_count': fetch_result.source_video_count,
                     'videos_found': len(fetch_result.video_urls),
                     'videos_enqueued': enqueued,
+                    'has_more': bool(getattr(fetch_result, 'has_more', False)),
                 },
             )
 
             if request.sync_state_id:
-                subscription_sync_state_service.mark_sync_success(
-                    request.sync_state_id,
-                    cursor_payload=fetch_result.cursor_payload,
-                    latest_video_url=fetch_result.latest_video_url,
-                    source_video_count=fetch_result.source_video_count,
-                    videos_found=len(fetch_result.video_urls),
-                    videos_enqueued=enqueued,
-                    run_id=request.run_id,
-                    request_id=request.request_id,
-                    trace_id=request.trace_id,
-                    trigger=request.trigger.value,
-                )
+                if request.mode == UpdateMode.FULL and bool(getattr(fetch_result, 'has_more', False)):
+                    subscription_sync_state_service.continue_full_sync_batch(
+                        request.sync_state_id,
+                        cursor_payload=fetch_result.cursor_payload,
+                        latest_video_url=fetch_result.latest_video_url,
+                        source_video_count=fetch_result.source_video_count,
+                        videos_found=len(fetch_result.video_urls),
+                        videos_enqueued=enqueued,
+                        run_id=request.run_id,
+                        request_id=request.request_id,
+                        trace_id=request.trace_id,
+                        trigger=request.trigger.value,
+                    )
+
+                    from services.subscription_update import scheduler
+
+                    continuation_result = scheduler.schedule_one(
+                        subscription_id=request.subscription_id,
+                        url=request.url,
+                        trigger=request.trigger,
+                        mode=request.mode,
+                        user_id=request.user_id,
+                        force=request.force,
+                        trace_id=request.trace_id,
+                        run_id=request.run_id,
+                    )
+                    if continuation_result.status != 'queued':
+                        raise ValueError(
+                            f'Failed to schedule continuation batch: subscription_id={request.subscription_id}, '
+                            f'status={continuation_result.status}'
+                        )
+                else:
+                    subscription_sync_state_service.mark_sync_success(
+                        request.sync_state_id,
+                        cursor_payload=fetch_result.cursor_payload,
+                        latest_video_url=fetch_result.latest_video_url,
+                        source_video_count=fetch_result.source_video_count,
+                        videos_found=len(fetch_result.video_urls),
+                        videos_enqueued=enqueued,
+                        run_id=request.run_id,
+                        request_id=request.request_id,
+                        trace_id=request.trace_id,
+                        trigger=request.trigger.value,
+                    )
             
             # 记录成功指标
             metrics.counter("subscription.update.total", tags={**tags, "status": "success"})
@@ -171,6 +204,7 @@ class UpdateStrategy(ABC):
                 success=True,
                 videos_found=len(fetch_result.video_urls),
                 videos_enqueued=enqueued,
+                has_more=bool(getattr(fetch_result, 'has_more', False)),
                 cursor_payload=fetch_result.cursor_payload,
                 latest_video_url=fetch_result.latest_video_url,
                 source_video_count=fetch_result.source_video_count,

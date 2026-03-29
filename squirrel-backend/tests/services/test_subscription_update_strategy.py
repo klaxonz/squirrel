@@ -131,6 +131,7 @@ def test_enqueue_extraction_skips_blocked_video_urls(monkeypatch):
 def test_execute_full_sync_with_more_batches_continues_without_marking_success(monkeypatch):
     continuation_calls = []
     success_calls = []
+    schedule_calls = []
 
     monkeypatch.setattr(DefaultUpdateStrategy, '_schedule_total_video_backfill', staticmethod(lambda request: None))
     monkeypatch.setattr(DefaultUpdateStrategy, 'should_update', lambda self, request: (True, None))
@@ -155,6 +156,10 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success(m
         'services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch',
         lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs)),
         raising=False,
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.scheduler.schedule_one',
+        lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status='queued', run_id=kwargs.get('run_id')),
     )
     monkeypatch.setattr('services.subscription_update.strategies.base.metrics.counter', lambda *args, **kwargs: None)
     monkeypatch.setattr('services.subscription_update.strategies.base.append_event', lambda *args, **kwargs: None)
@@ -192,11 +197,24 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success(m
             },
         )
     ]
+    assert schedule_calls == [
+        {
+            'subscription_id': 1,
+            'url': 'https://space.bilibili.com/42',
+            'trigger': UpdateTrigger.MANUAL,
+            'mode': UpdateMode.FULL,
+            'user_id': None,
+            'force': False,
+            'trace_id': 'trace-1',
+            'run_id': 'run-1',
+        }
+    ]
 
 
 def test_execute_final_full_sync_batch_marks_success(monkeypatch):
     success_calls = []
     continuation_calls = []
+    schedule_calls = []
 
     monkeypatch.setattr(DefaultUpdateStrategy, '_schedule_total_video_backfill', staticmethod(lambda request: None))
     monkeypatch.setattr(DefaultUpdateStrategy, 'should_update', lambda self, request: (True, None))
@@ -222,6 +240,10 @@ def test_execute_final_full_sync_batch_marks_success(monkeypatch):
         lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs)),
         raising=False,
     )
+    monkeypatch.setattr(
+        'services.subscription_update.scheduler.schedule_one',
+        lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status='queued', run_id=kwargs.get('run_id')),
+    )
     monkeypatch.setattr('services.subscription_update.strategies.base.metrics.counter', lambda *args, **kwargs: None)
     monkeypatch.setattr('services.subscription_update.strategies.base.append_event', lambda *args, **kwargs: None)
 
@@ -241,6 +263,7 @@ def test_execute_final_full_sync_batch_marks_success(monkeypatch):
 
     assert result.success is True
     assert continuation_calls == []
+    assert schedule_calls == []
     assert success_calls == [
         (
             2,

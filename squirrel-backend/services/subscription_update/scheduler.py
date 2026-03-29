@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import select
@@ -7,7 +8,7 @@ from core.database import get_session
 from models.links import UserSubscription
 from services import message_service, subscription_sync_state_service
 from services.subscription_sync_event_service import SyncEventInput, append_event
-from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus, create_run
+from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunContext, SyncRunStatus, create_run
 from queues.direct_producer import direct_domain_producer
 from utils.site_catalog import SiteCatalog
 from utils.trace import generate_trace_id, get_trace_id
@@ -23,6 +24,46 @@ class SubscriptionScheduler:
     def _resolve_trace_id(trace_id: Optional[str]) -> str:
         return trace_id or get_trace_id() or generate_trace_id()
 
+    @staticmethod
+    def _build_run_context(
+        *,
+        subscription_id: int,
+        sync_state_id: Optional[int],
+        site: Optional[str],
+        sync_mode: str,
+        trigger: str,
+        trace_id: str,
+        run_id: Optional[str],
+    ) -> tuple[SyncRunContext, bool]:
+        if run_id:
+            now = datetime.now()
+            return (
+                SyncRunContext(
+                    run_id=run_id,
+                    stream_id=run_id,
+                    subscription_id=subscription_id,
+                    sync_state_id=sync_state_id,
+                    site=(site or '').strip(),
+                    sync_mode=sync_mode,
+                    trigger=trigger,
+                    request_id=None,
+                    trace_id=trace_id,
+                    created_at=now,
+                ),
+                False,
+            )
+        return (
+            create_run(
+                subscription_id=subscription_id,
+                sync_state_id=sync_state_id,
+                site=site,
+                sync_mode=sync_mode,
+                trigger=trigger,
+                trace_id=trace_id,
+            ),
+            True,
+        )
+
     def schedule_one(
         self,
         subscription_id: int,
@@ -31,27 +72,37 @@ class SubscriptionScheduler:
         mode: UpdateMode = UpdateMode.INCREMENTAL,
         user_id: Optional[int] = None,
         force: bool = False,
-        trace_id: Optional[str] = None
+        trace_id: Optional[str] = None,
+        run_id: Optional[str] = None,
     ) -> SubscriptionScheduleResult:
         trace_id = self._resolve_trace_id(trace_id)
         resolved_mode = self._resolve_mode(mode)
         domain = subscription_sync_state_service._resolve_site(url)
         if not domain or not SiteCatalog.is_site_enabled(domain=domain):
-            run_context = create_run(subscription_id, None, domain, resolved_mode.value, trigger.value, trace_id=trace_id)
-            append_event(SyncEventInput(
-                stream_id=run_context.run_id,
+            run_context, emit_run_created = self._build_run_context(
                 subscription_id=subscription_id,
                 sync_state_id=None,
                 site=domain,
                 sync_mode=resolved_mode.value,
                 trigger=trigger.value,
                 trace_id=trace_id,
-                event_type=SyncEventType.RUN_CREATED,
-                event_phase=SyncPhase.INIT,
-                event_status=SyncRunStatus.CREATED,
-                payload={'pending_video_count': 0},
-                occurred_at=run_context.created_at,
-            ))
+                run_id=run_id,
+            )
+            if emit_run_created:
+                append_event(SyncEventInput(
+                    stream_id=run_context.run_id,
+                    subscription_id=subscription_id,
+                    sync_state_id=None,
+                    site=domain,
+                    sync_mode=resolved_mode.value,
+                    trigger=trigger.value,
+                    trace_id=trace_id,
+                    event_type=SyncEventType.RUN_CREATED,
+                    event_phase=SyncPhase.INIT,
+                    event_status=SyncRunStatus.CREATED,
+                    payload={'pending_video_count': 0},
+                    occurred_at=run_context.created_at,
+                ))
             append_event(SyncEventInput(
                 stream_id=run_context.run_id,
                 subscription_id=subscription_id,
@@ -69,21 +120,30 @@ class SubscriptionScheduler:
             return SubscriptionScheduleResult(subscription_id, None, "site_disabled", run_id=run_context.run_id)
 
         if not self._has_active_subscribers(subscription_id):
-            run_context = create_run(subscription_id, None, domain, resolved_mode.value, trigger.value, trace_id=trace_id)
-            append_event(SyncEventInput(
-                stream_id=run_context.run_id,
+            run_context, emit_run_created = self._build_run_context(
                 subscription_id=subscription_id,
                 sync_state_id=None,
                 site=domain,
                 sync_mode=resolved_mode.value,
                 trigger=trigger.value,
                 trace_id=trace_id,
-                event_type=SyncEventType.RUN_CREATED,
-                event_phase=SyncPhase.INIT,
-                event_status=SyncRunStatus.CREATED,
-                payload={'pending_video_count': 0},
-                occurred_at=run_context.created_at,
-            ))
+                run_id=run_id,
+            )
+            if emit_run_created:
+                append_event(SyncEventInput(
+                    stream_id=run_context.run_id,
+                    subscription_id=subscription_id,
+                    sync_state_id=None,
+                    site=domain,
+                    sync_mode=resolved_mode.value,
+                    trigger=trigger.value,
+                    trace_id=trace_id,
+                    event_type=SyncEventType.RUN_CREATED,
+                    event_phase=SyncPhase.INIT,
+                    event_status=SyncRunStatus.CREATED,
+                    payload={'pending_video_count': 0},
+                    occurred_at=run_context.created_at,
+                ))
             append_event(SyncEventInput(
                 stream_id=run_context.run_id,
                 subscription_id=subscription_id,
@@ -122,28 +182,30 @@ class SubscriptionScheduler:
                 status='queued',
             )
 
-        run_context = create_run(
+        run_context, emit_run_created = self._build_run_context(
             subscription_id=subscription_id,
             sync_state_id=sync_state.id,
             site=domain,
             sync_mode=resolved_mode.value,
             trigger=trigger.value,
             trace_id=trace_id,
+            run_id=run_id,
         )
-        append_event(SyncEventInput(
-            stream_id=run_context.run_id,
-            subscription_id=subscription_id,
-            sync_state_id=sync_state.id,
-            site=domain,
-            sync_mode=resolved_mode.value,
-            trigger=trigger.value,
-            trace_id=trace_id,
-            event_type=SyncEventType.RUN_CREATED,
-            event_phase=SyncPhase.INIT,
-            event_status=SyncRunStatus.CREATED,
-            payload={'pending_video_count': sync_state.pending_video_count},
-            occurred_at=run_context.created_at,
-        ))
+        if emit_run_created:
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=sync_state.id,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.RUN_CREATED,
+                event_phase=SyncPhase.INIT,
+                event_status=SyncRunStatus.CREATED,
+                payload={'pending_video_count': sync_state.pending_video_count},
+                occurred_at=run_context.created_at,
+            ))
         if state_status == 'deferred':
             append_event(SyncEventInput(
                 stream_id=run_context.run_id,

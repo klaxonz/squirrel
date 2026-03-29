@@ -433,6 +433,62 @@ def claim_sync_state(
         return state
 
 
+def continue_full_sync_batch(
+    sync_state_id: int,
+    *,
+    cursor_payload: Optional[dict],
+    latest_video_url: Optional[str],
+    source_video_count: Optional[int] = None,
+    videos_found: int = 0,
+    videos_enqueued: int = 0,
+    run_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    trigger: Optional[str] = None,
+) -> Optional[SubscriptionSyncState]:
+    now = datetime.now()
+    with get_session() as session:
+        state = session.get(SubscriptionSyncState, sync_state_id)
+        if not state:
+            return None
+        state.sync_status = SyncStatus.SUCCESS.value
+        state.cursor_payload = cursor_payload or {}
+        if latest_video_url and not state.last_seen_video_url:
+            state.last_seen_video_url = latest_video_url
+        state.last_sync_at = now
+        state.queue_token = None
+        state.queued_at = None
+        state.locked_at = None
+        state.failure_count = 0
+        state.idle_sync_count = 0
+        state.last_error = None
+        state.next_sync_at = now
+        state.version += 1
+        _append_state_event(
+            session,
+            state=state,
+            run_id=run_id,
+            request_id=request_id,
+            trace_id=trace_id,
+            trigger=trigger,
+            event_type=SyncEventType.CONTINUED,
+            event_phase=SyncPhase.FINALIZING,
+            event_status=SyncRunStatus.RUNNING,
+            payload={
+                'cursor_payload': state.cursor_payload,
+                'latest_video_url': latest_video_url,
+                'source_video_count': source_video_count,
+                'videos_found_delta': videos_found,
+                'videos_enqueued_delta': videos_enqueued,
+                'pending_video_count': state.pending_video_count,
+                'next_sync_at': state.next_sync_at,
+                'has_more': True,
+            },
+            occurred_at=now,
+        )
+        return state
+
+
 def mark_sync_success(
     sync_state_id: int,
     *,
