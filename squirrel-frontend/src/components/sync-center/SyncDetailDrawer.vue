@@ -27,7 +27,7 @@
                       {{ getStatusLabel(item.display_status) }}
                     </Badge>
                     <Badge variant="outline" class="rounded-full">
-                      {{ item.sync_mode === 'full' ? 'Full' : 'Incremental' }}
+                      {{ item.sync_mode === 'full' ? '全量' : '增量' }}
                     </Badge>
                     <span class="text-2xs text-muted-foreground">{{ item.site || 'unknown' }}</span>
                   </div>

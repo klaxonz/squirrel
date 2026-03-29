@@ -43,12 +43,12 @@ const emit = defineEmits<{
 const displaySignals = computed(() => {
   const all = [...props.current, ...props.recent]
   const map: Record<string, { label: string; icon: any }> = {
-    'failed': { label: 'Errors', icon: AlertCircle },
-    'running': { label: 'Processing', icon: Activity },
-    'queued': { label: 'In Queue', icon: Clock },
-    'success-rate': { label: 'Success Rate', icon: CheckCircle2 },
-    'pending-videos': { label: 'Pending', icon: Layers },
-    'extracted': { label: 'Extracted', icon: PlayCircle },
+    'failed': { label: '错误', icon: AlertCircle },
+    'running': { label: '处理中', icon: Activity },
+    'queued': { label: '排队中', icon: Clock },
+    'success-rate': { label: '成功率', icon: CheckCircle2 },
+    'pending-videos': { label: '待处理', icon: Layers },
+    'extracted': { label: '已提取', icon: PlayCircle },
   }
 
   return all

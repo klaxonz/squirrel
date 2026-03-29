@@ -27,17 +27,17 @@
 
     <div v-else class="flex-1 min-h-0 grid grid-cols-1 gap-6" :class="embedded ? '' : 'xl:grid-cols-[1.5fr_1fr]'">
       <div class="flex min-h-0 flex-col overflow-hidden">
-        <div class="text-[10px] uppercase tracking-wider text-muted-foreground/40 mb-3 px-1">Time Series History</div>
+        <div class="text-[10px] uppercase tracking-wider text-muted-foreground/40 mb-3 px-1">时间序列历史</div>
         <div class="flex-1 overflow-auto rounded-lg border border-border/40 bg-muted/20">
           <table class="w-full text-[11px]">
             <thead>
               <tr class="text-left text-muted-foreground/50 border-b border-border/40">
-                <th class="px-3 py-2 font-medium">Bucket</th>
-                <th class="px-3 py-2 font-medium">Runs</th>
-                <th class="px-3 py-2 font-medium">Success</th>
-                <th class="px-3 py-2 font-medium">Fail</th>
-                <th class="px-3 py-2 font-medium">Extracted</th>
-                <th class="px-3 py-2 font-medium">P95</th>
+                <th class="px-3 py-2 font-medium">时间桶</th>
+                <th class="px-3 py-2 font-medium">运行数</th>
+                <th class="px-3 py-2 font-medium">成功</th>
+                <th class="px-3 py-2 font-medium">失败</th>
+                <th class="px-3 py-2 font-medium">提取数</th>
+                <th class="px-3 py-2 font-medium">P95 耗时</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border/20">
@@ -55,15 +55,15 @@
       </div>
 
       <div class="flex min-h-0 flex-col overflow-hidden">
-        <div class="text-[10px] uppercase tracking-wider text-muted-foreground/40 mb-3 px-1">Site Distribution</div>
+        <div class="text-[10px] uppercase tracking-wider text-muted-foreground/40 mb-3 px-1">站点分布</div>
         <div class="flex-1 overflow-auto rounded-lg border border-border/40 bg-muted/20">
           <table class="w-full text-[11px]">
             <thead>
               <tr class="text-left text-muted-foreground/50 border-b border-border/40">
-                <th class="px-3 py-2 font-medium">Site</th>
-                <th class="px-3 py-2 font-medium">Runs</th>
-                <th class="px-3 py-2 font-medium">Success</th>
-                <th class="px-3 py-2 font-medium">Failed</th>
+                <th class="px-3 py-2 font-medium">站点</th>
+                <th class="px-3 py-2 font-medium">运行数</th>
+                <th class="px-3 py-2 font-medium">成功</th>
+                <th class="px-3 py-2 font-medium">失败</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border/20">

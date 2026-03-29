@@ -142,27 +142,27 @@ const totalTrendFailed = computed(() => trendSeries.value.reduce((sum, point) =>
 const totalTrendExtracted = computed(() => trendSeries.value.reduce((sum, point) => sum + point.videos_extracted, 0))
 
 const currentSignals = computed<SyncSignalItem[]>(() => ([
-  {
+    {
     key: 'failed',
-    label: 'Failed',
+    label: '失败',
     value: overview.value.failed_count,
     tone: overview.value.failed_count ? 'error' : 'success',
   },
   {
     key: 'running',
-    label: 'Running',
+    label: '运行中',
     value: overview.value.running_count,
     tone: overview.value.running_count ? 'info' : 'neutral',
   },
   {
     key: 'queued',
-    label: 'Queued',
+    label: '排队中',
     value: overview.value.queued_count,
     tone: overview.value.queued_count ? 'warning' : 'neutral',
   },
   {
     key: 'pending-videos',
-    label: 'Pending Videos',
+    label: '待处理视频',
     value: overview.value.pending_videos,
     tone: overview.value.pending_videos > 0 ? 'info' : 'neutral',
   },
@@ -174,13 +174,13 @@ const recentSignals = computed<SyncSignalItem[]>(() => {
   return [
     {
       key: 'success-rate',
-      label: 'Success Rate',
+      label: '成功率',
       value: successRate,
       tone: totalTrendFailed.value > 0 ? 'warning' : 'success',
     },
     {
       key: 'extracted',
-      label: 'Extracted',
+      label: '已提取',
       value: totalTrendExtracted.value,
       tone: totalTrendExtracted.value > 0 ? 'info' : 'neutral',
     },
@@ -189,9 +189,9 @@ const recentSignals = computed<SyncSignalItem[]>(() => {
 
 const dashboardSummary = computed(() => {
   if (overviewPageError.value || historyError.value || trendError.value) {
-    return 'Partial data unavailable'
+    return '部分数据不可用'
   }
-  return `Stable · ${overview.value.running_count} active workers`
+  return `运行稳定 · ${overview.value.running_count} 个活跃工作节点`
 })
 
 const getLensWindow = (lens: SyncTimeLens) => {

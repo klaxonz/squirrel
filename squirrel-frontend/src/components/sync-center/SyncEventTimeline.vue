@@ -17,12 +17,12 @@
           <span class="text-[10px] font-medium tabular-nums text-muted-foreground/40">{{ event.occurred_at }}</span>
         </div>
 
-        <p class="text-[11px] leading-relaxed text-muted-foreground/60 max-w-[90%]">{{ event.message || 'Processing event captured.' }}</p>
+        <p class="text-[11px] leading-relaxed text-muted-foreground/60 max-w-[90%]">{{ event.message || '捕获到处理事件。' }}</p>
 
         <!-- Payload Preview -->
         <div v-if="hasPayload(event.payload)" class="mt-4 overflow-hidden rounded-lg border border-border/10 bg-muted/10 opacity-60 group-hover:opacity-100 transition-opacity">
           <div class="flex items-center justify-between px-3 py-1.5 border-b border-border/10 bg-muted/20">
-            <span class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40">Data Payload</span>
+            <span class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40">数据负载</span>
           </div>
           <pre class="overflow-x-auto p-3 text-[10px] font-mono leading-relaxed text-muted-foreground/80">{{ formatPayload(event.payload) }}</pre>
         </div>
@@ -49,12 +49,12 @@ const getToneBgClass = (status: string | null) => {
 
 const getEventLabel = (eventType: string) => {
   const map: Record<string, string> = {
-    'stale_queued_recovered': 'Queued Recovered',
-    'stale_running_recovered': 'Running Recovered',
-    'manual_reconcile_triggered': 'Manual Reconcile',
-    'subscription_sync_started': 'Sync Started',
-    'subscription_sync_finished': 'Sync Finished',
-    'subscription_sync_failed': 'Sync Failed',
+    'stale_queued_recovered': '队列恢复',
+    'stale_running_recovered': '运行恢复',
+    'manual_reconcile_triggered': '手动协调',
+    'subscription_sync_started': '同步开始',
+    'subscription_sync_finished': '同步完成',
+    'subscription_sync_failed': '同步失败',
   }
   return map[eventType] || eventType.replace(/_/g, ' ').toUpperCase()
 }

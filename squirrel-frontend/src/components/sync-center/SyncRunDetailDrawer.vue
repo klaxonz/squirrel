@@ -26,7 +26,7 @@
               </div>
             </div>
             <Button variant="outline" size="sm" class="h-8 rounded-lg text-[11px] font-bold uppercase tracking-wider" as-child>
-              <router-link :to="getSubscriptionLink(run.subscription_id)">Channel</router-link>
+              <router-link :to="getSubscriptionLink(run.subscription_id)">去频道</router-link>
             </Button>
           </div>
         </div>
@@ -36,12 +36,12 @@
           <!-- Quick Stats -->
           <div class="grid grid-cols-2 gap-4">
             <div class="rounded-xl border border-border/40 bg-muted/10 p-4 transition-colors hover:bg-muted/20">
-              <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">Duration</p>
+              <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">持续时间</p>
               <p class="mt-2 text-lg font-bold tabular-nums text-foreground/80">{{ formatDurationMs(run.duration_ms) }}</p>
             </div>
             <div class="rounded-xl border border-border/40 bg-muted/10 p-4 transition-colors hover:bg-muted/20">
-              <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">Extracted</p>
-              <p class="mt-2 text-lg font-bold tabular-nums text-foreground/80">{{ run.videos_extracted }} items</p>
+              <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">已提取</p>
+              <p class="mt-2 text-lg font-bold tabular-nums text-foreground/80">{{ run.videos_extracted }} 项</p>
             </div>
           </div>
 
@@ -49,24 +49,24 @@
           <section class="space-y-4">
             <div class="flex items-center gap-2 px-1">
               <div class="h-px flex-1 bg-border/40"></div>
-              <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30 whitespace-nowrap">Specifications</span>
+              <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30 whitespace-nowrap">技术参数</span>
               <div class="h-px flex-1 bg-border/40"></div>
             </div>
             <div class="grid grid-cols-1 gap-y-3 px-1">
               <div class="flex items-center justify-between py-1 border-b border-border/10">
-                <span class="text-[11px] font-semibold text-muted-foreground/50">Run ID</span>
+                <span class="text-[11px] font-semibold text-muted-foreground/50">运行 ID</span>
                 <span class="text-[11px] font-mono font-medium text-foreground/70">{{ run.run_id }}</span>
               </div>
               <div class="flex items-center justify-between py-1 border-b border-border/10">
-                <span class="text-[11px] font-semibold text-muted-foreground/50">Sync Mode</span>
+                <span class="text-[11px] font-semibold text-muted-foreground/50">同步模式</span>
                 <span class="text-[11px] font-bold uppercase tracking-wider text-foreground/70">{{ run.sync_mode }}</span>
               </div>
               <div class="flex items-center justify-between py-1 border-b border-border/10">
-                <span class="text-[11px] font-semibold text-muted-foreground/50">Timestamp</span>
+                <span class="text-[11px] font-semibold text-muted-foreground/50">时间戳</span>
                 <span class="text-[11px] font-medium text-foreground/70 tabular-nums">{{ run.started_at }}</span>
               </div>
               <div class="flex items-center justify-between py-1 border-b border-border/10">
-                <span class="text-[11px] font-semibold text-muted-foreground/50">Trace ID</span>
+                <span class="text-[11px] font-semibold text-muted-foreground/50">追踪 ID</span>
                 <span class="text-[11px] font-mono text-muted-foreground/60">{{ run.trace_id || '—' }}</span>
               </div>
             </div>
@@ -75,8 +75,8 @@
           <!-- Timeline -->
           <section class="space-y-6 pb-10">
              <div class="flex items-center justify-between px-1">
-               <h3 class="text-xs font-bold uppercase tracking-[0.15em] text-foreground/80">Event Timeline</h3>
-               <span v-if="detailLoading" class="text-[10px] font-medium text-blue-500 animate-pulse">Streaming...</span>
+               <h3 class="text-xs font-bold uppercase tracking-[0.15em] text-foreground/80">事件时间轴</h3>
+               <span v-if="detailLoading" class="text-[10px] font-medium text-blue-500 animate-pulse">流式传输中...</span>
              </div>
              <div v-if="detailError" class="rounded-lg bg-rose-500/10 p-3 text-[11px] text-rose-600 font-medium">
                {{ detailError }}
@@ -131,12 +131,12 @@ const getStatusToneClass = (status: string) => {
 
 const getStatusLabel = (status: string) => {
   switch (status) {
-    case 'success': return 'Success'
-    case 'failed': return 'Failed'
-    case 'running': return 'Running'
-    case 'queued': return 'Queued'
-    case 'deferred': return 'Deferred'
-    default: return status || 'Unknown'
+    case 'success': return '成功'
+    case 'failed': return '失败'
+    case 'running': return '运行中'
+    case 'queued': return '排队中'
+    case 'deferred': return '已延后'
+    default: return status || '未知'
   }
 }
 </script>

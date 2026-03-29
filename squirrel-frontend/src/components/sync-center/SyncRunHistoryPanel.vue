@@ -6,12 +6,12 @@
       <div v-if="embedded" class="space-y-4">
         <div class="flex items-center justify-between gap-3 px-1">
           <div class="space-y-0.5">
-            <h2 class="text-sm font-semibold tracking-tight text-foreground/90">Run Instances</h2>
+            <h2 class="text-sm font-semibold tracking-tight text-foreground/90">运行实例</h2>
           </div>
           <div class="flex items-center gap-3">
             <slot name="header-action" />
             <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/30">
-              {{ total }} items · {{ page }} / {{ totalPages }}
+              {{ total }} 项 · {{ page }} / {{ totalPages }}
             </span>
           </div>
         </div>
@@ -20,7 +20,7 @@
           <div class="w-full sm:w-[8rem]">
             <Select :model-value="draftFilters.status" @update:model-value="(value) => updateDraftFilter('status', String(value ?? ''))">
               <SelectTrigger class="h-8 border-none bg-transparent text-[11px] font-semibold text-muted-foreground/80 focus:ring-0">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder="状态" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="option in statusOptions" :key="option.value" :value="option.value">
@@ -35,7 +35,7 @@
           <div class="w-full sm:w-[8rem]">
             <Select :model-value="draftFilters.site" @update:model-value="(value) => updateDraftFilter('site', String(value ?? ''))">
               <SelectTrigger class="h-8 border-none bg-transparent text-[11px] font-semibold text-muted-foreground/80 focus:ring-0">
-                <SelectValue placeholder="Site" />
+                <SelectValue placeholder="站点" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="option in siteOptions" :key="option.value" :value="option.value">
@@ -57,17 +57,17 @@
             <Popover>
               <PopoverTrigger as-child>
                 <button
-                  class="flex h-8 w-full items-center gap-2 px-3 text-left text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus:outline-none"
+                   class="flex h-8 w-full items-center gap-2 px-3 text-left text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus:outline-none"
                 >
                   <CalendarIcon class="h-3.5 w-3.5 opacity-50" />
                   <span v-if="dateRangeLabel" class="truncate">{{ dateRangeLabel }}</span>
-                  <span v-else class="truncate opacity-50">Date Range</span>
+                  <span v-else class="truncate opacity-50">日期范围</span>
                 </button>
               </PopoverTrigger>
               <PopoverContent class="w-auto p-0" align="start">
                 <div class="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-                  <div class="text-2xs text-muted-foreground">Select Range</div>
-                  <Button variant="ghost" size="xs" class="h-7 px-2" @click="clearDateRange">Clear</Button>
+                  <div class="text-2xs text-muted-foreground">选择范围</div>
+                  <Button variant="ghost" size="xs" class="h-7 px-2" @click="clearDateRange">清除</Button>
                 </div>
                 <RangeCalendar
                   :model-value="dateRange"
@@ -89,19 +89,19 @@
     </div>
 
     <div v-if="error" class="px-1 py-3 text-xs text-destructive/80">{{ error }}</div>
-    <div v-if="loading" class="flex flex-1 items-center justify-center py-24 text-xs font-medium text-muted-foreground/40">Fetching stream...</div>
-    <div v-else-if="runs.length === 0" class="flex flex-1 items-center justify-center py-24 text-xs font-medium text-muted-foreground/40">Empty stream</div>
+    <div v-if="loading" class="flex flex-1 items-center justify-center py-24 text-xs font-medium text-muted-foreground/40">正在获取数据...</div>
+    <div v-else-if="runs.length === 0" class="flex flex-1 items-center justify-center py-24 text-xs font-medium text-muted-foreground/40">无数据</div>
 
     <div v-else class="flex-1 overflow-auto pt-4">
       <table class="w-full min-w-[1000px] text-[12px]">
         <thead>
           <tr class="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/40 border-b border-border/40">
-            <th class="px-3 py-4 text-left font-bold">Subscription</th>
-            <th class="px-3 py-4 text-left font-bold">Status</th>
-            <th class="px-3 py-4 text-left font-bold">Details</th>
-            <th class="px-3 py-4 text-left font-bold">Time</th>
-            <th class="px-3 py-4 text-left font-bold">Output</th>
-            <th class="px-3 py-4 text-right font-bold pr-6">Action</th>
+            <th class="px-3 py-4 text-left font-bold">订阅</th>
+            <th class="px-3 py-4 text-left font-bold">状态</th>
+            <th class="px-3 py-4 text-left font-bold">详情</th>
+            <th class="px-3 py-4 text-left font-bold">时间</th>
+            <th class="px-3 py-4 text-left font-bold">产出</th>
+            <th class="px-3 py-4 text-right font-bold pr-6">操作</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-border/10">
@@ -142,7 +142,7 @@
             <td class="px-3 py-4 align-middle">
               <div class="flex flex-col gap-0.5">
                 <span class="text-[11px] font-semibold text-foreground/60 tabular-nums tracking-tight">{{ getRunTime(run) }}</span>
-                <span class="text-[10px] font-medium text-muted-foreground/30">{{ formatDurationMs(run.duration_ms) }} duration</span>
+                <span class="text-[10px] font-medium text-muted-foreground/30">{{ formatDurationMs(run.duration_ms) }} 耗时</span>
               </div>
             </td>
             <td class="px-3 py-4 align-middle">
@@ -161,10 +161,10 @@
     </div>
 
     <div v-if="totalPages > 1" class="flex items-center justify-end gap-6 border-t border-border/20 py-6 px-4">
-      <span class="text-[11px] font-bold text-muted-foreground/20 uppercase tracking-[0.1em]">Page {{ page }} / {{ totalPages }}</span>
+      <span class="text-[11px] font-bold text-muted-foreground/20 uppercase tracking-[0.1em]">第 {{ page }} / {{ totalPages }} 页</span>
       <div class="flex items-center gap-1.5">
-        <Button variant="ghost" size="xs" class="h-8 px-4 text-[11px] font-bold rounded-lg border border-border/40" :disabled="page <= 1" @click="emit('change-page', page - 1)">PREV</Button>
-        <Button variant="ghost" size="xs" class="h-8 px-4 text-[11px] font-bold rounded-lg border border-border/40" :disabled="page >= totalPages" @click="emit('change-page', page + 1)">NEXT</Button>
+        <Button variant="ghost" size="xs" class="h-8 px-4 text-[11px] font-bold rounded-lg border border-border/40" :disabled="page <= 1" @click="emit('change-page', page - 1)">上一页</Button>
+        <Button variant="ghost" size="xs" class="h-8 px-4 text-[11px] font-bold rounded-lg border border-border/40" :disabled="page >= totalPages" @click="emit('change-page', page + 1)">下一页</Button>
       </div>
     </div>
   </div>
@@ -224,11 +224,11 @@ const draftFilters = reactive<SyncHistoryFilters>(normalizeFilters(props.filters
 const getAvatarKey = (run: SyncRunItem) => `run-history-${run.run_id}`
 
 const statusOptions = [
-  { value: '', label: 'All Status' },
-  { value: 'success', label: 'Success' },
-  { value: 'failed', label: 'Failed' },
-  { value: 'running', label: 'Running' },
-  { value: 'queued', label: 'Queued' },
+  { value: '', label: '全部状态' },
+  { value: 'success', label: '成功' },
+  { value: 'failed', label: '失败' },
+  { value: 'running', label: '运行中' },
+  { value: 'queued', label: '排队中' },
 ]
 
 const toDateValue = (isoString: string) => {
@@ -319,22 +319,22 @@ const getStatusToneClass = (status: string) => {
 
 const getStatusLabel = (status: string) => {
   switch (status) {
-    case 'success': return 'Success'
-    case 'failed': return 'Failed'
-    case 'running': return 'Running'
-    case 'queued': return 'Queued'
-    default: return status || 'Unknown'
+    case 'success': return '成功'
+    case 'failed': return '失败'
+    case 'running': return '运行中'
+    case 'queued': return '排队中'
+    default: return status || '未知'
   }
 }
 
 const getModeLabel = (mode: string) => {
-  return mode === 'incremental' ? 'INC' : mode === 'full' ? 'FULL' : mode || 'UNK'
+  return mode === 'incremental' ? '增量' : mode === 'full' ? '全量' : mode || '未知'
 }
 
 const getRunTime = (run: SyncRunItem) => run.last_event_at || run.finished_at || run.started_at || '—'
 
 const formatRunVideoSummary = (run: SyncRunItem) => {
-  if (run.status === 'failed') return 'Run failed, check details'
-  return `${run.videos_extracted} videos extracted`
+  if (run.status === 'failed') return '运行失败，查看详情'
+  return `已提取 ${run.videos_extracted} 个视频`
 }
 </script>

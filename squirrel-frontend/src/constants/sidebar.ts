@@ -98,17 +98,17 @@ export const NAV_ITEMS: NavigationItem[] = [
 export const NAV_GROUPS: NavigationGroup[] = [
   {
     key: 'content',
-    label: 'Content',
+    label: '内容',
     items: NAV_ITEMS.filter((item) => item.group === 'content'),
   },
   {
     key: 'operations',
-    label: 'Operations',
+    label: '运维',
     items: NAV_ITEMS.filter((item) => item.group === 'operations'),
   },
   {
     key: 'system',
-    label: 'System',
+    label: '系统',
     items: NAV_ITEMS.filter((item) => item.group === 'system'),
   },
 ]
