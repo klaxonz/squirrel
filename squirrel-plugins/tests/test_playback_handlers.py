@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 import tempfile
 import types
@@ -18,6 +19,9 @@ JAVDB_HANDLER_PATH = (
 )
 YOUTUBE_MPD_PATH = (
     REPO_ROOT / 'squirrel-plugins' / 'youtube' / 'src' / 'squirrel_youtube' / 'mpd.py'
+)
+YOUTUBE_EXTRACTOR_PATH = (
+    REPO_ROOT / 'squirrel-plugins' / 'youtube' / 'src' / 'squirrel_youtube' / 'extractor.py'
 )
 
 
@@ -166,9 +170,22 @@ def _stub_youtube_mpd_dependencies(
             self.message = message
             self.context = context or {}
 
+    class NotFoundError(Exception):
+        def __init__(self, message: str, context: dict | None = None):
+            super().__init__(message)
+            self.message = message
+            self.context = context or {}
+
+    class YoutubeDLExtractorBase:
+        def __init__(self, site_name: str, supported_domains: list[str]):
+            self.site_name = site_name
+            self.supported_domains = supported_domains
+
     crawl_module.AuthError = AuthError
     crawl_module.NetworkError = NetworkError
     crawl_module.ParseError = ParseError
+    crawl_module.NotFoundError = NotFoundError
+    crawl_module.YoutubeDLExtractorBase = YoutubeDLExtractorBase
     crawl_module.apply_ytdlp_rate_limit = lambda _site, opts: dict(opts)
     crawl_module.filter_cookies_to_query_string = lambda _url: ''
     crawl_module.resolve_cookie_file_path = lambda _url: None
@@ -187,6 +204,7 @@ def _stub_youtube_mpd_dependencies(
 
     class FakeYoutubeDL:
         last_opts = None
+        last_process = None
 
         def __init__(self, opts):
             type(self).last_opts = dict(opts)
@@ -197,11 +215,12 @@ def _stub_youtube_mpd_dependencies(
         def __exit__(self, exc_type, exc, tb):
             return False
 
-        def extract_info(self, _url: str, download: bool = False):
+        def extract_info(self, _url: str, download: bool = False, process: bool = True):
+            type(self).last_process = process
             if extract_exception is not None:
                 raise extract_exception
             if extract_callback is not None:
-                return extract_callback(_url, download)
+                return extract_callback(_url, download, process)
             return {'formats': []}
 
     yt_dlp_module.YoutubeDL = FakeYoutubeDL
@@ -256,6 +275,17 @@ def _load_youtube_mpd_module():
     module_name = '_mpd_test_youtube'
     sys.modules.pop(module_name, None)
     module_spec = importlib.util.spec_from_file_location(module_name, YOUTUBE_MPD_PATH)
+    module = importlib.util.module_from_spec(module_spec)
+    assert module_spec is not None and module_spec.loader is not None
+    sys.modules[module_name] = module
+    module_spec.loader.exec_module(module)
+    return module
+
+
+def _load_youtube_extractor_module():
+    module_name = '_extractor_test_youtube'
+    sys.modules.pop(module_name, None)
+    module_spec = importlib.util.spec_from_file_location(module_name, YOUTUBE_EXTRACTOR_PATH)
     module = importlib.util.module_from_spec(module_spec)
     assert module_spec is not None and module_spec.loader is not None
     sys.modules[module_name] = module
@@ -353,7 +383,7 @@ class PlaybackHandlerTests(unittest.TestCase):
             self.assertEqual(FakeYoutubeDL.last_opts, None)
 
     def test_youtube_extract_info_with_player_responses_preserves_streaming_data(self):
-        def _extract_callback(url: str, _download: bool = False):
+        def _extract_callback(url: str, _download: bool = False, _process: bool = True):
             YoutubeIE = sys.modules['yt_dlp.extractor.youtube._video'].YoutubeIE
             return YoutubeIE()._real_extract(url)
 
@@ -376,6 +406,73 @@ class PlaybackHandlerTests(unittest.TestCase):
                 {'start': '0', 'end': '1'},
             )
             self.assertNotIn('__yt_dlp_fetch_gvs_po_token', player_responses[0]['streamingData'])
+
+    def test_youtube_extract_info_retries_without_bgutil_script_provider_on_timeout(self):
+        calls = []
+
+        def _extract_callback(_url: str, _download: bool = False, _process: bool = True):
+            extractor_args = dict((FakeYoutubeDL.last_opts or {}).get('extractor_args') or {})
+            calls.append(extractor_args)
+            if 'youtubepot-bgutilscript' in extractor_args:
+                raise subprocess.TimeoutExpired(
+                    cmd=['C:/node.exe', 'C:/bgutil/server/build/generate_once.js', '--version'],
+                    timeout=15.0,
+                )
+            return {'id': 'demo'}
+
+        with _stub_youtube_mpd_dependencies(
+            extract_callback=_extract_callback,
+        ) as (FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+
+            info = module.youtube_ytdlp_support.extract_info_with_player_responses(
+                'https://youtube.com/watch?v=demo',
+                {
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['mweb'],
+                        },
+                        'youtubepot-bgutilscript': {
+                            'server_home': ['C:/bgutil/server'],
+                        },
+                    },
+                },
+            )
+
+            self.assertEqual(info, {'id': 'demo'})
+            self.assertEqual(len(calls), 2)
+            self.assertIn('youtubepot-bgutilscript', calls[0])
+            self.assertNotIn('youtubepot-bgutilscript', calls[1])
+            self.assertEqual(
+                calls[1]['youtube']['player_client'],
+                module.youtube_ytdlp_support.YOUTUBE_COOKIE_PLAYER_CLIENTS,
+            )
+
+    def test_youtube_extractor_uses_unprocessed_info_for_metadata_extraction(self):
+        def _extract_callback(_url: str, _download: bool = False, process: bool = True):
+            if process:
+                raise RuntimeError(
+                    'ERROR: [youtube] demo: Requested format is not available. '
+                    'Use --list-formats for a list of available formats'
+                )
+            return {
+                'id': 'demo',
+                'title': 'Demo title',
+                'timestamp': 1712345678,
+                'formats': [],
+            }
+
+        with _stub_youtube_mpd_dependencies(
+            extract_callback=_extract_callback,
+        ) as (FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_extractor_module()
+
+            info = module.YoutubeExtractor()._extract_with_ytdlp('https://youtube.com/watch?v=demo')
+
+            self.assertEqual(info['title'], 'Demo title')
+            self.assertFalse(FakeYoutubeDL.last_process)
+            self.assertIsNotNone(info.get('publish_date'))
 
     def test_youtube_extract_video_info_raises_auth_error_for_sign_in_failures(self):
         with _stub_youtube_mpd_dependencies(

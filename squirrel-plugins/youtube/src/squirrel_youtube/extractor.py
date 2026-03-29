@@ -51,7 +51,11 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
         """使用yt-dlp获取YouTube视频信息"""
         try:
             ydl_opts = self._build_ytdlp_opts(url, queue_name)
-            video_info = youtube_ytdlp_support.extract_info_with_player_responses(url, ydl_opts)
+            video_info = youtube_ytdlp_support.extract_info_with_player_responses(
+                url,
+                ydl_opts,
+                process=False,
+            )
 
             if video_info:
                 self._process_youtube_info(video_info)

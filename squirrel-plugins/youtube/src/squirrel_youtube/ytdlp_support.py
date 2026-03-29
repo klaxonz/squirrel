@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import copy
 import importlib.util
+import logging
 import os
 import shutil
+import subprocess
 import threading
 from pathlib import Path
 from typing import Any
@@ -31,6 +34,7 @@ _YOUTUBE_PLAYER_RESPONSES_ATTR = '_squirrel_youtube_player_responses'
 _YOUTUBE_PLAYER_URL_ATTR = '_squirrel_youtube_player_url'
 _YOUTUBE_EXTRACT_HOOK_LOCK = threading.RLock()
 _SKIP_VALUE = object()
+logger = logging.getLogger(__name__)
 
 
 def _read_env(name: str) -> str | None:
@@ -179,14 +183,14 @@ def _sanitize_player_response_value(value: Any):
     return _SKIP_VALUE
 
 
-def extract_info_with_player_responses(url: str, opts: dict[str, Any]) -> dict | None:
+def _extract_info_once(url: str, opts: dict[str, Any], *, process: bool = True) -> dict | None:
     from yt_dlp import YoutubeDL
 
     try:
         from yt_dlp.extractor.youtube._video import YoutubeIE
     except Exception:
         with YoutubeDL(opts) as ydl:
-            return ydl.extract_info(url, download=False)
+            return ydl.extract_info(url, download=False, process=process)
 
     original_extract_player_responses = YoutubeIE._extract_player_responses
     original_real_extract = YoutubeIE._real_extract
@@ -215,7 +219,53 @@ def extract_info_with_player_responses(url: str, opts: dict[str, Any]) -> dict |
         YoutubeIE._real_extract = patched_real_extract
         try:
             with YoutubeDL(opts) as ydl:
-                return ydl.extract_info(url, download=False)
+                return ydl.extract_info(url, download=False, process=process)
         finally:
             YoutubeIE._extract_player_responses = original_extract_player_responses
             YoutubeIE._real_extract = original_real_extract
+
+
+def _uses_bgutil_script_provider(opts: dict[str, Any]) -> bool:
+    extractor_args = opts.get('extractor_args')
+    if not isinstance(extractor_args, dict):
+        return False
+    return 'youtubepot-bgutilscript' in extractor_args
+
+
+def _is_bgutil_script_timeout(exc: Exception, opts: dict[str, Any]) -> bool:
+    if not _uses_bgutil_script_provider(opts):
+        return False
+    if isinstance(exc, subprocess.TimeoutExpired):
+        command = exc.cmd
+        if isinstance(command, (list, tuple)):
+            command_text = ' '.join(str(part) for part in command)
+        else:
+            command_text = str(command)
+        return 'generate_once.' in command_text
+    message = str(exc).lower()
+    return 'generate_once.' in message and 'timed out' in message
+
+
+def _build_bgutil_timeout_fallback_opts(opts: dict[str, Any]) -> dict[str, Any]:
+    fallback_opts = copy.deepcopy(opts)
+    extractor_args = fallback_opts.setdefault('extractor_args', {})
+    extractor_args.pop('youtubepot-bgutilscript', None)
+    extractor_args.pop('youtubepot-bgutilhttp', None)
+    youtube_args = extractor_args.setdefault('youtube', {})
+    youtube_args['player_client'] = list(YOUTUBE_COOKIE_PLAYER_CLIENTS)
+    return fallback_opts
+
+
+def extract_info_with_player_responses(url: str, opts: dict[str, Any], *, process: bool = True) -> dict | None:
+    try:
+        return _extract_info_once(url, opts, process=process)
+    except Exception as exc:
+        if not _is_bgutil_script_timeout(exc, opts):
+            raise
+
+        logger.warning(
+            'bgutil script provider timed out during YouTube extraction; retrying without POT provider',
+            extra={'url': url, 'error': str(exc)},
+        )
+        fallback_opts = _build_bgutil_timeout_fallback_opts(opts)
+        return _extract_info_once(url, fallback_opts, process=process)
