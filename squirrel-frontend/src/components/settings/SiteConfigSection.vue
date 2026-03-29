@@ -3,57 +3,58 @@
     <div class="settings-section-header">
       <div class="flex items-end justify-between">
         <div class="min-w-0">
-          <h2 class="text-3xl font-bold tracking-tighter text-foreground uppercase">采集源配置</h2>
-          <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold uppercase tracking-widest">源目录与采集参数</p>
+          <h2 class="text-3xl font-bold tracking-tighter text-foreground">采集源配置</h2>
+          <p class="text-[11px] text-muted-foreground/30 mt-2 font-bold tracking-wide">源目录与采集参数</p>
         </div>
-        <div class="text-[10px] font-black text-muted-foreground/10 uppercase tracking-[0.3em] pb-1">
+        <div class="text-[10px] font-black text-muted-foreground/10 tracking-[0.1em] pb-1">
           {{ siteSummaryText }}
         </div>
       </div>
     </div>
 
-    <div class="settings-section-content mt-12 border-t border-border/5">
-      <div v-if="siteLoading" class="py-12 flex flex-col items-center justify-center gap-3">
-        <Loader2 class="h-6 w-6 animate-spin text-primary/20" />
+    <div class="settings-section-content mt-12">
+      <div v-if="siteLoading" class="py-20 flex flex-col items-center justify-center gap-4 bg-card/30 rounded-[2rem] border border-border/5">
+        <Loader2 class="h-8 w-8 animate-spin text-primary/40" />
+        <p class="text-[11px] text-muted-foreground/30 font-bold uppercase tracking-widest">正在同步站点元数据</p>
       </div>
 
       <div v-else>
-        <div v-if="siteError" class="mb-8 p-5 rounded-2xl border border-destructive/20 bg-destructive/5 text-[13px] text-destructive flex items-center gap-4">
+        <div v-if="siteError" class="mb-8 p-6 rounded-[1.5rem] border border-destructive/20 bg-destructive/5 text-[13px] text-destructive flex items-center gap-4">
           <AlertCircle class="h-5 w-5 shrink-0" />
           <span class="font-bold">{{ siteError.message || siteError }}</span>
         </div>
 
-        <div v-if="siteList.length === 0" class="py-20 text-center border border-dashed border-border/10">
-          <Globe class="h-8 w-8 mx-auto text-muted-foreground/10" />
-          <p class="mt-4 text-[11px] text-muted-foreground/20 font-bold uppercase tracking-widest">未发现可用站点</p>
+        <div v-if="siteList.length === 0" class="py-24 text-center bg-card/30 rounded-[2rem] border border-dashed border-border/10">
+          <Globe class="h-10 w-10 mx-auto text-muted-foreground/10" />
+          <p class="mt-4 text-[11px] text-muted-foreground/20 font-bold tracking-wide">未发现可用站点</p>
         </div>
 
-        <div v-else class="site-grid grid grid-cols-1 md:grid-cols-2">
+        <div v-else class="site-grid grid grid-cols-1 md:grid-cols-2 gap-4">
           <div
             v-for="site in siteList"
             :key="site.slug"
-            class="site-item group p-8 border-b border-border/5 md:odd:border-r transition-all duration-700 relative overflow-hidden"
+            class="site-item group p-6 rounded-[2rem] bg-card/30 border border-border/5 hover:border-primary/20 hover:bg-card/50 transition-all duration-500 relative overflow-hidden"
           >
             <div class="flex items-start justify-between gap-6 relative z-10">
               <div class="min-w-0">
-                <div class="flex items-center gap-6">
-                  <div class="h-12 w-12 border border-border/10 flex items-center justify-center shrink-0 transition-all duration-700 group-hover:rotate-90 group-hover:border-primary/40">
-                    <span class="text-[11px] font-black text-muted-foreground/20 group-hover:text-primary/60">{{ site.slug.substring(0, 2).toUpperCase() }}</span>
+                <div class="flex items-center gap-4">
+                  <div class="h-14 w-14 rounded-2xl bg-background/40 border border-border/10 flex items-center justify-center shrink-0 transition-all duration-700 group-hover:rotate-[10deg] group-hover:border-primary/40 group-hover:bg-primary/5">
+                    <span class="text-[13px] font-black text-muted-foreground/20 group-hover:text-primary/60">{{ site.slug.substring(0, 2).toUpperCase() }}</span>
                   </div>
-                  <div class="min-w-0 transition-transform duration-500 group-hover:translate-x-2">
-                    <div class="text-[14px] font-bold text-foreground tracking-widest uppercase truncate">{{ site.label }}</div>
-                    <div class="text-[10px] text-muted-foreground/20 font-bold mt-1 uppercase tracking-[0.2em]">{{ site.slug }}</div>
+                  <div class="min-w-0 transition-transform duration-500 group-hover:translate-x-1">
+                    <div class="text-[15px] font-bold text-foreground tracking-tight truncate group-hover:text-primary transition-colors">{{ site.label }}</div>
+                    <div class="text-[11px] text-muted-foreground/30 font-bold mt-0.5 tracking-wider">{{ site.slug }}</div>
                   </div>
                 </div>
               </div>
 
-              <div class="flex flex-col items-end justify-between h-12 shrink-0">
+              <div class="flex flex-col items-end justify-between h-14 shrink-0">
                 <div
-                  class="h-1 w-1 rounded-full transition-all duration-700"
-                  :class="site.enabled ? 'bg-primary' : 'bg-muted-foreground/10'"
+                  class="h-2 w-2 rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]"
+                  :class="site.enabled ? 'bg-primary scale-110' : 'bg-muted-foreground/10 scale-100'"
                 ></div>
                 <button
-                  class="text-[10px] font-black text-muted-foreground/30 hover:text-primary transition-all uppercase tracking-widest"
+                  class="px-5 py-2 rounded-full bg-foreground/[0.03] border border-border/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground/50 hover:text-primary hover:border-primary/20 hover:bg-primary/5 transition-all"
                   @click="openSiteEditor(site)"
                 >
                   配置
@@ -61,7 +62,7 @@
               </div>
             </div>
             
-            <div class="absolute inset-0 bg-primary/[0.01] translate-y-full group-hover:translate-y-0 transition-transform duration-700"></div>
+            <div class="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
           </div>
         </div>
       </div>

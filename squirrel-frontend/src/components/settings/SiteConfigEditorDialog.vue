@@ -1,181 +1,145 @@
 <template>
   <div
     v-if="visible"
-    class="fixed inset-0 bg-overlay-strong flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+    class="fixed inset-0 bg-background/60 flex items-center justify-center z-50 p-4 backdrop-blur-md transition-all duration-500"
   >
-    <div class="bg-card rounded-[1.75rem] border border-border w-full max-w-3xl shadow-2xl">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-border">
-        <div>
-          <h3 class="text-lg font-semibold">编辑站点配置</h3>
-          <p class="text-xs text-muted-foreground mt-1">站点标识：{{ siteEditorForm.slug }}</p>
+    <div class="bg-background/90 border border-border/10 w-full max-w-4xl rounded-[2rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+      <!-- Header: 参照 PageHeader 风格 -->
+      <div class="flex items-center justify-between px-8 py-6 border-b border-border/5">
+        <div class="flex items-center gap-4">
+          <div class="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+            <Globe class="h-6 w-6" />
+          </div>
+          <div>
+            <h3 class="text-xl font-black tracking-tight text-foreground">站点配置</h3>
+            <p class="text-[11px] text-muted-foreground/40 mt-0.5 font-bold uppercase tracking-widest">配置标识：{{ siteEditorForm.slug }}</p>
+          </div>
         </div>
         <button
-          class="text-muted-foreground hover:text-foreground transition-colors"
+          class="h-9 w-9 rounded-full bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all"
           @click="$emit('close')"
         >
-          ✕
+          <span class="text-lg">✕</span>
         </button>
       </div>
 
-      <div class="site-editor-scroll px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto pr-2 text-sm">
-        <div class="space-y-1">
-          <Label class="text-xs text-muted-foreground">显示名称</Label>
-          <Input v-model="siteEditorForm.label" placeholder="展示给用户的名称" />
-        </div>
-
-        <div class="grid md:grid-cols-2 gap-4">
-          <div class="space-y-1">
-            <Label class="text-xs text-muted-foreground">域名列表</Label>
-            <Textarea v-model="siteEditorForm.domainsText" :rows="4" placeholder="每行一个域名，例如：www.youtube.com" />
+      <!-- Content: 模块化卡片布局 -->
+      <div class="site-editor-scroll flex-1 px-8 py-8 space-y-10 overflow-y-auto pr-4">
+        
+        <!-- 第一组：基础信息 -->
+        <div class="space-y-5">
+          <div class="flex items-center gap-3 ml-1">
+            <Settings2 class="h-4 w-4 text-primary/60" />
+            <h4 class="text-[12px] font-black text-foreground/80 uppercase tracking-[0.2em]">基本参数</h4>
           </div>
-          <div class="space-y-1">
-            <Label class="text-xs text-muted-foreground">别名（可选）</Label>
-            <Textarea v-model="siteEditorForm.aliasesText" :rows="4" placeholder="每行一个别名，例如：yt、油管" />
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <Checkbox :checked="!!siteEditorForm.enabled" @update:checked="(value) => siteEditorForm.enabled = !!value" />
-          <Label class="text-sm font-normal text-muted-foreground">启用该站点（控制订阅与视频更新）</Label>
-        </div>
-
-        <div class="space-y-1">
-          <Label class="text-xs text-muted-foreground">测试 URL</Label>
-          <Input v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的 URL" />
-        </div>
-
-        <div class="space-y-1">
-          <Label class="text-xs text-muted-foreground">HTTP 请求头（每行 key: value）</Label>
-          <Textarea v-model="siteEditorForm.httpHeadersText" :rows="3" placeholder="User-Agent: Mozilla/5.0" />
-        </div>
-
-        <div class="flex items-center gap-2">
-          <Checkbox :checked="!!siteEditorForm.rateLimitEnabled" @update:checked="(value) => siteEditorForm.rateLimitEnabled = !!value" />
-          <Label class="text-xs font-normal text-muted-foreground">启用站点限流</Label>
-        </div>
-
-        <div class="grid md:grid-cols-2 gap-4" :class="{ 'opacity-60': !siteEditorForm.rateLimitEnabled }">
-          <div class="space-y-1">
-            <Label class="text-xs text-muted-foreground">最小请求间隔（秒）</Label>
-            <Input v-model="siteEditorForm.rateLimitMin" type="number" :step="0.1" :disabled="!siteEditorForm.rateLimitEnabled" />
-          </div>
-          <div class="space-y-1">
-            <Label class="text-xs text-muted-foreground">最大请求间隔（秒）</Label>
-            <Input v-model="siteEditorForm.rateLimitMax" type="number" :step="0.1" :disabled="!siteEditorForm.rateLimitEnabled" />
-          </div>
-        </div>
-
-        <div>
-          <h4 class="text-xs text-muted-foreground mb-2">代理参数</h4>
-          <div class="grid md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">连接超时 (秒)</Label>
-              <Input v-model="siteEditorForm.proxyConnectTimeout" type="number" :step="0.1" />
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-[2rem] bg-card/40 border border-border/10">
+            <div class="space-y-1.5 md:col-span-2">
+              <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1 tracking-wider">显示名称</Label>
+              <Input v-model="siteEditorForm.label" placeholder="展示给用户的名称" class="bg-transparent border-border/20 focus:border-primary/40 h-11 rounded-xl transition-all" />
             </div>
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">读取超时 (秒)</Label>
-              <Input v-model="siteEditorForm.proxyReadTimeout" type="number" :step="0.1" />
+            <div class="space-y-1.5">
+              <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1 tracking-wider">域名列表</Label>
+              <Textarea v-model="siteEditorForm.domainsText" :rows="4" placeholder="每行一个域名" class="bg-transparent border-border/20 focus:border-primary/40 rounded-xl resize-none p-3.5 transition-all text-[13px]" />
             </div>
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">写入超时 (秒)</Label>
-              <Input v-model="siteEditorForm.proxyWriteTimeout" type="number" :step="0.1" />
+            <div class="space-y-1.5">
+              <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1 tracking-wider">站点别名</Label>
+              <Textarea v-model="siteEditorForm.aliasesText" :rows="4" placeholder="每行一个别名" class="bg-transparent border-border/20 focus:border-primary/40 rounded-xl resize-none p-3.5 transition-all text-[13px]" />
             </div>
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">连接池超时 (秒)</Label>
-              <Input v-model="siteEditorForm.proxyPoolTimeout" type="number" :step="0.1" />
-            </div>
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">Keepalive 过期 (秒)</Label>
-              <Input v-model="siteEditorForm.proxyKeepaliveExpiry" type="number" :step="0.1" />
-            </div>
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">最大连接数</Label>
-              <Input v-model="siteEditorForm.proxyMaxConnections" type="number" :step="1" />
-            </div>
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">最大 Keepalive 连接数</Label>
-              <Input v-model="siteEditorForm.proxyMaxKeepaliveConnections" type="number" :step="1" />
-            </div>
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">分块大小 (字节)</Label>
-              <Input v-model="siteEditorForm.proxyChunkSize" type="number" :step="1" />
-            </div>
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">最大重试次数</Label>
-              <Input v-model="siteEditorForm.proxyMaxRetries" type="number" :step="1" />
-            </div>
-          </div>
-          <div class="flex flex-wrap gap-4 mt-3 text-xs text-muted-foreground">
-            <div class="flex items-center gap-2">
-              <Checkbox :checked="!!siteEditorForm.proxyEnableHttp2" @update:checked="(value) => siteEditorForm.proxyEnableHttp2 = !!value" />
-              <Label class="text-xs font-normal text-muted-foreground">启用 HTTP/2</Label>
-            </div>
-            <div class="flex items-center gap-2">
-              <Checkbox :checked="!!siteEditorForm.proxyFollowRedirects" @update:checked="(value) => siteEditorForm.proxyFollowRedirects = !!value" />
-              <Label class="text-xs font-normal text-muted-foreground">允许重定向</Label>
+            
+            <div class="md:col-span-2 flex items-center justify-between p-5 rounded-2xl bg-foreground/[0.03] border border-border/5 hover:border-primary/20 transition-all group">
+              <div class="space-y-0.5">
+                <div class="text-[13px] font-bold text-foreground group-hover:text-primary transition-colors">启用该站点</div>
+                <div class="text-[11px] text-muted-foreground/40 font-medium">控制该站点是否参与自动更新与订阅采集</div>
+              </div>
+              <Switch :checked="!!siteEditorForm.enabled" @update:checked="(v) => siteEditorForm.enabled = !!v" />
             </div>
           </div>
         </div>
 
-        <div>
-          <h4 class="text-xs text-muted-foreground mb-2">登录检测</h4>
-          <div class="grid md:grid-cols-2 gap-4">
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">检测 URL</Label>
-              <Input v-model="siteEditorForm.loginCheckUrl" placeholder="检测 URL" />
-            </div>
-            <div class="space-y-1">
-              <Label class="text-xs text-muted-foreground">超时时间 (秒)</Label>
-              <Input v-model="siteEditorForm.loginTimeout" type="number" :step="0.1" />
-            </div>
+        <!-- 第二组：采集策略 -->
+        <div class="space-y-5">
+          <div class="flex items-center gap-3 ml-1">
+            <RefreshCcw class="h-4 w-4 text-primary/60" />
+            <h4 class="text-[12px] font-black text-foreground/80 uppercase tracking-[0.2em]">采集策略</h4>
           </div>
-          <div class="mt-3 space-y-1">
-            <Label class="text-xs text-muted-foreground">登录检测请求头</Label>
-            <Textarea v-model="siteEditorForm.loginHeadersText" :rows="3" placeholder="登录检测请求头，每行 key: value" />
+          <div class="p-6 rounded-[2rem] bg-card/40 border border-border/10 space-y-6">
+            <div class="space-y-1.5">
+              <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1 tracking-wider">测试地址</Label>
+              <Input v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的地址" class="bg-transparent border-border/20 focus:border-primary/40 h-11 rounded-xl transition-all" />
+            </div>
+            
+            <div class="space-y-5">
+              <div class="flex items-center justify-between p-5 rounded-2xl bg-foreground/[0.03] border border-border/5">
+                <div class="space-y-0.5">
+                  <div class="text-[13px] font-bold text-foreground">频率限制</div>
+                  <div class="text-[11px] text-muted-foreground/40 font-medium">开启后将按照设定的时间间隔进行反爬虫规避</div>
+                </div>
+                <Switch :checked="!!siteEditorForm.rateLimitEnabled" @update:checked="(v) => siteEditorForm.rateLimitEnabled = !!v" />
+              </div>
+
+              <div class="grid grid-cols-2 gap-5 transition-all duration-500" :class="!siteEditorForm.rateLimitEnabled ? 'opacity-20 grayscale pointer-events-none' : ''">
+                <div class="space-y-1.5">
+                  <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1">最小间隔 (秒)</Label>
+                  <Input v-model="siteEditorForm.rateLimitMin" type="number" step="0.1" class="bg-transparent border-border/20 h-10 rounded-xl" />
+                </div>
+                <div class="space-y-1.5">
+                  <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1">最大间隔 (秒)</Label>
+                  <Input v-model="siteEditorForm.rateLimitMax" type="number" step="0.1" class="bg-transparent border-border/20 h-10 rounded-xl" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-4 text-xs text-muted-foreground">
-          <div class="flex items-center gap-2">
-            <Checkbox :checked="!!siteEditorForm.metadataNsfw" @update:checked="(value) => siteEditorForm.metadataNsfw = !!value" />
-            <Label class="text-xs font-normal text-muted-foreground">默认标记为 NSFW</Label>
+        <!-- 第三组：内容与隐私 -->
+        <div class="space-y-5">
+          <div class="flex items-center gap-3 ml-1">
+            <ShieldCheck class="h-4 w-4 text-primary/60" />
+            <h4 class="text-[12px] font-black text-foreground/80 uppercase tracking-[0.2em]">内容与隐私</h4>
           </div>
-          <div class="flex items-center gap-2">
-            <Checkbox :checked="!!siteEditorForm.metadataRequiresCookies" @update:checked="(value) => siteEditorForm.metadataRequiresCookies = !!value" />
-            <Label class="text-xs font-normal text-muted-foreground">需要 Cookies 才可抓取</Label>
-          </div>
-          <div class="flex items-center gap-2">
-            <Checkbox :checked="!!siteEditorForm.metadataRequiresLogin" @update:checked="(value) => siteEditorForm.metadataRequiresLogin = !!value" />
-            <Label class="text-xs font-normal text-muted-foreground">需要登录状态</Label>
-          </div>
-          <div class="flex items-center gap-2">
-            <Checkbox :checked="!!siteEditorForm.metadataPlayerUrlCache" @update:checked="(value) => siteEditorForm.metadataPlayerUrlCache = !!value" />
-            <Label class="text-xs font-normal text-muted-foreground">启用播放器链接缓存</Label>
-          </div>
-          <div class="flex items-center gap-2">
-            <Checkbox :checked="!!siteEditorForm.metadataOfflineThumbnailsDownload" @update:checked="(value) => siteEditorForm.metadataOfflineThumbnailsDownload = !!value" />
-            <Label class="text-xs font-normal text-muted-foreground">解析时下载封面到本地</Label>
-          </div>
-          <div class="flex items-center gap-2">
-            <Checkbox :checked="!!siteEditorForm.metadataOfflineThumbnailsDisplay" @update:checked="(value) => siteEditorForm.metadataOfflineThumbnailsDisplay = !!value" />
-            <Label class="text-xs font-normal text-muted-foreground">优先使用本地封面显示</Label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div 
+              v-for="meta in [
+                { key: 'metadataNsfw', label: '默认标记为敏感内容' },
+                { key: 'metadataRequiresCookies', label: '需要 Cookie 才可抓取' },
+                { key: 'metadataRequiresLogin', label: '需要登录状态' },
+                { key: 'metadataPlayerUrlCache', label: '启用播放链接缓存' },
+                { key: 'metadataOfflineThumbnailsDownload', label: '解析时下载封面到本地' },
+                { key: 'metadataOfflineThumbnailsDisplay', label: '优先使用本地封面显示' }
+              ]" 
+              :key="meta.key"
+              class="flex items-center justify-between p-5 rounded-2xl bg-card/40 border border-border/10 hover:border-primary/20 transition-all group"
+            >
+              <span class="text-[13px] font-bold text-foreground/70 group-hover:text-primary transition-colors pr-4">{{ meta.label }}</span>
+              <Switch :checked="!!siteEditorForm[meta.key]" @update:checked="(v) => siteEditorForm[meta.key] = !!v" />
+            </div>
           </div>
         </div>
 
-        <div
-          v-if="resolvedError"
-          class="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-2"
-        >
-          {{ resolvedError }}
-        </div>
+        <Transition name="fade">
+          <div v-if="resolvedError" class="p-5 rounded-2xl bg-destructive/5 border border-destructive/20 text-destructive text-[13px] font-bold flex items-center gap-4">
+            <AlertCircle class="h-5 w-5" />
+            {{ resolvedError }}
+          </div>
+        </Transition>
       </div>
 
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
-        <Button variant="secondary" class="rounded-full" @click="$emit('close')">取消</Button>
-        <Button variant="destructive" class="rounded-full" :disabled="saving" @click="handleSave">
-          <Loader2 v-if="saving" class="h-4 w-4 animate-spin" />
-          {{ saving ? '保存中...' : '保存配置' }}
-        </Button>
+      <!-- Footer: 底部操作栏 -->
+      <div class="px-8 py-6 border-t border-border/5 flex items-center justify-end gap-5 bg-card/20">
+        <button 
+          class="text-[13px] font-bold text-muted-foreground hover:text-foreground transition-all px-4 py-2"
+          @click="$emit('close')"
+        >
+          取消
+        </button>
+        <button 
+          class="px-8 py-3 rounded-full bg-primary text-white text-[13px] font-black tracking-widest hover:brightness-110 shadow-lg shadow-primary/10 transition-all disabled:opacity-50 flex items-center h-11"
+          :disabled="saving"
+          @click="handleSave"
+        >
+          <Loader2 v-if="saving" class="h-4 w-4 animate-spin mr-3" />
+          {{ saving ? '正在应用' : '应用配置' }}
+        </button>
       </div>
     </div>
   </div>
@@ -184,9 +148,10 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 
-import { Loader2 } from 'lucide-vue-next'
+import { AlertCircle, Loader2, Globe, Settings2, RefreshCcw, ShieldCheck } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -496,5 +461,12 @@ watch(
 .site-editor-scroll input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>
