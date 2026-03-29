@@ -6,10 +6,14 @@
   >
     <div class="menu-item-content">
       <div class="icon-wrapper">
-        <component :is="item.icon" class="menu-icon" />
+        <component
+          :is="item.icon"
+          class="menu-icon"
+          aria-hidden="true"
+        />
       </div>
       <div class="label-wrapper">
-        <span class="menu-index">{{ index < 10 ? '0' + index : index }}</span>
+        <span class="menu-index">{{ formattedIndex }}</span>
         <span class="menu-label">{{ item.name }}</span>
       </div>
     </div>
@@ -18,7 +22,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   item: {
     type: Object,
     required: true,
@@ -32,10 +38,18 @@ defineProps({
     default: false,
   },
 })
+
+const formattedIndex = computed(() => {
+  return props.index < 10 ? `0${props.index}` : props.index
+})
 </script>
 
 <style scoped>
 .menu-item-neon {
+  --neon-primary: #ff4d00;
+  --neon-primary-glow: rgba(255, 77, 0, 0.8);
+  --neon-primary-bg: rgba(255, 77, 0, 0.05);
+
   position: relative;
   display: flex;
   padding: 1.25rem 1rem;
@@ -58,7 +72,7 @@ defineProps({
 
 .is-active {
   color: #fff;
-  background: linear-gradient(90deg, rgba(255, 77, 0, 0.05) 0%, transparent 100%);
+  background: linear-gradient(90deg, var(--neon-primary-bg) 0%, transparent 100%);
 }
 
 .menu-item-content {
@@ -83,8 +97,8 @@ defineProps({
 }
 
 .is-active .menu-icon {
-  color: #ff4d00;
-  filter: drop-shadow(0 0 5px rgba(255, 77, 0, 0.8));
+  color: var(--neon-primary);
+  filter: drop-shadow(0 0 5px var(--neon-primary-glow));
   animation: pulse 2s infinite ease-in-out;
 }
 
@@ -114,10 +128,10 @@ defineProps({
   top: 0;
   bottom: 0;
   width: 2px;
-  background: #ff4d00;
+  background: var(--neon-primary);
   opacity: 0;
   transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
-  box-shadow: 0 0 15px #ff4d00;
+  box-shadow: 0 0 15px var(--neon-primary);
 }
 
 .is-active .menu-active-glow {
