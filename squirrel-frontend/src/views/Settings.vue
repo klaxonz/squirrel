@@ -54,14 +54,17 @@
                     :class="themeMode === option.value ? 'theme-card-active' : 'theme-card-inactive'"
                     @click="setThemeMode(option.value)"
                   >
-                    <div class="theme-card-icon">
-                      <component :is="option.icon" class="h-5 w-5" />
+                    <div class="flex items-center justify-between w-full">
+                      <div class="theme-card-icon">
+                        <component :is="option.icon" class="h-5 w-5" />
+                      </div>
+                      <div v-if="themeMode === option.value" class="theme-card-check">
+                        <CheckCircle2 class="h-3 w-3" />
+                      </div>
                     </div>
-                    <div class="mt-3">
-                      <div class="text-[13px] font-bold tracking-tight">{{ option.label }}</div>
-                    </div>
-                    <div v-if="themeMode === option.value" class="theme-card-check">
-                      <CheckCircle2 class="h-3 w-3" />
+                    <div class="mt-4">
+                      <div class="text-[14px] font-black tracking-tight">{{ option.label }}</div>
+                      <div class="text-[11px] text-muted-foreground/40 font-medium mt-0.5">{{ option.description }}</div>
                     </div>
                   </button>
                 </div>
@@ -300,27 +303,27 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 .theme-card {
-  @apply relative flex flex-col p-4 rounded-2xl border transition-all duration-300 text-left overflow-hidden;
+  @apply relative flex flex-col p-5 rounded-[24px] border transition-all duration-500 text-left overflow-hidden;
 }
 
 .theme-card-active {
-  @apply border-primary bg-primary/[0.03] shadow-[0_0_0_1px_hsl(var(--primary)/0.1)];
+  @apply border-primary bg-primary/[0.03] shadow-[0_8px_24px_-12px_hsl(var(--primary)/0.3)];
 }
 
 .theme-card-inactive {
-  @apply border-border/40 bg-muted/10 hover:border-border/80 hover:bg-muted/30;
+  @apply border-border/40 bg-muted/5 hover:border-border/80 hover:bg-muted/20;
 }
 
 .theme-card-icon {
-  @apply h-10 w-10 rounded-xl bg-background border border-border/40 flex items-center justify-center text-muted-foreground transition-all duration-300;
+  @apply h-10 w-10 rounded-2xl bg-background border border-border/40 flex items-center justify-center text-muted-foreground transition-all duration-500;
 }
 
 .theme-card-active .theme-card-icon {
-  @apply border-primary/20 bg-primary/10 text-primary scale-110;
+  @apply border-primary/20 bg-primary/10 text-primary rotate-[10deg] scale-110;
 }
 
 .theme-card-check {
-  @apply absolute top-3 right-3 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center scale-90;
+  @apply h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/20;
 }
 
 .setting-item {
