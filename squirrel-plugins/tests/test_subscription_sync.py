@@ -10,6 +10,9 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+BILIBILI_SUBSCRIPTION_PATH = (
+    REPO_ROOT / 'squirrel-plugins' / 'bilibili' / 'src' / 'squirrel_bilibili' / 'subscription.py'
+)
 PORNHUB_SUBSCRIPTION_PATH = (
     REPO_ROOT / 'squirrel-plugins' / 'pornhub' / 'src' / 'squirrel_pornhub' / 'subscription.py'
 )
@@ -212,6 +215,84 @@ def _load_javdb_subscription_module():
 
 
 @contextmanager
+def _stub_bilibili_subscription_dependencies():
+    originals = {
+        name: sys.modules.get(name)
+        for name in ('crawl', 'squirrel_bilibili', 'squirrel_bilibili.sign')
+    }
+
+    response_queue: list[object] = []
+
+    crawl_module = types.ModuleType('crawl')
+    crawl_module.SubscriptionMeta = object
+    crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
+    crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
+    crawl_module.append_subscription_video_url = _append_subscription_video_url
+    crawl_module.build_subscription_sync_result = _build_subscription_sync_result
+    crawl_module.resolve_subscription_limit = _resolve_subscription_limit
+
+    package_module = types.ModuleType('squirrel_bilibili')
+    package_module.__path__ = [str(BILIBILI_SUBSCRIPTION_PATH.parent)]
+
+    sign_module = types.ModuleType('squirrel_bilibili.sign')
+
+    class _ResourceType:
+        FAVORITE_LIST = 'favorite_list'
+        CHANNEL_SERIES = 'channel_series'
+        SPACE = 'space'
+
+    class _ChannelSeriesType:
+        SERIES = 'series'
+        SEASON = 'season'
+
+    sign_module.ResourceType = _ResourceType
+    sign_module.ChannelSeriesType = _ChannelSeriesType
+    sign_module.build_cookies = lambda _url: {}
+    sign_module.parse_subscription_target = lambda _url: types.SimpleNamespace(
+        resource_type=_ResourceType.FAVORITE_LIST,
+        media_id='fav-1',
+        mid=None,
+        series_id=None,
+        series_type=None,
+    )
+    sign_module.fetch_fav_folder_info = lambda *args, **kwargs: {}
+    sign_module.fetch_series_meta = lambda *args, **kwargs: {}
+    sign_module.fetch_user_card = lambda *args, **kwargs: {}
+    sign_module.fetch_user_videos = lambda *args, **kwargs: {}
+    sign_module.fetch_series_videos = lambda *args, **kwargs: {}
+
+    def fetch_fav_resource_list(*_args, **_kwargs):
+        if not response_queue:
+            raise AssertionError('No queued response for fetch_fav_resource_list')
+        return response_queue.pop(0)
+
+    sign_module.fetch_fav_resource_list = fetch_fav_resource_list
+
+    try:
+        sys.modules['crawl'] = crawl_module
+        sys.modules['squirrel_bilibili'] = package_module
+        sys.modules['squirrel_bilibili.sign'] = sign_module
+        yield response_queue
+    finally:
+        for name, original in originals.items():
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
+
+
+def _load_bilibili_subscription_module():
+    module_name = 'squirrel_bilibili.subscription'
+    sys.modules.pop(module_name, None)
+    module_spec = importlib.util.spec_from_file_location(module_name, BILIBILI_SUBSCRIPTION_PATH)
+    module = importlib.util.module_from_spec(module_spec)
+    assert module_spec is not None and module_spec.loader is not None
+    sys.modules[module_name] = module
+    module_spec.loader.exec_module(module)
+    return module
+
+
+@contextmanager
 def _stub_youtube_subscription_dependencies():
     originals = {
         name: sys.modules.get(name)
@@ -326,6 +407,57 @@ class _FakeYoutubeChannel:
 
 
 class SubscriptionSyncTests(unittest.TestCase):
+    def test_bilibili_full_sync_returns_continuation_cursor_for_next_page(self):
+        with _stub_bilibili_subscription_dependencies() as responses:
+            module = _load_bilibili_subscription_module()
+
+            responses.append({
+                'medias': [
+                    {'bvid': 'BV1-demo-page-1'},
+                    {'bvid': 'BV2-demo-page-1'},
+                ],
+                'has_more': True,
+            })
+
+            subscription = module.BilibiliSubscription('https://www.bilibili.com/list/ml123')
+            result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
+
+            self.assertEqual(
+                result.video_urls,
+                [
+                    'https://www.bilibili.com/video/BV1-demo-page-1',
+                    'https://www.bilibili.com/video/BV2-demo-page-1',
+                ],
+            )
+            self.assertEqual(result.latest_video_url, 'https://www.bilibili.com/video/BV1-demo-page-1')
+            self.assertEqual(result.cursor_payload, {'page': 2})
+            self.assertEqual(result.stop_reason, 'batch_exhausted')
+            self.assertTrue(result.has_more)
+
+    def test_bilibili_full_sync_resumes_from_cursor_and_finishes_last_page(self):
+        with _stub_bilibili_subscription_dependencies() as responses:
+            module = _load_bilibili_subscription_module()
+
+            responses.append({
+                'medias': [
+                    {'bvid': 'BV3-demo-page-2'},
+                ],
+                'has_more': False,
+            })
+
+            subscription = module.BilibiliSubscription('https://www.bilibili.com/list/ml123')
+            result = subscription.sync_videos(
+                _SubscriptionSyncContext(mode='full', cursor_payload={'page': 2})
+            )
+
+            self.assertEqual(
+                result.video_urls,
+                ['https://www.bilibili.com/video/BV3-demo-page-2'],
+            )
+            self.assertEqual(result.latest_video_url, 'https://www.bilibili.com/video/BV3-demo-page-2')
+            self.assertEqual(result.stop_reason, 'source_exhausted')
+            self.assertFalse(result.has_more)
+
     def test_javdb_full_sync_returns_continuation_cursor_for_next_page(self):
         with _stub_javdb_subscription_dependencies() as (responses, soups):
             module = _load_javdb_subscription_module()
@@ -509,6 +641,69 @@ class SubscriptionSyncTests(unittest.TestCase):
             self.assertEqual(result.video_urls, ['https://www.youtube.com/watch?v=new00000001'])
             self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=new00000001')
             self.assertEqual(result.stop_reason, 'cursor_hit')
+
+    def test_youtube_full_sync_returns_continuation_cursor_when_batch_limit_is_hit(self):
+        with _stub_youtube_subscription_dependencies() as (channel_factory, _playlist_factory):
+            module = _load_youtube_subscription_module()
+            module.FULL_SYNC_BATCH_SIZE = 2
+
+            channel_factory['value'] = lambda _url, use_oauth=False: _FakeYoutubeChannel(
+                videos=[
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000001'),
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000002'),
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000003'),
+                ],
+                shorts=[
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=shared000001'),
+                ],
+            )
+
+            subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
+            result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
+
+            self.assertEqual(
+                result.video_urls,
+                [
+                    'https://www.youtube.com/watch?v=video0000001',
+                    'https://www.youtube.com/watch?v=video0000002',
+                ],
+            )
+            self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=video0000001')
+            self.assertEqual(result.cursor_payload, {'offset': 2})
+            self.assertEqual(result.stop_reason, 'batch_exhausted')
+            self.assertTrue(result.has_more)
+
+    def test_youtube_full_sync_resumes_from_offset_cursor(self):
+        with _stub_youtube_subscription_dependencies() as (channel_factory, _playlist_factory):
+            module = _load_youtube_subscription_module()
+            module.FULL_SYNC_BATCH_SIZE = 2
+
+            channel_factory['value'] = lambda _url, use_oauth=False: _FakeYoutubeChannel(
+                videos=[
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000001'),
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000002'),
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000003'),
+                ],
+                shorts=[
+                    _FakeYoutubeItem('https://www.youtube.com/watch?v=shared000001'),
+                ],
+            )
+
+            subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
+            result = subscription.sync_videos(
+                _SubscriptionSyncContext(mode='full', cursor_payload={'offset': 2})
+            )
+
+            self.assertEqual(
+                result.video_urls,
+                [
+                    'https://www.youtube.com/watch?v=video0000003',
+                    'https://www.youtube.com/watch?v=shared000001',
+                ],
+            )
+            self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=video0000003')
+            self.assertEqual(result.stop_reason, 'source_exhausted')
+            self.assertFalse(result.has_more)
 
 
 if __name__ == '__main__':

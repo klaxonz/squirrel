@@ -80,97 +80,109 @@ class BilibiliSubscription:
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
         if self.resource_type == ResourceType.FAVORITE_LIST:
-            video_urls, latest_video_url, stop_reason = self._get_favlist_videos(context)
+            video_urls, latest_video_url, stop_reason, cursor_payload, has_more = self._get_favlist_videos(context)
         elif self.resource_type == ResourceType.CHANNEL_SERIES:
-            video_urls, latest_video_url, stop_reason = self._get_channel_videos(context)
+            video_urls, latest_video_url, stop_reason, cursor_payload, has_more = self._get_channel_videos(context)
         else:
-            video_urls, latest_video_url, stop_reason = self._get_space_videos(context)
+            video_urls, latest_video_url, stop_reason, cursor_payload, has_more = self._get_space_videos(context)
         return build_subscription_sync_result(
             video_urls=video_urls,
             latest_video_url=latest_video_url,
             context=context,
             stop_reason=stop_reason,
+            cursor_payload=cursor_payload,
+            has_more=has_more,
         )
 
-    def _get_space_videos(self, context: SubscriptionSyncContext) -> tuple[List[str], Optional[str], str]:
+    @staticmethod
+    def _resolve_page(context: SubscriptionSyncContext) -> int:
+        page = (context.cursor_payload or {}).get('page', 1)
+        try:
+            return max(1, int(page))
+        except (TypeError, ValueError):
+            return 1
+
+    def _get_space_videos(
+        self,
+        context: SubscriptionSyncContext,
+    ) -> tuple[List[str], Optional[str], str, Optional[dict], bool]:
         if not self.target.mid:
             raise ValueError('Missing user id')
         video_list: List[str] = []
         latest_video_url: Optional[str] = None
         limit = resolve_subscription_limit(context)
-        page = 1
+        page = self._resolve_page(context)
         page_size = 50
 
-        while True:
-            data = fetch_user_videos(self.target.mid, cookies=self.cookies, pn=page, ps=page_size, throttled=True)
-            vlist = (data.get('list') or {}).get('vlist') or data.get('vlist') or []
-            if not isinstance(vlist, list) or not vlist:
-                break
+        data = fetch_user_videos(self.target.mid, cookies=self.cookies, pn=page, ps=page_size, throttled=True)
+        vlist = (data.get('list') or {}).get('vlist') or data.get('vlist') or []
+        if not isinstance(vlist, list) or not vlist:
+            return video_list, latest_video_url, 'source_exhausted', None, False
 
-            for v in vlist:
-                if v.get("is_union_video") == 1:
-                    continue
-                bvid = v.get("bvid")
-                if bvid:
-                    latest_video_url, stop_reason = append_subscription_video_url(
-                        f"https://www.bilibili.com/video/{bvid}",
-                        video_urls=video_list,
-                        context=context,
-                        latest_video_url=latest_video_url,
-                        limit=limit,
-                    )
-                    if stop_reason:
-                        return video_list, latest_video_url, stop_reason
+        for v in vlist:
+            if v.get('is_union_video') == 1:
+                continue
+            bvid = v.get('bvid')
+            if bvid:
+                latest_video_url, stop_reason = append_subscription_video_url(
+                    f'https://www.bilibili.com/video/{bvid}',
+                    video_urls=video_list,
+                    context=context,
+                    latest_video_url=latest_video_url,
+                    limit=limit,
+                )
+                if stop_reason:
+                    return video_list, latest_video_url, stop_reason, None, False
 
-            if context.mode != 'full':
-                break
-
+        if context.mode == 'full':
             page_info = data.get('page') or {}
             total = page_info.get('count') or 0
-            if len(video_list) >= total or len(vlist) < page_size:
-                break
+            has_more = bool(total and page * page_size < total) or len(vlist) >= page_size
+            if has_more:
+                return video_list, latest_video_url, 'batch_exhausted', {'page': page + 1}, True
 
-            page += 1
+        return video_list, latest_video_url, 'source_exhausted', None, False
 
-        return video_list, latest_video_url, 'source_exhausted'
-
-    def _get_favlist_videos(self, context: SubscriptionSyncContext) -> tuple[List[str], Optional[str], str]:
+    def _get_favlist_videos(
+        self,
+        context: SubscriptionSyncContext,
+    ) -> tuple[List[str], Optional[str], str, Optional[dict], bool]:
         if not self.target.media_id:
             raise ValueError('Missing favorite list id')
 
         video_list: List[str] = []
         latest_video_url: Optional[str] = None
         limit = resolve_subscription_limit(context)
-        page = 1
+        page = self._resolve_page(context)
+        data = fetch_fav_resource_list(self.target.media_id, cookies=self.cookies, pn=page, ps=20, throttled=True)
+        medias = data.get('medias') or data.get('data', {}).get('medias') or []
+        if not medias:
+            return video_list, latest_video_url, 'source_exhausted', None, False
 
-        while True:
-            data = fetch_fav_resource_list(self.target.media_id, cookies=self.cookies, pn=page, ps=20, throttled=True)
-            medias = data.get('medias') or data.get('data', {}).get('medias') or []
-            if not medias:
-                break
+        for media in medias:
+            bvid = media.get('bvid')
+            if bvid:
+                latest_video_url, stop_reason = append_subscription_video_url(
+                    f'https://www.bilibili.com/video/{bvid}',
+                    video_urls=video_list,
+                    context=context,
+                    latest_video_url=latest_video_url,
+                    limit=limit,
+                )
+                if stop_reason:
+                    return video_list, latest_video_url, stop_reason, None, False
 
-            for media in medias:
-                bvid = media.get("bvid")
-                if bvid:
-                    latest_video_url, stop_reason = append_subscription_video_url(
-                        f"https://www.bilibili.com/video/{bvid}",
-                        video_urls=video_list,
-                        context=context,
-                        latest_video_url=latest_video_url,
-                        limit=limit,
-                    )
-                    if stop_reason:
-                        return video_list, latest_video_url, stop_reason
-
-            has_more = data.get('has_more', False)
-            if context.mode != 'full' or not has_more:
-                break
-            page += 1
+        has_more = data.get('has_more', False)
+        if context.mode == 'full' and has_more:
+            return video_list, latest_video_url, 'batch_exhausted', {'page': page + 1}, True
 
         logger.info('Extracted %s videos from favorite list', len(video_list))
-        return video_list, latest_video_url, 'source_exhausted'
+        return video_list, latest_video_url, 'source_exhausted', None, False
 
-    def _get_channel_videos(self, context: SubscriptionSyncContext) -> tuple[List[str], Optional[str], str]:
+    def _get_channel_videos(
+        self,
+        context: SubscriptionSyncContext,
+    ) -> tuple[List[str], Optional[str], str, Optional[dict], bool]:
         if not self.target.series_id:
             raise ValueError('Missing channel series id')
         if not self.target.mid:
@@ -180,42 +192,39 @@ class BilibiliSubscription:
         video_list: List[str] = []
         latest_video_url: Optional[str] = None
         limit = resolve_subscription_limit(context)
-        page = 1
+        page = self._resolve_page(context)
         page_size = 100
 
-        while True:
-            data = fetch_series_videos(
-                mid=self.target.mid,
-                series_id=self.target.series_id,
-                series_type=series_type,
-                cookies=self.cookies,
-                pn=page,
-                ps=page_size,
-                throttled=True,
-            )
-            archives = data.get('archives') or (data.get('data') or {}).get('archives') or []
-            if not archives and series_type == ChannelSeriesType.SEASON:
-                archives = (data.get('archives') or data.get('items') or (data.get('data') or {}).get('archives') or [])
-            if not archives:
-                break
+        data = fetch_series_videos(
+            mid=self.target.mid,
+            series_id=self.target.series_id,
+            series_type=series_type,
+            cookies=self.cookies,
+            pn=page,
+            ps=page_size,
+            throttled=True,
+        )
+        archives = data.get('archives') or (data.get('data') or {}).get('archives') or []
+        if not archives and series_type == ChannelSeriesType.SEASON:
+            archives = data.get('archives') or data.get('items') or (data.get('data') or {}).get('archives') or []
+        if not archives:
+            return video_list, latest_video_url, 'source_exhausted', None, False
 
-            for archive in archives:
-                bvid = archive.get("bvid") or (archive.get('archive') or {}).get('bvid')
-                if bvid:
-                    latest_video_url, stop_reason = append_subscription_video_url(
-                        f"https://www.bilibili.com/video/{bvid}",
-                        video_urls=video_list,
-                        context=context,
-                        latest_video_url=latest_video_url,
-                        limit=limit,
-                    )
-                    if stop_reason:
-                        return video_list, latest_video_url, stop_reason
+        for archive in archives:
+            bvid = archive.get('bvid') or (archive.get('archive') or {}).get('bvid')
+            if bvid:
+                latest_video_url, stop_reason = append_subscription_video_url(
+                    f'https://www.bilibili.com/video/{bvid}',
+                    video_urls=video_list,
+                    context=context,
+                    latest_video_url=latest_video_url,
+                    limit=limit,
+                )
+                if stop_reason:
+                    return video_list, latest_video_url, stop_reason, None, False
 
-            if context.mode != 'full' or len(archives) < page_size:
-                break
-
-            page += 1
+        if context.mode == 'full' and len(archives) >= page_size:
+            return video_list, latest_video_url, 'batch_exhausted', {'page': page + 1}, True
 
         logger.info('Extracted %s videos from channel series', len(video_list))
-        return video_list, latest_video_url, 'source_exhausted'
+        return video_list, latest_video_url, 'source_exhausted', None, False

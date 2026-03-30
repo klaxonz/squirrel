@@ -42,7 +42,7 @@ PLUGIN_MANIFEST = PluginManifest(
             name='sync_subscription',
             description='Fetch subscription video URLs for a JavDB subscription.',
             response_schema={'type': 'object'},
-            timeout_ms=30000,
+            timeout_ms=120000,
         ),
         PluginCapability(
             name='extract_video',
