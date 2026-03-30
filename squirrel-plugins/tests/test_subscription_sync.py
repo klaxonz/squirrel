@@ -42,6 +42,14 @@ class _SubscriptionSyncResult:
     has_more: bool = False
 
 
+@dataclass
+class _SubscriptionMeta:
+    id: str | None
+    name: str | None
+    avatar: str | None
+    url: str
+
+
 def _resolve_subscription_limit(context):
     if context.mode == 'full':
         return None
@@ -107,7 +115,7 @@ def _stub_pornhub_subscription_dependencies():
     soup_registry: dict[str, object] = {}
 
     crawl_module = types.ModuleType('crawl')
-    crawl_module.SubscriptionMeta = object
+    crawl_module.SubscriptionMeta = _SubscriptionMeta
     crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
     crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
     crawl_module.append_subscription_video_url = _append_subscription_video_url
@@ -163,7 +171,7 @@ def _stub_javdb_subscription_dependencies():
     soup_registry: dict[str, object] = {}
 
     crawl_module = types.ModuleType('crawl')
-    crawl_module.SubscriptionMeta = object
+    crawl_module.SubscriptionMeta = _SubscriptionMeta
     crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
     crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
     crawl_module.append_subscription_video_url = _append_subscription_video_url
@@ -224,7 +232,7 @@ def _stub_bilibili_subscription_dependencies():
     response_queue: list[object] = []
 
     crawl_module = types.ModuleType('crawl')
-    crawl_module.SubscriptionMeta = object
+    crawl_module.SubscriptionMeta = _SubscriptionMeta
     crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
     crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
     crawl_module.append_subscription_video_url = _append_subscription_video_url
@@ -300,30 +308,28 @@ def _stub_youtube_subscription_dependencies():
     }
 
     crawl_module = types.ModuleType('crawl')
-    crawl_module.SubscriptionMeta = object
+    crawl_module.SubscriptionMeta = _SubscriptionMeta
     crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
     crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
     crawl_module.append_subscription_video_url = _append_subscription_video_url
     crawl_module.build_subscription_sync_result = _build_subscription_sync_result
     crawl_module.resolve_subscription_limit = _resolve_subscription_limit
+    crawl_module.apply_ytdlp_rate_limit = lambda site_name, options=None: {
+        **dict(options or {}),
+        '_rate_limit_site': site_name,
+    }
+    crawl_module.filter_cookies_to_query_string = lambda _url: 'cookie=1'
+    crawl_module.resolve_cookie_file_path = lambda _url: None
 
     pytubefix_module = types.ModuleType('pytubefix')
-    channel_factory = {'value': None}
-    playlist_factory = {'value': None}
 
     class Channel:
         def __new__(cls, *args, **kwargs):
-            factory = channel_factory['value']
-            if factory is None:
-                raise AssertionError('Channel factory not configured')
-            return factory(*args, **kwargs)
+            raise AssertionError('pytubefix.Channel should not be used')
 
     class Playlist:
         def __new__(cls, *args, **kwargs):
-            factory = playlist_factory['value']
-            if factory is None:
-                raise AssertionError('Playlist factory not configured')
-            return factory(*args, **kwargs)
+            raise AssertionError('pytubefix.Playlist should not be used')
 
     pytubefix_module.Channel = Channel
     pytubefix_module.Playlist = Playlist
@@ -331,7 +337,7 @@ def _stub_youtube_subscription_dependencies():
     try:
         sys.modules['crawl'] = crawl_module
         sys.modules['pytubefix'] = pytubefix_module
-        yield channel_factory, playlist_factory
+        yield
     finally:
         for name, original in originals.items():
             if original is None:
@@ -397,13 +403,25 @@ class _FakeYoutubeItem:
         self.watch_url = watch_url
 
 
-class _FakeYoutubeChannel:
-    def __init__(self, videos: list[_FakeYoutubeItem], shorts: list[_FakeYoutubeItem], channel_id: str = 'channel-1'):
-        self.videos = videos
-        self.shorts = shorts
-        self.channel_id = channel_id
-        self.channel_name = 'Demo Channel'
-        self.thumbnail_url = 'https://cdn.example/thumb.jpg'
+def _build_ytdlp_info(
+    *,
+    entries: list[dict] | None = None,
+    channel_id: str = 'channel-1',
+    channel: str = 'Demo Channel',
+    title: str | None = None,
+    thumbnails: list[dict] | None = None,
+    playlist_id: str | None = None,
+):
+    return {
+        'entries': list(entries or []),
+        'channel_id': channel_id,
+        'channel': channel,
+        'uploader': channel,
+        'title': title or f'{channel} - Videos',
+        'thumbnails': list(thumbnails or [{'url': 'https://cdn.example/thumb.jpg'}]),
+        'id': playlist_id or channel_id,
+        'webpage_url': 'https://www.youtube.com/channel/channel-1',
+    }
 
 
 class SubscriptionSyncTests(unittest.TestCase):
@@ -589,19 +607,29 @@ class SubscriptionSyncTests(unittest.TestCase):
             self.assertEqual(result.stop_reason, 'source_exhausted')
 
     def test_youtube_channel_sync_deduplicates_overlapping_video_and_short_urls(self):
-        with _stub_youtube_subscription_dependencies() as (channel_factory, _playlist_factory):
+        with _stub_youtube_subscription_dependencies():
             module = _load_youtube_subscription_module()
+            calls = []
 
-            channel_factory['value'] = lambda _url, use_oauth=False: _FakeYoutubeChannel(
-                videos=[
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video001aaa'),
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=shared00001'),
-                ],
-                shorts=[
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=shared00001'),
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=short000002'),
-                ],
+            module.youtube_ytdlp_support.apply_youtube_player_strategy = (
+                lambda url, opts: opts.setdefault('_auth_urls', []).append(url)
             )
+
+            def fake_extract(url, opts, *, process=False):
+                calls.append((url, dict(opts), process))
+                if url.endswith('/videos'):
+                    return _build_ytdlp_info(entries=[
+                        {'url': 'https://www.youtube.com/watch?v=video001aaa'},
+                        {'url': 'https://www.youtube.com/watch?v=shared00001'},
+                    ])
+                if url.endswith('/shorts'):
+                    return _build_ytdlp_info(entries=[
+                        {'url': 'https://www.youtube.com/watch?v=shared00001'},
+                        {'url': 'https://www.youtube.com/shorts/short000002'},
+                    ])
+                raise AssertionError(f'Unexpected URL: {url}')
+
+            module.youtube_ytdlp_support.extract_info_with_player_responses = fake_extract
 
             subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
             result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
@@ -611,23 +639,34 @@ class SubscriptionSyncTests(unittest.TestCase):
                 [
                     'https://www.youtube.com/watch?v=video001aaa',
                     'https://www.youtube.com/watch?v=shared00001',
-                    'https://www.youtube.com/watch?v=short000002',
+                    'https://www.youtube.com/shorts/short000002',
                 ],
             )
             self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=video001aaa')
             self.assertEqual(result.stop_reason, 'source_exhausted')
+            self.assertEqual(
+                [url for url, _opts, _process in calls],
+                [
+                    'https://www.youtube.com/@demo/videos',
+                    'https://www.youtube.com/@demo/shorts',
+                ],
+            )
+            for url, opts, process in calls:
+                self.assertFalse(process)
+                self.assertEqual(opts.get('_rate_limit_site'), 'youtube')
+                self.assertEqual(opts.get('_auth_urls'), [url])
+                self.assertEqual(opts.get('extract_flat'), 'in_playlist')
 
     def test_youtube_incremental_sync_stops_at_cursor_before_appending_seen_item(self):
-        with _stub_youtube_subscription_dependencies() as (channel_factory, _playlist_factory):
+        with _stub_youtube_subscription_dependencies():
             module = _load_youtube_subscription_module()
-
-            channel_factory['value'] = lambda _url, use_oauth=False: _FakeYoutubeChannel(
-                videos=[
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=new00000001'),
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=seen0000002'),
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=old00000003'),
-                ],
-                shorts=[],
+            module.youtube_ytdlp_support.apply_youtube_player_strategy = lambda _url, _opts: None
+            module.youtube_ytdlp_support.extract_info_with_player_responses = (
+                lambda url, _opts, *, process=False: _build_ytdlp_info(entries=[
+                    {'url': 'https://www.youtube.com/watch?v=new00000001'},
+                    {'url': 'https://www.youtube.com/watch?v=seen0000002'},
+                    {'url': 'https://www.youtube.com/watch?v=old00000003'},
+                ]) if url.endswith('/videos') else _build_ytdlp_info(entries=[])
             )
 
             subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
@@ -643,20 +682,30 @@ class SubscriptionSyncTests(unittest.TestCase):
             self.assertEqual(result.stop_reason, 'cursor_hit')
 
     def test_youtube_full_sync_returns_continuation_cursor_when_batch_limit_is_hit(self):
-        with _stub_youtube_subscription_dependencies() as (channel_factory, _playlist_factory):
+        with _stub_youtube_subscription_dependencies():
             module = _load_youtube_subscription_module()
             module.FULL_SYNC_BATCH_SIZE = 2
+            calls = []
+            module.youtube_ytdlp_support.apply_youtube_player_strategy = lambda _url, _opts: None
 
-            channel_factory['value'] = lambda _url, use_oauth=False: _FakeYoutubeChannel(
-                videos=[
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000001'),
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000002'),
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000003'),
-                ],
-                shorts=[
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=shared000001'),
-                ],
-            )
+            def fake_extract(url, opts, *, process=False):
+                calls.append((url, dict(opts), process))
+                if url.endswith('/videos'):
+                    entries = [
+                        {'url': 'https://www.youtube.com/watch?v=video0000001'},
+                        {'url': 'https://www.youtube.com/watch?v=video0000002'},
+                        {'url': 'https://www.youtube.com/watch?v=video0000003'},
+                    ]
+                    start = max(0, int(opts.get('playliststart', 1)) - 1)
+                    end = int(opts.get('playlistend', len(entries)))
+                    return _build_ytdlp_info(entries=entries[start:end])
+                if url.endswith('/shorts'):
+                    return _build_ytdlp_info(entries=[
+                        {'url': 'https://www.youtube.com/watch?v=shared000001'},
+                    ])
+                raise AssertionError(f'Unexpected URL: {url}')
+
+            module.youtube_ytdlp_support.extract_info_with_player_responses = fake_extract
 
             subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
             result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
@@ -669,29 +718,43 @@ class SubscriptionSyncTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=video0000001')
-            self.assertEqual(result.cursor_payload, {'offset': 2})
+            self.assertEqual(result.cursor_payload, {'source': 'videos', 'offset': 2})
             self.assertEqual(result.stop_reason, 'batch_exhausted')
             self.assertTrue(result.has_more)
+            self.assertEqual(calls[0][1].get('playlistend'), 3)
 
     def test_youtube_full_sync_resumes_from_offset_cursor(self):
-        with _stub_youtube_subscription_dependencies() as (channel_factory, _playlist_factory):
+        with _stub_youtube_subscription_dependencies():
             module = _load_youtube_subscription_module()
             module.FULL_SYNC_BATCH_SIZE = 2
+            calls = []
+            module.youtube_ytdlp_support.apply_youtube_player_strategy = lambda _url, _opts: None
 
-            channel_factory['value'] = lambda _url, use_oauth=False: _FakeYoutubeChannel(
-                videos=[
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000001'),
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000002'),
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=video0000003'),
-                ],
-                shorts=[
-                    _FakeYoutubeItem('https://www.youtube.com/watch?v=shared000001'),
-                ],
-            )
+            def fake_extract(url, opts, *, process=False):
+                calls.append((url, dict(opts), process))
+                if url.endswith('/videos'):
+                    entries = [
+                        {'url': 'https://www.youtube.com/watch?v=video0000001'},
+                        {'url': 'https://www.youtube.com/watch?v=video0000002'},
+                        {'url': 'https://www.youtube.com/watch?v=video0000003'},
+                    ]
+                    start = max(0, int(opts.get('playliststart', 1)) - 1)
+                    end = int(opts.get('playlistend', len(entries)))
+                    return _build_ytdlp_info(entries=entries[start:end])
+                if url.endswith('/shorts'):
+                    return _build_ytdlp_info(entries=[
+                        {'url': 'https://www.youtube.com/watch?v=shared000001'},
+                    ])
+                raise AssertionError(f'Unexpected URL: {url}')
+
+            module.youtube_ytdlp_support.extract_info_with_player_responses = fake_extract
 
             subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
             result = subscription.sync_videos(
-                _SubscriptionSyncContext(mode='full', cursor_payload={'offset': 2})
+                _SubscriptionSyncContext(
+                    mode='full',
+                    cursor_payload={'source': 'videos', 'offset': 2},
+                )
             )
 
             self.assertEqual(
@@ -704,6 +767,33 @@ class SubscriptionSyncTests(unittest.TestCase):
             self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=video0000003')
             self.assertEqual(result.stop_reason, 'source_exhausted')
             self.assertFalse(result.has_more)
+            self.assertEqual(calls[0][1].get('playliststart'), 3)
+
+    def test_youtube_get_subscribe_info_uses_ytdlp_channel_metadata(self):
+        with _stub_youtube_subscription_dependencies():
+            module = _load_youtube_subscription_module()
+            module.youtube_ytdlp_support.apply_youtube_player_strategy = lambda _url, _opts: None
+            module.youtube_ytdlp_support.extract_info_with_player_responses = (
+                lambda _url, _opts, *, process=False: _build_ytdlp_info(
+                    entries=[],
+                    channel_id='UCdemo000001',
+                    channel='Demo Channel',
+                    thumbnails=[{'url': 'https://cdn.example/avatar.jpg'}],
+                )
+            )
+
+            subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
+            info = subscription.get_subscribe_info()
+
+            self.assertEqual(
+                info,
+                _SubscriptionMeta(
+                    'UCdemo000001',
+                    'Demo Channel',
+                    'https://cdn.example/avatar.jpg',
+                    'https://www.youtube.com/channel/UCdemo000001',
+                ),
+            )
 
 
 if __name__ == '__main__':
