@@ -39,6 +39,24 @@ def _metadata_capabilities(plugin_name: str) -> tuple[set[str], set[str]]:
     return capabilities, features
 
 
+def _manifest_timeout_map(module_name: str, plugin_name: str) -> tuple[dict[str, int | None], dict[str, int | None]]:
+    runtime_module = importlib.import_module(f'{module_name}.runtime')
+    runtime = runtime_module.get_plugin_runtime()
+    runtime_manifest = runtime.manifest()
+    runtime_timeouts = {
+        item.name: item.timeout_ms
+        for item in runtime_manifest.capabilities
+    }
+
+    metadata_path = ROOT / 'squirrel-plugins' / plugin_name / 'plugin-runtime.json'
+    payload = json.loads(metadata_path.read_text(encoding='utf-8'))
+    metadata_timeouts = {
+        item['name']: item.get('timeout_ms')
+        for item in payload['manifest']['capabilities']
+    }
+    return runtime_timeouts, metadata_timeouts
+
+
 @pytest.mark.parametrize(
     ('plugin_name', 'module_name', 'expected_capabilities'),
     [
@@ -76,6 +94,34 @@ def test_runtime_manifests_and_metadata_include_migrated_capabilities(
     assert expected_capabilities <= runtime_features
     assert expected_capabilities <= metadata_capabilities
     assert expected_capabilities <= metadata_features
+
+
+@pytest.mark.parametrize(
+    ('module_name', 'plugin_name', 'expected_timeouts'),
+    [
+        (
+            'squirrel_youtube',
+            'youtube',
+            {
+                'sync_subscription': 120000,
+                'extract_video': 120000,
+            },
+        ),
+        (
+            'squirrel_pornhub',
+            'pornhub',
+            {
+                'sync_subscription': 120000,
+            },
+        ),
+    ],
+)
+def test_runtime_uses_extended_timeouts_for_heavy_capabilities(module_name, plugin_name, expected_timeouts):
+    runtime_timeouts, metadata_timeouts = _manifest_timeout_map(module_name, plugin_name)
+
+    for capability_name, expected_timeout in expected_timeouts.items():
+        assert runtime_timeouts[capability_name] == expected_timeout
+        assert metadata_timeouts[capability_name] == expected_timeout
 
 
 def test_bilibili_runtime_media_capabilities_do_not_emit_legacy_registry_warnings(monkeypatch):

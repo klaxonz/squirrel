@@ -42,13 +42,13 @@ PLUGIN_MANIFEST = PluginManifest(
             name='sync_subscription',
             description='Fetch subscription video URLs for a YouTube subscription.',
             response_schema={'type': 'object'},
-            timeout_ms=30000,
+            timeout_ms=120000,
         ),
         PluginCapability(
             name='extract_video',
             description='Extract structured metadata for a YouTube video URL.',
             response_schema={'type': 'object'},
-            timeout_ms=30000,
+            timeout_ms=120000,
         ),
         PluginCapability(
             name='resolve_playback',
