@@ -8,7 +8,7 @@
             {{ isEditing ? '编辑任务配置' : '创建新任务' }}
           </h2>
           <p class="text-[10px] font-bold text-muted-foreground/30 uppercase tracking-[0.2em]">
-            {{ isEditing ? 'TASK ID: ' + props.task.id : 'DEPLOYMENT MANIFEST' }}
+            {{ isEditing ? '任务 ID: ' + props.task.id : '部署清单' }}
           </p>
         </div>
         <Button
@@ -27,27 +27,27 @@
           <!-- Section: Basic -->
           <div class="space-y-6">
             <div class="flex items-center gap-3">
-              <span class="text-[9px] font-bold uppercase tracking-[0.3em] text-primary/40">01 DEFINITION</span>
+              <span class="text-[9px] font-bold uppercase tracking-[0.3em] text-primary/40">01 任务定义</span>
               <div class="flex-1 h-px bg-border/20"></div>
             </div>
             
             <div class="grid grid-cols-1 gap-5">
               <div class="space-y-2">
-                <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">IDENTIFIER</label>
+                <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">任务名称</label>
                 <Input
                   v-model="formData.name"
                   required
-                  placeholder="TASK NAME"
+                  placeholder="输入任务名称"
                   class="bg-muted/5 border-border/20 h-9 text-[11px] font-semibold rounded-lg focus:bg-muted/10 transition-all placeholder:text-muted-foreground/20"
                 />
               </div>
 
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
-                  <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">LOGIC CLASS</label>
+                  <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">逻辑类</label>
                   <Select v-model="formData.task_class" :disabled="isEditing">
                     <SelectTrigger class="bg-muted/5 border-border/20 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest">
-                      <SelectValue placeholder="CLASS" />
+                      <SelectValue placeholder="选择逻辑类" />
                     </SelectTrigger>
                     <SelectContent class="max-h-[240px] border-border/40 bg-card/95 backdrop-blur-xl rounded-xl">
                       <template v-for="(group, groupName) in groupedTaskClasses" :key="groupName">
@@ -60,7 +60,7 @@
                         >
                           <div class="flex flex-col gap-0.5">
                             <span class="text-[11px] font-bold text-foreground/70 tracking-tight">{{ taskClass.name }}</span>
-                            <span class="text-[9px] font-medium text-muted-foreground/30 truncate max-w-[180px] uppercase tracking-tighter">{{ taskClass.description || 'NO DESC' }}</span>
+                            <span class="text-[9px] font-medium text-muted-foreground/30 truncate max-w-[180px] uppercase tracking-tighter">{{ taskClass.description || '暂无描述' }}</span>
                           </div>
                         </SelectItem>
                       </template>
@@ -69,25 +69,25 @@
                 </div>
 
                 <div class="space-y-2">
-                  <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">OWNERSHIP</label>
+                  <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">归属类型</label>
                   <Select v-model="formData.task_type" :disabled="isEditing">
                     <SelectTrigger class="bg-muted/5 border-border/20 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent class="border-border/40 bg-card/95 backdrop-blur-xl rounded-xl">
-                      <SelectItem value="user" class="text-[10px] font-bold uppercase tracking-widest rounded-lg mx-1">USER</SelectItem>
-                      <SelectItem value="system" class="text-[10px] font-bold uppercase tracking-widest rounded-lg mx-1">CORE</SelectItem>
-                      <SelectItem value="plugin" class="text-[10px] font-bold uppercase tracking-widest rounded-lg mx-1">EXT</SelectItem>
+                      <SelectItem value="user" class="text-[10px] font-bold uppercase tracking-widest rounded-lg mx-1">用户</SelectItem>
+                      <SelectItem value="system" class="text-[10px] font-bold uppercase tracking-widest rounded-lg mx-1">核心</SelectItem>
+                      <SelectItem value="plugin" class="text-[10px] font-bold uppercase tracking-widest rounded-lg mx-1">插件</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div class="space-y-2">
-                <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">DESCRIPTION</label>
+                <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">描述</label>
                 <Textarea
                   v-model="formData.description"
-                  placeholder="SPECIFICATION"
+                  placeholder="任务详细规格说明"
                   class="bg-muted/5 border-border/20 focus:bg-muted/10 min-h-[60px] text-[11px] font-medium rounded-lg transition-all resize-none py-3 placeholder:text-muted-foreground/20"
                 />
               </div>
@@ -97,13 +97,13 @@
           <!-- Section: Execution -->
           <div class="space-y-6">
             <div class="flex items-center gap-3">
-              <span class="text-[9px] font-bold uppercase tracking-[0.3em] text-blue-500/30">02 STRATEGY</span>
+              <span class="text-[9px] font-bold uppercase tracking-[0.3em] text-blue-500/30">02 执行策略</span>
               <div class="flex-1 h-px bg-border/20"></div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="space-y-2">
-                <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">FREQUENCY</label>
+                <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">执行频率</label>
                 <Input
                   v-model.number="formData.interval"
                   type="number"
@@ -113,22 +113,22 @@
               </div>
 
               <div class="space-y-2">
-                <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">UNIT</label>
+                <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">单位</label>
                 <Select v-model="formData.unit">
                   <SelectTrigger class="bg-muted/5 border-border/20 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent class="border-border/40 bg-card/95 backdrop-blur-xl rounded-xl">
-                    <SelectItem value="seconds" class="text-[10px] font-bold rounded-lg mx-1">SECONDS</SelectItem>
-                    <SelectItem value="minutes" class="text-[10px] font-bold rounded-lg mx-1">MINUTES</SelectItem>
-                    <SelectItem value="hours" class="text-[10px] font-bold rounded-lg mx-1">HOURS</SelectItem>
-                    <SelectItem value="days" class="text-[10px] font-bold rounded-lg mx-1">DAYS</SelectItem>
+                    <SelectItem value="seconds" class="text-[10px] font-bold rounded-lg mx-1">秒</SelectItem>
+                    <SelectItem value="minutes" class="text-[10px] font-bold rounded-lg mx-1">分钟</SelectItem>
+                    <SelectItem value="hours" class="text-[10px] font-bold rounded-lg mx-1">小时</SelectItem>
+                    <SelectItem value="days" class="text-[10px] font-bold rounded-lg mx-1">天</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div class="space-y-2">
-                <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">RETRY LIMIT</label>
+                <label class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/30 ml-1">重试限制</label>
                 <Input
                   v-model.number="formData.max_retries"
                   type="number"
@@ -142,11 +142,11 @@
             <div class="flex items-center gap-10 px-4 py-4 rounded-xl bg-muted/5 border border-border/20">
               <div class="flex items-center gap-3">
                 <Switch v-model:checked="formData.is_active" />
-                <span class="text-[9px] font-bold uppercase tracking-widest text-foreground/40">ACTIVE</span>
+                <span class="text-[9px] font-bold uppercase tracking-widest text-foreground/40">启用调度</span>
               </div>
               <div class="flex items-center gap-3">
                 <Switch v-model:checked="formData.start_immediately" />
-                <span class="text-[9px] font-bold uppercase tracking-widest text-foreground/40">IMMEDIATE</span>
+                <span class="text-[9px] font-bold uppercase tracking-widest text-foreground/40">立即执行</span>
               </div>
             </div>
           </div>
@@ -154,7 +154,7 @@
           <!-- Section: Parameters -->
           <div class="space-y-6">
             <div class="flex items-center gap-3">
-              <span class="text-[9px] font-bold uppercase tracking-[0.3em] text-amber-500/30">03 PARAMETERS</span>
+              <span class="text-[9px] font-bold uppercase tracking-[0.3em] text-amber-500/30">03 任务参数</span>
               <div class="flex-1 h-px bg-border/20"></div>
             </div>
             <div class="relative group">
@@ -162,7 +162,7 @@
                 v-model="taskParamsJson"
                 rows="4"
                 class="bg-muted/5 border-border/20 focus:bg-muted/10 font-mono text-[10px] leading-relaxed rounded-xl transition-all resize-none py-4 px-5"
-                placeholder='{ "JSON": "PAYLOAD" }'
+                placeholder='{ "JSON": "载荷" }'
               />
               <div v-if="jsonError" class="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-1 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[8px] font-bold tracking-[0.1em]">
                 <AlertTriangle class="w-2.5 h-2.5" />
@@ -181,7 +181,7 @@
           @click="$emit('close')"
           class="h-8 px-5 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30 hover:text-foreground transition-all"
         >
-          DISCARD
+          放弃更改
         </Button>
         <Button
           @click="handleSubmit"
@@ -191,7 +191,7 @@
           class="h-8 px-6 text-[10px] font-bold uppercase tracking-[0.2em] border border-border/40 bg-muted/20 text-foreground/60 hover:text-foreground hover:bg-muted/40 transition-all disabled:opacity-20"
         >
           <Loader2 v-if="loading" class="mr-2 h-3 w-3 animate-spin" />
-          {{ isEditing ? 'UPDATE CONFIG' : 'DEPLOY TASK' }}
+          {{ isEditing ? '更新配置' : '部署任务' }}
         </Button>
       </div>
     </div>
