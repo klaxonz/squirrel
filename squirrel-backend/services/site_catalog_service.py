@@ -202,6 +202,10 @@ def save_sites(sites: List[dict]) -> Dict[str, dict]:
         if test_url:
             site_entry["test_url"] = test_url
 
+        icon_url = str(raw.get("icon_url") or "").strip()
+        if icon_url:
+            site_entry["icon_url"] = icon_url
+
         catalog[slug] = site_entry
 
     config_path = _config_path()

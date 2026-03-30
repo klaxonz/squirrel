@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import sys
 from types import SimpleNamespace
 
@@ -50,3 +51,29 @@ def test_site_catalog_builds_from_backend_runtime_manifest_models(monkeypatch):
             'test_url': 'https://www.youtube.com',
         }
     }
+
+
+def test_site_catalog_load_from_file_preserves_icon_url(monkeypatch, tmp_path):
+    config_path = tmp_path / 'sites.json'
+    config_path.write_text(json.dumps({
+        'youtube': {
+            'label': 'YouTube',
+            'domains': ['youtube.com', 'youtu.be'],
+            'aliases': ['yt'],
+            'enabled': True,
+            'test_url': 'https://www.youtube.com',
+            'icon_url': '/api/plugins/sites/youtube/icon',
+        }
+    }), encoding='utf-8')
+
+    monkeypatch.setattr(SiteCatalog, '_config_path', staticmethod(lambda: str(config_path)))
+
+    catalog = SiteCatalog._load_from_file()
+
+    assert catalog is not None
+    assert catalog['youtube']['label'] == 'YouTube'
+    assert set(catalog['youtube']['domains']) == {'youtube.com', 'youtu.be'}
+    assert catalog['youtube']['aliases'] == ['yt']
+    assert catalog['youtube']['enabled'] is True
+    assert catalog['youtube']['test_url'] == 'https://www.youtube.com'
+    assert catalog['youtube']['icon_url'] == '/api/plugins/sites/youtube/icon'

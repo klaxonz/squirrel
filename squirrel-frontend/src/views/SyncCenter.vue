@@ -46,6 +46,7 @@
       :events="historyEvents"
       :open="!!historySelectedRun"
       :run="historySelectedRun"
+      :site-options="historySiteOptions"
       @close="handleCloseRunDrawer"
     />
   </div>

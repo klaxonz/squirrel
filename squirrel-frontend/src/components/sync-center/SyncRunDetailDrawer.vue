@@ -19,8 +19,16 @@
                 </h2>
                 <div class="flex items-center gap-2">
                   <div :class="[getStatusToneClass(run.status), 'h-2 w-2 rounded-full']"></div>
-                  <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
-                    {{ getStatusLabel(run.status) }} · {{ run.site }}
+                  <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
+                    <span>{{ getStatusLabel(run.status) }}</span>
+                    <span>·</span>
+                    <SiteIcon
+                      v-if="run.site"
+                      :icon-url="getSiteIconUrl(run.site)"
+                      :label="getSiteLabel(run.site)"
+                      size="xs"
+                    />
+                    <span>{{ getSiteLabel(run.site) }}</span>
                   </span>
                 </div>
               </div>
@@ -90,6 +98,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import type { SyncRunEvent, SyncRunItem } from '@/composables/useSyncHistory'
 import SyncEventTimeline from '@/components/sync-center/SyncEventTimeline.vue'
 import { useImageFallback } from '@/composables/useImageFallback'
@@ -97,21 +107,29 @@ import { formatDurationMs } from '@/utils/dateFormat'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   detailError: string
   detailLoading: boolean
   events: SyncRunEvent[]
   open: boolean
   run: SyncRunItem | null
-}>()
+  siteOptions?: Array<{ value: string; label: string; iconUrl?: string | null }>
+}>(), {
+  siteOptions: () => [],
+})
 
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
+const siteOptionMap = computed(() => {
+  return new Map(props.siteOptions.map((option) => [option.value, option]))
+})
 
 const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
+const getSiteLabel = (site: string | null) => siteOptionMap.value.get(site || '')?.label || site || 'unknown'
+const getSiteIconUrl = (site: string | null) => siteOptionMap.value.get(site || '')?.iconUrl || null
 
 const handleSheetToggle = (value: boolean) => {
   if (!value) {

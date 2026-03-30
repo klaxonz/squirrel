@@ -1,7 +1,10 @@
-from fastapi import APIRouter, File, UploadFile, Query
+import mimetypes
 import asyncio
 import logging
 from typing import Dict, List, Literal
+
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 
 from services.plugin_service import (
     install_from_upload,
@@ -23,6 +26,7 @@ from core.cookie_config import (
     get_site_cookies_file_path,
 )
 from utils.site_catalog import SiteCatalog
+from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 logger = logging.getLogger(__name__)
 
@@ -100,13 +104,19 @@ def build_site_info(site_name: str, catalog: dict) -> dict | None:
         catalog_entry.get("test_url")
         or (f"https://{primary_domain}" if primary_domain else None)
     )
+    icon_url = catalog_entry.get('icon_url')
+    if not icon_url and resolve_site_icon_path(site_name):
+        icon_url = build_site_icon_url(site_name)
 
     return {
         "name": site_name,
+        "site_name": site_name,
+        "label": catalog_entry.get('label', site_name),
         "domains": deduped_domains,
         "primary_domain": primary_domain,
         "test_url": test_url,
         "config_enabled": catalog_entry.get("enabled", True),
+        "icon_url": icon_url,
     }
 
 
@@ -190,6 +200,15 @@ def get_supported_sites():
         "sites": sites_info,
         "total": len(sites_info)
     })
+
+
+@router.get('/sites/{site_name}/icon', include_in_schema=False)
+def get_site_icon(site_name: str):
+    icon_path = resolve_site_icon_path(site_name)
+    if icon_path is None:
+        raise HTTPException(status_code=404, detail=f'No icon asset for site: {site_name}')
+    media_type, _ = mimetypes.guess_type(icon_path.name)
+    return FileResponse(path=icon_path, media_type=media_type or 'application/octet-stream')
 
 
 @router.get("/sites/{site_name}/test-connectivity")

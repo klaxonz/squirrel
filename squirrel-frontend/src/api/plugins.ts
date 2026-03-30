@@ -14,6 +14,7 @@ export interface PluginSite {
   site_name: string
   domains: string[]
   test_url?: string | null
+  icon_url?: string | null
   features?: string[]
   metadata?: Record<string, unknown>
 }

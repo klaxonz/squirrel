@@ -78,6 +78,7 @@ interface SyncReconcileResponse {
 interface SiteOption {
   value: string
   label: string
+  iconUrl?: string | null
 }
 
 const POLL_INTERVAL = 15000
@@ -312,7 +313,8 @@ export function useSyncCenter() {
     const normalized = (data?.sites || []).map((site: Record<string, unknown>) => {
       const value = String(site.site_name || site.name || '').trim()
       const label = String(site.display_label || site.label || value).trim()
-      return { value, label }
+      const iconUrl = String(site.icon_url || '').trim() || null
+      return { value, label, iconUrl }
     }).filter((option: SiteOption) => option.value)
 
     const deduped = normalized.filter((option: SiteOption, index: number, arr: SiteOption[]) => {
@@ -320,7 +322,7 @@ export function useSyncCenter() {
     })
 
     if (filters.site && !deduped.some((option: SiteOption) => option.value === filters.site)) {
-      deduped.unshift({ value: filters.site, label: filters.site })
+      deduped.unshift({ value: filters.site, label: filters.site, iconUrl: null })
     }
 
     siteOptions.value = deduped

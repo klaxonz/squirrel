@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from plugins.manager import get_plugin_manager
 from plugins.runtime_models import PluginManifest
+from utils.site_catalog import SiteCatalog
+from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 InstallResult = Tuple[bool, Optional[Dict[str, Any] | str]]
 
@@ -17,8 +19,22 @@ logger = logging.getLogger(__name__)
 RUNTIME_METADATA_FILE = 'plugin-runtime.json'
 
 
+def _normalize_plugin_site(site_item: Dict[str, Any], catalog: Dict[str, dict]) -> Dict[str, Any]:
+    payload = dict(site_item)
+    site_name = str(site_item.get('site_name', '')).strip()
+    slug = site_name.lower()
+    catalog_entry = catalog.get(slug, {})
+    icon_url = catalog_entry.get('icon_url')
+    if not icon_url and resolve_site_icon_path(site_name):
+        icon_url = build_site_icon_url(site_name)
+    if icon_url:
+        payload['icon_url'] = icon_url
+    return payload
+
+
 def _normalize_plugin_item(record, snapshot) -> Dict[str, Any]:
     manifest = PluginManifest.from_dict(record.manifest)
+    catalog = SiteCatalog.get_catalog() or {}
     runtime_handle = next(
         (
             item for item in snapshot.runtimes
@@ -35,7 +51,7 @@ def _normalize_plugin_item(record, snapshot) -> Dict[str, Any]:
         'enabled': record.enabled,
         'status': record.status.value,
         'capabilities': [item.to_dict() for item in manifest.capabilities],
-        'sites': [item.to_dict() for item in manifest.sites],
+        'sites': [_normalize_plugin_site(item.to_dict(), catalog) for item in manifest.sites],
         'permissions': [item.to_dict() for item in manifest.permissions],
         'health': None if runtime_handle is None or runtime_handle.health is None else {
             'healthy': runtime_handle.health.healthy,

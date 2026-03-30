@@ -13,6 +13,7 @@ type SiteInfo = {
   rate_limit?: unknown
   metadata?: unknown
   test_url?: unknown
+  icon_url?: unknown
   [key: string]: unknown
 }
 
@@ -65,6 +66,7 @@ type SiteCatalogPayloadItem = {
   domains: string[]
   aliases: string[]
   enabled: boolean
+  icon_url?: unknown
   http?: unknown
   proxy?: unknown
   login?: unknown
@@ -95,6 +97,7 @@ export function useSiteCatalog() {
         aliases: info?.aliases || [],
         enabled: info?.enabled !== false,
       }
+      if (info?.icon_url) payload.icon_url = info.icon_url
       if (info?.http) payload.http = info.http
       if (info?.proxy) payload.proxy = info.proxy
       if (info?.login) payload.login = info.login

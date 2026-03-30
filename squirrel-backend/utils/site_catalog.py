@@ -51,7 +51,7 @@ class SiteCatalog:
                     data = json.load(f)
                 # normalize
                 catalog: Dict[str, dict] = {}
-                extra_keys = {'http', 'proxy', 'login', 'rate_limit', 'metadata', 'test_url'}
+                extra_keys = {'http', 'proxy', 'login', 'rate_limit', 'metadata', 'test_url', 'icon_url'}
                 for slug, info in (data or {}).items():
                     domains = list({d.strip().lower() for d in info.get('domains', []) if d})
                     aliases = list({a.strip().lower() for a in info.get('aliases', []) if a})

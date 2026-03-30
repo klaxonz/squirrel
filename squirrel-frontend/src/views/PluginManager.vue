@@ -153,6 +153,13 @@
 
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-3 mb-1">
+                  <SiteIcon
+                    v-if="plugin.primarySite"
+                    :icon-url="plugin.primarySite.icon_url"
+                    :label="plugin.primarySite.site_name || plugin.display_name"
+                    size="sm"
+                    class="shadow-sm"
+                  />
                   <span class="unit-title text-sm font-bold uppercase tracking-tight text-foreground/90">{{ plugin.display_name }}</span>
                   <div class="unit-id px-1.5 py-0.5 border border-white/10 rounded bg-black/40">
                     {{ plugin.plugin_id }} v{{ plugin.version }}
@@ -172,7 +179,15 @@
                 </div>
                 <div class="flex flex-col gap-1">
                   <span class="text-[8px] font-bold opacity-30 uppercase tracking-widest">Target_Sites</span>
-                  <div class="text-[9px] font-mono text-white/40">{{ formatSiteNames(plugin.sites) }}</div>
+                  <div class="flex items-center gap-2 text-[9px] font-mono text-white/40">
+                    <SiteIcon
+                      v-if="plugin.primarySite"
+                      :icon-url="plugin.primarySite.icon_url"
+                      :label="plugin.primarySite.site_name"
+                      size="xs"
+                    />
+                    <span>{{ formatSiteNames(plugin.sites) }}</span>
+                  </div>
                 </div>
               </div>
 
@@ -275,7 +290,14 @@
                   class="group hover:bg-muted/20 transition-colors"
                 >
                   <td class="py-4 px-2">
-                    <div class="flex flex-col">
+                    <div class="flex items-start gap-3">
+                      <SiteIcon
+                        :icon-url="site.icon_url"
+                        :label="site.display_label || site.site_name || site.name"
+                        size="sm"
+                        class="mt-0.5"
+                      />
+                      <div class="flex flex-col">
                       <div class="flex items-center gap-2 mb-0.5">
                         <span class="text-sm font-semibold tracking-tight text-foreground/90">{{ site.display_label || site.site_name || site.name }}</span>
                         <span
@@ -290,6 +312,7 @@
                         <span v-if="site.test_url" class="opacity-30">•</span>
                         <span v-if="site.test_url" class="truncate max-w-[150px] opacity-50">{{ site.test_url }}</span>
                       </div>
+                    </div>
                     </div>
                   </td>
                   <td class="py-4 px-2 hidden lg:table-cell">
@@ -424,6 +447,7 @@ import {
   MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline';
 import PageHeader from '@/components/layout/PageHeader.vue'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -605,6 +629,7 @@ const displayPlugins = computed(() => {
       ...plugin,
       capabilities,
       sites,
+      primarySite: sites[0] || null,
       permissions,
       active_runtime: activeRuntime,
       health,
@@ -686,7 +711,7 @@ const getPluginHealthClass = (plugin) => {
 };
 
 const formatSiteNames = (sites) => {
-  const names = (sites || []).map(site => site.site_name).filter(Boolean);
+  const names = (sites || []).map(site => site.site_name || site.label).filter(Boolean);
   if (!names.length) return '未声明站点';
   if (names.length <= 2) return names.join(' / ');
   return `${names.slice(0, 2).join(' / ')} +${names.length - 2}`;
@@ -705,7 +730,7 @@ const displaySites = computed(() => {
   const loginTestingMap = loginStatusTesting.value || {};
 
   let list = supportedSites.value.map(siteInfo => {
-    const siteName = siteInfo.name;
+    const siteName = siteInfo.site_name || siteInfo.name;
     const result = resultsMap.get(siteName);
     const catalogInfo = siteCatalogMap.value[siteName?.toLowerCase()] || null;
     const catalogDomains = catalogInfo?.domains || [];
@@ -719,6 +744,7 @@ const displaySites = computed(() => {
       // 优先使用站点配置中的域名，其次为测试结果、站点定义
       domains: catalogDomains.length > 0 ? catalogDomains : (result?.domains || siteInfo.domains || []),
       test_url: result?.test_url || siteInfo.test_url || '',
+      icon_url: siteInfo.icon_url || catalogInfo?.icon_url || '',
       loginStatus: loginResultMap[siteName],
       loginTesting: !!loginTestingMap[siteName],
       supports_login_status: siteInfo.supports_login_status ?? false,

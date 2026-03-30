@@ -39,7 +39,15 @@
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="option in siteOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
+                  <div class="flex items-center gap-2">
+                    <SiteIcon
+                      v-if="option.value"
+                      :icon-url="option.iconUrl"
+                      :label="option.label"
+                      size="xs"
+                    />
+                    <span>{{ option.label }}</span>
+                  </div>
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -135,7 +143,15 @@
             </td>
             <td class="px-3 py-4 align-middle">
               <div class="flex flex-wrap gap-1.5">
-                <span class="bg-muted/40 px-1.5 py-0.5 rounded text-[10px] font-bold text-muted-foreground/60">{{ run.site }}</span>
+                <span class="inline-flex items-center gap-1.5 bg-muted/40 px-1.5 py-0.5 rounded text-[10px] font-bold text-muted-foreground/60">
+                  <SiteIcon
+                    v-if="run.site"
+                    :icon-url="getSiteIconUrl(run.site)"
+                    :label="getSiteLabel(run.site)"
+                    size="xs"
+                  />
+                  <span>{{ getSiteLabel(run.site) }}</span>
+                </span>
                 <span class="bg-muted/40 px-1.5 py-0.5 rounded text-[10px] font-bold text-muted-foreground/60">{{ getModeLabel(run.sync_mode) }}</span>
               </div>
             </td>
@@ -172,6 +188,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import SyncSubscriptionSelect from '@/components/sync-center/SyncSubscriptionSelect.vue'
 import type { SyncHistoryFilters, SyncRunItem } from '@/composables/useSyncHistory'
 import { useImageFallback } from '@/composables/useImageFallback'
@@ -192,7 +209,7 @@ const props = withDefaults(defineProps<{
   pageSize: number
   runs: SyncRunItem[]
   selectedRunId?: string
-  siteOptions: Array<{ value: string; label: string }>
+  siteOptions: Array<{ value: string; label: string; iconUrl?: string | null }>
   subscriptionOptions: Array<{ value: string; label: string; avatar: string | null }>
   total: number
 }>(), {
@@ -208,6 +225,9 @@ const emit = defineEmits<{
 
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
+const siteOptionMap = computed(() => {
+  return new Map(props.siteOptions.map((option) => [option.value, option]))
+})
 
 const normalizeFilters = (filters: Record<string, string>): SyncHistoryFilters => ({
   status: filters.status || '',
@@ -222,6 +242,8 @@ const normalizeFilters = (filters: Record<string, string>): SyncHistoryFilters =
 const draftFilters = reactive<SyncHistoryFilters>(normalizeFilters(props.filters))
 
 const getAvatarKey = (run: SyncRunItem) => `run-history-${run.run_id}`
+const getSiteLabel = (site: string | null) => siteOptionMap.value.get(site || '')?.label || site || 'unknown'
+const getSiteIconUrl = (site: string | null) => siteOptionMap.value.get(site || '')?.iconUrl || null
 
 const statusOptions = [
   { value: '', label: '全部状态' },

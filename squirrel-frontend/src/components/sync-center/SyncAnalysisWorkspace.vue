@@ -43,7 +43,7 @@ const props = defineProps<{
   runPage: number
   runPageSize: number
   runTotal: number
-  siteOptions: Array<{ value: string; label: string }>
+  siteOptions: Array<{ value: string; label: string; iconUrl?: string | null }>
   subscriptionOptions: Array<{ value: string; label: string; avatar: string | null }>
   selectedRunId: string
 }>()

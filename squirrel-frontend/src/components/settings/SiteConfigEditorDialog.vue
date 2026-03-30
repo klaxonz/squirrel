@@ -189,6 +189,7 @@ const createEmptyForm = () => ({
   aliasesText: '',
   enabled: true,
   testUrl: '',
+  iconUrl: '',
   httpHeadersText: '',
   rateLimitEnabled: true,
   rateLimitMin: '',
@@ -268,6 +269,7 @@ const buildFormFromSite = (site, catalog) => {
     aliasesText: (catalogInfo?.aliases || []).join('\n'),
     enabled: catalogInfo?.enabled !== false,
     testUrl: catalogInfo?.test_url || site?.test_url || '',
+    iconUrl: catalogInfo?.icon_url || site?.icon_url || '',
     httpHeadersText: headersToText(catalogInfo?.http?.headers || {}),
     rateLimitEnabled: rateLimit?.enabled !== false,
     rateLimitMin: rateLimit?.min_interval ?? '',
@@ -387,6 +389,10 @@ const handleSave = () => {
   const testUrl = siteEditorForm.value.testUrl?.trim();
   if (testUrl) {
     sitePayload.test_url = testUrl;
+  }
+  const iconUrl = siteEditorForm.value.iconUrl?.trim();
+  if (iconUrl) {
+    sitePayload.icon_url = iconUrl;
   }
   if (Object.keys(httpHeaders).length) {
     sitePayload.http = { headers: httpHeaders };

@@ -70,6 +70,7 @@ interface SyncRunListResponse {
 interface SiteOption {
   value: string
   label: string
+  iconUrl?: string | null
 }
 
 interface SubscriptionOption {
@@ -144,7 +145,7 @@ export function useSyncHistory() {
     const { data, error: requestError } = await getSupportedSites()
     if (requestError) {
       Logger.error('Failed to load sync history site options', requestError)
-      siteOptions.value = [{ value: '', label: '全部站点' }]
+      siteOptions.value = [{ value: '', label: '全部站点', iconUrl: null }]
       return
     }
 
@@ -153,11 +154,13 @@ export function useSyncHistory() {
         return {
           value: site.trim(),
           label: site.trim(),
+          iconUrl: null,
         }
       }
       const value = String(site.site_name || site.name || '').trim()
       const label = String(site.display_label || site.label || value).trim()
-      return { value, label }
+      const iconUrl = String(site.icon_url || '').trim() || null
+      return { value, label, iconUrl }
     }).filter((option: SiteOption) => option.value)
 
     const deduped = normalized.filter((option: SiteOption, index: number, arr: SiteOption[]) => {
@@ -165,11 +168,11 @@ export function useSyncHistory() {
     })
 
     if (filters.site && !deduped.some((option: SiteOption) => option.value === filters.site)) {
-      deduped.unshift({ value: filters.site, label: filters.site })
+      deduped.unshift({ value: filters.site, label: filters.site, iconUrl: null })
     }
 
     siteOptions.value = [
-      { value: '', label: '全部站点' },
+      { value: '', label: '全部站点', iconUrl: null },
       ...deduped,
     ]
   }
