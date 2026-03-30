@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import List, Optional
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 
@@ -43,7 +43,8 @@ class JavdbSubscription:
         return SubscriptionMeta(channel_id, name, avatar, self.url)
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
-        response = fetch_javdb_html(self.url)
+        page = self._resolve_page(context)
+        response = fetch_javdb_html(self._build_page_url(page))
         html = response.text
 
         parsed_url = urlparse(self.url)
@@ -71,37 +72,17 @@ class JavdbSubscription:
                 stop_reason=stop_reason,
             )
 
-        page_next_list = bs4.select('a.pagination-link[rel="next"]')
-        page = int(bs4.select('a.pagination-link[rel="next"]')[0].text) if len(page_next_list) > 0 else 1
-        current_page = 1
-
-        while current_page < page and context.mode == 'full':
-            current_page += 1
-            page_response = fetch_javdb_html(self.url + f'?page={current_page}&sort_type=0')
-            page_html = page_response.text
-            bs4 = BeautifulSoup(page_html, 'html.parser')
-
-            stop_reason, latest_video_url = self._extract_video_urls(
-                bs4,
-                base_url,
-                video_list,
-                seen_urls,
-                context,
-                latest_video_url,
-                limit,
-            )
-            if stop_reason:
+        if context.mode == 'full':
+            next_page = self._resolve_next_page(bs4)
+            if next_page is not None:
                 return build_subscription_sync_result(
                     video_urls=video_list,
                     latest_video_url=latest_video_url,
                     context=context,
-                    stop_reason=stop_reason,
+                    stop_reason='batch_exhausted',
+                    cursor_payload={'page': next_page},
+                    has_more=True,
                 )
-
-            page_next_list = bs4.select('a.pagination-link[rel="next"]')
-            new_page = int(bs4.select('a.pagination-link[rel="next"]')[0].text) if len(page_next_list) > 0 else 1
-            if new_page > page:
-                page = new_page
 
         return build_subscription_sync_result(
             video_urls=video_list,
@@ -109,6 +90,34 @@ class JavdbSubscription:
             context=context,
             stop_reason='source_exhausted',
         )
+
+    def _resolve_page(self, context: SubscriptionSyncContext) -> int:
+        page = context.cursor_payload.get('page', 1)
+        try:
+            return max(1, int(page))
+        except (TypeError, ValueError):
+            return 1
+
+    def _build_page_url(self, page: int) -> str:
+        if page <= 1:
+            return self.url
+
+        parsed = urlparse(self.url)
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        query['page'] = str(page)
+        query['sort_type'] = '0'
+        return urlunparse(parsed._replace(query=urlencode(query)))
+
+    def _resolve_next_page(self, bs4: BeautifulSoup) -> Optional[int]:
+        page_next_list = bs4.select('a.pagination-link[rel="next"]')
+        if not page_next_list:
+            return None
+
+        next_page_text = page_next_list[0].text.strip()
+        try:
+            return int(next_page_text)
+        except ValueError:
+            return None
 
     def _extract_video_urls(
         self,

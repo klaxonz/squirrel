@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import List, Optional
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 
@@ -90,10 +90,11 @@ class PornhubSubscription:
         if 'pornhub.com/model' in self.url or 'pornhub.com/pornstar' in self.url:
             self.url = self.url + '/videos'
 
-        response = request('GET', self.url, headers=headers, timeout=15)
+        page = self._resolve_page(context)
+        response = request('GET', self._build_page_url(page), headers=headers, timeout=15)
         if response.status_code == 404:
             self.url = self.url.replace('/videos', '')
-            response = request('GET', self.url, headers=headers, timeout=15)
+            response = request('GET', self._build_page_url(page), headers=headers, timeout=15)
         response.raise_for_status()
 
         parsed_url = urlparse(self.url)
@@ -121,36 +122,17 @@ class PornhubSubscription:
                 stop_reason=stop_reason,
             )
 
-        page_next_list = bs4.select('.page_next')
-        page = int(bs4.select('.page_next')[0].find_previous().text) if len(page_next_list) > 0 else 1
-        current_page = 1
-
-        while current_page < page and context.mode == 'full':
-            current_page += 1
-            response = request('GET', self.url + f'?page={current_page}', headers=headers, timeout=15)
-            response.raise_for_status()
-            bs4 = BeautifulSoup(response.text, 'html.parser')
-            stop_reason, latest_video_url = self._extract_video_urls(
-                bs4,
-                base_url,
-                video_list,
-                seen_urls,
-                context,
-                latest_video_url,
-                limit,
-            )
-            if stop_reason:
+        if context.mode == 'full':
+            next_page = self._resolve_next_page(bs4)
+            if next_page is not None:
                 return build_subscription_sync_result(
                     video_urls=video_list,
                     latest_video_url=latest_video_url,
                     context=context,
-                    stop_reason=stop_reason,
+                    stop_reason='batch_exhausted',
+                    cursor_payload={'page': next_page},
+                    has_more=True,
                 )
-
-            page_next_list = bs4.select('.page_next')
-            new_page = int(page_next_list[0].find_previous().text) if len(page_next_list) > 0 else 1
-            if new_page > page:
-                page = new_page
 
         return build_subscription_sync_result(
             video_urls=video_list,
@@ -158,6 +140,36 @@ class PornhubSubscription:
             context=context,
             stop_reason='source_exhausted',
         )
+
+    def _resolve_page(self, context: SubscriptionSyncContext) -> int:
+        page = context.cursor_payload.get('page', 1)
+        try:
+            return max(1, int(page))
+        except (TypeError, ValueError):
+            return 1
+
+    def _build_page_url(self, page: int) -> str:
+        if page <= 1:
+            return self.url
+
+        parsed = urlparse(self.url)
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        query['page'] = str(page)
+        return urlunparse(parsed._replace(query=urlencode(query)))
+
+    def _resolve_next_page(self, bs4: BeautifulSoup) -> Optional[int]:
+        page_next_list = bs4.select('.page_next')
+        if not page_next_list:
+            return None
+
+        previous = page_next_list[0].find_previous()
+        if previous is None:
+            return None
+
+        try:
+            return int(previous.text.strip())
+        except (AttributeError, ValueError):
+            return None
 
     def _extract_video_urls(
         self,

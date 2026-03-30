@@ -36,6 +36,7 @@ class _SubscriptionSyncResult:
     cursor_payload: dict
     stop_reason: str
     total_available: int
+    has_more: bool = False
 
 
 def _resolve_subscription_limit(context):
@@ -68,13 +69,27 @@ def _append_subscription_video_url(
     return updated_latest_video_url, None
 
 
-def _build_subscription_sync_result(*, video_urls, latest_video_url, context, stop_reason, source_video_count=None):
+def _build_subscription_sync_result(
+    *,
+    video_urls,
+    latest_video_url,
+    context,
+    stop_reason,
+    source_video_count=None,
+    cursor_payload=None,
+    has_more=False,
+):
     return _SubscriptionSyncResult(
         video_urls=list(video_urls),
         latest_video_url=latest_video_url,
-        cursor_payload={'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload,
+        cursor_payload=(
+            cursor_payload
+            if cursor_payload is not None
+            else {'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload
+        ),
         stop_reason=stop_reason,
         total_available=len(video_urls),
+        has_more=has_more,
     )
 
 
@@ -311,27 +326,17 @@ class _FakeYoutubeChannel:
 
 
 class SubscriptionSyncTests(unittest.TestCase):
-    def test_javdb_full_sync_deduplicates_video_urls_across_pages(self):
+    def test_javdb_full_sync_returns_continuation_cursor_for_next_page(self):
         with _stub_javdb_subscription_dependencies() as (responses, soups):
             module = _load_javdb_subscription_module()
 
-            responses.extend([
-                _FakeResponse('javdb-page-1'),
-                _FakeResponse('javdb-page-2'),
-            ])
+            responses.append(_FakeResponse('javdb-page-1'))
             soups['javdb-page-1'] = _FakeSoup({
                 '.movie-list .item a.box': [
                     _FakeVideoElement('/v/one'),
                     _FakeVideoElement('/v/shared'),
                 ],
                 'a.pagination-link[rel="next"]': [_FakePageLabel('2')],
-            })
-            soups['javdb-page-2'] = _FakeSoup({
-                '.movie-list .item a.box': [
-                    _FakeVideoElement('/v/shared'),
-                    _FakeVideoElement('/v/two'),
-                ],
-                'a.pagination-link[rel="next"]': [],
             })
 
             subscription = module.JavdbSubscription('https://javdb.com/actors/demo')
@@ -342,26 +347,68 @@ class SubscriptionSyncTests(unittest.TestCase):
                 [
                     'https://javdb.com/v/one',
                     'https://javdb.com/v/shared',
-                    'https://javdb.com/v/two',
                 ],
             )
             self.assertEqual(result.latest_video_url, 'https://javdb.com/v/one')
-            self.assertEqual(result.stop_reason, 'source_exhausted')
+            self.assertEqual(result.cursor_payload, {'page': 2})
+            self.assertEqual(result.stop_reason, 'batch_exhausted')
+            self.assertTrue(result.has_more)
 
-    def test_pornhub_full_sync_handles_last_page_without_next_button(self):
+    def test_javdb_full_sync_resumes_from_cursor_and_finishes_on_last_page(self):
+        with _stub_javdb_subscription_dependencies() as (responses, soups):
+            module = _load_javdb_subscription_module()
+
+            responses.append(_FakeResponse('javdb-page-2'))
+            soups['javdb-page-2'] = _FakeSoup({
+                '.movie-list .item a.box': [
+                    _FakeVideoElement('/v/shared'),
+                    _FakeVideoElement('/v/two'),
+                ],
+                'a.pagination-link[rel="next"]': [],
+            })
+
+            subscription = module.JavdbSubscription('https://javdb.com/actors/demo')
+            result = subscription.sync_videos(
+                _SubscriptionSyncContext(mode='full', cursor_payload={'page': 2})
+            )
+
+            self.assertEqual(
+                result.video_urls,
+                [
+                    'https://javdb.com/v/shared',
+                    'https://javdb.com/v/two',
+                ],
+            )
+            self.assertEqual(result.latest_video_url, 'https://javdb.com/v/shared')
+            self.assertEqual(result.stop_reason, 'source_exhausted')
+            self.assertFalse(result.has_more)
+
+    def test_pornhub_full_sync_returns_continuation_cursor_for_next_page(self):
         with _stub_pornhub_subscription_dependencies() as (responses, soups):
             module = _load_pornhub_subscription_module()
 
-            responses.extend([
-                _FakeResponse('page-1'),
-                _FakeResponse('page-2'),
-            ])
+            responses.append(_FakeResponse('page-1'))
             soups['page-1'] = _FakeSoup({
                 '#channelsProfile .videos a.videoPreviewBg': [_FakeVideoElement('/view_video.php?viewkey=one')],
                 '#profileContent .videos:not(#privateVideosSection) a.videoPreviewBg': [],
                 '#pornstarsVideoSection .videoPreviewBg': [],
                 '.page_next': [_FakeNextButton('2')],
             })
+
+            subscription = module.PornhubSubscription('https://www.pornhub.com/channels/demo')
+            result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
+
+            self.assertEqual(result.video_urls, ['https://www.pornhub.com/view_video.php?viewkey=one'])
+            self.assertEqual(result.latest_video_url, 'https://www.pornhub.com/view_video.php?viewkey=one')
+            self.assertEqual(result.cursor_payload, {'page': 2})
+            self.assertEqual(result.stop_reason, 'batch_exhausted')
+            self.assertTrue(result.has_more)
+
+    def test_pornhub_full_sync_resumes_from_cursor_and_finishes_on_last_page(self):
+        with _stub_pornhub_subscription_dependencies() as (responses, soups):
+            module = _load_pornhub_subscription_module()
+
+            responses.append(_FakeResponse('page-2'))
             soups['page-2'] = _FakeSoup({
                 '#channelsProfile .videos a.videoPreviewBg': [_FakeVideoElement('/view_video.php?viewkey=two')],
                 '#profileContent .videos:not(#privateVideosSection) a.videoPreviewBg': [],
@@ -370,17 +417,12 @@ class SubscriptionSyncTests(unittest.TestCase):
             })
 
             subscription = module.PornhubSubscription('https://www.pornhub.com/channels/demo')
-            result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
+            result = subscription.sync_videos(_SubscriptionSyncContext(mode='full', cursor_payload={'page': 2}))
 
-            self.assertEqual(
-                result.video_urls,
-                [
-                    'https://www.pornhub.com/view_video.php?viewkey=one',
-                    'https://www.pornhub.com/view_video.php?viewkey=two',
-                ],
-            )
-            self.assertEqual(result.latest_video_url, 'https://www.pornhub.com/view_video.php?viewkey=one')
+            self.assertEqual(result.video_urls, ['https://www.pornhub.com/view_video.php?viewkey=two'])
+            self.assertEqual(result.latest_video_url, 'https://www.pornhub.com/view_video.php?viewkey=two')
             self.assertEqual(result.stop_reason, 'source_exhausted')
+            self.assertFalse(result.has_more)
 
     def test_pornhub_full_sync_deduplicates_video_urls_across_sections(self):
         with _stub_pornhub_subscription_dependencies() as (responses, soups):
