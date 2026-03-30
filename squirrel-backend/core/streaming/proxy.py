@@ -193,9 +193,39 @@ class HttpRequester:
         self.retry_strategy = retry_strategy
 
     @staticmethod
+    def _normalize_host(host_or_domain: Optional[str]) -> str:
+        value = str(host_or_domain or '').strip().lower()
+        if value.startswith('www.'):
+            value = value[4:]
+        return value
+
+    @staticmethod
     def _bypass_mode(domain_config: Optional[Dict[str, Any]]) -> Optional[str]:
         mode = str((domain_config or {}).get('bypass_mode') or '').strip().lower()
         return mode if mode in {'html', 'mirror'} else None
+
+    @classmethod
+    def _bypass_domain(cls, domain_config: Optional[Dict[str, Any]], fallback_domain: str) -> str:
+        configured_domain = ''
+        if isinstance(domain_config, dict):
+            configured_domain = cls._normalize_host(domain_config.get('domain'))
+        return configured_domain or cls._normalize_host(fallback_domain)
+
+    @classmethod
+    def _should_bypass_request(
+        cls,
+        proxy_request: ProxyRequest,
+        domain_config: Optional[Dict[str, Any]],
+        fallback_domain: str,
+    ) -> bool:
+        configured_domain = cls._bypass_domain(domain_config, fallback_domain)
+        if not configured_domain:
+            return False
+
+        target_host = cls._normalize_host(urlparse(proxy_request.url).hostname)
+        if not target_host:
+            return False
+        return target_host == configured_domain or target_host.endswith(f'.{configured_domain}')
 
     async def _execute_bypass_request(
         self,
@@ -219,10 +249,11 @@ class HttpRequester:
     ):
         last_exception = None
         bypass_mode = self._bypass_mode(domain_config)
+        use_bypass = bool(bypass_mode) and self._should_bypass_request(proxy_request, domain_config, self.domain)
 
         for attempt in range(proxy_request.max_retries + 1):
             try:
-                if bypass_mode:
+                if use_bypass and bypass_mode:
                     response = await self._execute_bypass_request(proxy_request, headers, bypass_mode)
                 else:
                     response = await client.get(
