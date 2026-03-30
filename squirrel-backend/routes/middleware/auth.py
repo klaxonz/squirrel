@@ -8,6 +8,28 @@ from utils.jwt_helper import decode_token
 
 logger = logging.getLogger()
 
+PUBLIC_PATH_PREFIXES = [
+    "/api/users/login",
+    "/api/users/register",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+    "/api/video/proxy",
+    "/api/video/mpd",
+    "/api/video/thumbnail",
+    "/health",
+    "/health/ready",
+    "/health/live",
+]
+
+
+def is_public_api_path(path: str) -> bool:
+    if any(path.startswith(public_path) for public_path in PUBLIC_PATH_PREFIXES):
+        return True
+    if path.startswith('/api/plugins/sites/') and path.endswith('/icon'):
+        return True
+    return False
+
 
 class AuthenticationError(Exception):
     """Base authentication exception"""
@@ -34,24 +56,12 @@ class TokenExpiredError(AuthenticationError):
 class AuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, public_paths: List[str] = None):
         super().__init__(app)
-        self.public_paths = public_paths or [
-            "/api/users/login",
-            "/api/users/register",
-            "/docs",
-            "/redoc",
-            "/openapi.json",
-            "/api/video/proxy",
-            "/api/video/mpd",
-            "/api/video/thumbnail",
-            "/health",
-            "/health/ready",
-            "/health/live"
-        ]
+        self.public_paths = public_paths or list(PUBLIC_PATH_PREFIXES)
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
-        if not path.startswith('/api') or any(path.startswith(public_path) for public_path in self.public_paths):
+        if not path.startswith('/api') or is_public_api_path(path):
             return await call_next(request)
 
         auth = request.headers.get("Authorization")
