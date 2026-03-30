@@ -40,8 +40,8 @@
               class="refresh-icon" 
               :class="{ 'is-spinning': isRefreshing }" 
             />
-            <span class="refresh-label">SYNC //</span>
-            <span class="refresh-action">REFRESH</span>
+            <span class="refresh-label">同步 //</span>
+            <span class="refresh-action">刷新数据</span>
           </div>
         </button>
       </div>

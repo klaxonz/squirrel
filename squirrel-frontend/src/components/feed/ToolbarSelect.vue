@@ -11,10 +11,7 @@
     </SelectTrigger>
     <SelectContent class="filter-content-minimal" :side-offset="8">
       <SelectItem v-for="option in options" :key="option.value" :value="option.value" class="filter-item-minimal">
-        <div class="item-inner">
-          <span class="item-status"></span>
-          <span class="select-item-text">{{ option.label }}</span>
-        </div>
+        <span class="select-item-text">{{ option.label }}</span>
       </SelectItem>
     </SelectContent>
   </Select>
@@ -77,25 +74,25 @@ const handleValueChange = (value) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   text-transform: uppercase;
-  font-size: 0.6rem;
-  letter-spacing: 0.1em;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
   color: rgba(255, 255, 255, 0.3);
-  transition: color 0.3s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .filter-trigger-minimal:hover .filter-trigger-content {
-  color: #fff;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .filter-label {
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .filter-value {
   color: #ff4d00;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 /* 下拉菜单容器：强制覆盖底层组件样式 */
@@ -104,71 +101,36 @@ const handleValueChange = (value) => {
 }
 
 :deep(.filter-content-minimal) {
-  background-color: #050505 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 0 !important;
+  background-color: rgba(5, 5, 5, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 4px !important;
   padding: 0 !important;
-  min-width: 180px !important;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9) !important;
-}
-
-/* 内部视图容器也需要强制黑色 */
-:deep(.filter-content-minimal [data-radix-select-viewport]) {
-  background-color: #050505 !important;
-  padding: 0 !important;
-}
-
-.content-header-minimal,
-.content-footer-minimal {
-  padding: 0.6rem 1rem;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.5rem;
-  letter-spacing: 0.2em;
-  color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.03);
+  min-width: 190px !important;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(20px);
 }
 
 /* 选项样式强制覆盖 */
 :deep(.filter-item-minimal) {
-  padding: 0.8rem 1rem !important;
   border-radius: 0 !important;
-  background-color: transparent !important;
-  color: rgba(255, 255, 255, 0.4) !important;
-  cursor: pointer !important;
-  outline: none !important;
+  margin: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02) !important;
+  color: rgba(255, 255, 255, 0.3) !important;
 }
 
-/* 移除 shadcn 默认的 Check 图标区域，我们使用自定义的 item-status */
-:deep(.filter-item-minimal span:last-child) {
-  right: auto !important;
-  position: relative !important;
-  display: block !important;
-  width: 100% !important;
+:deep(.filter-item-minimal:last-child) {
+  border-bottom: none !important;
 }
 
 /* 悬停状态 */
 :deep(.filter-item-minimal[data-highlighted]),
 :deep(.filter-item-minimal:hover) {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-}
-
-:deep(.filter-item-minimal[data-highlighted]) .select-item-text,
-:deep(.filter-item-minimal:hover) .select-item-text {
-  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
 }
 
 /* 选中状态 */
 :deep(.filter-item-minimal[data-state="checked"]) {
-  background-color: rgba(255, 77, 0, 0.08) !important;
-}
-
-:deep(.filter-item-minimal[data-state="checked"]) .select-item-text {
-  color: #ff4d00 !important;
-  font-weight: 700 !important;
-}
-
-:deep(.filter-item-minimal[data-state="checked"]) .item-status {
-  background-color: #ff4d00 !important;
-  box-shadow: 0 0 8px #ff4d00;
+  color: #fff !important;
 }
 </style>
