@@ -413,6 +413,87 @@ def _build_feed_query(
     )
 
 
+def _build_ordered_feed_query(
+    user_id: int,
+    show_nsfw: bool,
+    subscription_id: Optional[int],
+    query: Optional[str],
+    category: Optional[str],
+    sort_by: str,
+    nsfw: str,
+    domains: Optional[List[str]],
+):
+    feed_query = select(
+        UserVideoFeed.video_id.label('video_id'),
+        UserVideoFeed.publish_date.label('publish_date'),
+        UserVideoFeed.video_created_at.label('video_created_at'),
+    ).where(
+        UserVideoFeed.user_id == user_id,
+    )
+
+    if subscription_id:
+        feed_query = feed_query.where(UserVideoFeed.subscription_id == subscription_id)
+
+    if nsfw == 'yes':
+        feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(True))
+    elif nsfw == 'no':
+        feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(False))
+    elif not show_nsfw:
+        feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(False))
+
+    if domains:
+        normalized_domains = [
+            domain for domain in {url_helper.normalize_domain(item) for item in domains if item} if domain
+        ]
+        if normalized_domains:
+            feed_query = feed_query.where(UserVideoFeed.domain.in_(normalized_domains))
+
+    if query:
+        feed_query = feed_query.join(Video, Video.id == UserVideoFeed.video_id).where(
+            Video.title.like(f'%{query}%'),
+            Video.is_deleted.is_(False),
+        )
+
+    if category:
+        feed_query = feed_query.where(_feed_category_predicate(user_id, category))
+
+    sort_column = _feed_sort_column(sort_by)
+    return feed_query.order_by(sort_column.desc(), UserVideoFeed.video_id.desc())
+
+
+def _collect_feed_page_video_ids(session, ordered_feed_query, page: int, page_size: int) -> List[int]:
+    target_start = max((page - 1) * page_size, 0)
+    target_end = target_start + page_size
+    batch_size = min(max(page_size * 4, target_end + page_size, 200), 2000)
+    raw_offset = 0
+    seen_video_ids = set()
+    ordered_video_ids: List[int] = []
+
+    while len(ordered_video_ids) < target_end:
+        rows = session.execute(
+            ordered_feed_query
+            .limit(batch_size)
+            .offset(raw_offset)
+        ).all()
+        if not rows:
+            break
+
+        raw_offset += len(rows)
+        for row in rows:
+            video_id = row.video_id
+            if video_id in seen_video_ids:
+                continue
+            seen_video_ids.add(video_id)
+            ordered_video_ids.append(video_id)
+            if len(ordered_video_ids) >= target_end:
+                break
+
+        if len(rows) < batch_size:
+            break
+
+    return ordered_video_ids[target_start:target_end]
+
+
 def list_videos(
         user_id: int,
         query: str,
@@ -429,7 +510,7 @@ def list_videos(
     show_nsfw = user_config.get('showNsfw', False)
 
     with get_session() as session:
-        base_ids_query = _build_feed_query(
+        ordered_feed_query = _build_ordered_feed_query(
             user_id=user_id,
             show_nsfw=show_nsfw,
             subscription_id=subscription_id,
@@ -440,15 +521,20 @@ def list_videos(
             domains=domains,
         )
 
-        id_rows = session.execute(
-            base_ids_query
-            .limit(page_size)
-            .offset((page - 1) * page_size)
-        ).all()
-        video_ids = [row[0] for row in id_rows]
+        video_ids = _collect_feed_page_video_ids(session, ordered_feed_query, page, page_size)
 
         total_count = None
         if with_total:
+            base_ids_query = _build_feed_query(
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                subscription_id=subscription_id,
+                query=query,
+                category=category,
+                sort_by=sort_by,
+                nsfw=nsfw,
+                domains=domains,
+            )
             total_count = session.execute(
                 select(func.count()).select_from(base_ids_query.order_by(None).subquery())
             ).scalar() or 0
