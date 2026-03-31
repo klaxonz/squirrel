@@ -49,7 +49,7 @@ export default function useLatestVideos(initial: InitialState = {}) {
   const nsfw = ref(initial.nsfw ?? 'all')
   const site = ref<string | undefined>(initial.site)
 
-  const category = computed(() => (activeTab.value === 'all' ? undefined : activeTab.value))
+  const category = computed(() => activeTab.value)
 
   let requestToken = 0
   let countsRequestToken = 0

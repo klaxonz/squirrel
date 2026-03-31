@@ -72,7 +72,7 @@ def get_video(
 def get_videos(
         query: str = Query(None, description="搜索关键字"),
         subscription_id: int = Query(None, description="订阅ID"),
-        category: str = Query(None, description="阅读状态: all, read, unread, preview, like"),
+        category: str = Query('all', description="阅读状态: all, read, unread, preview, like"),
         sort_by: SortBy = Query(SortBy.UPLOADED_AT, description="排序字段"),
         nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
         site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
