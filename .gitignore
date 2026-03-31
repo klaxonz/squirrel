@@ -73,3 +73,4 @@ squirrel-backend/static/thumbnails/*
 .cursor/
 .claude/
 .worktrees/
+.playwright-cli/
