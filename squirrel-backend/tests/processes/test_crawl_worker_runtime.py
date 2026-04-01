@@ -187,3 +187,55 @@ def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):
     thread.join(timeout=1)
 
     assert sorted(started) == [(11, 'worker-1'), (12, 'worker-1')]
+
+
+def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
+    renew_calls = []
+    release_event = threading.Event()
+    task = CrawlTask(id=21, job_id=1, task_type='video_extract', site='youtube.com', payload={})
+    dispatcher = SimpleNamespace(claim_next=lambda **kwargs: task if not renew_calls else None)
+    runtime = CrawlWorkerRuntime(
+        dispatcher=dispatcher,
+        worker_id='worker-1',
+        lease_seconds=1,
+        retry_delay_seconds=30,
+        poll_interval_seconds=0.01,
+        max_concurrency=1,
+    )
+
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.recover_expired_tasks',
+        lambda now=None, retry_delay_seconds=30: 0,
+    )
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.start_task',
+        lambda task_id, worker_id, now=None: None,
+    )
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.renew_task_lease',
+        lambda task_id, worker_id, now=None, lease_seconds=60: renew_calls.append((task_id, worker_id)),
+    )
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.complete_task',
+        lambda task_id, worker_id, now=None: None,
+    )
+
+    def _execute(_task):
+        release_event.wait(timeout=1)
+
+    monkeypatch.setattr('processes.managers.crawl_worker_runtime.execute_video_extract_task', _execute)
+
+    stop_event = threading.Event()
+    thread = threading.Thread(target=runtime.run_loop, args=(stop_event,))
+    thread.start()
+
+    deadline = time.time() + 1
+    while not renew_calls and time.time() < deadline:
+        time.sleep(0.01)
+
+    release_event.set()
+    stop_event.set()
+    thread.join(timeout=1)
+
+    assert renew_calls
+    assert all(call == (21, 'worker-1') for call in renew_calls)

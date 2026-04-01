@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 import logging
 import threading
 from datetime import datetime
@@ -12,6 +13,12 @@ from services.crawl_executors.video_extract_executor import execute_video_extrac
 from services.crawl_tasks import service as crawl_task_service
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _ActiveTaskLease:
+    task_id: int
+    last_renewed_at: datetime
 
 
 class CrawlWorkerRuntime:
@@ -32,6 +39,7 @@ class CrawlWorkerRuntime:
         self.poll_interval_seconds = poll_interval_seconds
         self.max_concurrency = max(1, max_concurrency or settings.CRAWL_SLOTS_PER_PROCESS)
         self._futures: set[Future] = set()
+        self._active_leases: dict[Future, _ActiveTaskLease] = {}
 
     def run_once(self) -> bool:
         now = datetime.now()
@@ -50,6 +58,7 @@ class CrawlWorkerRuntime:
         ) as executor:
             while not stop_event.is_set():
                 self._reap_completed_futures()
+                self._renew_active_leases(now=datetime.now())
                 available_slots = self.max_concurrency - len(self._futures)
                 claimed_count = 0
 
@@ -66,6 +75,7 @@ class CrawlWorkerRuntime:
                             break
                         future = executor.submit(self._run_task, task, datetime.now())
                         self._futures.add(future)
+                        self._active_leases[future] = _ActiveTaskLease(task_id=task.id, last_renewed_at=datetime.now())
                         claimed_count += 1
 
                 if claimed_count:
@@ -106,4 +116,23 @@ class CrawlWorkerRuntime:
         completed = {future for future in self._futures if future.done()}
         for future in completed:
             future.result()
+            self._active_leases.pop(future, None)
         self._futures.difference_update(completed)
+
+    def _renew_active_leases(self, *, now: datetime) -> None:
+        for future in tuple(self._futures):
+            if future.done():
+                continue
+            lease = self._active_leases.get(future)
+            if lease is None:
+                continue
+            renew_after = max(0.25, self.lease_seconds / 3)
+            if (now - lease.last_renewed_at).total_seconds() < renew_after:
+                continue
+            crawl_task_service.renew_task_lease(
+                task_id=lease.task_id,
+                worker_id=self.worker_id,
+                now=now,
+                lease_seconds=self.lease_seconds,
+            )
+            lease.last_renewed_at = now
