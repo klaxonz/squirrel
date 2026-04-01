@@ -4,7 +4,9 @@ from datetime import datetime, timedelta
 from typing import Optional, Sequence
 
 from sqlalchemy import case, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from core.database import get_session
+from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from services.crawl_tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError, CrawlTaskStateError
@@ -62,6 +64,8 @@ def create_task(
     next_run_at: Optional[datetime] = None,
 ) -> CrawlTask:
     with get_session() as session:
+        _ensure_dispatch_scope(session, scope_type='site', scope_key=site)
+        _ensure_dispatch_scope(session, scope_type='task_type', scope_key=task_type)
         task = CrawlTask(
             job_id=job_id,
             parent_task_id=parent_task_id,
@@ -100,6 +104,8 @@ def create_job_with_task(
     next_run_at: Optional[datetime] = None,
 ) -> tuple[CrawlJob, CrawlTask]:
     with get_session() as session:
+        _ensure_dispatch_scope(session, scope_type='site', scope_key=site)
+        _ensure_dispatch_scope(session, scope_type='task_type', scope_key=task_type)
         job = CrawlJob(
             job_type=job_type,
             source_type=source_type,
@@ -505,3 +511,31 @@ def _refresh_job_status(session, *, job_id: int, now: datetime) -> None:
 
     finished_at_values = [task.finished_at for task in tasks if task.finished_at]
     job.finished_at = max(finished_at_values) if finished_at_values else now
+
+
+def _ensure_dispatch_scope(session, *, scope_type: str, scope_key: str) -> CrawlDispatchScope:
+    scope = session.execute(
+        select(CrawlDispatchScope).where(
+            CrawlDispatchScope.scope_type == scope_type,
+            CrawlDispatchScope.scope_key == scope_key,
+        )
+    ).scalar_one_or_none()
+    if scope:
+        return scope
+
+    with session.begin_nested():
+        scope = CrawlDispatchScope(scope_type=scope_type, scope_key=scope_key)
+        session.add(scope)
+        try:
+            session.flush()
+            return scope
+        except IntegrityError:
+            pass
+
+    scope = session.execute(
+        select(CrawlDispatchScope).where(
+            CrawlDispatchScope.scope_type == scope_type,
+            CrawlDispatchScope.scope_key == scope_key,
+        )
+    ).scalar_one()
+    return scope

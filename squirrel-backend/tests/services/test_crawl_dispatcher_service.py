@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
+from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from services.crawl_dispatcher.policy import CrawlDispatcherPolicy
@@ -31,7 +32,10 @@ def _managed_session(engine):
 
 def _setup_test_env(monkeypatch):
     engine = create_engine('sqlite:///:memory:')
-    Base.metadata.create_all(engine, tables=[CrawlJob.__table__, CrawlTask.__table__])
+    Base.metadata.create_all(
+        engine,
+        tables=[CrawlJob.__table__, CrawlTask.__table__, CrawlDispatchScope.__table__],
+    )
     monkeypatch.setattr(crawl_task_service, 'get_session', lambda: _managed_session(engine))
     return engine
 
@@ -187,3 +191,131 @@ def test_dispatcher_respects_priority_within_available_capacity(monkeypatch):
 
     assert claimed is not None
     assert claimed.priority == 'manual'
+
+
+def test_dispatcher_claim_next_creates_missing_dispatch_scopes_for_legacy_tasks(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        job_id = _create_job(session, site='youtube')
+        session.add(
+            CrawlTask(
+                job_id=job_id,
+                task_type='video_extract',
+                site='youtube',
+                priority='normal',
+                payload={},
+                next_run_at=now - timedelta(seconds=1),
+            )
+        )
+        session.commit()
+        session.query(CrawlDispatchScope).delete()
+        session.commit()
+
+    dispatcher = CrawlDispatcherService(
+        policy=CrawlDispatcherPolicy(default_site_concurrency=2),
+    )
+    claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
+
+    assert claimed is not None
+    with Session(engine, expire_on_commit=False) as session:
+        scopes = session.query(CrawlDispatchScope).order_by(CrawlDispatchScope.scope_type, CrawlDispatchScope.scope_key).all()
+
+    assert [(scope.scope_type, scope.scope_key) for scope in scopes] == [
+        ('site', 'youtube'),
+        ('task_type', 'video_extract'),
+    ]
+
+
+def test_dispatcher_considers_other_sites_when_one_site_fills_candidate_window(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        youtube_job_id = _create_job(session, site='youtube')
+        bilibili_job_id = _create_job(session, site='bilibili')
+        for index in range(101):
+            session.add(
+                CrawlTask(
+                    job_id=youtube_job_id,
+                    task_type='video_extract',
+                    site='youtube',
+                    priority='normal',
+                    payload={},
+                    next_run_at=now - timedelta(seconds=200 + index),
+                    created_at=now - timedelta(seconds=200 + index),
+                )
+            )
+        session.add(
+            CrawlTask(
+                job_id=bilibili_job_id,
+                task_type='video_extract',
+                site='bilibili',
+                priority='normal',
+                payload={},
+                next_run_at=now - timedelta(seconds=1),
+                created_at=now - timedelta(seconds=1),
+            )
+        )
+        session.commit()
+
+    dispatcher = CrawlDispatcherService(
+        policy=CrawlDispatcherPolicy(default_site_concurrency=1),
+    )
+
+    first = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
+    second = dispatcher.claim_next(worker_id='worker-2', now=now, lease_seconds=60)
+
+    assert first is not None
+    assert second is not None
+    assert {first.site, second.site} == {'youtube', 'bilibili'}
+
+
+def test_dispatcher_considers_other_task_types_when_one_type_fills_candidate_window(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        for index in range(101):
+            job_id = _create_job(session, site=f'video-site-{index}')
+            session.add(
+                CrawlTask(
+                    job_id=job_id,
+                    task_type='video_extract',
+                    site=f'video-site-{index}',
+                    priority='normal',
+                    payload={},
+                    next_run_at=now - timedelta(seconds=200 + index),
+                    created_at=now - timedelta(seconds=200 + index),
+                )
+            )
+
+        sync_job_id = _create_job(session, site='sync-site')
+        session.add(
+            CrawlTask(
+                job_id=sync_job_id,
+                task_type='subscription_sync',
+                site='sync-site',
+                priority='normal',
+                payload={},
+                next_run_at=now - timedelta(seconds=1),
+                created_at=now - timedelta(seconds=1),
+            )
+        )
+        session.commit()
+
+    dispatcher = CrawlDispatcherService(
+        policy=CrawlDispatcherPolicy(
+            default_site_concurrency=1,
+            task_type_limits={'video_extract': 1, 'subscription_sync': 1},
+        ),
+    )
+
+    first = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
+    second = dispatcher.claim_next(worker_id='worker-2', now=now, lease_seconds=60)
+
+    assert first is not None
+    assert first.task_type == 'video_extract'
+    assert second is not None
+    assert second.task_type == 'subscription_sync'

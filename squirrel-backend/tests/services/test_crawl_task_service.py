@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
+from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from services.crawl_tasks import service as crawl_task_service
@@ -29,7 +30,10 @@ def _managed_session(engine):
 
 def _setup_test_env(monkeypatch):
     engine = create_engine('sqlite:///:memory:')
-    Base.metadata.create_all(engine, tables=[CrawlJob.__table__, CrawlTask.__table__])
+    Base.metadata.create_all(
+        engine,
+        tables=[CrawlJob.__table__, CrawlTask.__table__, CrawlDispatchScope.__table__],
+    )
     monkeypatch.setattr(crawl_task_service, 'get_session', lambda: _managed_session(engine))
     return engine
 
@@ -68,12 +72,17 @@ def test_create_job_and_task_persists_defaults(monkeypatch):
     with Session(engine, expire_on_commit=False) as session:
         stored_job = session.get(CrawlJob, job.id)
         stored_task = session.get(CrawlTask, task.id)
+        scopes = session.query(CrawlDispatchScope).order_by(CrawlDispatchScope.scope_type, CrawlDispatchScope.scope_key).all()
 
     assert stored_job is not None
     assert stored_job.status == 'pending'
     assert stored_task is not None
     assert stored_task.status == 'pending'
     assert stored_task.attempt == 0
+    assert [(scope.scope_type, scope.scope_key) for scope in scopes] == [
+        ('site', 'youtube'),
+        ('task_type', 'video_extract'),
+    ]
 
 
 def test_claim_next_task_sets_lease(monkeypatch):

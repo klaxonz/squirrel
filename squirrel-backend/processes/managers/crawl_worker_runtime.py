@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import Future, ThreadPoolExecutor
 import logging
 import threading
 from datetime import datetime
@@ -22,12 +23,15 @@ class CrawlWorkerRuntime:
         lease_seconds: int | None = None,
         retry_delay_seconds: int = 30,
         poll_interval_seconds: float = 1.0,
+        max_concurrency: int | None = None,
     ):
         self.dispatcher = dispatcher or CrawlDispatcherService()
         self.worker_id = worker_id
         self.lease_seconds = lease_seconds or settings.CRAWL_WORKER_LEASE_SECONDS
         self.retry_delay_seconds = retry_delay_seconds
         self.poll_interval_seconds = poll_interval_seconds
+        self.max_concurrency = max(1, max_concurrency or settings.CRAWL_SLOTS_PER_PROCESS)
+        self._futures: set[Future] = set()
 
     def run_once(self) -> bool:
         now = datetime.now()
@@ -36,8 +40,55 @@ class CrawlWorkerRuntime:
         if not task:
             return False
 
+        self._run_task(task, claimed_at=now)
+        return True
+
+    def run_loop(self, stop_event: threading.Event) -> None:
+        with ThreadPoolExecutor(
+            max_workers=self.max_concurrency,
+            thread_name_prefix=f'{self.worker_id}-slot',
+        ) as executor:
+            while not stop_event.is_set():
+                self._reap_completed_futures()
+                available_slots = self.max_concurrency - len(self._futures)
+                claimed_count = 0
+
+                if available_slots > 0:
+                    now = datetime.now()
+                    crawl_task_service.recover_expired_tasks(now=now, retry_delay_seconds=self.retry_delay_seconds)
+                    for _ in range(available_slots):
+                        task = self.dispatcher.claim_next(
+                            worker_id=self.worker_id,
+                            now=datetime.now(),
+                            lease_seconds=self.lease_seconds,
+                        )
+                        if not task:
+                            break
+                        future = executor.submit(self._run_task, task, datetime.now())
+                        self._futures.add(future)
+                        claimed_count += 1
+
+                if claimed_count:
+                    continue
+                if self._futures:
+                    stop_event.wait(0.05)
+                    continue
+                stop_event.wait(self.poll_interval_seconds)
+
+            self._reap_completed_futures()
+
+    def _execute_task(self, task) -> None:
+        if task.task_type == 'video_extract':
+            execute_video_extract_task(task)
+            return
+        if task.task_type == 'subscription_sync':
+            execute_subscription_sync_task(task)
+            return
+        raise ValueError(f'Unsupported crawl task type: {task.task_type}')
+
+    def _run_task(self, task, claimed_at: datetime) -> None:
         try:
-            crawl_task_service.start_task(task_id=task.id, worker_id=self.worker_id, now=now)
+            crawl_task_service.start_task(task_id=task.id, worker_id=self.worker_id, now=claimed_at)
             self._execute_task(task)
             crawl_task_service.complete_task(task_id=task.id, worker_id=self.worker_id, now=datetime.now())
         except Exception as exc:
@@ -50,20 +101,9 @@ class CrawlWorkerRuntime:
                 now=datetime.now(),
                 delay_seconds=self.retry_delay_seconds,
             )
-        return True
 
-    def run_loop(self, stop_event: threading.Event) -> None:
-        while not stop_event.is_set():
-            did_work = self.run_once()
-            if did_work:
-                continue
-            stop_event.wait(self.poll_interval_seconds)
-
-    def _execute_task(self, task) -> None:
-        if task.task_type == 'video_extract':
-            execute_video_extract_task(task)
-            return
-        if task.task_type == 'subscription_sync':
-            execute_subscription_sync_task(task)
-            return
-        raise ValueError(f'Unsupported crawl task type: {task.task_type}')
+    def _reap_completed_futures(self) -> None:
+        completed = {future for future in self._futures if future.done()}
+        for future in completed:
+            future.result()
+        self._futures.difference_update(completed)

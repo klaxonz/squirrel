@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     CRAWL_DEFAULT_SITE_CONCURRENCY: int = 2
     CRAWL_SITE_CONCURRENCY_OVERRIDES: str = ''
     CRAWL_TASK_TYPE_LIMITS: str = 'subscription_sync=2,video_extract=8'
+    CRAWL_SLOTS_PER_PROCESS: int = 8
     CRAWL_WORKER_LEASE_SECONDS: int = 60
     CRAWL_WORKER_POLL_INTERVAL_MS: int = 1000
 

@@ -21,18 +21,20 @@ def crawl_worker_start() -> None:
             _logger.info('[crawl-worker] already running, skip start()')
             return
 
+        _stop_event = threading.Event()
         runtime = CrawlWorkerRuntime(
-            worker_id='crawl-worker-1',
+            worker_id='crawl-runtime-1',
+            max_concurrency=max(1, int(settings.CRAWL_SLOTS_PER_PROCESS)),
             poll_interval_seconds=settings.CRAWL_WORKER_POLL_INTERVAL_MS / 1000.0,
         )
-        _stop_event = threading.Event()
         thread = threading.Thread(
             target=runtime.run_loop,
             args=(_stop_event,),
             daemon=True,
-            name='crawl-worker-1',
+            name='crawl-runtime-1',
         )
         thread.start()
+
         _worker_threads = [thread]
         _workers_running = True
         _logger.info('[crawl-worker] started %d worker threads', len(_worker_threads))
@@ -47,6 +49,7 @@ def crawl_worker_stop() -> None:
         if _stop_event is not None:
             _stop_event.set()
         _worker_threads = []
+        _stop_event = None
         _workers_running = False
         _logger.info('[crawl-worker] stopped')
 
