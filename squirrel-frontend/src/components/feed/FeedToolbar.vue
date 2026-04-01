@@ -1,17 +1,25 @@
 <template>
   <section class="toolbar-minimal">
     <div class="toolbar-inner">
-      <div v-if="showTabs" class="toolbar-tabs">
-        <button
-          v-for="tab in tabsWithCounts"
-          :key="tab.value"
-          class="tab-item-minimal"
-          :class="{ 'is-active': localActiveTab === tab.value }"
-          @click="localActiveTab = tab.value"
-        >
-          <span class="tab-label">{{ tab.label }}</span>
-          <span v-if="tab.count > 0" class="tab-count">{{ tab.count }}</span>
-        </button>
+      <div v-if="showTabs || $slots.actions || $slots.default" class="toolbar-primary">
+        <div v-if="showTabs" class="toolbar-tabs">
+          <button
+            v-for="tab in tabsWithCounts"
+            :key="tab.value"
+            class="tab-item-minimal"
+            :class="{ 'is-active': localActiveTab === tab.value }"
+            @click="localActiveTab = tab.value"
+          >
+            <span class="tab-label">{{ tab.label }}</span>
+            <span v-if="tab.count > 0" class="tab-count">{{ tab.count }}</span>
+          </button>
+        </div>
+
+        <div v-if="$slots.actions" class="toolbar-slot-actions">
+          <slot name="actions" />
+        </div>
+
+        <slot />
       </div>
 
       <div class="toolbar-actions">
@@ -40,8 +48,7 @@
               class="refresh-icon" 
               :class="{ 'is-spinning': isRefreshing }" 
             />
-            <span class="refresh-label">同步 //</span>
-            <span class="refresh-action">刷新数据</span>
+            <span class="refresh-label">{{ isRefreshing ? 'SYNCING' : 'REFRESH' }}</span>
           </div>
         </button>
       </div>
@@ -109,6 +116,14 @@ watch(localSite, (value) => emit('update:site', value))
   gap: 2rem;
 }
 
+.toolbar-primary {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .toolbar-tabs {
   display: flex;
   gap: 1.5rem;
@@ -154,6 +169,13 @@ watch(localSite, (value) => emit('update:site', value))
   gap: 1.25rem;
 }
 
+.toolbar-slot-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .refresh-minimal {
   background: transparent;
   border: none;
@@ -178,12 +200,8 @@ watch(localSite, (value) => emit('update:site', value))
 }
 
 .refresh-label {
-  font-weight: 400;
-}
-
-.refresh-action {
+  font-weight: 600;
   color: #ff4d00;
-  font-weight: 700;
 }
 
 .refresh-icon {

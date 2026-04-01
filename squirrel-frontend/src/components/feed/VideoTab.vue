@@ -7,7 +7,6 @@
         :allLoaded="allLoaded"
         :showAvatar="false"
         :sortBy="sortBy"
-        :refreshing="isResetting"
         @loadMore="loadMore"
         @openModal="(video) => emit('openModal', video, videos)"
         @goToSubscription="(newSubscriptionId) => emit('goToSubscription', newSubscriptionId)"

@@ -1,5 +1,8 @@
 <template>
   <div class="video-list-container relative" ref="containerRef">
+    <div v-if="props.refreshing && hasVideos" class="video-list-refresh-indicator">
+      <div class="refresh-bar"></div>
+    </div>
     <Transition name="fade-list" mode="out-in">
       <div v-if="props.loading && !hasVideos" key="skeleton" class="video-list-skeleton-grid">
         <div 
@@ -14,7 +17,7 @@
 
       <div v-else-if="!props.loading && !hasVideos" key="empty" class="video-list-empty-minimal">
         <div class="empty-status">暂无内容</div>
-        <div class="empty-copy">系统就绪 / 请尝试重置过滤条件</div>
+        <div class="empty-copy">请尝试重置过滤条件</div>
       </div>
 
       <div v-else key="list" class="h-full w-full">
@@ -40,7 +43,6 @@
                 :sort-by="sortBy"
                 :show-progress="video.showProgress"
                 :progress="video.progress"
-                :class="{ 'is-refreshing': refreshing }"
                 @goToSubscription="$emit('goToSubscription', $event)"
                 @openModal="$emit('openModal', video)"
               />
@@ -49,7 +51,7 @@
         </VirtualList>
 
         <div v-if="props.loading" class="video-list__loading-more">
-          <LoadingIndicator :loading="true" text="正在同步新数据" size="sm" />
+          <LoadingIndicator :loading="true" text="LOADING" size="sm" />
         </div>
       </div>
     </Transition>
@@ -80,10 +82,7 @@ const props = defineProps({
   allLoaded: Boolean,
   showAvatar: Boolean,
   sortBy: { type: String, default: 'publish_date' },
-  refreshing: {
-    type: Boolean,
-    default: false,
-  },
+  refreshing: Boolean,
 })
 
 const emit = defineEmits([
@@ -218,16 +217,6 @@ defineExpose({
   padding: 2rem 0 1rem;
   background: linear-gradient(to top, hsl(var(--background)) 20%, transparent 100%);
   z-index: 20;
-}
-
-.grid-item :deep(.video-item.is-refreshing)::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-  animation: shimmer 1.5s infinite;
-  pointer-events: none;
-  z-index: 10;
 }
 
 @keyframes shimmer {
