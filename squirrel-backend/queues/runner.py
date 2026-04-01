@@ -68,16 +68,12 @@ class WorkerRunner:
 
     def start(self) -> None:
         # 1. 导入所有 processor 模块（注册 @queue_listener 装饰的消费者）
-        module_discovery.import_classes_from_package(package="consumer", recursive=True)
-        
-        # 2. 配置并注册域消费者
-        from processes.managers.consumers_setup import setup_all_consumers
-        from queues.consumer_config import init_domain_consumers
-        
-        setup_all_consumers()
-        init_domain_consumers()
+        module_discovery.import_classes_from_package(
+            package='consumer',
+            recursive=True,
+        )
 
-        # 3. 启动所有已注册的消费者
+        # 2. 启动所有已注册的消费者
         exact, prefixes = self._parse_consumer_count_overrides()
         consumers: List[RedisStreamConsumer] = []
         for spec in ConsumerRegistry.all():

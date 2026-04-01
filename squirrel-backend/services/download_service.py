@@ -1,9 +1,10 @@
 import logging
 
-from core.cache import redis_client
-from queues.direct_producer import direct_domain_producer
+from sqlalchemy.exc import IntegrityError
+
 from schemas.video.dto.video_dto import VideoExtractDto
-from services import video_service, message_service
+from services.crawl_tasks import service as crawl_task_service
+from services import video_service
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
 from utils.metrics import metrics
@@ -39,44 +40,42 @@ def clear_video_extraction_dedupe(params: VideoExtractDto) -> None:
     if params.is_manual:
         return
     priority = "full" if params.is_extract_all else "incr"
-    redis_client.delete(_build_video_dedupe_key(params.url, priority))
+    crawl_task_service.clear_task_dedupe_key(_build_video_dedupe_key(params.url, priority))
 
 
 def _send_to_extract_queue(params: VideoExtractDto) -> bool:
     content = params.model_dump()
-    message = message_service.create_message(content)
-    message_dict = message.to_dict()
-    dedupe_key = None
-    
-    # 队列优先级策略：
-    # 1. 手动触发 -> manual（最高优先级）
-    # 2. 增量更新 -> incr（高优先级，快速响应新视频）
-    # 3. 全量更新 -> full（低优先级，慢慢处理历史视频）
     if params.is_manual:
         priority = "manual"
     elif params.is_extract_all:
         priority = "full"
     else:
         priority = "incr"
-    
-    # 对自动任务检查重复，手动触发不检查（允许用户强制重新提取）
-    if not params.is_manual:
-        domain = extract_top_level_domain(params.url)
-        dedupe_key = _build_video_dedupe_key(params.url, priority)
-        acquired = redis_client.set(dedupe_key, '1', nx=True, ex=600)
-        if not acquired:
-            logger.debug(f"Video extraction task already reserved, skipping: {params.url}")
-            metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_in_queue"})
-            return False
-    
-    try:
-        direct_domain_producer.send_video_extract(message_dict, params.url, priority)
-        return True
-    except ValueError as e:
-        if dedupe_key:
-            redis_client.delete(dedupe_key)
-        logger.error(f"Failed to send video extract message: {e}, url={params.url}")
-        return False
+    return _send_to_extract_task(content, params, priority)
 
+
+def _send_to_extract_task(content: dict, params: VideoExtractDto, priority: str) -> bool:
+    domain = extract_top_level_domain(params.url)
+    dedupe_key = None if params.is_manual else _build_video_dedupe_key(params.url, priority)
+    source_type = 'manual' if params.is_manual else 'scheduled'
+
+    try:
+        crawl_task_service.create_job_with_task(
+            job_type='video_extract',
+            source_type=source_type,
+            site=domain,
+            subscription_id=params.subscription_id,
+            priority=priority,
+            task_type='video_extract',
+            payload=content,
+            dedupe_key=dedupe_key,
+            video_url=params.url,
+            trace_id=params.run_id,
+        )
+        return True
+    except IntegrityError:
+        logger.debug(f"Video extraction task already exists in task store, skipping: {params.url}")
+        metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_in_queue"})
+        return False
 
 

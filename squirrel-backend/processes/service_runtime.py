@@ -6,7 +6,6 @@ from contextlib import contextmanager
 from common.log import init_logging
 from core.site_config_manager import apply_site_config_overrides
 from core.database_upgrade import upgrade_database
-from queues.queue_config import ensure_queue_config_initialized
 from plugins.manager import bootstrap_plugin_runtime, shutdown_plugin_runtime
 from plugins.reload_listener import start_reload_listener, stop_reload_listener
 from utils.cookie import resolve_cookie_file_for_url
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 @contextmanager
 def bootstrap_runtime(component: str):
     """
-    Initialize shared runtime pieces (logging, plugin runtime manager, queue config)
+    Initialize shared runtime pieces (logging, plugin runtime manager)
     for standalone worker/scheduler processes.
     """
     init_logging()
@@ -46,7 +45,6 @@ def bootstrap_runtime(component: str):
 
     try:
         bootstrap_plugin_runtime()
-        ensure_queue_config_initialized()
         try:
             from services import subscription_sync_state_service
             queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()

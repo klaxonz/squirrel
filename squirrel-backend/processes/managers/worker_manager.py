@@ -3,6 +3,7 @@ import threading
 from threading import Lock
 from typing import List
 
+from processes.managers.crawl_worker_manager import crawl_worker_start, crawl_worker_status, crawl_worker_stop
 from queues.runner import WorkerRunner
 
 _logger = logging.getLogger()
@@ -22,13 +23,18 @@ def worker_start() -> None:
             return
 
         _logger.info("[worker] starting...")
+        crawl_worker_start()
         runner = WorkerRunner()
         runner.start()
         global _runner
         _runner = runner
         _worker_threads = runner.threads()
         _workers_running = True
-        _logger.info("[worker] started %d worker threads", len(_worker_threads))
+        _logger.info(
+            "[worker] started %d queue worker threads and %d crawl worker threads",
+            len(_worker_threads),
+            crawl_worker_status()['count'],
+        )
 
 
 def worker_stop() -> None:
@@ -37,7 +43,9 @@ def worker_stop() -> None:
         if not _workers_running:
             _logger.info("[worker] not running, skip stop()")
             return
+
         _logger.info("[worker] stopping...")
+        crawl_worker_stop()
 
         # 设置停止标志
         _workers_running = False
@@ -50,4 +58,8 @@ def worker_stop() -> None:
 
 
 def worker_status() -> dict:
-    return {"running": _workers_running, "count": len(_worker_threads)}
+    crawl_status = crawl_worker_status()
+    return {
+        "running": _workers_running or crawl_status['running'],
+        "count": len(_worker_threads) + crawl_status['count'],
+    }

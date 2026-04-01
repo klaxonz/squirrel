@@ -18,11 +18,6 @@ def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
     monkeypatch.setattr(app_main, 'apply_site_config_overrides', lambda: None)
     monkeypatch.setattr(app_main, 'bootstrap_plugin_runtime', lambda: None)
     monkeypatch.setattr(app_main, 'shutdown_plugin_runtime', lambda: None)
-    monkeypatch.setitem(
-        sys.modules,
-        'queues.queue_config',
-        SimpleNamespace(ensure_queue_config_initialized=lambda: None),
-    )
     monkeypatch.setattr(app_main, 'resolve_cookie_file_for_url', resolver)
     monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: client)
 
@@ -45,7 +40,6 @@ def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
     monkeypatch.setattr(service_runtime, 'apply_site_config_overrides', lambda: None)
     monkeypatch.setattr(service_runtime, 'bootstrap_plugin_runtime', lambda: None)
     monkeypatch.setattr(service_runtime, 'shutdown_plugin_runtime', lambda: None)
-    monkeypatch.setattr(service_runtime, 'ensure_queue_config_initialized', lambda: None)
     monkeypatch.setattr(service_runtime, 'start_reload_listener', lambda component: None)
     monkeypatch.setattr(service_runtime, 'stop_reload_listener', lambda component: None)
     monkeypatch.setitem(

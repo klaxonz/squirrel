@@ -2,11 +2,9 @@
 #
 # 显式导入所有 processor 模块以确保：
 # 1. 装饰器注册的消费者被加载
-# 2. 动态注册函数（_register_domain_consumers）被执行
-from . import extract_task
+# 2. 订阅相关消费者被加载
 from . import subscribe_task
 
 __all__ = [
-    'extract_task',
     'subscribe_task',
 ]

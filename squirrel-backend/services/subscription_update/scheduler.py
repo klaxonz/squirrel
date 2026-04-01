@@ -6,10 +6,11 @@ from sqlalchemy import select
 
 from core.database import get_session
 from models.links import UserSubscription
-from services import message_service, subscription_sync_state_service
+from models.subscription import Subscription
+from services import subscription_sync_state_service
+from services.crawl_tasks import service as crawl_task_service
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunContext, SyncRunStatus, create_run
-from queues.direct_producer import direct_domain_producer
 from utils.site_catalog import SiteCatalog
 from utils.trace import generate_trace_id, get_trace_id
 from .models import SubscriptionScheduleResult, SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
@@ -272,8 +273,10 @@ class SubscriptionScheduler:
             ))
             return SubscriptionScheduleResult(subscription_id=subscription_id, sync_state_id=queued_state.id, status='failed')
 
-        content = {
+        priority = self._resolve_priority(trigger, resolved_mode)
+        task_payload = {
             'subscription_id': subscription_id,
+            'url': url,
             'sync_state_id': queued_state.id,
             'mode': resolved_mode.value,
             'user_id': user_id,
@@ -281,9 +284,20 @@ class SubscriptionScheduler:
             'queue_token': queue_token,
             'trigger': trigger.value,
             'run_id': run_context.run_id,
+            'trace_id': trace_id,
         }
-        message = message_service.create_message(content, trace_id=trace_id)
-        request_id = str(message.id)
+        source_type = 'manual' if trigger == UpdateTrigger.MANUAL else 'scheduled'
+        _, task = crawl_task_service.create_job_with_task(
+            job_type='subscription_sync',
+            source_type=source_type,
+            site=domain,
+            subscription_id=subscription_id,
+            priority=priority,
+            task_type='subscription_sync',
+            payload=task_payload,
+            trace_id=trace_id,
+        )
+        request_id = str(task.id)
         append_event(SyncEventInput(
             stream_id=run_context.run_id,
             subscription_id=subscription_id,
@@ -302,36 +316,20 @@ class SubscriptionScheduler:
                 'pending_video_count': queued_state.pending_video_count,
             },
         ))
-
-        priority = self._resolve_priority(trigger, resolved_mode)
-        try:
-            direct_domain_producer.send_subscription_update(message.to_dict(), url, priority)
-            logger.debug(f"Enqueued subscription {subscription_id} state={queued_state.id} priority={priority}")
-            return SubscriptionScheduleResult(
-                subscription_id=subscription_id,
-                sync_state_id=queued_state.id,
-                status='queued',
-                request_id=request_id,
-                run_id=run_context.run_id,
-            )
-        except ValueError as e:
-            subscription_sync_state_service.mark_sync_failed(
-                queued_state.id,
-                str(e),
-                run_id=run_context.run_id,
-                request_id=request_id,
-                trace_id=trace_id,
-                error_type='enqueue_failed',
-                trigger=trigger.value,
-            )
-            logger.error(f"Failed to enqueue subscription update: {e}, subscription_id={subscription_id}")
-            return SubscriptionScheduleResult(
-                subscription_id=subscription_id,
-                sync_state_id=queued_state.id,
-                status='failed',
-                request_id=request_id,
-                run_id=run_context.run_id,
-            )
+        logger.debug(
+            "Scheduled subscription sync into crawl task store subscription_id=%s sync_state_id=%s task_id=%s priority=%s",
+            subscription_id,
+            queued_state.id,
+            task.id,
+            priority,
+        )
+        return SubscriptionScheduleResult(
+            subscription_id=subscription_id,
+            sync_state_id=queued_state.id,
+            status='queued',
+            request_id=request_id,
+            run_id=run_context.run_id,
+        )
 
     def schedule_batch(
         self,
@@ -369,33 +367,59 @@ class SubscriptionScheduler:
         success_count = 0
         error_count = 0
 
-        for _ in range(subscription_sync_state_service.MAX_DRAIN_BATCHES):
-            due_states = subscription_sync_state_service.list_due_sync_states(resolved_mode.value)
-            if not due_states:
-                break
-
-            batch_success = 0
-            batch_failed = 0
-            for sync_state, url in due_states:
-                result = self.schedule_one(
-                    subscription_id=sync_state.subscription_id,
-                    url=url,
-                    trigger=trigger,
-                    mode=resolved_mode,
-                )
-                if result.status == 'queued':
-                    batch_success += 1
-                elif result.status == 'failed':
-                    batch_failed += 1
-
-            success_count += batch_success
-            error_count += batch_failed
-
-            if len(due_states) < subscription_sync_state_service.SYNC_BATCH_SIZE:
-                break
+        for subscription_id, url in self._list_due_active_subscriptions(resolved_mode):
+            result = self.schedule_one(
+                subscription_id=subscription_id,
+                url=url,
+                trigger=trigger,
+                mode=resolved_mode,
+            )
+            if result.status == 'queued':
+                success_count += 1
+            elif result.status == 'failed':
+                error_count += 1
 
         logger.info(f"Enqueue completed: success={success_count}, failed={error_count}, mode={resolved_mode.value}")
         return success_count, error_count
+
+    @staticmethod
+    def _list_due_active_subscriptions(mode: UpdateMode) -> list[tuple[int, str]]:
+        now = datetime.now()
+
+        with get_session() as session:
+            rows = session.execute(
+                select(Subscription.id, Subscription.url)
+                .where(
+                    Subscription.is_deleted.is_(False),
+                    Subscription.url.is_not(None),
+                )
+                .where(
+                    select(UserSubscription.id)
+                    .where(
+                        UserSubscription.subscription_id == Subscription.id,
+                        UserSubscription.is_deleted.is_(False),
+                    )
+                    .exists()
+                )
+                .order_by(Subscription.id.asc())
+            ).all()
+
+        due_subscriptions: list[tuple[int, str]] = []
+        for subscription_id, url in rows:
+            sync_state = subscription_sync_state_service.get_sync_state(subscription_id, mode.value)
+            if sync_state is None:
+                due_subscriptions.append((subscription_id, url))
+                continue
+
+            sync_status = getattr(sync_state, 'sync_status', None)
+            if sync_status in {'queued', 'running'}:
+                continue
+
+            next_sync_at = getattr(sync_state, 'next_sync_at', None)
+            if next_sync_at is None or next_sync_at <= now:
+                due_subscriptions.append((subscription_id, url))
+
+        return due_subscriptions
 
     @staticmethod
     def _resolve_priority(trigger: UpdateTrigger, mode: UpdateMode) -> str:

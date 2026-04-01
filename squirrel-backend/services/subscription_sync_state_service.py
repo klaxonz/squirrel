@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import json
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import uuid4
@@ -12,7 +10,7 @@ from core.database import get_session
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
-from queues.queue_config import get_queue_config, QueueMode, QueueType
+from services.crawl_tasks import service as crawl_task_service
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus, create_run
 from utils import url_helper
@@ -723,7 +721,7 @@ def has_incremental_backpressure(sync_state: SubscriptionSyncState) -> bool:
 
 
 def reconcile_pending_video_counts() -> dict[str, int]:
-    counts = _scan_pending_video_counts_from_streams()
+    counts = _scan_pending_video_counts()
     with get_session() as session:
         session.execute(
             update(SubscriptionSyncState)
@@ -743,7 +741,7 @@ def reconcile_pending_video_counts() -> dict[str, int]:
 
 
 def recover_stale_queued_sync_states(grace: timedelta = QUEUED_RECOVERY_GRACE) -> dict[str, int]:
-    active_sync_state_ids = _scan_subscription_update_state_ids_from_streams()
+    active_sync_state_ids = _scan_subscription_update_state_ids()
     now = datetime.now()
     recovered = 0
 
@@ -817,61 +815,12 @@ def recover_stale_running_sync_states(timeout: timedelta = RUNNING_TIMEOUT) -> d
     }
 
 
-def _scan_pending_video_counts_from_streams() -> dict[int, int]:
-    config = get_queue_config()
-    counts: dict[int, int] = {}
-    for site in config.get_supported_sites():
-        for mode in (QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL):
-            queue_name = config.build_queue_name(QueueType.VIDEO_EXTRACT, site, mode)
-            for _, fields in redis_client.xrange(queue_name, '-', '+'):
-                sync_state_id = _extract_sync_state_id_from_queue_fields(fields)
-                if not sync_state_id:
-                    continue
-                counts[sync_state_id] = counts.get(sync_state_id, 0) + 1
-    return counts
+def _scan_pending_video_counts() -> dict[int, int]:
+    return crawl_task_service.count_pending_video_tasks_by_sync_state()
 
 
-def _scan_subscription_update_state_ids_from_streams() -> set[int]:
-    config = get_queue_config()
-    state_ids: set[int] = set()
-    for site in config.get_supported_sites():
-        for mode in (QueueMode.MANUAL, QueueMode.INCREMENTAL, QueueMode.FULL):
-            queue_name = config.build_queue_name(QueueType.SUBSCRIPTION_UPDATE, site, mode)
-            for _, fields in redis_client.xrange(queue_name, '-', '+'):
-                sync_state_id = _extract_sync_state_id_from_queue_fields(fields)
-                if sync_state_id:
-                    state_ids.add(sync_state_id)
-    return state_ids
-
-
-def _extract_sync_state_id_from_queue_fields(fields) -> Optional[int]:
-    body_raw = fields.get('body') or fields.get(b'body')
-    if body_raw is None:
-        return None
-    if isinstance(body_raw, bytes):
-        body_raw = body_raw.decode('utf-8')
-
-    try:
-        message_dict = json.loads(body_raw)
-    except Exception:
-        return None
-
-    nested_body = message_dict.get('body')
-    if not isinstance(nested_body, str):
-        return None
-
-    try:
-        payload = json.loads(nested_body)
-    except Exception:
-        return None
-
-    sync_state_id = payload.get('sync_state_id')
-    if sync_state_id in (None, ''):
-        return None
-    try:
-        return int(sync_state_id)
-    except (TypeError, ValueError):
-        return None
+def _scan_subscription_update_state_ids() -> set[int]:
+    return crawl_task_service.list_active_subscription_sync_state_ids()
 
 
 def attach_sync_fields(target: dict, sync_state: Optional[SubscriptionSyncState]) -> dict:

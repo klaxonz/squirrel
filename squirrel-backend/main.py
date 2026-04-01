@@ -24,7 +24,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     启动时按顺序执行：
     1. 启动插件 runtime manager
-    2. 初始化队列配置
 
     关闭时优雅停止所有服务
     """
@@ -58,16 +57,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("[1/4] ✓ Plugin runtime manager bootstrapped")
     except Exception as e:
         logger.exception(f"[1/4] ✗ Failed to bootstrap plugin runtime manager: {e}")
-        raise
-
-    # 2. 初始化队列配置
-    logger.info("[2/4] Initializing queue configuration...")
-    try:
-        from queues.queue_config import ensure_queue_config_initialized
-        ensure_queue_config_initialized()
-        logger.info("[2/4] ✓ Queue configuration initialized")
-    except Exception as e:
-        logger.exception(f"[2/4] ✗ Failed to initialize queue config: {e}")
         raise
 
     logger.info("=" * 60)
