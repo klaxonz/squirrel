@@ -49,7 +49,7 @@
             <SubscriptionSkeleton v-for="i in 10" :key="i" :delay="i * 50" />
           </div>
 
-          <div v-else-if="!loading && !subscriptions.length" key="empty" class="subscribed-empty-card">
+          <div v-else-if="hasLoadedOnce && !loading && !subscriptions.length" key="empty" class="subscribed-empty-card">
             <p class="subscribed-empty-card__eyebrow">订阅库</p>
             <h2 class="subscribed-empty-card__title">还没有可展示的订阅</h2>
             <p class="subscribed-empty-card__copy">可以直接添加一个频道，或者从支持的站点批量导入。</p>
@@ -299,6 +299,7 @@ const subscriptions = ref([])
 const avatarsLoaded = ref({})
 const loadError = ref(null)
 const loading = ref(false)
+const hasLoadedOnce = ref(false)
 const allLoaded = ref(false)
 const currentPage = ref(1)
 const searchQuery = ref('')
@@ -406,6 +407,7 @@ const loadSubscriptions = async () => {
     loadError.value = error || '获取订阅列表失败'
   }
 
+  hasLoadedOnce.value = true
   loading.value = false
 }
 
