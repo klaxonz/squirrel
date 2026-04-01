@@ -23,7 +23,12 @@
               ]"
               @click="selectedSite = site"
             >
-              <span class="import-dialog__site-icon">{{ site.charAt(0).toUpperCase() }}</span>
+              <SiteIcon
+                :icon-url="getSiteIconUrl(site)"
+                :label="getSiteName(site)"
+                size="lg"
+                class="import-dialog__site-icon"
+              />
               <span class="import-dialog__site-name">{{ getSiteName(site) }}</span>
             </button>
           </div>
@@ -170,6 +175,7 @@ import {
   importSubscriptions,
   previewImportSubscriptions,
 } from '@/api'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -182,6 +188,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useImageFallback } from '@/composables/useImageFallback'
+import { useSiteCatalog } from '@/composables/useSites'
 
 const props = defineProps({
   show: {
@@ -192,6 +199,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'imported'])
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
+const { catalog: siteCatalog, loadCatalog } = useSiteCatalog()
 
 const step = ref(1)
 const supportedSites = ref([])
@@ -209,7 +217,12 @@ const siteConfig = {
   javdb: { name: 'JavDB' },
 }
 
-const getSiteName = (site) => siteConfig[site]?.name || site.charAt(0).toUpperCase() + site.slice(1)
+const getSiteCatalogItem = (site) => siteCatalog.value?.[site?.toLowerCase?.() || site] || null
+const getSiteName = (site) => getSiteCatalogItem(site)?.label || siteConfig[site]?.name || site.charAt(0).toUpperCase() + site.slice(1)
+const getSiteIconUrl = (site) => {
+  const iconUrl = getSiteCatalogItem(site)?.icon_url
+  return typeof iconUrl === 'string' && iconUrl.trim() ? iconUrl : null
+}
 const selectedCount = computed(() => Object.keys(selectedUrlMap.value || {}).length)
 
 const resetState = () => {
@@ -247,6 +260,7 @@ const toggleSelection = (sub) => {
 }
 
 const loadSupportedSites = async () => {
+  await loadCatalog()
   const { data, error } = await getSupportedImportSites()
   if (!error) {
     supportedSites.value = data
