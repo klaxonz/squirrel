@@ -170,6 +170,57 @@ class SiteCatalog:
         return matched
 
     @classmethod
+    def expand_site_filter_values(cls, key: Optional[str]) -> List[str]:
+        """
+        Expand a site filter into all equivalent identifiers used in storage/query layers.
+
+        Examples:
+        - "youtube" -> ["youtube", "youtube.com", "youtu.be"]
+        - "youtube.com" -> ["youtube.com", "youtube"]
+        """
+        if not key:
+            return []
+
+        normalized_key = str(key).strip().lower()
+        if not normalized_key:
+            return []
+
+        catalog = cls.get_catalog() or {}
+        values: List[str] = []
+        seen: Set[str] = set()
+
+        def add(value: Optional[str]) -> None:
+            normalized = str(value or '').strip().lower()
+            if not normalized or normalized in seen:
+                return
+            seen.add(normalized)
+            values.append(normalized)
+
+        add(normalized_key)
+
+        for domain in cls.resolve_domains(normalized_key):
+            add(domain)
+
+        if normalized_key in catalog:
+            for domain in catalog[normalized_key].get('domains', []):
+                add(domain)
+
+        for slug, info in catalog.items():
+            aliases = [str(alias or '').strip().lower() for alias in info.get('aliases', []) if alias]
+            if normalized_key == slug or normalized_key in aliases:
+                add(slug)
+                for domain in info.get('domains', []):
+                    add(domain)
+
+        site_slug, info = cls.find_site_by_domain(normalized_key)
+        if site_slug:
+            add(site_slug)
+            for domain in (info or {}).get('domains', []):
+                add(domain)
+
+        return values
+
+    @classmethod
     def find_site_by_domain(cls, domain: Optional[str]) -> tuple[Optional[str], Optional[dict]]:
         """Find site slug and catalog entry by domain (supports subdomain match)."""
         if not domain:

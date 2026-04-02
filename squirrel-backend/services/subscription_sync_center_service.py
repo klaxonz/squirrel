@@ -14,6 +14,7 @@ from schemas.subscription.dto.sync_center_dto import (
     SyncCenterOverviewDto,
 )
 from utils.metrics import metrics
+from utils.site_catalog import SiteCatalog
 
 
 DUE_SOON_WINDOW = timedelta(minutes=30)
@@ -232,13 +233,14 @@ def list_sync_center_items(
 ) -> SyncCenterListDto:
     normalized_status = (status or '').strip().lower() or None
     normalized_site = (site or '').strip().lower() or None
+    site_candidates = set(SiteCatalog.expand_site_filter_values(normalized_site)) if normalized_site else set()
     normalized_query = (query or '').strip().lower()
 
     items = _collect_projection_items(user_id)
     if normalized_status and normalized_status != 'recent':
         items = [item for item in items if item.display_status == normalized_status]
-    if normalized_site:
-        items = [item for item in items if (item.site or '').lower() == normalized_site]
+    if site_candidates:
+        items = [item for item in items if (item.site or '').lower() in site_candidates]
     if normalized_query:
         items = [item for item in items if normalized_query in item.subscription_name.lower()]
 
@@ -258,11 +260,12 @@ def list_sync_center_items(
 def list_retry_failed_sync_items(user_id: int, site: Optional[str], query: Optional[str]) -> list[SyncCenterItemDto]:
     items = _collect_projection_items(user_id)
     normalized_site = (site or '').strip().lower() or None
+    site_candidates = set(SiteCatalog.expand_site_filter_values(normalized_site)) if normalized_site else set()
     normalized_query = (query or '').strip().lower()
 
     failed_items = [item for item in items if item.display_status == 'failed']
-    if normalized_site:
-        failed_items = [item for item in failed_items if (item.site or '').lower() == normalized_site]
+    if site_candidates:
+        failed_items = [item for item in failed_items if (item.site or '').lower() in site_candidates]
     if normalized_query:
         failed_items = [item for item in failed_items if normalized_query in item.subscription_name.lower()]
 

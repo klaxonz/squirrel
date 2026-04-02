@@ -79,6 +79,57 @@ def merge_site_names(catalog: dict) -> list[str]:
     return names
 
 
+def merge_site_catalogs(*catalogs: dict | None) -> dict:
+    merged: dict = {}
+
+    for catalog in catalogs:
+        for raw_slug, raw_info in (catalog or {}).items():
+            slug = str(raw_slug or '').strip().lower()
+            if not slug:
+                continue
+
+            incoming = dict(raw_info or {})
+            existing = merged.get(slug, {})
+            merged_entry = dict(existing)
+
+            if 'label' in incoming or 'label' not in merged_entry:
+                merged_entry['label'] = incoming.get('label') or merged_entry.get('label') or raw_slug
+
+            merged_entry['enabled'] = bool(incoming.get('enabled', merged_entry.get('enabled', True)))
+
+            for key in ('test_url', 'icon_url'):
+                value = incoming.get(key)
+                if value:
+                    merged_entry[key] = value
+
+            for key in ('domains', 'aliases', 'features'):
+                seen = set()
+                values = []
+                for item in list(merged_entry.get(key) or []) + list(incoming.get(key) or []):
+                    normalized = str(item or '').strip().lower()
+                    if not normalized or normalized in seen:
+                        continue
+                    seen.add(normalized)
+                    values.append(normalized)
+                merged_entry[key] = values
+
+            for key, value in incoming.items():
+                if key in {'label', 'enabled', 'test_url', 'icon_url', 'domains', 'aliases', 'features'}:
+                    continue
+                if value is not None:
+                    merged_entry[key] = value
+
+            merged[slug] = merged_entry
+
+    return merged
+
+
+def get_merged_site_catalog() -> dict:
+    runtime_catalog = SiteCatalog._build_from_manifests()
+    config_catalog = SiteCatalog.get_catalog() or {}
+    return merge_site_catalogs(runtime_catalog, config_catalog)
+
+
 def build_site_info(site_name: str, catalog: dict) -> dict | None:
     """
     基于注册表与站点配置汇总站点信息，优先使用配置文件中的域名/测试URL
@@ -182,7 +233,7 @@ def get_supported_sites():
     Returns:
         每个站点的详细信息，包括名称和对应的域名列表
     """
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_merged_site_catalog()
     login_supported_sites = get_login_supported_sites()
     login_supported_sites_lower = {s.lower() for s in login_supported_sites}
     site_names = merge_site_names(catalog)

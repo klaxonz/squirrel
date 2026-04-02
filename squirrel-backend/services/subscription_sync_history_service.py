@@ -9,6 +9,7 @@ from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from services.subscription_sync_run_service import SyncEventType
+from utils.site_catalog import SiteCatalog
 
 
 def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
@@ -81,7 +82,8 @@ def list_runs(
     if status:
         filters.append(SubscriptionSyncRunProjection.status == str(status).strip().lower())
     if site:
-        filters.append(SubscriptionSyncRunProjection.site == str(site).strip().lower())
+        site_candidates = SiteCatalog.expand_site_filter_values(site)
+        filters.append(SubscriptionSyncRunProjection.site.in_(site_candidates))
     if subscription_id:
         filters.append(Subscription.id == subscription_id)
     if mode:
