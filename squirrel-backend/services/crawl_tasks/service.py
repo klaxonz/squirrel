@@ -446,10 +446,22 @@ def _move_task_to_retry_or_dead(
     if task.attempt >= task.max_attempts:
         task.status = CrawlTaskStatus.DEAD.value
         task.finished_at = now
+        _reconcile_subscription_sync_state_for_retry(
+            task,
+            now=now,
+            retryable=False,
+            error_message=error_message,
+        )
         return
 
     task.status = CrawlTaskStatus.RETRY_WAIT.value
     task.next_run_at = now + timedelta(seconds=delay_seconds)
+    _reconcile_subscription_sync_state_for_retry(
+        task,
+        now=now,
+        retryable=True,
+        error_message=error_message,
+    )
 
 
 def _refresh_job_status(session, *, job_id: int, now: datetime) -> None:
@@ -539,3 +551,34 @@ def _ensure_dispatch_scope(session, *, scope_type: str, scope_key: str) -> Crawl
         )
     ).scalar_one()
     return scope
+
+
+def _reconcile_subscription_sync_state_for_retry(
+    task: CrawlTask,
+    *,
+    now: datetime,
+    retryable: bool,
+    error_message: Optional[str],
+) -> None:
+    if task.task_type != 'subscription_sync':
+        return
+
+    payload = task.payload or {}
+    sync_state_id = payload.get('sync_state_id')
+    if sync_state_id in (None, ''):
+        return
+
+    try:
+        sync_state_id = int(sync_state_id)
+    except (TypeError, ValueError):
+        return
+
+    from services import subscription_sync_state_service
+
+    subscription_sync_state_service.reconcile_task_retry_state(
+        sync_state_id,
+        payload.get('queue_token'),
+        now=now,
+        retryable=retryable,
+        error_message=error_message,
+    )

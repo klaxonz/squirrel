@@ -12,7 +12,9 @@ from models import Base
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
+from models.subscription_sync_state import SubscriptionSyncState
 from services.crawl_tasks import service as crawl_task_service
+from services import subscription_sync_state_service
 
 
 @contextmanager
@@ -32,9 +34,15 @@ def _setup_test_env(monkeypatch):
     engine = create_engine('sqlite:///:memory:')
     Base.metadata.create_all(
         engine,
-        tables=[CrawlJob.__table__, CrawlTask.__table__, CrawlDispatchScope.__table__],
+        tables=[
+            CrawlJob.__table__,
+            CrawlTask.__table__,
+            CrawlDispatchScope.__table__,
+            SubscriptionSyncState.__table__,
+        ],
     )
     monkeypatch.setattr(crawl_task_service, 'get_session', lambda: _managed_session(engine))
+    monkeypatch.setattr(subscription_sync_state_service, 'get_session', lambda: _managed_session(engine))
     return engine
 
 
@@ -178,6 +186,58 @@ def test_recover_expired_tasks_moves_retriable_task_to_retry_wait(monkeypatch):
     assert stored_task.next_run_at == now + timedelta(seconds=45)
 
 
+def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    job_id = _create_job(engine)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            SubscriptionSyncState(
+                id=1749,
+                subscription_id=1,
+                site='youtube.com',
+                sync_mode='incremental',
+                sync_status='running',
+                cursor_payload={},
+                queue_token='queue-token-1',
+                queued_at=now - timedelta(minutes=2),
+                locked_at=now - timedelta(minutes=1),
+                next_sync_at=now - timedelta(minutes=5),
+            )
+        )
+        task = CrawlTask(
+            job_id=job_id,
+            task_type='subscription_sync',
+            site='youtube.com',
+            priority='normal',
+            subscription_id=1,
+            payload={'sync_state_id': 1749, 'queue_token': 'queue-token-1'},
+            status='running',
+            worker_id='worker-1',
+            attempt=0,
+            max_attempts=3,
+            lease_until=now - timedelta(seconds=1),
+        )
+        session.add(task)
+        session.commit()
+        task_id = task.id
+
+    recovered = crawl_task_service.recover_expired_tasks(now=now, retry_delay_seconds=45)
+
+    assert recovered == 1
+
+    with Session(engine, expire_on_commit=False) as session:
+        stored_task = session.get(CrawlTask, task_id)
+        sync_state = session.get(SubscriptionSyncState, 1749)
+
+    assert stored_task.status == 'retry_wait'
+    assert sync_state.sync_status == 'queued'
+    assert sync_state.queue_token == 'queue-token-1'
+    assert sync_state.locked_at is None
+    assert sync_state.queued_at == now
+
+
 def test_recover_expired_tasks_moves_exhausted_task_to_dead(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     job_id = _create_job(engine)
@@ -210,6 +270,59 @@ def test_recover_expired_tasks_moves_exhausted_task_to_dead(monkeypatch):
     assert stored_task.status == 'dead'
     assert stored_task.attempt == 3
     assert stored_task.finished_at == now
+
+
+def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dead(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    job_id = _create_job(engine)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            SubscriptionSyncState(
+                id=1750,
+                subscription_id=1,
+                site='youtube.com',
+                sync_mode='incremental',
+                sync_status='running',
+                cursor_payload={},
+                queue_token='queue-token-2',
+                queued_at=now - timedelta(minutes=2),
+                locked_at=now - timedelta(minutes=1),
+                next_sync_at=now - timedelta(minutes=5),
+                failure_count=0,
+            )
+        )
+        task = CrawlTask(
+            job_id=job_id,
+            task_type='subscription_sync',
+            site='youtube.com',
+            priority='normal',
+            subscription_id=1,
+            payload={'sync_state_id': 1750, 'queue_token': 'queue-token-2'},
+            status='running',
+            worker_id='worker-1',
+            attempt=2,
+            max_attempts=3,
+            lease_until=now - timedelta(seconds=1),
+        )
+        session.add(task)
+        session.commit()
+        task_id = task.id
+
+    recovered = crawl_task_service.recover_expired_tasks(now=now, retry_delay_seconds=45)
+
+    assert recovered == 1
+
+    with Session(engine, expire_on_commit=False) as session:
+        stored_task = session.get(CrawlTask, task_id)
+        sync_state = session.get(SubscriptionSyncState, 1750)
+
+    assert stored_task.status == 'dead'
+    assert sync_state.sync_status == 'failed'
+    assert sync_state.queue_token is None
+    assert sync_state.locked_at is None
+    assert sync_state.failure_count == 1
 
 
 def test_complete_task_marks_job_succeeded_when_all_tasks_finish(monkeypatch):

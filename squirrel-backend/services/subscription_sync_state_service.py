@@ -431,6 +431,56 @@ def claim_sync_state(
         return state
 
 
+def reconcile_task_retry_state(
+    sync_state_id: Optional[int],
+    queue_token: Optional[str],
+    *,
+    now: Optional[datetime] = None,
+    retryable: bool,
+    error_message: Optional[str] = None,
+) -> Optional[SubscriptionSyncState]:
+    if not sync_state_id:
+        return None
+
+    now = now or datetime.now()
+    expected_token = str(queue_token or '').strip() or None
+
+    with get_session() as session:
+        state = session.get(SubscriptionSyncState, sync_state_id)
+        if not state:
+            return None
+
+        current_token = str(state.queue_token or '').strip() or None
+        if expected_token and current_token and current_token != expected_token:
+            return state
+
+        if retryable:
+            if state.sync_status not in {SyncStatus.QUEUED.value, SyncStatus.RUNNING.value}:
+                return state
+            state.sync_status = SyncStatus.QUEUED.value
+            state.queue_token = expected_token or state.queue_token
+            state.queued_at = now
+            state.locked_at = None
+            state.last_error = error_message
+            state.version += 1
+            return state
+
+        if state.sync_status not in {SyncStatus.QUEUED.value, SyncStatus.RUNNING.value}:
+            return state
+
+        state.failure_count += 1
+        state.sync_status = SyncStatus.FAILED.value
+        state.last_sync_at = now
+        state.last_error = error_message or 'task_retry_exhausted'
+        state.queue_token = None
+        state.queued_at = None
+        state.locked_at = None
+        state.idle_sync_count = 0
+        state.next_sync_at = now + build_retry_delay(state.sync_mode, state.failure_count)
+        state.version += 1
+        return state
+
+
 def continue_full_sync_batch(
     sync_state_id: int,
     *,
