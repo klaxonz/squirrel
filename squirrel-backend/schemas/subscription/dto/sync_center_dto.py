@@ -13,6 +13,7 @@ class SyncCenterOverviewDto(BaseModel):
 
 
 class SyncCenterItemDto(BaseModel):
+    run_id: str | None = None
     subscription_id: int
     subscription_name: str
     subscription_avatar: str | None = None
@@ -20,6 +21,7 @@ class SyncCenterItemDto(BaseModel):
     sync_mode: str = 'incremental'
     sync_status: str = 'idle'
     display_status: str = 'healthy'
+    current_phase: str | None = None
     failure_count: int = 0
     last_error: str | None = None
     last_error_summary: str | None = None
@@ -30,8 +32,22 @@ class SyncCenterItemDto(BaseModel):
     locked_at: str = ''
     updated_at: str = ''
     pending_video_count: int = 0
+    feed_completed: bool = False
+    has_more_pages: bool = False
+    queue_position: int | None = None
+    videos_found: int = 0
+    videos_enqueued: int = 0
+    videos_extracted: int = 0
+    videos_skipped: int = 0
+    progress_percent: int = 0
+    progress_label: str = ''
     is_deferred: bool = False
     defer_reason: str | None = None
+    batch_task_count: int = 0
+    queued_task_count: int = 0
+    running_task_count: int = 0
+    completed_task_count: int = 0
+    failed_task_count: int = 0
 
 
 class SyncCenterListDto(BaseModel):

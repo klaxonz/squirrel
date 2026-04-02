@@ -34,7 +34,7 @@
 
           <button 
             class="tactical-btn" 
-            :disabled="reconciling" 
+            :disabled="!canReconcile || reconciling" 
             @click="emit('reconcile')"
           >
             [ {{ reconciling ? '协调中...' : '状态协调' }} ]
@@ -55,16 +55,19 @@ import type { SyncTimeLens } from '@/composables/useSyncCenterWorkbench'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-const props = defineProps<{
+withDefaults(defineProps<{
   summary: string
   lens: SyncTimeLens
   autoRefresh: boolean
   canRetryFailed: boolean
+  canReconcile?: boolean
   refreshing: boolean
   retryingBatch: boolean
   reconciling: boolean
   lastUpdatedAt: string
-}>()
+}>(), {
+  canReconcile: true,
+})
 
 const emit = defineEmits<{
   (e: 'refresh'): void

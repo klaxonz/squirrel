@@ -24,6 +24,7 @@ export interface SyncCenterOverview {
 }
 
 export interface SyncCenterItem {
+  run_id: string | null
   subscription_id: number
   subscription_name: string
   subscription_avatar: string | null
@@ -31,6 +32,7 @@ export interface SyncCenterItem {
   sync_mode: string
   sync_status: string
   display_status: string
+  current_phase: string | null
   failure_count: number
   last_error: string | null
   last_error_summary: string | null
@@ -41,8 +43,22 @@ export interface SyncCenterItem {
   locked_at: string
   updated_at: string
   pending_video_count: number
+  feed_completed: boolean
+  has_more_pages: boolean
+  queue_position: number | null
+  videos_found: number
+  videos_enqueued: number
+  videos_extracted: number
+  videos_skipped: number
+  progress_percent: number
+  progress_label: string
   is_deferred: boolean
   defer_reason: string | null
+  batch_task_count: number
+  queued_task_count: number
+  running_task_count: number
+  completed_task_count: number
+  failed_task_count: number
 }
 
 interface SyncCenterListResponse {
@@ -248,7 +264,7 @@ export function useSyncCenter() {
       site: filters.site || undefined,
       query: filters.query || undefined,
       page: 1,
-      pageSize: 4,
+      pageSize: status === 'running' ? 6 : 12,
     })
     const isStale = status === 'running'
       ? requestSeq !== runningPreviewRequestSeq

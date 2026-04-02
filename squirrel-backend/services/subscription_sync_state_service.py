@@ -380,6 +380,58 @@ def _append_state_event(
     )
 
 
+def _complete_sync_success_in_session(
+    session,
+    *,
+    state: SubscriptionSyncState,
+    source_video_count: Optional[int] = None,
+    videos_found: int = 0,
+    videos_enqueued: int = 0,
+    next_sync_at: Optional[datetime] = None,
+    run_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    trigger: Optional[str] = None,
+) -> SubscriptionSyncState:
+    now = datetime.now()
+    started_at = state.locked_at or state.last_sync_at
+    state.sync_status = SyncStatus.SUCCESS.value
+    state.last_sync_at = now
+    state.last_success_at = now
+    state.queue_token = None
+    state.queued_at = None
+    state.locked_at = None
+    state.failure_count = 0
+    state.last_error = None
+    state.idle_sync_count = 0 if videos_found > 0 else state.idle_sync_count + 1
+    state.next_sync_at = next_sync_at or (now + build_success_delay(state.sync_mode, state.idle_sync_count, videos_found))
+    state.version += 1
+    _append_state_event(
+        session,
+        state=state,
+        run_id=run_id,
+        request_id=request_id,
+        trace_id=trace_id,
+        trigger=trigger,
+        event_type=SyncEventType.COMPLETED,
+        event_phase=SyncPhase.COMPLETED,
+        event_status=SyncRunStatus.SUCCESS,
+        payload={
+            'cursor_payload': state.cursor_payload,
+            'latest_video_url': state.last_seen_video_url,
+            'source_video_count': source_video_count,
+            'videos_found': videos_found,
+            'videos_enqueued': videos_enqueued,
+            'pending_video_count': state.pending_video_count,
+            'failure_count': state.failure_count,
+            'next_sync_at': state.next_sync_at,
+            'duration_ms': int((now - started_at).total_seconds() * 1000) if started_at else 0,
+        },
+        occurred_at=now,
+    )
+    return state
+
+
 def claim_sync_state(
     sync_state_id: int,
     queue_token: str,
@@ -551,48 +603,59 @@ def mark_sync_success(
     trace_id: Optional[str] = None,
     trigger: Optional[str] = None,
 ) -> Optional[SubscriptionSyncState]:
-    now = datetime.now()
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
         if not state:
             return None
-        started_at = state.locked_at
-        state.sync_status = SyncStatus.SUCCESS.value
-        state.cursor_payload = cursor_payload or {}
+        now = datetime.now()
+        if cursor_payload is not None:
+            state.cursor_payload = cursor_payload
         if latest_video_url:
             state.last_seen_video_url = latest_video_url
-        state.last_sync_at = now
-        state.last_success_at = now
-        state.queue_token = None
-        state.queued_at = None
-        state.locked_at = None
-        state.failure_count = 0
-        state.last_error = None
-        state.idle_sync_count = 0 if videos_found > 0 else state.idle_sync_count + 1
-        state.next_sync_at = next_sync_at or (now + build_success_delay(state.sync_mode, state.idle_sync_count, videos_found))
-        state.version += 1
-        _append_state_event(
+
+        if state.pending_video_count > 0:
+            state.sync_status = SyncStatus.RUNNING.value
+            state.last_sync_at = now
+            state.queue_token = None
+            state.queued_at = None
+            state.locked_at = None
+            state.failure_count = 0
+            state.last_error = None
+            state.version += 1
+            _append_state_event(
+                session,
+                state=state,
+                run_id=run_id,
+                request_id=request_id,
+                trace_id=trace_id,
+                trigger=trigger,
+                event_type=SyncEventType.PHASE_CHANGED,
+                event_phase=SyncPhase.EXTRACTING,
+                event_status=SyncRunStatus.RUNNING,
+                payload={
+                    'cursor_payload': state.cursor_payload,
+                    'latest_video_url': state.last_seen_video_url,
+                    'source_video_count': source_video_count,
+                    'videos_found': videos_found,
+                    'videos_enqueued': videos_enqueued,
+                    'pending_video_count': state.pending_video_count,
+                    'feed_completed': True,
+                },
+                occurred_at=now,
+            )
+            return state
+
+        _complete_sync_success_in_session(
             session,
             state=state,
+            source_video_count=source_video_count,
+            videos_found=videos_found,
+            videos_enqueued=videos_enqueued,
+            next_sync_at=next_sync_at,
             run_id=run_id,
             request_id=request_id,
             trace_id=trace_id,
             trigger=trigger,
-            event_type=SyncEventType.COMPLETED,
-            event_phase=SyncPhase.COMPLETED,
-            event_status=SyncRunStatus.SUCCESS,
-            payload={
-                'cursor_payload': state.cursor_payload,
-                'latest_video_url': latest_video_url,
-                'source_video_count': source_video_count,
-                'videos_found': videos_found,
-                'videos_enqueued': videos_enqueued,
-                'pending_video_count': state.pending_video_count,
-                'failure_count': state.failure_count,
-                'next_sync_at': state.next_sync_at,
-                'duration_ms': int((now - started_at).total_seconds() * 1000) if started_at else 0,
-            },
-            occurred_at=now,
         )
         return state
 
@@ -751,7 +814,15 @@ def increment_pending_video_count(sync_state_id: Optional[int], count: int = 1) 
         state.version += 1
 
 
-def decrement_pending_video_count(sync_state_id: Optional[int], count: int = 1) -> None:
+def decrement_pending_video_count(
+    sync_state_id: Optional[int],
+    count: int = 1,
+    *,
+    run_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    trigger: Optional[str] = None,
+) -> None:
     if not sync_state_id or count <= 0:
         return
     with get_session() as session:
@@ -760,6 +831,15 @@ def decrement_pending_video_count(sync_state_id: Optional[int], count: int = 1) 
             return
         state.pending_video_count = max(0, state.pending_video_count - count)
         state.version += 1
+        if state.pending_video_count == 0 and state.sync_status == SyncStatus.RUNNING.value and state.locked_at is None:
+            _complete_sync_success_in_session(
+                session,
+                state=state,
+                run_id=run_id,
+                request_id=request_id,
+                trace_id=trace_id,
+                trigger=trigger,
+            )
 
 
 def build_queue_token() -> str:

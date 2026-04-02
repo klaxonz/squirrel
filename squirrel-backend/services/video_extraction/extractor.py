@@ -129,7 +129,11 @@ def extract_video(params: VideoExtractDto) -> ExtractionResult:
         return result
     finally:
         download_service.clear_video_extraction_dedupe(params)
-        subscription_sync_state_service.decrement_pending_video_count(params.sync_state_id)
+        subscription_sync_state_service.decrement_pending_video_count(
+            params.sync_state_id,
+            run_id=params.run_id,
+            trigger=params.trigger or ('manual' if params.is_manual else 'scheduled'),
+        )
 
 
 def _create_task(params: VideoExtractDto) -> ExtractionTask:

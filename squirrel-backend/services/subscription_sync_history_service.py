@@ -8,6 +8,7 @@ from models.links import UserSubscription
 from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from services.subscription_sync_progress import build_progress_snapshot
 from services.subscription_sync_run_service import SyncEventType
 from utils.site_catalog import SiteCatalog
 
@@ -111,6 +112,14 @@ def list_runs(
 
     data = []
     for run, subscription in rows:
+        progress_snapshot = build_progress_snapshot(
+            status=run.status,
+            current_phase=run.current_phase,
+            videos_found=run.videos_found,
+            videos_enqueued=run.videos_enqueued,
+            videos_extracted=run.videos_extracted,
+            pending_video_count=run.pending_video_count,
+        )
         data.append({
             'run_id': run.run_id,
             'subscription_id': subscription.id,
@@ -135,6 +144,9 @@ def list_runs(
             'videos_extracted': run.videos_extracted,
             'videos_skipped': run.videos_skipped,
             'pending_video_count': run.pending_video_count,
+            'feed_completed': progress_snapshot['feed_completed'],
+            'progress_percent': progress_snapshot['progress_percent'],
+            'progress_label': progress_snapshot['progress_label'],
             'last_event_at': _serialize_datetime(run.last_event_at),
         })
 
@@ -153,6 +165,14 @@ def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
             return None
         run, subscription = row
         source_video_count = _payload_metric_value(run.run_id, 'source_video_count')
+        progress_snapshot = build_progress_snapshot(
+            status=run.status,
+            current_phase=run.current_phase,
+            videos_found=run.videos_found,
+            videos_enqueued=run.videos_enqueued,
+            videos_extracted=run.videos_extracted,
+            pending_video_count=run.pending_video_count,
+        )
         return {
             'run_id': run.run_id,
             'subscription_id': subscription.id,
@@ -178,6 +198,9 @@ def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
             'videos_skipped': run.videos_skipped,
             'source_video_count': source_video_count,
             'pending_video_count': run.pending_video_count,
+            'feed_completed': progress_snapshot['feed_completed'],
+            'progress_percent': progress_snapshot['progress_percent'],
+            'progress_label': progress_snapshot['progress_label'],
             'last_event_at': _serialize_datetime(run.last_event_at),
             'created_at': _serialize_datetime(run.created_at),
             'updated_at': _serialize_datetime(run.updated_at),

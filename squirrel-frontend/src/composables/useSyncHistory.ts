@@ -27,6 +27,9 @@ export interface SyncRunItem {
   videos_skipped: number
   source_video_count?: number | null
   pending_video_count: number
+  feed_completed: boolean
+  progress_percent: number
+  progress_label: string
   last_event_at: string
 }
 

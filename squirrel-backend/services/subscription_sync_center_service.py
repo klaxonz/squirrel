@@ -13,6 +13,7 @@ from schemas.subscription.dto.sync_center_dto import (
     SyncCenterListDto,
     SyncCenterOverviewDto,
 )
+from services.subscription_sync_progress import build_progress_snapshot
 from utils.metrics import metrics
 from utils.site_catalog import SiteCatalog
 
@@ -137,8 +138,17 @@ def _build_sync_center_item(
         if subscription_projection and subscription_projection.last_error_message
         else (run_projection.error_message if run_projection else None)
     )
+    progress_snapshot = build_progress_snapshot(
+        status=run_projection.status if run_projection else current_status,
+        current_phase=run_projection.current_phase if run_projection else (subscription_projection.current_phase if subscription_projection else None),
+        videos_found=run_projection.videos_found if run_projection else 0,
+        videos_enqueued=run_projection.videos_enqueued if run_projection else 0,
+        videos_extracted=run_projection.videos_extracted if run_projection else 0,
+        pending_video_count=pending_video_count,
+    )
 
     return SyncCenterItemDto(
+        run_id=run_projection.run_id if run_projection else None,
         subscription_id=subscription.id,
         subscription_name=subscription.name,
         subscription_avatar=subscription.avatar,
@@ -146,6 +156,7 @@ def _build_sync_center_item(
         sync_mode=sync_mode,
         sync_status=sync_status,
         display_status=display_status,
+        current_phase=run_projection.current_phase if run_projection else (subscription_projection.current_phase if subscription_projection else None),
         failure_count=(run_projection.failure_count if run_projection else 0),
         last_error=last_error,
         last_error_summary=_summarize_error(last_error),
@@ -156,6 +167,14 @@ def _build_sync_center_item(
         locked_at=_format_datetime(run_projection.started_at if run_projection else None),
         updated_at=_format_datetime(subscription_projection.updated_at if subscription_projection else (run_projection.updated_at if run_projection else None)),
         pending_video_count=pending_video_count,
+        feed_completed=bool(progress_snapshot['feed_completed']),
+        has_more_pages=False,
+        videos_found=run_projection.videos_found if run_projection else 0,
+        videos_enqueued=run_projection.videos_enqueued if run_projection else 0,
+        videos_extracted=run_projection.videos_extracted if run_projection else 0,
+        videos_skipped=run_projection.videos_skipped if run_projection else 0,
+        progress_percent=int(progress_snapshot['progress_percent']),
+        progress_label=str(progress_snapshot['progress_label']),
         is_deferred=display_status == 'deferred',
         defer_reason='queue_backpressure' if display_status == 'deferred' else None,
     )
@@ -201,7 +220,7 @@ def _sort_items(items: list[SyncCenterItemDto], status: Optional[str]) -> list[S
             return recent_dt(item), item.subscription_id
         return parse_dt(item.last_sync_at, fallback=datetime.min), item.subscription_id
 
-    reverse = status not in {'queued', 'scheduled'}
+    reverse = status not in {'queued', 'scheduled', 'running'}
     if status == 'recent':
         reverse = True
     return sorted(items, key=sort_key, reverse=reverse)
@@ -248,12 +267,17 @@ def list_sync_center_items(
     total = len(sorted_items)
     start = max(0, (page - 1) * page_size)
     end = start + page_size
+    paged_items = sorted_items[start:end]
+
+    if normalized_status == 'queued':
+        for index, item in enumerate(paged_items, start=start + 1):
+            item.queue_position = index
 
     return SyncCenterListDto(
         total=total,
         page=page,
         page_size=page_size,
-        data=sorted_items[start:end],
+        data=paged_items,
     )
 
 

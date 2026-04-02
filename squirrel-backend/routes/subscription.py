@@ -6,7 +6,14 @@ from pydantic import BaseModel
 import common.response as response
 from models.user import User
 from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest, ImportSubscriptionsRequest
-from services import subscription_service, subscription_sync_center_service, subscription_sync_history_service, subscription_sync_state_service, subscription_sync_trend_service
+from services import (
+    subscription_service,
+    subscription_sync_center_service,
+    subscription_sync_history_service,
+    subscription_sync_state_service,
+    subscription_sync_trend_service,
+    video_extraction_center_service,
+)
 from typing import List
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
@@ -15,6 +22,7 @@ from utils.jwt_helper import get_current_user
 router = APIRouter(tags=['订阅接口'])
 logger = logging.getLogger(__name__)
 SYNC_CENTER_ALLOWED_STATUS = {'failed', 'running', 'queued', 'scheduled', 'recent'}
+EXTRACTION_CENTER_ALLOWED_STATUS = {'failed', 'running', 'queued', 'recent'}
 SYNC_HISTORY_ALLOWED_STATUS = {'created', 'queued', 'running', 'success', 'failed', 'deferred', 'timeout'}
 
 
@@ -129,6 +137,41 @@ def get_sync_center_items(
         return response.param_error(f'不支持的状态筛选: {status}')
 
     result = subscription_sync_center_service.list_sync_center_items(
+        current_user.id,
+        normalized_status,
+        site,
+        query,
+        page,
+        page_size,
+    )
+    return response.success({
+        'total': result.total,
+        'page': result.page,
+        'pageSize': result.page_size,
+        'data': result.data,
+    })
+
+
+@router.get('/api/subscription/extraction-center/overview')
+def get_extraction_center_overview(current_user: User = Depends(get_current_user)):
+    overview = video_extraction_center_service.get_extraction_center_overview(current_user.id)
+    return response.success(overview)
+
+
+@router.get('/api/subscription/extraction-center/items')
+def get_extraction_center_items(
+        status: str = Query(None, description='提取状态筛选'),
+        site: str = Query(None, description='站点筛选'),
+        query: str = Query(None, description='订阅搜索关键字'),
+        page: int = Query(1, ge=1, description='页码'),
+        page_size: int = Query(20, ge=1, le=100, alias='pageSize', description='每页数量'),
+        current_user: User = Depends(get_current_user)
+):
+    normalized_status = str(status or '').strip().lower() or None
+    if normalized_status and normalized_status not in EXTRACTION_CENTER_ALLOWED_STATUS:
+        return response.param_error(f'不支持的提取状态筛选: {status}')
+
+    result = video_extraction_center_service.list_extraction_center_items(
         current_user.id,
         normalized_status,
         site,
