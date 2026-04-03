@@ -26,14 +26,24 @@
           <span class="queue-row__rank-no">#{{ item.queue_position || '–' }}</span>
         </div>
 
-        <div class="min-w-0 flex-1">
+        <div class="queue-row__identity">
+          <img
+            :src="getAvatarSrc(item.subscription_avatar, item.subscription_id)"
+            :alt="item.subscription_name"
+            class="queue-row__avatar"
+            referrerpolicy="no-referrer"
+            @error="(event) => handleAvatarError(event, item.subscription_id)"
+          >
+
+          <div class="min-w-0 flex-1">
           <div class="queue-row__title">
             <span v-if="index === 0" class="queue-row__badge">队首</span>
             <h3 class="truncate text-sm font-semibold text-white/92">{{ item.subscription_name }}</h3>
           </div>
           <p class="queue-row__meta">
-            {{ item.site || 'unknown' }} · {{ getModeLabel(item.sync_mode) }} · {{ formatDate(item.queued_at || item.updated_at) }}
+            {{ item.site || 'unknown' }} · {{ getModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
           </p>
+          </div>
         </div>
 
         <div class="queue-row__flow" aria-hidden="true">
@@ -47,6 +57,7 @@
 
 <script setup lang="ts">
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
+import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDate } from '@/utils/dateFormat'
 
 defineProps<{
@@ -59,10 +70,22 @@ const emit = defineEmits<{
   (e: 'open-run', item: SyncCenterItem): void
 }>()
 
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
+
 const getModeLabel = (mode: string) => {
   if (mode === 'full') return '全量'
   if (mode === 'incremental') return '增量'
   return mode || '未知'
+}
+
+const getQueueTimeLabel = (item: SyncCenterItem) => {
+  if (item.updated_at) {
+    return `最近更新 ${formatDate(item.updated_at)}`
+  }
+  if (item.queued_at) {
+    return `排队于 ${formatDate(item.queued_at)}`
+  }
+  return '最近更新 --'
 }
 </script>
 
@@ -186,6 +209,24 @@ const getModeLabel = (mode: string) => {
   align-items: center;
   gap: 0.45rem;
   min-width: 0;
+}
+
+.queue-row__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.queue-row__avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.8rem;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .queue-row__badge {

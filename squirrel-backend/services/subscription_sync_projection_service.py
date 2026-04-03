@@ -202,6 +202,30 @@ def _get_or_create_trend_projection(
     return projection
 
 
+def _apply_counter_payload(projection: SubscriptionSyncRunProjection, event: SubscriptionSyncEvent) -> None:
+    counter_by_event_type = {
+        SyncEventType.VIDEO_FOUND: 'videos_found',
+        SyncEventType.VIDEO_ENQUEUED: 'videos_enqueued',
+        SyncEventType.VIDEO_EXTRACTED: 'videos_extracted',
+        SyncEventType.VIDEO_SKIPPED: 'videos_skipped',
+    }
+    counter_name = counter_by_event_type.get(event.event_type)
+    if not counter_name:
+        return
+
+    payload = event.payload or {}
+    delta_key = f'{counter_name}_delta'
+    if delta_key in payload:
+        current_value = getattr(projection, counter_name)
+        setattr(projection, counter_name, max(0, current_value + _payload_int(payload, delta_key)))
+        return
+
+    if counter_name in payload:
+        current_value = getattr(projection, counter_name)
+        next_value = _payload_int(payload, counter_name, current_value)
+        setattr(projection, counter_name, max(current_value, next_value))
+
+
 def _apply_run_projection(projection: SubscriptionSyncRunProjection, event: SubscriptionSyncEvent) -> None:
     if event.seq_no <= projection.last_event_seq_no:
         return
@@ -248,15 +272,7 @@ def _apply_run_projection(projection: SubscriptionSyncRunProjection, event: Subs
     projection.pending_video_count = _payload_int(payload, 'pending_video_count', projection.pending_video_count)
     projection.error_type = _payload_text(payload, 'error_type', projection.error_type)
     projection.error_message = _payload_text(payload, 'error_message', projection.error_message)
-
-    for counter_name in ('videos_found', 'videos_enqueued', 'videos_extracted', 'videos_skipped'):
-        if counter_name in payload:
-            setattr(projection, counter_name, _payload_int(payload, counter_name, getattr(projection, counter_name)))
-            continue
-        delta_key = f'{counter_name}_delta'
-        if delta_key in payload:
-            current_value = getattr(projection, counter_name)
-            setattr(projection, counter_name, max(0, current_value + _payload_int(payload, delta_key)))
+    _apply_counter_payload(projection, event)
 
 
 def _apply_subscription_projection(projection: SubscriptionSyncSubscriptionProjection, event: SubscriptionSyncEvent) -> None:
@@ -265,7 +281,7 @@ def _apply_subscription_projection(projection: SubscriptionSyncSubscriptionProje
         if event.seq_no <= projection.last_event_seq_no:
             return
     elif projection.latest_run_id:
-        if event.occurred_at < projection.updated_at:
+        if event.event_type != SyncEventType.RUN_CREATED:
             return
         if projection.current_status in {SyncRunStatus.CREATED, SyncRunStatus.QUEUED, SyncRunStatus.RUNNING} and incoming_status in {
             SyncRunStatus.SUCCESS,

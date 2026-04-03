@@ -179,3 +179,86 @@ def test_recover_stale_queued_sync_states_uses_task_store(monkeypatch):
     with Session(engine, expire_on_commit=False) as session:
         state = session.get(SubscriptionSyncState, 10)
     assert state.sync_status == 'queued'
+
+
+def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_phase(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    captured_events = []
+    monkeypatch.setattr(subscription_sync_state_service, 'append_event', lambda event, session=None: captured_events.append(event))
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            SubscriptionSyncState(
+                id=10,
+                subscription_id=1,
+                site='youtube.com',
+                sync_mode='incremental',
+                sync_status='running',
+                cursor_payload={},
+                last_seen_video_url='https://example.com/video/1',
+                next_sync_at=datetime(2026, 4, 1, 12, 0, 0),
+                last_sync_at=datetime(2026, 4, 1, 11, 50, 0),
+                pending_video_count=3,
+                locked_at=None,
+            )
+        )
+        session.commit()
+
+    result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
+
+    assert result == {'running_states': 1, 'completed': 1, 'failed': 0}
+
+    with Session(engine, expire_on_commit=False) as session:
+        state = session.get(SubscriptionSyncState, 10)
+
+    assert state.sync_status == 'success'
+    assert state.pending_video_count == 0
+    assert state.last_success_at is not None
+    assert [event.event_type for event in captured_events] == ['run_created', 'completed']
+
+
+def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_are_dead(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    captured_events = []
+    monkeypatch.setattr(subscription_sync_state_service, 'append_event', lambda event, session=None: captured_events.append(event))
+
+    with Session(engine, expire_on_commit=False) as session:
+        job_id = _seed_job(session)
+        session.add(
+            SubscriptionSyncState(
+                id=10,
+                subscription_id=1,
+                site='youtube.com',
+                sync_mode='incremental',
+                sync_status='running',
+                cursor_payload={},
+                next_sync_at=datetime(2026, 4, 1, 12, 0, 0),
+                last_sync_at=datetime(2026, 4, 1, 11, 50, 0),
+                pending_video_count=2,
+                locked_at=None,
+            )
+        )
+        session.add(
+            CrawlTask(
+                job_id=job_id,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=1,
+                status='dead',
+                last_error='extract_failed',
+                payload={'sync_state_id': 10},
+            )
+        )
+        session.commit()
+
+    result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
+
+    assert result == {'running_states': 1, 'completed': 0, 'failed': 1}
+
+    with Session(engine, expire_on_commit=False) as session:
+        state = session.get(SubscriptionSyncState, 10)
+
+    assert state.sync_status == 'failed'
+    assert state.pending_video_count == 0
+    assert state.last_error == 'extract_failed'
+    assert [event.event_type for event in captured_events] == ['run_created', 'failed']

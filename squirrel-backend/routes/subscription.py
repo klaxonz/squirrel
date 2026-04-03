@@ -23,7 +23,7 @@ router = APIRouter(tags=['订阅接口'])
 logger = logging.getLogger(__name__)
 SYNC_CENTER_ALLOWED_STATUS = {'failed', 'running', 'queued', 'scheduled', 'recent'}
 EXTRACTION_CENTER_ALLOWED_STATUS = {'failed', 'running', 'queued', 'recent'}
-SYNC_HISTORY_ALLOWED_STATUS = {'created', 'queued', 'running', 'success', 'failed', 'deferred', 'timeout'}
+SYNC_HISTORY_ALLOWED_STATUS = {'created', 'queued', 'running', 'success', 'failed', 'deferred', 'timeout', 'recent', 'feed_recent'}
 
 
 class RetryFailedSyncItemsRequest(BaseModel):
@@ -150,6 +150,24 @@ def get_sync_center_items(
         'pageSize': result.page_size,
         'data': result.data,
     })
+
+
+@router.get('/api/subscription/sync-center/feed-snapshot')
+def get_sync_center_feed_snapshot(
+        site: str = Query(None, description='站点筛选'),
+        query: str = Query(None, description='订阅搜索关键字'),
+        date_from: str = Query(None, alias='dateFrom', description='开始时间'),
+        date_to: str = Query(None, alias='dateTo', description='结束时间'),
+        current_user: User = Depends(get_current_user)
+):
+    result = subscription_sync_center_service.get_feed_dashboard_snapshot(
+        user_id=current_user.id,
+        site=site,
+        query=query,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    return response.success(result)
 
 
 @router.get('/api/subscription/extraction-center/overview')
@@ -359,10 +377,13 @@ def get_sync_center_recovery_summary(current_user: User = Depends(get_current_us
 @router.post('/api/subscription/sync-center/reconcile')
 def reconcile_sync_center(current_user: User = Depends(get_current_user)):
     _ = current_user
+    drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
     queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()
     running_result = subscription_sync_state_service.recover_stale_running_sync_states()
     return response.success({
         'reconcileAt': datetime.utcnow().isoformat(),
+        'drainedCompleted': drained_result['completed'],
+        'drainedFailed': drained_result['failed'],
         'queuedStates': queued_result['queued_states'],
         'queuedRecovered': queued_result['recovered'],
         'runningStates': running_result['running_states'],

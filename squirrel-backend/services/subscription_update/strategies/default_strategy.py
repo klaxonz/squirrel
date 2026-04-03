@@ -125,6 +125,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
                 blocked_count += 1
                 metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "blocked_video"})
             else:
+                reserved_pending = False
                 try:
                     params = VideoExtractDto(
                         url=video_url,
@@ -137,13 +138,23 @@ class DefaultUpdateStrategy(UpdateStrategy):
                         is_manual=request.trigger == UpdateTrigger.MANUAL,
                         is_extract_all=is_full_update
                     )
+                    subscription_sync_state_service.increment_pending_video_count(request.sync_state_id, 1)
+                    reserved_pending = True
                     if download_service.enqueue_video_extraction(params):
                         enqueued += 1
+                    else:
+                        subscription_sync_state_service.decrement_pending_video_count(
+                            request.sync_state_id,
+                            allow_completion=False,
+                        )
                 except Exception as e:
+                    if reserved_pending:
+                        subscription_sync_state_service.decrement_pending_video_count(
+                            request.sync_state_id,
+                            allow_completion=False,
+                        )
                     failed_count += 1
                     logger.warning(f"Failed to enqueue video {video_url}: {e}")
-
-        subscription_sync_state_service.increment_pending_video_count(request.sync_state_id, enqueued)
 
         if request.run_id:
             append_event(

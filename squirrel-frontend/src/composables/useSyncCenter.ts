@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import {
+  getFeedDashboardSnapshot,
   getSupportedSites,
   getSyncCenterItems,
   getSyncCenterOverview,
@@ -8,12 +9,14 @@ import {
   retryFailedSyncItems,
   triggerRefresh,
 } from '@/api'
+import type { SyncRunItem } from '@/composables/useSyncHistory'
 import { Logger } from '@/utils/logger'
 
 export type SyncCenterStatusFilter = 'failed' | 'running' | 'queued' | 'scheduled' | 'recent'
 
 export interface SyncCenterOverview {
   running_count: number
+  awaiting_extract_count: number
   queued_count: number
   failed_count: number
   due_soon_count: number
@@ -68,6 +71,13 @@ interface SyncCenterListResponse {
   data: SyncCenterItem[]
 }
 
+interface FeedDashboardSnapshotResponse {
+  overview: SyncCenterOverview
+  runningPreview: SyncCenterItem[]
+  queuedPreview: SyncCenterItem[]
+  recentRuns: SyncRunItem[]
+}
+
 interface RetryFailedResponse {
   total: number
   queued: number
@@ -101,6 +111,7 @@ const POLL_INTERVAL = 15000
 
 const createEmptyOverview = (): SyncCenterOverview => ({
   running_count: 0,
+  awaiting_extract_count: 0,
   queued_count: 0,
   failed_count: 0,
   due_soon_count: 0,
@@ -123,6 +134,7 @@ export function useSyncCenter() {
   const items = ref<SyncCenterItem[]>([])
   const runningPreview = ref<SyncCenterItem[]>([])
   const queuedPreview = ref<SyncCenterItem[]>([])
+  const recentRuns = ref<SyncRunItem[]>([])
   const runningPreviewError = ref('')
   const queuedPreviewError = ref('')
   const filteredFailedCount = ref(0)
@@ -150,6 +162,10 @@ export function useSyncCenter() {
     status: 'recent' as SyncCenterStatusFilter,
     site: '',
     query: '',
+  })
+  const recentDateRange = reactive({
+    dateFrom: '',
+    dateTo: '',
   })
   const siteOptions = ref<SiteOption[]>([])
 
@@ -194,6 +210,49 @@ export function useSyncCenter() {
       page: currentPage,
       pageSize: pageSize.value,
     }
+  }
+
+  const loadFeedDashboardSnapshot = async () => {
+    const [runningRequestSeq, queuedRequestSeq] = [
+      ++runningPreviewRequestSeq,
+      ++queuedPreviewRequestSeq,
+    ]
+    loadingOverview.value = true
+    overviewError.value = ''
+    const { data, error } = await getFeedDashboardSnapshot<FeedDashboardSnapshotResponse>({
+      site: filters.site || undefined,
+      query: filters.query || undefined,
+      dateFrom: recentDateRange.dateFrom || undefined,
+      dateTo: recentDateRange.dateTo || undefined,
+    })
+    if (
+      runningRequestSeq !== runningPreviewRequestSeq
+      || queuedRequestSeq !== queuedPreviewRequestSeq
+    ) {
+      return
+    }
+    if (error) {
+      overviewError.value = error.message || '加载同步总览失败'
+      runningPreviewError.value = error.message || '加载运行中预览失败'
+      queuedPreviewError.value = error.message || '加载排队预览失败'
+      overview.value = createEmptyOverview()
+      runningPreview.value = []
+      queuedPreview.value = []
+      recentRuns.value = []
+      Logger.error('Failed to load feed dashboard snapshot', error)
+    } else if (data) {
+      overview.value = {
+        ...createEmptyOverview(),
+        ...(data.overview || {}),
+      }
+      runningPreviewError.value = ''
+      queuedPreviewError.value = ''
+      runningPreview.value = data.runningPreview || []
+      queuedPreview.value = data.queuedPreview || []
+      recentRuns.value = data.recentRuns || []
+      syncSelectedItem()
+    }
+    loadingOverview.value = false
   }
 
   const loadOverview = async () => {
@@ -346,11 +405,9 @@ export function useSyncCenter() {
 
   const refreshAll = async () => {
     await Promise.all([
-      loadOverview(),
+      loadFeedDashboardSnapshot(),
       loadRecoverySummary(),
       loadItems(),
-      loadPreview('running'),
-      loadPreview('queued'),
       loadFilteredFailedCount(),
     ])
     updateLastRefreshTime()
@@ -369,7 +426,7 @@ export function useSyncCenter() {
   const setSite = async (site: string) => {
     filters.site = site
     page.value = 1
-    await Promise.all([loadItems(), loadPreview('running'), loadPreview('queued'), loadFilteredFailedCount()])
+    await Promise.all([loadItems(), loadFeedDashboardSnapshot(), loadFilteredFailedCount()])
     updateLastRefreshTime()
   }
 
@@ -380,9 +437,14 @@ export function useSyncCenter() {
       clearTimeout(queryTimer)
     }
     queryTimer = setTimeout(async () => {
-      await Promise.all([loadItems(), loadPreview('running'), loadPreview('queued'), loadFilteredFailedCount()])
+      await Promise.all([loadItems(), loadFeedDashboardSnapshot(), loadFilteredFailedCount()])
       updateLastRefreshTime()
     }, 300)
+  }
+
+  const setRecentDateRange = (dateFrom: string, dateTo: string) => {
+    recentDateRange.dateFrom = dateFrom
+    recentDateRange.dateTo = dateTo
   }
 
   const setPage = async (nextPage: number) => {
@@ -501,8 +563,10 @@ export function useSyncCenter() {
     retryingBatch,
     retryingItemId,
     retryItem,
+    recentRuns,
     runningPreview,
     runningPreviewError,
+    setRecentDateRange,
     setPollingEnabled,
     selectStatus,
     selectedItem,

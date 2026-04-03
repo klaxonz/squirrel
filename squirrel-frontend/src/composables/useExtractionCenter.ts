@@ -14,6 +14,7 @@ const POLL_INTERVAL = 15000
 
 const createEmptyOverview = (): SyncCenterOverview => ({
   running_count: 0,
+  awaiting_extract_count: 0,
   queued_count: 0,
   failed_count: 0,
   due_soon_count: 0,

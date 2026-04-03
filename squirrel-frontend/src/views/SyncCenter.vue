@@ -63,6 +63,7 @@
             :loading="dashboardRefreshing"
             :error="currentRunningError"
             :pipeline="activePipeline"
+            :carryover-count="activePipeline === 'feed' ? feedAwaitingExtractCount : 0"
             @open-run="handleOpenRunFromItem"
           />
 
@@ -71,6 +72,7 @@
             :runs="recentLaneRuns"
             :loading="historyLoading"
             :error="historyError"
+            :last-updated-at="historyLastUpdatedAt"
             :selected-run-id="selectedRunId"
             @open-run="handleSelectRun"
           />
@@ -98,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import SyncActiveRunBoard from '@/components/sync-center/SyncActiveRunBoard.vue'
 import SyncControlBar from '@/components/sync-center/SyncControlBar.vue'
 import SyncQueueBoard from '@/components/sync-center/SyncQueueBoard.vue'
@@ -111,6 +113,10 @@ import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { useSyncCenter } from '@/composables/useSyncCenter'
 import { useSyncHistory } from '@/composables/useSyncHistory'
 import { type SyncTimeLens, useSyncCenterWorkbench } from '@/composables/useSyncCenterWorkbench'
+import { resolveFeedRecentLaneSnapshot } from '@/utils/syncFeedRecentLane'
+import { getSyncCenterHistoryWindow } from '@/utils/syncCenterHistoryWindow'
+
+const DASHBOARD_POLL_INTERVAL = 15000
 
 const {
   lens: workbenchLens,
@@ -130,6 +136,7 @@ const {
   pageError: overviewPageError,
   queuedPreview,
   queuedPreviewError,
+  recentRuns: feedRecentRuns,
   refreshAll: overviewRefreshAll,
   retryFailed,
   retryingBatch,
@@ -137,26 +144,28 @@ const {
   reconciling,
   runningPreview,
   runningPreviewError,
+  setRecentDateRange,
   siteOptions,
   total: overviewTotal,
   setPollingEnabled,
 } = useSyncCenter()
 
 const {
+  autoRefresh: historyAutoRefresh,
   closeRun: historyCloseRun,
   detailError: historyDetailError,
   detailLoading: historyDetailLoading,
   error: historyError,
   events: historyEvents,
   lastUpdatedAt: historyLastUpdatedAt,
-  loadRuns: historyLoadRuns,
   loading: historyLoading,
   refreshSelectedRun: historyRefreshSelectedRun,
-  runs: historyRuns,
   selectRun: historySelectRun,
   selectedRun: historySelectedRun,
-  setDateRange: historySetDateRange,
-} = useSyncHistory()
+  setPollingEnabled: setHistoryPollingEnabled,
+} = useSyncHistory({
+  resolveDateRange: () => getSyncCenterHistoryWindow(workbenchLens.value),
+})
 
 const {
   autoRefresh: extractionAutoRefresh,
@@ -176,6 +185,10 @@ const {
 } = useExtractionCenter()
 
 const activePipeline = ref<'feed' | 'extract'>('feed')
+const feedRecentLaneRuns = ref<typeof feedRecentRuns.value>([])
+const feedRecentBaselineReady = ref(false)
+const feedRecentActiveRunIds = ref<string[]>([])
+let dashboardPollTimer: ReturnType<typeof setInterval> | null = null
 
 const dashboardRefreshing = computed(() => {
   if (activePipeline.value === 'extract') {
@@ -212,13 +225,13 @@ const dashboardSummary = computed(() => {
   if (overviewPageError.value || historyError.value) {
     return '部分数据不可用'
   }
-  return `运行中 ${overview.value.running_count} · 排队 ${overview.value.queued_count} · 待提取 ${overview.value.pending_videos}`
+  return `列表拉取中 ${overview.value.running_count} · 排队 ${overview.value.queued_count} · 等待提取收口 ${overview.value.awaiting_extract_count}`
 })
 
 const currentAutoRefresh = computed(() => {
   return activePipeline.value === 'extract'
     ? extractionAutoRefresh.value
-    : overviewAutoRefresh.value
+    : overviewAutoRefresh.value && historyAutoRefresh.value
 })
 
 const parseTimestamp = (value?: string | null) => {
@@ -236,6 +249,14 @@ const activeLaneItems = computed(() => {
     }
     return left.subscription_id - right.subscription_id
   })
+})
+
+const feedActiveLaneItems = computed(() => {
+  return activeLaneItems.value
+})
+
+const feedAwaitingExtractCount = computed(() => {
+  return overview.value.awaiting_extract_count
 })
 
 const extractionActiveLaneItems = computed(() => {
@@ -290,11 +311,10 @@ const extractionQueuedLaneItems = computed(() => {
 })
 
 const recentLaneRuns = computed(() => {
-  return [...historyRuns.value]
-    .filter((run) => !['created', 'queued', 'running'].includes(run.status))
+  return [...feedRecentLaneRuns.value]
     .sort((left, right) => {
-      const leftFinished = parseTimestamp(left.finished_at || left.last_event_at || left.started_at)
-      const rightFinished = parseTimestamp(right.finished_at || right.last_event_at || right.started_at)
+      const leftFinished = parseTimestamp(left.feed_completed_at || left.finished_at || left.last_event_at || left.started_at)
+      const rightFinished = parseTimestamp(right.feed_completed_at || right.finished_at || right.last_event_at || right.started_at)
       if (leftFinished !== rightFinished) {
         return rightFinished - leftFinished
       }
@@ -304,7 +324,7 @@ const recentLaneRuns = computed(() => {
 })
 
 const currentActiveLaneItems = computed(() => {
-  return activePipeline.value === 'extract' ? extractionActiveLaneItems.value : activeLaneItems.value
+  return activePipeline.value === 'extract' ? extractionActiveLaneItems.value : feedActiveLaneItems.value
 })
 
 const currentQueuedLaneItems = computed(() => {
@@ -323,19 +343,24 @@ const currentRunningError = computed(() => {
   return activePipeline.value === 'extract' ? extractionRunningPreviewError.value : runningPreviewError.value
 })
 
-const getLensWindow = (lens: SyncTimeLens) => {
-  const now = new Date()
-  const start = new Date(now)
-  if (lens === '7d') {
-    start.setDate(start.getDate() - 7)
-    return { dateFrom: start.toISOString(), dateTo: now.toISOString() }
-  }
-  if (lens === '24h') {
-    start.setHours(start.getHours() - 24)
-    return { dateFrom: start.toISOString(), dateTo: now.toISOString() }
-  }
-  start.setHours(start.getHours() - 6)
-  return { dateFrom: start.toISOString(), dateTo: now.toISOString() }
+const syncFeedRecentWindow = () => {
+  const windowConfig = getSyncCenterHistoryWindow(workbenchLens.value)
+  setRecentDateRange(windowConfig.dateFrom, windowConfig.dateTo)
+}
+
+const syncFeedRecentLaneSnapshot = () => {
+  const laneSnapshot = resolveFeedRecentLaneSnapshot({
+    previousActiveRunIds: feedRecentActiveRunIds.value,
+    nextActiveItems: feedActiveLaneItems.value,
+    snapshotRecentRuns: feedRecentRuns.value,
+    currentLaneRuns: feedRecentLaneRuns.value,
+    hasBaseline: feedRecentBaselineReady.value,
+    maxRuns: 9,
+  })
+
+  feedRecentActiveRunIds.value = laneSnapshot.nextActiveRunIds
+  feedRecentLaneRuns.value = laneSnapshot.nextLaneRuns
+  feedRecentBaselineReady.value = laneSnapshot.hasBaseline
 }
 
 const handleRefreshAll = async () => {
@@ -343,11 +368,12 @@ const handleRefreshAll = async () => {
     await extractionRefreshAll()
     return
   }
+  syncFeedRecentWindow()
   await Promise.all([
     overviewRefreshAll(),
-    historyLoadRuns(),
     historyRefreshSelectedRun(),
   ])
+  syncFeedRecentLaneSnapshot()
 }
 
 const handleLensChange = (lens: SyncTimeLens) => {
@@ -360,6 +386,7 @@ const handleToggleAutoRefresh = (value: boolean) => {
     return
   }
   overviewAutoRefresh.value = value
+  historyAutoRefresh.value = value
 }
 
 const handleRetryFailed = async () => {
@@ -401,10 +428,28 @@ const handleOpenRunFromItem = (item: SyncCenterItem) => {
   selectRun(item.run_id)
 }
 
+const clearDashboardPollTimer = () => {
+  if (!dashboardPollTimer) {
+    return
+  }
+  clearInterval(dashboardPollTimer)
+  dashboardPollTimer = null
+}
+
+const startDashboardPolling = () => {
+  clearDashboardPollTimer()
+  if (!currentAutoRefresh.value) {
+    return
+  }
+  dashboardPollTimer = setInterval(() => {
+    handleRefreshAll()
+  }, DASHBOARD_POLL_INTERVAL)
+}
+
 watch(workbenchLens, async (lens) => {
-  const windowConfig = getLensWindow(lens)
-  historySetDateRange(windowConfig.dateFrom, windowConfig.dateTo)
-  await historyLoadRuns()
+  syncFeedRecentWindow()
+  await overviewRefreshAll()
+  syncFeedRecentLaneSnapshot()
 }, { immediate: true })
 
 watch(selectedRunId, async (runId) => {
@@ -422,9 +467,19 @@ watch(activePipeline, (pipeline) => {
   }
 })
 
+watch([currentAutoRefresh, activePipeline], () => {
+  startDashboardPolling()
+})
+
 onMounted(() => {
-  setPollingEnabled(true)
-  setExtractionPollingEnabled(true)
+  setPollingEnabled(false)
+  setHistoryPollingEnabled(false)
+  setExtractionPollingEnabled(false)
+  startDashboardPolling()
+})
+
+onBeforeUnmount(() => {
+  clearDashboardPollTimer()
 })
 </script>
 

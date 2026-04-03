@@ -75,6 +75,7 @@ def extract_video(params: VideoExtractDto) -> ExtractionResult:
     """
     domain = url_helper.extract_top_level_domain(params.url)
     tags = {"site": domain}
+    extraction_succeeded = False
     
     try:
         if not SiteCatalog.is_site_enabled(domain=domain):
@@ -95,6 +96,7 @@ def extract_video(params: VideoExtractDto) -> ExtractionResult:
             result = handler.process(task)
         
         if result.success:
+            extraction_succeeded = True
             video_title = result.data.title if result.data else 'N/A'
             logger.info(
                 f"Video extracted: platform={domain}, url={params.url}, "
@@ -133,6 +135,7 @@ def extract_video(params: VideoExtractDto) -> ExtractionResult:
             params.sync_state_id,
             run_id=params.run_id,
             trigger=params.trigger or ('manual' if params.is_manual else 'scheduled'),
+            allow_completion=extraction_succeeded,
         )
 
 

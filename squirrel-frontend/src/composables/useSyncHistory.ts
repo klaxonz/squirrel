@@ -1,4 +1,4 @@
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { getSubscriptionOptions, getSupportedSites, getSyncRunDetail, getSyncRunEvents, getSyncRuns } from '@/api'
 import { Logger } from '@/utils/logger'
 
@@ -28,6 +28,7 @@ export interface SyncRunItem {
   source_video_count?: number | null
   pending_video_count: number
   feed_completed: boolean
+  feed_completed_at: string
   progress_percent: number
   progress_label: string
   last_event_at: string
@@ -90,12 +91,20 @@ interface SubscriptionOptionListResponse {
   }>
 }
 
-export function useSyncHistory() {
+interface UseSyncHistoryOptions {
+  resolveDateRange?: () => { dateFrom: string; dateTo: string } | null
+}
+
+const POLL_INTERVAL = 15000
+
+export function useSyncHistory(options: UseSyncHistoryOptions = {}) {
+  const autoRefresh = ref(true)
   const loading = ref(false)
   const detailLoading = ref(false)
   const error = ref('')
   const detailError = ref('')
   const lastUpdatedAt = ref('')
+  const pollingEnabled = ref(true)
   const runs = ref<SyncRunItem[]>([])
   const siteOptions = ref<SiteOption[]>([])
   const subscriptionOptions = ref<SubscriptionOption[]>([{ value: '', label: '全部频道', avatar: null }])
@@ -115,6 +124,7 @@ export function useSyncHistory() {
   })
   let listRequestSeq = 0
   let detailRequestSeq = 0
+  let pollTimer: ReturnType<typeof setInterval> | null = null
 
   const loadSubscriptionOptions = async () => {
     const { data, error: requestError } = await getSubscriptionOptions<SubscriptionOptionListResponse>()
@@ -189,6 +199,11 @@ export function useSyncHistory() {
   }
 
   const loadRuns = async () => {
+    const resolvedDateRange = options.resolveDateRange?.()
+    if (resolvedDateRange) {
+      setDateRange(resolvedDateRange.dateFrom, resolvedDateRange.dateTo)
+    }
+
     const requestSeq = ++listRequestSeq
     loading.value = true
     error.value = ''
@@ -259,6 +274,13 @@ export function useSyncHistory() {
     await selectRun(selectedRun.value.run_id)
   }
 
+  const refreshAll = async () => {
+    await Promise.all([
+      loadRuns(),
+      refreshSelectedRun(),
+    ])
+  }
+
   const closeRun = () => {
     detailRequestSeq += 1
     selectedRun.value = null
@@ -301,12 +323,44 @@ export function useSyncHistory() {
     })
   }
 
+  const setPollingEnabled = (enabled: boolean) => {
+    pollingEnabled.value = enabled
+  }
+
+  const clearPollTimer = () => {
+    if (!pollTimer) {
+      return
+    }
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+
+  const startPolling = () => {
+    clearPollTimer()
+    if (!autoRefresh.value || !pollingEnabled.value) {
+      return
+    }
+    pollTimer = setInterval(() => {
+      refreshAll()
+    }, POLL_INTERVAL)
+  }
+
+  watch([autoRefresh, pollingEnabled], () => {
+    startPolling()
+  })
+
   onMounted(() => {
     loadSiteOptions()
     loadSubscriptionOptions()
+    startPolling()
+  })
+
+  onUnmounted(() => {
+    clearPollTimer()
   })
 
   return {
+    autoRefresh,
     closeRun,
     detailError,
     detailLoading,
@@ -318,10 +372,12 @@ export function useSyncHistory() {
     loading,
     page,
     pageSize,
+    refreshAll,
     refreshSelectedRun,
     runs,
     selectRun,
     selectedRun,
+    setPollingEnabled,
     siteOptions,
     subscriptionOptions,
     setDateRange,

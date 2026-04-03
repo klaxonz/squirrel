@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 class SyncCenterOverviewDto(BaseModel):
     running_count: int = 0
+    awaiting_extract_count: int = 0
     queued_count: int = 0
     failed_count: int = 0
     due_soon_count: int = 0

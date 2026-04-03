@@ -6,7 +6,7 @@
         <h2 class="board-title">当前正在处理</h2>
         <p class="board-caption">{{ boardCaption }}</p>
       </div>
-      <span class="board-count">{{ items.length }} 项</span>
+      <span class="board-count">{{ displayCountLabel }}</span>
     </div>
 
     <div v-if="items.length" class="worker-strip" aria-hidden="true">
@@ -23,7 +23,14 @@
 
     <div v-if="error" class="board-error">{{ error }}</div>
     <div v-else-if="loading && !items.length" class="board-empty">正在获取运行中的订阅...</div>
-    <div v-else-if="!items.length" class="board-empty">当前没有正在爬取的订阅</div>
+    <div v-else-if="!items.length" class="board-empty">
+      <div class="board-empty__content">
+        <p>{{ emptyMessage }}</p>
+        <p v-if="pipeline === 'feed' && carryoverCount > 0" class="board-empty__hint">
+          其中 {{ carryoverCount }} 个订阅已转入“视频提取”tab。
+        </p>
+      </div>
+    </div>
 
     <TransitionGroup v-else name="lane-card" tag="div" class="board-list">
       <button
@@ -49,22 +56,22 @@
                 <span class="phase-chip">{{ getPhaseLabel(item.current_phase) }}</span>
               </div>
               <p class="run-row__meta">
-                {{ getSiteLabel(item.site) }} · {{ getModeLabel(item.sync_mode) }} · {{ formatDate(item.locked_at || item.updated_at || item.last_sync_at) }}
+                {{ getMetaText(item) }}
               </p>
             </div>
           </div>
 
           <div class="run-row__progress">
-            <span class="run-row__percent">{{ item.progress_percent }}%</span>
+            <span v-if="showPercent(item)" class="run-row__percent">{{ item.progress_percent }}%</span>
             <span class="run-row__label">{{ item.progress_label || '进行中' }}</span>
           </div>
         </div>
 
-        <div class="progress-rail">
+        <div v-if="showProgressRail(item)" class="progress-rail">
           <div class="progress-fill" :style="{ width: `${item.progress_percent}%` }"></div>
         </div>
 
-        <div class="metric-inline">
+        <div v-if="pipeline === 'extract' || getFeedMetrics(item).length" class="metric-inline">
           <template v-if="pipeline === 'extract'">
             <span class="metric-pill">总数 {{ item.batch_task_count }}</span>
             <span class="metric-pill">排队 {{ item.queued_task_count }}</span>
@@ -73,10 +80,14 @@
             <span v-if="item.failed_task_count" class="metric-pill metric-pill--warn">失败 {{ item.failed_task_count }}</span>
           </template>
           <template v-else>
-            <span class="metric-pill">发现 {{ item.videos_found }}</span>
-            <span class="metric-pill">入队 {{ item.videos_enqueued }}</span>
-            <span class="metric-pill">提取 {{ item.videos_extracted }}</span>
-            <span class="metric-pill metric-pill--pending">剩余 {{ item.pending_video_count }}</span>
+            <span
+              v-for="metric in getFeedMetrics(item)"
+              :key="`${item.run_id || item.subscription_id}-${metric.label}`"
+              class="metric-pill"
+              :class="metric.tone === 'pending' ? 'metric-pill--pending' : metric.tone === 'warn' ? 'metric-pill--warn' : ''"
+            >
+              {{ metric.label }} {{ metric.value }}
+            </span>
           </template>
         </div>
       </button>
@@ -95,8 +106,10 @@ const props = withDefaults(defineProps<{
   error: string
   slotCount?: number
   pipeline?: 'feed' | 'extract'
+  carryoverCount?: number
 }>(), {
   pipeline: 'feed',
+  carryoverCount: 0,
 })
 
 const emit = defineEmits<{
@@ -107,13 +120,21 @@ const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useIm
 const boardCaption = props.pipeline === 'extract'
   ? '按最早开始时间稳定排序。每一行是一个真实活跃提取批次。'
   : '按最早开始时间稳定排序。每一行就是一个真实活跃 worker。'
+const emptyMessage = props.pipeline === 'extract'
+  ? '当前没有正在提取的视频批次'
+  : props.carryoverCount > 0
+    ? '当前没有列表拉取中的订阅'
+    : '当前没有正在爬取的订阅'
+const displayCountLabel = props.pipeline === 'feed' && props.carryoverCount > 0
+  ? `${props.items.length} 项拉取中 · ${props.carryoverCount} 项转提取`
+  : `${props.items.length} 项`
 
-const getSiteLabel = (site: string | null) => site || 'unknown'
+type MetricTone = 'default' | 'pending' | 'warn'
 
-const getModeLabel = (mode: string) => {
-  if (mode === 'full') return '全量'
-  if (mode === 'incremental') return '增量'
-  return mode || '未知'
+interface FeedMetric {
+  label: string
+  value: number
+  tone?: MetricTone
 }
 
 const getPhaseLabel = (phase: string | null) => {
@@ -127,6 +148,64 @@ const getPhaseLabel = (phase: string | null) => {
     case 'completed': return '已完成'
     default: return '运行中'
   }
+}
+
+const showPercent = (item: SyncCenterItem) => props.pipeline === 'extract' || item.current_phase === 'enqueueing'
+
+const showProgressRail = (item: SyncCenterItem) => props.pipeline === 'extract' || item.current_phase === 'enqueueing'
+
+const getTimeMetaText = (item: SyncCenterItem) => {
+  if (item.locked_at) {
+    return `开始于 ${formatDate(item.locked_at)}`
+  }
+  if (item.updated_at) {
+    return `最近更新 ${formatDate(item.updated_at)}`
+  }
+  if (item.last_sync_at) {
+    return `最近更新 ${formatDate(item.last_sync_at)}`
+  }
+  return '最近更新 --'
+}
+
+const getMetaText = (item: SyncCenterItem) => {
+  const timestamp = getTimeMetaText(item)
+  if (props.pipeline === 'extract') {
+    return `${item.site || 'unknown'} · ${timestamp}`
+  }
+
+  if (item.current_phase === 'fetching_feed') {
+    return `正在拉取视频列表 · ${timestamp}`
+  }
+  if (item.current_phase === 'calculating_delta') {
+    return `正在计算增量结果 · ${timestamp}`
+  }
+  if (item.current_phase === 'enqueueing') {
+    return `正在派发提取任务 · ${timestamp}`
+  }
+  return `最近更新 · ${timestamp}`
+}
+
+const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
+  const pendingDispatch = Math.max(item.videos_found - item.videos_enqueued - item.videos_skipped, 0)
+  const metrics: FeedMetric[] = []
+
+  if (item.videos_found > 0) {
+    metrics.push({ label: '累计发现', value: item.videos_found })
+  }
+
+  if (item.current_phase === 'enqueueing' && pendingDispatch > 0) {
+    metrics.push({ label: '待派发', value: pendingDispatch, tone: 'pending' })
+  }
+
+  if (item.videos_skipped > 0) {
+    metrics.push({ label: '累计跳过', value: item.videos_skipped })
+  }
+
+  if (item.current_phase === 'enqueueing' && item.videos_enqueued > 0) {
+    metrics.push({ label: '累计已派发', value: item.videos_enqueued, tone: 'pending' })
+  }
+
+  return metrics
 }
 </script>
 
@@ -235,6 +314,18 @@ const getPhaseLabel = (phase: string | null) => {
 
 .board-error {
   color: rgba(251, 113, 133, 0.86);
+}
+
+.board-empty__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.board-empty__hint {
+  font-size: 11px;
+  color: rgba(255, 196, 140, 0.78);
 }
 
 .board-list {

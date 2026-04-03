@@ -1,3 +1,5 @@
+from concurrent.futures import Future
+from datetime import datetime, timedelta
 from pathlib import Path
 import sys
 import threading
@@ -7,7 +9,8 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models.crawl_task import CrawlTask
-from processes.managers.crawl_worker_runtime import CrawlWorkerRuntime
+from processes.managers.crawl_worker_runtime import CrawlWorkerRuntime, _ActiveTaskLease
+from services.crawl_tasks.errors import CrawlTaskOwnershipError
 
 
 def test_run_once_executes_video_extract_task(monkeypatch):
@@ -239,3 +242,48 @@ def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
 
     assert renew_calls
     assert all(call == (21, 'worker-1') for call in renew_calls)
+
+
+def test_renew_active_leases_ignores_lost_task_ownership(monkeypatch):
+    runtime = CrawlWorkerRuntime(worker_id='worker-1', lease_seconds=1)
+    future = Future()
+    runtime._futures = {future}
+
+    last_renewed_at = datetime(2026, 4, 2, 13, 0, 0)
+    runtime._active_leases[future] = _ActiveTaskLease(task_id=99, last_renewed_at=last_renewed_at)
+
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.renew_task_lease',
+        lambda **kwargs: (_ for _ in ()).throw(CrawlTaskOwnershipError('lost ownership')),
+    )
+
+    runtime._renew_active_leases(now=last_renewed_at + timedelta(seconds=1))
+
+    assert future not in runtime._active_leases
+
+
+def test_run_task_does_not_retry_when_task_ownership_is_lost_on_complete(monkeypatch):
+    task = CrawlTask(id=31, job_id=1, task_type='video_extract', site='youtube.com', payload={})
+    runtime = CrawlWorkerRuntime(worker_id='worker-1', retry_delay_seconds=45)
+    retry_calls = []
+
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.start_task',
+        lambda task_id, worker_id, now=None: None,
+    )
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.execute_video_extract_task',
+        lambda current_task: None,
+    )
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.complete_task',
+        lambda task_id, worker_id, now=None: (_ for _ in ()).throw(CrawlTaskOwnershipError('lost ownership')),
+    )
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.retry_task',
+        lambda **kwargs: retry_calls.append(kwargs),
+    )
+
+    runtime._run_task(task, claimed_at=datetime(2026, 4, 2, 13, 0, 0))
+
+    assert retry_calls == []

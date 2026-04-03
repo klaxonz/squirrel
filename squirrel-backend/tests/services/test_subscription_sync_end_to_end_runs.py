@@ -9,8 +9,11 @@ from sqlalchemy.orm import Session
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
+from models.crawl_job import CrawlJob
+from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
+from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_state import SubscriptionSyncState
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
@@ -37,6 +40,7 @@ def _setup_projection_env(monkeypatch):
         tables=[
             Subscription.__table__,
             UserSubscription.__table__,
+            SubscriptionSyncEvent.__table__,
             SubscriptionSyncRunProjection.__table__,
             SubscriptionSyncSubscriptionProjection.__table__,
         ],
@@ -49,6 +53,22 @@ def _setup_projection_env(monkeypatch):
 def _setup_state_env(monkeypatch):
     engine = create_engine('sqlite:///:memory:')
     Base.metadata.create_all(engine, tables=[SubscriptionSyncState.__table__])
+    monkeypatch.setattr(subscription_sync_state_service, 'get_session', lambda: _managed_session(engine))
+    return engine
+
+
+def _setup_projection_reconcile_env(monkeypatch):
+    engine = create_engine('sqlite:///:memory:')
+    Base.metadata.create_all(
+        engine,
+        tables=[
+            CrawlJob.__table__,
+            CrawlTask.__table__,
+            SubscriptionSyncState.__table__,
+            SubscriptionSyncRunProjection.__table__,
+            SubscriptionSyncSubscriptionProjection.__table__,
+        ],
+    )
     monkeypatch.setattr(subscription_sync_state_service, 'get_session', lambda: _managed_session(engine))
     return engine
 
@@ -127,7 +147,7 @@ def _seed_projection_data(engine):
                 request_id='req-running-earlier',
                 trace_id='trace-running-earlier',
                 status='running',
-                current_phase='extracting',
+                current_phase='fetching_feed',
                 queued_at=now - timedelta(minutes=6),
                 started_at=now - timedelta(minutes=5),
                 finished_at=None,
@@ -135,11 +155,11 @@ def _seed_projection_data(engine):
                 failure_count=0,
                 error_type=None,
                 error_message=None,
-                videos_found=6,
-                videos_enqueued=5,
-                videos_extracted=1,
-                videos_skipped=1,
-                pending_video_count=4,
+                videos_found=2,
+                videos_enqueued=0,
+                videos_extracted=0,
+                videos_skipped=0,
+                pending_video_count=0,
                 last_event_seq_no=7,
                 last_event_at=now - timedelta(minutes=1),
                 created_at=now - timedelta(minutes=6),
@@ -235,12 +255,12 @@ def _seed_projection_data(engine):
                 subscription_id=4,
                 latest_run_id='run-running-earlier',
                 current_status='running',
-                current_phase='extracting',
+                current_phase='fetching_feed',
                 last_sync_at=now - timedelta(minutes=5),
                 last_success_at=None,
                 next_sync_at=now + timedelta(minutes=8),
                 last_error_message=None,
-                pending_video_count=4,
+                pending_video_count=0,
                 failure_streak=0,
                 last_event_seq_no=7,
                 updated_at=now - timedelta(minutes=1),
@@ -294,7 +314,9 @@ def _seed_projection_data(engine):
 def test_sync_center_items_expose_progress_fields_and_queue_position(monkeypatch):
     engine = _setup_projection_env(monkeypatch)
     _seed_projection_data(engine)
+    monkeypatch.setattr(subscription_sync_center_service, '_refresh_runtime_sync_health', lambda force=False: None)
 
+    overview = subscription_sync_center_service.get_sync_center_overview(user_id=1)
     running_result = subscription_sync_center_service.list_sync_center_items(
         user_id=1,
         status='running',
@@ -313,19 +335,21 @@ def test_sync_center_items_expose_progress_fields_and_queue_position(monkeypatch
     )
     runs_result = subscription_sync_history_service.list_runs(user_id=1, status='running', page=1, page_size=20)
 
-    assert [item.subscription_name for item in running_result.data] == ['Running Earlier', 'Running Channel']
+    assert overview.running_count == 1
+    assert overview.awaiting_extract_count == 1
+    assert [item.subscription_name for item in running_result.data] == ['Running Earlier']
 
-    running_item = running_result.data[1]
-    assert running_item.run_id == 'run-running'
-    assert running_item.current_phase == 'extracting'
-    assert running_item.feed_completed is True
-    assert running_item.videos_found == 10
-    assert running_item.videos_enqueued == 8
-    assert running_item.videos_extracted == 5
-    assert running_item.videos_skipped == 2
-    assert running_item.pending_video_count == 3
-    assert running_item.progress_percent == 62
-    assert running_item.progress_label == '5 / 8'
+    running_item = running_result.data[0]
+    assert running_item.run_id == 'run-running-earlier'
+    assert running_item.current_phase == 'fetching_feed'
+    assert running_item.feed_completed is False
+    assert running_item.videos_found == 2
+    assert running_item.videos_enqueued == 0
+    assert running_item.videos_extracted == 0
+    assert running_item.videos_skipped == 0
+    assert running_item.pending_video_count == 0
+    assert running_item.progress_percent == 18
+    assert running_item.progress_label == '拉取列表中'
 
     assert [item.subscription_name for item in queued_result.data] == ['Queued First', 'Queued Second']
     assert [item.queue_position for item in queued_result.data] == [1, 2]
@@ -333,6 +357,198 @@ def test_sync_center_items_expose_progress_fields_and_queue_position(monkeypatch
     assert runs_result['data'][0]['run_id'] == 'run-running'
     assert runs_result['data'][0]['progress_percent'] == 62
     assert runs_result['data'][0]['feed_completed'] is True
+
+
+def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(monkeypatch):
+    engine = _setup_projection_env(monkeypatch)
+    _seed_projection_data(engine)
+    monkeypatch.setattr(subscription_sync_center_service, '_refresh_runtime_sync_health', lambda force=False: None)
+
+    snapshot = subscription_sync_center_service.get_feed_dashboard_snapshot(
+        user_id=1,
+        site=None,
+        query=None,
+        date_from='2026-04-02T00:00:00',
+        date_to='2026-04-03T00:00:00',
+    )
+
+    assert snapshot['overview'].running_count == 1
+    assert snapshot['overview'].awaiting_extract_count == 1
+    assert [item.subscription_name for item in snapshot['runningPreview']] == ['Running Earlier']
+    assert [item.subscription_name for item in snapshot['queuedPreview']] == ['Queued First', 'Queued Second']
+    assert [run['run_id'] for run in snapshot['recentRuns']] == ['run-running']
+
+
+def test_sync_center_runtime_refresh_invokes_recovery_chain(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        subscription_sync_center_service,
+        '_last_runtime_refresh_monotonic',
+        None,
+    )
+    monkeypatch.setattr(
+        subscription_sync_state_service,
+        'reconcile_terminal_drained_sync_states',
+        lambda: calls.append('drained') or {'completed': 0, 'failed': 0},
+    )
+    monkeypatch.setattr(
+        subscription_sync_state_service,
+        'recover_stale_queued_sync_states',
+        lambda: calls.append('queued') or {'queued_states': 0, 'recovered': 0},
+    )
+    monkeypatch.setattr(
+        subscription_sync_state_service,
+        'recover_stale_running_sync_states',
+        lambda: calls.append('running') or {'running_states': 0, 'recovered': 0},
+    )
+    monkeypatch.setattr(
+        subscription_sync_state_service,
+        'reconcile_retry_wait_run_projections',
+        lambda: calls.append('projection') or {'candidates': 0, 'repaired': 0},
+    )
+
+    subscription_sync_center_service._refresh_runtime_sync_health(force=True)
+
+    assert calls == ['drained', 'queued', 'running', 'projection']
+
+
+def test_reconcile_retry_wait_run_projections_emits_queued_event_for_stale_feed_run(monkeypatch):
+    engine = _setup_projection_reconcile_env(monkeypatch)
+    captured_events = []
+    monkeypatch.setattr(subscription_sync_state_service, 'append_event', lambda event, session=None: captured_events.append(event))
+
+    now = datetime(2026, 4, 2, 22, 24, 19)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            CrawlJob(
+                id=1,
+                job_type='subscription_sync',
+                source_type='scheduled',
+                site='bilibili.com',
+                subscription_id=112,
+                status='running',
+                payload={},
+                created_at=now - timedelta(minutes=1),
+                updated_at=now - timedelta(minutes=1),
+            )
+        )
+        session.add(
+            SubscriptionSyncState(
+                id=1334,
+                subscription_id=112,
+                site='bilibili.com',
+                sync_mode='full',
+                sync_status='queued',
+                cursor_payload={'page': 5},
+                last_seen_video_url='https://www.bilibili.com/video/demo',
+                last_sync_at=now - timedelta(minutes=1),
+                last_success_at=now - timedelta(hours=1),
+                next_sync_at=now + timedelta(minutes=1),
+                queued_at=now,
+                locked_at=None,
+                queue_token='queue-token-1',
+                pending_video_count=0,
+                failure_count=1,
+                version=10,
+                last_error='lease_expired',
+                created_at=now - timedelta(days=1),
+                updated_at=now,
+                idle_sync_count=0,
+            )
+        )
+        session.add(
+            SubscriptionSyncRunProjection(
+                run_id='run-stale-1',
+                subscription_id=112,
+                sync_state_id=1334,
+                site='bilibili.com',
+                sync_mode='full',
+                trigger='scheduled',
+                request_id='req-stale-1',
+                trace_id='trace-stale-1',
+                status='running',
+                current_phase='fetching_feed',
+                queued_at=now - timedelta(minutes=2),
+                started_at=now - timedelta(minutes=1),
+                finished_at=None,
+                duration_ms=0,
+                failure_count=0,
+                error_type=None,
+                error_message=None,
+                videos_found=50,
+                videos_enqueued=0,
+                videos_extracted=0,
+                videos_skipped=25,
+                pending_video_count=0,
+                last_event_seq_no=12,
+                last_event_at=now - timedelta(seconds=59),
+                created_at=now - timedelta(minutes=2),
+                updated_at=now - timedelta(seconds=59),
+            )
+        )
+        session.add(
+            SubscriptionSyncSubscriptionProjection(
+                subscription_id=112,
+                latest_run_id='run-stale-1',
+                current_status='running',
+                current_phase='fetching_feed',
+                last_sync_at=now - timedelta(hours=1),
+                last_success_at=now - timedelta(hours=1),
+                next_sync_at=now - timedelta(minutes=1),
+                last_error_message=None,
+                pending_video_count=0,
+                failure_streak=0,
+                last_event_seq_no=12,
+                updated_at=now - timedelta(seconds=59),
+            )
+        )
+        session.add(
+            CrawlTask(
+                id=6877,
+                job_id=1,
+                task_type='subscription_sync',
+                site='bilibili.com',
+                subscription_id=112,
+                status='retry_wait',
+                worker_id=None,
+                attempt=1,
+                max_attempts=3,
+                next_run_at=now + timedelta(seconds=30),
+                lease_until=None,
+                last_error='lease_expired',
+                last_error_type='lease_expired',
+                trace_id='trace-stale-1',
+                payload={
+                    'subscription_id': 112,
+                    'sync_state_id': 1334,
+                    'mode': 'full',
+                    'queue_token': 'queue-token-1',
+                    'trigger': 'scheduled',
+                    'run_id': 'run-stale-1',
+                    'request_id': 'req-stale-1',
+                    'trace_id': 'trace-stale-1',
+                },
+                created_at=now - timedelta(minutes=2),
+                updated_at=now,
+                started_at=now - timedelta(minutes=1),
+                finished_at=None,
+            )
+        )
+        session.commit()
+
+    result = subscription_sync_state_service.reconcile_retry_wait_run_projections()
+
+    assert result == {'candidates': 1, 'repaired': 1}
+    assert len(captured_events) == 1
+    assert captured_events[0].stream_id == 'run-stale-1'
+    assert captured_events[0].event_type == 'queued'
+    assert captured_events[0].event_phase == 'queued'
+    assert captured_events[0].event_status == 'queued'
+    assert captured_events[0].request_id == 'req-stale-1'
+    assert captured_events[0].trace_id == 'trace-stale-1'
+    assert captured_events[0].trigger == 'scheduled'
+    assert captured_events[0].message == 'lease_expired'
+    assert captured_events[0].payload['queue_token'] == 'queue-token-1'
 
 
 def test_mark_sync_success_stays_running_until_pending_videos_are_drained(monkeypatch):
@@ -407,3 +623,80 @@ def test_mark_sync_success_stays_running_until_pending_videos_are_drained(monkey
     assert state.pending_video_count == 0
     assert state.last_success_at is not None
     assert [event.event_type for event in captured_events] == ['phase_changed', 'completed']
+
+
+def test_reconcile_terminal_drained_sync_states_completes_original_latest_run(monkeypatch):
+    engine = _setup_projection_reconcile_env(monkeypatch)
+    captured_events = []
+    monkeypatch.setattr(subscription_sync_state_service, 'append_event', lambda event, session=None: captured_events.append(event))
+    monkeypatch.setattr(
+        subscription_sync_state_service.crawl_task_service,
+        'summarize_video_task_states_by_sync_state',
+        lambda: {},
+    )
+
+    now = datetime(2026, 4, 2, 12, 0, 0)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            SubscriptionSyncState(
+                id=11,
+                subscription_id=1,
+                site='youtube.com',
+                sync_mode='incremental',
+                sync_status='running',
+                cursor_payload={'cursor': 'done'},
+                last_seen_video_url='https://example.com/video/1',
+                last_sync_at=now - timedelta(minutes=1),
+                last_success_at=None,
+                next_sync_at=now + timedelta(minutes=5),
+                queued_at=None,
+                locked_at=None,
+                queue_token=None,
+                pending_video_count=1,
+                failure_count=0,
+                idle_sync_count=0,
+                version=0,
+                last_error=None,
+                created_at=now - timedelta(hours=1),
+                updated_at=now - timedelta(minutes=2),
+            )
+        )
+        session.add(
+            SubscriptionSyncRunProjection(
+                run_id='run-original',
+                subscription_id=1,
+                sync_state_id=11,
+                site='youtube.com',
+                sync_mode='incremental',
+                trigger='manual',
+                request_id='req-original',
+                trace_id='trace-original',
+                status='running',
+                current_phase='extracting',
+                pending_video_count=1,
+                last_event_seq_no=4,
+                last_event_at=now - timedelta(seconds=30),
+                started_at=now - timedelta(minutes=1),
+                created_at=now - timedelta(minutes=2),
+                updated_at=now - timedelta(seconds=30),
+            )
+        )
+        session.add(
+            SubscriptionSyncSubscriptionProjection(
+                subscription_id=1,
+                latest_run_id='run-original',
+                current_status='running',
+                current_phase='extracting',
+                pending_video_count=1,
+                last_event_seq_no=4,
+                updated_at=now - timedelta(seconds=30),
+            )
+        )
+        session.commit()
+
+    result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
+
+    assert result == {'running_states': 1, 'completed': 1, 'failed': 0}
+    assert [(event.stream_id, event.event_type, event.event_phase, event.event_status) for event in captured_events] == [
+        ('run-original', 'completed', 'completed', 'success'),
+    ]

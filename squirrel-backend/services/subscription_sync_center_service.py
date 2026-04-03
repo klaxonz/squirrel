@@ -1,11 +1,17 @@
+import logging
 from datetime import datetime, timedelta
+from threading import Lock
+from time import monotonic
 from typing import Optional
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy.exc import OperationalError
 
 from core.database import get_session
+from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
+from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from schemas.subscription.dto.sync_center_dto import (
@@ -13,16 +19,40 @@ from schemas.subscription.dto.sync_center_dto import (
     SyncCenterListDto,
     SyncCenterOverviewDto,
 )
+from services.crawl_tasks.models import CrawlTaskStatus
 from services.subscription_sync_progress import build_progress_snapshot
+from services.subscription_sync_run_service import SyncEventType
 from utils.metrics import metrics
 from utils.site_catalog import SiteCatalog
 
 
 DUE_SOON_WINDOW = timedelta(minutes=30)
+FEED_RECENT_PHASES = {'extracting', 'finalizing', 'completed'}
+FEED_HANDOFF_EVENT_TYPES = {'phase_changed', 'continued'}
+FEED_HANDOFF_PHASES = {'extracting', 'finalizing'}
+RUNTIME_REFRESH_INTERVAL_SECONDS = 30
+_runtime_refresh_lock = Lock()
+_last_runtime_refresh_monotonic: float | None = None
+logger = logging.getLogger(__name__)
 
 
 def _format_datetime(value: Optional[datetime]) -> str:
     return value.strftime('%Y-%m-%d %H:%M:%S') if value else ''
+
+
+def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    normalized = str(value).strip()
+    if not normalized:
+        return None
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        try:
+            return datetime.strptime(normalized, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            return None
 
 
 def _safe_metric_int(value) -> int:
@@ -86,6 +116,14 @@ def _resolve_display_status(current_status: Optional[str], next_sync_at: Optiona
     return 'healthy'
 
 
+def _is_feed_running_item(item: SyncCenterItemDto) -> bool:
+    return item.display_status == 'running' and not item.feed_completed
+
+
+def _is_awaiting_extract_item(item: SyncCenterItemDto) -> bool:
+    return item.display_status == 'running' and item.feed_completed
+
+
 def _queue_metrics_overview() -> tuple[int, int]:
     queue_depth = sum(
         _safe_metric_int(metrics.redis.get(key))
@@ -96,6 +134,29 @@ def _queue_metrics_overview() -> tuple[int, int]:
         for key in metrics.get_metrics_keys_by_pattern('metrics:counter:queue.messages.total:*')
     )
     return queue_depth, queue_messages
+
+
+def _refresh_runtime_sync_health(*, force: bool = False) -> None:
+    global _last_runtime_refresh_monotonic
+
+    now_tick = monotonic()
+    if not force and _last_runtime_refresh_monotonic is not None:
+        if now_tick - _last_runtime_refresh_monotonic < RUNTIME_REFRESH_INTERVAL_SECONDS:
+            return
+
+    with _runtime_refresh_lock:
+        now_tick = monotonic()
+        if not force and _last_runtime_refresh_monotonic is not None:
+            if now_tick - _last_runtime_refresh_monotonic < RUNTIME_REFRESH_INTERVAL_SECONDS:
+                return
+
+        from services import subscription_sync_state_service
+
+        subscription_sync_state_service.reconcile_terminal_drained_sync_states()
+        subscription_sync_state_service.recover_stale_queued_sync_states()
+        subscription_sync_state_service.recover_stale_running_sync_states()
+        subscription_sync_state_service.reconcile_retry_wait_run_projections()
+        _last_runtime_refresh_monotonic = now_tick
 
 
 def _base_projection_query(user_id: int):
@@ -190,7 +251,182 @@ def _collect_projection_items(user_id: int) -> list[SyncCenterItemDto]:
     ]
 
 
-def _sort_items(items: list[SyncCenterItemDto], status: Optional[str]) -> list[SyncCenterItemDto]:
+def _query_queued_task_rank_map(
+    session,
+    user_id: int,
+    items: list[SyncCenterItemDto],
+) -> tuple[dict[int, int], dict[int, int]]:
+    subscription_ids = sorted({item.subscription_id for item in items})
+    if not subscription_ids:
+        return {}, {}
+
+    priority_order = case(
+        (CrawlTask.priority == 'manual', 3),
+        (CrawlTask.priority == 'normal', 2),
+        (CrawlTask.priority == 'low', 1),
+        else_=0,
+    )
+
+    queued_task_rows = session.execute(
+        select(CrawlTask.id, CrawlTask.subscription_id)
+        .join(UserSubscription, UserSubscription.subscription_id == CrawlTask.subscription_id)
+        .where(
+            UserSubscription.user_id == user_id,
+            UserSubscription.is_deleted.is_(False),
+            CrawlTask.task_type == 'subscription_sync',
+            CrawlTask.subscription_id.in_(subscription_ids),
+            CrawlTask.status.in_([CrawlTaskStatus.PENDING.value, CrawlTaskStatus.RETRY_WAIT.value]),
+        )
+        .order_by(
+            priority_order.desc(),
+            CrawlTask.next_run_at.asc(),
+            CrawlTask.created_at.asc(),
+            CrawlTask.id.asc(),
+        )
+    ).all()
+
+    from services.crawl_dispatcher.service import CrawlDispatcherService
+
+    candidate_task_ids = session.execute(
+        CrawlDispatcherService()._build_candidate_query(datetime.now())
+    ).scalars().all()
+
+    queued_task_map = {int(task_id): int(subscription_id) for task_id, subscription_id in queued_task_rows}
+    candidate_subscription_ids: list[int] = []
+    for task_id in candidate_task_ids:
+        subscription_id = queued_task_map.get(int(task_id))
+        if subscription_id is None or subscription_id in candidate_subscription_ids:
+            continue
+        candidate_subscription_ids.append(subscription_id)
+
+    queued_subscription_ids = [
+        int(subscription_id)
+        for _, subscription_id in queued_task_rows
+    ]
+
+    candidate_rank_map: dict[int, int] = {}
+    for subscription_id in candidate_subscription_ids:
+        if subscription_id in candidate_rank_map:
+            continue
+        candidate_rank_map[subscription_id] = len(candidate_rank_map) + 1
+
+    backlog_rank_map: dict[int, int] = {}
+    for subscription_id in queued_subscription_ids:
+        if subscription_id in backlog_rank_map:
+            continue
+        backlog_rank_map[subscription_id] = len(backlog_rank_map) + 1
+
+    return candidate_rank_map, backlog_rank_map
+
+
+def _load_queued_task_rank_map(user_id: int, items: list[SyncCenterItemDto]) -> tuple[dict[int, int], dict[int, int]]:
+    try:
+        with get_session() as session:
+            return _query_queued_task_rank_map(session, user_id, items)
+    except OperationalError:
+        logger.warning('Falling back to projection queue ordering because crawl_task lookup is unavailable')
+        return {}, {}
+
+
+def _serialize_feed_recent_run(
+    run_projection: SubscriptionSyncRunProjection,
+    subscription: Subscription,
+    feed_completed_at: Optional[datetime],
+) -> dict:
+    progress_snapshot = build_progress_snapshot(
+        status=run_projection.status,
+        current_phase=run_projection.current_phase,
+        videos_found=run_projection.videos_found,
+        videos_enqueued=run_projection.videos_enqueued,
+        videos_extracted=run_projection.videos_extracted,
+        pending_video_count=run_projection.pending_video_count,
+    )
+    return {
+        'run_id': run_projection.run_id,
+        'subscription_id': subscription.id,
+        'subscription_name': subscription.name,
+        'subscription_avatar': subscription.avatar,
+        'site': run_projection.site,
+        'sync_mode': run_projection.sync_mode,
+        'trigger': run_projection.trigger,
+        'status': run_projection.status,
+        'current_phase': run_projection.current_phase,
+        'request_id': run_projection.request_id,
+        'trace_id': run_projection.trace_id,
+        'queued_at': _format_datetime(run_projection.queued_at),
+        'started_at': _format_datetime(run_projection.started_at),
+        'finished_at': _format_datetime(run_projection.finished_at),
+        'duration_ms': run_projection.duration_ms,
+        'failure_count': run_projection.failure_count,
+        'error_type': run_projection.error_type,
+        'error_message': run_projection.error_message,
+        'videos_found': run_projection.videos_found,
+        'videos_enqueued': run_projection.videos_enqueued,
+        'videos_extracted': run_projection.videos_extracted,
+        'videos_skipped': run_projection.videos_skipped,
+        'pending_video_count': run_projection.pending_video_count,
+        'feed_completed': progress_snapshot['feed_completed'],
+        'progress_percent': progress_snapshot['progress_percent'],
+        'progress_label': progress_snapshot['progress_label'],
+        'feed_completed_at': _format_datetime(feed_completed_at),
+        'last_event_at': _format_datetime(run_projection.last_event_at),
+    }
+
+
+def _load_feed_completed_at_map(session, run_ids: list[str]) -> dict[str, datetime]:
+    if not run_ids:
+        return {}
+
+    handoff_rows = session.execute(
+        select(
+            SubscriptionSyncEvent.stream_id,
+            func.max(SubscriptionSyncEvent.occurred_at),
+        )
+        .where(
+            SubscriptionSyncEvent.stream_id.in_(run_ids),
+            SubscriptionSyncEvent.event_type.in_(FEED_HANDOFF_EVENT_TYPES),
+            SubscriptionSyncEvent.event_phase.in_(FEED_HANDOFF_PHASES),
+        )
+        .group_by(SubscriptionSyncEvent.stream_id)
+    ).all()
+
+    feed_completed_at_map = {
+        str(stream_id): occurred_at
+        for stream_id, occurred_at in handoff_rows
+        if stream_id and occurred_at
+    }
+
+    unresolved_run_ids = [run_id for run_id in run_ids if run_id not in feed_completed_at_map]
+    if not unresolved_run_ids:
+        return feed_completed_at_map
+
+    completed_rows = session.execute(
+        select(
+            SubscriptionSyncEvent.stream_id,
+            func.max(SubscriptionSyncEvent.occurred_at),
+        )
+        .where(
+            SubscriptionSyncEvent.stream_id.in_(unresolved_run_ids),
+            SubscriptionSyncEvent.event_type == SyncEventType.COMPLETED,
+            SubscriptionSyncEvent.event_phase == 'completed',
+        )
+        .group_by(SubscriptionSyncEvent.stream_id)
+    ).all()
+
+    for stream_id, occurred_at in completed_rows:
+        if stream_id and occurred_at:
+            feed_completed_at_map[str(stream_id)] = occurred_at
+
+    return feed_completed_at_map
+
+
+def _sort_items(
+    items: list[SyncCenterItemDto],
+    status: Optional[str],
+    *,
+    queued_candidate_rank_map: Optional[dict[int, int]] = None,
+    queued_backlog_rank_map: Optional[dict[int, int]] = None,
+) -> list[SyncCenterItemDto]:
     def parse_dt(value: str, *, fallback: datetime) -> datetime:
         if not value:
             return fallback
@@ -213,7 +449,13 @@ def _sort_items(items: list[SyncCenterItemDto], status: Optional[str]) -> list[S
         if status == 'running':
             return parse_dt(item.locked_at, fallback=datetime.min), item.subscription_id
         if status == 'queued':
-            return parse_dt(item.queued_at, fallback=datetime.max), item.subscription_id
+            candidate_rank = (queued_candidate_rank_map or {}).get(item.subscription_id)
+            if candidate_rank is not None:
+                return 0, candidate_rank, item.subscription_id
+            backlog_rank = (queued_backlog_rank_map or {}).get(item.subscription_id)
+            if backlog_rank is not None:
+                return 1, backlog_rank, item.subscription_id
+            return 1, parse_dt(item.queued_at, fallback=datetime.max), item.subscription_id
         if status == 'scheduled':
             return parse_dt(item.next_sync_at, fallback=datetime.max), item.subscription_id
         if status == 'recent':
@@ -227,11 +469,13 @@ def _sort_items(items: list[SyncCenterItemDto], status: Optional[str]) -> list[S
 
 
 def get_sync_center_overview(user_id: int) -> SyncCenterOverviewDto:
+    _refresh_runtime_sync_health()
     items = _collect_projection_items(user_id)
     queue_depth, queue_messages = _queue_metrics_overview()
 
     return SyncCenterOverviewDto(
-        running_count=sum(1 for item in items if item.display_status == 'running'),
+        running_count=sum(1 for item in items if _is_feed_running_item(item)),
+        awaiting_extract_count=sum(1 for item in items if _is_awaiting_extract_item(item)),
         queued_count=sum(1 for item in items if item.display_status == 'queued'),
         failed_count=sum(1 for item in items if item.display_status == 'failed'),
         due_soon_count=sum(1 for item in items if item.display_status == 'scheduled'),
@@ -255,15 +499,27 @@ def list_sync_center_items(
     site_candidates = set(SiteCatalog.expand_site_filter_values(normalized_site)) if normalized_site else set()
     normalized_query = (query or '').strip().lower()
 
+    _refresh_runtime_sync_health()
     items = _collect_projection_items(user_id)
-    if normalized_status and normalized_status != 'recent':
+    if normalized_status == 'running':
+        items = [item for item in items if _is_feed_running_item(item)]
+    elif normalized_status and normalized_status != 'recent':
         items = [item for item in items if item.display_status == normalized_status]
     if site_candidates:
         items = [item for item in items if (item.site or '').lower() in site_candidates]
     if normalized_query:
         items = [item for item in items if normalized_query in item.subscription_name.lower()]
 
-    sorted_items = _sort_items(items, normalized_status)
+    queued_candidate_rank_map = None
+    queued_backlog_rank_map = None
+    if normalized_status == 'queued':
+        queued_candidate_rank_map, queued_backlog_rank_map = _load_queued_task_rank_map(user_id, items)
+    sorted_items = _sort_items(
+        items,
+        normalized_status,
+        queued_candidate_rank_map=queued_candidate_rank_map,
+        queued_backlog_rank_map=queued_backlog_rank_map,
+    )
     total = len(sorted_items)
     start = max(0, (page - 1) * page_size)
     end = start + page_size
@@ -281,7 +537,133 @@ def list_sync_center_items(
     )
 
 
+def get_feed_dashboard_snapshot(
+    user_id: int,
+    site: Optional[str],
+    query: Optional[str],
+    date_from: Optional[str],
+    date_to: Optional[str],
+) -> dict:
+    normalized_site = (site or '').strip().lower() or None
+    site_candidates = set(SiteCatalog.expand_site_filter_values(normalized_site)) if normalized_site else set()
+    normalized_query = (query or '').strip().lower()
+    parsed_from = _parse_datetime(date_from)
+    parsed_to = _parse_datetime(date_to)
+
+    _refresh_runtime_sync_health()
+    with get_session() as session:
+        rows = session.execute(_base_projection_query(user_id)).all()
+        items = [
+            _build_sync_center_item(subscription, subscription_projection, run_projection)
+            for subscription, subscription_projection, run_projection in rows
+        ]
+
+        if site_candidates:
+            items = [item for item in items if (item.site or '').lower() in site_candidates]
+        if normalized_query:
+            items = [item for item in items if normalized_query in item.subscription_name.lower()]
+
+        running_preview = _sort_items(
+            [item for item in items if _is_feed_running_item(item)],
+            'running',
+        )[:6]
+
+        queued_preview = [item for item in items if item.display_status == 'queued']
+        try:
+            queued_candidate_rank_map, queued_backlog_rank_map = _query_queued_task_rank_map(
+                session,
+                user_id,
+                queued_preview,
+            )
+        except OperationalError:
+            logger.warning('Falling back to projection queue ordering because crawl_task lookup is unavailable')
+            queued_candidate_rank_map, queued_backlog_rank_map = {}, {}
+        queued_preview = _sort_items(
+            queued_preview,
+            'queued',
+            queued_candidate_rank_map=queued_candidate_rank_map,
+            queued_backlog_rank_map=queued_backlog_rank_map,
+        )[:12]
+        for index, item in enumerate(queued_preview, start=1):
+            item.queue_position = index
+
+        recent_query = (
+            select(SubscriptionSyncRunProjection, Subscription)
+            .join(Subscription, Subscription.id == SubscriptionSyncRunProjection.subscription_id)
+            .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
+            .join(
+                SubscriptionSyncSubscriptionProjection,
+                SubscriptionSyncSubscriptionProjection.subscription_id == SubscriptionSyncRunProjection.subscription_id,
+            )
+            .where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(False),
+                Subscription.is_deleted.is_(False),
+                SubscriptionSyncSubscriptionProjection.latest_run_id == SubscriptionSyncRunProjection.run_id,
+                or_(
+                    SubscriptionSyncRunProjection.status.in_({'success', 'failed', 'deferred', 'timeout'}),
+                    and_(
+                        SubscriptionSyncRunProjection.status == 'running',
+                        SubscriptionSyncRunProjection.current_phase.in_(FEED_RECENT_PHASES),
+                    ),
+                ),
+            )
+        )
+        if site_candidates:
+            recent_query = recent_query.where(SubscriptionSyncRunProjection.site.in_(site_candidates))
+        if normalized_query:
+            recent_query = recent_query.where(Subscription.name.ilike(f'%{normalized_query}%'))
+        if parsed_from:
+            recent_query = recent_query.where(SubscriptionSyncRunProjection.last_event_at >= parsed_from)
+        if parsed_to:
+            recent_query = recent_query.where(SubscriptionSyncRunProjection.last_event_at <= parsed_to)
+
+        recent_rows = session.execute(recent_query).all()
+        feed_completed_at_map = _load_feed_completed_at_map(
+            session,
+            [run_projection.run_id for run_projection, _ in recent_rows if run_projection and run_projection.run_id],
+        )
+
+    recent_rows = sorted(
+        recent_rows,
+        key=lambda row: (
+            feed_completed_at_map.get(row[0].run_id)
+            or row[0].finished_at
+            or row[0].last_event_at
+            or row[0].started_at
+            or datetime.min,
+            row[0].run_id,
+        ),
+        reverse=True,
+    )[:9]
+    recent_runs = [
+        _serialize_feed_recent_run(run_projection, subscription, feed_completed_at_map.get(run_projection.run_id))
+        for run_projection, subscription in recent_rows
+    ]
+    queue_depth, queue_messages = _queue_metrics_overview()
+
+    overview = SyncCenterOverviewDto(
+        running_count=sum(1 for item in items if _is_feed_running_item(item)),
+        awaiting_extract_count=sum(1 for item in items if _is_awaiting_extract_item(item)),
+        queued_count=sum(1 for item in items if item.display_status == 'queued'),
+        failed_count=sum(1 for item in items if item.display_status == 'failed'),
+        due_soon_count=sum(1 for item in items if item.display_status == 'scheduled'),
+        deferred_count=sum(1 for item in items if item.display_status == 'deferred'),
+        pending_videos=sum(item.pending_video_count for item in items),
+        queue_depth=queue_depth,
+        queue_messages=queue_messages,
+    )
+
+    return {
+        'overview': overview,
+        'runningPreview': running_preview,
+        'queuedPreview': queued_preview,
+        'recentRuns': recent_runs,
+    }
+
+
 def list_retry_failed_sync_items(user_id: int, site: Optional[str], query: Optional[str]) -> list[SyncCenterItemDto]:
+    _refresh_runtime_sync_health()
     items = _collect_projection_items(user_id)
     normalized_site = (site or '').strip().lower() or None
     site_candidates = set(SiteCatalog.expand_site_filter_values(normalized_site)) if normalized_site else set()

@@ -190,6 +190,8 @@ def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(mon
     engine = _setup_test_env(monkeypatch)
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
+    captured_events = []
+    monkeypatch.setattr(subscription_sync_state_service, 'append_event', lambda event, session=None: captured_events.append(event))
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -212,7 +214,14 @@ def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(mon
             site='youtube.com',
             priority='normal',
             subscription_id=1,
-            payload={'sync_state_id': 1749, 'queue_token': 'queue-token-1'},
+            payload={
+                'sync_state_id': 1749,
+                'queue_token': 'queue-token-1',
+                'run_id': 'run-requeue-1',
+                'request_id': 'req-requeue-1',
+                'trace_id': 'trace-requeue-1',
+                'trigger': 'scheduled',
+            },
             status='running',
             worker_id='worker-1',
             attempt=0,
@@ -236,6 +245,17 @@ def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(mon
     assert sync_state.queue_token == 'queue-token-1'
     assert sync_state.locked_at is None
     assert sync_state.queued_at == now
+    assert len(captured_events) == 1
+    assert captured_events[0].stream_id == 'run-requeue-1'
+    assert captured_events[0].request_id == 'req-requeue-1'
+    assert captured_events[0].trace_id == 'trace-requeue-1'
+    assert captured_events[0].trigger == 'scheduled'
+    assert captured_events[0].event_type == 'queued'
+    assert captured_events[0].event_phase == 'queued'
+    assert captured_events[0].event_status == 'queued'
+    assert captured_events[0].message == 'lease_expired'
+    assert captured_events[0].payload['queue_token'] == 'queue-token-1'
+    assert captured_events[0].payload['pending_video_count'] == 0
 
 
 def test_recover_expired_tasks_moves_exhausted_task_to_dead(monkeypatch):
@@ -276,6 +296,8 @@ def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dea
     engine = _setup_test_env(monkeypatch)
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
+    captured_events = []
+    monkeypatch.setattr(subscription_sync_state_service, 'append_event', lambda event, session=None: captured_events.append(event))
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -299,7 +321,14 @@ def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dea
             site='youtube.com',
             priority='normal',
             subscription_id=1,
-            payload={'sync_state_id': 1750, 'queue_token': 'queue-token-2'},
+            payload={
+                'sync_state_id': 1750,
+                'queue_token': 'queue-token-2',
+                'run_id': 'run-failed-1',
+                'request_id': 'req-failed-1',
+                'trace_id': 'trace-failed-1',
+                'trigger': 'scheduled',
+            },
             status='running',
             worker_id='worker-1',
             attempt=2,
@@ -323,6 +352,17 @@ def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dea
     assert sync_state.queue_token is None
     assert sync_state.locked_at is None
     assert sync_state.failure_count == 1
+    assert len(captured_events) == 1
+    assert captured_events[0].stream_id == 'run-failed-1'
+    assert captured_events[0].request_id == 'req-failed-1'
+    assert captured_events[0].trace_id == 'trace-failed-1'
+    assert captured_events[0].trigger == 'scheduled'
+    assert captured_events[0].event_type == 'failed'
+    assert captured_events[0].event_phase == 'failed'
+    assert captured_events[0].event_status == 'failed'
+    assert captured_events[0].message == 'lease_expired'
+    assert captured_events[0].payload['failure_count'] == 1
+    assert captured_events[0].payload['pending_video_count'] == 0
 
 
 def test_complete_task_marks_job_succeeded_when_all_tasks_finish(monkeypatch):

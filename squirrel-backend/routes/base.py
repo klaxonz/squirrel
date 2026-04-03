@@ -39,6 +39,16 @@ logger = logging.getLogger()
 def create_app() -> FastAPI:
     app = FastAPI(exception_handlers=None)
 
+    @app.middleware('http')
+    async def disable_live_dashboard_cache(request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith('/api/subscription/sync-center') or path.startswith('/api/subscription/extraction-center'):
+            response.headers['Cache-Control'] = 'no-store, no-cache, max-age=0, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+        return response
+
     @app.on_event("startup")
     async def _bootstrap_scheduled_tasks() -> None:
         try:

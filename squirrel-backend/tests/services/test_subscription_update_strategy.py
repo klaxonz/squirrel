@@ -128,6 +128,75 @@ def test_enqueue_extraction_skips_blocked_video_urls(monkeypatch):
     assert ('crawl.tasks.total', {'site': 'pornhub.com', 'status': 'skipped', 'reason': 'blocked_video'}) in counter_calls
 
 
+def test_enqueue_extraction_reserves_pending_count_before_dispatching_video_task(monkeypatch):
+    pending_counts = {2: 0}
+
+    class _DummySessionContext:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def _increment_pending(sync_state_id, count):
+        pending_counts[sync_state_id] = pending_counts.get(sync_state_id, 0) + count
+
+    def _decrement_pending(sync_state_id, count=1):
+        pending_counts[sync_state_id] = max(0, pending_counts.get(sync_state_id, 0) - count)
+
+    def _enqueue_video(params):
+        _decrement_pending(params.sync_state_id)
+        return True
+
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls',
+        lambda urls: {},
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.get_session',
+        lambda: _DummySessionContext(),
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.is_blocked_video',
+        lambda url, session: False,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.subscription_sync_state_service.increment_pending_video_count',
+        _increment_pending,
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.subscription_sync_state_service.decrement_pending_video_count',
+        _decrement_pending,
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.download_service.enqueue_video_extraction',
+        _enqueue_video,
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.metrics.counter',
+        lambda *args, **kwargs: None,
+    )
+
+    request = SubscriptionUpdateRequest(
+        subscription_id=1,
+        sync_state_id=2,
+        url='https://www.youtube.com/channel/demo',
+        trigger=UpdateTrigger.MANUAL,
+        mode=UpdateMode.INCREMENTAL,
+    )
+    fetch_result = SimpleNamespace(
+        video_urls=['https://www.youtube.com/watch?v=demo'],
+        latest_video_url='https://www.youtube.com/watch?v=demo',
+        source_video_count=1,
+    )
+
+    enqueued = DefaultUpdateStrategy().enqueue_extraction(fetch_result, request)
+
+    assert enqueued == 1
+    assert pending_counts[2] == 0
+
+
 def test_execute_full_sync_with_more_batches_continues_without_marking_success(monkeypatch):
     continuation_calls = []
     success_calls = []

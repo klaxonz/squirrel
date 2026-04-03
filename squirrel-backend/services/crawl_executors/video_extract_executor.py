@@ -7,7 +7,10 @@ from services.video_extraction import extract_video
 
 def execute_video_extract_payload(payload: dict):
     params = VideoExtractDto.model_validate(payload)
-    return extract_video(params)
+    result = extract_video(params)
+    if not result.success:
+        raise ValueError(result.error or 'video_extract_failed')
+    return result
 
 
 def execute_video_extract_task(task: CrawlTask):

@@ -1,16 +1,22 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, or_, select
 
 from core.database import get_session
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from services.subscription_sync_progress import build_progress_snapshot
 from services.subscription_sync_run_service import SyncEventType
 from utils.site_catalog import SiteCatalog
+
+TERMINAL_RUN_STATUSES = {'success', 'failed', 'deferred', 'timeout'}
+FEED_RECENT_PHASES = {'extracting', 'finalizing', 'completed'}
+FEED_HANDOFF_EVENT_TYPES = {'phase_changed', 'continued'}
+FEED_HANDOFF_PHASES = {'extracting', 'finalizing'}
 
 
 def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
@@ -51,6 +57,53 @@ def _payload_metric_value(run_id: str, key: str) -> Optional[int]:
     return None
 
 
+def _load_feed_completed_at_map(session, run_ids: list[str]) -> dict[str, datetime]:
+    if not run_ids:
+        return {}
+
+    handoff_rows = session.execute(
+        select(
+            SubscriptionSyncEvent.stream_id,
+            func.max(SubscriptionSyncEvent.occurred_at),
+        )
+        .where(
+            SubscriptionSyncEvent.stream_id.in_(run_ids),
+            SubscriptionSyncEvent.event_type.in_(FEED_HANDOFF_EVENT_TYPES),
+            SubscriptionSyncEvent.event_phase.in_(FEED_HANDOFF_PHASES),
+        )
+        .group_by(SubscriptionSyncEvent.stream_id)
+    ).all()
+
+    feed_completed_at_map = {
+        str(stream_id): occurred_at
+        for stream_id, occurred_at in handoff_rows
+        if stream_id and occurred_at
+    }
+
+    unresolved_run_ids = [run_id for run_id in run_ids if run_id not in feed_completed_at_map]
+    if not unresolved_run_ids:
+        return feed_completed_at_map
+
+    completed_rows = session.execute(
+        select(
+            SubscriptionSyncEvent.stream_id,
+            func.max(SubscriptionSyncEvent.occurred_at),
+        )
+        .where(
+            SubscriptionSyncEvent.stream_id.in_(unresolved_run_ids),
+            SubscriptionSyncEvent.event_type == SyncEventType.COMPLETED,
+            SubscriptionSyncEvent.event_phase == 'completed',
+        )
+        .group_by(SubscriptionSyncEvent.stream_id)
+    ).all()
+
+    for stream_id, occurred_at in completed_rows:
+        if stream_id and occurred_at:
+            feed_completed_at_map[str(stream_id)] = occurred_at
+
+    return feed_completed_at_map
+
+
 def _base_run_query(user_id: int):
     return (
         select(SubscriptionSyncRunProjection, Subscription)
@@ -80,8 +133,21 @@ def list_runs(
     base_query = _base_run_query(user_id)
     filters = []
 
-    if status:
-        filters.append(SubscriptionSyncRunProjection.status == str(status).strip().lower())
+    normalized_status = str(status or '').strip().lower() or None
+    if normalized_status == 'recent':
+        filters.append(SubscriptionSyncRunProjection.status.in_(TERMINAL_RUN_STATUSES))
+    elif normalized_status == 'feed_recent':
+        filters.append(
+            or_(
+                SubscriptionSyncRunProjection.status.in_(TERMINAL_RUN_STATUSES),
+                and_(
+                    SubscriptionSyncRunProjection.status == 'running',
+                    SubscriptionSyncRunProjection.current_phase.in_(FEED_RECENT_PHASES),
+                ),
+            )
+        )
+    elif normalized_status:
+        filters.append(SubscriptionSyncRunProjection.status == normalized_status)
     if site:
         site_candidates = SiteCatalog.expand_site_filter_values(site)
         filters.append(SubscriptionSyncRunProjection.site.in_(site_candidates))
@@ -102,13 +168,40 @@ def list_runs(
     if filters:
         base_query = base_query.where(and_(*filters))
 
+    if normalized_status == 'feed_recent':
+        base_query = base_query.join(
+            SubscriptionSyncSubscriptionProjection,
+            SubscriptionSyncSubscriptionProjection.subscription_id == SubscriptionSyncRunProjection.subscription_id,
+        ).where(
+            SubscriptionSyncSubscriptionProjection.latest_run_id == SubscriptionSyncRunProjection.run_id
+        )
+
     with get_session() as session:
-        rows = session.execute(
-            base_query.order_by(SubscriptionSyncRunProjection.last_event_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        ).all()
-        all_rows = session.execute(base_query).all()
+        if normalized_status == 'feed_recent':
+            all_rows = session.execute(base_query).all()
+            feed_completed_at_map = _load_feed_completed_at_map(
+                session,
+                [run.run_id for run, _ in all_rows if run and run.run_id],
+            )
+
+            def feed_recent_sort_key(row):
+                run, _ = row
+                feed_completed_at = feed_completed_at_map.get(run.run_id)
+                return (
+                    feed_completed_at or run.finished_at or run.last_event_at or run.started_at or datetime.min,
+                    run.run_id,
+                )
+
+            sorted_rows = sorted(all_rows, key=feed_recent_sort_key, reverse=True)
+            rows = sorted_rows[(page - 1) * page_size: page * page_size]
+        else:
+            rows = session.execute(
+                base_query.order_by(SubscriptionSyncRunProjection.last_event_at.desc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            ).all()
+            all_rows = session.execute(base_query).all()
+            feed_completed_at_map = {}
 
     data = []
     for run, subscription in rows:
@@ -147,6 +240,7 @@ def list_runs(
             'feed_completed': progress_snapshot['feed_completed'],
             'progress_percent': progress_snapshot['progress_percent'],
             'progress_label': progress_snapshot['progress_label'],
+            'feed_completed_at': _serialize_datetime(feed_completed_at_map.get(run.run_id)),
             'last_event_at': _serialize_datetime(run.last_event_at),
         })
 

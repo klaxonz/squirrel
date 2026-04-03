@@ -9,6 +9,7 @@ from datetime import datetime
 from core.config import settings
 from services.crawl_dispatcher.service import CrawlDispatcherService
 from services.crawl_executors.subscription_sync_executor import execute_subscription_sync_task
+from services.crawl_tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError
 from services.crawl_executors.video_extract_executor import execute_video_extract_task
 from services.crawl_tasks import service as crawl_task_service
 
@@ -99,17 +100,42 @@ class CrawlWorkerRuntime:
     def _run_task(self, task, claimed_at: datetime) -> None:
         try:
             crawl_task_service.start_task(task_id=task.id, worker_id=self.worker_id, now=claimed_at)
+        except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
+            logger.warning(
+                'Skip crawl task start because lease is no longer owned: task_id=%s worker_id=%s',
+                task.id,
+                self.worker_id,
+            )
+            return
+
+        try:
             self._execute_task(task)
-            crawl_task_service.complete_task(task_id=task.id, worker_id=self.worker_id, now=datetime.now())
         except Exception as exc:
             logger.exception("Crawl worker execution failed task_id=%s task_type=%s", task.id, task.task_type)
-            crawl_task_service.retry_task(
-                task_id=task.id,
-                worker_id=self.worker_id,
-                error_message=str(exc),
-                error_type=type(exc).__name__,
-                now=datetime.now(),
-                delay_seconds=self.retry_delay_seconds,
+            try:
+                crawl_task_service.retry_task(
+                    task_id=task.id,
+                    worker_id=self.worker_id,
+                    error_message=str(exc),
+                    error_type=type(exc).__name__,
+                    now=datetime.now(),
+                    delay_seconds=self.retry_delay_seconds,
+                )
+            except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
+                logger.warning(
+                    'Skip crawl task retry because lease is no longer owned: task_id=%s worker_id=%s',
+                    task.id,
+                    self.worker_id,
+                )
+            return
+
+        try:
+            crawl_task_service.complete_task(task_id=task.id, worker_id=self.worker_id, now=datetime.now())
+        except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
+            logger.warning(
+                'Skip crawl task completion because lease is no longer owned: task_id=%s worker_id=%s',
+                task.id,
+                self.worker_id,
             )
 
     def _reap_completed_futures(self) -> None:
@@ -129,10 +155,19 @@ class CrawlWorkerRuntime:
             renew_after = max(0.25, self.lease_seconds / 3)
             if (now - lease.last_renewed_at).total_seconds() < renew_after:
                 continue
-            crawl_task_service.renew_task_lease(
-                task_id=lease.task_id,
-                worker_id=self.worker_id,
-                now=now,
-                lease_seconds=self.lease_seconds,
-            )
+            try:
+                crawl_task_service.renew_task_lease(
+                    task_id=lease.task_id,
+                    worker_id=self.worker_id,
+                    now=now,
+                    lease_seconds=self.lease_seconds,
+                )
+            except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
+                logger.warning(
+                    'Stop renewing crawl task lease because ownership is lost: task_id=%s worker_id=%s',
+                    lease.task_id,
+                    self.worker_id,
+                )
+                self._active_leases.pop(future, None)
+                continue
             lease.last_renewed_at = now

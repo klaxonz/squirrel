@@ -43,6 +43,32 @@ def test_execute_video_extract_task_builds_dto_from_task_payload(monkeypatch):
     assert calls[0].run_id == 'run-1'
 
 
+def test_execute_video_extract_task_raises_when_extraction_result_is_failed(monkeypatch):
+    monkeypatch.setattr(
+        'services.crawl_executors.video_extract_executor.extract_video',
+        lambda params: SimpleNamespace(success=False, error='extract_failed'),
+    )
+
+    task = CrawlTask(
+        job_id=1,
+        task_type='video_extract',
+        site='youtube.com',
+        payload={
+            'url': 'https://www.youtube.com/watch?v=demo',
+            'subscribed': True,
+            'only_extract': True,
+            'subscription_id': 1,
+        },
+    )
+
+    try:
+        execute_video_extract_task(task)
+    except ValueError as exc:
+        assert str(exc) == 'extract_failed'
+    else:
+        raise AssertionError('Expected execute_video_extract_task to raise ValueError for failed extraction result')
+
+
 def test_execute_subscription_sync_task_builds_request_from_payload(monkeypatch):
     calls = []
     claims = []

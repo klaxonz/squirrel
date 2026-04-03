@@ -4,7 +4,8 @@
       <div>
         <p class="board-kicker">Lane 03</p>
         <h2 class="board-title">刚处理完</h2>
-        <p class="board-caption">按最新结束时间倒序。最上面就是刚从中列流出的最新结果。</p>
+        <p class="board-caption">按最新拉取收口时间倒序。包含已转提取和终态结果，最上面就是刚从中列流出的最新 run。</p>
+        <p class="board-updated">最近更新 {{ lastUpdatedAt || '--' }}</p>
       </div>
       <span class="board-count">近 {{ displayRuns.length }} 条</span>
     </div>
@@ -22,21 +23,33 @@
         :class="[
           selectedRunId === run.run_id ? 'recent-row--active' : '',
           index === 0 ? 'recent-row--latest' : '',
+          freshRunIds.has(run.run_id) ? 'recent-row--fresh' : '',
         ]"
         @click="emit('open-run', run.run_id)"
       >
         <div class="recent-row__main">
-          <div class="min-w-0 flex-1">
+          <div class="recent-row__identity">
+            <img
+              :src="getAvatarSrc(run.subscription_avatar, run.run_id)"
+              :alt="run.subscription_name"
+              class="recent-row__avatar"
+              referrerpolicy="no-referrer"
+              @error="(event) => handleAvatarError(event, run.run_id)"
+            >
+
+            <div class="min-w-0 flex-1">
             <div class="recent-row__title">
               <span class="status-chip" :class="getStatusChipClass(run.status)">
                 {{ getStatusLabel(run.status) }}
               </span>
               <span v-if="index === 0" class="latest-chip">最新</span>
+              <span v-if="freshRunIds.has(run.run_id)" class="fresh-chip">刚更新</span>
               <h3 class="truncate text-sm font-semibold text-white/92">{{ run.subscription_name }}</h3>
             </div>
             <p class="recent-row__meta">
-              {{ getPhaseLabel(run.current_phase) }} · {{ run.site || 'unknown' }} · {{ formatDate(run.last_event_at || run.finished_at || run.started_at) }}
+              {{ getPhaseLabel(run.current_phase) }} · {{ run.site || 'unknown' }} · {{ getMetaTimestamp(run) }}
             </p>
+            </div>
           </div>
 
           <div class="recent-row__summary">
@@ -58,8 +71,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
+import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDate } from '@/utils/dateFormat'
 
 const props = withDefaults(defineProps<{
@@ -67,21 +81,75 @@ const props = withDefaults(defineProps<{
   loading: boolean
   error: string
   selectedRunId?: string
+  lastUpdatedAt?: string
 }>(), {
   selectedRunId: '',
+  lastUpdatedAt: '',
 })
 
 const emit = defineEmits<{
   (e: 'open-run', runId: string): void
 }>()
 
+const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 const displayRuns = computed(() => props.runs.slice(0, 8))
+const freshRunIds = ref(new Set<string>())
+const freshTimers = new Map<string, ReturnType<typeof setTimeout>>()
+let previousRunIds: string[] = []
+
+const markFresh = (runId: string) => {
+  const next = new Set(freshRunIds.value)
+  next.add(runId)
+  freshRunIds.value = next
+
+  const existingTimer = freshTimers.get(runId)
+  if (existingTimer) {
+    clearTimeout(existingTimer)
+  }
+  const timer = setTimeout(() => {
+    const updated = new Set(freshRunIds.value)
+    updated.delete(runId)
+    freshRunIds.value = updated
+    freshTimers.delete(runId)
+  }, 12000)
+  freshTimers.set(runId, timer)
+}
+
+watch(
+  () => props.runs.map((run) => run.run_id),
+  (runIds) => {
+    if (!previousRunIds.length) {
+      previousRunIds = [...runIds]
+      return
+    }
+
+    runIds.forEach((runId, index) => {
+      if (!runId) {
+        return
+      }
+      const previousIndex = previousRunIds.indexOf(runId)
+      if (previousIndex === -1 || previousIndex > index) {
+        markFresh(runId)
+      }
+    })
+
+    previousRunIds = [...runIds]
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  freshTimers.forEach((timer) => clearTimeout(timer))
+  freshTimers.clear()
+})
 
 const getStatusLabel = (status: string) => {
+  if (status === 'running') {
+    return '已转提取'
+  }
   switch (status) {
     case 'success': return '成功'
     case 'failed': return '失败'
-    case 'running': return '运行中'
     case 'queued': return '排队中'
     case 'deferred': return '已延后'
     case 'timeout': return '超时'
@@ -101,7 +169,20 @@ const getPhaseLabel = (phase: string | null) => {
   }
 }
 
+const getMetaTimestamp = (run: SyncRunItem) => {
+  if (run.feed_completed_at) {
+    return `列表完成于 ${formatDate(run.feed_completed_at)}`
+  }
+  if (run.finished_at) {
+    return `结束于 ${formatDate(run.finished_at)}`
+  }
+  return formatDate(run.last_event_at || run.started_at)
+}
+
 const getStatusChipClass = (status: string) => {
+  if (status === 'running') {
+    return 'status-chip--handoff'
+  }
   switch (status) {
     case 'success': return 'status-chip--success'
     case 'failed': return 'status-chip--failed'
@@ -151,6 +232,13 @@ const getStatusChipClass = (status: string) => {
   font-size: 12px;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.44);
+}
+
+.board-updated {
+  margin-top: 0.32rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(126, 182, 255, 0.74);
 }
 
 .board-count {
@@ -205,6 +293,12 @@ const getStatusChipClass = (status: string) => {
   border-color: rgba(126, 182, 255, 0.26);
 }
 
+.recent-row--fresh {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(96, 165, 250, 0.08);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.12);
+}
+
 .recent-row--active {
   border-color: rgba(126, 182, 255, 0.34);
   background: rgba(126, 182, 255, 0.08);
@@ -215,6 +309,24 @@ const getStatusChipClass = (status: string) => {
   align-items: start;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.recent-row__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.recent-row__avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.8rem;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .recent-row__title {
@@ -249,6 +361,7 @@ const getStatusChipClass = (status: string) => {
 
 .status-chip,
 .latest-chip,
+.fresh-chip,
 .metric-pill {
   display: inline-flex;
   align-items: center;
@@ -274,6 +387,12 @@ const getStatusChipClass = (status: string) => {
   color: rgba(255, 203, 213, 0.92);
 }
 
+.status-chip--handoff {
+  border-color: rgba(255, 187, 92, 0.22);
+  background: rgba(255, 187, 92, 0.1);
+  color: rgba(255, 229, 196, 0.92);
+}
+
 .status-chip--neutral {
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.05);
@@ -284,6 +403,12 @@ const getStatusChipClass = (status: string) => {
   padding: 0.14rem 0.4rem;
   background: rgba(126, 182, 255, 0.12);
   color: rgba(202, 227, 255, 0.92);
+}
+
+.fresh-chip {
+  padding: 0.14rem 0.4rem;
+  background: rgba(96, 165, 250, 0.16);
+  color: rgba(219, 234, 254, 0.96);
 }
 
 .metric-inline {

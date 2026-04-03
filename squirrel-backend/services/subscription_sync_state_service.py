@@ -4,12 +4,16 @@ from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import exists, select, update
+from sqlalchemy.exc import SQLAlchemyError
 
 from core.cache import redis_client
 from core.database import get_session
+from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
+from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
+from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from services.crawl_tasks import service as crawl_task_service
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus, create_run
@@ -248,6 +252,29 @@ def _append_recovery_run_events(
     reason: str,
     occurred_at: datetime,
 ) -> None:
+    run_projection = _get_latest_state_run_projection(session, state)
+    if run_projection:
+        _append_state_event(
+            session,
+            state=state,
+            run_id=run_projection.run_id,
+            request_id=run_projection.request_id,
+            trace_id=run_projection.trace_id,
+            trigger=run_projection.trigger or 'system',
+            event_type=event_type,
+            event_phase=event_phase,
+            event_status=event_status,
+            payload={
+                'reason': reason,
+                'error_message': reason,
+                'pending_video_count': state.pending_video_count,
+                'next_sync_at': state.next_sync_at,
+            },
+            message=reason,
+            occurred_at=occurred_at,
+        )
+        return
+
     run_context = create_run(
         subscription_id=state.subscription_id,
         sync_state_id=state.id,
@@ -290,6 +317,95 @@ def _append_recovery_run_events(
                 'next_sync_at': state.next_sync_at,
             },
             message=reason,
+            occurred_at=occurred_at,
+        ),
+        session=session,
+    )
+
+
+def _append_terminal_reconcile_run_events(
+    session,
+    *,
+    state: SubscriptionSyncState,
+    event_type: str,
+    event_phase: str,
+    event_status: str,
+    reason: str,
+    error_message: Optional[str],
+    occurred_at: datetime,
+) -> None:
+    run_projection = _get_latest_state_run_projection(session, state)
+    if run_projection:
+        started_at = run_projection.started_at or state.locked_at or state.last_sync_at
+        _append_state_event(
+            session,
+            state=state,
+            run_id=run_projection.run_id,
+            request_id=run_projection.request_id,
+            trace_id=run_projection.trace_id,
+            trigger=run_projection.trigger or 'system',
+            event_type=event_type,
+            event_phase=event_phase,
+            event_status=event_status,
+            payload={
+                'reason': reason,
+                'error_message': error_message,
+                'failure_count': state.failure_count,
+                'pending_video_count': state.pending_video_count,
+                'next_sync_at': state.next_sync_at,
+                'duration_ms': int((occurred_at - started_at).total_seconds() * 1000) if started_at else 0,
+            },
+            message=error_message or reason,
+            occurred_at=occurred_at,
+        )
+        return
+
+    run_context = create_run(
+        subscription_id=state.subscription_id,
+        sync_state_id=state.id,
+        site=state.site,
+        sync_mode=state.sync_mode,
+        trigger='system',
+        occurred_at=occurred_at,
+    )
+    append_event(
+        SyncEventInput(
+            stream_id=run_context.run_id,
+            subscription_id=state.subscription_id,
+            sync_state_id=state.id,
+            site=state.site,
+            sync_mode=state.sync_mode,
+            trigger='system',
+            event_type=SyncEventType.RUN_CREATED,
+            event_phase=SyncPhase.INIT,
+            event_status=SyncRunStatus.CREATED,
+            payload={'pending_video_count': state.pending_video_count},
+            occurred_at=occurred_at,
+        ),
+        session=session,
+    )
+
+    started_at = state.locked_at or state.last_sync_at
+    append_event(
+        SyncEventInput(
+            stream_id=run_context.run_id,
+            subscription_id=state.subscription_id,
+            sync_state_id=state.id,
+            site=state.site,
+            sync_mode=state.sync_mode,
+            trigger='system',
+            event_type=event_type,
+            event_phase=event_phase,
+            event_status=event_status,
+            payload={
+                'reason': reason,
+                'error_message': error_message,
+                'failure_count': state.failure_count,
+                'pending_video_count': state.pending_video_count,
+                'next_sync_at': state.next_sync_at,
+                'duration_ms': int((occurred_at - started_at).total_seconds() * 1000) if started_at else 0,
+            },
+            message=error_message or reason,
             occurred_at=occurred_at,
         ),
         session=session,
@@ -490,6 +606,10 @@ def reconcile_task_retry_state(
     now: Optional[datetime] = None,
     retryable: bool,
     error_message: Optional[str] = None,
+    run_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    trigger: Optional[str] = None,
 ) -> Optional[SubscriptionSyncState]:
     if not sync_state_id:
         return None
@@ -515,6 +635,25 @@ def reconcile_task_retry_state(
             state.locked_at = None
             state.last_error = error_message
             state.version += 1
+            _append_state_event(
+                session,
+                state=state,
+                run_id=run_id,
+                request_id=request_id,
+                trace_id=trace_id,
+                trigger=trigger,
+                event_type=SyncEventType.QUEUED,
+                event_phase=SyncPhase.QUEUED,
+                event_status=SyncRunStatus.QUEUED,
+                payload={
+                    'queue_token': state.queue_token,
+                    'queued_at': state.queued_at,
+                    'pending_video_count': state.pending_video_count,
+                    'error_message': error_message,
+                },
+                message=error_message,
+                occurred_at=now,
+            )
             return state
 
         if state.sync_status not in {SyncStatus.QUEUED.value, SyncStatus.RUNNING.value}:
@@ -530,7 +669,118 @@ def reconcile_task_retry_state(
         state.idle_sync_count = 0
         state.next_sync_at = now + build_retry_delay(state.sync_mode, state.failure_count)
         state.version += 1
+        _append_state_event(
+            session,
+            state=state,
+            run_id=run_id,
+            request_id=request_id,
+            trace_id=trace_id,
+            trigger=trigger,
+            event_type=SyncEventType.FAILED,
+            event_phase=SyncPhase.FAILED,
+            event_status=SyncRunStatus.FAILED,
+            payload={
+                'error_message': state.last_error,
+                'failure_count': state.failure_count,
+                'pending_video_count': state.pending_video_count,
+                'next_sync_at': state.next_sync_at,
+            },
+            message=state.last_error,
+            occurred_at=now,
+        )
         return state
+
+
+def reconcile_retry_wait_run_projections() -> dict[str, int]:
+    scanned = 0
+    repaired = 0
+    now = datetime.now()
+    feed_phase_candidates = {
+        SyncPhase.FETCHING_FEED,
+        SyncPhase.CALCULATING_DELTA,
+        SyncPhase.ENQUEUEING,
+    }
+
+    with get_session() as session:
+        rows = session.execute(
+            select(
+                SubscriptionSyncSubscriptionProjection,
+                SubscriptionSyncRunProjection,
+                SubscriptionSyncState,
+            )
+            .join(
+                SubscriptionSyncRunProjection,
+                SubscriptionSyncRunProjection.run_id == SubscriptionSyncSubscriptionProjection.latest_run_id,
+            )
+            .join(
+                SubscriptionSyncState,
+                SubscriptionSyncState.id == SubscriptionSyncRunProjection.sync_state_id,
+            )
+            .where(
+                SubscriptionSyncSubscriptionProjection.current_status == SyncRunStatus.RUNNING,
+                SubscriptionSyncState.sync_status == SyncStatus.QUEUED.value,
+                SubscriptionSyncRunProjection.current_phase.in_(feed_phase_candidates),
+            )
+        ).all()
+
+        tasks = session.execute(
+            select(CrawlTask)
+            .where(CrawlTask.task_type == 'subscription_sync')
+            .order_by(CrawlTask.id.desc())
+        ).scalars().all()
+
+        latest_task_by_sync_state: dict[int, CrawlTask] = {}
+        for task in tasks:
+            sync_state_id = (task.payload or {}).get('sync_state_id')
+            try:
+                sync_state_id = int(sync_state_id)
+            except (TypeError, ValueError):
+                continue
+            latest_task_by_sync_state.setdefault(sync_state_id, task)
+
+        for _, run_projection, state in rows:
+            scanned += 1
+            task = latest_task_by_sync_state.get(state.id)
+            if not task:
+                continue
+
+            task_payload = task.payload or {}
+            task_run_id = str(task_payload.get('run_id') or '').strip() or None
+            if task_run_id and task_run_id != run_projection.run_id:
+                continue
+            if task.status != 'retry_wait':
+                continue
+
+            error_message = str(task.last_error or state.last_error or '').strip()
+            if error_message != 'lease_expired':
+                continue
+
+            occurred_at = state.queued_at or task.updated_at or now
+            _append_state_event(
+                session,
+                state=state,
+                run_id=run_projection.run_id,
+                request_id=run_projection.request_id,
+                trace_id=run_projection.trace_id,
+                trigger=run_projection.trigger,
+                event_type=SyncEventType.QUEUED,
+                event_phase=SyncPhase.QUEUED,
+                event_status=SyncRunStatus.QUEUED,
+                payload={
+                    'queue_token': state.queue_token or task_payload.get('queue_token'),
+                    'queued_at': occurred_at,
+                    'pending_video_count': state.pending_video_count,
+                    'error_message': error_message,
+                },
+                message=error_message,
+                occurred_at=occurred_at,
+            )
+            repaired += 1
+
+    return {
+        'candidates': scanned,
+        'repaired': repaired,
+    }
 
 
 def continue_full_sync_batch(
@@ -822,6 +1072,7 @@ def decrement_pending_video_count(
     request_id: Optional[str] = None,
     trace_id: Optional[str] = None,
     trigger: Optional[str] = None,
+    allow_completion: bool = True,
 ) -> None:
     if not sync_state_id or count <= 0:
         return
@@ -831,7 +1082,13 @@ def decrement_pending_video_count(
             return
         state.pending_video_count = max(0, state.pending_video_count - count)
         state.version += 1
-        if state.pending_video_count == 0 and state.sync_status == SyncStatus.RUNNING.value and state.locked_at is None:
+        if (
+            allow_completion
+            and state.pending_video_count == 0
+            and state.sync_status == SyncStatus.RUNNING.value
+            and state.locked_at is None
+            and _can_complete_drained_state(state.id)
+        ):
             _complete_sync_success_in_session(
                 session,
                 state=state,
@@ -867,6 +1124,74 @@ def reconcile_pending_video_counts() -> dict[str, int]:
     return {
         'states': len(counts),
         'videos': sum(counts.values()),
+    }
+
+
+def reconcile_terminal_drained_sync_states() -> dict[str, int]:
+    summary = crawl_task_service.summarize_video_task_states_by_sync_state()
+    now = datetime.now()
+    completed = 0
+    failed = 0
+
+    with get_session() as session:
+        states = session.execute(
+            select(SubscriptionSyncState).where(
+                SubscriptionSyncState.sync_status == SyncStatus.RUNNING.value,
+                SubscriptionSyncState.locked_at.is_(None),
+            )
+        ).scalars().all()
+
+        for state in states:
+            stats = summary.get(state.id, {})
+            active_count = int(stats.get('active_count', 0) or 0)
+            failed_count = int(stats.get('failed_count', 0) or 0)
+
+            if active_count > 0:
+                continue
+
+            state.pending_video_count = 0
+
+            if failed_count > 0:
+                state.failure_count += 1
+                state.sync_status = SyncStatus.FAILED.value
+                state.last_sync_at = now
+                state.last_error = str(stats.get('last_error') or 'video_extract_failed')
+                state.queue_token = None
+                state.queued_at = None
+                state.locked_at = None
+                state.idle_sync_count = 0
+                state.next_sync_at = now + build_retry_delay(state.sync_mode, state.failure_count)
+                state.version += 1
+                _append_terminal_reconcile_run_events(
+                    session,
+                    state=state,
+                    event_type=SyncEventType.FAILED,
+                    event_phase=SyncPhase.FAILED,
+                    event_status=SyncRunStatus.FAILED,
+                    reason='video_extract_reconcile_failed',
+                    error_message=state.last_error,
+                    occurred_at=now,
+                )
+                failed += 1
+                continue
+
+            _complete_sync_success_in_session(session, state=state)
+            _append_terminal_reconcile_run_events(
+                session,
+                state=state,
+                event_type=SyncEventType.COMPLETED,
+                event_phase=SyncPhase.COMPLETED,
+                event_status=SyncRunStatus.SUCCESS,
+                reason='video_extract_reconcile_completed',
+                error_message=None,
+                occurred_at=now,
+            )
+            completed += 1
+
+    return {
+        'running_states': len(states),
+        'completed': completed,
+        'failed': failed,
     }
 
 
@@ -951,6 +1276,39 @@ def _scan_pending_video_counts() -> dict[int, int]:
 
 def _scan_subscription_update_state_ids() -> set[int]:
     return crawl_task_service.list_active_subscription_sync_state_ids()
+
+
+def _get_latest_state_run_projection(
+    session,
+    state: SubscriptionSyncState,
+) -> Optional[SubscriptionSyncRunProjection]:
+    try:
+        return session.execute(
+            select(SubscriptionSyncRunProjection)
+            .join(
+                SubscriptionSyncSubscriptionProjection,
+                SubscriptionSyncSubscriptionProjection.latest_run_id == SubscriptionSyncRunProjection.run_id,
+            )
+            .where(
+                SubscriptionSyncSubscriptionProjection.subscription_id == state.subscription_id,
+                SubscriptionSyncRunProjection.sync_state_id == state.id,
+            )
+            .limit(1)
+        ).scalar_one_or_none()
+    except SQLAlchemyError:
+        return None
+
+
+def _can_complete_drained_state(sync_state_id: int) -> bool:
+    try:
+        summary = crawl_task_service.summarize_video_task_states_by_sync_state()
+    except SQLAlchemyError:
+        return True
+
+    stats = summary.get(sync_state_id, {})
+    active_count = int(stats.get('active_count', 0) or 0)
+    failed_count = int(stats.get('failed_count', 0) or 0)
+    return failed_count == 0 and active_count <= 1
 
 
 def attach_sync_fields(target: dict, sync_state: Optional[SubscriptionSyncState]) -> dict:

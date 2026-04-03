@@ -18,12 +18,15 @@ class SubscriptionPendingReconcileTask(BaseTask):
     def run(cls):
         try:
             video_result = subscription_sync_state_service.reconcile_pending_video_counts()
+            drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
             queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()
             running_result = subscription_sync_state_service.recover_stale_running_sync_states()
             logger.info(
-                "Subscription pending reconcile completed: video_states=%s videos=%s queued_recovered=%s running_recovered=%s",
+                "Subscription pending reconcile completed: video_states=%s videos=%s drained_completed=%s drained_failed=%s queued_recovered=%s running_recovered=%s",
                 video_result["states"],
                 video_result["videos"],
+                drained_result["completed"],
+                drained_result["failed"],
                 queued_result["recovered"],
                 running_result["recovered"],
             )
