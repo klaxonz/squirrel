@@ -213,6 +213,53 @@ class PluginRuntimeSupervisor:
             handle.write(json.dumps(payload, ensure_ascii=False) + '\n')
         return audit_path
 
+    def _build_invoke_details(
+        self,
+        target: PluginRoutingTarget,
+        request: PluginInvokeRequest,
+        handle: PluginRuntimeHandle,
+        *,
+        elapsed_ms: Optional[int] = None,
+        reason: Optional[str] = None,
+    ) -> dict:
+        payload = dict(request.payload or {})
+        details = {
+            'request_id': request.request_id,
+            'task_id': payload.get('task_id'),
+            'plugin_id': target.plugin_id,
+            'version': target.version,
+            'capability': target.capability,
+            'site_name': request.site_name or target.site_name,
+            'domain': target.domain or request.metadata.get('domain'),
+            'url': payload.get('url'),
+            'timeout_ms': request.timeout_ms,
+            'endpoint': handle.endpoint,
+            'process_id': handle.process_id,
+        }
+        if elapsed_ms is not None:
+            details['elapsed_ms'] = elapsed_ms
+        if reason is not None:
+            details['reason'] = reason
+        return details
+
+    @staticmethod
+    def _format_invoke_timeout_message(details: dict) -> str:
+        return (
+            'Plugin runtime request timed out: '
+            f"plugin_id={details.get('plugin_id')}, "
+            f"version={details.get('version')}, "
+            f"capability={details.get('capability')}, "
+            f"request_id={details.get('request_id')}, "
+            f"task_id={details.get('task_id')}, "
+            f"site_name={details.get('site_name')}, "
+            f"domain={details.get('domain')}, "
+            f"url={details.get('url')}, "
+            f"timeout_ms={details.get('timeout_ms')}, "
+            f"elapsed_ms={details.get('elapsed_ms')}, "
+            f"endpoint={details.get('endpoint')}, "
+            f"process_id={details.get('process_id')}"
+        )
+
     def _schedule_runtime_expiry(self, key: str, record: PluginInstallRecord) -> None:
         runtime_policy = self._runtime_policy(record)
         max_runtime_seconds = runtime_policy.get('max_runtime_seconds')
@@ -321,7 +368,10 @@ class PluginRuntimeSupervisor:
         port = self._pick_port()
         runtime_endpoint = endpoint or f'http://{host}:{port}'
         process_command = list(command) if command else self._build_runtime_command(record, host, port)
-        startup_timeout_ms = int(((record.manifest or {}).get('health_policy') or {}).get('startup_timeout_ms') or 10000)
+        startup_timeout_ms = int(
+            ((record.manifest or {}).get('health_policy') or {}).get('startup_timeout_ms')
+            or 10000
+        )
         process_cwd = cwd or self._resolve_runtime_cwd(record)
         process_env = self._build_process_env(record)
         artifact_paths = self._resolve_artifact_paths(record)
@@ -473,6 +523,14 @@ class PluginRuntimeSupervisor:
             timeout_ms=request.timeout_ms,
             metadata=dict(request.metadata),
         )
+        started_at = time.monotonic()
+        record = self._records.get(self._key(target.plugin_id, target.version))
+        if record is not None:
+            self._append_audit_event(
+                record,
+                event='invoke_started',
+                details=self._build_invoke_details(target, request, handle),
+            )
 
         try:
             raw_response = self._request_json(
@@ -489,56 +547,90 @@ class PluginRuntimeSupervisor:
                     handle.state = PluginRuntimeState.RUNNING if health.healthy else PluginRuntimeState.FAILED
                 except Exception:
                     pass
+            if record is not None:
+                elapsed_ms = int((time.monotonic() - started_at) * 1000)
+                self._append_audit_event(
+                    record,
+                    event='invoke_completed',
+                    details={
+                        **self._build_invoke_details(
+                            target,
+                            request,
+                            handle,
+                            elapsed_ms=elapsed_ms,
+                        ),
+                        'ok': response.ok,
+                        'error_code': response.error.code if response.error else None,
+                    },
+                )
             return response
-        except urllib.error.URLError as exc:
+        except (TimeoutError, socket.timeout) as exc:
             self.mark_failed(target.plugin_id, target.version, str(exc))
-            record = self._records.get(self._key(target.plugin_id, target.version))
+            details = self._build_invoke_details(
+                target,
+                request,
+                handle,
+                elapsed_ms=int((time.monotonic() - started_at) * 1000),
+                reason=str(exc),
+            )
             if record is not None:
                 self._append_audit_event(
                     record,
                     event='invoke_failed',
-                    details={'capability': target.capability, 'reason': str(exc)},
+                    details=details,
+                )
+            return PluginInvokeResponse(
+                request_id=request.request_id,
+                ok=False,
+                error=PluginRuntimeError.timeout(
+                    self._format_invoke_timeout_message(details),
+                    details=details,
+                ),
+                retryable=True,
+            )
+        except urllib.error.URLError as exc:
+            self.mark_failed(target.plugin_id, target.version, str(exc))
+            details = self._build_invoke_details(
+                target,
+                request,
+                handle,
+                elapsed_ms=int((time.monotonic() - started_at) * 1000),
+                reason=str(exc),
+            )
+            if record is not None:
+                self._append_audit_event(
+                    record,
+                    event='invoke_failed',
+                    details=details,
                 )
             return PluginInvokeResponse(
                 request_id=request.request_id,
                 ok=False,
                 error=PluginRuntimeError.network_error(
                     'Plugin runtime request failed',
-                    details={'plugin_id': target.plugin_id, 'capability': target.capability, 'reason': str(exc)},
+                    details=details,
                 ),
-            )
-        except (TimeoutError, socket.timeout) as exc:
-            self.mark_failed(target.plugin_id, target.version, str(exc))
-            record = self._records.get(self._key(target.plugin_id, target.version))
-            if record is not None:
-                self._append_audit_event(
-                    record,
-                    event='invoke_failed',
-                    details={'capability': target.capability, 'reason': str(exc)},
-                )
-            return PluginInvokeResponse(
-                request_id=request.request_id,
-                ok=False,
-                error=PluginRuntimeError.timeout(
-                    'Plugin runtime request timed out',
-                    details={'plugin_id': target.plugin_id, 'capability': target.capability, 'reason': str(exc)},
-                ),
-                retryable=True,
             )
         except Exception as exc:
             self.mark_failed(target.plugin_id, target.version, str(exc))
-            record = self._records.get(self._key(target.plugin_id, target.version))
+            details = self._build_invoke_details(
+                target,
+                request,
+                handle,
+                elapsed_ms=int((time.monotonic() - started_at) * 1000),
+                reason=str(exc),
+            )
             if record is not None:
                 self._append_audit_event(
                     record,
                     event='invoke_failed',
-                    details={'capability': target.capability, 'reason': str(exc)},
+                    details=details,
                 )
             return PluginInvokeResponse(
                 request_id=request.request_id,
                 ok=False,
                 error=PluginRuntimeError.bad_response(
                     'Plugin runtime returned an invalid response object',
-                    details={'plugin_id': target.plugin_id, 'capability': target.capability, 'reason': str(exc)},
+                    details=details,
                 ),
             )

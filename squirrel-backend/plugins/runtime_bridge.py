@@ -4,13 +4,17 @@ import argparse
 from datetime import date, datetime
 import importlib
 import json
+import logging
 import sys
 import threading
+import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 from crawl import PluginHealthStatus, PluginInvokeRequest, PluginInvokeResponse, PluginRuntime, PluginRuntimeError
+
+logger = logging.getLogger(__name__)
 
 
 def _configure_backend_runtime_state() -> None:
@@ -84,6 +88,61 @@ class _BridgeHandler(BaseHTTPRequestHandler):
         payload = json.loads(raw_body.decode('utf-8') or '{}')
         return payload if isinstance(payload, dict) else {}
 
+    @staticmethod
+    def _build_invoke_log_fields(request: PluginInvokeRequest, *, elapsed_ms: int | None = None) -> dict[str, Any]:
+        payload = dict(request.payload or {})
+        fields = {
+            'request_id': request.request_id,
+            'task_id': payload.get('task_id'),
+            'capability': request.capability,
+            'site_name': request.site_name or payload.get('site_name'),
+            'url': payload.get('url'),
+            'timeout_ms': request.timeout_ms or payload.get('timeout_ms'),
+        }
+        if elapsed_ms is not None:
+            fields['elapsed_ms'] = elapsed_ms
+        return fields
+
+    def _log_invoke_event(
+        self,
+        message: str,
+        request: PluginInvokeRequest,
+        *,
+        level: int,
+        elapsed_ms: int | None = None,
+    ) -> None:
+        fields = self._build_invoke_log_fields(request, elapsed_ms=elapsed_ms)
+        logger.log(
+            level,
+            '%s: request_id=%s, task_id=%s, capability=%s, site_name=%s, url=%s, timeout_ms=%s, elapsed_ms=%s',
+            message,
+            fields.get('request_id'),
+            fields.get('task_id'),
+            fields.get('capability'),
+            fields.get('site_name'),
+            fields.get('url'),
+            fields.get('timeout_ms'),
+            fields.get('elapsed_ms'),
+        )
+
+    def _write_invoke_response(
+        self,
+        request: PluginInvokeRequest,
+        response: PluginInvokeResponse,
+        *,
+        elapsed_ms: int,
+    ) -> None:
+        try:
+            self._write_json(HTTPStatus.OK, response.to_dict())
+        except (ConnectionError, OSError) as exc:
+            self._log_invoke_event(
+                'Plugin invoke response dropped because client disconnected',
+                request,
+                level=logging.WARNING,
+                elapsed_ms=elapsed_ms,
+            )
+            logger.warning('Plugin response write failed: %s', exc)
+
     def do_GET(self) -> None:  # noqa: N802
         if self.path != '/health':
             self._write_json(HTTPStatus.NOT_FOUND, {'error': 'not_found'})
@@ -99,15 +158,23 @@ class _BridgeHandler(BaseHTTPRequestHandler):
         if self.path == '/invoke':
             payload = self._read_json()
             request = PluginInvokeRequest.from_dict(payload.get('request') or {})
+            started_at = time.monotonic()
+            self._log_invoke_event('Plugin invoke started', request, level=logging.INFO)
             response = self.server.runtime.invoke(request.capability, request.payload)
+            elapsed_ms = int((time.monotonic() - started_at) * 1000)
+            self._log_invoke_event('Plugin invoke finished', request, level=logging.INFO, elapsed_ms=elapsed_ms)
             if isinstance(response, PluginInvokeResponse):
-                self._write_json(HTTPStatus.OK, response.to_dict())
+                self._write_invoke_response(request, response, elapsed_ms=elapsed_ms)
                 return
             if isinstance(response, dict):
-                self._write_json(HTTPStatus.OK, PluginInvokeResponse.from_dict(response).to_dict())
+                self._write_invoke_response(
+                    request,
+                    PluginInvokeResponse.from_dict(response),
+                    elapsed_ms=elapsed_ms,
+                )
                 return
-            self._write_json(
-                HTTPStatus.OK,
+            self._write_invoke_response(
+                request,
                 PluginInvokeResponse(
                     request_id=request.request_id,
                     ok=False,
@@ -115,7 +182,8 @@ class _BridgeHandler(BaseHTTPRequestHandler):
                         'Plugin runtime returned an unsupported response type',
                         details={'capability': request.capability},
                     ),
-                ).to_dict(),
+                ),
+                elapsed_ms=elapsed_ms,
             )
             return
 
@@ -143,6 +211,11 @@ def _json_default(value: Any) -> Any:
 
 
 def main() -> int:
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+        force=True,
+    )
     args = _parse_args()
 
     for import_path in args.import_path:

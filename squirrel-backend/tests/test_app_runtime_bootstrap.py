@@ -1,10 +1,12 @@
 import asyncio
+import logging
 from pathlib import Path
 import sys
 from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from crawl import PluginInvokeResponse
 import main as app_main
 from plugins import runtime_bridge
 from processes import service_runtime
@@ -72,3 +74,54 @@ def test_runtime_bridge_configures_backend_runtime_http_state(monkeypatch):
 
     assert runtime_http.get_cloudflare_bypass_client() is client
     assert runtime_http.get_cookie_file_resolver() is resolver
+
+
+def test_runtime_bridge_logs_client_disconnect_without_traceback(monkeypatch, caplog):
+    class _Runtime:
+        def invoke(self, capability, payload=None):
+            assert capability == 'extract_video'
+            assert payload == {
+                'request_id': 'req-1',
+                'url': 'https://www.youtube.com/watch?v=demo',
+                'task_id': 'task-1',
+                'site_name': 'youtube',
+                'timeout_ms': 120000,
+            }
+            return PluginInvokeResponse(request_id='req-1', ok=True, data={'success': True})
+
+    handler = object.__new__(runtime_bridge._BridgeHandler)
+    handler.path = '/invoke'
+    handler.client_address = ('127.0.0.1', 12345)
+    handler.server = SimpleNamespace(runtime=_Runtime())
+    monkeypatch.setattr(
+        handler,
+        '_read_json',
+        lambda: {
+            'request': {
+                'request_id': 'req-1',
+                'capability': 'extract_video',
+                'site_name': 'youtube',
+                'timeout_ms': 120000,
+                'payload': {
+                    'request_id': 'req-1',
+                    'url': 'https://www.youtube.com/watch?v=demo',
+                    'task_id': 'task-1',
+                    'site_name': 'youtube',
+                    'timeout_ms': 120000,
+                },
+            }
+        },
+    )
+
+    def _raise_client_disconnect(*_args, **_kwargs):
+        raise ConnectionAbortedError(10053, 'connection aborted')
+
+    monkeypatch.setattr(handler, '_write_json', _raise_client_disconnect)
+
+    with caplog.at_level(logging.WARNING, logger='plugins.runtime_bridge'):
+        handler.do_POST()
+
+    assert 'Plugin invoke response dropped because client disconnected' in caplog.text
+    assert 'request_id=req-1' in caplog.text
+    assert 'capability=extract_video' in caplog.text
+    assert 'url=https://www.youtube.com/watch?v=demo' in caplog.text
