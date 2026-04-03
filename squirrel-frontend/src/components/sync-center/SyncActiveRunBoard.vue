@@ -62,13 +62,8 @@
           </div>
 
           <div class="run-row__progress">
-            <span v-if="showPercent(item)" class="run-row__percent">{{ item.progress_percent }}%</span>
             <span class="run-row__label">{{ item.progress_label || '进行中' }}</span>
           </div>
-        </div>
-
-        <div v-if="showProgressRail(item)" class="progress-rail">
-          <div class="progress-fill" :style="{ width: `${item.progress_percent}%` }"></div>
         </div>
 
         <div v-if="pipeline === 'extract' || getFeedMetrics(item).length" class="metric-inline">
@@ -149,10 +144,6 @@ const getPhaseLabel = (phase: string | null) => {
     default: return '运行中'
   }
 }
-
-const showPercent = (item: SyncCenterItem) => props.pipeline === 'extract' || item.current_phase === 'enqueueing'
-
-const showProgressRail = (item: SyncCenterItem) => props.pipeline === 'extract' || item.current_phase === 'enqueueing'
 
 const getTimeMetaText = (item: SyncCenterItem) => {
   if (item.locked_at) {
@@ -409,17 +400,8 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 
 .run-row__progress {
   display: flex;
-  flex-direction: column;
   align-items: end;
-  gap: 0.12rem;
   flex-shrink: 0;
-}
-
-.run-row__percent {
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1;
-  color: rgba(255, 255, 255, 0.94);
 }
 
 .run-row__label {
@@ -439,21 +421,6 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   font-weight: 700;
   color: rgba(255, 222, 195, 0.82);
   flex-shrink: 0;
-}
-
-.progress-rail {
-  margin-top: 0.65rem;
-  height: 0.34rem;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, rgba(255, 142, 91, 0.82), rgba(255, 198, 97, 0.96));
-  transition: width 0.28s ease;
 }
 
 .metric-inline {

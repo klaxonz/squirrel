@@ -24,7 +24,7 @@ test('formatActiveRunProgress hides feed-stage pseudo percentages', () => {
   )
 })
 
-test('formatActiveRunProgress only shows real extracted/enqueued ratio for extracting lane', () => {
+test('formatActiveRunProgress hides percentages and rails for extracting lane too', () => {
   assert.deepEqual(
     formatActiveRunProgress(
       {
@@ -36,9 +36,8 @@ test('formatActiveRunProgress only shows real extracted/enqueued ratio for extra
     ),
     {
       label: '3 / 5',
-      percentText: '60%',
-      showPercent: true,
-      showRail: true,
+      showPercent: false,
+      showRail: false,
     },
   )
 })

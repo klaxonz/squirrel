@@ -34,9 +34,6 @@
             </p>
           </div>
 
-          <div class="recent-row__summary">
-            <span class="recent-row__percent">{{ item.progress_percent }}%</span>
-          </div>
         </div>
 
         <div class="metric-inline">
@@ -168,19 +165,6 @@ defineProps<{
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.recent-row__summary {
-  display: flex;
-  align-items: start;
-  flex-shrink: 0;
-}
-
-.recent-row__percent {
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1;
-  color: rgba(255, 255, 255, 0.9);
 }
 
 .status-chip,
