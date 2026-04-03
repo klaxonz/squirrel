@@ -319,3 +319,190 @@ def test_dispatcher_considers_other_task_types_when_one_type_fills_candidate_win
     assert first.task_type == 'video_extract'
     assert second is not None
     assert second.task_type == 'subscription_sync'
+
+
+def test_dispatcher_rotates_sites_before_filling_second_slot_for_one_hot_site(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        hot_job_id = _create_job(session, site='youtube')
+        cold_job_id = _create_job(session, site='bilibili')
+        session.add(
+            CrawlTask(
+                job_id=hot_job_id,
+                task_type='video_extract',
+                site='youtube',
+                priority='normal',
+                payload={},
+                next_run_at=now - timedelta(seconds=200),
+                created_at=now - timedelta(seconds=200),
+            )
+        )
+        session.add(
+            CrawlTask(
+                job_id=hot_job_id,
+                task_type='video_extract',
+                site='youtube',
+                priority='normal',
+                payload={},
+                next_run_at=now - timedelta(seconds=100),
+                created_at=now - timedelta(seconds=100),
+            )
+        )
+        session.add(
+            CrawlTask(
+                job_id=cold_job_id,
+                task_type='video_extract',
+                site='bilibili',
+                priority='normal',
+                payload={},
+                next_run_at=now - timedelta(seconds=1),
+                created_at=now - timedelta(seconds=1),
+            )
+        )
+        session.commit()
+
+    dispatcher = CrawlDispatcherService(
+        policy=CrawlDispatcherPolicy(default_site_concurrency=2),
+    )
+
+    first = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
+    second = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
+
+    assert first is not None
+    assert second is not None
+    assert first.site == 'youtube'
+    assert second.site == 'bilibili'
+
+
+def test_dispatcher_gives_subscription_sync_a_slot_when_video_extract_backlog_is_older(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        sync_job_id = _create_job(session, site='youtube')
+        session.add(
+            CrawlTask(
+                job_id=sync_job_id,
+                task_type='subscription_sync',
+                site='youtube',
+                priority='normal',
+                payload={},
+                next_run_at=now - timedelta(seconds=1),
+                created_at=now - timedelta(seconds=1),
+            )
+        )
+        for index in range(20):
+            job_id = _create_job(session, site=f'video-site-{index}')
+            session.add(
+                CrawlTask(
+                    job_id=job_id,
+                    task_type='video_extract',
+                    site=f'video-site-{index}',
+                    priority='normal',
+                    payload={},
+                    next_run_at=now - timedelta(seconds=200 + index),
+                    created_at=now - timedelta(seconds=200 + index),
+                )
+            )
+        session.commit()
+
+    dispatcher = CrawlDispatcherService(
+        policy=CrawlDispatcherPolicy(
+            default_site_concurrency=2,
+            task_type_limits={'subscription_sync': 2, 'video_extract': 8},
+        ),
+    )
+
+    claimed = [
+        dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
+        for _ in range(8)
+    ]
+
+    assert any(task is not None and task.task_type == 'subscription_sync' for task in claimed)
+
+
+def test_dispatcher_considers_next_task_type_for_same_site_when_site_head_type_is_full(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        youtube_job_id = _create_job(session, site='youtube')
+        bilibili_job_id = _create_job(session, site='bilibili')
+
+        session.add_all(
+            [
+                CrawlTask(
+                    job_id=youtube_job_id,
+                    task_type='video_extract',
+                    site='youtube',
+                    priority='normal',
+                    payload={},
+                    status='running',
+                    worker_id='worker-youtube-1',
+                    lease_until=now + timedelta(minutes=5),
+                ),
+                CrawlTask(
+                    job_id=youtube_job_id,
+                    task_type='video_extract',
+                    site='youtube',
+                    priority='normal',
+                    payload={},
+                    status='running',
+                    worker_id='worker-youtube-2',
+                    lease_until=now + timedelta(minutes=5),
+                ),
+                CrawlTask(
+                    job_id=youtube_job_id,
+                    task_type='video_extract',
+                    site='youtube',
+                    priority='normal',
+                    payload={},
+                    next_run_at=now - timedelta(seconds=300),
+                    created_at=now - timedelta(seconds=300),
+                ),
+                CrawlTask(
+                    job_id=bilibili_job_id,
+                    task_type='subscription_sync',
+                    site='bilibili',
+                    priority='normal',
+                    payload={},
+                    status='running',
+                    worker_id='worker-sync',
+                    lease_until=now + timedelta(minutes=5),
+                ),
+                CrawlTask(
+                    job_id=bilibili_job_id,
+                    task_type='subscription_sync',
+                    site='bilibili',
+                    priority='normal',
+                    payload={},
+                    next_run_at=now - timedelta(seconds=200),
+                    created_at=now - timedelta(seconds=200),
+                ),
+                CrawlTask(
+                    job_id=bilibili_job_id,
+                    task_type='video_extract',
+                    site='bilibili',
+                    priority='normal',
+                    payload={},
+                    next_run_at=now - timedelta(seconds=100),
+                    created_at=now - timedelta(seconds=100),
+                ),
+            ]
+        )
+        session.commit()
+
+    dispatcher = CrawlDispatcherService(
+        policy=CrawlDispatcherPolicy(
+            default_site_concurrency=2,
+            task_type_limits={'subscription_sync': 1, 'video_extract': 8},
+        ),
+    )
+
+    claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
+
+    assert claimed is not None
+    assert claimed.site == 'bilibili'
+    assert claimed.task_type == 'video_extract'
