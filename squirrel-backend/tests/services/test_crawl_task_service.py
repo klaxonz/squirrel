@@ -398,6 +398,40 @@ def test_complete_task_marks_job_succeeded_when_all_tasks_finish(monkeypatch):
     assert stored_job.finished_at == now + timedelta(seconds=5)
 
 
+def test_complete_task_clears_stale_error_fields_after_retry_success(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    job_id = _create_job(engine)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        task = CrawlTask(
+            job_id=job_id,
+            task_type='video_extract',
+            site='pornhub',
+            priority='full',
+            payload={},
+            status='running',
+            worker_id='worker-1',
+            attempt=1,
+            lease_until=now + timedelta(seconds=30),
+            last_error="StageExecutionError: Critical stage 'extraction' failed",
+            last_error_type='ValueError',
+            started_at=now - timedelta(seconds=30),
+        )
+        session.add(task)
+        session.commit()
+        task_id = task.id
+
+    crawl_task_service.complete_task(task_id=task_id, worker_id='worker-1', now=now)
+
+    with Session(engine, expire_on_commit=False) as session:
+        stored_task = session.get(CrawlTask, task_id)
+
+    assert stored_task.status == 'succeeded'
+    assert stored_task.last_error is None
+    assert stored_task.last_error_type is None
+
+
 def test_recover_expired_dead_task_marks_job_failed(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     job_id = _create_job(engine)

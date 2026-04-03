@@ -32,15 +32,14 @@ def enqueue_video_extraction(params: VideoExtractDto) -> bool:
     return _send_to_extract_queue(params)
 
 
-def _build_video_dedupe_key(url: str, priority: str) -> str:
-    return f"dedupe:video_extract:{priority}:{url}"
+def _build_video_dedupe_key(url: str) -> str:
+    return f"dedupe:video_extract:{url}"
 
 
 def clear_video_extraction_dedupe(params: VideoExtractDto) -> None:
     if params.is_manual:
         return
-    priority = "full" if params.is_extract_all else "incr"
-    crawl_task_service.clear_task_dedupe_key(_build_video_dedupe_key(params.url, priority))
+    crawl_task_service.clear_task_dedupe_key(_build_video_dedupe_key(params.url))
 
 
 def _send_to_extract_queue(params: VideoExtractDto) -> bool:
@@ -56,7 +55,7 @@ def _send_to_extract_queue(params: VideoExtractDto) -> bool:
 
 def _send_to_extract_task(content: dict, params: VideoExtractDto, priority: str) -> bool:
     domain = extract_top_level_domain(params.url)
-    dedupe_key = None if params.is_manual else _build_video_dedupe_key(params.url, priority)
+    dedupe_key = None if params.is_manual else _build_video_dedupe_key(params.url)
     source_type = 'manual' if params.is_manual else 'scheduled'
 
     try:

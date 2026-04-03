@@ -240,6 +240,8 @@ def complete_task(
         task.finished_at = now
         task.lease_until = None
         task.worker_id = None
+        task.last_error = None
+        task.last_error_type = None
         _refresh_job_status(session, job_id=task.job_id, now=now)
         session.flush()
         return task
