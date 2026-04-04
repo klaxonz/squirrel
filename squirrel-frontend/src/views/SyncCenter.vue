@@ -18,42 +18,57 @@
           </section>
         </div>
 
-        <section class="flow-shell">
+        <div class="relative">
+          <!-- 背景装饰编号 -->
+          <div class="absolute inset-0 flex justify-between px-12 pointer-events-none select-none overflow-hidden" aria-hidden="true">
+            <span class="text-[20rem] font-black text-white/[0.02] leading-none mt-20">01</span>
+            <span class="text-[20rem] font-black text-white/[0.02] leading-none mt-40">02</span>
+            <span class="text-[20rem] font-black text-white/[0.02] leading-none mt-20">03</span>
+          </div>
 
-          <SyncQueueBoard
-            :items="currentQueuedLaneItems"
-            :loading="dashboardRefreshing"
-            :error="currentQueuedError"
-            @open-run="handleOpenRunFromItem"
-          />
+          <!-- 垂直导轨 -->
+          <div class="absolute inset-0 flex justify-between px-[33%] pointer-events-none" aria-hidden="true">
+            <div class="w-px h-full bg-gradient-to-b from-transparent via-white/5 to-transparent shadow-[0_0_15px_rgba(255,255,255,0.05)]"></div>
+            <div class="w-px h-full bg-gradient-to-b from-transparent via-white/5 to-transparent shadow-[0_0_15px_rgba(255,255,255,0.05)]"></div>
+          </div>
 
-          <SyncActiveRunBoard
-            :items="currentActiveLaneItems"
-            :slot-count="activeSlotCount"
-            :loading="dashboardRefreshing"
-            :error="currentRunningError"
-            :pipeline="activePipeline"
-            :carryover-count="activePipeline === 'feed' ? feedAwaitingExtractCount : 0"
-            @open-run="handleOpenRunFromItem"
-          />
+          <section class="flow-shell relative z-10">
+            <SyncQueueBoard
+              :items="currentQueuedLaneItems"
+              :loading="dashboardRefreshing"
+              :error="currentQueuedError"
+              @open-run="handleOpenRunFromItem"
+            />
 
-          <SyncRecentRunBoard
-            v-if="activePipeline === 'feed'"
-            :runs="recentLaneRuns"
-            :loading="historyLoading"
-            :error="historyError"
-            :last-updated-at="historyLastUpdatedAt"
-            :selected-run-id="selectedRunId"
-            @open-run="handleSelectRun"
-          />
+            <SyncActiveRunBoard
+              :items="currentActiveLaneItems"
+              :slot-count="activeSlotCount"
+              :loading="dashboardRefreshing"
+              :error="currentRunningError"
+              :pipeline="activePipeline"
+              :carryover-count="activePipeline === 'feed' ? feedAwaitingExtractCount : 0"
+              @open-run="handleOpenRunFromItem"
+            />
 
-          <SyncRecentTaskBoard
-            v-else
-            :items="extractionRecentItems"
-            :loading="extractionLoading"
-            :error="extractionRecentPreviewError"
-          />
-        </section>
+            <SyncRecentRunBoard
+              v-if="activePipeline === 'feed'"
+              :runs="recentLaneRuns"
+              :loading="historyLoading"
+              :error="historyError"
+              :last-updated-at="historyLastUpdatedAt"
+              :selected-run-id="selectedRunId"
+              @open-run="handleSelectRun"
+            />
+
+            <SyncRecentTaskBoard
+              v-else
+              :items="extractionRecentItems"
+              :loading="extractionLoading"
+              :error="extractionRecentPreviewError"
+            />
+          </section>
+        </div>
+
       </div>
     </div>
 
@@ -431,7 +446,25 @@ onBeforeUnmount(() => {
 
 .flow-shell {
   display: grid;
-  gap: 1.5rem;
+  gap: 2rem;
+}
+
+.lane-card-enter-active,
+.lane-card-leave-active,
+.lane-card-move {
+  transition: all 0.6s cubic-bezier(0.2, 1, 0.2, 1);
+}
+
+.lane-card-enter-from {
+  opacity: 0;
+  transform: translateX(-30px) scale(0.95);
+  filter: blur(4px);
+}
+
+.lane-card-leave-to {
+  opacity: 0;
+  transform: translateX(30px) scale(0.95);
+  filter: blur(4px);
 }
 
 @media (min-width: 1280px) {

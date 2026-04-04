@@ -39,7 +39,7 @@
         v-for="(item, index) in items"
         :key="item.run_id || item.subscription_id"
         type="button"
-        class="run-row"
+        class="run-row animate-scan"
         @click="emit('open-run', item)"
       >
         <div class="run-row__main">
@@ -65,12 +65,15 @@
           </div>
         </div>
 
-        <!-- 离散能量条 (Power Bar) -->
-        <div class="flex gap-1 h-1 w-full bg-white/5 mt-3">
+        <!-- 流体能量条 (Fluid Power Bar) -->
+        <div class="relative h-1 w-full bg-white/5 mt-4 overflow-hidden rounded-full">
           <div 
-            v-for="i in 12" :key="i"
-            class="flex-1 transition-colors duration-300"
-            :class="i / 12 <= ((item.progress_percent || 0) / 100) ? 'bg-[#FF4F00]' : 'bg-transparent'"
+            class="absolute inset-y-0 left-0 bg-gradient-to-r from-transparent via-[--sci-fi-orange] to-transparent transition-all duration-700 shadow-[0_0_15px_var(--sci-fi-orange)]"
+            :style="{ width: (item.progress_percent || 0) + '%', opacity: 0.8 }"
+          ></div>
+          <div 
+            class="absolute inset-0 opacity-20 animate-pulse bg-[--sci-fi-orange]" 
+            :style="{ width: (item.progress_percent || 0) + '%' }"
           ></div>
         </div>
 
@@ -225,12 +228,11 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 
 <style scoped>
 .board-shell {
-  border: 1px solid var(--cyber-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   border-radius: 0;
   padding: 1.2rem;
-  backdrop-filter: blur(8px);
   min-height: 0;
+  border: none;
 }
 
 .board-header {
@@ -238,176 +240,146 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.2rem;
-  border-left: 2px solid var(--cyber-amber);
-  padding-left: 0.75rem;
+  margin-bottom: 2rem;
+  padding-left: 0.5rem;
 }
 
 .board-kicker {
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.25em;
+  font-weight: 900;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--cyber-amber);
-  opacity: 0.7;
+  color: var(--sci-fi-amber);
+  opacity: 0.5;
 }
 
 .board-title {
-  margin-top: 0.2rem;
-  font-size: 1.1rem;
+  margin-top: 0.3rem;
+  font-size: 1.25rem;
   font-weight: 900;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.board-caption {
-  margin-top: 0.4rem;
-  max-width: 22rem;
-  font-size: 10px;
-  line-height: 1.5;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .board-count {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 900;
   font-family: 'JetBrains Mono', monospace;
-  color: var(--cyber-amber);
-  opacity: 0.5;
+  color: var(--sci-fi-amber);
+  opacity: 0.8;
 }
 
 .worker-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-left: 0.5rem;
 }
 
 .worker-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid rgba(255, 179, 0, 0.15);
-  background: rgba(255, 179, 0, 0.05);
-  padding: 0.35rem 0.65rem;
+  border: 1px solid oklch(75% 0.15 60 / 0.15);
+  background: oklch(75% 0.15 60 / 0.05);
+  padding: 0.35rem 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.worker-pill:hover {
+  background: oklch(75% 0.15 60 / 0.1);
+  transform: translateY(-2px);
 }
 
 .worker-pill__dot {
-  width: 0.35rem;
-  height: 0.35rem;
+  width: 4px;
+  height: 4px;
   border-radius: 9999px;
-  background: var(--cyber-amber);
-  box-shadow: 0 0 8px var(--cyber-amber);
-  animation: worker-pulse 1.5s ease-in-out infinite;
+  background: var(--sci-fi-amber);
+  box-shadow: 0 0 10px var(--sci-fi-amber);
 }
 
 .worker-pill__label,
 .worker-pill__phase {
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 8px;
+  font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-family: 'JetBrains Mono', monospace;
 }
 
 .worker-pill__label {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.2);
 }
 
 .worker-pill__phase {
-  color: var(--cyber-amber);
-  opacity: 0.8;
-}
-
-.board-empty,
-.board-error {
-  display: flex;
-  min-height: 12rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.01);
-  color: rgba(255, 255, 255, 0.25);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.board-error {
-  color: rgba(251, 113, 133, 0.8);
-  border-color: rgba(251, 113, 133, 0.2);
+  color: var(--sci-fi-amber);
 }
 
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0.75rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .run-row {
   display: flex;
   flex-direction: column;
   width: 100%;
-  background: #050505;
-  padding: 0.85rem 1rem;
+  background: transparent;
+  padding: 1rem 1.25rem;
   text-align: left;
-  transition: all 0.2s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
+  position: relative;
 }
 
 .run-row:hover {
-  background: rgba(255, 255, 255, 0.03);
+  transform: translateX(6px);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .run-row__main {
   display: flex;
   align-items: start;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .run-row__identity {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 1rem;
   min-width: 0;
   flex: 1;
 }
 
 .run-row__avatar {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0;
-  object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  filter: grayscale(0.2);
+  transition: all 0.3s ease;
+}
+
+.run-row:hover .run-row__avatar {
+  transform: scale(1.1);
 }
 
 .run-row__title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   min-width: 0;
 }
 
 .run-row__meta {
-  margin-top: 0.2rem;
-  font-size: 10px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.3);
+  margin-top: 0.25rem;
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.25);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.05em;
 }
 
 .run-row__progress {
@@ -417,30 +389,29 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 }
 
 .run-row__label {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 900;
-  color: var(--cyber-amber);
-  opacity: 0.8;
-  letter-spacing: 0.1em;
+  color: var(--sci-fi-amber);
+  letter-spacing: 0.2em;
 }
 
 .phase-chip {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--cyber-amber);
-  background: rgba(255, 179, 0, 0.1);
-  padding: 0.05rem 0.35rem;
-  font-size: 8px;
+  border: 1px solid var(--sci-fi-amber);
+  background: oklch(75% 0.15 60 / 0.1);
+  padding: 0.05rem 0.4rem;
+  font-size: 7px;
   font-weight: 900;
-  color: var(--cyber-amber);
-  letter-spacing: 0.05em;
+  color: var(--sci-fi-amber);
+  letter-spacing: 0.1em;
   flex-shrink: 0;
 }
 
 .metric-inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .metric-group {
@@ -450,16 +421,16 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 }
 
 .metric-label {
-  font-size: 7px;
+  font-size: 6px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.15);
   letter-spacing: 0.2em;
 }
 
 .metric-value {
-  font-size: 11px;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .lane-card-enter-active,

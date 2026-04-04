@@ -19,7 +19,7 @@
       <div
         v-for="(item, index) in items"
         :key="item.run_id || `${item.subscription_id}-${index}`"
-        class="recent-row"
+        class="recent-row animate-scan"
         :class="item.sync_status === 'failed' ? 'recent-row--failed' : ''"
       >
         <div class="recent-row__main">
@@ -66,12 +66,11 @@ defineProps<{
 
 <style scoped>
 .board-shell {
-  border: 1px solid var(--cyber-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   border-radius: 0;
   padding: 1.2rem;
-  backdrop-filter: blur(8px);
   min-height: 0;
+  border: none;
 }
 
 .board-header {
@@ -79,99 +78,71 @@ defineProps<{
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.2rem;
-  border-left: 2px solid rgba(255, 255, 255, 0.2);
-  padding-left: 0.75rem;
+  margin-bottom: 2rem;
+  padding-left: 0.5rem;
 }
 
 .board-kicker {
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.25em;
+  font-weight: 900;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--sci-fi-green);
+  opacity: 0.5;
 }
 
 .board-title {
-  margin-top: 0.2rem;
-  font-size: 1.1rem;
+  margin-top: 0.3rem;
+  font-size: 1.25rem;
   font-weight: 900;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.board-caption {
-  margin-top: 0.4rem;
-  max-width: 20rem;
-  font-size: 10px;
-  line-height: 1.5;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .board-count {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 900;
   font-family: 'JetBrains Mono', monospace;
-  color: rgba(255, 255, 255, 0.2);
-}
-
-.board-empty,
-.board-error {
-  display: flex;
-  min-height: 12rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.01);
-  color: rgba(255, 255, 255, 0.25);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.board-error {
-  color: rgba(251, 113, 133, 0.8);
-  border-color: rgba(251, 113, 133, 0.2);
+  color: var(--sci-fi-green);
+  opacity: 0.8;
 }
 
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0.5rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .recent-row {
   display: flex;
   flex-direction: column;
   width: 100%;
-  background: #050505;
-  padding: 0.75rem 1rem;
+  background: transparent;
+  padding: 0.85rem 1rem;
   text-align: left;
-  transition: all 0.2s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
+  position: relative;
 }
 
 .recent-row:hover {
+  transform: translateX(6px);
   background: rgba(255, 255, 255, 0.02);
 }
 
 .recent-row--failed {
   border-left: 2px solid theme('colors.rose.500');
+  background: oklch(70% 0.15 20 / 0.03);
 }
 
 .recent-row__main {
   display: flex;
   align-items: start;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .recent-row__title {
@@ -181,33 +152,35 @@ defineProps<{
 }
 
 .recent-row__meta {
-  margin-top: 0.15rem;
+  margin-top: 0.2rem;
   font-size: 9px;
-  font-weight: 500;
+  font-weight: 600;
   color: rgba(255, 255, 255, 0.2);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.05em;
 }
 
 .latest-chip {
   display: inline-flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   padding: 0.05rem 0.3rem;
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.1em;
   margin-left: 0.5rem;
 }
 
 .metric-inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.85rem;
+  gap: 1rem;
+  opacity: 0.4;
+}
+
+.recent-row:hover .metric-inline {
+  opacity: 0.8;
 }
 
 .metric-group {
@@ -224,8 +197,9 @@ defineProps<{
 }
 
 .metric-value {
+  font-size: 10px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .lane-card-enter-active,

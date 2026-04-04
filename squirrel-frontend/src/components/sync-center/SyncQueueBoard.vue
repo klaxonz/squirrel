@@ -16,14 +16,15 @@
     <div v-else-if="!items.length" class="board-empty">当前没有排队中的订阅</div>
 
     <TransitionGroup v-else name="lane-card" tag="div" class="board-list">
-      <button
-        v-for="(item, index) in items"
-        :key="item.run_id || item.subscription_id"
-        type="button"
-        class="queue-row"
-        :class="index === 0 ? 'queue-row--head' : ''"
-        @click="emit('open-run', item)"
-      >
+        <button
+          v-for="(item, index) in items"
+          :key="item.run_id || item.subscription_id"
+          type="button"
+          class="queue-row animate-scan"
+          :class="index === 0 ? 'queue-row--head' : ''"
+          @click="emit('open-run', item)"
+        >
+
         <div class="queue-row__rank">
           <span class="queue-row__rank-no font-mono">#{{ (item.queue_position || index + 1).toString().padStart(2, '0') }}</span>
         </div>
@@ -89,12 +90,11 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
 
 <style scoped>
 .board-shell {
-  border: 1px solid var(--cyber-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   border-radius: 0;
   padding: 1.2rem;
-  backdrop-filter: blur(8px);
   min-height: 0;
+  border: none;
 }
 
 .board-header {
@@ -102,187 +102,162 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.2rem;
-  border-left: 2px solid var(--cyber-cyan);
-  padding-left: 0.75rem;
+  margin-bottom: 2rem;
+  padding-left: 0.5rem;
 }
 
 .board-kicker {
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: var(--cyber-cyan);
-  opacity: 0.7;
-}
-
-.board-title {
-  margin-top: 0.2rem;
-  font-size: 1.1rem;
   font-weight: 900;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.board-caption {
-  margin-top: 0.4rem;
-  max-width: 20rem;
-  font-size: 10px;
-  line-height: 1.5;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.board-count {
-  font-size: 10px;
-  font-weight: 800;
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--cyber-cyan);
+  color: var(--sci-fi-cyan);
   opacity: 0.5;
 }
 
-.board-empty,
-.board-error {
-  display: flex;
-  min-height: 12rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.01);
-  color: rgba(255, 255, 255, 0.25);
-  font-size: 11px;
-  text-transform: uppercase;
+.board-title {
+  margin-top: 0.3rem;
+  font-size: 1.25rem;
+  font-weight: 900;
   letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.board-error {
-  color: rgba(251, 113, 133, 0.8);
-  border-color: rgba(251, 113, 133, 0.2);
+.board-count {
+  font-size: 12px;
+  font-weight: 900;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--sci-fi-cyan);
+  opacity: 0.8;
 }
 
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0.5rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .queue-row {
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 0.75rem;
-  background: #050505;
-  padding: 0.75rem 0.85rem;
+  gap: 1rem;
+  background: transparent;
+  padding: 0.85rem 1rem;
   text-align: left;
-  transition: all 0.2s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
+  position: relative;
+}
+
+.queue-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: white;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .queue-row:hover {
-  background: rgba(255, 255, 255, 0.03);
-  padding-left: 1.1rem;
+  transform: translateX(6px);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.queue-row:hover::before {
+  opacity: 0.02;
 }
 
 .queue-row--head {
-  border-left: 2px solid var(--cyber-cyan);
+  border-left: 2px solid var(--sci-fi-cyan);
+  background: oklch(75% 0.15 200 / 0.03);
 }
 
 .queue-row__rank {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  background: rgba(0, 229, 255, 0.05);
-  border: 1px solid rgba(0, 229, 255, 0.1);
+  width: 1.5rem;
   flex-shrink: 0;
 }
 
 .queue-row__rank-no {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: var(--cyber-cyan);
-  opacity: 0.8;
-}
-
-.queue-row__title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--sci-fi-cyan);
+  opacity: 0.4;
 }
 
 .queue-row__identity {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 1rem;
   min-width: 0;
   flex: 1;
 }
 
 .queue-row__avatar {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0;
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  filter: grayscale(0.2);
+  filter: grayscale(0.6) brightness(0.8);
+  transition: all 0.3s ease;
+}
+
+.queue-row:hover .queue-row__avatar {
+  filter: grayscale(0) brightness(1);
+  transform: scale(1.05);
 }
 
 .queue-row__badge {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--cyber-cyan);
-  background: rgba(0, 229, 255, 0.1);
-  padding: 0.1rem 0.4rem;
-  font-size: 9px;
+  border: 1px solid var(--sci-fi-cyan);
+  background: oklch(75% 0.15 200 / 0.1);
+  padding: 0.05rem 0.35rem;
+  font-size: 8px;
   font-weight: 900;
-  color: var(--cyber-cyan);
+  color: var(--sci-fi-cyan);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   flex-shrink: 0;
 }
 
 .queue-row__meta {
-  margin-top: 0.2rem;
-  font-size: 10px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.3);
+  margin-top: 0.25rem;
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.25);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.05em;
 }
 
 .queue-row__flow {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0;
-  min-width: 3.5rem;
+  align-items: flex-end;
+  gap: 0.1rem;
+  min-width: 4rem;
   flex-shrink: 0;
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
 }
 
-.queue-row__arrow {
-  font-size: 1.1rem;
-  font-weight: 900;
+.queue-row:hover .queue-row__flow {
   opacity: 0.8;
 }
 
-.queue-row__flow-text {
-  font-size: 8px;
+.queue-row__arrow {
+  font-size: 1rem;
   font-weight: 900;
-  letter-spacing: 0.15em;
-  color: rgba(255, 255, 255, 0.25);
+}
+
+.queue-row__flow-text {
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .lane-card-enter-active,

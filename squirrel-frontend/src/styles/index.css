@@ -104,6 +104,12 @@
     --cyber-amber: #FFB300;
     --cyber-green: #00FF41;
     --cyber-border: rgba(255, 255, 255, 0.1);
+
+    /* Sci-Fi Fluid Theme */
+    --sci-fi-cyan: oklch(75% 0.15 200);
+    --sci-fi-amber: oklch(75% 0.15 60);
+    --sci-fi-orange: oklch(70% 0.2 40);
+    --sci-fi-green: oklch(75% 0.2 150);
   }
 
   /* Slightly narrower sidebar on smaller desktops */
@@ -284,5 +290,40 @@
   .font-dot {
     font-family: 'JetBrains Mono', 'Courier New', monospace;
     letter-spacing: 0.05em;
+  }
+
+  /* Laser Scan Animation */
+  @keyframes laser-scan {
+    0% { transform: translateX(-150%) skewX(-25deg); opacity: 0; }
+    20% { opacity: 0.8; }
+    80% { opacity: 0.8; }
+    100% { transform: translateX(250%) skewX(-25deg); opacity: 0; }
+  }
+
+  .animate-scan {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .animate-scan::after {
+    content: "";
+    position: absolute;
+    inset: -50% 0;
+    width: 60px;
+    background: linear-gradient(90deg, transparent, var(--sci-fi-orange), transparent);
+    filter: blur(12px);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 20;
+  }
+
+  .animate-scan:hover::after {
+    animation: laser-scan 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .glass-panel {
+    background: oklch(100% 0 0 / 0.02);
+    backdrop-filter: blur(4px);
+    border: 1px solid oklch(100% 0 0 / 0.05);
   }
 }
