@@ -59,6 +59,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.exception(f"[1/4] ✗ Failed to bootstrap plugin runtime manager: {e}")
         raise
 
+    logger.info("[2/4] Seeding video extraction projection...")
+    try:
+        from services import video_extraction_projection_service
+        rebuilt_count = video_extraction_projection_service.ensure_projection_seeded()
+        logger.info(f"[2/4] ✓ Video extraction projection ready (rebuilt={rebuilt_count})")
+    except Exception as e:
+        logger.exception(f"[2/4] ✗ Failed to seed video extraction projection: {e}")
+        raise
+
     logger.info("=" * 60)
     logger.info("✓ Application startup completed successfully")
     logger.info("=" * 60)

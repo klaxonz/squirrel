@@ -9,6 +9,7 @@ from core.database import get_session
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
+from services import video_extraction_projection_service
 from services.crawl_tasks.task_types import is_subscription_sync_task_type, subscription_sync_task_types
 from services.crawl_tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError, CrawlTaskStateError
 from services.crawl_tasks.models import CrawlJobStatus, CrawlTaskStatus
@@ -88,6 +89,7 @@ def create_task(
         )
         session.add(task)
         session.flush()
+        _refresh_video_extraction_projection(session, task)
         return task
 
 
@@ -141,6 +143,7 @@ def create_job_with_task(
         )
         session.add(task)
         session.flush()
+        _refresh_video_extraction_projection(session, task)
         return job, task
 
 
@@ -190,6 +193,7 @@ def claim_next_task(
         task.status = CrawlTaskStatus.LEASED.value
         task.worker_id = worker_id
         task.lease_until = now + timedelta(seconds=lease_seconds)
+        _refresh_video_extraction_projection(session, task)
         session.flush()
         return task
 
@@ -223,6 +227,7 @@ def start_task(
         task.status = CrawlTaskStatus.RUNNING.value
         task.started_at = task.started_at or now
         _refresh_job_status(session, job_id=task.job_id, now=now)
+        _refresh_video_extraction_projection(session, task)
         session.flush()
         return task
 
@@ -244,6 +249,7 @@ def complete_task(
         task.last_error = None
         task.last_error_type = None
         _refresh_job_status(session, job_id=task.job_id, now=now)
+        _refresh_video_extraction_projection(session, task)
         session.flush()
         return task
 
@@ -269,6 +275,7 @@ def retry_task(
             delay_seconds=delay_seconds,
         )
         _refresh_job_status(session, job_id=task.job_id, now=now)
+        _refresh_video_extraction_projection(session, task)
         session.flush()
         return task
 
@@ -299,6 +306,7 @@ def cancel_task(
         task.last_error = reason
         task.last_error_type = CrawlTaskStatus.CANCELLED.value
         _refresh_job_status(session, job_id=task.job_id, now=now)
+        _refresh_video_extraction_projection(session, task)
         session.flush()
         return task
 
@@ -327,6 +335,7 @@ def replay_dead_task(
         task.last_error = None
         task.last_error_type = None
         _refresh_job_status(session, job_id=task.job_id, now=now)
+        _refresh_video_extraction_projection(session, task)
         session.flush()
         return task
 
@@ -360,6 +369,7 @@ def recover_expired_tasks(*, now: Optional[datetime] = None, retry_delay_seconds
                 delay_seconds=retry_delay_seconds,
             )
             touched_job_ids.add(task.job_id)
+            _refresh_video_extraction_projection(session, task)
 
         for job_id in touched_job_ids:
             _refresh_job_status(session, job_id=job_id, now=now)
@@ -635,3 +645,7 @@ def _reconcile_subscription_sync_state_for_retry(
         trace_id=payload.get('trace_id'),
         trigger=payload.get('trigger'),
     )
+
+
+def _refresh_video_extraction_projection(session, task: CrawlTask) -> None:
+    video_extraction_projection_service.refresh_projection_for_task(task, session=session)

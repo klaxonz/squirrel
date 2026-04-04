@@ -13,7 +13,9 @@ from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
+from models.video_extraction_projection import VideoExtractionProjection
 from services import video_extraction_center_service
+from services import video_extraction_projection_service
 
 
 @contextmanager
@@ -38,9 +40,11 @@ def _setup_env(monkeypatch):
             UserSubscription.__table__,
             CrawlJob.__table__,
             CrawlTask.__table__,
+            VideoExtractionProjection.__table__,
         ],
     )
     monkeypatch.setattr(video_extraction_center_service, 'get_session', lambda: _managed_session(engine))
+    monkeypatch.setattr(video_extraction_projection_service, 'get_session', lambda: _managed_session(engine))
     return engine
 
 
@@ -290,3 +294,90 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
     assert recent_result.data[0].failed_task_count == 1
     assert recent_result.data[1].sync_status == 'success'
     assert recent_result.data[1].completed_task_count == 2
+
+
+def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkeypatch):
+    engine = _setup_env(monkeypatch)
+    now = datetime(2026, 4, 2, 18, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            Subscription(
+                id=10,
+                type='CHANNEL',
+                name='Fallback Group',
+                url='https://www.youtube.com/channel/fallback-group',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
+            UserSubscription(
+                id=10,
+                user_id=1,
+                subscription_id=10,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
+            CrawlJob(
+                id=110,
+                job_type='video_extract',
+                source_type='subscription_sync',
+                site='youtube.com',
+                subscription_id=10,
+                status='running',
+                created_at=now - timedelta(minutes=3),
+                updated_at=now - timedelta(minutes=1),
+            )
+        )
+        session.add_all([
+            CrawlTask(
+                id=11001,
+                job_id=110,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=10,
+                status='running',
+                payload={},
+                created_at=now - timedelta(minutes=3),
+                updated_at=now - timedelta(minutes=1),
+                started_at=now - timedelta(minutes=2),
+            ),
+            CrawlTask(
+                id=11002,
+                job_id=110,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=10,
+                status='pending',
+                payload={'sync_state_id': ''},
+                created_at=now - timedelta(minutes=2),
+                updated_at=now - timedelta(minutes=1),
+            ),
+        ])
+        session.commit()
+
+    running_result = video_extraction_center_service.list_extraction_center_items(
+        user_id=1,
+        status='running',
+        site=None,
+        query='Fallback',
+        page=1,
+        page_size=20,
+    )
+
+    assert running_result.total == 1
+    assert len(running_result.data) == 1
+    assert running_result.data[0].run_id == 'extract:job:110'
+    assert running_result.data[0].batch_task_count == 2
+    assert running_result.data[0].queued_task_count == 1
+    assert running_result.data[0].running_task_count == 1

@@ -46,18 +46,33 @@ def bootstrap_runtime(component: str):
     try:
         bootstrap_plugin_runtime()
         try:
+            from services import video_extraction_projection_service
+            rebuilt_count = video_extraction_projection_service.ensure_projection_seeded()
+            logger.info("[%s] Video extraction projection ready (rebuilt=%s)", component, rebuilt_count)
+        except Exception:
+            logger.exception("[%s] Failed to seed video extraction projection", component)
+            raise
+        try:
             from services import subscription_sync_state_service
             drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
             queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()
             running_result = subscription_sync_state_service.recover_stale_running_sync_states()
-            if drained_result.get('completed') or drained_result.get('failed') or queued_result.get('recovered') or running_result.get('recovered'):
+            retry_wait_result = subscription_sync_state_service.reconcile_retry_wait_run_projections()
+            if (
+                drained_result.get('completed')
+                or drained_result.get('failed')
+                or queued_result.get('recovered')
+                or running_result.get('recovered')
+                or retry_wait_result.get('repaired')
+            ):
                 logger.info(
-                    "[%s] Recovered sync states: drained_completed=%s drained_failed=%s queued=%s running=%s",
+                    "[%s] Recovered sync states: drained_completed=%s drained_failed=%s queued=%s running=%s retry_wait=%s",
                     component,
                     drained_result.get('completed', 0),
                     drained_result.get('failed', 0),
                     queued_result.get('recovered', 0),
                     running_result.get('recovered', 0),
+                    retry_wait_result.get('repaired', 0),
                 )
         except Exception:
             logger.warning("[%s] Failed to recover stale sync states", component, exc_info=True)

@@ -432,6 +432,130 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(mo
     assert len(second_call_new_ids) == 0 or not first_call_run_ids.issubset(second_call_new_ids)
 
 
+def test_sync_center_overview_does_not_materialize_item_dtos(monkeypatch):
+    engine = _setup_projection_env(monkeypatch)
+    _seed_projection_data(engine)
+    monkeypatch.setattr(subscription_sync_center_service, '_refresh_runtime_sync_health', lambda force=False: None)
+    _mock_site_catalog(monkeypatch)
+    monkeypatch.setattr(
+        subscription_sync_center_service,
+        '_build_sync_center_item',
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError('overview should not materialize items')),
+    )
+
+    overview = subscription_sync_center_service.get_sync_center_overview(user_id=1)
+
+    assert overview.running_count == 1
+    assert overview.awaiting_extract_count == 1
+    assert overview.queued_count == 2
+
+
+def test_sync_center_recent_list_only_materializes_current_page(monkeypatch):
+    engine = _setup_projection_env(monkeypatch)
+    _seed_projection_data(engine)
+    monkeypatch.setattr(subscription_sync_center_service, '_refresh_runtime_sync_health', lambda force=False: None)
+    _mock_site_catalog(monkeypatch)
+
+    now = datetime(2026, 4, 2, 12, 0, 0)
+    with Session(engine, expire_on_commit=False) as session:
+        for index in range(5, 17):
+            session.add(
+                Subscription(
+                    id=index,
+                    type='CHANNEL',
+                    name=f'Recent Channel {index}',
+                    url=f'https://www.youtube.com/channel/recent-{index}',
+                    avatar=None,
+                    description=None,
+                    total_videos=0,
+                    is_deleted=False,
+                    extra_data={},
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            session.add(
+                UserSubscription(
+                    id=index,
+                    user_id=1,
+                    subscription_id=index,
+                    is_deleted=False,
+                    is_nsfw=False,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            session.add(
+                SubscriptionSyncRunProjection(
+                    run_id=f'run-recent-{index}',
+                    subscription_id=index,
+                    sync_state_id=1000 + index,
+                    site='youtube.com',
+                    sync_mode='incremental',
+                    trigger='manual',
+                    request_id=f'req-recent-{index}',
+                    trace_id=f'trace-recent-{index}',
+                    status='success',
+                    current_phase='completed',
+                    queued_at=now - timedelta(minutes=index + 2),
+                    started_at=now - timedelta(minutes=index + 1),
+                    finished_at=now - timedelta(minutes=index),
+                    duration_ms=60000,
+                    failure_count=0,
+                    error_type=None,
+                    error_message=None,
+                    videos_found=3,
+                    videos_enqueued=3,
+                    videos_extracted=3,
+                    videos_skipped=0,
+                    pending_video_count=0,
+                    last_event_seq_no=4,
+                    last_event_at=now - timedelta(minutes=index),
+                    created_at=now - timedelta(minutes=index + 2),
+                    updated_at=now - timedelta(minutes=index),
+                )
+            )
+            session.add(
+                SubscriptionSyncSubscriptionProjection(
+                    subscription_id=index,
+                    latest_run_id=f'run-recent-{index}',
+                    current_status='success',
+                    current_phase='completed',
+                    last_sync_at=now - timedelta(minutes=index),
+                    last_success_at=now - timedelta(minutes=index),
+                    next_sync_at=now + timedelta(minutes=30),
+                    last_error_message=None,
+                    pending_video_count=0,
+                    failure_streak=0,
+                    last_event_seq_no=4,
+                    updated_at=now - timedelta(minutes=index),
+                )
+            )
+        session.commit()
+
+    build_calls = []
+    original_build_item = subscription_sync_center_service._build_sync_center_item
+
+    def _counting_build_item(*args, **kwargs):
+        build_calls.append(1)
+        return original_build_item(*args, **kwargs)
+
+    monkeypatch.setattr(subscription_sync_center_service, '_build_sync_center_item', _counting_build_item)
+
+    result = subscription_sync_center_service.list_sync_center_items(
+        user_id=1,
+        status='recent',
+        site=None,
+        query=None,
+        page=1,
+        page_size=3,
+    )
+
+    assert result.total >= 3
+    assert len(result.data) == 3
+    assert len(build_calls) == 3
+
+
 def test_sort_items_accepts_mixed_queued_rank_sources():
     items = [
         SyncCenterItemDto(

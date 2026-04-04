@@ -13,8 +13,10 @@ from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from models.subscription_sync_state import SubscriptionSyncState
+from models.video_extraction_projection import VideoExtractionProjection
 from services.crawl_tasks import service as crawl_task_service
 from services import subscription_sync_state_service
+from services import video_extraction_projection_service
 
 
 @contextmanager
@@ -39,10 +41,12 @@ def _setup_test_env(monkeypatch):
             CrawlTask.__table__,
             CrawlDispatchScope.__table__,
             SubscriptionSyncState.__table__,
+            VideoExtractionProjection.__table__,
         ],
     )
     monkeypatch.setattr(crawl_task_service, 'get_session', lambda: _managed_session(engine))
     monkeypatch.setattr(subscription_sync_state_service, 'get_session', lambda: _managed_session(engine))
+    monkeypatch.setattr(video_extraction_projection_service, 'get_session', lambda: _managed_session(engine))
     return engine
 
 
@@ -574,3 +578,49 @@ def test_complete_and_dead_mix_marks_job_partial_failed(monkeypatch):
         stored_job = session.get(CrawlJob, job_id)
 
     assert stored_job.status == 'partial_failed'
+
+
+def test_video_extract_task_lifecycle_updates_projection(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    job, task = crawl_task_service.create_job_with_task(
+        job_type='video_extract',
+        source_type='scheduled',
+        site='youtube.com',
+        task_type='video_extract',
+        subscription_id=10,
+        payload={'sync_state_id': 501, 'url': 'https://example.com/watch?v=1'},
+        next_run_at=now,
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        projection = session.query(VideoExtractionProjection).one()
+        assert projection.subscription_id == 10
+        assert projection.group_kind == 'state'
+        assert projection.group_value == '501'
+        assert projection.display_status == 'queued'
+        assert projection.queued_task_count == 1
+        assert projection.pending_video_count == 1
+
+    claimed = crawl_task_service.claim_next_task(worker_id='worker-1', now=now, lease_seconds=60)
+    assert claimed is not None
+    crawl_task_service.start_task(task_id=task.id, worker_id='worker-1', now=now + timedelta(seconds=1))
+
+    with Session(engine, expire_on_commit=False) as session:
+        projection = session.query(VideoExtractionProjection).one()
+        assert projection.display_status == 'running'
+        assert projection.running_task_count == 1
+        assert projection.pending_video_count == 1
+
+    crawl_task_service.complete_task(task_id=task.id, worker_id='worker-1', now=now + timedelta(seconds=5))
+
+    with Session(engine, expire_on_commit=False) as session:
+        projection = session.query(VideoExtractionProjection).one()
+        job_row = session.get(CrawlJob, job.id)
+
+    assert projection.sync_status == 'success'
+    assert projection.display_status == 'healthy'
+    assert projection.completed_task_count == 1
+    assert projection.pending_video_count == 0
+    assert job_row.status == 'succeeded'

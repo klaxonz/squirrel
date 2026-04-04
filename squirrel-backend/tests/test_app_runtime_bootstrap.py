@@ -16,12 +16,18 @@ from utils import runtime_http
 def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
     client = object()
     resolver = lambda url: f'cookie:{url}'
+    projection_calls = []
 
     monkeypatch.setattr(app_main, 'apply_site_config_overrides', lambda: None)
     monkeypatch.setattr(app_main, 'bootstrap_plugin_runtime', lambda: None)
     monkeypatch.setattr(app_main, 'shutdown_plugin_runtime', lambda: None)
     monkeypatch.setattr(app_main, 'resolve_cookie_file_for_url', resolver)
     monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: client)
+    monkeypatch.setitem(
+        sys.modules,
+        'services.video_extraction_projection_service',
+        SimpleNamespace(ensure_projection_seeded=lambda: projection_calls.append('seeded') or 0),
+    )
 
     runtime_http.reset_runtime_http_state()
 
@@ -31,11 +37,13 @@ def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
             assert runtime_http.get_cookie_file_resolver() is resolver
 
     asyncio.run(_run())
+    assert projection_calls == ['seeded']
 
 
 def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
     client = object()
     resolver = lambda url: f'cookie:{url}'
+    projection_calls = []
 
     monkeypatch.setattr(service_runtime, 'init_logging', lambda: None)
     monkeypatch.setattr(service_runtime, 'upgrade_database', lambda: None)
@@ -50,7 +58,14 @@ def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
         SimpleNamespace(
             recover_stale_queued_sync_states=lambda: {'recovered': 0},
             recover_stale_running_sync_states=lambda: {'recovered': 0},
+            reconcile_terminal_drained_sync_states=lambda: {'completed': 0, 'failed': 0},
+            reconcile_retry_wait_run_projections=lambda: {'repaired': 0},
         ),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        'services.video_extraction_projection_service',
+        SimpleNamespace(ensure_projection_seeded=lambda: projection_calls.append('seeded') or 0),
     )
     monkeypatch.setattr(service_runtime, 'resolve_cookie_file_for_url', resolver)
     monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: client)
@@ -60,6 +75,7 @@ def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
     with service_runtime.bootstrap_runtime('worker'):
         assert runtime_http.get_cloudflare_bypass_client() is client
         assert runtime_http.get_cookie_file_resolver() is resolver
+    assert projection_calls == ['seeded']
 
 
 def test_runtime_bridge_configures_backend_runtime_http_state(monkeypatch):

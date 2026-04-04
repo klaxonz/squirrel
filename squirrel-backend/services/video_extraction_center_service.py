@@ -1,22 +1,16 @@
-from collections import defaultdict
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 
 from core.database import get_session
-from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
+from models.video_extraction_projection import VideoExtractionProjection
 from schemas.subscription.dto.sync_center_dto import SyncCenterItemDto, SyncCenterListDto, SyncCenterOverviewDto
+from services import video_extraction_projection_service
 from utils.site_catalog import SiteCatalog
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
-
-
-RUNNING_TASK_STATUSES = {'leased', 'running'}
-QUEUED_TASK_STATUSES = {'pending', 'retry_wait'}
-FAILED_TASK_STATUSES = {'dead', 'cancelled'}
-COMPLETED_TASK_STATUSES = {'succeeded'}
 
 
 def _format_datetime(value: Optional[datetime]) -> str:
@@ -78,155 +72,143 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
     return None
 
 
-def _parse_sync_state_id(task: CrawlTask) -> str:
-    payload = task.payload or {}
-    sync_state_id = payload.get('sync_state_id')
-    if sync_state_id in (None, ''):
-        return f'job:{task.job_id}'
-    try:
-        return f'state:{int(sync_state_id)}'
-    except (TypeError, ValueError):
-        return f'job:{task.job_id}'
+def _build_run_id(group_kind: str, group_value: str) -> str:
+    return f'extract:{group_kind}:{group_value}'
 
 
-def _build_extraction_item(subscription: Subscription, tasks: list[CrawlTask]) -> SyncCenterItemDto:
-    ordered_tasks = sorted(tasks, key=lambda item: (item.created_at or datetime.min, item.id))
-    total_count = len(ordered_tasks)
-    queued_count = sum(1 for task in ordered_tasks if task.status in QUEUED_TASK_STATUSES)
-    running_count = sum(1 for task in ordered_tasks if task.status in RUNNING_TASK_STATUSES)
-    completed_count = sum(1 for task in ordered_tasks if task.status in COMPLETED_TASK_STATUSES)
-    failed_count = sum(1 for task in ordered_tasks if task.status in FAILED_TASK_STATUSES)
-    active_count = queued_count + running_count
-    processed_count = completed_count + failed_count
-
-    started_at_values = [task.started_at for task in ordered_tasks if task.started_at]
-    finished_at_values = [task.finished_at for task in ordered_tasks if task.finished_at]
-    updated_at_values = [task.updated_at for task in ordered_tasks if task.updated_at]
-
-    if running_count > 0:
-        sync_status = 'running'
-        display_status = 'running'
-        current_phase = 'extracting'
-    elif active_count > 0:
-        sync_status = 'queued'
-        display_status = 'queued'
-        current_phase = 'queued'
-    elif failed_count > 0:
-        sync_status = 'failed'
-        display_status = 'failed'
-        current_phase = 'completed'
-    else:
-        sync_status = 'success'
-        display_status = 'healthy'
-        current_phase = 'completed'
-
-    latest_failed_task = max(
-        (task for task in ordered_tasks if task.status in FAILED_TASK_STATUSES),
-        key=lambda item: (item.updated_at or datetime.min, item.id),
-        default=None,
+def _base_projection_query(
+    user_id: int,
+    *,
+    site_candidates: Optional[set[str]] = None,
+    normalized_query: str = '',
+):
+    query = (
+        select(VideoExtractionProjection, Subscription)
+        .join(Subscription, Subscription.id == VideoExtractionProjection.subscription_id)
+        .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
+        .where(
+            UserSubscription.user_id == user_id,
+            UserSubscription.is_deleted.is_(False),
+            Subscription.is_deleted.is_(False),
+        )
     )
-    progress_percent = int((processed_count / total_count) * 100) if total_count else 0
+    if site_candidates:
+        query = query.where(VideoExtractionProjection.site.in_(site_candidates))
+    if normalized_query:
+        query = query.where(Subscription.name.ilike(f'%{normalized_query}%'))
+    return query
+
+
+def _apply_status_filter(query, status: Optional[str]):
+    normalized_status = (status or '').strip().lower() or None
+    if normalized_status == 'running':
+        return query.where(VideoExtractionProjection.display_status == 'running')
+    if normalized_status == 'queued':
+        return query.where(VideoExtractionProjection.display_status == 'queued')
+    if normalized_status == 'failed':
+        return query.where(VideoExtractionProjection.sync_status == 'failed')
+    if normalized_status == 'recent':
+        return query.where(VideoExtractionProjection.display_status.notin_(['running', 'queued']))
+    return query
+
+
+def _apply_ordering(query, status: Optional[str]):
+    normalized_status = (status or '').strip().lower() or None
+    if normalized_status == 'running':
+        return query.order_by(VideoExtractionProjection.locked_at.asc(), VideoExtractionProjection.subscription_id.asc())
+    if normalized_status == 'queued':
+        return query.order_by(VideoExtractionProjection.queued_at.asc(), VideoExtractionProjection.subscription_id.asc())
+    recent_dt = func.coalesce(VideoExtractionProjection.updated_at, VideoExtractionProjection.last_success_at)
+    return query.order_by(recent_dt.desc(), VideoExtractionProjection.subscription_id.desc())
+
+
+def _build_item(projection: VideoExtractionProjection, subscription: Subscription) -> SyncCenterItemDto:
+    active_count = int(projection.pending_video_count or 0)
+    processed_count = int(projection.completed_task_count or 0) + int(projection.failed_task_count or 0)
 
     return SyncCenterItemDto(
-        run_id=f'extract:{_parse_sync_state_id(ordered_tasks[0])}',
+        run_id=_build_run_id(projection.group_kind, projection.group_value),
         subscription_id=subscription.id,
         subscription_name=subscription.name,
         subscription_avatar=subscription.avatar,
-        site=ordered_tasks[0].site if ordered_tasks else None,
-        site_icon_url=_resolve_site_icon_url(ordered_tasks[0].site if ordered_tasks else None),
+        site=projection.site,
+        site_icon_url=_resolve_site_icon_url(projection.site),
         sync_mode='extract',
-        sync_status=sync_status,
-        display_status=display_status,
-        current_phase=current_phase,
-        failure_count=failed_count,
-        last_error=latest_failed_task.last_error if latest_failed_task else None,
-        last_error_summary=_summarize_error(latest_failed_task.last_error if latest_failed_task else None),
+        sync_status=projection.sync_status,
+        display_status=projection.display_status,
+        current_phase=projection.current_phase,
+        failure_count=int(projection.failed_task_count or 0),
+        last_error=projection.last_error,
+        last_error_summary=_summarize_error(projection.last_error),
         last_sync_at='',
-        last_success_at=_format_datetime(max(finished_at_values) if sync_status == 'success' and finished_at_values else None),
+        last_success_at=_format_datetime(projection.last_success_at if projection.sync_status == 'success' else None),
         next_sync_at='',
-        queued_at=_format_datetime(min((task.created_at for task in ordered_tasks if task.created_at), default=None)),
-        locked_at=_format_datetime(min(started_at_values) if started_at_values else None),
-        updated_at=_format_datetime(max(updated_at_values) if updated_at_values else None),
+        queued_at=_format_datetime(projection.queued_at),
+        locked_at=_format_datetime(projection.locked_at),
+        updated_at=_format_datetime(projection.updated_at),
         pending_video_count=active_count,
         feed_completed=active_count == 0,
         has_more_pages=False,
-        videos_found=total_count,
-        videos_enqueued=queued_count,
-        videos_extracted=completed_count,
+        videos_found=int(projection.batch_task_count or 0),
+        videos_enqueued=int(projection.queued_task_count or 0),
+        videos_extracted=int(projection.completed_task_count or 0),
         videos_skipped=0,
-        progress_percent=progress_percent,
-        progress_label=f'{processed_count} / {total_count}' if total_count else '',
+        progress_percent=int((processed_count / projection.batch_task_count) * 100) if projection.batch_task_count else 0,
+        progress_label=f'{processed_count} / {projection.batch_task_count}' if projection.batch_task_count else '',
         is_deferred=False,
         defer_reason=None,
-        batch_task_count=total_count,
-        queued_task_count=queued_count,
-        running_task_count=running_count,
-        completed_task_count=completed_count,
-        failed_task_count=failed_count,
+        batch_task_count=int(projection.batch_task_count or 0),
+        queued_task_count=int(projection.queued_task_count or 0),
+        running_task_count=int(projection.running_task_count or 0),
+        completed_task_count=int(projection.completed_task_count or 0),
+        failed_task_count=int(projection.failed_task_count or 0),
     )
 
 
-def _collect_extraction_items(user_id: int) -> list[SyncCenterItemDto]:
+def _ensure_projection_ready() -> None:
+    video_extraction_projection_service.ensure_projection_seeded()
+
+
+def get_extraction_center_overview(user_id: int) -> SyncCenterOverviewDto:
+    _ensure_projection_ready()
+
     with get_session() as session:
-        rows = session.execute(
-            select(Subscription, CrawlTask)
+        query = (
+            select(
+                func.coalesce(
+                    func.sum(case((VideoExtractionProjection.display_status == 'running', 1), else_=0)),
+                    0,
+                ).label('running_count'),
+                func.coalesce(
+                    func.sum(case((VideoExtractionProjection.display_status == 'queued', 1), else_=0)),
+                    0,
+                ).label('queued_count'),
+                func.coalesce(
+                    func.sum(case((VideoExtractionProjection.sync_status == 'failed', 1), else_=0)),
+                    0,
+                ).label('failed_count'),
+                func.coalesce(func.sum(VideoExtractionProjection.pending_video_count), 0).label('pending_videos'),
+                func.coalesce(func.sum(VideoExtractionProjection.queued_task_count), 0).label('queue_depth'),
+            )
+            .select_from(VideoExtractionProjection)
+            .join(Subscription, Subscription.id == VideoExtractionProjection.subscription_id)
             .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
-            .join(CrawlTask, CrawlTask.subscription_id == Subscription.id)
             .where(
                 UserSubscription.user_id == user_id,
                 UserSubscription.is_deleted.is_(False),
                 Subscription.is_deleted.is_(False),
-                CrawlTask.task_type == 'video_extract',
             )
-            .order_by(CrawlTask.created_at.asc(), CrawlTask.id.asc())
-        ).all()
+        )
+        row = session.execute(query).one()
 
-    grouped: dict[tuple[int, str], dict[str, object]] = defaultdict(lambda: {'subscription': None, 'tasks': []})
-    for subscription, task in rows:
-        group_key = (subscription.id, _parse_sync_state_id(task))
-        grouped[group_key]['subscription'] = subscription
-        grouped[group_key]['tasks'].append(task)
-
-    return [
-        _build_extraction_item(group['subscription'], group['tasks'])
-        for group in grouped.values()
-        if group['subscription'] is not None and group['tasks']
-    ]
-
-
-def _sort_items(items: list[SyncCenterItemDto], status: Optional[str]) -> list[SyncCenterItemDto]:
-    def parse_dt(value: str, *, fallback: datetime) -> datetime:
-        if not value:
-            return fallback
-        try:
-            return datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
-        except ValueError:
-            return fallback
-
-    if status == 'running':
-        return sorted(items, key=lambda item: (parse_dt(item.locked_at, fallback=datetime.min), item.subscription_id))
-    if status == 'queued':
-        return sorted(items, key=lambda item: (parse_dt(item.queued_at, fallback=datetime.max), item.subscription_id))
-    return sorted(
-        items,
-        key=lambda item: (
-            parse_dt(item.updated_at or item.last_success_at, fallback=datetime.min),
-            item.subscription_id,
-        ),
-        reverse=True,
-    )
-
-
-def get_extraction_center_overview(user_id: int) -> SyncCenterOverviewDto:
-    items = _collect_extraction_items(user_id)
     return SyncCenterOverviewDto(
-        running_count=sum(1 for item in items if item.display_status == 'running'),
-        queued_count=sum(1 for item in items if item.display_status == 'queued'),
-        failed_count=sum(1 for item in items if item.sync_status == 'failed'),
+        running_count=int(row.running_count or 0),
+        queued_count=int(row.queued_count or 0),
+        failed_count=int(row.failed_count or 0),
         due_soon_count=0,
         deferred_count=0,
-        pending_videos=sum(item.pending_video_count for item in items),
-        queue_depth=sum(item.queued_task_count for item in items),
+        pending_videos=int(row.pending_videos or 0),
+        queue_depth=int(row.queue_depth or 0),
         queue_messages=0,
     )
 
@@ -239,40 +221,43 @@ def list_extraction_center_items(
     page: int,
     page_size: int,
 ) -> SyncCenterListDto:
+    _ensure_projection_ready()
+
     normalized_status = (status or '').strip().lower() or None
     normalized_site = (site or '').strip().lower() or None
     site_candidates = set(SiteCatalog.expand_site_filter_values(normalized_site)) if normalized_site else set()
     normalized_query = (query or '').strip().lower()
-
-    items = _collect_extraction_items(user_id)
-
-    if normalized_status == 'running':
-        items = [item for item in items if item.display_status == 'running']
-    elif normalized_status == 'queued':
-        items = [item for item in items if item.display_status == 'queued']
-    elif normalized_status == 'failed':
-        items = [item for item in items if item.sync_status == 'failed']
-    elif normalized_status == 'recent':
-        items = [item for item in items if item.display_status not in {'running', 'queued'}]
-
-    if site_candidates:
-        items = [item for item in items if (item.site or '').lower() in site_candidates]
-    if normalized_query:
-        items = [item for item in items if normalized_query in item.subscription_name.lower()]
-
-    sorted_items = _sort_items(items, normalized_status)
-    total = len(sorted_items)
     start = max(0, (page - 1) * page_size)
-    end = start + page_size
-    paged_items = sorted_items[start:end]
 
+    filtered_query = _apply_status_filter(
+        _base_projection_query(
+            user_id,
+            site_candidates=site_candidates,
+            normalized_query=normalized_query,
+        ),
+        normalized_status,
+    )
+    ordered_query = _apply_ordering(filtered_query, normalized_status)
+
+    with get_session() as session:
+        total = int(
+            session.execute(
+                select(func.count()).select_from(filtered_query.order_by(None).subquery())
+            ).scalar()
+            or 0
+        )
+        rows = session.execute(
+            ordered_query.offset(start).limit(page_size)
+        ).all()
+
+    items = [_build_item(projection, subscription) for projection, subscription in rows]
     if normalized_status == 'queued':
-        for index, item in enumerate(paged_items, start=start + 1):
+        for index, item in enumerate(items, start=start + 1):
             item.queue_position = index
 
     return SyncCenterListDto(
         total=total,
         page=page,
         page_size=page_size,
-        data=paged_items,
+        data=items,
     )

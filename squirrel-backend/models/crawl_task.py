@@ -15,6 +15,7 @@ class CrawlTask(Base, SerializerMixin):
         Index('ix_crawl_task_runnable_lookup', 'status', 'next_run_at', 'priority', 'site'),
         Index('ix_crawl_task_lease_until', 'lease_until'),
         Index('ix_crawl_task_site_status', 'site', 'status'),
+        Index('ix_crawl_task_subscription_id', 'subscription_id'),
         Index('ix_crawl_task_job_id', 'job_id'),
         Index('ix_crawl_task_parent_task_id', 'parent_task_id'),
         Index('ix_crawl_task_type_status', 'task_type', 'status'),
