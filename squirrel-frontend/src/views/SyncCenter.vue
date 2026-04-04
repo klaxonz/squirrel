@@ -19,13 +19,6 @@
         </div>
 
         <div class="relative">
-          <!-- 背景装饰编号 -->
-          <div class="absolute inset-0 flex justify-between px-12 pointer-events-none select-none overflow-hidden" aria-hidden="true">
-            <span class="text-[20rem] font-black text-white/[0.02] leading-none mt-20">01</span>
-            <span class="text-[20rem] font-black text-white/[0.02] leading-none mt-40">02</span>
-            <span class="text-[20rem] font-black text-white/[0.02] leading-none mt-20">03</span>
-          </div>
-
           <!-- 垂直导轨 -->
           <div class="absolute inset-0 flex justify-between px-[33%] pointer-events-none" aria-hidden="true">
             <div class="w-px h-full bg-gradient-to-b from-transparent via-white/5 to-transparent shadow-[0_0_15px_rgba(255,255,255,0.05)]"></div>
