@@ -3,7 +3,7 @@
     <div class="board-header">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <p class="board-kicker">ACTIVE_PROCESSING</p>
+          <p class="board-kicker">正在处理</p>
           <div class="h-px flex-1 bg-white/5"></div>
           <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
         </div>
@@ -15,8 +15,8 @@
       <SyncBoardSkeleton :count="11" />
     </div>
     <div v-else-if="!items.length">
-      <SyncBoardEmpty 
-        title="IDLE_STATE"
+      <SyncBoardEmpty
+        title="空闲状态"
         :message="emptyMessage"
       >
         <template v-if="pipeline === 'feed' && carryoverCount > 0" #hint>
@@ -66,19 +66,19 @@
           >
             <template v-if="pipeline === 'extract'">
               <div class="metric-group">
-                <span class="metric-label">TOTAL</span>
+                <span class="metric-label">总数</span>
                 <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
               </div>
               <div class="metric-group">
-                <span class="metric-label">QUEUED</span>
+                <span class="metric-label">排队</span>
                 <span class="metric-value font-mono">{{ item.queued_task_count }}</span>
               </div>
               <div class="metric-group">
-                <span class="metric-label">ACTIVE</span>
+                <span class="metric-label">活跃</span>
                 <span class="metric-value font-mono text-[#FFB300]">{{ item.running_task_count }}</span>
               </div>
               <div class="metric-group">
-                <span class="metric-label">DONE</span>
+                <span class="metric-label">完成</span>
                 <span class="metric-value font-mono text-[#00FF41]">{{ item.completed_task_count }}</span>
               </div>
             </template>

@@ -3,7 +3,7 @@
     <div class="board-header">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <p class="board-kicker">PENDING_QUEUE</p>
+          <p class="board-kicker">排队队列</p>
           <div class="h-px flex-1 bg-white/5"></div>
           <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
         </div>
@@ -15,9 +15,9 @@
       <SyncBoardSkeleton :count="11" />
     </div>
     <div v-else-if="!items.length">
-      <SyncBoardEmpty 
-        title="QUEUE_CLEAR"
-        message="当前没有排队中的订阅" 
+      <SyncBoardEmpty
+        title="队列为空"
+        message="当前没有排队中的订阅"
       />
     </div>
 

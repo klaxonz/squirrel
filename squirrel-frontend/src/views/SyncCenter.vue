@@ -11,8 +11,8 @@
           <section class="pipeline-tabs">
             <Tabs :model-value="activePipeline" @update:model-value="handlePipelineChange">
               <TabsList class="pipeline-tabs__list">
-                <TabsTrigger value="feed" class="pipeline-tabs__trigger font-mono">FEED_SYNC</TabsTrigger>
-                <TabsTrigger value="extract" class="pipeline-tabs__trigger font-mono">VIDEO_EXTRACT</TabsTrigger>
+                <TabsTrigger value="feed" class="pipeline-tabs__trigger font-mono">列表拉取</TabsTrigger>
+                <TabsTrigger value="extract" class="pipeline-tabs__trigger font-mono">视频提取</TabsTrigger>
               </TabsList>
             </Tabs>
           </section>

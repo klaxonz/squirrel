@@ -29,7 +29,7 @@
       
       <!-- 底部状态条 -->
       <div class="status-footer absolute bottom-2 w-full text-center pointer-events-none">
-        <span class="font-mono text-[8px] opacity-10 tracking-[0.2em]">SQR_TERMINAL_IDLE</span>
+        <span class="font-mono text-[8px] opacity-10 tracking-[0.2em]">SQR_终端空闲</span>
       </div>
     </div>
   </div>
@@ -40,7 +40,7 @@ withDefaults(defineProps<{
   title?: string
   message: string
 }>(), {
-  title: 'SYSTEM_READY'
+  title: '系统就绪'
 })
 </script>
 

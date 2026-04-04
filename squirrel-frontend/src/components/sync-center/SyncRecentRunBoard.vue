@@ -3,7 +3,7 @@
     <div class="board-header">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <p class="board-kicker">RECENT_FINISHED</p>
+          <p class="board-kicker">最近运行</p>
           <div class="h-px flex-1 bg-white/5"></div>
           <span class="board-count font-mono">{{ displayRuns.length.toString().padStart(2, '0') }}</span>
         </div>
@@ -15,9 +15,9 @@
       <SyncBoardSkeleton :count="11" />
     </div>
     <div v-else-if="!displayRuns.length">
-      <SyncBoardEmpty 
-        title="HISTORY_EMPTY"
-        message="当前没有最近运行结果" 
+      <SyncBoardEmpty
+        title="历史记录为空"
+        message="当前没有最近运行结果"
       />
     </div>
 
@@ -59,15 +59,15 @@
 
           <div class="metric-inline">
             <div class="metric-group">
-              <span class="metric-label">FOUND</span>
+              <span class="metric-label">发现</span>
               <span class="metric-value font-mono">{{ run.videos_found }}</span>
             </div>
             <div class="metric-group">
-              <span class="metric-label">SYNCED</span>
+              <span class="metric-label">入队</span>
               <span class="metric-value font-mono">{{ run.videos_enqueued }}</span>
             </div>
             <div class="metric-group">
-              <span class="metric-label">DONE</span>
+              <span class="metric-label">完成</span>
               <span class="metric-value font-mono">{{ run.videos_extracted }}</span>
             </div>
           </div>

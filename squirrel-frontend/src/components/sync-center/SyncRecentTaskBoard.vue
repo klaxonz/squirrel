@@ -3,7 +3,7 @@
     <div class="board-header">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <p class="board-kicker">RECENT_TASKS</p>
+          <p class="board-kicker">最近任务</p>
           <div class="h-px flex-1 bg-white/5"></div>
           <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
         </div>
@@ -15,9 +15,9 @@
       <SyncBoardSkeleton :count="11" />
     </div>
     <div v-else-if="!items.length">
-      <SyncBoardEmpty 
-        title="LOG_EMPTY"
-        message="当前没有最近提取结果" 
+      <SyncBoardEmpty
+        title="记录为空"
+        message="当前没有最近提取结果"
       />
     </div>
 
@@ -55,18 +55,18 @@
 
           <div class="metric-inline">
             <div class="metric-group">
-              <span class="metric-label">TOTAL</span>
+              <span class="metric-label">总数</span>
               <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
             </div>
             <div class="metric-group">
-              <span class="metric-label">DONE</span>
+              <span class="metric-label">完成</span>
               <span class="metric-value font-mono">{{ item.completed_task_count }}</span>
             </div>
             <div class="metric-group">
               <span
                 class="metric-label"
               >
-                FAIL
+                失败
               </span>
               <span
                 class="metric-value font-mono"
