@@ -227,7 +227,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   padding-left: 0.5rem;
 }
 
@@ -270,7 +270,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   flex-direction: column;
   width: 100%;
   background: transparent;
-  padding: 1rem 1.25rem;
+  padding: 0.6rem 1rem;
   text-align: left;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;

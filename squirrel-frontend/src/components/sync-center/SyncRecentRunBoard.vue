@@ -201,7 +201,7 @@ const getStatusChipClass = (status: string) => {
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   padding-left: 0.5rem;
 }
 
