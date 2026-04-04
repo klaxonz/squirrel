@@ -23,32 +23,35 @@
         @click="emit('open-run', item)"
       >
         <div class="queue-row__rank">
-          <span class="queue-row__rank-no">#{{ item.queue_position || '–' }}</span>
+          <span class="queue-row__rank-no font-mono">#{{ (item.queue_position || index + 1).toString().padStart(2, '0') }}</span>
         </div>
 
         <div class="queue-row__identity">
-          <img
-            :src="getAvatarSrc(item.subscription_avatar, item.subscription_id)"
-            :alt="item.subscription_name"
-            class="queue-row__avatar"
-            referrerpolicy="no-referrer"
-            @error="(event) => handleAvatarError(event, item.subscription_id)"
-          >
+          <div class="relative">
+            <img
+              :src="getAvatarSrc(item.subscription_avatar, item.subscription_id)"
+              :alt="item.subscription_name"
+              class="queue-row__avatar"
+              referrerpolicy="no-referrer"
+              @error="(event) => handleAvatarError(event, item.subscription_id)"
+            >
+            <div class="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full bg-[#00E5FF] glow-cyan"></div>
+          </div>
 
           <div class="min-w-0 flex-1">
-          <div class="queue-row__title">
-            <span v-if="index === 0" class="queue-row__badge">队首</span>
-            <h3 class="truncate text-sm font-semibold text-white/92">{{ item.subscription_name }}</h3>
-          </div>
-          <p class="queue-row__meta">
-            {{ item.site || 'unknown' }} · {{ getModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
-          </p>
+            <div class="queue-row__title">
+              <span v-if="index === 0" class="queue-row__badge">队首</span>
+              <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
+            </div>
+            <p class="queue-row__meta font-mono">
+              {{ item.site || 'unknown' }} · {{ getModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
+            </p>
           </div>
         </div>
 
         <div class="queue-row__flow" aria-hidden="true">
-          <span class="queue-row__arrow">→</span>
-          <span class="queue-row__flow-text">处理中</span>
+          <span class="queue-row__arrow text-[#00E5FF]">→</span>
+          <span class="queue-row__flow-text">READY</span>
         </div>
       </button>
     </TransitionGroup>
@@ -91,11 +94,11 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
 
 <style scoped>
 .board-shell {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(255, 214, 102, 0.08), rgba(255, 255, 255, 0.02) 22%, rgba(0, 0, 0, 0.44));
-  border-radius: 1.5rem;
+  border: 1px solid var(--cyber-border);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0;
   padding: 1.2rem;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
   min-height: 0;
 }
 
@@ -104,37 +107,45 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.9rem;
+  margin-bottom: 1.2rem;
+  border-left: 2px solid var(--cyber-cyan);
+  padding-left: 0.75rem;
 }
 
 .board-kicker {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
+  font-weight: 800;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
-  color: rgba(255, 214, 130, 0.66);
+  color: var(--cyber-cyan);
+  opacity: 0.7;
 }
 
 .board-title {
-  margin-top: 0.28rem;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  color: rgba(255, 255, 255, 0.94);
+  margin-top: 0.2rem;
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .board-caption {
-  margin-top: 0.28rem;
+  margin-top: 0.4rem;
   max-width: 20rem;
-  font-size: 12px;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.44);
+  font-size: 10px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .board-count {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.44);
+  font-size: 10px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--cyber-cyan);
+  opacity: 0.5;
 }
 
 .board-empty,
@@ -143,24 +154,28 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   min-height: 12rem;
   align-items: center;
   justify-content: center;
-  border-radius: 1rem;
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.42);
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.01);
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 .board-error {
-  color: rgba(251, 113, 133, 0.86);
+  color: rgba(251, 113, 133, 0.8);
+  border-color: rgba(251, 113, 133, 0.2);
 }
 
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 1px;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  padding-right: 0.15rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .queue-row {
@@ -168,85 +183,86 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   width: 100%;
   align-items: center;
   gap: 0.75rem;
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.025);
-  padding: 0.78rem 0.85rem;
+  background: #050505;
+  padding: 0.75rem 0.85rem;
   text-align: left;
-  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  transition: all 0.2s ease;
+  border: none;
 }
 
 .queue-row:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 214, 102, 0.24);
+  background: rgba(255, 255, 255, 0.03);
+  padding-left: 1.1rem;
 }
 
 .queue-row--head {
-  border-color: rgba(255, 214, 102, 0.28);
-  background: rgba(255, 214, 102, 0.08);
+  border-left: 2px solid var(--cyber-cyan);
 }
 
 .queue-row__rank {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 0.9rem;
-  background: rgba(255, 214, 102, 0.1);
+  width: 2rem;
+  height: 2rem;
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px solid rgba(0, 229, 255, 0.1);
   flex-shrink: 0;
 }
 
 .queue-row__rank-no {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: rgba(255, 235, 174, 0.94);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--cyber-cyan);
+  opacity: 0.8;
 }
 
 .queue-row__title {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
   min-width: 0;
 }
 
 .queue-row__identity {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.85rem;
   min-width: 0;
   flex: 1;
 }
 
 .queue-row__avatar {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.8rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0;
   object-fit: cover;
   flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  filter: grayscale(0.2);
 }
 
 .queue-row__badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 214, 102, 0.22);
-  background: rgba(255, 214, 102, 0.1);
-  padding: 0.12rem 0.42rem;
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(255, 233, 170, 0.92);
+  border: 1px solid var(--cyber-cyan);
+  background: rgba(0, 229, 255, 0.1);
+  padding: 0.1rem 0.4rem;
+  font-size: 9px;
+  font-weight: 900;
+  color: var(--cyber-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   flex-shrink: 0;
 }
 
 .queue-row__meta {
-  margin-top: 0.18rem;
-  font-size: 11px;
+  margin-top: 0.2rem;
+  font-size: 10px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -256,23 +272,22 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.08rem;
-  min-width: 3.1rem;
+  gap: 0;
+  min-width: 3.5rem;
   flex-shrink: 0;
 }
 
 .queue-row__arrow {
-  font-size: 1rem;
-  font-weight: 700;
-  color: rgba(255, 219, 133, 0.78);
+  font-size: 1.1rem;
+  font-weight: 900;
+  opacity: 0.8;
 }
 
 .queue-row__flow-text {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.25);
 }
 
 .lane-card-enter-active,
