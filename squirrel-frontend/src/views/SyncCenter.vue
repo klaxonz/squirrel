@@ -1,19 +1,22 @@
 <template>
   <div class="sync-center-page tactical-terminal min-h-full selection:bg-primary/10">
     <div class="toolbar-container py-8 relative z-10">
-      <div class="flex flex-col gap-8">
-        <SyncControlBar
-          :summary="dashboardSummary"
-        />
+      <div class="flex flex-col gap-6">
+        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+          <SyncControlBar
+            :summary="dashboardSummary"
+            class="border-none pb-0 mb-0"
+          />
 
-        <section class="pipeline-tabs">
-          <Tabs :model-value="activePipeline" @update:model-value="handlePipelineChange">
-            <TabsList class="pipeline-tabs__list">
-              <TabsTrigger value="feed" class="pipeline-tabs__trigger font-mono">FEED_SYNC</TabsTrigger>
-              <TabsTrigger value="extract" class="pipeline-tabs__trigger font-mono">VIDEO_EXTRACT</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </section>
+          <section class="pipeline-tabs">
+            <Tabs :model-value="activePipeline" @update:model-value="handlePipelineChange">
+              <TabsList class="pipeline-tabs__list">
+                <TabsTrigger value="feed" class="pipeline-tabs__trigger font-mono">FEED_SYNC</TabsTrigger>
+                <TabsTrigger value="extract" class="pipeline-tabs__trigger font-mono">VIDEO_EXTRACT</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </section>
+        </div>
 
         <section class="flow-shell">
 
