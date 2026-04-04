@@ -23,24 +23,32 @@
         <div class="recent-row__main">
           <div class="min-w-0 flex-1">
             <div class="recent-row__title">
-              <span class="status-chip" :class="item.sync_status === 'failed' ? 'status-chip--failed' : 'status-chip--success'">
-                {{ item.sync_status === 'failed' ? '失败' : '完成' }}
-              </span>
-              <span v-if="index === 0" class="latest-chip">最新</span>
-              <h3 class="truncate text-sm font-semibold text-white/92">{{ item.subscription_name }}</h3>
+              <div 
+                class="w-1.5 h-1.5 rounded-full mr-2"
+                :class="item.sync_status === 'failed' ? 'bg-rose-500' : 'bg-[#00FF41]'"
+              ></div>
+              <h3 class="truncate text-sm font-bold text-white/70">{{ item.subscription_name }}</h3>
+              <span v-if="index === 0" class="latest-chip">NEW</span>
             </div>
-            <p class="recent-row__meta">
-              {{ item.site || 'unknown' }} · {{ formatDate(item.updated_at || item.last_success_at) }} · {{ item.progress_label || '—' }}
+            <p class="recent-row__meta font-mono">
+              {{ item.site || 'unknown' }} · {{ formatDate(item.updated_at || item.last_success_at) }}
             </p>
           </div>
-
         </div>
 
-        <div class="metric-inline">
-          <span class="metric-pill">总数 {{ item.batch_task_count }}</span>
-          <span class="metric-pill">完成 {{ item.completed_task_count }}</span>
-          <span class="metric-pill">失败 {{ item.failed_task_count }}</span>
-          <span class="metric-pill">剩余 {{ item.pending_video_count }}</span>
+        <div class="metric-inline mt-2 opacity-50 grayscale group-hover:grayscale-0 transition-all">
+          <div class="metric-group">
+            <span class="metric-label">TOTAL</span>
+            <span class="metric-value font-mono text-[10px]">{{ item.batch_task_count }}</span>
+          </div>
+          <div class="metric-group">
+            <span class="metric-label">DONE</span>
+            <span class="metric-value font-mono text-[10px]">{{ item.completed_task_count }}</span>
+          </div>
+          <div class="metric-group">
+            <span class="metric-label">FAIL</span>
+            <span class="metric-value font-mono text-[10px]" :class="item.failed_task_count > 0 ? 'text-rose-500' : ''">{{ item.failed_task_count }}</span>
+          </div>
         </div>
       </div>
     </TransitionGroup>
@@ -60,11 +68,11 @@ defineProps<{
 
 <style scoped>
 .board-shell {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(126, 182, 255, 0.08), rgba(255, 255, 255, 0.02) 22%, rgba(0, 0, 0, 0.44));
-  border-radius: 1.5rem;
+  border: 1px solid var(--cyber-border);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0;
   padding: 1.2rem;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
   min-height: 0;
 }
 
@@ -73,37 +81,43 @@ defineProps<{
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.9rem;
+  margin-bottom: 1.2rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  padding-left: 0.75rem;
 }
 
 .board-kicker {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
+  font-weight: 800;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
-  color: rgba(157, 209, 255, 0.66);
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .board-title {
-  margin-top: 0.28rem;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  color: rgba(255, 255, 255, 0.94);
+  margin-top: 0.2rem;
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .board-caption {
-  margin-top: 0.28rem;
+  margin-top: 0.4rem;
   max-width: 20rem;
-  font-size: 12px;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.44);
+  font-size: 10px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.2);
 }
 
 .board-count {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.44);
+  font-size: 10px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.2);
 }
 
 .board-empty,
@@ -112,35 +126,47 @@ defineProps<{
   min-height: 12rem;
   align-items: center;
   justify-content: center;
-  border-radius: 1rem;
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.42);
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.01);
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 .board-error {
-  color: rgba(251, 113, 133, 0.86);
+  color: rgba(251, 113, 133, 0.8);
+  border-color: rgba(251, 113, 133, 0.2);
 }
 
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 1px;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  padding-right: 0.15rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .recent-row {
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(255, 255, 255, 0.025);
-  padding: 0.8rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: #050505;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.recent-row:hover {
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .recent-row--failed {
-  border-color: rgba(251, 113, 133, 0.2);
+  border-left: 2px solid theme('colors.rose.500');
 }
 
 .recent-row__main {
@@ -153,61 +179,55 @@ defineProps<{
 .recent-row__title {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
   min-width: 0;
 }
 
 .recent-row__meta {
-  margin-top: 0.18rem;
-  font-size: 11px;
+  margin-top: 0.15rem;
+  font-size: 9px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.status-chip,
-.latest-chip,
-.metric-pill {
+.latest-chip {
   display: inline-flex;
   align-items: center;
-  border-radius: 9999px;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.status-chip {
-  padding: 0.14rem 0.42rem;
-}
-
-.status-chip--success {
-  background: rgba(74, 222, 128, 0.1);
-  color: rgba(190, 255, 212, 0.92);
-}
-
-.status-chip--failed {
-  background: rgba(251, 113, 133, 0.1);
-  color: rgba(255, 203, 213, 0.92);
-}
-
-.latest-chip {
-  padding: 0.14rem 0.4rem;
-  background: rgba(126, 182, 255, 0.12);
-  color: rgba(202, 227, 255, 0.92);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.05rem 0.3rem;
+  font-size: 8px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
+  margin-left: 0.5rem;
 }
 
 .metric-inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.38rem;
-  margin-top: 0.62rem;
+  gap: 0.85rem;
 }
 
-.metric-pill {
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.62);
-  padding: 0.22rem 0.48rem;
+.metric-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.metric-label {
+  font-size: 6px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.15);
+  letter-spacing: 0.2em;
+}
+
+.metric-value {
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .lane-card-enter-active,

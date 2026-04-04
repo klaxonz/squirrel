@@ -29,38 +29,45 @@
       >
         <div class="recent-row__main">
           <div class="recent-row__identity">
-            <img
-              :src="getAvatarSrc(run.subscription_avatar, run.run_id)"
-              :alt="run.subscription_name"
-              class="recent-row__avatar"
-              referrerpolicy="no-referrer"
-              @error="(event) => handleAvatarError(event, run.run_id)"
-            >
+            <div class="relative">
+              <img
+                :src="getAvatarSrc(run.subscription_avatar, run.run_id)"
+                :alt="run.subscription_name"
+                class="recent-row__avatar"
+                referrerpolicy="no-referrer"
+                @error="(event) => handleAvatarError(event, run.run_id)"
+              >
+              <div 
+                class="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full"
+                :class="run.status === 'success' ? 'bg-[#00FF41]' : run.status === 'failed' ? 'bg-rose-500' : 'bg-white/20'"
+              ></div>
+            </div>
 
             <div class="min-w-0 flex-1">
-            <div class="recent-row__title">
-              <span class="status-chip" :class="getStatusChipClass(run.status)">
-                {{ getStatusLabel(run.status) }}
-              </span>
-              <span v-if="index === 0" class="latest-chip">最新</span>
-              <span v-if="freshRunIds.has(run.run_id)" class="fresh-chip">刚更新</span>
-              <h3 class="truncate text-sm font-semibold text-white/92">{{ run.subscription_name }}</h3>
-            </div>
-            <p class="recent-row__meta">
-              {{ getPhaseLabel(run.current_phase) }} · {{ run.site || 'unknown' }} · {{ getMetaTimestamp(run) }}
-            </p>
+              <div class="recent-row__title">
+                <h3 class="truncate text-sm font-bold text-white/70">{{ run.subscription_name }}</h3>
+                <span v-if="index === 0" class="latest-chip">NEW</span>
+              </div>
+              <p class="recent-row__meta font-mono">
+                {{ run.site || 'unknown' }} · {{ getMetaTimestamp(run) }}
+              </p>
             </div>
           </div>
-
         </div>
 
-        <div class="metric-inline">
-          <span class="metric-pill">发现 {{ run.videos_found }}</span>
-          <span class="metric-pill">入队 {{ run.videos_enqueued }}</span>
-          <span class="metric-pill">提取 {{ run.videos_extracted }}</span>
-          <span class="metric-pill" :class="run.pending_video_count ? 'metric-pill--warn' : ''">
-            剩余 {{ run.pending_video_count }}
-          </span>
+        <div class="metric-inline mt-2 opacity-50 grayscale group-hover:grayscale-0 transition-all">
+          <div class="metric-group">
+            <span class="metric-label">FOUND</span>
+            <span class="metric-value font-mono text-[10px]">{{ run.videos_found }}</span>
+          </div>
+          <div class="metric-group">
+            <span class="metric-label">SYNCED</span>
+            <span class="metric-value font-mono text-[10px]">{{ run.videos_enqueued }}</span>
+          </div>
+          <div class="metric-group">
+            <span class="metric-label">DONE</span>
+            <span class="metric-value font-mono text-[10px]">{{ run.videos_extracted }}</span>
+          </div>
         </div>
       </button>
     </TransitionGroup>
@@ -191,11 +198,11 @@ const getStatusChipClass = (status: string) => {
 
 <style scoped>
 .board-shell {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(126, 182, 255, 0.08), rgba(255, 255, 255, 0.02) 22%, rgba(0, 0, 0, 0.44));
-  border-radius: 1.5rem;
+  border: 1px solid var(--cyber-border);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0;
   padding: 1.2rem;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
   min-height: 0;
 }
 
@@ -204,44 +211,52 @@ const getStatusChipClass = (status: string) => {
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.9rem;
+  margin-bottom: 1.2rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  padding-left: 0.75rem;
 }
 
 .board-kicker {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
+  font-weight: 800;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
-  color: rgba(157, 209, 255, 0.66);
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .board-title {
-  margin-top: 0.28rem;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  color: rgba(255, 255, 255, 0.94);
+  margin-top: 0.2rem;
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .board-caption {
-  margin-top: 0.28rem;
+  margin-top: 0.4rem;
   max-width: 20rem;
-  font-size: 12px;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.44);
+  font-size: 10px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.2);
 }
 
 .board-updated {
-  margin-top: 0.32rem;
-  font-size: 11px;
+  margin-top: 0.4rem;
+  font-size: 9px;
   font-weight: 600;
-  color: rgba(126, 182, 255, 0.74);
+  color: rgba(255, 255, 255, 0.15);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .board-count {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.44);
+  font-size: 10px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.2);
 }
 
 .board-empty,
@@ -250,55 +265,48 @@ const getStatusChipClass = (status: string) => {
   min-height: 12rem;
   align-items: center;
   justify-content: center;
-  border-radius: 1rem;
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.42);
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.01);
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 .board-error {
-  color: rgba(251, 113, 133, 0.86);
+  color: rgba(251, 113, 133, 0.8);
+  border-color: rgba(251, 113, 133, 0.2);
 }
 
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 1px;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  padding-right: 0.15rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .recent-row {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(255, 255, 255, 0.025);
-  padding: 0.8rem 0.85rem;
+  background: #050505;
+  padding: 0.75rem 1rem;
   text-align: left;
-  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+  transition: all 0.2s ease;
+  border: none;
 }
 
 .recent-row:hover {
-  transform: translateY(-1px);
-  border-color: rgba(126, 182, 255, 0.24);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.recent-row--latest {
-  border-color: rgba(126, 182, 255, 0.26);
-}
-
-.recent-row--fresh {
-  border-color: rgba(96, 165, 250, 0.42);
-  background: rgba(96, 165, 250, 0.08);
-  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.12);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .recent-row--active {
-  border-color: rgba(126, 182, 255, 0.34);
-  background: rgba(126, 182, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid var(--cyber-orange);
 }
 
 .recent-row__main {
@@ -311,106 +319,72 @@ const getStatusChipClass = (status: string) => {
 .recent-row__identity {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.85rem;
   min-width: 0;
   flex: 1;
 }
 
 .recent-row__avatar {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.8rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0;
   object-fit: cover;
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  filter: grayscale(0.8) opacity(0.6);
 }
 
 .recent-row__title {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
   min-width: 0;
 }
 
 .recent-row__meta {
-  margin-top: 0.18rem;
-  font-size: 11px;
+  margin-top: 0.15rem;
+  font-size: 9px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.status-chip,
-.latest-chip,
-.fresh-chip,
-.metric-pill {
+.latest-chip {
   display: inline-flex;
   align-items: center;
-  border-radius: 9999px;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.status-chip {
-  padding: 0.14rem 0.42rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.status-chip--success {
-  border-color: rgba(74, 222, 128, 0.18);
-  background: rgba(74, 222, 128, 0.1);
-  color: rgba(190, 255, 212, 0.92);
-}
-
-.status-chip--failed {
-  border-color: rgba(251, 113, 133, 0.18);
-  background: rgba(251, 113, 133, 0.1);
-  color: rgba(255, 203, 213, 0.92);
-}
-
-.status-chip--handoff {
-  border-color: rgba(255, 187, 92, 0.22);
-  background: rgba(255, 187, 92, 0.1);
-  color: rgba(255, 229, 196, 0.92);
-}
-
-.status-chip--neutral {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.68);
-}
-
-.latest-chip {
-  padding: 0.14rem 0.4rem;
-  background: rgba(126, 182, 255, 0.12);
-  color: rgba(202, 227, 255, 0.92);
-}
-
-.fresh-chip {
-  padding: 0.14rem 0.4rem;
-  background: rgba(96, 165, 250, 0.16);
-  color: rgba(219, 234, 254, 0.96);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.05rem 0.3rem;
+  font-size: 8px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
 }
 
 .metric-inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.38rem;
-  margin-top: 0.62rem;
+  gap: 0.85rem;
 }
 
-.metric-pill {
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.62);
-  padding: 0.22rem 0.48rem;
+.metric-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
 }
 
-.metric-pill--warn {
-  background: rgba(251, 113, 133, 0.08);
-  color: rgba(255, 210, 218, 0.92);
+.metric-label {
+  font-size: 6px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.15);
+  letter-spacing: 0.2em;
+}
+
+.metric-value {
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .lane-card-enter-active,
