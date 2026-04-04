@@ -29,35 +29,52 @@
         :class="item.sync_status === 'failed' ? 'recent-row--failed' : ''"
       >
         <div class="recent-row__main">
-          <div class="min-w-0 flex-1">
-            <div class="recent-row__title">
-              <h3 class="truncate text-sm font-bold text-white/70">{{ item.subscription_name }}</h3>
-            </div>
-            <div class="recent-row__meta recent-row__meta--with-icon font-mono">
-              <SiteIcon
-                v-if="item.site"
-                :icon-url="item.site_icon_url"
-                :label="item.site"
-                size="xs"
-                class="recent-row__site-icon"
-              />
-              <span>{{ item.site || 'unknown' }} · {{ formatDate(item.updated_at || item.last_success_at) }}</span>
-            </div>
-          </div>
-        </div>
+          <div class="recent-row__identity">
+            <SubscriptionAvatar
+              :src="item.subscription_avatar"
+              :name="item.subscription_name"
+              size="md"
+            />
 
-        <div class="metric-inline mt-2 opacity-50 grayscale group-hover:grayscale-0 transition-all">
-          <div class="metric-group">
-            <span class="metric-label">TOTAL</span>
-            <span class="metric-value font-mono text-[10px]">{{ item.batch_task_count }}</span>
+            <div class="min-w-0 flex-1">
+              <div class="recent-row__title">
+                <h3 class="truncate text-sm font-bold text-white/70">{{ item.subscription_name }}</h3>
+              </div>
+              <div class="recent-row__meta recent-row__meta--with-icon font-mono">
+                <SiteIcon
+                  v-if="item.site"
+                  :icon-url="item.site_icon_url"
+                  :label="item.site"
+                  size="xs"
+                  class="recent-row__site-icon"
+                />
+                <span>{{ item.site || 'unknown' }} · {{ formatDate(item.updated_at || item.last_success_at) }}</span>
+              </div>
+            </div>
           </div>
-          <div class="metric-group">
-            <span class="metric-label">DONE</span>
-            <span class="metric-value font-mono text-[10px]">{{ item.completed_task_count }}</span>
-          </div>
-          <div class="metric-group">
-            <span class="metric-label">FAIL</span>
-            <span class="metric-value font-mono text-[10px]" :class="item.failed_task_count > 0 ? 'text-rose-500' : ''">{{ item.failed_task_count }}</span>
+
+          <div class="metric-inline">
+            <div class="metric-group">
+              <span class="metric-label">TOTAL</span>
+              <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
+            </div>
+            <div class="metric-group">
+              <span class="metric-label">DONE</span>
+              <span class="metric-value font-mono">{{ item.completed_task_count }}</span>
+            </div>
+            <div class="metric-group">
+              <span
+                class="metric-label"
+              >
+                FAIL
+              </span>
+              <span
+                class="metric-value font-mono"
+                :class="item.failed_task_count > 0 ? 'text-rose-500' : ''"
+              >
+                {{ item.failed_task_count }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -66,6 +83,7 @@
 </template>
 
 <script setup lang="ts">
+import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
 import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
@@ -135,8 +153,9 @@ defineProps<{
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-height: 4rem;
   background: transparent;
-  padding: 0.85rem 1rem;
+  padding: 0.6rem 1rem;
   text-align: left;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
@@ -155,9 +174,17 @@ defineProps<{
 
 .recent-row__main {
   display: flex;
-  align-items: start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.recent-row__identity {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .recent-row__title {
@@ -187,9 +214,11 @@ defineProps<{
 
 .metric-inline {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  opacity: 0.4;
+  flex-direction: row;
+  gap: 1.5rem;
+  flex-shrink: 0;
+  align-items: flex-end;
+  opacity: 0.5;
 }
 
 .recent-row:hover .metric-inline {
@@ -199,7 +228,7 @@ defineProps<{
 .metric-group {
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
+  gap: 0.1rem;
 }
 
 .metric-label {
@@ -210,9 +239,9 @@ defineProps<{
 }
 
 .metric-value {
-  font-size: 10px;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .lane-card-enter-active,

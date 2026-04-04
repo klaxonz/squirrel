@@ -257,6 +257,7 @@ const getStatusChipClass = (status: string) => {
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-height: 4rem;
   background: transparent;
   padding: 0.6rem 1rem;
   text-align: left;

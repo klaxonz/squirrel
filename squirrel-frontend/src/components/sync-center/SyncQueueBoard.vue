@@ -178,6 +178,7 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
 .queue-row {
   display: flex;
   width: 100%;
+  min-height: 4rem;
   align-items: center;
   gap: 1rem;
   background: transparent;
