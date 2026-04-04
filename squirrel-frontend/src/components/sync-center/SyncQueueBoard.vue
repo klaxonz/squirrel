@@ -45,11 +45,12 @@
         </div>
 
         <div class="queue-row__flow" aria-hidden="true">
-          <SubscriptionAvatar
-            :src="getSiteIconUrl(item.site)"
-            :name="item.site || '?'"
+          <SiteIcon
+            v-if="item.site"
+            :icon-url="getSiteIconUrl(item.site)"
+            :label="item.site"
             size="xs"
-            class="opacity-30 grayscale group-hover:grayscale-0 group-hover:opacity-80 transition-all"
+            class="opacity-30 grayscale hover:grayscale-0 hover:opacity-80 transition-all"
           />
         </div>
       </button>
@@ -79,7 +80,12 @@ const siteOptionMap = computed(() => {
   return new Map((props.siteOptions || []).map((option) => [option.value, option]))
 })
 
-const getSiteIconUrl = (site: string | null) => siteOptionMap.value.get(site || '')?.iconUrl || null
+const getSiteIconUrl = (site: string | null) => {
+  if (!site) return null
+  const fromMap = siteOptionMap.value.get(site)?.iconUrl
+  if (fromMap) return fromMap
+  return `/api/plugins/sites/${site.toLowerCase()}/icon`
+}
 
 const getModeLabel = (mode: string) => {
   if (mode === 'full') return '全量'
