@@ -12,7 +12,7 @@
 
     <div v-if="error" class="board-error">{{ error }}</div>
     <div v-else-if="loading && !items.length">
-      <SyncBoardSkeleton :count="5" />
+      <SyncBoardSkeleton :count="11" />
     </div>
     <div v-else-if="!items.length">
       <SyncBoardEmpty 
@@ -178,7 +178,7 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
 .queue-row {
   display: flex;
   width: 100%;
-  min-height: 4rem;
+  min-height: 3.5rem;
   align-items: center;
   gap: 1rem;
   background: transparent;

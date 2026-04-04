@@ -607,7 +607,7 @@ def get_feed_dashboard_snapshot(
         running_preview = _sort_items(
             [item for item in items if _is_feed_running_item(item)],
             'running',
-        )[:6]
+        )
 
         queued_preview = [item for item in items if item.display_status == 'queued']
         try:
@@ -624,7 +624,7 @@ def get_feed_dashboard_snapshot(
             'queued',
             queued_candidate_rank_map=queued_candidate_rank_map,
             queued_backlog_rank_map=queued_backlog_rank_map,
-        )[:12]
+        )[:100]
         for index, item in enumerate(queued_preview, start=1):
             item.queue_position = index
 
@@ -676,7 +676,7 @@ def get_feed_dashboard_snapshot(
             row[0].run_id,
         ),
         reverse=True,
-    )[:9]
+    )
     recent_runs = [
         _serialize_feed_recent_run(run_projection, subscription, feed_completed_at_map.get(run_projection.run_id))
         for run_projection, subscription in recent_rows

@@ -12,7 +12,7 @@
 
     <div v-if="error" class="board-error">{{ error }}</div>
     <div v-else-if="loading && !items.length">
-      <SyncBoardSkeleton :count="3" />
+      <SyncBoardSkeleton :count="11" />
     </div>
     <div v-else-if="!items.length">
       <SyncBoardEmpty 
@@ -253,7 +253,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 4rem;
+  min-height: 3.5rem;
   background: transparent;
   padding: 0.6rem 1rem;
   text-align: left;

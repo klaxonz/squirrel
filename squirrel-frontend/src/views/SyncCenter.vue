@@ -28,7 +28,7 @@
           <section class="flow-shell relative z-10">
             <SyncQueueBoard
               :items="currentQueuedLaneItems"
-              :loading="dashboardRefreshing"
+              :loading="currentBoardInitialLoading"
               :error="currentQueuedError"
               :site-options="siteOptions"
               @open-run="handleOpenRunFromItem"
@@ -37,7 +37,7 @@
             <SyncActiveRunBoard
               :items="currentActiveLaneItems"
               :slot-count="activeSlotCount"
-              :loading="dashboardRefreshing"
+              :loading="currentBoardInitialLoading"
               :error="currentRunningError"
               :pipeline="activePipeline"
               :carryover-count="activePipeline === 'feed' ? feedAwaitingExtractCount : 0"
@@ -47,7 +47,7 @@
             <SyncRecentRunBoard
               v-if="activePipeline === 'feed'"
               :runs="recentLaneRuns"
-              :loading="dashboardRefreshing"
+              :loading="feedInitialLoading"
               :error="currentRecentError"
               :selected-run-id="selectedRunId"
               @open-run="handleSelectRun"
@@ -56,7 +56,7 @@
             <SyncRecentTaskBoard
               v-else
               :items="extractionRecentItems"
-              :loading="extractionLoading"
+              :loading="extractionInitialLoading"
               :error="extractionRecentPreviewError"
             />
           </section>
@@ -96,6 +96,7 @@ const DASHBOARD_POLL_INTERVAL = 15000
 const selectedRunId = ref('')
 
 const {
+  hasLoadedOnce: feedLoadedOnce,
   loadingItems: overviewLoadingItems,
   loadingOverview,
   overview,
@@ -128,6 +129,7 @@ const {
 })
 
 const {
+  hasLoadedOnce: extractionLoadedOnce,
   loadingItems: extractionLoadingItems,
   loadingOverview: extractionLoadingOverview,
   overview: extractionOverview,
@@ -154,6 +156,18 @@ const dashboardRefreshing = computed(() => {
 
 const extractionLoading = computed(() => {
   return extractionLoadingOverview.value || extractionLoadingItems.value
+})
+
+const feedInitialLoading = computed(() => {
+  return dashboardRefreshing.value && !feedLoadedOnce.value
+})
+
+const extractionInitialLoading = computed(() => {
+  return extractionLoading.value && !extractionLoadedOnce.value
+})
+
+const currentBoardInitialLoading = computed(() => {
+  return activePipeline.value === 'extract' ? extractionInitialLoading.value : feedInitialLoading.value
 })
 
 const dashboardSummary = computed(() => {
@@ -255,7 +269,6 @@ const recentLaneRuns = computed(() => {
       }
       return right.run_id.localeCompare(left.run_id)
     })
-    .slice(0, 9)
 })
 
 const currentRecentError = computed(() => {
@@ -445,7 +458,7 @@ onBeforeUnmount(() => {
 
 @media (min-width: 1280px) {
   .flow-shell {
-    grid-template-columns: 0.9fr 1.2fr 0.9fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: start;
     grid-auto-rows: minmax(0, auto);
   }

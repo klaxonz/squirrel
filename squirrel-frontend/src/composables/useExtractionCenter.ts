@@ -35,6 +35,7 @@ export function useExtractionCenter() {
   const recentPreviewError = ref('')
   const loadingOverview = ref(false)
   const loadingItems = ref(false)
+  const hasLoadedOnce = ref(false)
   const pollingEnabled = ref(true)
   const lastUpdatedAt = ref('')
 
@@ -136,6 +137,7 @@ export function useExtractionCenter() {
       loadPreview('recent'),
     ])
     loadingItems.value = false
+    hasLoadedOnce.value = true
     updateLastRefreshTime()
   }
 
@@ -175,6 +177,7 @@ export function useExtractionCenter() {
   })
 
   return {
+    hasLoadedOnce,
     lastUpdatedAt,
     loadingItems,
     loadingOverview,

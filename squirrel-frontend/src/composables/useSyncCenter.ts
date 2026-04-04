@@ -122,6 +122,7 @@ export function useSyncCenter() {
   const itemsError = ref('')
   const loadingOverview = ref(false)
   const loadingItems = ref(false)
+  const hasLoadedOnce = ref(false)
   const retryingItemId = ref<number | null>(null)
   const pollingEnabled = ref(true)
   const selectedItem = ref<SyncCenterItem | null>(null)
@@ -273,7 +274,7 @@ export function useSyncCenter() {
       site: filters.site || undefined,
       query: filters.query || undefined,
       page: 1,
-      pageSize: status === 'running' ? 6 : 12,
+      pageSize: 100,
     })
     const isStale = status === 'running'
       ? requestSeq !== runningPreviewRequestSeq
@@ -336,6 +337,7 @@ export function useSyncCenter() {
       loadFeedDashboardSnapshot(),
       loadItems(),
     ])
+    hasLoadedOnce.value = true
     updateLastRefreshTime()
   }
 
@@ -442,6 +444,7 @@ export function useSyncCenter() {
   return {
     closeDetail,
     filters,
+    hasLoadedOnce,
     items,
     itemsError,
     lastUpdatedAt,

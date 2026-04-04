@@ -12,7 +12,7 @@
 
     <div v-if="error" class="board-error">{{ error }}</div>
     <div v-else-if="loading && !displayRuns.length">
-      <SyncBoardSkeleton :count="6" />
+      <SyncBoardSkeleton :count="11" />
     </div>
     <div v-else-if="!displayRuns.length">
       <SyncBoardEmpty 
@@ -101,7 +101,7 @@ const emit = defineEmits<{
   (e: 'open-run', runId: string): void
 }>()
 
-const displayRuns = computed(() => props.runs.slice(0, 8))
+const displayRuns = computed(() => props.runs)
 const freshRunIds = ref(new Set<string>())
 const freshTimers = new Map<string, ReturnType<typeof setTimeout>>()
 let previousRunIds: string[] = []
@@ -257,7 +257,7 @@ const getStatusChipClass = (status: string) => {
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 4rem;
+  min-height: 3.5rem;
   background: transparent;
   padding: 0.6rem 1rem;
   text-align: left;

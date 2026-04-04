@@ -1,24 +1,19 @@
 <template>
-  <div class="skeleton-container space-y-4">
+  <div class="skeleton-container">
     <div v-for="i in count" :key="i" class="skeleton-item">
-      <div class="flex items-center gap-4">
-        <!-- Avatar Placeholder -->
-        <div class="w-10 h-10 bg-white/5 rounded-lg animate-pulse"></div>
-        
-        <div class="flex-1 space-y-2">
-          <!-- Title Placeholder -->
-          <div class="h-3 bg-white/10 w-1/3 rounded animate-pulse"></div>
-          <!-- Meta Placeholder -->
-          <div class="h-2 bg-white/5 w-1/2 rounded animate-pulse"></div>
+      <div class="skeleton-item__identity">
+        <div class="skeleton-item__avatar animate-pulse"></div>
+
+        <div class="min-w-0 flex-1 space-y-2">
+          <div class="h-3 w-1/3 rounded bg-white/10 animate-pulse"></div>
+          <div class="h-2 w-1/2 rounded bg-white/5 animate-pulse"></div>
         </div>
       </div>
-      
-      <!-- Metrics Placeholder -->
-      <div class="flex gap-6 mt-4 ml-14">
-        <div v-for="j in 3" :key="j" class="h-2 w-12 bg-white/5 rounded animate-pulse"></div>
+
+      <div class="skeleton-item__metrics">
+        <div v-for="j in 3" :key="j" class="h-2 w-8 rounded bg-white/5 animate-pulse"></div>
       </div>
-      
-      <!-- Scanning Line Decoration -->
+
       <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-20"></div>
     </div>
   </div>
@@ -33,12 +28,47 @@ withDefaults(defineProps<{
 </script>
 
 <style scoped>
+.skeleton-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .skeleton-item {
   position: relative;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0.6rem 1rem;
+  background: transparent;
+  border: none;
   overflow: hidden;
+}
+
+.skeleton-item__identity {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.skeleton-item__avatar {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.skeleton-item__metrics {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  gap: 1.5rem;
+  opacity: 0.5;
 }
 
 /* Subtle scanning sweep */
