@@ -34,14 +34,7 @@
               :src="run.subscription_avatar"
               :name="run.subscription_name"
               size="sm"
-            >
-              <template #indicator>
-                <div 
-                  class="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full z-10"
-                  :class="run.status === 'success' ? 'bg-[#00FF41]' : run.status === 'failed' ? 'bg-rose-500' : 'bg-white/20'"
-                ></div>
-              </template>
-            </SubscriptionAvatar>
+            />
 
             <div class="min-w-0 flex-1">
               <div class="recent-row__title">

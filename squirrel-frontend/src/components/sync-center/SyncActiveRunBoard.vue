@@ -48,11 +48,7 @@
               :src="item.subscription_avatar"
               :name="item.subscription_name"
               size="md"
-            >
-              <template #indicator>
-                <div class="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full bg-[#FFB300] glow-amber z-10"></div>
-              </template>
-            </SubscriptionAvatar>
+            />
             <div class="min-w-0 flex-1">
               <div class="run-row__title">
                 <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>

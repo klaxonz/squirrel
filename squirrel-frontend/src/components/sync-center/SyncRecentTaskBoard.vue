@@ -25,10 +25,6 @@
         <div class="recent-row__main">
           <div class="min-w-0 flex-1">
             <div class="recent-row__title">
-              <div 
-                class="w-1.5 h-1.5 rounded-full mr-2"
-                :class="item.sync_status === 'failed' ? 'bg-rose-500' : 'bg-[#00FF41]'"
-              ></div>
               <h3 class="truncate text-sm font-bold text-white/70">{{ item.subscription_name }}</h3>
               <span v-if="index === 0" class="latest-chip">NEW</span>
             </div>
