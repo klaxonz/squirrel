@@ -21,7 +21,6 @@
           :key="item.run_id || item.subscription_id"
           type="button"
           class="queue-row animate-scan"
-          :class="index === 0 ? 'queue-row--head' : ''"
           @click="emit('open-run', item)"
         >
 
@@ -38,7 +37,6 @@
 
           <div class="min-w-0 flex-1">
             <div class="queue-row__title">
-              <span v-if="index === 0" class="queue-row__badge">队首</span>
               <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
             </div>
             <p class="queue-row__meta font-mono">
@@ -172,11 +170,6 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   opacity: 0.02;
 }
 
-.queue-row--head {
-  border-left: 2px solid var(--sci-fi-cyan);
-  background: oklch(75% 0.15 200 / 0.03);
-}
-
 .queue-row__rank {
   display: inline-flex;
   align-items: center;
@@ -208,20 +201,6 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
 .queue-row:hover .queue-row__avatar {
   filter: grayscale(0) brightness(1);
   transform: scale(1.05);
-}
-
-.queue-row__badge {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--sci-fi-cyan);
-  background: oklch(75% 0.15 200 / 0.1);
-  padding: 0.05rem 0.35rem;
-  font-size: 8px;
-  font-weight: 900;
-  color: var(--sci-fi-cyan);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  flex-shrink: 0;
 }
 
 .queue-row__meta {
