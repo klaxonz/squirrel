@@ -87,7 +87,7 @@ export function useExtractionCenter() {
     const { data, error } = await getExtractionCenterItems<ExtractionCenterListResponse>({
       status,
       page: 1,
-      pageSize: status === 'running' ? 6 : 8,
+      pageSize: 100,
     })
 
     const isStale = status === 'running'

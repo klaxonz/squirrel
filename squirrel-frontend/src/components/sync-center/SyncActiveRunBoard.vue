@@ -43,53 +43,60 @@
               size="md"
             />
             <div class="min-w-0 flex-1">
-              <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
-              <p class="run-row__meta font-mono inline-flex items-center gap-1.5 mt-1">
+              <div class="run-row__title">
+                <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
+              </div>
+              <div class="run-row__meta run-row__meta--with-icon font-mono">
                 <SiteIcon
                   v-if="item.site"
                   :icon-url="item.site_icon_url"
                   :label="item.site"
                   size="xs"
+                  class="run-row__site-icon"
                 />
-                {{ getMetaText(item) }}
-              </p>
+                <span class="run-row__meta-text">{{ getMetaText(item) }}</span>
+              </div>
             </div>
+          </div>
 
-            <div v-if="pipeline === 'extract' || getFeedMetrics(item).length" class="metric-inline ml-auto">
-              <template v-if="pipeline === 'extract'">
-                <div class="metric-group">
-                  <span class="metric-label">TOTAL</span>
-                  <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
-                </div>
-                <div class="metric-group">
-                  <span class="metric-label">QUEUED</span>
-                  <span class="metric-value font-mono">{{ item.queued_task_count }}</span>
-                </div>
-                <div class="metric-group">
-                  <span class="metric-label">ACTIVE</span>
-                  <span class="metric-value font-mono text-[#FFB300]">{{ item.running_task_count }}</span>
-                </div>
-                <div class="metric-group">
-                  <span class="metric-label">DONE</span>
-                  <span class="metric-value font-mono text-[#00FF41]">{{ item.completed_task_count }}</span>
-                </div>
-              </template>
-              <template v-else>
-                <div
-                  v-for="metric in getFeedMetrics(item)"
-                  :key="`${item.run_id || item.subscription_id}-${metric.label}`"
-                  class="metric-group"
+          <div
+            v-if="pipeline === 'extract' || getFeedMetrics(item).length"
+            class="metric-inline"
+            :class="pipeline === 'extract' ? 'metric-inline--compact' : ''"
+          >
+            <template v-if="pipeline === 'extract'">
+              <div class="metric-group">
+                <span class="metric-label">TOTAL</span>
+                <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
+              </div>
+              <div class="metric-group">
+                <span class="metric-label">QUEUED</span>
+                <span class="metric-value font-mono">{{ item.queued_task_count }}</span>
+              </div>
+              <div class="metric-group">
+                <span class="metric-label">ACTIVE</span>
+                <span class="metric-value font-mono text-[#FFB300]">{{ item.running_task_count }}</span>
+              </div>
+              <div class="metric-group">
+                <span class="metric-label">DONE</span>
+                <span class="metric-value font-mono text-[#00FF41]">{{ item.completed_task_count }}</span>
+              </div>
+            </template>
+            <template v-else>
+              <div
+                v-for="metric in getFeedMetrics(item)"
+                :key="`${item.run_id || item.subscription_id}-${metric.label}`"
+                class="metric-group"
+              >
+                <span class="metric-label uppercase">{{ metric.label }}</span>
+                <span
+                  class="metric-value font-mono"
+                  :class="metric.tone === 'pending' ? 'text-[#FFB300]' : metric.tone === 'warn' ? 'text-rose-500' : ''"
                 >
-                  <span class="metric-label uppercase">{{ metric.label }}</span>
-                  <span
-                    class="metric-value font-mono"
-                    :class="metric.tone === 'pending' ? 'text-[#FFB300]' : metric.tone === 'warn' ? 'text-rose-500' : ''"
-                  >
-                    {{ metric.value }}
-                  </span>
-                </div>
-              </template>
-            </div>
+                  {{ metric.value }}
+                </span>
+              </div>
+            </template>
           </div>
         </div>
       </button>
@@ -158,7 +165,7 @@ const getTimeMetaText = (item: SyncCenterItem) => {
 const getMetaText = (item: SyncCenterItem) => {
   const timestamp = getTimeMetaText(item)
   if (props.pipeline === 'extract') {
-    return `${item.site || 'unknown'} · ${timestamp}`
+    return `正在提取视频 · ${timestamp}`
   }
 
   if (item.current_phase === 'fetching_feed') {
@@ -244,7 +251,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
 }
@@ -253,6 +260,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   display: flex;
   flex-direction: column;
   width: 100%;
+  height: 3.5rem;
   min-height: 3.5rem;
   background: transparent;
   padding: 0.6rem 1rem;
@@ -283,12 +291,37 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 }
 
 .run-row__meta {
-  margin-top: 0.25rem;
+  margin-top: 0.2rem;
   font-size: 9px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.25);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.run-row__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.run-row__meta--with-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.run-row__site-icon {
+  opacity: 0.72;
+}
+
+.run-row__meta-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .run-row__avatar {
@@ -305,6 +338,10 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   gap: 1.5rem;
   flex-shrink: 0;
   align-items: flex-end;
+}
+
+.metric-inline--compact {
+  gap: 0.85rem;
 }
 
 .metric-group {

@@ -109,6 +109,7 @@ const getSiteIconUrl = (item: SyncCenterItem) => {
 const getModeLabel = (mode: string) => {
   if (mode === 'full') return '全量'
   if (mode === 'incremental') return '增量'
+  if (mode === 'extract') return '提取'
   return mode || '未知'
 }
 

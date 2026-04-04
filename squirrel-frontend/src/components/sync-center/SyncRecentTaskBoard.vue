@@ -48,7 +48,7 @@
                   size="xs"
                   class="recent-row__site-icon"
                 />
-                <span>{{ item.site || 'unknown' }} · {{ formatDate(item.updated_at || item.last_success_at) }}</span>
+                <span>{{ formatDate(item.updated_at || item.last_success_at) }}</span>
               </div>
             </div>
           </div>
@@ -174,7 +174,7 @@ defineProps<{
 
 .recent-row__main {
   display: flex;
-  align-items: center;
+  align-items: start;
   justify-content: space-between;
   gap: 1rem;
 }
@@ -190,6 +190,7 @@ defineProps<{
 .recent-row__title {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   min-width: 0;
 }
 
@@ -215,14 +216,9 @@ defineProps<{
 .metric-inline {
   display: flex;
   flex-direction: row;
-  gap: 1.5rem;
+  gap: 0.85rem;
   flex-shrink: 0;
   align-items: flex-end;
-  opacity: 0.5;
-}
-
-.recent-row:hover .metric-inline {
-  opacity: 0.8;
 }
 
 .metric-group {
