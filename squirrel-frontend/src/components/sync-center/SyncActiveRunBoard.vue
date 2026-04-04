@@ -42,47 +42,74 @@
       >
         <div class="run-row__main">
           <div class="run-row__identity">
-            <span class="run-row__worker">{{ pipeline === 'extract' ? `B${index + 1}` : `W${index + 1}` }}</span>
-            <img
-              :src="getAvatarSrc(item.subscription_avatar, item.subscription_id)"
-              :alt="item.subscription_name"
-              class="run-row__avatar"
-              referrerpolicy="no-referrer"
-              @error="(event) => handleAvatarError(event, item.subscription_id)"
-            >
+            <div class="relative">
+              <img
+                :src="getAvatarSrc(item.subscription_avatar, item.subscription_id)"
+                :alt="item.subscription_name"
+                class="run-row__avatar"
+                referrerpolicy="no-referrer"
+                @error="(event) => handleAvatarError(event, item.subscription_id)"
+              >
+              <div class="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full bg-[#FFB300] glow-amber"></div>
+            </div>
             <div class="min-w-0 flex-1">
               <div class="run-row__title">
-                <h3 class="truncate text-sm font-semibold text-white/92">{{ item.subscription_name }}</h3>
-                <span class="phase-chip">{{ getPhaseLabel(item.current_phase) }}</span>
+                <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
+                <span class="phase-chip font-mono uppercase">{{ getPhaseLabel(item.current_phase) }}</span>
               </div>
-              <p class="run-row__meta">
+              <p class="run-row__meta font-mono">
                 {{ getMetaText(item) }}
               </p>
             </div>
           </div>
 
           <div class="run-row__progress">
-            <span class="run-row__label">{{ item.progress_label || '进行中' }}</span>
+            <span class="run-row__label font-mono">{{ item.progress_label || 'ACTIVE' }}</span>
           </div>
         </div>
 
-        <div v-if="pipeline === 'extract' || getFeedMetrics(item).length" class="metric-inline">
+        <!-- 离散能量条 (Power Bar) -->
+        <div class="flex gap-1 h-1 w-full bg-white/5 mt-3">
+          <div 
+            v-for="i in 12" :key="i"
+            class="flex-1 transition-colors duration-300"
+            :class="i / 12 <= (item.progress_value || 0.5) ? 'bg-[#FF4F00]' : 'bg-transparent'"
+          ></div>
+        </div>
+
+        <div v-if="pipeline === 'extract' || getFeedMetrics(item).length" class="metric-inline mt-3">
           <template v-if="pipeline === 'extract'">
-            <span class="metric-pill">总数 {{ item.batch_task_count }}</span>
-            <span class="metric-pill">排队 {{ item.queued_task_count }}</span>
-            <span class="metric-pill">运行 {{ item.running_task_count }}</span>
-            <span class="metric-pill metric-pill--pending">完成 {{ item.completed_task_count }}</span>
-            <span v-if="item.failed_task_count" class="metric-pill metric-pill--warn">失败 {{ item.failed_task_count }}</span>
+            <div class="metric-group">
+              <span class="metric-label">TOTAL</span>
+              <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
+            </div>
+            <div class="metric-group">
+              <span class="metric-label">QUEUED</span>
+              <span class="metric-value font-mono">{{ item.queued_task_count }}</span>
+            </div>
+            <div class="metric-group">
+              <span class="metric-label">ACTIVE</span>
+              <span class="metric-value font-mono text-[#FFB300]">{{ item.running_task_count }}</span>
+            </div>
+            <div class="metric-group">
+              <span class="metric-label">DONE</span>
+              <span class="metric-value font-mono text-[#00FF41]">{{ item.completed_task_count }}</span>
+            </div>
           </template>
           <template v-else>
-            <span
+            <div
               v-for="metric in getFeedMetrics(item)"
               :key="`${item.run_id || item.subscription_id}-${metric.label}`"
-              class="metric-pill"
-              :class="metric.tone === 'pending' ? 'metric-pill--pending' : metric.tone === 'warn' ? 'metric-pill--warn' : ''"
+              class="metric-group"
             >
-              {{ metric.label }} {{ metric.value }}
-            </span>
+              <span class="metric-label uppercase">{{ metric.label }}</span>
+              <span 
+                class="metric-value font-mono"
+                :class="metric.tone === 'pending' ? 'text-[#FFB300]' : metric.tone === 'warn' ? 'text-rose-500' : ''"
+              >
+                {{ metric.value }}
+              </span>
+            </div>
           </template>
         </div>
       </button>
@@ -202,11 +229,11 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 
 <style scoped>
 .board-shell {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(255, 160, 120, 0.08), rgba(255, 255, 255, 0.02) 22%, rgba(0, 0, 0, 0.44));
-  border-radius: 1.5rem;
+  border: 1px solid var(--cyber-border);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0;
   padding: 1.2rem;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
   min-height: 0;
 }
 
@@ -215,79 +242,88 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.9rem;
+  margin-bottom: 1.2rem;
+  border-left: 2px solid var(--cyber-amber);
+  padding-left: 0.75rem;
 }
 
 .board-kicker {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
+  font-weight: 800;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
-  color: rgba(255, 188, 150, 0.64);
+  color: var(--cyber-amber);
+  opacity: 0.7;
 }
 
 .board-title {
-  margin-top: 0.28rem;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  color: rgba(255, 255, 255, 0.94);
+  margin-top: 0.2rem;
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .board-caption {
-  margin-top: 0.28rem;
+  margin-top: 0.4rem;
   max-width: 22rem;
-  font-size: 12px;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.44);
+  font-size: 10px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .board-count {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.44);
+  font-size: 10px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--cyber-amber);
+  opacity: 0.5;
 }
 
 .worker-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-bottom: 0.85rem;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .worker-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 178, 122, 0.22);
-  background: rgba(255, 178, 122, 0.08);
-  padding: 0.35rem 0.6rem;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 179, 0, 0.15);
+  background: rgba(255, 179, 0, 0.05);
+  padding: 0.35rem 0.65rem;
 }
 
 .worker-pill__dot {
-  width: 0.45rem;
-  height: 0.45rem;
+  width: 0.35rem;
+  height: 0.35rem;
   border-radius: 9999px;
-  background: rgba(255, 192, 120, 0.96);
-  box-shadow: 0 0 10px rgba(255, 192, 120, 0.48);
-  animation: worker-pulse 1.4s ease-in-out infinite;
+  background: var(--cyber-amber);
+  box-shadow: 0 0 8px var(--cyber-amber);
+  animation: worker-pulse 1.5s ease-in-out infinite;
 }
 
 .worker-pill__label,
 .worker-pill__phase {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .worker-pill__label {
-  color: rgba(255, 255, 255, 0.66);
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .worker-pill__phase {
-  color: rgba(255, 224, 188, 0.82);
+  color: var(--cyber-amber);
+  opacity: 0.8;
 }
 
 .board-empty,
@@ -296,52 +332,43 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   min-height: 12rem;
   align-items: center;
   justify-content: center;
-  border-radius: 1rem;
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.42);
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.01);
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 .board-error {
-  color: rgba(251, 113, 133, 0.86);
-}
-
-.board-empty__content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.board-empty__hint {
-  font-size: 11px;
-  color: rgba(255, 196, 140, 0.78);
+  color: rgba(251, 113, 133, 0.8);
+  border-color: rgba(251, 113, 133, 0.2);
 }
 
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 1px;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  padding-right: 0.15rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .run-row {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  border-radius: 1.05rem;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(255, 255, 255, 0.025);
-  padding: 0.8rem 0.85rem;
+  background: #050505;
+  padding: 0.85rem 1rem;
   text-align: left;
-  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  transition: all 0.2s ease;
+  border: none;
 }
 
 .run-row:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 171, 102, 0.26);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .run-row__main {
@@ -354,45 +381,34 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 .run-row__identity {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.85rem;
   min-width: 0;
   flex: 1;
 }
 
-.run-row__worker {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.8rem;
-  background: rgba(255, 171, 102, 0.14);
-  color: rgba(255, 221, 192, 0.92);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
 .run-row__avatar {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.8rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0;
   object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  filter: grayscale(0.2);
 }
 
 .run-row__title {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
   min-width: 0;
 }
 
 .run-row__meta {
-  margin-top: 0.16rem;
-  font-size: 11px;
+  margin-top: 0.2rem;
+  font-size: 10px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -405,50 +421,49 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 }
 
 .run-row__label {
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255, 192, 140, 0.74);
+  font-size: 9px;
+  font-weight: 900;
+  color: var(--cyber-amber);
+  opacity: 0.8;
+  letter-spacing: 0.1em;
 }
 
 .phase-chip {
   display: inline-flex;
   align-items: center;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 171, 102, 0.2);
-  background: rgba(255, 171, 102, 0.08);
-  padding: 0.12rem 0.4rem;
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(255, 222, 195, 0.82);
+  border: 1px solid var(--cyber-amber);
+  background: rgba(255, 179, 0, 0.1);
+  padding: 0.05rem 0.35rem;
+  font-size: 8px;
+  font-weight: 900;
+  color: var(--cyber-amber);
+  letter-spacing: 0.05em;
   flex-shrink: 0;
 }
 
 .metric-inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.38rem;
-  margin-top: 0.65rem;
+  gap: 1rem;
 }
 
-.metric-pill {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 0.24rem 0.5rem;
+.metric-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.metric-label {
+  font-size: 7px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.2em;
+}
+
+.metric-value {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 800;
   color: rgba(255, 255, 255, 0.6);
-}
-
-.metric-pill--pending {
-  background: rgba(255, 171, 102, 0.08);
-  color: rgba(255, 212, 171, 0.92);
-}
-
-.metric-pill--warn {
-  background: rgba(251, 113, 133, 0.1);
-  color: rgba(255, 211, 219, 0.92);
 }
 
 .lane-card-enter-active,
@@ -468,15 +483,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 }
 
 @keyframes worker-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  50% {
-    transform: scale(0.72);
-    opacity: 0.52;
-  }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.8); opacity: 0.6; }
 }
 </style>
