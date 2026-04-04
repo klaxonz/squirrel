@@ -4,9 +4,7 @@
     <div class="toolbar-container py-8 relative z-10">
       <div class="flex flex-col gap-6">
         <SyncControlBar
-          :lens="workbenchLens"
           :summary="dashboardSummary"
-          @set-lens="handleLensChange"
         />
 
         <section class="pipeline-tabs">
@@ -101,18 +99,11 @@ import { useExtractionCenter } from '@/composables/useExtractionCenter'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { useSyncCenter } from '@/composables/useSyncCenter'
 import { useSyncHistory } from '@/composables/useSyncHistory'
-import { type SyncTimeLens, useSyncCenterWorkbench } from '@/composables/useSyncCenterWorkbench'
 import { resolveFeedRecentLaneSnapshot } from '@/utils/syncFeedRecentLane'
-import { getSyncCenterHistoryWindow } from '@/utils/syncCenterHistoryWindow'
 
 const DASHBOARD_POLL_INTERVAL = 15000
 
-const {
-  lens: workbenchLens,
-  selectRun,
-  selectedRunId,
-  setLens,
-} = useSyncCenterWorkbench()
+const selectedRunId = ref('')
 
 const {
   loadingItems: overviewLoadingItems,
@@ -143,7 +134,7 @@ const {
   selectedRun: historySelectedRun,
   setPollingEnabled: setHistoryPollingEnabled,
 } = useSyncHistory({
-  resolveDateRange: () => getSyncCenterHistoryWindow(workbenchLens.value),
+  resolveDateRange: () => getDefaultHistoryWindow(),
 })
 
 const {
@@ -300,8 +291,18 @@ const currentRunningError = computed(() => {
   return activePipeline.value === 'extract' ? extractionRunningPreviewError.value : runningPreviewError.value
 })
 
+const getDefaultHistoryWindow = () => {
+  const end = new Date()
+  const start = new Date(end)
+  start.setHours(start.getHours() - 6)
+  return {
+    dateFrom: start.toISOString(),
+    dateTo: end.toISOString(),
+  }
+}
+
 const syncFeedRecentWindow = () => {
-  const windowConfig = getSyncCenterHistoryWindow(workbenchLens.value)
+  const windowConfig = getDefaultHistoryWindow()
   setRecentDateRange(windowConfig.dateFrom, windowConfig.dateTo)
 }
 
@@ -333,20 +334,16 @@ const refreshDashboard = async () => {
   syncFeedRecentLaneSnapshot()
 }
 
-const handleLensChange = (lens: SyncTimeLens) => {
-  setLens(lens)
-}
-
 const handlePipelineChange = (value: string | number) => {
   activePipeline.value = String(value) === 'extract' ? 'extract' : 'feed'
 }
 
 const handleSelectRun = (runId: string) => {
-  selectRun(runId)
+  selectedRunId.value = runId
 }
 
 const handleCloseRunDrawer = () => {
-  selectRun('')
+  selectedRunId.value = ''
   historyCloseRun()
 }
 
@@ -357,7 +354,7 @@ const handleOpenRunFromItem = (item: SyncCenterItem) => {
   if (!item.run_id) {
     return
   }
-  selectRun(item.run_id)
+  selectedRunId.value = item.run_id
 }
 
 const clearDashboardPollTimer = () => {
@@ -375,11 +372,15 @@ const startDashboardPolling = () => {
   }, DASHBOARD_POLL_INTERVAL)
 }
 
-watch(workbenchLens, async () => {
+onMounted(async () => {
+  setPollingEnabled(false)
+  setHistoryPollingEnabled(false)
+  setExtractionPollingEnabled(false)
   syncFeedRecentWindow()
   await overviewRefreshAll()
   syncFeedRecentLaneSnapshot()
-}, { immediate: true })
+  startDashboardPolling()
+})
 
 watch(selectedRunId, async (runId) => {
   if (!runId) {
@@ -391,16 +392,9 @@ watch(selectedRunId, async (runId) => {
 
 watch(activePipeline, (pipeline) => {
   if (pipeline === 'extract') {
-    selectRun('')
+    selectedRunId.value = ''
     historyCloseRun()
   }
-})
-
-onMounted(() => {
-  setPollingEnabled(false)
-  setHistoryPollingEnabled(false)
-  setExtractionPollingEnabled(false)
-  startDashboardPolling()
 })
 
 onBeforeUnmount(() => {
