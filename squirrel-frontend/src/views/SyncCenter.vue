@@ -1,8 +1,7 @@
 <template>
   <div class="sync-center-page tactical-terminal min-h-full selection:bg-primary/10">
-    <div class="matrix-bg"></div>
     <div class="toolbar-container py-8 relative z-10">
-      <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-8">
         <SyncControlBar
           :summary="dashboardSummary"
         />
@@ -10,8 +9,8 @@
         <section class="pipeline-tabs">
           <Tabs :model-value="activePipeline" @update:model-value="handlePipelineChange">
             <TabsList class="pipeline-tabs__list">
-              <TabsTrigger value="feed" class="pipeline-tabs__trigger">视频列表拉取</TabsTrigger>
-              <TabsTrigger value="extract" class="pipeline-tabs__trigger">视频提取</TabsTrigger>
+              <TabsTrigger value="feed" class="pipeline-tabs__trigger font-mono">FEED_SYNC</TabsTrigger>
+              <TabsTrigger value="extract" class="pipeline-tabs__trigger font-mono">VIDEO_EXTRACT</TabsTrigger>
             </TabsList>
           </Tabs>
         </section>
@@ -19,24 +18,25 @@
         <section class="lane-strip" aria-hidden="true">
           <div class="lane-strip__segment">
             <span class="lane-strip__kicker">Queue</span>
-            <strong class="lane-strip__title">接下来处理</strong>
-            <span class="lane-strip__value">{{ currentQueuedLaneItems.length }} 项</span>
+            <strong class="lane-strip__title font-mono">PND</strong>
+            <span class="lane-strip__value font-mono text-[#00E5FF]">{{ currentQueuedLaneItems.length }}</span>
           </div>
-          <div class="lane-strip__link">队首进入 →</div>
+          <div class="lane-strip__link font-mono opacity-20">>>></div>
           <div class="lane-strip__segment lane-strip__segment--active">
             <span class="lane-strip__kicker">Active</span>
-            <strong class="lane-strip__title">当前处理</strong>
-            <span class="lane-strip__value">{{ currentActiveLaneItems.length }} 项</span>
+            <strong class="lane-strip__title font-mono">RUN</strong>
+            <span class="lane-strip__value font-mono text-[#FFB300]">{{ currentActiveLaneItems.length }}</span>
           </div>
-          <div class="lane-strip__link">完成收口 →</div>
+          <div class="lane-strip__link font-mono opacity-20">>>></div>
           <div class="lane-strip__segment lane-strip__segment--done">
             <span class="lane-strip__kicker">Done</span>
-            <strong class="lane-strip__title">刚处理完</strong>
-            <span class="lane-strip__value">{{ currentRecentCount }} 项</span>
+            <strong class="lane-strip__title font-mono">FIN</strong>
+            <span class="lane-strip__value font-mono text-[#00FF41]">{{ currentRecentCount }}</span>
           </div>
         </section>
 
         <section class="flow-shell">
+
           <SyncQueueBoard
             :items="currentQueuedLaneItems"
             :loading="dashboardRefreshing"
@@ -409,14 +409,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.matrix-bg {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 20px 20px;
-  pointer-events: none;
-}
-
 .toolbar-container {
   max-width: 1520px;
   margin: 0 auto;
@@ -431,92 +423,88 @@ onBeforeUnmount(() => {
 }
 
 .pipeline-tabs__list {
-  height: 2.4rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.025);
-  padding: 0.25rem;
-  border-radius: 1rem;
+  height: 2.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.2rem;
+  border-radius: 0;
 }
 
 .pipeline-tabs__trigger {
-  min-width: 9.5rem;
+  min-width: 8rem;
   height: 1.8rem;
-  border-radius: 0.75rem;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.48);
-  text-transform: uppercase;
+  border-radius: 0;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
 }
 
 :deep(.pipeline-tabs__trigger[data-state='active']) {
-  background: rgba(255, 168, 107, 0.14);
-  color: rgba(255, 226, 201, 0.96);
+  background: var(--cyber-orange);
+  color: #fff;
 }
 
 .lane-strip {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
 .lane-strip__segment {
   display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.025);
-  padding: 0.55rem 0.8rem;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.45rem 1rem;
 }
 
 .lane-strip__segment--active {
-  border-color: rgba(255, 168, 107, 0.22);
-  background: rgba(255, 168, 107, 0.08);
+  border-color: rgba(255, 179, 0, 0.2);
 }
 
 .lane-strip__segment--done {
-  border-color: rgba(124, 194, 255, 0.18);
-  background: rgba(124, 194, 255, 0.08);
+  border-color: rgba(0, 255, 65, 0.2);
 }
 
 .lane-strip__kicker {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.34);
+  color: rgba(255, 255, 255, 0.15);
 }
 
 .lane-strip__title {
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.1em;
 }
 
 .lane-strip__value {
-  font-size: 12px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.56);
+  font-size: 14px;
+  font-weight: 900;
 }
 
 .lane-strip__link {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.1);
 }
 
 .flow-shell {
   display: grid;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 @media (min-width: 1280px) {
   .flow-shell {
-    grid-template-columns: 0.95fr 1.1fr 0.95fr;
+    grid-template-columns: 0.9fr 1.2fr 0.9fr;
     align-items: start;
     grid-auto-rows: minmax(0, auto);
   }
