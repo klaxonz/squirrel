@@ -29,15 +29,6 @@
                     <Badge variant="outline" class="rounded-full">
                       {{ item.sync_mode === 'full' ? '全量' : '增量' }}
                     </Badge>
-                    <span class="inline-flex items-center gap-1.5 text-2xs text-muted-foreground">
-                      <SiteIcon
-                        v-if="item.site"
-                        :icon-url="getSiteIconUrl(item)"
-                        :label="getSiteLabel(item.site)"
-                        size="xs"
-                      />
-                      <span>{{ getSiteLabel(item.site) }}</span>
-                    </span>
                   </div>
                 </div>
               </div>
@@ -118,7 +109,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import SiteIcon from '@/components/common/SiteIcon.vue'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { Loader2 } from 'lucide-vue-next'
@@ -142,13 +132,8 @@ const emit = defineEmits<{
 }>()
 
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
-const siteOptionMap = computed(() => {
-  return new Map(props.siteOptions.map((option) => [option.value, option]))
-})
 
 const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
-const getSiteLabel = (site: string | null) => siteOptionMap.value.get(site || '')?.label || site || 'unknown'
-const getSiteIconUrl = (item: SyncCenterItem) => item.site_icon_url || siteOptionMap.value.get(item.site || '')?.iconUrl || null
 
 const handleSheetToggle = (value: boolean) => {
   if (!value) {

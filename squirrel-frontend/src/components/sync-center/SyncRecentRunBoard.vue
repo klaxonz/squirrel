@@ -29,7 +29,6 @@
         class="recent-row animate-scan"
         :class="[
           selectedRunId === run.run_id ? 'recent-row--active' : '',
-          index === 0 ? 'recent-row--latest' : '',
           freshRunIds.has(run.run_id) ? 'recent-row--fresh' : '',
         ]"
         @click="emit('open-run', run.run_id)"
@@ -45,34 +44,32 @@
             <div class="min-w-0 flex-1">
               <div class="recent-row__title">
                 <h3 class="truncate text-sm font-bold text-white/70">{{ run.subscription_name }}</h3>
-                <span v-if="index === 0" class="latest-chip">NEW</span>
               </div>
-              <div class="recent-row__meta recent-row__meta--with-icon font-mono">
+              <div class="recent-row__meta font-mono inline-flex items-center gap-1.5">
                 <SiteIcon
                   v-if="run.site"
                   :icon-url="run.site_icon_url"
                   :label="run.site"
                   size="xs"
-                  class="recent-row__site-icon"
                 />
-                <span>{{ run.site || 'unknown' }} · {{ getMetaTimestamp(run) }}</span>
+                <span>{{ getMetaTimestamp(run) }}</span>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="metric-inline mt-2 opacity-50 grayscale group-hover:grayscale-0 transition-all">
-          <div class="metric-group">
-            <span class="metric-label">FOUND</span>
-            <span class="metric-value font-mono text-[10px]">{{ run.videos_found }}</span>
-          </div>
-          <div class="metric-group">
-            <span class="metric-label">SYNCED</span>
-            <span class="metric-value font-mono text-[10px]">{{ run.videos_enqueued }}</span>
-          </div>
-          <div class="metric-group">
-            <span class="metric-label">DONE</span>
-            <span class="metric-value font-mono text-[10px]">{{ run.videos_extracted }}</span>
+          <div class="metric-inline">
+            <div class="metric-group">
+              <span class="metric-label">FOUND</span>
+              <span class="metric-value font-mono">{{ run.videos_found }}</span>
+            </div>
+            <div class="metric-group">
+              <span class="metric-label">SYNCED</span>
+              <span class="metric-value font-mono">{{ run.videos_enqueued }}</span>
+            </div>
+            <div class="metric-group">
+              <span class="metric-label">DONE</span>
+              <span class="metric-value font-mono">{{ run.videos_extracted }}</span>
+            </div>
           </div>
         </div>
       </button>
@@ -82,8 +79,8 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import SiteIcon from '@/components/common/SiteIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
 import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
@@ -318,55 +315,31 @@ const getStatusChipClass = (status: string) => {
   letter-spacing: 0.05em;
 }
 
-.recent-row__meta--with-icon {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.recent-row__site-icon {
-  opacity: 0.72;
-}
-
-.latest-chip {
-  display: inline-flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 0.05rem 0.3rem;
-  font-size: 7px;
-  font-weight: 900;
-  color: rgba(255, 255, 255, 0.3);
-  letter-spacing: 0.1em;
-}
-
 .metric-inline {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  opacity: 0.4;
-}
-
-.recent-row:hover .metric-inline {
-  opacity: 0.8;
+  flex-direction: row;
+  gap: 1.5rem;
+  flex-shrink: 0;
+  align-items: flex-end;
 }
 
 .metric-group {
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
+  gap: 0.1rem;
 }
 
 .metric-label {
-  font-size: 6px;
+  font-size: 7px;
   font-weight: 900;
   color: rgba(255, 255, 255, 0.15);
   letter-spacing: 0.2em;
 }
 
 .metric-value {
-  font-size: 10px;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 14px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .lane-card-enter-active,

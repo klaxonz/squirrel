@@ -21,14 +21,6 @@
                   <div :class="[getStatusToneClass(run.status), 'h-2 w-2 rounded-full']"></div>
                   <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
                     <span>{{ getStatusLabel(run.status) }}</span>
-                    <span>·</span>
-                    <SiteIcon
-                      v-if="run.site"
-                      :icon-url="getSiteIconUrl(run)"
-                      :label="getSiteLabel(run.site)"
-                      size="xs"
-                    />
-                    <span>{{ getSiteLabel(run.site) }}</span>
                   </span>
                 </div>
               </div>
@@ -99,7 +91,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import SiteIcon from '@/components/common/SiteIcon.vue'
 import type { SyncRunEvent, SyncRunItem } from '@/composables/useSyncHistory'
 import SyncEventTimeline from '@/components/sync-center/SyncEventTimeline.vue'
 import { useImageFallback } from '@/composables/useImageFallback'
@@ -123,13 +114,8 @@ const emit = defineEmits<{
 }>()
 
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
-const siteOptionMap = computed(() => {
-  return new Map(props.siteOptions.map((option) => [option.value, option]))
-})
 
 const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
-const getSiteLabel = (site: string | null) => siteOptionMap.value.get(site || '')?.label || site || 'unknown'
-const getSiteIconUrl = (run: SyncRunItem) => run.site_icon_url || siteOptionMap.value.get(run.site || '')?.iconUrl || null
 
 const handleSheetToggle = (value: boolean) => {
   if (!value) {

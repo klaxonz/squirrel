@@ -30,10 +30,6 @@
           @click="emit('open-run', item)"
         >
 
-        <div class="queue-row__rank">
-          <span class="queue-row__rank-no font-mono">#{{ (item.queue_position || index + 1).toString().padStart(2, '0') }}</span>
-        </div>
-
         <div class="queue-row__identity">
           <SubscriptionAvatar
             :src="item.subscription_avatar"
@@ -45,20 +41,16 @@
             <div class="queue-row__title">
               <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
             </div>
-            <p class="queue-row__meta font-mono">
+            <p class="queue-row__meta font-mono inline-flex items-center gap-1.5">
+              <SiteIcon
+                v-if="item.site"
+                :icon-url="getSiteIconUrl(item)"
+                :label="item.site"
+                size="xs"
+              />
               {{ getModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
             </p>
           </div>
-        </div>
-
-        <div class="queue-row__flow" aria-hidden="true">
-          <SiteIcon
-            v-if="item.site"
-            :icon-url="getSiteIconUrl(item)"
-            :label="item.site"
-            size="sm"
-            class="queue-row__site-icon shadow-sm !h-5 !w-5"
-          />
         </div>
       </button>
     </TransitionGroup>
@@ -214,21 +206,6 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   opacity: 0.02;
 }
 
-.queue-row__rank {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  flex-shrink: 0;
-}
-
-.queue-row__rank-no {
-  font-size: 10px;
-  font-weight: 900;
-  color: var(--sci-fi-cyan);
-  opacity: 0.4;
-}
-
 .queue-row__identity {
   display: flex;
   align-items: center;
@@ -254,26 +231,6 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   color: rgba(255, 255, 255, 0.25);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.queue-row__flow {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: 2rem;
-  flex-shrink: 0;
-}
-
-.queue-row__site-icon {
-  opacity: 0.82;
-  filter: saturate(0.96);
-  transition: opacity 0.2s ease, filter 0.2s ease, transform 0.2s ease;
-}
-
-.queue-row:hover .queue-row__site-icon {
-  opacity: 1;
-  filter: saturate(1.05);
-  transform: scale(1.04);
 }
 
 .queue-row__arrow {

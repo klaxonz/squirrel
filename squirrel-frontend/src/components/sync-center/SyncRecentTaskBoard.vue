@@ -32,7 +32,6 @@
           <div class="min-w-0 flex-1">
             <div class="recent-row__title">
               <h3 class="truncate text-sm font-bold text-white/70">{{ item.subscription_name }}</h3>
-              <span v-if="index === 0" class="latest-chip">NEW</span>
             </div>
             <div class="recent-row__meta recent-row__meta--with-icon font-mono">
               <SiteIcon
@@ -184,18 +183,6 @@ defineProps<{
 
 .recent-row__site-icon {
   opacity: 0.72;
-}
-
-.latest-chip {
-  display: inline-flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 0.05rem 0.3rem;
-  font-size: 7px;
-  font-weight: 900;
-  color: rgba(255, 255, 255, 0.3);
-  letter-spacing: 0.1em;
-  margin-left: 0.5rem;
 }
 
 .metric-inline {

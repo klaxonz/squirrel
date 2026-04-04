@@ -387,6 +387,7 @@ def _serialize_feed_recent_run(
         'subscription_name': subscription.name,
         'subscription_avatar': subscription.avatar,
         'site': run_projection.site,
+        'site_icon_url': _resolve_site_icon_url(run_projection.site),
         'sync_mode': run_projection.sync_mode,
         'trigger': run_projection.trigger,
         'status': run_projection.status,

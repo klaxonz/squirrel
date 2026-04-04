@@ -43,67 +43,54 @@
               size="md"
             />
             <div class="min-w-0 flex-1">
-              <div class="run-row__title">
-                <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
-                <span class="phase-chip font-mono uppercase">{{ getPhaseLabel(item.current_phase) }}</span>
-              </div>
-              <p class="run-row__meta font-mono">
+              <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
+              <p class="run-row__meta font-mono inline-flex items-center gap-1.5 mt-1">
+                <SiteIcon
+                  v-if="item.site"
+                  :icon-url="item.site_icon_url"
+                  :label="item.site"
+                  size="xs"
+                />
                 {{ getMetaText(item) }}
               </p>
             </div>
+
+            <div v-if="pipeline === 'extract' || getFeedMetrics(item).length" class="metric-inline ml-auto">
+              <template v-if="pipeline === 'extract'">
+                <div class="metric-group">
+                  <span class="metric-label">TOTAL</span>
+                  <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
+                </div>
+                <div class="metric-group">
+                  <span class="metric-label">QUEUED</span>
+                  <span class="metric-value font-mono">{{ item.queued_task_count }}</span>
+                </div>
+                <div class="metric-group">
+                  <span class="metric-label">ACTIVE</span>
+                  <span class="metric-value font-mono text-[#FFB300]">{{ item.running_task_count }}</span>
+                </div>
+                <div class="metric-group">
+                  <span class="metric-label">DONE</span>
+                  <span class="metric-value font-mono text-[#00FF41]">{{ item.completed_task_count }}</span>
+                </div>
+              </template>
+              <template v-else>
+                <div
+                  v-for="metric in getFeedMetrics(item)"
+                  :key="`${item.run_id || item.subscription_id}-${metric.label}`"
+                  class="metric-group"
+                >
+                  <span class="metric-label uppercase">{{ metric.label }}</span>
+                  <span
+                    class="metric-value font-mono"
+                    :class="metric.tone === 'pending' ? 'text-[#FFB300]' : metric.tone === 'warn' ? 'text-rose-500' : ''"
+                  >
+                    {{ metric.value }}
+                  </span>
+                </div>
+              </template>
+            </div>
           </div>
-
-          <div class="run-row__progress">
-            <span class="run-row__label font-mono">{{ item.progress_label || 'ACTIVE' }}</span>
-          </div>
-        </div>
-
-        <!-- 流体能量条 (Fluid Power Bar) -->
-        <div class="relative h-1 w-full bg-white/5 mt-4 overflow-hidden rounded-full">
-          <div 
-            class="absolute inset-y-0 left-0 bg-gradient-to-r from-transparent via-[--sci-fi-orange] to-transparent transition-all duration-700 shadow-[0_0_15px_var(--sci-fi-orange)]"
-            :style="{ width: (item.progress_percent || 0) + '%', opacity: 0.8 }"
-          ></div>
-          <div 
-            class="absolute inset-0 opacity-20 animate-pulse bg-[--sci-fi-orange]" 
-            :style="{ width: (item.progress_percent || 0) + '%' }"
-          ></div>
-        </div>
-
-        <div v-if="pipeline === 'extract' || getFeedMetrics(item).length" class="metric-inline mt-3">
-          <template v-if="pipeline === 'extract'">
-            <div class="metric-group">
-              <span class="metric-label">TOTAL</span>
-              <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
-            </div>
-            <div class="metric-group">
-              <span class="metric-label">QUEUED</span>
-              <span class="metric-value font-mono">{{ item.queued_task_count }}</span>
-            </div>
-            <div class="metric-group">
-              <span class="metric-label">ACTIVE</span>
-              <span class="metric-value font-mono text-[#FFB300]">{{ item.running_task_count }}</span>
-            </div>
-            <div class="metric-group">
-              <span class="metric-label">DONE</span>
-              <span class="metric-value font-mono text-[#00FF41]">{{ item.completed_task_count }}</span>
-            </div>
-          </template>
-          <template v-else>
-            <div
-              v-for="metric in getFeedMetrics(item)"
-              :key="`${item.run_id || item.subscription_id}-${metric.label}`"
-              class="metric-group"
-            >
-              <span class="metric-label uppercase">{{ metric.label }}</span>
-              <span 
-                class="metric-value font-mono"
-                :class="metric.tone === 'pending' ? 'text-[#FFB300]' : metric.tone === 'warn' ? 'text-rose-500' : ''"
-              >
-                {{ metric.value }}
-              </span>
-            </div>
-          </template>
         </div>
       </button>
     </TransitionGroup>
@@ -111,7 +98,9 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
 import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
@@ -151,19 +140,6 @@ interface FeedMetric {
   label: string
   value: number
   tone?: MetricTone
-}
-
-const getPhaseLabel = (phase: string | null) => {
-  switch (phase) {
-    case 'fetching_feed': return '拉列表'
-    case 'calculating_delta': return '计算增量'
-    case 'enqueueing': return '派发提取'
-    case 'queued': return '等待提取'
-    case 'extracting': return '提取中'
-    case 'finalizing': return '收尾中'
-    case 'completed': return '已完成'
-    default: return '运行中'
-  }
 }
 
 const getTimeMetaText = (item: SyncCenterItem) => {
@@ -305,21 +281,6 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   flex: 1;
 }
 
-.run-row__avatar {
-  transition: all 0.3s ease;
-}
-
-.run-row:hover .run-row__avatar {
-  transform: scale(1.1);
-}
-
-.run-row__title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
 .run-row__meta {
   margin-top: 0.25rem;
   font-size: 9px;
@@ -329,36 +290,20 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   letter-spacing: 0.05em;
 }
 
-.run-row__progress {
-  display: flex;
-  align-items: end;
-  flex-shrink: 0;
+.run-row__avatar {
+  transition: all 0.3s ease;
 }
 
-.run-row__label {
-  font-size: 8px;
-  font-weight: 900;
-  color: var(--sci-fi-amber);
-  letter-spacing: 0.2em;
-}
-
-.phase-chip {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--sci-fi-amber);
-  background: oklch(75% 0.15 60 / 0.1);
-  padding: 0.05rem 0.4rem;
-  font-size: 7px;
-  font-weight: 900;
-  color: var(--sci-fi-amber);
-  letter-spacing: 0.1em;
-  flex-shrink: 0;
+.run-row:hover .run-row__avatar {
+  transform: scale(1.1);
 }
 
 .metric-inline {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
   gap: 1.5rem;
+  flex-shrink: 0;
+  align-items: flex-end;
 }
 
 .metric-group {
