@@ -557,3 +557,154 @@ def test_dispatcher_treats_full_and_incremental_sync_as_separate_task_types(monk
 
     assert claimed is not None
     assert claimed.task_type == 'subscription_sync_incremental'
+
+
+def test_dispatcher_rolls_back_failed_candidate_attempts_before_trying_next_candidate(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        youtube_job_id = _create_job(session, site='youtube')
+        bilibili_job_id = _create_job(session, site='bilibili')
+        session.add(
+            CrawlTask(
+                job_id=youtube_job_id,
+                task_type='video_extract',
+                site='youtube',
+                priority='normal',
+                payload={},
+                next_run_at=now - timedelta(seconds=2),
+                created_at=now - timedelta(seconds=2),
+            )
+        )
+        session.add(
+            CrawlTask(
+                job_id=bilibili_job_id,
+                task_type='video_extract',
+                site='bilibili',
+                priority='normal',
+                payload={},
+                next_run_at=now - timedelta(seconds=1),
+                created_at=now - timedelta(seconds=1),
+            )
+        )
+        session.commit()
+
+    original_try_claim_candidate = CrawlDispatcherService._try_claim_candidate
+    attempts = 0
+
+    def _try_claim_candidate_with_failed_first_attempt(
+        self,
+        session,
+        *,
+        task_id: int,
+        worker_id: str,
+        now: datetime,
+        lease_seconds: int,
+    ):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            crawl_task_service._ensure_dispatch_scope(
+                session,
+                scope_type='site',
+                scope_key='youtube',
+            )
+            return None
+        return original_try_claim_candidate(
+            self,
+            session,
+            task_id=task_id,
+            worker_id=worker_id,
+            now=now,
+            lease_seconds=lease_seconds,
+        )
+
+    monkeypatch.setattr(
+        CrawlDispatcherService,
+        '_try_claim_candidate',
+        _try_claim_candidate_with_failed_first_attempt,
+    )
+
+    dispatcher = CrawlDispatcherService(
+        policy=CrawlDispatcherPolicy(default_site_concurrency=2),
+    )
+    claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
+
+    assert claimed is not None
+    assert claimed.site == 'bilibili'
+
+    with Session(engine, expire_on_commit=False) as session:
+        scopes = session.query(CrawlDispatchScope).order_by(
+            CrawlDispatchScope.scope_type,
+            CrawlDispatchScope.scope_key,
+        ).all()
+
+    assert [(scope.scope_type, scope.scope_key) for scope in scopes] == [
+        ('site', 'bilibili'),
+        ('task_type', 'video_extract'),
+    ]
+
+
+def test_dispatcher_skips_candidate_when_task_type_scope_is_locked(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        job_id = _create_job(session, site='youtube')
+        session.add_all(
+            [
+                CrawlTask(
+                    job_id=job_id,
+                    task_type='subscription_sync_full',
+                    site='youtube',
+                    priority='normal',
+                    payload={'mode': 'full'},
+                    next_run_at=now - timedelta(seconds=2),
+                    created_at=now - timedelta(seconds=2),
+                ),
+                CrawlTask(
+                    job_id=job_id,
+                    task_type='subscription_sync_incremental',
+                    site='youtube',
+                    priority='normal',
+                    payload={'mode': 'incremental'},
+                    next_run_at=now - timedelta(seconds=1),
+                    created_at=now - timedelta(seconds=1),
+                ),
+            ]
+        )
+        session.commit()
+
+    original_lock_scope = CrawlDispatcherService._lock_scope
+
+    def _lock_scope_with_busy_full_sync_scope(self, session, *, scope_type: str, scope_key: str):
+        if scope_type == 'task_type' and scope_key == 'subscription_sync_full':
+            return None
+        return original_lock_scope(self, session, scope_type=scope_type, scope_key=scope_key)
+
+    monkeypatch.setattr(
+        CrawlDispatcherService,
+        '_lock_scope',
+        _lock_scope_with_busy_full_sync_scope,
+    )
+
+    dispatcher = CrawlDispatcherService(
+        policy=CrawlDispatcherPolicy(
+            default_site_concurrency=2,
+            task_type_limits={
+                'subscription_sync_full': 1,
+                'subscription_sync_incremental': 1,
+            },
+        ),
+    )
+
+    claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
+
+    assert claimed is not None
+    assert claimed.task_type == 'subscription_sync_incremental'
+
+    with Session(engine, expire_on_commit=False) as session:
+        full_sync_task = session.query(CrawlTask).filter_by(task_type='subscription_sync_full').one()
+
+    assert full_sync_task.status == 'pending'

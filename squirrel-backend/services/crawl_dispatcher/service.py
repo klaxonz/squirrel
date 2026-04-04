@@ -23,15 +23,22 @@ class CrawlDispatcherService:
             candidate_rows = session.execute(self._build_candidate_query(now)).mappings().all()
             candidate_rows = self._sort_candidates_by_runtime_pressure(session, candidate_rows)
             for candidate_row in candidate_rows:
-                task = self._try_claim_candidate(
-                    session,
-                    task_id=int(candidate_row['task_id']),
-                    worker_id=worker_id,
-                    now=now,
-                    lease_seconds=lease_seconds,
-                )
+                claim_attempt = session.begin_nested()
+                try:
+                    task = self._try_claim_candidate(
+                        session,
+                        task_id=int(candidate_row['task_id']),
+                        worker_id=worker_id,
+                        now=now,
+                        lease_seconds=lease_seconds,
+                    )
+                except Exception:
+                    claim_attempt.rollback()
+                    raise
                 if task is not None:
+                    claim_attempt.commit()
                     return task
+                claim_attempt.rollback()
         return None
 
     def _build_candidate_query(self, now: datetime):
@@ -184,8 +191,10 @@ class CrawlDispatcherService:
         if task is None:
             return None
 
-        self._lock_scope(session, scope_type='site', scope_key=task.site)
-        self._lock_scope(session, scope_type='task_type', scope_key=task.task_type)
+        if self._lock_scope(session, scope_type='site', scope_key=task.site) is None:
+            return None
+        if self._lock_scope(session, scope_type='task_type', scope_key=task.task_type) is None:
+            return None
 
         site_running = self._count_running_tasks(session, site=task.site)
         if not self.policy.is_site_available(task.site, site_running):
@@ -201,7 +210,7 @@ class CrawlDispatcherService:
         session.flush()
         return task
 
-    def _lock_scope(self, session: Session, *, scope_type: str, scope_key: str) -> CrawlDispatchScope:
+    def _lock_scope(self, session: Session, *, scope_type: str, scope_key: str) -> Optional[CrawlDispatchScope]:
         crawl_task_service._ensure_dispatch_scope(session, scope_type=scope_type, scope_key=scope_key)
         scope = session.execute(
             select(CrawlDispatchScope)
@@ -209,8 +218,8 @@ class CrawlDispatcherService:
                 CrawlDispatchScope.scope_type == scope_type,
                 CrawlDispatchScope.scope_key == scope_key,
             )
-            .with_for_update()
-        ).scalar_one()
+            .with_for_update(skip_locked=True)
+        ).scalar_one_or_none()
         return scope
 
     @staticmethod
