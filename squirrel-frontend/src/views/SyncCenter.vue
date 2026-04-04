@@ -47,9 +47,8 @@
             <SyncRecentRunBoard
               v-if="activePipeline === 'feed'"
               :runs="recentLaneRuns"
-              :loading="historyLoading"
-              :error="historyError"
-              :last-updated-at="historyLastUpdatedAt"
+              :loading="dashboardRefreshing"
+              :error="currentRecentError"
               :selected-run-id="selectedRunId"
               @open-run="handleSelectRun"
             />
@@ -91,7 +90,6 @@ import { useExtractionCenter } from '@/composables/useExtractionCenter'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { useSyncCenter } from '@/composables/useSyncCenter'
 import { useSyncHistory } from '@/composables/useSyncHistory'
-import { resolveFeedRecentLaneSnapshot } from '@/utils/syncFeedRecentLane'
 
 const DASHBOARD_POLL_INTERVAL = 15000
 
@@ -145,9 +143,6 @@ const {
 } = useExtractionCenter()
 
 const activePipeline = ref<'feed' | 'extract'>('feed')
-const feedRecentLaneRuns = ref<typeof feedRecentRuns.value>([])
-const feedRecentBaselineReady = ref(false)
-const feedRecentActiveRunIds = ref<string[]>([])
 let dashboardPollTimer: ReturnType<typeof setInterval> | null = null
 
 const dashboardRefreshing = computed(() => {
@@ -251,7 +246,7 @@ const extractionQueuedLaneItems = computed(() => {
 })
 
 const recentLaneRuns = computed(() => {
-  return [...feedRecentLaneRuns.value]
+  return [...feedRecentRuns.value]
     .sort((left, right) => {
       const leftFinished = parseTimestamp(left.feed_completed_at || left.finished_at || left.last_event_at || left.started_at)
       const rightFinished = parseTimestamp(right.feed_completed_at || right.finished_at || right.last_event_at || right.started_at)
@@ -261,6 +256,10 @@ const recentLaneRuns = computed(() => {
       return right.run_id.localeCompare(left.run_id)
     })
     .slice(0, 9)
+})
+
+const currentRecentError = computed(() => {
+  return ''
 })
 
 const currentActiveLaneItems = computed(() => {
@@ -298,21 +297,6 @@ const syncFeedRecentWindow = () => {
   setRecentDateRange(windowConfig.dateFrom, windowConfig.dateTo)
 }
 
-const syncFeedRecentLaneSnapshot = () => {
-  const laneSnapshot = resolveFeedRecentLaneSnapshot({
-    previousActiveRunIds: feedRecentActiveRunIds.value,
-    nextActiveItems: feedActiveLaneItems.value,
-    snapshotRecentRuns: feedRecentRuns.value,
-    currentLaneRuns: feedRecentLaneRuns.value,
-    hasBaseline: feedRecentBaselineReady.value,
-    maxRuns: 9,
-  })
-
-  feedRecentActiveRunIds.value = laneSnapshot.nextActiveRunIds
-  feedRecentLaneRuns.value = laneSnapshot.nextLaneRuns
-  feedRecentBaselineReady.value = laneSnapshot.hasBaseline
-}
-
 const refreshDashboard = async () => {
   if (activePipeline.value === 'extract') {
     await extractionRefreshAll()
@@ -323,7 +307,6 @@ const refreshDashboard = async () => {
     overviewRefreshAll(),
     historyRefreshSelectedRun(),
   ])
-  syncFeedRecentLaneSnapshot()
 }
 
 const handlePipelineChange = (value: string | number) => {
@@ -370,7 +353,6 @@ onMounted(async () => {
   setExtractionPollingEnabled(false)
   syncFeedRecentWindow()
   await overviewRefreshAll()
-  syncFeedRecentLaneSnapshot()
   startDashboardPolling()
 })
 

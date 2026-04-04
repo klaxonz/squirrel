@@ -415,6 +415,22 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(mo
     ]
     assert [run['run_id'] for run in snapshot['recentRuns']] == ['run-running']
 
+    # 首次调用，所有 recentRuns 都是新增的
+    assert 'recentlyCompletedRuns' in snapshot
+    assert len(snapshot['recentlyCompletedRuns']) > 0
+    first_call_run_ids = {run['run_id'] for run in snapshot['recentlyCompletedRuns']}
+
+    # 第二次调用，run_id 已缓存，recentlyCompletedRuns 应为空
+    snapshot2 = subscription_sync_center_service.get_feed_dashboard_snapshot(
+        user_id=1,
+        site=None,
+        query=None,
+        date_from='2026-04-02T00:00:00',
+        date_to='2026-04-03T00:00:00',
+    )
+    second_call_new_ids = {run['run_id'] for run in snapshot2['recentlyCompletedRuns']}
+    assert len(second_call_new_ids) == 0 or not first_call_run_ids.issubset(second_call_new_ids)
+
 
 def test_sort_items_accepts_mixed_queued_rank_sources():
     items = [

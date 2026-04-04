@@ -35,6 +35,10 @@ FEED_HANDOFF_PHASES = {'extracting', 'finalizing'}
 RUNTIME_REFRESH_INTERVAL_SECONDS = 30
 _runtime_refresh_lock = Lock()
 _last_runtime_refresh_monotonic: float | None = None
+
+# 服务端缓存：记录上一轮 snapshot 返回过的 recent run_id，用于计算新增的已完成运行
+_recent_run_snapshot_cache: dict[int, set[str]] = {}
+
 logger = logging.getLogger(__name__)
 
 
@@ -676,6 +680,18 @@ def get_feed_dashboard_snapshot(
         _serialize_feed_recent_run(run_projection, subscription, feed_completed_at_map.get(run_projection.run_id))
         for run_projection, subscription in recent_rows
     ]
+
+    # 计算新增的已完成运行（上一轮未返回过的）
+    previous_run_ids = _recent_run_snapshot_cache.get(user_id, set())
+    current_run_ids = {run['run_id'] for run in recent_runs}
+    newly_completed = [
+        run for run in recent_runs
+        if run['run_id'] not in previous_run_ids
+    ][:5]
+
+    # 更新缓存为当前轮次的 run_id 集合
+    _recent_run_snapshot_cache[user_id] = current_run_ids
+
     queue_depth, queue_messages = _queue_metrics_overview()
 
     overview = SyncCenterOverviewDto(
@@ -695,6 +711,7 @@ def get_feed_dashboard_snapshot(
         'runningPreview': running_preview,
         'queuedPreview': queued_preview,
         'recentRuns': recent_runs,
+        'recentlyCompletedRuns': newly_completed,
     }
 
 

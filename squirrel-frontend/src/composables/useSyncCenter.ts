@@ -74,6 +74,7 @@ interface FeedDashboardSnapshotResponse {
   runningPreview: SyncCenterItem[]
   queuedPreview: SyncCenterItem[]
   recentRuns: SyncRunItem[]
+  recentlyCompletedRuns: SyncRunItem[]
 }
 
 interface SiteOption {
@@ -110,6 +111,7 @@ export function useSyncCenter() {
   const runningPreview = ref<SyncCenterItem[]>([])
   const queuedPreview = ref<SyncCenterItem[]>([])
   const recentRuns = ref<SyncRunItem[]>([])
+  const recentlyCompletedRuns = ref<SyncRunItem[]>([])
   const runningPreviewError = ref('')
   const queuedPreviewError = ref('')
   const total = ref(0)
@@ -213,6 +215,7 @@ export function useSyncCenter() {
       runningPreview.value = data.runningPreview || []
       queuedPreview.value = data.queuedPreview || []
       recentRuns.value = data.recentRuns || []
+      recentlyCompletedRuns.value = data.recentlyCompletedRuns || []
       syncSelectedItem()
     }
     loadingOverview.value = false
@@ -453,6 +456,7 @@ export function useSyncCenter() {
     queuedPreview,
     queuedPreviewError,
     refreshAll,
+    recentlyCompletedRuns,
     retryingItemId,
     retryItem,
     recentRuns,
