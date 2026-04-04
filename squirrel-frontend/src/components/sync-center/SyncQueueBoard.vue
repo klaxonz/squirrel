@@ -49,8 +49,8 @@
             v-if="item.site"
             :icon-url="getSiteIconUrl(item.site)"
             :label="item.site"
-            size="xs"
-            class="opacity-30 grayscale hover:grayscale-0 hover:opacity-80 transition-all"
+            size="sm"
+            class="opacity-40 grayscale hover:grayscale-0 hover:opacity-100 transition-all"
           />
         </div>
       </button>
@@ -77,14 +77,19 @@ const emit = defineEmits<{
 }>()
 
 const siteOptionMap = computed(() => {
-  return new Map((props.siteOptions || []).map((option) => [option.value, option]))
+  const m = new Map()
+  for (const opt of (props.siteOptions || [])) {
+    if (opt.value) m.set(opt.value.toLowerCase(), opt)
+  }
+  return m
 })
 
 const getSiteIconUrl = (site: string | null) => {
   if (!site) return null
-  const fromMap = siteOptionMap.value.get(site)?.iconUrl
+  const slug = site.toLowerCase()
+  const fromMap = siteOptionMap.value.get(slug)?.iconUrl
   if (fromMap) return fromMap
-  return `/api/plugins/sites/${site.toLowerCase()}/icon`
+  return `/api/plugins/sites/${slug}/icon`
 }
 
 const getModeLabel = (mode: string) => {
