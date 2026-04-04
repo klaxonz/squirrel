@@ -45,11 +45,11 @@
         </div>
 
         <div class="queue-row__flow" aria-hidden="true">
-          <SiteIcon
-            :icon-url="getSiteIconUrl(item.site)"
-            :label="item.site"
+          <SubscriptionAvatar
+            :src="getSiteIconUrl(item.site)"
+            :name="item.site || '?'"
             size="xs"
-            class="opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all"
+            class="opacity-30 grayscale group-hover:grayscale-0 group-hover:opacity-80 transition-all"
           />
         </div>
       </button>
