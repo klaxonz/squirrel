@@ -21,14 +21,16 @@ class SubscriptionPendingReconcileTask(BaseTask):
             drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
             queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()
             running_result = subscription_sync_state_service.recover_stale_running_sync_states()
+            retry_wait_result = subscription_sync_state_service.reconcile_retry_wait_run_projections()
             logger.info(
-                "Subscription pending reconcile completed: video_states=%s videos=%s drained_completed=%s drained_failed=%s queued_recovered=%s running_recovered=%s",
+                "Subscription pending reconcile completed: video_states=%s videos=%s drained_completed=%s drained_failed=%s queued_recovered=%s running_recovered=%s retry_wait_repaired=%s",
                 video_result["states"],
                 video_result["videos"],
                 drained_result["completed"],
                 drained_result["failed"],
                 queued_result["recovered"],
                 running_result["recovered"],
+                retry_wait_result["repaired"],
             )
         except Exception as e:
             logger.error(f"SubscriptionPendingReconcileTask.run error: {e}", exc_info=True)

@@ -24,7 +24,16 @@ const createEmptyOverview = (): SyncCenterOverview => ({
   queue_messages: 0,
 })
 
-export function useExtractionCenter() {
+interface UseExtractionCenterOptions {
+  autoLoad?: boolean
+  autoStartPolling?: boolean
+}
+
+export function useExtractionCenter(options: UseExtractionCenterOptions = {}) {
+  const {
+    autoLoad = true,
+    autoStartPolling = true,
+  } = options
   const overview = ref<SyncCenterOverview>(createEmptyOverview())
   const runningPreview = ref<SyncCenterItem[]>([])
   const queuedPreview = ref<SyncCenterItem[]>([])
@@ -168,8 +177,18 @@ export function useExtractionCenter() {
   })
 
   onMounted(async () => {
+    if (!autoLoad) {
+      if (autoStartPolling) {
+        startPolling()
+      }
+      return
+    }
+
     await refreshAll()
-    startPolling()
+
+    if (autoStartPolling) {
+      startPolling()
+    }
   })
 
   onUnmounted(() => {

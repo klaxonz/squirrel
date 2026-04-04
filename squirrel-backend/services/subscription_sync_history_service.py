@@ -72,16 +72,15 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
     return None
 
 
-def _payload_metric_value(run_id: str, key: str) -> Optional[int]:
-    with get_session() as session:
-        events = session.execute(
-            select(SubscriptionSyncEvent)
-            .where(SubscriptionSyncEvent.stream_id == run_id)
-            .order_by(SubscriptionSyncEvent.seq_no.desc(), SubscriptionSyncEvent.occurred_at.desc())
-        ).scalars().all()
+def _payload_metric_value(session, run_id: str, key: str) -> Optional[int]:
+    payloads = session.execute(
+        select(SubscriptionSyncEvent.payload)
+        .where(SubscriptionSyncEvent.stream_id == run_id)
+        .order_by(SubscriptionSyncEvent.seq_no.desc(), SubscriptionSyncEvent.occurred_at.desc())
+    ).scalars().all()
 
-    for event in events:
-        payload = event.payload or {}
+    for payload in payloads:
+        payload = payload or {}
         if key not in payload:
             continue
         try:
@@ -149,6 +148,27 @@ def _base_run_query(user_id: int):
             Subscription.is_deleted.is_(False),
         )
     )
+
+
+def _count_query_rows(session, query) -> int:
+    count_query = select(func.count()).select_from(query.order_by(None).subquery())
+    return int(session.execute(count_query).scalar() or 0)
+
+
+def _run_exists_for_user(session, run_id: str, user_id: int) -> bool:
+    row = session.execute(
+        select(SubscriptionSyncRunProjection.run_id)
+        .join(Subscription, Subscription.id == SubscriptionSyncRunProjection.subscription_id)
+        .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
+        .where(
+            SubscriptionSyncRunProjection.run_id == run_id,
+            UserSubscription.user_id == user_id,
+            UserSubscription.is_deleted.is_(False),
+            Subscription.is_deleted.is_(False),
+        )
+        .limit(1)
+    ).first()
+    return row is not None
 
 
 def list_runs(
@@ -234,7 +254,7 @@ def list_runs(
                 .offset((page - 1) * page_size)
                 .limit(page_size)
             ).all()
-            all_rows = session.execute(base_query).all()
+            total = _count_query_rows(session, base_query)
             feed_completed_at_map = {}
 
     data = []
@@ -280,11 +300,13 @@ def list_runs(
         })
 
     return {
-        'total': len(all_rows),
+        'total': len(all_rows) if normalized_status == 'feed_recent' else total,
         'page': page,
         'pageSize': page_size,
         'data': data,
     }
+
+
 def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
     with get_session() as session:
         row = session.execute(
@@ -293,7 +315,7 @@ def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
         if not row:
             return None
         run, subscription = row
-        source_video_count = _payload_metric_value(run.run_id, 'source_video_count')
+        source_video_count = _payload_metric_value(session, run.run_id, 'source_video_count')
         progress_snapshot = build_progress_snapshot(
             status=run.status,
             current_phase=run.current_phase,
@@ -338,11 +360,9 @@ def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
 
 
 def list_run_events(run_id: str, user_id: int) -> list[dict]:
-    detail = get_run_detail(run_id, user_id)
-    if not detail:
-        return []
-
     with get_session() as session:
+        if not _run_exists_for_user(session, run_id, user_id):
+            return []
         events = session.execute(
             select(SubscriptionSyncEvent)
             .where(SubscriptionSyncEvent.stream_id == run_id)

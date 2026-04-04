@@ -94,11 +94,17 @@ interface SubscriptionOptionListResponse {
 
 interface UseSyncHistoryOptions {
   resolveDateRange?: () => { dateFrom: string; dateTo: string } | null
+  autoLoadOptions?: boolean
+  autoStartPolling?: boolean
 }
 
 const POLL_INTERVAL = 15000
 
 export function useSyncHistory(options: UseSyncHistoryOptions = {}) {
+  const {
+    autoLoadOptions = true,
+    autoStartPolling = true,
+  } = options
   const loading = ref(false)
   const detailLoading = ref(false)
   const error = ref('')
@@ -350,9 +356,13 @@ export function useSyncHistory(options: UseSyncHistoryOptions = {}) {
   })
 
   onMounted(() => {
-    loadSiteOptions()
-    loadSubscriptionOptions()
-    startPolling()
+    if (autoLoadOptions) {
+      loadSiteOptions()
+      loadSubscriptionOptions()
+    }
+    if (autoStartPolling) {
+      startPolling()
+    }
   })
 
   onUnmounted(() => {
@@ -368,6 +378,8 @@ export function useSyncHistory(options: UseSyncHistoryOptions = {}) {
     filters,
     lastUpdatedAt,
     loadRuns,
+    loadSiteOptions,
+    loadSubscriptionOptions,
     loading,
     page,
     pageSize,

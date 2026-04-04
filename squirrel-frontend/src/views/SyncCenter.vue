@@ -90,6 +90,11 @@ import { useExtractionCenter } from '@/composables/useExtractionCenter'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { useSyncCenter } from '@/composables/useSyncCenter'
 import { useSyncHistory } from '@/composables/useSyncHistory'
+import {
+  buildSyncCenterMountPlan,
+  buildSyncCenterRefreshPlan,
+  shouldLoadExtractionDashboard,
+} from '@/utils/syncCenterPageLoadPlan'
 
 const DASHBOARD_POLL_INTERVAL = 15000
 
@@ -110,7 +115,12 @@ const {
   setRecentDateRange,
   siteOptions,
   setPollingEnabled,
-} = useSyncCenter()
+} = useSyncCenter({
+  autoLoad: false,
+  autoLoadItems: false,
+  autoLoadSiteOptions: false,
+  autoStartPolling: false,
+})
 
 const {
   closeRun: historyCloseRun,
@@ -126,6 +136,8 @@ const {
   setPollingEnabled: setHistoryPollingEnabled,
 } = useSyncHistory({
   resolveDateRange: () => getDefaultHistoryWindow(),
+  autoLoadOptions: false,
+  autoStartPolling: false,
 })
 
 const {
@@ -142,7 +154,10 @@ const {
   runningPreview: extractionRunningPreview,
   runningPreviewError: extractionRunningPreviewError,
   setPollingEnabled: setExtractionPollingEnabled,
-} = useExtractionCenter()
+} = useExtractionCenter({
+  autoLoad: false,
+  autoStartPolling: false,
+})
 
 const activePipeline = ref<'feed' | 'extract'>('feed')
 let dashboardPollTimer: ReturnType<typeof setInterval> | null = null
@@ -311,15 +326,28 @@ const syncFeedRecentWindow = () => {
 }
 
 const refreshDashboard = async () => {
-  if (activePipeline.value === 'extract') {
+  const refreshPlan = buildSyncCenterRefreshPlan({
+    pipeline: activePipeline.value,
+    hasSelectedRun: Boolean(selectedRunId.value),
+  })
+
+  if (refreshPlan.loadExtractionDashboard) {
     await extractionRefreshAll()
     return
   }
+
+  if (!refreshPlan.loadFeedDashboard) {
+    return
+  }
+
   syncFeedRecentWindow()
-  await Promise.all([
-    overviewRefreshAll(),
-    historyRefreshSelectedRun(),
-  ])
+  const tasks = [
+    overviewRefreshAll({ includeItems: refreshPlan.loadFeedItems }),
+  ]
+  if (refreshPlan.refreshSelectedRun) {
+    tasks.push(historyRefreshSelectedRun())
+  }
+  await Promise.all(tasks)
 }
 
 const handlePipelineChange = (value: string | number) => {
@@ -361,11 +389,20 @@ const startDashboardPolling = () => {
 }
 
 onMounted(async () => {
+  const mountPlan = buildSyncCenterMountPlan(activePipeline.value)
   setPollingEnabled(false)
   setHistoryPollingEnabled(false)
   setExtractionPollingEnabled(false)
-  syncFeedRecentWindow()
-  await overviewRefreshAll()
+
+  if (mountPlan.loadFeedDashboard) {
+    syncFeedRecentWindow()
+    await overviewRefreshAll({ includeItems: mountPlan.loadFeedItems })
+  }
+
+  if (mountPlan.loadExtractionDashboard) {
+    await extractionRefreshAll()
+  }
+
   startDashboardPolling()
 })
 
@@ -381,6 +418,13 @@ watch(activePipeline, (pipeline) => {
   if (pipeline === 'extract') {
     selectedRunId.value = ''
     historyCloseRun()
+  }
+
+  if (shouldLoadExtractionDashboard({
+    pipeline,
+    hasLoadedOnce: extractionLoadedOnce.value,
+  })) {
+    extractionRefreshAll()
   }
 })
 

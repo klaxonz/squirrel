@@ -152,6 +152,7 @@ def get_sync_center_feed_snapshot(
         query: str = Query(None, description='订阅搜索关键字'),
         date_from: str = Query(None, alias='dateFrom', description='开始时间'),
         date_to: str = Query(None, alias='dateTo', description='结束时间'),
+        recent_limit: int = Query(40, ge=1, le=200, alias='recentLimit', description='最近运行预览数量'),
         current_user: User = Depends(get_current_user)
 ):
     result = subscription_sync_center_service.get_feed_dashboard_snapshot(
@@ -160,6 +161,7 @@ def get_sync_center_feed_snapshot(
         query=query,
         date_from=date_from,
         date_to=date_to,
+        recent_limit=recent_limit,
     )
     return response.success(result)
 
@@ -286,10 +288,10 @@ def get_sync_center_run_detail(run_id: str, current_user: User = Depends(get_cur
 
 @router.get('/api/subscription/sync-center/runs/{run_id}/events')
 def get_sync_center_run_events(run_id: str, current_user: User = Depends(get_current_user)):
-    detail = subscription_sync_history_service.get_run_detail(run_id, current_user.id)
-    if not detail:
+    events = subscription_sync_history_service.list_run_events(run_id, current_user.id)
+    if not events and not subscription_sync_history_service.get_run_detail(run_id, current_user.id):
         return response.not_found('运行实例不存在')
-    return response.success(subscription_sync_history_service.list_run_events(run_id, current_user.id))
+    return response.success(events)
 
 
 @router.get('/api/subscription/sync-center/trends')

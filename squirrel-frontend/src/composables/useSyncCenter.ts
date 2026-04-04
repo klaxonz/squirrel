@@ -84,6 +84,7 @@ interface SiteOption {
 }
 
 const POLL_INTERVAL = 15000
+const RECENT_RUN_PREVIEW_LIMIT = 40
 
 const createEmptyOverview = (): SyncCenterOverview => ({
   running_count: 0,
@@ -105,7 +106,20 @@ const statusOptions: Array<{ value: SyncCenterStatusFilter; label: string }> = [
   { value: 'recent', label: '最近活动' },
 ]
 
-export function useSyncCenter() {
+interface UseSyncCenterOptions {
+  autoLoad?: boolean
+  autoLoadItems?: boolean
+  autoLoadSiteOptions?: boolean
+  autoStartPolling?: boolean
+}
+
+export function useSyncCenter(options: UseSyncCenterOptions = {}) {
+  const {
+    autoLoad = true,
+    autoLoadItems = true,
+    autoLoadSiteOptions = true,
+    autoStartPolling = true,
+  } = options
   const overview = ref<SyncCenterOverview>(createEmptyOverview())
   const items = ref<SyncCenterItem[]>([])
   const runningPreview = ref<SyncCenterItem[]>([])
@@ -190,6 +204,7 @@ export function useSyncCenter() {
       query: filters.query || undefined,
       dateFrom: recentDateRange.dateFrom || undefined,
       dateTo: recentDateRange.dateTo || undefined,
+      recentLimit: RECENT_RUN_PREVIEW_LIMIT,
     })
     if (
       runningRequestSeq !== runningPreviewRequestSeq
@@ -332,11 +347,12 @@ export function useSyncCenter() {
     siteOptions.value = deduped
   }
 
-  const refreshAll = async () => {
-    await Promise.all([
-      loadFeedDashboardSnapshot(),
-      loadItems(),
-    ])
+  const refreshAll = async ({ includeItems = autoLoadItems }: { includeItems?: boolean } = {}) => {
+    const tasks = [loadFeedDashboardSnapshot()]
+    if (includeItems) {
+      tasks.push(loadItems())
+    }
+    await Promise.all(tasks)
     hasLoadedOnce.value = true
     updateLastRefreshTime()
   }
@@ -429,8 +445,23 @@ export function useSyncCenter() {
   })
 
   onMounted(async () => {
-    await Promise.all([loadSiteOptions(), refreshAll()])
-    startPolling()
+    if (!autoLoad) {
+      if (autoStartPolling) {
+        startPolling()
+      }
+      return
+    }
+
+    const tasks: Array<Promise<unknown>> = [refreshAll({ includeItems: autoLoadItems })]
+    if (autoLoadSiteOptions) {
+      tasks.push(loadSiteOptions())
+    }
+
+    await Promise.all(tasks)
+
+    if (autoStartPolling) {
+      startPolling()
+    }
   })
 
   onUnmounted(() => {
@@ -472,6 +503,7 @@ export function useSyncCenter() {
     setPage,
     setQuery,
     setSite,
+    loadSiteOptions,
     siteOptions,
     total,
   }
