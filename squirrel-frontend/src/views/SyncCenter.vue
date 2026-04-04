@@ -30,6 +30,7 @@
               :items="currentQueuedLaneItems"
               :loading="dashboardRefreshing"
               :error="currentQueuedError"
+              :site-options="siteOptions"
               @open-run="handleOpenRunFromItem"
             />
 

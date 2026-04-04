@@ -45,8 +45,12 @@
         </div>
 
         <div class="queue-row__flow" aria-hidden="true">
-          <span class="queue-row__arrow text-[#00E5FF]">→</span>
-          <span class="queue-row__flow-text">READY</span>
+          <SiteIcon
+            :icon-url="getSiteIconUrl(item.site)"
+            :label="item.site"
+            size="xs"
+            class="opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all"
+          />
         </div>
       </button>
     </TransitionGroup>
@@ -54,19 +58,28 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { formatDate } from '@/utils/dateFormat'
 
-defineProps<{
+const props = defineProps<{
   items: SyncCenterItem[]
   loading: boolean
   error: string
+  siteOptions?: Array<{ value: string; label: string; iconUrl?: string | null }>
 }>()
 
 const emit = defineEmits<{
   (e: 'open-run', item: SyncCenterItem): void
 }>()
+
+const siteOptionMap = computed(() => {
+  return new Map((props.siteOptions || []).map((option) => [option.value, option]))
+})
+
+const getSiteIconUrl = (site: string | null) => siteOptionMap.value.get(site || '')?.iconUrl || null
 
 const getModeLabel = (mode: string) => {
   if (mode === 'full') return '全量'
@@ -213,17 +226,10 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
 
 .queue-row__flow {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.1rem;
-  min-width: 4rem;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 2rem;
   flex-shrink: 0;
-  opacity: 0.3;
-  transition: opacity 0.3s ease;
-}
-
-.queue-row:hover .queue-row__flow {
-  opacity: 0.8;
 }
 
 .queue-row__arrow {
