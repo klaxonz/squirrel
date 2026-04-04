@@ -45,7 +45,7 @@
               <div class="recent-row__title">
                 <h3 class="truncate text-sm font-bold text-white/70">{{ run.subscription_name }}</h3>
               </div>
-              <div class="recent-row__meta font-mono inline-flex items-center gap-1.5">
+              <div class="recent-row__meta font-mono inline-flex items-center gap-1.5 mt-1">
                 <SiteIcon
                   v-if="run.site"
                   :icon-url="run.site_icon_url"
