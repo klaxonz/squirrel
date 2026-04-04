@@ -26,7 +26,19 @@
 
     <div class="sidebar-footer-minimal">
       <button @click="handleLogout" class="logout-btn-minimal">
-        <span class="logout-text-minimal">Terminate Access</span>
+        <div class="logout-content">
+          <div class="icon-wrapper">
+            <svg class="menu-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </div>
+          <div class="label-wrapper">
+            <span class="menu-index">99</span>
+            <span class="menu-label">退出</span>
+          </div>
+        </div>
       </button>
     </div>
   </aside>
@@ -98,25 +110,76 @@ const handleLogout = () => {
 }
 
 .sidebar-footer-minimal {
-  padding: 1.5rem 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .logout-btn-minimal {
+  --neon-primary: #ff4d00;
+  --neon-primary-glow: rgba(255, 77, 0, 0.8);
+  --neon-primary-bg: rgba(255, 77, 0, 0.05);
+
+  position: relative;
   width: 100%;
-  padding: 0.75rem 0;
+  display: flex;
+  padding: 1.25rem 1rem;
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.3);
-  text-transform: uppercase;
-  font-size: 0.55rem;
-  letter-spacing: 0.15em;
-  text-align: center;
-  transition: color 0.3s;
+  text-decoration: none;
+  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
   cursor: pointer;
+  overflow: hidden;
 }
 
 .logout-btn-minimal:hover {
-  color: #ff4d00;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.logout-btn-minimal:hover .menu-icon {
+  transform: translateX(2px);
+  color: #fff;
+}
+
+.logout-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 2;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.menu-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  transition: all 0.3s ease;
+}
+
+.label-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-index {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  opacity: 0.4;
+  margin-bottom: -0.1rem;
+}
+
+.menu-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
 </style>
