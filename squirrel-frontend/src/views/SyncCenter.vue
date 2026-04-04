@@ -3,8 +3,7 @@
     <div class="matrix-bg"></div>
     <div class="toolbar-container py-8 relative z-10">
       <div class="flex flex-col gap-6">
-        <SyncControlBar
-          :auto-refresh="currentAutoRefresh"
+  <SyncControlBar
           :can-reconcile="activePipeline === 'feed'"
           :can-retry-failed="retryTargetCount > 0"
           :last-updated-at="toolbarLastUpdatedAt"
@@ -17,7 +16,6 @@
           @refresh="handleRefreshAll"
           @retry-failed="handleRetryFailed"
           @set-lens="handleLensChange"
-          @toggle-auto-refresh="handleToggleAutoRefresh"
         />
 
         <section class="pipeline-tabs">
@@ -126,7 +124,6 @@ const {
 } = useSyncCenterWorkbench()
 
 const {
-  autoRefresh: overviewAutoRefresh,
   filters: overviewFilters,
   filteredFailedCount,
   lastUpdatedAt: overviewLastUpdatedAt,
@@ -151,7 +148,6 @@ const {
 } = useSyncCenter()
 
 const {
-  autoRefresh: historyAutoRefresh,
   closeRun: historyCloseRun,
   detailError: historyDetailError,
   detailLoading: historyDetailLoading,
@@ -168,7 +164,6 @@ const {
 })
 
 const {
-  autoRefresh: extractionAutoRefresh,
   lastUpdatedAt: extractionLastUpdatedAt,
   loadingItems: extractionLoadingItems,
   loadingOverview: extractionLoadingOverview,
@@ -226,12 +221,6 @@ const dashboardSummary = computed(() => {
     return '部分数据不可用'
   }
   return `列表拉取中 ${overview.value.running_count} · 排队 ${overview.value.queued_count} · 等待提取收口 ${overview.value.awaiting_extract_count}`
-})
-
-const currentAutoRefresh = computed(() => {
-  return activePipeline.value === 'extract'
-    ? extractionAutoRefresh.value
-    : overviewAutoRefresh.value && historyAutoRefresh.value
 })
 
 const parseTimestamp = (value?: string | null) => {
@@ -380,15 +369,6 @@ const handleLensChange = (lens: SyncTimeLens) => {
   setLens(lens)
 }
 
-const handleToggleAutoRefresh = (value: boolean) => {
-  if (activePipeline.value === 'extract') {
-    extractionAutoRefresh.value = value
-    return
-  }
-  overviewAutoRefresh.value = value
-  historyAutoRefresh.value = value
-}
-
 const handleRetryFailed = async () => {
   if (activePipeline.value === 'extract') {
     return
@@ -438,9 +418,6 @@ const clearDashboardPollTimer = () => {
 
 const startDashboardPolling = () => {
   clearDashboardPollTimer()
-  if (!currentAutoRefresh.value) {
-    return
-  }
   dashboardPollTimer = setInterval(() => {
     handleRefreshAll()
   }, DASHBOARD_POLL_INTERVAL)
@@ -465,10 +442,6 @@ watch(activePipeline, (pipeline) => {
     selectRun('')
     historyCloseRun()
   }
-})
-
-watch([currentAutoRefresh, activePipeline], () => {
-  startDashboardPolling()
 })
 
 onMounted(() => {

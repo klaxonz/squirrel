@@ -35,7 +35,6 @@ export function useExtractionCenter() {
   const recentPreviewError = ref('')
   const loadingOverview = ref(false)
   const loadingItems = ref(false)
-  const autoRefresh = ref(true)
   const pollingEnabled = ref(true)
   const lastUpdatedAt = ref('')
 
@@ -154,7 +153,7 @@ export function useExtractionCenter() {
 
   const startPolling = () => {
     clearPollTimer()
-    if (!autoRefresh.value || !pollingEnabled.value) {
+    if (!pollingEnabled.value) {
       return
     }
     pollTimer = setInterval(() => {
@@ -162,7 +161,7 @@ export function useExtractionCenter() {
     }, POLL_INTERVAL)
   }
 
-  watch([autoRefresh, pollingEnabled], () => {
+  watch(pollingEnabled, () => {
     startPolling()
   })
 
@@ -176,7 +175,6 @@ export function useExtractionCenter() {
   })
 
   return {
-    autoRefresh,
     lastUpdatedAt,
     loadingItems,
     loadingOverview,

@@ -41,10 +41,6 @@
           </button>
         </div>
 
-        <div class="flex items-center gap-3 px-3 py-1 border border-white/5 bg-black/40 rounded">
-          <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">实时馈送</span>
-          <Switch :checked="autoRefresh" @update:checked="handleAutoRefreshUpdate" />
-        </div>
       </div>
     </div>
   </section>
@@ -52,13 +48,11 @@
 
 <script setup lang="ts">
 import type { SyncTimeLens } from '@/composables/useSyncCenterWorkbench'
-import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 withDefaults(defineProps<{
   summary: string
   lens: SyncTimeLens
-  autoRefresh: boolean
   canRetryFailed: boolean
   canReconcile?: boolean
   refreshing: boolean
@@ -74,15 +68,10 @@ const emit = defineEmits<{
   (e: 'reconcile'): void
   (e: 'retry-failed'): void
   (e: 'set-lens', value: SyncTimeLens): void
-  (e: 'toggle-auto-refresh', value: boolean): void
 }>()
 
 const handleLensUpdate = (value: string | number) => {
   emit('set-lens', String(value) as SyncTimeLens)
-}
-
-const handleAutoRefreshUpdate = (value: boolean) => {
-  emit('toggle-auto-refresh', !!value)
 }
 </script>
 

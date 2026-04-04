@@ -98,7 +98,6 @@ interface UseSyncHistoryOptions {
 const POLL_INTERVAL = 15000
 
 export function useSyncHistory(options: UseSyncHistoryOptions = {}) {
-  const autoRefresh = ref(true)
   const loading = ref(false)
   const detailLoading = ref(false)
   const error = ref('')
@@ -337,7 +336,7 @@ export function useSyncHistory(options: UseSyncHistoryOptions = {}) {
 
   const startPolling = () => {
     clearPollTimer()
-    if (!autoRefresh.value || !pollingEnabled.value) {
+    if (!pollingEnabled.value) {
       return
     }
     pollTimer = setInterval(() => {
@@ -345,7 +344,7 @@ export function useSyncHistory(options: UseSyncHistoryOptions = {}) {
     }, POLL_INTERVAL)
   }
 
-  watch([autoRefresh, pollingEnabled], () => {
+  watch(pollingEnabled, () => {
     startPolling()
   })
 
@@ -360,7 +359,6 @@ export function useSyncHistory(options: UseSyncHistoryOptions = {}) {
   })
 
   return {
-    autoRefresh,
     closeRun,
     detailError,
     detailLoading,

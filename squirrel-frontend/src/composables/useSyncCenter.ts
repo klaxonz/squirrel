@@ -149,7 +149,6 @@ export function useSyncCenter() {
   const reconciling = ref(false)
   const retryingBatch = ref(false)
   const retryingItemId = ref<number | null>(null)
-  const autoRefresh = ref(true)
   const pollingEnabled = ref(true)
   const selectedItem = ref<SyncCenterItem | null>(null)
   const recoverySummary = ref<SyncRecoverySummary>({
@@ -512,7 +511,7 @@ export function useSyncCenter() {
 
   const startPolling = () => {
     clearPollTimer()
-    if (!autoRefresh.value || !pollingEnabled.value) {
+    if (!pollingEnabled.value) {
       return
     }
     pollTimer = setInterval(() => {
@@ -520,7 +519,7 @@ export function useSyncCenter() {
     }, POLL_INTERVAL)
   }
 
-  watch([autoRefresh, pollingEnabled], () => {
+  watch(pollingEnabled, () => {
     startPolling()
   })
 
@@ -538,7 +537,6 @@ export function useSyncCenter() {
   })
 
   return {
-    autoRefresh,
     closeDetail,
     filters,
     items,
