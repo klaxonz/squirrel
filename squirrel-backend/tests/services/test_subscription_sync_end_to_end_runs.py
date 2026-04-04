@@ -17,6 +17,7 @@ from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_state import SubscriptionSyncState
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
+from schemas.subscription.dto.sync_center_dto import SyncCenterItemDto
 from services import subscription_sync_center_service, subscription_sync_history_service, subscription_sync_state_service
 
 
@@ -377,6 +378,38 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(mo
     assert [item.subscription_name for item in snapshot['runningPreview']] == ['Running Earlier']
     assert [item.subscription_name for item in snapshot['queuedPreview']] == ['Queued First', 'Queued Second']
     assert [run['run_id'] for run in snapshot['recentRuns']] == ['run-running']
+
+
+def test_sort_items_accepts_mixed_queued_rank_sources():
+    items = [
+        SyncCenterItemDto(
+            subscription_id=1,
+            subscription_name='Candidate Ranked',
+            display_status='queued',
+            queued_at='2026-04-02 10:00:00',
+        ),
+        SyncCenterItemDto(
+            subscription_id=2,
+            subscription_name='Projection Fallback',
+            display_status='queued',
+            queued_at='2026-04-02 09:30:00',
+        ),
+        SyncCenterItemDto(
+            subscription_id=3,
+            subscription_name='Backlog Ranked',
+            display_status='queued',
+            queued_at='2026-04-02 09:45:00',
+        ),
+    ]
+
+    result = subscription_sync_center_service._sort_items(
+        items,
+        'queued',
+        queued_candidate_rank_map={1: 1},
+        queued_backlog_rank_map={3: 2},
+    )
+
+    assert [item.subscription_id for item in result] == [1, 3, 2]
 
 
 def test_sync_center_runtime_refresh_invokes_recovery_chain(monkeypatch):

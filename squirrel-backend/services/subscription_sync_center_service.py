@@ -451,11 +451,11 @@ def _sort_items(
         if status == 'queued':
             candidate_rank = (queued_candidate_rank_map or {}).get(item.subscription_id)
             if candidate_rank is not None:
-                return 0, candidate_rank, item.subscription_id
+                return 0, candidate_rank, datetime.min, item.subscription_id
             backlog_rank = (queued_backlog_rank_map or {}).get(item.subscription_id)
             if backlog_rank is not None:
-                return 1, backlog_rank, item.subscription_id
-            return 1, parse_dt(item.queued_at, fallback=datetime.max), item.subscription_id
+                return 1, backlog_rank, datetime.min, item.subscription_id
+            return 2, 0, parse_dt(item.queued_at, fallback=datetime.max), item.subscription_id
         if status == 'scheduled':
             return parse_dt(item.next_sync_at, fallback=datetime.max), item.subscription_id
         if status == 'recent':
