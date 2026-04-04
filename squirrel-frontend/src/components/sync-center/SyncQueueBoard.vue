@@ -29,30 +29,31 @@
           class="queue-row animate-scan"
           @click="emit('open-run', item)"
         >
-
-        <div class="queue-row__identity">
-          <SubscriptionAvatar
-            :src="item.subscription_avatar"
-            :name="item.subscription_name"
-            size="md"
-          />
-
-          <div class="min-w-0 flex-1">
-            <div class="queue-row__title">
-              <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
-            </div>
-            <p class="queue-row__meta font-mono inline-flex items-center gap-1.5">
-              <SiteIcon
-                v-if="item.site"
-                :icon-url="getSiteIconUrl(item)"
-                :label="item.site"
-                size="xs"
+          <div class="queue-row__main">
+            <div class="queue-row__identity">
+              <SubscriptionAvatar
+                :src="item.subscription_avatar"
+                :name="item.subscription_name"
+                size="md"
               />
-              {{ getModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
-            </p>
+
+              <div class="min-w-0 flex-1">
+                <div class="queue-row__title">
+                  <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
+                </div>
+                <p class="queue-row__meta font-mono inline-flex items-center gap-1.5 mt-1">
+                  <SiteIcon
+                    v-if="item.site"
+                    :icon-url="getSiteIconUrl(item)"
+                    :label="item.site"
+                    size="xs"
+                  />
+                  {{ getModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-      </button>
+        </button>
     </TransitionGroup>
   </section>
 </template>
@@ -180,7 +181,7 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   align-items: center;
   gap: 1rem;
   background: transparent;
-  padding: 0.85rem 1rem;
+  padding: 0.6rem 1rem;
   text-align: left;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
@@ -204,6 +205,13 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
 
 .queue-row:hover::before {
   opacity: 0.02;
+}
+
+.queue-row__main {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .queue-row__identity {

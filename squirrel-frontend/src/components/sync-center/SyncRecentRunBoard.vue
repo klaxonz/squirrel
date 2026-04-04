@@ -38,7 +38,7 @@
             <SubscriptionAvatar
               :src="run.subscription_avatar"
               :name="run.subscription_name"
-              size="sm"
+              size="md"
             />
 
             <div class="min-w-0 flex-1">
@@ -258,7 +258,7 @@ const getStatusChipClass = (status: string) => {
   flex-direction: column;
   width: 100%;
   background: transparent;
-  padding: 0.85rem 1rem;
+  padding: 0.6rem 1rem;
   text-align: left;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
