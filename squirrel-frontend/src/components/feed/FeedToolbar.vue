@@ -41,15 +41,13 @@
         <button
           v-if="showRefresh"
           class="refresh-minimal"
+          :aria-label="isRefreshing ? 'Syncing' : 'Refresh'"
           @click="$emit('refresh')"
         >
-          <div class="refresh-content">
-            <ArrowPathIcon 
-              class="refresh-icon" 
-              :class="{ 'is-spinning': isRefreshing }" 
-            />
-            <span class="refresh-label">{{ isRefreshing ? 'SYNCING' : 'REFRESH' }}</span>
-          </div>
+          <ArrowPathIcon
+            class="refresh-icon"
+            :class="{ 'is-spinning': isRefreshing }"
+          />
         </button>
       </div>
     </div>
@@ -182,37 +180,21 @@ watch(localSite, (value) => emit('update:site', value))
   padding: 0;
   cursor: pointer;
   transition: all 0.3s;
-}
-
-.refresh-content {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-family: 'Courier New', Courier, monospace;
-  text-transform: uppercase;
-  font-size: 0.6rem;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.refresh-minimal:hover .refresh-content {
-  color: #fff;
-}
-
-.refresh-label {
-  font-weight: 600;
-  color: #ff4d00;
 }
 
 .refresh-icon {
-  width: 0.8rem;
-  height: 0.8rem;
+  width: 1rem;
+  height: 1rem;
   opacity: 0.5;
   transition: all 0.3s;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .refresh-minimal:hover .refresh-icon {
   opacity: 1;
+  color: #ff4d00;
 }
 
 .is-spinning {

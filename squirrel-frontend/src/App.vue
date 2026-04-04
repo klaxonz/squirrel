@@ -52,7 +52,7 @@
                 @search="handleGlobalSearch"
                 @clear="handleGlobalSearchClear"
               />
-              <div class="system-time">{{ systemTime }}</div>
+              <div class="header-right-spacer"></div>
             </div>
 
             <router-view v-slot="{ Component }">
@@ -107,17 +107,6 @@ const isVideoSidebarOpen = ref(true)
 
 const { searchQuery, searchPlaceholder, handleSearch: handleGlobalSearch, handleClear: handleGlobalSearchClear } =
   useGlobalSearch(emitter)
-
-const systemTime = ref('00:00:00')
-const updateTime = () => {
-  const now = new Date()
-  systemTime.value = now.toTimeString().split(' ')[0]
-}
-
-onMounted(() => {
-  const timer = setInterval(updateTime, 1000)
-  onUnmounted(() => clearInterval(timer))
-})
 
 const { getCurrentUser } = useUser()
 const { loadSystemConfig } = useSystemConfig()
@@ -315,7 +304,12 @@ h6 {
 }
 
 .header-left-spacer {
-  width: 120px; /* 与右侧系统时间保持视觉平衡，使搜索框居中 */
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.header-right-spacer {
+  width: 120px;
   flex-shrink: 0;
 }
 
@@ -327,15 +321,6 @@ h6 {
 
 .minimal-search:focus-within {
   width: 480px;
-}
-
-.system-time {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.3em;
-  color: rgba(255, 255, 255, 0.2);
-  text-transform: uppercase;
-  pointer-events: none;
 }
 
 .page-container {
