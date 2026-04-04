@@ -97,8 +97,15 @@
     </div>
 
     <div v-if="error" class="px-1 py-3 text-xs text-destructive/80">{{ error }}</div>
-    <div v-if="loading" class="flex flex-1 items-center justify-center py-24 text-xs font-medium text-muted-foreground/40">正在获取数据...</div>
-    <div v-else-if="runs.length === 0" class="flex flex-1 items-center justify-center py-24 text-xs font-medium text-muted-foreground/40">无数据</div>
+    <div v-if="loading" class="flex-1 py-12">
+      <SyncBoardSkeleton :count="8" />
+    </div>
+    <div v-else-if="runs.length === 0" class="flex-1 py-12">
+      <SyncBoardEmpty 
+        title="INSTANCE_EMPTY"
+        message="未找到符合条件的运行实例" 
+      />
+    </div>
 
     <div v-else class="flex-1 overflow-auto pt-4">
       <table class="w-full min-w-[1000px] text-[12px]">
@@ -189,7 +196,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
+import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
+import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import SyncSubscriptionSelect from '@/components/sync-center/SyncSubscriptionSelect.vue'
+
 import type { SyncHistoryFilters, SyncRunItem } from '@/composables/useSyncHistory'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'

@@ -11,8 +11,15 @@
     </div>
 
     <div v-if="error" class="board-error">{{ error }}</div>
-    <div v-else-if="loading && !items.length" class="board-empty">正在获取排队中的订阅...</div>
-    <div v-else-if="!items.length" class="board-empty">当前没有排队中的订阅</div>
+    <div v-else-if="loading && !items.length">
+      <SyncBoardSkeleton :count="5" />
+    </div>
+    <div v-else-if="!items.length">
+      <SyncBoardEmpty 
+        title="QUEUE_CLEAR"
+        message="当前没有排队中的订阅" 
+      />
+    </div>
 
     <TransitionGroup v-else name="lane-card" tag="div" class="board-list">
         <button
@@ -62,6 +69,8 @@
 import { computed } from 'vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
+import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
+import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { formatDate } from '@/utils/dateFormat'
 

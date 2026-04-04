@@ -11,8 +11,15 @@
     </div>
 
     <div v-if="error" class="board-error">{{ error }}</div>
-    <div v-else-if="loading && !items.length" class="board-empty">正在加载最近提取结果...</div>
-    <div v-else-if="!items.length" class="board-empty">当前没有最近提取结果</div>
+    <div v-else-if="loading && !items.length">
+      <SyncBoardSkeleton :count="6" />
+    </div>
+    <div v-else-if="!items.length">
+      <SyncBoardEmpty 
+        title="LOG_EMPTY"
+        message="当前没有最近提取结果" 
+      />
+    </div>
 
     <TransitionGroup v-else name="lane-card" tag="div" class="board-list">
       <div
@@ -61,6 +68,8 @@
 
 <script setup lang="ts">
 import SiteIcon from '@/components/common/SiteIcon.vue'
+import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
+import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { formatDate } from '@/utils/dateFormat'
 

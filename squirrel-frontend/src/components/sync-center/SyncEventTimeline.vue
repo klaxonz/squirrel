@@ -1,5 +1,11 @@
 <template>
-  <div class="relative space-y-8 pl-4 before:absolute before:left-0 before:top-2 before:h-[calc(100%-8px)] before:w-px before:bg-border/30">
+  <div v-if="!events || events.length === 0" class="py-12 flex flex-col items-center justify-center border border-dashed border-white/5 rounded-xl bg-white/[0.01]">
+    <div class="h-8 w-8 rounded-full border border-white/5 flex items-center justify-center mb-3">
+      <div class="h-1 w-1 rounded-full bg-white/20 animate-pulse"></div>
+    </div>
+    <p class="text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">等待事件信号...</p>
+  </div>
+  <div v-else class="relative space-y-8 pl-4 before:absolute before:left-0 before:top-2 before:h-[calc(100%-8px)] before:w-px before:bg-border/30">
     <div
       v-for="event in events"
       :key="event.id"

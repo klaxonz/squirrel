@@ -11,8 +11,15 @@
     </div>
 
     <div v-if="error" class="board-error">{{ error }}</div>
-    <div v-else-if="loading && !displayRuns.length" class="board-empty">正在加载最近运行结果...</div>
-    <div v-else-if="!displayRuns.length" class="board-empty">当前没有最近运行结果</div>
+    <div v-else-if="loading && !displayRuns.length">
+      <SyncBoardSkeleton :count="6" />
+    </div>
+    <div v-else-if="!displayRuns.length">
+      <SyncBoardEmpty 
+        title="HISTORY_EMPTY"
+        message="当前没有最近运行结果" 
+      />
+    </div>
 
     <TransitionGroup v-else name="lane-card" tag="div" class="board-list">
       <button
@@ -77,6 +84,8 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
+import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
+import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
 import { formatDate } from '@/utils/dateFormat'
 

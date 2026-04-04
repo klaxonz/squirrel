@@ -11,14 +11,20 @@
     </div>
 
     <div v-if="error" class="board-error">{{ error }}</div>
-    <div v-else-if="loading && !items.length" class="board-empty">正在获取运行中的订阅...</div>
-    <div v-else-if="!items.length" class="board-empty">
-      <div class="board-empty__content">
-        <p>{{ emptyMessage }}</p>
-        <p v-if="pipeline === 'feed' && carryoverCount > 0" class="board-empty__hint">
-          其中 {{ carryoverCount }} 个订阅已转入“视频提取”tab。
-        </p>
-      </div>
+    <div v-else-if="loading && !items.length">
+      <SyncBoardSkeleton :count="3" />
+    </div>
+    <div v-else-if="!items.length">
+      <SyncBoardEmpty 
+        title="IDLE_STATE"
+        :message="emptyMessage"
+      >
+        <template v-if="pipeline === 'feed' && carryoverCount > 0" #hint>
+          <p class="text-[9px] font-bold text-white/10 mt-3 tracking-wide uppercase">
+            其中 {{ carryoverCount }} 个订阅已转入“视频提取”tab
+          </p>
+        </template>
+      </SyncBoardEmpty>
     </div>
 
     <TransitionGroup v-else name="lane-card" tag="div" class="board-list">
@@ -106,6 +112,8 @@
 
 <script setup lang="ts">
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
+import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
+import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { formatDate } from '@/utils/dateFormat'
 
