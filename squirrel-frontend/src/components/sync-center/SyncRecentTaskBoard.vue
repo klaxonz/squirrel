@@ -1,12 +1,14 @@
 <template>
   <section class="board-shell board-shell--recent">
     <div class="board-header">
-      <div>
-        <p class="board-kicker">Lane 03</p>
-        <h2 class="board-title">刚处理完</h2>
-        <p class="board-caption">按最近结束时间倒序，显示最近完成或失败的视频提取批次。</p>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <p class="board-kicker">LANE_03</p>
+          <div class="h-px flex-1 bg-white/5"></div>
+          <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
+        </div>
+        <h2 class="board-title">RECENT_TASKS</h2>
       </div>
-      <span class="board-count">近 {{ items.length }} 条</span>
     </div>
 
     <div v-if="error" class="board-error">{{ error }}</div>

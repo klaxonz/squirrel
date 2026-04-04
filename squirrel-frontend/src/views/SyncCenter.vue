@@ -15,26 +15,6 @@
           </Tabs>
         </section>
 
-        <section class="lane-strip" aria-hidden="true">
-          <div class="lane-strip__segment">
-            <span class="lane-strip__kicker">Queue</span>
-            <strong class="lane-strip__title font-mono">PND</strong>
-            <span class="lane-strip__value font-mono text-[#00E5FF]">{{ currentQueuedLaneItems.length }}</span>
-          </div>
-          <div class="lane-strip__link font-mono opacity-20">>>></div>
-          <div class="lane-strip__segment lane-strip__segment--active">
-            <span class="lane-strip__kicker">Active</span>
-            <strong class="lane-strip__title font-mono">RUN</strong>
-            <span class="lane-strip__value font-mono text-[#FFB300]">{{ currentActiveLaneItems.length }}</span>
-          </div>
-          <div class="lane-strip__link font-mono opacity-20">>>></div>
-          <div class="lane-strip__segment lane-strip__segment--done">
-            <span class="lane-strip__kicker">Done</span>
-            <strong class="lane-strip__title font-mono">FIN</strong>
-            <span class="lane-strip__value font-mono text-[#00FF41]">{{ currentRecentCount }}</span>
-          </div>
-        </section>
-
         <section class="flow-shell">
 
           <SyncQueueBoard
@@ -444,57 +424,6 @@ onBeforeUnmount(() => {
 :deep(.pipeline-tabs__trigger[data-state='active']) {
   background: var(--cyber-orange);
   color: #fff;
-}
-
-.lane-strip {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.lane-strip__segment {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 0.45rem 1rem;
-}
-
-.lane-strip__segment--active {
-  border-color: rgba(255, 179, 0, 0.2);
-}
-
-.lane-strip__segment--done {
-  border-color: rgba(0, 255, 65, 0.2);
-}
-
-.lane-strip__kicker {
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.15);
-}
-
-.lane-strip__title {
-  font-size: 12px;
-  font-weight: 900;
-  color: rgba(255, 255, 255, 0.6);
-  letter-spacing: 0.1em;
-}
-
-.lane-strip__value {
-  font-size: 14px;
-  font-weight: 900;
-}
-
-.lane-strip__link {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.2em;
-  color: rgba(255, 255, 255, 0.1);
 }
 
 .flow-shell {

@@ -1,12 +1,14 @@
 <template>
   <section class="board-shell board-shell--queue">
     <div class="board-header">
-      <div>
-        <p class="board-kicker">Lane 01</p>
-        <h2 class="board-title">接下来处理</h2>
-        <p class="board-caption">严格按真实队列顺序展示。队首就是下一个进入中列的订阅。</p>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <p class="board-kicker">LANE_01</p>
+          <div class="h-px flex-1 bg-white/5"></div>
+          <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
+        </div>
+        <h2 class="board-title">PENDING_QUEUE</h2>
       </div>
-      <span class="board-count">{{ items.length }} 项</span>
     </div>
 
     <div v-if="error" class="board-error">{{ error }}</div>

@@ -1,12 +1,14 @@
 <template>
   <section class="board-shell board-shell--active">
     <div class="board-header">
-      <div>
-        <p class="board-kicker">Lane 02</p>
-        <h2 class="board-title">当前正在处理</h2>
-        <p class="board-caption">{{ boardCaption }}</p>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <p class="board-kicker">LANE_02</p>
+          <div class="h-px flex-1 bg-white/5"></div>
+          <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
+        </div>
+        <h2 class="board-title">ACTIVE_PROCESSING</h2>
       </div>
-      <span class="board-count">{{ displayCountLabel }}</span>
     </div>
 
     <div v-if="items.length" class="worker-strip" aria-hidden="true">
@@ -73,7 +75,7 @@
           <div 
             v-for="i in 12" :key="i"
             class="flex-1 transition-colors duration-300"
-            :class="i / 12 <= (item.progress_value || 0.5) ? 'bg-[#FF4F00]' : 'bg-transparent'"
+            :class="i / 12 <= ((item.progress_percent || 0) / 100) ? 'bg-[#FF4F00]' : 'bg-transparent'"
           ></div>
         </div>
 
