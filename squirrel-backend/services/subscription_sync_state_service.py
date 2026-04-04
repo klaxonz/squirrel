@@ -1,4 +1,5 @@
 from __future__ import annotations
+import hashlib
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import uuid4
@@ -15,6 +16,7 @@ from models.subscription_sync_run_projection import SubscriptionSyncRunProjectio
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from services.crawl_tasks import service as crawl_task_service
+from services.crawl_tasks.task_types import subscription_sync_task_types
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus, create_run
 from utils import url_helper
@@ -64,6 +66,23 @@ def _resolve_site(url: Optional[str]) -> Optional[str]:
         return url_helper.extract_top_level_domain(url)
     except Exception:
         return None
+
+
+def _fingerprint_head_sample(urls: Optional[list[str]]) -> Optional[str]:
+    normalized = [str(url).strip() for url in (urls or []) if str(url).strip()]
+    if not normalized:
+        return None
+    payload = '\n'.join(normalized[:20]).encode('utf-8')
+    return hashlib.sha1(payload).hexdigest()
+
+
+def _calculate_head_overlap(previous_urls: Optional[list[str]], current_urls: Optional[list[str]]) -> Optional[float]:
+    previous = {str(url).strip() for url in (previous_urls or []) if str(url).strip()}
+    current = {str(url).strip() for url in (current_urls or []) if str(url).strip()}
+    if not previous or not current:
+        return None
+    overlap = len(previous & current)
+    return overlap / max(1, min(len(previous), len(current)))
 
 
 def _get_or_create_sync_state_in_session(
@@ -187,8 +206,13 @@ def get_sync_state_by_id(sync_state_id: int) -> Optional[SubscriptionSyncState]:
         return session.get(SubscriptionSyncState, sync_state_id)
 
 
-def list_due_sync_states(mode: str, limit: int = SYNC_BATCH_SIZE) -> list[tuple[SubscriptionSyncState, str]]:
-    now = datetime.now()
+def list_due_sync_states(
+    mode: str,
+    limit: int = SYNC_BATCH_SIZE,
+    *,
+    now: Optional[datetime] = None,
+) -> list[tuple[SubscriptionSyncState, str]]:
+    now = now or datetime.now()
     with get_session() as session:
         _recover_stale_running_states_in_session(session, now)
         rows = session.execute(
@@ -511,6 +535,11 @@ def _complete_sync_success_in_session(
 ) -> SubscriptionSyncState:
     now = datetime.now()
     started_at = state.locked_at or state.last_sync_at
+    if state.sync_mode == SyncMode.FULL.value:
+        state.gap_suspicion_score = 0
+        state.gap_suspicion_reason = None
+        state.last_gap_detected_at = None
+        state.head_anchor_missing_count = 0
     state.sync_status = SyncStatus.SUCCESS.value
     state.last_sync_at = now
     state.last_success_at = now
@@ -725,7 +754,7 @@ def reconcile_retry_wait_run_projections() -> dict[str, int]:
 
         tasks = session.execute(
             select(CrawlTask)
-            .where(CrawlTask.task_type == 'subscription_sync')
+            .where(CrawlTask.task_type.in_(subscription_sync_task_types()))
             .order_by(CrawlTask.id.desc())
         ).scalars().all()
 
@@ -908,6 +937,109 @@ def mark_sync_success(
             trigger=trigger,
         )
         return state
+
+
+def record_gap_observation(
+    sync_state_id: int,
+    *,
+    head_sample_urls: Optional[list[str]],
+    anchor_found: Optional[bool],
+    cursor_invalid: bool,
+    cursor_loop_detected: bool,
+    total_available: Optional[int],
+    local_total: Optional[int],
+    now: Optional[datetime] = None,
+    trigger: str = 'scheduled',
+    trace_id: Optional[str] = None,
+) -> dict[str, int | bool]:
+    from services import outbox_event_service
+
+    current_time = now or datetime.now()
+    emitted_full_request = False
+
+    with get_session() as session:
+        state = session.get(SubscriptionSyncState, sync_state_id)
+        if not state:
+            return {'gap_suspicion_score': 0, 'emitted_full_request': False}
+
+        previous_head_sample = list(state.last_head_sample_urls or [])
+        score = int(state.gap_suspicion_score or 0)
+        reasons: list[str] = []
+
+        if anchor_found is False:
+            score += 5
+            state.head_anchor_missing_count += 1
+            reasons.append('anchor_missing')
+        elif anchor_found is True:
+            score = max(0, score - 4)
+            state.head_anchor_missing_count = 0
+
+        if cursor_invalid:
+            score += 5
+            reasons.append('cursor_invalid')
+
+        if cursor_loop_detected:
+            score += 5
+            reasons.append('cursor_loop_detected')
+
+        overlap = _calculate_head_overlap(previous_head_sample, head_sample_urls)
+        if overlap is not None and overlap < 0.3:
+            score += 3
+            reasons.append('low_head_overlap')
+        elif overlap is not None and overlap >= 0.6:
+            score = max(0, score - 2)
+
+        if total_available is not None and local_total is not None:
+            drift = max(0, int(total_available) - int(local_total))
+            if drift > max(20, int(local_total * 0.1)):
+                score += 2
+                reasons.append('total_drift')
+
+        if state.head_anchor_missing_count >= 2 and anchor_found is False:
+            score += 2
+            reasons.append('repeated_anchor_missing')
+
+        state.last_head_sample_urls = list(head_sample_urls or [])
+        state.last_head_fingerprint = _fingerprint_head_sample(head_sample_urls)
+        state.last_known_total_available = total_available
+        state.gap_suspicion_score = max(0, score)
+        state.gap_suspicion_reason = ','.join(reasons) if reasons else None
+        if reasons:
+            state.last_gap_detected_at = current_time
+        state.version += 1
+
+        should_request_full = (
+            state.sync_mode == SyncMode.INCREMENTAL.value
+            and state.gap_suspicion_score >= 8
+            and (
+                state.last_full_requested_at is None
+                or state.last_full_requested_at <= current_time - timedelta(hours=24)
+            )
+        )
+        if should_request_full:
+            outbox_event_service.publish_event(
+                event_type='full_backfill_requested',
+                event_key=f'full_backfill_requested:{state.subscription_id}:{current_time.strftime("%Y%m%d")}:{state.gap_suspicion_score}',
+                aggregate_type='subscription',
+                aggregate_id=str(state.subscription_id),
+                payload={
+                    'subscription_id': state.subscription_id,
+                    'sync_state_id': state.id,
+                    'site': state.site,
+                    'trigger': trigger,
+                    'trace_id': trace_id,
+                    'reason': state.gap_suspicion_reason or 'gap_suspicion',
+                },
+                priority='normal',
+                available_at=current_time,
+            )
+            state.last_full_requested_at = current_time
+            emitted_full_request = True
+
+        return {
+            'gap_suspicion_score': int(state.gap_suspicion_score),
+            'emitted_full_request': emitted_full_request,
+        }
 
 
 def mark_sync_skipped(

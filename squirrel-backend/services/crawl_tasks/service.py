@@ -9,6 +9,7 @@ from core.database import get_session
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
+from services.crawl_tasks.task_types import is_subscription_sync_task_type, subscription_sync_task_types
 from services.crawl_tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError, CrawlTaskStateError
 from services.crawl_tasks.models import CrawlJobStatus, CrawlTaskStatus
 
@@ -455,7 +456,7 @@ def list_active_subscription_sync_state_ids() -> set[int]:
         tasks = session.execute(
             select(CrawlTask)
             .where(
-                CrawlTask.task_type == 'subscription_sync',
+                CrawlTask.task_type.in_(subscription_sync_task_types()),
                 CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
             )
         ).scalars().all()
@@ -608,7 +609,7 @@ def _reconcile_subscription_sync_state_for_retry(
     retryable: bool,
     error_message: Optional[str],
 ) -> None:
-    if task.task_type != 'subscription_sync':
+    if not is_subscription_sync_task_type(task.task_type):
         return
 
     payload = task.payload or {}

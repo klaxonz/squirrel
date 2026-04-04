@@ -51,6 +51,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
     def execute(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
         result = super().execute(request)
         if result.success:
+            self._record_gap_observation(request, result)
             self._schedule_total_video_backfill(request)
         return result
     
@@ -260,5 +261,24 @@ class DefaultUpdateStrategy(UpdateStrategy):
             "Scheduled full sync to backfill total videos: subscription_id=%s, status=%s",
             request.subscription_id,
             result.status,
+        )
+
+    @staticmethod
+    def _record_gap_observation(request: SubscriptionUpdateRequest, result: SubscriptionUpdateResult) -> None:
+        if request.mode != UpdateMode.INCREMENTAL or not request.sync_state_id:
+            return
+
+        subscription = subscription_service.get_subscription_by_id(request.subscription_id)
+        local_total = getattr(subscription, 'total_videos', None) if subscription else None
+        subscription_sync_state_service.record_gap_observation(
+            sync_state_id=request.sync_state_id,
+            head_sample_urls=result.head_sample_urls,
+            anchor_found=result.anchor_found,
+            cursor_invalid=bool(result.cursor_invalid),
+            cursor_loop_detected=bool(result.cursor_loop_detected),
+            total_available=result.total_available,
+            local_total=local_total,
+            trigger=request.trigger.value,
+            trace_id=request.trace_id,
         )
 

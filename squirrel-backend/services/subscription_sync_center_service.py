@@ -22,6 +22,7 @@ from schemas.subscription.dto.sync_center_dto import (
 from services.crawl_tasks.models import CrawlTaskStatus
 from services.subscription_sync_progress import build_progress_snapshot
 from services.subscription_sync_run_service import SyncEventType
+from services.crawl_tasks.task_types import subscription_sync_task_types
 from utils.metrics import metrics
 from utils.site_catalog import SiteCatalog
 
@@ -273,7 +274,7 @@ def _query_queued_task_rank_map(
         .where(
             UserSubscription.user_id == user_id,
             UserSubscription.is_deleted.is_(False),
-            CrawlTask.task_type == 'subscription_sync',
+            CrawlTask.task_type.in_(subscription_sync_task_types()),
             CrawlTask.subscription_id.in_(subscription_ids),
             CrawlTask.status.in_([CrawlTaskStatus.PENDING.value, CrawlTaskStatus.RETRY_WAIT.value]),
         )

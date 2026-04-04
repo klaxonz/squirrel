@@ -17,11 +17,11 @@ class SubscriptionIncrementalUpdateTask(BaseTask):
     @classmethod
     def run(cls):
         try:
-            success, failed = scheduler.enqueue_all_active(
+            success, failed = scheduler.enqueue_due_states(
                 trigger=UpdateTrigger.SCHEDULED,
                 mode=UpdateMode.INCREMENTAL
             )
-            logger.info(f"Incremental update enqueued: success={success}, failed={failed}")
+            logger.info(f"Incremental due events emitted: success={success}, failed={failed}")
         except Exception as e:
             logger.error(f"SubscriptionIncrementalUpdateTask.run error: {e}", exc_info=True)
 

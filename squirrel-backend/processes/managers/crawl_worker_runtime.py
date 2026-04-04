@@ -9,6 +9,7 @@ from datetime import datetime
 from core.config import settings
 from services.crawl_dispatcher.service import CrawlDispatcherService
 from services.crawl_executors.subscription_sync_executor import execute_subscription_sync_task
+from services.crawl_tasks.task_types import is_subscription_sync_task_type
 from services.crawl_tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError
 from services.crawl_executors.video_extract_executor import execute_video_extract_task
 from services.crawl_tasks import service as crawl_task_service
@@ -92,7 +93,7 @@ class CrawlWorkerRuntime:
         if task.task_type == 'video_extract':
             execute_video_extract_task(task)
             return
-        if task.task_type == 'subscription_sync':
+        if is_subscription_sync_task_type(task.task_type):
             execute_subscription_sync_task(task)
             return
         raise ValueError(f'Unsupported crawl task type: {task.task_type}')

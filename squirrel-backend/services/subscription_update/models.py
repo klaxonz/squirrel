@@ -52,6 +52,12 @@ class SubscriptionUpdateResult:
     latest_video_url: Optional[str] = None
     source_video_count: Optional[int] = None
     total_available: Optional[int] = None
+    head_sample_urls: Optional[list[str]] = None
+    anchor_found: Optional[bool] = None
+    oldest_scanned_url: Optional[str] = None
+    cursor_invalid: Optional[bool] = None
+    cursor_loop_detected: Optional[bool] = None
+    scan_depth: Optional[int] = None
 
 
 @dataclass

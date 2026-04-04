@@ -210,7 +210,7 @@ def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(mon
         )
         task = CrawlTask(
             job_id=job_id,
-            task_type='subscription_sync',
+            task_type='subscription_sync_incremental',
             site='youtube.com',
             priority='normal',
             subscription_id=1,
@@ -317,7 +317,7 @@ def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dea
         )
         task = CrawlTask(
             job_id=job_id,
-            task_type='subscription_sync',
+            task_type='subscription_sync_incremental',
             site='youtube.com',
             priority='normal',
             subscription_id=1,

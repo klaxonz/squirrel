@@ -1,13 +1,17 @@
 import logging
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
+from uuid import uuid4
 
 from sqlalchemy import select
 
 from core.database import get_session
 from models.links import UserSubscription
 from models.subscription import Subscription
-from services import subscription_sync_state_service
+from services.crawl_tasks.task_types import resolve_subscription_sync_task_type
+from services import outbox_event_service, subscription_sync_state_service
 from services.crawl_tasks import service as crawl_task_service
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunContext, SyncRunStatus, create_run
@@ -16,6 +20,14 @@ from utils.trace import generate_trace_id, get_trace_id
 from .models import SubscriptionScheduleResult, SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
 
 logger = logging.getLogger()
+
+
+@dataclass(frozen=True)
+class _DueSyncTarget:
+    subscription_id: int
+    url: str
+    sync_state_id: Optional[int] = None
+    site: Optional[str] = None
 
 
 class SubscriptionScheduler:
@@ -66,6 +78,74 @@ class SubscriptionScheduler:
         )
 
     def schedule_one(
+        self,
+        subscription_id: int,
+        url: str,
+        trigger: UpdateTrigger = UpdateTrigger.MANUAL,
+        mode: UpdateMode = UpdateMode.INCREMENTAL,
+        user_id: Optional[int] = None,
+        force: bool = False,
+        trace_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+    ) -> SubscriptionScheduleResult:
+        trace_id = self._resolve_trace_id(trace_id)
+        resolved_mode = self._resolve_mode(mode)
+        domain = subscription_sync_state_service._resolve_site(url)
+
+        run_context, emit_run_created = self._build_run_context(
+            subscription_id=subscription_id,
+            sync_state_id=None,
+            site=domain,
+            sync_mode=resolved_mode.value,
+            trigger=trigger.value,
+            trace_id=trace_id,
+            run_id=run_id,
+        )
+        if emit_run_created:
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=None,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.RUN_CREATED,
+                event_phase=SyncPhase.INIT,
+                event_status=SyncRunStatus.CREATED,
+                payload={'pending_video_count': 0},
+                occurred_at=run_context.created_at,
+            ))
+
+        event_type = 'full_sync_due' if resolved_mode == UpdateMode.FULL else 'incremental_sync_due'
+        event = outbox_event_service.publish_event(
+            event_type=event_type,
+            event_key=self._build_schedule_event_key(event_type=event_type, run_id=run_context.run_id),
+            aggregate_type='subscription',
+            aggregate_id=str(subscription_id),
+            payload={
+                'subscription_id': subscription_id,
+                'mode': resolved_mode.value,
+                'trigger': trigger.value,
+                'url': url,
+                'site': domain,
+                'user_id': user_id,
+                'force': force,
+                'trace_id': trace_id,
+                'run_id': run_context.run_id,
+            },
+            priority=self._resolve_priority(trigger, resolved_mode),
+            available_at=datetime.now(),
+        )
+        return SubscriptionScheduleResult(
+            subscription_id=subscription_id,
+            sync_state_id=None,
+            status='queued',
+            request_id=str(event.id),
+            run_id=run_context.run_id,
+        )
+
+    def _schedule_one_direct(
         self,
         subscription_id: int,
         url: str,
@@ -293,7 +373,7 @@ class SubscriptionScheduler:
             site=domain,
             subscription_id=subscription_id,
             priority=priority,
-            task_type='subscription_sync',
+            task_type=resolve_subscription_sync_task_type(resolved_mode.value),
             payload=task_payload,
             trace_id=trace_id,
         )
@@ -364,23 +444,139 @@ class SubscriptionScheduler:
         mode: UpdateMode = UpdateMode.INCREMENTAL
     ) -> tuple[int, int]:
         resolved_mode = self._resolve_mode(mode)
+        targets = (
+            _DueSyncTarget(subscription_id=subscription_id, url=url)
+            for subscription_id, url in self._list_due_active_subscriptions(resolved_mode)
+        )
+        return self._dispatch_due_targets(
+            targets=targets,
+            mode=resolved_mode,
+            action_name='enqueue',
+            action=lambda target: self._schedule_due_target(target=target, trigger=trigger, mode=resolved_mode),
+        )
+
+    def enqueue_due_states(
+        self,
+        trigger: UpdateTrigger = UpdateTrigger.SCHEDULED,
+        mode: UpdateMode = UpdateMode.INCREMENTAL,
+        *,
+        now: Optional[datetime] = None,
+        limit: int = subscription_sync_state_service.SYNC_BATCH_SIZE,
+    ) -> tuple[int, int]:
+        resolved_mode = self._resolve_mode(mode)
+        current_time = now or datetime.now()
+        targets = (
+            _DueSyncTarget(
+                subscription_id=sync_state.subscription_id,
+                sync_state_id=sync_state.id,
+                site=sync_state.site,
+                url=url,
+            )
+            for sync_state, url in subscription_sync_state_service.list_due_sync_states(
+                resolved_mode.value,
+                limit=limit,
+                now=current_time,
+            )
+        )
+        return self._dispatch_due_targets(
+            targets=targets,
+            mode=resolved_mode,
+            action_name='emit',
+            action=lambda target: self._emit_due_sync_event(
+                target=target,
+                trigger=trigger,
+                mode=resolved_mode,
+                now=current_time,
+            ),
+        )
+
+    def _dispatch_due_targets(
+        self,
+        *,
+        targets: Iterable[_DueSyncTarget],
+        mode: UpdateMode,
+        action_name: str,
+        action: Callable[[_DueSyncTarget], str],
+    ) -> tuple[int, int]:
         success_count = 0
         error_count = 0
 
-        for subscription_id, url in self._list_due_active_subscriptions(resolved_mode):
-            result = self.schedule_one(
-                subscription_id=subscription_id,
-                url=url,
-                trigger=trigger,
-                mode=resolved_mode,
-            )
-            if result.status == 'queued':
-                success_count += 1
-            elif result.status == 'failed':
+        for target in targets:
+            try:
+                action_result = action(target)
+                if action_result == 'success':
+                    success_count += 1
+                elif action_result == 'failed':
+                    error_count += 1
+            except Exception:
                 error_count += 1
+                logger.exception(
+                    'Failed to %s due sync target subscription_id=%s sync_state_id=%s mode=%s',
+                    action_name,
+                    target.subscription_id,
+                    target.sync_state_id,
+                    mode.value,
+                )
 
-        logger.info(f"Enqueue completed: success={success_count}, failed={error_count}, mode={resolved_mode.value}")
+        logger.info(
+            'Due sync %s completed: success=%s failed=%s mode=%s',
+            action_name,
+            success_count,
+            error_count,
+            mode.value,
+        )
         return success_count, error_count
+
+    def _schedule_due_target(
+        self,
+        *,
+        target: _DueSyncTarget,
+        trigger: UpdateTrigger,
+        mode: UpdateMode,
+    ) -> str:
+        result = self.schedule_one(
+            subscription_id=target.subscription_id,
+            url=target.url,
+            trigger=trigger,
+            mode=mode,
+        )
+        if result.status == 'queued':
+            return 'success'
+        if result.status == 'failed':
+            return 'failed'
+        return 'skipped'
+
+    def _emit_due_sync_event(
+        self,
+        *,
+        target: _DueSyncTarget,
+        trigger: UpdateTrigger,
+        mode: UpdateMode,
+        now: datetime,
+    ) -> str:
+        if target.sync_state_id is None:
+            return 'skipped'
+
+        event_type = 'full_sync_due' if mode == UpdateMode.FULL else 'incremental_sync_due'
+        trace_id = self._resolve_trace_id(None)
+        outbox_event_service.publish_event(
+            event_type=event_type,
+            event_key=self._build_due_event_key(target.sync_state_id, event_type, now),
+            aggregate_type='subscription_sync_state',
+            aggregate_id=str(target.sync_state_id),
+            payload={
+                'subscription_id': target.subscription_id,
+                'sync_state_id': target.sync_state_id,
+                'site': target.site,
+                'mode': mode.value,
+                'trigger': trigger.value,
+                'url': target.url,
+                'trace_id': trace_id,
+            },
+            priority='low' if mode == UpdateMode.FULL else 'normal',
+            available_at=now,
+        )
+        return 'success'
 
     @staticmethod
     def _list_due_active_subscriptions(mode: UpdateMode) -> list[tuple[int, str]]:
@@ -428,6 +624,15 @@ class SubscriptionScheduler:
         if mode == UpdateMode.FULL:
             return 'full'
         return 'incr'
+
+    @staticmethod
+    def _build_due_event_key(sync_state_id: int, event_type: str, now: datetime) -> str:
+        bucket = now.replace(second=0, microsecond=0).isoformat()
+        return f'{event_type}:{sync_state_id}:{bucket}'
+
+    @staticmethod
+    def _build_schedule_event_key(*, event_type: str, run_id: str) -> str:
+        return f'{event_type}:{run_id}:{uuid4().hex}'
 
     @staticmethod
     def _resolve_mode(mode: UpdateMode) -> UpdateMode:

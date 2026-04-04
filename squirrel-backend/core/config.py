@@ -47,10 +47,16 @@ class Settings(BaseSettings):
     MQ_CONSUMER_COUNT_OVERRIDES: str = ''
     CRAWL_DEFAULT_SITE_CONCURRENCY: int = 2
     CRAWL_SITE_CONCURRENCY_OVERRIDES: str = ''
-    CRAWL_TASK_TYPE_LIMITS: str = 'subscription_sync=2,video_extract=8'
+    CRAWL_TASK_TYPE_LIMITS: str = 'subscription_sync_incremental=2,subscription_sync_full=1,video_extract=8'
     CRAWL_SLOTS_PER_PROCESS: int = 8
     CRAWL_WORKER_LEASE_SECONDS: int = 60
     CRAWL_WORKER_POLL_INTERVAL_MS: int = 1000
+    OUTBOX_NOTIFY_CHANNEL: str = 'outbox_events'
+    OUTBOX_NOTIFY_POLL_TIMEOUT_SECONDS: int = 5
+    OUTBOX_CONSUME_BATCH_SIZE: int = 50
+    FULL_SYNC_MAX_INFLIGHT: int = 2
+    FULL_SYNC_SITE_MAX_INFLIGHT: int = 1
+    FULL_BACKFILL_RETRY_SECONDS: int = 300
 
     @property
     def environment(self) -> str:

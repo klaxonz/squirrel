@@ -209,6 +209,12 @@ class UpdateStrategy(ABC):
                 latest_video_url=fetch_result.latest_video_url,
                 source_video_count=fetch_result.source_video_count,
                 total_available=fetch_result.total_available,
+                head_sample_urls=getattr(fetch_result, 'head_sample_urls', None),
+                anchor_found=getattr(fetch_result, 'anchor_found', None),
+                oldest_scanned_url=getattr(fetch_result, 'oldest_scanned_url', None),
+                cursor_invalid=bool(getattr(fetch_result, 'cursor_invalid', False)),
+                cursor_loop_detected=bool(getattr(fetch_result, 'cursor_loop_detected', False)),
+                scan_depth=getattr(fetch_result, 'scan_depth', None),
             )
         except Exception as e:
             # 记录错误指标

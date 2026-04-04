@@ -50,7 +50,7 @@ def test_run_once_executes_video_extract_task(monkeypatch):
     ]
 
 
-def test_run_once_executes_subscription_sync_task(monkeypatch):
+def test_run_once_retries_legacy_subscription_sync_task_type(monkeypatch):
     calls = []
     task = CrawlTask(id=2, job_id=1, task_type='subscription_sync', site='bilibili.com', payload={})
     runtime = CrawlWorkerRuntime(
@@ -69,8 +69,42 @@ def test_run_once_executes_subscription_sync_task(monkeypatch):
         lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)),
     )
     monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.retry_task',
+        lambda task_id, worker_id, error_message, error_type, now=None, delay_seconds=30: calls.append(
+            ('retry', task_id, worker_id, error_type, error_message)
+        ),
+    )
+
+    ran = runtime.run_once()
+
+    assert ran is True
+    assert calls == [
+        ('start', 2, 'worker-1'),
+        ('retry', 2, 'worker-1', 'ValueError', 'Unsupported crawl task type: subscription_sync'),
+    ]
+
+
+def test_run_once_executes_full_subscription_sync_task(monkeypatch):
+    calls = []
+    task = CrawlTask(id=22, job_id=1, task_type='subscription_sync_full', site='bilibili.com', payload={})
+    runtime = CrawlWorkerRuntime(
+        dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
+        worker_id='worker-1',
+        lease_seconds=60,
+        retry_delay_seconds=30,
+    )
+
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.recover_expired_tasks',
+        lambda now=None, retry_delay_seconds=30: 0,
+    )
+    monkeypatch.setattr(
+        'processes.managers.crawl_worker_runtime.crawl_task_service.start_task',
+        lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)),
+    )
+    monkeypatch.setattr(
         'processes.managers.crawl_worker_runtime.execute_subscription_sync_task',
-        lambda current_task: calls.append(('sync', current_task.id)),
+        lambda current_task: calls.append(('sync', current_task.id, current_task.task_type)),
     )
     monkeypatch.setattr(
         'processes.managers.crawl_worker_runtime.crawl_task_service.complete_task',
@@ -81,9 +115,9 @@ def test_run_once_executes_subscription_sync_task(monkeypatch):
 
     assert ran is True
     assert calls == [
-        ('start', 2, 'worker-1'),
-        ('sync', 2),
-        ('complete', 2, 'worker-1'),
+        ('start', 22, 'worker-1'),
+        ('sync', 22, 'subscription_sync_full'),
+        ('complete', 22, 'worker-1'),
     ]
 
 

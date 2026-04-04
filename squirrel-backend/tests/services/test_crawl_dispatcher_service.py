@@ -506,3 +506,54 @@ def test_dispatcher_considers_next_task_type_for_same_site_when_site_head_type_i
     assert claimed is not None
     assert claimed.site == 'bilibili'
     assert claimed.task_type == 'video_extract'
+
+
+def test_dispatcher_treats_full_and_incremental_sync_as_separate_task_types(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        job_id = _create_job(session, site='youtube')
+        session.add_all(
+            [
+                CrawlTask(
+                    job_id=job_id,
+                    task_type='subscription_sync_full',
+                    site='youtube',
+                    priority='normal',
+                    payload={'mode': 'full'},
+                    status='running',
+                    worker_id='worker-full',
+                    lease_until=now + timedelta(minutes=5),
+                ),
+                CrawlTask(
+                    job_id=job_id,
+                    task_type='subscription_sync_full',
+                    site='youtube',
+                    priority='normal',
+                    payload={'mode': 'full'},
+                    next_run_at=now - timedelta(seconds=2),
+                ),
+                CrawlTask(
+                    job_id=job_id,
+                    task_type='subscription_sync_incremental',
+                    site='youtube',
+                    priority='normal',
+                    payload={'mode': 'incremental'},
+                    next_run_at=now - timedelta(seconds=1),
+                ),
+            ]
+        )
+        session.commit()
+
+    dispatcher = CrawlDispatcherService(
+        policy=CrawlDispatcherPolicy(
+            default_site_concurrency=3,
+            task_type_limits={'subscription_sync_full': 1, 'subscription_sync_incremental': 2},
+        ),
+    )
+
+    claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
+
+    assert claimed is not None
+    assert claimed.task_type == 'subscription_sync_incremental'

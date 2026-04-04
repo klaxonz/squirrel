@@ -12,6 +12,7 @@ from models import Base
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from models.links import UserSubscription
+from models.outbox_event import OutboxEvent
 from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
@@ -53,8 +54,10 @@ def _setup_projection_env(monkeypatch):
 
 def _setup_state_env(monkeypatch):
     engine = create_engine('sqlite:///:memory:')
-    Base.metadata.create_all(engine, tables=[SubscriptionSyncState.__table__])
+    Base.metadata.create_all(engine, tables=[SubscriptionSyncState.__table__, OutboxEvent.__table__])
     monkeypatch.setattr(subscription_sync_state_service, 'get_session', lambda: _managed_session(engine))
+    from services import outbox_event_service
+    monkeypatch.setattr(outbox_event_service, 'get_session', lambda: _managed_session(engine))
     return engine
 
 
@@ -539,7 +542,7 @@ def test_reconcile_retry_wait_run_projections_emits_queued_event_for_stale_feed_
             CrawlTask(
                 id=6877,
                 job_id=1,
-                task_type='subscription_sync',
+                task_type='subscription_sync_full',
                 site='bilibili.com',
                 subscription_id=112,
                 status='retry_wait',
@@ -733,3 +736,45 @@ def test_reconcile_terminal_drained_sync_states_completes_original_latest_run(mo
     assert [(event.stream_id, event.event_type, event.event_phase, event.event_status) for event in captured_events] == [
         ('run-original', 'completed', 'completed', 'success'),
     ]
+
+
+def test_record_gap_observation_emits_full_backfill_request_when_score_crosses_threshold(monkeypatch):
+    engine = _setup_state_env(monkeypatch)
+
+    now = datetime(2026, 4, 4, 12, 0, 0)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            SubscriptionSyncState(
+                id=21,
+                subscription_id=7,
+                site='youtube.com',
+                sync_mode='incremental',
+                sync_status='success',
+                next_sync_at=now + timedelta(minutes=5),
+                last_seen_video_url='https://example.com/video/anchor',
+            )
+        )
+        session.commit()
+
+    summary = subscription_sync_state_service.record_gap_observation(
+        sync_state_id=21,
+        head_sample_urls=['https://example.com/video/new-1', 'https://example.com/video/new-2'],
+        anchor_found=False,
+        cursor_invalid=True,
+        cursor_loop_detected=False,
+        total_available=120,
+        local_total=80,
+        now=now,
+    )
+
+    assert summary['gap_suspicion_score'] >= 8
+
+    with Session(engine, expire_on_commit=False) as session:
+        state = session.get(SubscriptionSyncState, 21)
+        events = session.query(OutboxEvent).all()
+
+    assert state.gap_suspicion_score == summary['gap_suspicion_score']
+    assert state.head_anchor_missing_count == 1
+    assert len(events) == 1
+    assert events[0].event_type == 'full_backfill_requested'
+    assert events[0].payload['subscription_id'] == 7
