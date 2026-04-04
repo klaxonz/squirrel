@@ -30,19 +30,18 @@
       >
         <div class="recent-row__main">
           <div class="recent-row__identity">
-            <div class="relative">
-              <img
-                :src="getAvatarSrc(run.subscription_avatar, run.run_id)"
-                :alt="run.subscription_name"
-                class="recent-row__avatar"
-                referrerpolicy="no-referrer"
-                @error="(event) => handleAvatarError(event, run.run_id)"
-              >
-              <div 
-                class="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full"
-                :class="run.status === 'success' ? 'bg-[#00FF41]' : run.status === 'failed' ? 'bg-rose-500' : 'bg-white/20'"
-              ></div>
-            </div>
+            <SubscriptionAvatar
+              :src="run.subscription_avatar"
+              :name="run.subscription_name"
+              size="sm"
+            >
+              <template #indicator>
+                <div 
+                  class="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full z-10"
+                  :class="run.status === 'success' ? 'bg-[#00FF41]' : run.status === 'failed' ? 'bg-rose-500' : 'bg-white/20'"
+                ></div>
+              </template>
+            </SubscriptionAvatar>
 
             <div class="min-w-0 flex-1">
               <div class="recent-row__title">
@@ -77,8 +76,8 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
-import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDate } from '@/utils/dateFormat'
 
 const props = withDefaults(defineProps<{
@@ -96,7 +95,6 @@ const emit = defineEmits<{
   (e: 'open-run', runId: string): void
 }>()
 
-const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 const displayRuns = computed(() => props.runs.slice(0, 8))
 const freshRunIds = ref(new Set<string>())
 const freshTimers = new Map<string, ReturnType<typeof setTimeout>>()

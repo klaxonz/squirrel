@@ -29,16 +29,15 @@
         </div>
 
         <div class="queue-row__identity">
-          <div class="relative">
-            <img
-              :src="getAvatarSrc(item.subscription_avatar, item.subscription_id)"
-              :alt="item.subscription_name"
-              class="queue-row__avatar"
-              referrerpolicy="no-referrer"
-              @error="(event) => handleAvatarError(event, item.subscription_id)"
-            >
-            <div class="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full bg-[#00E5FF] glow-cyan"></div>
-          </div>
+          <SubscriptionAvatar
+            :src="item.subscription_avatar"
+            :name="item.subscription_name"
+            size="md"
+          >
+            <template #indicator>
+              <div class="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full bg-[#00E5FF] glow-cyan z-10"></div>
+            </template>
+          </SubscriptionAvatar>
 
           <div class="min-w-0 flex-1">
             <div class="queue-row__title">
@@ -61,8 +60,8 @@
 </template>
 
 <script setup lang="ts">
+import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
-import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDate } from '@/utils/dateFormat'
 
 defineProps<{
@@ -74,8 +73,6 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'open-run', item: SyncCenterItem): void
 }>()
-
-const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 
 const getModeLabel = (mode: string) => {
   if (mode === 'full') return '全量'
