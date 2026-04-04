@@ -3,7 +3,8 @@
  * 滑动调节进度/音量、双击快进快退、捏合缩放
  */
 
-import { ref, onMounted, onUnmounted, type Ref } from 'vue'
+import { ref, onUnmounted, watch, type Ref } from 'vue'
+import { isPlayerInteractiveTarget } from './mobileControls'
 
 export interface GestureCallbacks {
   onSeek?: (deltaSeconds: number) => void
@@ -91,18 +92,13 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
   }
 
   let singleTapTimer: ReturnType<typeof setTimeout> | null = null
+  let boundElement: HTMLElement | null = null
 
   const clearSingleTapTimer = (): void => {
     if (singleTapTimer) {
       clearTimeout(singleTapTimer)
       singleTapTimer = null
     }
-  }
-
-  const isInteractiveTarget = (target: EventTarget | null): boolean => {
-    const el = target as HTMLElement | null
-    if (!el) return false
-    return !!el.closest('button, a, input, textarea, select, [role="button"], .sp-controls, .sp-popup')
   }
 
   const resetTapState = (): void => {
@@ -145,7 +141,7 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
     touchState.startY = touch.clientY
     touchState.startTime = now
     touchState.isMultiTouch = e.touches.length > 1
-    touchState.ignoreGesture = isInteractiveTarget(e.target)
+    touchState.ignoreGesture = isPlayerInteractiveTarget(e.target as HTMLElement | null)
 
     // 捏合手势初始化
     if (e.touches.length === 2) {
@@ -320,25 +316,38 @@ export function useGestures(options: UseGesturesOptions): UseGesturesReturn {
     gestureProgress.value = 0
   }
 
-  onMounted(() => {
-    const el = element.value
-    if (!el) return
-
+  const attachListeners = (el: HTMLElement): void => {
     el.addEventListener('touchstart', handleTouchStart, { passive: true })
     el.addEventListener('touchmove', handleTouchMove, { passive: false })
     el.addEventListener('touchend', handleTouchEnd, { passive: true })
     el.addEventListener('touchcancel', handleTouchEnd, { passive: true })
-  })
+  }
 
-  onUnmounted(() => {
-    const el = element.value
-    clearSingleTapTimer()
-    if (!el) return
-
+  const detachListeners = (el: HTMLElement): void => {
     el.removeEventListener('touchstart', handleTouchStart)
     el.removeEventListener('touchmove', handleTouchMove)
     el.removeEventListener('touchend', handleTouchEnd)
     el.removeEventListener('touchcancel', handleTouchEnd)
+  }
+
+  watch(element, (el, prevEl) => {
+    if (prevEl && prevEl !== el) {
+      detachListeners(prevEl)
+      if (boundElement === prevEl) boundElement = null
+    }
+
+    if (!el || boundElement === el) return
+
+    attachListeners(el)
+    boundElement = el
+  }, { immediate: true })
+
+  onUnmounted(() => {
+    clearSingleTapTimer()
+    if (!boundElement) return
+
+    detachListeners(boundElement)
+    boundElement = null
   })
 
   return {

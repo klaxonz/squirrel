@@ -59,7 +59,7 @@
 
     <!-- 极简控制层 -->
     <transition name="sp-ui-fade">
-      <div v-show="store.controlsVisible" class="sp-controls-wrapper">
+      <div v-show="store.controlsVisible" class="sp-controls-wrapper" data-player-interactive>
         <!-- 底部渐变遮罩 -->
         <div class="sp-gradient-overlay"></div>
 
@@ -140,7 +140,7 @@
 
     <!-- 设置菜单 -->
     <transition name="sp-ui-fade">
-      <div v-if="showSettingsMenu" class="sp-settings-pop" ref="settingsPopupRef">
+      <div v-if="showSettingsMenu" class="sp-settings-pop" ref="settingsPopupRef" data-player-interactive>
         <template v-if="settingsView === 'main'">
           <div class="sp-menu-list">
             <div class="sp-menu-item" @click="toggleAutoplayNext">
@@ -220,6 +220,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { usePlayer } from './runtime/usePlayer'
+import {
+  getNextControlsVisibilityOnTouchTap,
+  shouldHandlePointerVisibility,
+  shouldAutoHideControls,
+  shouldTogglePlayOnVideoClick
+} from './runtime/mobileControls'
 import type { MediaSource, SubtitleTrack } from './core'
 import type { ThemeName } from './themes'
 import type { IconName } from './core/useIcons'
@@ -260,6 +266,9 @@ const {
 } = usePlayer({
   autoplay: props.autoplay,
   theme: props.theme,
+  onTouchTap: () => {
+    toggleControls(getNextControlsVisibilityOnTouchTap(store.controlsVisible))
+  },
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
   onError: (e) => emit('error', e),
@@ -276,6 +285,7 @@ const previewTime = ref<number | null>(null)
 const previewPercent = ref(0)
 const isScrubbing = ref(false)
 const isVolumeScrubbing = ref(false)
+const lastPointerType = ref('mouse')
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
 const centralHud = ref<{ visible: boolean; type: string; value: string; icon: IconName; percent: number }>({ 
   visible: false, type: '', value: '', icon: 'play', percent: 0 
@@ -333,16 +343,52 @@ const toggleWidescreen = () => emit('widescreenChange', !props.widescreen)
 const toggleAutoplayNext = () => store.setAutoplayNext(!store.autoplayNext)
 const toggleLoop = () => store.setLoop(!store.loop)
 const toggleSubtitlesQuick = () => setSubtitle(store.subtitlesEnabled ? null : (subtitleTracks.value[0] || null))
-const handleVideoClick = () => togglePlay()
-
-const onPointerEnter = () => store.setControlsVisible(true)
-const onPointerLeave = () => { if (!isScrubbing.value) store.setControlsVisible(false); showSettingsMenu.value = false }
-const onPointerMove = () => { store.setControlsVisible(true); resetHideTimer() }
-
 let hideTimer: any
-const resetHideTimer = () => {
-  clearTimeout(hideTimer)
-  if (isPlaying.value && !isScrubbing.value) hideTimer = setTimeout(() => store.setControlsVisible(false), 3000)
+const clearHideTimer = () => clearTimeout(hideTimer)
+const hideControls = () => {
+  clearHideTimer()
+  store.setControlsVisible(false)
+  previewTime.value = null
+  showSettingsMenu.value = false
+}
+const syncHideTimer = () => {
+  clearHideTimer()
+  if (shouldAutoHideControls({
+    controlsVisible: store.controlsVisible,
+    isPlaying: isPlaying.value,
+    isScrubbing: isScrubbing.value
+  })) {
+    hideTimer = setTimeout(() => hideControls(), 3000)
+  }
+}
+const showControls = () => {
+  store.setControlsVisible(true)
+  syncHideTimer()
+}
+const toggleControls = (nextVisible = !store.controlsVisible) => {
+  if (nextVisible) {
+    showControls()
+    return
+  }
+
+  hideControls()
+}
+const handleVideoClick = () => {
+  if (!shouldTogglePlayOnVideoClick(lastPointerType.value)) return
+  togglePlay()
+}
+
+const onPointerEnter = (event: PointerEvent) => {
+  if (!shouldHandlePointerVisibility(event.pointerType)) return
+  showControls()
+}
+const onPointerLeave = (event: PointerEvent) => {
+  if (!shouldHandlePointerVisibility(event.pointerType)) return
+  if (!isScrubbing.value) hideControls()
+}
+const onPointerMove = (event: PointerEvent) => {
+  if (!shouldHandlePointerVisibility(event.pointerType)) return
+  showControls()
 }
 
 const onProgressPointerDown = (e: PointerEvent) => {
@@ -409,10 +455,33 @@ const formatCodecFamilyLabel = (codecFamily: string | null | undefined) => {
 }
 
 const markPlayerActive = () => {}
-const handlePointerDown = () => {}
+const handlePointerDown = (event: PointerEvent) => {
+  lastPointerType.value = event.pointerType || 'mouse'
+}
+
+watch(isPlaying, (playing) => {
+  if (!playing) {
+    showControls()
+    return
+  }
+
+  syncHideTimer()
+})
+
+watch(isScrubbing, (scrubbing) => {
+  if (scrubbing) {
+    clearHideTimer()
+    return
+  }
+
+  syncHideTimer()
+})
 
 onMounted(() => { window.addEventListener('keydown', handleKeyDown) })
-onUnmounted(() => { window.removeEventListener('keydown', handleKeyDown) })
+onUnmounted(() => {
+  clearHideTimer()
+  window.removeEventListener('keydown', handleKeyDown)
+})
 
 defineExpose({ play, pause, seek, toggleFullscreen })
 </script>
