@@ -40,6 +40,7 @@ SESSION = requests.Session()
 logger = logging.getLogger(__name__)
 VIDEO_INFO_CACHE_TTL_SECONDS = 30
 VIDEO_INFO_CACHE_MAX_SIZE = 64
+PLAYBACK_WORKER_TIMEOUT_SECONDS = 25
 _VIDEO_INFO_CACHE: dict[str, tuple[float, dict]] = {}
 _VIDEO_INFO_CACHE_LOCK = threading.Lock()
 ISOBMFF_ON_DEMAND_PROFILE = 'urn:mpeg:dash:profile:isoff-on-demand:2011'
@@ -592,7 +593,11 @@ def _extract_video_info(url: str) -> dict | None:
 
     try:
         opts = _build_ytdlp_opts(url)
-        info = youtube_ytdlp_support.extract_info_with_player_responses(url, opts)
+        info = youtube_ytdlp_support.extract_info_with_player_responses_isolated(
+            url,
+            opts,
+            timeout_seconds=PLAYBACK_WORKER_TIMEOUT_SECONDS,
+        )
         if not info:
             return None
         if info.get('_type') == 'playlist':

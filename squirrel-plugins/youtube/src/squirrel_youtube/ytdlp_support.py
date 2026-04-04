@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import json
 import logging
 import os
 import shutil
 import subprocess
+import sys
 import threading
 from pathlib import Path
 from typing import Any
@@ -34,6 +36,7 @@ _YOUTUBE_PLAYER_RESPONSES_ATTR = '_squirrel_youtube_player_responses'
 _YOUTUBE_PLAYER_URL_ATTR = '_squirrel_youtube_player_url'
 _YOUTUBE_EXTRACT_HOOK_LOCK = threading.RLock()
 _SKIP_VALUE = object()
+_PLAYBACK_WORKER_PATH = Path(__file__).with_name('playback_worker.py')
 logger = logging.getLogger(__name__)
 
 
@@ -186,11 +189,17 @@ def _sanitize_player_response_value(value: Any):
 def _extract_info_once(url: str, opts: dict[str, Any], *, process: bool = True) -> dict | None:
     from yt_dlp import YoutubeDL
 
+    with YoutubeDL(opts) as ydl:
+        return ydl.extract_info(url, download=False, process=process)
+
+
+def _extract_info_with_hooks_once(url: str, opts: dict[str, Any], *, process: bool = True) -> dict | None:
+    from yt_dlp import YoutubeDL
+
     try:
         from yt_dlp.extractor.youtube._video import YoutubeIE
     except Exception:
-        with YoutubeDL(opts) as ydl:
-            return ydl.extract_info(url, download=False, process=process)
+        return _extract_info_once(url, opts, process=process)
 
     original_extract_player_responses = YoutubeIE._extract_player_responses
     original_real_extract = YoutubeIE._real_extract
@@ -256,9 +265,54 @@ def _build_bgutil_timeout_fallback_opts(opts: dict[str, Any]) -> dict[str, Any]:
     return fallback_opts
 
 
-def extract_info_with_player_responses(url: str, opts: dict[str, Any], *, process: bool = True) -> dict | None:
+def _sanitize_json_value(value: Any):
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, dict):
+        sanitized: dict[str, Any] = {}
+        for key, item in value.items():
+            cleaned = _sanitize_json_value(item)
+            if cleaned is _SKIP_VALUE:
+                continue
+            sanitized[str(key)] = cleaned
+        return sanitized
+    if isinstance(value, (list, tuple)):
+        items = []
+        for item in value:
+            cleaned = _sanitize_json_value(item)
+            if cleaned is _SKIP_VALUE:
+                continue
+            items.append(cleaned)
+        return items
+    return _SKIP_VALUE
+
+
+def _parse_playback_worker_output(stdout: str, stderr: str, returncode: int) -> dict | None:
+    payload_text = (stdout or '').strip()
+    payload = {}
+    if payload_text:
+        try:
+            payload = json.loads(payload_text)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f'YouTube playback worker returned invalid JSON: {exc}'
+            ) from exc
+
+    if returncode != 0:
+        error = payload.get('error') if isinstance(payload, dict) else None
+        if isinstance(error, dict) and error.get('message'):
+            raise RuntimeError(str(error['message']))
+        message = (stderr or '').strip() or payload_text or 'YouTube playback worker failed'
+        raise RuntimeError(message)
+
+    if not isinstance(payload, dict):
+        raise RuntimeError('YouTube playback worker returned an invalid payload')
+    return payload.get('info')
+
+
+def _extract_with_bgutil_timeout_fallback(extract_fn, url: str, opts: dict[str, Any], *, process: bool) -> dict | None:
     try:
-        return _extract_info_once(url, opts, process=process)
+        return extract_fn(url, opts, process=process)
     except Exception as exc:
         if not _is_bgutil_script_timeout(exc, opts):
             raise
@@ -268,4 +322,52 @@ def extract_info_with_player_responses(url: str, opts: dict[str, Any], *, proces
             extra={'url': url, 'error': str(exc)},
         )
         fallback_opts = _build_bgutil_timeout_fallback_opts(opts)
-        return _extract_info_once(url, fallback_opts, process=process)
+        return extract_fn(url, fallback_opts, process=process)
+
+
+def extract_info(url: str, opts: dict[str, Any], *, process: bool = True) -> dict | None:
+    return _extract_with_bgutil_timeout_fallback(
+        _extract_info_once,
+        url,
+        opts,
+        process=process,
+    )
+
+
+def extract_info_with_player_responses(url: str, opts: dict[str, Any], *, process: bool = True) -> dict | None:
+    return _extract_with_bgutil_timeout_fallback(
+        _extract_info_with_hooks_once,
+        url,
+        opts,
+        process=process,
+    )
+
+
+def extract_info_with_player_responses_isolated(
+    url: str,
+    opts: dict[str, Any],
+    *,
+    process: bool = True,
+    timeout_seconds: float | None = None,
+) -> dict | None:
+    payload = _sanitize_json_value({
+        'url': url,
+        'opts': opts,
+        'process': process,
+    })
+    if payload is _SKIP_VALUE:
+        raise RuntimeError('YouTube playback worker payload could not be serialized')
+
+    completed = subprocess.run(
+        [sys.executable, str(_PLAYBACK_WORKER_PATH)],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        timeout=timeout_seconds,
+        check=False,
+    )
+    return _parse_playback_worker_output(
+        completed.stdout,
+        completed.stderr,
+        completed.returncode,
+    )

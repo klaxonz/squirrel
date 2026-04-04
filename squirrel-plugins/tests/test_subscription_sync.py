@@ -629,7 +629,7 @@ class SubscriptionSyncTests(unittest.TestCase):
                     ])
                 raise AssertionError(f'Unexpected URL: {url}')
 
-            module.youtube_ytdlp_support.extract_info_with_player_responses = fake_extract
+            module.youtube_ytdlp_support.extract_info = fake_extract
 
             subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
             result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
@@ -661,7 +661,7 @@ class SubscriptionSyncTests(unittest.TestCase):
         with _stub_youtube_subscription_dependencies():
             module = _load_youtube_subscription_module()
             module.youtube_ytdlp_support.apply_youtube_player_strategy = lambda _url, _opts: None
-            module.youtube_ytdlp_support.extract_info_with_player_responses = (
+            module.youtube_ytdlp_support.extract_info = (
                 lambda url, _opts, *, process=False: _build_ytdlp_info(entries=[
                     {'url': 'https://www.youtube.com/watch?v=new00000001'},
                     {'url': 'https://www.youtube.com/watch?v=seen0000002'},
@@ -705,7 +705,7 @@ class SubscriptionSyncTests(unittest.TestCase):
                     ])
                 raise AssertionError(f'Unexpected URL: {url}')
 
-            module.youtube_ytdlp_support.extract_info_with_player_responses = fake_extract
+            module.youtube_ytdlp_support.extract_info = fake_extract
 
             subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
             result = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
@@ -747,7 +747,7 @@ class SubscriptionSyncTests(unittest.TestCase):
                     ])
                 raise AssertionError(f'Unexpected URL: {url}')
 
-            module.youtube_ytdlp_support.extract_info_with_player_responses = fake_extract
+            module.youtube_ytdlp_support.extract_info = fake_extract
 
             subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
             result = subscription.sync_videos(
@@ -773,7 +773,7 @@ class SubscriptionSyncTests(unittest.TestCase):
         with _stub_youtube_subscription_dependencies():
             module = _load_youtube_subscription_module()
             module.youtube_ytdlp_support.apply_youtube_player_strategy = lambda _url, _opts: None
-            module.youtube_ytdlp_support.extract_info_with_player_responses = (
+            module.youtube_ytdlp_support.extract_info = (
                 lambda _url, _opts, *, process=False: _build_ytdlp_info(
                     entries=[],
                     channel_id='UCdemo000001',

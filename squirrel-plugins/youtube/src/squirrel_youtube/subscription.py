@@ -265,7 +265,7 @@ class YoutubeSubscription:
 
     def _extract_source_info(self, url: str, *, start: int | None = None, end: int | None = None) -> dict[str, Any]:
         ydl_opts = self._build_ytdlp_opts(url, start=start, end=end)
-        info = youtube_ytdlp_support.extract_info_with_player_responses(url, ydl_opts, process=False)
+        info = youtube_ytdlp_support.extract_info(url, ydl_opts, process=False)
         return info or {}
 
     def _build_ytdlp_opts(self, url: str, *, start: int | None = None, end: int | None = None) -> dict[str, Any]:

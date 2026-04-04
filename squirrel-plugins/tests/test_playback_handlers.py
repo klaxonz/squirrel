@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import subprocess
 import sys
 import tempfile
@@ -449,36 +450,144 @@ class PlaybackHandlerTests(unittest.TestCase):
                 module.youtube_ytdlp_support.YOUTUBE_COOKIE_PLAYER_CLIENTS,
             )
 
-    def test_youtube_extractor_uses_unprocessed_info_for_metadata_extraction(self):
-        def _extract_callback(_url: str, _download: bool = False, process: bool = True):
-            if process:
-                raise RuntimeError(
-                    'ERROR: [youtube] demo: Requested format is not available. '
-                    'Use --list-formats for a list of available formats'
+    def test_youtube_extract_info_plain_retries_without_bgutil_script_provider_on_timeout(self):
+        calls = []
+
+        def _extract_callback(_url: str, _download: bool = False, _process: bool = True):
+            extractor_args = dict((FakeYoutubeDL.last_opts or {}).get('extractor_args') or {})
+            calls.append(extractor_args)
+            if 'youtubepot-bgutilscript' in extractor_args:
+                raise subprocess.TimeoutExpired(
+                    cmd=['C:/node.exe', 'C:/bgutil/server/build/generate_once.js', '--version'],
+                    timeout=15.0,
                 )
-            return {
-                'id': 'demo',
-                'title': 'Demo title',
-                'timestamp': 1712345678,
-                'formats': [],
-            }
+            return {'id': 'demo'}
 
         with _stub_youtube_mpd_dependencies(
             extract_callback=_extract_callback,
         ) as (FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+
+            info = module.youtube_ytdlp_support.extract_info(
+                'https://youtube.com/watch?v=demo',
+                {
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['mweb'],
+                        },
+                        'youtubepot-bgutilscript': {
+                            'server_home': ['C:/bgutil/server'],
+                        },
+                    },
+                },
+                process=False,
+            )
+
+            self.assertEqual(info, {'id': 'demo'})
+            self.assertEqual(len(calls), 2)
+            self.assertIn('youtubepot-bgutilscript', calls[0])
+            self.assertNotIn('youtubepot-bgutilscript', calls[1])
+            self.assertEqual(
+                calls[1]['youtube']['player_client'],
+                module.youtube_ytdlp_support.YOUTUBE_COOKIE_PLAYER_CLIENTS,
+            )
+
+    def test_youtube_extractor_uses_unprocessed_info_for_metadata_extraction(self):
+        with _stub_youtube_mpd_dependencies(
+        ) as (FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
             module = _load_youtube_extractor_module()
+            calls = []
+
+            def _extract_callback(url: str, opts: dict, *, process: bool = True):
+                calls.append((url, dict(opts), process))
+                return {
+                    'id': 'demo',
+                    'title': 'Demo title',
+                    'timestamp': 1712345678,
+                    'formats': [],
+                }
+
+            module.youtube_ytdlp_support.extract_info = _extract_callback
+            module.youtube_ytdlp_support.extract_info_with_player_responses = (
+                lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                    AssertionError('metadata extraction should not use hook helper')
+                )
+            )
 
             info = module.YoutubeExtractor()._extract_with_ytdlp('https://youtube.com/watch?v=demo')
 
             self.assertEqual(info['title'], 'Demo title')
-            self.assertFalse(FakeYoutubeDL.last_process)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][0], 'https://youtube.com/watch?v=demo')
+            self.assertFalse(calls[0][2])
             self.assertIsNotNone(info.get('publish_date'))
+            self.assertIsNone(FakeYoutubeDL.last_opts)
+
+    def test_youtube_extract_info_with_player_responses_isolated_spawns_worker_process(self):
+        with _stub_youtube_mpd_dependencies() as (_FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+            completed = types.SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps({'info': {'id': 'demo', 'formats': []}}),
+                stderr='',
+            )
+
+            with patch.object(module.youtube_ytdlp_support.subprocess, 'run', return_value=completed) as run_mock:
+                info = module.youtube_ytdlp_support.extract_info_with_player_responses_isolated(
+                    'https://youtube.com/watch?v=demo',
+                    {'quiet': True},
+                    process=False,
+                )
+
+            self.assertEqual(info, {'id': 'demo', 'formats': []})
+            run_args, run_kwargs = run_mock.call_args
+            self.assertEqual(run_args[0][0], sys.executable)
+            self.assertTrue(str(run_args[0][1]).endswith('playback_worker.py'))
+            payload = json.loads(run_kwargs['input'])
+            self.assertEqual(payload['url'], 'https://youtube.com/watch?v=demo')
+            self.assertEqual(payload['opts'], {'quiet': True})
+            self.assertFalse(payload['process'])
+            self.assertTrue(run_kwargs['capture_output'])
+            self.assertTrue(run_kwargs['text'])
+
+    def test_youtube_mpd_extract_video_info_uses_isolated_helper_for_playback(self):
+        with _stub_youtube_mpd_dependencies() as (_FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+            calls = []
+
+            def _extract_callback(url: str, opts: dict, *, process: bool = True, timeout_seconds=None):
+                calls.append((url, dict(opts), process, timeout_seconds))
+                return {
+                    'id': 'demo',
+                    'formats': [],
+                    module.youtube_ytdlp_support.YOUTUBE_PLAYER_RESPONSES_INFO_KEY: [{'streamingData': {}}],
+                }
+
+            module.youtube_ytdlp_support.extract_info_with_player_responses_isolated = _extract_callback
+            module.youtube_ytdlp_support.extract_info_with_player_responses = (
+                lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                    AssertionError('playback extraction should use isolated hook helper')
+                )
+            )
+
+            info = module._extract_video_info('https://youtube.com/watch?v=demo')
+
+            self.assertEqual(info['id'], 'demo')
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][0], 'https://youtube.com/watch?v=demo')
+            self.assertTrue(calls[0][2])
 
     def test_youtube_extract_video_info_raises_auth_error_for_sign_in_failures(self):
         with _stub_youtube_mpd_dependencies(
             extract_exception=RuntimeError('Sign in to confirm you’re not a bot'),
         ) as (_FakeYoutubeDL, AuthError, _NetworkError, _ParseError):
             module = _load_youtube_mpd_module()
+            module.youtube_ytdlp_support.extract_info_with_player_responses_isolated = (
+                lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                    RuntimeError('Sign in to confirm you’re not a bot')
+                )
+            )
 
             with self.assertRaises(AuthError):
                 module._extract_video_info('https://youtube.com/watch?v=demo')

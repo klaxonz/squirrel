@@ -51,7 +51,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
         """使用yt-dlp获取YouTube视频信息"""
         try:
             ydl_opts = self._build_ytdlp_opts(url, queue_name)
-            video_info = youtube_ytdlp_support.extract_info_with_player_responses(
+            video_info = youtube_ytdlp_support.extract_info(
                 url,
                 ydl_opts,
                 process=False,
@@ -70,7 +70,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
                 raise AuthError(f"需要登录或为私有视频: {url}", context=context)
             elif 'video unavailable' in error_msg or 'removed' in error_msg or 'deleted' in error_msg:
                 raise NotFoundError(f"视频不存在或已删除: {url}", context=context)
-            elif any(kw in error_msg for kw in ['timeout', 'connection', 'network', 'closed file', 'i/o operation']):
+            elif any(kw in error_msg for kw in ['timeout', 'timed out', 'connection', 'network', 'closed file', 'i/o operation']):
                 raise NetworkError(f"网络连接失败: {url}", context=context)
             else:
                 logger.error(f"YouTube视频信息提取失败: {url}", exc_info=True)
