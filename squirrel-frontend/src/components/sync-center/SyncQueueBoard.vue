@@ -3,11 +3,11 @@
     <div class="board-header">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <p class="board-kicker">LANE_01</p>
+          <p class="board-kicker">PENDING_QUEUE</p>
           <div class="h-px flex-1 bg-white/5"></div>
           <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
         </div>
-        <h2 class="board-title">PENDING_QUEUE</h2>
+        <h2 class="board-title">LANE_01</h2>
       </div>
     </div>
 
