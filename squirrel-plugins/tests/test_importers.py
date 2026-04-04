@@ -29,6 +29,15 @@ class _SubscriptionImportItem:
     extra_data: dict | None = None
 
 
+@dataclass
+class _SubscriptionImportBatchResult:
+    items: list[_SubscriptionImportItem]
+    cursor_payload: dict | None = None
+    has_more: bool = False
+    stop_reason: str | None = None
+    total_available: int | None = None
+
+
 class _FakeResponse:
     def __init__(self, text: str, status_code: int = 200):
         self.text = text
@@ -80,6 +89,8 @@ def _stub_pornhub_importer_dependencies():
 
     crawl_module = types.ModuleType('crawl')
     crawl_module.SubscriptionImportItem = _SubscriptionImportItem
+    crawl_module.SubscriptionImportBatchResult = _SubscriptionImportBatchResult
+    crawl_module.SubscriptionImportBatchResult = _SubscriptionImportBatchResult
     crawl_module.filter_cookies_to_query_string = lambda _url: 'cookie=1'
     crawl_module.get_http_headers = lambda _site, headers=None: dict(headers or {})
 
@@ -124,6 +135,7 @@ def _stub_javdb_importer_dependencies():
 
     crawl_module = types.ModuleType('crawl')
     crawl_module.SubscriptionImportItem = _SubscriptionImportItem
+    crawl_module.SubscriptionImportBatchResult = _SubscriptionImportBatchResult
 
     bs4_module = types.ModuleType('bs4')
     bs4_module.BeautifulSoup = lambda html, _parser: soup_registry[html]
@@ -376,6 +388,54 @@ class ImporterTests(unittest.TestCase):
                     )
                 ],
             )
+
+    def test_javdb_importer_returns_cursor_batch_without_scanning_following_pages(self):
+        with _stub_javdb_importer_dependencies() as (_responses, soups):
+            module = _load_javdb_importer_module()
+            requested_urls = []
+
+            def _fetch_javdb_html(url, **_kwargs):
+                requested_urls.append(url)
+                page = int(url.rsplit('=', 1)[-1])
+                return _FakeResponse(f'actors-page-{page}')
+
+            module.fetch_javdb_html = _fetch_javdb_html
+
+            soups['actors-page-1'] = _FakeSoup(select_map={
+                '.actor-box a:has(img.avatar)': [
+                    _FakeListItem({
+                        'img': [_FakeTag({'src': 'https://cdn.example/actor-1.jpg'})],
+                        'strong': [_FakeTag(text='Actor One')],
+                    }, attrs={'href': '/actors/actor-one'}),
+                ],
+                '.pagination .pagination-next': [_FakeTag({'class': []})],
+                '.pagination a': [
+                    _FakeTag({'href': '/users/collection_actors?page=1'}, text='1'),
+                    _FakeTag({'href': '/users/collection_actors?page=2'}, text='2'),
+                    _FakeTag({'href': '/users/collection_actors?page=3'}, text='3'),
+                ],
+            })
+
+            importer = module.JavdbUserSubscriptionImporter()
+            batch = importer.get_user_subscriptions_batch()
+
+            self.assertEqual(
+                requested_urls,
+                [
+                    'https://javdb.com/users/collection_actors?page=1',
+                ],
+            )
+            self.assertEqual(
+                batch.items,
+                [_SubscriptionImportItem(
+                    url='https://javdb.com/actors/actor-one',
+                    name='Actor One',
+                    avatar='https://cdn.example/actor-1.jpg',
+                )],
+            )
+            self.assertTrue(batch.has_more)
+            self.assertEqual(batch.cursor_payload, {'page': 2})
+            self.assertEqual(batch.stop_reason, 'batch_exhausted')
 
 
 if __name__ == '__main__':

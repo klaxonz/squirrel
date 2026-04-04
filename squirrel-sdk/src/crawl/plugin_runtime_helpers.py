@@ -2,9 +2,15 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, cast
 
-from .core import ExtractionTask, SubscriptionSyncContext
+from .core import (
+    ExtractionTask,
+    PaginatedUserSubscriptionImporter,
+    SubscriptionImportBatchResult,
+    SubscriptionSyncContext,
+    UserSubscriptionImporter,
+)
 from .plugin import create_plugin_runtime
 from .runtime_models import PluginHealthStatus, PluginManifest
 
@@ -78,15 +84,79 @@ def build_login_status_handler(checker: Callable[[], Any]) -> PayloadHandler:
 
 
 def build_import_subscriptions_handler(importer_factory: ObjectFactory) -> PayloadHandler:
-    def _handler(_payload: Payload) -> Dict[str, Any]:
+    def _handler(payload: Payload) -> Dict[str, Any]:
         importer = importer_factory()
-        items = importer.get_user_subscriptions()
+        cursor_payload = dict(payload.get('cursor_payload') or {})
+        limit = payload.get('limit')
+
+        if hasattr(importer, 'get_user_subscriptions_batch'):
+            batch_result = cast(
+                PaginatedUserSubscriptionImporter,
+                importer,
+            ).get_user_subscriptions_batch(
+                cursor_payload=cursor_payload or None,
+                limit=limit,
+            )
+        else:
+            all_items = cast(UserSubscriptionImporter, importer).get_user_subscriptions()
+            batch_result = _build_import_batch_from_items(
+                all_items,
+                cursor_payload=cursor_payload or None,
+                limit=limit,
+            )
+
+        items = batch_result.items
         return {
             'items': [item.to_dict() for item in items],
             'total': len(items),
+            'cursor_payload': batch_result.cursor_payload,
+            'has_more': batch_result.has_more,
+            'stop_reason': batch_result.stop_reason,
+            'total_available': batch_result.total_available,
         }
 
     return _handler
+
+
+def _build_import_batch_from_items(
+    items: list[Any],
+    *,
+    cursor_payload: Optional[Dict[str, Any]] = None,
+    limit: Any = None,
+) -> SubscriptionImportBatchResult:
+    offset = 0
+    if cursor_payload:
+        try:
+            offset = max(int(cursor_payload.get('offset', 0) or 0), 0)
+        except (TypeError, ValueError):
+            offset = 0
+
+    normalized_limit: Optional[int]
+    try:
+        normalized_limit = int(limit) if limit is not None else None
+    except (TypeError, ValueError):
+        normalized_limit = None
+    if normalized_limit is not None and normalized_limit <= 0:
+        normalized_limit = None
+
+    if normalized_limit is None:
+        batch_items = list(items[offset:])
+    else:
+        batch_items = list(items[offset:offset + normalized_limit])
+
+    next_offset = offset + len(batch_items)
+    has_more = next_offset < len(items)
+
+    return SubscriptionImportBatchResult(
+        items=[
+            item if hasattr(item, 'to_dict') else item
+            for item in batch_items
+        ],
+        cursor_payload={'offset': next_offset} if has_more else None,
+        has_more=has_more,
+        stop_reason='batch_exhausted' if has_more else 'source_exhausted',
+        total_available=len(items),
+    )
 
 
 def build_resolve_subscription_handler(subscription_factory: Callable[[str], Any]) -> PayloadHandler:

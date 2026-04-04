@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
-from typing import List
+import re
+from typing import Any, List, Optional
 
 from bs4 import BeautifulSoup
 
 from crawl import (
+    SubscriptionImportBatchResult,
     SubscriptionImportItem,
 )
 
@@ -20,77 +22,126 @@ class JavdbUserSubscriptionImporter:
     从 JavDB 导入用户的订阅列表
     需要登录 cookies 才能获取
     """
-    
-    domain = 'javdb.com'
-    
-    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
-        """
-        获取用户在 JavDB 的订阅列表
-        
-        Returns:
-            订阅列表
-        """
-        try:
-            base_url = f'https://{self.domain}'
-            items = []
-            subscription_urls: List[str] = []
-            page = 1
-            
-            # JavDB 的订阅演员页面
-            while True:
-                # 访问订阅页面
-                subscribed_url = f'{base_url}/users/collection_actors?page={page}'
-                
-                try:
-                    resp = fetch_javdb_html(
-                        subscribed_url,
-                        timeout=15,
-                        use_rate_limit=False,
-                    )
-                    resp.raise_for_status()
-                    
-                    soup = BeautifulSoup(resp.text, 'html.parser')
-                    
-                    # 查找演员链接
-                    actor_items = soup.select('.actor-box a:has(img.avatar)')
-                    
-                    if not actor_items:
-                        # 没有更多数据了
-                        break
-                    
-                    for item in actor_items:
-                        href = item.get('href')
-                        avatars = item.select('img')
-                        names = item.select('strong')
-                        if not avatars or not names:
-                            logger.debug('Skipping malformed JavDB actor item on page %s', page)
-                            continue
 
-                        avatar = avatars[0].get('src')
-                        name = names[0].text.strip()
-                        if href and '/actors/' in href:
-                            full_url = f'{base_url}{href}' if href.startswith('/') else href
-                            # 去掉查询参数，只保留演员页面 URL
-                            full_url = full_url.split('?')[0]
-                            if full_url not in subscription_urls:
-                                subscription_urls.append(full_url)
-                                items.append(SubscriptionImportItem(url=full_url, name=name, avatar=avatar))
-                    
-                    # 检查是否有下一页
-                    next_page = soup.select('.pagination .pagination-next')
-                    if not next_page or 'disabled' in next_page[0].get('class', []):
-                        break
-                    
-                    page += 1
-                    
-                except Exception as e:
-                    logger.warning(f"Failed to get JavDB page {page}: {e}")
-                    break
-            
-            logger.info(f"Found {len(subscription_urls)} JavDB subscriptions")
-            return items
-            
-        except Exception as e:
-            logger.error(f"Failed to import JavDB subscriptions: {e}", exc_info=True)
+    domain = 'javdb.com'
+    page_fetch_timeout = 15
+
+    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
+        items: List[SubscriptionImportItem] = []
+        cursor_payload: Optional[dict[str, Any]] = None
+
+        while True:
+            batch = self.get_user_subscriptions_batch(cursor_payload=cursor_payload)
+            items.extend(batch.items)
+            if not batch.has_more:
+                break
+            cursor_payload = batch.cursor_payload
+
+        return items
+
+    def get_user_subscriptions_batch(
+        self,
+        cursor_payload: Optional[dict[str, Any]] = None,
+        limit: Optional[int] = None,
+    ) -> SubscriptionImportBatchResult:
+        try:
+            page = self._resolve_page(cursor_payload)
+            soup = self._fetch_page_soup(page)
+            items = self._extract_page_items(soup, page)
+            total_pages = self._extract_total_pages(soup)
+            has_more = self._has_more_pages(page, total_pages, soup)
+
+            return SubscriptionImportBatchResult(
+                items=self._apply_limit(items, limit),
+                cursor_payload={'page': page + 1} if has_more else None,
+                has_more=has_more,
+                stop_reason='batch_exhausted' if has_more else 'source_exhausted',
+            )
+        except Exception as exc:
+            logger.error('Failed to import JavDB subscriptions batch: %s', exc, exc_info=True)
             raise
 
+    def _resolve_page(self, cursor_payload: Optional[dict[str, Any]]) -> int:
+        try:
+            page = int((cursor_payload or {}).get('page', 1) or 1)
+        except (TypeError, ValueError):
+            page = 1
+        return max(page, 1)
+
+    def _fetch_page_soup(self, page: int) -> BeautifulSoup:
+        response = fetch_javdb_html(
+            self._build_page_url(page),
+            timeout=self.page_fetch_timeout,
+            use_rate_limit=False,
+        )
+        response.raise_for_status()
+        return BeautifulSoup(response.text, 'html.parser')
+
+    def _build_page_url(self, page: int) -> str:
+        return f'https://{self.domain}/users/collection_actors?page={page}'
+
+    def _extract_page_items(self, soup: BeautifulSoup, page: int) -> List[SubscriptionImportItem]:
+        items: List[SubscriptionImportItem] = []
+        seen_urls: set[str] = set()
+
+        for item in soup.select('.actor-box a:has(img.avatar)'):
+            href = item.get('href')
+            avatars = item.select('img')
+            names = item.select('strong')
+            if not avatars or not names:
+                logger.debug('Skipping malformed JavDB actor item on page %s', page)
+                continue
+            if not href or '/actors/' not in href:
+                continue
+
+            full_url = f'https://{self.domain}{href}' if href.startswith('/') else href
+            full_url = full_url.split('?')[0]
+            if not full_url or full_url in seen_urls:
+                continue
+
+            seen_urls.add(full_url)
+            items.append(SubscriptionImportItem(
+                url=full_url,
+                name=names[0].text.strip(),
+                avatar=avatars[0].get('src'),
+            ))
+
+        return items
+
+    def _extract_total_pages(self, soup: BeautifulSoup) -> Optional[int]:
+        page_numbers: list[int] = []
+        for link in soup.select('.pagination a'):
+            text = str(getattr(link, 'text', '') or '').strip()
+            if text.isdigit():
+                page_numbers.append(int(text))
+
+            href = link.get('href')
+            if not href:
+                continue
+            match = re.search(r'[?&]page=(\d+)', href)
+            if match:
+                page_numbers.append(int(match.group(1)))
+
+        return max(page_numbers) if page_numbers else None
+
+    def _has_more_pages(self, page: int, total_pages: Optional[int], soup: BeautifulSoup) -> bool:
+        if total_pages is not None:
+            return page < total_pages
+
+        next_page = soup.select('.pagination .pagination-next')
+        return bool(next_page) and 'disabled' not in next_page[0].get('class', [])
+
+    def _apply_limit(
+        self,
+        items: List[SubscriptionImportItem],
+        limit: Optional[int],
+    ) -> List[SubscriptionImportItem]:
+        if limit is None:
+            return items
+        try:
+            normalized_limit = int(limit)
+        except (TypeError, ValueError):
+            return items
+        if normalized_limit <= 0:
+            return items
+        return items[:normalized_limit]

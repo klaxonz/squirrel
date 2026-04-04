@@ -296,6 +296,47 @@ class UserSubscriptionImporter(Protocol):
         ...
 
 
+@dataclass
+class SubscriptionImportBatchResult:
+    items: List[SubscriptionImportItem]
+    cursor_payload: Optional[Dict[str, Any]] = None
+    has_more: bool = False
+    stop_reason: Optional[str] = None
+    total_available: Optional[int] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'items': [item.to_dict() for item in self.items],
+            'cursor_payload': self.cursor_payload,
+            'has_more': self.has_more,
+            'stop_reason': self.stop_reason,
+            'total_available': self.total_available,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'SubscriptionImportBatchResult':
+        return cls(
+            items=[
+                item if isinstance(item, SubscriptionImportItem) else SubscriptionImportItem.from_dict(item)
+                for item in list(data.get('items') or [])
+            ],
+            cursor_payload=dict(data.get('cursor_payload') or {}) or None,
+            has_more=bool(data.get('has_more', False)),
+            stop_reason=data.get('stop_reason'),
+            total_available=data.get('total_available'),
+        )
+
+
+@runtime_checkable
+class PaginatedUserSubscriptionImporter(Protocol):
+    def get_user_subscriptions_batch(
+        self,
+        cursor_payload: Optional[Dict[str, Any]] = None,
+        limit: Optional[int] = None,
+    ) -> SubscriptionImportBatchResult:
+        ...
+
+
 
 
 @dataclass

@@ -30,7 +30,7 @@ PLUGIN_MANIFEST = PluginManifest(
             name='import_subscriptions',
             description='Import followed JavDB actors for the current account.',
             response_schema={'type': 'object'},
-            timeout_ms=30000,
+            timeout_ms=120000,
         ),
         PluginCapability(
             name='resolve_subscription',

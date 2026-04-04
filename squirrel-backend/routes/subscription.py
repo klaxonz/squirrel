@@ -1,4 +1,5 @@
 import logging
+import json
 from datetime import datetime
 
 from fastapi import APIRouter, Query, Depends, Request
@@ -423,6 +424,8 @@ def get_supported_sites(current_user: User = Depends(get_current_user)):
 @router.get("/api/subscription/import/{site}/preview")
 def preview_subscriptions(
     site: str,
+    cursor: str | None = Query(None, description='分页游标 JSON'),
+    limit: int = Query(50, ge=1, le=200, description='每次预览加载数量'),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -445,9 +448,24 @@ def preview_subscriptions(
         if normalized_site not in enabled_sites:
             return response.param_error(f"站点已禁用，无法预览订阅: {site}")
 
+        cursor_payload = None
+        if cursor:
+            try:
+                parsed_cursor = json.loads(cursor)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f'无效的预览游标: {exc.msg}') from exc
+            if not isinstance(parsed_cursor, dict):
+                raise ValueError('无效的预览游标: 必须为 JSON object')
+            cursor_payload = parsed_cursor
+
         logger.info(f"User {current_user.id} previewing subscriptions from {normalized_site}")
-        
-        result = subscription_service.preview_user_subscriptions(normalized_site, current_user.id)
+
+        result = subscription_service.preview_user_subscriptions(
+            normalized_site,
+            current_user.id,
+            cursor_payload=cursor_payload,
+            limit=limit,
+        )
         
         return response.success(result)
         

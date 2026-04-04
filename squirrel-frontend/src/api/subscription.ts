@@ -62,8 +62,18 @@ export const getSupportedImportSites = async () => {
   return { data: data?.sites || [], error }
 }
 
-export const previewImportSubscriptions = async (site: string) => {
-  return get(`/api/subscription/import/${site}/preview`)
+export const previewImportSubscriptions = async (
+  site: string,
+  options: { cursorPayload?: Record<string, unknown> | null, limit?: number } = {},
+) => {
+  const params: Record<string, unknown> = {}
+  if (options.cursorPayload) {
+    params.cursor = JSON.stringify(options.cursorPayload)
+  }
+  if (typeof options.limit === 'number') {
+    params.limit = options.limit
+  }
+  return get(`/api/subscription/import/${site}/preview`, params)
 }
 
 export const importSubscriptions = async (site: string, subscriptionUrls: string[] | null = null) => {

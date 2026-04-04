@@ -235,6 +235,131 @@ def test_preview_user_subscriptions_reads_items_from_plugin_gateway(monkeypatch)
     assert result['subscriptions'][1]['is_imported'] is False
 
 
+def test_preview_user_subscriptions_forwards_cursor_and_limit(monkeypatch):
+    _setup_test_env(monkeypatch)
+    calls = []
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            calls.append({
+                'capability': capability,
+                'payload': payload,
+                'site_name': site_name,
+                'domain': domain,
+                'timeout_ms': timeout_ms,
+            })
+            return PluginInvokeResponse(
+                request_id='preview-2',
+                ok=True,
+                data={
+                    'items': [
+                        {'url': 'https://javdb.com/actors/2', 'name': 'Actor Two'},
+                    ],
+                    'total': 1,
+                    'cursor_payload': {'page': 3},
+                    'has_more': True,
+                    'stop_reason': 'batch_exhausted',
+                    'total_available': 1000,
+                },
+            )
+
+    monkeypatch.setattr(
+        subscription_service,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+    monkeypatch.setattr(subscription_service, 'get_active_user_subscription_url_map', lambda _user_id: {})
+
+    result = subscription_service.preview_user_subscriptions(
+        site_name='javdb',
+        user_id=1,
+        cursor_payload={'page': 2},
+        limit=50,
+    )
+
+    assert calls == [{
+        'capability': 'import_subscriptions',
+        'payload': {
+            'cursor_payload': {'page': 2},
+            'limit': 50,
+        },
+        'site_name': 'javdb',
+        'domain': None,
+        'timeout_ms': None,
+    }]
+    assert result['site'] == 'javdb'
+    assert result['total'] == 1000
+    assert result['loaded'] == 1
+    assert result['has_more'] is True
+    assert result['cursor_payload'] == {'page': 3}
+    assert result['subscriptions'][0]['url'] == 'https://javdb.com/actors/2'
+
+
+def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway(monkeypatch):
+    _setup_test_env(monkeypatch)
+    gateway_calls = []
+    enqueued_batches = []
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            gateway_calls.append({
+                'capability': capability,
+                'payload': payload,
+                'site_name': site_name,
+                'domain': domain,
+                'timeout_ms': timeout_ms,
+            })
+            return PluginInvokeResponse(request_id='unexpected', ok=True, data={'items': [], 'total': 0})
+
+    class _ImmediateThread:
+        def __init__(self, target=None, args=(), daemon=None):
+            self._target = target
+            self._args = args
+            self.daemon = daemon
+
+        def start(self):
+            if self._target is not None:
+                self._target(*self._args)
+
+    monkeypatch.setattr(
+        subscription_service,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+    monkeypatch.setattr(subscription_service, 'get_active_user_subscription_url_map', lambda _user_id: {})
+    monkeypatch.setattr(
+        subscription_service,
+        '_enqueue_subscriptions_async',
+        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
+    )
+    monkeypatch.setattr(threading, 'Thread', _ImmediateThread)
+
+    result = subscription_service.import_user_subscriptions(
+        site_name='javdb',
+        user_id=1,
+        selected_urls=[
+            'https://javdb.com/actors/alpha',
+            'https://javdb.com/actors/beta',
+        ],
+    )
+
+    assert gateway_calls == []
+    assert result == {
+        'total': 2,
+        'found': None,
+        'selected': 2,
+        'skipped': 0,
+    }
+    assert len(enqueued_batches) == 1
+    queued_subscriptions, queued_user_id, queued_site_name = enqueued_batches[0]
+    assert queued_user_id == 1
+    assert queued_site_name == 'javdb'
+    assert [item.url for item in queued_subscriptions] == [
+        'https://javdb.com/actors/alpha',
+        'https://javdb.com/actors/beta',
+    ]
+
+
 def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(monkeypatch):
     _setup_test_env(monkeypatch)
 
@@ -302,7 +427,7 @@ def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(mo
     assert subscription_service.get_runtime_supported_sites('import_subscriptions') == ['bilibili', 'youtube']
 
 
-def test_import_user_subscriptions_filters_gateway_items_before_enqueue(monkeypatch):
+def test_import_user_subscriptions_filters_selected_urls_before_enqueue(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     _seed_subscription(engine, user_ids=[1])
 
@@ -310,21 +435,6 @@ def test_import_user_subscriptions_filters_gateway_items_before_enqueue(monkeypa
         subscription = session.get(Subscription, 1)
         subscription.url = 'https://space.bilibili.com/1'
         session.commit()
-
-    class _FakeGateway:
-        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
-            return PluginInvokeResponse(
-                request_id='import-1',
-                ok=True,
-                data={
-                    'items': [
-                        {'url': 'https://space.bilibili.com/1', 'name': 'Existing creator'},
-                        {'url': 'https://space.bilibili.com/2', 'name': 'Selected creator'},
-                        {'url': 'https://space.bilibili.com/3', 'name': 'Ignored creator'},
-                    ],
-                    'total': 3,
-                },
-            )
 
     enqueued_batches = []
 
@@ -338,11 +448,6 @@ def test_import_user_subscriptions_filters_gateway_items_before_enqueue(monkeypa
             if self._target is not None:
                 self._target(*self._args)
 
-    monkeypatch.setattr(
-        subscription_service,
-        'get_plugin_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
-    )
     monkeypatch.setattr(
         subscription_service,
         '_enqueue_subscriptions_async',
@@ -361,7 +466,7 @@ def test_import_user_subscriptions_filters_gateway_items_before_enqueue(monkeypa
 
     assert result == {
         'total': 1,
-        'found': 3,
+        'found': None,
         'selected': 2,
         'skipped': 1,
     }
@@ -370,3 +475,101 @@ def test_import_user_subscriptions_filters_gateway_items_before_enqueue(monkeypa
     assert queued_user_id == 1
     assert queued_site_name == 'bilibili'
     assert [item.url for item in queued_subscriptions] == ['https://space.bilibili.com/2']
+
+
+def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(monkeypatch):
+    _setup_test_env(monkeypatch)
+    calls = []
+    enqueued_batches = []
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            calls.append({
+                'capability': capability,
+                'payload': payload,
+                'site_name': site_name,
+                'domain': domain,
+                'timeout_ms': timeout_ms,
+            })
+            if len(calls) == 1:
+                return PluginInvokeResponse(
+                    request_id='import-batch-1',
+                    ok=True,
+                    data={
+                        'items': [
+                            {'url': 'https://javdb.com/actors/one', 'name': 'Actor One'},
+                        ],
+                        'total': 1,
+                        'cursor_payload': {'page': 2},
+                        'has_more': True,
+                        'stop_reason': 'batch_exhausted',
+                    },
+                )
+            return PluginInvokeResponse(
+                request_id='import-batch-2',
+                ok=True,
+                data={
+                    'items': [
+                        {'url': 'https://javdb.com/actors/two', 'name': 'Actor Two'},
+                    ],
+                    'total': 1,
+                    'has_more': False,
+                    'stop_reason': 'source_exhausted',
+                },
+            )
+
+    class _ImmediateThread:
+        def __init__(self, target=None, args=(), daemon=None):
+            self._target = target
+            self._args = args
+            self.daemon = daemon
+
+        def start(self):
+            if self._target is not None:
+                self._target(*self._args)
+
+    monkeypatch.setattr(
+        subscription_service,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+    monkeypatch.setattr(subscription_service, 'get_active_user_subscription_url_map', lambda _user_id: {})
+    monkeypatch.setattr(
+        subscription_service,
+        '_enqueue_subscriptions_async',
+        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
+    )
+    monkeypatch.setattr(threading, 'Thread', _ImmediateThread)
+
+    result = subscription_service.import_user_subscriptions(
+        site_name='javdb',
+        user_id=1,
+    )
+
+    assert calls == [
+        {
+            'capability': 'import_subscriptions',
+            'payload': None,
+            'site_name': 'javdb',
+            'domain': None,
+            'timeout_ms': None,
+        },
+        {
+            'capability': 'import_subscriptions',
+            'payload': {'cursor_payload': {'page': 2}},
+            'site_name': 'javdb',
+            'domain': None,
+            'timeout_ms': None,
+        },
+    ]
+    assert result == {
+        'total': 2,
+        'found': 2,
+        'selected': 2,
+        'skipped': 0,
+    }
+    assert len(enqueued_batches) == 1
+    assert [item.url for item in enqueued_batches[0][0]] == [
+        'https://javdb.com/actors/one',
+        'https://javdb.com/actors/two',
+    ]

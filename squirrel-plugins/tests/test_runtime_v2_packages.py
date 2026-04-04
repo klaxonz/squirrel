@@ -244,6 +244,23 @@ class RuntimeV2PackageTests(unittest.TestCase):
         self.assertGreaterEqual(runtime_capability['timeout_ms'], 30000)
         self.assertGreaterEqual(metadata_capability['timeout_ms'], 30000)
 
+    def test_javdb_import_subscriptions_timeout_budget_is_large_enough_for_multi_page_fetches(self):
+        plugin_dir = PLUGINS_ROOT / 'javdb'
+        runtime_json = json.loads((plugin_dir / 'plugin-runtime.json').read_text(encoding='utf-8'))
+        metadata_capability = next(
+            item for item in runtime_json['manifest']['capabilities'] if item['name'] == 'import_subscriptions'
+        )
+
+        with _stub_crawl_module(), _import_paths(plugin_dir / 'src'):
+            module = importlib.import_module('squirrel_javdb.runtime')
+            runtime = module.get_plugin_runtime()
+            runtime_capability = next(
+                item.to_dict() for item in runtime.manifest().capabilities if item.name == 'import_subscriptions'
+            )
+
+        self.assertGreaterEqual(runtime_capability['timeout_ms'], 120000)
+        self.assertGreaterEqual(metadata_capability['timeout_ms'], 120000)
+
     def test_bilibili_sync_subscription_timeout_budget_is_large_enough_for_slow_feed_fetches(self):
         plugin_dir = PLUGINS_ROOT / 'bilibili'
         runtime_json = json.loads((plugin_dir / 'plugin-runtime.json').read_text(encoding='utf-8'))

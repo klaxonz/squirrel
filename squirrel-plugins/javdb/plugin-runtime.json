@@ -21,7 +21,7 @@
         "response_schema": {
           "type": "object"
         },
-        "timeout_ms": 30000
+        "timeout_ms": 120000
       },
       {
         "name": "resolve_subscription",

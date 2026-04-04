@@ -37,16 +37,17 @@
         <section v-else-if="step === 2" class="space-y-4">
           <div class="import-dialog__summary">
             <div class="import-dialog__summary-block">
-              <span class="import-dialog__summary-label">总计</span>
-              <strong class="import-dialog__summary-value">{{ previewData.total || 0 }}</strong>
+              <span class="import-dialog__summary-label">进度</span>
+              <strong class="import-dialog__summary-value">{{ loadedCount }}</strong>
+              <p class="mt-1 text-xs text-muted-foreground">已加载 {{ loadedCount }} / {{ previewData.total ?? '未知' }} 个</p>
             </div>
             <div class="import-dialog__summary-block">
               <span class="import-dialog__summary-label">已导入</span>
-              <strong class="import-dialog__summary-value">{{ previewData.imported ?? 0 }}</strong>
+              <strong class="import-dialog__summary-value">{{ importedCount }}</strong>
             </div>
             <div class="import-dialog__summary-block">
               <span class="import-dialog__summary-label">未导入</span>
-              <strong class="import-dialog__summary-value">{{ previewData.not_imported ?? 0 }}</strong>
+              <strong class="import-dialog__summary-value">{{ notImportedCount }}</strong>
             </div>
             <div class="import-dialog__summary-block">
               <span class="import-dialog__summary-label">已选</span>
@@ -54,7 +55,7 @@
             </div>
           </div>
 
-          <div v-if="loadingPreview" class="import-dialog__loader">
+          <div v-if="loadingPreview && !loadedCount" class="import-dialog__loader">
             <Loader2 class="h-6 w-6 animate-spin text-primary" />
             <span class="text-sm text-muted-foreground">正在读取订阅列表...</span>
           </div>
@@ -62,10 +63,13 @@
           <template v-else>
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="secondary" class="rounded-full" @click="selectAllNotImported">全选未导入</Button>
+                <Button size="sm" variant="secondary" class="rounded-full" @click="selectAllNotImported">全选已加载未导入</Button>
                 <Button size="sm" variant="ghost" class="rounded-full" @click="clearSelection">清空</Button>
               </div>
-              <p class="text-sm text-muted-foreground">已选 {{ selectedCount }} 个</p>
+              <p class="text-sm text-muted-foreground">
+                已加载 {{ loadedCount }} / {{ previewData.total ?? '未知' }} 个
+                <span v-if="previewData.has_more">，可继续加载</span>
+              </p>
             </div>
 
             <div class="import-dialog__list">
@@ -104,6 +108,13 @@
                 </Badge>
               </label>
             </div>
+
+            <div v-if="previewData.has_more" class="flex justify-center pt-2">
+              <Button size="sm" variant="outline" :disabled="loadingMorePreview" @click="loadMorePreview">
+                <Loader2 v-if="loadingMorePreview" class="h-4 w-4 animate-spin" />
+                {{ loadingMorePreview ? '加载中...' : '加载更多' }}
+              </Button>
+            </div>
           </template>
         </section>
 
@@ -125,7 +136,12 @@
             <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">新增导入任务</p>
             <p class="mt-2 text-4xl font-bold tracking-[-0.05em] text-foreground">{{ importResult.total || 0 }}</p>
             <p class="mt-3 text-xs text-muted-foreground">
-              拉取 {{ importResult.found ?? 0 }} 个，选择 {{ importResult.selected ?? 0 }} 个，跳过 {{ importResult.skipped ?? 0 }} 个。
+              <span v-if="importResult.found != null">
+                拉取 {{ importResult.found }} 个，选择 {{ importResult.selected ?? 0 }} 个，跳过 {{ importResult.skipped ?? 0 }} 个。
+              </span>
+              <span v-else>
+                选择 {{ importResult.selected ?? 0 }} 个，跳过 {{ importResult.skipped ?? 0 }} 个。
+              </span>
             </p>
           </div>
 
@@ -204,10 +220,17 @@ const { catalog: siteCatalog, loadCatalog } = useSiteCatalog()
 const step = ref(1)
 const supportedSites = ref([])
 const selectedSite = ref('')
-const previewData = ref({ total: 0, subscriptions: [] })
+const PREVIEW_BATCH_SIZE = 50
+const previewData = ref({
+  total: null,
+  subscriptions: [],
+  has_more: false,
+  cursor_payload: null,
+})
 const selectedUrlMap = ref({})
 const importResult = ref({})
 const loadingPreview = ref(false)
+const loadingMorePreview = ref(false)
 const importing = ref(false)
 
 const siteConfig = {
@@ -224,13 +247,26 @@ const getSiteIconUrl = (site) => {
   return typeof iconUrl === 'string' && iconUrl.trim() ? iconUrl : null
 }
 const selectedCount = computed(() => Object.keys(selectedUrlMap.value || {}).length)
+const loadedCount = computed(() => (previewData.value.subscriptions || []).length)
+const importedCount = computed(() => (
+  previewData.value.subscriptions || []
+).filter(item => item?.is_imported).length)
+const notImportedCount = computed(() => (
+  previewData.value.subscriptions || []
+).filter(item => item && !item.is_imported).length)
 
 const resetState = () => {
   step.value = 1
   selectedSite.value = ''
-  previewData.value = { total: 0, subscriptions: [] }
+  previewData.value = {
+    total: null,
+    subscriptions: [],
+    has_more: false,
+    cursor_payload: null,
+  }
   selectedUrlMap.value = {}
   importResult.value = {}
+  loadingMorePreview.value = false
 }
 
 const selectAllNotImported = () => {
@@ -267,18 +303,56 @@ const loadSupportedSites = async () => {
   }
 }
 
+const mergePreviewSubscriptions = (existing, incoming) => {
+  const merged = []
+  const seen = new Set()
+  for (const item of [...(existing || []), ...(incoming || [])]) {
+    if (!item?.url || seen.has(item.url)) continue
+    seen.add(item.url)
+    merged.push(item)
+  }
+  return merged
+}
+
+const fetchPreviewBatch = async ({ cursorPayload = null, append = false } = {}) => {
+  const loadingState = append ? loadingMorePreview : loadingPreview
+  loadingState.value = true
+  const result = await previewImportSubscriptions(selectedSite.value, {
+    cursorPayload,
+    limit: PREVIEW_BATCH_SIZE,
+  })
+  loadingState.value = false
+
+  if (!result.error) {
+    previewData.value = {
+      total: result.data?.total ?? previewData.value.total,
+      subscriptions: append
+        ? mergePreviewSubscriptions(previewData.value.subscriptions, result.data?.subscriptions || [])
+        : (result.data?.subscriptions || []),
+      has_more: !!result.data?.has_more,
+      cursor_payload: result.data?.cursor_payload || null,
+    }
+    return true
+  }
+  return false
+}
+
 const handlePreview = async () => {
   if (!selectedSite.value) return
 
-  loadingPreview.value = true
-  const result = await previewImportSubscriptions(selectedSite.value)
-  loadingPreview.value = false
-
-  if (!result.error) {
-    previewData.value = result.data
+  const loaded = await fetchPreviewBatch()
+  if (loaded) {
     selectAllNotImported()
     step.value = 2
   }
+}
+
+const loadMorePreview = async () => {
+  if (!selectedSite.value || !previewData.value.has_more) return
+  await fetchPreviewBatch({
+    cursorPayload: previewData.value.cursor_payload,
+    append: true,
+  })
 }
 
 const handleImport = async () => {

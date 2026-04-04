@@ -50,6 +50,27 @@ class _FakeImporter:
         ]
 
 
+class _FakePaginatedImporter:
+    def get_user_subscriptions_batch(self, cursor_payload=None, limit=None):
+        offset = int((cursor_payload or {}).get('offset', 0))
+        batch_limit = int(limit or 2)
+        all_items = [
+            _Dictable({'url': 'https://example.com/one'}),
+            _Dictable({'url': 'https://example.com/two'}),
+            _Dictable({'url': 'https://example.com/three'}),
+        ]
+        items = all_items[offset:offset + batch_limit]
+        next_offset = offset + len(items)
+        has_more = next_offset < len(all_items)
+        return types.SimpleNamespace(
+            items=items,
+            cursor_payload={'offset': next_offset} if has_more else None,
+            has_more=has_more,
+            stop_reason='batch_exhausted' if has_more else 'source_exhausted',
+            total_available=len(all_items),
+        )
+
+
 class _FakeSubscription:
     def __init__(self, url: str) -> None:
         self.url = url
@@ -306,6 +327,45 @@ class SharedSdkHelperTests(unittest.TestCase):
                 {'url': 'https://cdn.example.com/master.m3u8', 'content': '#EXTM3U', 'referer': 'https://ref'},
             ).data['headers'],
             {'referer': 'https://ref'},
+        )
+
+    def test_runtime_helper_uses_paginated_importer_batches_when_available(self):
+        with _stub_sdk_crawl_package():
+            module = importlib.import_module('crawl.runtime_helpers')
+            runtime_models = importlib.import_module('crawl.runtime_models')
+
+        manifest = runtime_models.PluginManifest(
+            plugin_id='demo',
+            version='0.1.0',
+            display_name='Demo',
+            capabilities=[],
+            sites=[],
+            permissions=[],
+        )
+
+        runtime = module.create_site_runtime(
+            manifest=manifest,
+            importer_factory=_FakePaginatedImporter,
+        )
+
+        response = runtime.invoke(
+            'import_subscriptions',
+            {
+                'cursor_payload': {'offset': 1},
+                'limit': 1,
+            },
+        )
+
+        self.assertEqual(
+            response.data,
+            {
+                'items': [{'url': 'https://example.com/two'}],
+                'total': 1,
+                'cursor_payload': {'offset': 2},
+                'has_more': True,
+                'stop_reason': 'batch_exhausted',
+                'total_available': 3,
+            },
         )
 
 

@@ -10,7 +10,11 @@ from models.links import UserSubscription
 from models.message import Message
 from models.subscription import Subscription, ContentType
 from plugins.manager import get_plugin_manager
-from services.subscription_runtime_models import SubscriptionImportItem, SubscriptionMeta
+from services.subscription_runtime_models import (
+    SubscriptionImportBatchResult,
+    SubscriptionImportItem,
+    SubscriptionMeta,
+)
 from services import user_config_service
 from services import subscription_sync_state_service
 from services import user_video_feed_service
@@ -468,9 +472,21 @@ def _dedupe_import_items(subscriptions: List[SubscriptionImportItem]) -> List[Su
     return result
 
 
-def _load_runtime_import_items(site_name: str) -> List[SubscriptionImportItem]:
+def _load_runtime_import_batch(
+    site_name: str,
+    *,
+    cursor_payload: Optional[Dict[str, Any]] = None,
+    limit: Optional[int] = None,
+) -> SubscriptionImportBatchResult:
+    payload: Dict[str, Any] = {}
+    if cursor_payload:
+        payload['cursor_payload'] = dict(cursor_payload)
+    if limit is not None:
+        payload['limit'] = limit
+
     response = get_plugin_manager().gateway.invoke(
         'import_subscriptions',
+        payload=payload or None,
         site_name=site_name,
     )
     if not response.ok:
@@ -481,15 +497,26 @@ def _load_runtime_import_items(site_name: str) -> List[SubscriptionImportItem]:
     if not isinstance(payload, dict):
         raise ValueError(f'Plugin import payload must be an object for site: {site_name}')
 
-    items = payload.get('items') or []
-    if not isinstance(items, list):
-        raise ValueError(f'Plugin import items must be a list for site: {site_name}')
+    batch = SubscriptionImportBatchResult.from_dict(payload)
+    batch.items = _dedupe_import_items(batch.items)
+    return batch
 
-    return _dedupe_import_items([
-        item if isinstance(item, SubscriptionImportItem) else SubscriptionImportItem.from_dict(item)
-        for item in items
-        if isinstance(item, (dict, SubscriptionImportItem))
-    ])
+
+def _load_runtime_import_items(site_name: str) -> List[SubscriptionImportItem]:
+    items: List[SubscriptionImportItem] = []
+    cursor_payload: Optional[Dict[str, Any]] = None
+
+    while True:
+        batch = _load_runtime_import_batch(
+            site_name,
+            cursor_payload=cursor_payload,
+        )
+        items.extend(batch.items)
+        if not batch.has_more:
+            break
+        cursor_payload = batch.cursor_payload
+
+    return _dedupe_import_items(items)
 
 
 def get_runtime_supported_sites(capability: str) -> List[str]:
@@ -523,7 +550,13 @@ def _load_runtime_subscription_meta(url: str) -> SubscriptionMeta:
     return SubscriptionMeta.from_dict(response.data)
 
 
-def preview_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
+def preview_user_subscriptions(
+    site_name: str,
+    user_id: int,
+    *,
+    cursor_payload: Optional[Dict[str, Any]] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
     """
     预览用户在指定站点的订阅列表（不实际导入）
     
@@ -539,7 +572,12 @@ def preview_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
         }
     """
     try:
-        subscriptions = _load_runtime_import_items(site_name)
+        import_batch = _load_runtime_import_batch(
+            site_name,
+            cursor_payload=cursor_payload,
+            limit=limit,
+        )
+        subscriptions = import_batch.items
 
         logger.info(f"Found {len(subscriptions)} subscriptions from {site_name} for preview")
 
@@ -558,10 +596,14 @@ def preview_user_subscriptions(site_name: str, user_id: int) -> Dict[str, Any]:
 
         return {
             'site': site_name,
-            'total': len(subscriptions),
+            'total': import_batch.total_available if import_batch.total_available is not None else len(subscriptions),
+            'loaded': len(subscriptions),
             'imported': imported_count,
             'not_imported': len(subscriptions) - imported_count,
-            'subscriptions': preview_subscriptions
+            'subscriptions': preview_subscriptions,
+            'has_more': import_batch.has_more,
+            'cursor_payload': import_batch.cursor_payload,
+            'stop_reason': import_batch.stop_reason,
         }
 
     except Exception as e:
@@ -640,15 +682,17 @@ def import_user_subscriptions(
     import threading
 
     try:
-        all_subscriptions = _load_runtime_import_items(site_name)
-        found_total = len(all_subscriptions)
-
-        logger.info(f"Found {found_total} subscriptions from {site_name}")
-
-        subscriptions = all_subscriptions
         if selected_urls is not None:
-            selected_url_set = {u for u in selected_urls if u}
-            subscriptions = [s for s in all_subscriptions if s.url in selected_url_set]
+            subscriptions = _dedupe_import_items([
+                SubscriptionImportItem(url=url)
+                for url in selected_urls
+                if url
+            ])
+            found_total = None
+        else:
+            subscriptions = _load_runtime_import_items(site_name)
+            found_total = len(subscriptions)
+            logger.info(f"Found {found_total} subscriptions from {site_name}")
         selected_total = len(subscriptions)
 
         imported_url_map = get_active_user_subscription_url_map(user_id)
