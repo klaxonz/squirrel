@@ -51,7 +51,6 @@ const getEventLabel = (eventType: string) => {
   const map: Record<string, string> = {
     'stale_queued_recovered': '队列恢复',
     'stale_running_recovered': '运行恢复',
-    'manual_reconcile_triggered': '手动协调',
     'subscription_sync_started': '同步开始',
     'subscription_sync_finished': '同步完成',
     'subscription_sync_failed': '同步失败',

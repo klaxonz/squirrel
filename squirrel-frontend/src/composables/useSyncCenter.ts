@@ -4,9 +4,6 @@ import {
   getSupportedSites,
   getSyncCenterItems,
   getSyncCenterOverview,
-  getSyncRecoverySummary,
-  reconcileSyncCenter,
-  retryFailedSyncItems,
   triggerRefresh,
 } from '@/api'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
@@ -78,29 +75,6 @@ interface FeedDashboardSnapshotResponse {
   recentRuns: SyncRunItem[]
 }
 
-interface RetryFailedResponse {
-  total: number
-  queued: number
-  in_progress: number
-  failed: number
-  skipped: number
-}
-
-interface SyncRecoverySummary {
-  last_reconcile_at: string
-  total_recovered: number
-  by_type: Record<string, number>
-  window_hours: number
-}
-
-interface SyncReconcileResponse {
-  reconcileAt: string
-  queuedStates: number
-  queuedRecovered: number
-  runningStates: number
-  runningRecovered: number
-}
-
 interface SiteOption {
   value: string
   label: string
@@ -137,7 +111,6 @@ export function useSyncCenter() {
   const recentRuns = ref<SyncRunItem[]>([])
   const runningPreviewError = ref('')
   const queuedPreviewError = ref('')
-  const filteredFailedCount = ref(0)
   const total = ref(0)
   const page = ref(1)
   const pageSize = ref(20)
@@ -146,17 +119,9 @@ export function useSyncCenter() {
   const itemsError = ref('')
   const loadingOverview = ref(false)
   const loadingItems = ref(false)
-  const reconciling = ref(false)
-  const retryingBatch = ref(false)
   const retryingItemId = ref<number | null>(null)
   const pollingEnabled = ref(true)
   const selectedItem = ref<SyncCenterItem | null>(null)
-  const recoverySummary = ref<SyncRecoverySummary>({
-    last_reconcile_at: '',
-    total_recovered: 0,
-    by_type: {},
-    window_hours: 24,
-  })
   const filters = reactive({
     status: 'recent' as SyncCenterStatusFilter,
     site: '',
@@ -174,8 +139,6 @@ export function useSyncCenter() {
   let itemsRequestSeq = 0
   let runningPreviewRequestSeq = 0
   let queuedPreviewRequestSeq = 0
-  let failedCountRequestSeq = 0
-
   const pageError = computed(() => overviewError.value || itemsError.value)
 
   const syncSelectedItem = () => {
@@ -274,22 +237,6 @@ export function useSyncCenter() {
     loadingOverview.value = false
   }
 
-  const loadRecoverySummary = async () => {
-    const { data, error } = await getSyncRecoverySummary<SyncRecoverySummary>()
-    if (error) {
-      Logger.error('Failed to load sync recovery summary', error)
-      return
-    }
-    if (data) {
-      recoverySummary.value = {
-        last_reconcile_at: data.last_reconcile_at || '',
-        total_recovered: data.total_recovered || 0,
-        by_type: data.by_type || {},
-        window_hours: data.window_hours || 24,
-      }
-    }
-  }
-
   const loadItems = async () => {
     const requestSeq = ++itemsRequestSeq
     loadingItems.value = true
@@ -354,28 +301,6 @@ export function useSyncCenter() {
     syncSelectedItem()
   }
 
-  const loadFilteredFailedCount = async () => {
-    const requestSeq = ++failedCountRequestSeq
-    const { data, error } = await getSyncCenterItems<SyncCenterListResponse>({
-      status: 'failed',
-      site: filters.site || undefined,
-      query: filters.query || undefined,
-      page: 1,
-      pageSize: 1,
-    })
-    if (requestSeq !== failedCountRequestSeq) {
-      return
-    }
-    if (error) {
-      Logger.error('Failed to load filtered failed count', error)
-      if (filters.status === 'failed') {
-        filteredFailedCount.value = total.value
-      }
-      return
-    }
-    filteredFailedCount.value = data?.total || 0
-  }
-
   const loadSiteOptions = async () => {
     const { data, error } = await getSupportedSites()
     if (error) {
@@ -405,9 +330,7 @@ export function useSyncCenter() {
   const refreshAll = async () => {
     await Promise.all([
       loadFeedDashboardSnapshot(),
-      loadRecoverySummary(),
       loadItems(),
-      loadFilteredFailedCount(),
     ])
     updateLastRefreshTime()
   }
@@ -425,7 +348,7 @@ export function useSyncCenter() {
   const setSite = async (site: string) => {
     filters.site = site
     page.value = 1
-    await Promise.all([loadItems(), loadFeedDashboardSnapshot(), loadFilteredFailedCount()])
+    await Promise.all([loadItems(), loadFeedDashboardSnapshot()])
     updateLastRefreshTime()
   }
 
@@ -436,7 +359,7 @@ export function useSyncCenter() {
       clearTimeout(queryTimer)
     }
     queryTimer = setTimeout(async () => {
-      await Promise.all([loadItems(), loadFeedDashboardSnapshot(), loadFilteredFailedCount()])
+      await Promise.all([loadItems(), loadFeedDashboardSnapshot()])
       updateLastRefreshTime()
     }, 300)
   }
@@ -470,30 +393,6 @@ export function useSyncCenter() {
       await refreshAll()
     }
     retryingItemId.value = null
-    return result
-  }
-
-  const retryFailed = async () => {
-    retryingBatch.value = true
-    const payload = {
-      site: filters.site || null,
-      query: filters.query || null,
-    }
-    const result = await retryFailedSyncItems<RetryFailedResponse>(payload)
-    if (!result.error) {
-      await refreshAll()
-    }
-    retryingBatch.value = false
-    return result
-  }
-
-  const reconcile = async () => {
-    reconciling.value = true
-    const result = await reconcileSyncCenter<SyncReconcileResponse>()
-    if (!result.error) {
-      await refreshAll()
-    }
-    reconciling.value = false
     return result
   }
 
@@ -550,15 +449,9 @@ export function useSyncCenter() {
     page,
     pageError,
     pageSize,
-    filteredFailedCount,
     queuedPreview,
     queuedPreviewError,
-    reconcile,
-    reconciling,
-    recoverySummary,
     refreshAll,
-    retryFailed,
-    retryingBatch,
     retryingItemId,
     retryItem,
     recentRuns,
@@ -572,7 +465,6 @@ export function useSyncCenter() {
     setQuery,
     setSite,
     siteOptions,
-    statusOptions,
     total,
   }
 }

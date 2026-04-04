@@ -3,7 +3,6 @@ import json
 from datetime import datetime
 
 from fastapi import APIRouter, Query, Depends, Request
-from pydantic import BaseModel
 import common.response as response
 from models.user import User
 from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest, ImportSubscriptionsRequest
@@ -11,7 +10,6 @@ from services import (
     subscription_service,
     subscription_sync_center_service,
     subscription_sync_history_service,
-    subscription_sync_state_service,
     subscription_sync_trend_service,
     video_extraction_center_service,
 )
@@ -25,11 +23,6 @@ logger = logging.getLogger(__name__)
 SYNC_CENTER_ALLOWED_STATUS = {'failed', 'running', 'queued', 'scheduled', 'recent'}
 EXTRACTION_CENTER_ALLOWED_STATUS = {'failed', 'running', 'queued', 'recent'}
 SYNC_HISTORY_ALLOWED_STATUS = {'created', 'queued', 'running', 'success', 'failed', 'deferred', 'timeout', 'recent', 'feed_recent'}
-
-
-class RetryFailedSyncItemsRequest(BaseModel):
-    site: str | None = None
-    query: str | None = None
 
 
 def _normalize_site_name(site: str) -> str:
@@ -253,59 +246,6 @@ def refresh_subscription(
     })
 
 
-@router.post('/api/subscription/sync-center/retry-failed')
-def retry_failed_sync_items(
-        request: Request,
-        req: RetryFailedSyncItemsRequest | None = None,
-        current_user: User = Depends(get_current_user)
-):
-    from services.subscription_update import scheduler, UpdateTrigger, UpdateMode
-
-    payload = req or RetryFailedSyncItemsRequest()
-    failed_items = subscription_sync_center_service.list_retry_failed_sync_items(
-        current_user.id,
-        payload.site,
-        payload.query,
-    )
-
-    queued_count = 0
-    in_progress_count = 0
-    failed_count = 0
-    skipped_count = 0
-    trace_id = getattr(request.state, 'trace_id', None)
-
-    for item in failed_items:
-        subscription, access_status = subscription_service.verify_subscription_access(current_user.id, item.subscription_id)
-        if access_status != 'ok' or not subscription or not subscription.url:
-            skipped_count += 1
-            continue
-
-        result = scheduler.schedule_one(
-            subscription_id=subscription.id,
-            url=subscription.url,
-            trigger=UpdateTrigger.MANUAL,
-            mode=UpdateMode.FULL if item.sync_mode == 'full' else UpdateMode.INCREMENTAL,
-            user_id=current_user.id,
-            trace_id=trace_id,
-        )
-        if result.status == 'queued':
-            queued_count += 1
-        elif result.status == 'in_progress':
-            in_progress_count += 1
-        elif result.status == 'failed':
-            failed_count += 1
-        else:
-            skipped_count += 1
-
-    return response.success({
-        'total': len(failed_items),
-        'queued': queued_count,
-        'in_progress': in_progress_count,
-        'failed': failed_count,
-        'skipped': skipped_count,
-    })
-
-
 @router.get('/api/subscription/sync-center/runs')
 def get_sync_center_runs(
         status: str = Query(None, description='运行状态筛选'),
@@ -373,23 +313,6 @@ def get_sync_center_trends(
 @router.get('/api/subscription/sync-center/recovery-summary')
 def get_sync_center_recovery_summary(current_user: User = Depends(get_current_user)):
     return response.success(subscription_sync_history_service.get_recovery_summary(current_user.id))
-
-
-@router.post('/api/subscription/sync-center/reconcile')
-def reconcile_sync_center(current_user: User = Depends(get_current_user)):
-    _ = current_user
-    drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
-    queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()
-    running_result = subscription_sync_state_service.recover_stale_running_sync_states()
-    return response.success({
-        'reconcileAt': datetime.utcnow().isoformat(),
-        'drainedCompleted': drained_result['completed'],
-        'drainedFailed': drained_result['failed'],
-        'queuedStates': queued_result['queued_states'],
-        'queuedRecovered': queued_result['recovered'],
-        'runningStates': running_result['running_states'],
-        'runningRecovered': running_result['recovered'],
-    })
 
 
 @router.post("/api/subscription/toggle-nsfw")

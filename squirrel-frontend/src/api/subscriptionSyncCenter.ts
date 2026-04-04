@@ -1,4 +1,4 @@
-import { get, post } from '@/utils/request'
+import { get } from '@/utils/request'
 
 const buildNoCacheParams = (params: Record<string, unknown> = {}) => ({
   ...params,
@@ -22,8 +22,4 @@ export const getSyncCenterItems = async <T = any>(params: Record<string, unknown
 
 export const getFeedDashboardSnapshot = async <T = any>(params: Record<string, unknown> = {}) => {
   return get<T>('/api/subscription/sync-center/feed-snapshot', buildNoCacheParams(params), noCacheConfig)
-}
-
-export const retryFailedSyncItems = async <T = any>(payload: Record<string, unknown> | null = null) => {
-  return post<T>('/api/subscription/sync-center/retry-failed', payload)
 }

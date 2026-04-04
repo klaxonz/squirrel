@@ -3,18 +3,9 @@
     <div class="matrix-bg"></div>
     <div class="toolbar-container py-8 relative z-10">
       <div class="flex flex-col gap-6">
-  <SyncControlBar
-          :can-reconcile="activePipeline === 'feed'"
-          :can-retry-failed="retryTargetCount > 0"
-          :last-updated-at="toolbarLastUpdatedAt"
+        <SyncControlBar
           :lens="workbenchLens"
-          :reconciling="activePipeline === 'feed' ? reconciling : false"
-          :refreshing="dashboardRefreshing"
-          :retrying-batch="activePipeline === 'feed' ? retryingBatch : false"
           :summary="dashboardSummary"
-          @reconcile="handleReconcile"
-          @refresh="handleRefreshAll"
-          @retry-failed="handleRetryFailed"
           @set-lens="handleLensChange"
         />
 
@@ -124,9 +115,6 @@ const {
 } = useSyncCenterWorkbench()
 
 const {
-  filters: overviewFilters,
-  filteredFailedCount,
-  lastUpdatedAt: overviewLastUpdatedAt,
   loadingItems: overviewLoadingItems,
   loadingOverview,
   overview,
@@ -135,15 +123,10 @@ const {
   queuedPreviewError,
   recentRuns: feedRecentRuns,
   refreshAll: overviewRefreshAll,
-  retryFailed,
-  retryingBatch,
-  reconcile,
-  reconciling,
   runningPreview,
   runningPreviewError,
   setRecentDateRange,
   siteOptions,
-  total: overviewTotal,
   setPollingEnabled,
 } = useSyncCenter()
 
@@ -164,7 +147,6 @@ const {
 })
 
 const {
-  lastUpdatedAt: extractionLastUpdatedAt,
   loadingItems: extractionLoadingItems,
   loadingOverview: extractionLoadingOverview,
   overview: extractionOverview,
@@ -194,20 +176,6 @@ const dashboardRefreshing = computed(() => {
 
 const extractionLoading = computed(() => {
   return extractionLoadingOverview.value || extractionLoadingItems.value
-})
-
-const toolbarLastUpdatedAt = computed(() => {
-  if (activePipeline.value === 'extract') {
-    return extractionLastUpdatedAt.value || ''
-  }
-  return overviewLastUpdatedAt.value || historyLastUpdatedAt.value || ''
-})
-
-const retryTargetCount = computed(() => {
-  if (activePipeline.value === 'extract') {
-    return 0
-  }
-  return overviewFilters.status === 'failed' ? overviewTotal.value : filteredFailedCount.value
 })
 
 const dashboardSummary = computed(() => {
@@ -352,7 +320,7 @@ const syncFeedRecentLaneSnapshot = () => {
   feedRecentBaselineReady.value = laneSnapshot.hasBaseline
 }
 
-const handleRefreshAll = async () => {
+const refreshDashboard = async () => {
   if (activePipeline.value === 'extract') {
     await extractionRefreshAll()
     return
@@ -367,22 +335,6 @@ const handleRefreshAll = async () => {
 
 const handleLensChange = (lens: SyncTimeLens) => {
   setLens(lens)
-}
-
-const handleRetryFailed = async () => {
-  if (activePipeline.value === 'extract') {
-    return
-  }
-  await retryFailed()
-  await handleRefreshAll()
-}
-
-const handleReconcile = async () => {
-  if (activePipeline.value === 'extract') {
-    return
-  }
-  await reconcile()
-  await handleRefreshAll()
 }
 
 const handlePipelineChange = (value: string | number) => {
@@ -419,11 +371,11 @@ const clearDashboardPollTimer = () => {
 const startDashboardPolling = () => {
   clearDashboardPollTimer()
   dashboardPollTimer = setInterval(() => {
-    handleRefreshAll()
+    refreshDashboard()
   }, DASHBOARD_POLL_INTERVAL)
 }
 
-watch(workbenchLens, async (lens) => {
+watch(workbenchLens, async () => {
   syncFeedRecentWindow()
   await overviewRefreshAll()
   syncFeedRecentLaneSnapshot()

@@ -29,7 +29,6 @@ class SyncEventType:
     TIMEOUT_RECOVERED = 'timeout_recovered'
     STALE_QUEUED_RECOVERED = 'stale_queued_recovered'
     STALE_RUNNING_RECOVERED = 'stale_running_recovered'
-    MANUAL_RECONCILE_TRIGGERED = 'manual_reconcile_triggered'
 
 
 class SyncPhase:
