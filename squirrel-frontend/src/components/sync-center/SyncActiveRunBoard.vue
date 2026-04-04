@@ -7,7 +7,6 @@
           <div class="h-px flex-1 bg-white/5"></div>
           <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
         </div>
-        <h2 class="board-title">LANE_02</h2>
       </div>
     </div>
 
