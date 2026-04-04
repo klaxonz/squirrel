@@ -54,8 +54,8 @@ export const NAV_ITEMS: NavigationItem[] = [
     showOnMobile: true,
   },
   {
-    name: '同步中心',
-    mobileLabel: '同步',
+    name: '采集',
+    mobileLabel: '采集',
     path: '/sync-center',
     icon: ArrowPathIcon,
     group: 'operations',
