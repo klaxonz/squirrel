@@ -46,7 +46,7 @@
               <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
             </div>
             <p class="queue-row__meta font-mono">
-              {{ item.site || 'unknown' }} · {{ getModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
+              {{ getModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
             </p>
           </div>
         </div>
@@ -57,7 +57,7 @@
             :icon-url="getSiteIconUrl(item)"
             :label="item.site"
             size="sm"
-            class="queue-row__site-icon shadow-sm"
+            class="queue-row__site-icon shadow-sm !h-5 !w-5"
           />
         </div>
       </button>
