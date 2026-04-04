@@ -11,18 +11,6 @@
       </div>
     </div>
 
-    <div v-if="items.length" class="worker-strip" aria-hidden="true">
-      <div
-        v-for="(item, index) in items"
-        :key="item.run_id || item.subscription_id"
-        class="worker-pill"
-      >
-        <span class="worker-pill__dot"></span>
-        <span class="worker-pill__label">{{ pipeline === 'extract' ? `Batch ${index + 1}` : `Worker ${index + 1}` }}</span>
-        <span class="worker-pill__phase">{{ getPhaseLabel(item.current_phase) }}</span>
-      </div>
-    </div>
-
     <div v-if="error" class="board-error">{{ error }}</div>
     <div v-else-if="loading && !items.length" class="board-empty">正在获取运行中的订阅...</div>
     <div v-else-if="!items.length" class="board-empty">
@@ -268,54 +256,6 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   font-family: 'JetBrains Mono', monospace;
   color: var(--sci-fi-amber);
   opacity: 0.8;
-}
-
-.worker-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  padding-left: 0.5rem;
-}
-
-.worker-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  border: 1px solid oklch(75% 0.15 60 / 0.15);
-  background: oklch(75% 0.15 60 / 0.05);
-  padding: 0.35rem 0.75rem;
-  transition: all 0.3s ease;
-}
-
-.worker-pill:hover {
-  background: oklch(75% 0.15 60 / 0.1);
-  transform: translateY(-2px);
-}
-
-.worker-pill__dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 9999px;
-  background: var(--sci-fi-amber);
-  box-shadow: 0 0 10px var(--sci-fi-amber);
-}
-
-.worker-pill__label,
-.worker-pill__phase {
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.worker-pill__label {
-  color: rgba(255, 255, 255, 0.2);
-}
-
-.worker-pill__phase {
-  color: var(--sci-fi-amber);
 }
 
 .board-list {
