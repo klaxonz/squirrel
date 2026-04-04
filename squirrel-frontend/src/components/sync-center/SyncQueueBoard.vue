@@ -47,10 +47,10 @@
         <div class="queue-row__flow" aria-hidden="true">
           <SiteIcon
             v-if="item.site"
-            :icon-url="getSiteIconUrl(item.site)"
+            :icon-url="getSiteIconUrl(item)"
             :label="item.site"
             size="sm"
-            class="opacity-40 grayscale hover:grayscale-0 hover:opacity-100 transition-all"
+            class="queue-row__site-icon shadow-sm"
           />
         </div>
       </button>
@@ -79,17 +79,29 @@ const emit = defineEmits<{
 const siteOptionMap = computed(() => {
   const m = new Map()
   for (const opt of (props.siteOptions || [])) {
-    if (opt.value) m.set(opt.value.toLowerCase(), opt)
+    const value = String(opt.value || '').trim()
+    if (!value) {
+      continue
+    }
+    m.set(value, opt)
+    m.set(value.toLowerCase(), opt)
   }
   return m
 })
 
-const getSiteIconUrl = (site: string | null) => {
-  if (!site) return null
-  const slug = site.toLowerCase()
-  const fromMap = siteOptionMap.value.get(slug)?.iconUrl
+const getSiteIconUrl = (item: SyncCenterItem) => {
+  const directIconUrl = String(item.site_icon_url || '').trim()
+  if (directIconUrl) {
+    return directIconUrl
+  }
+
+  const normalizedSite = String(item.site || '').trim()
+  if (!normalizedSite) return null
+
+  const fromMap = siteOptionMap.value.get(normalizedSite)?.iconUrl
+    || siteOptionMap.value.get(normalizedSite.toLowerCase())?.iconUrl
   if (fromMap) return fromMap
-  return `/api/plugins/sites/${slug}/icon`
+  return `/api/plugins/sites/${encodeURIComponent(normalizedSite.toLowerCase())}/icon`
 }
 
 const getModeLabel = (mode: string) => {
@@ -241,6 +253,18 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   justify-content: flex-end;
   min-width: 2rem;
   flex-shrink: 0;
+}
+
+.queue-row__site-icon {
+  opacity: 0.82;
+  filter: saturate(0.96);
+  transition: opacity 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+}
+
+.queue-row:hover .queue-row__site-icon {
+  opacity: 1;
+  filter: saturate(1.05);
+  transform: scale(1.04);
 }
 
 .queue-row__arrow {

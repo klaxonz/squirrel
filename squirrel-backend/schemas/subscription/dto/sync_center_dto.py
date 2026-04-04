@@ -19,6 +19,7 @@ class SyncCenterItemDto(BaseModel):
     subscription_name: str
     subscription_avatar: str | None = None
     site: str | None = None
+    site_icon_url: str | None = None
     sync_mode: str = 'incremental'
     sync_status: str = 'idle'
     display_status: str = 'healthy'

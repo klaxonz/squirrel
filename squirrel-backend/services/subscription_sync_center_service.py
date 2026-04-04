@@ -25,6 +25,7 @@ from services.subscription_sync_run_service import SyncEventType
 from services.crawl_tasks.task_types import subscription_sync_task_types
 from utils.metrics import metrics
 from utils.site_catalog import SiteCatalog
+from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 
 DUE_SOON_WINDOW = timedelta(minutes=30)
@@ -99,6 +100,39 @@ def _summarize_error(message: Optional[str]) -> Optional[str]:
     if len(first_line) <= 80:
         return first_line
     return first_line[:77] + '...'
+
+
+def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
+    normalized_site = str(site or '').strip().lower()
+    if not normalized_site:
+        return None
+
+    catalog = SiteCatalog.get_catalog() or {}
+
+    if normalized_site in catalog:
+        site_slug = normalized_site
+        catalog_entry = catalog[site_slug]
+    else:
+        site_slug, catalog_entry = SiteCatalog.find_site_by_domain(normalized_site)
+        if not site_slug:
+            site_slug = None
+            catalog_entry = None
+            for slug, info in catalog.items():
+                aliases = [str(alias or '').strip().lower() for alias in info.get('aliases', []) if alias]
+                if normalized_site in aliases:
+                    site_slug = slug
+                    catalog_entry = info
+                    break
+
+    icon_url = str((catalog_entry or {}).get('icon_url') or '').strip() or None
+    if icon_url:
+        return icon_url
+
+    fallback_slug = site_slug or normalized_site
+    if resolve_site_icon_path(fallback_slug):
+        return build_site_icon_url(fallback_slug)
+
+    return None
 
 
 def _resolve_display_status(current_status: Optional[str], next_sync_at: Optional[datetime]) -> str:
@@ -215,6 +249,7 @@ def _build_sync_center_item(
         subscription_name=subscription.name,
         subscription_avatar=subscription.avatar,
         site=(run_projection.site if run_projection and run_projection.site else None),
+        site_icon_url=_resolve_site_icon_url(run_projection.site if run_projection else None),
         sync_mode=sync_mode,
         sync_status=sync_status,
         display_status=display_status,

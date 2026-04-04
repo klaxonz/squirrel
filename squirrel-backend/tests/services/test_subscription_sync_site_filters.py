@@ -61,6 +61,18 @@ def _setup_test_env(monkeypatch):
         'find_site_by_domain',
         classmethod(lambda cls, domain: ('youtube', {}) if domain == 'youtube.com' else (None, None)),
     )
+    monkeypatch.setattr(
+        SiteCatalog,
+        'get_catalog',
+        classmethod(
+            lambda cls: {
+                'youtube': {
+                    'domains': ['youtube.com', 'youtu.be'],
+                    'icon_url': '/api/plugins/sites/youtube/icon',
+                }
+            }
+        ),
+    )
     return engine
 
 
@@ -148,6 +160,7 @@ def test_list_runs_accepts_site_slug_when_projection_stores_domain(monkeypatch):
 
     assert result['total'] == 1
     assert [item['site'] for item in result['data']] == ['youtube.com']
+    assert [item['site_icon_url'] for item in result['data']] == ['/api/plugins/sites/youtube/icon']
 
 
 def test_list_runs_recent_excludes_running_and_queued_statuses(monkeypatch):

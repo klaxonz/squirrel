@@ -24,7 +24,7 @@
                     <span>·</span>
                     <SiteIcon
                       v-if="run.site"
-                      :icon-url="getSiteIconUrl(run.site)"
+                      :icon-url="getSiteIconUrl(run)"
                       :label="getSiteLabel(run.site)"
                       size="xs"
                     />
@@ -129,7 +129,7 @@ const siteOptionMap = computed(() => {
 
 const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
 const getSiteLabel = (site: string | null) => siteOptionMap.value.get(site || '')?.label || site || 'unknown'
-const getSiteIconUrl = (site: string | null) => siteOptionMap.value.get(site || '')?.iconUrl || null
+const getSiteIconUrl = (run: SyncRunItem) => run.site_icon_url || siteOptionMap.value.get(run.site || '')?.iconUrl || null
 
 const handleSheetToggle = (value: boolean) => {
   if (!value) {

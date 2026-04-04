@@ -40,9 +40,16 @@
                 <h3 class="truncate text-sm font-bold text-white/70">{{ run.subscription_name }}</h3>
                 <span v-if="index === 0" class="latest-chip">NEW</span>
               </div>
-              <p class="recent-row__meta font-mono">
-                {{ run.site || 'unknown' }} · {{ getMetaTimestamp(run) }}
-              </p>
+              <div class="recent-row__meta recent-row__meta--with-icon font-mono">
+                <SiteIcon
+                  v-if="run.site"
+                  :icon-url="run.site_icon_url"
+                  :label="run.site"
+                  size="xs"
+                  class="recent-row__site-icon"
+                />
+                <span>{{ run.site || 'unknown' }} · {{ getMetaTimestamp(run) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -68,6 +75,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
 import { formatDate } from '@/utils/dateFormat'
@@ -299,6 +307,16 @@ const getStatusChipClass = (status: string) => {
   color: rgba(255, 255, 255, 0.2);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.recent-row__meta--with-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.recent-row__site-icon {
+  opacity: 0.72;
 }
 
 .latest-chip {

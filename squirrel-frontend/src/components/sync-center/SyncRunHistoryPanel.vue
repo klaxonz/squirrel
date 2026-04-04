@@ -146,7 +146,7 @@
                 <span class="inline-flex items-center gap-1.5 bg-muted/40 px-1.5 py-0.5 rounded text-[10px] font-bold text-muted-foreground/60">
                   <SiteIcon
                     v-if="run.site"
-                    :icon-url="getSiteIconUrl(run.site)"
+                    :icon-url="getSiteIconUrl(run)"
                     :label="getSiteLabel(run.site)"
                     size="xs"
                   />
@@ -243,7 +243,7 @@ const draftFilters = reactive<SyncHistoryFilters>(normalizeFilters(props.filters
 
 const getAvatarKey = (run: SyncRunItem) => `run-history-${run.run_id}`
 const getSiteLabel = (site: string | null) => siteOptionMap.value.get(site || '')?.label || site || 'unknown'
-const getSiteIconUrl = (site: string | null) => siteOptionMap.value.get(site || '')?.iconUrl || null
+const getSiteIconUrl = (run: SyncRunItem) => run.site_icon_url || siteOptionMap.value.get(run.site || '')?.iconUrl || null
 
 const statusOptions = [
   { value: '', label: '全部状态' },

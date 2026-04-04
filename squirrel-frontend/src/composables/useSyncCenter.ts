@@ -29,6 +29,7 @@ export interface SyncCenterItem {
   subscription_name: string
   subscription_avatar: string | null
   site: string | null
+  site_icon_url: string | null
   sync_mode: string
   sync_status: string
   display_status: string

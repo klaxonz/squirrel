@@ -32,7 +32,7 @@
                     <span class="inline-flex items-center gap-1.5 text-2xs text-muted-foreground">
                       <SiteIcon
                         v-if="item.site"
-                        :icon-url="getSiteIconUrl(item.site)"
+                        :icon-url="getSiteIconUrl(item)"
                         :label="getSiteLabel(item.site)"
                         size="xs"
                       />
@@ -148,7 +148,7 @@ const siteOptionMap = computed(() => {
 
 const getSubscriptionLink = (subscriptionId: number) => `/subscription/${subscriptionId}/all`
 const getSiteLabel = (site: string | null) => siteOptionMap.value.get(site || '')?.label || site || 'unknown'
-const getSiteIconUrl = (site: string | null) => siteOptionMap.value.get(site || '')?.iconUrl || null
+const getSiteIconUrl = (item: SyncCenterItem) => item.site_icon_url || siteOptionMap.value.get(item.site || '')?.iconUrl || null
 
 const handleSheetToggle = (value: boolean) => {
   if (!value) {

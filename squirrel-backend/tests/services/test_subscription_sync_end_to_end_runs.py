@@ -20,6 +20,7 @@ from models.subscription_sync_state import SubscriptionSyncState
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from schemas.subscription.dto.sync_center_dto import SyncCenterItemDto
 from services import subscription_sync_center_service, subscription_sync_history_service, subscription_sync_state_service
+from utils.site_catalog import SiteCatalog
 
 
 @contextmanager
@@ -75,6 +76,25 @@ def _setup_projection_reconcile_env(monkeypatch):
     )
     monkeypatch.setattr(subscription_sync_state_service, 'get_session', lambda: _managed_session(engine))
     return engine
+
+
+def _mock_site_catalog(monkeypatch):
+    monkeypatch.setattr(
+        SiteCatalog,
+        'get_catalog',
+        classmethod(
+            lambda cls: {
+                'youtube': {
+                    'domains': ['youtube.com', 'youtu.be'],
+                    'icon_url': '/api/plugins/sites/youtube/icon',
+                },
+                'bilibili': {
+                    'domains': ['bilibili.com', 'b23.tv'],
+                    'icon_url': '/api/plugins/sites/bilibili/icon',
+                },
+            }
+        ),
+    )
 
 
 def _seed_projection_data(engine):
@@ -319,6 +339,7 @@ def test_sync_center_items_expose_progress_fields_and_queue_position(monkeypatch
     engine = _setup_projection_env(monkeypatch)
     _seed_projection_data(engine)
     monkeypatch.setattr(subscription_sync_center_service, '_refresh_runtime_sync_health', lambda force=False: None)
+    _mock_site_catalog(monkeypatch)
 
     overview = subscription_sync_center_service.get_sync_center_overview(user_id=1)
     running_result = subscription_sync_center_service.list_sync_center_items(
@@ -354,9 +375,15 @@ def test_sync_center_items_expose_progress_fields_and_queue_position(monkeypatch
     assert running_item.pending_video_count == 0
     assert running_item.progress_percent == 18
     assert running_item.progress_label == '拉取列表中'
+    assert running_item.site == 'youtube.com'
+    assert running_item.site_icon_url == '/api/plugins/sites/youtube/icon'
 
     assert [item.subscription_name for item in queued_result.data] == ['Queued First', 'Queued Second']
     assert [item.queue_position for item in queued_result.data] == [1, 2]
+    assert [item.site_icon_url for item in queued_result.data] == [
+        '/api/plugins/sites/bilibili/icon',
+        '/api/plugins/sites/bilibili/icon',
+    ]
 
     assert runs_result['data'][0]['run_id'] == 'run-running'
     assert runs_result['data'][0]['progress_percent'] == 62
@@ -367,6 +394,7 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(mo
     engine = _setup_projection_env(monkeypatch)
     _seed_projection_data(engine)
     monkeypatch.setattr(subscription_sync_center_service, '_refresh_runtime_sync_health', lambda force=False: None)
+    _mock_site_catalog(monkeypatch)
 
     snapshot = subscription_sync_center_service.get_feed_dashboard_snapshot(
         user_id=1,
@@ -380,6 +408,11 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(mo
     assert snapshot['overview'].awaiting_extract_count == 1
     assert [item.subscription_name for item in snapshot['runningPreview']] == ['Running Earlier']
     assert [item.subscription_name for item in snapshot['queuedPreview']] == ['Queued First', 'Queued Second']
+    assert snapshot['runningPreview'][0].site_icon_url == '/api/plugins/sites/youtube/icon'
+    assert [item.site_icon_url for item in snapshot['queuedPreview']] == [
+        '/api/plugins/sites/bilibili/icon',
+        '/api/plugins/sites/bilibili/icon',
+    ]
     assert [run['run_id'] for run in snapshot['recentRuns']] == ['run-running']
 
 

@@ -8,6 +8,7 @@ export interface SyncRunItem {
   subscription_name: string
   subscription_avatar: string | null
   site: string | null
+  site_icon_url: string | null
   sync_mode: string
   trigger: string | null
   status: string

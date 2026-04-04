@@ -12,6 +12,7 @@ from models.subscription_sync_subscription_projection import SubscriptionSyncSub
 from services.subscription_sync_progress import build_progress_snapshot
 from services.subscription_sync_run_service import SyncEventType
 from utils.site_catalog import SiteCatalog
+from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 TERMINAL_RUN_STATUSES = {'success', 'failed', 'deferred', 'timeout'}
 FEED_RECENT_PHASES = {'extracting', 'finalizing', 'completed'}
@@ -36,6 +37,39 @@ def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
 
 def _serialize_datetime(value: Optional[datetime]) -> str:
     return value.strftime('%Y-%m-%d %H:%M:%S') if value else ''
+
+
+def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
+    normalized_site = str(site or '').strip().lower()
+    if not normalized_site:
+        return None
+
+    catalog = SiteCatalog.get_catalog() or {}
+
+    if normalized_site in catalog:
+        site_slug = normalized_site
+        catalog_entry = catalog[site_slug]
+    else:
+        site_slug, catalog_entry = SiteCatalog.find_site_by_domain(normalized_site)
+        if not site_slug:
+            site_slug = None
+            catalog_entry = None
+            for slug, info in catalog.items():
+                aliases = [str(alias or '').strip().lower() for alias in info.get('aliases', []) if alias]
+                if normalized_site in aliases:
+                    site_slug = slug
+                    catalog_entry = info
+                    break
+
+    icon_url = str((catalog_entry or {}).get('icon_url') or '').strip() or None
+    if icon_url:
+        return icon_url
+
+    fallback_slug = site_slug or normalized_site
+    if resolve_site_icon_path(fallback_slug):
+        return build_site_icon_url(fallback_slug)
+
+    return None
 
 
 def _payload_metric_value(run_id: str, key: str) -> Optional[int]:
@@ -219,6 +253,7 @@ def list_runs(
             'subscription_name': subscription.name,
             'subscription_avatar': subscription.avatar,
             'site': run.site,
+            'site_icon_url': _resolve_site_icon_url(run.site),
             'sync_mode': run.sync_mode,
             'trigger': run.trigger,
             'status': run.status,
@@ -273,6 +308,7 @@ def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
             'subscription_name': subscription.name,
             'subscription_avatar': subscription.avatar,
             'site': run.site,
+            'site_icon_url': _resolve_site_icon_url(run.site),
             'sync_mode': run.sync_mode,
             'trigger': run.trigger,
             'status': run.status,

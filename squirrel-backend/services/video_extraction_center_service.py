@@ -10,6 +10,7 @@ from models.links import UserSubscription
 from models.subscription import Subscription
 from schemas.subscription.dto.sync_center_dto import SyncCenterItemDto, SyncCenterListDto, SyncCenterOverviewDto
 from utils.site_catalog import SiteCatalog
+from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 
 RUNNING_TASK_STATUSES = {'leased', 'running'}
@@ -42,6 +43,39 @@ def _summarize_error(message: Optional[str]) -> Optional[str]:
     if len(first_line) <= 80:
         return first_line
     return first_line[:77] + '...'
+
+
+def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
+    normalized_site = str(site or '').strip().lower()
+    if not normalized_site:
+        return None
+
+    catalog = SiteCatalog.get_catalog() or {}
+
+    if normalized_site in catalog:
+        site_slug = normalized_site
+        catalog_entry = catalog[site_slug]
+    else:
+        site_slug, catalog_entry = SiteCatalog.find_site_by_domain(normalized_site)
+        if not site_slug:
+            site_slug = None
+            catalog_entry = None
+            for slug, info in catalog.items():
+                aliases = [str(alias or '').strip().lower() for alias in info.get('aliases', []) if alias]
+                if normalized_site in aliases:
+                    site_slug = slug
+                    catalog_entry = info
+                    break
+
+    icon_url = str((catalog_entry or {}).get('icon_url') or '').strip() or None
+    if icon_url:
+        return icon_url
+
+    fallback_slug = site_slug or normalized_site
+    if resolve_site_icon_path(fallback_slug):
+        return build_site_icon_url(fallback_slug)
+
+    return None
 
 
 def _parse_sync_state_id(task: CrawlTask) -> str:
@@ -99,6 +133,7 @@ def _build_extraction_item(subscription: Subscription, tasks: list[CrawlTask]) -
         subscription_name=subscription.name,
         subscription_avatar=subscription.avatar,
         site=ordered_tasks[0].site if ordered_tasks else None,
+        site_icon_url=_resolve_site_icon_url(ordered_tasks[0].site if ordered_tasks else None),
         sync_mode='extract',
         sync_status=sync_status,
         display_status=display_status,
