@@ -14,6 +14,11 @@ from core.exceptions.proxy_exceptions import ProxyNetworkException
 from core.streaming.proxy import VideoProxy
 
 
+@pytest.fixture(autouse=True)
+def _reset_proxy_runtime_cache(monkeypatch):
+    monkeypatch.setattr(VideoProxy, '_runtime_config_cache', {}, raising=False)
+
+
 class _FakeResponse:
     def __init__(self, *, content: bytes, content_type: str = 'application/vnd.apple.mpegurl', status_code: int = 200):
         self.content = content
@@ -83,16 +88,86 @@ def test_video_proxy_reads_runtime_proxy_config(monkeypatch):
     )
 
     proxy = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+    headers = proxy._build_runtime_headers('https://cdn.example.com/segment-001.ts')
 
     assert calls == [{
         'capability': 'resolve_proxy_config',
-        'payload': {'domain': 'youtube.com'},
+        'payload': {
+            'domain': 'youtube.com',
+            'target_url': 'https://cdn.example.com/segment-001.ts',
+        },
         'site_name': None,
         'domain': 'youtube.com',
         'timeout_ms': None,
     }]
+    assert headers['User-Agent'] == 'Runtime UA'
     assert proxy.site_headers['User-Agent'] == 'Runtime UA'
     assert proxy.domain_config['domain'] == 'youtube.com'
+
+
+def test_video_proxy_caches_runtime_proxy_config_for_identical_requests(monkeypatch):
+    calls = []
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            calls.append({
+                'capability': capability,
+                'payload': payload,
+                'site_name': site_name,
+                'domain': domain,
+                'timeout_ms': timeout_ms,
+            })
+            return PluginInvokeResponse(
+                request_id='proxy-config-1',
+                ok=True,
+                data={
+                    'site_headers': {
+                        'User-Agent': 'Runtime UA',
+                        'Referer': 'https://m.youtube.com/watch?v=demo',
+                    },
+                    'domain_configs': [{
+                        'domain': 'youtube.com',
+                        'connect_timeout': 10.0,
+                        'read_timeout': 20.0,
+                        'max_retries': 3,
+                        'chunk_size': 65536,
+                        'max_connections': 5,
+                        'keepalive_expiry': 30.0,
+                        'enable_http2': True,
+                    }],
+                },
+            )
+
+    monkeypatch.setattr(
+        'core.streaming.proxy.get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+    monkeypatch.setattr('core.streaming.proxy.filter_cookies_to_query_string', lambda _url: '')
+    first = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+    second = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+
+    first_headers = first._build_runtime_headers(
+        'https://rr3---sn-a5mekn6z.googlevideo.com/videoplayback?c=MWEB&source=youtube',
+        referer='https://www.youtube.com/watch?v=demo',
+    )
+    second_headers = second._build_runtime_headers(
+        'https://rr3---sn-a5mekn6z.googlevideo.com/videoplayback?c=MWEB&source=youtube',
+        referer='https://www.youtube.com/watch?v=demo',
+    )
+
+    assert first_headers['User-Agent'] == 'Runtime UA'
+    assert second_headers['Referer'] == 'https://m.youtube.com/watch?v=demo'
+    assert calls == [{
+        'capability': 'resolve_proxy_config',
+        'payload': {
+            'domain': 'youtube.com',
+            'target_url': 'https://rr3---sn-a5mekn6z.googlevideo.com/videoplayback?c=MWEB&source=youtube',
+            'referer': 'https://www.youtube.com/watch?v=demo',
+        },
+        'site_name': None,
+        'domain': 'youtube.com',
+        'timeout_ms': None,
+    }]
 
 
 def test_video_proxy_raises_when_runtime_proxy_config_is_missing(monkeypatch):
@@ -109,8 +184,10 @@ def test_video_proxy_raises_when_runtime_proxy_config_is_missing(monkeypatch):
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
+    proxy = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+
     with pytest.raises(ProxyConfigurationException):
-        VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+        proxy._build_runtime_headers('https://cdn.example.com/segment-001.ts')
 
 
 def test_video_proxy_builds_cookie_header_from_target_url(monkeypatch):
@@ -208,13 +285,6 @@ def test_video_proxy_uses_runtime_capability_headers_for_target_specific_youtube
     )
 
     assert calls == [
-        {
-            'capability': 'resolve_proxy_config',
-            'payload': {'domain': 'youtube.com'},
-            'site_name': None,
-            'domain': 'youtube.com',
-            'timeout_ms': None,
-        },
         {
             'capability': 'resolve_proxy_config',
             'payload': {
@@ -657,3 +727,62 @@ def test_video_proxy_streams_media_segments_without_prefetching_entire_body(monk
         },
     ]
     assert streamed_response.closed is True
+def test_video_proxy_uses_runtime_chunk_size_when_not_explicitly_overridden(monkeypatch):
+    observed_chunk_sizes = []
+    monkeypatch.setattr('core.streaming.proxy.filter_cookies_to_query_string', lambda _url: '')
+
+    class _ChunkAwareResponse(_FakeResponse):
+        async def aiter_bytes(self, chunk_size):
+            observed_chunk_sizes.append(chunk_size)
+            yield self.content
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            if capability == 'resolve_proxy_config':
+                return PluginInvokeResponse(
+                    request_id='proxy-config-1',
+                    ok=True,
+                    data={
+                        'site_headers': {
+                            'User-Agent': 'Runtime UA',
+                        },
+                        'domain_configs': [{
+                            'domain': 'youtube.com',
+                            'connect_timeout': 10.0,
+                            'read_timeout': 20.0,
+                            'max_retries': 0,
+                            'chunk_size': 131072,
+                            'max_connections': 5,
+                            'keepalive_expiry': 30.0,
+                            'enable_http2': True,
+                        }],
+                    },
+                )
+            raise AssertionError(f'unexpected capability: {capability}')
+
+        def resolve_route(self, capability, site_name=None, domain=None):
+            return None
+
+    monkeypatch.setattr(
+        'core.streaming.proxy.get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+
+    class _FakeClient:
+        def build_request(self, method, url, headers=None, timeout=None):
+            return SimpleNamespace(method=method, url=url, headers=headers, timeout=timeout)
+
+        async def send(self, request, stream=False, follow_redirects=None):
+            return _ChunkAwareResponse(content=b'chunk-data', content_type='video/mp2t')
+
+    @asynccontextmanager
+    async def _fake_client_context():
+        yield _FakeClient()
+
+    proxy = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+    proxy._get_http_client = _fake_client_context
+
+    response = asyncio.run(proxy.handle_stream('https://cdn.example.com/segment-001.ts'))
+
+    assert _read_stream(response) == b'chunk-data'
+    assert observed_chunk_sizes == [131072]

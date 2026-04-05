@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import threading
+import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Optional, Dict, AsyncIterator, Any
@@ -319,16 +321,74 @@ class HttpRequester:
 class VideoProxy:
     domain: Optional[str] = None
     _connection_manager = ConnectionManager()
+    _runtime_config_cache: Dict[tuple[str, Optional[str], Optional[str]], tuple[float, Dict[str, str], Optional[Dict[str, Any]]]] = {}
+    _runtime_config_cache_lock = threading.Lock()
+    _runtime_config_cache_ttl = 5.0
 
     def __init__(self, request: Request, domain: Optional[str] = None):
         self.request = request
         self.domain = domain or self.domain or self._extract_domain_from_request(request)
         if not self.domain:
             raise UnsupportedDomainException("unknown")
-        self.site_headers, self.domain_config = self._load_runtime_proxy_config()
+        self.site_headers: Dict[str, str] = {}
+        self.domain_config: Optional[Dict[str, Any]] = None
 
     def _extract_domain_from_request(self, request: Request) -> Optional[str]:
         return None
+
+    @classmethod
+    def _runtime_config_cache_key(
+        cls,
+        domain: str,
+        *,
+        target_url: Optional[str] = None,
+        referer: Optional[str] = None,
+    ) -> tuple[str, Optional[str], Optional[str]]:
+        normalized_target_url = (str(target_url).strip() or None) if target_url else None
+        normalized_referer = (str(referer).strip() or None) if referer else None
+        return str(domain).strip().lower(), normalized_target_url, normalized_referer
+
+    @classmethod
+    def _get_cached_runtime_proxy_config(
+        cls,
+        domain: str,
+        *,
+        target_url: Optional[str] = None,
+        referer: Optional[str] = None,
+    ) -> Optional[tuple[Dict[str, str], Optional[Dict[str, Any]]]]:
+        cache_key = cls._runtime_config_cache_key(domain, target_url=target_url, referer=referer)
+        now = time.monotonic()
+        with cls._runtime_config_cache_lock:
+            cached = cls._runtime_config_cache.get(cache_key)
+            if cached is None:
+                return None
+
+            expires_at, site_headers, domain_config = cached
+            if expires_at <= now:
+                cls._runtime_config_cache.pop(cache_key, None)
+                return None
+
+            return dict(site_headers), dict(domain_config) if isinstance(domain_config, dict) else None
+
+    @classmethod
+    def _set_cached_runtime_proxy_config(
+        cls,
+        domain: str,
+        *,
+        target_url: Optional[str] = None,
+        referer: Optional[str] = None,
+        site_headers: Dict[str, str],
+        domain_config: Optional[Dict[str, Any]],
+    ) -> None:
+        cache_key = cls._runtime_config_cache_key(domain, target_url=target_url, referer=referer)
+        expires_at = time.monotonic() + float(cls._runtime_config_cache_ttl)
+        cached_domain_config = dict(domain_config) if isinstance(domain_config, dict) else None
+        with cls._runtime_config_cache_lock:
+            cls._runtime_config_cache[cache_key] = (
+                expires_at,
+                dict(site_headers),
+                cached_domain_config,
+            )
 
     def _load_runtime_proxy_config(
         self,
@@ -336,6 +396,14 @@ class VideoProxy:
         target_url: Optional[str] = None,
         referer: Optional[str] = None,
     ) -> tuple[Dict[str, str], Optional[Dict[str, Any]]]:
+        cached = self._get_cached_runtime_proxy_config(
+            self.domain,
+            target_url=target_url,
+            referer=referer,
+        )
+        if cached is not None:
+            return cached
+
         payload = {'domain': self.domain}
         if target_url:
             payload['target_url'] = target_url
@@ -360,15 +428,32 @@ class VideoProxy:
                 domain_config = dict(item)
                 break
 
-        return dict(payload.get('site_headers') or {}), domain_config
+        site_headers = dict(payload.get('site_headers') or {})
+        self._set_cached_runtime_proxy_config(
+            self.domain,
+            target_url=target_url,
+            referer=referer,
+            site_headers=site_headers,
+            domain_config=domain_config,
+        )
+        return site_headers, domain_config
+
+    def _resolve_runtime_proxy_config(
+        self,
+        *,
+        target_url: Optional[str] = None,
+        referer: Optional[str] = None,
+    ) -> tuple[Dict[str, str], Optional[Dict[str, Any]]]:
+        site_headers, domain_config = self._load_runtime_proxy_config(target_url=target_url, referer=referer)
+        self.site_headers = dict(site_headers)
+        if domain_config is not None:
+            self.domain_config = dict(domain_config)
+        return dict(site_headers), dict(domain_config) if isinstance(domain_config, dict) else None
 
     def _build_runtime_headers(self, target_url: str, referer: Optional[str] = None) -> Dict[str, str]:
         site_headers = self.site_headers
-        domain_config = self.domain_config
-        if target_url or referer:
-            site_headers, domain_config = self._load_runtime_proxy_config(target_url=target_url, referer=referer)
-            if domain_config is not None:
-                self.domain_config = domain_config
+        if target_url or referer or not site_headers:
+            site_headers, _ = self._resolve_runtime_proxy_config(target_url=target_url, referer=referer)
 
         custom_headers: Dict[str, str] = {}
 
@@ -421,19 +506,24 @@ class VideoProxy:
 
     async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:
         try:
+            referer = kwargs.get('referer')
+            headers = self._build_runtime_headers(url, referer)
+            explicit_chunk_size = kwargs.get('chunk_size')
+            effective_chunk_size = explicit_chunk_size
+            if effective_chunk_size is None:
+                effective_chunk_size = int((self.domain_config or {}).get('chunk_size') or ProxyRequest.chunk_size)
+
             proxy_request = ProxyRequest(
                 url=url,
                 timeout=kwargs.get('timeout', 120.0),
                 max_retries=kwargs.get('max_retries', 3),
-                chunk_size=kwargs.get('chunk_size', 8192),
+                chunk_size=effective_chunk_size,
                 headers=kwargs.get('headers', {}),
                 follow_redirects=kwargs.get('follow_redirects', True),
             )
 
             retry_strategy = RetryStrategy(max_retries=proxy_request.max_retries)
             requester = HttpRequester(self.domain, retry_strategy)
-            referer = kwargs.get('referer')
-            headers = self._build_runtime_headers(url, referer)
             if proxy_request.headers:
                 headers.update(proxy_request.headers)
 

@@ -1,10 +1,15 @@
 import http.cookiejar as cookielib
+import threading
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
 from core.cookie_config import get_site_cookies_file_path
 from utils.site_catalog import SiteCatalog
+
+
+_COOKIE_HEADER_CACHE: dict[tuple[str, int, int, str], str] = {}
+_COOKIE_HEADER_CACHE_LOCK = threading.Lock()
 
 
 def _extract_host_from_url(target_url: str) -> Optional[str]:
@@ -107,15 +112,31 @@ def _read_cookie_file_as_query_string(path: Optional[str], target_url: str) -> s
     if not cookie_path.is_file():
         return ''
 
+    domain = resolve_cookie_match_domain_for_url(target_url)
+    if not domain:
+        return ''
+
+    try:
+        cookie_stat = cookie_path.stat()
+    except OSError:
+        return ''
+
+    cache_key = (
+        str(cookie_path.resolve()),
+        int(cookie_stat.st_mtime_ns),
+        int(cookie_stat.st_size),
+        domain,
+    )
+    with _COOKIE_HEADER_CACHE_LOCK:
+        cached_header = _COOKIE_HEADER_CACHE.get(cache_key)
+    if cached_header is not None:
+        return cached_header
+
     jar = cookielib.MozillaCookieJar()
 
     try:
         jar.load(str(cookie_path), ignore_discard=True, ignore_expires=True)
     except Exception:
-        return ''
-
-    domain = resolve_cookie_match_domain_for_url(target_url)
-    if not domain:
         return ''
 
     filtered = []
@@ -126,7 +147,10 @@ def _read_cookie_file_as_query_string(path: Optional[str], target_url: str) -> s
         except Exception:
             continue
 
-    return '; '.join(filtered)
+    header_value = '; '.join(filtered)
+    with _COOKIE_HEADER_CACHE_LOCK:
+        _COOKIE_HEADER_CACHE[cache_key] = header_value
+    return header_value
 
 
 def filter_cookies_to_query_string(target_url: str) -> str:

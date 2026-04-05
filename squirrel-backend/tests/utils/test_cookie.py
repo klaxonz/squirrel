@@ -1,9 +1,16 @@
 from pathlib import Path
 import sys
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from utils import cookie
+
+
+@pytest.fixture(autouse=True)
+def _reset_cookie_header_cache(monkeypatch):
+    monkeypatch.setattr(cookie, '_COOKIE_HEADER_CACHE', {}, raising=False)
 
 
 def test_filter_cookies_to_query_string_by_domain_uses_backend_resolver(monkeypatch):
@@ -77,6 +84,41 @@ def test_filter_cookies_to_query_string_uses_youtube_cookie_domain_for_googlevid
         cookie.filter_cookies_to_query_string('https://rr4---sn-a5meknzl.googlevideo.com/videoplayback?c=MWEB')
         == 'SID=abc123'
     )
+
+
+def test_filter_cookies_to_query_string_caches_cookie_file_contents(tmp_path, monkeypatch):
+    cookie_file = tmp_path / 'cookies.txt'
+    cookie_file.write_text('# Netscape HTTP Cookie File\n', encoding='utf-8')
+
+    load_calls = []
+
+    class _FakeCookie:
+        def __init__(self, domain, name, value):
+            self.domain = domain
+            self.name = name
+            self.value = value
+
+    class _FakeJar:
+        def load(self, path, ignore_discard=True, ignore_expires=True):
+            load_calls.append(Path(path).name)
+
+        def __iter__(self):
+            return iter([
+                _FakeCookie('.youtube.com', 'SID', 'abc123'),
+                _FakeCookie('.example.com', 'TOKEN', 'ignored'),
+            ])
+
+    monkeypatch.setattr(cookie, 'resolve_cookie_file_for_url', lambda url: str(cookie_file))
+    monkeypatch.setattr(cookie, 'resolve_cookie_match_domain_for_url', lambda url: 'youtube.com')
+    monkeypatch.setattr(cookie.cookielib, 'MozillaCookieJar', _FakeJar)
+    monkeypatch.setattr(cookie, '_COOKIE_HEADER_CACHE', {}, raising=False)
+
+    first = cookie.filter_cookies_to_query_string('https://www.youtube.com/watch?v=1')
+    second = cookie.filter_cookies_to_query_string('https://www.youtube.com/watch?v=1')
+
+    assert first == 'SID=abc123'
+    assert second == 'SID=abc123'
+    assert load_calls == ['cookies.txt']
 
 
 def test_resolve_cookie_match_domain_for_url_uses_site_catalog_cookie_config(monkeypatch):
