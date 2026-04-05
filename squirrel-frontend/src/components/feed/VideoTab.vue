@@ -15,7 +15,7 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import VideoList from './VideoList.vue'
 import useLatestVideos from '@/composables/useLatestVideos'
 
@@ -64,6 +64,15 @@ const getFiltersFromProps = () => ({
   nsfw: props.filters?.nsfw ?? props.nsfw ?? 'all',
 })
 
+const createFilterSignature = (filters) => JSON.stringify([
+  filters?.tab ?? 'all',
+  filters?.q ?? '',
+  filters?.sid ?? null,
+  filters?.sort ?? 'publish_date',
+  filters?.site ?? null,
+  filters?.nsfw ?? 'all',
+])
+
 const {
   videos,
   loading,
@@ -96,6 +105,8 @@ const processedVideos = computed(() => {
   }));
 });
 
+const lastAppliedFilterSignature = ref('')
+
 watch(() => videoCounts.value, (counts) => {
   emit('update-counts', counts);
 }, { immediate: true });
@@ -107,12 +118,26 @@ watch(() => error.value, (err) => {
 watch(
   getFiltersFromProps,
   (filters) => {
+    const nextSignature = createFilterSignature(filters)
+
     activeTab.value = filters.tab
     searchQuery.value = filters.q
     subscriptionId.value = filters.sid
     sortBy.value = filters.sort
     site.value = filters.site
     nsfw.value = filters.nsfw
+
+    if (!lastAppliedFilterSignature.value) {
+      lastAppliedFilterSignature.value = nextSignature
+      handleSearch()
+      return
+    }
+
+    if (nextSignature === lastAppliedFilterSignature.value) {
+      return
+    }
+
+    lastAppliedFilterSignature.value = nextSignature
     handleSearch()
   },
   { immediate: true }
