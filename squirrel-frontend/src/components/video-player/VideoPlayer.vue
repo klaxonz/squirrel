@@ -304,6 +304,7 @@ const previewPercent = ref(0)
 const isScrubbing = ref(false)
 const isVolumeScrubbing = ref(false)
 const lastPointerType = ref('mouse')
+const shouldResumeAfterSourceSwap = ref(false)
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
 const centralHud = ref<{ visible: boolean; type: string; value: string; icon: IconName; percent: number }>({ 
   visible: false, type: '', value: '', icon: 'play', percent: 0 
@@ -411,8 +412,16 @@ watch(() => props.source, (s, previousSource) => {
     clearInitialTimeListener()
     initialTimeAppliedSourceKey = null
   }
-  if (!s) return
+  if (!s) {
+    shouldResumeAfterSourceSwap.value = isPlaying.value
+    pause()
+    return
+  }
   loadSource(s)
+  if (shouldResumeAfterSourceSwap.value) {
+    shouldResumeAfterSourceSwap.value = false
+    void play()
+  }
   applyInitialTime(s, props.initialTime)
 }, { immediate: true })
 watch(() => props.initialTime, (initialTime) => {
