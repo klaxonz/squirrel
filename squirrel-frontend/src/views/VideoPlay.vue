@@ -1,8 +1,8 @@
 <template>
   <div ref="videoPageRef" class="video-page terminal-viewport scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
-    <div :class="['video-page__container', isWidescreen ? 'is-widescreen' : '']">
+    <div :class="['video-page__container', { 'is-widescreen': isWidescreen }]">
       <!-- 左侧主内容区域 -->
-      <div :class="['video-main', isWidescreen ? 'is-widescreen' : '']">
+      <div class="video-main">
         <!-- 视频播放区域 -->
         <div ref="videoSectionRef" class="video-section">
           <div class="video-container">
@@ -137,7 +137,7 @@
       </div>
 
       <!-- 右侧区域 - 相关视频 -->
-      <div :class="['video-aside', isWidescreen ? 'hidden' : '']">
+      <div class="video-aside">
         <div class="video-aside__panel">
           <div class="video-aside__header">
             <h2 class="video-aside__title">相关视频</h2>
@@ -1462,6 +1462,71 @@ onUnmounted(() => {
   .video-container {
     height: 0;
     padding-bottom: 56.25%;
+  }
+}
+
+/* Theater mode keeps the related rail mounted and reflows it below the player. */
+.video-page__container.is-widescreen {
+  --video-theater-top-offset: calc(var(--app-topbar-height, 0px) + 0.5rem);
+  --video-theater-meta-peek: clamp(6.5rem, 12vh, 8.5rem);
+  --video-theater-bottom-gap: 0.75rem;
+  --video-theater-max-height: calc(100vh - var(--video-theater-top-offset) - var(--video-theater-meta-peek) - var(--video-theater-bottom-gap));
+  --video-theater-max-height: calc(100dvh - var(--video-theater-top-offset) - var(--video-theater-meta-peek) - var(--video-theater-bottom-gap));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: none;
+  width: 100%;
+}
+
+.video-page__container.is-widescreen .video-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: var(--video-theater-max-height);
+  margin-inline: calc(50% - 50vw);
+  background: #000;
+}
+
+.video-page__container.is-widescreen .video-container {
+  width: 100%;
+  height: 100%;
+  max-height: var(--video-theater-max-height);
+  background: #000;
+  margin: 0 auto;
+}
+
+.video-page__container.is-widescreen .video-aside {
+  position: static;
+  top: auto;
+  margin-top: 0.5rem;
+}
+
+.video-page__container.is-widescreen .video-aside__content,
+.video-page__container.is-widescreen .related-videos-list {
+  overflow: visible;
+  max-height: none;
+  padding-right: 0;
+}
+
+.video-page__container.is-widescreen .related-video-card {
+  grid-template-columns: minmax(10.5rem, 12rem) minmax(0, 1fr);
+  gap: 0.8rem;
+  padding: 0.45rem 0;
+}
+
+@media (min-width: 1280px) {
+  .video-page__container.is-widescreen {
+    max-width: min(1920px, calc(100vw - 2rem));
+    padding: 0 1rem 2rem;
+  }
+
+  .video-page__container.is-widescreen .video-meta {
+    max-width: none;
+  }
+
+  .video-page__container.is-widescreen .related-video-card {
+    grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
   }
 }
 

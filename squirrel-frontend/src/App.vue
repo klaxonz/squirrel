@@ -42,17 +42,20 @@
             :class="contentScrollClass"
           >
             <!-- 顶部装饰栏：极简搜索（居中） + 状态 -->
-            <div v-if="showGlobalSearch" class="minimal-header">
-              <div class="header-left-spacer"></div>
+            <div
+              v-if="showGlobalSearch"
+              :class="['minimal-header', { 'minimal-header--compact': isVideoPlayRoute }]"
+            >
+              <div :class="['header-left-spacer', { 'is-compact': isVideoPlayRoute }]"></div>
               <GlobalSearchBar
                 ref="globalSearchBar"
                 v-model="searchQuery"
-                class="minimal-search"
+                :class="['minimal-search', { 'minimal-search--compact': isVideoPlayRoute }]"
                 :placeholder="searchPlaceholder"
                 @search="handleGlobalSearch"
                 @clear="handleGlobalSearchClear"
               />
-              <div class="header-right-spacer"></div>
+              <div :class="['header-right-spacer', { 'is-compact': isVideoPlayRoute }]"></div>
             </div>
 
             <router-view v-slot="{ Component }">
@@ -112,6 +115,7 @@ const { loadSystemConfig } = useSystemConfig()
 const mobileRoutes = MOBILE_NAV_ITEMS
 
 const showGlobalSearch = computed(() => !isAuthPage.value && !!route.meta?.showSearch)
+const isVideoPlayRoute = computed(() => route.name === 'VideoPlay')
 const showShellHeader = computed(() => showGlobalSearch.value || isVideoWidescreen.value)
 const isCenteredSearchPage = computed(() => ['home', 'subscribed', 'history'].includes(String(route.meta?.search || '')))
 const isScrollablePage = computed(() => !!route.meta?.scrollable)
@@ -294,6 +298,11 @@ h6 {
   pointer-events: none;
 }
 
+.minimal-header--compact {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(to bottom, #050505 0%, rgba(5, 5, 5, 0.92) 72%, rgba(5, 5, 5, 0.55) 100%);
+}
+
 .header-left-spacer {
   width: 120px;
   flex-shrink: 0;
@@ -304,14 +313,27 @@ h6 {
   flex-shrink: 0;
 }
 
+.header-left-spacer.is-compact,
+.header-right-spacer.is-compact {
+  width: 3rem;
+}
+
 .minimal-search {
   width: 320px;
   pointer-events: auto;
   transition: width 0.4s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
+.minimal-search--compact {
+  width: min(40rem, calc(100vw - 8rem));
+}
+
 .minimal-search:focus-within {
   width: 480px;
+}
+
+.minimal-search--compact:focus-within {
+  width: min(46rem, calc(100vw - 6rem));
 }
 
 .page-container {

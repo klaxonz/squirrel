@@ -427,7 +427,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
         }
       }
 
-      events.emit(event, payload)
+      return events.emit(event, payload)
     },
     once: events.once.bind(events),
 
