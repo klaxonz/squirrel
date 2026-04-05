@@ -190,7 +190,7 @@ const dashboardSummary = computed(() => {
     if (extractionPageError.value) {
       return '视频提取数据不可用'
     }
-    return `提取中 ${extractionOverview.value.running_count} · 排队 ${extractionOverview.value.queued_count} · 活跃任务 ${extractionOverview.value.pending_videos}`
+    return `提取中 ${extractionOverview.value.running_count} · 排队 ${extractionOverview.value.queued_count} · 活跃提取任务 ${extractionOverview.value.pending_videos}`
   }
   if (overviewPageError.value || historyError.value) {
     return '部分数据不可用'

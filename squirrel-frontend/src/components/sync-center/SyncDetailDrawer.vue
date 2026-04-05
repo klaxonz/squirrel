@@ -46,7 +46,7 @@
             </Card>
             <Card>
               <CardContent class="p-4">
-                <p class="text-2xs text-muted-foreground/70">待处理视频</p>
+                <p class="text-2xs text-muted-foreground/70">待处理提取任务</p>
                 <p class="mt-2 text-2xl font-semibold text-foreground">{{ item.pending_video_count || 0 }}</p>
               </CardContent>
             </Card>

@@ -45,6 +45,8 @@ def _setup_env(monkeypatch):
     )
     monkeypatch.setattr(video_extraction_center_service, 'get_session', lambda: _managed_session(engine))
     monkeypatch.setattr(video_extraction_projection_service, 'get_session', lambda: _managed_session(engine))
+    monkeypatch.setattr(video_extraction_projection_service, '_last_reconcile_monotonic', None, raising=False)
+    monkeypatch.setattr(video_extraction_projection_service, '_group_key_layout_checked', False, raising=False)
     return engine
 
 
@@ -381,3 +383,254 @@ def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkey
     assert running_result.data[0].batch_task_count == 2
     assert running_result.data[0].queued_task_count == 1
     assert running_result.data[0].running_task_count == 1
+
+
+def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
+    engine = _setup_env(monkeypatch)
+    now = datetime(2026, 4, 2, 19, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            Subscription(
+                id=15,
+                type='CHANNEL',
+                name='YouTube Reused State',
+                url='https://www.youtube.com/channel/reused-state',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
+            UserSubscription(
+                id=15,
+                user_id=1,
+                subscription_id=15,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add_all([
+            CrawlJob(
+                id=115,
+                job_type='video_extract',
+                source_type='subscription_sync',
+                site='youtube.com',
+                subscription_id=15,
+                status='partial_failed',
+                created_at=now - timedelta(minutes=12),
+                updated_at=now - timedelta(minutes=10),
+                finished_at=now - timedelta(minutes=10),
+            ),
+            CrawlJob(
+                id=116,
+                job_type='video_extract',
+                source_type='subscription_sync',
+                site='youtube.com',
+                subscription_id=15,
+                status='succeeded',
+                created_at=now - timedelta(minutes=4),
+                updated_at=now - timedelta(minutes=1),
+                finished_at=now - timedelta(minutes=1),
+            ),
+        ])
+        session.add_all([
+            CrawlTask(
+                id=11501,
+                job_id=115,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=15,
+                status='dead',
+                last_error='extract_failed',
+                payload={'sync_state_id': 880, 'run_id': 'run-old'},
+                created_at=now - timedelta(minutes=12),
+                updated_at=now - timedelta(minutes=10),
+                started_at=now - timedelta(minutes=12),
+                finished_at=now - timedelta(minutes=10),
+            ),
+            CrawlTask(
+                id=11502,
+                job_id=115,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=15,
+                status='dead',
+                last_error='extract_failed',
+                payload={'sync_state_id': 880, 'run_id': 'run-old'},
+                created_at=now - timedelta(minutes=11),
+                updated_at=now - timedelta(minutes=10),
+                started_at=now - timedelta(minutes=11),
+                finished_at=now - timedelta(minutes=10),
+            ),
+            CrawlTask(
+                id=11601,
+                job_id=116,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=15,
+                status='succeeded',
+                payload={'sync_state_id': 880, 'run_id': 'run-new'},
+                created_at=now - timedelta(minutes=4),
+                updated_at=now - timedelta(minutes=2),
+                started_at=now - timedelta(minutes=4),
+                finished_at=now - timedelta(minutes=2),
+            ),
+            CrawlTask(
+                id=11602,
+                job_id=116,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=15,
+                status='succeeded',
+                payload={'sync_state_id': 880, 'run_id': 'run-new'},
+                created_at=now - timedelta(minutes=3),
+                updated_at=now - timedelta(minutes=1),
+                started_at=now - timedelta(minutes=3),
+                finished_at=now - timedelta(minutes=1),
+            ),
+        ])
+        session.commit()
+
+    recent_result = video_extraction_center_service.list_extraction_center_items(
+        user_id=1,
+        status='recent',
+        site=None,
+        query='Reused State',
+        page=1,
+        page_size=20,
+    )
+
+    assert recent_result.total == 2
+    assert [item.run_id for item in recent_result.data] == ['extract:run:run-new', 'extract:run:run-old']
+    assert [item.sync_status for item in recent_result.data] == ['success', 'failed']
+    assert [item.batch_task_count for item in recent_result.data] == [2, 2]
+    assert [item.completed_task_count for item in recent_result.data] == [2, 0]
+    assert [item.failed_task_count for item in recent_result.data] == [0, 2]
+
+
+def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
+    engine = _setup_env(monkeypatch)
+    now = datetime(2026, 4, 2, 20, 0, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            Subscription(
+                id=20,
+                type='CHANNEL',
+                name='Projection Drift',
+                url='https://www.youtube.com/channel/projection-drift',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
+            UserSubscription(
+                id=20,
+                user_id=1,
+                subscription_id=20,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
+            CrawlJob(
+                id=120,
+                job_type='video_extract',
+                source_type='subscription_sync',
+                site='youtube.com',
+                subscription_id=20,
+                status='succeeded',
+                created_at=now - timedelta(minutes=5),
+                updated_at=now - timedelta(minutes=1),
+                finished_at=now - timedelta(minutes=1),
+            )
+        )
+        session.add_all([
+            CrawlTask(
+                id=12001,
+                job_id=120,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=20,
+                status='succeeded',
+                payload={'sync_state_id': 900},
+                created_at=now - timedelta(minutes=5),
+                updated_at=now - timedelta(minutes=2),
+                started_at=now - timedelta(minutes=5),
+                finished_at=now - timedelta(minutes=2),
+            ),
+            CrawlTask(
+                id=12002,
+                job_id=120,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=20,
+                status='succeeded',
+                payload={'sync_state_id': 900},
+                created_at=now - timedelta(minutes=4),
+                updated_at=now - timedelta(minutes=1),
+                started_at=now - timedelta(minutes=4),
+                finished_at=now - timedelta(minutes=1),
+            ),
+        ])
+        session.add(
+            VideoExtractionProjection(
+                subscription_id=20,
+                group_kind='state',
+                group_value='900',
+                site='youtube.com',
+                sync_status='running',
+                display_status='running',
+                current_phase='extracting',
+                queued_at=now - timedelta(minutes=5),
+                locked_at=now - timedelta(minutes=5),
+                pending_video_count=24,
+                batch_task_count=26,
+                queued_task_count=23,
+                running_task_count=1,
+                completed_task_count=2,
+                failed_task_count=0,
+                created_at=now - timedelta(minutes=5),
+                updated_at=now - timedelta(minutes=5),
+            )
+        )
+        session.commit()
+
+    overview = video_extraction_center_service.get_extraction_center_overview(user_id=1)
+    running_result = video_extraction_center_service.list_extraction_center_items(
+        user_id=1,
+        status='running',
+        site=None,
+        query='Projection Drift',
+        page=1,
+        page_size=20,
+    )
+    recent_result = video_extraction_center_service.list_extraction_center_items(
+        user_id=1,
+        status='recent',
+        site=None,
+        query='Projection Drift',
+        page=1,
+        page_size=20,
+    )
+
+    assert overview.running_count == 0
+    assert overview.pending_videos == 0
+    assert running_result.total == 0
+    assert recent_result.total == 1
+    assert recent_result.data[0].sync_status == 'success'
+    assert recent_result.data[0].completed_task_count == 2
