@@ -118,7 +118,7 @@
 
             <div class="sp-controls-right">
               <div v-if="displayedQualities.length > 0" class="sp-quality-tag" @click.stop="toggleQualityMenu">
-                {{ currentQualityLabel || 'AUTO' }}
+                {{ qualityMenuLabel }}
               </div>
               <button v-if="subtitleTracks.length > 0" class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
                 <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
@@ -133,6 +133,23 @@
                 <PlayerIcon :name="isFullscreen ? 'fullscreenExit' : 'fullscreen'" />
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 独立画质菜单 -->
+    <transition name="sp-ui-fade">
+      <div v-if="showQualityMenu" class="sp-settings-pop sp-quality-pop" data-player-interactive>
+        <div class="sp-menu-list">
+          <div
+            v-for="q in displayedQualities"
+            :key="q.id"
+            class="sp-menu-item"
+            :class="{ 'is-active': currentQualityId === q.id }"
+            @click="handleQualitySelect(q)"
+          >
+            {{ q.label }}
           </div>
         </div>
       </div>
@@ -161,7 +178,7 @@
             </div>
             <div v-if="displayedQualities.length > 0" class="sp-menu-item" @click="settingsView = 'quality'">
               <span>{{ t('quality') }}</span>
-              <span class="sp-menu-val">{{ currentQualityLabel || 'AUTO' }}</span>
+              <span class="sp-menu-val">{{ qualityMenuLabel }}</span>
             </div>
           </div>
         </template>
@@ -205,13 +222,6 @@
             <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('quality') }}
           </div>
           <div class="sp-menu-list">
-            <div
-              class="sp-menu-item"
-              :class="{ 'is-active': currentQualityId === null }"
-              @click="handleAutoQualitySelect()"
-            >
-              AUTO
-            </div>
             <div v-for="q in displayedQualities" :key="q.id" 
                  class="sp-menu-item" :class="{ 'is-active': currentQualityId === q.id }"
                  @click="handleQualitySelect(q)">
@@ -287,6 +297,7 @@ const containerRef = ref<HTMLElement | null>(null)
 const settingsPopupRef = ref<HTMLElement | null>(null)
 
 const showSettingsMenu = ref(false)
+const showQualityMenu = ref(false)
 const settingsView = ref('main')
 const previewTime = ref<number | null>(null)
 const previewPercent = ref(0)
@@ -323,6 +334,7 @@ const displayedQualities = computed(() => {
   const codecMatchedQualities = qualities.value.filter((quality) => getCodecFamily(quality.codec) === visibleCodecFamily.value)
   return codecMatchedQualities.length > 0 ? codecMatchedQualities : qualities.value
 })
+const qualityMenuLabel = computed(() => currentQualityLabel.value || displayedQualities.value[0]?.label || t('quality'))
 const codecAutoLabel = computed(() => {
   if (currentCodecFamily.value) {
     return `${t('codecAuto')} · ${formatCodecFamilyLabel(currentCodecFamily.value)}`
@@ -404,13 +416,27 @@ watch(() => props.initialTime, (initialTime) => {
 })
 watch(() => props.subtitles, (ts) => { setSubtitleTracks(ts || []) }, { immediate: true, deep: true })
 
+const closeMenus = () => {
+  showSettingsMenu.value = false
+  showQualityMenu.value = false
+  settingsView.value = 'main'
+}
+
 const togglePlay = () => isPlaying.value ? pause() : play()
-const toggleSettingsMenu = () => { showSettingsMenu.value = !showSettingsMenu.value; settingsView.value = 'main' }
-const toggleQualityMenu = () => { showSettingsMenu.value = true; settingsView.value = 'quality' }
-const handleSpeedSelect = (rate: number) => { setPlaybackRate(rate); showSettingsMenu.value = false }
-const handleCodecFamilySelect = (codecFamily: string) => { setCodecFamily(codecFamily); showSettingsMenu.value = false }
-const handleAutoQualitySelect = () => { setQuality('auto'); showSettingsMenu.value = false }
-const handleQualitySelect = (q: any) => { setQuality(q.id); showSettingsMenu.value = false }
+const toggleSettingsMenu = () => {
+  const nextVisible = !showSettingsMenu.value
+  showQualityMenu.value = false
+  showSettingsMenu.value = nextVisible
+  settingsView.value = 'main'
+}
+const toggleQualityMenu = () => {
+  const nextVisible = !showQualityMenu.value
+  showSettingsMenu.value = false
+  showQualityMenu.value = nextVisible
+}
+const handleSpeedSelect = (rate: number) => { setPlaybackRate(rate); closeMenus() }
+const handleCodecFamilySelect = (codecFamily: string) => { setCodecFamily(codecFamily); closeMenus() }
+const handleQualitySelect = (q: any) => { setQuality(q.id); closeMenus() }
 const toggleWidescreen = () => emit('widescreenChange', !props.widescreen)
 const toggleAutoplayNext = () => store.setAutoplayNext(!store.autoplayNext)
 const toggleLoop = () => store.setLoop(!store.loop)
@@ -421,7 +447,7 @@ const hideControls = () => {
   clearHideTimer()
   store.setControlsVisible(false)
   previewTime.value = null
-  showSettingsMenu.value = false
+  closeMenus()
 }
 const syncHideTimer = () => {
   clearHideTimer()
