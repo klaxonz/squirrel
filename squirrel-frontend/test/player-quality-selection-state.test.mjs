@@ -12,3 +12,10 @@ test('player engine resolves selected quality state from either ids or labels an
   assert.match(source, /const isAutoQuality = quality === 'auto' \|\| quality === -1 \|\| qStr === 'auto' \|\| qStr === '自动'/)
   assert.match(source, /currentQualityId = null[\s\S]*registeredQualityId = null[\s\S]*currentQualityLabel = 'auto'/)
 })
+
+test('player engine disables automatic quality fallback by default', async () => {
+  const source = await readFile(enginePath, 'utf8')
+
+  assert.match(source, /const enableQualityFallback = options\.errorRecovery\?\.enableQualityFallback \?\? false/)
+  assert.match(source, /if \(enableQualityFallback && getNextLowerQuality\(\)\) return 'quality-fallback'/)
+})

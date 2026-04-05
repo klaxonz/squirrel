@@ -62,7 +62,7 @@ export class DashPlugin implements PlayerPlugin {
     this.options = {
       maxRetries: 3,
       retryInterval: 3000,
-      enableAutoQuality: true,
+      enableAutoQuality: false,
       ...options
     }
   }
@@ -120,6 +120,7 @@ export class DashPlugin implements PlayerPlugin {
     const settings: Partial<MediaPlayerSettingClass> = {
       streaming: {
         abr: {
+          autoSwitchBitrate: { video: this.options.enableAutoQuality !== false },
           initialBitrate: { video: 3000 },
           initialRepresentationRatio: 1,
           maxBitrate: { video: -1 },

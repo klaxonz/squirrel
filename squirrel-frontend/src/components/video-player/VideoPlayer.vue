@@ -191,13 +191,6 @@
           </div>
           <div class="sp-menu-list">
             <div
-              class="sp-menu-item"
-              :class="{ 'is-active': selectedCodecFamily === 'auto' }"
-              @click="handleCodecFamilySelect('auto')"
-            >
-              {{ codecAutoLabel }}
-            </div>
-            <div
               v-for="codecFamily in codecFamilies"
               :key="codecFamily"
               class="sp-menu-item"
@@ -332,19 +325,15 @@ const displayedQualities = computed(() => {
   return codecMatchedQualities.length > 0 ? codecMatchedQualities : qualities.value
 })
 const isInternalQualityLabel = (label: string | null | undefined) => /^level[_\s-]?\d+$/i.test(String(label || '').trim())
+const isAutoQualityLabel = (label: string | null | undefined) => ['auto', '自动', '自動'].includes(String(label || '').trim().toLowerCase())
+const isDisplayableQualityLabel = (label: string | null | undefined) => !isInternalQualityLabel(label) && !isAutoQualityLabel(label)
 const currentQualityTagLabel = computed(() => (
-  isInternalQualityLabel(currentQualityLabel.value) ? '' : (currentQualityLabel.value || '')
+  isDisplayableQualityLabel(currentQualityLabel.value) ? (currentQualityLabel.value || '') : ''
 ))
-const qualityMenuLabel = computed(() => currentQualityLabel.value || displayedQualities.value[0]?.label || t('quality'))
-const codecAutoLabel = computed(() => {
-  if (currentCodecFamily.value) {
-    return `${t('codecAuto')} · ${formatCodecFamilyLabel(currentCodecFamily.value)}`
-  }
-  return t('codecAuto')
-})
+const qualityMenuLabel = computed(() => isDisplayableQualityLabel(currentQualityLabel.value) ? (currentQualityLabel.value || '') : (displayedQualities.value[0]?.label || t('quality')))
 const codecMenuLabel = computed(() => (
   selectedCodecFamily.value === 'auto'
-    ? codecAutoLabel.value
+    ? formatCodecFamilyLabel(currentCodecFamily.value || visibleCodecFamily.value || codecFamilies.value[0] || null)
     : formatCodecFamilyLabel(selectedCodecFamily.value)
 ))
 
@@ -553,7 +542,7 @@ const inferCodecFamilyFromLabel = (label: string | null | undefined) => {
 }
 
 const formatCodecFamilyLabel = (codecFamily: string | null | undefined) => {
-  if (!codecFamily) return t('codecAuto')
+  if (!codecFamily) return t('codec')
   const normalized = String(codecFamily).toLowerCase()
   if (normalized === 'av1') return 'AV1'
   if (normalized === 'vp9') return 'VP9'

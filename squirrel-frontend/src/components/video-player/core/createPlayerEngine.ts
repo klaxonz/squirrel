@@ -149,7 +149,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const maxRetries = options.errorRecovery?.maxRetries ?? 3
   const retryDelay = options.errorRecovery?.retryDelay ?? 2000
-  const enableQualityFallback = options.errorRecovery?.enableQualityFallback ?? true
+  const enableQualityFallback = options.errorRecovery?.enableQualityFallback ?? false
 
   let isRecovering = false
   let retryCount = 0

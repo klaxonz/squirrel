@@ -37,9 +37,7 @@ const enUS: LocaleConfig = {
     // 设置
     settings: 'Settings',
     quality: 'Quality',
-    qualityAuto: 'Auto',
     codec: 'Codec',
-    codecAuto: 'Auto select',
     playbackSpeed: 'Playback speed',
     speedNormal: 'Normal',
     

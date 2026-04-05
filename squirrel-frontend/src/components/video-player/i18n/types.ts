@@ -38,9 +38,7 @@ export interface LocaleMessages {
   // 设置
   settings: string
   quality: string
-  qualityAuto: string
   codec: string
-  codecAuto: string
   playbackSpeed: string
   speedNormal: string
   

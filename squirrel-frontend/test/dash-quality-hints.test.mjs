@@ -86,7 +86,9 @@ test('video player renders a dedicated codec menu alongside the quality menu', a
   assert.match(source, /settingsView = 'codec'/)
   assert.match(source, /v-else-if="settingsView === 'codec'"/)
   assert.match(source, /handleCodecFamilySelect/)
-  assert.match(source, /selectedCodecFamily === 'auto'/)
+  assert.doesNotMatch(source, /handleCodecFamilySelect\('auto'\)/)
+  assert.doesNotMatch(source, /selectedCodecFamily === 'auto'/)
+  assert.doesNotMatch(source, /codecAutoLabel/)
 })
 
 test('video player filters the quality menu by the selected or active codec family', async () => {
