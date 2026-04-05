@@ -2,7 +2,18 @@ import { EventEmitter } from './EventEmitter'
 import { PluginManager } from './PluginManager'
 import { MemoryAdapter, type IPlayerAdapter, type UserConfig, type PlaybackProgress } from './PlayerAdapter'
 import { playerLogger } from './logger'
-import type { MediaSource, PlayerError, PlayerEvents, PlayerState, QualityLevel, PluginConfig, PluginContext, SubtitleTrack } from './types'
+import type {
+  MediaSource,
+  PlayerError,
+  PlayerEvents,
+  PlayerState,
+  QualityLevel,
+  PluginConfig,
+  PluginContext,
+  SubtitleTrack,
+  PlaybackRecoveryAction,
+  PlaybackRecoveryContext
+} from './types'
 
 export type PlayerEngineOptions = {
   autoplay?: boolean
@@ -236,6 +247,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   const determineRecoveryStrategy = (error: PlayerError): 'retry' | 'quality-fallback' | 'none' => {
     const code = String(error.code || '')
 
+    if (code.includes('NOT_SUPPORTED') || code.includes('CAPABILITY')) {
+      return 'none'
+    }
+
     if (code.includes('NETWORK') || code.includes('TIMEOUT')) {
       if (retryCount < maxRetries) return 'retry'
       if (enableQualityFallback && getNextLowerQuality()) return 'quality-fallback'
@@ -246,14 +261,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
 
     if (!error.fatal && retryCount < maxRetries) return 'retry'
+    if (error.fatal && retryCount < maxRetries) return 'retry'
     return 'none'
-  }
-
-  const executeRetry = async (): Promise<boolean> => {
-    retryCount += 1
-    logger.debug(`[ErrorRecovery] Retry attempt ${retryCount}/${maxRetries}`)
-    await new Promise((resolve) => setTimeout(resolve, retryDelay))
-    return true
   }
 
   const executeQualityFallback = (): boolean => {
@@ -264,6 +273,79 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     retryCount = 0
     setQuality(nextQuality.label)
     return true
+  }
+
+  const getStreamController = (): any => {
+    if (currentSourceType === 'hls') return pluginManager.get<any>('hls')
+    if (currentSourceType === 'dash') return pluginManager.get<any>('dash')
+    return pluginManager.get<any>('dash') || pluginManager.get<any>('hls')
+  }
+
+  const buildRecoveryContext = (): PlaybackRecoveryContext => ({
+    retryCount,
+    maxRetries,
+    retryDelay,
+    source: currentSource ? { ...currentSource } : null,
+    currentTime: videoElement?.currentTime ?? 0,
+    wasPlaying: !!videoElement && !videoElement.paused && !videoElement.ended
+  })
+
+  const reloadCurrentSource = (): boolean => {
+    if (!currentSource) return false
+
+    const sourceToReload = { ...currentSource }
+    const resumeTime = videoElement?.currentTime ?? 0
+    const shouldResumePlayback = !!videoElement && !videoElement.paused && !videoElement.ended
+
+    if (videoElement && Number.isFinite(resumeTime) && resumeTime > 0) {
+      videoElement.addEventListener('loadedmetadata', () => {
+        if (!videoElement) return
+        const nextTime = Number.isFinite(videoElement.duration) && videoElement.duration > 0
+          ? Math.min(resumeTime, videoElement.duration)
+          : resumeTime
+        try {
+          videoElement.currentTime = Math.max(0, nextTime)
+        } catch (error) {
+          logger.warn('[ErrorRecovery] Failed to restore playback position after reload', error)
+        }
+      }, { once: true })
+    }
+
+    currentSourceKey = ''
+    pendingSourceKey = ''
+    doLoadSource(sourceToReload)
+
+    if (shouldResumePlayback) {
+      autoPlayOnReady = true
+    }
+
+    logger.debug('[ErrorRecovery] Reloaded current source')
+    return true
+  }
+
+  const executeRetry = async (error: PlayerError): Promise<boolean> => {
+    retryCount += 1
+    logger.debug(`[ErrorRecovery] Retry attempt ${retryCount}/${maxRetries}`)
+    await new Promise((resolve) => setTimeout(resolve, retryDelay))
+
+    const controller = getStreamController()
+    const recoveryAction: PlaybackRecoveryAction =
+      typeof controller?.recoverPlayback === 'function'
+        ? await controller.recoverPlayback(error, {
+            ...buildRecoveryContext(),
+            retryCount
+          })
+        : 'reload-source'
+
+    if (recoveryAction === 'handled') {
+      return true
+    }
+
+    if (recoveryAction === 'reload-source') {
+      return reloadCurrentSource()
+    }
+
+    return false
   }
 
   const handleRecoveryError = async (error: PlayerError): Promise<boolean> => {
@@ -278,7 +360,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       logger.debug(`[ErrorRecovery] Strategy: ${strategy}, Error`, error)
 
       if (strategy === 'retry') {
-        return await executeRetry()
+        return await executeRetry(error)
       }
 
       if (strategy === 'quality-fallback') {
@@ -349,7 +431,13 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       await togglePictureInPicture()
     },
 
-    reportError(error) { reportFatalError(error) },
+    reportError(error) {
+      void handleRecoveryError(error)
+        .then((recovered) => {
+          if (!recovered) reportFatalError(error)
+        })
+        .catch(() => reportFatalError(error))
+    },
     getPlugin<T>(name: string) { return pluginManager.get(name) as T }
   })
 
@@ -505,6 +593,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
     const onCanPlay = () => {
       loading = false
+      retryCount = 0
       events.emit('canplay', undefined)
 
       if (autoPlayOnReady) {
@@ -513,8 +602,16 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       }
     }
     const onError = (e: Event) => {
+      const mediaErrorCode = videoElement?.error?.code
+      const errorCode = mediaErrorCode === MediaError.MEDIA_ERR_NETWORK
+        ? 'NETWORK_ERROR'
+        : mediaErrorCode === MediaError.MEDIA_ERR_DECODE
+          ? 'MEDIA_DECODE_ERROR'
+          : mediaErrorCode === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED
+            ? 'MEDIA_NOT_SUPPORTED'
+            : 'MEDIA_ERROR'
       const err: PlayerError = {
-        code: 'MEDIA_ERROR',
+        code: errorCode,
         message: 'Video playback error',
         fatal: true,
         details: e

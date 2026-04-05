@@ -94,6 +94,17 @@ export interface PlayerError {
   details?: any
 }
 
+export type PlaybackRecoveryAction = 'handled' | 'reload-source' | 'unrecoverable'
+
+export interface PlaybackRecoveryContext {
+  retryCount: number
+  maxRetries: number
+  retryDelay: number
+  source: MediaSource | null
+  currentTime: number
+  wasPlaying: boolean
+}
+
 // 播放器状态
 export interface PlayerState {
   playing: boolean
@@ -181,6 +192,7 @@ export interface PlayerPlugin extends PluginHooks {
   readonly version?: string
 
   install(context: PluginContext, options?: any): void | Promise<void>
+  recoverPlayback?(error: PlayerError, context: PlaybackRecoveryContext): PlaybackRecoveryAction | Promise<PlaybackRecoveryAction>
   destroy?(): void
 }
 

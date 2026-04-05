@@ -4,7 +4,15 @@
  */
 
 import Hls, { type HlsConfig, type Level, type ErrorData } from 'hls.js'
-import type { PlayerPlugin, PluginContext, QualityLevel, PlayerError, MediaSource } from '../../core/types'
+import type {
+  PlayerPlugin,
+  PluginContext,
+  QualityLevel,
+  PlayerError,
+  MediaSource,
+  PlaybackRecoveryAction,
+  PlaybackRecoveryContext
+} from '../../core/types'
 
 export interface HlsPluginOptions {
   /** hls.js 配置 */
@@ -179,6 +187,7 @@ export class HlsPlugin implements PlayerPlugin {
 
     // 片段加载完成 - 带宽采样
     this.hls.on(Hls.Events.FRAG_LOADED, (_event, data) => {
+      this.retryCount = 0
       if (this.options.onBandwidthSample) {
         try {
           const stats: any = data.frag?.stats || (data as any).stats || {}
@@ -291,6 +300,47 @@ export class HlsPlugin implements PlayerPlugin {
     }
 
     this.context?.reportError(error)
+  }
+
+  recoverPlayback(error: PlayerError, _context: PlaybackRecoveryContext): PlaybackRecoveryAction {
+    if (!this.hls) {
+      return 'reload-source'
+    }
+
+    const code = String(error.code || '').toUpperCase()
+
+    if (code.includes('NOT_SUPPORTED')) {
+      return 'unrecoverable'
+    }
+
+    if (code.includes('NETWORK') || code.includes('TIMEOUT')) {
+      try {
+        this.hls.startLoad()
+        this.context?.logger.debug('[HlsPlugin] Recovery handled via startLoad')
+        return 'handled'
+      } catch (recoverError) {
+        this.context?.logger.warn('[HlsPlugin] Failed to recover network playback', recoverError)
+        return 'reload-source'
+      }
+    }
+
+    if (
+      code.includes('MEDIA') ||
+      code.includes('DECODE') ||
+      code.includes('BUFFER') ||
+      code.includes('STALL')
+    ) {
+      try {
+        this.hls.recoverMediaError()
+        this.context?.logger.debug('[HlsPlugin] Recovery handled via recoverMediaError')
+        return 'handled'
+      } catch (recoverError) {
+        this.context?.logger.warn('[HlsPlugin] Failed to recover media playback', recoverError)
+        return 'reload-source'
+      }
+    }
+
+    return 'reload-source'
   }
 
   /**

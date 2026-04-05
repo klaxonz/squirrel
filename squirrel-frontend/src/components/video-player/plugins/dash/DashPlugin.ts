@@ -4,7 +4,15 @@
  */
 
 import dashjs, { type MediaPlayerClass, type MediaPlayerSettingClass } from 'dashjs'
-import type { PlayerPlugin, PluginContext, QualityLevel, PlayerError, MediaSource } from '../../core/types'
+import type {
+  PlayerPlugin,
+  PluginContext,
+  QualityLevel,
+  PlayerError,
+  MediaSource,
+  PlaybackRecoveryAction,
+  PlaybackRecoveryContext
+} from '../../core/types'
 
 export interface DashPluginOptions {
   /** dash.js 配置 */
@@ -233,6 +241,20 @@ export class DashPlugin implements PlayerPlugin {
         }
       }
     })
+  }
+
+  recoverPlayback(error: PlayerError, _context: PlaybackRecoveryContext): PlaybackRecoveryAction {
+    const code = String(error.code || '').toUpperCase()
+
+    if (code.includes('NOT_SUPPORTED') || code.includes('CAPABILITY')) {
+      return 'unrecoverable'
+    }
+
+    this.context?.logger.debug('[DashPlugin] Requesting source reload for recovery', {
+      code,
+      source: this.currentSource
+    })
+    return 'reload-source'
   }
 
   /**
