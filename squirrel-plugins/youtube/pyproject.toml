@@ -23,7 +23,15 @@ dependencies = [
 [project.entry-points."squirrel.plugins"]
 youtube = "squirrel_youtube.runtime:get_plugin_runtime"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+squirrel_youtube = [
+  "node/**/*",
+]
 
 

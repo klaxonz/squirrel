@@ -29,7 +29,6 @@ YOUTUBE_POT_PROVIDER_MODE_SCRIPT = 'script'
 YOUTUBE_POT_PROVIDER_MODE_HTTP = 'http'
 
 LOCAL_BGUTIL_SERVER_HOME = Path(__file__).with_name('node')
-DEFAULT_BGUTIL_SERVER_HOME = Path.home() / 'bgutil-ytdlp-pot-provider' / 'server'
 YOUTUBE_PLAYER_RESPONSES_INFO_KEY = '_youtube_player_responses'
 YOUTUBE_PLAYER_URL_INFO_KEY = '_youtube_player_url'
 
@@ -73,10 +72,7 @@ def _resolve_bgutil_server_home() -> Path:
     configured = _read_env(YOUTUBE_POT_PROVIDER_SERVER_HOME_ENV)
     if configured:
         return Path(configured).expanduser()
-    local_server_home = LOCAL_BGUTIL_SERVER_HOME
-    if (local_server_home / 'build' / 'generate_once.js').is_file():
-        return local_server_home
-    return DEFAULT_BGUTIL_SERVER_HOME
+    return LOCAL_BGUTIL_SERVER_HOME
 
 
 def _resolve_script_provider_args() -> dict[str, list[str]] | None:
