@@ -44,7 +44,7 @@
       </div>
 
       <div class="content-container">
-        <Transition name="fade-list" mode="out-in">
+        <Transition name="fade-list">
           <div v-if="loading && !subscriptions.length" key="skeleton" class="subscription-stream">
             <SubscriptionSkeleton v-for="i in 10" :key="i" :delay="i * 50" />
           </div>
@@ -411,6 +411,13 @@ const loadSubscriptions = async () => {
   loading.value = false
 }
 
+const resetSubscriptionList = () => {
+  hasLoadedOnce.value = false
+  subscriptions.value = []
+  currentPage.value = 1
+  allLoaded.value = false
+}
+
 const MIN_SPIN_MS = 800
 const spinTimer = ref(null)
 const spinStartAt = ref(0)
@@ -455,9 +462,7 @@ const handleGlobalSearch = (query) => {
     observer.value.unobserve(loadingTrigger.value)
   }
   searchQuery.value = query
-  subscriptions.value = []
-  currentPage.value = 1
-  allLoaded.value = false
+  resetSubscriptionList()
   loadSubscriptions().then(() => {
     nextTick(() => {
       restoreScrollPosition()
@@ -470,9 +475,7 @@ watch([nsfw, site], async () => {
   if (observer.value && loadingTrigger.value) {
     observer.value.unobserve(loadingTrigger.value)
   }
-  subscriptions.value = []
-  currentPage.value = 1
-  allLoaded.value = false
+  resetSubscriptionList()
   await loadSubscriptions()
 })
 
@@ -527,16 +530,12 @@ const getSubscriptionVideos = (subscriptionId) => {
 }
 
 const handleChannelAdded = () => {
-  subscriptions.value = []
-  currentPage.value = 1
-  allLoaded.value = false
+  resetSubscriptionList()
   loadSubscriptions()
 }
 
 const handleSubscriptionsImported = () => {
-  subscriptions.value = []
-  currentPage.value = 1
-  allLoaded.value = false
+  resetSubscriptionList()
   loadSubscriptions()
 }
 
