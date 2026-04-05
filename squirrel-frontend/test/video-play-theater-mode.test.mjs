@@ -53,3 +53,15 @@ test('video play route uses a compact shell header so theater mode matches youtu
   assert.match(source, /\.minimal-header--compact\s*\{/)
   assert.match(source, /padding:\s*0\.5rem 1rem;/)
 })
+
+test('video play keeps the subscribe action directly beside the channel identity instead of separating it as a third desktop group', async () => {
+  const source = await readFile(videoPlayPath, 'utf8')
+
+  assert.match(
+    source,
+    /<div class="video-channel__primary">[\s\S]*?<div class="video-channel__identity">[\s\S]*?<\/div>[\s\S]*?<button[\s\S]*?class="video-action video-action--primary is-active"/,
+  )
+  assert.doesNotMatch(source, /<div class="video-channel__cta">/)
+  assert.doesNotMatch(source, /\.video-channel__row\s*\{[\s\S]*?justify-content:\s*space-between;/)
+  assert.match(source, /\.video-channel__primary\s*\{[\s\S]*?display:\s*flex;[\s\S]*?gap:\s*1rem;/)
+})

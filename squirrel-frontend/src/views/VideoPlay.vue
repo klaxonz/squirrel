@@ -1047,12 +1047,21 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .video-channel__primary {
   display: flex;
   align-items: center;
   gap: 1rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.video-channel__identity {
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 .video-channel__avatar {
@@ -1371,12 +1380,6 @@ onUnmounted(() => {
     align-self: start;
     padding-top: 0;
     border-top: none;
-  }
-
-  .video-channel__primary {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
   }
 }
 
