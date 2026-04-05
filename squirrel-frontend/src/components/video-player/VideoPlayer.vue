@@ -328,9 +328,73 @@ const codecMenuLabel = computed(() => (
     : formatCodecFamilyLabel(selectedCodecFamily.value)
 ))
 
+let removeInitialTimeListener: (() => void) | null = null
+let initialTimeAppliedSourceKey: string | null = null
+
+const clearInitialTimeListener = (): void => {
+  if (!removeInitialTimeListener) return
+  removeInitialTimeListener()
+  removeInitialTimeListener = null
+}
+
+const getSourceIdentity = (source: MediaSource | null | undefined): string => {
+  if (!source) return ''
+  return String(source.key || source.src || '')
+}
+
+const applyInitialTime = (source: MediaSource | null | undefined, time: number | undefined): void => {
+  const sourceKey = getSourceIdentity(source)
+  if (!sourceKey || initialTimeAppliedSourceKey === sourceKey) return
+  if (store.hasStartedPlayback || currentTime.value > 0.5) return
+
+  const video = videoRef.value
+  const nextTime = Number(time)
+  if (!video || !Number.isFinite(nextTime) || nextTime <= 0) return
+
+  clearInitialTimeListener()
+
+  const applySeek = (): void => {
+    const durationValue = Number(video.duration)
+    const boundedTime = Number.isFinite(durationValue) && durationValue > 0
+      ? Math.min(nextTime, durationValue)
+      : nextTime
+
+    if (boundedTime <= 0) return
+    initialTimeAppliedSourceKey = sourceKey
+    seek(Math.max(0, boundedTime))
+  }
+
+  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+    applySeek()
+    return
+  }
+
+  const onLoadedMetadata = (): void => {
+    clearInitialTimeListener()
+    applySeek()
+  }
+
+  video.addEventListener('loadedmetadata', onLoadedMetadata, { once: true })
+  removeInitialTimeListener = () => {
+    video.removeEventListener('loadedmetadata', onLoadedMetadata)
+  }
+}
+
 watch(videoRef, (el) => { videoElement.value = el }, { immediate: true })
 watch(containerRef, (el) => { containerElement.value = el }, { immediate: true })
-watch(() => props.source, (s) => { if (s) loadSource(s) }, { immediate: true })
+watch(() => props.source, (s, previousSource) => {
+  const sourceChanged = getSourceIdentity(s) !== getSourceIdentity(previousSource)
+  if (sourceChanged) {
+    clearInitialTimeListener()
+    initialTimeAppliedSourceKey = null
+  }
+  if (!s) return
+  loadSource(s)
+  applyInitialTime(s, props.initialTime)
+}, { immediate: true })
+watch(() => props.initialTime, (initialTime) => {
+  applyInitialTime(props.source, initialTime)
+})
 watch(() => props.subtitles, (ts) => { setSubtitleTracks(ts || []) }, { immediate: true, deep: true })
 
 const togglePlay = () => isPlaying.value ? pause() : play()
@@ -480,6 +544,7 @@ watch(isScrubbing, (scrubbing) => {
 onMounted(() => { window.addEventListener('keydown', handleKeyDown) })
 onUnmounted(() => {
   clearHideTimer()
+  clearInitialTimeListener()
   window.removeEventListener('keydown', handleKeyDown)
 })
 

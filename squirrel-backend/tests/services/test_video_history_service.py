@@ -302,3 +302,48 @@ def test_update_history_merges_duplicate_rows_for_same_video(monkeypatch):
 
     assert len(histories) == 1
     assert histories[0].last_position == 88
+
+
+def test_batch_update_histories_updates_existing_rows_and_creates_missing_rows(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_history(
+        engine,
+        [
+            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 3, 12, 0, 0), 'last_position': 30},
+            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0), 'last_position': 10},
+        ],
+    )
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            Video(
+                id=2,
+                title='Video 2',
+                url='https://beta.example.com/watch/2',
+                domain='beta.example.com',
+                duration=120,
+                thumbnail='https://img.example.com/2.jpg',
+                publish_date=datetime(2024, 1, 1),
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+                is_deleted=False,
+            )
+        )
+        session.commit()
+
+    video_history_service.batch_update_histories(
+        user_id=1,
+        reports=[
+            HistoryCreate(video_id=1, last_position=88),
+            HistoryCreate(video_id=2, last_position=12.5),
+            HistoryCreate(video_id=1, last_position=91),
+        ],
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        histories = session.query(VideoHistory).filter_by(user_id=1).order_by(VideoHistory.video_id.asc(), VideoHistory.id.asc()).all()
+
+    assert len(histories) == 2
+    assert histories[0].video_id == 1
+    assert histories[0].last_position == 91
+    assert histories[1].video_id == 2
+    assert histories[1].last_position == 12.5

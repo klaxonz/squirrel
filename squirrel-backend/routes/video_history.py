@@ -4,7 +4,8 @@ from fastapi import APIRouter, Query, Depends, Body
 import common.response as response
 from models.user import User
 from schemas.video_history import (
-    HistoryCreate
+    HistoryCreate,
+    HistoryBatchUpdate,
 )
 from services import video_history_service
 from utils.jwt_helper import get_current_user
@@ -20,6 +21,15 @@ def update_history(
         user: User = Depends(get_current_user)
 ):
     video_history_service.update_history(user.id, data)
+    return response.success()
+
+
+@router.post("/api/video-history/batch-update")
+def batch_update_history(
+        data: HistoryBatchUpdate,
+        user: User = Depends(get_current_user)
+):
+    video_history_service.batch_update_histories(user.id, data.reports)
     return response.success()
 
 

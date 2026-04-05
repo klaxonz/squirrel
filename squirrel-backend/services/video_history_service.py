@@ -1,4 +1,4 @@
-from typing import List
+from typing import Iterable, List
 
 from sqlalchemy import and_, delete, exists, func, or_, select
 
@@ -14,38 +14,68 @@ from utils.url_helper import get_site_from_url
 from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
 
-def update_history(user_id: int, data: HistoryCreate):
-    with get_session() as session:
-        histories = session.scalars(
-            select(VideoHistory).where(
-                VideoHistory.user_id == user_id,
-                VideoHistory.video_id == data.video_id
-            )
-            .order_by(VideoHistory.end_time.desc(), VideoHistory.id.desc())
-        ).all()
+def _normalize_history_reports(reports: Iterable[HistoryCreate]) -> list[HistoryCreate]:
+    latest_by_video_id: dict[int, HistoryCreate] = {}
+    for report in reports:
+        latest_by_video_id[report.video_id] = report
+    return list(latest_by_video_id.values())
+
+
+def _apply_history_updates(session, user_id: int, reports: list[HistoryCreate]) -> None:
+    normalized_reports = _normalize_history_reports(reports)
+    if not normalized_reports:
+        return
+
+    video_ids = [report.video_id for report in normalized_reports]
+    existing_histories = session.scalars(
+        select(VideoHistory).where(
+            VideoHistory.user_id == user_id,
+            VideoHistory.video_id.in_(video_ids)
+        )
+        .order_by(VideoHistory.video_id.asc(), VideoHistory.end_time.desc(), VideoHistory.id.desc())
+    ).all()
+
+    histories_by_video_id: dict[int, list[VideoHistory]] = {}
+    for history in existing_histories:
+        histories_by_video_id.setdefault(history.video_id, []).append(history)
+
+    for report in normalized_reports:
+        histories = histories_by_video_id.get(report.video_id, [])
 
         if histories:
             history = histories[0]
             history.watch_duration += 0
-            history.last_position = data.last_position
+            history.last_position = report.last_position
             history.end_time = func.now()
             duplicate_ids = [item.id for item in histories[1:]]
             if duplicate_ids:
                 session.execute(
                     delete(VideoHistory).where(VideoHistory.id.in_(duplicate_ids))
                 )
-        else:
-            history = VideoHistory(
+            continue
+
+        session.add(
+            VideoHistory(
                 user_id=user_id,
-                video_id=data.video_id,
+                video_id=report.video_id,
                 start_time=func.now(),
                 end_time=func.now(),
                 duration=0,
                 watch_duration=0,
-                last_position=data.last_position
+                last_position=report.last_position
             )
-            session.add(history)
+        )
 
+
+def update_history(user_id: int, data: HistoryCreate):
+    with get_session() as session:
+        _apply_history_updates(session, user_id, [data])
+        session.commit()
+
+
+def batch_update_histories(user_id: int, reports: list[HistoryCreate]) -> None:
+    with get_session() as session:
+        _apply_history_updates(session, user_id, reports)
         session.commit()
 
 

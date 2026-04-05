@@ -8,3 +8,7 @@ class HistoryBase(BaseModel):
 
 class HistoryCreate(HistoryBase):
     pass
+
+
+class HistoryBatchUpdate(BaseModel):
+    reports: list[HistoryCreate] = Field(default_factory=list, description='批量上报的播放历史')
