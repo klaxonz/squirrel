@@ -29,6 +29,22 @@ export class HlsPlugin implements PlayerPlugin {
   private retryCount = 0
   private currentSource: string | null = null
 
+  private applyLevelSwitch(targetLevel: number): void {
+    if (!this.hls) return
+
+    const video = this.context?.videoElement
+    const canPreloadBeforeSwitch = !!video && !video.paused && !video.ended && video.readyState > 0
+
+    if (canPreloadBeforeSwitch) {
+      this.hls.nextLevel = targetLevel
+      this.context?.logger.debug('[HlsPlugin] Quality switch scheduled via nextLevel', targetLevel)
+      return
+    }
+
+    this.hls.currentLevel = targetLevel
+    this.context?.logger.debug('[HlsPlugin] Quality switch applied via currentLevel', targetLevel)
+  }
+
   /**
    * 检测是否支持 HLS
    */
@@ -284,7 +300,7 @@ export class HlsPlugin implements PlayerPlugin {
     if (!this.hls) return
 
     if (quality === 'auto' || quality === -1) {
-      this.hls.currentLevel = -1
+      this.applyLevelSwitch(-1)
       this.context?.logger.debug('[HlsPlugin] Quality set to auto')
       return
     }
@@ -313,7 +329,7 @@ export class HlsPlugin implements PlayerPlugin {
     }
 
     if (targetLevel >= 0) {
-      this.hls.currentLevel = targetLevel
+      this.applyLevelSwitch(targetLevel)
       this.context?.logger.debug('[HlsPlugin] Quality set to level', targetLevel)
     }
   }
