@@ -28,12 +28,13 @@ const toRecord = (value: unknown): Record<string, any> => {
 }
 
 export default function usePlaybackOrchestrator(initialVideo: VideoLike | null = null) {
-  const { video, startTime, fetchVideoDetails, maybeInjectSubtitles } = useVideoDetail(initialVideo)
+  const { video, startTime, fetchVideoDetails, maybeInjectSubtitles, setVideoSnapshot } = useVideoDetail(initialVideo)
   const { relatedVideos, loadingRelated, fetchRelatedVideos } = useRelatedVideos(video)
   const { getPlaybackSource } = useVideoOperations()
   const playbackSource = ref<MediaSource | null>(null)
   const subtitleTracks = ref<SubtitleTrack[]>([])
   const externalError = ref<ExternalErrorState | null>(null)
+  const isResolvingPlayback = ref(false)
   const requestSeq = ref(0)
 
   const loadAndPlayById = async (
@@ -49,29 +50,37 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     Logger.debug('[usePlaybackOrchestrator] loadAndPlayById start', { videoId, seq })
 
     externalError.value = null
+    isResolvingPlayback.value = true
     playbackSource.value = null
     subtitleTracks.value = []
 
+    const currentVideoId = video.value && (video.value as any).id != null ? String((video.value as any).id) : ''
+    const targetVideoId = String(videoId)
+
     if (initialVideoData && initialVideoData.id === videoId) {
-      video.value = initialVideoData as any
+      setVideoSnapshot(initialVideoData as any)
+    }
+    if (!initialVideoData && currentVideoId && currentVideoId !== targetVideoId) {
+      setVideoSnapshot(null)
     }
 
     const hasInitialData = !!video.value && (video.value as any).id === videoId
+    const playbackPromise = getPlaybackSource(videoId, options)
+    const detailPromise = !hasInitialData
+      ? fetchVideoDetails(videoId as any).catch((e) => {
+          Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
+          return null
+        })
+      : fetchVideoDetails(videoId as any).catch((e) => {
+          Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
+          return null
+        })
 
-    if (!hasInitialData) {
-      await fetchVideoDetails(videoId as any)
-    } else {
-      fetchVideoDetails(videoId as any).catch((e) => Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e))
-    }
-
-    Logger.debug('[usePlaybackOrchestrator] after fetchVideoDetails', {
-      hasVideo: !!video.value,
-    })
-
-    if (seq !== requestSeq.value) return
-
-    try {
-      const playbackPromise = getPlaybackSource(videoId, options)
+    Promise.resolve(detailPromise).then(() => {
+      Logger.debug('[usePlaybackOrchestrator] after fetchVideoDetails', {
+        hasVideo: !!video.value,
+      })
+      if (seq !== requestSeq.value) return
 
       maybeInjectSubtitles(videoId as any).catch((e) =>
         Logger.error('[usePlaybackOrchestrator] maybeInjectSubtitles error', e)
@@ -79,11 +88,13 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
       fetchRelatedVideos(videoId as any).catch((e) =>
         Logger.error('[usePlaybackOrchestrator] fetchRelatedVideos error', e)
       )
+    })
 
+    try {
       const source = await playbackPromise
       if (seq !== requestSeq.value) return
 
-      const v: any = video.value || {}
+      const v: any = video.value || initialVideoData || {}
       playbackSource.value = {
         ...source,
         poster: source.poster || v.thumbnail,
@@ -105,6 +116,10 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
         title: '播放失败',
         message,
         canRetry: true,
+      }
+    } finally {
+      if (seq === requestSeq.value) {
+        isResolvingPlayback.value = false
       }
     }
   }
@@ -151,6 +166,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     playbackSource,
     subtitleTracks,
     externalError,
+    isResolvingPlayback,
 
     // actions
     loadAndPlayById,

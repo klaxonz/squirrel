@@ -14,7 +14,7 @@
                 <div class="viewfinder-corner viewfinder-corner--bottom-right"></div>
                 <VideoPlayer
                   ref="videoPlayerRef"
-                  v-if="video"
+                  v-if="video || playbackSource || isResolvingPlayback || externalError"
                   :source="playbackSource"
                   :subtitles="subtitleTracks"
                   :poster="video?.thumbnail"
@@ -24,6 +24,8 @@
                   :has-next="hasNextVideo"
                   :external-error="externalError"
                   :widescreen="isWidescreen"
+                  :external-loading="isResolvingPlayback"
+                  :external-loading-text="'正在建立播放链路'"
                   :adapter="playerAdapter"
                   :theme="effectiveTheme"
                   :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
@@ -250,7 +252,7 @@ const { effectiveTheme } = useAppTheme()
 
 
 // 内部切换不使用 router，所以不需要从 history.state 读取初始数据
-const { video, startTime, relatedVideos, loadingRelated, playbackSource, subtitleTracks, loadAndPlayById, externalError } = usePlaybackOrchestrator(null);
+const { video, startTime, relatedVideos, loadingRelated, playbackSource, subtitleTracks, loadAndPlayById, externalError, isResolvingPlayback } = usePlaybackOrchestrator(null);
 const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
@@ -1608,4 +1610,5 @@ onUnmounted(() => {
     transform: rotate(360deg);
   }
 }
+
 </style>

@@ -166,6 +166,8 @@ def get_video_url(video_id: int, force_refresh: bool = False) -> VideoUrlDto:
         raise TypeError('Plugin resolve_playback must return an object payload')
 
     dto = VideoUrlDto.model_validate(response.data)
+    if dto.video_url and dto.audio_url and not dto.mpd_url:
+        dto.mpd_url = f'/api/video/mpd?video_id={video_id}'
 
     if enable_cache and cache_key is not None:
         try:

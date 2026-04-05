@@ -57,11 +57,15 @@ export default function useVideoOperations() {
         bitrate: item.bandwidth,
         codec: item.codec
       }))
+      const synthesizedMpdUrl = videoUrl && audioUrl && !mpdUrl
+        ? `/api/video/mpd?video_id=${encodeURIComponent(String(videoId))}`
+        : undefined
 
       const key = `${videoId}:${Date.now()}`
       const progressKey = String(videoId)
+      const resolvedMpdUrl = mpdUrl || synthesizedMpdUrl
 
-      if (mpdUrl) return { src: mpdUrl, type: 'auto', key, progressKey, qualities }
+      if (resolvedMpdUrl) return { src: resolvedMpdUrl, type: 'auto', key, progressKey, qualities }
 
       if (!videoUrl && !audioUrl) {
         throw Object.assign(new Error('无法获取播放链接'), { code: 'NO_STREAM_URL' })

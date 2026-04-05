@@ -36,6 +36,20 @@ export class HlsPlugin implements PlayerPlugin {
   private options: HlsPluginOptions = {}
   private retryCount = 0
   private currentSource: string | null = null
+  private retryTimer: ReturnType<typeof setTimeout> | null = null
+  private reloadTimer: ReturnType<typeof setTimeout> | null = null
+
+  private clearRetryTimers(): void {
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer)
+      this.retryTimer = null
+    }
+
+    if (this.reloadTimer) {
+      clearTimeout(this.reloadTimer)
+      this.reloadTimer = null
+    }
+  }
 
   private applyLevelSwitch(targetLevel: number): void {
     if (!this.hls) return
@@ -274,7 +288,11 @@ export class HlsPlugin implements PlayerPlugin {
         if (this.retryCount < (this.options.maxRetries || 3)) {
           this.retryCount++
           this.context?.logger.debug(`[HlsPlugin] Network error, retrying (${this.retryCount})...`)
-          setTimeout(() => this.hls?.startLoad(), this.options.retryInterval || 3000)
+          this.clearRetryTimers()
+          this.retryTimer = setTimeout(() => {
+            this.retryTimer = null
+            this.hls?.startLoad()
+          }, this.options.retryInterval || 3000)
           return
         }
         error.message = 'Network connection failed'
@@ -289,7 +307,9 @@ export class HlsPlugin implements PlayerPlugin {
         if (this.retryCount < (this.options.maxRetries || 3)) {
           this.retryCount++
           this.context?.logger.debug(`[HlsPlugin] Fatal error, reinitializing (${this.retryCount})...`)
-          setTimeout(() => {
+          this.clearRetryTimers()
+          this.reloadTimer = setTimeout(() => {
+            this.reloadTimer = null
             if (this.currentSource) {
               this.loadSource(this.currentSource)
             }
@@ -401,6 +421,7 @@ export class HlsPlugin implements PlayerPlugin {
    * 销毁 HLS 实例
    */
   private destroyHls(): void {
+    this.clearRetryTimers()
     if (this.hls) {
       this.hls.destroy()
       this.hls = null

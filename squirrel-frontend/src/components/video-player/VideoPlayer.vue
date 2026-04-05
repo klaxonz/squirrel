@@ -28,16 +28,6 @@
       @click="handleVideoClick"
       @dblclick="toggleFullscreen"
     />
-
-    <!-- 封面占位 (当没有封面且未播放时显示) -->
-    <div v-if="!(source?.poster || poster) && !isPlaying" class="sp-poster-fallback">
-      <div class="sp-poster-noise"></div>
-      <div class="sp-poster-content">
-        <div class="sp-poster-status">SIGNAL_LOST</div>
-        <div class="sp-poster-hint">READY_TO_DECODE</div>
-      </div>
-    </div>
-
     <!-- 中央 HUD 指示器 -->
     <transition name="sp-hud-fade">
       <div v-if="centralHud.visible" class="sp-central-hud">
@@ -49,12 +39,13 @@
     </transition>
 
     <!-- 加载状态 -->
-    <div v-if="store.loading && !errorState.show" class="sp-loading">
+    <div v-if="showLoadingOverlay" class="sp-loading">
       <div class="sp-loader-ring">
         <div class="sp-loader-segment"></div>
         <div class="sp-loader-segment"></div>
         <div class="sp-loader-segment"></div>
       </div>
+      <div v-if="props.externalLoadingText" class="sp-loading-text">{{ props.externalLoadingText }}</div>
     </div>
 
     <!-- 极简控制层 -->
@@ -260,6 +251,8 @@ interface Props {
   theme?: ThemeName
   initialTime?: number
   widescreen?: boolean
+  externalLoading?: boolean
+  externalLoadingText?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -269,7 +262,9 @@ const props = withDefaults(defineProps<Props>(), {
   title: '',
   autoplay: true,
   theme: 'dark',
-  widescreen: false
+  widescreen: false,
+  externalLoading: false,
+  externalLoadingText: ''
 })
 
 const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'fullscreenChange', 'retry', 'widescreenChange'])
@@ -309,6 +304,7 @@ const errorState = ref({ show: false, title: '', message: '', code: '', canRetry
 const centralHud = ref<{ visible: boolean; type: string; value: string; icon: IconName; percent: number }>({ 
   visible: false, type: '', value: '', icon: 'play', percent: 0 
 })
+const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !errorState.value.show)
 
 let centralHudTimer: any
 const showCentralHud = (type: string, value: string, icon: IconName, percent: number = 0) => {
@@ -618,57 +614,6 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   width: 100%;
   height: 100%;
   object-fit: contain;
-}
-
-/* 封面占位样式 */
-.sp-poster-fallback {
-  position: absolute;
-  inset: 0;
-  background: #0a0a0a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-  overflow: hidden;
-}
-
-.sp-poster-noise {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.05;
-}
-
-.sp-poster-content {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  z-index: 2;
-}
-
-.sp-poster-status {
-  font-family: var(--sp-font-mono);
-  font-size: 14px;
-  color: var(--sp-primary);
-  letter-spacing: 0.3em;
-  font-weight: 800;
-  opacity: 0.8;
-  text-shadow: 0 0 10px var(--sp-primary);
-}
-
-.sp-poster-hint {
-  font-family: var(--sp-font-mono);
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.2);
-  letter-spacing: 0.1em;
-}
-
-@keyframes noise-move {
-  0% { transform: translate(0,0); }
-  50% { transform: translate(-5%,-5%); }
-  100% { transform: translate(5%,5%); }
 }
 
 /* 全屏视觉增强层 */
@@ -1139,8 +1084,10 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   z-index: 5;
   background: rgba(0,0,0,0.1);
 }
@@ -1163,6 +1110,14 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 .sp-loader-segment:nth-child(1) { border-top-color: var(--sp-primary); }
 .sp-loader-segment:nth-child(2) { transform: rotate(120deg); }
 .sp-loader-segment:nth-child(3) { transform: rotate(240deg); }
+
+.sp-loading-text {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
 
 @keyframes loader-rotate {
   to { transform: rotate(360deg); }

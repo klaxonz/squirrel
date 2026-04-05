@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, onScopeDispose, ref } from 'vue'
 import { getVideoDetail, getVideoSubtitles } from '@/api'
 
 type VideoId = string | number
@@ -22,6 +22,25 @@ type ApiResult<T> = { data?: T | null; error?: unknown | null }
 
 export default function useVideoDetail(initialVideo: VideoLike | null = null) {
   const video = ref<VideoLike | null>(initialVideo)
+  const managedSubtitleObjectUrls = new Set<string>()
+  let detailRequestSeq = 0
+
+  const revokeManagedSubtitleObjectUrls = () => {
+    managedSubtitleObjectUrls.forEach((url) => {
+      URL.revokeObjectURL(url)
+    })
+    managedSubtitleObjectUrls.clear()
+  }
+
+  const replaceVideo = (nextVideo: VideoLike | null) => {
+    revokeManagedSubtitleObjectUrls()
+    video.value = nextVideo
+  }
+
+  const setVideoSnapshot = (nextVideo: VideoLike | null) => {
+    detailRequestSeq += 1
+    replaceVideo(nextVideo)
+  }
 
   const startTime = computed(() => {
     const lastPosition = video.value?.last_position
@@ -45,12 +64,16 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
   })
 
   const fetchVideoDetails = async (videoId: VideoId) => {
+    const seq = ++detailRequestSeq
     const { data, error } = (await getVideoDetail(videoId)) as ApiResult<VideoLike>
-    if (!error) video.value = data || null
+    if (!error && seq === detailRequestSeq) {
+      replaceVideo(data || null)
+    }
     return video.value
   }
 
   const maybeInjectSubtitles = async (videoId: VideoId) => {
+    const seq = detailRequestSeq
     const snapshot = video.value
     if (!snapshot || String(snapshot.id) !== String(videoId)) return
 
@@ -59,21 +82,30 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
 
     const { data, error } = (await getVideoSubtitles(videoId, { lang: 'ai-zh', fmt: 'srt' })) as ApiResult<string>
     if (error || typeof data !== 'string' || data.length === 0) return
+    if (seq !== detailRequestSeq || !video.value || String(video.value.id) !== String(videoId)) return
 
     const blob = new Blob([data], { type: 'text/plain;charset=utf-8' })
     const objectUrl = URL.createObjectURL(blob)
+    managedSubtitleObjectUrls.add(objectUrl)
     const subtitle: VideoSubtitle = { id: 'bili-ai-zh', language: '简体中文(AI)', url: objectUrl }
 
-    if (!video.value || String(video.value.id) !== String(videoId)) return
+    if (seq !== detailRequestSeq || !video.value || String(video.value.id) !== String(videoId)) {
+      managedSubtitleObjectUrls.delete(objectUrl)
+      URL.revokeObjectURL(objectUrl)
+      return
+    }
     video.value.subtitles = [subtitle, ...(video.value.subtitles || [])]
   }
+
+  onScopeDispose(() => {
+    revokeManagedSubtitleObjectUrls()
+  })
 
   return {
     video,
     startTime,
     fetchVideoDetails,
     maybeInjectSubtitles,
+    setVideoSnapshot,
   }
 }
-
-
