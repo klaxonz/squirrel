@@ -130,9 +130,9 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
         if filters.get('min_duration'):
             conditions.append(VideoHistory.duration >= filters['min_duration'])
         if filters.get('start_date'):
-            conditions.append(VideoHistory.created_at >= filters['start_date'])
+            conditions.append(VideoHistory.end_time >= filters['start_date'])
         if filters.get('end_date'):
-            conditions.append(VideoHistory.created_at <= filters['end_date'])
+            conditions.append(VideoHistory.end_time <= filters['end_date'])
         if filters.get('nsfw') and filters['nsfw'] != 'all':
             nsfw_history_exists = exists(
                 select(1)
@@ -288,6 +288,7 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                 'thumbnail': thumbnail_downloader_service.get_thumbnail_url(v.id, v.thumbnail, v.url),
                 'duration': v.duration,
                 'last_position': h.last_position or 0,
+                'played_at': h.end_time.strftime('%Y-%m-%d %H:%M:%S') if h.end_time else None,
                 'uploaded_at': v.publish_date.strftime('%Y-%m-%d %H:%M:%S') if v.publish_date else None,
                 'created_at': v.created_at.strftime('%Y-%m-%d %H:%M:%S') if v.created_at else None,
                 'subscriptions': subs_for_video,

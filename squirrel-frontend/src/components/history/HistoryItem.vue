@@ -77,7 +77,7 @@
 
         <div class="flex items-center gap-1">
           <span>•</span>
-          <span class="opacity-70">{{ formatLastWatchTime(video.updated_at || video.created_at) }}</span>
+          <span class="opacity-70">{{ formatLastWatchTime(video.played_at) }}</span>
         </div>
       </div>
     </div>

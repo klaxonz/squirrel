@@ -222,7 +222,7 @@ const groupedVideos = computed(() => {
   const groups = {};
   videos.value.forEach(video => {
     // Extract only the date part (YYYY-MM-DD) to ensure grouping by day
-    const timestamp = video.updated_at || video.created_at;
+    const timestamp = video.played_at;
     let dateKey = '未知日期';
     
     if (timestamp) {

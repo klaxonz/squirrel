@@ -208,6 +208,61 @@ def test_list_histories_returns_latest_history_id(monkeypatch):
     assert result['items'][0]['history_id'] == latest_history.id
 
 
+def test_list_histories_exposes_played_at_from_history_end_time(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    latest_end_time = datetime(2024, 1, 3, 12, 0, 0)
+    _seed_history(
+        engine,
+        [
+            {
+                'video_id': 1,
+                'domain': 'alpha.example.com',
+                'end_time': latest_end_time,
+                'video_created_at': datetime(2023, 12, 1, 8, 0, 0),
+            },
+        ],
+    )
+
+    result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=10)
+
+    assert result['items'][0]['played_at'] == '2024-01-03 12:00:00'
+    assert result['items'][0]['created_at'] == '2023-12-01 08:00:00'
+
+
+def test_list_histories_filters_date_range_by_played_at(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_history(
+        engine,
+        [
+            {
+                'video_id': 1,
+                'domain': 'alpha.example.com',
+                'end_time': datetime(2024, 1, 3, 12, 0, 0),
+                'history_created_at': datetime(2024, 1, 1, 8, 0, 0),
+            },
+            {
+                'video_id': 2,
+                'domain': 'beta.example.com',
+                'end_time': datetime(2024, 1, 1, 12, 0, 0),
+                'history_created_at': datetime(2024, 1, 4, 8, 0, 0),
+            },
+        ],
+    )
+
+    result = video_history_service.list_histories(
+        user_id=1,
+        filters={
+            'start_date': datetime(2024, 1, 2, 0, 0, 0),
+            'end_date': datetime(2024, 1, 3, 23, 59, 59),
+        },
+        page=1,
+        page_size=10,
+    )
+
+    assert result['total'] == 1
+    assert [item['id'] for item in result['items']] == [1]
+
+
 def test_list_histories_filters_by_video_title_query(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     _seed_history(
