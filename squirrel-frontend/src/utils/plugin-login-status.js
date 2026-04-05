@@ -1,4 +1,4 @@
-const DEFAULT_TITLE = 'Not logged in'
+const DEFAULT_TITLE = '未登录'
 
 const containsAny = (text, tokens) => tokens.some(token => text.includes(token))
 
@@ -6,8 +6,8 @@ export const getLoginStatusBadge = (loginStatus) => {
   if (!loginStatus) {
     return {
       tone: 'muted',
-      label: 'Untested',
-      title: 'Login status has not been tested yet',
+      label: '未测试',
+      title: '尚未进行登录状态检测',
     }
   }
 
@@ -15,7 +15,7 @@ export const getLoginStatusBadge = (loginStatus) => {
   if (loginStatus.logged_in) {
     return {
       tone: 'success',
-      label: 'Valid',
+      label: '有效',
       title,
     }
   }
@@ -23,7 +23,7 @@ export const getLoginStatusBadge = (loginStatus) => {
   if (loginStatus.supported === false) {
     return {
       tone: 'danger',
-      label: 'Error',
+      label: '错误',
       title,
     }
   }
@@ -33,7 +33,7 @@ export const getLoginStatusBadge = (loginStatus) => {
   if (containsAny(normalized, ['未找到', 'missing', 'not found'])) {
     return {
       tone: 'warning',
-      label: 'Missing',
+      label: '缺失',
       title,
     }
   }
@@ -41,7 +41,7 @@ export const getLoginStatusBadge = (loginStatus) => {
   if (containsAny(normalized, ['consent', 'challenge', '风控', 'not a bot', 'bot'])) {
     return {
       tone: 'danger',
-      label: 'Blocked',
+      label: '已拦截',
       title,
     }
   }
@@ -49,7 +49,7 @@ export const getLoginStatusBadge = (loginStatus) => {
   if (containsAny(normalized, ['请求失败', 'error', 'failed', 'timeout', 'network'])) {
     return {
       tone: 'danger',
-      label: 'Error',
+      label: '错误',
       title,
     }
   }
@@ -57,14 +57,14 @@ export const getLoginStatusBadge = (loginStatus) => {
   if (containsAny(normalized, ['未登录', '重定向', '登录页', 'expired', 'invalid'])) {
     return {
       tone: 'warning',
-      label: 'Invalid',
+      label: '无效',
       title,
     }
   }
 
   return {
     tone: 'warning',
-    label: 'Invalid',
+    label: '无效',
     title,
   }
 }
