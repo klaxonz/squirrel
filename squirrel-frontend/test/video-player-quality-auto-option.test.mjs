@@ -12,3 +12,12 @@ test('video player does not render a frontend-only auto option in the quality me
   assert.doesNotMatch(source, /v-if="showQualityMenu"[\s\S]*currentQualityId === null[\s\S]*AUTO/)
   assert.doesNotMatch(source, /currentQualityLabel \|\| 'AUTO'/)
 })
+
+test('video player hides the floating quality tag when the runtime label is only an internal level token', async () => {
+  const source = await readFile(playerPath, 'utf8')
+
+  assert.match(source, /const isInternalQualityLabel = \(label: string \| null \| undefined\) => \/\^level\[_\\s-\]\?\\d\+\$\/i\.test\(String\(label \|\| ''\)\.trim\(\)\)/)
+  assert.match(source, /const currentQualityTagLabel = computed\(\(\) => \([\s\S]*?isInternalQualityLabel\(currentQualityLabel\.value\) \? '' : \(currentQualityLabel\.value \|\| ''\)[\s\S]*?\)\)/)
+  assert.match(source, /<div v-if="displayedQualities\.length > 0 && currentQualityTagLabel" class="sp-quality-tag" @click\.stop="toggleQualityMenu">/)
+  assert.doesNotMatch(source, /<div v-if="displayedQualities\.length > 0" class="sp-quality-tag" @click\.stop="toggleQualityMenu">/)
+})

@@ -117,8 +117,8 @@
             </div>
 
             <div class="sp-controls-right">
-              <div v-if="displayedQualities.length > 0" class="sp-quality-tag" @click.stop="toggleQualityMenu">
-                {{ qualityMenuLabel }}
+              <div v-if="displayedQualities.length > 0 && currentQualityTagLabel" class="sp-quality-tag" @click.stop="toggleQualityMenu">
+                {{ currentQualityTagLabel }}
               </div>
               <button v-if="subtitleTracks.length > 0" class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
                 <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
@@ -334,6 +334,10 @@ const displayedQualities = computed(() => {
   const codecMatchedQualities = qualities.value.filter((quality) => getCodecFamily(quality.codec) === visibleCodecFamily.value)
   return codecMatchedQualities.length > 0 ? codecMatchedQualities : qualities.value
 })
+const isInternalQualityLabel = (label: string | null | undefined) => /^level[_\s-]?\d+$/i.test(String(label || '').trim())
+const currentQualityTagLabel = computed(() => (
+  isInternalQualityLabel(currentQualityLabel.value) ? '' : (currentQualityLabel.value || '')
+))
 const qualityMenuLabel = computed(() => currentQualityLabel.value || displayedQualities.value[0]?.label || t('quality'))
 const codecAutoLabel = computed(() => {
   if (currentCodecFamily.value) {
