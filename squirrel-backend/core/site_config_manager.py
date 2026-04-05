@@ -10,6 +10,15 @@ from utils.runtime_site_config import set_site_configs
 from utils.site_catalog import SiteCatalog
 from .site_config_defaults import SITE_CONFIG_DEFAULTS
 
+try:
+    from crawl import (
+        configure_rate_limit as configure_crawl_rate_limit,
+        configure_rate_limit_enabled as configure_crawl_rate_limit_enabled,
+    )
+except Exception:  # pragma: no cover - backend can still run without SDK wiring
+    configure_crawl_rate_limit = None
+    configure_crawl_rate_limit_enabled = None
+
 
 def _deep_merge(base: dict, overrides: dict) -> dict:
     result = deepcopy(base)
@@ -52,20 +61,15 @@ def _parse_bool(value: Any, default: bool = True) -> bool:
     return default
 
 
-def apply_site_config_overrides(catalog: Dict[str, dict] | None = None) -> None:
-    """Apply the current site catalog to backend-owned runtime state."""
-    effective_catalog = get_effective_site_catalog(catalog)
-
-    set_site_configs(effective_catalog)
-
+def _iter_rate_limit_entries(effective_catalog: Dict[str, dict]):
     for info in effective_catalog.values():
-        rate_limit = info.get("rate_limit") or {}
-        rate_limit_enabled = _parse_bool(rate_limit.get("enabled"), True)
-        min_interval = rate_limit.get("min_interval")
-        max_interval = rate_limit.get("max_interval")
+        rate_limit = info.get('rate_limit') or {}
+        rate_limit_enabled = _parse_bool(rate_limit.get('enabled'), True)
+        min_interval = rate_limit.get('min_interval')
+        max_interval = rate_limit.get('max_interval')
         min_value: float | None = None
         max_value: float | None = None
-        if min_interval not in (None, "") and max_interval not in (None, ""):
+        if min_interval not in (None, '') and max_interval not in (None, ''):
             try:
                 min_value = float(min_interval)
                 max_value = float(max_interval)
@@ -73,15 +77,43 @@ def apply_site_config_overrides(catalog: Dict[str, dict] | None = None) -> None:
                 min_value = None
                 max_value = None
 
-        for domain in info.get("domains", []) or []:
-            if not domain:
+        for domain in info.get('domains', []) or []:
+            if domain:
+                yield domain, rate_limit_enabled, min_value, max_value
+
+
+def apply_crawl_rate_limit_overrides(catalog: Dict[str, dict] | None = None) -> None:
+    """Apply site rate limits to the SDK runtime used by plugin processes."""
+    effective_catalog = get_effective_site_catalog(catalog)
+
+    for domain, rate_limit_enabled, min_value, max_value in _iter_rate_limit_entries(effective_catalog):
+        try:
+            if callable(configure_crawl_rate_limit_enabled):
+                configure_crawl_rate_limit_enabled(domain, rate_limit_enabled)
+            if not rate_limit_enabled:
                 continue
-            try:
-                backend_rate_limiter.set_domain_enabled(domain, rate_limit_enabled)
-                if not rate_limit_enabled:
-                    continue
-                if min_value is None or max_value is None:
-                    continue
-                backend_rate_limiter.add_rate_limit(domain, min_value, max_value)
-            except Exception:
+            if min_value is None or max_value is None:
                 continue
+            if callable(configure_crawl_rate_limit):
+                configure_crawl_rate_limit(domain, min_value, max_value)
+        except Exception:
+            continue
+
+
+def apply_site_config_overrides(catalog: Dict[str, dict] | None = None) -> None:
+    """Apply the current site catalog to backend-owned runtime state."""
+    effective_catalog = get_effective_site_catalog(catalog)
+
+    set_site_configs(effective_catalog)
+    apply_crawl_rate_limit_overrides(effective_catalog)
+
+    for domain, rate_limit_enabled, min_value, max_value in _iter_rate_limit_entries(effective_catalog):
+        try:
+            backend_rate_limiter.set_domain_enabled(domain, rate_limit_enabled)
+            if not rate_limit_enabled:
+                continue
+            if min_value is None or max_value is None:
+                continue
+            backend_rate_limiter.add_rate_limit(domain, min_value, max_value)
+        except Exception:
+            continue

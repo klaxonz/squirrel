@@ -120,6 +120,27 @@ def test_runtime_bridge_keeps_cookie_resolver_when_cloudflare_bypass_is_unavaila
     assert runtime_http.get_cookie_domain_resolver() is domain_resolver
 
 
+def test_runtime_bridge_syncs_site_rate_limits_into_plugin_runtime(monkeypatch):
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        'utils.cloudflare_bypass.get_default_client',
+        lambda: object(),
+    )
+    monkeypatch.setattr('utils.cookie.resolve_cookie_file_for_url', lambda url: url)
+    monkeypatch.setattr('utils.cookie.resolve_cookie_match_domain_for_url', lambda url: 'javdb.com')
+    monkeypatch.setattr(
+        'core.site_config_manager.apply_crawl_rate_limit_overrides',
+        lambda catalog=None: calls.append('sdk-rate-limit'),
+        raising=False,
+    )
+
+    runtime_http.reset_runtime_http_state()
+    runtime_bridge._configure_backend_runtime_state()
+
+    assert calls == ['sdk-rate-limit']
+
+
 def test_runtime_bridge_logs_client_disconnect_without_traceback(monkeypatch, caplog):
     class _Runtime:
         def invoke(self, capability, payload=None):

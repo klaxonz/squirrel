@@ -33,6 +33,12 @@ def _configure_backend_runtime_state() -> None:
         set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
     except Exception:
         pass
+    try:
+        from core.site_config_manager import apply_crawl_rate_limit_overrides
+
+        apply_crawl_rate_limit_overrides()
+    except Exception:
+        pass
 
 
 def _parse_args() -> argparse.Namespace:
