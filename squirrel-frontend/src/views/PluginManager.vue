@@ -147,7 +147,7 @@
             <div class="unit-content flex-1 p-4 flex items-center gap-6">
               <div class="flex flex-col items-center gap-1">
                 <div class="led-indicator" :class="getLedClass(plugin)"></div>
-                <span class="text-[8px] font-bold opacity-30 uppercase tracking-tighter">Status</span>
+                <span class="text-[8px] font-bold opacity-30 tracking-tighter">状态</span>
               </div>
 
               <div class="flex-1 min-w-0">
@@ -165,19 +165,19 @@
                   </div>
                 </div>
                 <div class="text-[10px] text-muted-foreground/60 font-mono truncate max-w-xl">
-                  {{ plugin.description || 'NO_DESCRIPTION_PROVIDED' }} // ENDPOINT: {{ plugin.active_runtime?.endpoint || 'OFFLINE' }}
+                  {{ plugin.description || '暂无描述' }} // 端点: {{ plugin.active_runtime?.endpoint || '离线' }}
                 </div>
               </div>
 
               <div class="flex items-center gap-8 px-6 border-x border-white/5 hidden lg:flex">
                 <div class="flex flex-col gap-1">
-                  <span class="text-[8px] font-bold opacity-30 uppercase tracking-widest">Capabilities</span>
+                  <span class="text-[8px] font-bold opacity-30 tracking-widest">能力</span>
                   <div class="flex gap-1">
                     <span v-for="cap in plugin.capabilities.slice(0, 3)" :key="cap.name" class="text-[9px] font-mono text-orange-500/80">[{{ cap.name }}]</span>
                   </div>
                 </div>
                 <div class="flex flex-col gap-1">
-                  <span class="text-[8px] font-bold opacity-30 uppercase tracking-widest">Target_Sites</span>
+                  <span class="text-[8px] font-bold opacity-30 tracking-widest">目标站点</span>
                   <div class="flex items-center gap-2 text-[9px] font-mono text-white/40">
                     <SiteIcon
                       v-if="plugin.primarySite"
@@ -197,9 +197,9 @@
                   @click="handleEnable(plugin)"
                   variant="ghost"
                   size="sm"
-                  class="h-7 text-[10px] px-3 font-bold uppercase tracking-tight bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                  class="h-7 text-[10px] px-3 font-bold tracking-tight bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
                 >
-                  Enable
+                  启用
                 </Button>
                 <Button
                   v-if="plugin.enabled"
@@ -207,18 +207,18 @@
                   @click="handleDisable(plugin)"
                   variant="ghost"
                   size="sm"
-                  class="h-7 text-[10px] px-3 font-bold uppercase tracking-tight bg-white/5 text-white/60 hover:bg-white/10"
+                  class="h-7 text-[10px] px-3 font-bold tracking-tight bg-white/5 text-white/60 hover:bg-white/10"
                 >
-                  Disable
+                  停用
                 </Button>
                 <Button
                   :disabled="actioning === plugin.plugin_id"
                   @click="handleUninstall(plugin)"
                   variant="ghost"
                   size="sm"
-                  class="h-7 text-[10px] px-3 font-bold uppercase tracking-tight text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10"
+                  class="h-7 text-[10px] px-3 font-bold tracking-tight text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10"
                 >
-                  Purge
+                  卸载
                 </Button>
               </div>
             </div>
@@ -258,8 +258,8 @@
           </div>
         </div>
 
-        <div v-if="lastTestedAt" class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 bg-muted/20 px-3 py-1.5 rounded border border-border/30 inline-block">
-          Latest Audit: {{ formatTime(lastTestedAt) }}
+        <div v-if="lastTestedAt" class="text-[10px] font-bold tracking-widest text-muted-foreground/40 bg-muted/20 px-3 py-1.5 rounded border border-border/30 inline-block">
+          最近检测: {{ formatTime(lastTestedAt) }}
         </div>
 
         <div v-if="loadingSites" class="flex items-center justify-center py-20">
@@ -298,9 +298,9 @@
                         <span class="text-sm font-semibold tracking-tight text-foreground/90">{{ site.display_label || site.site_name || site.name }}</span>
                         <span
                           v-if="site.config_enabled === false"
-                          class="text-[9px] font-bold px-1 py-0 bg-destructive/10 text-destructive rounded-[3px] uppercase tracking-tighter"
+                          class="text-[9px] font-bold px-1 py-0 bg-destructive/10 text-destructive rounded-[3px] tracking-tighter"
                         >
-                          Disabled
+                          已禁用
                         </span>
                       </div>
                       <div class="text-[10px] text-muted-foreground/60 flex items-center gap-2 font-mono">
@@ -332,7 +332,7 @@
                     <div class="flex justify-center">
                       <div v-if="site.testing" class="flex items-center gap-2 text-muted-foreground/40 animate-pulse">
                         <ArrowPathIcon class="w-3 h-3 animate-spin" />
-                        <span class="text-[10px] font-bold uppercase">Audit...</span>
+                        <span class="text-[10px] font-bold">检测中...</span>
                       </div>
                       <div
                         v-else-if="site.accessible === true || site.accessible === false"
@@ -343,25 +343,25 @@
                         <div class="w-1.5 h-1.5 rounded-full" :class="getSiteConnectivityIndicatorClass(site)"></div>
                         <span class="text-[10px] font-bold uppercase tracking-wider">{{ getSiteConnectivityBadge(site).label }}</span>
                       </div>
-                      <span v-else class="text-[10px] font-bold uppercase text-muted-foreground/30">None</span>
+                      <span v-else class="text-[10px] font-bold text-muted-foreground/30">未检测</span>
                     </div>
                   </td>
                   <td class="py-4 px-2">
                     <div class="flex justify-center">
-                      <div v-if="!site.supports_login_status" class="text-[10px] font-bold text-muted-foreground/20 uppercase tracking-widest">
-                        N/A
+                      <div v-if="!site.supports_login_status" class="text-[10px] font-bold text-muted-foreground/20 tracking-widest">
+                        不适用
                       </div>
                       <div v-else-if="site.loginTesting" class="flex items-center gap-2 text-muted-foreground/40 animate-pulse">
                         <ArrowPathIcon class="w-3 h-3 animate-spin" />
-                        <span class="text-[10px] font-bold uppercase">Auth...</span>
+                        <span class="text-[10px] font-bold">验证中...</span>
                       </div>
                       <div
                         v-else-if="site.loginStatus?.logged_in"
                         class="flex items-center gap-2 text-success/80"
-                        :title="site.loginStatus?.message || 'Logged in'"
+                        :title="site.loginStatus?.message || '已登录'"
                       >
                         <CheckCircleIcon class="w-3.5 h-3.5" />
-                        <span class="text-[10px] font-bold uppercase tracking-wider">Valid</span>
+                        <span class="text-[10px] font-bold tracking-wider">有效</span>
                       </div>
                       <div
                         v-else-if="site.loginStatus"
@@ -372,7 +372,7 @@
                         <div class="w-1.5 h-1.5 rounded-full" :class="getSiteLoginStatusIndicatorClass(site)"></div>
                         <span class="text-[10px] font-bold uppercase tracking-wider">{{ getSiteLoginBadge(site).label }}</span>
                       </div>
-                      <span v-else class="text-[10px] font-bold uppercase text-muted-foreground/30 tracking-wider">Untested</span>
+                      <span v-else class="text-[10px] font-bold text-muted-foreground/30 tracking-wider">未测试</span>
                     </div>
                   </td>
                   <td class="py-4 px-2 text-center">
@@ -388,9 +388,9 @@
                         :disabled="site.testing || testingAll"
                         variant="ghost"
                         size="sm"
-                        class="h-7 text-[10px] px-2 font-bold uppercase tracking-tight"
+                        class="h-7 text-[10px] px-2 font-bold tracking-tight"
                       >
-                        Test
+                        测试
                       </Button>
                       <Button
                         v-if="site.supports_login_status"
@@ -398,16 +398,16 @@
                         :disabled="site.loginTesting || testingAll"
                         variant="ghost"
                         size="sm"
-                        class="h-7 text-[10px] px-2 font-bold uppercase tracking-tight"
+                        class="h-7 text-[10px] px-2 font-bold tracking-tight"
                       >
-                        Auth
+                        验证
                       </Button>
                       <Button
                         @click="handleUploadCookies(site)"
                         :disabled="site.cookieUploading || testingAll"
                         variant="ghost"
                         size="sm"
-                        class="h-7 text-[10px] px-2 font-bold uppercase tracking-tight"
+                        class="h-7 text-[10px] px-2 font-bold tracking-tight"
                       >
                         Cookie
                       </Button>
