@@ -52,15 +52,6 @@ class RateLimit:
     domain: str
 
 
-DEFAULT_DOMAIN_LIMITS: Dict[str, RateLimit] = {
-    "bilibili.com": RateLimit(3, 5, "bilibili.com"),
-    "youtube.com": RateLimit(2, 5, "youtube.com"),
-    "pornhub.com": RateLimit(3, 8, "pornhub.com"),
-    "javdb.com": RateLimit(5, 8, "javdb.com"),
-    "googlevideo.com": RateLimit(1, 2, "googlevideo.com"),
-}
-
-
 class RateLimiter:
     def __init__(
         self,
@@ -164,7 +155,7 @@ class RateLimitedSession(requests.Session):
         return super().request(method, url, **kwargs)
 
 
-_default_rate_limiter = RateLimiter(domain_limits=DEFAULT_DOMAIN_LIMITS)
+_default_rate_limiter = RateLimiter()
 _shared_session: Optional[RateLimitedSession] = None
 _session_lock = threading.Lock()
 
