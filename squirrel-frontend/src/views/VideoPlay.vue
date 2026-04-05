@@ -8,7 +8,6 @@
           <div class="video-container">
             <Transition name="fade-player" appear>
               <div class="viewfinder-box">
-                <div class="viewfinder-label">[正在监视]</div>
                 <div class="viewfinder-corner viewfinder-corner--top-left"></div>
                 <div class="viewfinder-corner viewfinder-corner--top-right"></div>
                 <div class="viewfinder-corner viewfinder-corner--bottom-left"></div>
@@ -888,20 +887,6 @@ onUnmounted(() => {
   .viewfinder-box {
     padding: 6px;
   }
-}
-
-.viewfinder-label {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
-  font-size: 0.68rem;
-  color: #ff4d00;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  z-index: 10;
-  text-shadow: 0 0 8px rgba(255, 77, 0, 0.4);
 }
 
 .viewfinder-corner {
