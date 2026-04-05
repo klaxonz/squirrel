@@ -190,7 +190,7 @@
                 </div>
               </div>
 
-              <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="flex items-center justify-end gap-2">
                 <Button
                   v-if="!plugin.enabled"
                   :disabled="actioning === plugin.plugin_id"
@@ -382,7 +382,7 @@
                     <span v-else class="text-muted-foreground/20 font-mono">—</span>
                   </td>
                   <td class="py-4 px-2">
-                    <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div class="flex items-center justify-end gap-1">
                       <Button
                         @click="handleTestSingle(site)"
                         :disabled="site.testing || testingAll"
