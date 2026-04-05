@@ -37,12 +37,6 @@ def publish_sync_center_invalidation(channel: str, payload: dict | None = None) 
     client = create_redis_client()
     serialized_payload = json.dumps(payload or {}, ensure_ascii=False)
     published_count = client.publish(channel, serialized_payload)
-    logger.info(
-        'Sync-center invalidation published channel=%s listeners=%s payload=%s',
-        channel,
-        published_count,
-        serialized_payload,
-    )
 
 
 def _load_feed_snapshot(user_id: int) -> dict:
@@ -109,13 +103,6 @@ async def stream_sync_center_events(
             if message and message.get('type') == 'message':
                 channel = message.get('channel')
                 payload = _decode_message_payload(message.get('data'))
-                logger.info(
-                    'Sync-center stream received invalidation user_id=%s channel=%s payload=%s selected_run_id=%s',
-                    user_id,
-                    channel,
-                    payload,
-                    selected_run_id,
-                )
 
                 if channel == SYNC_CENTER_FEED_CHANNEL:
                     yield encode_sse_event('feed_snapshot', _load_feed_snapshot(user_id))
