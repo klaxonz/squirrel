@@ -87,6 +87,7 @@ from .extractor import (
 )
 from .utils import (
     filter_cookies_to_query_string,
+    configure_cookie_domain_resolver,
     configure_cookie_file_resolver,
     resolve_cookie_file_path,
 )
@@ -196,6 +197,7 @@ __all__ = [
     'SubscriptionSyncContext',
     'SubscriptionSyncResult',
     'filter_cookies_to_query_string',
+    'configure_cookie_domain_resolver',
     'configure_cookie_file_resolver',
     'resolve_cookie_file_path',
     'build_proxy_config_values',

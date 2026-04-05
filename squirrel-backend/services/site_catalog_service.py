@@ -152,6 +152,21 @@ def _normalize_metadata(raw: Any) -> Dict[str, Any]:
     return result
 
 
+def _normalize_cookie(raw: Any) -> Dict[str, Any]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError('cookie 必须是对象')
+    result: Dict[str, Any] = {}
+    alias_domains = _normalize_list(raw.get('alias_domains'), 'cookie.alias_domains')
+    if alias_domains:
+        result['alias_domains'] = alias_domains
+    match_domain = str(raw.get('match_domain') or '').strip().lower().lstrip('.')
+    if match_domain:
+        result['match_domain'] = match_domain
+    return result
+
+
 def save_sites(sites: List[dict]) -> Dict[str, dict]:
     if not isinstance(sites, list):
         raise ValueError("sites 必须为数组")
@@ -197,6 +212,10 @@ def save_sites(sites: List[dict]) -> Dict[str, dict]:
         metadata = _normalize_metadata(raw.get("metadata"))
         if metadata:
             site_entry["metadata"] = metadata
+
+        cookie = _normalize_cookie(raw.get('cookie'))
+        if cookie:
+            site_entry['cookie'] = cookie
 
         test_url = str(raw.get("test_url") or "").strip()
         if test_url:

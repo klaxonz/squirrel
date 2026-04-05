@@ -16,12 +16,14 @@ from utils import runtime_http
 def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
     client = object()
     resolver = lambda url: f'cookie:{url}'
+    domain_resolver = lambda url: 'youtube.com'
     projection_calls = []
 
     monkeypatch.setattr(app_main, 'apply_site_config_overrides', lambda: None)
     monkeypatch.setattr(app_main, 'bootstrap_plugin_runtime', lambda: None)
     monkeypatch.setattr(app_main, 'shutdown_plugin_runtime', lambda: None)
     monkeypatch.setattr(app_main, 'resolve_cookie_file_for_url', resolver)
+    monkeypatch.setattr(app_main, 'resolve_cookie_match_domain_for_url', domain_resolver)
     monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: client)
     monkeypatch.setitem(
         sys.modules,
@@ -35,6 +37,7 @@ def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
         async with app_main.lifespan(SimpleNamespace()):
             assert runtime_http.get_cloudflare_bypass_client() is client
             assert runtime_http.get_cookie_file_resolver() is resolver
+            assert runtime_http.get_cookie_domain_resolver() is domain_resolver
 
     asyncio.run(_run())
     assert projection_calls == ['seeded']
@@ -43,6 +46,7 @@ def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
 def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
     client = object()
     resolver = lambda url: f'cookie:{url}'
+    domain_resolver = lambda url: 'youtube.com'
     projection_calls = []
 
     monkeypatch.setattr(service_runtime, 'init_logging', lambda: None)
@@ -68,6 +72,7 @@ def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
         SimpleNamespace(ensure_projection_seeded=lambda: projection_calls.append('seeded') or 0),
     )
     monkeypatch.setattr(service_runtime, 'resolve_cookie_file_for_url', resolver)
+    monkeypatch.setattr(service_runtime, 'resolve_cookie_match_domain_for_url', domain_resolver)
     monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: client)
 
     runtime_http.reset_runtime_http_state()
@@ -75,21 +80,44 @@ def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
     with service_runtime.bootstrap_runtime('worker'):
         assert runtime_http.get_cloudflare_bypass_client() is client
         assert runtime_http.get_cookie_file_resolver() is resolver
+        assert runtime_http.get_cookie_domain_resolver() is domain_resolver
     assert projection_calls == ['seeded']
 
 
 def test_runtime_bridge_configures_backend_runtime_http_state(monkeypatch):
     client = object()
     resolver = lambda url: f'cookie:{url}'
+    domain_resolver = lambda url: 'youtube.com'
 
     monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: client)
     monkeypatch.setattr('utils.cookie.resolve_cookie_file_for_url', resolver)
+    monkeypatch.setattr('utils.cookie.resolve_cookie_match_domain_for_url', domain_resolver)
 
     runtime_http.reset_runtime_http_state()
     runtime_bridge._configure_backend_runtime_state()
 
     assert runtime_http.get_cloudflare_bypass_client() is client
     assert runtime_http.get_cookie_file_resolver() is resolver
+    assert runtime_http.get_cookie_domain_resolver() is domain_resolver
+
+
+def test_runtime_bridge_keeps_cookie_resolver_when_cloudflare_bypass_is_unavailable(monkeypatch):
+    resolver = lambda url: f'cookie:{url}'
+    domain_resolver = lambda url: 'youtube.com'
+
+    def _raise_missing_bypass():
+        raise ValueError('missing cloudflare bypass service')
+
+    monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', _raise_missing_bypass)
+    monkeypatch.setattr('utils.cookie.resolve_cookie_file_for_url', resolver)
+    monkeypatch.setattr('utils.cookie.resolve_cookie_match_domain_for_url', domain_resolver)
+
+    runtime_http.reset_runtime_http_state()
+    runtime_bridge._configure_backend_runtime_state()
+
+    assert runtime_http.get_cloudflare_bypass_client() is None
+    assert runtime_http.get_cookie_file_resolver() is resolver
+    assert runtime_http.get_cookie_domain_resolver() is domain_resolver
 
 
 def test_runtime_bridge_logs_client_disconnect_without_traceback(monkeypatch, caplog):

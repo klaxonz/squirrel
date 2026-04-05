@@ -17,8 +17,10 @@ def _extract_top_level_domain_from_url(target_url: str) -> str:
 
 
 CookieFileResolver = Callable[[str], Optional[str]]
+CookieDomainResolver = Callable[[str], str]
 
 _cookie_file_resolver: Optional[CookieFileResolver] = None
+_cookie_domain_resolver: Optional[CookieDomainResolver] = None
 
 
 def configure_cookie_file_resolver(resolver: CookieFileResolver) -> None:
@@ -30,6 +32,24 @@ def configure_cookie_file_resolver(resolver: CookieFileResolver) -> None:
 
     global _cookie_file_resolver
     _cookie_file_resolver = resolver
+
+
+def configure_cookie_domain_resolver(resolver: CookieDomainResolver) -> None:
+    """Register a callback used to resolve cookie matching domains at runtime."""
+
+    global _cookie_domain_resolver
+    _cookie_domain_resolver = resolver
+
+
+def _extract_cookie_domain(target_url: str) -> str:
+    if _cookie_domain_resolver is not None:
+        try:
+            resolved = str(_cookie_domain_resolver(target_url) or '').strip().lower()
+        except Exception:
+            resolved = ''
+        if resolved:
+            return resolved
+    return str(_extract_top_level_domain_from_url(target_url) or '').strip().lower()
 
 
 def _resolve_cookie_file(target_url: str, cookies_file: Optional[str]) -> Optional[Path]:
@@ -87,7 +107,7 @@ def filter_cookies_to_query_string(target_url: str, cookies_file: Optional[str] 
     except Exception:
         return ""
 
-    domain = _extract_top_level_domain_from_url(target_url)
+    domain = _extract_cookie_domain(target_url)
     filtered_cj = cookielib.CookieJar()
 
     for cookie in jar:

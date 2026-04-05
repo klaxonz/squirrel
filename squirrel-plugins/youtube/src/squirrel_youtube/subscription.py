@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import importlib.util
 import logging
 import re
-import sys
-from pathlib import Path
 from typing import Any
 
 from crawl import (
@@ -16,16 +13,7 @@ from crawl import (
     build_subscription_sync_result,
     resolve_subscription_limit,
 )
-
-try:
-    from . import ytdlp_support as youtube_ytdlp_support
-except ImportError:  # pragma: no cover - fallback for direct module loading
-    _HELPER_PATH = Path(__file__).with_name('ytdlp_support.py')
-    _HELPER_SPEC = importlib.util.spec_from_file_location('_youtube_subscription_ytdlp_support', _HELPER_PATH)
-    youtube_ytdlp_support = importlib.util.module_from_spec(_HELPER_SPEC)
-    assert _HELPER_SPEC is not None and _HELPER_SPEC.loader is not None
-    sys.modules['_youtube_subscription_ytdlp_support'] = youtube_ytdlp_support
-    _HELPER_SPEC.loader.exec_module(youtube_ytdlp_support)
+from . import ytdlp_support as youtube_ytdlp_support
 
 
 logger = logging.getLogger(__name__)

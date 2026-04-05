@@ -43,13 +43,13 @@ def _proxy_config_values() -> dict:
     return build_proxy_config_values(SITE_SLUG, DEFAULT_PROXY_CONFIG)
 
 
-def build_runtime_proxy_config(domain: str | None = None) -> dict[str, object]:
+def build_runtime_proxy_config(payload: object | None = None) -> dict[str, object]:
     return build_shared_runtime_proxy_config(
         site_slug=SITE_SLUG,
         site_domain=SITE_DOMAIN,
         default_site_headers=DEFAULT_SITE_HEADERS,
         default_proxy_config=DEFAULT_PROXY_CONFIG,
-        domain=domain,
+        domain=payload,
     )
 
 

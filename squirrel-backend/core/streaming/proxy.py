@@ -330,11 +330,22 @@ class VideoProxy:
     def _extract_domain_from_request(self, request: Request) -> Optional[str]:
         return None
 
-    def _load_runtime_proxy_config(self) -> tuple[Dict[str, str], Optional[Dict[str, Any]]]:
+    def _load_runtime_proxy_config(
+        self,
+        *,
+        target_url: Optional[str] = None,
+        referer: Optional[str] = None,
+    ) -> tuple[Dict[str, str], Optional[Dict[str, Any]]]:
+        payload = {'domain': self.domain}
+        if target_url:
+            payload['target_url'] = target_url
+        if referer:
+            payload['referer'] = referer
+
         response = get_plugin_manager().gateway.invoke(
             'resolve_proxy_config',
             domain=self.domain,
-            payload={'domain': self.domain},
+            payload=payload,
         )
         if not response.ok or not isinstance(response.data, dict):
             raise ProxyConfigurationException(self.domain, 'no runtime proxy config provider')
@@ -352,18 +363,20 @@ class VideoProxy:
         return dict(payload.get('site_headers') or {}), domain_config
 
     def _build_runtime_headers(self, target_url: str, referer: Optional[str] = None) -> Dict[str, str]:
+        site_headers = self.site_headers
+        domain_config = self.domain_config
+        if target_url or referer:
+            site_headers, domain_config = self._load_runtime_proxy_config(target_url=target_url, referer=referer)
+            if domain_config is not None:
+                self.domain_config = domain_config
+
         custom_headers: Dict[str, str] = {}
-        if referer:
-            custom_headers['Referer'] = referer
-            parsed = urlparse(referer)
-            if parsed.scheme and parsed.netloc:
-                custom_headers['Origin'] = f'{parsed.scheme}://{parsed.netloc}'
 
         cookie_header = filter_cookies_to_query_string(target_url)
         if cookie_header:
             custom_headers['Cookie'] = cookie_header
 
-        return HeaderBuilder.build_headers(self.request, self.site_headers, custom_headers)
+        return HeaderBuilder.build_headers(self.request, site_headers, custom_headers)
 
     def _rewrite_playlist(self, url: str, content: bytes, referer: Optional[str] = None) -> Optional[Dict[str, Any]]:
         manager = get_plugin_manager()

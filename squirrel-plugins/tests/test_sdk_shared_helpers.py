@@ -6,6 +6,7 @@ import types
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -123,6 +124,29 @@ class _FakeMpdBuilder:
 
 
 class SharedSdkHelperTests(unittest.TestCase):
+    def test_sdk_cookie_helper_uses_youtube_cookie_domain_for_googlevideo_urls(self):
+        with _stub_sdk_crawl_package():
+            utils_module = importlib.import_module('crawl.utils')
+
+        with TemporaryDirectory() as temp_dir:
+            cookie_file = Path(temp_dir) / 'cookies.txt'
+            cookie_file.write_text(
+                '# Netscape HTTP Cookie File\n'
+                '.youtube.com\tTRUE\t/\tFALSE\t2147483647\tSID\tabc123\n'
+                '.googlevideo.com\tTRUE\t/\tFALSE\t2147483647\tGV\tignored\n',
+                encoding='utf-8',
+            )
+
+            utils_module.configure_cookie_file_resolver(lambda _url: str(cookie_file))
+            utils_module.configure_cookie_domain_resolver(lambda _url: 'youtube.com')
+
+            self.assertEqual(
+                utils_module.filter_cookies_to_query_string(
+                    'https://rr4---sn-a5meknzl.googlevideo.com/videoplayback?c=MWEB',
+                ),
+                'SID=abc123',
+            )
+
     def test_plugin_runtime_wraps_generic_handler_exceptions(self):
         with _stub_sdk_crawl_package():
             plugin_module = importlib.import_module('crawl.plugin')
@@ -327,6 +351,45 @@ class SharedSdkHelperTests(unittest.TestCase):
                 {'url': 'https://cdn.example.com/master.m3u8', 'content': '#EXTM3U', 'referer': 'https://ref'},
             ).data['headers'],
             {'referer': 'https://ref'},
+        )
+
+    def test_runtime_helper_passes_full_proxy_config_payload_to_payload_builder(self):
+        with _stub_sdk_crawl_package():
+            module = importlib.import_module('crawl.runtime_helpers')
+            runtime_models = importlib.import_module('crawl.runtime_models')
+
+        manifest = runtime_models.PluginManifest(
+            plugin_id='demo',
+            version='0.1.0',
+            display_name='Demo',
+            capabilities=[],
+            sites=[],
+            permissions=[],
+        )
+
+        runtime = module.create_site_runtime(
+            manifest=manifest,
+            proxy_config_builder=lambda payload: {
+                'domain': payload.get('domain'),
+                'target_url': payload.get('target_url'),
+                'referer': payload.get('referer'),
+            },
+        )
+
+        self.assertEqual(
+            runtime.invoke(
+                'resolve_proxy_config',
+                {
+                    'domain': 'media.example.com',
+                    'target_url': 'https://cdn.example.com/segment.ts',
+                    'referer': 'https://www.example.com/watch?v=demo',
+                },
+            ).data,
+            {
+                'domain': 'media.example.com',
+                'target_url': 'https://cdn.example.com/segment.ts',
+                'referer': 'https://www.example.com/watch?v=demo',
+            },
         )
 
     def test_runtime_helper_uses_paginated_importer_batches_when_available(self):

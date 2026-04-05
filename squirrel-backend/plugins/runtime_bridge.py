@@ -20,11 +20,17 @@ logger = logging.getLogger(__name__)
 def _configure_backend_runtime_state() -> None:
     try:
         from utils.cloudflare_bypass import get_default_client
-        from utils.cookie import resolve_cookie_file_for_url
-        from utils.runtime_http import set_cloudflare_bypass_client, set_cookie_file_resolver
+        from utils.runtime_http import set_cloudflare_bypass_client
 
         set_cloudflare_bypass_client(get_default_client())
+    except Exception:
+        pass
+    try:
+        from utils.cookie import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
+        from utils.runtime_http import set_cookie_domain_resolver, set_cookie_file_resolver
+
         set_cookie_file_resolver(resolve_cookie_file_for_url)
+        set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
     except Exception:
         pass
 

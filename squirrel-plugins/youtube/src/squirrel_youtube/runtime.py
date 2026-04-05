@@ -9,6 +9,7 @@ from crawl import (
     PluginSiteManifest,
     create_site_runtime,
 )
+from .youtubei_resolver import prewarm_youtubei_worker, shutdown_youtubei_worker
 
 
 def _load_local_attr(module_name: str, attr_name: str):
@@ -118,6 +119,8 @@ def get_plugin_runtime():
     return create_site_runtime(
         manifest=PLUGIN_MANIFEST,
         health_message='YouTube runtime is configured',
+        on_start=lambda _context: prewarm_youtubei_worker(),
+        on_stop=shutdown_youtubei_worker,
         check_login=lambda: _load_local_attr('auth', 'check_youtube_login_status')(),
         importer_factory=lambda: _load_local_attr('importer', 'YoutubeUserSubscriptionImporter')(),
         subscription_factory=lambda url: _load_local_attr('subscription', 'YoutubeSubscription')(url=url),

@@ -17,7 +17,7 @@ from .plugin_runtime_helpers import (
     build_subtitles_handler,
     build_sync_subscription_handler,
 )
-from .plugin import create_plugin_runtime
+from .plugin import RuntimeStartHook, RuntimeStopHook, create_plugin_runtime
 from .runtime_models import PluginHealthStatus, PluginManifest
 
 
@@ -29,6 +29,8 @@ def create_site_runtime(
     manifest: PluginManifest,
     health_message: Optional[str] = None,
     health_check: Optional[Callable[[], PluginHealthStatus]] = None,
+    on_start: Optional[RuntimeStartHook] = None,
+    on_stop: Optional[RuntimeStopHook] = None,
     capability_handlers: Optional[Dict[str, PayloadHandler]] = None,
     check_login: Optional[Callable[[], Any]] = None,
     importer_factory: Optional[ObjectFactory] = None,
@@ -89,5 +91,7 @@ def create_site_runtime(
     return create_plugin_runtime(
         manifest=manifest,
         capability_handlers=resolved_handlers,
+        on_start=on_start,
+        on_stop=on_stop,
         health_check=effective_health_check,
     )

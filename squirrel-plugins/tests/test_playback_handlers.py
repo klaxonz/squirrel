@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import json
 import subprocess
@@ -144,6 +145,11 @@ def _stub_youtube_mpd_dependencies(
         for name in (
             'crawl',
             'requests',
+            'squirrel_youtube',
+            'squirrel_youtube.mpd',
+            'squirrel_youtube.ytdlp_support',
+            'squirrel_youtube.youtubei_resolver',
+            'squirrel_youtube.video_id',
             'yt_dlp',
             'yt_dlp.extractor',
             'yt_dlp.extractor.youtube',
@@ -199,6 +205,16 @@ def _stub_youtube_mpd_dependencies(
             raise AssertionError('Network probing should not run in this test')
 
     requests_module.Session = Session
+
+    package_module = types.ModuleType('squirrel_youtube')
+    package_module.__path__ = [str(YOUTUBE_MPD_PATH.parent)]  # type: ignore[attr-defined]
+
+    youtubei_resolver_module = types.ModuleType('squirrel_youtube.youtubei_resolver')
+    youtubei_resolver_module.YoutubeiFormat = object
+    youtubei_resolver_module.resolve_with_youtubei = lambda *_args, **_kwargs: types.SimpleNamespace(formats=[])
+
+    video_id_module = types.ModuleType('squirrel_youtube.video_id')
+    video_id_module.extract_youtube_video_id = lambda _url: None
 
     yt_dlp_module = types.ModuleType('yt_dlp')
     yt_dlp_module.__path__ = []  # type: ignore[attr-defined]
@@ -259,6 +275,9 @@ def _stub_youtube_mpd_dependencies(
     try:
         sys.modules['crawl'] = crawl_module
         sys.modules['requests'] = requests_module
+        sys.modules['squirrel_youtube'] = package_module
+        sys.modules['squirrel_youtube.youtubei_resolver'] = youtubei_resolver_module
+        sys.modules['squirrel_youtube.video_id'] = video_id_module
         sys.modules['yt_dlp'] = yt_dlp_module
         sys.modules['yt_dlp.extractor'] = yt_dlp_extractor_module
         sys.modules['yt_dlp.extractor.youtube'] = yt_dlp_youtube_module
@@ -273,25 +292,27 @@ def _stub_youtube_mpd_dependencies(
 
 
 def _load_youtube_mpd_module():
-    module_name = '_mpd_test_youtube'
-    sys.modules.pop(module_name, None)
-    module_spec = importlib.util.spec_from_file_location(module_name, YOUTUBE_MPD_PATH)
-    module = importlib.util.module_from_spec(module_spec)
-    assert module_spec is not None and module_spec.loader is not None
-    sys.modules[module_name] = module
-    module_spec.loader.exec_module(module)
-    return module
+    module_name = 'squirrel_youtube.mpd'
+    original_sys_path = list(sys.path)
+    try:
+        sys.modules.pop(module_name, None)
+        sys.modules.pop('squirrel_youtube.ytdlp_support', None)
+        sys.path.insert(0, str(YOUTUBE_MPD_PATH.parents[2] / 'src'))
+        return importlib.import_module(module_name)
+    finally:
+        sys.path[:] = original_sys_path
 
 
 def _load_youtube_extractor_module():
-    module_name = '_extractor_test_youtube'
-    sys.modules.pop(module_name, None)
-    module_spec = importlib.util.spec_from_file_location(module_name, YOUTUBE_EXTRACTOR_PATH)
-    module = importlib.util.module_from_spec(module_spec)
-    assert module_spec is not None and module_spec.loader is not None
-    sys.modules[module_name] = module
-    module_spec.loader.exec_module(module)
-    return module
+    module_name = 'squirrel_youtube.extractor'
+    original_sys_path = list(sys.path)
+    try:
+        sys.modules.pop(module_name, None)
+        sys.modules.pop('squirrel_youtube.ytdlp_support', None)
+        sys.path.insert(0, str(YOUTUBE_EXTRACTOR_PATH.parents[2] / 'src'))
+        return importlib.import_module(module_name)
+    finally:
+        sys.path[:] = original_sys_path
 
 
 class PlaybackHandlerTests(unittest.TestCase):
@@ -576,7 +597,7 @@ class PlaybackHandlerTests(unittest.TestCase):
             self.assertEqual(info['id'], 'demo')
             self.assertEqual(len(calls), 1)
             self.assertEqual(calls[0][0], 'https://youtube.com/watch?v=demo')
-            self.assertTrue(calls[0][2])
+            self.assertFalse(calls[0][2])
 
     def test_youtube_extract_video_info_raises_auth_error_for_sign_in_failures(self):
         with _stub_youtube_mpd_dependencies(

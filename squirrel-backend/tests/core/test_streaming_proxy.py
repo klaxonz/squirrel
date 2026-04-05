@@ -4,9 +4,12 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import PluginInvokeResponse
+from core.exceptions.proxy_exceptions import ProxyConfigurationException
 from core.exceptions.proxy_exceptions import ProxyNetworkException
 from core.streaming.proxy import VideoProxy
 
@@ -92,6 +95,24 @@ def test_video_proxy_reads_runtime_proxy_config(monkeypatch):
     assert proxy.domain_config['domain'] == 'youtube.com'
 
 
+def test_video_proxy_raises_when_runtime_proxy_config_is_missing(monkeypatch):
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            return PluginInvokeResponse(
+                request_id='proxy-config-1',
+                ok=False,
+                error={'code': 'missing'},
+            )
+
+    monkeypatch.setattr(
+        'core.streaming.proxy.get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+
+    with pytest.raises(ProxyConfigurationException):
+        VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+
+
 def test_video_proxy_builds_cookie_header_from_target_url(monkeypatch):
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
@@ -134,6 +155,81 @@ def test_video_proxy_builds_cookie_header_from_target_url(monkeypatch):
         'User-Agent': 'Runtime UA',
         'Cookie': 'SID=test-cookie',
     }
+
+
+def test_video_proxy_uses_runtime_capability_headers_for_target_specific_youtube_requests(monkeypatch):
+    calls = []
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            calls.append({
+                'capability': capability,
+                'payload': payload,
+                'site_name': site_name,
+                'domain': domain,
+                'timeout_ms': timeout_ms,
+            })
+            if capability == 'resolve_proxy_config':
+                dynamic_target = (payload or {}).get('target_url')
+                return PluginInvokeResponse(
+                    request_id='proxy-config-1',
+                    ok=True,
+                    data={
+                        'site_headers': {
+                            'User-Agent': 'Plugin MWEB UA' if dynamic_target else 'Runtime UA',
+                            'Referer': 'https://m.youtube.com/watch?v=lUQ2NKkCW_Q' if dynamic_target else 'https://www.youtube.com',
+                            'Origin': 'https://m.youtube.com' if dynamic_target else 'https://www.youtube.com',
+                        },
+                        'domain_configs': [{
+                            'domain': 'youtube.com',
+                            'connect_timeout': 10.0,
+                            'read_timeout': 20.0,
+                            'max_retries': 3,
+                            'chunk_size': 8192,
+                            'max_connections': 5,
+                            'keepalive_expiry': 30.0,
+                            'enable_http2': True,
+                        }],
+                    },
+                )
+            raise AssertionError(f'unexpected capability: {capability}')
+
+    monkeypatch.setattr(
+        'core.streaming.proxy.get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+    monkeypatch.setattr('core.streaming.proxy.filter_cookies_to_query_string', lambda _url: '')
+
+    proxy = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+
+    headers = proxy._build_runtime_headers(
+        'https://rr3---sn-a5mekn6z.googlevideo.com/videoplayback?c=MWEB&source=youtube',
+        referer='https://www.youtube.com/watch?v=lUQ2NKkCW_Q',
+    )
+
+    assert calls == [
+        {
+            'capability': 'resolve_proxy_config',
+            'payload': {'domain': 'youtube.com'},
+            'site_name': None,
+            'domain': 'youtube.com',
+            'timeout_ms': None,
+        },
+        {
+            'capability': 'resolve_proxy_config',
+            'payload': {
+                'domain': 'youtube.com',
+                'target_url': 'https://rr3---sn-a5mekn6z.googlevideo.com/videoplayback?c=MWEB&source=youtube',
+                'referer': 'https://www.youtube.com/watch?v=lUQ2NKkCW_Q',
+            },
+            'site_name': None,
+            'domain': 'youtube.com',
+            'timeout_ms': None,
+        },
+    ]
+    assert headers['User-Agent'] == 'Plugin MWEB UA'
+    assert headers['Referer'] == 'https://m.youtube.com/watch?v=lUQ2NKkCW_Q'
+    assert headers['Origin'] == 'https://m.youtube.com'
 
 
 def test_video_proxy_rewrites_playlist_via_runtime_capability(monkeypatch):
@@ -221,14 +317,19 @@ def test_video_proxy_uses_cloudflare_bypass_for_configured_domains(monkeypatch):
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
             if capability == 'resolve_proxy_config':
+                referer = (payload or {}).get('referer')
+                site_headers = {
+                    'User-Agent': 'Runtime UA',
+                    'Referer': 'https://javdb.com/',
+                }
+                if referer:
+                    site_headers['Referer'] = referer
+                    site_headers['Origin'] = 'https://javdb.com'
                 return PluginInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
-                        'site_headers': {
-                            'User-Agent': 'Runtime UA',
-                            'Referer': 'https://javdb.com/',
-                        },
+                        'site_headers': site_headers,
                         'domain_configs': [{
                             'domain': 'javdb.com',
                             'connect_timeout': 10.0,
@@ -324,14 +425,19 @@ def test_video_proxy_skips_cloudflare_bypass_for_cross_host_streams(monkeypatch)
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
             if capability == 'resolve_proxy_config':
+                referer = (payload or {}).get('referer')
+                site_headers = {
+                    'User-Agent': 'Runtime UA',
+                    'Referer': 'https://javdb.com/',
+                }
+                if referer:
+                    site_headers['Referer'] = referer
+                    site_headers['Origin'] = 'https://missav.ai'
                 return PluginInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
-                        'site_headers': {
-                            'User-Agent': 'Runtime UA',
-                            'Referer': 'https://javdb.com/',
-                        },
+                        'site_headers': site_headers,
                         'domain_configs': [{
                             'domain': 'javdb.com',
                             'connect_timeout': 10.0,

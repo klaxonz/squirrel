@@ -205,6 +205,22 @@ def _extract_proxy_url(line: str) -> str:
 
 
 class ProxyPlaylistRewriteTests(unittest.TestCase):
+    def test_youtube_proxy_runtime_config_can_customize_headers_for_googlevideo_requests(self):
+        module = _load_proxy_module('youtube')
+
+        config = module.build_runtime_proxy_config({
+            'domain': 'youtube.com',
+            'target_url': 'https://rr3---sn-a5mekn6z.googlevideo.com/videoplayback?c=MWEB&source=youtube',
+            'referer': 'https://www.youtube.com/watch?v=lUQ2NKkCW_Q',
+        })
+
+        self.assertEqual(config['site_headers']['Referer'], 'https://m.youtube.com/watch?v=lUQ2NKkCW_Q')
+        self.assertEqual(config['site_headers']['Origin'], 'https://m.youtube.com')
+        self.assertNotEqual(
+            config['site_headers']['User-Agent'],
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        )
+
     def test_map_uri_attributes_are_rewritten_for_all_plugins(self):
         playlist = '#EXTM3U\n#EXT-X-MAP:URI="init.mp4"\nsegment-1.ts\n'
 

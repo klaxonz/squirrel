@@ -10,9 +10,9 @@ from core.config import settings
 from core.database_upgrade import upgrade_database
 from core.site_config_manager import apply_site_config_overrides
 from plugins.manager import bootstrap_plugin_runtime, shutdown_plugin_runtime
-from utils.cookie import resolve_cookie_file_for_url
+from utils.cookie import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from utils.runtime_http import set_cloudflare_bypass_client
-from utils.runtime_http import set_cookie_file_resolver
+from utils.runtime_http import set_cookie_domain_resolver, set_cookie_file_resolver
 
 logger = logging.getLogger()
 
@@ -45,10 +45,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         from utils.cloudflare_bypass import get_default_client
         set_cloudflare_bypass_client(get_default_client())
-        set_cookie_file_resolver(resolve_cookie_file_for_url)
         logger.info("[0.5/5] ✓ Cloudflare bypass client configured")
     except Exception as e:
         logger.warning(f"[0.5/5] ⚠ Failed to configure Cloudflare bypass client: {e}")
+    try:
+        set_cookie_file_resolver(resolve_cookie_file_for_url)
+        set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
+        logger.info("[0.5/5] ✓ Cookie resolver configured")
+    except Exception as e:
+        logger.warning(f"[0.5/5] ⚠ Failed to configure cookie resolver: {e}")
 
     # 1. 启动插件 runtime manager
     logger.info("[1/4] Bootstrapping plugin runtime manager...")

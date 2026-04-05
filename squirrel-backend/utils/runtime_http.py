@@ -4,6 +4,7 @@ from typing import Callable, Optional
 
 _cloudflare_bypass_client: object | None = None
 _cookie_file_resolver: Optional[Callable[[str], Optional[str]]] = None
+_cookie_domain_resolver: Optional[Callable[[str], str]] = None
 
 
 def set_cloudflare_bypass_client(client: object | None) -> None:
@@ -38,11 +39,28 @@ def get_cookie_file_resolver() -> Optional[Callable[[str], Optional[str]]]:
     return _cookie_file_resolver
 
 
+def set_cookie_domain_resolver(resolver: Optional[Callable[[str], str]]) -> None:
+    global _cookie_domain_resolver
+    _cookie_domain_resolver = resolver
+    try:
+        from crawl import configure_cookie_domain_resolver
+
+        if resolver is not None:
+            configure_cookie_domain_resolver(resolver)
+    except Exception:
+        pass
+
+
+def get_cookie_domain_resolver() -> Optional[Callable[[str], str]]:
+    return _cookie_domain_resolver
+
+
 def reset_runtime_http_state() -> None:
-    global _cloudflare_bypass_client, _cookie_file_resolver
+    global _cloudflare_bypass_client, _cookie_file_resolver, _cookie_domain_resolver
 
     _cloudflare_bypass_client = None
     _cookie_file_resolver = None
+    _cookie_domain_resolver = None
 
     try:
         from crawl import http as crawl_http
@@ -55,5 +73,6 @@ def reset_runtime_http_state() -> None:
         from crawl import utils as crawl_utils
 
         crawl_utils._cookie_file_resolver = None
+        crawl_utils._cookie_domain_resolver = None
     except Exception:
         pass

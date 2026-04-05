@@ -5,6 +5,9 @@ from typing import Any
 
 from crawl import ParseError, VideoUrlHandler
 from .mpd import _build_dash_representations, _extract_video_info, _proxy
+from .playback_mapper import map_youtubei_result
+from .youtubei_resolver import resolve_with_youtubei
+from .video_id import extract_youtube_video_id
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +46,26 @@ class YouTubeHandler:
     domain = 'youtube.com'
 
     def get_video_url(self, video: Any) -> dict:
+        primary_error: Exception | None = None
+        youtube_video_id = extract_youtube_video_id(getattr(video, 'url', '') or '')
+
+        try:
+            youtubei_result = resolve_with_youtubei(youtube_video_id or str(video.id))
+            return map_youtubei_result(video.id, youtubei_result)
+        except Exception as exc:
+            primary_error = exc
+            logger.warning('youtubei playback resolution failed, falling back to yt-dlp: %s', exc)
+
+        fallback_payload = self._build_legacy_playback_payload(video)
+        if fallback_payload:
+            return fallback_payload
+
+        raise ParseError(f'Unable to resolve YouTube playback for {video.url}: {primary_error}')
+
+    def _build_legacy_playback_payload(self, video: Any) -> dict | None:
         info = _extract_video_info(video.url)
         if not info:
-            raise ParseError(f'无法获取 YouTube 视频信息: {video.url}')
+            return None
 
         mpd_payload = self._build_mpd_payload(video, info)
         if mpd_payload:
@@ -59,7 +79,7 @@ class YouTubeHandler:
         if progressive_payload:
             return progressive_payload
 
-        raise ParseError(f'未能获取到可用的 DASH、HLS 或 MP4 播放链接: {video.url}')
+        return None
 
     @staticmethod
     def _upstream_referer(video: Any, info: dict) -> str | None:

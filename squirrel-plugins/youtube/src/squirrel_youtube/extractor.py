@@ -13,19 +13,7 @@ from crawl import (
     NotFoundError,
     ParseError,
 )
-try:
-    from . import ytdlp_support as youtube_ytdlp_support
-except ImportError:  # pragma: no cover - fallback for direct module loading
-    import importlib.util
-    import sys
-    from pathlib import Path
-
-    _HELPER_PATH = Path(__file__).with_name('ytdlp_support.py')
-    _HELPER_SPEC = importlib.util.spec_from_file_location('_youtube_ytdlp_support', _HELPER_PATH)
-    youtube_ytdlp_support = importlib.util.module_from_spec(_HELPER_SPEC)
-    assert _HELPER_SPEC is not None and _HELPER_SPEC.loader is not None
-    sys.modules['_youtube_ytdlp_support'] = youtube_ytdlp_support
-    _HELPER_SPEC.loader.exec_module(youtube_ytdlp_support)
+from . import ytdlp_support as youtube_ytdlp_support
 
 logger = logging.getLogger(__name__)
 YOUTUBE_PLAYER_CLIENT = youtube_ytdlp_support.YOUTUBE_PLAYER_CLIENT

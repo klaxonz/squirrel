@@ -1,6 +1,7 @@
 """Helpers for composing plugin runtime V2 capability handlers."""
 from __future__ import annotations
 
+import inspect
 from types import SimpleNamespace
 from typing import Any, Callable, Dict, Optional, cast
 
@@ -228,6 +229,19 @@ def build_mpd_handler(builder_factory: ObjectFactory, *, include_duration: bool 
 
 def build_proxy_config_handler(builder: Callable[[Any], Dict[str, Any]]) -> PayloadHandler:
     def _handler(payload: Payload) -> Dict[str, Any]:
+        signature = inspect.signature(builder)
+        params = list(signature.parameters.values())
+        if not params:
+            return builder()
+
+        first = params[0]
+        if first.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+            return builder(dict(payload or {}))
+
+        first_name = first.name.strip().lower()
+        if first_name in {'payload', 'request', 'context', 'proxy_payload', 'proxy_request'}:
+            return builder(dict(payload or {}))
+
         return builder(payload.get('domain'))
 
     return _handler

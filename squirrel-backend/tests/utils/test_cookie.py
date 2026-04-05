@@ -36,3 +36,64 @@ def test_filter_cookies_to_query_string_reads_matching_domain_cookies(tmp_path, 
     monkeypatch.setattr(cookie, 'resolve_cookie_file_for_url', lambda url: str(cookie_file))
 
     assert cookie.filter_cookies_to_query_string('https://m.youtube.com/watch?v=1') == 'SID=abc123'
+
+
+def test_resolve_cookie_file_for_url_maps_youtube_media_domains(tmp_path, monkeypatch):
+    cookie_file = tmp_path / 'youtube.txt'
+    cookie_file.write_text('', encoding='utf-8')
+
+    monkeypatch.setattr(
+        cookie.SiteCatalog,
+        'get_catalog',
+        classmethod(
+            lambda cls: {
+                'youtube': {
+                    'domains': ['youtube.com', 'youtu.be'],
+                    'cookie': {
+                        'alias_domains': ['googlevideo.com', 'gvt1.com', 'ytimg.com'],
+                        'match_domain': 'youtube.com',
+                    },
+                }
+            }
+        ),
+    )
+    monkeypatch.setattr(cookie, 'get_site_cookies_file_path', lambda slug: cookie_file if slug == 'youtube' else tmp_path / 'missing.txt')
+
+    assert cookie.resolve_cookie_file_for_url('https://rr4---sn-a5meknzl.googlevideo.com/videoplayback') == str(cookie_file)
+
+
+def test_filter_cookies_to_query_string_uses_youtube_cookie_domain_for_googlevideo_urls(tmp_path, monkeypatch):
+    cookie_file = tmp_path / 'cookies.txt'
+    cookie_file.write_text(
+        '# Netscape HTTP Cookie File\n'
+        '.youtube.com\tTRUE\t/\tFALSE\t2147483647\tSID\tabc123\n'
+        '.googlevideo.com\tTRUE\t/\tFALSE\t2147483647\tGV\tignored\n',
+        encoding='utf-8',
+    )
+
+    monkeypatch.setattr(cookie, 'resolve_cookie_file_for_url', lambda url: str(cookie_file))
+
+    assert (
+        cookie.filter_cookies_to_query_string('https://rr4---sn-a5meknzl.googlevideo.com/videoplayback?c=MWEB')
+        == 'SID=abc123'
+    )
+
+
+def test_resolve_cookie_match_domain_for_url_uses_site_catalog_cookie_config(monkeypatch):
+    monkeypatch.setattr(
+        cookie.SiteCatalog,
+        'get_catalog',
+        classmethod(
+            lambda cls: {
+                'youtube': {
+                    'domains': ['youtube.com', 'youtu.be'],
+                    'cookie': {
+                        'alias_domains': ['googlevideo.com', 'gvt1.com', 'ytimg.com'],
+                        'match_domain': 'youtube.com',
+                    },
+                }
+            }
+        ),
+    )
+
+    assert cookie.resolve_cookie_match_domain_for_url('https://i.ytimg.com/vi/demo/hqdefault.jpg') == 'youtube.com'

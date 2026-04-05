@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import sys
 import types
@@ -304,7 +305,13 @@ def _load_bilibili_subscription_module():
 def _stub_youtube_subscription_dependencies():
     originals = {
         name: sys.modules.get(name)
-        for name in ('crawl', 'pytubefix')
+        for name in (
+            'crawl',
+            'pytubefix',
+            'squirrel_youtube',
+            'squirrel_youtube.subscription',
+            'squirrel_youtube.ytdlp_support',
+        )
     }
 
     crawl_module = types.ModuleType('crawl')
@@ -334,9 +341,13 @@ def _stub_youtube_subscription_dependencies():
     pytubefix_module.Channel = Channel
     pytubefix_module.Playlist = Playlist
 
+    package_module = types.ModuleType('squirrel_youtube')
+    package_module.__path__ = [str(YOUTUBE_SUBSCRIPTION_PATH.parent)]  # type: ignore[attr-defined]
+
     try:
         sys.modules['crawl'] = crawl_module
         sys.modules['pytubefix'] = pytubefix_module
+        sys.modules['squirrel_youtube'] = package_module
         yield
     finally:
         for name, original in originals.items():
@@ -347,14 +358,15 @@ def _stub_youtube_subscription_dependencies():
 
 
 def _load_youtube_subscription_module():
-    module_name = '_subscription_test_youtube'
-    sys.modules.pop(module_name, None)
-    module_spec = importlib.util.spec_from_file_location(module_name, YOUTUBE_SUBSCRIPTION_PATH)
-    module = importlib.util.module_from_spec(module_spec)
-    assert module_spec is not None and module_spec.loader is not None
-    sys.modules[module_name] = module
-    module_spec.loader.exec_module(module)
-    return module
+    module_name = 'squirrel_youtube.subscription'
+    original_sys_path = list(sys.path)
+    try:
+        sys.modules.pop(module_name, None)
+        sys.modules.pop('squirrel_youtube.ytdlp_support', None)
+        sys.path.insert(0, str(YOUTUBE_SUBSCRIPTION_PATH.parents[2] / 'src'))
+        return importlib.import_module(module_name)
+    finally:
+        sys.path[:] = original_sys_path
 
 
 class _FakeResponse:

@@ -17,19 +17,9 @@ from crawl import (
     apply_ytdlp_rate_limit,
     get_http_headers,
 )
-try:
-    from . import ytdlp_support as youtube_ytdlp_support
-except ImportError:  # pragma: no cover - fallback for direct module loading in tests
-    import importlib.util
-    import sys
-    from pathlib import Path
-
-    _HELPER_PATH = Path(__file__).with_name('ytdlp_support.py')
-    _HELPER_SPEC = importlib.util.spec_from_file_location('_youtube_ytdlp_support', _HELPER_PATH)
-    youtube_ytdlp_support = importlib.util.module_from_spec(_HELPER_SPEC)
-    assert _HELPER_SPEC is not None and _HELPER_SPEC.loader is not None
-    sys.modules['_youtube_ytdlp_support'] = youtube_ytdlp_support
-    _HELPER_SPEC.loader.exec_module(youtube_ytdlp_support)
+from .youtubei_resolver import YoutubeiFormat, resolve_with_youtubei
+from .video_id import extract_youtube_video_id
+from . import ytdlp_support as youtube_ytdlp_support
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115 Safari/537.36'
 SITE_SLUG = 'youtube'
@@ -427,6 +417,179 @@ def _group_representations(reps: list[dict], kind: str) -> list[list[dict]]:
     return sorted(grouped.values(), key=_group_sort_key, reverse=True)
 
 
+def _mime_parts(mime_type: str | None) -> tuple[str | None, str | None]:
+    if not mime_type:
+        return None, None
+    base, _, rest = mime_type.partition(';')
+    codecs = None
+    for part in rest.split(';'):
+        if 'codecs=' in part:
+            codecs = part.split('=', 1)[1].strip().strip('"')
+            break
+    return base.strip() or None, codecs
+
+
+def _derive_init_range_from_index_range(index_range: str | None) -> str | None:
+    if not index_range:
+        return None
+    try:
+        start_text, _ = str(index_range).split('-', 1)
+        start = int(start_text)
+    except Exception:
+        return None
+    if start <= 0:
+        return None
+    return f'0-{start - 1}'
+
+
+def _youtubei_representation(fmt: YoutubeiFormat) -> dict | None:
+    if not fmt.url or not (fmt.has_video or fmt.has_audio):
+        return None
+
+    mime_base, codecs = _mime_parts(fmt.mime_type)
+    if not mime_base:
+        return None
+
+    kind = 'video' if fmt.has_video and not fmt.has_audio else 'audio'
+    if fmt.has_audio and fmt.has_video:
+        kind = 'video'
+
+    init_range = fmt.init_range or _derive_init_range_from_index_range(fmt.index_range)
+
+    return {
+        'id': str(fmt.itag) if fmt.itag is not None else str(fmt.quality_label or 'unknown'),
+        'bandwidth': int(fmt.bitrate) if fmt.bitrate else None,
+        'mime': mime_base,
+        'codecs': codecs,
+        'url': fmt.url,
+        'width': fmt.width,
+        'height': fmt.height,
+        'fps': None,
+        'audioSamplingRate': fmt.audio_sample_rate,
+        'audioChannels': fmt.audio_channels,
+        'initRange': init_range,
+        'indexRange': fmt.index_range,
+        'kind': kind,
+        'codecFamily': _codec_family(codecs),
+        'xml_lang': fmt.language,
+        'label': fmt.quality_label,
+    }
+
+
+def _build_youtubei_representations(video_id: str) -> list[dict]:
+    result = resolve_with_youtubei(video_id, resolution_mode='all')
+    representations = []
+    for fmt in result.formats:
+        rep = _youtubei_representation(fmt)
+        if rep is None:
+            continue
+        if fmt.has_audio and fmt.has_video:
+            continue
+        representations.append(rep)
+    return representations
+
+
+def _build_mpd_from_representations(video, representations: list[dict], upstream_referer: str | None, duration_seconds) -> str:
+    kept_by_itag = {rep['id']: rep for rep in representations}
+
+    video_reps = []
+    audio_reps = []
+
+    for rep in kept_by_itag.values():
+        if rep['kind'] == 'video':
+            video_reps.append(rep)
+        elif rep['kind'] == 'audio':
+            audio_reps.append(rep)
+
+    mpd = ET.Element('MPD', xmlns='urn:mpeg:dash:schema:mpd:2011')
+    mpd.set('type', 'static')
+    profiles = [ISOBMFF_ON_DEMAND_PROFILE]
+    if any(str(rep.get('mime') or '').endswith('/webm') for rep in kept_by_itag.values()):
+        profiles.append(WEBM_ON_DEMAND_PROFILE)
+    mpd.set('profiles', ','.join(profiles))
+    if duration_seconds and isinstance(duration_seconds, (int, float)):
+        mpd.set('mediaPresentationDuration', f"PT{int(float(duration_seconds))}S")
+    mpd.set('minBufferTime', 'PT4S')
+
+    period = ET.SubElement(mpd, 'Period', start='PT0S')
+
+    def add_rep(parent, r, typ):
+        rep_el = ET.SubElement(parent, 'Representation')
+        rep_el.set('id', r['id'])
+        if r.get('bandwidth'):
+            rep_el.set('bandwidth', str(r['bandwidth']))
+        if r.get('codecs'):
+            rep_el.set('codecs', r['codecs'])
+        if r.get('mime'):
+            rep_el.set('mimeType', r['mime'])
+        if typ == 'video':
+            if r.get('width'):
+                rep_el.set('width', str(r['width']))
+            if r.get('height'):
+                rep_el.set('height', str(r['height']))
+            if r.get('fps'):
+                rep_el.set('frameRate', str(r['fps']))
+        else:
+            if r.get('audioSamplingRate'):
+                rep_el.set('audioSamplingRate', str(r['audioSamplingRate']))
+            if r.get('xml_lang'):
+                rep_el.set('{http://www.w3.org/XML/1998/namespace}lang', r['xml_lang'])
+
+        if typ == 'audio' and r.get('audioChannels'):
+            ET.SubElement(
+                rep_el,
+                'AudioChannelConfiguration',
+                attrib={
+                    'schemeIdUri': 'urn:mpeg:dash:23003:3:audio_channel_configuration:2011',
+                    'value': str(r['audioChannels']),
+                },
+            )
+        if typ == 'audio' and r.get('label'):
+            lab = ET.SubElement(rep_el, 'Label')
+            lab.text = str(r['label'])
+
+        if r.get('url'):
+            base = ET.SubElement(rep_el, 'BaseURL')
+            base.text = _proxy(r['url'], referer=upstream_referer)
+
+        if r.get('initRange') or r.get('indexRange'):
+            seg = ET.SubElement(rep_el, 'SegmentBase')
+            if r.get('indexRange'):
+                seg.set('indexRange', r['indexRange'])
+            if r.get('initRange'):
+                init = ET.SubElement(seg, 'Initialization')
+                init.set('range', r['initRange'])
+
+    for group in _group_representations(video_reps, 'video'):
+        first = group[0]
+        video_as = ET.SubElement(
+            period,
+            'AdaptationSet',
+            contentType='video',
+            segmentAlignment='true',
+            subsegmentAlignment='true',
+        )
+        if first.get('mime'):
+            video_as.set('mimeType', str(first['mime']))
+        for rep in group:
+            add_rep(video_as, rep, 'video')
+
+    for group in _group_representations(audio_reps, 'audio'):
+        first = group[0]
+        audio_as = ET.SubElement(
+            period,
+            'AdaptationSet',
+            contentType='audio',
+            segmentAlignment='true',
+            subsegmentAlignment='true',
+        )
+        if first.get('mime'):
+            audio_as.set('mimeType', str(first['mime']))
+        add_rep(audio_as, first, 'audio')
+
+    return ET.tostring(mpd, encoding='unicode')
+
+
 def _video_candidate_sort_key(fmt: dict) -> tuple[int, int, int, float]:
     ext = (fmt.get('ext') or '').lower()
     codec_family = _codec_family(fmt.get('vcodec'))
@@ -596,6 +759,7 @@ def _extract_video_info(url: str) -> dict | None:
         info = youtube_ytdlp_support.extract_info_with_player_responses_isolated(
             url,
             opts,
+            process=False,
             timeout_seconds=PLAYBACK_WORKER_TIMEOUT_SECONDS,
         )
         if not info:
@@ -1005,107 +1169,24 @@ class YouTubeMpdBuilder:
     domain = 'youtube.com'
 
     def build_mpd(self, video) -> str:
+        try:
+            youtube_video_id = extract_youtube_video_id(getattr(video, 'url', '') or '')
+            youtubei_representations = _build_youtubei_representations(youtube_video_id or str(video.id))
+            if youtubei_representations:
+                return _build_mpd_from_representations(
+                    video,
+                    youtubei_representations,
+                    getattr(video, 'url', None),
+                    getattr(video, 'duration', None),
+                )
+        except Exception as exc:
+            logger.warning('youtubei MPD build failed, falling back to yt-dlp: %s', exc)
+
         info = _extract_video_info(video.url)
         if not info or (not info.get('formats') and not _iter_streaming_data(info)):
             raise RuntimeError("Failed to fetch YouTube stream metadata via yt-dlp")
         upstream_referer = info.get('webpage_url') or getattr(video, 'url', None)
 
         kept_by_itag = {rep['id']: rep for rep in _build_dash_representations(info)}
-
-        video_reps = []
-        audio_reps = []
-
-        for rep in kept_by_itag.values():
-            if rep['kind'] == 'video':
-                video_reps.append(rep)
-            elif rep['kind'] == 'audio':
-                audio_reps.append(rep)
-
-        mpd = ET.Element('MPD', xmlns='urn:mpeg:dash:schema:mpd:2011')
-        mpd.set('type', 'static')
-        profiles = [ISOBMFF_ON_DEMAND_PROFILE]
-        if any(str(rep.get('mime') or '').endswith('/webm') for rep in kept_by_itag.values()):
-            profiles.append(WEBM_ON_DEMAND_PROFILE)
-        mpd.set('profiles', ','.join(profiles))
         duration_seconds = info.get('duration') or getattr(video, 'duration', None)
-        if duration_seconds and isinstance(duration_seconds, (int, float)):
-            mpd.set('mediaPresentationDuration', f"PT{int(float(duration_seconds))}S")
-        mpd.set('minBufferTime', 'PT4S')
-
-        period = ET.SubElement(mpd, 'Period', start='PT0S')
-
-        def add_rep(parent, r, typ):
-            rep_el = ET.SubElement(parent, 'Representation')
-            rep_el.set('id', r['id'])
-            if r.get('bandwidth'):
-                rep_el.set('bandwidth', str(r['bandwidth']))
-            if r.get('codecs'):
-                rep_el.set('codecs', r['codecs'])
-            if r.get('mime'):
-                rep_el.set('mimeType', r['mime'])
-            if typ == 'video':
-                if r.get('width'):
-                    rep_el.set('width', str(r['width']))
-                if r.get('height'):
-                    rep_el.set('height', str(r['height']))
-                if r.get('fps'):
-                    rep_el.set('frameRate', str(r['fps']))
-            else:
-                if r.get('audioSamplingRate'):
-                    rep_el.set('audioSamplingRate', r['audioSamplingRate'])
-                if r.get('xml_lang'):
-                    rep_el.set('{http://www.w3.org/XML/1998/namespace}lang', r['xml_lang'])
-
-            if typ == 'audio' and r.get('audioChannels'):
-                ET.SubElement(
-                    rep_el,
-                    'AudioChannelConfiguration',
-                    attrib={
-                        'schemeIdUri': 'urn:mpeg:dash:23003:3:audio_channel_configuration:2011',
-                        'value': str(r['audioChannels'])
-                    }
-                )
-            if typ == 'audio' and r.get('label'):
-                lab = ET.SubElement(rep_el, 'Label')
-                lab.text = str(r['label'])
-
-            if r.get('url'):
-                base = ET.SubElement(rep_el, 'BaseURL')
-                base.text = _proxy(r['url'], referer=upstream_referer)
-
-            if r.get('initRange') or r.get('indexRange'):
-                seg = ET.SubElement(rep_el, 'SegmentBase')
-                if r.get('indexRange'):
-                    seg.set('indexRange', r['indexRange'])
-                init = ET.SubElement(seg, 'Initialization')
-                if r.get('initRange'):
-                    init.set('range', r['initRange'])
-
-        for group in _group_representations(video_reps, 'video'):
-            first = group[0]
-            video_as = ET.SubElement(
-                period,
-                'AdaptationSet',
-                contentType='video',
-                segmentAlignment='true',
-                subsegmentAlignment='true',
-            )
-            if first.get('mime'):
-                video_as.set('mimeType', str(first['mime']))
-            for rep in group:
-                add_rep(video_as, rep, 'video')
-
-        for group in _group_representations(audio_reps, 'audio'):
-            first = group[0]
-            audio_as = ET.SubElement(
-                period,
-                'AdaptationSet',
-                contentType='audio',
-                segmentAlignment='true',
-                subsegmentAlignment='true',
-            )
-            if first.get('mime'):
-                audio_as.set('mimeType', str(first['mime']))
-            add_rep(audio_as, first, 'audio')
-
-        return ET.tostring(mpd, encoding='unicode')
+        return _build_mpd_from_representations(video, list(kept_by_itag.values()), upstream_referer, duration_seconds)
