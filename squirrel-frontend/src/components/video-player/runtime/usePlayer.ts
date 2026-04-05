@@ -111,6 +111,27 @@ export interface PlayerReturn {
   destroy: () => void
 }
 
+const calculateBufferedAheadPercent = (buffered: TimeRanges, duration: number, currentTime: number): number => {
+  if (!isFinite(duration) || isNaN(duration) || duration <= 0 || buffered.length <= 0) {
+    return 0
+  }
+
+  for (let index = 0; index < buffered.length; index += 1) {
+    const start = buffered.start(index)
+    const end = buffered.end(index)
+
+    if (buffered.start(index) <= currentTime && currentTime <= buffered.end(index)) {
+      return (end / duration) * 100
+    }
+
+    if (currentTime < start) {
+      break
+    }
+  }
+
+  return Math.min(100, Math.max(0, (currentTime / duration) * 100))
+}
+
 export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const {
     autoplay = false,
@@ -258,10 +279,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   })
 
   engine.on('progress', ({ buffered, duration }) => {
-    if (!isFinite(duration) || isNaN(duration) || duration <= 0) return
-    if (buffered.length <= 0) return
-    const bufferedEnd = buffered.end(buffered.length - 1)
-    store.setBufferedProgress((bufferedEnd / duration) * 100)
+    store.setBufferedProgress(calculateBufferedAheadPercent(buffered, duration, store.currentTime))
   })
 
   engine.on('volumechange', ({ volume, muted }) => {

@@ -153,6 +153,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   let isRecovering = false
   let retryCount = 0
+  let waitingRecoveryTimer: ReturnType<typeof setTimeout> | null = null
+  let waitingRecoverySuppressedUntil = 0
 
   const resetProgressState = (): void => {
     if (saveTimer) {
@@ -169,6 +171,34 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       resetProgressState()
     }
     progressKey = key
+  }
+
+  const clearWaitingRecovery = (): void => {
+    if (!waitingRecoveryTimer) return
+    clearTimeout(waitingRecoveryTimer)
+    waitingRecoveryTimer = null
+  }
+
+  const scheduleWaitingRecovery = (): void => {
+    clearWaitingRecovery()
+    const stalledAtTime = videoElement?.currentTime ?? 0
+    const suppressionDelay = Math.max(0, waitingRecoverySuppressedUntil - Date.now())
+    waitingRecoveryTimer = setTimeout(() => {
+      waitingRecoveryTimer = null
+      if (!videoElement || !loading || videoElement.ended) return
+      if (Math.abs((videoElement.currentTime ?? 0) - stalledAtTime) > 0.25) return
+
+      const err: PlayerError = {
+        code: 'STALL_DETECTED',
+        message: 'Playback stalled while waiting for media',
+        fatal: false,
+      }
+      void handleRecoveryError(err)
+        .then((recovered) => {
+          if (!recovered) reportFatalError(err)
+        })
+        .catch(() => reportFatalError(err))
+    }, Math.max(retryDelay, 1500) + suppressionDelay)
   }
 
   const getState = (): PlayerState => {
@@ -271,7 +301,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     logger.debug(`[ErrorRecovery] Falling back to quality: ${nextQuality.label}`)
     retryCount = 0
-    setQuality(nextQuality.label)
+    setQuality(nextQuality.id ?? nextQuality.label)
     return true
   }
 
@@ -380,7 +410,25 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     on: events.on.bind(events),
     off: events.off.bind(events),
-    emit: events.emit.bind(events),
+    emit(event, payload) {
+      if (event === 'waiting') {
+        loading = true
+        scheduleWaitingRecovery()
+      }
+
+      if (event === 'canplay') {
+        loading = false
+        retryCount = 0
+        clearWaitingRecovery()
+
+        if (autoPlayOnReady) {
+          autoPlayOnReady = false
+          void play().catch(() => {})
+        }
+      }
+
+      events.emit(event, payload)
+    },
     once: events.once.bind(events),
 
     async play() { await play() },
@@ -518,6 +566,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     bufferedProgress = 0
     loading = true
+    clearWaitingRecovery()
     qualities = []
     currentQualityLabel = null
     currentQualityId = null
@@ -549,15 +598,18 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const video = videoElement
 
     const onPlay = () => {
+      clearWaitingRecovery()
       events.emit('play', undefined)
       options.onPlay?.()
     }
     const onPause = () => {
+      clearWaitingRecovery()
       flushProgress()
       events.emit('pause', undefined)
       options.onPause?.()
     }
     const onEnded = () => {
+      clearWaitingRecovery()
       flushProgress()
       events.emit('ended', undefined)
       options.onEnded?.()
@@ -589,11 +641,18 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
     const onWaiting = () => {
       loading = true
+      scheduleWaitingRecovery()
+      events.emit('waiting', undefined)
+    }
+    const onStalled = () => {
+      loading = true
+      scheduleWaitingRecovery()
       events.emit('waiting', undefined)
     }
     const onCanPlay = () => {
       loading = false
       retryCount = 0
+      clearWaitingRecovery()
       events.emit('canplay', undefined)
 
       if (autoPlayOnReady) {
@@ -602,6 +661,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       }
     }
     const onError = (e: Event) => {
+      clearWaitingRecovery()
       const mediaErrorCode = videoElement?.error?.code
       const errorCode = mediaErrorCode === MediaError.MEDIA_ERR_NETWORK
         ? 'NETWORK_ERROR'
@@ -638,6 +698,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     video.addEventListener('progress', onProgress)
     video.addEventListener('volumechange', onVolumeChange)
     video.addEventListener('waiting', onWaiting)
+    video.addEventListener('stalled', onStalled)
     video.addEventListener('canplay', onCanPlay)
     video.addEventListener('error', onError)
     video.addEventListener('enterpictureinpicture', onEnterPiP)
@@ -653,6 +714,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       video.removeEventListener('progress', onProgress)
       video.removeEventListener('volumechange', onVolumeChange)
       video.removeEventListener('waiting', onWaiting)
+      video.removeEventListener('stalled', onStalled)
       video.removeEventListener('canplay', onCanPlay)
       video.removeEventListener('error', onError)
       video.removeEventListener('enterpictureinpicture', onEnterPiP)
@@ -694,6 +756,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       removeVideoListeners()
     }
 
+    clearWaitingRecovery()
     if (typeof document !== 'undefined') {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
@@ -711,6 +774,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       removeVideoListeners()
     }
 
+    clearWaitingRecovery()
     videoElement = el
     setupVideoListeners()
     applyMediaSettings(videoElement)
@@ -804,17 +868,39 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   }
 
   const setQuality = (quality: string | number): void => {
-    const directMatch = qualities.find((item) => String(item.id) === String(quality))
-    if (directMatch) {
-      currentQualityId = directMatch.id
-      registeredQualityId = directMatch.id
-      currentQualityLabel = directMatch.label
+    waitingRecoverySuppressedUntil = Date.now() + Math.max(retryDelay * 2, 4000)
+
+    const qStr = String(quality).toLowerCase()
+    const isAutoQuality = quality === 'auto' || quality === -1 || qStr === 'auto' || qStr === '自动'
+
+    if (isAutoQuality) {
+      currentQualityId = null
+      registeredQualityId = null
+      currentQualityLabel = 'auto'
     } else {
-      if (typeof quality === 'number') {
-        currentQualityId = quality
-        registeredQualityId = quality
+      const directMatch = qualities.find(
+        (item) => String(item.id) === String(quality) || item.label === String(quality)
+      )
+      if (directMatch) {
+        currentQualityId = directMatch.id
+        registeredQualityId = directMatch.id
+        currentQualityLabel = directMatch.label
+      } else {
+        if (typeof quality === 'number') {
+          currentQualityId = quality
+          registeredQualityId = quality
+        }
+        currentQualityLabel = String(quality)
       }
-      currentQualityLabel = String(quality)
+    }
+
+    if (!isAutoQuality && currentQualityId === null && typeof quality !== 'number') {
+      const labelMatch = qualities.find((item) => item.label === String(quality))
+      if (labelMatch) {
+        currentQualityId = labelMatch.id
+        registeredQualityId = labelMatch.id
+        currentQualityLabel = labelMatch.label
+      }
     }
 
     const getQualityController = (): any => {
@@ -823,9 +909,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       return pluginManager.get<any>('dash') || pluginManager.get<any>('hls')
     }
 
+    const controllerQuality = isAutoQuality ? 'auto' : (currentQualityId ?? quality)
     const controller = getQualityController()
     if (controller && typeof controller.setQuality === 'function') {
-      controller.setQuality(quality)
+      controller.setQuality(controllerQuality)
     }
 
     const emittedLabel = currentQualityLabel || String(quality)

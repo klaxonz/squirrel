@@ -205,6 +205,13 @@
             <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('quality') }}
           </div>
           <div class="sp-menu-list">
+            <div
+              class="sp-menu-item"
+              :class="{ 'is-active': currentQualityId === null }"
+              @click="handleAutoQualitySelect()"
+            >
+              AUTO
+            </div>
             <div v-for="q in displayedQualities" :key="q.id" 
                  class="sp-menu-item" :class="{ 'is-active': currentQualityId === q.id }"
                  @click="handleQualitySelect(q)">
@@ -402,6 +409,7 @@ const toggleSettingsMenu = () => { showSettingsMenu.value = !showSettingsMenu.va
 const toggleQualityMenu = () => { showSettingsMenu.value = true; settingsView.value = 'quality' }
 const handleSpeedSelect = (rate: number) => { setPlaybackRate(rate); showSettingsMenu.value = false }
 const handleCodecFamilySelect = (codecFamily: string) => { setCodecFamily(codecFamily); showSettingsMenu.value = false }
+const handleAutoQualitySelect = () => { setQuality('auto'); showSettingsMenu.value = false }
 const handleQualitySelect = (q: any) => { setQuality(q.id); showSettingsMenu.value = false }
 const toggleWidescreen = () => emit('widescreenChange', !props.widescreen)
 const toggleAutoplayNext = () => store.setAutoplayNext(!store.autoplayNext)

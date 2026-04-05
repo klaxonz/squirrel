@@ -62,7 +62,7 @@ export class DashPlugin implements PlayerPlugin {
     this.options = {
       maxRetries: 3,
       retryInterval: 3000,
-      enableAutoQuality: false,
+      enableAutoQuality: true,
       ...options
     }
   }
@@ -250,6 +250,27 @@ export class DashPlugin implements PlayerPlugin {
       return 'unrecoverable'
     }
 
+    if (code.includes('NETWORK') || code.includes('TIMEOUT')) {
+      this.context?.logger.debug('[DashPlugin] Transient recovery handled without source reload', {
+        code,
+        source: this.currentSource,
+      })
+      return 'handled'
+    }
+
+    if (
+      code.includes('MEDIA') ||
+      code.includes('DECODE') ||
+      code.includes('BUFFER') ||
+      code.includes('STALL')
+    ) {
+      this.context?.logger.debug('[DashPlugin] Transient recovery handled without source reload', {
+        code,
+        source: this.currentSource,
+      })
+      return 'handled'
+    }
+
     this.context?.logger.debug('[DashPlugin] Requesting source reload for recovery', {
       code,
       source: this.currentSource
@@ -373,7 +394,7 @@ export class DashPlugin implements PlayerPlugin {
   }
 
   getCurrentCodecFamily(): string | null {
-    return this.currentVisibleCodecFamily || this.resolveVisibleCodecFamily()
+    return this.getActiveCodecFamily() || this.currentVisibleCodecFamily || this.resolveVisibleCodecFamily()
   }
 
   setCodecFamily(codecFamily: string): void {
@@ -629,6 +650,11 @@ export class DashPlugin implements PlayerPlugin {
 
     if (this.selectedCodecFamily !== 'auto' && availableFamilies.includes(this.selectedCodecFamily)) {
       return this.selectedCodecFamily
+    }
+
+    const activeCodecFamily = this.getActiveCodecFamily()
+    if (activeCodecFamily && availableFamilies.includes(activeCodecFamily)) {
+      return activeCodecFamily
     }
 
     for (const family of ['av1', 'vp9', 'avc']) {

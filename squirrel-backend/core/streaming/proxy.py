@@ -16,6 +16,7 @@ from core.exceptions.proxy_exceptions import (
     UnsupportedDomainException,
 )
 from plugins.manager import get_plugin_manager
+from utils.cookie import filter_cookies_to_query_string
 from utils.runtime_http import get_cloudflare_bypass_client
 
 logger = logging.getLogger()
@@ -246,6 +247,7 @@ class HttpRequester:
         proxy_request: ProxyRequest,
         headers: Dict[str, str],
         domain_config: Optional[Dict[str, Any]] = None,
+        stream: bool = False,
     ):
         last_exception = None
         bypass_mode = self._bypass_mode(domain_config)
@@ -256,14 +258,22 @@ class HttpRequester:
                 if use_bypass and bypass_mode:
                     response = await self._execute_bypass_request(proxy_request, headers, bypass_mode)
                 else:
-                    response = await client.get(
+                    request = client.build_request(
+                        'GET',
                         proxy_request.url,
                         headers=headers,
                         timeout=proxy_request.timeout,
+                    )
+                    response = await client.send(
+                        request,
+                        stream=stream,
                         follow_redirects=proxy_request.follow_redirects,
                     )
 
                 if response.status_code >= 400:
+                    await response.aread()
+                    await response.aclose()
+
                     if self.retry_strategy.is_terminal_error(response.status_code):
                         raise httpx.HTTPStatusError(
                             f'HTTP {response.status_code}',
@@ -341,13 +351,18 @@ class VideoProxy:
 
         return dict(payload.get('site_headers') or {}), domain_config
 
-    def _build_runtime_headers(self, referer: Optional[str] = None) -> Dict[str, str]:
+    def _build_runtime_headers(self, target_url: str, referer: Optional[str] = None) -> Dict[str, str]:
         custom_headers: Dict[str, str] = {}
         if referer:
             custom_headers['Referer'] = referer
             parsed = urlparse(referer)
             if parsed.scheme and parsed.netloc:
                 custom_headers['Origin'] = f'{parsed.scheme}://{parsed.netloc}'
+
+        cookie_header = filter_cookies_to_query_string(target_url)
+        if cookie_header:
+            custom_headers['Cookie'] = cookie_header
+
         return HeaderBuilder.build_headers(self.request, self.site_headers, custom_headers)
 
     def _rewrite_playlist(self, url: str, content: bytes, referer: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -377,6 +392,8 @@ class VideoProxy:
         except Exception as e:
             logger.error(f"Error during streaming: {e}")
             raise
+        finally:
+            await response.aclose()
 
     @asynccontextmanager
     async def _get_http_client(self):
@@ -403,16 +420,25 @@ class VideoProxy:
             retry_strategy = RetryStrategy(max_retries=proxy_request.max_retries)
             requester = HttpRequester(self.domain, retry_strategy)
             referer = kwargs.get('referer')
-            headers = self._build_runtime_headers(referer)
+            headers = self._build_runtime_headers(url, referer)
             if proxy_request.headers:
                 headers.update(proxy_request.headers)
 
             async with self._get_http_client() as client:
-                response = await requester.execute_request(client, proxy_request, headers, self.domain_config)
+                response = await requester.execute_request(
+                    client,
+                    proxy_request,
+                    headers,
+                    self.domain_config,
+                    stream=True,
+                )
                 content_type = response.headers.get('content-type', '')
                 path_lower = urlparse(url).path.lower()
                 if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
-                    rewritten = self._rewrite_playlist(url, response.content, referer=referer)
+                    playlist_content = await response.aread()
+                    await response.aclose()
+
+                    rewritten = self._rewrite_playlist(url, playlist_content, referer=referer)
                     if rewritten is not None:
                         body = str(rewritten.get('content') or '').encode('utf-8')
                         return StreamingResponse(
@@ -421,6 +447,14 @@ class VideoProxy:
                             headers=dict(rewritten.get('headers') or {}),
                             media_type=str(rewritten.get('media_type') or content_type or 'application/vnd.apple.mpegurl'),
                         )
+
+                    response_headers = ResponseBuilder.build_response_headers(response)
+                    return StreamingResponse(
+                        iter([playlist_content]),
+                        status_code=response.status_code,
+                        headers=response_headers,
+                        media_type=content_type or 'application/vnd.apple.mpegurl',
+                    )
 
                 response_headers = ResponseBuilder.build_response_headers(response)
                 stream = self._stream_response(response, proxy_request.chunk_size)

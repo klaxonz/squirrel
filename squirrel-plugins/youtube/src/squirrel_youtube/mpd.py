@@ -646,6 +646,15 @@ def _iter_streaming_data(info: dict) -> list[dict]:
     ]
 
 
+def _extract_format_itag_key(value: object) -> str | None:
+    text = str(value or '').strip()
+    if not text:
+        return None
+
+    head = text.split('-', 1)[0].strip()
+    return head or None
+
+
 def _parse_mime_type_codecs(mime_type: str | None) -> tuple[str | None, list[str]]:
     if not isinstance(mime_type, str) or not mime_type:
         return None, []
@@ -748,6 +757,14 @@ def _build_streaming_data_dash_formats(info: dict) -> list[dict]:
         for fmt in (info.get('formats') or [])
         if isinstance(fmt, dict) and fmt.get('format_id')
     }
+    processed_formats_by_itag: dict[str, list[dict]] = {}
+    for fmt in (info.get('formats') or []):
+        if not isinstance(fmt, dict):
+            continue
+        itag_key = _extract_format_itag_key(fmt.get('format_id') or fmt.get('itag'))
+        if not itag_key:
+            continue
+        processed_formats_by_itag.setdefault(itag_key, []).append(fmt)
 
     for streaming_data in _iter_streaming_data(info):
         raw_formats = []
@@ -762,6 +779,22 @@ def _build_streaming_data_dash_formats(info: dict) -> list[dict]:
                 continue
 
             processed = processed_formats_by_id.get(normalized['format_id'])
+            if not isinstance(processed, dict):
+                itag_key = _extract_format_itag_key(normalized['format_id'])
+                candidates = processed_formats_by_itag.get(itag_key or '', [])
+                if candidates:
+                    vcodec = (normalized.get('vcodec') or '').lower()
+                    acodec = (normalized.get('acodec') or '').lower()
+                    is_video_only = vcodec not in ('', 'none') and acodec in ('', 'none')
+                    is_audio_only = acodec not in ('', 'none') and vcodec in ('', 'none')
+
+                    if is_video_only:
+                        processed = max(candidates, key=lambda item: float(item.get('tbr') or 0))
+                    elif is_audio_only:
+                        processed = max(candidates, key=_audio_candidate_sort_key)
+                    else:
+                        processed = candidates[0]
+
             if isinstance(processed, dict):
                 merged = dict(processed)
                 merged['initRange'] = normalized.get('initRange')

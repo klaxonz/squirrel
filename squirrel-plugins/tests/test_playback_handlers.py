@@ -698,6 +698,34 @@ class PlaybackHandlerTests(unittest.TestCase):
             self.assertEqual(next(rep['url'] for rep in reps if rep['id'] == '401'), 'https://cdn.example.com/401.mp4?pot=video-pot')
             self.assertEqual(next(rep['url'] for rep in reps if rep['id'] == '140'), 'https://cdn.example.com/140.m4a?pot=audio-pot')
 
+    def test_youtube_build_dash_representations_matches_processed_formats_by_itag_prefix(self):
+        with _stub_youtube_mpd_dependencies() as (_FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
+            module = _load_youtube_mpd_module()
+            module._probe_mp4_ranges = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError('mp4 probe should not run'))
+            module._probe_webm_ranges = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError('webm probe should not run'))
+
+            info = {
+                'formats': [
+                    {'format_id': '303', 'url': 'https://cdn.example.com/303.webm?pot=video-pot', 'ext': 'webm', 'height': 1080, 'tbr': 4123, 'vcodec': 'vp9', 'acodec': 'none'},
+                    {'format_id': '140-7', 'url': 'https://cdn.example.com/140.m4a?pot=audio-pot', 'ext': 'm4a', 'abr': 129, 'vcodec': 'none', 'acodec': 'mp4a.40.2', 'language': 'en-US', 'format_note': 'English original default, medium'},
+                ],
+                module.youtube_ytdlp_support.YOUTUBE_PLAYER_RESPONSES_INFO_KEY: [
+                    {
+                        'streamingData': {
+                            'adaptiveFormats': [
+                                {'itag': 303, 'url': 'https://cdn.example.com/303.webm', 'mimeType': 'video/webm; codecs="vp9"', 'qualityLabel': '1080p', 'width': 1080, 'height': 1920, 'bitrate': 4123000, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                                {'itag': 140, 'url': 'https://cdn.example.com/140.m4a', 'mimeType': 'audio/mp4; codecs="mp4a.40.2"', 'bitrate': 129000, 'audioSampleRate': '44100', 'audioChannels': 2, 'audioTrack': {'id': 'en-US.1', 'displayName': 'English original', 'audioIsDefault': True}, 'initRange': {'start': '0', 'end': '1'}, 'indexRange': {'start': '2', 'end': '3'}},
+                            ],
+                        },
+                    },
+                ],
+            }
+
+            reps = module._build_dash_representations(info)
+
+            self.assertEqual(next(rep['url'] for rep in reps if rep['id'] == '303'), 'https://cdn.example.com/303.webm?pot=video-pot')
+            self.assertEqual(next(rep['url'] for rep in reps if rep['kind'] == 'audio'), 'https://cdn.example.com/140.m4a?pot=audio-pot')
+
     def test_youtube_mpd_builder_includes_upstream_referer_in_proxy_urls(self):
         with _stub_youtube_mpd_dependencies() as (_FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):
             module = _load_youtube_mpd_module()

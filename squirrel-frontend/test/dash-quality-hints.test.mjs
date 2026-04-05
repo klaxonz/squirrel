@@ -41,6 +41,14 @@ test('dash plugin limits the visible quality menu to the selected codec family',
   assert.match(source, /this\.getCodecFamily\(hint\.codec\) === visibleCodecFamily/)
 })
 
+test('dash plugin prefers the active codec family for the quality menu before falling back to a speculative codec ladder', async () => {
+  const source = await readFile(dashPluginPath, 'utf8')
+
+  assert.match(source, /const activeCodecFamily = this\.getActiveCodecFamily\(\)/)
+  assert.match(source, /if \(activeCodecFamily && availableFamilies\.includes\(activeCodecFamily\)\)/)
+  assert.match(source, /return activeCodecFamily/)
+})
+
 test('dash plugin refreshes visible qualities after the active track becomes known', async () => {
   const source = await readFile(dashPluginPath, 'utf8')
 

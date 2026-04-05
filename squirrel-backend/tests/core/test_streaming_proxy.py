@@ -19,9 +19,16 @@ class _FakeResponse:
             'content-type': content_type,
             'content-length': str(len(content)),
         }
+        self.closed = False
 
     async def aiter_bytes(self, chunk_size):
         yield self.content
+
+    async def aread(self):
+        return self.content
+
+    async def aclose(self):
+        self.closed = True
 
 
 def _read_stream(response) -> bytes:
@@ -85,6 +92,50 @@ def test_video_proxy_reads_runtime_proxy_config(monkeypatch):
     assert proxy.domain_config['domain'] == 'youtube.com'
 
 
+def test_video_proxy_builds_cookie_header_from_target_url(monkeypatch):
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            if capability == 'resolve_proxy_config':
+                return PluginInvokeResponse(
+                    request_id='proxy-config-1',
+                    ok=True,
+                    data={
+                        'site_headers': {
+                            'User-Agent': 'Runtime UA',
+                        },
+                        'domain_configs': [{
+                            'domain': 'youtube.com',
+                            'connect_timeout': 10.0,
+                            'read_timeout': 20.0,
+                            'max_retries': 3,
+                            'chunk_size': 8192,
+                            'max_connections': 5,
+                            'keepalive_expiry': 30.0,
+                            'enable_http2': True,
+                        }],
+                    },
+                )
+            raise AssertionError(f'unexpected capability: {capability}')
+
+    monkeypatch.setattr(
+        'core.streaming.proxy.get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+    monkeypatch.setattr(
+        'core.streaming.proxy.filter_cookies_to_query_string',
+        lambda target_url: 'SID=test-cookie' if 'googlevideo.com' in target_url else '',
+    )
+
+    proxy = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+
+    headers = proxy._build_runtime_headers('https://rr5---sn-a5mekndl.googlevideo.com/videoplayback')
+
+    assert headers == {
+        'User-Agent': 'Runtime UA',
+        'Cookie': 'SID=test-cookie',
+    }
+
+
 def test_video_proxy_rewrites_playlist_via_runtime_capability(monkeypatch):
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
@@ -131,7 +182,7 @@ def test_video_proxy_rewrites_playlist_via_runtime_capability(monkeypatch):
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
-    async def _fake_execute_request(self, client, proxy_request, headers, domain_config=None):
+    async def _fake_execute_request(self, client, proxy_request, headers, domain_config=None, stream=False):
         return _FakeResponse(content=b'#EXTM3U\nseg.ts\n')
 
     @asynccontextmanager
@@ -157,6 +208,7 @@ def test_video_proxy_rewrites_playlist_via_runtime_capability(monkeypatch):
 def test_video_proxy_uses_cloudflare_bypass_for_configured_domains(monkeypatch):
     bypass_calls = []
     client_calls = []
+    monkeypatch.setattr('core.streaming.proxy.filter_cookies_to_query_string', lambda _url: '')
 
     class _BypassClient:
         def mirror(self, url, headers=None):
@@ -214,11 +266,18 @@ def test_video_proxy_uses_cloudflare_bypass_for_configured_domains(monkeypatch):
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
 
     class _FakeClient:
-        async def get(self, url, headers=None, timeout=None, follow_redirects=None):
+        def build_request(self, method, url, headers=None, timeout=None):
             client_calls.append({
+                'method': method,
                 'url': url,
                 'headers': dict(headers or {}),
                 'timeout': timeout,
+            })
+            return SimpleNamespace(method=method, url=url, headers=headers, timeout=timeout)
+
+        async def send(self, request, stream=False, follow_redirects=None):
+            client_calls.append({
+                'stream': stream,
                 'follow_redirects': follow_redirects,
             })
             return _FakeResponse(content=b'#EXTM3U\nseg.ts\n')
@@ -252,6 +311,7 @@ def test_video_proxy_uses_cloudflare_bypass_for_configured_domains(monkeypatch):
 def test_video_proxy_skips_cloudflare_bypass_for_cross_host_streams(monkeypatch):
     bypass_calls = []
     client_calls = []
+    monkeypatch.setattr('core.streaming.proxy.filter_cookies_to_query_string', lambda _url: '')
 
     class _BypassClient:
         def mirror(self, url, headers=None):
@@ -309,11 +369,18 @@ def test_video_proxy_skips_cloudflare_bypass_for_cross_host_streams(monkeypatch)
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
 
     class _FakeClient:
-        async def get(self, url, headers=None, timeout=None, follow_redirects=None):
+        def build_request(self, method, url, headers=None, timeout=None):
             client_calls.append({
+                'method': method,
                 'url': url,
                 'headers': dict(headers or {}),
                 'timeout': timeout,
+            })
+            return SimpleNamespace(method=method, url=url, headers=headers, timeout=timeout)
+
+        async def send(self, request, stream=False, follow_redirects=None):
+            client_calls.append({
+                'stream': stream,
                 'follow_redirects': follow_redirects,
             })
             return _FakeResponse(content=b'#EXTM3U\nseg.ts\n')
@@ -334,6 +401,7 @@ def test_video_proxy_skips_cloudflare_bypass_for_cross_host_streams(monkeypatch)
 
     assert bypass_calls == []
     assert client_calls == [{
+        'method': 'GET',
         'url': 'https://surrit.com/example/video.m3u8',
         'headers': {
             'User-Agent': 'Runtime UA',
@@ -341,6 +409,8 @@ def test_video_proxy_skips_cloudflare_bypass_for_cross_host_streams(monkeypatch)
             'Origin': 'https://missav.ai',
         },
         'timeout': 120.0,
+    }, {
+        'stream': True,
         'follow_redirects': True,
     }]
     assert _read_stream(response).decode('utf-8').startswith('#EXTM3U')
@@ -400,3 +470,84 @@ def test_video_proxy_keeps_shared_client_open_on_proxy_exception(monkeypatch):
     asyncio.run(_run())
 
     assert fake_manager.close_calls == []
+
+
+def test_video_proxy_streams_media_segments_without_prefetching_entire_body(monkeypatch):
+    send_calls = []
+    streamed_response = _FakeResponse(content=b'chunk-onechunk-two', content_type='video/mp2t')
+    monkeypatch.setattr('core.streaming.proxy.filter_cookies_to_query_string', lambda _url: '')
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            if capability == 'resolve_proxy_config':
+                return PluginInvokeResponse(
+                    request_id='proxy-config-1',
+                    ok=True,
+                    data={
+                        'site_headers': {
+                            'User-Agent': 'Runtime UA',
+                        },
+                        'domain_configs': [{
+                            'domain': 'youtube.com',
+                            'connect_timeout': 10.0,
+                            'read_timeout': 20.0,
+                            'max_retries': 0,
+                            'chunk_size': 8192,
+                            'max_connections': 5,
+                            'keepalive_expiry': 30.0,
+                            'enable_http2': True,
+                        }],
+                    },
+                )
+            raise AssertionError(f'unexpected capability: {capability}')
+
+        def resolve_route(self, capability, site_name=None, domain=None):
+            return None
+
+    monkeypatch.setattr(
+        'core.streaming.proxy.get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+
+    class _FakeClient:
+        def build_request(self, method, url, headers=None, timeout=None):
+            send_calls.append({
+                'method': method,
+                'url': url,
+                'headers': dict(headers or {}),
+                'timeout': timeout,
+            })
+            return SimpleNamespace(method=method, url=url, headers=headers, timeout=timeout)
+
+        async def send(self, request, stream=False, follow_redirects=None):
+            send_calls.append({
+                'stream': stream,
+                'follow_redirects': follow_redirects,
+                'request_url': request.url,
+            })
+            return streamed_response
+
+    @asynccontextmanager
+    async def _fake_client_context():
+        yield _FakeClient()
+
+    proxy = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
+    proxy._get_http_client = _fake_client_context
+
+    response = asyncio.run(proxy.handle_stream('https://cdn.example.com/segment-001.ts'))
+
+    assert _read_stream(response) == b'chunk-onechunk-two'
+    assert send_calls == [
+        {
+            'method': 'GET',
+            'url': 'https://cdn.example.com/segment-001.ts',
+            'headers': {'User-Agent': 'Runtime UA'},
+            'timeout': 120.0,
+        },
+        {
+            'stream': True,
+            'follow_redirects': True,
+            'request_url': 'https://cdn.example.com/segment-001.ts',
+        },
+    ]
+    assert streamed_response.closed is True
