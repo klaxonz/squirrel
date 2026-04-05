@@ -144,7 +144,6 @@
 
         <div v-else class="plugin-rack space-y-3">
           <div v-for="plugin in displayPlugins" :key="plugin.plugin_id" class="rack-unit group transition-all duration-300 hover:bg-white/[0.04]">
-            <div class="unit-handle" :class="plugin.enabled ? 'bg-orange-500' : 'bg-white/10'"></div>
             <div class="unit-content flex-1 p-4 flex items-center gap-6">
               <div class="flex flex-col items-center gap-1">
                 <div class="led-indicator" :class="getLedClass(plugin)"></div>
@@ -222,9 +221,6 @@
                   Purge
                 </Button>
               </div>
-            </div>
-            <div class="unit-vents flex flex-col justify-center gap-1 px-3 border-l border-white/5">
-              <div v-for="i in 4" :key="i" class="w-6 h-[1px] bg-white/10"></div>
             </div>
           </div>
         </div>
@@ -1187,11 +1183,6 @@ onMounted(() => {
   height: 84px;
   position: relative;
   overflow: hidden;
-}
-
-.unit-handle {
-  width: 4px;
-  transition: all 0.3s ease;
 }
 
 .led-indicator {
