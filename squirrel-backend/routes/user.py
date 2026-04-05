@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, EmailStr, Field
 from common import response
 from models.user import User
 from services import user_service, user_config_service
-from utils.jwt_helper import create_access_token, get_current_user
+from utils.jwt_helper import clear_auth_cookie, create_access_token, get_current_user, set_auth_cookie
 from pydantic import model_validator
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -81,7 +81,7 @@ async def register(request: UserRegisterRequest):
 
 
 @router.post("/login")
-async def login(request: UserLoginRequest):
+async def login(request: UserLoginRequest, http_response: Response):
     """
     User login
     """
@@ -94,15 +94,18 @@ async def login(request: UserLoginRequest):
         data={"sub": str(user.id)},
         expires_delta=timedelta(days=30)
     )
+    set_auth_cookie(http_response, access_token)
 
     return response.success(
-        data={
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": user.to_dict()
-        },
+        data=user.to_dict(),
         msg="登录成功"
     )
+
+
+@router.post('/logout')
+async def logout(http_response: Response):
+    clear_auth_cookie(http_response)
+    return response.success(msg='退出成功')
 
 
 @router.get("/me")

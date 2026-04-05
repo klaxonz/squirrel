@@ -12,6 +12,8 @@ from services import video_extraction_projection_service
 from utils.site_catalog import SiteCatalog
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
+EXTRACTION_PREVIEW_LIMIT = 40
+
 
 def _format_datetime(value: Optional[datetime]) -> str:
     return value.strftime('%Y-%m-%d %H:%M:%S') if value else ''
@@ -211,6 +213,19 @@ def get_extraction_center_overview(user_id: int) -> SyncCenterOverviewDto:
         queue_depth=int(row.queue_depth or 0),
         queue_messages=0,
     )
+
+
+def get_extraction_dashboard_snapshot(user_id: int, *, preview_limit: int = EXTRACTION_PREVIEW_LIMIT) -> dict:
+    overview = get_extraction_center_overview(user_id)
+    running_preview = list_extraction_center_items(user_id, 'running', None, None, 1, preview_limit).data
+    queued_preview = list_extraction_center_items(user_id, 'queued', None, None, 1, preview_limit).data
+    recent_preview = list_extraction_center_items(user_id, 'recent', None, None, 1, preview_limit).data
+    return {
+        'overview': overview,
+        'runningPreview': running_preview,
+        'queuedPreview': queued_preview,
+        'recentPreview': recent_preview,
+    }
 
 
 def list_extraction_center_items(

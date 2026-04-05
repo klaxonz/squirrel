@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 
 from fastapi import APIRouter, Query, Depends, Request
+from fastapi.responses import StreamingResponse
 import common.response as response
 from models.user import User
 from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest, ImportSubscriptionsRequest
@@ -11,6 +12,7 @@ from services import (
     subscription_sync_center_service,
     subscription_sync_history_service,
     subscription_sync_trend_service,
+    sync_center_stream_service,
     video_extraction_center_service,
 )
 from typing import List
@@ -164,6 +166,32 @@ def get_sync_center_feed_snapshot(
         recent_limit=recent_limit,
     )
     return response.success(result)
+
+
+@router.get('/api/subscription/sync-center/stream')
+async def get_sync_center_stream(
+        request: Request,
+        selected_run_id: str | None = Query(None, alias='selectedRunId'),
+        current_user: User = Depends(get_current_user)
+):
+    async def event_stream():
+        async for event in sync_center_stream_service.stream_sync_center_events(
+            user_id=current_user.id,
+            selected_run_id=selected_run_id,
+        ):
+            if await request.is_disconnected():
+                break
+            yield event
+
+    return StreamingResponse(
+        event_stream(),
+        media_type='text/event-stream',
+        headers={
+            'Cache-Control': 'no-store, no-cache, max-age=0, must-revalidate',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no',
+        },
+    )
 
 
 @router.get('/api/subscription/extraction-center/overview')

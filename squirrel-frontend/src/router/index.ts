@@ -227,11 +227,11 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const { getCurrentUser, isAuthenticated } = useUser()
+  const { getCurrentUser, hasResolvedAuth, isAuthenticated } = useUser()
 
-  if (localStorage.getItem('token') && !isAuthenticated.value) {
+  if (!hasResolvedAuth.value) {
     const result = await getCurrentUser()
-    if (result.error) {
+    if (result.error?.status && result.error.status !== 401) {
       Logger.error('Failed to get user info', result.error)
     }
   }

@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from core.database import get_session
+from core.database import get_session, register_after_commit
 from models.subscription_sync_event import SubscriptionSyncEvent
-from services import subscription_sync_projection_service, subscription_sync_run_service
+from services import subscription_sync_projection_service, subscription_sync_run_service, sync_center_stream_service
 
 
 @dataclass
@@ -77,6 +77,19 @@ def append_event(event_input: SyncEventInput, *, session=None, project: bool = T
         session.flush()
         if project:
             subscription_sync_projection_service.apply_event(event, session=session)
+        register_after_commit(
+            session,
+            lambda: sync_center_stream_service.publish_sync_center_invalidation(
+                sync_center_stream_service.SYNC_CENTER_FEED_CHANNEL,
+            ),
+        )
+        register_after_commit(
+            session,
+            lambda: sync_center_stream_service.publish_sync_center_invalidation(
+                sync_center_stream_service.SYNC_CENTER_RUN_CHANNEL,
+                {'run_id': event.stream_id},
+            ),
+        )
         return event
 
     with get_session() as managed_session:
@@ -107,6 +120,25 @@ def append_events(event_inputs: list[SyncEventInput], *, session=None, project: 
 
         if project:
             subscription_sync_projection_service.apply_events(ordered_events, session=session)
+        if ordered_events:
+            register_after_commit(
+                session,
+                lambda: sync_center_stream_service.publish_sync_center_invalidation(
+                    sync_center_stream_service.SYNC_CENTER_FEED_CHANNEL,
+                ),
+            )
+            published_run_ids = []
+            for event in ordered_events:
+                if event.stream_id in published_run_ids:
+                    continue
+                published_run_ids.append(event.stream_id)
+                register_after_commit(
+                    session,
+                    lambda run_id=event.stream_id: sync_center_stream_service.publish_sync_center_invalidation(
+                        sync_center_stream_service.SYNC_CENTER_RUN_CHANNEL,
+                        {'run_id': run_id},
+                    ),
+                )
         return events
 
     with get_session() as managed_session:

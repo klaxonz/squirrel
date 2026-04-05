@@ -1,27 +1,14 @@
 import axios from 'axios'
-import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import type { AxiosError } from 'axios'
 import { logoutAndRedirect } from './auth'
 
 const instance = axios.create({
   timeout: 60000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 })
-
-instance.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers = (config.headers ?? {}) as any
-      ;(config.headers as any).Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error)
-  }
-)
 
 instance.interceptors.response.use(
   (response) => {
@@ -33,7 +20,7 @@ instance.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      logoutAndRedirect()
+      void logoutAndRedirect()
     }
     return Promise.reject(error)
   }

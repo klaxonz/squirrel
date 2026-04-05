@@ -54,8 +54,8 @@ import { NAV_GROUPS, isNavigationItemActive } from '@/constants/sidebar'
 const router = useRouter()
 const { logout } = useUser()
 
-const handleLogout = () => {
-  logout()
+const handleLogout = async () => {
+  await logout()
   router.push('/login')
 }
 </script>

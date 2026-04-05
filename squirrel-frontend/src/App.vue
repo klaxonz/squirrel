@@ -84,7 +84,6 @@ import { MOBILE_NAV_ITEMS } from '@/constants/sidebar'
 import { isMobile } from './composables/useMobile'
 import { useGlobalSearch } from './composables/useGlobalSearch'
 import { useSystemConfig } from './composables/useSystemConfig'
-import { useUser } from './composables/useUser'
 import { Logger } from '@/utils/logger'
 
 const route = useRoute()
@@ -108,7 +107,6 @@ const isVideoSidebarOpen = ref(true)
 const { searchQuery, searchPlaceholder, handleSearch: handleGlobalSearch, handleClear: handleGlobalSearchClear } =
   useGlobalSearch(emitter)
 
-const { getCurrentUser } = useUser()
 const { loadSystemConfig } = useSystemConfig()
 
 const mobileRoutes = MOBILE_NAV_ITEMS
@@ -214,13 +212,6 @@ emitter.on('videoWidescreenStateChanged', (enabled) => {
 })
 
 onMounted(async () => {
-  if (localStorage.getItem('token')) {
-    const result = await getCurrentUser()
-    if (result.error) {
-      Logger.error('Failed to get user info', result.error)
-    }
-  }
-
   const configResult = await loadSystemConfig()
   if (configResult.error) {
     Logger.error('Failed to load system config', configResult.error)

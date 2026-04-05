@@ -79,6 +79,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { getSyncCenterStreamUrl } from '@/api'
 import SyncActiveRunBoard from '@/components/sync-center/SyncActiveRunBoard.vue'
 import SyncControlBar from '@/components/sync-center/SyncControlBar.vue'
 import SyncQueueBoard from '@/components/sync-center/SyncQueueBoard.vue'
@@ -89,16 +90,13 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useExtractionCenter } from '@/composables/useExtractionCenter'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { useSyncCenter } from '@/composables/useSyncCenter'
+import type { SyncRunEvent, SyncRunItem } from '@/composables/useSyncHistory'
 import { useSyncHistory } from '@/composables/useSyncHistory'
-import {
-  buildSyncCenterMountPlan,
-  buildSyncCenterRefreshPlan,
-  shouldLoadExtractionDashboard,
-} from '@/utils/syncCenterPageLoadPlan'
-
-const DASHBOARD_POLL_INTERVAL = 15000
+import { useUser } from '@/composables/useUser'
+import { logoutAndRedirect } from '@/utils/auth'
 
 const selectedRunId = ref('')
+const { getCurrentUser } = useUser()
 
 const {
   hasLoadedOnce: feedLoadedOnce,
@@ -109,9 +107,9 @@ const {
   queuedPreview,
   queuedPreviewError,
   recentRuns: feedRecentRuns,
-  refreshAll: overviewRefreshAll,
   runningPreview,
   runningPreviewError,
+  loadSiteOptions,
   setRecentDateRange,
   siteOptions,
   setPollingEnabled,
@@ -128,10 +126,7 @@ const {
   detailLoading: historyDetailLoading,
   error: historyError,
   events: historyEvents,
-  lastUpdatedAt: historyLastUpdatedAt,
   loading: historyLoading,
-  refreshSelectedRun: historyRefreshSelectedRun,
-  selectRun: historySelectRun,
   selectedRun: historySelectedRun,
   setPollingEnabled: setHistoryPollingEnabled,
 } = useSyncHistory({
@@ -150,7 +145,6 @@ const {
   queuedPreviewError: extractionQueuedPreviewError,
   recentPreview: extractionRecentItems,
   recentPreviewError: extractionRecentPreviewError,
-  refreshAll: extractionRefreshAll,
   runningPreview: extractionRunningPreview,
   runningPreviewError: extractionRunningPreviewError,
   setPollingEnabled: setExtractionPollingEnabled,
@@ -160,7 +154,8 @@ const {
 })
 
 const activePipeline = ref<'feed' | 'extract'>('feed')
-let dashboardPollTimer: ReturnType<typeof setInterval> | null = null
+let dashboardStream: EventSource | null = null
+let dashboardStreamAuthChecking = false
 
 const dashboardRefreshing = computed(() => {
   if (activePipeline.value === 'extract') {
@@ -298,10 +293,6 @@ const currentQueuedLaneItems = computed(() => {
   return activePipeline.value === 'extract' ? extractionQueuedLaneItems.value : queuedLaneItems.value
 })
 
-const currentRecentCount = computed(() => {
-  return activePipeline.value === 'extract' ? extractionRecentItems.value.length : recentLaneRuns.value.length
-})
-
 const currentQueuedError = computed(() => {
   return activePipeline.value === 'extract' ? extractionQueuedPreviewError.value : queuedPreviewError.value
 })
@@ -323,31 +314,6 @@ const getDefaultHistoryWindow = () => {
 const syncFeedRecentWindow = () => {
   const windowConfig = getDefaultHistoryWindow()
   setRecentDateRange(windowConfig.dateFrom, windowConfig.dateTo)
-}
-
-const refreshDashboard = async () => {
-  const refreshPlan = buildSyncCenterRefreshPlan({
-    pipeline: activePipeline.value,
-    hasSelectedRun: Boolean(selectedRunId.value),
-  })
-
-  if (refreshPlan.loadExtractionDashboard) {
-    await extractionRefreshAll()
-    return
-  }
-
-  if (!refreshPlan.loadFeedDashboard) {
-    return
-  }
-
-  syncFeedRecentWindow()
-  const tasks = [
-    overviewRefreshAll({ includeItems: refreshPlan.loadFeedItems }),
-  ]
-  if (refreshPlan.refreshSelectedRun) {
-    tasks.push(historyRefreshSelectedRun())
-  }
-  await Promise.all(tasks)
 }
 
 const handlePipelineChange = (value: string | number) => {
@@ -373,63 +339,141 @@ const handleOpenRunFromItem = (item: SyncCenterItem) => {
   selectedRunId.value = item.run_id
 }
 
-const clearDashboardPollTimer = () => {
-  if (!dashboardPollTimer) {
+const closeDashboardStream = () => {
+  if (!dashboardStream) {
     return
   }
-  clearInterval(dashboardPollTimer)
-  dashboardPollTimer = null
+  dashboardStream.close()
+  dashboardStream = null
 }
 
-const startDashboardPolling = () => {
-  clearDashboardPollTimer()
-  dashboardPollTimer = setInterval(() => {
-    refreshDashboard()
-  }, DASHBOARD_POLL_INTERVAL)
+const applyFeedSnapshot = (snapshot: {
+  overview?: Record<string, unknown>
+  runningPreview?: SyncCenterItem[]
+  queuedPreview?: SyncCenterItem[]
+  recentRuns?: SyncRunItem[]
+}) => {
+  overview.value = {
+    ...overview.value,
+    ...(snapshot.overview || {}),
+  }
+  runningPreview.value = snapshot.runningPreview || []
+  queuedPreview.value = snapshot.queuedPreview || []
+  feedRecentRuns.value = snapshot.recentRuns || []
+  runningPreviewError.value = ''
+  queuedPreviewError.value = ''
+  overviewLoadingItems.value = false
+  loadingOverview.value = false
+  feedLoadedOnce.value = true
 }
 
-onMounted(async () => {
-  const mountPlan = buildSyncCenterMountPlan(activePipeline.value)
+const applyExtractSnapshot = (snapshot: {
+  overview?: Record<string, unknown>
+  runningPreview?: SyncCenterItem[]
+  queuedPreview?: SyncCenterItem[]
+  recentPreview?: SyncCenterItem[]
+}) => {
+  extractionOverview.value = {
+    ...extractionOverview.value,
+    ...(snapshot.overview || {}),
+  }
+  extractionRunningPreview.value = snapshot.runningPreview || []
+  extractionQueuedPreview.value = snapshot.queuedPreview || []
+  extractionRecentItems.value = snapshot.recentPreview || []
+  extractionRunningPreviewError.value = ''
+  extractionQueuedPreviewError.value = ''
+  extractionRecentPreviewError.value = ''
+  extractionLoadingItems.value = false
+  extractionLoadingOverview.value = false
+  extractionLoadedOnce.value = true
+}
+
+const applyRunDetailSnapshot = (snapshot: {
+  run?: SyncRunItem | null
+  events?: SyncRunEvent[]
+}) => {
+  historySelectedRun.value = snapshot.run || null
+  historyEvents.value = snapshot.events || []
+  historyDetailError.value = ''
+  historyDetailLoading.value = false
+}
+
+const verifyDashboardStreamAuth = async () => {
+  if (dashboardStreamAuthChecking) {
+    return
+  }
+  dashboardStreamAuthChecking = true
+  try {
+    const result = await getCurrentUser()
+    if (result.error?.status === 401) {
+      closeDashboardStream()
+      await logoutAndRedirect()
+    }
+  } finally {
+    dashboardStreamAuthChecking = false
+  }
+}
+
+const openDashboardStream = () => {
+  closeDashboardStream()
+  if (!feedLoadedOnce.value) {
+    overviewLoadingItems.value = true
+    loadingOverview.value = true
+  }
+  if (!extractionLoadedOnce.value) {
+    extractionLoadingItems.value = true
+    extractionLoadingOverview.value = true
+  }
+  if (selectedRunId.value) {
+    historyDetailLoading.value = true
+  }
+  dashboardStream = new EventSource(getSyncCenterStreamUrl(selectedRunId.value))
+
+  dashboardStream.addEventListener('feed_snapshot', (event) => {
+    const snapshot = JSON.parse((event as MessageEvent).data)
+    applyFeedSnapshot(snapshot)
+  })
+
+  dashboardStream.addEventListener('extract_snapshot', (event) => {
+    const snapshot = JSON.parse((event as MessageEvent).data)
+    applyExtractSnapshot(snapshot)
+  })
+
+  dashboardStream.addEventListener('run_detail', (event) => {
+    const snapshot = JSON.parse((event as MessageEvent).data)
+    applyRunDetailSnapshot(snapshot)
+  })
+
+  dashboardStream.onerror = () => {
+    void verifyDashboardStreamAuth()
+  }
+}
+
+onMounted(() => {
   setPollingEnabled(false)
   setHistoryPollingEnabled(false)
   setExtractionPollingEnabled(false)
-
-  if (mountPlan.loadFeedDashboard) {
-    syncFeedRecentWindow()
-    await overviewRefreshAll({ includeItems: mountPlan.loadFeedItems })
-  }
-
-  if (mountPlan.loadExtractionDashboard) {
-    await extractionRefreshAll()
-  }
-
-  startDashboardPolling()
+  syncFeedRecentWindow()
+  void loadSiteOptions()
+  openDashboardStream()
 })
 
-watch(selectedRunId, async (runId) => {
+watch(selectedRunId, (runId) => {
   if (!runId) {
     historyCloseRun()
-    return
   }
-  await historySelectRun(runId)
-}, { immediate: true })
+  openDashboardStream()
+})
 
 watch(activePipeline, (pipeline) => {
   if (pipeline === 'extract') {
     selectedRunId.value = ''
     historyCloseRun()
   }
-
-  if (shouldLoadExtractionDashboard({
-    pipeline,
-    hasLoadedOnce: extractionLoadedOnce.value,
-  })) {
-    extractionRefreshAll()
-  }
 })
 
 onBeforeUnmount(() => {
-  clearDashboardPollTimer()
+  closeDashboardStream()
 })
 </script>
 

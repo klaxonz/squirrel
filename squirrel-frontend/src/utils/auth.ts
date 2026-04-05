@@ -9,7 +9,7 @@ export const redirectToLogin = () => {
   window.location.href = '/login'
 }
 
-export const logoutAndRedirect = () => {
+export const logoutAndRedirect = async () => {
   clearAuthStorage()
   redirectToLogin()
 }

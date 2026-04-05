@@ -1,9 +1,9 @@
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
+
 from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Cookie, HTTPException, Response, status
 
 from models.user import User
 from services import user_service
@@ -12,8 +12,8 @@ logger = logging.getLogger()
 
 SECRET_KEY = "your-secret-key"
 ALGORITHM = "HS256"
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/users/login")
+AUTH_COOKIE_NAME = 'squirrel_auth'
+AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -31,7 +31,29 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> Optional[User]:
+def set_auth_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=AUTH_COOKIE_NAME,
+        value=token,
+        max_age=AUTH_COOKIE_MAX_AGE,
+        httponly=True,
+        secure=True,
+        samesite='lax',
+        path='/',
+    )
+
+
+def clear_auth_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=AUTH_COOKIE_NAME,
+        path='/',
+        httponly=True,
+        secure=True,
+        samesite='lax',
+    )
+
+
+async def get_current_user(token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME)) -> Optional[User]:
     """
     Validate token and return current user with config preloaded
     """
@@ -41,9 +63,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Optional[User
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    if not token:
+        raise credentials_exception
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = int(payload.get("sub"))
+        subject = payload.get('sub')
+        if subject is None:
+            raise credentials_exception
+        user_id = int(subject)
         if user_id is None:
             raise credentials_exception
         user = user_service.get_user_by_id(user_id)

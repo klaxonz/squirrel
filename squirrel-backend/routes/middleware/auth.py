@@ -1,10 +1,12 @@
 import logging
 from typing import List
 
-from fastapi import Request
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from utils.jwt_helper import decode_token
+from common import response
+from utils.jwt_helper import AUTH_COOKIE_NAME, clear_auth_cookie, decode_token
 
 logger = logging.getLogger()
 
@@ -64,15 +66,25 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if not path.startswith('/api') or is_public_api_path(path):
             return await call_next(request)
 
-        auth = request.headers.get("Authorization")
-        if not auth or not auth.startswith("Bearer "):
-            raise TokenMissingError()
+        token = request.cookies.get(AUTH_COOKIE_NAME)
+        if not token:
+            return self._unauthorized_response(TokenMissingError())
 
-        token = auth.split(" ")[1]
         try:
             decode_token(token)
         except Exception:
             logger.error("Invalid token", exc_info=True)
-            raise TokenExpiredError()
+            return self._unauthorized_response(TokenExpiredError(), clear_cookie=True)
         return await call_next(request)
+
+    @staticmethod
+    def _unauthorized_response(error: AuthenticationError, clear_cookie: bool = False) -> JSONResponse:
+        payload = response.unauthorized(error.detail)
+        unauthorized_response = JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content=payload,
+        )
+        if clear_cookie:
+            clear_auth_cookie(unauthorized_response)
+        return unauthorized_response
 

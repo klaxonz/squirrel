@@ -359,6 +359,16 @@ def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
         }
 
 
+def get_run_detail_snapshot(run_id: str, user_id: int) -> dict | None:
+    run = get_run_detail(run_id, user_id)
+    if not run:
+        return None
+    return {
+        'run': run,
+        'events': list_run_events(run_id, user_id),
+    }
+
+
 def list_run_events(run_id: str, user_id: int) -> list[dict]:
     with get_session() as session:
         if not _run_exists_for_user(session, run_id, user_id):

@@ -9,9 +9,10 @@ from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from core.database import get_session
+from core.database import get_session, register_after_commit
 from models.crawl_task import CrawlTask
 from models.video_extraction_projection import VideoExtractionProjection
+from services import sync_center_stream_service
 
 
 RUNNING_TASK_STATUSES = {'leased', 'running'}
@@ -136,6 +137,13 @@ def refresh_projection_for_task(task: CrawlTask, *, session: Optional[Session] =
     group_kind, group_value = _derive_group_key(task)
     if session is not None:
         _refresh_projection_group(session, subscription_id=int(task.subscription_id), group_kind=group_kind, group_value=group_value)
+        register_after_commit(
+            session,
+            lambda: sync_center_stream_service.publish_sync_center_invalidation(
+                sync_center_stream_service.SYNC_CENTER_EXTRACT_CHANNEL,
+                {'run_id': (task.payload or {}).get('run_id')},
+            ),
+        )
         return
 
     with get_session() as managed_session:
@@ -144,6 +152,13 @@ def refresh_projection_for_task(task: CrawlTask, *, session: Optional[Session] =
             subscription_id=int(task.subscription_id),
             group_kind=group_kind,
             group_value=group_value,
+        )
+        register_after_commit(
+            managed_session,
+            lambda: sync_center_stream_service.publish_sync_center_invalidation(
+                sync_center_stream_service.SYNC_CENTER_EXTRACT_CHANNEL,
+                {'run_id': (task.payload or {}).get('run_id')},
+            ),
         )
 
 

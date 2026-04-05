@@ -1,22 +1,29 @@
 import { ref } from 'vue'
-import { getUserById as apiGetUserById, getUserMe, loginUser, registerUser, updateUserMe } from '@/api'
+import { getUserById as apiGetUserById, getUserMe, loginUser, logoutUser, registerUser, updateUserMe } from '@/api'
 import { clearAuthStorage } from '@/utils/auth'
 
 type User = Record<string, unknown>
 type ApiResult<T> = { data?: T | null; error?: any }
-type AuthResult = { access_token?: string; user?: User }
 
 const currentUser = ref<User | null>(null)
 const isAuthenticated = ref(false)
+const hasResolvedAuth = ref(false)
 const loading = ref(false)
 const error = ref<any>(null)
+
+const clearUserState = () => {
+  clearAuthStorage()
+  currentUser.value = null
+  isAuthenticated.value = false
+  hasResolvedAuth.value = true
+}
 
 export function useUser() {
   const register = async (data: Record<string, unknown>) => {
     loading.value = true
     error.value = null
 
-    const result = (await registerUser(data)) as ApiResult<AuthResult>
+    const result = (await registerUser(data)) as ApiResult<User>
 
     loading.value = false
     error.value = result.error
@@ -27,12 +34,12 @@ export function useUser() {
     loading.value = true
     error.value = null
 
-    const result = (await loginUser(data)) as ApiResult<AuthResult>
+    const result = (await loginUser(data)) as ApiResult<User>
 
-    if (!result.error && result.data?.access_token) {
-      localStorage.setItem('token', result.data.access_token)
-      currentUser.value = result.data.user || null
-      isAuthenticated.value = true
+    if (!result.error) {
+      currentUser.value = result.data || null
+      isAuthenticated.value = !!result.data
+      hasResolvedAuth.value = true
     }
 
     loading.value = false
@@ -40,30 +47,34 @@ export function useUser() {
     return result
   }
 
-  const logout = () => {
-    clearAuthStorage()
-    currentUser.value = null
-    isAuthenticated.value = false
+  const logout = async () => {
+    loading.value = true
+    error.value = null
+
+    const result = (await logoutUser()) as ApiResult<null>
+    clearUserState()
+
+    loading.value = false
+    error.value = result.error
+    return result
   }
 
   const getCurrentUser = async () => {
-    if (!localStorage.getItem('token')) {
-      isAuthenticated.value = false
-      currentUser.value = null
-      error.value = null
-      return { data: null, error: null }
-    }
-
     loading.value = true
     error.value = null
 
     const result = (await getUserMe()) as ApiResult<User>
 
     if (result.error?.status === 401) {
-      logout()
+      clearUserState()
     } else if (!result.error) {
       currentUser.value = result.data || null
       isAuthenticated.value = true
+      hasResolvedAuth.value = true
+    } else {
+      currentUser.value = null
+      isAuthenticated.value = false
+      hasResolvedAuth.value = true
     }
 
     loading.value = false
@@ -100,6 +111,7 @@ export function useUser() {
   return {
     currentUser,
     isAuthenticated,
+    hasResolvedAuth,
     loading,
     error,
     register,
