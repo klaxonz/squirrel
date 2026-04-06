@@ -53,14 +53,14 @@ services:
       - CLOUDFLARE_BYPASS_SERVICE_URL=${CLOUDFLARE_BYPASS_SERVICE_URL:-http://squirrel-cf-bypass:8002}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
-      - THUMBNAILS_PATH=${THUMBNAILS_PATH:-/thumbnails}
+      - THUMBNAILS_PATH=/thumbnails
     ports:
       - "${PORT:-8001}:${PORT:-8001}"
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./downloads:/downloads
-      - ./thumbnails:/thumbnails
+      - ${THUMBNAILS_DIR:-./thumbnails}:/thumbnails
     networks:
       - squirrel-network
     depends_on:
@@ -91,12 +91,12 @@ services:
       - TZ=Asia/Shanghai
       - PORT=${PORT:-8001}
       - CLOUDFLARE_BYPASS_SERVICE_URL=${CLOUDFLARE_BYPASS_SERVICE_URL:-http://squirrel-cf-bypass:8002}
-      - THUMBNAILS_PATH=${THUMBNAILS_PATH:-/thumbnails}
+      - THUMBNAILS_PATH=/thumbnails
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./downloads:/downloads
-      - ./thumbnails:/thumbnails
+      - ${THUMBNAILS_DIR:-./thumbnails}:/thumbnails
     networks:
       - squirrel-network
     depends_on:
@@ -123,12 +123,12 @@ services:
       - TZ=Asia/Shanghai
       - PORT=${PORT:-8001}
       - CLOUDFLARE_BYPASS_SERVICE_URL=${CLOUDFLARE_BYPASS_SERVICE_URL:-http://squirrel-cf-bypass:8002}
-      - THUMBNAILS_PATH=${THUMBNAILS_PATH:-/thumbnails}
+      - THUMBNAILS_PATH=/thumbnails
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./downloads:/downloads
-      - ./thumbnails:/thumbnails
+      - ${THUMBNAILS_DIR:-./thumbnails}:/thumbnails
     networks:
       - squirrel-network
     depends_on:
