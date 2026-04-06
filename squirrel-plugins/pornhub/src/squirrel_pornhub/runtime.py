@@ -14,6 +14,53 @@ from crawl import (
 def _load_local_attr(module_name: str, attr_name: str):
     return getattr(import_module(f'{__package__}.{module_name}'), attr_name)
 
+
+DEFAULT_SITE_METADATA = {
+    'label': 'Pornhub',
+    'aliases': ['ph'],
+    'http': {
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.pornhub.com',
+        }
+    },
+    'rate_limit': {
+        'enabled': True,
+        'min_interval': 3.0,
+        'max_interval': 8.0,
+    },
+    'proxy': {
+        'connect_timeout': 30.0,
+        'read_timeout': 180.0,
+        'write_timeout': 30.0,
+        'pool_timeout': 30.0,
+        'keepalive_expiry': 60.0,
+        'max_connections': 40,
+        'max_keepalive_connections': 20,
+        'chunk_size': 2 * 1024 * 1024,
+        'max_retries': 5,
+        'enable_http2': True,
+        'follow_redirects': True,
+    },
+    'login': {
+        'check_url': 'https://www.pornhub.com/',
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+        },
+        'timeout': 20.0,
+    },
+    'metadata': {
+        'requires_cookies': True,
+        'requires_login': False,
+        'player_url_cache': True,
+        'offline_thumbnails_download': True,
+        'offline_thumbnails_display': True,
+        'nsfw': True,
+    },
+}
+
 PLUGIN_MANIFEST = PluginManifest(
     plugin_id='pornhub',
     version='0.1.0',
@@ -74,6 +121,7 @@ PLUGIN_MANIFEST = PluginManifest(
             site_name='pornhub',
             domains=['pornhub.com'],
             test_url='https://www.pornhub.com',
+            metadata=DEFAULT_SITE_METADATA,
             features=[
                 'check_login_status',
                 'import_subscriptions',

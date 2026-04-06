@@ -9,7 +9,6 @@ from crawl import (
     PluginSiteManifest,
     create_site_runtime,
 )
-from .youtubei_resolver import prewarm_youtubei_worker, shutdown_youtubei_worker
 
 
 def _load_local_attr(module_name: str, attr_name: str):
@@ -17,18 +16,19 @@ def _load_local_attr(module_name: str, attr_name: str):
 
 
 DEFAULT_SITE_METADATA = {
-    'label': 'YouTube',
-    'aliases': ['yt'],
+    'label': 'YouPorn',
+    'aliases': ['yp'],
     'http': {
         'headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.youporn.com',
         }
     },
     'rate_limit': {
         'enabled': True,
-        'min_interval': 2.0,
-        'max_interval': 5.0,
+        'min_interval': 3.0,
+        'max_interval': 8.0,
     },
     'proxy': {
         'connect_timeout': 30.0,
@@ -36,107 +36,89 @@ DEFAULT_SITE_METADATA = {
         'write_timeout': 30.0,
         'pool_timeout': 30.0,
         'keepalive_expiry': 60.0,
-        'max_connections': 100,
-        'max_keepalive_connections': 50,
+        'max_connections': 40,
+        'max_keepalive_connections': 20,
         'chunk_size': 2 * 1024 * 1024,
         'max_retries': 5,
         'enable_http2': True,
         'follow_redirects': True,
     },
     'login': {
-        'check_url': 'https://www.youtube.com/feed/channels',
+        'check_url': 'https://www.youporn.com/',
         'headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
             'Accept-Language': 'en-US,en;q=0.9',
         },
         'timeout': 20.0,
     },
-    'cookie': {
-        'alias_domains': ['googlevideo.com', 'gvt1.com', 'ytimg.com'],
-        'match_domain': 'youtube.com',
-    },
     'metadata': {
-        'requires_cookies': False,
+        'requires_cookies': True,
         'requires_login': False,
-        'player_url_cache': True,
-        'offline_thumbnails_download': True,
-        'offline_thumbnails_display': False,
-        'nsfw': False,
+        'nsfw': True,
     },
 }
 
+
 PLUGIN_MANIFEST = PluginManifest(
-    plugin_id='youtube',
+    plugin_id='youporn',
     version='0.1.0',
-    display_name='YouTube',
-    description='YouTube crawl integration',
+    display_name='YouPorn',
+    description='YouPorn crawl integration',
     capabilities=[
         PluginCapability(
             name='check_login_status',
-            description='Check the current YouTube login state.',
+            description='Check the current YouPorn login state.',
             response_schema={'type': 'object'},
             timeout_ms=15000,
         ),
         PluginCapability(
             name='import_subscriptions',
-            description='Import followed YouTube channels for the current account.',
+            description='Import followed YouPorn creators for the current account.',
             response_schema={'type': 'object'},
             timeout_ms=30000,
         ),
         PluginCapability(
             name='resolve_subscription',
-            description='Resolve subscription metadata for a YouTube channel or playlist URL.',
+            description='Resolve subscription metadata for a YouPorn channel or pornstar URL.',
             response_schema={'type': 'object'},
             timeout_ms=30000,
         ),
         PluginCapability(
             name='sync_subscription',
-            description='Fetch subscription video URLs for a YouTube subscription.',
+            description='Fetch subscription video URLs for a YouPorn channel or pornstar page.',
             response_schema={'type': 'object'},
             timeout_ms=120000,
         ),
         PluginCapability(
             name='extract_video',
-            description='Extract structured metadata for a YouTube video URL.',
+            description='Extract structured metadata for a YouPorn video URL.',
             response_schema={'type': 'object'},
-            timeout_ms=120000,
+            timeout_ms=30000,
         ),
         PluginCapability(
             name='resolve_playback',
-            description='Resolve playback URLs for a YouTube video.',
-            response_schema={'type': 'object'},
-            timeout_ms=30000,
-        ),
-        PluginCapability(
-            name='fetch_subtitles',
-            description='Fetch subtitles for a YouTube video.',
-            response_schema={'type': 'object'},
-            timeout_ms=30000,
-        ),
-        PluginCapability(
-            name='build_mpd',
-            description='Build an MPD document for a YouTube video.',
+            description='Resolve playback URLs for a YouPorn video.',
             response_schema={'type': 'object'},
             timeout_ms=30000,
         ),
         PluginCapability(
             name='resolve_proxy_config',
-            description='Resolve proxy headers and transport settings for YouTube streams.',
+            description='Resolve proxy headers and transport settings for YouPorn streams.',
             response_schema={'type': 'object'},
             timeout_ms=15000,
         ),
         PluginCapability(
             name='rewrite_proxy_playlist',
-            description='Rewrite proxied YouTube playlists to point back to the backend proxy.',
+            description='Rewrite proxied YouPorn playlists to point back to the backend proxy.',
             response_schema={'type': 'object'},
             timeout_ms=15000,
         ),
     ],
     sites=[
         PluginSiteManifest(
-            site_name='youtube',
-            domains=['youtube.com', 'youtu.be'],
-            test_url='https://www.youtube.com',
+            site_name='youporn',
+            domains=['youporn.com'],
+            test_url='https://www.youporn.com',
             metadata=DEFAULT_SITE_METADATA,
             features=[
                 'check_login_status',
@@ -145,8 +127,6 @@ PLUGIN_MANIFEST = PluginManifest(
                 'sync_subscription',
                 'extract_video',
                 'resolve_playback',
-                'fetch_subtitles',
-                'build_mpd',
                 'resolve_proxy_config',
                 'rewrite_proxy_playlist',
             ],
@@ -155,11 +135,11 @@ PLUGIN_MANIFEST = PluginManifest(
     permissions=[
         PluginPermission(
             name='network:http',
-            description='Access YouTube APIs and web pages over HTTP.',
+            description='Access YouPorn APIs and web pages over HTTP.',
         ),
         PluginPermission(
-            name='cookies:read:site/youtube',
-            description='Read YouTube cookies for authenticated requests.',
+            name='cookies:read:site/youporn',
+            description='Read YouPorn cookies for authenticated requests when available.',
         ),
     ],
     health_policy={'startup_timeout_ms': 10000},
@@ -169,20 +149,13 @@ PLUGIN_MANIFEST = PluginManifest(
 def get_plugin_runtime():
     return create_site_runtime(
         manifest=PLUGIN_MANIFEST,
-        health_message='YouTube runtime is configured',
-        on_start=lambda _context: prewarm_youtubei_worker(),
-        on_stop=shutdown_youtubei_worker,
-        check_login=lambda: _load_local_attr('auth', 'check_youtube_login_status')(),
-        importer_factory=lambda: _load_local_attr('importer', 'YoutubeUserSubscriptionImporter')(),
-        subscription_factory=lambda url: _load_local_attr('subscription', 'YoutubeSubscription')(url=url),
-        extractor_factory=lambda: _load_local_attr('extractor', 'YoutubeExtractor')(),
-        extractor_site_name='youtube',
-        playback_handler_factory=lambda: _load_local_attr('handler', 'YouTubeHandler')(),
-        subtitles_provider_factory=lambda: _load_local_attr('subtitles', 'YoutubeSubtitlesProvider')(),
-        default_subtitle_lang='en',
-        default_subtitle_format='srt',
-        mpd_builder_factory=lambda: _load_local_attr('mpd', 'YouTubeMpdBuilder')(),
-        mpd_include_duration=True,
+        health_message='YouPorn runtime is configured',
+        check_login=lambda: _load_local_attr('auth', 'check_youporn_login_status')(),
+        importer_factory=lambda: _load_local_attr('importer', 'YouPornUserSubscriptionImporter')(),
+        subscription_factory=lambda url: _load_local_attr('subscription', 'YouPornSubscription')(url=url),
+        extractor_factory=lambda: _load_local_attr('extractor', 'YouPornExtractor')(),
+        extractor_site_name='youporn',
+        playback_handler_factory=lambda: _load_local_attr('handler', 'YouPornHandler')(),
         proxy_config_builder=lambda domain: _load_local_attr('proxy', 'build_runtime_proxy_config')(domain),
         playlist_rewriter=lambda url, content, referer=None: _load_local_attr('proxy', 'rewrite_proxy_playlist')(
             url,

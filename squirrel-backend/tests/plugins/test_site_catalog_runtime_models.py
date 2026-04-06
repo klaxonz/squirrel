@@ -53,6 +53,51 @@ def test_site_catalog_builds_from_backend_runtime_manifest_models(monkeypatch):
     }
 
 
+def test_site_catalog_builds_site_defaults_from_manifest_metadata(monkeypatch):
+    manifest = PluginManifest(
+        plugin_id='youtube',
+        version='0.1.0',
+        display_name='YouTube',
+        capabilities=[PluginCapability(name='extract_video')],
+        sites=[
+            PluginSiteManifest(
+                site_name='youtube',
+                domains=['youtube.com', 'youtu.be'],
+                test_url='https://www.youtube.com',
+                features=['extract_video'],
+                metadata={
+                    'label': 'YouTube',
+                    'aliases': ['yt'],
+                    'http': {'headers': {'User-Agent': 'UA'}},
+                    'rate_limit': {'enabled': True, 'min_interval': 2.0, 'max_interval': 5.0},
+                    'metadata': {'requires_cookies': False},
+                },
+            )
+        ],
+    )
+
+    monkeypatch.setattr(
+        'utils.site_catalog.get_plugin_manager',
+        lambda: SimpleNamespace(
+            get_snapshot=lambda: SimpleNamespace(
+                records=[
+                    SimpleNamespace(
+                        enabled=True,
+                        manifest=manifest.to_dict(),
+                    )
+                ]
+            )
+        ),
+    )
+
+    catalog = SiteCatalog.build_plugin_site_catalog()
+
+    assert catalog['youtube']['label'] == 'YouTube'
+    assert catalog['youtube']['aliases'] == ['yt']
+    assert catalog['youtube']['http']['headers']['User-Agent'] == 'UA'
+    assert catalog['youtube']['domains'] == ['youtube.com', 'youtu.be']
+
+
 def test_site_catalog_load_from_file_preserves_icon_url(monkeypatch, tmp_path):
     config_path = tmp_path / 'sites.json'
     config_path.write_text(json.dumps({

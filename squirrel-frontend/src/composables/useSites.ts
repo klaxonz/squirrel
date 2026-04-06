@@ -61,18 +61,22 @@ const siteCatalogLoading = ref(false)
 const siteCatalogError = ref<unknown | null>(null)
 
 type SiteCatalogPayloadItem = {
-  slug: SiteSlug
-  label: string
-  domains: string[]
-  aliases: string[]
-  enabled: boolean
+  [key: string]: unknown
+}
+
+type SiteCatalogPayload = Record<SiteSlug, SiteCatalogPayloadItem>
+
+type SiteCatalogEditableItem = {
+  label?: string
+  aliases?: string[]
+  enabled?: boolean
   icon_url?: unknown
+  test_url?: unknown
   http?: unknown
   proxy?: unknown
   login?: unknown
   rate_limit?: unknown
   metadata?: unknown
-  test_url?: unknown
 }
 
 export function useSiteCatalog() {
@@ -88,32 +92,11 @@ export function useSiteCatalog() {
     siteCatalogLoading.value = false
   }
 
-  const catalogObjectToPayload = (catalogObj: SitesResponse) => {
-    return Object.entries(catalogObj).map(([slug, info]): SiteCatalogPayloadItem => {
-      const payload: SiteCatalogPayloadItem = {
-        slug,
-        label: info?.label || slug,
-        domains: info?.domains || [],
-        aliases: info?.aliases || [],
-        enabled: info?.enabled !== false,
-      }
-      if (info?.icon_url) payload.icon_url = info.icon_url
-      if (info?.http) payload.http = info.http
-      if (info?.proxy) payload.proxy = info.proxy
-      if (info?.login) payload.login = info.login
-      if (info?.rate_limit) payload.rate_limit = info.rate_limit
-      if (info?.metadata) payload.metadata = info.metadata
-      if (info?.test_url) payload.test_url = info.test_url
-      return payload
-    })
-  }
-
-  const saveCatalog = async (updatedCatalog: SitesResponse) => {
+  const saveCatalog = async (updatedOverrides: SiteCatalogPayload) => {
     siteCatalogLoading.value = true
     siteCatalogError.value = null
     try {
-      const payload = catalogObjectToPayload(updatedCatalog)
-      const result = (await saveSites({ sites: payload })) as ApiResult<SitesResponse>
+      const result = (await saveSites({ sites: updatedOverrides })) as ApiResult<SitesResponse>
       if (result.error) throw result.error
 
       siteCatalog.value = result.data || {}

@@ -22,8 +22,8 @@ class SiteCatalog:
     }
     """
 
-    _catalog: Dict[str, dict] | None = None
-    _catalog_mtime: float | None = None
+    _override_catalog: Dict[str, dict] | None = None
+    _override_catalog_mtime: float | None = None
 
     @staticmethod
     def _config_path() -> str:
@@ -43,53 +43,69 @@ class SiteCatalog:
         return None
 
     @classmethod
-    def _load_from_file(cls) -> Optional[Dict[str, dict]]:
+    def _normalize_catalog_entry(cls, slug: str, info: dict | None) -> dict:
+        info = dict(info or {})
+        domains = list({d.strip().lower() for d in info.get('domains', []) if d})
+        aliases = list({a.strip().lower() for a in info.get('aliases', []) if a})
+        entry: dict = {
+            'label': info.get('label', slug),
+            'domains': domains,
+            'aliases': aliases,
+            'enabled': bool(info.get('enabled', True))
+        }
+        extra_keys = {'http', 'proxy', 'login', 'rate_limit', 'metadata', 'test_url', 'icon_url', 'cookie', 'features'}
+        for key in extra_keys:
+            value = info.get(key)
+            if value is not None:
+                entry[key] = value
+        return entry
+
+    @classmethod
+    def load_override_catalog(cls) -> Optional[Dict[str, dict]]:
         config_path = cls._config_path()
         if os.path.exists(config_path):
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                # normalize
                 catalog: Dict[str, dict] = {}
-                extra_keys = {'http', 'proxy', 'login', 'rate_limit', 'metadata', 'test_url', 'icon_url', 'cookie'}
                 for slug, info in (data or {}).items():
-                    domains = list({d.strip().lower() for d in info.get('domains', []) if d})
-                    aliases = list({a.strip().lower() for a in info.get('aliases', []) if a})
                     normalized_slug = slug.strip().lower()
-                    entry: dict = {
-                        'label': info.get('label', slug),
-                        'domains': domains,
-                        'aliases': aliases,
-                        'enabled': bool(info.get('enabled', True))
-                    }
-                    for key in extra_keys:
-                        value = info.get(key)
-                        if value is not None:
-                            entry[key] = value
-                    catalog[normalized_slug] = entry
+                    catalog[normalized_slug] = cls._normalize_catalog_entry(normalized_slug, info)
                 return catalog
             except Exception:
                 return None
         return None
 
     @classmethod
-    def _build_from_manifests(cls) -> Dict[str, dict]:
+    def build_plugin_site_catalog(cls) -> Dict[str, dict]:
         catalog: Dict[str, dict] = {}
         snapshot = get_plugin_manager().get_snapshot()
         for record in snapshot.records:
             manifest = PluginManifest.from_dict(record.manifest)
             for site in manifest.sites:
                 slug = site.site_name.strip().lower()
+                defaults = dict(site.metadata or {})
                 item = catalog.setdefault(slug, {
-                    'label': site.site_name,
+                    'label': defaults.get('label') or site.site_name,
                     'domains': [],
                     'aliases': [],
                     'enabled': record.enabled,
                     'features': [],
                 })
-                item['enabled'] = item.get('enabled', False) or record.enabled
+                item['enabled'] = bool(defaults.get('enabled', item.get('enabled', True))) and record.enabled
+                item['label'] = defaults.get('label') or item.get('label') or site.site_name
                 if site.test_url:
                     item['test_url'] = site.test_url
+                default_aliases = [str(alias).strip().lower() for alias in list(defaults.get('aliases') or []) if alias]
+                existing_aliases = set(item.get('aliases') or [])
+                for alias in default_aliases:
+                    if alias not in existing_aliases:
+                        item.setdefault('aliases', []).append(alias)
+                        existing_aliases.add(alias)
+                for key in ('http', 'proxy', 'login', 'rate_limit', 'cookie', 'metadata', 'icon_url'):
+                    value = defaults.get(key)
+                    if value is not None:
+                        item[key] = value
                 existing_features = set(item.get('features') or [])
                 for feature in site.features:
                     if feature not in existing_features:
@@ -104,35 +120,56 @@ class SiteCatalog:
     @classmethod
     def get_catalog(cls) -> Dict[str, dict]:
         config_mtime = cls._get_config_mtime()
-        should_reload = cls._catalog is None or config_mtime != cls._catalog_mtime
+        should_reload = cls._override_catalog is None or config_mtime != cls._override_catalog_mtime
 
         if should_reload:
-            file_catalog = cls._load_from_file()
+            file_catalog = cls.load_override_catalog()
             if file_catalog is not None:
-                cls._catalog = file_catalog
-                cls._catalog_mtime = config_mtime
+                cls._override_catalog = file_catalog
+                cls._override_catalog_mtime = config_mtime
             else:
-                cls._catalog = cls._build_from_manifests()
-                cls._catalog_mtime = config_mtime
-        return cls._catalog
+                cls._override_catalog = {}
+                cls._override_catalog_mtime = config_mtime
+        return cls._override_catalog
+
+    @classmethod
+    def set_override_catalog(cls, catalog: Dict[str, dict]) -> None:
+        """Replace the in-memory override catalog (e.g. after editing via API)."""
+        cls._override_catalog = dict(catalog or {})
+        cls._override_catalog_mtime = cls._get_config_mtime()
 
     @classmethod
     def set_catalog(cls, catalog: Dict[str, dict]) -> None:
-        """Replace the in-memory catalog (e.g. after editing via API)."""
-        cls._catalog = catalog
-        cls._catalog_mtime = cls._get_config_mtime()
+        cls.set_override_catalog(catalog)
 
     @classmethod
     def reload(cls) -> Dict[str, dict]:
-        """Force reloading catalog from disk or registries."""
-        cls._catalog = None
-        cls._catalog_mtime = None
+        """Force reloading override catalog from disk."""
+        cls._override_catalog = None
+        cls._override_catalog_mtime = None
         return cls.get_catalog()
+
+    @classmethod
+    def _get_effective_catalog(cls) -> Dict[str, dict]:
+        try:
+            from core.site_config_manager import get_effective_site_catalog
+
+            return get_effective_site_catalog()
+        except Exception:
+            return cls.build_plugin_site_catalog()
+
+    @classmethod
+    def _load_from_file(cls) -> Optional[Dict[str, dict]]:
+        return cls.load_override_catalog()
+
+    @classmethod
+    def _build_from_manifests(cls) -> Dict[str, dict]:
+        return cls.build_plugin_site_catalog()
 
     @classmethod
     def get_all_domains(cls) -> List[str]:
         domains: List[str] = []
-        for info in cls.get_catalog().values():
+        for info in cls._get_effective_catalog().values():
             if info.get('enabled', True):
                 domains.extend(info.get('domains', []))
         # unique keep order
@@ -153,7 +190,7 @@ class SiteCatalog:
         if not key:
             return []
         k = key.strip().lower()
-        catalog = cls.get_catalog()
+        catalog = cls._get_effective_catalog()
         # exact slug
         if k in catalog and catalog[k].get('enabled', True):
             return catalog[k].get('domains', [])
@@ -185,7 +222,7 @@ class SiteCatalog:
         if not normalized_key:
             return []
 
-        catalog = cls.get_catalog() or {}
+        catalog = cls._get_effective_catalog() or {}
         values: List[str] = []
         seen: Set[str] = set()
 
@@ -226,7 +263,7 @@ class SiteCatalog:
         if not domain:
             return None, None
         domain_lower = str(domain).split(":")[0].strip().lower()
-        catalog = cls.get_catalog() or {}
+        catalog = cls._get_effective_catalog() or {}
         for slug, info in catalog.items():
             domains = info.get("domains") or []
             for d in domains:
@@ -246,7 +283,7 @@ class SiteCatalog:
                 return info.get("enabled", True)
 
         if site:
-            catalog = cls.get_catalog() or {}
+            catalog = cls._get_effective_catalog() or {}
             info = catalog.get(site.strip().lower())
             if info is not None:
                 return info.get("enabled", True)

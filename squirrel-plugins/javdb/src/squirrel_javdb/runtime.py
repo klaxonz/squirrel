@@ -14,6 +14,51 @@ from crawl import (
 def _load_local_attr(module_name: str, attr_name: str):
     return getattr(import_module(f'{__package__}.{module_name}'), attr_name)
 
+
+DEFAULT_SITE_METADATA = {
+    'label': 'JavDB',
+    'aliases': [],
+    'http': {
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+        }
+    },
+    'rate_limit': {
+        'enabled': True,
+        'min_interval': 5.0,
+        'max_interval': 8.0,
+    },
+    'proxy': {
+        'connect_timeout': 30.0,
+        'read_timeout': 180.0,
+        'write_timeout': 30.0,
+        'pool_timeout': 30.0,
+        'keepalive_expiry': 60.0,
+        'max_connections': 40,
+        'max_keepalive_connections': 20,
+        'chunk_size': 2 * 1024 * 1024,
+        'max_retries': 5,
+        'enable_http2': True,
+        'follow_redirects': True,
+    },
+    'login': {
+        'check_url': 'https://javdb.com/users/collection_actors',
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        },
+        'timeout': 15.0,
+    },
+    'metadata': {
+        'requires_cookies': True,
+        'requires_login': True,
+        'player_url_cache': True,
+        'offline_thumbnails_download': True,
+        'offline_thumbnails_display': True,
+        'nsfw': True,
+    },
+}
+
 PLUGIN_MANIFEST = PluginManifest(
     plugin_id='javdb',
     version='0.1.0',
@@ -74,6 +119,7 @@ PLUGIN_MANIFEST = PluginManifest(
             site_name='javdb',
             domains=['javdb.com'],
             test_url='https://javdb.com',
+            metadata=DEFAULT_SITE_METADATA,
             features=[
                 'check_login_status',
                 'import_subscriptions',

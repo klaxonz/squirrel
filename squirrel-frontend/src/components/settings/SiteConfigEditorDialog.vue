@@ -39,7 +39,14 @@
             </div>
             <div class="space-y-1.5">
               <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1 tracking-wider">域名列表</Label>
-              <Textarea v-model="siteEditorForm.domainsText" :rows="4" placeholder="每行一个域名" class="bg-transparent border-border/20 focus:border-primary/40 rounded-xl resize-none p-3.5 transition-all text-[13px]" />
+              <Textarea
+                v-model="siteEditorForm.domainsText"
+                :rows="4"
+                readonly
+                placeholder="由插件定义，当前为只读"
+                class="bg-transparent border-border/10 rounded-xl resize-none p-3.5 text-[13px] text-muted-foreground/60 cursor-default"
+              />
+              <p class="text-[11px] text-muted-foreground/30 font-medium ml-1">域名来源于插件声明，站点配置页不再允许手动修改。</p>
             </div>
             <div class="space-y-1.5">
               <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1 tracking-wider">站点别名</Label>
@@ -319,12 +326,6 @@ const handleSave = () => {
     return;
   }
 
-  const domains = parseListInput(siteEditorForm.value.domainsText);
-  if (!domains.length) {
-    localError.value = '请至少填写一个域名';
-    return;
-  }
-
   const aliases = parseListInput(siteEditorForm.value.aliasesText);
   const label = siteEditorForm.value.label?.trim() || siteName || slug;
   const httpHeaders = parseHeadersText(siteEditorForm.value.httpHeadersText);
@@ -373,7 +374,6 @@ const handleSave = () => {
 
   const sitePayload = {
     label,
-    domains,
     aliases,
     enabled: !!siteEditorForm.value.enabled,
     metadata: {

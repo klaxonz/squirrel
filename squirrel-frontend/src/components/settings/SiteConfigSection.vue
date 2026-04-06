@@ -143,12 +143,11 @@ const closeSiteEditor = () => {
 
 const saveSiteEditor = async ({ slug, sitePayload }) => {
   siteEditorError.value = '';
-  const updatedCatalog = { ...siteCatalog.value };
-  updatedCatalog[slug] = sitePayload;
-
   siteEditorSaving.value = true;
   try {
-    await saveCatalog(updatedCatalog);
+    await saveCatalog({
+      [slug]: sitePayload,
+    });
     siteEditorVisible.value = false;
   } catch (error) {
     Logger.error('Failed to save site config', error);

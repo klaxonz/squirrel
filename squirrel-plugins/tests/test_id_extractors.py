@@ -32,6 +32,13 @@ ID_EXTRACTOR_MODULES = {
         'url': 'https://www.pornhub.com/view_video.php?viewkey=ph123456789',
         'expected': 'ph123456789',
     },
+    'youporn': {
+        'package_root': REPO_ROOT / 'squirrel-plugins' / 'youporn' / 'src',
+        'module': 'squirrel_youporn.id_extractor',
+        'class_name': 'YouPornIdExtractor',
+        'url': 'https://www.youporn.com/watch/123456/demo-video/',
+        'expected': '123456',
+    },
     'youtube': {
         'package_root': REPO_ROOT / 'squirrel-plugins' / 'youtube' / 'src',
         'module': 'squirrel_youtube.id_extractor',

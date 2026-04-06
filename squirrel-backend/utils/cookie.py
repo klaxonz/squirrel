@@ -12,6 +12,18 @@ _COOKIE_HEADER_CACHE: dict[tuple[str, int, int, str], str] = {}
 _COOKIE_HEADER_CACHE_LOCK = threading.Lock()
 
 
+def _get_cookie_site_catalog() -> dict:
+    try:
+        from core.site_config_manager import get_effective_site_catalog
+
+        return get_effective_site_catalog()
+    except Exception:
+        try:
+            return SiteCatalog.load_override_catalog() or {}
+        except Exception:
+            return {}
+
+
 def _extract_host_from_url(target_url: str) -> Optional[str]:
     if not target_url:
         return None
@@ -27,10 +39,7 @@ def _iter_cookie_alias_matches(host: str):
     if not normalized_host:
         return
 
-    try:
-        catalog = SiteCatalog.get_catalog() or {}
-    except Exception:
-        catalog = {}
+    catalog = _get_cookie_site_catalog()
 
     for slug, entry in catalog.items():
         cookie_config = entry.get('cookie') or {}
@@ -49,10 +58,7 @@ def resolve_cookie_file_for_url(target_url: str) -> Optional[str]:
     if not host:
         return None
 
-    try:
-        catalog = SiteCatalog.get_catalog() or {}
-    except Exception:
-        catalog = {}
+    catalog = _get_cookie_site_catalog()
 
     matched_site: Optional[str] = None
     for slug, entry in catalog.items():

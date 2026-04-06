@@ -7,9 +7,9 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from core.site_config_manager import get_effective_site_catalog
 from plugins.manager import get_plugin_manager
 from plugins.runtime_models import PluginManifest
-from utils.site_catalog import SiteCatalog
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 InstallResult = Tuple[bool, Optional[Dict[str, Any] | str]]
@@ -34,7 +34,7 @@ def _normalize_plugin_site(site_item: Dict[str, Any], catalog: Dict[str, dict]) 
 
 def _normalize_plugin_item(record, snapshot) -> Dict[str, Any]:
     manifest = PluginManifest.from_dict(record.manifest)
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_effective_site_catalog()
     runtime_handle = next(
         (
             item for item in snapshot.runtimes

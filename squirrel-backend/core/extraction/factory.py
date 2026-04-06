@@ -9,6 +9,7 @@ from .contracts import ExtractionResult, ExtractionTask
 from .plugin_payloads import PluginVideoData
 
 from plugins.manager import get_plugin_manager
+from core.site_config_manager import get_effective_site_catalog
 from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ class ExtractorFactory:
             logger.info(f'No extract_video capability found for site: {site_name}')
             return None
 
-        site_info = SiteCatalog.get_catalog().get(site_name) or {}
+        site_info = get_effective_site_catalog().get(site_name) or {}
         domains = list(site_info.get('domains') or [])
         if not domains:
             logger.warning(f'No site domains configured for extractor site: {site_name}')
@@ -131,11 +132,11 @@ class ExtractorFactory:
         logger.info(f'Ignoring legacy extractor registration for site: {site_name}, domains: {domains}')
 
     def get_test_url(self, site_name: str) -> Optional[str]:
-        site_info = SiteCatalog.get_catalog().get(site_name) or {}
+        site_info = get_effective_site_catalog().get(site_name) or {}
         return site_info.get('test_url')
 
     def get_all_sites(self) -> List[str]:
-        return list(SiteCatalog.get_catalog().keys())
+        return list(get_effective_site_catalog().keys())
 
     def get_all_domains(self) -> List[str]:
         return SiteCatalog.get_all_domains()

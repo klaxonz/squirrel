@@ -4,6 +4,7 @@ from typing import Optional
 from sqlalchemy import case, func, select
 
 from core.database import get_session
+from core.site_config_manager import get_effective_site_catalog
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.video_extraction_projection import VideoExtractionProjection
@@ -46,7 +47,7 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
     if not normalized_site:
         return None
 
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_effective_site_catalog()
 
     if normalized_site in catalog:
         site_slug = normalized_site

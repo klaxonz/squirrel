@@ -23,6 +23,11 @@ PROXY_MODULES = {
         'module': 'squirrel_pornhub.proxy',
         'domain': 'pornhub.com',
     },
+    'youporn': {
+        'package_root': REPO_ROOT / 'squirrel-plugins' / 'youporn' / 'src',
+        'module': 'squirrel_youporn.proxy',
+        'domain': 'youporn.com',
+    },
     'youtube': {
         'package_root': REPO_ROOT / 'squirrel-plugins' / 'youtube' / 'src',
         'module': 'squirrel_youtube.proxy',

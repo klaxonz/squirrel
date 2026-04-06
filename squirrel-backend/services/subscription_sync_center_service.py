@@ -8,6 +8,7 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.exc import OperationalError
 
 from core.database import get_session
+from core.site_config_manager import get_effective_site_catalog
 from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
@@ -114,7 +115,7 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
     if not normalized_site:
         return None
 
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_effective_site_catalog()
 
     if normalized_site in catalog:
         site_slug = normalized_site

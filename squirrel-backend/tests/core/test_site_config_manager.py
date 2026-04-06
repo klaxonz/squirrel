@@ -106,3 +106,30 @@ def test_apply_site_config_overrides_updates_sdk_rate_limiter(monkeypatch):
         ('enabled', 'javdb.com', True),
         ('limit', 'javdb.com', (5.0, 8.0)),
     ]
+
+
+def test_get_effective_site_catalog_merges_plugin_defaults_with_overrides(monkeypatch):
+    monkeypatch.setattr(
+        site_config_manager,
+        'build_plugin_site_catalog',
+        lambda: {
+            'youporn': {
+                'label': 'YouPorn',
+                'domains': ['youporn.com'],
+                'enabled': True,
+                'proxy': {'read_timeout': 180.0},
+            }
+        },
+        raising=False,
+    )
+
+    catalog = site_config_manager.get_effective_site_catalog({
+        'youporn': {
+            'enabled': False,
+            'proxy': {'read_timeout': 240.0},
+        }
+    })
+
+    assert catalog['youporn']['enabled'] is False
+    assert catalog['youporn']['proxy']['read_timeout'] == 240.0
+    assert catalog['youporn']['domains'] == ['youporn.com']

@@ -79,6 +79,49 @@
           "javdb.com"
         ],
         "test_url": "https://javdb.com",
+        "metadata": {
+          "label": "JavDB",
+          "aliases": [],
+          "http": {
+            "headers": {
+              "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+              "Accept-Language": "en-US,en;q=0.9"
+            }
+          },
+          "rate_limit": {
+            "enabled": true,
+            "min_interval": 5.0,
+            "max_interval": 8.0
+          },
+          "proxy": {
+            "connect_timeout": 30.0,
+            "read_timeout": 180.0,
+            "write_timeout": 30.0,
+            "pool_timeout": 30.0,
+            "keepalive_expiry": 60.0,
+            "max_connections": 40,
+            "max_keepalive_connections": 20,
+            "chunk_size": 2097152,
+            "max_retries": 5,
+            "enable_http2": true,
+            "follow_redirects": true
+          },
+          "login": {
+            "check_url": "https://javdb.com/users/collection_actors",
+            "headers": {
+              "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            },
+            "timeout": 15.0
+          },
+          "metadata": {
+            "requires_cookies": true,
+            "requires_login": true,
+            "player_url_cache": true,
+            "offline_thumbnails_download": true,
+            "offline_thumbnails_display": true,
+            "nsfw": true
+          }
+        },
         "features": [
           "check_login_status",
           "import_subscriptions",

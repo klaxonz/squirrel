@@ -14,6 +14,53 @@ from crawl import (
     create_site_runtime,
 )
 
+
+DEFAULT_SITE_METADATA = {
+    'label': 'Bilibili',
+    'aliases': ['bili'],
+    'http': {
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+            'Referer': 'https://www.bilibili.com',
+            'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
+        }
+    },
+    'rate_limit': {
+        'enabled': True,
+        'min_interval': 3.0,
+        'max_interval': 5.0,
+    },
+    'proxy': {
+        'connect_timeout': 30.0,
+        'read_timeout': 120.0,
+        'write_timeout': 30.0,
+        'pool_timeout': 30.0,
+        'keepalive_expiry': 30.0,
+        'max_connections': 50,
+        'max_keepalive_connections': 50,
+        'chunk_size': 2 * 1024 * 1024,
+        'max_retries': 5,
+        'enable_http2': True,
+        'follow_redirects': True,
+    },
+    'login': {
+        'check_url': 'https://api.bilibili.com/x/web-interface/nav',
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+            'Referer': 'https://www.bilibili.com',
+        },
+        'timeout': 15.0,
+    },
+    'metadata': {
+        'requires_cookies': True,
+        'requires_login': False,
+        'player_url_cache': True,
+        'offline_thumbnails_download': True,
+        'offline_thumbnails_display': True,
+        'nsfw': False,
+    },
+}
+
 PLUGIN_MANIFEST = PluginManifest(
     plugin_id='bilibili',
     version='0.1.0',
@@ -80,6 +127,7 @@ PLUGIN_MANIFEST = PluginManifest(
             site_name='bilibili',
             domains=['bilibili.com', 'b23.tv'],
             test_url='https://www.bilibili.com',
+            metadata=DEFAULT_SITE_METADATA,
             features=[
                 'check_login_status',
                 'import_subscriptions',

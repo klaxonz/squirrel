@@ -9,6 +9,7 @@ from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
+from core.site_config_manager import get_effective_site_catalog
 from services.subscription_sync_progress import build_progress_snapshot
 from services.subscription_sync_run_service import SyncEventType
 from utils.site_catalog import SiteCatalog
@@ -44,7 +45,7 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
     if not normalized_site:
         return None
 
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_effective_site_catalog()
 
     if normalized_site in catalog:
         site_slug = normalized_site

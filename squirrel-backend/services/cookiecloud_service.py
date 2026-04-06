@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from core.config import settings
 from core.cookie_config import get_site_cookies_dir, get_site_cookies_file_path
-from utils.site_catalog import SiteCatalog
+from core.site_config_manager import get_effective_site_catalog
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ def _cookie_to_netscape_line(cookie: Dict[str, Any]) -> Optional[str]:
 
 def sync_cookiecloud_to_site_files(site_slug: Optional[str] = None) -> Dict[str, Any]:
     cookie_data = fetch_cookiecloud_cookie_data()
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_effective_site_catalog()
 
     site_domains: Dict[str, list[str]] = {}
     for slug, info in catalog.items():

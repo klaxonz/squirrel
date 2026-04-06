@@ -237,6 +237,7 @@ const siteConfig = {
   bilibili: { name: 'Bilibili' },
   youtube: { name: 'YouTube' },
   pornhub: { name: 'Pornhub' },
+  youporn: { name: 'YouPorn' },
   javdb: { name: 'JavDB' },
 }
 

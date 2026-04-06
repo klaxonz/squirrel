@@ -28,10 +28,22 @@ PLUGIN_SPECS = {
         'package': 'squirrel_pornhub',
         'expected_dependencies': {'squirrel-sdk', 'beautifulsoup4', 'yt-dlp', 'phub', 'httpx', 'fastapi', 'starlette'},
     },
+    'youporn': {
+        'package': 'squirrel_youporn',
+        'expected_dependencies': {'squirrel-sdk', 'beautifulsoup4', 'yt-dlp', 'httpx', 'fastapi', 'starlette'},
+    },
     'youtube': {
         'package': 'squirrel_youtube',
         'expected_dependencies': {'squirrel-sdk', 'beautifulsoup4', 'pytubefix', 'yt-dlp', 'httpx', 'fastapi', 'starlette'},
     },
+}
+
+EXPECTED_SITE_LABELS = {
+    'bilibili': 'Bilibili',
+    'javdb': 'JavDB',
+    'pornhub': 'Pornhub',
+    'youporn': 'YouPorn',
+    'youtube': 'YouTube',
 }
 
 
@@ -227,6 +239,27 @@ class RuntimeV2PackageTests(unittest.TestCase):
                     [item['site_name'] for item in expected_manifest['sites']],
                 )
 
+    def test_runtime_manifest_sites_include_default_site_config_metadata(self):
+        for plugin_name, spec in PLUGIN_SPECS.items():
+            with self.subTest(plugin=plugin_name):
+                plugin_dir = PLUGINS_ROOT / plugin_name
+                runtime_json = json.loads((plugin_dir / 'plugin-runtime.json').read_text(encoding='utf-8'))
+
+                with _stub_crawl_module(), _import_paths(plugin_dir / 'src'):
+                    module = importlib.import_module(f'{spec["package"]}.runtime')
+                    runtime = module.get_plugin_runtime()
+                    manifest = runtime.manifest().to_dict()
+
+                expected_site = runtime_json['manifest']['sites'][0]
+                actual_site = manifest['sites'][0]
+                actual_metadata = actual_site.get('metadata') or {}
+                expected_metadata = expected_site.get('metadata') or {}
+
+                self.assertEqual(actual_metadata, expected_metadata)
+                self.assertEqual(actual_metadata.get('label'), EXPECTED_SITE_LABELS[plugin_name])
+                for key in ('http', 'proxy', 'login', 'rate_limit', 'metadata'):
+                    self.assertIn(key, actual_metadata, f'{plugin_name} site metadata missing {key}')
+
     def test_javdb_login_status_timeout_budget_is_large_enough_for_cloudflare_bypass(self):
         plugin_dir = PLUGINS_ROOT / 'javdb'
         runtime_json = json.loads((plugin_dir / 'plugin-runtime.json').read_text(encoding='utf-8'))
@@ -294,6 +327,23 @@ class RuntimeV2PackageTests(unittest.TestCase):
 
         self.assertGreaterEqual(runtime_capability['timeout_ms'], 120000)
         self.assertGreaterEqual(metadata_capability['timeout_ms'], 120000)
+
+    def test_youporn_import_subscriptions_timeout_budget_is_large_enough_for_multi_page_fetches(self):
+        plugin_dir = PLUGINS_ROOT / 'youporn'
+        runtime_json = json.loads((plugin_dir / 'plugin-runtime.json').read_text(encoding='utf-8'))
+        metadata_capability = next(
+            item for item in runtime_json['manifest']['capabilities'] if item['name'] == 'import_subscriptions'
+        )
+
+        with _stub_crawl_module(), _import_paths(plugin_dir / 'src'):
+            module = importlib.import_module('squirrel_youporn.runtime')
+            runtime = module.get_plugin_runtime()
+            runtime_capability = next(
+                item.to_dict() for item in runtime.manifest().capabilities if item.name == 'import_subscriptions'
+            )
+
+        self.assertGreaterEqual(runtime_capability['timeout_ms'], 30000)
+        self.assertGreaterEqual(metadata_capability['timeout_ms'], 30000)
 
 
 if __name__ == '__main__':

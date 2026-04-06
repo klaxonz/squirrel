@@ -6,7 +6,7 @@ from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExt
 from models.user import User
 from schemas.video.request.video import SortBy
 from services import video_service
-from services.site_catalog_service import save_sites
+from services.site_catalog_service import save_site_overrides
 from typing import List
 from utils.site_catalog import SiteCatalog
 from core.site_config_manager import get_effective_site_catalog
@@ -274,18 +274,13 @@ def get_sites_catalog():
 
 @router.put("/api/sites")
 def update_sites_catalog(payload: dict = Body(...)):
-    """保存页面编辑后的站点配置。"""
-    sites_payload = None
-    if isinstance(payload, dict):
-        sites_payload = payload.get("sites")
-    elif isinstance(payload, list):
-        sites_payload = payload
-
-    if sites_payload is None:
-        return response.param_error("缺少 sites 参数")
+    """保存页面编辑后的站点 override 配置。"""
+    sites_payload = payload.get('sites') if isinstance(payload, dict) else None
+    if not isinstance(sites_payload, dict):
+        return response.param_error('sites 必须为对象')
 
     try:
-        catalog = save_sites(sites_payload)
+        catalog = save_site_overrides(sites_payload)
         return response.success(catalog, msg="站点配置已更新")
     except ValueError as exc:
         return response.param_error(str(exc))

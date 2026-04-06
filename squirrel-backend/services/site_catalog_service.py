@@ -1,13 +1,29 @@
 import json
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Any
 
-from core.site_config_manager import apply_site_config_overrides, get_effective_site_catalog
+from core.site_config_manager import apply_site_config_overrides, build_plugin_site_catalog, get_effective_site_catalog
 from utils.site_catalog import SiteCatalog
 from common.site_constants import (
     SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD,
     SITE_META_OFFLINE_THUMBNAILS_DISPLAY,
 )
+
+
+ALLOWED_OVERRIDE_KEYS = {
+    'enabled',
+    'aliases',
+    'http',
+    'proxy',
+    'login',
+    'rate_limit',
+    'metadata',
+    'cookie',
+    'test_url',
+    'icon_url',
+    'label',
+}
 
 
 def _config_path() -> Path:
@@ -167,65 +183,109 @@ def _normalize_cookie(raw: Any) -> Dict[str, Any]:
     return result
 
 
-def save_sites(sites: List[dict]) -> Dict[str, dict]:
-    if not isinstance(sites, list):
-        raise ValueError("sites 必须为数组")
+def _normalize_override_entry(slug: str, raw: Any) -> Dict[str, Any]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError(f'{slug} 的配置必须是对象')
 
-    catalog: Dict[str, dict] = {}
-    for idx, raw in enumerate(sites, start=1):
-        slug = str(raw.get("slug") or raw.get("name") or "").strip().lower()
-        if not slug:
-            raise ValueError(f"第 {idx} 项缺少 slug")
-        if slug in catalog:
-            raise ValueError(f"slug '{slug}' 重复")
+    unknown_keys = sorted(set(raw.keys()) - ALLOWED_OVERRIDE_KEYS)
+    if unknown_keys:
+        raise ValueError(f"{slug} 包含不支持的字段: {', '.join(unknown_keys)}")
 
-        label = str(raw.get("label") or slug).strip() or slug
-        domains = _normalize_list(raw.get("domains"), f"{slug} 的域名", allow_empty=False)
-        aliases = _normalize_list(raw.get("aliases"), f"{slug} 的别名")
-        enabled = _parse_bool(raw.get("enabled", True))
+    site_entry: Dict[str, Any] = {}
 
-        site_entry: Dict[str, Any] = {
-            "label": label,
-            "domains": domains,
-            "aliases": aliases,
-            "enabled": enabled,
-        }
-        http_section = raw.get("http") or {}
-        if raw.get("http") not in (None, {}) and not isinstance(raw.get("http"), dict):
-            raise ValueError("http 必须是对象")
-        headers = _normalize_headers(http_section.get("headers"), f"{slug} 的 HTTP headers")
-        if headers:
-            site_entry["http"] = {"headers": headers}
+    if 'enabled' in raw:
+        site_entry['enabled'] = _parse_bool(raw.get('enabled', True))
 
-        proxy_section = _normalize_proxy(raw.get("proxy"))
-        if proxy_section:
-            site_entry["proxy"] = proxy_section
+    if 'label' in raw:
+        label = str(raw.get('label') or '').strip()
+        if label:
+            site_entry['label'] = label
 
-        login_section = _normalize_login(raw.get("login"))
-        if login_section:
-            site_entry["login"] = login_section
+    if 'aliases' in raw:
+        site_entry['aliases'] = _normalize_list(raw.get('aliases'), f'{slug} 的别名')
 
-        rate_limit = _normalize_rate_limit(raw.get("rate_limit"))
-        if rate_limit:
-            site_entry["rate_limit"] = rate_limit
+    if 'http' in raw:
+        http_section = raw.get('http') or {}
+        if raw.get('http') not in (None, {}) and not isinstance(raw.get('http'), dict):
+            raise ValueError('http 必须是对象')
+        headers = _normalize_headers(http_section.get('headers'), f'{slug} 的 HTTP headers')
+        site_entry['http'] = {'headers': headers} if headers else {}
 
-        metadata = _normalize_metadata(raw.get("metadata"))
-        if metadata:
-            site_entry["metadata"] = metadata
+    if 'proxy' in raw:
+        site_entry['proxy'] = _normalize_proxy(raw.get('proxy'))
 
-        cookie = _normalize_cookie(raw.get('cookie'))
-        if cookie:
-            site_entry['cookie'] = cookie
+    if 'login' in raw:
+        site_entry['login'] = _normalize_login(raw.get('login'))
 
-        test_url = str(raw.get("test_url") or "").strip()
+    if 'rate_limit' in raw:
+        site_entry['rate_limit'] = _normalize_rate_limit(raw.get('rate_limit'))
+
+    if 'metadata' in raw:
+        site_entry['metadata'] = _normalize_metadata(raw.get('metadata'))
+
+    if 'cookie' in raw:
+        site_entry['cookie'] = _normalize_cookie(raw.get('cookie'))
+
+    if 'test_url' in raw:
+        test_url = str(raw.get('test_url') or '').strip()
         if test_url:
-            site_entry["test_url"] = test_url
+            site_entry['test_url'] = test_url
 
-        icon_url = str(raw.get("icon_url") or "").strip()
+    if 'icon_url' in raw:
+        icon_url = str(raw.get('icon_url') or '').strip()
         if icon_url:
-            site_entry["icon_url"] = icon_url
+            site_entry['icon_url'] = icon_url
 
-        catalog[slug] = site_entry
+    return {key: value for key, value in site_entry.items() if value not in ({}, [], None)}
+
+
+def _deep_merge_dicts(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
+    result = deepcopy(base)
+    for key, value in patch.items():
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = _deep_merge_dicts(result.get(key, {}), value)
+        else:
+            result[key] = value
+    return result
+
+
+def _compute_override_diff(base: Dict[str, Any], desired: Dict[str, Any]) -> Dict[str, Any]:
+    override: Dict[str, Any] = {}
+    for key, desired_value in desired.items():
+        base_value = base.get(key)
+        if isinstance(desired_value, dict) and isinstance(base_value, dict):
+            nested = _compute_override_diff(base_value, desired_value)
+            if nested:
+                override[key] = nested
+            continue
+        if desired_value != base_value:
+            override[key] = desired_value
+    return override
+
+
+def save_site_overrides(overrides: Dict[str, dict]) -> Dict[str, dict]:
+    if not isinstance(overrides, dict):
+        raise ValueError('sites 必须为对象')
+
+    plugin_catalog = build_plugin_site_catalog()
+    existing_overrides = SiteCatalog.load_override_catalog() or {}
+    current_effective = get_effective_site_catalog(existing_overrides)
+    catalog: Dict[str, dict] = dict(existing_overrides)
+    for raw_slug, raw in overrides.items():
+        slug = str(raw_slug or '').strip().lower()
+        if not slug:
+            raise ValueError('站点标识不可为空')
+        if slug not in plugin_catalog:
+            raise ValueError(f'未知站点: {slug}')
+        normalized_patch = _normalize_override_entry(slug, raw)
+        desired_effective = _deep_merge_dicts(current_effective.get(slug, plugin_catalog[slug]), normalized_patch)
+        normalized_entry = _compute_override_diff(plugin_catalog[slug], desired_effective)
+        if normalized_entry:
+            catalog[slug] = normalized_entry
+        else:
+            catalog.pop(slug, None)
 
     config_path = _config_path()
     config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -234,6 +294,6 @@ def save_sites(sites: List[dict]) -> Dict[str, dict]:
         encoding="utf-8",
     )
 
-    SiteCatalog.set_catalog(catalog)
+    SiteCatalog.set_override_catalog(catalog)
     apply_site_config_overrides(catalog)
     return get_effective_site_catalog(catalog)

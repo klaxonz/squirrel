@@ -8,7 +8,6 @@ from typing import Dict, Any
 from utils.rate_limiter import rate_limiter as backend_rate_limiter
 from utils.runtime_site_config import set_site_configs
 from utils.site_catalog import SiteCatalog
-from .site_config_defaults import SITE_CONFIG_DEFAULTS
 
 try:
     from crawl import (
@@ -30,18 +29,21 @@ def _deep_merge(base: dict, overrides: dict) -> dict:
     return result
 
 
+def build_plugin_site_catalog() -> Dict[str, dict]:
+    return SiteCatalog.build_plugin_site_catalog()
+
+
 def get_effective_site_catalog(stored_catalog: Dict[str, dict] | None = None) -> Dict[str, dict]:
-    stored_catalog = stored_catalog or SiteCatalog.get_catalog() or {}
-    effective: Dict[str, dict] = {}
+    overrides = stored_catalog if stored_catalog is not None else (SiteCatalog.load_override_catalog() or {})
+    effective: Dict[str, dict] = {
+        slug: deepcopy(defaults)
+        for slug, defaults in build_plugin_site_catalog().items()
+    }
 
-    for slug, defaults in SITE_CONFIG_DEFAULTS.items():
-        effective[slug] = deepcopy(defaults)
-
-    for slug, overrides in stored_catalog.items():
-        if slug in effective:
-            effective[slug] = _deep_merge(effective[slug], overrides)
-        else:
-            effective[slug] = deepcopy(overrides)
+    for slug, override in (overrides or {}).items():
+        if slug not in effective:
+            continue
+        effective[slug] = _deep_merge(effective[slug], override)
 
     return effective
 

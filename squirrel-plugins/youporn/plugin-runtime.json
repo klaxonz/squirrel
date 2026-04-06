@@ -1,15 +1,15 @@
 {
-  "entrypoint": "squirrel_pornhub.runtime:get_plugin_runtime",
+  "entrypoint": "squirrel_youporn.runtime:get_plugin_runtime",
   "manifest": {
-    "plugin_id": "pornhub",
+    "plugin_id": "youporn",
     "version": "0.1.0",
     "sdk_api_version": "2.0",
-    "display_name": "Pornhub",
-    "description": "Pornhub crawl integration",
+    "display_name": "YouPorn",
+    "description": "YouPorn crawl integration",
     "capabilities": [
       {
         "name": "check_login_status",
-        "description": "Check the current Pornhub login state.",
+        "description": "Check the current YouPorn login state.",
         "response_schema": {
           "type": "object"
         },
@@ -17,7 +17,7 @@
       },
       {
         "name": "import_subscriptions",
-        "description": "Import followed Pornhub creators for the current account.",
+        "description": "Import followed YouPorn creators for the current account.",
         "response_schema": {
           "type": "object"
         },
@@ -25,7 +25,7 @@
       },
       {
         "name": "resolve_subscription",
-        "description": "Resolve subscription metadata for a Pornhub creator URL.",
+        "description": "Resolve subscription metadata for a YouPorn channel or pornstar URL.",
         "response_schema": {
           "type": "object"
         },
@@ -33,7 +33,7 @@
       },
       {
         "name": "sync_subscription",
-        "description": "Fetch subscription video URLs for a Pornhub subscription.",
+        "description": "Fetch subscription video URLs for a YouPorn channel or pornstar page.",
         "response_schema": {
           "type": "object"
         },
@@ -41,7 +41,7 @@
       },
       {
         "name": "extract_video",
-        "description": "Extract structured metadata for a Pornhub video URL.",
+        "description": "Extract structured metadata for a YouPorn video URL.",
         "response_schema": {
           "type": "object"
         },
@@ -49,7 +49,7 @@
       },
       {
         "name": "resolve_playback",
-        "description": "Resolve playback URLs for a Pornhub video.",
+        "description": "Resolve playback URLs for a YouPorn video.",
         "response_schema": {
           "type": "object"
         },
@@ -57,7 +57,7 @@
       },
       {
         "name": "resolve_proxy_config",
-        "description": "Resolve proxy headers and transport settings for Pornhub streams.",
+        "description": "Resolve proxy headers and transport settings for YouPorn streams.",
         "response_schema": {
           "type": "object"
         },
@@ -65,7 +65,7 @@
       },
       {
         "name": "rewrite_proxy_playlist",
-        "description": "Rewrite proxied Pornhub playlists to point back to the backend proxy.",
+        "description": "Rewrite proxied YouPorn playlists to point back to the backend proxy.",
         "response_schema": {
           "type": "object"
         },
@@ -74,21 +74,21 @@
     ],
     "sites": [
       {
-        "site_name": "pornhub",
+        "site_name": "youporn",
         "domains": [
-          "pornhub.com"
+          "youporn.com"
         ],
-        "test_url": "https://www.pornhub.com",
+        "test_url": "https://www.youporn.com",
         "metadata": {
-          "label": "Pornhub",
+          "label": "YouPorn",
           "aliases": [
-            "ph"
+            "yp"
           ],
           "http": {
             "headers": {
               "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
               "Accept-Language": "en-US,en;q=0.9",
-              "Referer": "https://www.pornhub.com"
+              "Referer": "https://www.youporn.com"
             }
           },
           "rate_limit": {
@@ -110,7 +110,7 @@
             "follow_redirects": true
           },
           "login": {
-            "check_url": "https://www.pornhub.com/",
+            "check_url": "https://www.youporn.com/",
             "headers": {
               "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
               "Accept-Language": "en-US,en;q=0.9"
@@ -120,9 +120,6 @@
           "metadata": {
             "requires_cookies": true,
             "requires_login": false,
-            "player_url_cache": true,
-            "offline_thumbnails_download": true,
-            "offline_thumbnails_display": true,
             "nsfw": true
           }
         },
@@ -141,12 +138,12 @@
     "permissions": [
       {
         "name": "network:http",
-        "description": "Access Pornhub APIs and web pages over HTTP.",
+        "description": "Access YouPorn APIs and web pages over HTTP.",
         "required": true
       },
       {
-        "name": "cookies:read:site/pornhub",
-        "description": "Read Pornhub cookies for authenticated requests.",
+        "name": "cookies:read:site/youporn",
+        "description": "Read YouPorn cookies for authenticated requests when available.",
         "required": true
       }
     ],

@@ -26,6 +26,7 @@ from core.cookie_config import (
     get_site_cookies_file_path,
 )
 from utils.site_catalog import SiteCatalog
+from core.site_config_manager import get_effective_site_catalog
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 logger = logging.getLogger(__name__)
@@ -125,9 +126,7 @@ def merge_site_catalogs(*catalogs: dict | None) -> dict:
 
 
 def get_merged_site_catalog() -> dict:
-    runtime_catalog = SiteCatalog._build_from_manifests()
-    config_catalog = SiteCatalog.get_catalog() or {}
-    return merge_site_catalogs(runtime_catalog, config_catalog)
+    return get_effective_site_catalog()
 
 
 def build_site_info(site_name: str, catalog: dict) -> dict | None:
@@ -274,7 +273,7 @@ async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(1
     Returns:
         连通性测试结果
     """
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_merged_site_catalog()
     site_info = build_site_info(site_name, catalog)
 
     if not site_info:
@@ -310,7 +309,7 @@ async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(1
 
 @router.get("/sites/{site_name}/login-status")
 def get_site_login_status(site_name: str):
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_merged_site_catalog()
     site_info = build_site_info(site_name, catalog)
     if not site_info:
         return param_error(f"不支持的站点: {site_name}")
@@ -325,7 +324,7 @@ async def upload_site_cookies(
     file: UploadFile = File(...),
     target: Literal["default", "http"] = Query("default")
 ):
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_merged_site_catalog()
     site_info = build_site_info(site_name, catalog)
     if not site_info:
         return param_error(f"不支持的站点: {site_name}")
@@ -392,7 +391,7 @@ async def import_cookies_for_all_sites(file: UploadFile = File(...)):
     text = data.decode("utf-8", errors="ignore")
     lines = text.splitlines()
 
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_merged_site_catalog()
     site_names = merge_site_names(catalog)
 
     domain_to_sites: Dict[str, List[str]] = {}
@@ -492,7 +491,7 @@ async def test_batch_sites_connectivity(
     if not site_names:
         return param_error("站点列表不能为空")
     
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_merged_site_catalog()
     
     # 过滤有效的站点
     valid_sites = []
@@ -586,7 +585,7 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
     Returns:
         所有站点的测试结果
     """
-    catalog = SiteCatalog.get_catalog() or {}
+    catalog = get_merged_site_catalog()
     site_names = merge_site_names(catalog)
     
     if not site_names:

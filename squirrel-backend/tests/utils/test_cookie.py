@@ -79,6 +79,20 @@ def test_filter_cookies_to_query_string_uses_youtube_cookie_domain_for_googlevid
     )
 
     monkeypatch.setattr(cookie, 'resolve_cookie_file_for_url', lambda url: str(cookie_file))
+    monkeypatch.setattr(
+        cookie,
+        '_get_cookie_site_catalog',
+        lambda: {
+            'youtube': {
+                'domains': ['youtube.com', 'youtu.be'],
+                'cookie': {
+                    'alias_domains': ['googlevideo.com', 'gvt1.com', 'ytimg.com'],
+                    'match_domain': 'youtube.com',
+                },
+            }
+        },
+        raising=False,
+    )
 
     assert (
         cookie.filter_cookies_to_query_string('https://rr4---sn-a5meknzl.googlevideo.com/videoplayback?c=MWEB')
@@ -123,19 +137,55 @@ def test_filter_cookies_to_query_string_caches_cookie_file_contents(tmp_path, mo
 
 def test_resolve_cookie_match_domain_for_url_uses_site_catalog_cookie_config(monkeypatch):
     monkeypatch.setattr(
+        cookie,
+        '_get_cookie_site_catalog',
+        lambda: {
+            'youtube': {
+                'domains': ['youtube.com', 'youtu.be'],
+                'cookie': {
+                    'alias_domains': ['googlevideo.com', 'gvt1.com', 'ytimg.com'],
+                    'match_domain': 'youtube.com',
+                },
+            }
+        },
+        raising=False,
+    )
+
+    assert cookie.resolve_cookie_match_domain_for_url('https://i.ytimg.com/vi/demo/hqdefault.jpg') == 'youtube.com'
+
+
+def test_resolve_cookie_file_for_url_uses_effective_site_catalog_defaults(tmp_path, monkeypatch):
+    cookie_file = tmp_path / 'youporn.txt'
+    cookie_file.write_text('', encoding='utf-8')
+
+    monkeypatch.setattr(
         cookie.SiteCatalog,
         'get_catalog',
         classmethod(
             lambda cls: {
                 'youtube': {
-                    'domains': ['youtube.com', 'youtu.be'],
-                    'cookie': {
-                        'alias_domains': ['googlevideo.com', 'gvt1.com', 'ytimg.com'],
-                        'match_domain': 'youtube.com',
-                    },
+                    'domains': ['youtube.com'],
                 }
             }
         ),
     )
+    monkeypatch.setattr(
+        cookie,
+        '_get_cookie_site_catalog',
+        lambda: {
+            'youtube': {
+                'domains': ['youtube.com'],
+            },
+            'youporn': {
+                'domains': ['youporn.com'],
+            },
+        },
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cookie,
+        'get_site_cookies_file_path',
+        lambda slug: cookie_file if slug == 'youporn' else tmp_path / f'{slug}.txt',
+    )
 
-    assert cookie.resolve_cookie_match_domain_for_url('https://i.ytimg.com/vi/demo/hqdefault.jpg') == 'youtube.com'
+    assert cookie.resolve_cookie_file_for_url('https://www.youporn.com/') == str(cookie_file)
