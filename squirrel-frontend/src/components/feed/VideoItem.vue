@@ -36,9 +36,10 @@
         </div>
         <div class="flex justify-between items-end w-full">
           <div class="tech-tag">ID: {{ videoCardId }}</div>
-          <div class="tech-time">{{ formatDuration(video.duration) }}</div>
         </div>
       </div>
+
+      <div class="video-duration-badge">{{ formatDuration(video.duration) }}</div>
 
       <!-- 进度条：1px 极细线 -->
       <div
@@ -405,12 +406,20 @@ onUnmounted(() => {
   box-shadow: 0 0 10px #ff4d00;
 }
 
-.tech-time {
+.video-duration-badge {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  z-index: 6;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
   color: #fff;
-  background: rgba(0,0,0,0.5);
-  padding: 2px 5px;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 2px 6px;
+  line-height: 1.2;
+  pointer-events: none;
 }
 
 .tech-progress-bar {
