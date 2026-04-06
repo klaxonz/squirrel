@@ -62,7 +62,7 @@
                 <div class="text-[13px] font-bold text-foreground group-hover:text-primary transition-colors">启用该站点</div>
                 <div class="text-[11px] text-muted-foreground/40 font-medium">控制该站点是否参与自动更新与订阅采集</div>
               </div>
-              <Switch :checked="!!siteEditorForm.enabled" @update:checked="(v) => siteEditorForm.enabled = !!v" />
+              <Switch :checked="!!siteEditorForm.enabled" @update:checked="(v) => setSiteEditorBooleanField('enabled', v)" />
             </div>
           </div>
         </div>
@@ -85,7 +85,7 @@
                   <div class="text-[13px] font-bold text-foreground">频率限制</div>
                   <div class="text-[11px] text-muted-foreground/40 font-medium">开启后将按照设定的时间间隔进行反爬虫规避</div>
                 </div>
-                <Switch :checked="!!siteEditorForm.rateLimitEnabled" @update:checked="(v) => siteEditorForm.rateLimitEnabled = !!v" />
+                <Switch :checked="!!siteEditorForm.rateLimitEnabled" @update:checked="(v) => setSiteEditorBooleanField('rateLimitEnabled', v)" />
               </div>
 
               <div class="grid grid-cols-2 gap-5 transition-all duration-500" :class="!siteEditorForm.rateLimitEnabled ? 'opacity-20 grayscale pointer-events-none' : ''">
@@ -122,7 +122,7 @@
               class="flex items-center justify-between p-5 rounded-2xl bg-card/40 border border-border/10 hover:border-primary/20 transition-all group"
             >
               <span class="text-[13px] font-bold text-foreground/70 group-hover:text-primary transition-colors pr-4">{{ meta.label }}</span>
-              <Switch :checked="!!siteEditorForm[meta.key]" @update:checked="(v) => siteEditorForm[meta.key] = !!v" />
+              <Switch :checked="!!siteEditorForm[meta.key]" @update:checked="(v) => setSiteEditorBooleanField(meta.key, v)" />
             </div>
           </div>
         </div>
@@ -228,6 +228,13 @@ const createEmptyForm = () => ({
 
 const siteEditorForm = ref(createEmptyForm());
 const localError = ref('');
+
+const setSiteEditorBooleanField = (key, value) => {
+  if (!siteEditorForm.value || !key) {
+    return;
+  }
+  siteEditorForm.value[key] = !!value;
+};
 
 const headersToText = (headers = {}) => {
   return Object.entries(headers || {})
