@@ -136,12 +136,12 @@ def main() -> None:
         uvicorn.run(
             "main:create_application",
             host="0.0.0.0",
-            port=8000,
+            port=settings.PORT,
             reload=False,
             factory=True
         )
     else:
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        uvicorn.run(app, host="0.0.0.0", port=settings.PORT)
 
 
 if __name__ == "__main__":

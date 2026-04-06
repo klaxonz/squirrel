@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = 'postgres'
     POSTGRES_PASSWORD: str = 'postgres'
     POSTGRES_DATABASE: str = 'squirrel'
+    PORT: int = 8001
     THUMBNAILS_PATH: str = ''
     CLOUDFLARE_BYPASS_SERVICE_URL: str = ''
     COOKIECLOUD_URL: str = ''

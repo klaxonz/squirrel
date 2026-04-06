@@ -7,6 +7,8 @@ COPY src ./src
 
 RUN pip install --no-cache-dir .
 
-EXPOSE 8001
+ENV CF_BYPASS_PORT=8002
 
-CMD ["uvicorn", "squirrel_cf_bypass.app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+EXPOSE 8002
+
+CMD ["sh", "-c", "uvicorn squirrel_cf_bypass.app.main:app --host 0.0.0.0 --port ${CF_BYPASS_PORT:-8002}"]

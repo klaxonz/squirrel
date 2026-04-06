@@ -47,9 +47,9 @@ cp env.example .env
 docker compose up -d
 ```
 
-Cloudflare bypass sidecar 现在也会随 compose 一起启动；容器内默认地址是 `http://squirrel-cf-bypass:8001`。如果在外部部署目录运行 compose，请确保同时准备好 `klaxonz/squirrel:latest` 和 `klaxonz/squirrel-cf-bypass:latest` 两个镜像。
+Cloudflare bypass sidecar 现在也会随 compose 一起启动；容器内默认地址是 `http://squirrel-cf-bypass:8002`，宿主机默认端口也是 `8002`。如果在外部部署目录运行 compose，请确保同时准备好 `klaxonz/squirrel:latest` 和 `klaxonz/squirrel-cf-bypass:latest` 两个镜像。
 
-3. 访问应用：`http://localhost:8000`
+3. 访问应用：`http://localhost:8001`
 
 #### 方式二：独立部署（使用已有的数据库和Redis）
 
@@ -68,7 +68,7 @@ cp env.example .env
 docker compose up -d --no-deps squirrel squirrel-cf-bypass
 ```
 
-3. 访问应用：`http://localhost:8000`
+3. 访问应用：`http://localhost:8001`
 
 **说明：** 
 - `--no-deps` 参数会跳过依赖服务（Redis 和 PostgreSQL），不会拉取或启动它们
@@ -141,19 +141,24 @@ docker compose down -v
 ```
 
 - `squirrel-cf-bypass` 负责 backend 的 Cloudflare bypass 请求。
-- 容器部署时 `CLOUDFLARE_BYPASS_SERVICE_URL` 应指向 `http://squirrel-cf-bypass:8001`。
+- 容器部署时 `CLOUDFLARE_BYPASS_SERVICE_URL` 应指向 `http://squirrel-cf-bypass:8002`。
 - 外部部署目录运行 compose 时，需要单独提供 `klaxonz/squirrel-cf-bypass:latest` 镜像，而不是依赖本地 `./squirrel-cf-bypass` 构建上下文。
 
 ### 📊 服务说明
 
 #### Squirrel 主服务
 
-- **端口**: 8000
-- **健康检查**: `http://localhost:8000/health`
+- **端口**: `PORT`（默认 `8001`，宿主机与容器内保持一致）
+- **健康检查**: `http://localhost:8001/health`
 - **数据卷**:
   - `./config:/app/config` - 配置文件
   - `./logs:/app/logs` - 日志文件
   - `./downloads:/downloads` - 下载的媒体文件
+
+#### Cloudflare bypass sidecar
+
+- **端口**: `CF_BYPASS_PORT`（默认 `8002`，宿主机与容器内保持一致）
+- **容器内地址**: `http://squirrel-cf-bypass:8002`
 
 #### Redis
 
@@ -215,7 +220,7 @@ docker compose down
 docker compose exec squirrel bash
 
 # 健康检查
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 ```
 
 ### 目录结构
@@ -335,7 +340,7 @@ server {
     server_name your-domain.com;
 
     location / {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://localhost:8001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

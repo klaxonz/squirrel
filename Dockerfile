@@ -79,12 +79,13 @@ ENV PYTHONPATH=/app/squirrel-backend:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     NODE_PATH=/usr/lib/node_modules \
+    PORT=8001 \
     TZ=Asia/Shanghai \
     CHROME_PATH=/usr/bin/chromium
 
-EXPOSE 8000
+EXPOSE 8001
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request; import sys; urllib.request.urlopen('http://localhost:8000/health', timeout=5).read(); sys.exit(0)" || exit 1
+    CMD python -c "import os; import urllib.request; import sys; port = os.getenv('PORT', '8001'); urllib.request.urlopen(f'http://localhost:{port}/health', timeout=5).read(); sys.exit(0)" || exit 1
 
 CMD ["python", "main.py"]

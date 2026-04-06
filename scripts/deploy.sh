@@ -125,7 +125,7 @@ show_result() {
     
     echo ""
     echo -e "${BLUE}访问地址:${NC}"
-    echo -e "  ${GREEN}http://localhost:8000${NC}"
+    echo -e "  ${GREEN}http://localhost:8001${NC}"
     echo ""
     
     echo -e "${BLUE}常用命令:${NC}"
@@ -157,4 +157,3 @@ main() {
 
 # 执行主流程
 main
-

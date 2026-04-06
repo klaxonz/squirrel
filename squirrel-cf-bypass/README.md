@@ -7,7 +7,7 @@ Repo-local Cloudflare bypass sidecar for Squirrel.
 ```powershell
 Set-Location 'D:\Code\init\squirrel\squirrel-cf-bypass'
 pipenv install --dev
-pipenv run uvicorn squirrel_cf_bypass.app.main:app --host 0.0.0.0 --port 8001
+pipenv run uvicorn squirrel_cf_bypass.app.main:app --host 0.0.0.0 --port 8002
 ```
 
 ## Endpoints

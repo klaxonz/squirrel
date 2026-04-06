@@ -132,7 +132,7 @@ function Show-Result {
     
     Write-Output ""
     Write-ColorOutput Blue "访问地址:"
-    Write-ColorOutput Green "  http://localhost:8000"
+    Write-ColorOutput Green "  http://localhost:8001"
     Write-Output ""
     
     Write-ColorOutput Blue "常用命令:"
