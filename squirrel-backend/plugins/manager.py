@@ -31,6 +31,7 @@ class PluginManager:
         self._installer = installer or PluginInstaller()
         self._supervisor = supervisor or PluginRuntimeSupervisor()
         self._gateway = gateway or PluginGateway(invocation_client=self._supervisor)
+        self._gateway.set_registration_refresh(self._refresh_gateway_registrations)
 
     @property
     def gateway(self) -> PluginGateway:
@@ -181,6 +182,25 @@ class PluginManager:
     def reload_enabled_plugins(self) -> List[PluginInstallRecord]:
         self.shutdown_all()
         return self.bootstrap_enabled_plugins()
+
+    def _refresh_gateway_registrations(self) -> None:
+        self.discover_plugins()
+        existing_plugin_ids = {registration.plugin_id for registration in self._gateway.list_registrations()}
+        active_plugin_ids: set[str] = set()
+
+        for record in self._store.list_records():
+            active_plugin_ids.add(record.plugin_id)
+            if not record.enabled:
+                self._gateway.unregister_plugin(record.plugin_id)
+                continue
+            self._gateway.register_manifest(
+                plugin_id=record.plugin_id,
+                version=record.version,
+                manifest=PluginManifest.from_dict(record.manifest),
+            )
+
+        for plugin_id in existing_plugin_ids - active_plugin_ids:
+            self._gateway.unregister_plugin(plugin_id)
 
     def _discover_local_runtime_plugins(self) -> None:
         plugins_root = self._installer._base_dir.parent.parent / 'squirrel-plugins'

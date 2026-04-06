@@ -42,3 +42,35 @@ def test_gateway_uses_manifest_capability_timeout_when_request_timeout_is_omitte
     assert response.ok is True
     assert client.last_request is not None
     assert client.last_request.timeout_ms == 30000
+
+
+def test_gateway_refreshes_registrations_once_before_returning_route_miss():
+    client = _RecordingInvocationClient()
+    refresh_calls = []
+    gateway = PluginGateway(invocation_client=client)
+
+    def _refresh():
+        refresh_calls.append('called')
+        gateway.register_manifest(
+            plugin_id='youporn',
+            version='0.1.0',
+            manifest=PluginManifest(
+                plugin_id='youporn',
+                version='0.1.0',
+                capabilities=[
+                    PluginCapability(name='resolve_subscription', timeout_ms=30000),
+                ],
+                sites=[
+                    PluginSiteManifest(site_name='youporn', domains=['youporn.com']),
+                ],
+            ),
+        )
+
+    gateway.set_registration_refresh(_refresh)
+
+    response = gateway.invoke('resolve_subscription', domain='youporn.com')
+
+    assert response.ok is True
+    assert refresh_calls == ['called']
+    assert client.last_target is not None
+    assert client.last_target.plugin_id == 'youporn'

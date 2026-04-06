@@ -8,6 +8,7 @@ from plugins.installer import PluginInstaller
 from plugins.manager import PluginManager
 from plugins.models import PluginInstallRecord
 from plugins.store import PluginInstallStore
+from plugins.runtime_models import PluginCapability, PluginManifest, PluginSiteManifest
 
 
 def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path):
@@ -104,3 +105,39 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path):
     assert [item['name'] for item in record.manifest['capabilities']] == ['check_login_status', 'resolve_playback']
     assert record.manifest['capabilities'][0]['timeout_ms'] == 30000
     assert record.granted_permissions == ['network:http', 'cookies:read:site/javdb']
+
+
+def test_manager_gateway_rebuilds_enabled_registrations_on_route_miss(tmp_path):
+    repo_root = tmp_path / 'repo'
+    store = PluginInstallStore(data_path=repo_root / 'config' / 'plugin_runtime_v2' / 'installations.json')
+    store.upsert(
+        PluginInstallRecord(
+            plugin_id='youporn',
+            version='0.1.0',
+            install_path=str(repo_root / 'squirrel-plugins' / 'youporn'),
+            entrypoint='squirrel_youporn.runtime:get_plugin_runtime',
+            enabled=True,
+            manifest=PluginManifest(
+                plugin_id='youporn',
+                version='0.1.0',
+                capabilities=[
+                    PluginCapability(name='resolve_subscription', timeout_ms=30000),
+                ],
+                sites=[
+                    PluginSiteManifest(site_name='youporn', domains=['youporn.com']),
+                ],
+            ).to_dict(),
+            runtime_path=str(repo_root / 'squirrel-plugins' / 'youporn' / 'src'),
+            metadata={'source': 'workspace'},
+        ),
+    )
+
+    manager = PluginManager(
+        store=store,
+        installer=PluginInstaller(base_dir=repo_root / 'config' / 'plugin_runtime_v2'),
+    )
+
+    route = manager.gateway.resolve_route('resolve_subscription', domain='youporn.com')
+
+    assert route is not None
+    assert route.plugin_id == 'youporn'

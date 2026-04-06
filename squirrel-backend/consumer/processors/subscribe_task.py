@@ -47,4 +47,5 @@ def process_subscribe_message(message: Dict[str, Any]):
         logger.error(f"Invalid message format: {e}", exc_info=True)
     except Exception as e:
         logger.error(f"Failed to process subscribe message: {e}", exc_info=True)
+        raise
 

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import logging
 import uuid
-from typing import Dict, List, Optional, Protocol
+from typing import Callable, Dict, List, Optional, Protocol
 
 from crawl import (
     PluginInvokeRequest,
@@ -11,6 +12,8 @@ from crawl import (
 
 from .models import PluginCapabilityRegistration, PluginRoutingTarget
 from .runtime_models import PluginManifest
+
+logger = logging.getLogger(__name__)
 
 
 class PluginInvocationClient(Protocol):
@@ -23,9 +26,17 @@ class PluginInvocationClient(Protocol):
 class PluginGateway:
     """Route capability requests to runtime targets."""
 
-    def __init__(self, invocation_client: Optional[PluginInvocationClient] = None) -> None:
+    def __init__(
+        self,
+        invocation_client: Optional[PluginInvocationClient] = None,
+        registration_refresh: Optional[Callable[[], None]] = None,
+    ) -> None:
         self._invocation_client = invocation_client
+        self._registration_refresh = registration_refresh
         self._registrations: List[PluginCapabilityRegistration] = []
+
+    def set_registration_refresh(self, callback: Optional[Callable[[], None]]) -> None:
+        self._registration_refresh = callback
 
     def register_manifest(self, plugin_id: str, version: str, manifest: PluginManifest) -> None:
         self.unregister_plugin(plugin_id)
@@ -49,7 +60,7 @@ class PluginGateway:
     def list_registrations(self) -> List[PluginCapabilityRegistration]:
         return list(self._registrations)
 
-    def _resolve_registration(
+    def _find_registration(
         self,
         capability: str,
         site_name: Optional[str] = None,
@@ -64,6 +75,30 @@ class PluginGateway:
             if normalized_domain and normalized_domain in {item.lower() for item in registration.domains}:
                 return registration
         return None
+
+    def _resolve_registration(
+        self,
+        capability: str,
+        site_name: Optional[str] = None,
+        domain: Optional[str] = None,
+    ) -> Optional[PluginCapabilityRegistration]:
+        registration = self._find_registration(capability=capability, site_name=site_name, domain=domain)
+        if registration is not None or self._registration_refresh is None:
+            return registration
+
+        try:
+            self._registration_refresh()
+        except Exception:
+            logger.warning(
+                'Plugin registration refresh failed while resolving capability=%s site_name=%s domain=%s',
+                capability,
+                site_name,
+                domain,
+                exc_info=True,
+            )
+            return None
+
+        return self._find_registration(capability=capability, site_name=site_name, domain=domain)
 
     def resolve_route(
         self,
