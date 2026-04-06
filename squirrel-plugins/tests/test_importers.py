@@ -447,6 +447,23 @@ class ImporterTests(unittest.TestCase):
             self.assertEqual(batch.cursor_payload, {'page': 2})
             self.assertEqual(batch.stop_reason, 'batch_exhausted')
 
+    def test_javdb_importer_raises_when_bypass_returns_gateway_error_page(self):
+        with _stub_javdb_importer_dependencies() as (responses, soups):
+            module = _load_javdb_importer_module()
+
+            error_html = (
+                '<!DOCTYPE html><html><head>'
+                '<title>javdb.com | 502: Bad gateway</title>'
+                '</head><body><div id="cf-error-details"></div></body></html>'
+            )
+            responses.append(_FakeResponse(error_html))
+            soups[error_html] = _FakeSoup(select_map={})
+
+            importer = module.JavdbUserSubscriptionImporter()
+
+            with self.assertRaisesRegex(RuntimeError, 'gateway error page'):
+                importer.get_user_subscriptions_batch()
+
 
 if __name__ == '__main__':
     unittest.main()

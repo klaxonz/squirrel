@@ -17,6 +17,19 @@ from .html_client import DEFAULT_JAVDB_TIMEOUT_SECONDS, fetch_javdb_html
 logger = logging.getLogger(__name__)
 
 
+def _detect_javdb_error_page(body: str) -> str | None:
+    normalized_body = str(body or '').lower()
+    if not normalized_body:
+        return None
+    if '<title>just a moment' in normalized_body:
+        return 'challenge'
+    if 'cf-error-details' in normalized_body and (
+        'bad gateway' in normalized_body or 'error code 502' in normalized_body
+    ):
+        return 'gateway'
+    return None
+
+
 class JavdbUserSubscriptionImporter:
     """
     从 JavDB 导入用户的订阅列表
@@ -75,6 +88,11 @@ class JavdbUserSubscriptionImporter:
             use_rate_limit=False,
         )
         response.raise_for_status()
+        error_type = _detect_javdb_error_page(response.text or '')
+        if error_type == 'gateway':
+            raise RuntimeError('JavDB returned a gateway error page while loading subscriptions')
+        if error_type == 'challenge':
+            raise RuntimeError('JavDB returned a Cloudflare challenge page while loading subscriptions')
         return BeautifulSoup(response.text, 'html.parser')
 
     def _build_page_url(self, page: int) -> str:

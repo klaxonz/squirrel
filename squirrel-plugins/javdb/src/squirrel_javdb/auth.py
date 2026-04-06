@@ -16,6 +16,19 @@ _CHECK_URL = "https://javdb.com/users/collection_actors"
 _LOGIN_REDIRECT = re.compile(r"/(users/)?(sign_in|login)")
 
 
+def _looks_like_javdb_error_page(body: str) -> bool:
+    normalized_body = str(body or '').lower()
+    if not normalized_body:
+        return False
+    if '<title>just a moment' in normalized_body:
+        return True
+    if 'cf-error-details' in normalized_body and (
+        'bad gateway' in normalized_body or 'error code 502' in normalized_body
+    ):
+        return True
+    return False
+
+
 def check_javdb_login_status() -> LoginStatusResult:
     site_name = "javdb"
     login_config = get_login_config(site_name)
@@ -74,6 +87,13 @@ def check_javdb_login_status() -> LoginStatusResult:
             site_name=site_name,
             logged_in=False,
             message="返回内容显示为登录页",
+        )
+
+    if _looks_like_javdb_error_page(body):
+        return LoginStatusResult(
+            site_name=site_name,
+            logged_in=False,
+            message='返回内容显示为站点错误页',
         )
 
     username = None
