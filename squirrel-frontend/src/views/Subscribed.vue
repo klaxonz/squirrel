@@ -3,6 +3,7 @@
     <section class="subscribed-shell">
       <div class="toolbar-container">
         <FeedToolbar
+          class="subscribed-toolbar"
           :show-tabs="false"
           :tabs-with-counts="[]"
           :nsfw="nsfw"
@@ -13,11 +14,11 @@
           @refresh="refreshList"
         >
           <template #actions>
-            <Button size="sm" class="whitespace-nowrap" @click="showAddDialog = true">
+            <Button size="xs" class="subscribed-toolbar__button whitespace-nowrap" @click="showAddDialog = true">
               <PlusIcon class="h-4 w-4" />
               <span>添加订阅</span>
             </Button>
-            <Button size="sm" variant="secondary" class="whitespace-nowrap" @click="showImportDialog = true">
+            <Button size="xs" variant="secondary" class="subscribed-toolbar__button subscribed-toolbar__button--secondary whitespace-nowrap" @click="showImportDialog = true">
               <ArrowDownTrayIcon class="h-4 w-4" />
               <span>导入订阅</span>
             </Button>
@@ -624,6 +625,25 @@ onUnmounted(() => {
 
 .subscribed-shell {
   padding-top: 0.5rem;
+}
+
+.subscribed-toolbar {
+  padding: 1rem 0;
+}
+
+.subscribed-toolbar :deep(.toolbar-slot-actions) {
+  gap: 0.5rem;
+}
+
+.subscribed-toolbar__button {
+  gap: 0.35rem;
+  padding-inline: 0.65rem;
+  border-radius: calc(var(--radius-sm) + 1px);
+}
+
+.subscribed-toolbar__button--secondary {
+  border-color: hsl(var(--border) / 0.55);
+  background: hsl(var(--background) / 0.65);
 }
 
 .channel-container {
