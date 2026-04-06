@@ -24,30 +24,7 @@ echo -e "${BLUE}Squirrel 快速部署脚本${NC}"
 echo -e "${BLUE}========================${NC}"
 echo ""
 
-# 全局变量
-STANDALONE_MODE=false
 COMPOSE_FILE="docker-compose.yaml"
-
-# 选择部署模式
-select_deployment_mode() {
-    echo -e "${YELLOW}请选择部署模式:${NC}"
-    echo -e "  ${GREEN}1)${NC} 完整部署 (包含 PostgreSQL 和 Redis)"
-    echo -e "  ${GREEN}2)${NC} 独立部署 (使用已有的 PostgreSQL 和 Redis)"
-    echo ""
-    read -p "请选择 (1/2，默认为 1): " -r mode
-    echo ""
-    
-    if [[ "$mode" == "2" ]]; then
-        STANDALONE_MODE=true
-        COMPOSE_FILE="docker-compose.standalone.yaml"
-        echo -e "${BLUE}✓ 已选择: 独立部署模式${NC}"
-    else
-        STANDALONE_MODE=false
-        COMPOSE_FILE="docker-compose.yaml"
-        echo -e "${BLUE}✓ 已选择: 完整部署模式${NC}"
-    fi
-    echo ""
-}
 
 # 检查 Docker 和 Docker Compose
 check_requirements() {
@@ -80,21 +57,7 @@ create_env_file() {
         cp env.example .env
         echo -e "${GREEN}✓ .env 文件创建成功（已从 env.example 复制）${NC}"
         
-        if [ "$STANDALONE_MODE" = true ]; then
-            echo -e "${YELLOW}独立部署提示：请编辑 .env 文件，根据注释修改以下配置：${NC}"
-            echo -e "  - REDIS_HOST（改为外部 Redis 地址）"
-            echo -e "  - REDIS_PASSWORD（改为实际密码）"
-            echo -e "  - POSTGRES_HOST（改为外部 PostgreSQL 地址）"
-            echo -e "  - POSTGRES_PASSWORD（改为实际密码）"
-            echo ""
-            read -p "是否现在编辑 .env 文件？(y/N): " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                ${EDITOR:-nano} .env
-            fi
-        else
-            echo -e "${YELLOW}提示：建议修改 .env 文件中的默认密码${NC}"
-        fi
+        echo -e "${YELLOW}提示：部署前请检查 .env 中的密码、缩略图路径和 Cloudflare 服务地址${NC}"
     else
         echo -e "${RED}错误: 未找到 env.example 文件${NC}"
         exit 1
@@ -104,16 +67,8 @@ create_env_file() {
 # 创建必要的目录
 create_directories() {
     echo -e "${YELLOW}[3/5] 创建必要的目录...${NC}"
-    
-    if [ "$STANDALONE_MODE" = true ]; then
-        # 独立部署：不需要数据库数据目录
-        mkdir -p config logs downloads plugins_ext
-        chmod -R 755 config logs downloads plugins_ext
-    else
-        # 完整部署：需要数据库数据目录
-        mkdir -p config logs downloads postgres/data redis/data
-        chmod -R 755 config logs downloads postgres/data redis/data
-    fi
+    mkdir -p config logs downloads thumbnails postgres/data redis/data
+    chmod -R 755 config logs downloads thumbnails postgres/data redis/data
     
     echo -e "${GREEN}✓ 目录创建成功${NC}"
 }
@@ -174,15 +129,9 @@ show_result() {
     echo ""
     
     echo -e "${BLUE}常用命令:${NC}"
-    if [ "$STANDALONE_MODE" = true ]; then
-        echo -e "  查看日志: ${YELLOW}docker compose -f $COMPOSE_FILE logs -f${NC}"
-        echo -e "  停止服务: ${YELLOW}docker compose -f $COMPOSE_FILE down${NC}"
-        echo -e "  重启服务: ${YELLOW}docker compose -f $COMPOSE_FILE restart${NC}"
-    else
-        echo -e "  查看日志: ${YELLOW}docker compose logs -f${NC}"
-        echo -e "  停止服务: ${YELLOW}docker compose down${NC}"
-        echo -e "  重启服务: ${YELLOW}docker compose restart${NC}"
-    fi
+    echo -e "  查看日志: ${YELLOW}docker compose -f $COMPOSE_FILE logs -f${NC}"
+    echo -e "  停止服务: ${YELLOW}docker compose -f $COMPOSE_FILE down${NC}"
+    echo -e "  重启服务: ${YELLOW}docker compose -f $COMPOSE_FILE restart${NC}"
     echo ""
     
     echo -e "${BLUE}配置文件位置:${NC}"
@@ -190,18 +139,14 @@ show_result() {
     echo -e "  应用配置: ${YELLOW}./config/${NC}"
     echo -e "  日志文件: ${YELLOW}./logs/${NC}"
     echo -e "  下载目录: ${YELLOW}./downloads/${NC}"
+    echo -e "  缩略图目录: ${YELLOW}./thumbnails/${NC}"
     echo ""
     
-    if [ "$STANDALONE_MODE" = true ]; then
-        echo -e "${YELLOW}提示: 请确保外部数据库和 Redis 服务正常运行${NC}"
-    else
-        echo -e "${YELLOW}提示: 首次启动可能需要等待数据库初始化，请稍候${NC}"
-    fi
+    echo -e "${YELLOW}提示: 首次启动可能需要等待数据库初始化，请稍候${NC}"
 }
 
 # 主流程
 main() {
-    select_deployment_mode
     check_requirements
     create_env_file
     create_directories
@@ -212,5 +157,4 @@ main() {
 
 # 执行主流程
 main
-
 

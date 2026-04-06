@@ -23,8 +23,7 @@ networks:
 
 services:
   squirrel-cf-bypass:
-    build:
-      context: ./squirrel-cf-bypass
+    image: klaxonz/squirrel-cf-bypass:latest
     container_name: squirrel-cf-bypass
     restart: unless-stopped
     environment:
@@ -53,6 +52,7 @@ services:
       - TZ=Asia/Shanghai
       - REDIS_HOST=${REDIS_HOST:-redis}
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - THUMBNAILS_PATH=${THUMBNAILS_PATH:-/thumbnails}
     ports:
       - "8000:8000"
     volumes:
@@ -60,7 +60,6 @@ services:
       - ./logs:/app/logs
       - ./downloads:/downloads
       - ./thumbnails:/thumbnails
-      - ./plugins_ext:/app/squirrel-backend/plugins_ext
     networks:
       - squirrel-network
     depends_on:
@@ -89,12 +88,12 @@ services:
       - .env
     environment:
       - TZ=Asia/Shanghai
+      - THUMBNAILS_PATH=${THUMBNAILS_PATH:-/thumbnails}
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./downloads:/downloads
       - ./thumbnails:/thumbnails
-      - ./plugins_ext:/app/squirrel-backend/plugins_ext
     networks:
       - squirrel-network
     depends_on:
@@ -117,12 +116,12 @@ services:
       - .env
     environment:
       - TZ=Asia/Shanghai
+      - THUMBNAILS_PATH=${THUMBNAILS_PATH:-/thumbnails}
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./downloads:/downloads
       - ./thumbnails:/thumbnails
-      - ./plugins_ext:/app/squirrel-backend/plugins_ext
     networks:
       - squirrel-network
     depends_on:

@@ -47,7 +47,7 @@ cp env.example .env
 docker compose up -d
 ```
 
-Cloudflare bypass sidecar 现在也会随 compose 一起启动；容器内默认地址是 `http://squirrel-cf-bypass:8001`。
+Cloudflare bypass sidecar 现在也会随 compose 一起启动；容器内默认地址是 `http://squirrel-cf-bypass:8001`。如果在外部部署目录运行 compose，请确保同时准备好 `klaxonz/squirrel:latest` 和 `klaxonz/squirrel-cf-bypass:latest` 两个镜像。
 
 3. 访问应用：`http://localhost:8000`
 
@@ -118,7 +118,7 @@ docker compose up -d --no-deps squirrel
 mkdir -p config logs downloads postgres/data redis/data
 
 # 独立部署：不需要数据库数据目录
-mkdir -p config logs downloads plugins_ext
+mkdir -p config logs downloads thumbnails
 ```
 
 ### 📦 Docker Compose 使用
@@ -142,6 +142,7 @@ docker compose down -v
 
 - `squirrel-cf-bypass` 负责 backend 的 Cloudflare bypass 请求。
 - 容器部署时 `CLOUDFLARE_BYPASS_SERVICE_URL` 应指向 `http://squirrel-cf-bypass:8001`。
+- 外部部署目录运行 compose 时，需要单独提供 `klaxonz/squirrel-cf-bypass:latest` 镜像，而不是依赖本地 `./squirrel-cf-bypass` 构建上下文。
 
 ### 📊 服务说明
 
@@ -153,7 +154,6 @@ docker compose down -v
   - `./config:/app/config` - 配置文件
   - `./logs:/app/logs` - 日志文件
   - `./downloads:/downloads` - 下载的媒体文件
-  - `./plugins_ext:/app/squirrel-backend/plugins_ext` - 插件目录
 
 #### Redis
 
@@ -249,8 +249,6 @@ Squirrel 支持通过插件系统扩展更多视频平台。
   - `youtube/` - YouTube 插件
   - `javdb/` - JavDB 插件
   - `pornhub/` - PornHub 插件
-- `plugin_packages/` - 构建产物（zip 包）
-- `squirrel-backend/plugins_ext/` - 插件运行时目录
 
 ## 故障排查
 

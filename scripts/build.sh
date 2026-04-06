@@ -10,14 +10,21 @@ NC='\033[0m' # No Color
 
 # 配置
 IMAGE_NAME="klaxonz/squirrel"
+CF_BYPASS_IMAGE_NAME="klaxonz/squirrel-cf-bypass"
 BASE_IMAGE_NAME="ghcr.io/klaxonz/squirrel-base"
 PLATFORM="linux/amd64,linux/arm64"
 
 # 获取版本号
 VERSION=$(grep '__version__' squirrel-backend/__init__.py | awk -F "'" '{print $2}')
+CF_BYPASS_VERSION=$(grep '__version__' squirrel-cf-bypass/src/squirrel_cf_bypass/__init__.py | awk -F "'" '{print $2}')
 
 if [ -z "$VERSION" ]; then
     echo -e "${RED}错误: 无法从 squirrel-backend/__init__.py 获取版本号${NC}"
+    exit 1
+fi
+
+if [ -z "$CF_BYPASS_VERSION" ]; then
+    echo -e "${RED}错误: 无法从 squirrel-cf-bypass 获取版本号${NC}"
     exit 1
 fi
 
@@ -32,7 +39,6 @@ usage() {
     -p, --push              推送镜像到仓库
     -m, --multi-platform    构建多平台镜像 (linux/amd64,linux/arm64)
     --no-cache              不使用缓存构建
-    --skip-plugins          跳过插件构建
 
 示例:
     $0                      # 仅构建应用镜像
@@ -48,7 +54,6 @@ BUILD_BASE=false
 PUSH=false
 MULTI_PLATFORM=false
 NO_CACHE=""
-SKIP_PLUGINS=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -72,10 +77,6 @@ while [[ $# -gt 0 ]]; do
             NO_CACHE="--no-cache"
             shift
             ;;
-        --skip-plugins)
-            SKIP_PLUGINS=true
-            shift
-            ;;
         *)
             echo -e "${RED}未知选项: $1${NC}"
             usage
@@ -83,22 +84,6 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
-
-# 构建插件
-build_plugins() {
-    if [ "$SKIP_PLUGINS" = false ]; then
-        echo -e "${YELLOW}==> 构建插件...${NC}"
-        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        if [ -f "$SCRIPT_DIR/build_plugins.sh" ]; then
-            "$SCRIPT_DIR/build_plugins.sh" -d
-            echo -e "${GREEN}✓ 插件构建完成${NC}"
-        else
-            echo -e "${YELLOW}⚠ 未找到 build_plugins.sh，跳过插件构建${NC}"
-        fi
-    else
-        echo -e "${YELLOW}==> 跳过插件构建${NC}"
-    fi
-}
 
 # 构建基础镜像
 build_base_image() {
@@ -157,15 +142,42 @@ build_app_image() {
     echo -e "${GREEN}✓ 应用镜像构建完成${NC}"
 }
 
+build_cf_bypass_image() {
+    echo -e "${YELLOW}==> 构建 sidecar 镜像 $CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION...${NC}"
+
+    if [ "$MULTI_PLATFORM" = true ]; then
+        echo -e "${YELLOW}构建多平台 sidecar 镜像 ($PLATFORM)...${NC}"
+        if [ "$PUSH" = true ]; then
+            docker buildx build \
+                --platform $PLATFORM \
+                --push \
+                $NO_CACHE \
+                -t "$CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION" \
+                -t "$CF_BYPASS_IMAGE_NAME:latest" \
+                ./squirrel-cf-bypass
+        else
+            echo -e "${RED}错误: 多平台构建需要推送到仓库，请添加 -p 参数${NC}"
+            exit 1
+        fi
+    else
+        docker build $NO_CACHE -t "$CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION" ./squirrel-cf-bypass
+        docker tag "$CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION" "$CF_BYPASS_IMAGE_NAME:latest"
+
+        if [ "$PUSH" = true ]; then
+            docker push "$CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION"
+            docker push "$CF_BYPASS_IMAGE_NAME:latest"
+        fi
+    fi
+
+    echo -e "${GREEN}✓ sidecar 镜像构建完成${NC}"
+}
+
 # 主流程
 echo -e "${GREEN}=====================================${NC}"
 echo -e "${GREEN}   Squirrel Docker 镜像构建工具${NC}"
 echo -e "${GREEN}=====================================${NC}"
 echo -e "版本号: ${YELLOW}$VERSION${NC}"
 echo ""
-
-# 构建插件
-build_plugins
 
 # 构建基础镜像
 if [ "$BUILD_BASE" = true ]; then
@@ -174,6 +186,9 @@ fi
 
 # 构建应用镜像
 build_app_image
+
+# 构建 Cloudflare bypass sidecar 镜像
+build_cf_bypass_image
 
 # 总结
 echo ""
@@ -186,6 +201,8 @@ if [ "$BUILD_BASE" = true ]; then
 fi
 echo -e "  - ${YELLOW}$IMAGE_NAME:$VERSION${NC}"
 echo -e "  - ${YELLOW}$IMAGE_NAME:latest${NC}"
+echo -e "  - ${YELLOW}$CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION${NC}"
+echo -e "  - ${YELLOW}$CF_BYPASS_IMAGE_NAME:latest${NC}"
 
 if [ "$PUSH" = true ]; then
     echo -e "\n${GREEN}✓ 镜像已推送到仓库${NC}"
@@ -194,4 +211,3 @@ fi
 echo ""
 echo -e "运行容器:"
 echo -e "  ${YELLOW}docker compose up -d${NC}"
-
