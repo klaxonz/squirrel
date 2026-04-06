@@ -3,6 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
+COPY scripts ./scripts
 COPY src ./src
 
 RUN apt-get update \
@@ -34,7 +35,7 @@ RUN apt-get update \
 ENV XDG_CACHE_HOME=/root/.cache
 
 RUN pip install --no-cache-dir . \
-    && python -m camoufox fetch
+    && python scripts/fetch_camoufox.py
 
 ENV CF_BYPASS_PORT=8002
 
