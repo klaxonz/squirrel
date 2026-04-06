@@ -60,6 +60,26 @@ def test_html_route_forwards_request_headers_to_solver():
     assert 'host' not in solver.calls[0]['custom_headers']
 
 
+def test_html_route_returns_502_when_solver_cannot_bypass():
+    class NullSolver(FakeSolver):
+        async def fetch_html(self, url, proxy=None, cached_record=None, custom_headers=None):
+            self.calls.append({
+                'url': url,
+                'proxy': proxy,
+                'cached_record': cached_record,
+                'custom_headers': custom_headers,
+            })
+            return None
+
+    solver = NullSolver()
+    client = TestClient(create_app(solver=solver))
+
+    response = client.get('/html', params={'url': 'https://missav.ai/search/DMOW-227'})
+
+    assert response.status_code == 502
+    assert response.json() == {'detail': 'Failed to bypass Cloudflare protection'}
+
+
 def test_cache_clear_endpoint_empties_runtime_state():
     solver = FakeSolver()
     client = TestClient(create_app(solver=solver))
