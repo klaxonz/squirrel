@@ -49,6 +49,7 @@ def test_site_catalog_builds_from_backend_runtime_manifest_models(monkeypatch):
             'enabled': True,
             'features': ['extract_video', 'resolve_playback'],
             'test_url': 'https://www.youtube.com',
+            'icon_url': '/api/plugins/sites/youtube/icon',
         }
     }
 
@@ -96,6 +97,46 @@ def test_site_catalog_builds_site_defaults_from_manifest_metadata(monkeypatch):
     assert catalog['youtube']['aliases'] == ['yt']
     assert catalog['youtube']['http']['headers']['User-Agent'] == 'UA'
     assert catalog['youtube']['domains'] == ['youtube.com', 'youtu.be']
+
+
+def test_site_catalog_builds_icon_url_from_plugin_assets_when_metadata_does_not_define_it(monkeypatch):
+    manifest = PluginManifest(
+        plugin_id='youporn',
+        version='0.1.0',
+        display_name='YouPorn',
+        capabilities=[PluginCapability(name='extract_video')],
+        sites=[
+            PluginSiteManifest(
+                site_name='youporn',
+                domains=['youporn.com'],
+                test_url='https://www.youporn.com',
+                metadata={
+                    'label': 'YouPorn',
+                    'aliases': ['yp'],
+                },
+            )
+        ],
+    )
+
+    monkeypatch.setattr(
+        'utils.site_catalog.get_plugin_manager',
+        lambda: SimpleNamespace(
+            get_snapshot=lambda: SimpleNamespace(
+                records=[
+                    SimpleNamespace(
+                        enabled=True,
+                        manifest=manifest.to_dict(),
+                    )
+                ]
+            )
+        ),
+    )
+    monkeypatch.setattr('utils.site_catalog.resolve_site_icon_path', lambda site_name: Path(f'/tmp/{site_name}.png'))
+    monkeypatch.setattr('utils.site_catalog.build_site_icon_url', lambda site_name: f'/api/plugins/sites/{site_name}/icon')
+
+    catalog = SiteCatalog.build_plugin_site_catalog()
+
+    assert catalog['youporn']['icon_url'] == '/api/plugins/sites/youporn/icon'
 
 
 def test_site_catalog_load_from_file_preserves_icon_url(monkeypatch, tmp_path):

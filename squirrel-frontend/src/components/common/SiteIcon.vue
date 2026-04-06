@@ -11,12 +11,13 @@
       loading="lazy"
       @error="loadFailed = true"
     >
-    <span v-else class="font-semibold uppercase" :class="textClass">{{ fallbackText }}</span>
+    <Globe v-else aria-hidden="true" :class="iconClass" />
   </span>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { Globe } from 'lucide-vue-next'
 
 const props = withDefaults(defineProps<{
   iconUrl?: string | null
@@ -34,13 +35,6 @@ const loadFailed = ref(false)
 
 watch(() => props.iconUrl, () => {
   loadFailed.value = false
-})
-
-const fallbackText = computed(() => {
-  const normalized = String(props.label || '')
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .toUpperCase()
-  return normalized.slice(0, 2) || '?'
 })
 
 const resolvedIconUrl = computed(() => {
@@ -63,10 +57,10 @@ const roundedClass = computed(() => {
   return 'rounded-md'
 })
 
-const textClass = computed(() => {
-  if (props.size === 'xs') return 'text-[8px]'
-  if (props.size === 'md') return 'text-[11px]'
-  if (props.size === 'lg') return 'text-xs'
-  return 'text-[9px]'
+const iconClass = computed(() => {
+  if (props.size === 'xs') return 'h-2.5 w-2.5'
+  if (props.size === 'md') return 'h-4 w-4'
+  if (props.size === 'lg') return 'h-5 w-5'
+  return 'h-3.5 w-3.5'
 })
 </script>

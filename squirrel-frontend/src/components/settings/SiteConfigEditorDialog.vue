@@ -7,9 +7,13 @@
       <!-- Header: 参照 PageHeader 风格 -->
       <div class="flex items-center justify-between px-8 py-6 border-b border-border/5">
         <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-            <Globe class="h-6 w-6" />
-          </div>
+          <SiteIcon
+            :icon-url="siteEditorForm.iconUrl"
+            :label="siteEditorForm.label || siteEditorForm.slug"
+            size="lg"
+            rounded="md"
+            class="h-12 w-12 rounded-2xl bg-primary/10 text-primary border-primary/10"
+          />
           <div>
             <h3 class="text-xl font-black tracking-tight text-foreground">站点配置</h3>
             <p class="text-[11px] text-muted-foreground/40 mt-0.5 font-bold uppercase tracking-widest">配置标识：{{ siteEditorForm.slug }}</p>
@@ -155,9 +159,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 
-import { AlertCircle, Loader2, Globe, Settings2, RefreshCcw, ShieldCheck } from 'lucide-vue-next'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
+import { AlertCircle, Loader2, Settings2, RefreshCcw, ShieldCheck } from 'lucide-vue-next'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

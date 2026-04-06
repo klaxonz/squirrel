@@ -59,9 +59,9 @@ def test_normalize_plugin_item_includes_site_icon_url_from_catalog(monkeypatch):
     snapshot = SimpleNamespace(runtimes=[])
 
     monkeypatch.setattr(
-        plugin_service.SiteCatalog,
-        'get_catalog',
-        classmethod(lambda cls: {'youtube': {'icon_url': '/api/plugins/sites/youtube/icon'}}),
+        plugin_service,
+        'get_effective_site_catalog',
+        lambda: {'youtube': {'icon_url': '/api/plugins/sites/youtube/icon'}},
     )
 
     normalized = plugin_service._normalize_plugin_item(record, snapshot)

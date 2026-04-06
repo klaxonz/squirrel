@@ -38,9 +38,13 @@
             <div class="flex items-start justify-between gap-6 relative z-10">
               <div class="min-w-0">
                 <div class="flex items-center gap-4">
-                  <div class="h-14 w-14 rounded-2xl bg-background/40 border border-border/10 flex items-center justify-center shrink-0 transition-all duration-700 group-hover:rotate-[10deg] group-hover:border-primary/40 group-hover:bg-primary/5">
-                    <span class="text-[13px] font-black text-muted-foreground/20 group-hover:text-primary/60">{{ site.slug.substring(0, 2).toUpperCase() }}</span>
-                  </div>
+                  <SiteIcon
+                    :icon-url="site.iconUrl"
+                    :label="site.label"
+                    size="lg"
+                    rounded="md"
+                    class="h-14 w-14 rounded-2xl bg-background/40 border border-border/10 transition-all duration-700 group-hover:rotate-[10deg] group-hover:border-primary/40 group-hover:bg-primary/5"
+                  />
                   <div class="min-w-0 transition-transform duration-500 group-hover:translate-x-1">
                     <div class="text-[15px] font-bold text-foreground tracking-tight truncate group-hover:text-primary transition-colors">{{ site.label }}</div>
                     <div class="text-[11px] text-muted-foreground/30 font-bold mt-0.5 tracking-wider">{{ site.slug }}</div>
@@ -85,11 +89,10 @@ import { ref, computed, onMounted } from 'vue';
 import { 
   Loader2, 
   Globe, 
-  AlertCircle, 
-  Settings2,
-  ExternalLink
+  AlertCircle
 } from 'lucide-vue-next';
 import { useSiteCatalog } from '@/composables/useSites';
+import SiteIcon from '@/components/common/SiteIcon.vue';
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import { Logger } from '@/utils/logger'
 
@@ -108,6 +111,7 @@ const siteList = computed(() => {
     enabled: info?.enabled !== false,
     test_url: info?.test_url || '',
     domains: info?.domains || [],
+    iconUrl: info?.icon_url || '',
   }));
 });
 

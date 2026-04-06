@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Set
 
 from plugins.manager import get_plugin_manager
 from plugins.runtime_models import PluginManifest
+from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 
 class SiteCatalog:
@@ -135,6 +136,8 @@ class SiteCatalog:
                     value = defaults.get(key)
                     if value is not None:
                         item[key] = value
+                if not item.get('icon_url') and resolve_site_icon_path(site.site_name):
+                    item['icon_url'] = build_site_icon_url(site.site_name)
                 existing_features = set(item.get('features') or [])
                 for feature in site.features:
                     if feature not in existing_features:
