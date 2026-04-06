@@ -22,6 +22,24 @@ networks:
     driver: bridge
 
 services:
+  squirrel-cf-bypass:
+    build:
+      context: ./squirrel-cf-bypass
+    container_name: squirrel-cf-bypass
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "8001:8001"
+    networks:
+      - squirrel-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=5).read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
   # ========================================
   # Squirrel 主服务（FastAPI Web 服务）
   # ========================================
@@ -46,6 +64,8 @@ services:
     networks:
       - squirrel-network
     depends_on:
+      squirrel-cf-bypass:
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:
@@ -78,6 +98,8 @@ services:
     networks:
       - squirrel-network
     depends_on:
+      squirrel-cf-bypass:
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:
@@ -104,6 +126,8 @@ services:
     networks:
       - squirrel-network
     depends_on:
+      squirrel-cf-bypass:
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:

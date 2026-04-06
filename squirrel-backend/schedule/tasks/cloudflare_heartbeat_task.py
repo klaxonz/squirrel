@@ -13,8 +13,8 @@ class CloudflareHeartbeatTask(BaseTask):
     def run(cls):
         try:
             client = get_default_client()
-            asyncio.run(client.clear_cache())
-            logger.info("CloudflareHeartbeatTask started")
+            asyncio.run(client.health())
+            logger.info('CloudflareHeartbeatTask health check passed')
         except Exception as e:
             logger.error(f"CloudflareHeartbeatTask error: {e}", exc_info=True)
 

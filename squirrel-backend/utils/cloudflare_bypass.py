@@ -88,6 +88,12 @@ class CloudflareMirrorClient:
             f"{self.service_url}/cache/clear",
         )
 
+    async def health(self):
+        return await self._send(
+            'GET',
+            f'{self.service_url}/health',
+        )
+
 
 _default_client: Optional[CloudflareMirrorClient] = None
 

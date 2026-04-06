@@ -47,6 +47,8 @@ cp env.example .env
 docker compose up -d
 ```
 
+Cloudflare bypass sidecar 现在也会随 compose 一起启动；容器内默认地址是 `http://squirrel-cf-bypass:8001`。
+
 3. 访问应用：`http://localhost:8000`
 
 #### 方式二：独立部署（使用已有的数据库和Redis）
@@ -61,9 +63,9 @@ cp env.example .env
 # - POSTGRES_PASSWORD=你的PostgreSQL密码
 ```
 
-2. 启动服务（仅启动 Squirrel，不启动数据库）：
+2. 启动服务（仅启动 Squirrel，不启动数据库；如需本地 Cloudflare bypass，一并启动 sidecar）：
 ```bash
-docker compose up -d --no-deps squirrel
+docker compose up -d --no-deps squirrel squirrel-cf-bypass
 ```
 
 3. 访问应用：`http://localhost:8000`
@@ -137,6 +139,9 @@ docker compose down
 # 停止服务并删除数据卷
 docker compose down -v
 ```
+
+- `squirrel-cf-bypass` 负责 backend 的 Cloudflare bypass 请求。
+- 容器部署时 `CLOUDFLARE_BYPASS_SERVICE_URL` 应指向 `http://squirrel-cf-bypass:8001`。
 
 ### 📊 服务说明
 

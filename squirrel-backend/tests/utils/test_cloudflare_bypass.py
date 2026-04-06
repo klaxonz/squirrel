@@ -51,3 +51,20 @@ def test_cloudflare_mirror_client_preserves_query_string_for_mirror_requests():
         'stream': True,
         'follow_redirects': True,
     }
+
+
+def test_cloudflare_mirror_client_uses_health_endpoint():
+    client = CloudflareMirrorClient('http://127.0.0.1:8003')
+    fake_httpx_client = _FakeAsyncHttpxClient()
+    client._client = fake_httpx_client
+
+    response = asyncio.run(client.health())
+
+    assert response == {
+        'method': 'GET',
+        'url': 'http://127.0.0.1:8003/health',
+        'params': None,
+        'headers': {},
+        'stream': False,
+        'follow_redirects': True,
+    }
