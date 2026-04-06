@@ -71,8 +71,6 @@ COPY --from=frontend-builder /app/squirrel-frontend/dist ./static
 RUN cd /app/squirrel-plugins/youtube/src/squirrel_youtube/node && \
     npm ci
 
-RUN npm install --global youtube-po-token-generator
-
 RUN mkdir -p /app/config /app/logs /downloads /thumbnails && \
     chmod -R 755 /app && \
     echo "Squirrel Docker Image Built at $(date)" > /app/BUILD_INFO
