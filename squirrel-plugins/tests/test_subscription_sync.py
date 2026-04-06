@@ -546,6 +546,29 @@ class SubscriptionSyncTests(unittest.TestCase):
             self.assertEqual(result.stop_reason, 'source_exhausted')
             self.assertFalse(result.has_more)
 
+    def test_javdb_get_subscribe_info_allows_missing_avatar(self):
+        with _stub_javdb_subscription_dependencies() as (responses, soups):
+            module = _load_javdb_subscription_module()
+
+            responses.append(_FakeResponse('javdb-actor-page'))
+            soups['javdb-actor-page'] = _FakeSoup({
+                '.actor-section-name': [_FakePageLabel('Demo Actor, Alias')],
+                '.avatar': [],
+            })
+
+            subscription = module.JavdbSubscription('https://javdb.com/actors/demo')
+            info = subscription.get_subscribe_info()
+
+            self.assertEqual(
+                info,
+                _SubscriptionMeta(
+                    'demo',
+                    'Demo Actor',
+                    None,
+                    'https://javdb.com/actors/demo',
+                ),
+            )
+
     def test_pornhub_full_sync_returns_continuation_cursor_for_next_page(self):
         with _stub_pornhub_subscription_dependencies() as (responses, soups):
             module = _load_pornhub_subscription_module()

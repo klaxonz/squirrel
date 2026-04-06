@@ -34,13 +34,27 @@ class JavdbSubscription:
         if ',' in name:
             name = name.split(',')[0]
 
-        avatar_el = bs4.select('.avatar')[0]
-        style = avatar_el['style']
-        avatar_match = re.search(r'url\((.*?)\)', style)
-        avatar = avatar_match.group(1) if avatar_match else None
+        avatar = self._extract_avatar(bs4)
         channel_id = self.url.split('/')[-1]
 
         return SubscriptionMeta(channel_id, name, avatar, self.url)
+
+    def _extract_avatar(self, bs4: BeautifulSoup) -> Optional[str]:
+        avatar_els = bs4.select('.avatar')
+        if not avatar_els:
+            return None
+
+        avatar_el = avatar_els[0]
+        style = avatar_el.get('style', '')
+        avatar_match = re.search(r'url\((.*?)\)', style)
+        if avatar_match:
+            return avatar_match.group(1)
+
+        image_els = avatar_el.select('img')
+        if image_els:
+            return image_els[0].get('src')
+
+        return None
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
         page = self._resolve_page(context)
