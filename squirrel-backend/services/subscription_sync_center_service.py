@@ -37,8 +37,13 @@ RUNTIME_REFRESH_INTERVAL_SECONDS = 30
 SYNC_CENTER_PREVIEW_LIMIT = 40
 SYNC_CENTER_RECENT_SCAN_MULTIPLIER = 4
 SYNC_CENTER_RECENT_SCAN_MAX = 200
+SITE_CATALOG_CACHE_TTL_SECONDS = 30
 _runtime_refresh_lock = Lock()
 _last_runtime_refresh_monotonic: float | None = None
+_site_catalog_cache_lock = Lock()
+_site_catalog_cache: dict[str, dict] | None = None
+_site_catalog_cache_expires_at_monotonic: float | None = None
+_site_icon_url_cache: dict[str, Optional[str]] = {}
 
 # 服务端缓存：记录上一轮 snapshot 返回过的 recent run_id，用于计算新增的已完成运行
 _recent_run_snapshot_cache: dict[int, set[str]] = {}
@@ -110,12 +115,43 @@ def _summarize_error(message: Optional[str]) -> Optional[str]:
     return first_line[:77] + '...'
 
 
+def _get_cached_site_catalog() -> dict[str, dict]:
+    global _site_catalog_cache
+    global _site_catalog_cache_expires_at_monotonic
+
+    now_tick = monotonic()
+    if (
+        _site_catalog_cache is not None
+        and _site_catalog_cache_expires_at_monotonic is not None
+        and now_tick < _site_catalog_cache_expires_at_monotonic
+    ):
+        return _site_catalog_cache
+
+    with _site_catalog_cache_lock:
+        now_tick = monotonic()
+        if (
+            _site_catalog_cache is not None
+            and _site_catalog_cache_expires_at_monotonic is not None
+            and now_tick < _site_catalog_cache_expires_at_monotonic
+        ):
+            return _site_catalog_cache
+
+        _site_catalog_cache = get_effective_site_catalog() or {}
+        _site_icon_url_cache.clear()
+        _site_catalog_cache_expires_at_monotonic = now_tick + SITE_CATALOG_CACHE_TTL_SECONDS
+        return _site_catalog_cache
+
+
 def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
     normalized_site = str(site or '').strip().lower()
     if not normalized_site:
         return None
 
-    catalog = get_effective_site_catalog()
+    cached_icon_url = _site_icon_url_cache.get(normalized_site)
+    if normalized_site in _site_icon_url_cache:
+        return cached_icon_url
+
+    catalog = _get_cached_site_catalog()
 
     if normalized_site in catalog:
         site_slug = normalized_site
@@ -134,12 +170,16 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
 
     icon_url = str((catalog_entry or {}).get('icon_url') or '').strip() or None
     if icon_url:
+        _site_icon_url_cache[normalized_site] = icon_url
         return icon_url
 
     fallback_slug = site_slug or normalized_site
     if resolve_site_icon_path(fallback_slug):
-        return build_site_icon_url(fallback_slug)
+        resolved_icon_url = build_site_icon_url(fallback_slug)
+        _site_icon_url_cache[normalized_site] = resolved_icon_url
+        return resolved_icon_url
 
+    _site_icon_url_cache[normalized_site] = None
     return None
 
 

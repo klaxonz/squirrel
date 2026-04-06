@@ -18,6 +18,12 @@ from services import video_extraction_center_service
 from services import video_extraction_projection_service
 
 
+def _reset_extraction_site_catalog_cache(monkeypatch):
+    monkeypatch.setattr(video_extraction_center_service, '_site_catalog_cache', None)
+    monkeypatch.setattr(video_extraction_center_service, '_site_catalog_cache_expires_at_monotonic', None)
+    monkeypatch.setattr(video_extraction_center_service, '_site_icon_url_cache', {})
+
+
 @contextmanager
 def _managed_session(engine):
     session = Session(engine, expire_on_commit=False)
@@ -406,6 +412,49 @@ def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(mon
 
     assert sorted(item.subscription_name for item in snapshot['runningPreview']) == ['Extract Running', 'Extract Running 2']
     assert sorted(item.subscription_name for item in snapshot['queuedPreview']) == ['Extract Queued', 'Extract Queued 2']
+
+
+def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(monkeypatch):
+    engine = _setup_env(monkeypatch)
+    _seed_tasks(engine)
+    _reset_extraction_site_catalog_cache(monkeypatch)
+
+    calls = []
+
+    def _fake_get_effective_site_catalog():
+        calls.append(1)
+        return {
+            'youtube': {
+                'domains': ['youtube.com', 'youtu.be'],
+                'icon_url': '/api/plugins/sites/youtube/icon',
+            },
+            'bilibili': {
+                'domains': ['bilibili.com', 'b23.tv'],
+                'icon_url': '/api/plugins/sites/bilibili/icon',
+            },
+        }
+
+    monkeypatch.setattr(video_extraction_center_service, 'get_effective_site_catalog', _fake_get_effective_site_catalog)
+
+    snapshot = video_extraction_center_service.get_extraction_dashboard_snapshot(user_id=1)
+
+    assert snapshot['runningPreview'][0].site_icon_url == '/api/plugins/sites/youtube/icon'
+    assert snapshot['queuedPreview'][0].site_icon_url == '/api/plugins/sites/bilibili/icon'
+    assert snapshot['recentPreview'][0].site_icon_url == '/api/plugins/sites/youtube/icon'
+    assert len(calls) == 1
+
+
+def test_extraction_site_icon_resolution_degrades_when_site_catalog_load_fails(monkeypatch):
+    _reset_extraction_site_catalog_cache(monkeypatch)
+    monkeypatch.setattr(
+        video_extraction_center_service,
+        'get_effective_site_catalog',
+        lambda: (_ for _ in ()).throw(PermissionError('installations.json is locked')),
+    )
+
+    icon_url = video_extraction_center_service._resolve_site_icon_url('youtube.com')
+
+    assert icon_url is None
 
 
 def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkeypatch):

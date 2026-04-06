@@ -1,4 +1,7 @@
 from datetime import datetime
+import logging
+from threading import Lock
+from time import monotonic
 from typing import Optional
 
 from sqlalchemy import case, func, select
@@ -14,6 +17,45 @@ from utils.site_catalog import SiteCatalog
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 EXTRACTION_PREVIEW_LIMIT = 40
+SITE_CATALOG_CACHE_TTL_SECONDS = 30
+_site_catalog_cache_lock = Lock()
+_site_catalog_cache: dict[str, dict] | None = None
+_site_catalog_cache_expires_at_monotonic: float | None = None
+_site_icon_url_cache: dict[str, Optional[str]] = {}
+logger = logging.getLogger(__name__)
+
+
+def _get_cached_site_catalog() -> dict[str, dict]:
+    global _site_catalog_cache
+    global _site_catalog_cache_expires_at_monotonic
+
+    now_tick = monotonic()
+    if (
+        _site_catalog_cache is not None
+        and _site_catalog_cache_expires_at_monotonic is not None
+        and now_tick < _site_catalog_cache_expires_at_monotonic
+    ):
+        return _site_catalog_cache
+
+    with _site_catalog_cache_lock:
+        now_tick = monotonic()
+        if (
+            _site_catalog_cache is not None
+            and _site_catalog_cache_expires_at_monotonic is not None
+            and now_tick < _site_catalog_cache_expires_at_monotonic
+        ):
+            return _site_catalog_cache
+
+        try:
+            catalog = get_effective_site_catalog() or {}
+        except Exception:
+            logger.warning('Failed to load effective site catalog for extraction center icons', exc_info=True)
+            catalog = _site_catalog_cache or {}
+
+        _site_catalog_cache = catalog
+        _site_icon_url_cache.clear()
+        _site_catalog_cache_expires_at_monotonic = now_tick + SITE_CATALOG_CACHE_TTL_SECONDS
+        return _site_catalog_cache
 
 
 def _format_datetime(value: Optional[datetime]) -> str:
@@ -47,13 +89,26 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
     if not normalized_site:
         return None
 
-    catalog = get_effective_site_catalog()
+    cached_icon_url = _site_icon_url_cache.get(normalized_site)
+    if normalized_site in _site_icon_url_cache:
+        return cached_icon_url
+
+    catalog = _get_cached_site_catalog()
 
     if normalized_site in catalog:
         site_slug = normalized_site
         catalog_entry = catalog[site_slug]
     else:
-        site_slug, catalog_entry = SiteCatalog.find_site_by_domain(normalized_site)
+        site_slug = None
+        catalog_entry = None
+
+        for slug, info in catalog.items():
+            domains = [str(domain or '').strip().lower() for domain in info.get('domains', []) if domain]
+            if any(normalized_site == domain or normalized_site.endswith(f'.{domain}') for domain in domains):
+                site_slug = slug
+                catalog_entry = info
+                break
+
         if not site_slug:
             site_slug = None
             catalog_entry = None
@@ -66,12 +121,16 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
 
     icon_url = str((catalog_entry or {}).get('icon_url') or '').strip() or None
     if icon_url:
+        _site_icon_url_cache[normalized_site] = icon_url
         return icon_url
 
     fallback_slug = site_slug or normalized_site
     if resolve_site_icon_path(fallback_slug):
-        return build_site_icon_url(fallback_slug)
+        resolved_icon_url = build_site_icon_url(fallback_slug)
+        _site_icon_url_cache[normalized_site] = resolved_icon_url
+        return resolved_icon_url
 
+    _site_icon_url_cache[normalized_site] = None
     return None
 
 

@@ -23,6 +23,12 @@ from services import subscription_sync_center_service, subscription_sync_history
 from utils.site_catalog import SiteCatalog
 
 
+def _reset_feed_site_catalog_cache(monkeypatch):
+    monkeypatch.setattr(subscription_sync_center_service, '_site_catalog_cache', None, raising=False)
+    monkeypatch.setattr(subscription_sync_center_service, '_site_catalog_cache_expires_at_monotonic', None, raising=False)
+    monkeypatch.setattr(subscription_sync_center_service, '_site_icon_url_cache', {}, raising=False)
+
+
 @contextmanager
 def _managed_session(engine):
     session = Session(engine, expire_on_commit=False)
@@ -459,6 +465,43 @@ def test_sync_center_feed_dashboard_snapshot_does_not_trim_running_or_queued_ite
 
     assert [item.subscription_name for item in snapshot['runningPreview']] == ['Running Earlier', 'Running Channel']
     assert [item.subscription_name for item in snapshot['queuedPreview']] == ['Queued First', 'Queued Second']
+
+
+def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(monkeypatch):
+    engine = _setup_projection_env(monkeypatch)
+    _seed_projection_data(engine)
+    monkeypatch.setattr(subscription_sync_center_service, '_refresh_runtime_sync_health', lambda force=False: None)
+    _reset_feed_site_catalog_cache(monkeypatch)
+
+    calls = []
+
+    def _fake_get_effective_site_catalog():
+        calls.append(1)
+        return {
+            'youtube': {
+                'domains': ['youtube.com', 'youtu.be'],
+                'icon_url': '/api/plugins/sites/youtube/icon',
+            },
+            'bilibili': {
+                'domains': ['bilibili.com', 'b23.tv'],
+                'icon_url': '/api/plugins/sites/bilibili/icon',
+            },
+        }
+
+    monkeypatch.setattr(subscription_sync_center_service, 'get_effective_site_catalog', _fake_get_effective_site_catalog)
+
+    snapshot = subscription_sync_center_service.get_feed_dashboard_snapshot(
+        user_id=1,
+        site=None,
+        query=None,
+        date_from='2026-04-02T00:00:00',
+        date_to='2026-04-03T00:00:00',
+    )
+
+    assert snapshot['runningPreview'][0].site_icon_url == '/api/plugins/sites/youtube/icon'
+    assert snapshot['queuedPreview'][0].site_icon_url == '/api/plugins/sites/bilibili/icon'
+    assert snapshot['recentRuns'][0]['site_icon_url'] == '/api/plugins/sites/youtube/icon'
+    assert len(calls) == 1
 
 
 def test_sync_center_overview_does_not_materialize_item_dtos(monkeypatch):

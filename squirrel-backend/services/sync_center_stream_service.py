@@ -81,12 +81,41 @@ async def stream_sync_center_events(
     redis_client=None,
     heartbeat_interval: int = SYNC_CENTER_HEARTBEAT_INTERVAL_SECONDS,
 ):
-    yield encode_sse_event('feed_snapshot', _load_feed_snapshot(user_id))
-    yield encode_sse_event('extract_snapshot', _load_extract_snapshot(user_id))
+    stream_started_at = monotonic()
+    logger.info(
+        'Opening sync-center SSE stream user_id=%s selected_run_id=%s',
+        user_id,
+        selected_run_id or '',
+    )
+
+    feed_snapshot = _load_feed_snapshot(user_id)
+    logger.info(
+        'Loaded sync-center SSE feed snapshot user_id=%s selected_run_id=%s elapsed_ms=%s',
+        user_id,
+        selected_run_id or '',
+        int((monotonic() - stream_started_at) * 1000),
+    )
+    yield encode_sse_event('feed_snapshot', feed_snapshot)
+
+    extract_snapshot = _load_extract_snapshot(user_id)
+    logger.info(
+        'Loaded sync-center SSE extract snapshot user_id=%s selected_run_id=%s elapsed_ms=%s',
+        user_id,
+        selected_run_id or '',
+        int((monotonic() - stream_started_at) * 1000),
+    )
+    yield encode_sse_event('extract_snapshot', extract_snapshot)
 
     run_detail_snapshot = _load_run_detail_snapshot(user_id, selected_run_id)
     if run_detail_snapshot is not None:
         yield encode_sse_event('run_detail', run_detail_snapshot)
+
+    logger.info(
+        'Loaded sync-center SSE initial snapshots user_id=%s selected_run_id=%s elapsed_ms=%s',
+        user_id,
+        selected_run_id or '',
+        int((monotonic() - stream_started_at) * 1000),
+    )
 
     client = redis_client or create_redis_client()
     pubsub = client.pubsub(ignore_subscribe_messages=True)
