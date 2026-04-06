@@ -434,6 +434,15 @@ watch(
   },
   { deep: true }
 );
+
+watch(
+  () => props.catalog,
+  () => {
+    if (!props.visible) return;
+    hydrateForm();
+  },
+  { deep: true }
+);
 </script>
 
 <style scoped>
