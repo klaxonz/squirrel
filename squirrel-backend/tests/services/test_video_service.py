@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -65,6 +65,12 @@ def _setup_test_env(monkeypatch):
         video_service.thumbnail_downloader_service,
         'get_thumbnail_url',
         lambda video_id, remote_url, video_url=None: remote_url,
+    )
+    monkeypatch.setattr(
+        video_service.thumbnail_downloader_service,
+        'get_thumbnail_url_map',
+        lambda items: {video_id: remote_url for video_id, remote_url, _video_url in items},
+        raising=False,
     )
     monkeypatch.setattr(
         video_service.SiteCatalog,
@@ -304,6 +310,92 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
     assert {sub['id'] for sub in videos[0]['subscriptions']} == {1, 2}
 
 
+def test_list_videos_uses_bulk_thumbnail_lookup(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Subscription(
+                id=1,
+                type='CHANNEL',
+                name='Feed A',
+                url='https://www.youtube.com/channel/A',
+                avatar='https://img.example.com/a.jpg',
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(
+                id=1,
+                user_id=7,
+                subscription_id=1,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            Video(
+                id=111,
+                title='Bulk thumbnail video',
+                url='https://www.youtube.com/watch?v=111',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/111.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=1,
+                video_id=111,
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 3, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+            ),
+        ])
+        session.commit()
+
+    bulk_calls = []
+
+    monkeypatch.setattr(
+        video_service.thumbnail_downloader_service,
+        'get_thumbnail_url',
+        lambda video_id, remote_url, video_url=None: (_ for _ in ()).throw(AssertionError('should use bulk thumbnail lookup')),
+    )
+    monkeypatch.setattr(
+        video_service.thumbnail_downloader_service,
+        'get_thumbnail_url_map',
+        lambda items: bulk_calls.append(items) or {video_id: f'bulk:{remote_url}' for video_id, remote_url, _video_url in items},
+        raising=False,
+    )
+
+    videos, total = video_service.list_videos(
+        user_id=7,
+        query=None,
+        subscription_id=None,
+        category='all',
+        sort_by='publish_date',
+        nsfw='all',
+        domains=None,
+        page=1,
+        page_size=10,
+        with_total=False,
+    )
+
+    assert total is None
+    assert len(bulk_calls) == 1
+    assert bulk_calls[0] == [(111, 'https://img.example.com/111.jpg', 'https://www.youtube.com/watch?v=111')]
+    assert videos[0]['thumbnail'] == 'bulk:https://img.example.com/111.jpg'
+
+
 def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkeypatch):
     engine = _setup_test_env(monkeypatch)
 
@@ -437,6 +529,153 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
     assert [video['id'] for video in videos] == [102]
 
 
+def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_rows(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    duplicate_subscription_count = 205
+    statements = []
+
+    @event.listens_for(engine, 'before_cursor_execute')
+    def _capture_sql(conn, cursor, statement, parameters, context, executemany):
+        normalized = ' '.join(str(statement).split())
+        statements.append(normalized)
+
+    with Session(engine, expire_on_commit=False) as session:
+        subscriptions = []
+        feed_rows = []
+        interactions = []
+
+        for subscription_id in range(1, duplicate_subscription_count + 1):
+            subscriptions.append(
+                Subscription(
+                    id=subscription_id,
+                    type='CHANNEL',
+                    name=f'Feed {subscription_id}',
+                    url=f'https://www.youtube.com/channel/{subscription_id}',
+                    avatar=f'https://img.example.com/{subscription_id}.jpg',
+                    description=None,
+                    total_videos=0,
+                    is_deleted=False,
+                    extra_data={},
+                    created_at=datetime(2024, 1, 1),
+                    updated_at=datetime(2024, 1, 1),
+                )
+            )
+            feed_rows.append(
+                UserVideoFeed(
+                    user_id=7,
+                    subscription_id=subscription_id,
+                    video_id=301,
+                    publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                    video_created_at=datetime(2024, 1, 3, 12, 0, 0),
+                    domain='youtube.com',
+                    is_nsfw=False,
+                    created_at=datetime(2024, 1, 3, 12, 0, 0),
+                    updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                )
+            )
+
+        subscriptions.append(
+            Subscription(
+                id=duplicate_subscription_count + 1,
+                type='CHANNEL',
+                name='Feed secondary',
+                url='https://www.youtube.com/channel/secondary',
+                avatar='https://img.example.com/secondary.jpg',
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            )
+        )
+        feed_rows.append(
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=duplicate_subscription_count + 1,
+                video_id=302,
+                publish_date=datetime(2024, 1, 2, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 2, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 2, 12, 0, 0),
+                updated_at=datetime(2024, 1, 2, 12, 0, 0),
+            )
+        )
+
+        session.add_all(subscriptions)
+        session.add_all([
+            Video(
+                id=301,
+                title='Primary liked video',
+                url='https://www.youtube.com/watch?v=301',
+                domain='youtube.com',
+                duration=240,
+                thumbnail='https://img.example.com/301.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            Video(
+                id=302,
+                title='Secondary liked video',
+                url='https://www.youtube.com/watch?v=302',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/302.jpg',
+                publish_date=datetime(2024, 1, 2, 12, 0, 0),
+                created_at=datetime(2024, 1, 2, 12, 0, 0),
+                updated_at=datetime(2024, 1, 2, 12, 0, 0),
+                is_deleted=False,
+            ),
+        ])
+        session.add_all(feed_rows)
+        session.add_all([
+            VideoInteraction(
+                user_id=7,
+                video_id=301,
+                interaction_type=1,
+                created_at=datetime(2024, 1, 3, 12, 5, 0),
+                updated_at=datetime(2024, 1, 3, 12, 5, 0),
+            ),
+            VideoInteraction(
+                user_id=7,
+                video_id=302,
+                interaction_type=1,
+                created_at=datetime(2024, 1, 2, 12, 5, 0),
+                updated_at=datetime(2024, 1, 2, 12, 5, 0),
+            ),
+        ])
+        session.commit()
+
+    videos, total = video_service.list_videos(
+        user_id=7,
+        query=None,
+        subscription_id=None,
+        category='liked',
+        sort_by='publish_date',
+        nsfw='all',
+        domains=None,
+        page=1,
+        page_size=2,
+        with_total=False,
+    )
+
+    liked_page_scans = [
+        statement for statement in statements
+        if 'FROM user_video_feed' in statement
+        and 'video_interaction' in statement
+        and 'GROUP BY' not in statement
+        and 'JOIN subscription ON subscription.id = user_video_feed.subscription_id' not in statement
+    ]
+
+    assert total is None
+    assert [video['id'] for video in videos] == [301, 302]
+    assert liked_page_scans == []
+
+
 def test_get_video_counts_uses_feed_rows_for_realtime_counts(monkeypatch):
     engine = _setup_test_env(monkeypatch)
 
@@ -511,3 +750,56 @@ def test_get_video_counts_uses_feed_rows_for_realtime_counts(monkeypatch):
         'liked': 0,
         'later': 0,
     }
+
+
+def test_get_video_counts_does_not_order_candidate_videos(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    statements = []
+
+    @event.listens_for(engine, 'before_cursor_execute')
+    def _capture_sql(conn, cursor, statement, parameters, context, executemany):
+        statements.append(' '.join(str(statement).split()))
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Video(
+                id=401,
+                title='Counted video',
+                url='https://www.youtube.com/watch?v=401',
+                domain='youtube.com',
+                duration=100,
+                thumbnail='https://img.example.com/401.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=1,
+                video_id=401,
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 3, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+            ),
+        ])
+        session.commit()
+
+    counts = video_service.get_video_counts(
+        user_id=7,
+        query=None,
+        subscription_id=None,
+        nsfw='all',
+        domains=None,
+    )
+
+    count_query_sql = next(
+        statement for statement in statements
+        if 'count(*) FILTER' in statement or 'count(*) AS all_count' in statement.lower()
+    )
+
+    assert counts['all'] == 1
+    assert ' ORDER BY ' not in count_query_sql.upper()

@@ -1,6 +1,7 @@
 """
 缩略图下载服务 - 负责下载缩略图到本地
 """
+from datetime import datetime
 import logging
 import os
 import time
@@ -9,18 +10,21 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
+from sqlalchemy import select
 
+from core.database import get_session
 from core.config import settings
-from utils.url_helper import get_site_from_url
-from core.site_config_manager import get_effective_site_catalog
 from common.site_constants import SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD, SITE_META_OFFLINE_THUMBNAILS_DISPLAY
+from core.site_config_manager import get_effective_site_catalog
+from models.video_thumbnail_local_index import VideoThumbnailLocalIndex
+from utils.url_helper import get_site_from_url
 
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 1000
 SUPPORTED_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif")
 _EFFECTIVE_CATALOG_CACHE_TTL = 10.0
-_BATCH_INDEX_CACHE_TTL = 30.0
+_BATCH_INDEX_CACHE_TTL = 300.0
 _BATCH_INDEX_CACHE_MAX_BATCHES = 64
 
 _DEFAULT_HEADERS = {
@@ -138,6 +142,73 @@ class ThumbnailDownloaderService:
         self._batch_index_cache[batch_dir] = (index, time.time())
         self._batch_index_cache.move_to_end(batch_dir)
 
+    def _build_static_thumbnail_url(self, batch_name: str, filename: str) -> str:
+        return f'/static/thumbnails/{batch_name}/{filename}'
+
+    def _upsert_local_thumbnail_index(
+        self,
+        video_id: int,
+        batch_name: str,
+        filename: str,
+        exists: bool = True,
+    ) -> None:
+        now = datetime.now()
+        try:
+            with get_session() as session:
+                record = session.scalars(
+                    select(VideoThumbnailLocalIndex)
+                    .where(VideoThumbnailLocalIndex.video_id == video_id)
+                ).first()
+                if record is None:
+                    session.add(VideoThumbnailLocalIndex(
+                        video_id=video_id,
+                        batch_name=batch_name,
+                        filename=filename,
+                        exists=exists,
+                        indexed_at=now,
+                        created_at=now,
+                        updated_at=now,
+                    ))
+                    return
+
+                record.batch_name = batch_name
+                record.filename = filename
+                record.exists = exists
+                record.indexed_at = now
+                record.updated_at = now
+        except Exception as e:
+            logger.warning(f'Failed to update thumbnail local index: video_id={video_id}, error={e}')
+
+    def _get_local_thumbnail_path_map(
+        self,
+        indexed_items: list[tuple[int, Optional[str], Optional[str]]],
+    ) -> dict[int, str]:
+        video_ids = [video_id for video_id, _remote_url, _video_url in indexed_items]
+        if not video_ids:
+            return {}
+
+        try:
+            with get_session() as session:
+                rows = session.execute(
+                    select(
+                        VideoThumbnailLocalIndex.video_id,
+                        VideoThumbnailLocalIndex.batch_name,
+                        VideoThumbnailLocalIndex.filename,
+                    )
+                    .where(
+                        VideoThumbnailLocalIndex.video_id.in_(video_ids),
+                        VideoThumbnailLocalIndex.exists.is_(True),
+                    )
+                ).all()
+        except Exception as e:
+            logger.warning(f'Failed to read thumbnail local index: error={e}')
+            return {}
+
+        return {
+            row.video_id: self._build_static_thumbnail_url(row.batch_name, row.filename)
+            for row in rows
+        }
+
     def download_thumbnail(
         self,
         video_id: int,
@@ -168,9 +239,11 @@ class ThumbnailDownloaderService:
 
             ext = self._get_extension(thumbnail_url)
             file_path = os.path.join(batch_dir, f"{video_id}{ext}")
+            batch_name = os.path.basename(batch_dir)
 
             if os.path.exists(file_path):
                 logger.debug(f"Thumbnail already exists: {file_path}")
+                self._upsert_local_thumbnail_index(video_id, batch_name, os.path.basename(file_path), exists=True)
                 return file_path
 
             client = self._get_http_client()
@@ -196,6 +269,7 @@ class ThumbnailDownloaderService:
                 f.write(resp.content)
 
             self._upsert_batch_index_entry(batch_dir, video_id, os.path.basename(file_path))
+            self._upsert_local_thumbnail_index(video_id, batch_name, os.path.basename(file_path), exists=True)
             logger.info(f"Thumbnail downloaded: video_id={video_id}, path={file_path}")
             return file_path
 
@@ -259,15 +333,23 @@ class ThumbnailDownloaderService:
         batch_dir = self._get_batch_dir(video_id)
         return video_id in self._get_batch_index(batch_dir)
 
-    def _get_local_thumbnail_path(self, video_id: int) -> Optional[str]:        
+    def _get_local_thumbnail_path(self, video_id: int, remote_url: Optional[str] = None) -> Optional[str]:
         """获取本地封面的静态URL路径"""
         batch_dir = self._get_batch_dir(video_id)
+        batch_name = os.path.basename(batch_dir)
+
+        if remote_url:
+            filename = f"{video_id}{self._get_extension(remote_url)}"
+            file_path = os.path.join(batch_dir, filename)
+            if os.path.exists(file_path):
+                return self._build_static_thumbnail_url(batch_name, filename)
+            return None
+
         batch_index = self._get_batch_index(batch_dir)
         filename = batch_index.get(video_id)
         if filename is None:
             return None
-        batch_name = os.path.basename(batch_dir)
-        return f"/static/thumbnails/{batch_name}/{filename}"
+        return self._build_static_thumbnail_url(batch_name, filename)
 
     def _should_use_offline(self, site_name: str) -> bool:
         """检查是否应该使用离线封面"""
@@ -279,6 +361,48 @@ class ThumbnailDownloaderService:
         except Exception as e:
             logger.warning(f"Failed to check thumbnail display config: {e}")
             return False
+
+    def get_thumbnail_url_map(
+        self,
+        items: list[tuple[int, Optional[str], Optional[str]]]
+    ) -> dict[int, Optional[str]]:
+        results: dict[int, Optional[str]] = {}
+        offline_enabled_cache: dict[str, bool] = {}
+        offline_items: list[tuple[int, Optional[str], Optional[str]]] = []
+
+        for video_id, remote_url, video_url in items:
+            if not remote_url:
+                results[video_id] = None
+                continue
+
+            site_name = get_site_from_url(video_url) if video_url else None
+            if not site_name:
+                results[video_id] = remote_url
+                continue
+
+            use_offline = offline_enabled_cache.get(site_name)
+            if use_offline is None:
+                use_offline = self._should_use_offline(site_name)
+                offline_enabled_cache[site_name] = use_offline
+
+            if not use_offline:
+                results[video_id] = remote_url
+                continue
+
+            offline_items.append((video_id, remote_url, video_url))
+
+        indexed_paths = self._get_local_thumbnail_path_map(offline_items)
+
+        for video_id, remote_url, _video_url in offline_items:
+            indexed_path = indexed_paths.get(video_id)
+            if indexed_path:
+                results[video_id] = indexed_path
+                continue
+
+            local_path = self._get_local_thumbnail_path(video_id, remote_url=remote_url)
+            results[video_id] = local_path or remote_url
+
+        return results
 
     def get_thumbnail_url(self, video_id: int, remote_url: Optional[str], video_url: Optional[str] = None) -> Optional[str]:
         """
@@ -292,17 +416,9 @@ class ThumbnailDownloaderService:
         Returns:
             本地静态路径或远程URL
         """
-        if not remote_url:
-            return None
-
-        site_name = get_site_from_url(video_url) if video_url else None
-
-        if site_name and self._should_use_offline(site_name):
-            local_path = self._get_local_thumbnail_path(video_id)
-            if local_path:
-                return local_path
-
-        return remote_url
+        return self.get_thumbnail_url_map([
+            (video_id, remote_url, video_url),
+        ]).get(video_id)
 
 
 thumbnail_downloader_service = ThumbnailDownloaderService()
