@@ -15,8 +15,6 @@
 #
 # ========================================
 
-version: '3.8'
-
 networks:
   squirrel-network:
     driver: bridge
@@ -54,7 +52,7 @@ services:
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
       - THUMBNAILS_PATH=${THUMBNAILS_PATH:-/thumbnails}
     ports:
-      - "8000:8000"
+      - "${SQUIRREL_PORT:-8000}:8000"
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
@@ -103,6 +101,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck:
+      disable: true
 
   # ========================================
   # Squirrel Scheduler 进程（定时任务）
@@ -131,6 +131,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck:
+      disable: true
 
   # ========================================
   # Redis 服务（缓存和消息队列）
