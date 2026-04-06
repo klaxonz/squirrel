@@ -61,6 +61,35 @@ class SiteCatalog:
         return entry
 
     @classmethod
+    def _normalize_override_entry(cls, slug: str, info: dict | None) -> dict:
+        info = dict(info or {})
+        entry: dict = {}
+
+        if 'label' in info:
+            label = str(info.get('label') or '').strip()
+            if label:
+                entry['label'] = label
+
+        if 'domains' in info:
+            entry['domains'] = list({d.strip().lower() for d in info.get('domains', []) if d})
+
+        if 'aliases' in info:
+            entry['aliases'] = list({a.strip().lower() for a in info.get('aliases', []) if a})
+
+        if 'enabled' in info:
+            entry['enabled'] = bool(info.get('enabled', True))
+
+        extra_keys = {'http', 'proxy', 'login', 'rate_limit', 'metadata', 'test_url', 'icon_url', 'cookie', 'features'}
+        for key in extra_keys:
+            if key not in info:
+                continue
+            value = info.get(key)
+            if value is not None:
+                entry[key] = value
+
+        return entry
+
+    @classmethod
     def load_override_catalog(cls) -> Optional[Dict[str, dict]]:
         config_path = cls._config_path()
         if os.path.exists(config_path):
@@ -70,7 +99,7 @@ class SiteCatalog:
                 catalog: Dict[str, dict] = {}
                 for slug, info in (data or {}).items():
                     normalized_slug = slug.strip().lower()
-                    catalog[normalized_slug] = cls._normalize_catalog_entry(normalized_slug, info)
+                    catalog[normalized_slug] = cls._normalize_override_entry(normalized_slug, info)
                 return catalog
             except Exception:
                 return None

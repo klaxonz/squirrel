@@ -122,3 +122,25 @@ def test_site_catalog_load_from_file_preserves_icon_url(monkeypatch, tmp_path):
     assert catalog['youtube']['enabled'] is True
     assert catalog['youtube']['test_url'] == 'https://www.youtube.com'
     assert catalog['youtube']['icon_url'] == '/api/plugins/sites/youtube/icon'
+
+
+def test_site_catalog_load_from_file_keeps_sparse_overrides_sparse(monkeypatch, tmp_path):
+    config_path = tmp_path / 'sites.json'
+    config_path.write_text(json.dumps({
+        'youporn': {
+            'metadata': {
+                'offline_thumbnails_display': False,
+            }
+        }
+    }), encoding='utf-8')
+
+    monkeypatch.setattr(SiteCatalog, '_config_path', staticmethod(lambda: str(config_path)))
+
+    catalog = SiteCatalog._load_from_file()
+
+    assert catalog is not None
+    assert catalog['youporn'] == {
+        'metadata': {
+            'offline_thumbnails_display': False,
+        }
+    }
