@@ -464,6 +464,25 @@ class ImporterTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'gateway error page'):
                 importer.get_user_subscriptions_batch()
 
+    def test_javdb_importer_raises_when_bypass_returns_login_page(self):
+        with _stub_javdb_importer_dependencies() as (responses, _soups):
+            module = _load_javdb_importer_module()
+
+            login_html = (
+                '<!DOCTYPE html><html><head>'
+                '<title> Sign in | JavDB, Online information source for adult movies </title>'
+                '</head><body>'
+                '<div class="message-header">This content requires login to view</div>'
+                '<form action="/user_sessions" method="post"></form>'
+                '</body></html>'
+            )
+            responses.append(_FakeResponse(login_html))
+
+            importer = module.JavdbUserSubscriptionImporter()
+
+            with self.assertRaisesRegex(RuntimeError, 'login page'):
+                importer.get_user_subscriptions_batch()
+
 
 if __name__ == '__main__':
     unittest.main()

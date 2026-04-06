@@ -20,7 +20,18 @@ async def clear_cache(request: Request):
 
 @router.get('/html')
 async def html(request: Request, url: str):
-    result = await request.app.state.bypass_service.fetch_html(url)
+    headers = {key.lower(): value for key, value in request.headers.items()}
+    proxy = headers.get('x-proxy')
+    custom_headers = {
+        key: value
+        for key, value in headers.items()
+        if key not in {'host', 'x-proxy'}
+    }
+    result = await request.app.state.bypass_service.fetch_html(
+        url,
+        proxy=proxy,
+        custom_headers=custom_headers or None,
+    )
     if result is None:
         raise HTTPException(status_code=502, detail='Failed to bypass Cloudflare protection')
     return HTMLResponse(

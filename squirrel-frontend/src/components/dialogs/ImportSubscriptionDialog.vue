@@ -32,6 +32,10 @@
               <span class="import-dialog__site-name">{{ getSiteName(site) }}</span>
             </button>
           </div>
+
+          <Alert v-if="requestError">
+            <AlertDescription>{{ requestError }}</AlertDescription>
+          </Alert>
         </section>
 
         <section v-else-if="step === 2" class="space-y-4">
@@ -71,6 +75,10 @@
                 <span v-if="previewData.has_more">，可继续加载</span>
               </p>
             </div>
+
+            <Alert v-if="requestError">
+              <AlertDescription>{{ requestError }}</AlertDescription>
+            </Alert>
 
             <div class="import-dialog__list">
               <label
@@ -232,6 +240,7 @@ const importResult = ref({})
 const loadingPreview = ref(false)
 const loadingMorePreview = ref(false)
 const importing = ref(false)
+const requestError = ref('')
 
 const siteConfig = {
   bilibili: { name: 'Bilibili' },
@@ -268,6 +277,7 @@ const resetState = () => {
   selectedUrlMap.value = {}
   importResult.value = {}
   loadingMorePreview.value = false
+  requestError.value = ''
 }
 
 const selectAllNotImported = () => {
@@ -299,9 +309,13 @@ const toggleSelection = (sub) => {
 const loadSupportedSites = async () => {
   await loadCatalog()
   const { data, error } = await getSupportedImportSites()
-  if (!error) {
-    supportedSites.value = data
+  if (error) {
+    requestError.value = error.message || '加载可导入站点失败'
+    supportedSites.value = []
+    return
   }
+  requestError.value = ''
+  supportedSites.value = data
 }
 
 const mergePreviewSubscriptions = (existing, incoming) => {
@@ -325,6 +339,7 @@ const fetchPreviewBatch = async ({ cursorPayload = null, append = false } = {}) 
   loadingState.value = false
 
   if (!result.error) {
+    requestError.value = ''
     previewData.value = {
       total: result.data?.total ?? previewData.value.total,
       subscriptions: append
@@ -335,12 +350,14 @@ const fetchPreviewBatch = async ({ cursorPayload = null, append = false } = {}) 
     }
     return true
   }
+  requestError.value = result.error.message || '预览订阅失败'
   return false
 }
 
 const handlePreview = async () => {
   if (!selectedSite.value) return
 
+  requestError.value = ''
   const loaded = await fetchPreviewBatch()
   if (loaded) {
     selectAllNotImported()
@@ -360,14 +377,18 @@ const handleImport = async () => {
   if (!selectedSite.value) return
 
   importing.value = true
+  requestError.value = ''
   const subscriptionUrls = Object.keys(selectedUrlMap.value || {})
   const result = await importSubscriptions(selectedSite.value, subscriptionUrls)
   importing.value = false
 
   if (!result.error) {
+    requestError.value = ''
     importResult.value = result.data
     step.value = 3
+    return
   }
+  requestError.value = result.error.message || '导入订阅失败'
 }
 
 const handleClose = () => {

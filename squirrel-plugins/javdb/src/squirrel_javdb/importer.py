@@ -21,6 +21,12 @@ def _detect_javdb_error_page(body: str) -> str | None:
     normalized_body = str(body or '').lower()
     if not normalized_body:
         return None
+    if (
+        '<title> sign in | javdb' in normalized_body
+        or 'this content requires login to view' in normalized_body
+        or 'action="/user_sessions"' in normalized_body
+    ):
+        return 'login'
     if '<title>just a moment' in normalized_body:
         return 'challenge'
     if 'cf-error-details' in normalized_body and (
@@ -89,6 +95,8 @@ class JavdbUserSubscriptionImporter:
         )
         response.raise_for_status()
         error_type = _detect_javdb_error_page(response.text or '')
+        if error_type == 'login':
+            raise RuntimeError('JavDB returned a login page while loading subscriptions')
         if error_type == 'gateway':
             raise RuntimeError('JavDB returned a gateway error page while loading subscriptions')
         if error_type == 'challenge':

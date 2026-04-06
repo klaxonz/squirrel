@@ -37,6 +37,29 @@ def test_html_route_returns_solver_result_headers():
     assert solver.calls[0]['url'] == 'https://javdb.com'
 
 
+def test_html_route_forwards_request_headers_to_solver():
+    solver = FakeSolver()
+    client = TestClient(create_app(solver=solver))
+
+    response = client.get(
+        '/html',
+        params={'url': 'https://javdb.com/users/collection_actors?page=1'},
+        headers={
+            'Cookie': 'cf_clearance=demo; _jdb_session=session',
+            'Referer': 'https://javdb.com/',
+            'Origin': 'https://javdb.com',
+            'X-Proxy': 'http://127.0.0.1:7890',
+        },
+    )
+
+    assert response.status_code == 200
+    assert solver.calls[0]['proxy'] == 'http://127.0.0.1:7890'
+    assert solver.calls[0]['custom_headers']['cookie'] == 'cf_clearance=demo; _jdb_session=session'
+    assert solver.calls[0]['custom_headers']['referer'] == 'https://javdb.com/'
+    assert solver.calls[0]['custom_headers']['origin'] == 'https://javdb.com'
+    assert 'host' not in solver.calls[0]['custom_headers']
+
+
 def test_cache_clear_endpoint_empties_runtime_state():
     solver = FakeSolver()
     client = TestClient(create_app(solver=solver))
