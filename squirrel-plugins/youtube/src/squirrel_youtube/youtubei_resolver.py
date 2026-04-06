@@ -19,6 +19,8 @@ _RESULT_CACHE: dict[str, tuple[float, 'YoutubeiResult']] = {}
 _RESULT_CACHE_LOCK = threading.Lock()
 _WORKER_CLIENT: '_YoutubeiWorkerClient | None' = None
 _WORKER_CLIENT_LOCK = threading.Lock()
+_PREWARM_THREAD: threading.Thread | None = None
+_PREWARM_THREAD_LOCK = threading.Lock()
 
 
 @dataclass(slots=True)
@@ -273,6 +275,9 @@ def _get_worker_client() -> _YoutubeiWorkerClient:
 
 def shutdown_youtubei_worker() -> None:
     global _WORKER_CLIENT
+    global _PREWARM_THREAD
+    with _PREWARM_THREAD_LOCK:
+        _PREWARM_THREAD = None
     with _WORKER_CLIENT_LOCK:
         client = _WORKER_CLIENT
         _WORKER_CLIENT = None
@@ -282,9 +287,31 @@ def shutdown_youtubei_worker() -> None:
             close()
 
 
+def _run_prewarm(cookie_header: str) -> None:
+    global _PREWARM_THREAD
+    try:
+        _get_worker_client().prewarm(cookie_header)
+    finally:
+        with _PREWARM_THREAD_LOCK:
+            current = threading.current_thread()
+            if _PREWARM_THREAD is current:
+                _PREWARM_THREAD = None
+
+
 def prewarm_youtubei_worker() -> None:
+    global _PREWARM_THREAD
     cookie_header = _load_cookie_header_for_target('https://www.youtube.com/')
-    _get_worker_client().prewarm(cookie_header)
+    with _PREWARM_THREAD_LOCK:
+        if _PREWARM_THREAD is not None and _PREWARM_THREAD.is_alive():
+            return
+        thread = threading.Thread(
+            target=_run_prewarm,
+            args=(cookie_header,),
+            name='youtubei-prewarm',
+            daemon=True,
+        )
+        _PREWARM_THREAD = thread
+        thread.start()
 
 
 atexit.register(shutdown_youtubei_worker)

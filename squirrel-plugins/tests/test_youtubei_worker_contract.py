@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
+import time
 import types
 from pathlib import Path
 
@@ -13,6 +15,12 @@ sys.path.insert(0, str(ROOT / 'squirrel-plugins' / 'youtube' / 'src'))
 
 import squirrel_youtube.youtubei_resolver as resolver_module
 from squirrel_youtube.youtubei_resolver import parse_worker_payload, resolve_with_youtubei
+
+
+def _reset_worker_state() -> None:
+    resolver_module._RESULT_CACHE.clear()
+    resolver_module._WORKER_CLIENT = None
+    resolver_module._PREWARM_THREAD = None
 
 
 def test_parse_worker_payload_accepts_complete_android_result():
@@ -60,7 +68,7 @@ def test_parse_worker_payload_rejects_empty_format_set():
 
 
 def test_resolve_with_youtubei_passes_cookie_to_worker(monkeypatch):
-    resolver_module._RESULT_CACHE.clear()
+    _reset_worker_state()
     captured = {}
 
     crawl_module = types.ModuleType('crawl')
@@ -106,7 +114,7 @@ def test_worker_timeout_keeps_headroom_for_authenticated_cold_starts():
 
 
 def test_resolve_with_youtubei_returns_worker_result_without_media_probe(monkeypatch):
-    resolver_module._RESULT_CACHE.clear()
+    _reset_worker_state()
 
     crawl_module = types.ModuleType('crawl')
     crawl_module.filter_cookies_to_query_string = lambda _url: 'SAPISID=abc; SID=def'
@@ -139,7 +147,7 @@ def test_resolve_with_youtubei_returns_worker_result_without_media_probe(monkeyp
 
 
 def test_get_worker_client_reuses_singleton(monkeypatch):
-    resolver_module._WORKER_CLIENT = None
+    _reset_worker_state()
     created = []
 
     class FakeClient:
@@ -156,8 +164,65 @@ def test_get_worker_client_reuses_singleton(monkeypatch):
 
 
 def test_shutdown_youtubei_worker_tolerates_clients_without_close():
+    _reset_worker_state()
     resolver_module._WORKER_CLIENT = object()
 
     resolver_module.shutdown_youtubei_worker()
 
     assert resolver_module._WORKER_CLIENT is None
+
+
+def test_prewarm_youtubei_worker_runs_in_background(monkeypatch):
+    _reset_worker_state()
+    started = threading.Event()
+    release = threading.Event()
+
+    class FakeWorkerClient:
+        def prewarm(self, cookie_header=''):
+            assert cookie_header == 'SAPISID=abc'
+            started.set()
+            release.wait(timeout=1)
+
+    monkeypatch.setattr(resolver_module, '_get_worker_client', lambda: FakeWorkerClient())
+    monkeypatch.setattr(resolver_module, '_load_cookie_header_for_target', lambda _url: 'SAPISID=abc')
+
+    started_at = time.monotonic()
+    resolver_module.prewarm_youtubei_worker()
+    elapsed = time.monotonic() - started_at
+
+    assert elapsed < 0.2
+    assert started.wait(timeout=0.2)
+
+    release.set()
+    deadline = time.monotonic() + 1
+    while resolver_module._PREWARM_THREAD is not None and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert resolver_module._PREWARM_THREAD is None
+
+
+def test_prewarm_youtubei_worker_deduplicates_inflight_thread(monkeypatch):
+    _reset_worker_state()
+    started = threading.Event()
+    release = threading.Event()
+    calls: list[str] = []
+
+    class FakeWorkerClient:
+        def prewarm(self, cookie_header=''):
+            calls.append(cookie_header)
+            started.set()
+            release.wait(timeout=1)
+
+    monkeypatch.setattr(resolver_module, '_get_worker_client', lambda: FakeWorkerClient())
+    monkeypatch.setattr(resolver_module, '_load_cookie_header_for_target', lambda _url: 'SAPISID=abc')
+
+    resolver_module.prewarm_youtubei_worker()
+    assert started.wait(timeout=0.2)
+    resolver_module.prewarm_youtubei_worker()
+
+    release.set()
+    deadline = time.monotonic() + 1
+    while resolver_module._PREWARM_THREAD is not None and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert calls == ['SAPISID=abc']
