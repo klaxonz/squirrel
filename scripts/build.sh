@@ -15,8 +15,8 @@ BASE_IMAGE_NAME="ghcr.io/klaxonz/squirrel-base"
 PLATFORM="linux/amd64,linux/arm64"
 
 # 获取版本号
-VERSION=$(grep '__version__' squirrel-backend/__init__.py | awk -F "'" '{print $2}')
-CF_BYPASS_VERSION=$(grep '__version__' squirrel-cf-bypass/src/squirrel_cf_bypass/__init__.py | awk -F "'" '{print $2}')
+VERSION=$(grep "^__version__[[:space:]]*=" squirrel-backend/__init__.py | awk -F "'" '{print $2}')
+CF_BYPASS_VERSION=$(grep "^__version__[[:space:]]*=" squirrel-cf-bypass/src/squirrel_cf_bypass/__init__.py | awk -F "'" '{print $2}')
 
 if [ -z "$VERSION" ]; then
     echo -e "${RED}错误: 无法从 squirrel-backend/__init__.py 获取版本号${NC}"
