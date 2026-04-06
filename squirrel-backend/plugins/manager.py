@@ -6,12 +6,14 @@ from typing import List, Optional
 
 from .gateway import PluginGateway
 from .installer import PluginInstaller
+from .migration import migrate_legacy_plugin_storage
 from .models import (
     PluginInstallRecord,
     PluginInstallStatus,
     PluginManagerSnapshot,
     utcnow_iso,
 )
+from .paths import PluginPaths, build_plugin_paths
 from .runtime_models import PluginManifest
 from .store import PluginInstallStore
 from .supervisor import PluginRuntimeSupervisor
@@ -26,9 +28,12 @@ class PluginManager:
         installer: Optional[PluginInstaller] = None,
         supervisor: Optional[PluginRuntimeSupervisor] = None,
         gateway: Optional[PluginGateway] = None,
+        paths: PluginPaths | None = None,
     ) -> None:
-        self._store = store or PluginInstallStore()
-        self._installer = installer or PluginInstaller()
+        self._paths = paths or build_plugin_paths()
+        migrate_legacy_plugin_storage(self._paths)
+        self._store = store or PluginInstallStore(paths=self._paths)
+        self._installer = installer or PluginInstaller(paths=self._paths)
         self._supervisor = supervisor or PluginRuntimeSupervisor()
         self._gateway = gateway or PluginGateway(invocation_client=self._supervisor)
         self._gateway.set_registration_refresh(self._refresh_gateway_registrations)
@@ -203,7 +208,7 @@ class PluginManager:
             self._gateway.unregister_plugin(plugin_id)
 
     def _discover_local_runtime_plugins(self) -> None:
-        plugins_root = self._installer._base_dir.parent.parent / 'squirrel-plugins'
+        plugins_root = self._paths.workspace_plugins_dir
         if not plugins_root.exists():
             return
 

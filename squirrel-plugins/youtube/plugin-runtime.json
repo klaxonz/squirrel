@@ -146,7 +146,7 @@
             "requires_login": true,
             "player_url_cache": true,
             "offline_thumbnails_download": true,
-            "offline_thumbnails_display": true,
+            "offline_thumbnails_display": false,
             "nsfw": false
           }
         },

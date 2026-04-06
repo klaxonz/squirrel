@@ -7,12 +7,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from plugins.installer import PluginInstaller
 from plugins.manager import PluginManager
 from plugins.models import PluginInstallRecord
+from plugins.paths import build_plugin_paths
 from plugins.store import PluginInstallStore
 from plugins.runtime_models import PluginCapability, PluginManifest, PluginSiteManifest
 
 
 def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path):
     repo_root = tmp_path / 'repo'
+    backend_root = repo_root / 'squirrel-backend'
+    backend_root.mkdir(parents=True, exist_ok=True)
+    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
     plugins_root = repo_root / 'squirrel-plugins' / 'javdb'
     plugins_root.mkdir(parents=True, exist_ok=True)
     (plugins_root / 'src').mkdir(parents=True, exist_ok=True)
@@ -57,7 +61,7 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path):
         encoding='utf-8',
     )
 
-    store = PluginInstallStore(data_path=repo_root / 'config' / 'plugin_runtime_v2' / 'installations.json')
+    store = PluginInstallStore(data_path=paths.installations_file, paths=paths)
     store.upsert(
         PluginInstallRecord(
             plugin_id='javdb',
@@ -93,7 +97,8 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path):
 
     manager = PluginManager(
         store=store,
-        installer=PluginInstaller(base_dir=repo_root / 'config' / 'plugin_runtime_v2'),
+        installer=PluginInstaller(paths=paths),
+        paths=paths,
     )
 
     manager.discover_plugins()
@@ -109,7 +114,10 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path):
 
 def test_manager_gateway_rebuilds_enabled_registrations_on_route_miss(tmp_path):
     repo_root = tmp_path / 'repo'
-    store = PluginInstallStore(data_path=repo_root / 'config' / 'plugin_runtime_v2' / 'installations.json')
+    backend_root = repo_root / 'squirrel-backend'
+    backend_root.mkdir(parents=True, exist_ok=True)
+    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
+    store = PluginInstallStore(data_path=paths.installations_file, paths=paths)
     store.upsert(
         PluginInstallRecord(
             plugin_id='youporn',
@@ -134,10 +142,22 @@ def test_manager_gateway_rebuilds_enabled_registrations_on_route_miss(tmp_path):
 
     manager = PluginManager(
         store=store,
-        installer=PluginInstaller(base_dir=repo_root / 'config' / 'plugin_runtime_v2'),
+        installer=PluginInstaller(paths=paths),
+        paths=paths,
     )
 
     route = manager.gateway.resolve_route('resolve_subscription', domain='youporn.com')
 
     assert route is not None
     assert route.plugin_id == 'youporn'
+
+
+def test_manager_uses_shared_paths_for_workspace_discovery(tmp_path):
+    repo_root = tmp_path / 'repo'
+    backend_root = repo_root / 'squirrel-backend'
+    backend_root.mkdir(parents=True)
+    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
+
+    manager = PluginManager(paths=paths)
+
+    assert manager._paths.workspace_plugins_dir == repo_root / 'squirrel-plugins'

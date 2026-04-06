@@ -7,9 +7,8 @@ from pathlib import Path
 import tempfile
 from typing import Dict, List, Optional
 
-from core.config import settings
-
 from .models import PluginInstallRecord, PluginInstallStatus, utcnow_iso
+from .paths import PluginPaths, build_plugin_paths
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +16,11 @@ logger = logging.getLogger(__name__)
 class PluginInstallStore:
     """Persist plugin runtime installation records as JSON."""
 
-    def __init__(self, data_path: Optional[Path] = None) -> None:
-        base_path = settings.config_dir / 'plugin_runtime_v2'
-        self._data_path = data_path or (base_path / 'installations.json')
+    def __init__(self, data_path: Optional[Path] = None, paths: PluginPaths | None = None) -> None:
+        self._paths = paths or build_plugin_paths()
+        self._data_path = data_path or self._paths.installations_file
         self._data_path.parent.mkdir(parents=True, exist_ok=True)
+        self._cleanup_stale_temp_files()
 
     @property
     def data_path(self) -> Path:
@@ -43,19 +43,36 @@ class PluginInstallStore:
 
     def _save_raw(self, records: Dict[str, Dict]) -> None:
         self._data_path.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(
-            'w',
-            encoding='utf-8',
-            dir=self._data_path.parent,
-            delete=False,
-            prefix=f'{self._data_path.stem}.',
-            suffix='.tmp',
-        ) as handle:
-            json.dump(records, handle, ensure_ascii=False, indent=2, sort_keys=True)
-            handle.flush()
-            os.fsync(handle.fileno())
-            temp_path = Path(handle.name)
-        os.replace(temp_path, self._data_path)
+        temp_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                'w',
+                encoding='utf-8',
+                dir=self._data_path.parent,
+                delete=False,
+                prefix=f'{self._data_path.stem}.',
+                suffix='.tmp',
+            ) as handle:
+                json.dump(records, handle, ensure_ascii=False, indent=2, sort_keys=True)
+                handle.flush()
+                os.fsync(handle.fileno())
+                temp_path = Path(handle.name)
+            os.replace(temp_path, self._data_path)
+        except Exception:
+            if temp_path is not None:
+                try:
+                    temp_path.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning('Failed to remove plugin store temp file after write failure: %s', temp_path)
+            raise
+
+    def _cleanup_stale_temp_files(self) -> None:
+        pattern = f'{self._data_path.stem}.*.tmp'
+        for candidate in self._data_path.parent.glob(pattern):
+            try:
+                candidate.unlink(missing_ok=True)
+            except OSError:
+                logger.warning('Failed to remove stale plugin store temp file: %s', candidate)
 
     def list_records(self) -> List[PluginInstallRecord]:
         payload = self._load_raw()

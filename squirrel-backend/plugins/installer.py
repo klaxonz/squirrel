@@ -10,8 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from core.config import settings
-
+from .paths import PluginPaths, build_plugin_paths
 from .runtime_models import PluginManifest
 
 
@@ -37,12 +36,13 @@ class PluginInstallPlan:
 class PluginInstaller:
     """Build install plans for runtime V2 plugin packages."""
 
-    def __init__(self, base_dir: Optional[Path] = None) -> None:
-        self._base_dir = base_dir or (settings.config_dir / 'plugin_runtime_v2')
-        self._packages_dir = self._base_dir / 'packages'
-        self._install_root = self._base_dir / 'installs'
-        self._runtime_root = self._base_dir / 'runtime'
-        self._data_root = self._base_dir / 'data'
+    def __init__(self, base_dir: Optional[Path] = None, paths: PluginPaths | None = None) -> None:
+        self._paths = paths or build_plugin_paths()
+        self._base_dir = base_dir or self._paths.state_dir.parent
+        self._packages_dir = (base_dir / 'packages') if base_dir else self._paths.packages_dir
+        self._install_root = (base_dir / 'installs') if base_dir else self._paths.installs_dir
+        self._runtime_root = (base_dir / 'runtime') if base_dir else self._paths.runtime_dir
+        self._data_root = (base_dir / 'data') if base_dir else self._paths.plugin_data_dir
         for path in (self._packages_dir, self._install_root, self._runtime_root, self._data_root):
             path.mkdir(parents=True, exist_ok=True)
 
@@ -153,7 +153,7 @@ class PluginInstaller:
         return runtime_env_path / 'bin' / 'python'
 
     def _repo_root(self) -> Path:
-        return settings.base_dir.parent
+        return self._paths.repo_root
 
     def _sdk_package_dir(self) -> Path:
         sdk_dir = self._repo_root() / 'squirrel-sdk'
