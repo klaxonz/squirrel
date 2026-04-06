@@ -432,6 +432,35 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(mo
     assert len(second_call_new_ids) == 0 or not first_call_run_ids.issubset(second_call_new_ids)
 
 
+def test_sync_center_feed_dashboard_snapshot_does_not_trim_running_or_queued_items(monkeypatch):
+    engine = _setup_projection_env(monkeypatch)
+    _seed_projection_data(engine)
+    monkeypatch.setattr(subscription_sync_center_service, '_refresh_runtime_sync_health', lambda force=False: None)
+    monkeypatch.setattr(subscription_sync_center_service, 'SYNC_CENTER_PREVIEW_LIMIT', 1)
+    _mock_site_catalog(monkeypatch)
+
+    with Session(engine, expire_on_commit=False) as session:
+        run_projection = session.get(SubscriptionSyncRunProjection, 'run-running')
+        run_projection.current_phase = 'fetching_feed'
+        run_projection.pending_video_count = 0
+
+        subscription_projection = session.get(SubscriptionSyncSubscriptionProjection, 1)
+        subscription_projection.current_phase = 'fetching_feed'
+        subscription_projection.pending_video_count = 0
+        session.commit()
+
+    snapshot = subscription_sync_center_service.get_feed_dashboard_snapshot(
+        user_id=1,
+        site=None,
+        query=None,
+        date_from='2026-04-02T00:00:00',
+        date_to='2026-04-03T00:00:00',
+    )
+
+    assert [item.subscription_name for item in snapshot['runningPreview']] == ['Running Earlier', 'Running Channel']
+    assert [item.subscription_name for item in snapshot['queuedPreview']] == ['Queued First', 'Queued Second']
+
+
 def test_sync_center_overview_does_not_materialize_item_dtos(monkeypatch):
     engine = _setup_projection_env(monkeypatch)
     _seed_projection_data(engine)

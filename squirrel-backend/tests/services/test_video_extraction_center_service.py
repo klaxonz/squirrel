@@ -298,6 +298,116 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
     assert recent_result.data[1].completed_task_count == 2
 
 
+def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(monkeypatch):
+    engine = _setup_env(monkeypatch)
+    _seed_tasks(engine)
+    now = datetime(2026, 4, 2, 16, 10, 0)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Subscription(
+                id=5,
+                type='CHANNEL',
+                name='Extract Running 2',
+                url='https://www.youtube.com/channel/extract-running-2',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=now,
+                updated_at=now,
+            ),
+            Subscription(
+                id=6,
+                type='CHANNEL',
+                name='Extract Queued 2',
+                url='https://space.bilibili.com/extract-queued-2',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=now,
+                updated_at=now,
+            ),
+            UserSubscription(id=5, user_id=1, subscription_id=5, is_deleted=False, is_nsfw=False, created_at=now, updated_at=now),
+            UserSubscription(id=6, user_id=1, subscription_id=6, is_deleted=False, is_nsfw=False, created_at=now, updated_at=now),
+            CrawlJob(
+                id=105,
+                job_type='video_extract',
+                source_type='subscription_sync',
+                site='youtube.com',
+                subscription_id=5,
+                status='running',
+                created_at=now - timedelta(minutes=4),
+                updated_at=now - timedelta(minutes=1),
+            ),
+            CrawlJob(
+                id=106,
+                job_type='video_extract',
+                source_type='subscription_sync',
+                site='bilibili.com',
+                subscription_id=6,
+                status='pending',
+                created_at=now - timedelta(minutes=3),
+                updated_at=now - timedelta(minutes=2),
+            ),
+            CrawlTask(
+                id=5001,
+                job_id=105,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=5,
+                status='running',
+                worker_id='worker-b',
+                payload={'sync_state_id': 505},
+                created_at=now - timedelta(minutes=4),
+                updated_at=now - timedelta(minutes=1),
+                started_at=now - timedelta(minutes=2),
+            ),
+            CrawlTask(
+                id=5002,
+                job_id=105,
+                task_type='video_extract',
+                site='youtube.com',
+                subscription_id=5,
+                status='pending',
+                payload={'sync_state_id': 505},
+                created_at=now - timedelta(minutes=4),
+                updated_at=now - timedelta(minutes=1),
+            ),
+            CrawlTask(
+                id=6001,
+                job_id=106,
+                task_type='video_extract',
+                site='bilibili.com',
+                subscription_id=6,
+                status='pending',
+                payload={'sync_state_id': 506},
+                created_at=now - timedelta(minutes=3),
+                updated_at=now - timedelta(minutes=3),
+            ),
+            CrawlTask(
+                id=6002,
+                job_id=106,
+                task_type='video_extract',
+                site='bilibili.com',
+                subscription_id=6,
+                status='retry_wait',
+                payload={'sync_state_id': 506},
+                created_at=now - timedelta(minutes=2),
+                updated_at=now - timedelta(minutes=2),
+            ),
+        ])
+        session.commit()
+
+    snapshot = video_extraction_center_service.get_extraction_dashboard_snapshot(user_id=1, preview_limit=1)
+
+    assert sorted(item.subscription_name for item in snapshot['runningPreview']) == ['Extract Running', 'Extract Running 2']
+    assert sorted(item.subscription_name for item in snapshot['queuedPreview']) == ['Extract Queued', 'Extract Queued 2']
+
+
 def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkeypatch):
     engine = _setup_env(monkeypatch)
     now = datetime(2026, 4, 2, 18, 0, 0)

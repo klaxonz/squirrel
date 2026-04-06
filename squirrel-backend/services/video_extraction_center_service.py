@@ -217,8 +217,16 @@ def get_extraction_center_overview(user_id: int) -> SyncCenterOverviewDto:
 
 def get_extraction_dashboard_snapshot(user_id: int, *, preview_limit: int = EXTRACTION_PREVIEW_LIMIT) -> dict:
     overview = get_extraction_center_overview(user_id)
-    running_preview = list_extraction_center_items(user_id, 'running', None, None, 1, preview_limit).data
-    queued_preview = list_extraction_center_items(user_id, 'queued', None, None, 1, preview_limit).data
+    running_count = int(overview.running_count or 0)
+    queued_count = int(overview.queued_count or 0)
+    running_preview = (
+        list_extraction_center_items(user_id, 'running', None, None, 1, running_count).data
+        if running_count > 0 else []
+    )
+    queued_preview = (
+        list_extraction_center_items(user_id, 'queued', None, None, 1, queued_count).data
+        if queued_count > 0 else []
+    )
     recent_preview = list_extraction_center_items(user_id, 'recent', None, None, 1, preview_limit).data
     return {
         'overview': overview,

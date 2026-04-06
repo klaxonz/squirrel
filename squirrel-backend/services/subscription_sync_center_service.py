@@ -911,7 +911,7 @@ def get_feed_dashboard_snapshot(
             filter_status='running',
             site_candidates=site_candidates,
             normalized_query=normalized_query,
-            limit=SYNC_CENTER_PREVIEW_LIMIT,
+            limit=int(overview_row.running_count or 0),
         )
 
         queued_preview = _load_projection_items(
@@ -920,6 +920,7 @@ def get_feed_dashboard_snapshot(
             filter_status='queued',
             site_candidates=site_candidates,
             normalized_query=normalized_query,
+            limit=int(overview_row.queued_count or 0),
         )
         try:
             queued_candidate_rank_map, queued_backlog_rank_map = _query_queued_task_rank_map(
@@ -935,7 +936,7 @@ def get_feed_dashboard_snapshot(
             'queued',
             queued_candidate_rank_map=queued_candidate_rank_map,
             queued_backlog_rank_map=queued_backlog_rank_map,
-        )[:SYNC_CENTER_PREVIEW_LIMIT]
+        )
         for index, item in enumerate(queued_preview, start=1):
             item.queue_position = index
 
