@@ -35,7 +35,7 @@ def test_connectivity_uses_bypass_after_restricted_status(monkeypatch):
     bypass_calls = []
 
     class _BypassClient:
-        def html(self, url, headers=None):
+        async def html(self, url, headers=None):
             bypass_calls.append({'url': url, 'headers': headers})
             return SimpleNamespace(
                 status_code=200,
@@ -68,7 +68,7 @@ def test_connectivity_uses_bypass_after_restricted_status(monkeypatch):
 
 def test_connectivity_preserves_restricted_status_when_bypass_cannot_help(monkeypatch):
     class _BypassClient:
-        def html(self, url, headers=None):
+        async def html(self, url, headers=None):
             return SimpleNamespace(
                 status_code=403,
                 url=url,

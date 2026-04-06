@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from schedule.task import TaskRegistry, BaseTask
 from utils.cloudflare_bypass import get_default_client
@@ -12,7 +13,7 @@ class CloudflareHeartbeatTask(BaseTask):
     def run(cls):
         try:
             client = get_default_client()
-            client.clear_cache()
+            asyncio.run(client.clear_cache())
             logger.info("CloudflareHeartbeatTask started")
         except Exception as e:
             logger.error(f"CloudflareHeartbeatTask error: {e}", exc_info=True)

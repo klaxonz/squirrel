@@ -8,7 +8,7 @@ from crawl import (
     get_login_config,
 )
 
-from .html_client import build_javdb_headers, fetch_javdb_html
+from .html_client import DEFAULT_JAVDB_TIMEOUT_SECONDS, build_javdb_headers, fetch_javdb_html
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ def check_javdb_login_status() -> LoginStatusResult:
             logged_in=False,
             message="cookies.txt 中未找到 JavDB 条目",
         )
-    timeout = float(login_config.get("timeout", 15))
+    timeout = float(login_config.get('timeout', DEFAULT_JAVDB_TIMEOUT_SECONDS))
 
     try:
         resp = fetch_javdb_html(

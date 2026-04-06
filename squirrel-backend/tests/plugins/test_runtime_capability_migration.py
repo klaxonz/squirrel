@@ -114,6 +114,13 @@ def test_runtime_manifests_and_metadata_include_migrated_capabilities(
                 'sync_subscription': 120000,
             },
         ),
+        (
+            'squirrel_javdb',
+            'javdb',
+            {
+                'resolve_playback': 120000,
+            },
+        ),
     ],
 )
 def test_runtime_uses_extended_timeouts_for_heavy_capabilities(module_name, plugin_name, expected_timeouts):

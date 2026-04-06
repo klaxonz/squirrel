@@ -1,8 +1,10 @@
 import logging
 from typing import Optional
-import requests
-from core.config import settings
 from urllib.parse import urlparse
+
+import httpx
+
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -13,26 +15,48 @@ class CloudflareMirrorClient:
             raise ValueError("service_url 不能为空")
         self.service_url = service_url.rstrip('/')
         self.timeout = timeout
+        self._client = httpx.AsyncClient(timeout=self.timeout, follow_redirects=True)
 
-    def html(
+    async def _send(
         self,
+        method: str,
         url: str,
-        headers: Optional[dict] = None
+        *,
+        params: Optional[dict] = None,
+        headers: Optional[dict] = None,
+        stream: bool = False,
     ):
-        request_headers = headers.copy() if headers else {}
-
-        return requests.get(
-            f"{self.service_url}/html",
-            params={"url": url},
-            headers=request_headers,
-            timeout=self.timeout,
-            allow_redirects=True
+        request = self._client.build_request(
+            method,
+            url,
+            params=params,
+            headers=headers.copy() if headers else None,
+        )
+        return await self._client.send(
+            request,
+            stream=stream,
+            follow_redirects=True,
         )
 
-    def mirror(
+    async def html(
         self,
         url: str,
-        headers: Optional[dict] = None
+        headers: Optional[dict] = None,
+        stream: bool = False,
+    ):
+        return await self._send(
+            'GET',
+            f"{self.service_url}/html",
+            params={"url": url},
+            headers=headers,
+            stream=stream,
+        )
+
+    async def mirror(
+        self,
+        url: str,
+        headers: Optional[dict] = None,
+        stream: bool = False,
     ):
         request_headers = headers.copy() if headers else {}
         parsed_url = urlparse(url)
@@ -41,25 +65,27 @@ class CloudflareMirrorClient:
         host = parsed_url.netloc
         host = host.split(":")[0]
 
-        url = f"{self.service_url}/{path}"
+        service_url = f"{self.service_url}/{path}"
+        if parsed_url.query:
+            service_url = f"{service_url}?{parsed_url.query}"
 
         headers = {
             "x-hostname": host,
         }
         headers.update(request_headers)
 
-        return requests.get(
-            url,
+        return await self._send(
+            'GET',
+            service_url,
             headers=headers,
-            timeout=self.timeout,
-            allow_redirects=True
+            stream=stream,
         )
 
 
-    def clear_cache(self):
-        return requests.post(
+    async def clear_cache(self):
+        return await self._send(
+            'POST',
             f"{self.service_url}/cache/clear",
-            timeout=self.timeout
         )
 
 

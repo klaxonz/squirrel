@@ -11,7 +11,7 @@ from crawl import (
     SubscriptionImportItem,
 )
 
-from .html_client import fetch_javdb_html
+from .html_client import DEFAULT_JAVDB_TIMEOUT_SECONDS, fetch_javdb_html
 
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ class JavdbUserSubscriptionImporter:
     """
 
     domain = 'javdb.com'
-    page_fetch_timeout = 15
+    page_fetch_timeout = DEFAULT_JAVDB_TIMEOUT_SECONDS
 
     def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
         items: List[SubscriptionImportItem] = []

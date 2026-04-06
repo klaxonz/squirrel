@@ -83,6 +83,7 @@ def _stub_javdb_handler_dependencies():
     originals = {name: sys.modules.get(name) for name in ('crawl', 'bs4')}
     responses: list[_FakeResponse] = []
     soup_registry: dict[str, _FakeSoup] = {}
+    request_calls: list[dict[str, object]] = []
 
     crawl_module = types.ModuleType('crawl')
 
@@ -99,6 +100,11 @@ def _stub_javdb_handler_dependencies():
             self.context = context or {}
 
     def request_without_limit(_method: str, _url: str, **_kwargs):
+        request_calls.append({
+            'method': _method,
+            'url': _url,
+            'kwargs': dict(_kwargs),
+        })
         if not responses:
             raise AssertionError('No queued response for request_without_limit')
         return responses.pop(0)
@@ -113,7 +119,7 @@ def _stub_javdb_handler_dependencies():
     try:
         sys.modules['crawl'] = crawl_module
         sys.modules['bs4'] = bs4_module
-        yield responses, soup_registry, ParseError, NetworkError
+        yield responses, soup_registry, ParseError, NetworkError, request_calls
     finally:
         for name, original in originals.items():
             if original is None:
@@ -317,7 +323,7 @@ def _load_youtube_extractor_module():
 
 class PlaybackHandlerTests(unittest.TestCase):
     def test_javdb_handler_resolves_relative_detail_links(self):
-        with _stub_javdb_handler_dependencies() as (responses, soups, _parse_error, _network_error):
+        with _stub_javdb_handler_dependencies() as (responses, soups, _parse_error, _network_error, request_calls):
             module = _load_javdb_handler_module()
 
             responses.extend([
@@ -340,9 +346,13 @@ class PlaybackHandlerTests(unittest.TestCase):
             query = parse_qs(parsed.query)
             self.assertEqual(unquote(query['referer'][0]), 'https://missav.ai/en/ABP-123')
             self.assertEqual(unquote(query['url'][0]), 'https://videos.cdn.example.com/five-four-three-two-one/master/video.m3u8')
+            self.assertEqual(
+                request_calls[0]['kwargs'],
+                {'timeout': 30.0, 'bypass_mode': 'html'},
+            )
 
     def test_javdb_handler_raises_parse_error_when_stream_cannot_be_resolved(self):
-        with _stub_javdb_handler_dependencies() as (responses, soups, ParseError, _network_error):
+        with _stub_javdb_handler_dependencies() as (responses, soups, ParseError, _network_error, _request_calls):
             module = _load_javdb_handler_module()
 
             responses.append(_FakeResponse('search-page'))
@@ -350,6 +360,76 @@ class PlaybackHandlerTests(unittest.TestCase):
 
             with self.assertRaises(ParseError):
                 module.JavdbHandler().get_video_url(types.SimpleNamespace(title='ABP-123 Demo Title'))
+
+    def test_javdb_handler_retries_transient_search_page_parse_failures(self):
+        with _stub_javdb_handler_dependencies() as (responses, soups, _parse_error, _network_error, request_calls):
+            module = _load_javdb_handler_module()
+
+            responses.extend([
+                _FakeResponse('search-page-empty'),
+                _FakeResponse('search-page-ok'),
+                _FakeResponse('detail-page'),
+            ])
+            soups['search-page-empty'] = _FakeSoup(select_map={'div.thumbnail': []})
+            soups['search-page-ok'] = _FakeSoup(select_map={
+                'div.thumbnail': [_FakeThumbnail('https://missav.ai/abp-123')],
+            })
+            soups['detail-page'] = _FakeSoup(find_all_map={
+                'script': [
+                    _FakeScriptTag(text="'m3u8|one|two|three|four|five|com|example|cdn|videos|https|video|master|playlist|source'"),
+                ],
+            })
+
+            payload = module.JavdbHandler().get_video_url(types.SimpleNamespace(title='ABP-123 Demo Title'))
+
+            self.assertIsNone(payload['audio_url'])
+            self.assertEqual(
+                [call['url'] for call in request_calls],
+                [
+                    'https://missav.ai/search/ABP-123',
+                    'https://missav.ai/search/ABP-123',
+                    'https://missav.ai/abp-123',
+                ],
+            )
+
+    def test_javdb_handler_falls_back_to_next_search_result_when_first_detail_page_has_no_stream(self):
+        with _stub_javdb_handler_dependencies() as (responses, soups, _parse_error, _network_error, request_calls):
+            module = _load_javdb_handler_module()
+
+            responses.extend([
+                _FakeResponse('search-page'),
+                _FakeResponse('detail-page-no-stream'),
+                _FakeResponse('detail-page-ok'),
+            ])
+            soups['search-page'] = _FakeSoup(select_map={
+                'div.thumbnail': [
+                    _FakeThumbnail('https://missav.ai/abf-304'),
+                    _FakeThumbnail('https://missav.ai/abf-304-alt'),
+                ],
+            })
+            soups['detail-page-no-stream'] = _FakeSoup(find_all_map={
+                'script': [_FakeScriptTag(text="console.log('missing stream')")],
+            })
+            soups['detail-page-ok'] = _FakeSoup(find_all_map={
+                'script': [
+                    _FakeScriptTag(text="'m3u8|one|two|three|four|five|com|example|cdn|videos|https|video|master|playlist|source'"),
+                ],
+            })
+
+            payload = module.JavdbHandler().get_video_url(types.SimpleNamespace(title='ABF-304 Demo Title'))
+
+            self.assertIsNone(payload['audio_url'])
+            parsed = urlparse(payload['video_url'])
+            query = parse_qs(parsed.query)
+            self.assertEqual(unquote(query['referer'][0]), 'https://missav.ai/abf-304-alt')
+            self.assertEqual(
+                [call['url'] for call in request_calls],
+                [
+                    'https://missav.ai/search/ABF-304',
+                    'https://missav.ai/abf-304',
+                    'https://missav.ai/abf-304-alt',
+                ],
+            )
 
     def test_youtube_mpd_opts_use_default_player_client_without_cookies(self):
         with _stub_youtube_mpd_dependencies() as (FakeYoutubeDL, _AuthError, _NetworkError, _ParseError):

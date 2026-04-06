@@ -41,14 +41,36 @@ def _proxy_config_values() -> dict:
     return build_proxy_config_values(SITE_SLUG, DEFAULT_PROXY_CONFIG)
 
 
+def _requires_cross_host_bypass(target_url: str) -> bool:
+    path_lower = str(urlparse(target_url).path or '').strip().lower()
+    return path_lower.endswith('.m3u8')
+
+
 def build_runtime_proxy_config(payload: object | None = None) -> dict[str, object]:
-    return build_shared_runtime_proxy_config(
+    config = build_shared_runtime_proxy_config(
         site_slug=SITE_SLUG,
         site_domain=SITE_DOMAIN,
         default_site_headers=DEFAULT_SITE_HEADERS,
         default_proxy_config=DEFAULT_PROXY_CONFIG,
         domain=payload,
     )
+
+    if isinstance(payload, dict):
+        target_url = str(payload.get('target_url') or '').strip()
+        target_host = str(urlparse(target_url).hostname or '').strip().lower()
+        if (
+            target_host
+            and target_host != SITE_DOMAIN
+            and not target_host.endswith(f'.{SITE_DOMAIN}')
+            and _requires_cross_host_bypass(target_url)
+        ):
+            domain_configs = config.get('domain_configs')
+            if isinstance(domain_configs, list) and domain_configs:
+                first_config = domain_configs[0]
+                if isinstance(first_config, dict):
+                    first_config['bypass_domains'] = [target_host]
+
+    return config
 
 
 def rewrite_proxy_playlist(url: str, content: str | bytes, referer: str | None = None) -> dict[str, object]:

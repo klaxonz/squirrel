@@ -54,7 +54,7 @@ PLUGIN_MANIFEST = PluginManifest(
             name='resolve_playback',
             description='Resolve playback URLs for a JavDB video.',
             response_schema={'type': 'object'},
-            timeout_ms=30000,
+            timeout_ms=120000,
         ),
         PluginCapability(
             name='resolve_proxy_config',
@@ -110,7 +110,7 @@ def get_plugin_runtime():
         extractor_factory=lambda: _load_local_attr('extractor', 'JavdbExtractor')(),
         extractor_site_name='javdb',
         playback_handler_factory=lambda: _load_local_attr('handler', 'JavdbHandler')(),
-        proxy_config_builder=lambda domain: _load_local_attr('proxy', 'build_runtime_proxy_config')(domain),
+        proxy_config_builder=lambda payload: _load_local_attr('proxy', 'build_runtime_proxy_config')(payload),
         playlist_rewriter=lambda url, content, referer=None: _load_local_attr('proxy', 'rewrite_proxy_playlist')(
             url,
             content,

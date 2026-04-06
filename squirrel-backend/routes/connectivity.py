@@ -3,6 +3,7 @@
 提供站点可访问性检测、响应时间测量等功能
 """
 import asyncio
+import inspect
 import logging
 import socket
 import time
@@ -49,6 +50,12 @@ AGGRESSIVE_HEADER_EXTRAS = {
 RESTRICTED_STATUS_CODES = {401, 403, 406, 409, 412, 429}
 
 
+async def _await_if_needed(result):
+    if inspect.isawaitable(result):
+        return await result
+    return result
+
+
 def build_browser_headers(target_url: str, aggressive: bool = False) -> Dict[str, str]:
     headers = dict(BROWSER_HEADERS)
     parsed = urlparse(target_url)
@@ -87,7 +94,7 @@ async def _fetch_with_cloudflare_bypass(url: str):
 
     headers = build_browser_headers(url, aggressive=True)
     try:
-        return await asyncio.to_thread(client.html, url, headers=headers)
+        return await _await_if_needed(client.html(url, headers=headers))
     except Exception as exc:
         logger.warning("Cloudflare bypass connectivity test failed for %s: %s", url, exc)
         return None

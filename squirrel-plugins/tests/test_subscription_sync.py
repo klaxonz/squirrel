@@ -196,6 +196,7 @@ def _stub_javdb_subscription_dependencies():
             raise AssertionError('No queued response for fetch_javdb_html')
         return response_queue.pop(0)
 
+    html_client_module.DEFAULT_JAVDB_TIMEOUT_SECONDS = 30.0
     html_client_module.fetch_javdb_html = fetch_javdb_html
 
     try:

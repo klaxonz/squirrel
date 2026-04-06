@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import logging
 import threading
 import time
@@ -96,7 +97,7 @@ class ResponseBuilder:
     ]
 
     @staticmethod
-    def build_response_headers(upstream_response: httpx.Response) -> Dict[str, str]:
+    def build_response_headers(upstream_response: Any) -> Dict[str, str]:
         headers: Dict[str, str] = {}
         for header in ResponseBuilder.IMPORTANT_HEADERS:
             if header in upstream_response.headers:
@@ -104,6 +105,53 @@ class ResponseBuilder:
         if 'accept-ranges' not in headers:
             headers['accept-ranges'] = 'bytes'
         return headers
+
+
+class UpstreamResponseAdapter:
+    @staticmethod
+    async def read(response: Any) -> bytes:
+        if hasattr(response, 'aread'):
+            return await response.aread()
+        content = getattr(response, 'content', b'')
+        return content if isinstance(content, bytes) else bytes(content)
+
+    @staticmethod
+    async def close(response: Any) -> None:
+        if hasattr(response, 'aclose'):
+            await response.aclose()
+            return
+        close_fn = getattr(response, 'close', None)
+        if callable(close_fn):
+            close_fn()
+
+    @staticmethod
+    async def iter_bytes(response: Any, chunk_size: int) -> AsyncIterator[bytes]:
+        if hasattr(response, 'aiter_bytes'):
+            async for chunk in response.aiter_bytes(chunk_size):
+                if chunk:
+                    yield chunk
+            return
+
+        iter_content = getattr(response, 'iter_content', None)
+        if callable(iter_content):
+            for chunk in iter_content(chunk_size=chunk_size):
+                if chunk:
+                    yield chunk
+            return
+
+        body = await UpstreamResponseAdapter.read(response)
+        if body:
+            yield body
+
+    @staticmethod
+    def text(response: Any) -> str:
+        text = getattr(response, 'text', None)
+        if text is not None:
+            return str(text)
+        content = getattr(response, 'content', b'')
+        if isinstance(content, bytes):
+            return content.decode('utf-8', errors='ignore')
+        return str(content)
 
 
 class ConnectionManager:
@@ -215,33 +263,72 @@ class HttpRequester:
         return configured_domain or cls._normalize_host(fallback_domain)
 
     @classmethod
+    def _bypass_hosts(cls, domain_config: Optional[Dict[str, Any]], fallback_domain: str) -> set[str]:
+        hosts: set[str] = set()
+        configured_domain = cls._bypass_domain(domain_config, fallback_domain)
+        if configured_domain:
+            hosts.add(configured_domain)
+
+        if not isinstance(domain_config, dict):
+            return hosts
+
+        explicit_hosts = domain_config.get('bypass_domains')
+        if not isinstance(explicit_hosts, (list, tuple, set)):
+            explicit_hosts = [
+                domain_config.get('bypass_domain'),
+                domain_config.get('bypass_host'),
+            ]
+
+        for item in explicit_hosts:
+            normalized = cls._normalize_host(item)
+            if normalized:
+                hosts.add(normalized)
+
+        return hosts
+
+    @classmethod
     def _should_bypass_request(
         cls,
         proxy_request: ProxyRequest,
         domain_config: Optional[Dict[str, Any]],
         fallback_domain: str,
     ) -> bool:
-        configured_domain = cls._bypass_domain(domain_config, fallback_domain)
-        if not configured_domain:
+        configured_hosts = cls._bypass_hosts(domain_config, fallback_domain)
+        if not configured_hosts:
             return False
 
         target_host = cls._normalize_host(urlparse(proxy_request.url).hostname)
         if not target_host:
             return False
-        return target_host == configured_domain or target_host.endswith(f'.{configured_domain}')
+        return any(
+            target_host == configured_host or target_host.endswith(f'.{configured_host}')
+            for configured_host in configured_hosts
+        )
 
     async def _execute_bypass_request(
         self,
         proxy_request: ProxyRequest,
         headers: Dict[str, str],
         bypass_mode: str,
+        *,
+        stream: bool = False,
     ):
         client = get_cloudflare_bypass_client()
         if client is None:
             raise ProxyConfigurationException(self.domain, 'cloudflare bypass client is not configured')
 
         bypass_method = client.html if bypass_mode == 'html' else client.mirror
-        return await asyncio.to_thread(bypass_method, proxy_request.url, headers=headers)
+        kwargs = {'headers': headers}
+        try:
+            if 'stream' in inspect.signature(bypass_method).parameters:
+                kwargs['stream'] = stream
+        except (TypeError, ValueError):
+            pass
+
+        response = bypass_method(proxy_request.url, **kwargs)
+        if inspect.isawaitable(response):
+            return await response
+        return response
 
     async def execute_request(
         self,
@@ -258,7 +345,12 @@ class HttpRequester:
         for attempt in range(proxy_request.max_retries + 1):
             try:
                 if use_bypass and bypass_mode:
-                    response = await self._execute_bypass_request(proxy_request, headers, bypass_mode)
+                    response = await self._execute_bypass_request(
+                        proxy_request,
+                        headers,
+                        bypass_mode,
+                        stream=stream,
+                    )
                 else:
                     request = client.build_request(
                         'GET',
@@ -273,8 +365,8 @@ class HttpRequester:
                     )
 
                 if response.status_code >= 400:
-                    await response.aread()
-                    await response.aclose()
+                    await UpstreamResponseAdapter.read(response)
+                    await UpstreamResponseAdapter.close(response)
 
                     if self.retry_strategy.is_terminal_error(response.status_code):
                         raise httpx.HTTPStatusError(
@@ -305,7 +397,10 @@ class HttpRequester:
                 if attempt == proxy_request.max_retries:
                     logger.warning(f"Network error after {attempt + 1} attempts: {e}")
             except httpx.HTTPStatusError as e:
-                raise ProxyNetworkException(self.domain, f"HTTP {e.response.status_code}: {e.response.text}")
+                raise ProxyNetworkException(
+                    self.domain,
+                    f"HTTP {e.response.status_code}: {UpstreamResponseAdapter.text(e.response)}",
+                )
             except Exception as e:
                 last_exception = ProxyException(f"Unexpected error: {str(e)}", self.domain)
                 logger.error(f"Unexpected error on attempt {attempt + 1}: {e}", exc_info=True)
@@ -482,16 +577,16 @@ class VideoProxy:
             return None
         return dict(response.data)
 
-    async def _stream_response(self, response: httpx.Response, chunk_size: int) -> AsyncIterator[bytes]:
+    async def _stream_response(self, response: Any, chunk_size: int) -> AsyncIterator[bytes]:
         try:
-            async for chunk in response.aiter_bytes(chunk_size):
+            async for chunk in UpstreamResponseAdapter.iter_bytes(response, chunk_size):
                 if chunk:
                     yield chunk
         except Exception as e:
             logger.error(f"Error during streaming: {e}")
             raise
         finally:
-            await response.aclose()
+            await UpstreamResponseAdapter.close(response)
 
     @asynccontextmanager
     async def _get_http_client(self):
@@ -538,8 +633,8 @@ class VideoProxy:
                 content_type = response.headers.get('content-type', '')
                 path_lower = urlparse(url).path.lower()
                 if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
-                    playlist_content = await response.aread()
-                    await response.aclose()
+                    playlist_content = await UpstreamResponseAdapter.read(response)
+                    await UpstreamResponseAdapter.close(response)
 
                     rewritten = self._rewrite_playlist(url, playlist_content, referer=referer)
                     if rewritten is not None:

@@ -150,6 +150,7 @@ def _stub_javdb_importer_dependencies():
             raise AssertionError('No queued response for fetch_javdb_html')
         return response_queue.pop(0)
 
+    html_client_module.DEFAULT_JAVDB_TIMEOUT_SECONDS = 30.0
     html_client_module.fetch_javdb_html = fetch_javdb_html
 
     try:
@@ -393,9 +394,11 @@ class ImporterTests(unittest.TestCase):
         with _stub_javdb_importer_dependencies() as (_responses, soups):
             module = _load_javdb_importer_module()
             requested_urls = []
+            requested_kwargs = []
 
             def _fetch_javdb_html(url, **_kwargs):
                 requested_urls.append(url)
+                requested_kwargs.append(dict(_kwargs))
                 page = int(url.rsplit('=', 1)[-1])
                 return _FakeResponse(f'actors-page-{page}')
 
@@ -424,6 +427,13 @@ class ImporterTests(unittest.TestCase):
                 [
                     'https://javdb.com/users/collection_actors?page=1',
                 ],
+            )
+            self.assertEqual(
+                requested_kwargs,
+                [{
+                    'timeout': 30.0,
+                    'use_rate_limit': False,
+                }],
             )
             self.assertEqual(
                 batch.items,

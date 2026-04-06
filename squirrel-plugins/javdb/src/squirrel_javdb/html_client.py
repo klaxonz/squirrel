@@ -14,6 +14,7 @@ from crawl import (
 logger = logging.getLogger(__name__)
 
 SITE_SLUG = 'javdb'
+DEFAULT_JAVDB_TIMEOUT_SECONDS = 30.0
 _BASE_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -45,7 +46,7 @@ def fetch_javdb_html(
     url: str,
     *,
     login: bool = False,
-    timeout: float = 15,
+    timeout: float = DEFAULT_JAVDB_TIMEOUT_SECONDS,
     allow_redirects: bool = True,
     use_rate_limit: bool = True,
 ):

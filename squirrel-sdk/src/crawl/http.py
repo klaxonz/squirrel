@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import logging
 import random
 import threading
@@ -185,6 +187,33 @@ def get_http_session() -> RateLimitedSession:
     return _shared_session
 
 
+def _resolve_maybe_async_result(result):
+    if not inspect.isawaitable(result):
+        return result
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(result)
+
+    outcome: dict[str, object] = {}
+
+    def _runner() -> None:
+        try:
+            outcome['value'] = asyncio.run(result)
+        except BaseException as exc:  # pragma: no cover - defensive bridge
+            outcome['error'] = exc
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
+    thread.join()
+
+    error = outcome.get('error')
+    if error is not None:
+        raise error  # type: ignore[misc]
+    return outcome.get('value')
+
+
 def request(method: str, url: str, **kwargs):
     """
     发送HTTP请求（支持rate limiting和cloudflare bypass）
@@ -211,9 +240,9 @@ def request(method: str, url: str, **kwargs):
         headers = kwargs.get('headers')
 
         if use_cloudflare_bypass == "html":
-            return _cloudflare_bypass_client.html(url=url, headers=headers)  # type: ignore
+            return _resolve_maybe_async_result(_cloudflare_bypass_client.html(url=url, headers=headers))  # type: ignore
         elif use_cloudflare_bypass == "mirror":
-            return _cloudflare_bypass_client.mirror(url=url, headers=headers)  # type: ignore
+            return _resolve_maybe_async_result(_cloudflare_bypass_client.mirror(url=url, headers=headers))  # type: ignore
         else:
             raise ValueError(f"无效的 Cloudflare bypass 类型: {use_cloudflare_bypass}，应为 'html' 或 'mirror'")
     else:
@@ -242,9 +271,9 @@ def request_without_limit(method: str, url: str, **kwargs):
         headers = kwargs.get('headers')
 
         if bypass_mode == "html":
-            return _cloudflare_bypass_client.html(url=url, headers=headers)  # type: ignore
+            return _resolve_maybe_async_result(_cloudflare_bypass_client.html(url=url, headers=headers))  # type: ignore
         elif bypass_mode == "mirror":
-            return _cloudflare_bypass_client.mirror(url=url, headers=headers)  # type: ignore
+            return _resolve_maybe_async_result(_cloudflare_bypass_client.mirror(url=url, headers=headers))  # type: ignore
         else:
             raise ValueError(f"无效的 Cloudflare bypass 类型: {bypass_mode}，应为 'html' 或 'mirror'")
     else:
