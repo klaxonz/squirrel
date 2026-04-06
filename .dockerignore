@@ -44,7 +44,6 @@ squirrel-backend/plugins_ext/
 squirrel-sdk/dist/
 squirrel-sdk/build/
 squirrel-plugins/*/dist/
-squirrel-plugins/*/build/
 squirrel-plugins/*/*.egg-info/
 
 # Node
