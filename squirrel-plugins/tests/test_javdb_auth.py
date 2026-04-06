@@ -35,7 +35,7 @@ def _stub_javdb_auth_dependencies():
         name: sys.modules.get(name)
         for name in ('crawl', 'squirrel_javdb', 'squirrel_javdb.html_client')
     }
-    response_queue: list[_FakeResponse] = []
+    response_queue: list[object] = []
 
     crawl_module = types.ModuleType('crawl')
     crawl_module.LoginStatusResult = _LoginStatusResult
@@ -53,7 +53,10 @@ def _stub_javdb_auth_dependencies():
     def fetch_javdb_html(_url: str, **_kwargs):
         if not response_queue:
             raise AssertionError('No queued response for fetch_javdb_html')
-        return response_queue.pop(0)
+        item = response_queue.pop(0)
+        if isinstance(item, BaseException):
+            raise item
+        return item
 
     html_client_module.DEFAULT_JAVDB_TIMEOUT_SECONDS = 30.0
     html_client_module.build_javdb_headers = build_javdb_headers
@@ -84,7 +87,7 @@ def _load_javdb_auth_module():
 
 
 class JavdbAuthTests(unittest.TestCase):
-    def test_javdb_login_status_rejects_gateway_error_page(self):
+    def test_javdb_login_status_marks_gateway_error_page_as_check_failure(self):
         with _stub_javdb_auth_dependencies() as responses:
             module = _load_javdb_auth_module()
             responses.append(_FakeResponse(
@@ -95,7 +98,19 @@ class JavdbAuthTests(unittest.TestCase):
             result = module.check_javdb_login_status()
 
             self.assertFalse(result.logged_in)
-            self.assertEqual(result.message, '返回内容显示为站点错误页')
+            self.assertEqual(result.message, '检测失败: 返回内容显示为站点错误页')
+            self.assertEqual(result.extra, {'transient_failure': True})
+
+    def test_javdb_login_status_marks_request_exceptions_as_check_failure(self):
+        with _stub_javdb_auth_dependencies() as responses:
+            module = _load_javdb_auth_module()
+            responses.append(RuntimeError('temporary upstream failure'))
+
+            result = module.check_javdb_login_status()
+
+            self.assertFalse(result.logged_in)
+            self.assertEqual(result.message, '检测失败: 请求失败: temporary upstream failure')
+            self.assertEqual(result.extra, {'transient_failure': True})
 
 
 if __name__ == '__main__':

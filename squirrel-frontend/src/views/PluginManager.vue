@@ -449,7 +449,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getConnectivityBadge } from '@/utils/plugin-connectivity-status'
 import { Logger } from '@/utils/logger'
-import { getLoginStatusBadge, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/plugin-login-status'
+import { getLoginStatusBadge, mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/plugin-login-status'
 import { useSiteCatalog } from '@/composables/useSites';
 import {
   disablePlugin,
@@ -821,7 +821,7 @@ const upsertLoginStatus = (siteName, payload) => {
   if (!siteName) return;
   loginStatusResults.value = {
     ...loginStatusResults.value,
-    [siteName]: payload
+    [siteName]: mergeLoginStatusResult(loginStatusResults.value?.[siteName], payload)
   };
 };
 
@@ -1045,10 +1045,7 @@ const handleUploadCookies = (site) => {
     try {
       const result = await uploadSiteCookies(siteName, file);
       if (!result.error && result.data?.login_status) {
-        loginStatusResults.value = {
-          ...loginStatusResults.value,
-          [siteName]: result.data.login_status
-        };
+        upsertLoginStatus(siteName, result.data.login_status);
         saveResultsToCache();
       }
     } finally {

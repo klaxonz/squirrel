@@ -53,24 +53,22 @@ def check_javdb_login_status() -> LoginStatusResult:
         body = resp.text or ""
     except Exception as exc:
         logger.warning("javdb login check failed: %s", exc, exc_info=True)
-        return LoginStatusResult(
-            site_name=site_name,
-            logged_in=False,
-            message=f"请求失败: {exc}",
+        return _transient_login_failure(
+            site_name,
+            f'请求失败: {exc}',
         )
 
-    if resp.status_code in (401, 403, 429):
+    if resp.status_code == 401:
         return LoginStatusResult(
             site_name=site_name,
             logged_in=False,
-            message=f"被拒绝访问 (status={resp.status_code})",
+            message=f"认证失败 (status={resp.status_code})",
         )
 
-    if resp.status_code == 404:
-        return LoginStatusResult(
-            site_name=site_name,
-            logged_in=False,
-            message="页面不存在(404)",
+    if resp.status_code in (403, 404, 429):
+        return _transient_login_failure(
+            site_name,
+            f'被拒绝访问 (status={resp.status_code})' if resp.status_code != 404 else '页面不存在(404)',
         )
 
     location = resp.headers.get("Location", "")
@@ -90,11 +88,7 @@ def check_javdb_login_status() -> LoginStatusResult:
         )
 
     if _looks_like_javdb_error_page(body):
-        return LoginStatusResult(
-            site_name=site_name,
-            logged_in=False,
-            message='返回内容显示为站点错误页',
-        )
+        return _transient_login_failure(site_name, '返回内容显示为站点错误页')
 
     username = None
     match = re.search(r'data-username="([^"]+)"', body)
@@ -106,4 +100,13 @@ def check_javdb_login_status() -> LoginStatusResult:
         logged_in=True,
         username=username,
         message="已登录",
+    )
+
+
+def _transient_login_failure(site_name: str, reason: str) -> LoginStatusResult:
+    return LoginStatusResult(
+        site_name=site_name,
+        logged_in=False,
+        message=f'检测失败: {reason}',
+        extra={'transient_failure': True},
     )

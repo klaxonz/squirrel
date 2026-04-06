@@ -2,6 +2,33 @@ const DEFAULT_TITLE = '未登录'
 
 const containsAny = (text, tokens) => tokens.some(token => text.includes(token))
 
+const TRANSIENT_FAILURE_TOKENS = [
+  '检测失败',
+  '请求失败',
+  'timeout',
+  'network',
+  'gateway',
+  'upstream',
+  '5xx',
+  '502',
+  '503',
+  '504',
+  '站点错误页',
+]
+
+export const isTransientLoginFailure = (loginStatus) => {
+  if (!loginStatus || loginStatus.logged_in) {
+    return false
+  }
+
+  if (loginStatus.extra?.transient_failure === true) {
+    return true
+  }
+
+  const title = String(loginStatus.message || '').toLowerCase()
+  return containsAny(title, TRANSIENT_FAILURE_TOKENS)
+}
+
 export const getLoginStatusBadge = (loginStatus) => {
   if (!loginStatus) {
     return {
@@ -46,7 +73,7 @@ export const getLoginStatusBadge = (loginStatus) => {
     }
   }
 
-  if (containsAny(normalized, ['请求失败', 'error', 'failed', 'timeout', 'network'])) {
+  if (isTransientLoginFailure(loginStatus) || containsAny(normalized, ['error', 'failed'])) {
     return {
       tone: 'danger',
       label: '错误',
@@ -67,6 +94,18 @@ export const getLoginStatusBadge = (loginStatus) => {
     label: '无效',
     title,
   }
+}
+
+export const mergeLoginStatusResult = (previousStatus, nextStatus) => {
+  if (!nextStatus) {
+    return previousStatus
+  }
+
+  if (previousStatus?.logged_in && isTransientLoginFailure(nextStatus)) {
+    return previousStatus
+  }
+
+  return nextStatus
 }
 
 export const shouldRefreshLoginStatusesAfterCookieImport = (payload) => {
