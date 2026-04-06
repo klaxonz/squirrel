@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from core.config import settings
-from core.cookie_config import get_site_cookies_dir, get_site_cookies_file_path
+from core.cookie_config import get_site_cookies_dir, get_site_cookies_file_path, write_cookie_text_file
 from core.site_config_manager import get_effective_site_catalog
 
 logger = logging.getLogger(__name__)
@@ -173,7 +173,7 @@ def sync_cookiecloud_to_site_files(site_slug: Optional[str] = None) -> Dict[str,
                 lines.append(line)
 
         path = get_site_cookies_file_path(slug)
-        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        write_cookie_text_file(path, '\n'.join(lines) + '\n')
         result_sites[slug] = {
             "cookies": max(0, len(lines) - 1),
             "path": str(path),

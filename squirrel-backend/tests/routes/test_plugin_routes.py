@@ -76,3 +76,97 @@ def test_upload_site_cookies_accepts_runtime_only_site(monkeypatch, tmp_path):
     assert response['code'] == 0
     assert response['data']['site_name'] == 'youporn'
     assert '.youporn.com' in cookies_path.read_text(encoding='utf-8')
+
+
+def test_upload_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path):
+    effective_catalog = {
+        'youporn': {
+            'label': 'YouPorn',
+            'domains': ['youporn.com'],
+            'enabled': True,
+            'test_url': 'https://www.youporn.com',
+        }
+    }
+    cookies_path = tmp_path / 'youporn.txt'
+    writes = []
+
+    monkeypatch.setattr(plugin_routes, 'get_effective_site_catalog', lambda: effective_catalog)
+    monkeypatch.setattr(plugin_routes, 'get_site_cookies_file_path', lambda site_name: cookies_path)
+    monkeypatch.setattr(
+        plugin_routes,
+        'test_site_login_status',
+        lambda site_name: {'supported': True, 'logged_in': True, 'site_name': site_name},
+    )
+
+    def _record_write(path, content):
+        writes.append((path, content))
+        path.write_text(content, encoding='utf-8')
+
+    monkeypatch.setattr(
+        plugin_routes,
+        'write_cookie_text_file',
+        _record_write,
+        raising=False,
+    )
+
+    class DummyUploadFile:
+        filename = 'cookies.txt'
+
+        async def read(self):
+            return (
+                '# Netscape HTTP Cookie File\n'
+                '.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
+            ).encode('utf-8')
+
+    response = asyncio.run(plugin_routes.upload_site_cookies('youporn', DummyUploadFile()))
+
+    assert response['code'] == 0
+    assert writes == [
+        (
+            cookies_path,
+            '# Netscape HTTP Cookie File\n'
+            '.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n',
+        )
+    ]
+
+
+def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path):
+    effective_catalog = {
+        'youporn': {
+            'label': 'YouPorn',
+            'domains': ['youporn.com'],
+            'enabled': True,
+            'test_url': 'https://www.youporn.com',
+        }
+    }
+    cookies_path = tmp_path / 'youporn.txt'
+    writes = []
+
+    monkeypatch.setattr(plugin_routes, 'get_effective_site_catalog', lambda: effective_catalog)
+    monkeypatch.setattr(plugin_routes, 'get_site_cookies_file_path', lambda site_name: cookies_path)
+    monkeypatch.setattr(
+        plugin_routes,
+        'write_cookie_text_file',
+        lambda path, content: writes.append((path, content)),
+        raising=False,
+    )
+
+    class DummyUploadFile:
+        filename = 'cookies.txt'
+
+        async def read(self):
+            return (
+                '# Netscape HTTP Cookie File\n'
+                '.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
+            ).encode('utf-8')
+
+    response = asyncio.run(plugin_routes.import_cookies_for_all_sites(DummyUploadFile()))
+
+    assert response['code'] == 0
+    assert writes == [
+        (
+            cookies_path,
+            '# Netscape HTTP Cookie File\n'
+            '.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n',
+        )
+    ]

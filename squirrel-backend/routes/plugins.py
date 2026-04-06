@@ -24,6 +24,7 @@ from routes.connectivity import test_site_connectivity
 from core.cookie_config import (
     get_site_cookies_dir,
     get_site_cookies_file_path,
+    write_cookie_text_file,
 )
 from utils.site_catalog import SiteCatalog
 from core.site_config_manager import get_effective_site_catalog
@@ -367,7 +368,7 @@ async def upload_site_cookies(
         output_lines.insert(0, "# Netscape HTTP Cookie File")
     output_lines.extend(body_lines)
 
-    site_cookies_path.write_text("\n".join(output_lines) + "\n", encoding="utf-8")
+    write_cookie_text_file(site_cookies_path, '\n'.join(output_lines) + '\n')
 
     status = test_site_login_status(site_name)
     return success(
@@ -441,7 +442,7 @@ async def import_cookies_for_all_sites(file: UploadFile = File(...)):
         if not output or not output[0].startswith("# Netscape HTTP Cookie File"):
             output.insert(0, "# Netscape HTTP Cookie File")
         output.extend(body)
-        path.write_text("\n".join(output) + "\n", encoding="utf-8")
+        write_cookie_text_file(path, '\n'.join(output) + '\n')
         result_summary[site_name] = {"cookies": len(body)}
 
     total_lines = len(lines)
