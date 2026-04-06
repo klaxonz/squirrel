@@ -220,6 +220,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { formatTime } from '@/utils/dateFormat'
 import { usePlayer } from './runtime/usePlayer'
 import {
   getNextControlsVisibilityOnTouchTap,
@@ -519,12 +520,6 @@ const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'ArrowRight') { seek(currentTime.value + 10); showCentralHud('seek', '+10s', 'skipForward') }
   if (e.key === 'ArrowUp') { setVolume(Math.min(100, volume.value + 5)) }
   if (e.key === 'ArrowDown') { setVolume(Math.max(0, volume.value - 5)) }
-}
-
-const formatTime = (s: number) => {
-  if (!isFinite(s)) return '0:00'
-  const m = Math.floor(s / 60), sec = Math.floor(s % 60)
-  return `${m}:${sec.toString().padStart(2, '0')}`
 }
 
 const getCodecFamily = (codec: string | null | undefined) => {
