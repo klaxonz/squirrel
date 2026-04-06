@@ -116,7 +116,7 @@ watch(() => props.subscriptionId, () => {
 <style scoped>
 .channel-terminal-header {
   position: relative;
-  padding: 1rem 0 0.6rem;
+  padding: 0;
   background: transparent;
   overflow: hidden;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
@@ -144,14 +144,15 @@ watch(() => props.subscriptionId, () => {
 .header-content {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding: 0 1rem;
 }
 
 .channel-main-info {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
   flex: 1;
   min-width: 0;
@@ -167,13 +168,17 @@ watch(() => props.subscriptionId, () => {
 }
 
 .channel-avatar-card {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.channel-avatar-card.avatar--lg {
   width: 100%;
   height: 100%;
 }
 
 .channel-avatar-card:deep(.subscription-avatar) {
-  width: 100%;
-  height: 100%;
   border-radius: 8px;
 }
 
@@ -224,7 +229,6 @@ watch(() => props.subscriptionId, () => {
   align-items: center;
   justify-content: flex-end;
   flex-shrink: 0;
-  padding-top: 0.1rem;
 }
 
 .channel-title-minimal {
@@ -338,16 +342,8 @@ watch(() => props.subscriptionId, () => {
 }
 
 @media (max-width: 900px) {
-  .channel-terminal-header {
-    padding: 0.95rem 0 0.65rem;
-  }
-
   .channel-title-minimal {
     font-size: 1.05rem;
-  }
-
-  .channel-side-meta {
-    padding-top: 0;
   }
 }
 

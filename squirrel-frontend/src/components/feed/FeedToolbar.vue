@@ -103,7 +103,7 @@ watch(localSite, (value) => emit('update:site', value))
 
 <style scoped>
 .toolbar-minimal {
-  padding: 1rem 2rem;
+  padding: 0.5rem 1rem;
   background: transparent;
 }
 
