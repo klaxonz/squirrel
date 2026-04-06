@@ -71,14 +71,11 @@
               <!-- Left: Avatar with Status -->
               <div class="subscription-row__media">
                 <div class="subscription-row__avatar-wrapper">
-                  <img
-                    :alt="subscription.name"
-                    :src="getAvatarSrc(subscription.avatar, subscription.id)"
+                  <SubscriptionAvatar
+                    :src="subscription.avatar"
+                    :name="subscription.name"
+                    size="lg"
                     class="subscription-row__avatar"
-                    :class="{ 'image-loaded': avatarsLoaded[subscription.id] }"
-                    referrerpolicy="no-referrer"
-                    @load="avatarsLoaded[subscription.id] = true"
-                    @error="(event) => handleAvatarError(event, subscription.id)"
                   />
                   <div v-if="getRefreshState(subscription.id).isRefreshing" class="subscription-row__avatar-pulse"></div>
                 </div>
@@ -163,12 +160,11 @@
 
         <div v-if="selectedSubscription" class="space-y-5 px-6 py-5">
           <div class="subscription-dialog__summary">
-            <img
-              :src="getAvatarSrc(selectedSubscription.avatar, selectedSubscription.id)"
-              :alt="selectedSubscription.name"
+            <SubscriptionAvatar
+              :src="selectedSubscription.avatar"
+              :name="selectedSubscription.name"
+              size="lg"
               class="subscription-dialog__avatar"
-              referrerpolicy="no-referrer"
-              @error="(event) => handleAvatarError(event, selectedSubscription.id)"
             />
 
             <div class="min-w-0 flex-1">
@@ -263,6 +259,7 @@ import { ArrowDownTrayIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/vue/24/ou
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
 import SubscriptionSkeleton from '@/components/feed/SubscriptionSkeleton.vue'
+import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import AddChannelDialog from '@/components/dialogs/AddChannelDialog.vue'
 import ImportSubscriptionDialog from '@/components/dialogs/ImportSubscriptionDialog.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -281,7 +278,6 @@ import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import { useScrollPosition } from '../composables/useScrollPosition'
 import { useSubscriptionRefresh } from '../composables/useSubscriptionRefresh'
 import { useFeedFilters } from '../composables/useFeedFilters'
-import { useImageFallback } from '../composables/useImageFallback'
 import { formatDate } from '../utils/dateFormat'
 import {
   getSubscriptions as apiGetSubscriptions,
@@ -297,7 +293,6 @@ const isResetting = ref(false)
 const { scrollContainer, handleScroll: handleScrollPosition, restoreScrollPosition } = useScrollPosition('subscribed-page')
 
 const subscriptions = ref([])
-const avatarsLoaded = ref({})
 const loadError = ref(null)
 const loading = ref(false)
 const hasLoadedOnce = ref(false)
@@ -305,7 +300,6 @@ const allLoaded = ref(false)
 const currentPage = ref(1)
 const searchQuery = ref('')
 const { nsfw, site } = useFeedFilters()
-const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 
 const showSettings = ref(false)
 const selectedSubscription = ref(null)
@@ -690,18 +684,15 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   border-radius: var(--radius-sm);
-  object-fit: cover;
-  filter: grayscale(0.2);
-  opacity: 0;
-  transition: opacity 0.5s ease, filter 0.2s ease;
   border: 1px solid hsl(var(--border) / 0.4);
 }
 
-.subscription-row__avatar.image-loaded {
-  opacity: 1;
+.subscription-row__avatar :deep(.avatar-image) {
+  filter: grayscale(0.2);
+  transition: filter 0.2s ease;
 }
 
-.subscription-row:hover .subscription-row__avatar {
+.subscription-row:hover .subscription-row__avatar :deep(.avatar-image) {
   filter: grayscale(0);
 }
 
@@ -886,7 +877,6 @@ onUnmounted(() => {
   width: 3rem;
   height: 3rem;
   border-radius: var(--radius-sm);
-  object-fit: cover;
   border: 1px solid hsl(var(--border) / 0.4);
 }
 
