@@ -806,6 +806,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const seek = (time: number): void => {
     if (!videoElement) return
+    clearWaitingRecovery()
+    waitingRecoverySuppressedUntil = Date.now() + Math.max(retryDelay * 2, 4000)
     videoElement.currentTime = time
     events.emit('seeking', time)
   }

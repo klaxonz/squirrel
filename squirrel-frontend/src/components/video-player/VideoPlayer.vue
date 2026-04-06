@@ -18,7 +18,7 @@
     <video
       ref="videoRef"
       class="sp-video"
-      :poster="source?.poster || poster"
+      :poster="effectivePoster"
       :muted="store.muted"
       :autoplay="store.autoplay"
       :loop="store.loop"
@@ -294,11 +294,13 @@ const isScrubbing = ref(false)
 const isVolumeScrubbing = ref(false)
 const lastPointerType = ref('mouse')
 const shouldResumeAfterSourceSwap = ref(false)
+const hidePosterForCurrentSource = ref(false)
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
 const centralHud = ref<{ visible: boolean; type: string; value: string; icon: IconName; percent: number }>({ 
   visible: false, type: '', value: '', icon: 'play', percent: 0 
 })
 const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !errorState.value.show)
+const effectivePoster = computed(() => hidePosterForCurrentSource.value ? '' : (props.source?.poster || props.poster || ''))
 
 let centralHudTimer: any
 const showCentralHud = (type: string, value: string, icon: IconName, percent: number = 0) => {
@@ -397,6 +399,7 @@ watch(() => props.source, (s, previousSource) => {
   if (sourceChanged) {
     clearInitialTimeListener()
     initialTimeAppliedSourceKey = null
+    hidePosterForCurrentSource.value = false
   }
   if (!s) {
     shouldResumeAfterSourceSwap.value = isPlaying.value
@@ -551,6 +554,10 @@ const handlePointerDown = (event: PointerEvent) => {
 }
 
 watch(isPlaying, (playing) => {
+  if (playing) {
+    hidePosterForCurrentSource.value = true
+  }
+
   if (!playing) {
     showControls()
     return
