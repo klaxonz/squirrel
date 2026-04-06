@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from jose import JWTError, jwt
-from fastapi import Cookie, HTTPException, Response, status
+from fastapi import Cookie, HTTPException, Request, Response, status
 
 from models.user import User
 from services import user_service
@@ -31,24 +31,37 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-def set_auth_cookie(response: Response, token: str) -> None:
+def _should_use_secure_cookie(request: Request | None) -> bool:
+    if request is None:
+        return False
+
+    forwarded_proto = str(request.headers.get('x-forwarded-proto') or '').split(',', 1)[0].strip().lower()
+    if forwarded_proto:
+        return forwarded_proto == 'https'
+
+    return request.url.scheme == 'https'
+
+
+def set_auth_cookie(response: Response, token: str, request: Request | None = None) -> None:
+    secure = _should_use_secure_cookie(request)
     response.set_cookie(
         key=AUTH_COOKIE_NAME,
         value=token,
         max_age=AUTH_COOKIE_MAX_AGE,
         httponly=True,
-        secure=True,
+        secure=secure,
         samesite='lax',
         path='/',
     )
 
 
-def clear_auth_cookie(response: Response) -> None:
+def clear_auth_cookie(response: Response, request: Request | None = None) -> None:
+    secure = _should_use_secure_cookie(request)
     response.delete_cookie(
         key=AUTH_COOKIE_NAME,
         path='/',
         httponly=True,
-        secure=True,
+        secure=secure,
         samesite='lax',
     )
 

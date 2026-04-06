@@ -50,6 +50,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - PORT=${PORT:-8001}
+      - CLOUDFLARE_BYPASS_SERVICE_URL=${CLOUDFLARE_BYPASS_SERVICE_URL:-http://squirrel-cf-bypass:8002}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
       - THUMBNAILS_PATH=${THUMBNAILS_PATH:-/thumbnails}
@@ -89,6 +90,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - PORT=${PORT:-8001}
+      - CLOUDFLARE_BYPASS_SERVICE_URL=${CLOUDFLARE_BYPASS_SERVICE_URL:-http://squirrel-cf-bypass:8002}
       - THUMBNAILS_PATH=${THUMBNAILS_PATH:-/thumbnails}
     volumes:
       - ./config:/app/config
@@ -120,6 +122,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - PORT=${PORT:-8001}
+      - CLOUDFLARE_BYPASS_SERVICE_URL=${CLOUDFLARE_BYPASS_SERVICE_URL:-http://squirrel-cf-bypass:8002}
       - THUMBNAILS_PATH=${THUMBNAILS_PATH:-/thumbnails}
     volumes:
       - ./config:/app/config

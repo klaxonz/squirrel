@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, EmailStr, Field
 from common import response
 from models.user import User
@@ -81,7 +81,7 @@ async def register(request: UserRegisterRequest):
 
 
 @router.post("/login")
-async def login(request: UserLoginRequest, http_response: Response):
+async def login(request: UserLoginRequest, http_request: Request, http_response: Response):
     """
     User login
     """
@@ -94,7 +94,7 @@ async def login(request: UserLoginRequest, http_response: Response):
         data={"sub": str(user.id)},
         expires_delta=timedelta(days=30)
     )
-    set_auth_cookie(http_response, access_token)
+    set_auth_cookie(http_response, access_token, http_request)
 
     return response.success(
         data=user.to_dict(),
@@ -103,8 +103,8 @@ async def login(request: UserLoginRequest, http_response: Response):
 
 
 @router.post('/logout')
-async def logout(http_response: Response):
-    clear_auth_cookie(http_response)
+async def logout(http_request: Request, http_response: Response):
+    clear_auth_cookie(http_response, http_request)
     return response.success(msg='退出成功')
 
 

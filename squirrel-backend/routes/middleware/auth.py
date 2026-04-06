@@ -74,17 +74,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
             decode_token(token)
         except Exception:
             logger.error("Invalid token", exc_info=True)
-            return self._unauthorized_response(TokenExpiredError(), clear_cookie=True)
+            return self._unauthorized_response(TokenExpiredError(), request=request, clear_cookie=True)
         return await call_next(request)
 
     @staticmethod
-    def _unauthorized_response(error: AuthenticationError, clear_cookie: bool = False) -> JSONResponse:
+    def _unauthorized_response(error: AuthenticationError, request: Request | None = None, clear_cookie: bool = False) -> JSONResponse:
         payload = response.unauthorized(error.detail)
         unauthorized_response = JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content=payload,
         )
         if clear_cookie:
-            clear_auth_cookie(unauthorized_response)
+            clear_auth_cookie(unauthorized_response, request)
         return unauthorized_response
 
