@@ -9,7 +9,7 @@
 """
 
 import uuid
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from typing import Optional, Callable, Any
 from functools import wraps
 
@@ -42,6 +42,16 @@ def set_trace_id(trace_id: Optional[str]) -> None:
         trace_id: 要设置的 trace_id，可以为 None
     """
     _trace_id_var.set(trace_id)
+
+
+def bind_trace_id(trace_id: Optional[str]) -> Token:
+    """Bind trace_id to the current context and return a reset token."""
+    return _trace_id_var.set(trace_id)
+
+
+def reset_trace_id(token: Token) -> None:
+    """Reset the trace_id context to a previous token."""
+    _trace_id_var.reset(token)
 
 
 class TraceContext:

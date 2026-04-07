@@ -138,10 +138,12 @@ def main() -> None:
             host="0.0.0.0",
             port=settings.PORT,
             reload=False,
-            factory=True
+            factory=True,
+            log_config=None,
+            access_log=False,
         )
     else:
-        uvicorn.run(app, host="0.0.0.0", port=settings.PORT)
+        uvicorn.run(app, host="0.0.0.0", port=settings.PORT, log_config=None, access_log=False)
 
 
 if __name__ == "__main__":
