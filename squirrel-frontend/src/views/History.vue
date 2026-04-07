@@ -39,14 +39,14 @@
     <!-- Content Area -->
     <div class="history-content flex-grow overflow-y-auto scrollbar-hide" ref="scrollContainer" @scroll="handleScroll">
       <div class="max-w-[1000px] mx-auto w-full p-4 pb-20">
-        <Transition name="fade-list" mode="out-in">
+        <Transition name="fade-list">
           <!-- Loading State -->
           <div v-if="loading && videos.length === 0" key="skeleton" class="space-y-1 mt-8">
             <HistorySkeleton v-for="i in 10" :key="i" :delay="i * 50" />
           </div>
 
           <!-- Empty State -->
-          <div v-else-if="groupedVideos.length === 0" key="empty" class="flex flex-col items-center justify-center py-20 text-center">
+          <div v-else-if="hasLoadedOnce && groupedVideos.length === 0" key="empty" class="flex flex-col items-center justify-center py-20 text-center">
             <div class="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center mb-4">
               <ClockIcon class="h-10 w-10 text-muted-foreground/40" />
             </div>
@@ -120,7 +120,8 @@ const { getWatchHistory, clearHistory, deleteHistoryEntry } = useVideoHistory();
 
 const videos = ref([]);
 const currentPage = ref(1);
-const loading = ref(false);
+const loading = ref(true);
+const hasLoadedOnce = ref(false);
 const allLoaded = ref(false);
 const isRefreshing = ref(false);
 const scrollContainer = ref(null);
@@ -133,7 +134,7 @@ const site = ref(undefined);
 const searchQuery = ref('');
 
 const loadMore = async () => {
-  if (loading.value || allLoaded.value) return;
+  if (allLoaded.value || (loading.value && hasLoadedOnce.value)) return;
 
   loading.value = true;
   try {
@@ -164,15 +165,22 @@ const loadMore = async () => {
   } catch (err) {
     Logger.error('Failed to load history', err);
   } finally {
+    hasLoadedOnce.value = true;
     loading.value = false;
   }
 };
 
-const refreshList = async () => {
-  isRefreshing.value = true;
+const resetHistoryList = () => {
+  hasLoadedOnce.value = false;
+  loading.value = true;
   videos.value = [];
   currentPage.value = 1;
   allLoaded.value = false;
+};
+
+const refreshList = async () => {
+  isRefreshing.value = true;
+  resetHistoryList();
   try {
     await loadMore();
   } finally {
@@ -189,8 +197,8 @@ const handleScroll = (e) => {
 };
 
 // Watchers for filters
-watch([nsfw, site], () => {
-  refreshList();
+watch([nsfw, site], async () => {
+  await refreshList();
 });
 
 const showClearConfirm = async () => {
