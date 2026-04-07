@@ -50,20 +50,15 @@
       
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         <div class="flex items-center gap-1.5">
-          <span class="font-mono text-[9px] bg-accent/80 text-accent-foreground px-1.5 py-0.5 rounded border border-accent/50 uppercase tracking-tighter">
-            {{ displaySite }}
-          </span>
-          
           <div v-if="displayAvatars.length" class="flex items-center -space-x-1">
-            <img
+            <SubscriptionAvatar
               v-for="(avatar, index) in displayAvatars"
               :key="`avatar-${index}`"
-              :src="getImageSrc(avatar.avatar, `history-avatar-${video.id}-${index}`)"
-              class="w-4 h-4 rounded-full border border-background object-cover bg-muted"
-              referrerpolicy="no-referrer"
-              :alt="avatar.name"
-              @error="(event) => handleImageError(event, `history-avatar-${video.id}-${index}`)"
-            >
+              :src="avatar.avatar"
+              :name="avatar.name"
+              size="xs"
+              class="history-item__avatar"
+            />
           </div>
           
           <span v-if="displayChannel" class="font-medium text-foreground/70">{{ displayChannel }}</span>
@@ -100,10 +95,10 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { TrashIcon } from '@heroicons/vue/24/outline'
+import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
 import { formatVideoCardId } from '@/utils/videoCard'
-import { useImageFallback } from '@/composables/useImageFallback'
 
 const props = defineProps({
   video: {
@@ -114,7 +109,6 @@ const props = defineProps({
 
 defineEmits(['open', 'delete'])
 
-const { getImageSrc, handleImageError } = useImageFallback()
 const showDefaultThumbnail = ref(false)
 const imageLoaded = ref(false)
 const videoCardId = computed(() => formatVideoCardId(props.video?.id))
@@ -141,14 +135,6 @@ const displayAvatars = computed(() => {
   return avatars.slice(0, 3)
 })
 
-const displaySite = computed(() => {
-  if (props.video.site_name) return props.video.site_name;
-  if (props.video.subscriptions && props.video.subscriptions.length > 0) {
-    return props.video.subscriptions[0].site_name || props.video.subscriptions[0].site;
-  }
-  return '未知站点';
-});
-
 const displayChannel = computed(() => {
   if (props.video.subscriptions && props.video.subscriptions.length > 0) {
     return props.video.subscriptions.map(s => s.name).join(' / ');
@@ -172,6 +158,11 @@ const formatLastWatchTime = (timestamp) => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.history-item__avatar {
+  width: 1rem;
+  height: 1rem;
 }
 
 /* Terminal Fallback Style (Synced with VideoItem) */

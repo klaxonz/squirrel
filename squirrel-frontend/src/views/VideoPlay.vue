@@ -61,16 +61,13 @@
                 <div class="video-channel">
                   <div class="video-channel__primary">
                     <div class="video-channel__avatar-wrapper">
-                      <img
+                      <SubscriptionAvatar
                         v-if="video?.subscriptions?.[0]"
-                        :src="getAvatarSrc(video.subscriptions[0].avatar, video.subscriptions[0].id)"
-                        :alt="video.subscriptions[0].name"
+                        :src="video.subscriptions[0].avatar"
+                        :name="video.subscriptions[0].name"
+                        size="lg"
                         class="video-channel__avatar"
-                        :class="{ 'image-loaded': videoAvatarLoaded }"
-                        referrerpolicy="no-referrer"
-                        @load="videoAvatarLoaded = true"
-                        @error="(e) => handleAvatarError(e, video.subscriptions[0].id)"
-                      >
+                      />
                     </div>
                     <div class="video-channel__identity">
                       <router-link
@@ -227,6 +224,7 @@ import { useRoute, useRouter } from 'vue-router';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
 import { useAppTheme } from '@/composables/useAppTheme'
+import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoPlayer from '@/components/video-player/VideoPlayer.vue';
 import RelatedVideoSkeleton from '@/components/video-player/RelatedVideoSkeleton.vue';
 import { LocalStorageAdapter } from '@/components/video-player/core';
@@ -235,7 +233,6 @@ import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration } from '../utils/dateFormat';
 import { formatVideoCardId } from '@/utils/videoCard';
 import useVideoInteraction from '../composables/useVideoInteraction';
-import { useImageFallback } from '../composables/useImageFallback';
 import { Logger } from '@/utils/logger'
 import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
 
@@ -245,7 +242,6 @@ import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
 const route = useRoute();
 const router = useRouter();
 const emitter = inject('emitter');
-const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback();
 
 const playerAdapter = new LocalStorageAdapter();
 const { effectiveTheme } = useAppTheme()
@@ -353,7 +349,6 @@ const syncWidescreenSidebarState = (enabled) => {
 
 
 const relatedThumbnailErrorIds = reactive(new Set());
-const videoAvatarLoaded = ref(false)
 const relatedImagesLoaded = reactive({})
 const isVideoChannelVisible = ref(true)
 const isChannelUnsubscribing = ref(false)
@@ -597,7 +592,6 @@ watch(() => video.value?.id, () => {
   isVideoChannelVisible.value = true
   isChannelUnsubscribing.value = false
   videoChannelError.value = ''
-  videoAvatarLoaded.value = false
 })
 
 watch(() => relatedVideos.value, () => {
@@ -720,13 +714,6 @@ onUnmounted(() => {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
-
-.video-channel__avatar.image-loaded {
-  opacity: 1;
 }
 
 .video-meta__actions {
@@ -983,7 +970,6 @@ onUnmounted(() => {
   width: 2.2rem; /* 缩小头像 */
   height: 2.2rem;
   border-radius: 50%;
-  object-fit: cover;
 }
 
 .video-channel__name {
@@ -1070,7 +1056,6 @@ onUnmounted(() => {
   width: 2.6rem;
   height: 2.6rem;
   border-radius: 50%;
-  object-fit: cover;
 }
 
 .video-channel__name {
