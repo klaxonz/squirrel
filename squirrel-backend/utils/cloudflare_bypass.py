@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Callable, Optional
 from urllib.parse import urlparse
 
 import httpx
@@ -15,7 +15,32 @@ class CloudflareMirrorClient:
             raise ValueError("service_url 不能为空")
         self.service_url = service_url.rstrip('/')
         self.timeout = timeout
-        self._client = httpx.AsyncClient(timeout=self.timeout, follow_redirects=True)
+        self._client_factory: Callable[[], httpx.AsyncClient] = lambda: httpx.AsyncClient(
+            timeout=self.timeout,
+            follow_redirects=True,
+        )
+
+    @staticmethod
+    async def _close_client(client) -> None:
+        close = getattr(client, 'aclose', None)
+        if callable(close):
+            await close()
+
+    async def _bind_streaming_response(self, response, client):
+        original_aclose = getattr(response, 'aclose', None)
+        close = getattr(response, 'close', None)
+
+        async def close_with_client():
+            try:
+                if callable(original_aclose):
+                    await original_aclose()
+                elif callable(close):
+                    close()
+            finally:
+                await self._close_client(client)
+
+        response.aclose = close_with_client
+        return response
 
     async def _send(
         self,
@@ -26,17 +51,28 @@ class CloudflareMirrorClient:
         headers: Optional[dict] = None,
         stream: bool = False,
     ):
-        request = self._client.build_request(
-            method,
-            url,
-            params=params,
-            headers=headers.copy() if headers else None,
-        )
-        return await self._client.send(
-            request,
-            stream=stream,
-            follow_redirects=True,
-        )
+        client = self._client_factory()
+        try:
+            request = client.build_request(
+                method,
+                url,
+                params=params,
+                headers=headers.copy() if headers else None,
+            )
+            response = await client.send(
+                request,
+                stream=stream,
+                follow_redirects=True,
+            )
+        except Exception:
+            await self._close_client(client)
+            raise
+
+        if stream:
+            return await self._bind_streaming_response(response, client)
+
+        await self._close_client(client)
+        return response
 
     async def html(
         self,
