@@ -1,65 +1,64 @@
-# ========================================
-# Squirrel 多阶段构建 Dockerfile
-# ========================================
+# syntax=docker/dockerfile:1.7
 
-FROM ghcr.io/klaxonz/squirrel-base:latest AS base
+ARG BUILD_BASE_IMAGE=ghcr.io/klaxonz/squirrel-base:build
+ARG RUNTIME_BASE_IMAGE=ghcr.io/klaxonz/squirrel-base:runtime
 
-# ========================================
-# 阶段 1: 构建前端
-# ========================================
-FROM base AS frontend-builder
+FROM ${BUILD_BASE_IMAGE} AS frontend-builder
 
 WORKDIR /app/squirrel-frontend
 
 COPY squirrel-frontend/package.json squirrel-frontend/package-lock.json ./
 
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci
 
 COPY squirrel-frontend/ ./
 
-RUN npm run build && \
-    echo "Frontend build completed at $(date)" && \
-    ls -lh dist/
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm run build
 
-# ========================================
-# 阶段 2: 构建插件包
-# ========================================
-FROM base AS plugin-builder
+FROM ${BUILD_BASE_IMAGE} AS youtube-node-builder
+
+WORKDIR /app/squirrel-plugins/youtube/src/squirrel_youtube/node
+
+COPY squirrel-plugins/youtube/src/squirrel_youtube/node/package.json squirrel-plugins/youtube/src/squirrel_youtube/node/package-lock.json ./
+
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --omit=dev
+
+COPY squirrel-plugins/youtube/src/squirrel_youtube/node/ ./
+
+FROM ${BUILD_BASE_IMAGE} AS python-builder
 
 WORKDIR /app
 
-COPY squirrel-sdk ./squirrel-sdk
-COPY squirrel-plugins ./squirrel-plugins
+COPY squirrel-backend/Pipfile squirrel-backend/Pipfile.lock /app/squirrel-backend/
 
-RUN cd squirrel-sdk && \
-    pip install --no-cache-dir build && \
-    python -m build && \
-    pip install --no-cache-dir dist/*.whl && \
-    echo "SDK installed successfully"
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    cd /app/squirrel-backend && pipenv install --deploy --system
 
-RUN for plugin_dir in squirrel-plugins/*/; do \
-        if [ -f "$plugin_dir/pyproject.toml" ]; then \
-            echo "Building plugin: $plugin_dir"; \
-            cd "/app/$plugin_dir" && \
-            python -m build && \
-            pip install --no-cache-dir dist/*.whl; \
-        fi; \
-    done && \
-    pip list | grep squirrel
+COPY squirrel-sdk /app/squirrel-sdk
+COPY squirrel-plugin-runner /app/squirrel-plugin-runner
+COPY squirrel-plugins /app/squirrel-plugins
 
-# ========================================
-# 阶段 3: 最终运行镜像
-# ========================================
-FROM base AS final
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    set -eux; \
+    mkdir -p /tmp/wheels; \
+    python -m build /app/squirrel-sdk --wheel --outdir /tmp/wheels; \
+    python -m build /app/squirrel-plugin-runner --wheel --outdir /tmp/wheels; \
+    find /app/squirrel-plugins -mindepth 2 -maxdepth 2 -name pyproject.toml -print0 | while IFS= read -r -d '' pyproject; do \
+        plugin_dir="$(dirname "${pyproject}")"; \
+        echo "Building plugin wheel: ${plugin_dir}"; \
+        python -m build "${plugin_dir}" --wheel --outdir /tmp/wheels; \
+    done; \
+    pip install --no-cache-dir /tmp/wheels/*.whl; \
+    rm -rf /tmp/wheels
+
+FROM ${RUNTIME_BASE_IMAGE} AS final
 
 WORKDIR /app/squirrel-backend
 
-COPY squirrel-backend/Pipfile squirrel-backend/Pipfile.lock ./
-
-RUN pipenv install --deploy --system && \
-    pip list
-
-COPY --from=plugin-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
 COPY squirrel-backend ./
 COPY squirrel-sdk /app/squirrel-sdk
@@ -67,13 +66,11 @@ COPY squirrel-plugin-runner /app/squirrel-plugin-runner
 COPY squirrel-plugins /app/squirrel-plugins
 
 COPY --from=frontend-builder /app/squirrel-frontend/dist ./static
+COPY --from=youtube-node-builder /app/squirrel-plugins/youtube/src/squirrel_youtube/node /app/squirrel-plugins/youtube/src/squirrel_youtube/node
 
-RUN cd /app/squirrel-plugins/youtube/src/squirrel_youtube/node && \
-    npm ci
-
-RUN mkdir -p /app/config /app/logs /downloads /thumbnails && \
-    chmod -R 755 /app && \
-    echo "Squirrel Docker Image Built at $(date)" > /app/BUILD_INFO
+RUN mkdir -p /app/config /app/logs /downloads /thumbnails \
+    && chmod -R 755 /app \
+    && echo "Squirrel Docker Image Built at $(date)" > /app/BUILD_INFO
 
 ENV PYTHONPATH=/app/squirrel-backend:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \

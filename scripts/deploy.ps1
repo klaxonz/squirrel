@@ -95,6 +95,8 @@ function Setup-Images {
     
     if ($build -eq "y" -or $build -eq "Y") {
         Write-ColorOutput Yellow "开始构建镜像..."
+        docker build --target runtime-base -t ghcr.io/klaxonz/squirrel-base:runtime -f Dockerfile.base .
+        docker build --target build-base -t ghcr.io/klaxonz/squirrel-base:build -f Dockerfile.base .
         docker build -t klaxonz/squirrel:latest .
         docker build -t klaxonz/squirrel-cf-bypass:latest .\squirrel-cf-bypass
     } else {

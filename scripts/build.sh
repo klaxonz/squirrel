@@ -12,6 +12,8 @@ NC='\033[0m' # No Color
 IMAGE_NAME="klaxonz/squirrel"
 CF_BYPASS_IMAGE_NAME="klaxonz/squirrel-cf-bypass"
 BASE_IMAGE_NAME="ghcr.io/klaxonz/squirrel-base"
+BASE_RUNTIME_TAG="$BASE_IMAGE_NAME:runtime"
+BASE_BUILD_TAG="$BASE_IMAGE_NAME:build"
 PLATFORM="linux/amd64,linux/arm64"
 
 # 获取版本号
@@ -87,7 +89,7 @@ done
 
 # 构建基础镜像
 build_base_image() {
-    echo -e "${YELLOW}==> 构建基础镜像 $BASE_IMAGE_NAME:latest...${NC}"
+    echo -e "${YELLOW}==> 构建基础镜像 $BASE_RUNTIME_TAG and $BASE_BUILD_TAG...${NC}"
     
     if [ "$MULTI_PLATFORM" = true ]; then
         echo -e "${YELLOW}构建多平台基础镜像 ($PLATFORM)...${NC}"
@@ -96,16 +98,26 @@ build_base_image() {
                 --platform $PLATFORM \
                 --push \
                 $NO_CACHE \
-                -t "$BASE_IMAGE_NAME:latest" \
+                --target runtime-base \
+                -t "$BASE_RUNTIME_TAG" \
+                -f Dockerfile.base .
+            docker buildx build \
+                --platform $PLATFORM \
+                --push \
+                $NO_CACHE \
+                --target build-base \
+                -t "$BASE_BUILD_TAG" \
                 -f Dockerfile.base .
         else
             echo -e "${RED}错误: 多平台构建需要推送到仓库，请添加 -p 参数${NC}"
             exit 1
         fi
     else
-        docker build $NO_CACHE -t "$BASE_IMAGE_NAME:latest" -f Dockerfile.base .
+        docker build $NO_CACHE --target runtime-base -t "$BASE_RUNTIME_TAG" -f Dockerfile.base .
+        docker build $NO_CACHE --target build-base -t "$BASE_BUILD_TAG" -f Dockerfile.base .
         if [ "$PUSH" = true ]; then
-            docker push "$BASE_IMAGE_NAME:latest"
+            docker push "$BASE_RUNTIME_TAG"
+            docker push "$BASE_BUILD_TAG"
         fi
     fi
     
@@ -197,7 +209,8 @@ echo -e "${GREEN}构建完成！${NC}"
 echo -e "${GREEN}=====================================${NC}"
 echo -e "镜像标签:"
 if [ "$BUILD_BASE" = true ]; then
-    echo -e "  - ${YELLOW}$BASE_IMAGE_NAME:latest${NC}"
+    echo -e "  - ${YELLOW}$BASE_RUNTIME_TAG${NC}"
+    echo -e "  - ${YELLOW}$BASE_BUILD_TAG${NC}"
 fi
 echo -e "  - ${YELLOW}$IMAGE_NAME:$VERSION${NC}"
 echo -e "  - ${YELLOW}$IMAGE_NAME:latest${NC}"
