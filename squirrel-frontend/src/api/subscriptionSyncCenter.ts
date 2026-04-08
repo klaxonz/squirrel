@@ -1,27 +1,15 @@
 import { get } from '@/utils/request'
 
-const buildNoCacheParams = (params: Record<string, unknown> = {}) => ({
-  ...params,
-  _ts: Date.now(),
-})
-
-const noCacheConfig = {
-  headers: {
-    'Cache-Control': 'no-store',
-    Pragma: 'no-cache',
-  },
-}
-
 export const getSyncCenterOverview = async <T = any>() => {
-  return get<T>('/api/subscription/sync-center/overview', buildNoCacheParams(), noCacheConfig)
+  return get<T>('/api/subscription/sync-center/overview')
 }
 
 export const getSyncCenterItems = async <T = any>(params: Record<string, unknown> = {}) => {
-  return get<T>('/api/subscription/sync-center/items', buildNoCacheParams(params), noCacheConfig)
+  return get<T>('/api/subscription/sync-center/items', params)
 }
 
 export const getFeedDashboardSnapshot = async <T = any>(params: Record<string, unknown> = {}) => {
-  return get<T>('/api/subscription/sync-center/feed-snapshot', buildNoCacheParams(params), noCacheConfig)
+  return get<T>('/api/subscription/sync-center/feed-snapshot', params)
 }
 
 export const getSyncCenterStreamUrl = (selectedRunId?: string | null) => {
