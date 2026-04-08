@@ -77,5 +77,6 @@ squirrel-backend/.thumbnail-index-backfill.state
 .cursor/
 .claude/
 .qwen/
+.omx/
 .worktrees/
 .playwright-cli/
