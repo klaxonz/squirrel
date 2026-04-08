@@ -29,8 +29,10 @@ class _SubscriptionSyncResult:
     latest_video_url: str | None
     cursor_payload: dict
     stop_reason: str
-    total_available: int
+    total_available: int | None
     has_more: bool = False
+    head_sample_urls: list[str] | None = None
+    anchor_found: bool | None = None
 
 
 @dataclass
@@ -90,6 +92,9 @@ def _build_subscription_sync_result(
     source_video_count=None,
     cursor_payload=None,
     has_more=False,
+    total_available=None,
+    head_sample_urls=None,
+    anchor_found=None,
 ):
     return _SubscriptionSyncResult(
         video_urls=list(video_urls),
@@ -100,8 +105,10 @@ def _build_subscription_sync_result(
             else {'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload
         ),
         stop_reason=stop_reason,
-        total_available=len(video_urls),
+        total_available=total_available,
         has_more=has_more,
+        head_sample_urls=list(head_sample_urls) if head_sample_urls is not None else None,
+        anchor_found=anchor_found,
     )
 
 

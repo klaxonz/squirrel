@@ -53,6 +53,13 @@ def build_subscription_sync_result(
     cursor_payload: Optional[dict[str, Any]] = None,
     has_more: bool = False,
     source_video_count: Optional[int] = None,
+    total_available: Optional[int] = None,
+    head_sample_urls: Optional[list[str]] = None,
+    anchor_found: Optional[bool] = None,
+    oldest_scanned_url: Optional[str] = None,
+    cursor_invalid: Optional[bool] = None,
+    cursor_loop_detected: Optional[bool] = None,
+    scan_depth: Optional[int] = None,
 ) -> SubscriptionSyncResult:
     return SubscriptionSyncResult(
         video_urls=video_urls,
@@ -65,5 +72,11 @@ def build_subscription_sync_result(
         has_more=has_more,
         stop_reason=stop_reason,
         source_video_count=source_video_count,
-        total_available=len(video_urls),
+        total_available=total_available,
+        head_sample_urls=head_sample_urls,
+        anchor_found=anchor_found,
+        oldest_scanned_url=oldest_scanned_url,
+        cursor_invalid=cursor_invalid,
+        cursor_loop_detected=cursor_loop_detected,
+        scan_depth=scan_depth,
     )

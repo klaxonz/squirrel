@@ -17,6 +17,8 @@ from crawl import (
 
 from .html_client import fetch_javdb_html
 
+HEAD_SAMPLE_LIMIT = 10
+
 
 class JavdbSubscription:
     def __init__(self, url: str) -> None:
@@ -65,6 +67,7 @@ class JavdbSubscription:
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         video_list: List[str] = []
         seen_urls: set[str] = set()
+        head_sample_urls: list[str] = []
         latest_video_url: Optional[str] = None
         limit = resolve_subscription_limit(context)
 
@@ -77,6 +80,7 @@ class JavdbSubscription:
             context,
             latest_video_url,
             limit,
+            head_sample_urls,
         )
         if stop_reason:
             return build_subscription_sync_result(
@@ -84,6 +88,8 @@ class JavdbSubscription:
                 latest_video_url=latest_video_url,
                 context=context,
                 stop_reason=stop_reason,
+                head_sample_urls=head_sample_urls if context.mode != 'full' else None,
+                anchor_found=True if stop_reason == 'cursor_hit' and context.mode != 'full' else None,
             )
 
         if context.mode == 'full':
@@ -103,6 +109,8 @@ class JavdbSubscription:
             latest_video_url=latest_video_url,
             context=context,
             stop_reason='source_exhausted',
+            head_sample_urls=head_sample_urls if context.mode != 'full' else None,
+            anchor_found=False if context.mode != 'full' and context.last_seen_video_url else None,
         )
 
     def _resolve_page(self, context: SubscriptionSyncContext) -> int:
@@ -142,10 +150,13 @@ class JavdbSubscription:
         context: SubscriptionSyncContext,
         latest_video_url: Optional[str],
         limit: Optional[int],
+        head_sample_urls: list[str],
     ) -> tuple[Optional[str], Optional[str]]:
         video_els = bs4.select('.movie-list .item a.box')
         for el in video_els:
             video_url = f'{base_url}{el["href"]}'
+            if video_url not in head_sample_urls and len(head_sample_urls) < HEAD_SAMPLE_LIMIT:
+                head_sample_urls.append(video_url)
             latest_video_url, stop_reason = append_subscription_video_url(
                 video_url,
                 video_urls=video_list,

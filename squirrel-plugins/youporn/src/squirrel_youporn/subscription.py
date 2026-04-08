@@ -21,6 +21,7 @@ DEFAULT_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept-Language': 'en-US,en;q=0.9',
 }
+HEAD_SAMPLE_LIMIT = 10
 
 
 class YouPornSubscription:
@@ -54,6 +55,7 @@ class YouPornSubscription:
         latest_video_url: Optional[str] = None
         video_urls: list[str] = []
         seen_urls: set[str] = set()
+        head_sample_urls: list[str] = []
 
         for selector in ('a[data-testid="plw_video_thumbnail_link"]', 'a.video-box-image[href^="/watch/"]'):
             for element in soup.select(selector):
@@ -62,6 +64,8 @@ class YouPornSubscription:
                     continue
 
                 video_url = urljoin(base_url, href)
+                if video_url not in head_sample_urls and len(head_sample_urls) < HEAD_SAMPLE_LIMIT:
+                    head_sample_urls.append(video_url)
                 latest_video_url, stop_reason = append_subscription_video_url(
                     video_url,
                     video_urls=video_urls,
@@ -76,6 +80,8 @@ class YouPornSubscription:
                         latest_video_url=latest_video_url,
                         context=context,
                         stop_reason=stop_reason,
+                        head_sample_urls=head_sample_urls if context.mode != 'full' else None,
+                        anchor_found=True if stop_reason == 'cursor_hit' and context.mode != 'full' else None,
                     )
 
         if context.mode == 'full':
@@ -95,6 +101,8 @@ class YouPornSubscription:
             latest_video_url=latest_video_url,
             context=context,
             stop_reason='source_exhausted',
+            head_sample_urls=head_sample_urls if context.mode != 'full' else None,
+            anchor_found=False if context.mode != 'full' and context.last_seen_video_url else None,
         )
 
     def _build_headers(self) -> dict[str, str]:

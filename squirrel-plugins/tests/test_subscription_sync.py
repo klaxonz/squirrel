@@ -39,8 +39,12 @@ class _SubscriptionSyncResult:
     latest_video_url: str | None
     cursor_payload: dict
     stop_reason: str
-    total_available: int
+    total_available: int | None
     has_more: bool = False
+    head_sample_urls: list[str] | None = None
+    anchor_found: bool | None = None
+    cursor_invalid: bool | None = None
+    cursor_loop_detected: bool | None = None
 
 
 @dataclass
@@ -90,6 +94,11 @@ def _build_subscription_sync_result(
     source_video_count=None,
     cursor_payload=None,
     has_more=False,
+    total_available=None,
+    head_sample_urls=None,
+    anchor_found=None,
+    cursor_invalid=None,
+    cursor_loop_detected=None,
 ):
     return _SubscriptionSyncResult(
         video_urls=list(video_urls),
@@ -100,8 +109,12 @@ def _build_subscription_sync_result(
             else {'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload
         ),
         stop_reason=stop_reason,
-        total_available=len(video_urls),
+        total_available=total_available,
         has_more=has_more,
+        head_sample_urls=list(head_sample_urls) if head_sample_urls is not None else None,
+        anchor_found=anchor_found,
+        cursor_invalid=cursor_invalid,
+        cursor_loop_detected=cursor_loop_detected,
     )
 
 
@@ -716,6 +729,14 @@ class SubscriptionSyncTests(unittest.TestCase):
             self.assertEqual(result.video_urls, ['https://www.youtube.com/watch?v=new00000001'])
             self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=new00000001')
             self.assertEqual(result.stop_reason, 'cursor_hit')
+            self.assertEqual(
+                result.head_sample_urls,
+                [
+                    'https://www.youtube.com/watch?v=new00000001',
+                    'https://www.youtube.com/watch?v=seen0000002',
+                ],
+            )
+            self.assertIs(result.anchor_found, True)
 
     def test_youtube_full_sync_returns_continuation_cursor_when_batch_limit_is_hit(self):
         with _stub_youtube_subscription_dependencies():

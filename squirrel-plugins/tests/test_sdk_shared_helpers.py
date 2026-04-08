@@ -249,7 +249,7 @@ class SharedSdkHelperTests(unittest.TestCase):
             stop_reason=stop_reason,
         )
         self.assertEqual(result.cursor_payload, {'latest_video_url': 'https://example.com/watch?v=new'})
-        self.assertEqual(result.total_available, 1)
+        self.assertIsNone(result.total_available)
 
     def test_build_subscription_sync_result_preserves_explicit_batch_cursor(self):
         with _stub_sdk_crawl_package():
@@ -273,6 +273,40 @@ class SharedSdkHelperTests(unittest.TestCase):
         self.assertTrue(result.has_more)
         self.assertEqual(result.cursor_payload, {'page': 2})
         self.assertEqual(result.stop_reason, 'batch_exhausted')
+
+    def test_build_subscription_sync_result_preserves_explicit_gap_detection_fields(self):
+        with _stub_sdk_crawl_package():
+            module = importlib.import_module('crawl.subscription_helpers')
+            core_module = importlib.import_module('crawl.core')
+
+        context = core_module.SubscriptionSyncContext(
+            mode='incremental',
+            cursor_payload={'latest_video_url': 'https://example.com/watch?v=seen'},
+            last_seen_video_url='https://example.com/watch?v=seen',
+        )
+
+        result = module.build_subscription_sync_result(
+            video_urls=['https://example.com/watch?v=new'],
+            latest_video_url='https://example.com/watch?v=new',
+            context=context,
+            stop_reason='cursor_hit',
+            total_available=42,
+            head_sample_urls=[
+                'https://example.com/watch?v=new',
+                'https://example.com/watch?v=seen',
+            ],
+            anchor_found=True,
+        )
+
+        self.assertEqual(result.total_available, 42)
+        self.assertEqual(
+            result.head_sample_urls,
+            [
+                'https://example.com/watch?v=new',
+                'https://example.com/watch?v=seen',
+            ],
+        )
+        self.assertIs(result.anchor_found, True)
 
     def test_runtime_helper_builds_common_runtime_handlers(self):
         with _stub_sdk_crawl_package():

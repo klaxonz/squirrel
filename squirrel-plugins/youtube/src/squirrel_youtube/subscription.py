@@ -19,6 +19,7 @@ from . import ytdlp_support as youtube_ytdlp_support
 logger = logging.getLogger(__name__)
 
 FULL_SYNC_BATCH_SIZE = 100
+HEAD_SAMPLE_LIMIT = 10
 _CHANNEL_SOURCES: tuple[str, ...] = ('videos', 'shorts')
 
 
@@ -61,7 +62,7 @@ class YoutubeSubscription:
         return match.group(1) if match else ''
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
-        video_urls, latest_video_url, stop_reason, cursor_payload, has_more = self._collect_videos(context)
+        video_urls, latest_video_url, stop_reason, cursor_payload, has_more, result_kwargs = self._collect_videos(context)
         return build_subscription_sync_result(
             video_urls=video_urls,
             latest_video_url=latest_video_url,
@@ -69,6 +70,7 @@ class YoutubeSubscription:
             stop_reason=stop_reason,
             cursor_payload=cursor_payload,
             has_more=has_more,
+            **result_kwargs,
         )
 
     @staticmethod
@@ -83,7 +85,7 @@ class YoutubeSubscription:
     def _collect_videos(
         self,
         context: SubscriptionSyncContext,
-    ) -> tuple[list[str], str | None, str, dict | None, bool]:
+    ) -> tuple[list[str], str | None, str, dict | None, bool, dict[str, Any]]:
         if self.is_playlist:
             return self._collect_playlist_videos(context)
         return self._collect_channel_videos(context)
@@ -91,10 +93,11 @@ class YoutubeSubscription:
     def _collect_playlist_videos(
         self,
         context: SubscriptionSyncContext,
-    ) -> tuple[list[str], str | None, str, dict | None, bool]:
+    ) -> tuple[list[str], str | None, str, dict | None, bool, dict[str, Any]]:
         video_urls: list[str] = []
         latest_video_url: str | None = None
         seen_urls: set[str] = set()
+        head_sample_urls: list[str] = []
         limit = resolve_subscription_limit(context)
 
         if context.mode == 'full':
@@ -115,6 +118,7 @@ class YoutubeSubscription:
                         'batch_exhausted',
                         {'source': 'playlist', 'offset': offset + len(video_urls)},
                         True,
+                        {},
                     )
                 latest_video_url, stop_reason = append_subscription_video_url(
                     watch_url,
@@ -124,9 +128,9 @@ class YoutubeSubscription:
                     limit=None,
                 )
                 if stop_reason:
-                    return video_urls, latest_video_url, stop_reason, None, False
+                    return video_urls, latest_video_url, stop_reason, None, False, {}
 
-            return video_urls, latest_video_url, 'source_exhausted', None, False
+            return video_urls, latest_video_url, 'source_exhausted', None, False, {}
 
         info = self._extract_source_info(self.url, end=limit + 1 if limit else None)
         entries = info.get('entries') or []
@@ -135,6 +139,7 @@ class YoutubeSubscription:
             if not watch_url or watch_url in seen_urls:
                 continue
             seen_urls.add(watch_url)
+            self._append_head_sample(head_sample_urls, watch_url)
             latest_video_url, stop_reason = append_subscription_video_url(
                 watch_url,
                 video_urls=video_urls,
@@ -143,17 +148,40 @@ class YoutubeSubscription:
                 limit=limit,
             )
             if stop_reason:
-                return video_urls, latest_video_url, stop_reason, None, False
+                return (
+                    video_urls,
+                    latest_video_url,
+                    stop_reason,
+                    None,
+                    False,
+                    self._build_incremental_result_kwargs(
+                        context,
+                        head_sample_urls=head_sample_urls,
+                        anchor_found=True if stop_reason == 'cursor_hit' else None,
+                    ),
+                )
 
-        return video_urls, latest_video_url, 'source_exhausted', None, False
+        return (
+            video_urls,
+            latest_video_url,
+            'source_exhausted',
+            None,
+            False,
+            self._build_incremental_result_kwargs(
+                context,
+                head_sample_urls=head_sample_urls,
+                anchor_found=False if context.last_seen_video_url else None,
+            ),
+        )
 
     def _collect_channel_videos(
         self,
         context: SubscriptionSyncContext,
-    ) -> tuple[list[str], str | None, str, dict | None, bool]:
+    ) -> tuple[list[str], str | None, str, dict | None, bool, dict[str, Any]]:
         video_urls: list[str] = []
         latest_video_url: str | None = None
         seen_urls: set[str] = set()
+        head_sample_urls: list[str] = []
         limit = resolve_subscription_limit(context)
 
         if context.mode != 'full':
@@ -164,6 +192,7 @@ class YoutubeSubscription:
                     if not watch_url or watch_url in seen_urls:
                         continue
                     seen_urls.add(watch_url)
+                    self._append_head_sample(head_sample_urls, watch_url)
                     latest_video_url, stop_reason = append_subscription_video_url(
                         watch_url,
                         video_urls=video_urls,
@@ -172,8 +201,30 @@ class YoutubeSubscription:
                         limit=limit,
                     )
                     if stop_reason:
-                        return video_urls, latest_video_url, stop_reason, None, False
-            return video_urls, latest_video_url, 'source_exhausted', None, False
+                        return (
+                            video_urls,
+                            latest_video_url,
+                            stop_reason,
+                            None,
+                            False,
+                            self._build_incremental_result_kwargs(
+                                context,
+                                head_sample_urls=head_sample_urls,
+                                anchor_found=True if stop_reason == 'cursor_hit' else None,
+                            ),
+                        )
+            return (
+                video_urls,
+                latest_video_url,
+                'source_exhausted',
+                None,
+                False,
+                self._build_incremental_result_kwargs(
+                    context,
+                    head_sample_urls=head_sample_urls,
+                    anchor_found=False if context.last_seen_video_url else None,
+                ),
+            )
 
         start_source, source_offset = self._resolve_channel_cursor(context)
         batch_limit = self._resolve_full_sync_batch_limit(context)
@@ -206,6 +257,7 @@ class YoutubeSubscription:
                         'batch_exhausted',
                         {'source': source_name, 'offset': current_offset + added_in_source},
                         True,
+                        {},
                     )
                 latest_video_url, stop_reason = append_subscription_video_url(
                     watch_url,
@@ -215,7 +267,7 @@ class YoutubeSubscription:
                     limit=None,
                 )
                 if stop_reason:
-                    return video_urls, latest_video_url, stop_reason, None, False
+                    return video_urls, latest_video_url, stop_reason, None, False, {}
                 added_in_source += 1
 
             if len(video_urls) < batch_limit:
@@ -229,10 +281,31 @@ class YoutubeSubscription:
                     'batch_exhausted',
                     {'source': next_source, 'offset': 0},
                     True,
+                    {},
                 )
-            return video_urls, latest_video_url, 'source_exhausted', None, False
+            return video_urls, latest_video_url, 'source_exhausted', None, False, {}
 
-        return video_urls, latest_video_url, 'source_exhausted', None, False
+        return video_urls, latest_video_url, 'source_exhausted', None, False, {}
+
+    @staticmethod
+    def _append_head_sample(head_sample_urls: list[str], watch_url: str) -> None:
+        if watch_url in head_sample_urls or len(head_sample_urls) >= HEAD_SAMPLE_LIMIT:
+            return
+        head_sample_urls.append(watch_url)
+
+    @staticmethod
+    def _build_incremental_result_kwargs(
+        context: SubscriptionSyncContext,
+        *,
+        head_sample_urls: list[str],
+        anchor_found: bool | None,
+    ) -> dict[str, Any]:
+        if context.mode == 'full':
+            return {}
+        return {
+            'head_sample_urls': list(head_sample_urls),
+            'anchor_found': anchor_found,
+        }
 
     def _get_metadata(self) -> dict[str, Any]:
         if self._metadata_cache is not None:
