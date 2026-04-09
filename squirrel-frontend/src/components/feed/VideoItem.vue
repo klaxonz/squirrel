@@ -58,16 +58,15 @@
       <div class="video-terminal-meta">
         <div class="meta-left">
           <div v-if="displayAvatars.length" class="meta-avatar-frame">
-            <img
+            <SubscriptionAvatar
               v-for="(avatar, index) in displayAvatars"
               :key="`avatar-${index}`"
-              :src="getAvatarSrc(avatar.avatar, `video-avatar-${video.id}-${index}`)"
+              :src="avatar.avatar"
+              :name="avatar.name"
+              size="xs"
               class="meta-avatar"
-              referrerpolicy="no-referrer"
-              :alt="avatar.name"
-              @error="(event) => handleAvatarError(event, `video-avatar-${video.id}-${index}`)"
               @click.stop="goToSubscription(avatar.id)"
-            >
+            />
           </div>
           <span class="meta-channel" @click.stop="goToSubscription(primarySubscriptionId)">
             {{ displayNames }}
@@ -98,12 +97,11 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
-import { Badge } from '@/components/ui/badge'
+import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import ContextMenu from './ContextMenu.vue'
 import useOptionsMenu from '@/composables/useOptionsMenu'
 import useVideoHistory from '@/composables/useVideoHistory'
 import useVideoInteraction from '@/composables/useVideoInteraction'
-import { useImageFallback } from '@/composables/useImageFallback'
 import { useSystemConfig } from '@/composables/useSystemConfig'
 import { formatVideoCardId } from '@/utils/videoCard'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
@@ -138,7 +136,6 @@ const emit = defineEmits([
 ])
 
 const { config: systemConfig } = useSystemConfig()
-const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
 const { copyVideoLink } = useOptionsMenu(toRef(props, 'video'))
 const { clearHistory, sendReport } = useVideoHistory()
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction()
@@ -494,13 +491,20 @@ onUnmounted(() => {
 .meta-avatar {
   width: 14px;
   height: 14px;
-  object-fit: cover;
-  filter: grayscale(0.5);
-  transition: all 0.3s;
   border-radius: 1px;
 }
 
-.video-terminal-item:hover .meta-avatar {
+.meta-avatar:deep(.avatar-image),
+.meta-avatar:deep(.avatar-placeholder) {
+  border-radius: 1px;
+}
+
+.meta-avatar:deep(.avatar-image) {
+  filter: grayscale(0.5);
+  transition: all 0.3s;
+}
+
+.video-terminal-item:hover .meta-avatar:deep(.avatar-image) {
   filter: grayscale(0);
 }
 
