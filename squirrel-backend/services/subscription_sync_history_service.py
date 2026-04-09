@@ -402,37 +402,3 @@ def list_run_events(run_id: str, user_id: int) -> list[dict]:
             'projected_at': _serialize_datetime(event.projected_at),
         })
     return data
-
-
-def get_recovery_summary(user_id: int, hours: int = 24) -> dict:
-    since = datetime.now() - timedelta(hours=hours)
-    recovery_types = [
-        SyncEventType.STALE_QUEUED_RECOVERED,
-        SyncEventType.STALE_RUNNING_RECOVERED,
-    ]
-
-    with get_session() as session:
-        rows = session.execute(
-            select(SubscriptionSyncEvent)
-            .join(Subscription, Subscription.id == SubscriptionSyncEvent.subscription_id)
-            .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
-            .where(
-                UserSubscription.user_id == user_id,
-                UserSubscription.is_deleted.is_(False),
-                Subscription.is_deleted.is_(False),
-                SubscriptionSyncEvent.event_type.in_(recovery_types),
-                SubscriptionSyncEvent.occurred_at >= since,
-            )
-            .order_by(SubscriptionSyncEvent.occurred_at.desc())
-        ).scalars().all()
-
-    by_type = {}
-    for row in rows:
-        by_type[row.event_type] = by_type.get(row.event_type, 0) + 1
-
-    return {
-        'last_reconcile_at': _serialize_datetime(rows[0].occurred_at if rows else None),
-        'total_recovered': len(rows),
-        'by_type': by_type,
-        'window_hours': hours,
-    }

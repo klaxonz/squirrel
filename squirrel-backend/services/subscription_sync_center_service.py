@@ -17,7 +17,6 @@ from models.subscription_sync_run_projection import SubscriptionSyncRunProjectio
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from schemas.subscription.dto.sync_center_dto import (
     SyncCenterItemDto,
-    SyncCenterListDto,
     SyncCenterOverviewDto,
 )
 from services.crawl_tasks.models import CrawlTaskStatus
@@ -363,17 +362,6 @@ def _apply_projection_ordering(query, status: Optional[str]):
         ).desc(),
         Subscription.id.desc(),
     )
-
-
-def _count_projection_rows(session, query) -> int:
-    return int(
-        session.execute(
-            select(func.count()).select_from(query.order_by(None).subquery())
-        ).scalar()
-        or 0
-    )
-
-
 def _load_projection_rows(
     session,
     *,
@@ -730,148 +718,6 @@ def _sort_items(
     return sorted(items, key=sort_key, reverse=reverse)
 
 
-def get_sync_center_overview(user_id: int) -> SyncCenterOverviewDto:
-    queue_depth, queue_messages = _queue_metrics_overview()
-
-    now = datetime.now()
-    current_status = _projection_status_expr()
-    current_phase = _projection_phase_expr()
-    pending_videos = _projection_pending_videos_expr()
-
-    with get_session() as session:
-        row = session.execute(
-            select(
-                func.coalesce(func.sum(case((
-                    and_(
-                        current_status == 'running',
-                        current_phase.notin_(ACTIVE_EXTRACTION_PHASES),
-                    ),
-                    1,
-                ), else_=0)), 0).label('running_count'),
-                func.coalesce(func.sum(case((
-                    and_(
-                        current_status == 'running',
-                        current_phase.in_(ACTIVE_EXTRACTION_PHASES),
-                    ),
-                    1,
-                ), else_=0)), 0).label('awaiting_extract_count'),
-                func.coalesce(func.sum(case(((current_status == 'queued'), 1), else_=0)), 0).label('queued_count'),
-                func.coalesce(func.sum(case(((current_status.in_({'failed', 'timeout'})), 1), else_=0)), 0).label('failed_count'),
-                func.coalesce(func.sum(case((
-                    and_(
-                        current_status.notin_({'running', 'queued', 'failed', 'timeout', 'deferred'}),
-                        SubscriptionSyncSubscriptionProjection.next_sync_at.is_not(None),
-                        SubscriptionSyncSubscriptionProjection.next_sync_at >= now,
-                        SubscriptionSyncSubscriptionProjection.next_sync_at <= now + DUE_SOON_WINDOW,
-                    ),
-                    1,
-                ), else_=0)), 0).label('due_soon_count'),
-                func.coalesce(func.sum(case(((current_status == 'deferred'), 1), else_=0)), 0).label('deferred_count'),
-                func.coalesce(func.sum(pending_videos), 0).label('pending_videos'),
-            )
-            .select_from(Subscription)
-            .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
-            .outerjoin(
-                SubscriptionSyncSubscriptionProjection,
-                SubscriptionSyncSubscriptionProjection.subscription_id == Subscription.id,
-            )
-            .outerjoin(
-                SubscriptionSyncRunProjection,
-                SubscriptionSyncRunProjection.run_id == SubscriptionSyncSubscriptionProjection.latest_run_id,
-            )
-            .where(
-                UserSubscription.user_id == user_id,
-                UserSubscription.is_deleted.is_(False),
-                Subscription.is_deleted.is_(False),
-            )
-        ).one()
-
-    return SyncCenterOverviewDto(
-        running_count=int(row.running_count or 0),
-        awaiting_extract_count=int(row.awaiting_extract_count or 0),
-        queued_count=int(row.queued_count or 0),
-        failed_count=int(row.failed_count or 0),
-        due_soon_count=int(row.due_soon_count or 0),
-        deferred_count=int(row.deferred_count or 0),
-        pending_videos=int(row.pending_videos or 0),
-        queue_depth=queue_depth,
-        queue_messages=queue_messages,
-    )
-
-
-def list_sync_center_items(
-    user_id: int,
-    status: Optional[str],
-    site: Optional[str],
-    query: Optional[str],
-    page: int,
-    page_size: int,
-) -> SyncCenterListDto:
-    normalized_status = (status or '').strip().lower() or None
-    normalized_site = (site or '').strip().lower() or None
-    site_candidates = set(SiteCatalog.expand_site_filter_values(normalized_site)) if normalized_site else set()
-    normalized_query = (query or '').strip().lower()
-
-    with get_session() as session:
-        if normalized_status == 'queued':
-            queued_items = _load_projection_items(
-                session,
-                user_id=user_id,
-                filter_status='queued',
-                site_candidates=site_candidates,
-                normalized_query=normalized_query,
-            )
-            try:
-                queued_candidate_rank_map, queued_backlog_rank_map = _query_queued_task_rank_map(
-                    session,
-                    user_id,
-                    queued_items,
-                )
-            except OperationalError:
-                logger.warning('Falling back to projection queue ordering because crawl_task lookup is unavailable')
-                queued_candidate_rank_map, queued_backlog_rank_map = {}, {}
-            sorted_items = _sort_items(
-                queued_items,
-                'queued',
-                queued_candidate_rank_map=queued_candidate_rank_map,
-                queued_backlog_rank_map=queued_backlog_rank_map,
-            )
-            total = len(sorted_items)
-            start = max(0, (page - 1) * page_size)
-            end = start + page_size
-            paged_items = sorted_items[start:end]
-        else:
-            query_status = normalized_status if normalized_status != 'recent' else None
-            filtered_query = _apply_projection_filters(
-                _base_projection_query(user_id),
-                status=query_status,
-                site_candidates=site_candidates,
-                normalized_query=normalized_query,
-            )
-            total = _count_projection_rows(session, filtered_query)
-            paged_items = _load_projection_items(
-                session,
-                user_id=user_id,
-                filter_status=query_status,
-                order_status=normalized_status,
-                site_candidates=site_candidates,
-                normalized_query=normalized_query,
-                page=page,
-                page_size=page_size,
-            )
-
-    if normalized_status == 'queued':
-        for index, item in enumerate(paged_items, start=start + 1):
-            item.queue_position = index
-
-    return SyncCenterListDto(
-        total=total,
-        page=page,
-        page_size=page_size,
-        data=paged_items,
-    )
-
-
 def get_feed_dashboard_snapshot(
     user_id: int,
     site: Optional[str],
@@ -1066,18 +912,3 @@ def get_feed_dashboard_snapshot(
         'recentRuns': recent_runs,
         'recentlyCompletedRuns': newly_completed,
     }
-
-
-def list_retry_failed_sync_items(user_id: int, site: Optional[str], query: Optional[str]) -> list[SyncCenterItemDto]:
-    normalized_site = (site or '').strip().lower() or None
-    site_candidates = set(SiteCatalog.expand_site_filter_values(normalized_site)) if normalized_site else set()
-    normalized_query = (query or '').strip().lower()
-    items = _collect_projection_items(
-        user_id,
-        status='failed',
-        site_candidates=site_candidates,
-        normalized_query=normalized_query,
-    )
-    failed_items = [item for item in items if item.display_status == 'failed']
-
-    return _sort_items(failed_items, 'failed')

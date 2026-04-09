@@ -9,11 +9,8 @@ from models.user import User
 from schemas.subscription.request.subscription import SubscribeRequest, UnsubscribeRequest, ToggleStatusRequest, ImportSubscriptionsRequest
 from services import (
     subscription_service,
-    subscription_sync_center_service,
     subscription_sync_history_service,
-    subscription_sync_trend_service,
     sync_center_stream_service,
-    video_extraction_center_service,
 )
 from typing import List
 from utils.site_catalog import SiteCatalog
@@ -22,8 +19,6 @@ from utils.jwt_helper import get_current_user
 
 router = APIRouter(tags=['订阅接口'])
 logger = logging.getLogger(__name__)
-SYNC_CENTER_ALLOWED_STATUS = {'failed', 'running', 'queued', 'scheduled', 'recent'}
-EXTRACTION_CENTER_ALLOWED_STATUS = {'failed', 'running', 'queued', 'recent'}
 SYNC_HISTORY_ALLOWED_STATUS = {'created', 'queued', 'running', 'success', 'failed', 'deferred', 'timeout', 'recent', 'feed_recent'}
 
 
@@ -113,61 +108,6 @@ def get_subscription_options(current_user: User = Depends(get_current_user)):
     })
 
 
-@router.get('/api/subscription/sync-center/overview')
-def get_sync_center_overview(current_user: User = Depends(get_current_user)):
-    overview = subscription_sync_center_service.get_sync_center_overview(current_user.id)
-    return response.success(overview)
-
-
-@router.get('/api/subscription/sync-center/items')
-def get_sync_center_items(
-        status: str = Query(None, description='同步状态筛选'),
-        site: str = Query(None, description='站点筛选'),
-        query: str = Query(None, description='订阅搜索关键字'),
-        page: int = Query(1, ge=1, description='页码'),
-        page_size: int = Query(20, ge=1, le=100, alias='pageSize', description='每页数量'),
-        current_user: User = Depends(get_current_user)
-):
-    normalized_status = str(status or '').strip().lower() or None
-    if normalized_status and normalized_status not in SYNC_CENTER_ALLOWED_STATUS:
-        return response.param_error(f'不支持的状态筛选: {status}')
-
-    result = subscription_sync_center_service.list_sync_center_items(
-        current_user.id,
-        normalized_status,
-        site,
-        query,
-        page,
-        page_size,
-    )
-    return response.success({
-        'total': result.total,
-        'page': result.page,
-        'pageSize': result.page_size,
-        'data': result.data,
-    })
-
-
-@router.get('/api/subscription/sync-center/feed-snapshot')
-def get_sync_center_feed_snapshot(
-        site: str = Query(None, description='站点筛选'),
-        query: str = Query(None, description='订阅搜索关键字'),
-        date_from: str = Query(None, alias='dateFrom', description='开始时间'),
-        date_to: str = Query(None, alias='dateTo', description='结束时间'),
-        recent_limit: int = Query(40, ge=1, le=200, alias='recentLimit', description='最近运行预览数量'),
-        current_user: User = Depends(get_current_user)
-):
-    result = subscription_sync_center_service.get_feed_dashboard_snapshot(
-        user_id=current_user.id,
-        site=site,
-        query=query,
-        date_from=date_from,
-        date_to=date_to,
-        recent_limit=recent_limit,
-    )
-    return response.success(result)
-
-
 @router.get('/api/subscription/sync-center/stream')
 async def get_sync_center_stream(
         request: Request,
@@ -192,41 +132,6 @@ async def get_sync_center_stream(
             'X-Accel-Buffering': 'no',
         },
     )
-
-
-@router.get('/api/subscription/extraction-center/overview')
-def get_extraction_center_overview(current_user: User = Depends(get_current_user)):
-    overview = video_extraction_center_service.get_extraction_center_overview(current_user.id)
-    return response.success(overview)
-
-
-@router.get('/api/subscription/extraction-center/items')
-def get_extraction_center_items(
-        status: str = Query(None, description='提取状态筛选'),
-        site: str = Query(None, description='站点筛选'),
-        query: str = Query(None, description='订阅搜索关键字'),
-        page: int = Query(1, ge=1, description='页码'),
-        page_size: int = Query(20, ge=1, le=100, alias='pageSize', description='每页数量'),
-        current_user: User = Depends(get_current_user)
-):
-    normalized_status = str(status or '').strip().lower() or None
-    if normalized_status and normalized_status not in EXTRACTION_CENTER_ALLOWED_STATUS:
-        return response.param_error(f'不支持的提取状态筛选: {status}')
-
-    result = video_extraction_center_service.list_extraction_center_items(
-        current_user.id,
-        normalized_status,
-        site,
-        query,
-        page,
-        page_size,
-    )
-    return response.success({
-        'total': result.total,
-        'page': result.page,
-        'pageSize': result.page_size,
-        'data': result.data,
-    })
 
 
 @router.post("/api/subscription/{subscription_id}/refresh")
@@ -320,31 +225,6 @@ def get_sync_center_run_events(run_id: str, current_user: User = Depends(get_cur
     if not events and not subscription_sync_history_service.get_run_detail(run_id, current_user.id):
         return response.not_found('运行实例不存在')
     return response.success(events)
-
-
-@router.get('/api/subscription/sync-center/trends')
-def get_sync_center_trends(
-        range_key: str = Query('24h', alias='range', description='时间范围: 24h|7d|30d'),
-        site: str = Query(None, description='站点筛选'),
-        mode: str = Query(None, description='同步模式筛选'),
-        trigger: str = Query(None, description='触发方式筛选'),
-        current_user: User = Depends(get_current_user)
-):
-    result = subscription_sync_trend_service.get_trends(
-        user_id=current_user.id,
-        range_key=range_key,
-        site=site,
-        mode=mode,
-        trigger=trigger,
-    )
-    return response.success(result)
-
-
-@router.get('/api/subscription/sync-center/recovery-summary')
-def get_sync_center_recovery_summary(current_user: User = Depends(get_current_user)):
-    return response.success(subscription_sync_history_service.get_recovery_summary(current_user.id))
-
-
 @router.post("/api/subscription/toggle-nsfw")
 def toggle_nsfw(
         req: ToggleStatusRequest,

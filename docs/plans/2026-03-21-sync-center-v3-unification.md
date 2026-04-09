@@ -166,47 +166,7 @@ git add squirrel-backend/routes/subscription.py
 git commit -m "feat: add sync center reconcile endpoint"
 ```
 
-### Task 4: 暴露恢复摘要
-
-**Files:**
-- Modify: `squirrel-backend/services/subscription_sync_history_service.py`
-- Modify: `squirrel-backend/routes/subscription.py`
-
-**Step 1: 增加 recovery summary 查询**
-
-新增一个轻量查询，统计最近恢复动作：
-
-- 最近一次恢复时间
-- 最近恢复数量
-- 按恢复类型计数
-
-来源可以先直接查最近的 `subscription_sync_event`
-
-**Step 2: 暴露接口**
-
-新增：
-
-- `GET /api/subscription/sync-center/recovery-summary`
-
-**Step 3: 编译检查**
-
-Run:
-
-```powershell
-Set-Location 'D:\Code\init\squirrel\squirrel-backend'
-python -m compileall routes services
-```
-
-Expected: compile 成功
-
-**Step 4: Commit**
-
-```powershell
-git add squirrel-backend/services/subscription_sync_history_service.py squirrel-backend/routes/subscription.py
-git commit -m "feat: expose sync recovery summary"
-```
-
-### Task 5: 前端概览切到统一口径并展示恢复面板
+### Task 4: 前端概览切到统一口径并展示恢复面板
 
 **Files:**
 - Modify: `squirrel-frontend/src/composables/useSyncCenter.ts`
@@ -262,7 +222,7 @@ git add squirrel-frontend/src/api squirrel-frontend/src/composables/useSyncCente
 git commit -m "feat: add sync recovery controls to overview"
 ```
 
-### Task 6: 历史页解释恢复动作
+### Task 5: 历史页解释恢复动作
 
 **Files:**
 - Modify: `squirrel-frontend/src/components/sync-center/SyncEventTimeline.vue`

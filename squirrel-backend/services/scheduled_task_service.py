@@ -58,12 +58,6 @@ class ScheduledTaskService:
         }
 
     @staticmethod
-    def get_task_by_id(task_id: int) -> Optional[ScheduledTask]:
-        """根据ID获取任务"""
-        with get_session() as session:
-            return session.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
-
-    @staticmethod
     def create_task(
         name: str,
         task_class: str,
@@ -237,35 +231,6 @@ class ScheduledTaskService:
         """获取可用的任务类"""
         discover_task_classes()
         return dynamic_task_manager.task_factory.get_available_task_classes()
-
-    @staticmethod
-    def get_task_execution_logs(
-        task_id: Optional[int] = None,
-        page: int = 1,
-        page_size: int = 20,
-        status: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """获取任务执行日志"""
-        with get_session() as session:
-            query = session.query(TaskExecutionLog)
-
-            if task_id:
-                query = query.filter(TaskExecutionLog.task_id == task_id)
-
-            if status:
-                query = query.filter(TaskExecutionLog.status == status)
-
-            query = query.order_by(desc(TaskExecutionLog.started_at))
-
-            total = query.count()
-            logs = query.offset((page - 1) * page_size).limit(page_size).all()
-
-            return {
-                "page": page,
-                "page_size": page_size,
-                "total": total,
-                "data": [log.to_dict() for log in logs]
-            }
 
     @staticmethod
     def get_task_statistics() -> Dict[str, Any]:

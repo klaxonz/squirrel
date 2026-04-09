@@ -110,14 +110,9 @@ const {
   runningPreview,
   runningPreviewError,
   loadSiteOptions,
-  setRecentDateRange,
   siteOptions,
-  setPollingEnabled,
 } = useSyncCenter({
-  autoLoad: false,
-  autoLoadItems: false,
   autoLoadSiteOptions: false,
-  autoStartPolling: false,
 })
 
 const {
@@ -147,11 +142,7 @@ const {
   recentPreviewError: extractionRecentPreviewError,
   runningPreview: extractionRunningPreview,
   runningPreviewError: extractionRunningPreviewError,
-  setPollingEnabled: setExtractionPollingEnabled,
-} = useExtractionCenter({
-  autoLoad: false,
-  autoStartPolling: false,
-})
+} = useExtractionCenter()
 
 const activePipeline = ref<'feed' | 'extract'>('feed')
 let dashboardStream: EventSource | null = null
@@ -311,11 +302,6 @@ const getDefaultHistoryWindow = () => {
   }
 }
 
-const syncFeedRecentWindow = () => {
-  const windowConfig = getDefaultHistoryWindow()
-  setRecentDateRange(windowConfig.dateFrom, windowConfig.dateTo)
-}
-
 const handlePipelineChange = (value: string | number) => {
   activePipeline.value = String(value) === 'extract' ? 'extract' : 'feed'
 }
@@ -450,10 +436,7 @@ const openDashboardStream = () => {
 }
 
 onMounted(() => {
-  setPollingEnabled(false)
   setHistoryPollingEnabled(false)
-  setExtractionPollingEnabled(false)
-  syncFeedRecentWindow()
   void loadSiteOptions()
   openDashboardStream()
 })

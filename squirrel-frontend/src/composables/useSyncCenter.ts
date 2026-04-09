@@ -1,15 +1,7 @@
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import {
-  getFeedDashboardSnapshot,
-  getSupportedSites,
-  getSyncCenterItems,
-  getSyncCenterOverview,
-  triggerRefresh,
-} from '@/api'
+import { computed, onMounted, ref } from 'vue'
+import { getSupportedSites } from '@/api'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
 import { Logger } from '@/utils/logger'
-
-export type SyncCenterStatusFilter = 'failed' | 'running' | 'queued' | 'scheduled' | 'recent'
 
 export interface SyncCenterOverview {
   running_count: number
@@ -62,29 +54,11 @@ export interface SyncCenterItem {
   failed_task_count: number
 }
 
-interface SyncCenterListResponse {
-  total: number
-  page: number
-  pageSize: number
-  data: SyncCenterItem[]
-}
-
-interface FeedDashboardSnapshotResponse {
-  overview: SyncCenterOverview
-  runningPreview: SyncCenterItem[]
-  queuedPreview: SyncCenterItem[]
-  recentRuns: SyncRunItem[]
-  recentlyCompletedRuns: SyncRunItem[]
-}
-
 interface SiteOption {
   value: string
   label: string
   iconUrl?: string | null
 }
-
-const POLL_INTERVAL = 15000
-const RECENT_RUN_PREVIEW_LIMIT = 40
 
 const createEmptyOverview = (): SyncCenterOverview => ({
   running_count: 0,
@@ -98,228 +72,27 @@ const createEmptyOverview = (): SyncCenterOverview => ({
   queue_messages: 0,
 })
 
-const statusOptions: Array<{ value: SyncCenterStatusFilter; label: string }> = [
-  { value: 'failed', label: '失败项' },
-  { value: 'running', label: '运行中' },
-  { value: 'queued', label: '排队中' },
-  { value: 'scheduled', label: '即将执行' },
-  { value: 'recent', label: '最近活动' },
-]
-
 interface UseSyncCenterOptions {
-  autoLoad?: boolean
-  autoLoadItems?: boolean
   autoLoadSiteOptions?: boolean
-  autoStartPolling?: boolean
 }
 
 export function useSyncCenter(options: UseSyncCenterOptions = {}) {
   const {
-    autoLoad = true,
-    autoLoadItems = true,
     autoLoadSiteOptions = true,
-    autoStartPolling = true,
   } = options
   const overview = ref<SyncCenterOverview>(createEmptyOverview())
-  const items = ref<SyncCenterItem[]>([])
   const runningPreview = ref<SyncCenterItem[]>([])
   const queuedPreview = ref<SyncCenterItem[]>([])
   const recentRuns = ref<SyncRunItem[]>([])
-  const recentlyCompletedRuns = ref<SyncRunItem[]>([])
   const runningPreviewError = ref('')
   const queuedPreviewError = ref('')
-  const total = ref(0)
-  const page = ref(1)
-  const pageSize = ref(20)
-  const lastUpdatedAt = ref('')
   const overviewError = ref('')
-  const itemsError = ref('')
   const loadingOverview = ref(false)
   const loadingItems = ref(false)
   const hasLoadedOnce = ref(false)
-  const retryingItemId = ref<number | null>(null)
-  const pollingEnabled = ref(true)
-  const selectedItem = ref<SyncCenterItem | null>(null)
-  const filters = reactive({
-    status: 'recent' as SyncCenterStatusFilter,
-    site: '',
-    query: '',
-  })
-  const recentDateRange = reactive({
-    dateFrom: '',
-    dateTo: '',
-  })
   const siteOptions = ref<SiteOption[]>([])
 
-  let pollTimer: ReturnType<typeof setInterval> | null = null
-  let queryTimer: ReturnType<typeof setTimeout> | null = null
-  let overviewRequestSeq = 0
-  let itemsRequestSeq = 0
-  let runningPreviewRequestSeq = 0
-  let queuedPreviewRequestSeq = 0
-  const pageError = computed(() => overviewError.value || itemsError.value)
-
-  const syncSelectedItem = () => {
-    if (!selectedItem.value) {
-      return
-    }
-    const nextItem = items.value.find((item) => item.subscription_id === selectedItem.value?.subscription_id)
-    if (nextItem) {
-      selectedItem.value = nextItem
-      return
-    }
-    const previewItem = [...runningPreview.value, ...queuedPreview.value].find(
-      (item) => item.subscription_id === selectedItem.value?.subscription_id
-    )
-    selectedItem.value = previewItem || null
-  }
-
-  const updateLastRefreshTime = () => {
-    lastUpdatedAt.value = new Date().toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
-  }
-
-  const buildFilterParams = (status: SyncCenterStatusFilter = filters.status, currentPage: number = page.value) => {
-    return {
-      status,
-      site: filters.site || undefined,
-      query: filters.query || undefined,
-      page: currentPage,
-      pageSize: pageSize.value,
-    }
-  }
-
-  const loadFeedDashboardSnapshot = async () => {
-    const [runningRequestSeq, queuedRequestSeq] = [
-      ++runningPreviewRequestSeq,
-      ++queuedPreviewRequestSeq,
-    ]
-    loadingOverview.value = true
-    overviewError.value = ''
-    const { data, error } = await getFeedDashboardSnapshot<FeedDashboardSnapshotResponse>({
-      site: filters.site || undefined,
-      query: filters.query || undefined,
-      dateFrom: recentDateRange.dateFrom || undefined,
-      dateTo: recentDateRange.dateTo || undefined,
-      recentLimit: RECENT_RUN_PREVIEW_LIMIT,
-    })
-    if (
-      runningRequestSeq !== runningPreviewRequestSeq
-      || queuedRequestSeq !== queuedPreviewRequestSeq
-    ) {
-      return
-    }
-    if (error) {
-      overviewError.value = error.message || '加载同步总览失败'
-      runningPreviewError.value = error.message || '加载运行中预览失败'
-      queuedPreviewError.value = error.message || '加载排队预览失败'
-      overview.value = createEmptyOverview()
-      runningPreview.value = []
-      queuedPreview.value = []
-      recentRuns.value = []
-      Logger.error('Failed to load feed dashboard snapshot', error)
-    } else if (data) {
-      overview.value = {
-        ...createEmptyOverview(),
-        ...(data.overview || {}),
-      }
-      runningPreviewError.value = ''
-      queuedPreviewError.value = ''
-      runningPreview.value = data.runningPreview || []
-      queuedPreview.value = data.queuedPreview || []
-      recentRuns.value = data.recentRuns || []
-      recentlyCompletedRuns.value = data.recentlyCompletedRuns || []
-      syncSelectedItem()
-    }
-    loadingOverview.value = false
-  }
-
-  const loadOverview = async () => {
-    const requestSeq = ++overviewRequestSeq
-    loadingOverview.value = true
-    overviewError.value = ''
-    const { data, error } = await getSyncCenterOverview()
-    if (requestSeq !== overviewRequestSeq) {
-      return
-    }
-    if (error) {
-      overviewError.value = error.message || '加载同步总览失败'
-      Logger.error('Failed to load sync center overview', error)
-    } else if (data) {
-      overview.value = {
-        ...createEmptyOverview(),
-        ...data,
-      }
-    }
-    loadingOverview.value = false
-  }
-
-  const loadItems = async () => {
-    const requestSeq = ++itemsRequestSeq
-    loadingItems.value = true
-    itemsError.value = ''
-    const { data, error } = await getSyncCenterItems<SyncCenterListResponse>(buildFilterParams())
-    if (requestSeq !== itemsRequestSeq) {
-      return
-    }
-    if (error) {
-      itemsError.value = error.message || '加载同步列表失败'
-      Logger.error('Failed to load sync center items', error)
-      items.value = []
-      total.value = 0
-    } else if (data) {
-      items.value = data.data || []
-      total.value = data.total || 0
-      page.value = data.page || 1
-      pageSize.value = data.pageSize || pageSize.value
-      syncSelectedItem()
-    }
-    loadingItems.value = false
-  }
-
-  const loadPreview = async (status: 'running' | 'queued') => {
-    const requestSeq = status === 'running'
-      ? ++runningPreviewRequestSeq
-      : ++queuedPreviewRequestSeq
-    const { data, error } = await getSyncCenterItems<SyncCenterListResponse>({
-      status,
-      site: filters.site || undefined,
-      query: filters.query || undefined,
-      page: 1,
-      pageSize: 100,
-    })
-    const isStale = status === 'running'
-      ? requestSeq !== runningPreviewRequestSeq
-      : requestSeq !== queuedPreviewRequestSeq
-    if (isStale) {
-      return
-    }
-    if (error) {
-      Logger.error(`Failed to load ${status} preview`, error)
-      if (status === 'running') {
-        runningPreviewError.value = error.message || '加载运行中预览失败'
-        runningPreview.value = []
-      } else {
-        queuedPreviewError.value = error.message || '加载排队预览失败'
-        queuedPreview.value = []
-      }
-      syncSelectedItem()
-      return
-    }
-
-    const nextItems = data?.data || []
-    if (status === 'running') {
-      runningPreviewError.value = ''
-      runningPreview.value = nextItems
-    } else {
-      queuedPreviewError.value = ''
-      queuedPreview.value = nextItems
-    }
-    syncSelectedItem()
-  }
+  const pageError = computed(() => overviewError.value)
 
   const loadSiteOptions = async () => {
     const { data, error } = await getSupportedSites()
@@ -340,171 +113,28 @@ export function useSyncCenter(options: UseSyncCenterOptions = {}) {
       return arr.findIndex((item) => item.value === option.value) === index
     })
 
-    if (filters.site && !deduped.some((option: SiteOption) => option.value === filters.site)) {
-      deduped.unshift({ value: filters.site, label: filters.site, iconUrl: null })
-    }
-
     siteOptions.value = deduped
   }
 
-  const refreshAll = async ({ includeItems = autoLoadItems }: { includeItems?: boolean } = {}) => {
-    const tasks = [loadFeedDashboardSnapshot()]
-    if (includeItems) {
-      tasks.push(loadItems())
-    }
-    await Promise.all(tasks)
-    hasLoadedOnce.value = true
-    updateLastRefreshTime()
-  }
-
-  const selectStatus = async (status: SyncCenterStatusFilter) => {
-    if (filters.status === status) {
-      return
-    }
-    filters.status = status
-    page.value = 1
-    await loadItems()
-    updateLastRefreshTime()
-  }
-
-  const setSite = async (site: string) => {
-    filters.site = site
-    page.value = 1
-    await Promise.all([loadItems(), loadFeedDashboardSnapshot()])
-    updateLastRefreshTime()
-  }
-
-  const setQuery = (query: string) => {
-    filters.query = query
-    page.value = 1
-    if (queryTimer) {
-      clearTimeout(queryTimer)
-    }
-    queryTimer = setTimeout(async () => {
-      await Promise.all([loadItems(), loadFeedDashboardSnapshot()])
-      updateLastRefreshTime()
-    }, 300)
-  }
-
-  const setRecentDateRange = (dateFrom: string, dateTo: string) => {
-    recentDateRange.dateFrom = dateFrom
-    recentDateRange.dateTo = dateTo
-  }
-
-  const setPage = async (nextPage: number) => {
-    if (nextPage < 1 || nextPage === page.value) {
-      return
-    }
-    page.value = nextPage
-    await loadItems()
-    updateLastRefreshTime()
-  }
-
-  const openDetail = (item: SyncCenterItem) => {
-    selectedItem.value = item
-  }
-
-  const closeDetail = () => {
-    selectedItem.value = null
-  }
-
-  const retryItem = async (item: SyncCenterItem) => {
-    retryingItemId.value = item.subscription_id
-    const result = await triggerRefresh(item.subscription_id, item.sync_mode)
-    if (!result.error) {
-      await refreshAll()
-    }
-    retryingItemId.value = null
-    return result
-  }
-
-  const setPollingEnabled = (enabled: boolean) => {
-    pollingEnabled.value = enabled
-  }
-
-  const clearPollTimer = () => {
-    if (!pollTimer) {
-      return
-    }
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
-
-  const startPolling = () => {
-    clearPollTimer()
-    if (!pollingEnabled.value) {
-      return
-    }
-    pollTimer = setInterval(() => {
-      refreshAll()
-    }, POLL_INTERVAL)
-  }
-
-  watch(pollingEnabled, () => {
-    startPolling()
-  })
-
   onMounted(async () => {
-    if (!autoLoad) {
-      if (autoStartPolling) {
-        startPolling()
-      }
-      return
-    }
-
-    const tasks: Array<Promise<unknown>> = [refreshAll({ includeItems: autoLoadItems })]
     if (autoLoadSiteOptions) {
-      tasks.push(loadSiteOptions())
-    }
-
-    await Promise.all(tasks)
-
-    if (autoStartPolling) {
-      startPolling()
-    }
-  })
-
-  onUnmounted(() => {
-    clearPollTimer()
-    if (queryTimer) {
-      clearTimeout(queryTimer)
-      queryTimer = null
+      await loadSiteOptions()
     }
   })
 
   return {
-    closeDetail,
-    filters,
     hasLoadedOnce,
-    items,
-    itemsError,
-    lastUpdatedAt,
     loadingItems,
     loadingOverview,
-    openDetail,
     overview,
     overviewError,
-    page,
     pageError,
-    pageSize,
     queuedPreview,
     queuedPreviewError,
-    refreshAll,
-    recentlyCompletedRuns,
-    retryingItemId,
-    retryItem,
     recentRuns,
     runningPreview,
     runningPreviewError,
-    setRecentDateRange,
-    setPollingEnabled,
-    selectStatus,
-    selectedItem,
-    setPage,
-    setQuery,
-    setSite,
     loadSiteOptions,
     siteOptions,
-    total,
   }
 }

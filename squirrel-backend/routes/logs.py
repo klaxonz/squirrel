@@ -59,33 +59,3 @@ def query_logs(
     except Exception as e:
         logger.exception(f"Failed to query logs: {e}")
         return response.server_error("查询日志失败")
-
-
-@router.get("/api/logs/latest")
-def get_latest_logs(
-    limit: int = Query(100, ge=1, le=500, description="返回的最大日志条数"),
-    current_user: User = Depends(get_current_user)
-):
-    """获取最新的日志条目（用于实时刷新）"""
-    try:
-        logs = log_service.get_latest_logs(limit=limit)
-        return response.success(logs)
-    except Exception as e:
-        logger.exception(f"Failed to get latest logs: {e}")
-        return response.server_error("获取最新日志失败")
-
-
-@router.get("/api/logs/tail")
-def tail_logs(
-    filename: str = Query('app.log', description="日志文件名"),
-    lines: int = Query(100, ge=1, le=1000, description="返回的行数"),
-    current_user: User = Depends(get_current_user)
-):
-    """获取日志文件的最后 N 行"""
-    try:
-        tail_lines = log_service.tail_log_file(filename=filename, lines=lines)
-        return response.success(tail_lines)
-    except Exception as e:
-        logger.exception(f"Failed to tail logs: {e}")
-        return response.server_error("获取日志尾部失败")
-

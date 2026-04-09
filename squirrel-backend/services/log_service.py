@@ -155,25 +155,3 @@ def _should_include_log(log_entry: Dict, keyword: Optional[str], level: Optional
     
     return True
 
-
-def get_latest_logs(limit: int = 100) -> List[Dict[str, any]]:
-    """获取最新的日志条目（用于实时刷新）"""
-    lines, _, _ = read_log_lines(
-        filename='app.log',
-        start_line=0,
-        limit=limit
-    )
-    return lines
-
-
-def tail_log_file(filename: str = 'app.log', lines: int = 100) -> List[str]:
-    """获取日志文件的最后 N 行（类似 tail 命令）"""
-    filepath = os.path.join(LOG_DIR, filename)
-    
-    if not os.path.exists(filepath):
-        return []
-    
-    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-        all_lines = f.readlines()
-        return [line.rstrip('\n') for line in all_lines[-lines:]]
-

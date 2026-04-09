@@ -12,10 +12,6 @@ export const getScheduledTasks = async (params: Record<string, unknown> = {}) =>
   return get('/api/scheduler/tasks', params)
 }
 
-export const getTaskDetail = async (taskId: string | number) => {
-  return get(`/api/scheduler/tasks/${taskId}`)
-}
-
 export const createTask = async (taskData: Record<string, unknown>) => {
   return post('/api/scheduler/tasks', taskData)
 }

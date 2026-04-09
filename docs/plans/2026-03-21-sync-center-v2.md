@@ -372,7 +372,6 @@ git commit -m "feat: record sync phases and metrics events"
 - `GET /api/subscription/sync-center/runs`
 - `GET /api/subscription/sync-center/runs/{run_id}`
 - `GET /api/subscription/sync-center/runs/{run_id}/events`
-- `GET /api/subscription/sync-center/trends`
 
 **Step 4: 本地编译检查**
 

@@ -75,8 +75,6 @@
 
 ### 接口建议
 
-- `GET /api/subscription/sync-center/overview`
-- `GET /api/subscription/sync-center/items`
 - `POST /api/subscription/sync-center/retry-failed`
 
 单订阅重试继续复用：
