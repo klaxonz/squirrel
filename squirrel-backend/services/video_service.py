@@ -7,7 +7,13 @@ from crawl.runtime_errors import RuntimeErrorCode
 from sqlalchemy import select, func, and_, case, exists
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from core.database import get_session
-from services.video_query import build_base_video_query, build_video_count_source_query, category_predicate, resolve_sort_column
+from services.video_query import (
+    build_base_video_query,
+    build_video_count_source_query,
+    build_video_search_clauses,
+    category_predicate,
+    resolve_sort_column,
+)
 
 
 from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExtractionError
@@ -419,10 +425,16 @@ def _build_feed_query(
         if normalized_domains:
             feed_query = feed_query.where(UserVideoFeed.domain.in_(normalized_domains))
 
-    if query:
+    search_clauses = build_video_search_clauses(
+        user_id=user_id,
+        query=query,
+        video_id_column=UserVideoFeed.video_id,
+        subscription_id_column=UserVideoFeed.subscription_id,
+    )
+    if search_clauses:
         feed_query = feed_query.join(Video, Video.id == UserVideoFeed.video_id).where(
-            Video.title.like(f'%{query}%'),
             Video.is_deleted.is_(False),
+            *search_clauses,
         )
 
     if category:
@@ -481,10 +493,16 @@ def _build_ordered_feed_query(
         if normalized_domains:
             feed_query = feed_query.where(UserVideoFeed.domain.in_(normalized_domains))
 
-    if query:
+    search_clauses = build_video_search_clauses(
+        user_id=user_id,
+        query=query,
+        video_id_column=UserVideoFeed.video_id,
+        subscription_id_column=UserVideoFeed.subscription_id,
+    )
+    if search_clauses:
         feed_query = feed_query.join(Video, Video.id == UserVideoFeed.video_id).where(
-            Video.title.like(f'%{query}%'),
             Video.is_deleted.is_(False),
+            *search_clauses,
         )
 
     if category:
@@ -810,4 +828,3 @@ def get_video(user_id, video_id):
         }
 
         return video_data
-

@@ -319,20 +319,11 @@ h6 {
 }
 
 .minimal-search {
-  width: 320px;
+  width: clamp(20rem, calc(100vw - 18rem), 480px);
   pointer-events: auto;
-  transition: width 0.4s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .minimal-search--compact {
-  width: min(40rem, calc(100vw - 8rem));
-}
-
-.minimal-search:focus-within {
-  width: 480px;
-}
-
-.minimal-search--compact:focus-within {
   width: min(46rem, calc(100vw - 6rem));
 }
 

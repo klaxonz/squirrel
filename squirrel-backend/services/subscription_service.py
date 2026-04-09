@@ -2,16 +2,18 @@ import logging
 from typing import Optional, Tuple, List, Dict, Any
 from urllib.parse import urlparse
 
-from sqlalchemy import select
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.sql import text
 
 from core.database import get_session
-from models.links import UserSubscription
+from models.links import UserSubscription, SubscriptionVideo
 from models.message import Message
 from models.subscription import Subscription, ContentType
+from models.subscription_sync_state import SubscriptionSyncState, SyncMode
 from models.user import User
 from plugins.manager import get_plugin_manager
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
+from services.search_query import normalize_subscription_type_term, parse_search_query
 from services import user_config_service
 from services import subscription_sync_state_service
 from services import user_video_feed_service
@@ -20,12 +22,61 @@ from services.subscription_runtime_models import (
     SubscriptionImportItem,
     SubscriptionMeta,
 )
-from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql, get_subscription_sql
+from sqlfile.subscription_sql import get_subscription_sql
 from utils.site_catalog import SiteCatalog
 from utils.sql_parser import parse_dynamic_sql
 from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger(__name__)
+
+
+def _contains(column, term: str):
+    return column.ilike(f'%{term}%')
+
+
+def _build_subscription_search_clauses(query: Optional[str]) -> List[Any]:
+    parsed_query = parse_search_query(query)
+    if not parsed_query.has_terms:
+        return []
+
+    clauses: List[Any] = []
+
+    for term in parsed_query.text_terms:
+        clauses.append(
+            or_(
+                _contains(Subscription.name, term),
+                _contains(Subscription.description, term),
+                _contains(Subscription.url, term),
+            )
+        )
+
+    for term in parsed_query.get('subscription'):
+        clauses.append(
+            or_(
+                _contains(Subscription.name, term),
+                _contains(Subscription.description, term),
+                _contains(Subscription.url, term),
+            )
+        )
+
+    for term in parsed_query.get('url'):
+        clauses.append(_contains(Subscription.url, term))
+
+    for term in parsed_query.get('domain'):
+        clauses.append(_contains(Subscription.url, term))
+
+    for term in parsed_query.get('description'):
+        clauses.append(_contains(Subscription.description, term))
+
+    for term in parsed_query.get('title'):
+        clauses.append(_contains(Subscription.name, term))
+
+    for term in parsed_query.get('type'):
+        normalized_type = normalize_subscription_type_term(term)
+        if normalized_type:
+            clauses.append(Subscription.type == normalized_type)
+
+    return clauses
 
 
 def _detect_subscription_type(url: str) -> str:
@@ -150,38 +201,88 @@ def list_subscriptions(
     user_config = user_config_service.get_config(user_id)
     show_nsfw = user_config.get('showNsfw', False)
 
-    with get_session() as session:
-        params = {
-            'user_id': user_id,
-            'query': query,
-            'type': type,
-            'nsfw': nsfw,
-            'show_nsfw': show_nsfw,
-            'filter_nsfw_when_all': (nsfw == 'all' and not show_nsfw),
-            'limit': page_size,
-            'offset': (page - 1) * page_size
-        }
-        domain_filters = []
-        if domains:
-            for idx, d in enumerate(domains):
-                key = f"domain_like_{idx}"
-                params[key] = f"%{d}%"
-                domain_filters.append(f"s.url like :{key}")
-        
-        count_sql = get_subscriptions_count_sql()
-        dynamic_sql = parse_dynamic_sql(count_sql, params)
-        if domain_filters:
-            where_inject = " and (" + " or ".join(domain_filters) + ")"
-            dynamic_sql = dynamic_sql.replace("order by", where_inject + "\norder by") if "order by" in dynamic_sql else dynamic_sql + where_inject
-        total_count = session.execute(text(dynamic_sql), params).scalar()
-        
-        sql = get_subscriptions_sql()
-        final_sql = parse_dynamic_sql(sql, params)
-        if domain_filters:
-            where_inject = " and (" + " or ".join(domain_filters) + ")"
-            final_sql = final_sql.replace("order by", where_inject + "\norder by") if "order by" in final_sql else final_sql + where_inject
+    video_count_subquery = (
+        select(
+            SubscriptionVideo.subscription_id.label('subscription_id'),
+            func.count(SubscriptionVideo.video_id).label('total_extract'),
+        )
+        .group_by(SubscriptionVideo.subscription_id)
+        .subquery()
+    )
 
-        results = session.execute(text(final_sql), params).all()
+    with get_session() as session:
+        conditions: List[Any] = [
+            UserSubscription.user_id == user_id,
+            UserSubscription.is_deleted.is_(False),
+            Subscription.is_deleted.is_(False),
+        ]
+
+        if type:
+            conditions.append(Subscription.type == type)
+
+        if nsfw == 'yes':
+            conditions.append(UserSubscription.is_nsfw.is_(True))
+        elif nsfw == 'no':
+            conditions.append(UserSubscription.is_nsfw.is_(False))
+        elif not show_nsfw:
+            conditions.append(UserSubscription.is_nsfw.is_(False))
+
+        if domains:
+            normalized_domains = [domain for domain in dict.fromkeys(domains) if domain]
+            if normalized_domains:
+                conditions.append(
+                    or_(*[_contains(Subscription.url, domain) for domain in normalized_domains])
+                )
+
+        conditions.extend(_build_subscription_search_clauses(query))
+
+        count_statement = (
+            select(func.count())
+            .select_from(UserSubscription)
+            .join(Subscription, Subscription.id == UserSubscription.subscription_id)
+            .where(*conditions)
+        )
+        total_count = session.execute(count_statement).scalar() or 0
+
+        statement = (
+            select(
+                Subscription.id,
+                Subscription.type,
+                Subscription.name,
+                Subscription.url,
+                Subscription.avatar,
+                Subscription.description,
+                Subscription.total_videos,
+                Subscription.is_deleted,
+                Subscription.extra_data,
+                Subscription.created_at,
+                Subscription.updated_at,
+                UserSubscription.is_nsfw.label('is_nsfw'),
+                func.coalesce(video_count_subquery.c.total_extract, 0).label('total_extract'),
+                func.coalesce(SubscriptionSyncState.sync_status, 'idle').label('sync_status'),
+                SubscriptionSyncState.last_sync_at.label('last_sync_at'),
+                SubscriptionSyncState.last_success_at.label('last_success_at'),
+                SubscriptionSyncState.next_sync_at.label('next_sync_at'),
+                SubscriptionSyncState.last_error.label('last_error'),
+                func.coalesce(SubscriptionSyncState.pending_video_count, 0).label('pending_video_count'),
+            )
+            .select_from(UserSubscription)
+            .join(Subscription, Subscription.id == UserSubscription.subscription_id)
+            .outerjoin(
+                SubscriptionSyncState,
+                and_(
+                    SubscriptionSyncState.subscription_id == Subscription.id,
+                    SubscriptionSyncState.sync_mode == SyncMode.INCREMENTAL.value,
+                ),
+            )
+            .outerjoin(video_count_subquery, video_count_subquery.c.subscription_id == Subscription.id)
+            .where(*conditions)
+            .order_by(Subscription.created_at.desc())
+            .limit(page_size)
+            .offset((page - 1) * page_size)
+        )
+
+        results = session.execute(statement).all()
         subscriptions = [SubscriptionDto.model_validate(row._mapping).model_dump() for row in results]
             
         return subscriptions, total_count

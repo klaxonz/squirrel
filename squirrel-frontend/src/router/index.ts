@@ -19,7 +19,7 @@ const SEARCH_META = {
   showSearch: true,
   search: 'home',
   searchEvent: 'search:home',
-  searchPlaceholder: '搜索视频...'
+  searchPlaceholder: '搜索视频、频道、作者，或用 site:youtube'
 }
 
 const NO_SEARCH_META = {
@@ -99,7 +99,7 @@ const routes = [
       showSearch: true,
       search: 'subscribed',
       searchEvent: 'search:subscribed',
-      searchPlaceholder: '搜索频道...'
+      searchPlaceholder: '搜索频道，或用 type:playlist / site:youtube'
     },
   },
   {
@@ -135,7 +135,7 @@ const routes = [
     path: '/subscription/:id',
     name: 'SubscriptionDetail',
     component: LatestVideos,
-    meta: { showSearch: true, search: 'home', searchEvent: 'search:home', searchPlaceholder: '搜索视频...' },
+    meta: SEARCH_META,
     children: [
       {
         path: '',
@@ -188,7 +188,7 @@ const routes = [
       showSearch: true,
       search: 'history',
       searchEvent: 'search:history',
-      searchPlaceholder: '搜索历史...'
+      searchPlaceholder: '搜索历史，支持 channel: / url: / site:'
     },
   },
   {
@@ -199,7 +199,7 @@ const routes = [
       showSearch: true,
       search: 'home',
       searchEvent: 'search:home',
-      searchPlaceholder: '搜索视频...',
+      searchPlaceholder: '搜索视频、频道、作者，或用 site:youtube',
       searchRedirectName: 'AllVideos',
       searchPersistKey: 'LatestVideos',
       scrollable: true,

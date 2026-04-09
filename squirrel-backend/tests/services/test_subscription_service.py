@@ -666,3 +666,51 @@ def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_us
         'skipped': 8,
         'failed': 0,
     }
+
+
+def test_list_subscriptions_search_supports_domain_and_type_tokens(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            Subscription(
+                id=2,
+                type='PLAYLIST',
+                name='Bilibili Playlist',
+                url='https://www.bilibili.com/list/2',
+                avatar=None,
+                description='Playlist library',
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 2),
+                updated_at=datetime(2024, 1, 2),
+            )
+        )
+        session.add(
+            UserSubscription(
+                id=2,
+                user_id=1,
+                subscription_id=2,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 2),
+                updated_at=datetime(2024, 1, 2),
+            )
+        )
+        session.commit()
+
+    monkeypatch.setattr(subscription_service.user_config_service, 'get_config', lambda _user_id: {'showNsfw': False})
+
+    subscriptions, total = subscription_service.list_subscriptions(
+        user_id=1,
+        query='site:bilibili type:playlist',
+        type=None,
+        nsfw='all',
+        page=1,
+        page_size=10,
+    )
+
+    assert total == 1
+    assert [item['id'] for item in subscriptions] == [2]

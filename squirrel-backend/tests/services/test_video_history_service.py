@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
-from models.links import SubscriptionVideo, UserSubscription
+from models.creator import Creator
+from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
 from models.video import Video
 from models.video_history import VideoHistory
@@ -102,7 +103,9 @@ def _setup_test_env(monkeypatch):
     Base.metadata.create_all(
         engine,
         tables=[
+            Creator.__table__,
             Video.__table__,
+            VideoCreator.__table__,
             VideoHistory.__table__,
             Subscription.__table__,
             SubscriptionVideo.__table__,
@@ -335,6 +338,34 @@ def test_list_histories_filters_by_subscription_name_query(monkeypatch):
 
     assert result['total'] == 1
     assert [item['id'] for item in result['items']] == [1]
+
+
+def test_list_histories_supports_field_search_tokens(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_history(
+        engine,
+        [
+            {'video_id': 1, 'domain': 'alpha.example.com', 'title': 'Episode One', 'url': 'https://alpha.example.com/watch/1', 'end_time': datetime(2024, 1, 3, 12, 0, 0)},
+            {'video_id': 2, 'domain': 'beta.example.com', 'title': 'Episode Two', 'url': 'https://beta.example.com/watch/2', 'end_time': datetime(2024, 1, 2, 12, 0, 0)},
+        ],
+    )
+    _seed_subscription_links(
+        engine,
+        [
+            {'subscription_id': 101, 'subscription_name': 'Alpha Channel', 'video_id': 1, 'user_id': 1},
+            {'subscription_id': 102, 'subscription_name': 'Beta Match Channel', 'video_id': 2, 'user_id': 1},
+        ],
+    )
+
+    result = video_history_service.list_histories(
+        user_id=1,
+        filters={'query': 'channel:"Beta Match" url:watch/2'},
+        page=1,
+        page_size=10,
+    )
+
+    assert result['total'] == 1
+    assert [item['id'] for item in result['items']] == [2]
 
 
 def test_update_history_merges_duplicate_rows_for_same_video(monkeypatch):

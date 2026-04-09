@@ -1,6 +1,6 @@
 from typing import Iterable, List
 
-from sqlalchemy import and_, delete, exists, func, or_, select
+from sqlalchemy import and_, delete, exists, func, select
 
 from core.database import get_session
 from models.video_history import VideoHistory
@@ -8,6 +8,7 @@ from models.video import Video
 from models.subscription import Subscription
 from models.links import SubscriptionVideo, UserSubscription
 from schemas.video_history import HistoryCreate
+from services.video_query import build_video_search_clauses
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import get_site_from_url
@@ -91,39 +92,13 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
         ]
 
         if filters.get('query'):
-            search_term = filters['query'].strip()
-            if search_term:
-                search_pattern = f'%{search_term}%'
-                title_match = exists(
-                    select(1)
-                    .select_from(Video)
-                    .where(
-                        and_(
-                            Video.id == VideoHistory.video_id,
-                            Video.title.ilike(search_pattern)
-                        )
-                    )
-                )
-                subscription_match = exists(
-                    select(1)
-                    .select_from(SubscriptionVideo)
-                    .join(
-                        Subscription,
-                        Subscription.id == SubscriptionVideo.subscription_id
-                    )
-                    .join(
-                        UserSubscription,
-                        UserSubscription.subscription_id == Subscription.id
-                    )
-                    .where(
-                        SubscriptionVideo.video_id == VideoHistory.video_id,
-                        UserSubscription.user_id == user_id,
-                        UserSubscription.is_deleted == False,
-                        Subscription.is_deleted == False,
-                        Subscription.name.ilike(search_pattern)
-                    )
-                )
-                conditions.append(or_(title_match, subscription_match))
+            search_clauses = build_video_search_clauses(
+                user_id=user_id,
+                query=filters['query'],
+                video_id_column=VideoHistory.video_id,
+            )
+            if search_clauses:
+                conditions.extend(search_clauses)
 
         if filters.get('video_id'):
             conditions.append(VideoHistory.video_id == filters['video_id'])

@@ -1,13 +1,250 @@
 from typing import Optional, List
 
-from sqlalchemy import select, func, and_, exists
+from sqlalchemy import select, func, and_, exists, or_
+from sqlalchemy.orm import aliased
 
+from models.creator import Creator
 from models.video import Video
-from models.links import SubscriptionVideo, UserSubscription
+from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
+from services.search_query import normalize_subscription_type_term, parse_search_query
 from utils import url_helper
+
+
+def _contains(column, term: str):
+    return column.ilike(f'%{term}%')
+
+
+def _video_match_clause(*, video_id_column, term: str):
+    video_alias = aliased(Video)
+    return exists(
+        select(1)
+        .select_from(video_alias)
+        .where(
+            video_alias.id == video_id_column,
+            video_alias.is_deleted.is_(False),
+            or_(
+                _contains(video_alias.title, term),
+                _contains(video_alias.description, term),
+                _contains(video_alias.url, term),
+                _contains(video_alias.domain, term),
+            ),
+        )
+    )
+
+
+def _subscription_match_clause(*, user_id: int, video_id_column=None, subscription_id_column=None, term: str):
+    if subscription_id_column is not None:
+        return exists(
+            select(1)
+            .select_from(Subscription)
+            .join(
+                UserSubscription,
+                and_(
+                    UserSubscription.subscription_id == Subscription.id,
+                    UserSubscription.user_id == user_id,
+                    UserSubscription.is_deleted.is_(False),
+                ),
+            )
+            .where(
+                Subscription.id == subscription_id_column,
+                Subscription.is_deleted.is_(False),
+                or_(
+                    _contains(Subscription.name, term),
+                    _contains(Subscription.url, term),
+                    _contains(Subscription.description, term),
+                ),
+            )
+        )
+
+    return exists(
+        select(1)
+        .select_from(SubscriptionVideo)
+        .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
+        .join(
+            UserSubscription,
+            and_(
+                UserSubscription.subscription_id == Subscription.id,
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(False),
+            ),
+        )
+        .where(
+            SubscriptionVideo.video_id == video_id_column,
+            Subscription.is_deleted.is_(False),
+            or_(
+                _contains(Subscription.name, term),
+                _contains(Subscription.url, term),
+                _contains(Subscription.description, term),
+            ),
+        )
+    )
+
+
+def _subscription_type_clause(*, user_id: int, video_id_column=None, subscription_id_column=None, value: str):
+    normalized_type = normalize_subscription_type_term(value)
+    if not normalized_type:
+        return None
+
+    if subscription_id_column is not None:
+        return exists(
+            select(1)
+            .select_from(Subscription)
+            .join(
+                UserSubscription,
+                and_(
+                    UserSubscription.subscription_id == Subscription.id,
+                    UserSubscription.user_id == user_id,
+                    UserSubscription.is_deleted.is_(False),
+                ),
+            )
+            .where(
+                Subscription.id == subscription_id_column,
+                Subscription.is_deleted.is_(False),
+                Subscription.type == normalized_type,
+            )
+        )
+
+    return exists(
+        select(1)
+        .select_from(SubscriptionVideo)
+        .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
+        .join(
+            UserSubscription,
+            and_(
+                UserSubscription.subscription_id == Subscription.id,
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(False),
+            ),
+        )
+        .where(
+            SubscriptionVideo.video_id == video_id_column,
+            Subscription.is_deleted.is_(False),
+            Subscription.type == normalized_type,
+        )
+    )
+
+
+def _creator_match_clause(*, video_id_column, term: str):
+    return exists(
+        select(1)
+        .select_from(VideoCreator)
+        .join(Creator, Creator.id == VideoCreator.creator_id)
+        .where(
+            VideoCreator.video_id == video_id_column,
+            Creator.is_deleted.is_(False),
+            or_(
+                _contains(Creator.name, term),
+                _contains(Creator.url, term),
+                _contains(Creator.description, term),
+            ),
+        )
+    )
+
+
+def build_video_search_clauses(*, user_id: int, query: Optional[str], video_id_column, subscription_id_column=None):
+    parsed_query = parse_search_query(query)
+    if not parsed_query.has_terms:
+        return []
+
+    clauses = []
+
+    for term in parsed_query.text_terms:
+        clauses.append(
+            or_(
+                _video_match_clause(video_id_column=video_id_column, term=term),
+                _subscription_match_clause(
+                    user_id=user_id,
+                    video_id_column=video_id_column,
+                    subscription_id_column=subscription_id_column,
+                    term=term,
+                ),
+                _creator_match_clause(video_id_column=video_id_column, term=term),
+            )
+        )
+
+    for term in parsed_query.get('title'):
+        video_alias = aliased(Video)
+        clauses.append(
+            exists(
+                select(1)
+                .select_from(video_alias)
+                .where(
+                    video_alias.id == video_id_column,
+                    video_alias.is_deleted.is_(False),
+                    _contains(video_alias.title, term),
+                )
+            )
+        )
+
+    for term in parsed_query.get('url'):
+        video_alias = aliased(Video)
+        clauses.append(
+            exists(
+                select(1)
+                .select_from(video_alias)
+                .where(
+                    video_alias.id == video_id_column,
+                    video_alias.is_deleted.is_(False),
+                    _contains(video_alias.url, term),
+                )
+            )
+        )
+
+    for term in parsed_query.get('domain'):
+        video_alias = aliased(Video)
+        clauses.append(
+            exists(
+                select(1)
+                .select_from(video_alias)
+                .where(
+                    video_alias.id == video_id_column,
+                    video_alias.is_deleted.is_(False),
+                    _contains(video_alias.domain, term),
+                )
+            )
+        )
+
+    for term in parsed_query.get('description'):
+        clauses.append(
+            or_(
+                _video_match_clause(video_id_column=video_id_column, term=term),
+                _subscription_match_clause(
+                    user_id=user_id,
+                    video_id_column=video_id_column,
+                    subscription_id_column=subscription_id_column,
+                    term=term,
+                ),
+                _creator_match_clause(video_id_column=video_id_column, term=term),
+            )
+        )
+
+    for term in parsed_query.get('subscription'):
+        clauses.append(
+            _subscription_match_clause(
+                user_id=user_id,
+                video_id_column=video_id_column,
+                subscription_id_column=subscription_id_column,
+                term=term,
+            )
+        )
+
+    for term in parsed_query.get('creator'):
+        clauses.append(_creator_match_clause(video_id_column=video_id_column, term=term))
+
+    for term in parsed_query.get('type'):
+        type_clause = _subscription_type_clause(
+            user_id=user_id,
+            video_id_column=video_id_column,
+            subscription_id_column=subscription_id_column,
+            value=term,
+        )
+        if type_clause is not None:
+            clauses.append(type_clause)
+
+    return clauses
 
 
 def _build_base_video_conditions(
@@ -36,8 +273,11 @@ def _build_base_video_conditions(
         if not show_nsfw:
             conditions.append(UserSubscription.is_nsfw == False)
 
-    if query:
-        conditions.append(Video.title.like(f"%{query}%"))
+    conditions.extend(build_video_search_clauses(
+        user_id=user_id,
+        query=query,
+        video_id_column=Video.id,
+    ))
 
     if domains:
         normalized_domains = [
@@ -115,8 +355,13 @@ def build_video_count_source_query(
         .where(Video.is_deleted == False)
     )
 
-    if query:
-        count_source = count_source.where(Video.title.like(f"%{query}%"))
+    search_clauses = build_video_search_clauses(
+        user_id=user_id,
+        query=query,
+        video_id_column=Video.id,
+    )
+    if search_clauses:
+        count_source = count_source.where(*search_clauses)
 
     if domains:
         normalized_domains = [
