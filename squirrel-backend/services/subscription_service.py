@@ -4,21 +4,24 @@ from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.sql import text
+
 from core.database import get_session
-from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from models.links import UserSubscription
 from models.message import Message
 from models.subscription import Subscription, ContentType
+from models.user import User
 from plugins.manager import get_plugin_manager
+from schemas.subscription.dto.subscription_dto import SubscriptionDto
+from services import user_config_service
+from services import subscription_sync_state_service
+from services import user_video_feed_service
 from services.subscription_runtime_models import (
     SubscriptionImportBatchResult,
     SubscriptionImportItem,
     SubscriptionMeta,
 )
-from services import user_config_service
-from services import subscription_sync_state_service
-from services import user_video_feed_service
 from sqlfile.subscription_sql import get_subscriptions_count_sql, get_subscriptions_sql, get_subscription_sql
+from utils.site_catalog import SiteCatalog
 from utils.sql_parser import parse_dynamic_sql
 from utils.url_helper import extract_top_level_domain
 
@@ -528,6 +531,20 @@ def get_runtime_supported_sites(capability: str) -> List[str]:
     })
 
 
+def list_user_ids() -> List[int]:
+    with get_session() as session:
+        rows = session.execute(select(User.id).order_by(User.id.asc())).all()
+        return [user_id for user_id, in rows]
+
+
+def get_enabled_runtime_import_sites() -> List[str]:
+    return [
+        site
+        for site in get_runtime_supported_sites('import_subscriptions')
+        if SiteCatalog.is_site_enabled(site=site)
+    ]
+
+
 def _load_runtime_subscription_meta(url: str) -> SubscriptionMeta:
     domain = extract_top_level_domain(url)
     parsed_url = urlparse(url)
@@ -665,7 +682,9 @@ def _enqueue_subscriptions_async(subscriptions: List[SubscriptionImportItem], us
 def import_user_subscriptions(
     site_name: str,
     user_id: int,
-    selected_urls: Optional[List[str]] = None
+    selected_urls: Optional[List[str]] = None,
+    *,
+    use_background_thread: bool = True,
 ) -> Dict[str, Any]:
     """
     从指定站点导入用户的所有订阅（异步）
@@ -699,15 +718,18 @@ def import_user_subscriptions(
         imported_urls = set(imported_url_map.keys())
         to_import = [s for s in subscriptions if s.url not in imported_urls]
 
-        # 在后台线程中投递消息
         if to_import:
-            thread = threading.Thread(
-                target=_enqueue_subscriptions_async,
-                args=(to_import, user_id, site_name),
-                daemon=True
-            )
-            thread.start()
-            logger.info(f"Started background thread to enqueue {len(to_import)} subscriptions")
+            if use_background_thread:
+                thread = threading.Thread(
+                    target=_enqueue_subscriptions_async,
+                    args=(to_import, user_id, site_name),
+                    daemon=True
+                )
+                thread.start()
+                logger.info(f"Started background thread to enqueue {len(to_import)} subscriptions")
+            else:
+                _enqueue_subscriptions_async(to_import, user_id, site_name)
+                logger.info(f"Synchronously enqueued {len(to_import)} subscriptions")
         else:
             logger.info("No new subscriptions to import")
 
@@ -722,3 +744,58 @@ def import_user_subscriptions(
     except Exception as e:
         logger.error(f"Failed to import subscriptions from {site_name}: {e}", exc_info=True)
         raise
+
+
+def auto_import_missing_subscriptions(
+    *,
+    user_ids: Optional[List[int]] = None,
+    site_names: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    resolved_user_ids = list(dict.fromkeys(user_ids or list_user_ids()))
+    resolved_site_names = list(dict.fromkeys(site_names or get_enabled_runtime_import_sites()))
+
+    summary = {
+        'users': len(resolved_user_ids),
+        'sites': len(resolved_site_names),
+        'imported': 0,
+        'skipped': 0,
+        'failed': 0,
+    }
+
+    if not resolved_user_ids or not resolved_site_names:
+        logger.info(
+            "Skipped automatic subscription import: users=%s, sites=%s",
+            len(resolved_user_ids),
+            len(resolved_site_names),
+        )
+        return summary
+
+    for user_id in resolved_user_ids:
+        for site_name in resolved_site_names:
+            try:
+                result = import_user_subscriptions(
+                    site_name,
+                    user_id,
+                    use_background_thread=False,
+                )
+                summary['imported'] += int(result.get('total') or 0)
+                summary['skipped'] += int(result.get('skipped') or 0)
+            except Exception as exc:
+                summary['failed'] += 1
+                logger.error(
+                    "Automatic subscription import failed for user_id=%s site=%s: %s",
+                    user_id,
+                    site_name,
+                    exc,
+                    exc_info=True,
+                )
+
+    logger.info(
+        "Automatic subscription import completed: users=%s, sites=%s, imported=%s, skipped=%s, failed=%s",
+        summary['users'],
+        summary['sites'],
+        summary['imported'],
+        summary['skipped'],
+        summary['failed'],
+    )
+    return summary

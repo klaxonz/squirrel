@@ -15,6 +15,7 @@ from models import Base
 from models.links import SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState
+from models.user import User
 from models.video import Video
 from models.user_video_feed import UserVideoFeed
 from services import subscription_service
@@ -43,6 +44,7 @@ def _setup_test_env(monkeypatch):
             Subscription.__table__,
             Video.__table__,
             SubscriptionVideo.__table__,
+            User.__table__,
             UserSubscription.__table__,
             UserVideoFeed.__table__,
             SubscriptionSyncState.__table__,
@@ -74,6 +76,16 @@ def _seed_subscription(engine, *, subscription_id: int = 1, user_ids: list[int] 
         session.add(subscription)
 
         for index, user_id in enumerate(user_ids, start=1):
+            if session.get(User, user_id) is None:
+                session.add(
+                    User(
+                        id=user_id,
+                        nickname=f'user-{user_id}',
+                        avatar=None,
+                        created_at=datetime(2024, 1, 1),
+                        updated_at=datetime(2024, 1, 1),
+                    )
+                )
             session.add(
                 UserSubscription(
                     id=index,
@@ -573,3 +585,84 @@ def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(
         'https://javdb.com/actors/one',
         'https://javdb.com/actors/two',
     ]
+
+
+def test_import_user_subscriptions_can_enqueue_synchronously(monkeypatch):
+    _setup_test_env(monkeypatch)
+    enqueued_batches = []
+
+    monkeypatch.setattr(subscription_service, 'get_active_user_subscription_url_map', lambda _user_id: {})
+    monkeypatch.setattr(
+        subscription_service,
+        '_load_runtime_import_items',
+        lambda _site_name: [
+            subscription_service.SubscriptionImportItem(url='https://example.com/channel/1', name='Channel 1'),
+            subscription_service.SubscriptionImportItem(url='https://example.com/channel/2', name='Channel 2'),
+        ],
+    )
+    monkeypatch.setattr(
+        subscription_service,
+        '_enqueue_subscriptions_async',
+        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
+    )
+
+    result = subscription_service.import_user_subscriptions(
+        site_name='example',
+        user_id=1,
+        use_background_thread=False,
+    )
+
+    assert result == {
+        'total': 2,
+        'found': 2,
+        'selected': 2,
+        'skipped': 0,
+    }
+    assert len(enqueued_batches) == 1
+    queued_subscriptions, queued_user_id, queued_site_name = enqueued_batches[0]
+    assert queued_user_id == 1
+    assert queued_site_name == 'example'
+    assert [item.url for item in queued_subscriptions] == [
+        'https://example.com/channel/1',
+        'https://example.com/channel/2',
+    ]
+
+
+def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_user(monkeypatch):
+    _setup_test_env(monkeypatch)
+    calls = []
+
+    monkeypatch.setattr(subscription_service, 'list_user_ids', lambda: [1, 2])
+    monkeypatch.setattr(subscription_service, 'get_runtime_supported_sites', lambda capability: ['youtube', 'bilibili', 'disabled'])
+    monkeypatch.setattr(
+        subscription_service.SiteCatalog,
+        'is_site_enabled',
+        staticmethod(lambda site=None, domain=None: site != 'disabled'),
+    )
+    monkeypatch.setattr(
+        subscription_service,
+        'import_user_subscriptions',
+        lambda site_name, user_id, selected_urls=None, *, use_background_thread=True: (
+            calls.append((site_name, user_id, use_background_thread))
+            or {
+                'total': 1,
+                'skipped': 2,
+            }
+        ),
+    )
+
+    result = subscription_service.auto_import_missing_subscriptions()
+
+    assert calls == [
+        ('youtube', 1, False),
+        ('bilibili', 1, False),
+        ('youtube', 2, False),
+        ('bilibili', 2, False),
+    ]
+    assert result == {
+        'users': 2,
+        'sites': 2,
+        'imported': 4,
+        'skipped': 8,
+        'failed': 0,
+    }
