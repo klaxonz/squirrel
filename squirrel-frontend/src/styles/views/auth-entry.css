@@ -1,6 +1,6 @@
 /* 
   SQRL Auth System - High Precision Terminal Style
-  Cleaned & Optimized
+  Pure Linear Design - No Background Fills
 */
 
 .auth-shell {
@@ -136,6 +136,16 @@
   border-radius: 0 !important;
   transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   letter-spacing: 0.02em;
+  outline: none !important;
+}
+
+/* Autofill Fix */
+.auth-input-minimal:-webkit-autofill,
+.auth-input-minimal:-webkit-autofill:hover,
+.auth-input-minimal:-webkit-autofill:focus {
+  -webkit-text-fill-color: #fff !important;
+  -webkit-box-shadow: 0 0 0px 1000px #020202 inset !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Energy Line Effect */
@@ -156,8 +166,11 @@
   width: 100%;
 }
 
+.auth-input-minimal:hover {
+  border-bottom-color: rgba(255, 255, 255, 0.3) !important;
+}
+
 .auth-input-minimal:focus {
-  outline: none;
   padding-left: 0.5rem !important;
 }
 
