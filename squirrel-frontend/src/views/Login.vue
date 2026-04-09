@@ -5,9 +5,9 @@
     <div class="auth-layout">
       <!-- 左侧：品牌展示区 -->
       <aside class="auth-sidebar">
-        <div class="auth-sidebar__status">System Ready</div>
+        <div class="auth-sidebar__status">系统已就绪</div>
         <h1 class="auth-sidebar__brand">SQRL</h1>
-        <div class="auth-sidebar__status" style="margin-top: auto; opacity: 0.1">00:00:00 // CINEMA</div>
+        <div class="auth-sidebar__status" style="margin-top: auto; opacity: 0.1">00:00:00 // 影院系统</div>
       </aside>
 
       <!-- 右侧：交互表单区 -->
@@ -27,7 +27,7 @@
               placeholder=" "
               class="auth-input-minimal"
             />
-            <label for="email" class="auth-label-floating">Identity / Email</label>
+            <label for="email" class="auth-label-floating">邮箱</label>
           </div>
 
           <div class="auth-field-minimal">
@@ -35,21 +35,28 @@
             <input
               id="password"
               v-model="form.password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               required
               placeholder=" "
               class="auth-input-minimal"
             />
-            <label for="password" class="auth-label-floating">Access / Key</label>
+            <label for="password" class="auth-label-floating">密码</label>
+            <button
+              type="button"
+              class="auth-password-toggle"
+              @click="showPassword = !showPassword"
+            >
+              <component :is="showPassword ? EyeOff : Eye" class="w-4 h-4" />
+            </button>
           </div>
 
           <Button type="submit" class="auth-submit-minimal" :disabled="loading">
-            {{ loading ? 'Authenticating...' : 'Enter System' }}
+            {{ loading ? '验证中...' : '进入系统' }}
           </Button>
 
           <div class="auth-footer-minimal">
-            <span>Unauthorized?</span>
-            <router-link to="/register" class="auth-link-minimal">Request Access</router-link>
+            <span>未登记访客？</span>
+            <router-link to="/register" class="auth-link-minimal">申请访问权限</router-link>
           </div>
         </form>
       </main>
@@ -63,10 +70,12 @@ import { useRouter } from 'vue-router'
 import { useUser } from '../composables/useUser'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Eye, EyeOff } from 'lucide-vue-next'
 
 const router = useRouter()
 const { login } = useUser()
 const loading = ref(false)
+const showPassword = ref(false)
 const errorMessage = ref('')
 const form = ref({
   email: '',

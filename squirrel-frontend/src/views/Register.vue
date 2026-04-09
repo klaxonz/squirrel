@@ -5,9 +5,9 @@
     <div class="auth-layout">
       <!-- 左侧：品牌展示区 -->
       <aside class="auth-sidebar">
-        <div class="auth-sidebar__status">New Identity</div>
+        <div class="auth-sidebar__status">创建新身份</div>
         <h1 class="auth-sidebar__brand">SQRL</h1>
-        <div class="auth-sidebar__status" style="margin-top: auto; opacity: 0.1">00:00:00 // JOIN</div>
+        <div class="auth-sidebar__status" style="margin-top: auto; opacity: 0.1">00:00:00 // 加入网络</div>
       </aside>
 
       <!-- 右侧：交互表单区 -->
@@ -27,7 +27,7 @@
               placeholder=" "
               class="auth-input-minimal"
             />
-            <label for="nickname" class="auth-label-floating">Display Name</label>
+            <label for="nickname" class="auth-label-floating">昵称</label>
           </div>
 
           <div class="auth-field-minimal">
@@ -40,7 +40,7 @@
               placeholder=" "
               class="auth-input-minimal"
             />
-            <label for="email" class="auth-label-floating">Email</label>
+            <label for="email" class="auth-label-floating">邮箱</label>
           </div>
 
           <div class="auth-field-minimal">
@@ -48,21 +48,28 @@
             <input
               id="password"
               v-model="form.password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               required
               placeholder=" "
               class="auth-input-minimal"
             />
-            <label for="password" class="auth-label-floating">Password</label>
+            <label for="password" class="auth-label-floating">密码</label>
+            <button
+              type="button"
+              class="auth-password-toggle"
+              @click="showPassword = !showPassword"
+            >
+              <component :is="showPassword ? EyeOff : Eye" class="w-4 h-4" />
+            </button>
           </div>
 
           <Button type="submit" class="auth-submit-minimal" :disabled="loading">
-            {{ loading ? 'Initializing...' : 'Create Identity' }}
+            {{ loading ? '初始化中...' : '注册身份' }}
           </Button>
 
           <div class="auth-footer-minimal">
-            <span>Already synced?</span>
-            <router-link to="/login" class="auth-link-minimal">Direct Login</router-link>
+            <span>已完成同步？</span>
+            <router-link to="/login" class="auth-link-minimal">直接登入</router-link>
           </div>
         </form>
       </main>
@@ -76,10 +83,12 @@ import { useRouter } from 'vue-router'
 import { useUser } from '../composables/useUser'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Eye, EyeOff } from 'lucide-vue-next'
 
 const router = useRouter()
 const { register } = useUser()
 const loading = ref(false)
+const showPassword = ref(false)
 const errorMessage = ref('')
 const form = ref({
   nickname: '',

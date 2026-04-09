@@ -1,30 +1,29 @@
+/* 
+  SQRL Auth System - High Precision Terminal Style
+  Cleaned & Optimized
+*/
+
 .auth-shell {
   position: relative;
   min-height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background: #050505;
+  background: #020202;
   color: #fff;
   display: flex;
   align-items: center;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* 垂直氛围线 */
-.auth-divider-line {
+/* Background Noise Effect */
+.auth-shell::before {
+  content: '';
   position: absolute;
-  left: 40%;
-  top: 0;
-  width: 1px;
-  height: 100%;
-  background: linear-gradient(to bottom,
-    transparent,
-    rgba(255, 255, 255, 0.1) 20%,
-    rgba(255, 255, 255, 0.4) 50%,
-    rgba(255, 255, 255, 0.1) 80%,
-    transparent
-  );
-  z-index: 5;
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3BaseFilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/feTurbulence%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .auth-layout {
@@ -36,7 +35,23 @@
   align-items: center;
 }
 
-/* 左侧装饰空间 */
+/* Ambient Divider Line */
+.auth-divider-line {
+  position: absolute;
+  left: 35%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(to bottom, 
+    transparent, 
+    rgba(255, 77, 0, 0.1) 15%, 
+    rgba(255, 77, 0, 0.4) 50%, 
+    rgba(255, 77, 0, 0.1) 85%, 
+    transparent
+  );
+  z-index: 5;
+}
+
 .auth-sidebar {
   padding: 0 10% 0 15%;
   display: flex;
@@ -45,11 +60,13 @@
 }
 
 .auth-sidebar__brand {
-  font-size: 5rem;
-  font-weight: 800;
-  letter-spacing: -0.08em;
-  line-height: 0.8;
-  opacity: 0.8;
+  font-size: 6rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.1) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0.9;
   text-transform: uppercase;
 }
 
@@ -75,82 +92,144 @@
   animation: pulse 2s infinite;
 }
 
-/* 右侧表单区域 */
 .auth-main {
   padding-left: 10%;
 }
 
 .auth-form-minimal {
-  max-width: 360px;
+  max-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: 3.5rem;
+  gap: 3rem;
 }
 
 .auth-field-minimal {
   position: relative;
+  padding-top: 1.5rem;
 }
 
-/* 编号设计 */
+/* HUD Style Index */
 .auth-field-index {
   position: absolute;
-  left: -2.5rem;
-  top: 1.2rem;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.2);
+  left: -3.5rem;
+  top: 2rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: #ff4d00;
+  opacity: 0.4;
+  letter-spacing: 0.1em;
 }
 
+.auth-field-index::before { content: '['; }
+.auth-field-index::after { content: ']'; }
+
+/* Ultra-thin Underline Input */
 .auth-input-minimal {
   width: 100%;
   background: transparent !important;
   border: none !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  padding: 1.2rem 0 0.6rem 0 !important;
-  font-size: 1.3rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 0.8rem 0 !important;
+  font-size: 1.2rem !important;
   font-weight: 300 !important;
   color: #fff !important;
   border-radius: 0 !important;
-  transition: all 0.5s ease;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  letter-spacing: 0.02em;
+}
+
+/* Energy Line Effect */
+.auth-field-minimal::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 1px;
+  background: #ff4d00;
+  box-shadow: 0 0 15px rgba(255, 77, 0, 0.6);
+  transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translateX(-50%);
+}
+
+.auth-field-minimal:focus-within::after {
+  width: 100%;
 }
 
 .auth-input-minimal:focus {
-  border-bottom-color: rgba(255, 255, 255, 0.6) !important;
+  outline: none;
   padding-left: 0.5rem !important;
 }
 
+/* Floating Label */
 .auth-label-floating {
   position: absolute;
   left: 0;
-  bottom: 0.8rem;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.2);
-  letter-spacing: 0.2em;
+  top: 2.2rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.3);
   text-transform: uppercase;
+  letter-spacing: 0.2em;
   pointer-events: none;
-  transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .auth-input-minimal:focus + .auth-label-floating,
 .auth-input-minimal:not(:placeholder-shown) + .auth-label-floating {
   transform: translateY(-2.8rem);
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   color: #ff4d00;
-  letter-spacing: 0.3em;
+  opacity: 0.8;
+  letter-spacing: 0.4em;
 }
 
+/* Password Toggle */
+.auth-password-toggle {
+  position: absolute;
+  right: 0;
+  bottom: 0.8rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-password-toggle:hover {
+  color: #ff4d00;
+  filter: drop-shadow(0 0 5px rgba(255, 77, 0, 0.4));
+}
+
+/* Submit Button - Classic High Contrast */
 .auth-submit-minimal {
-  height: 4rem !important;
+  position: relative;
+  height: 3.8rem !important;
   background: transparent !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: #fff !important;
-  border-radius: 4px !important;
-  font-weight: 400 !important;
+  border-radius: 0 !important;
+  font-weight: 500 !important;
   font-size: 0.9rem !important;
-  letter-spacing: 0.3em !important;
+  letter-spacing: 0.4em !important;
   text-transform: uppercase !important;
-  transition: all 0.5s ease !important;
-  margin-top: 1rem;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  margin-top: 2rem;
+  cursor: pointer;
+}
+
+.auth-submit-minimal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: all 0.6s;
 }
 
 .auth-submit-minimal:hover:not(:disabled) {
@@ -160,28 +239,40 @@
   box-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
 }
 
+.auth-submit-minimal:hover::before {
+  left: 100%;
+}
+
+.auth-submit-minimal:active {
+  transform: scale(0.98);
+}
+
+.auth-submit-minimal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Footer Links */
 .auth-footer-minimal {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  margin-top: 2rem;
-  font-size: 0.65rem;
+  margin-top: 1rem;
+  font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.2);
-  letter-spacing: 0.15em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .auth-link-minimal {
-  color: rgba(255, 255, 255, 0.5);
+  margin-left: 1rem;
+  color: #ff4d00;
   text-decoration: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 2px;
+  opacity: 0.6;
   transition: all 0.3s;
+  border-bottom: 1px solid transparent;
 }
 
 .auth-link-minimal:hover {
-  color: #fff;
-  border-bottom-color: #fff;
+  opacity: 1;
+  border-bottom-color: #ff4d00;
 }
 
 @keyframes pulse {
@@ -195,16 +286,4 @@
   .auth-layout { grid-template-columns: 1fr; }
   .auth-sidebar { padding: 4rem 2.5rem; }
   .auth-main { padding: 2rem 2.5rem; }
-}
-
-
-
-
-@media (max-width: 640px) {
-  .auth-bg-text {
-    font-size: 60vw;
-  }
-  .auth-title-minimal {
-    font-size: 1.8rem;
-  }
 }
