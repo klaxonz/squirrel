@@ -60,6 +60,8 @@ class JavdbSubscription:
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
         page = self._resolve_page(context)
+        count_offset = self._resolve_count_offset(context)
+        previous_page_urls = self._resolve_previous_page_urls(context)
         response = fetch_javdb_html(self._build_page_url(page))
         html = response.text
 
@@ -68,6 +70,7 @@ class JavdbSubscription:
         video_list: List[str] = []
         seen_urls: set[str] = set()
         head_sample_urls: list[str] = []
+        page_video_urls: list[str] = []
         latest_video_url: Optional[str] = None
         limit = resolve_subscription_limit(context)
 
@@ -81,7 +84,9 @@ class JavdbSubscription:
             latest_video_url,
             limit,
             head_sample_urls,
+            page_video_urls,
         )
+        page_unique_count = self._count_page_unique_videos(page_video_urls, previous_page_urls)
         if stop_reason:
             return build_subscription_sync_result(
                 video_urls=video_list,
@@ -100,7 +105,11 @@ class JavdbSubscription:
                     latest_video_url=latest_video_url,
                     context=context,
                     stop_reason='batch_exhausted',
-                    cursor_payload={'page': next_page},
+                    cursor_payload={
+                        'page': next_page,
+                        'count_offset': count_offset + page_unique_count,
+                        'previous_page_urls': page_video_urls,
+                    },
                     has_more=True,
                 )
 
@@ -109,6 +118,7 @@ class JavdbSubscription:
             latest_video_url=latest_video_url,
             context=context,
             stop_reason='source_exhausted',
+            total_available=count_offset + page_unique_count if context.mode == 'full' else None,
             head_sample_urls=head_sample_urls if context.mode != 'full' else None,
             anchor_found=False if context.mode != 'full' and context.last_seen_video_url else None,
         )
@@ -141,6 +151,26 @@ class JavdbSubscription:
         except ValueError:
             return None
 
+    @staticmethod
+    def _resolve_count_offset(context: SubscriptionSyncContext) -> int:
+        raw_value = context.cursor_payload.get('count_offset', 0)
+        try:
+            return max(0, int(raw_value))
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _resolve_previous_page_urls(context: SubscriptionSyncContext) -> list[str]:
+        previous_page_urls = context.cursor_payload.get('previous_page_urls')
+        if not isinstance(previous_page_urls, list):
+            return []
+        return [url for url in previous_page_urls if isinstance(url, str) and url]
+
+    @staticmethod
+    def _count_page_unique_videos(page_video_urls: list[str], previous_page_urls: list[str]) -> int:
+        previous_page_url_set = set(previous_page_urls)
+        return sum(1 for url in page_video_urls if url not in previous_page_url_set)
+
     def _extract_video_urls(
         self,
         bs4: BeautifulSoup,
@@ -151,10 +181,13 @@ class JavdbSubscription:
         latest_video_url: Optional[str],
         limit: Optional[int],
         head_sample_urls: list[str],
+        page_video_urls: list[str],
     ) -> tuple[Optional[str], Optional[str]]:
         video_els = bs4.select('.movie-list .item a.box')
         for el in video_els:
             video_url = f'{base_url}{el["href"]}'
+            if video_url not in page_video_urls:
+                page_video_urls.append(video_url)
             if video_url not in head_sample_urls and len(head_sample_urls) < HEAD_SAMPLE_LIMIT:
                 head_sample_urls.append(video_url)
             latest_video_url, stop_reason = append_subscription_video_url(

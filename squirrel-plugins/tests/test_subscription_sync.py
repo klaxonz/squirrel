@@ -437,6 +437,7 @@ def _build_ytdlp_info(
     title: str | None = None,
     thumbnails: list[dict] | None = None,
     playlist_id: str | None = None,
+    playlist_count: int | None = None,
 ):
     return {
         'entries': list(entries or []),
@@ -446,6 +447,7 @@ def _build_ytdlp_info(
         'title': title or f'{channel} - Videos',
         'thumbnails': list(thumbnails or [{'url': 'https://cdn.example/thumb.jpg'}]),
         'id': playlist_id or channel_id,
+        'playlist_count': playlist_count,
         'webpage_url': 'https://www.youtube.com/channel/channel-1',
     }
 
@@ -526,7 +528,17 @@ class SubscriptionSyncTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.latest_video_url, 'https://javdb.com/v/one')
-            self.assertEqual(result.cursor_payload, {'page': 2})
+            self.assertEqual(
+                result.cursor_payload,
+                {
+                    'page': 2,
+                    'count_offset': 2,
+                    'previous_page_urls': [
+                        'https://javdb.com/v/one',
+                        'https://javdb.com/v/shared',
+                    ],
+                },
+            )
             self.assertEqual(result.stop_reason, 'batch_exhausted')
             self.assertTrue(result.has_more)
 
@@ -545,7 +557,17 @@ class SubscriptionSyncTests(unittest.TestCase):
 
             subscription = module.JavdbSubscription('https://javdb.com/actors/demo')
             result = subscription.sync_videos(
-                _SubscriptionSyncContext(mode='full', cursor_payload={'page': 2})
+                _SubscriptionSyncContext(
+                    mode='full',
+                    cursor_payload={
+                        'page': 2,
+                        'count_offset': 2,
+                        'previous_page_urls': [
+                            'https://javdb.com/v/one',
+                            'https://javdb.com/v/shared',
+                        ],
+                    },
+                )
             )
 
             self.assertEqual(
@@ -558,6 +580,7 @@ class SubscriptionSyncTests(unittest.TestCase):
             self.assertEqual(result.latest_video_url, 'https://javdb.com/v/shared')
             self.assertEqual(result.stop_reason, 'source_exhausted')
             self.assertFalse(result.has_more)
+            self.assertEqual(result.total_available, 3)
 
     def test_javdb_get_subscribe_info_allows_missing_avatar(self):
         with _stub_javdb_subscription_dependencies() as (responses, soups):
@@ -599,7 +622,14 @@ class SubscriptionSyncTests(unittest.TestCase):
 
             self.assertEqual(result.video_urls, ['https://www.pornhub.com/view_video.php?viewkey=one'])
             self.assertEqual(result.latest_video_url, 'https://www.pornhub.com/view_video.php?viewkey=one')
-            self.assertEqual(result.cursor_payload, {'page': 2})
+            self.assertEqual(
+                result.cursor_payload,
+                {
+                    'page': 2,
+                    'count_offset': 1,
+                    'previous_page_urls': ['https://www.pornhub.com/view_video.php?viewkey=one'],
+                },
+            )
             self.assertEqual(result.stop_reason, 'batch_exhausted')
             self.assertTrue(result.has_more)
 
@@ -616,12 +646,22 @@ class SubscriptionSyncTests(unittest.TestCase):
             })
 
             subscription = module.PornhubSubscription('https://www.pornhub.com/channels/demo')
-            result = subscription.sync_videos(_SubscriptionSyncContext(mode='full', cursor_payload={'page': 2}))
+            result = subscription.sync_videos(
+                _SubscriptionSyncContext(
+                    mode='full',
+                    cursor_payload={
+                        'page': 2,
+                        'count_offset': 1,
+                        'previous_page_urls': ['https://www.pornhub.com/view_video.php?viewkey=one'],
+                    },
+                )
+            )
 
             self.assertEqual(result.video_urls, ['https://www.pornhub.com/view_video.php?viewkey=two'])
             self.assertEqual(result.latest_video_url, 'https://www.pornhub.com/view_video.php?viewkey=two')
             self.assertEqual(result.stop_reason, 'source_exhausted')
             self.assertFalse(result.has_more)
+            self.assertEqual(result.total_available, 2)
 
     def test_pornhub_full_sync_deduplicates_video_urls_across_sections(self):
         with _stub_pornhub_subscription_dependencies() as (responses, soups):
@@ -654,6 +694,7 @@ class SubscriptionSyncTests(unittest.TestCase):
             )
             self.assertEqual(result.latest_video_url, 'https://www.pornhub.com/view_video.php?viewkey=one')
             self.assertEqual(result.stop_reason, 'source_exhausted')
+            self.assertEqual(result.total_available, 3)
 
     def test_youtube_channel_sync_deduplicates_overlapping_video_and_short_urls(self):
         with _stub_youtube_subscription_dependencies():
@@ -666,6 +707,8 @@ class SubscriptionSyncTests(unittest.TestCase):
 
             def fake_extract(url, opts, *, process=False):
                 calls.append((url, dict(opts), process))
+                if url == 'https://www.youtube.com/@demo':
+                    return _build_ytdlp_info(entries=[], playlist_count=3)
                 if url.endswith('/videos'):
                     return _build_ytdlp_info(entries=[
                         {'url': 'https://www.youtube.com/watch?v=video001aaa'},
@@ -693,11 +736,13 @@ class SubscriptionSyncTests(unittest.TestCase):
             )
             self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=video001aaa')
             self.assertEqual(result.stop_reason, 'source_exhausted')
+            self.assertEqual(result.total_available, 3)
             self.assertEqual(
                 [url for url, _opts, _process in calls],
                 [
                     'https://www.youtube.com/@demo/videos',
                     'https://www.youtube.com/@demo/shorts',
+                    'https://www.youtube.com/@demo',
                 ],
             )
             for url, opts, process in calls:
@@ -747,6 +792,8 @@ class SubscriptionSyncTests(unittest.TestCase):
 
             def fake_extract(url, opts, *, process=False):
                 calls.append((url, dict(opts), process))
+                if url == 'https://www.youtube.com/@demo':
+                    return _build_ytdlp_info(entries=[], playlist_count=4)
                 if url.endswith('/videos'):
                     entries = [
                         {'url': 'https://www.youtube.com/watch?v=video0000001'},
@@ -778,6 +825,7 @@ class SubscriptionSyncTests(unittest.TestCase):
             self.assertEqual(result.cursor_payload, {'source': 'videos', 'offset': 2})
             self.assertEqual(result.stop_reason, 'batch_exhausted')
             self.assertTrue(result.has_more)
+            self.assertEqual(result.total_available, 4)
             self.assertEqual(calls[0][1].get('playlistend'), 3)
 
     def test_youtube_full_sync_resumes_from_offset_cursor(self):
@@ -789,6 +837,8 @@ class SubscriptionSyncTests(unittest.TestCase):
 
             def fake_extract(url, opts, *, process=False):
                 calls.append((url, dict(opts), process))
+                if url == 'https://www.youtube.com/@demo':
+                    return _build_ytdlp_info(entries=[], playlist_count=4)
                 if url.endswith('/videos'):
                     entries = [
                         {'url': 'https://www.youtube.com/watch?v=video0000001'},
@@ -824,6 +874,7 @@ class SubscriptionSyncTests(unittest.TestCase):
             self.assertEqual(result.latest_video_url, 'https://www.youtube.com/watch?v=video0000003')
             self.assertEqual(result.stop_reason, 'source_exhausted')
             self.assertFalse(result.has_more)
+            self.assertEqual(result.total_available, 4)
             self.assertEqual(calls[0][1].get('playliststart'), 3)
 
     def test_youtube_get_subscribe_info_uses_ytdlp_channel_metadata(self):

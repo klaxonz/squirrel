@@ -46,6 +46,8 @@ class YouPornSubscription:
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
         page = self._resolve_page(context)
+        count_offset = self._resolve_count_offset(context)
+        previous_page_urls = self._resolve_previous_page_urls(context)
         response = request('GET', self._build_page_url(page), headers=self._build_headers(), timeout=15)
         response.raise_for_status()
 
@@ -56,6 +58,7 @@ class YouPornSubscription:
         video_urls: list[str] = []
         seen_urls: set[str] = set()
         head_sample_urls: list[str] = []
+        page_video_urls: list[str] = []
 
         for selector in ('a[data-testid="plw_video_thumbnail_link"]', 'a.video-box-image[href^="/watch/"]'):
             for element in soup.select(selector):
@@ -64,6 +67,8 @@ class YouPornSubscription:
                     continue
 
                 video_url = urljoin(base_url, href)
+                if video_url not in page_video_urls:
+                    page_video_urls.append(video_url)
                 if video_url not in head_sample_urls and len(head_sample_urls) < HEAD_SAMPLE_LIMIT:
                     head_sample_urls.append(video_url)
                 latest_video_url, stop_reason = append_subscription_video_url(
@@ -84,6 +89,7 @@ class YouPornSubscription:
                         anchor_found=True if stop_reason == 'cursor_hit' and context.mode != 'full' else None,
                     )
 
+        page_unique_count = self._count_page_unique_videos(page_video_urls, previous_page_urls)
         if context.mode == 'full':
             next_page = self._resolve_next_page(soup, page)
             if next_page is not None:
@@ -92,7 +98,11 @@ class YouPornSubscription:
                     latest_video_url=latest_video_url,
                     context=context,
                     stop_reason='batch_exhausted',
-                    cursor_payload={'page': next_page},
+                    cursor_payload={
+                        'page': next_page,
+                        'count_offset': count_offset + page_unique_count,
+                        'previous_page_urls': page_video_urls,
+                    },
                     has_more=True,
                 )
 
@@ -101,6 +111,7 @@ class YouPornSubscription:
             latest_video_url=latest_video_url,
             context=context,
             stop_reason='source_exhausted',
+            total_available=count_offset + page_unique_count if context.mode == 'full' else None,
             head_sample_urls=head_sample_urls if context.mode != 'full' else None,
             anchor_found=False if context.mode != 'full' and context.last_seen_video_url else None,
         )
@@ -126,6 +137,26 @@ class YouPornSubscription:
             return max(1, int(page))
         except (TypeError, ValueError):
             return 1
+
+    @staticmethod
+    def _resolve_count_offset(context: SubscriptionSyncContext) -> int:
+        raw_value = context.cursor_payload.get('count_offset', 0)
+        try:
+            return max(0, int(raw_value))
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _resolve_previous_page_urls(context: SubscriptionSyncContext) -> list[str]:
+        previous_page_urls = context.cursor_payload.get('previous_page_urls')
+        if not isinstance(previous_page_urls, list):
+            return []
+        return [url for url in previous_page_urls if isinstance(url, str) and url]
+
+    @staticmethod
+    def _count_page_unique_videos(page_video_urls: list[str], previous_page_urls: list[str]) -> int:
+        previous_page_url_set = set(previous_page_urls)
+        return sum(1 for url in page_video_urls if url not in previous_page_url_set)
 
     def _build_page_url(self, page: int) -> str:
         if page <= 1:

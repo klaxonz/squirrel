@@ -231,9 +231,59 @@ class YouPornSubscriptionTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.latest_video_url, 'https://www.youporn.com/watch/221811351/demo-1/')
-            self.assertEqual(result.cursor_payload, {'page': 2})
+            self.assertEqual(
+                result.cursor_payload,
+                {
+                    'page': 2,
+                    'count_offset': 2,
+                    'previous_page_urls': [
+                        'https://www.youporn.com/watch/221811351/demo-1/',
+                        'https://www.youporn.com/watch/221643281/demo-2/',
+                    ],
+                },
+            )
             self.assertEqual(result.stop_reason, 'batch_exhausted')
             self.assertTrue(result.has_more)
+
+    def test_youporn_full_sync_resumes_from_cursor_and_reports_total_available(self):
+        with _stub_youporn_subscription_dependencies() as (responses, soups):
+            module = _load_youporn_subscription_module()
+
+            responses.append(_FakeResponse('page-2'))
+            soups['page-2'] = _FakeSoup({
+                'a[data-testid="plw_video_thumbnail_link"]': [
+                    _FakeTag({'href': '/watch/221643281/demo-2/'}),
+                    _FakeTag({'href': '/watch/221500000/demo-3/'}),
+                ],
+                'a.tm_pagination_link.pagination_number_link': [],
+            })
+
+            subscription = module.YouPornSubscription('https://www.youporn.com/channel/bangbrosnetwork/')
+            result = subscription.sync_videos(
+                _SubscriptionSyncContext(
+                    mode='full',
+                    cursor_payload={
+                        'page': 2,
+                        'count_offset': 2,
+                        'previous_page_urls': [
+                            'https://www.youporn.com/watch/221811351/demo-1/',
+                            'https://www.youporn.com/watch/221643281/demo-2/',
+                        ],
+                    },
+                )
+            )
+
+            self.assertEqual(
+                result.video_urls,
+                [
+                    'https://www.youporn.com/watch/221643281/demo-2/',
+                    'https://www.youporn.com/watch/221500000/demo-3/',
+                ],
+            )
+            self.assertEqual(result.latest_video_url, 'https://www.youporn.com/watch/221643281/demo-2/')
+            self.assertEqual(result.stop_reason, 'source_exhausted')
+            self.assertEqual(result.total_available, 3)
+            self.assertFalse(result.has_more)
 
     def test_youporn_incremental_sync_stops_at_last_seen_video(self):
         with _stub_youporn_subscription_dependencies() as (responses, soups):

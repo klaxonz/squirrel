@@ -2,7 +2,7 @@
 默认更新策略（适用于所有站点）
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy import update
@@ -25,20 +25,39 @@ from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, Update
 
 logger = logging.getLogger()
 
+FULL_BACKFILL_RETRY_COOLDOWN = timedelta(hours=6)
+FULL_BACKFILL_STALE_AFTER = timedelta(days=3)
+
 
 def should_schedule_total_video_backfill(
     sync_mode: str,
-    total_videos: Optional[int],
+    local_total_videos: Optional[int],
+    observed_total_available: Optional[int],
     full_sync_status: Optional[str],
     full_last_success_at: Optional[datetime],
+    *,
+    now: Optional[datetime] = None,
 ) -> bool:
+    current_time = now or datetime.now()
+
     if sync_mode == SyncMode.FULL.value:
         return False
-    if (total_videos or 0) > 0:
+    if full_sync_status in {SyncStatus.QUEUED.value, SyncStatus.RUNNING.value}:
         return False
-    if full_last_success_at is not None:
-        return False
-    return full_sync_status not in {SyncStatus.QUEUED.value, SyncStatus.RUNNING.value}
+
+    local_total = max(int(local_total_videos or 0), 0)
+    observed_total = max(int(observed_total_available), 0) if observed_total_available is not None else None
+
+    if full_last_success_at is None:
+        return True
+
+    if local_total <= 0 and full_last_success_at <= current_time - FULL_BACKFILL_RETRY_COOLDOWN:
+        return True
+
+    if observed_total is not None and observed_total > local_total:
+        return full_last_success_at <= current_time - FULL_BACKFILL_RETRY_COOLDOWN
+
+    return full_last_success_at <= current_time - FULL_BACKFILL_STALE_AFTER
 
 
 class DefaultUpdateStrategy(UpdateStrategy):
@@ -52,7 +71,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
         result = super().execute(request)
         if result.success:
             self._record_gap_observation(request, result)
-            self._schedule_total_video_backfill(request)
+            self._schedule_total_video_backfill(request, result)
         return result
     
     def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, Optional[str]]:
@@ -234,7 +253,10 @@ class DefaultUpdateStrategy(UpdateStrategy):
             )
 
     @staticmethod
-    def _schedule_total_video_backfill(request: SubscriptionUpdateRequest) -> None:
+    def _schedule_total_video_backfill(
+        request: SubscriptionUpdateRequest,
+        result: SubscriptionUpdateResult,
+    ) -> None:
         subscription = subscription_service.get_subscription_by_id(request.subscription_id)
         if not subscription:
             return
@@ -243,6 +265,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
         if not should_schedule_total_video_backfill(
             request.mode.value,
             subscription.total_videos,
+            result.total_available,
             full_state.sync_status if full_state else None,
             full_state.last_success_at if full_state else None,
         ):
@@ -281,4 +304,3 @@ class DefaultUpdateStrategy(UpdateStrategy):
             trigger=request.trigger.value,
             trace_id=request.trace_id,
         )
-

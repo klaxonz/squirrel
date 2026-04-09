@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 FULL_SYNC_BATCH_SIZE = 100
 HEAD_SAMPLE_LIMIT = 10
 _CHANNEL_SOURCES: tuple[str, ...] = ('videos', 'shorts')
+_UNSET = object()
 
 
 class YoutubeSubscription:
@@ -28,6 +29,7 @@ class YoutubeSubscription:
         self.url = url.rstrip('/')
         self.is_playlist = self._is_playlist_url(self.url)
         self._metadata_cache: dict[str, Any] | None = None
+        self._total_available_cache: int | None | object = _UNSET
 
     @staticmethod
     def _is_playlist_url(url: str) -> bool:
@@ -63,6 +65,10 @@ class YoutubeSubscription:
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
         video_urls, latest_video_url, stop_reason, cursor_payload, has_more, result_kwargs = self._collect_videos(context)
+        if context.mode == 'full' and 'total_available' not in result_kwargs:
+            total_available = self._resolve_total_available()
+            if total_available is not None:
+                result_kwargs['total_available'] = total_available
         return build_subscription_sync_result(
             video_urls=video_urls,
             latest_video_url=latest_video_url,
@@ -323,6 +329,23 @@ class YoutubeSubscription:
 
         self._metadata_cache = {}
         return self._metadata_cache
+
+    def _resolve_total_available(self) -> int | None:
+        if self._total_available_cache is not _UNSET:
+            return self._total_available_cache if isinstance(self._total_available_cache, int) else None
+
+        info = self._extract_source_info(self.url, end=1)
+        total_available = self._normalize_total_available(info.get('playlist_count'))
+        self._total_available_cache = total_available if total_available is not None else None
+        return total_available
+
+    @staticmethod
+    def _normalize_total_available(raw_value: Any) -> int | None:
+        try:
+            total_available = int(raw_value)
+        except (TypeError, ValueError):
+            return None
+        return total_available if total_available >= 0 else None
 
     def _extract_source_info(self, url: str, *, start: int | None = None, end: int | None = None) -> dict[str, Any]:
         ydl_opts = self._build_ytdlp_opts(url, start=start, end=end)

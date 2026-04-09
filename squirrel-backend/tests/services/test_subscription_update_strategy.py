@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -7,7 +8,82 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'squirrel-sdk' / 's
 
 from crawl import PluginInvokeResponse
 from services.subscription_update.models import SubscriptionUpdateRequest, UpdateMode, UpdateTrigger
-from services.subscription_update.strategies.default_strategy import DefaultUpdateStrategy
+from services.subscription_update.strategies.default_strategy import DefaultUpdateStrategy, should_schedule_total_video_backfill
+
+
+def test_should_schedule_total_video_backfill_when_full_never_succeeded():
+    assert should_schedule_total_video_backfill(
+        sync_mode=UpdateMode.INCREMENTAL.value,
+        local_total_videos=12,
+        observed_total_available=None,
+        full_sync_status=None,
+        full_last_success_at=None,
+    ) is True
+
+
+def test_should_schedule_total_video_backfill_when_total_missing_after_cooldown():
+    now = datetime(2026, 4, 9, 12, 0, 0)
+
+    assert should_schedule_total_video_backfill(
+        sync_mode=UpdateMode.INCREMENTAL.value,
+        local_total_videos=0,
+        observed_total_available=None,
+        full_sync_status=None,
+        full_last_success_at=now - timedelta(hours=25),
+        now=now,
+    ) is True
+
+
+def test_should_schedule_total_video_backfill_when_observed_total_drifts_after_cooldown():
+    now = datetime(2026, 4, 9, 12, 0, 0)
+
+    assert should_schedule_total_video_backfill(
+        sync_mode=UpdateMode.INCREMENTAL.value,
+        local_total_videos=10,
+        observed_total_available=15,
+        full_sync_status=None,
+        full_last_success_at=now - timedelta(hours=25),
+        now=now,
+    ) is True
+
+
+def test_should_not_schedule_total_video_backfill_when_recent_full_is_still_cooling_down():
+    now = datetime(2026, 4, 9, 12, 0, 0)
+
+    assert should_schedule_total_video_backfill(
+        sync_mode=UpdateMode.INCREMENTAL.value,
+        local_total_videos=10,
+        observed_total_available=15,
+        full_sync_status=None,
+        full_last_success_at=now - timedelta(hours=1),
+        now=now,
+    ) is False
+
+
+def test_should_not_schedule_total_video_backfill_when_full_is_already_queued():
+    now = datetime(2026, 4, 9, 12, 0, 0)
+
+    assert should_schedule_total_video_backfill(
+        sync_mode=UpdateMode.INCREMENTAL.value,
+        local_total_videos=0,
+        observed_total_available=None,
+        full_sync_status='queued',
+        full_last_success_at=now - timedelta(days=7),
+        now=now,
+    ) is False
+
+
+def test_should_schedule_total_video_backfill_when_full_is_stale_even_without_observed_total():
+    now = datetime(2026, 4, 9, 12, 0, 0)
+
+    assert should_schedule_total_video_backfill(
+        sync_mode=UpdateMode.INCREMENTAL.value,
+        local_total_videos=10,
+        observed_total_available=None,
+        full_sync_status=None,
+        full_last_success_at=now - timedelta(days=4),
+        now=now,
+    ) is True
 
 
 def test_fetch_videos_uses_plugin_gateway_sync_subscription(monkeypatch):
@@ -202,7 +278,7 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success(m
     success_calls = []
     schedule_calls = []
 
-    monkeypatch.setattr(DefaultUpdateStrategy, '_schedule_total_video_backfill', staticmethod(lambda request: None))
+    monkeypatch.setattr(DefaultUpdateStrategy, '_schedule_total_video_backfill', staticmethod(lambda request, result: None))
     monkeypatch.setattr(DefaultUpdateStrategy, 'should_update', lambda self, request: (True, None))
     monkeypatch.setattr(
         DefaultUpdateStrategy,
@@ -285,7 +361,7 @@ def test_execute_final_full_sync_batch_marks_success(monkeypatch):
     continuation_calls = []
     schedule_calls = []
 
-    monkeypatch.setattr(DefaultUpdateStrategy, '_schedule_total_video_backfill', staticmethod(lambda request: None))
+    monkeypatch.setattr(DefaultUpdateStrategy, '_schedule_total_video_backfill', staticmethod(lambda request, result: None))
     monkeypatch.setattr(DefaultUpdateStrategy, 'should_update', lambda self, request: (True, None))
     monkeypatch.setattr(
         DefaultUpdateStrategy,
@@ -349,3 +425,109 @@ def test_execute_final_full_sync_batch_marks_success(monkeypatch):
             },
         )
     ]
+
+
+def test_execute_incremental_schedules_full_backfill_when_observed_total_grows(monkeypatch):
+    schedule_calls = []
+
+    monkeypatch.setattr(DefaultUpdateStrategy, 'should_update', lambda self, request: (True, None))
+    monkeypatch.setattr(
+        DefaultUpdateStrategy,
+        'fetch_videos',
+        lambda self, request: SimpleNamespace(
+            video_urls=['https://example.com/new'],
+            latest_video_url='https://example.com/new',
+            cursor_payload={'cursor': 'next'},
+            source_video_count=1,
+            total_available=15,
+            has_more=False,
+        ),
+    )
+    monkeypatch.setattr(DefaultUpdateStrategy, 'enqueue_extraction', lambda self, fetch_result, request: 1)
+    monkeypatch.setattr(DefaultUpdateStrategy, '_record_gap_observation', staticmethod(lambda request, result: None))
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.subscription_service.get_subscription_by_id',
+        lambda subscription_id: SimpleNamespace(total_videos=10),
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.subscription_sync_state_service.get_sync_state',
+        lambda subscription_id, mode: SimpleNamespace(
+            sync_status='success',
+            last_success_at=datetime(2026, 4, 8, 10, 0, 0),
+        ),
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.scheduler.schedule_one',
+        lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status='queued'),
+    )
+    monkeypatch.setattr('services.subscription_update.strategies.base.metrics.counter', lambda *args, **kwargs: None)
+
+    request = SubscriptionUpdateRequest(
+        subscription_id=1,
+        url='https://space.bilibili.com/42',
+        trigger=UpdateTrigger.SCHEDULED,
+        mode=UpdateMode.INCREMENTAL,
+        trace_id='trace-1',
+    )
+
+    result = DefaultUpdateStrategy().execute(request)
+
+    assert result.success is True
+    assert schedule_calls == [
+        {
+            'subscription_id': 1,
+            'url': 'https://space.bilibili.com/42',
+            'trigger': UpdateTrigger.SCHEDULED,
+            'mode': UpdateMode.FULL,
+            'trace_id': 'trace-1',
+        }
+    ]
+
+
+def test_execute_incremental_does_not_schedule_full_backfill_when_full_already_running(monkeypatch):
+    schedule_calls = []
+
+    monkeypatch.setattr(DefaultUpdateStrategy, 'should_update', lambda self, request: (True, None))
+    monkeypatch.setattr(
+        DefaultUpdateStrategy,
+        'fetch_videos',
+        lambda self, request: SimpleNamespace(
+            video_urls=['https://example.com/new'],
+            latest_video_url='https://example.com/new',
+            cursor_payload={'cursor': 'next'},
+            source_video_count=1,
+            total_available=15,
+            has_more=False,
+        ),
+    )
+    monkeypatch.setattr(DefaultUpdateStrategy, 'enqueue_extraction', lambda self, fetch_result, request: 1)
+    monkeypatch.setattr(DefaultUpdateStrategy, '_record_gap_observation', staticmethod(lambda request, result: None))
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.subscription_service.get_subscription_by_id',
+        lambda subscription_id: SimpleNamespace(total_videos=10),
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.strategies.default_strategy.subscription_sync_state_service.get_sync_state',
+        lambda subscription_id, mode: SimpleNamespace(
+            sync_status='running',
+            last_success_at=datetime(2026, 4, 8, 10, 0, 0),
+        ),
+    )
+    monkeypatch.setattr(
+        'services.subscription_update.scheduler.schedule_one',
+        lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status='queued'),
+    )
+    monkeypatch.setattr('services.subscription_update.strategies.base.metrics.counter', lambda *args, **kwargs: None)
+
+    request = SubscriptionUpdateRequest(
+        subscription_id=1,
+        url='https://space.bilibili.com/42',
+        trigger=UpdateTrigger.SCHEDULED,
+        mode=UpdateMode.INCREMENTAL,
+        trace_id='trace-1',
+    )
+
+    result = DefaultUpdateStrategy().execute(request)
+
+    assert result.success is True
+    assert schedule_calls == []
