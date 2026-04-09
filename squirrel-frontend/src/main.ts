@@ -15,14 +15,20 @@ document.addEventListener('contextmenu', (event) => {
 
 initializeAppTheme()
 
-const app = createApp(App)
+const bootstrap = async () => {
+  const app = createApp(App)
 
-app.config.errorHandler = vueErrorHandler
+  app.config.errorHandler = vueErrorHandler
 
-window.addEventListener('unhandledrejection', unhandledRejectionHandler)
+  window.addEventListener('unhandledrejection', unhandledRejectionHandler)
 
-const pinia = createPinia()
+  const pinia = createPinia()
 
-app.use(pinia)
-app.use(router)
-app.mount('#app')
+  app.use(pinia)
+  app.use(router)
+
+  await router.isReady()
+  app.mount('#app')
+}
+
+void bootstrap()
