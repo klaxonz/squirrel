@@ -480,40 +480,6 @@ def test_sort_items_accepts_mixed_queued_rank_sources():
 
     assert [item.subscription_id for item in result] == [1, 3, 2]
 
-
-def test_sync_center_runtime_refresh_invokes_recovery_chain(monkeypatch):
-    calls = []
-    monkeypatch.setattr(
-        subscription_sync_center_service,
-        '_last_runtime_refresh_monotonic',
-        None,
-    )
-    monkeypatch.setattr(
-        subscription_sync_state_service,
-        'reconcile_terminal_drained_sync_states',
-        lambda: calls.append('drained') or {'completed': 0, 'failed': 0},
-    )
-    monkeypatch.setattr(
-        subscription_sync_state_service,
-        'recover_stale_queued_sync_states',
-        lambda: calls.append('queued') or {'queued_states': 0, 'recovered': 0},
-    )
-    monkeypatch.setattr(
-        subscription_sync_state_service,
-        'recover_stale_running_sync_states',
-        lambda: calls.append('running') or {'running_states': 0, 'recovered': 0},
-    )
-    monkeypatch.setattr(
-        subscription_sync_state_service,
-        'reconcile_retry_wait_run_projections',
-        lambda: calls.append('projection') or {'candidates': 0, 'repaired': 0},
-    )
-
-    subscription_sync_center_service._refresh_runtime_sync_health(force=True)
-
-    assert calls == ['drained', 'queued', 'running', 'projection']
-
-
 def test_reconcile_retry_wait_run_projections_emits_queued_event_for_stale_feed_run(monkeypatch):
     engine = _setup_projection_reconcile_env(monkeypatch)
     captured_events = []

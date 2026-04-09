@@ -38,12 +38,10 @@
 
 **Files:**
 - Test: `squirrel-frontend/src/utils/syncCenterHistoryWindow.test.mjs`
-- Test: `squirrel-frontend/src/utils/syncRunProgressDisplay.test.mjs`
 - Test: `squirrel-frontend/test/sync-feed-recent-lane.test.mjs`
 
 **Step 1: Run targeted frontend tests**
 - `node squirrel-frontend/src/utils/syncCenterHistoryWindow.test.mjs`
-- `node squirrel-frontend/src/utils/syncRunProgressDisplay.test.mjs`
 - `node squirrel-frontend/test/sync-feed-recent-lane.test.mjs`
 
 **Expected:** All commands pass.

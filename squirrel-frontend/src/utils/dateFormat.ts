@@ -151,18 +151,3 @@ export const formatTime = (seconds: number) => {
   date.setSeconds(seconds)
   return date.toISOString().slice(11, 19).replace(/^00:/, '')
 }
-
-export const formatLastUpdate = (date: DateLike | null | undefined) => {
-  if (!date) return '未知'
-  const updateDate = new Date(date as any)
-  const now = new Date()
-  const diffTime = Math.abs(now.getTime() - updateDate.getTime())
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-  
-  if (diffDays === 0) return '今天更新'
-  if (diffDays === 1) return '昨天更新'
-  if (diffDays < 7) return `${diffDays}天前更新`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前更新`
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}个月前更新`
-  return `${Math.floor(diffDays / 365)}年前更新`
-}

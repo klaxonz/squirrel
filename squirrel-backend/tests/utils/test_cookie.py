@@ -13,24 +13,6 @@ def _reset_cookie_header_cache(monkeypatch):
     monkeypatch.setattr(cookie, '_COOKIE_HEADER_CACHE', {}, raising=False)
 
 
-def test_filter_cookies_to_query_string_by_domain_uses_backend_resolver(monkeypatch):
-    calls = []
-
-    monkeypatch.setattr(
-        cookie,
-        'resolve_cookie_file_for_url',
-        lambda url: calls.append(url) or 'D:/tmp/mock.txt',
-    )
-    monkeypatch.setattr(
-        cookie,
-        '_read_cookie_file_as_query_string',
-        lambda path, target_url: 'a=1; b=2',
-    )
-
-    assert cookie.filter_cookies_to_query_string_by_domain('youtube.com') == 'a=1; b=2'
-    assert calls == ['https://youtube.com']
-
-
 def test_filter_cookies_to_query_string_reads_matching_domain_cookies(tmp_path, monkeypatch):
     cookie_file = tmp_path / 'cookies.txt'
     cookie_file.write_text(

@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getUserById as apiGetUserById, getUserMe, loginUser, logoutUser, registerUser, updateUserMe } from '@/api'
+import { getUserMe, loginUser, logoutUser, registerUser, updateUserMe } from '@/api'
 import { clearAuthStorage } from '@/utils/auth'
 
 type User = Record<string, unknown>
@@ -97,17 +97,6 @@ export function useUser() {
     return result
   }
 
-  const getUserById = async (userId: string | number) => {
-    loading.value = true
-    error.value = null
-
-    const result = (await apiGetUserById(userId)) as ApiResult<User>
-
-    loading.value = false
-    error.value = result.error
-    return result
-  }
-
   return {
     currentUser,
     isAuthenticated,
@@ -118,7 +107,6 @@ export function useUser() {
     login,
     logout,
     getCurrentUser,
-    updateProfile,
-    getUserById
-  };
+    updateProfile
+  }
 }

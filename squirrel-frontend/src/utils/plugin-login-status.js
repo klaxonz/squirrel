@@ -16,7 +16,7 @@ const TRANSIENT_FAILURE_TOKENS = [
   '站点错误页',
 ]
 
-export const isTransientLoginFailure = (loginStatus) => {
+const isTransientLoginFailure = (loginStatus) => {
   if (!loginStatus || loginStatus.logged_in) {
     return false
   }

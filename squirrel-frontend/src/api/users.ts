@@ -20,10 +20,6 @@ export const updateUserMe = async (payload: Record<string, unknown>) => {
   return put('/api/users/me', payload)
 }
 
-export const getUserById = async (userId: string | number) => {
-  return get(`/api/users/${userId}`)
-}
-
 export const getUserMeConfig = async () => {
   return get('/api/users/me/config')
 }

@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timedelta
 from threading import Lock
-from time import monotonic
 from typing import Optional
 
 from sqlalchemy import and_, case, func, or_, select
@@ -32,13 +31,10 @@ DUE_SOON_WINDOW = timedelta(minutes=30)
 FEED_RECENT_PHASES = {'extracting', 'finalizing', 'completed'}
 FEED_HANDOFF_EVENT_TYPES = {'phase_changed', 'continued'}
 FEED_HANDOFF_PHASES = {'extracting', 'finalizing'}
-RUNTIME_REFRESH_INTERVAL_SECONDS = 30
 SYNC_CENTER_PREVIEW_LIMIT = 40
 SYNC_CENTER_RECENT_SCAN_MULTIPLIER = 4
 SYNC_CENTER_RECENT_SCAN_MAX = 200
 SITE_CATALOG_CACHE_TTL_SECONDS = 30
-_runtime_refresh_lock = Lock()
-_last_runtime_refresh_monotonic: float | None = None
 _site_catalog_cache_lock = Lock()
 _site_catalog_cache: dict[str, dict] | None = None
 _site_catalog_cache_expires_at_monotonic: float | None = None
@@ -216,29 +212,6 @@ def _queue_metrics_overview() -> tuple[int, int]:
         for key in metrics.get_metrics_keys_by_pattern('metrics:counter:queue.messages.total:*')
     )
     return queue_depth, queue_messages
-
-
-def _refresh_runtime_sync_health(*, force: bool = False) -> None:
-    global _last_runtime_refresh_monotonic
-
-    now_tick = monotonic()
-    if not force and _last_runtime_refresh_monotonic is not None:
-        if now_tick - _last_runtime_refresh_monotonic < RUNTIME_REFRESH_INTERVAL_SECONDS:
-            return
-
-    with _runtime_refresh_lock:
-        now_tick = monotonic()
-        if not force and _last_runtime_refresh_monotonic is not None:
-            if now_tick - _last_runtime_refresh_monotonic < RUNTIME_REFRESH_INTERVAL_SECONDS:
-                return
-
-        from services import subscription_sync_state_service
-
-        subscription_sync_state_service.reconcile_terminal_drained_sync_states()
-        subscription_sync_state_service.recover_stale_queued_sync_states()
-        subscription_sync_state_service.recover_stale_running_sync_states()
-        subscription_sync_state_service.reconcile_retry_wait_run_projections()
-        _last_runtime_refresh_monotonic = now_tick
 
 
 def _base_projection_query(user_id: int):

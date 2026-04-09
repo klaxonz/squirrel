@@ -1,1 +1,0 @@
-from models.blocked_video_record import BlockedVideoRecord as VipVideoRecord

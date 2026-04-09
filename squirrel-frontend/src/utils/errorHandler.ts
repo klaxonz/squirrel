@@ -5,7 +5,7 @@ import { Logger } from './logger'
 type HandlerContext = Record<string, unknown>
 type HandlerFn = (error: unknown, context: HandlerContext) => void
 
-export class ErrorHandler {
+class ErrorHandler {
   private handlers = new Map<string, HandlerFn>()
   private fallbackHandler: HandlerFn | null = null
 
@@ -39,7 +39,7 @@ export class ErrorHandler {
   }
 }
 
-export const globalErrorHandler = new ErrorHandler()
+const globalErrorHandler = new ErrorHandler()
 
 globalErrorHandler.register(ErrorTypes.UNAUTHORIZED, () => {
   logoutAndRedirect()
@@ -68,37 +68,4 @@ export const unhandledRejectionHandler = (event: PromiseRejectionEvent) => {
     type: 'unhandledrejection',
     promise: event.promise,
   })
-}
-
-export const safeAsync = async <T>(fn: () => Promise<T>, errorContext: HandlerContext = {}) => {
-  try {
-    return await fn()
-  } catch (error) {
-    globalErrorHandler.handle(error, errorContext)
-    throw error
-  }
-}
-
-export const withErrorHandling = <T extends (...args: any[]) => any>(composableFn: T) => {
-  return (...args: Parameters<T>): ReturnType<T> => {
-    try {
-      const result = composableFn(...args)
-
-      if (typeof result === 'function') {
-        return ((...setupArgs: any[]) => {
-          try {
-            return (result as any)(...setupArgs)
-          } catch (error) {
-            globalErrorHandler.handle(error, { composable: composableFn.name })
-            throw error
-          }
-        }) as any
-      }
-
-      return result
-    } catch (error) {
-      globalErrorHandler.handle(error, { composable: composableFn.name })
-      throw error
-    }
-  }
 }
