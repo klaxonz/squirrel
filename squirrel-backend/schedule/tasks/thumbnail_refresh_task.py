@@ -174,7 +174,12 @@ class ThumbnailRefreshTask(BaseTask):
         try:
             # 使用共享的 HTTP 客户端，提高连接复用率
             client = _get_shared_http_client()
-            resp = client.get(video.url)
+            headers = thumbnail_downloader_service.build_request_headers(
+                'pornhub',
+                source_url=video.url,
+                target_url=video.url,
+            )
+            resp = client.get(video.url, headers=headers)
 
             if resp.status_code != 200:
                 logger.warning(
@@ -190,7 +195,12 @@ class ThumbnailRefreshTask(BaseTask):
                 return
 
             # 下载缩略图时指定 site_name，启用配置检查
-            thumbnail_downloader_service.download_thumbnail(video.id, thumbnail_url, "pornhub")
+            thumbnail_downloader_service.download_thumbnail(
+                video.id,
+                thumbnail_url,
+                'pornhub',
+                source_url=video.url,
+            )
             logger.info("[ThumbnailRefreshTask] Downloaded thumbnail for video id=%s", video.id)
 
         except Exception as e:

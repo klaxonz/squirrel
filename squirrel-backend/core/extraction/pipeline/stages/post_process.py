@@ -54,7 +54,8 @@ class PostProcessStage(PipelineStage):
                 self.thumbnail_service.enqueue_download(
                     video_model.id,
                     video_dto.thumbnail,
-                    video_dto.site_name
+                    video_dto.site_name,
+                    source_url=context.task.url,
                 )
                 logger.info(
                     f"Thumbnail download enqueued: video_id={video_model.id}"

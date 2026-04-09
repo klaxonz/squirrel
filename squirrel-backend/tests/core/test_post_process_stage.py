@@ -15,8 +15,9 @@ class _RecordingThumbnailService:
     def __init__(self):
         self.calls = []
 
-    def enqueue_download(self, video_id, thumbnail_url, site_name):
-        self.calls.append((video_id, thumbnail_url, site_name))
+    def enqueue_download(self, video_id, thumbnail_url, site_name, source_url=None):
+        self.calls.append((video_id, thumbnail_url, site_name, source_url))
+
 
 def test_post_process_stage_keeps_thumbnail_work_but_skips_download_task_creation():
     thumbnail_service = _RecordingThumbnailService()
@@ -40,4 +41,6 @@ def test_post_process_stage_keeps_thumbnail_work_but_skips_download_task_creatio
     result = stage.execute(context)
 
     assert result is context
-    assert thumbnail_service.calls == [(42, 'https://img.example.com/thumb.jpg', 'youtube')]
+    assert thumbnail_service.calls == [
+        (42, 'https://img.example.com/thumb.jpg', 'youtube', 'https://www.youtube.com/watch?v=demo')
+    ]

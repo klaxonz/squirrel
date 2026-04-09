@@ -116,3 +116,45 @@ def test_download_thumbnail_updates_local_index(monkeypatch, tmp_path):
     assert index_updates == [
         (42, 'batch_001', '42.jpg', True),
     ]
+
+
+def test_build_request_headers_uses_source_url_cookies_and_age_gate_defaults(monkeypatch):
+    service = ThumbnailDownloaderService()
+
+    monkeypatch.setattr(
+        service,
+        '_get_effective_catalog',
+        lambda: {
+            'pornhub': {
+                'http': {
+                    'headers': {
+                        'User-Agent': 'UA',
+                        'Referer': 'https://www.pornhub.com',
+                    },
+                },
+                'metadata': {
+                    'requires_cookies': True,
+                },
+            }
+        },
+        raising=False,
+    )
+    monkeypatch.setattr(
+        thumbnail_downloader,
+        'filter_cookies_to_query_string',
+        lambda url: 'sessid=abc123',
+    )
+
+    headers = service.build_request_headers(
+        'pornhub',
+        source_url='https://www.pornhub.com/view_video.php?viewkey=demo',
+        target_url='https://ei.phncdn.com/videos/demo.jpg',
+    )
+
+    assert headers['Referer'] == 'https://www.pornhub.com/view_video.php?viewkey=demo'
+    assert headers['Origin'] == 'https://www.pornhub.com'
+    assert headers['User-Agent'] == 'UA'
+    assert headers['Cookie'] == (
+        'sessid=abc123; age_verified=1; accessAgeDisclaimerPH=1; '
+        'accessAgeDisclaimerUK=1; accessPH=1'
+    )

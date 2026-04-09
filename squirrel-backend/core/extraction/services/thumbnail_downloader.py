@@ -17,6 +17,7 @@ from core.config import settings
 from common.site_constants import SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD, SITE_META_OFFLINE_THUMBNAILS_DISPLAY
 from core.site_config_manager import get_effective_site_catalog
 from models.video_thumbnail_local_index import VideoThumbnailLocalIndex
+from utils.cookie import filter_cookies_to_query_string
 from utils.url_helper import get_site_from_url
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,15 @@ _DEFAULT_HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/120.0.0.0 Safari/537.36"
     ),
+}
+
+_SITE_COOKIE_DEFAULTS: dict[str, dict[str, str]] = {
+    'pornhub': {
+        'age_verified': '1',
+        'accessAgeDisclaimerPH': '1',
+        'accessAgeDisclaimerUK': '1',
+        'accessPH': '1',
+    },
 }
 
 
@@ -61,16 +71,49 @@ class ThumbnailDownloaderService:
             )
         return self._http_client
 
-    def _build_request_headers(self, site_name: Optional[str]) -> dict[str, str]:
+    @staticmethod
+    def _parse_cookie_header(cookie_header: Optional[str]) -> dict[str, str]:
+        cookies: dict[str, str] = {}
+        for segment in str(cookie_header or '').split(';'):
+            item = segment.strip()
+            if not item or '=' not in item:
+                continue
+            name, value = item.split('=', 1)
+            clean_name = name.strip()
+            if not clean_name:
+                continue
+            cookies[clean_name] = value.strip()
+        return cookies
+
+    def _site_info(self, site_name: Optional[str]) -> dict:
+        if not site_name:
+            return {}
+        return self._get_effective_catalog().get(site_name.lower(), {})
+
+    def _site_requires_cookies(self, site_name: Optional[str]) -> bool:
+        metadata = (self._site_info(site_name).get('metadata') or {})
+        return bool(metadata.get('requires_cookies'))
+
+    def build_request_headers(
+        self,
+        site_name: Optional[str],
+        *,
+        source_url: Optional[str] = None,
+        target_url: Optional[str] = None,
+    ) -> dict[str, str]:
         headers = dict(_DEFAULT_HEADERS)
         if not site_name:
             return headers
 
-        site_info = self._get_effective_catalog().get(site_name.lower(), {})
+        site_info = self._site_info(site_name)
         http_headers = (site_info.get("http") or {}).get("headers") or {}
         for key, value in http_headers.items():
             if value is not None:
                 headers[str(key)] = str(value)
+
+        effective_referer = str(source_url or headers.get('Referer') or '').strip()
+        if effective_referer:
+            headers['Referer'] = effective_referer
 
         referer = headers.get("Referer")
         if referer and "Origin" not in headers:
@@ -80,6 +123,18 @@ class ThumbnailDownloaderService:
                     headers["Origin"] = f"{parsed.scheme}://{parsed.netloc}"
             except Exception:
                 pass
+
+        if self._site_requires_cookies(site_name):
+            cookies = self._parse_cookie_header(headers.get('Cookie'))
+            cookie_lookup_url = source_url or target_url
+            if cookie_lookup_url:
+                cookies.update(self._parse_cookie_header(filter_cookies_to_query_string(cookie_lookup_url)))
+
+            for name, value in _SITE_COOKIE_DEFAULTS.get(str(site_name).lower(), {}).items():
+                cookies.setdefault(name, value)
+
+            if cookies:
+                headers['Cookie'] = '; '.join(f'{name}={value}' for name, value in cookies.items())
 
         return headers
 
@@ -213,7 +268,8 @@ class ThumbnailDownloaderService:
         self,
         video_id: int,
         thumbnail_url: str,
-        site_name: Optional[str] = None
+        site_name: Optional[str] = None,
+        source_url: Optional[str] = None,
     ) -> Optional[str]:
         """
         下载缩略图到本地
@@ -222,6 +278,7 @@ class ThumbnailDownloaderService:
             video_id: 视频ID
             thumbnail_url: 缩略图URL
             site_name: 站点名称（可选，用于检查配置）
+            source_url: Source page URL used to derive referer and cookies
 
         Returns:
             本地文件路径，失败返回 None
@@ -247,7 +304,11 @@ class ThumbnailDownloaderService:
                 return file_path
 
             client = self._get_http_client()
-            headers = self._build_request_headers(site_name)
+            headers = self.build_request_headers(
+                site_name,
+                source_url=source_url,
+                target_url=thumbnail_url,
+            )
             resp = client.get(thumbnail_url, headers=headers)
 
             if resp.status_code != 200:
@@ -284,7 +345,8 @@ class ThumbnailDownloaderService:
         self,
         video_id: int,
         thumbnail_url: str,
-        site_name: str
+        site_name: str,
+        source_url: Optional[str] = None,
     ) -> Optional[str]:
         """
         下载缩略图（同步执行）
@@ -293,11 +355,12 @@ class ThumbnailDownloaderService:
             video_id: 视频ID
             thumbnail_url: 缩略图URL
             site_name: 站点名称
+            source_url: Source page URL used to derive referer and cookies
 
         Returns:
             本地文件路径，失败返回 None
         """
-        return self.download_thumbnail(video_id, thumbnail_url, site_name)
+        return self.download_thumbnail(video_id, thumbnail_url, site_name, source_url=source_url)
 
     def _should_download(self, site_name: str) -> bool:
         """检查是否应该下载缩略图"""
