@@ -52,7 +52,7 @@
                   :label="run.site"
                   size="xs"
                 />
-                <span>{{ getMetaTimestamp(run) }}</span>
+                <span>{{ getSyncModeLabel(run.sync_mode) }} · {{ getMetaTimestamp(run) }}</span>
               </div>
             </div>
           </div>
@@ -85,6 +85,7 @@ import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
 import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import type { SyncRunItem } from '@/composables/useSyncHistory'
 import { formatDate } from '@/utils/dateFormat'
+import { getSyncModeLabel } from '@/utils/syncMode'
 
 const props = withDefaults(defineProps<{
   runs: SyncRunItem[]

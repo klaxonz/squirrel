@@ -48,7 +48,7 @@
                   size="xs"
                   class="recent-row__site-icon"
                 />
-                <span>{{ formatDate(item.updated_at || item.last_success_at) }}</span>
+                <span>{{ getSyncModeLabel(item.sync_mode) }} · {{ formatDate(item.updated_at || item.last_success_at) }}</span>
               </div>
             </div>
           </div>
@@ -89,6 +89,7 @@ import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
 import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { formatDate } from '@/utils/dateFormat'
+import { getSyncModeLabel } from '@/utils/syncMode'
 
 defineProps<{
   items: SyncCenterItem[]

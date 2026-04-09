@@ -112,6 +112,7 @@ import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
 import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { formatDate } from '@/utils/dateFormat'
+import { getSyncModeLabel } from '@/utils/syncMode'
 
 const props = withDefaults(defineProps<{
   items: SyncCenterItem[]
@@ -164,20 +165,21 @@ const getTimeMetaText = (item: SyncCenterItem) => {
 
 const getMetaText = (item: SyncCenterItem) => {
   const timestamp = getTimeMetaText(item)
+  const modeLabel = getSyncModeLabel(item.sync_mode)
   if (props.pipeline === 'extract') {
-    return `正在提取视频 · ${timestamp}`
+    return `${modeLabel} · 正在提取视频 · ${timestamp}`
   }
 
   if (item.current_phase === 'fetching_feed') {
-    return `正在拉取视频列表 · ${timestamp}`
+    return `${modeLabel} · 正在拉取视频列表 · ${timestamp}`
   }
   if (item.current_phase === 'calculating_delta') {
-    return `正在计算增量结果 · ${timestamp}`
+    return `${modeLabel} · 正在计算增量结果 · ${timestamp}`
   }
   if (item.current_phase === 'enqueueing') {
-    return `正在派发提取任务 · ${timestamp}`
+    return `${modeLabel} · 正在派发提取任务 · ${timestamp}`
   }
-  return `最近更新 · ${timestamp}`
+  return `${modeLabel} · 最近更新 · ${timestamp}`
 }
 
 const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {

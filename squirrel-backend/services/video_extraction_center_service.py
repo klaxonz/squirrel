@@ -8,6 +8,7 @@ from sqlalchemy import case, func, select
 
 from core.database import get_session
 from core.site_config_manager import get_effective_site_catalog
+from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.video_extraction_projection import VideoExtractionProjection
@@ -138,6 +139,68 @@ def _build_run_id(group_kind: str, group_value: str) -> str:
     return f'extract:{group_kind}:{group_value}'
 
 
+def _derive_projection_group_key(task: CrawlTask) -> tuple[str, str]:
+    payload = task.payload or {}
+    run_id = payload.get('run_id')
+    if run_id not in (None, ''):
+        return 'run', str(run_id)
+
+    sync_state_id = payload.get('sync_state_id')
+    if sync_state_id not in (None, ''):
+        return 'state', str(sync_state_id)
+
+    return 'job', str(task.job_id)
+
+
+def _resolve_task_sync_mode(task: CrawlTask) -> str:
+    payload = task.payload or {}
+    normalized_mode = str(payload.get('mode') or payload.get('sync_mode') or '').strip().lower()
+    if normalized_mode in {'full', 'incremental'}:
+        return normalized_mode
+
+    is_extract_all = payload.get('is_extract_all')
+    if is_extract_all is True:
+        return 'full'
+
+    if (
+        is_extract_all is False
+        or payload.get('run_id') not in (None, '')
+        or payload.get('sync_state_id') not in (None, '')
+    ):
+        return 'incremental'
+
+    return 'extract'
+
+
+def _resolve_projection_sync_mode(
+    session,
+    projection: VideoExtractionProjection,
+    cache: dict[tuple[int, str, str], str],
+) -> str:
+    cache_key = (int(projection.subscription_id), str(projection.group_kind), str(projection.group_value))
+    cached_mode = cache.get(cache_key)
+    if cached_mode:
+        return cached_mode
+
+    tasks = session.execute(
+        select(CrawlTask)
+        .where(
+            CrawlTask.task_type == 'video_extract',
+            CrawlTask.subscription_id == projection.subscription_id,
+        )
+        .order_by(CrawlTask.created_at.asc(), CrawlTask.id.asc())
+    ).scalars().all()
+
+    for task in tasks:
+        if _derive_projection_group_key(task) == (projection.group_kind, str(projection.group_value)):
+            resolved_mode = _resolve_task_sync_mode(task)
+            cache[cache_key] = resolved_mode
+            return resolved_mode
+
+    cache[cache_key] = 'extract'
+    return 'extract'
+
+
 def _base_projection_query(
     user_id: int,
     *,
@@ -184,9 +247,15 @@ def _apply_ordering(query, status: Optional[str]):
     return query.order_by(recent_dt.desc(), VideoExtractionProjection.subscription_id.desc())
 
 
-def _build_item(projection: VideoExtractionProjection, subscription: Subscription) -> SyncCenterItemDto:
+def _build_item(
+    session,
+    projection: VideoExtractionProjection,
+    subscription: Subscription,
+    sync_mode_cache: dict[tuple[int, str, str], str],
+) -> SyncCenterItemDto:
     active_count = int(projection.pending_video_count or 0)
     processed_count = int(projection.completed_task_count or 0) + int(projection.failed_task_count or 0)
+    sync_mode = _resolve_projection_sync_mode(session, projection, sync_mode_cache)
 
     return SyncCenterItemDto(
         run_id=_build_run_id(projection.group_kind, projection.group_value),
@@ -195,7 +264,7 @@ def _build_item(projection: VideoExtractionProjection, subscription: Subscriptio
         subscription_avatar=subscription.avatar,
         site=projection.site,
         site_icon_url=_resolve_site_icon_url(projection.site),
-        sync_mode='extract',
+        sync_mode=sync_mode,
         sync_status=projection.sync_status,
         display_status=projection.display_status,
         current_phase=projection.current_phase,
@@ -332,8 +401,9 @@ def list_extraction_center_items(
         rows = session.execute(
             ordered_query.offset(start).limit(page_size)
         ).all()
+        sync_mode_cache: dict[tuple[int, str, str], str] = {}
+        items = [_build_item(session, projection, subscription, sync_mode_cache) for projection, subscription in rows]
 
-    items = [_build_item(projection, subscription) for projection, subscription in rows]
     if normalized_status == 'queued':
         for index, item in enumerate(items, start=start + 1):
             item.queue_position = index

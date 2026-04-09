@@ -48,7 +48,7 @@
                     :label="item.site"
                     size="xs"
                   />
-                  {{ getModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
+                  {{ getSyncModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
                 </p>
               </div>
             </div>
@@ -66,6 +66,7 @@ import SyncBoardEmpty from '@/components/sync-center/SyncBoardEmpty.vue'
 import SyncBoardSkeleton from '@/components/sync-center/SyncBoardSkeleton.vue'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { formatDate } from '@/utils/dateFormat'
+import { getSyncModeLabel } from '@/utils/syncMode'
 
 const props = defineProps<{
   items: SyncCenterItem[]
@@ -106,12 +107,6 @@ const getSiteIconUrl = (item: SyncCenterItem) => {
   return `/api/plugins/sites/${encodeURIComponent(normalizedSite.toLowerCase())}/icon`
 }
 
-const getModeLabel = (mode: string) => {
-  if (mode === 'full') return '全量'
-  if (mode === 'incremental') return '增量'
-  if (mode === 'extract') return '提取'
-  return mode || '未知'
-}
 
 const getQueueTimeLabel = (item: SyncCenterItem) => {
   if (item.updated_at) {

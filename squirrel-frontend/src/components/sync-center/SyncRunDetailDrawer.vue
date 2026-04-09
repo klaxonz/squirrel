@@ -59,7 +59,7 @@
               </div>
               <div class="flex items-center justify-between py-1 border-b border-border/10">
                 <span class="text-[11px] font-semibold text-muted-foreground/50">同步模式</span>
-                <span class="text-[11px] font-bold uppercase tracking-wider text-foreground/70">{{ run.sync_mode }}</span>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-foreground/70">{{ getSyncModeLabel(run.sync_mode) }}</span>
               </div>
               <div class="flex items-center justify-between py-1 border-b border-border/10">
                 <span class="text-[11px] font-semibold text-muted-foreground/50">时间戳</span>
@@ -95,6 +95,7 @@ import type { SyncRunEvent, SyncRunItem } from '@/composables/useSyncHistory'
 import SyncEventTimeline from '@/components/sync-center/SyncEventTimeline.vue'
 import { useImageFallback } from '@/composables/useImageFallback'
 import { formatDurationMs } from '@/utils/dateFormat'
+import { getSyncModeLabel } from '@/utils/syncMode'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 

@@ -170,7 +170,7 @@ def _seed_tasks(engine):
                 site='bilibili.com',
                 subscription_id=2,
                 status='pending',
-                payload={'sync_state_id': 502},
+                payload={'sync_state_id': 502, 'is_extract_all': True},
                 created_at=now - timedelta(minutes=4),
                 updated_at=now - timedelta(minutes=4),
             ),
@@ -181,7 +181,7 @@ def _seed_tasks(engine):
                 site='bilibili.com',
                 subscription_id=2,
                 status='retry_wait',
-                payload={'sync_state_id': 502},
+                payload={'sync_state_id': 502, 'is_extract_all': True},
                 created_at=now - timedelta(minutes=3),
                 updated_at=now - timedelta(minutes=2),
             ),
@@ -285,6 +285,7 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
     assert running_item.running_task_count == 1
     assert running_item.completed_task_count == 1
     assert running_item.failed_task_count == 0
+    assert running_item.sync_mode == 'incremental'
     assert running_item.progress_percent == 33
     assert running_item.progress_label == '1 / 3'
 
@@ -296,12 +297,15 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
     assert queued_item.queued_task_count == 2
     assert queued_item.running_task_count == 0
     assert queued_item.completed_task_count == 0
+    assert queued_item.sync_mode == 'full'
 
     assert [item.subscription_name for item in recent_result.data] == ['Extract Failed', 'Extract Success']
     assert recent_result.data[0].sync_status == 'failed'
     assert recent_result.data[0].failed_task_count == 1
+    assert recent_result.data[0].sync_mode == 'incremental'
     assert recent_result.data[1].sync_status == 'success'
     assert recent_result.data[1].completed_task_count == 2
+    assert recent_result.data[1].sync_mode == 'incremental'
 
 
 def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(monkeypatch):
