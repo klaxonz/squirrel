@@ -20,22 +20,42 @@ const settingsState = ref<UserSettings>({
 
 const loadingState = ref(false)
 const errorState = ref<unknown | null>(null)
+const loadedState = ref(false)
+let loadPromise: Promise<void> | null = null
 
 export function useUserSettings() {
-  const loadUserSettings = async () => {
-    loadingState.value = true
-    errorState.value = null
-
-    const { data, error } = (await getUserMeConfig()) as ApiResult<UserSettings>
-    if (!error && data) {
-      settingsState.value = {
-        ...settingsState.value,
-        ...data,
+  const loadUserSettings = async (force = false) => {
+    if (!force) {
+      if (loadedState.value) {
+        return
+      }
+      if (loadPromise) {
+        return loadPromise
       }
     }
 
-    errorState.value = error
-    loadingState.value = false
+    loadPromise = (async () => {
+      loadingState.value = true
+      errorState.value = null
+
+      const { data, error } = (await getUserMeConfig()) as ApiResult<UserSettings>
+      if (!error && data) {
+        settingsState.value = {
+          ...settingsState.value,
+          ...data,
+        }
+      }
+
+      errorState.value = error
+      loadedState.value = true
+      loadingState.value = false
+    })()
+
+    try {
+      await loadPromise
+    } finally {
+      loadPromise = null
+    }
   }
 
   const saveUserSettings = async () => {
@@ -73,6 +93,7 @@ export function useUserSettings() {
   return {
     settings: settingsState,
     loading: loadingState,
+    loaded: loadedState,
     error: errorState,
     loadUserSettings,
     saveUserSettings,

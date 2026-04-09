@@ -117,6 +117,11 @@ def _setup_test_env(monkeypatch):
 
     monkeypatch.setattr(video_history_service, 'get_session', lambda: _managed_session(engine))
     monkeypatch.setattr(
+        video_history_service.user_config_service,
+        'get_config',
+        lambda _user_id: {'showNsfw': False},
+    )
+    monkeypatch.setattr(
         video_history_service.thumbnail_downloader_service,
         'get_thumbnail_url',
         lambda video_id, remote_url, video_url=None: remote_url,
@@ -171,6 +176,38 @@ def test_list_histories_applies_site_filter_before_pagination(monkeypatch):
 
     assert result['total'] == 1
     assert [item['id'] for item in result['items']] == [2]
+
+
+def test_list_histories_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_history(
+        engine,
+        [
+            {'video_id': 1, 'domain': 'match.test', 'url': 'https://match.test/watch/1', 'end_time': datetime(2024, 1, 3, 12, 0, 0)},
+        ],
+    )
+    _seed_subscription_links(
+        engine,
+        [
+            {
+                'subscription_id': 1,
+                'video_id': 1,
+                'subscription_name': 'Hidden NSFW feed',
+                'subscription_url': 'https://match.test/channel/1',
+                'is_nsfw': True,
+            },
+        ],
+    )
+
+    result = video_history_service.list_histories(
+        user_id=1,
+        filters={'nsfw': 'yes'},
+        page=1,
+        page_size=10,
+    )
+
+    assert result['total'] == 0
+    assert result['items'] == []
 
 
 def test_list_histories_deduplicates_same_video_id(monkeypatch):

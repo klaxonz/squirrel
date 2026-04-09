@@ -4,7 +4,7 @@ from datetime import datetime
 from time import perf_counter
 from typing import List, Tuple, Optional, Dict
 from crawl.runtime_errors import RuntimeErrorCode
-from sqlalchemy import select, func, and_, case, exists
+from sqlalchemy import select, func, and_, case, exists, false
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from core.database import get_session
 from services.video_query import (
@@ -28,6 +28,7 @@ from plugins.manager import get_plugin_manager
 from schemas.video.dto.video_dto import VideoUrlDto
 
 from services import user_config_service
+from services.nsfw_policy import resolve_effective_nsfw_filter
 from utils import url_helper
 from utils.url_helper import extract_top_level_domain
 from utils.site_catalog import SiteCatalog
@@ -400,6 +401,7 @@ def _build_feed_query(
     nsfw: str,
     domains: Optional[List[str]],
 ):
+    effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
     feed_query = select(
         UserVideoFeed.video_id.label('video_id'),
         UserVideoFeed.publish_date.label('publish_date'),
@@ -411,11 +413,11 @@ def _build_feed_query(
     if subscription_id:
         feed_query = feed_query.where(UserVideoFeed.subscription_id == subscription_id)
 
-    if nsfw == 'yes':
+    if effective_nsfw == 'blocked':
+        feed_query = feed_query.where(false())
+    elif effective_nsfw == 'yes':
         feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(True))
-    elif nsfw == 'no':
-        feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(False))
-    elif not show_nsfw:
+    elif effective_nsfw == 'no':
         feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(False))
 
     if domains:
@@ -468,6 +470,7 @@ def _build_ordered_feed_query(
     nsfw: str,
     domains: Optional[List[str]],
 ):
+    effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
     feed_query = select(
         UserVideoFeed.video_id.label('video_id'),
         UserVideoFeed.publish_date.label('publish_date'),
@@ -479,11 +482,11 @@ def _build_ordered_feed_query(
     if subscription_id:
         feed_query = feed_query.where(UserVideoFeed.subscription_id == subscription_id)
 
-    if nsfw == 'yes':
+    if effective_nsfw == 'blocked':
+        feed_query = feed_query.where(false())
+    elif effective_nsfw == 'yes':
         feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(True))
-    elif nsfw == 'no':
-        feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(False))
-    elif not show_nsfw:
+    elif effective_nsfw == 'no':
         feed_query = feed_query.where(UserVideoFeed.is_nsfw.is_(False))
 
     if domains:

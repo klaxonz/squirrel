@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from sqlalchemy import select, func, and_, exists, or_
+from sqlalchemy import select, func, and_, exists, or_, false
 from sqlalchemy.orm import aliased
 
 from models.creator import Creator
@@ -9,6 +9,7 @@ from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
+from services.nsfw_policy import resolve_effective_nsfw_filter
 from services.search_query import normalize_subscription_type_term, parse_search_query
 from utils import url_helper
 
@@ -265,13 +266,14 @@ def _build_base_video_conditions(
     if subscription_id:
         conditions.append(SubscriptionVideo.subscription_id == subscription_id)
 
-    if nsfw == 'yes':
+    effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
+
+    if effective_nsfw == 'blocked':
+        conditions.append(false())
+    elif effective_nsfw == 'yes':
         conditions.append(UserSubscription.is_nsfw == True)
-    elif nsfw == 'no':
+    elif effective_nsfw == 'no':
         conditions.append(UserSubscription.is_nsfw == False)
-    else:
-        if not show_nsfw:
-            conditions.append(UserSubscription.is_nsfw == False)
 
     conditions.extend(build_video_search_clauses(
         user_id=user_id,
@@ -335,11 +337,13 @@ def build_video_count_source_query(
     if subscription_id:
         user_subscriptions = user_subscriptions.where(UserSubscription.subscription_id == subscription_id)
 
-    if nsfw == 'yes':
+    effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
+
+    if effective_nsfw == 'blocked':
+        user_subscriptions = user_subscriptions.where(false())
+    elif effective_nsfw == 'yes':
         user_subscriptions = user_subscriptions.where(UserSubscription.is_nsfw == True)
-    elif nsfw == 'no':
-        user_subscriptions = user_subscriptions.where(UserSubscription.is_nsfw == False)
-    elif not show_nsfw:
+    elif effective_nsfw == 'no':
         user_subscriptions = user_subscriptions.where(UserSubscription.is_nsfw == False)
 
     user_subscriptions = user_subscriptions.cte('user_subscriptions')

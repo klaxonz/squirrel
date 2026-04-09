@@ -714,3 +714,27 @@ def test_list_subscriptions_search_supports_domain_and_type_tokens(monkeypatch):
 
     assert total == 1
     assert [item['id'] for item in subscriptions] == [2]
+
+
+def test_list_subscriptions_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        user_subscription = session.query(UserSubscription).filter_by(user_id=1, subscription_id=1).one()
+        user_subscription.is_nsfw = True
+        session.commit()
+
+    monkeypatch.setattr(subscription_service.user_config_service, 'get_config', lambda _user_id: {'showNsfw': False})
+
+    subscriptions, total = subscription_service.list_subscriptions(
+        user_id=1,
+        query=None,
+        type=None,
+        nsfw='yes',
+        page=1,
+        page_size=10,
+    )
+
+    assert total == 0
+    assert subscriptions == []

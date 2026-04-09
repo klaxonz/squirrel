@@ -1,5 +1,6 @@
 <template>
   <ToolbarSelect
+    v-if="loaded && settings.showNsfw"
     :model-value="modelValue"
     label="敏感内容"
     :current-label="currentLabel"
@@ -11,8 +12,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { ShieldCheckIcon } from '@heroicons/vue/24/outline'
+import { useUserSettings } from '@/composables/useUserSettings'
 import ToolbarSelect from './ToolbarSelect.vue'
 
 const props = defineProps({
@@ -23,6 +25,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+const { settings, loaded, loadUserSettings } = useUserSettings()
 
 const nsfwOptions = [
   { value: 'all', label: '全部' },
@@ -37,4 +40,18 @@ const currentLabel = computed(() => {
 const handleValueChange = (value) => {
   emit('update:modelValue', String(value))
 }
+
+onMounted(() => {
+  loadUserSettings()
+})
+
+watch(
+  () => [loaded.value, settings.value.showNsfw, props.modelValue],
+  ([isLoaded, showNsfw, modelValue]) => {
+    if (isLoaded && !showNsfw && modelValue === 'yes') {
+      emit('update:modelValue', 'all')
+    }
+  },
+  { immediate: true },
+)
 </script>

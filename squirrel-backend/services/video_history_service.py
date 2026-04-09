@@ -1,6 +1,6 @@
 from typing import Iterable, List
 
-from sqlalchemy import and_, delete, exists, func, select
+from sqlalchemy import and_, delete, exists, func, select, false
 
 from core.database import get_session
 from models.video_history import VideoHistory
@@ -8,6 +8,8 @@ from models.video import Video
 from models.subscription import Subscription
 from models.links import SubscriptionVideo, UserSubscription
 from schemas.video_history import HistoryCreate
+from services import user_config_service
+from services.nsfw_policy import resolve_effective_nsfw_filter
 from services.video_query import build_video_search_clauses
 from utils import url_helper
 from utils.site_catalog import SiteCatalog
@@ -81,6 +83,10 @@ def batch_update_histories(user_id: int, reports: list[HistoryCreate]) -> None:
 
 
 def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> dict:
+    user_config = user_config_service.get_config(user_id)
+    show_nsfw = user_config.get('showNsfw', False)
+    effective_nsfw = resolve_effective_nsfw_filter(filters.get('nsfw', 'all'), show_nsfw)
+
     with get_session() as session:
         conditions = [
             VideoHistory.user_id == user_id,
@@ -108,7 +114,9 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
             conditions.append(VideoHistory.end_time >= filters['start_date'])
         if filters.get('end_date'):
             conditions.append(VideoHistory.end_time <= filters['end_date'])
-        if filters.get('nsfw') and filters['nsfw'] != 'all':
+        if effective_nsfw == 'blocked':
+            conditions.append(false())
+        elif effective_nsfw != 'all':
             nsfw_history_exists = exists(
                 select(1)
                 .select_from(SubscriptionVideo)
@@ -122,10 +130,9 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                     UserSubscription.is_nsfw == True
                 )
             )
-            nsfw_filter = filters['nsfw']
-            if nsfw_filter in ('yes', 'true'):
+            if effective_nsfw == 'yes':
                 conditions.append(nsfw_history_exists)
-            elif nsfw_filter in ('no', 'false'):
+            elif effective_nsfw == 'no':
                 conditions.append(~nsfw_history_exists)
         if filters.get('site'):
             resolved_domains = SiteCatalog.resolve_domains(filters['site'])

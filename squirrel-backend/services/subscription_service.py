@@ -2,7 +2,7 @@ import logging
 from typing import Optional, Tuple, List, Dict, Any
 from urllib.parse import urlparse
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, false
 from sqlalchemy.sql import text
 
 from core.database import get_session
@@ -22,6 +22,7 @@ from services.subscription_runtime_models import (
     SubscriptionImportItem,
     SubscriptionMeta,
 )
+from services.nsfw_policy import resolve_effective_nsfw_filter
 from sqlfile.subscription_sql import get_subscription_sql
 from utils.site_catalog import SiteCatalog
 from utils.sql_parser import parse_dynamic_sql
@@ -220,11 +221,13 @@ def list_subscriptions(
         if type:
             conditions.append(Subscription.type == type)
 
-        if nsfw == 'yes':
+        effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
+
+        if effective_nsfw == 'blocked':
+            conditions.append(false())
+        elif effective_nsfw == 'yes':
             conditions.append(UserSubscription.is_nsfw.is_(True))
-        elif nsfw == 'no':
-            conditions.append(UserSubscription.is_nsfw.is_(False))
-        elif not show_nsfw:
+        elif effective_nsfw == 'no':
             conditions.append(UserSubscription.is_nsfw.is_(False))
 
         if domains:
