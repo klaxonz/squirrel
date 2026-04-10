@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from common import response
-from utils.jwt_helper import AUTH_COOKIE_NAME, clear_auth_cookie, decode_token
+from utils.jwt_helper import AUTH_COOKIE_NAME, clear_auth_cookie, validate_auth_token
 
 logger = logging.getLogger()
 
@@ -71,7 +71,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return self._unauthorized_response(TokenMissingError())
 
         try:
-            decode_token(token)
+            validate_auth_token(token)
         except Exception:
             logger.error("Invalid token", exc_info=True)
             return self._unauthorized_response(TokenExpiredError(), request=request, clear_cookie=True)
@@ -87,4 +87,3 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if clear_cookie:
             clear_auth_cookie(unauthorized_response, request)
         return unauthorized_response
-

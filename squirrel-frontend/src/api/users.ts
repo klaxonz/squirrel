@@ -20,6 +20,14 @@ export const updateUserMe = async (payload: Record<string, unknown>) => {
   return put('/api/users/me', payload)
 }
 
+export const updateUserPassword = async (payload: Record<string, unknown>) => {
+  return put('/api/users/me/password', payload)
+}
+
+export const revokeUserSessions = async () => {
+  return post('/api/users/me/revoke-sessions')
+}
+
 export const getUserMeConfig = async () => {
   return get('/api/users/me/config')
 }

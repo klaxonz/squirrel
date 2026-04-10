@@ -165,6 +165,102 @@
                 </div>
               </div>
 
+              <div v-if="currentTab === 'security'" class="settings-section slide-up">
+                <div class="settings-section-header flex items-center gap-4 mb-8">
+                  <div class="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                    <KeyRound class="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2>账户安全</h2>
+                    <p>密码更新与会话撤销</p>
+                  </div>
+                </div>
+
+                <div class="space-y-6">
+                  <Alert v-if="securityError" variant="destructive">
+                    <AlertDescription>{{ securityError }}</AlertDescription>
+                  </Alert>
+
+                  <Alert v-if="securitySuccess">
+                    <AlertDescription>{{ securitySuccess }}</AlertDescription>
+                  </Alert>
+
+                  <div class="security-card">
+                    <div class="security-card__copy">
+                      <div class="security-card__eyebrow">
+                        <ShieldAlert class="h-4 w-4" />
+                        <span>密码轮换</span>
+                      </div>
+                      <h3 class="security-card__title">修改登录密码</h3>
+                      <p class="security-card__desc">修改后，服务端会自动废弃此前签发的旧 token，只保留当前这个会话。</p>
+                    </div>
+
+                    <form class="security-form" @submit.prevent="handlePasswordUpdate">
+                      <label class="security-field">
+                        <span class="security-field__label">当前密码</span>
+                        <input
+                          v-model="securityForm.currentPassword"
+                          type="password"
+                          autocomplete="current-password"
+                          class="security-field__input"
+                          :disabled="passwordSubmitting"
+                        />
+                      </label>
+
+                      <label class="security-field">
+                        <span class="security-field__label">新密码</span>
+                        <input
+                          v-model="securityForm.newPassword"
+                          type="password"
+                          autocomplete="new-password"
+                          class="security-field__input"
+                          :disabled="passwordSubmitting"
+                        />
+                      </label>
+
+                      <label class="security-field">
+                        <span class="security-field__label">确认新密码</span>
+                        <input
+                          v-model="securityForm.confirmPassword"
+                          type="password"
+                          autocomplete="new-password"
+                          class="security-field__input"
+                          :disabled="passwordSubmitting"
+                        />
+                      </label>
+
+                      <div class="security-actions">
+                        <Button type="submit" :disabled="passwordSubmitting" class="min-w-[7rem]">
+                          {{ passwordSubmitting ? '提交中...' : '更新密码' }}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div class="security-card security-card--compact">
+                    <div class="security-card__copy">
+                      <div class="security-card__eyebrow">
+                        <LogOut class="h-4 w-4" />
+                        <span>会话撤销</span>
+                      </div>
+                      <h3 class="security-card__title">注销其他设备</h3>
+                      <p class="security-card__desc">如果怀疑 token 泄露，可以立即让其他浏览器或设备上的旧登录态失效，当前页面会自动续签新 token。</p>
+                    </div>
+
+                    <div class="security-actions">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        :disabled="sessionSubmitting"
+                        @click="handleRevokeSessions"
+                      >
+                        {{ sessionSubmitting ? '处理中...' : '撤销其他会话' }}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div v-if="currentTab === 'system'" class="settings-section slide-up">
                 <div class="settings-section-header flex items-center gap-4 mb-8">
                   <div class="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
@@ -214,35 +310,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { 
-  Palette, 
-  ShieldCheck, 
-  PlayCircle, 
-  Settings2, 
-  Globe,
-  Sun,
-  Moon,
-  Monitor,
   CheckCircle2,
-  RefreshCcw
+  Globe,
+  KeyRound,
+  LogOut,
+  Monitor,
+  Moon,
+  Palette,
+  PlayCircle,
+  Settings2,
+  ShieldAlert,
+  ShieldCheck,
+  Sun,
 } from 'lucide-vue-next';
-import { useSystemConfig } from '../composables/useSystemConfig';
-import { useUserSettings } from '../composables/useUserSettings';
-import { useAppTheme } from '@/composables/useAppTheme'
+import { revokeUserSessions, updateUserPassword } from '@/api'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import SiteConfigSection from '@/components/settings/SiteConfigSection.vue';
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { Logger } from '@/utils/logger'
+import { useAppTheme } from '@/composables/useAppTheme'
 import type { AppThemeMode } from '@/lib/theme'
+import { Logger } from '@/utils/logger'
+import { useSystemConfig } from '../composables/useSystemConfig';
+import { useUserSettings } from '../composables/useUserSettings';
 
-type SettingsTabKey = 'appearance' | 'content' | 'playback' | 'system' | 'sites'
+type SettingsTabKey = 'appearance' | 'content' | 'playback' | 'security' | 'system' | 'sites'
 
 // Tabs 配置
 const tabs: Array<{ key: SettingsTabKey; label: string; description: string; icon: any }> = [
   { key: 'appearance', label: '外观主题', description: '外观与主题', icon: Palette },
   { key: 'content', label: '内容设置', description: '内容偏好', icon: ShieldCheck },
   { key: 'playback', label: '播放设置', description: '播放控制', icon: PlayCircle },
+  { key: 'security', label: '账户安全', description: '密码与会话', icon: KeyRound },
   { key: 'system', label: '系统配置', description: '核心引擎', icon: Settings2 },
   { key: 'sites', label: '站点配置', description: '采集源配置', icon: Globe },
 ];
@@ -262,10 +364,31 @@ const { settings, loading: userSaving, loadUserSettings, saveUserSettings } = us
 // 系统配置
 const { config: systemConfig, loading: systemLoading, loadSystemConfig, updateSystemConfig } = useSystemConfig();
 const systemSaving = ref(false);
+const passwordSubmitting = ref(false)
+const sessionSubmitting = ref(false)
+const securityError = ref('')
+const securitySuccess = ref('')
+const securityForm = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+})
 
 const allowScroll = computed(() => currentTab.value === 'sites');
 
 const isCurrentTab = (tab: SettingsTabKey) => currentTab.value === tab
+
+const resetSecurityFeedback = () => {
+  securityError.value = ''
+  securitySuccess.value = ''
+}
+
+const getErrorMessage = (error: any, fallback: string) => {
+  if (!error) return fallback
+  if (typeof error === 'string') return error
+  if (typeof error?.message === 'string') return error.message
+  return fallback
+}
 
 onMounted(async () => {
   await loadUserSettings();
@@ -287,6 +410,62 @@ const onSystemToggle = async (key: string, val: boolean) => {
   }
   systemSaving.value = false;
 };
+
+const handlePasswordUpdate = async () => {
+  resetSecurityFeedback()
+
+  if (!securityForm.value.currentPassword || !securityForm.value.newPassword || !securityForm.value.confirmPassword) {
+    securityError.value = '请完整填写密码信息'
+    return
+  }
+
+  if (securityForm.value.newPassword.length < 8) {
+    securityError.value = '新密码至少需要 8 位'
+    return
+  }
+
+  if (securityForm.value.newPassword !== securityForm.value.confirmPassword) {
+    securityError.value = '两次输入的新密码不一致'
+    return
+  }
+
+  passwordSubmitting.value = true
+  try {
+    const result = await updateUserPassword({
+      current_password: securityForm.value.currentPassword,
+      new_password: securityForm.value.newPassword,
+    })
+    if (result.error) {
+      securityError.value = getErrorMessage(result.error, '密码更新失败')
+      return
+    }
+
+    securitySuccess.value = '密码已更新，旧 token 已失效'
+    securityForm.value = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    }
+  } finally {
+    passwordSubmitting.value = false
+  }
+}
+
+const handleRevokeSessions = async () => {
+  resetSecurityFeedback()
+  sessionSubmitting.value = true
+  try {
+    const result = await revokeUserSessions()
+    if (result.error) {
+      securityError.value = getErrorMessage(result.error, '撤销会话失败')
+      return
+    }
+
+    securitySuccess.value = '其他设备上的旧登录态已失效'
+  } finally {
+    sessionSubmitting.value = false
+  }
+}
 
 </script>
 
@@ -366,5 +545,49 @@ const onSystemToggle = async (key: string, val: boolean) => {
 
 .settings-section-header p {
   @apply text-[12px] text-muted-foreground/40 mt-1 font-medium tracking-normal;
+}
+
+.security-card {
+  @apply rounded-[2rem] border border-border/10 bg-card/40 p-8 backdrop-blur-sm;
+}
+
+.security-card--compact {
+  @apply flex flex-col gap-6 md:flex-row md:items-end md:justify-between;
+}
+
+.security-card__copy {
+  @apply space-y-3;
+}
+
+.security-card__eyebrow {
+  @apply inline-flex items-center gap-2 rounded-full border border-border/15 bg-background/40 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/60;
+}
+
+.security-card__title {
+  @apply text-lg font-black tracking-tight text-foreground;
+}
+
+.security-card__desc {
+  @apply max-w-2xl text-sm leading-relaxed text-muted-foreground/70;
+}
+
+.security-form {
+  @apply mt-8 grid gap-4;
+}
+
+.security-field {
+  @apply grid gap-2;
+}
+
+.security-field__label {
+  @apply text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/55;
+}
+
+.security-field__input {
+  @apply h-11 rounded-2xl border border-border/15 bg-background/50 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/30 focus:border-primary/40 focus:bg-background;
+}
+
+.security-actions {
+  @apply flex flex-wrap items-center gap-3 pt-2;
 }
 </style>

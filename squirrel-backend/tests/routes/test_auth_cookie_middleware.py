@@ -19,7 +19,7 @@ def _build_app(monkeypatch):
     async def private_api():
         return JSONResponse({'ok': True})
 
-    monkeypatch.setattr('routes.middleware.auth.decode_token', lambda token: {'sub': '7'})
+    monkeypatch.setattr('routes.middleware.auth.validate_auth_token', lambda token: ({'sub': '7', 'tv': 0}, object()))
     return app
 
 

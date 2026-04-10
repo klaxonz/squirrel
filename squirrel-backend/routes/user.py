@@ -2,12 +2,11 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict
 
 from fastapi import APIRouter, Depends, Request, Response
-from pydantic import BaseModel, EmailStr, Field
 from common import response
 from models.user import User
+from pydantic import BaseModel, EmailStr, Field, SecretStr, model_validator
 from services import user_service, user_config_service
-from utils.jwt_helper import clear_auth_cookie, create_access_token, get_current_user, set_auth_cookie
-from pydantic import model_validator
+from utils.jwt_helper import TOKEN_VERSION_CLAIM, clear_auth_cookie, create_access_token, get_current_user, set_auth_cookie
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -26,6 +25,17 @@ class UserLoginRequest(BaseModel):
 class UserUpdateRequest(BaseModel):
     nickname: Optional[str] = None
     avatar: Optional[str] = None
+
+
+class UserPasswordUpdateRequest(BaseModel):
+    current_password: SecretStr
+    new_password: SecretStr = Field(..., min_length=8)
+
+    @model_validator(mode='after')
+    def validate_passwords(self):
+        if self.current_password.get_secret_value() == self.new_password.get_secret_value():
+            raise ValueError('新密码不能与当前密码相同')
+        return self
 
 
 class UserConfigUpdate(BaseModel):
@@ -61,6 +71,21 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
+def _serialize_user(user: User) -> dict:
+    return user.to_dict(exclude={'token_version'})
+
+
+def _issue_auth_cookie(http_response: Response, http_request: Request, user: User) -> None:
+    access_token = create_access_token(
+        data={
+            'sub': str(user.id),
+            TOKEN_VERSION_CLAIM: int(getattr(user, 'token_version', 0) or 0),
+        },
+        expires_delta=timedelta(days=30)
+    )
+    set_auth_cookie(http_response, access_token, http_request)
+
+
 @router.post("/register")
 async def register(request: UserRegisterRequest):
     """
@@ -73,7 +98,7 @@ async def register(request: UserRegisterRequest):
             password=request.password
         )
         return response.success(
-            data=user.to_dict(),
+            data=_serialize_user(user),
             msg="注册成功"
         )
     except ValueError as e:
@@ -89,15 +114,12 @@ async def login(request: UserLoginRequest, http_request: Request, http_response:
     if not result:
         return response.error("邮箱或密码错误")
 
-    user, account = result
-    access_token = create_access_token(
-        data={"sub": str(user.id)},
-        expires_delta=timedelta(days=30)
-    )
-    set_auth_cookie(http_response, access_token, http_request)
+    user, _account = result
+    _ = _account
+    _issue_auth_cookie(http_response, http_request, user)
 
     return response.success(
-        data=user.to_dict(),
+        data=_serialize_user(user),
         msg="登录成功"
     )
 
@@ -114,7 +136,7 @@ async def get_current_user_info(current_user=Depends(get_current_user)):
     Get current user info
     """
     return response.success(
-        data=current_user.to_dict()
+        data=_serialize_user(current_user)
     )
 
 
@@ -129,8 +151,47 @@ async def update_user(
     try:
         updated_user = user_service.update_user(current_user.id, **request.model_dump())
         return response.success(
-            data=updated_user.to_dict(),
+            data=_serialize_user(updated_user),
             msg="更新成功"
+        )
+    except ValueError as e:
+        return response.param_error(str(e))
+
+
+@router.put('/me/password')
+async def update_password(
+    request: UserPasswordUpdateRequest,
+    http_request: Request,
+    http_response: Response,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        updated_user, _ = user_service.update_password(
+            current_user.id,
+            request.current_password.get_secret_value(),
+            request.new_password.get_secret_value(),
+        )
+        _issue_auth_cookie(http_response, http_request, updated_user)
+        return response.success(
+            data=_serialize_user(updated_user),
+            msg='密码修改成功，旧会话已失效'
+        )
+    except ValueError as e:
+        return response.param_error(str(e))
+
+
+@router.post('/me/revoke-sessions')
+async def revoke_sessions(
+    http_request: Request,
+    http_response: Response,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        updated_user = user_service.rotate_token_version(current_user.id)
+        _issue_auth_cookie(http_response, http_request, updated_user)
+        return response.success(
+            data=_serialize_user(updated_user),
+            msg='已撤销其他会话'
         )
     except ValueError as e:
         return response.param_error(str(e))
@@ -145,7 +206,7 @@ async def get_user(user_id: int):
     if not user:
         return response.not_found(f"用户 {user_id} 不存在")
     return response.success(
-        data=user.to_dict()
+        data=_serialize_user(user)
     )
 
 

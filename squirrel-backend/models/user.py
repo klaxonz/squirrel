@@ -14,6 +14,7 @@ class User(Base, SerializerMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nickname: Mapped[str] = mapped_column(VARCHAR(50), nullable=False)
     avatar: Mapped[Optional[str]] = mapped_column(VARCHAR(255), nullable=True)
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now()
     )
@@ -54,4 +55,3 @@ class UserConfig(Base, SerializerMixin):
     settings: Mapped[dict] = mapped_column(JSON, nullable=False, default={})
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())
-
