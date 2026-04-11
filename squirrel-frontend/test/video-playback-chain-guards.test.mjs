@@ -13,6 +13,11 @@ const usePlayerPath = new URL('../src/components/video-player/runtime/usePlayer.
 test('video operations synthesize an mpd fallback when backend returns split audio and video streams', async () => {
   const source = await readFile(useVideoOperationsPath, 'utf8')
 
+  assert.match(source, /if \(typeof window === 'undefined'\) return false/)
+  assert.match(source, /if \(desktopWindow\.desktopApp\?\.isDesktop === true\) return true/)
+  assert.match(source, /return \/electron\|tauri\/i\.test\(userAgent\)/)
+  assert.doesNotMatch(source, /userAgentData\?\.mobile === false/)
+  assert.doesNotMatch(source, /linux x86_64|macintosh|windows nt|cros/)
   assert.match(source, /const synthesizedMpdUrl = videoUrl && audioUrl && !mpdUrl\s*\?\s*`\/api\/video\/mpd\?video_id=\$\{encodeURIComponent\(String\(videoId\)\)\}`\s*:\s*undefined/)
   assert.match(source, /const resolvedMpdUrl = mpdUrl \|\| synthesizedMpdUrl/)
   assert.match(source, /if \(resolvedMpdUrl\) return \{ src: resolvedMpdUrl, type: 'auto', key, progressKey, qualities \}/)

@@ -25,13 +25,6 @@ type VideoUrlInfo = {
   }>
 }
 
-type NavigatorWithClientHints = Navigator & {
-  userAgentData?: {
-    mobile?: boolean
-    platform?: string
-  }
-}
-
 type DesktopWindow = Window & {
   desktopApp?: {
     isDesktop?: boolean
@@ -39,19 +32,14 @@ type DesktopWindow = Window & {
 }
 
 const isDesktopPlaybackClient = () => {
-  const desktopWindow = typeof window === 'undefined' ? null : (window as DesktopWindow)
-  if (desktopWindow?.desktopApp?.isDesktop) return true
+  if (typeof window === 'undefined') return false
+
+  const desktopWindow = window as DesktopWindow
+  if (desktopWindow.desktopApp?.isDesktop === true) return true
   if (typeof navigator === 'undefined') return false
 
-  const nav = navigator as NavigatorWithClientHints
-  const userAgent = String(nav.userAgent || '')
-  const platform = String(nav.userAgentData?.platform || nav.platform || '')
-
-  if (/electron|tauri/i.test(userAgent)) return true
-  if (nav.userAgentData?.mobile === false && /(win|mac|linux|cros)/i.test(platform)) return true
-  if (/android|iphone|ipad|ipod|mobile/i.test(userAgent)) return false
-
-  return /(windows nt|macintosh|x11|linux x86_64|cros)/i.test(userAgent) || /(win|mac|linux|cros)/i.test(platform)
+  const userAgent = String(navigator.userAgent || '')
+  return /electron|tauri/i.test(userAgent)
 }
 
 export default function useVideoOperations() {
