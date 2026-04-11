@@ -101,16 +101,21 @@ onUnmounted(() => {
   position: relative;
   display: flex;
   align-items: center;
-  background: hsl(var(--secondary) / 0.5);
+  background: hsl(var(--secondary) / 0.8);
+  backdrop-filter: blur(8px);
   padding: 0.4rem 0.75rem;
-  border: 1px solid hsl(var(--border) / 0.5);
-  transition: all 0.3s ease;
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 2px 8px -2px hsl(var(--surface-shadow));
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .search-terminal-box:focus-within {
   background: hsl(var(--secondary));
-  border-color: hsl(var(--primary) / 0.3);
-  box-shadow: 0 0 20px hsl(var(--primary) / 0.05);
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 
+    0 4px 12px -2px hsl(var(--surface-shadow)),
+    0 0 0 1px hsl(var(--primary) / 0.1);
+  transform: translateY(-1px);
 }
 
 .search-prefix {
@@ -123,15 +128,15 @@ onUnmounted(() => {
 
 .prefix-symbol {
   color: hsl(var(--primary));
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
   font-weight: 800;
   font-size: 0.8rem;
 }
 
 .prefix-index {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
   font-size: 0.55rem;
-  color: hsl(var(--muted-foreground) / 0.4);
+  color: hsl(var(--muted-foreground) / 0.6);
 }
 
 .search-input-minimal {
@@ -140,7 +145,7 @@ onUnmounted(() => {
   border: none;
   color: hsl(var(--foreground));
   font-size: 0.75rem;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
   letter-spacing: 0.05em;
   outline: none;
   padding: 0;
@@ -148,7 +153,7 @@ onUnmounted(() => {
 }
 
 .search-input-minimal::placeholder {
-  color: hsl(var(--muted-foreground) / 0.3);
+  color: hsl(var(--muted-foreground) / 0.5);
   text-transform: uppercase;
 }
 
@@ -161,23 +166,24 @@ onUnmounted(() => {
 }
 
 .char-count {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
   font-size: 0.5rem;
   color: hsl(var(--primary));
-  opacity: 0.6;
+  opacity: 0.8;
 }
 
 .cmd-hint {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
   font-size: 0.6rem;
-  color: hsl(var(--muted-foreground) / 0.3);
-  border: 1px solid hsl(var(--border) / 0.5);
+  color: hsl(var(--muted-foreground) / 0.5);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background) / 0.5);
   padding: 1px 4px;
   border-radius: 2px;
 }
 
 .search-terminal-box:focus-within .cmd-hint {
-  color: hsl(var(--muted-foreground) / 0.6);
-  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground) / 0.8);
+  border-color: hsl(var(--muted-foreground) / 0.3);
 }
 </style>
