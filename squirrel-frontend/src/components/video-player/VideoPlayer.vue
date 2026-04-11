@@ -39,14 +39,13 @@
     </transition>
 
     <!-- 加载状态 -->
-    <div v-if="showLoadingOverlay" class="sp-loading">
-      <div class="sp-loader-ring">
-        <div class="sp-loader-segment"></div>
-        <div class="sp-loader-segment"></div>
-        <div class="sp-loader-segment"></div>
+    <Transition name="sp-loading-fade" @after-enter="onLoadingEnter" @after-leave="onLoadingLeave">
+      <div v-if="showLoadingOverlay" class="sp-loading">
+        <div class="sp-loader">
+          <div class="sp-loader-ring"></div>
+        </div>
       </div>
-      <div v-if="props.externalLoadingText" class="sp-loading-text">{{ props.externalLoadingText }}</div>
-    </div>
+    </Transition>
 
     <!-- 极简控制层 -->
     <transition name="sp-ui-fade">
@@ -277,7 +276,6 @@ interface Props {
   initialTime?: number
   widescreen?: boolean
   externalLoading?: boolean
-  externalLoadingText?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -289,7 +287,6 @@ const props = withDefaults(defineProps<Props>(), {
   theme: 'dark',
   widescreen: false,
   externalLoading: false,
-  externalLoadingText: ''
 })
 
 const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'fullscreenChange', 'retry', 'widescreenChange'])
@@ -332,6 +329,11 @@ const centralHud = ref<{ visible: boolean; type: string; value: string; icon: Ic
 })
 const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !errorState.value.show)
 const effectivePoster = computed(() => hidePosterForCurrentSource.value ? '' : (props.source?.poster || props.poster || ''))
+
+// 加载状态控制
+const onLoadingEnter = () => {}
+
+const onLoadingLeave = () => {}
 
 let centralHudTimer: any
 const showCentralHud = (type: string, value: string, icon: IconName, percent: number = 0) => {
@@ -1127,48 +1129,44 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 
 .sp-simple-switch.is-on::after { transform: translateX(14px); }
 
-/* 加载动画 - 极致简约 */
+/* 加载动画 */
 .sp-loading {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  z-index: 5;
-  background: rgba(0,0,0,0.1);
+  z-index: 50;
+}
+
+.sp-loader {
+  width: 28px;
+  height: 28px;
+  position: relative;
 }
 
 .sp-loader-ring {
-  width: 32px;
-  height: 32px;
-  position: relative;
-  animation: loader-rotate 1.5s linear infinite;
-}
-
-.sp-loader-segment {
   position: absolute;
   inset: 0;
-  border: 2px solid transparent;
-  border-top-color: var(--sp-text-disabled);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.6);
   border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-.sp-loader-segment:nth-child(1) { border-top-color: var(--sp-primary); }
-.sp-loader-segment:nth-child(2) { transform: rotate(120deg); }
-.sp-loader-segment:nth-child(3) { transform: rotate(240deg); }
-
-.sp-loading-text {
-  color: var(--sp-text-secondary);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-}
-
-@keyframes loader-rotate {
+@keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* 加载状态过渡动画 */
+.sp-loading-fade-enter-active,
+.sp-loading-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.sp-loading-fade-enter-from,
+.sp-loading-fade-leave-to {
+  opacity: 0;
 }
 
 .sp-ui-fade-enter-active, .sp-ui-fade-leave-active {
