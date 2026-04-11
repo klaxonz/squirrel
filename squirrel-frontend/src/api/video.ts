@@ -10,7 +10,7 @@ export const getVideoList = async (params: Record<string, unknown> = {}) => {
 
 export const getVideoSubtitles = async (
   videoId: string | number,
-  { lang = 'ai-zh', fmt = 'srt' }: { lang?: string; fmt?: string } = {}
+  { lang, fmt = 'srt' }: { lang?: string; fmt?: string } = {}
 ) => {
   return get(
     '/api/video/subtitles',

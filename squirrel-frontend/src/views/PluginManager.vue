@@ -1173,8 +1173,8 @@ onMounted(() => {
 }
 
 .rack-unit {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: hsl(var(--foreground) / 0.02);
+  border: 1px solid hsl(var(--foreground) / 0.05);
   display: flex;
   height: 84px;
   position: relative;
@@ -1188,25 +1188,25 @@ onMounted(() => {
 }
 
 .led-running { 
-  background-color: #10b981; 
-  box-shadow: 0 0 10px #10b981; 
+  background-color: hsl(var(--success)); 
+  box-shadow: 0 0 10px hsl(var(--success) / 0.5); 
   animation: pulse 2s infinite; 
 }
 
 .led-failed { 
-  background-color: #ef4444; 
-  box-shadow: 0 0 10px #ef4444; 
+  background-color: hsl(var(--destructive)); 
+  box-shadow: 0 0 10px hsl(var(--destructive) / 0.5); 
   animation: flash 0.5s infinite; 
 }
 
 .led-starting { 
-  background-color: #f59e0b; 
-  box-shadow: 0 0 10px #f59e0b; 
+  background-color: hsl(var(--warning)); 
+  box-shadow: 0 0 10px hsl(var(--warning) / 0.5); 
   opacity: 0.6;
 }
 
 .led-off {
-  background-color: #374151;
+  background-color: hsl(var(--muted-foreground) / 0.3);
   box-shadow: none;
 }
 

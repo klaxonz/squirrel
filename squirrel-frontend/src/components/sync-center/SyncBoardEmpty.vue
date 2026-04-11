@@ -16,7 +16,7 @@
         
         <div class="text-group">
           <h4 class="status-title font-mono uppercase tracking-[0.3em]">{{ title }}</h4>
-          <p class="status-desc text-white/20 text-xs font-medium max-w-[200px] mx-auto mt-2">{{ message }}</p>
+          <p class="status-desc text-muted-foreground/30 text-xs font-medium max-w-[200px] mx-auto mt-2">{{ message }}</p>
           <slot name="hint"></slot>
         </div>
       </div>
@@ -57,15 +57,15 @@ withDefaults(defineProps<{
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1px dashed rgba(255, 255, 255, 0.03);
-  background: rgba(255, 255, 255, 0.01);
+  border: 1px dashed hsl(var(--foreground) / 0.03);
+  background: hsl(var(--foreground) / 0.01);
   overflow: hidden;
 }
 
 .empty-grid {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-image: radial-gradient(hsl(var(--foreground) / 0.02) 1px, transparent 1px);
   background-size: 16px 16px;
   opacity: 0.5;
   pointer-events: none;
@@ -94,7 +94,7 @@ withDefaults(defineProps<{
   position: absolute;
   width: 100%;
   height: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid hsl(var(--foreground) / 0.05);
   border-radius: 50%;
   animation: pulse-out 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
@@ -112,14 +112,14 @@ withDefaults(defineProps<{
 .status-title {
   font-size: 10px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.2);
+  color: hsl(var(--foreground) / 0.2);
 }
 
 .corner-bracket {
   position: absolute;
   width: 6px;
   height: 6px;
-  border-color: rgba(255, 255, 255, 0.05);
+  border-color: hsl(var(--foreground) / 0.05);
   border-style: solid;
 }
 

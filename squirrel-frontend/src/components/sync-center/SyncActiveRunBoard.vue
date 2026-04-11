@@ -4,7 +4,7 @@
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <p class="board-kicker">正在处理</p>
-          <div class="h-px flex-1 bg-white/5"></div>
+          <div class="h-px flex-1 bg-border/50"></div>
           <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
         </div>
       </div>
@@ -20,7 +20,7 @@
         :message="emptyMessage"
       >
         <template v-if="pipeline === 'feed' && carryoverCount > 0" #hint>
-          <p class="text-[9px] font-bold text-white/10 mt-3 tracking-wide uppercase">
+          <p class="text-[9px] font-bold text-muted-foreground/40 mt-3 tracking-wide uppercase">
             其中 {{ carryoverCount }} 个订阅已转入“视频提取”tab
           </p>
         </template>
@@ -32,11 +32,11 @@
         v-for="(item, index) in items"
         :key="item.run_id || item.subscription_id"
         type="button"
-        class="run-row animate-scan"
+        class="run-row animate-scan h-auto min-h-[3.5rem]"
         @click="emit('open-run', item)"
       >
-        <div class="run-row__main">
-          <div class="run-row__identity">
+        <div class="run-row__main flex-col sm:flex-row items-start sm:items-center">
+          <div class="run-row__identity w-full sm:w-auto">
             <SubscriptionAvatar
               :src="item.subscription_avatar"
               :name="item.subscription_name"
@@ -44,7 +44,7 @@
             />
             <div class="min-w-0 flex-1">
               <div class="run-row__title">
-                <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
+                <h3 class="truncate text-sm font-bold text-foreground">{{ item.subscription_name }}</h3>
               </div>
               <div class="run-row__meta run-row__meta--with-icon font-mono">
                 <SiteIcon
@@ -61,7 +61,7 @@
 
           <div
             v-if="pipeline === 'extract' || getFeedMetrics(item).length"
-            class="metric-inline"
+            class="metric-inline mt-3 sm:mt-0 w-full sm:w-auto justify-start sm:justify-end flex-wrap"
             :class="pipeline === 'extract' ? 'metric-inline--compact' : ''"
           >
             <template v-if="pipeline === 'extract'">
@@ -239,7 +239,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.8);
+  color: hsl(var(--foreground) / 0.8);
 }
 
 .board-count {
@@ -256,13 +256,18 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   gap: 0.5rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.board-list::-webkit-scrollbar {
+  display: none;
 }
 
 .run-row {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 3.5rem;
   min-height: 3.5rem;
   background: transparent;
   padding: 0.6rem 1rem;
@@ -274,7 +279,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 
 .run-row:hover {
   transform: translateX(6px);
-  background: rgba(255, 255, 255, 0.02);
+  background: hsl(var(--foreground) / 0.02);
 }
 
 .run-row__main {
@@ -296,7 +301,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   margin-top: 0.2rem;
   font-size: 9px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.25);
+  color: hsl(var(--muted-foreground) / 0.4);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -355,14 +360,14 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 .metric-label {
   font-size: 6px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.15);
+  color: hsl(var(--muted-foreground) / 0.3);
   letter-spacing: 0.2em;
 }
 
 .metric-value {
   font-size: 12px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.4);
+  color: hsl(var(--foreground) / 0.6);
 }
 
 .lane-card-enter-active,

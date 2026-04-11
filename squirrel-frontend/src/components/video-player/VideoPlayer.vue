@@ -171,6 +171,10 @@
               <span>{{ t('quality') }}</span>
               <span class="sp-menu-val">{{ qualityMenuLabel }}</span>
             </div>
+            <div v-if="subtitleTracks.length > 0" class="sp-menu-item" @click="settingsView = 'subtitles'">
+              <span>{{ t('subtitleSettings') }}</span>
+              <span class="sp-menu-val">{{ subtitleMenuLabel }}</span>
+            </div>
           </div>
         </template>
         <template v-else-if="settingsView === 'speed'">
@@ -210,6 +214,29 @@
                  class="sp-menu-item" :class="{ 'is-active': currentQualityId === q.id }"
                  @click="handleQualitySelect(q)">
               {{ q.label }}
+            </div>
+          </div>
+        </template>
+        <template v-else-if="settingsView === 'subtitles'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('subtitleSettings') }}
+          </div>
+          <div class="sp-menu-list">
+            <div
+              class="sp-menu-item"
+              :class="{ 'is-active': !store.subtitlesEnabled || !currentSubtitle }"
+              @click="handleSubtitleDisable"
+            >
+              {{ t('subtitlesOff') }}
+            </div>
+            <div
+              v-for="track in subtitleTracks"
+              :key="track.id"
+              class="sp-menu-item"
+              :class="{ 'is-active': store.subtitlesEnabled && currentSubtitle?.id === track.id }"
+              @click="handleSubtitleSelect(track)"
+            >
+              {{ track.label }}
             </div>
           </div>
         </template>
@@ -336,6 +363,10 @@ const qualityTagLabel = computed(() => (
     : (displayedQualities.value[0]?.label || t('quality'))
 ))
 const qualityMenuLabel = computed(() => isDisplayableQualityLabel(currentQualityLabel.value) ? (currentQualityLabel.value || '') : (displayedQualities.value[0]?.label || t('quality')))
+const subtitleMenuLabel = computed(() => {
+  if (!store.subtitlesEnabled || !currentSubtitle.value) return t('subtitlesOff')
+  return currentSubtitle.value.label
+})
 const codecMenuLabel = computed(() => (
   selectedCodecFamily.value === 'auto'
     ? formatCodecFamilyLabel(currentCodecFamily.value || visibleCodecFamily.value || codecFamilies.value[0] || null)
@@ -441,10 +472,24 @@ const toggleQualityMenu = () => {
 const handleSpeedSelect = (rate: number) => { setPlaybackRate(rate); closeMenus() }
 const handleCodecFamilySelect = (codecFamily: string) => { setCodecFamily(codecFamily); closeMenus() }
 const handleQualitySelect = (q: any) => { setQuality(q.id); closeMenus() }
+const handleSubtitleSelect = (track: SubtitleTrack) => { setSubtitle(track); closeMenus() }
+const handleSubtitleDisable = () => { setSubtitle(null); closeMenus() }
 const toggleWidescreen = () => emit('widescreenChange', !props.widescreen)
 const toggleAutoplayNext = () => store.setAutoplayNext(!store.autoplayNext)
 const toggleLoop = () => store.setLoop(!store.loop)
-const toggleSubtitlesQuick = () => setSubtitle(store.subtitlesEnabled ? null : (subtitleTracks.value[0] || null))
+const toggleSubtitlesQuick = () => {
+  if (store.subtitlesEnabled) {
+    setSubtitle(null)
+    return
+  }
+
+  const nextTrack = currentSubtitle.value
+    || subtitleTracks.value.find((track) => track.default)
+    || subtitleTracks.value[0]
+    || null
+
+  setSubtitle(nextTrack)
+}
 let hideTimer: any
 const clearHideTimer = () => clearTimeout(hideTimer)
 const hideControls = () => {

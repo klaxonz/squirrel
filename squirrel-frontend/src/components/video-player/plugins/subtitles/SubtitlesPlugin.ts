@@ -361,10 +361,18 @@ export class SubtitlesPlugin implements PlayerPlugin {
    */
   setTracks(tracks: SubtitleTrack[]): void {
     this.tracks = tracks
-    
-    if (this.options.autoLoad && tracks.length > 0) {
+
+    if (tracks.length === 0) {
+      this.currentTrack = null
+      this.cues = []
+      this.activeCueIndex = -1
+      this.disable()
+      return
+    }
+
+    if (this.options.autoLoad) {
       const defaultTrack = tracks.find(t => t.default) || tracks[0]
-      this.loadTrack(defaultTrack)
+      void this.loadTrack(defaultTrack)
       this.enable()
     }
   }

@@ -55,8 +55,7 @@ const sizeClass = computed(() => {
 .subscription-avatar {
   position: relative;
   overflow: hidden;
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -86,14 +85,14 @@ const sizeClass = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0f0f0f;
+  background: hsl(var(--muted) / 0.5);
   position: relative;
 }
 
 .placeholder-char {
   font-weight: 900;
   font-size: 0.7em;
-  color: rgba(255, 255, 255, 0.2);
+  color: hsl(var(--foreground) / 0.2);
   z-index: 1;
   letter-spacing: -0.05em;
 }
@@ -102,8 +101,8 @@ const sizeClass = computed(() => {
   position: absolute;
   inset: 0;
   background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(hsl(var(--foreground) / 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.03) 1px, transparent 1px);
   background-size: 4px 4px;
 }
 

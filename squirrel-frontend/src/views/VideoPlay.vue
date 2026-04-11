@@ -117,17 +117,17 @@
               </div>
             </div>
             <div v-else class="video-meta-skeleton">
-              <div class="skeleton-title w-3/4 h-8 bg-white/5 rounded"></div>
+              <div class="skeleton-title w-3/4 h-8 bg-muted rounded"></div>
               <div class="flex items-center justify-between mt-6">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-white/5"></div>
+                  <div class="w-10 h-10 rounded-full bg-muted"></div>
                   <div class="space-y-2">
-                    <div class="w-24 h-4 bg-white/5 rounded"></div>
-                    <div class="w-16 h-3 bg-white/5 rounded"></div>
+                    <div class="w-24 h-4 bg-muted rounded"></div>
+                    <div class="w-16 h-3 bg-muted rounded"></div>
                   </div>
                 </div>
                 <div class="flex gap-2">
-                  <div v-for="i in 4" :key="i" class="w-20 h-8 bg-white/5 rounded"></div>
+                  <div v-for="i in 4" :key="i" class="w-20 h-8 bg-muted rounded"></div>
                 </div>
               </div>
             </div>
@@ -623,12 +623,12 @@ onUnmounted(() => {
 
 <style scoped>
 .terminal-viewport {
-  background-color: #050505;
+  background-color: hsl(var(--background));
   background-image: 
-    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-  background-size: 100% 2px, 3px 100%;
-  color: rgba(255, 255, 255, 0.8);
+    linear-gradient(hsl(var(--foreground) / 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  color: hsl(var(--foreground) / 0.8);
 }
 
 .video-page {
@@ -663,7 +663,7 @@ onUnmounted(() => {
 
 .video-section {
   width: 100%;
-  background: #000;
+  background: hsl(var(--background));
   border-radius: 0;
   overflow: hidden;
   /* 移除之前的 padding 和 border，让视频更沉浸 */
@@ -673,7 +673,7 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
+  background: hsl(var(--background));
 }
 
 /* 优化取景框，使其成为轻量级叠加层而非容器 */
@@ -699,7 +699,7 @@ onUnmounted(() => {
   font-weight: 700;
   line-height: 1.4;
   margin-bottom: 0.75rem;
-  color: #fff;
+  color: hsl(var(--foreground));
 }
 
 /* 重新排列：频道信息和操作按钮在同一行 */
@@ -784,8 +784,8 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 0.45rem 0.75rem; /* 减小头部内边距 */
-  background: rgba(255, 77, 0, 0.04);
-  border-bottom: 1px solid rgba(255, 77, 0, 0.15);
+  background: hsl(var(--primary) / 0.04);
+  border-bottom: 1px solid hsl(var(--primary) / 0.15);
 }
 
 .video-aside__title {
@@ -793,13 +793,13 @@ onUnmounted(() => {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #ff4d00;
+  color: hsl(var(--primary));
   font-family: 'JetBrains Mono', monospace;
 }
 
 .video-aside__status {
   font-size: 0.55rem; /* 减小状态字号 */
-  color: rgba(255, 77, 0, 0.4);
+  color: hsl(var(--primary) / 0.4);
   font-family: 'JetBrains Mono', monospace;
 }
 
@@ -811,7 +811,7 @@ onUnmounted(() => {
 
 .video-aside__footer {
   height: 4px;
-  background: linear-gradient(to right, #ff4d00 0%, transparent 100%);
+  background: linear-gradient(to right, hsl(var(--primary)) 0%, transparent 100%);
   opacity: 0.3;
 }
 
@@ -852,8 +852,8 @@ onUnmounted(() => {
 }
 
 .related-video-card:hover {
-  background: rgba(255, 77, 0, 0.04);
-  border-color: rgba(255, 77, 0, 0.2);
+  background: hsl(var(--primary) / 0.04);
+  border-color: hsl(var(--primary) / 0.2);
   transform: translateX(4px);
 }
 
@@ -898,10 +898,10 @@ onUnmounted(() => {
   position: absolute;
   width: 15px;
   height: 15px;
-  border: 1px solid #ff4d00;
+  border: 1px solid hsl(var(--primary));
   z-index: 10;
   pointer-events: none;
-  box-shadow: 0 0 5px rgba(255, 77, 0, 0.2);
+  box-shadow: 0 0 5px hsl(var(--primary) / 0.2);
 }
 
 .viewfinder-corner--top-left { top: 0; left: 0; border-right: none; border-bottom: none; }
@@ -1001,7 +1001,7 @@ onUnmounted(() => {
   gap: 0.35rem;
   justify-content: flex-start;
   padding-top: 0.5rem; /* 压缩动作栏顶部间距 */
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid hsl(var(--foreground) / 0.05);
 }
 
 
@@ -1010,7 +1010,7 @@ onUnmounted(() => {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.8em;
   margin-right: 0.5rem;
-  color: #ff4d00;
+  color: hsl(var(--primary));
 }
 
 .video-meta__actions {
@@ -1031,7 +1031,7 @@ onUnmounted(() => {
   min-height: 1.52rem;
   padding: 0 0.5rem;
   border-radius: 4px;
-  color: rgba(255, 255, 255, 0.45);
+  color: hsl(var(--foreground) / 0.45);
   font-family: 'JetBrains Mono', monospace;
   text-transform: uppercase;
   font-size: 0.6rem;
@@ -1039,8 +1039,8 @@ onUnmounted(() => {
 }
 
 .video-action:hover, .video-action.is-active {
-  color: #ff4d00;
-  background: rgba(255, 77, 0, 0.08);
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
 }
 
 .video-action__label::before { content: '['; opacity: 0.5; }
@@ -1091,14 +1091,6 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground));
 }
 
-.related-videos-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
 .related-video-card {
   position: relative;
   display: grid;
@@ -1106,8 +1098,8 @@ onUnmounted(() => {
   gap: 0.6rem;
   padding: 0.35rem;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.015);
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: hsl(var(--foreground) / 0.015);
+  border: 1px solid hsl(var(--foreground) / 0.03);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.2, 0, 0.1, 1);
   align-items: flex-start;
@@ -1132,8 +1124,8 @@ onUnmounted(() => {
 
 
 .related-video-card:hover {
-  background: rgba(255, 77, 0, 0.04);
-  border-color: rgba(255, 77, 0, 0.2);
+  background: hsl(var(--primary) / 0.04);
+  border-color: hsl(var(--primary) / 0.2);
   transform: translateX(4px);
 }
 
@@ -1141,7 +1133,7 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
   border-radius: 2px;
-  background: #000;
+  background: hsl(var(--background));
   aspect-ratio: 16 / 9;
   width: 100%;
 }
@@ -1149,7 +1141,7 @@ onUnmounted(() => {
 .related-video-card__fallback {
   position: absolute;
   inset: 0;
-  background: #0a0a0a;
+  background: hsl(var(--background) / 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1175,7 +1167,7 @@ onUnmounted(() => {
 .fallback-status {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
-  color: #ff4d00;
+  color: hsl(var(--primary));
   letter-spacing: 0.3em;
   font-weight: 800;
   opacity: 0.6;
@@ -1184,7 +1176,7 @@ onUnmounted(() => {
 .fallback-id {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.5rem;
-  color: rgba(255, 255, 255, 0.15);
+  color: hsl(var(--foreground) / 0.15);
   letter-spacing: 0.1em;
 }
 
@@ -1210,8 +1202,8 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 2px;
-  background: rgba(255, 77, 0, 0.3);
-  box-shadow: 0 0 8px rgba(255, 77, 0, 0.6);
+  background: hsl(var(--primary) / 0.3);
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
   opacity: 0;
   pointer-events: none;
   z-index: 5;
@@ -1235,21 +1227,21 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.4rem;
   padding: 0.15rem 0.4rem;
-  background: rgba(0, 0, 0, 0.65);
+  background: hsl(var(--background) / 0.65);
   backdrop-filter: blur(4px);
   border-radius: 2px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
-  color: #ff4d00;
-  border: 1px solid rgba(255, 77, 0, 0.2);
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.2);
 }
 
 .related-video-card__status-dot {
   width: 5px;
   height: 5px;
-  background: #ff4d00;
+  background: hsl(var(--primary));
   border-radius: 50%;
-  box-shadow: 0 0 6px #ff4d00;
+  box-shadow: 0 0 6px hsl(var(--primary));
   animation: status-pulse 1s ease infinite alternate;
 }
 
@@ -1263,8 +1255,8 @@ onUnmounted(() => {
   right: 0.5rem;
   bottom: 0.5rem;
   padding: 0.15rem 0.35rem;
-  background: rgba(0, 0, 0, 0.8);
-  color: rgba(255, 255, 255, 0.85);
+  background: hsl(var(--background) / 0.8);
+  color: hsl(var(--foreground) / 0.85);
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.65rem;
   border-radius: 2px;
@@ -1288,7 +1280,7 @@ onUnmounted(() => {
   gap: 0.3rem;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.58rem; /* 极致字号压缩 */
-  color: rgba(255, 255, 255, 0.3);
+  color: hsl(var(--foreground) / 0.3);
 }
 
 .related-video-card__duration {
@@ -1296,8 +1288,8 @@ onUnmounted(() => {
   right: 0.35rem;
   bottom: 0.35rem;
   padding: 0.05rem 0.25rem;
-  background: rgba(0, 0, 0, 0.85);
-  color: rgba(255, 255, 255, 0.9);
+  background: hsl(var(--background) / 0.85);
+  color: hsl(var(--foreground) / 0.9);
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.55rem;
   border-radius: 1px;
@@ -1311,13 +1303,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.25rem;
   padding: 0.05rem 0.25rem;
-  background: rgba(0, 0, 0, 0.7);
+  background: hsl(var(--background) / 0.7);
   backdrop-filter: blur(4px);
   border-radius: 1px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.5rem;
-  color: #ff4d00;
-  border: 1px solid rgba(255, 77, 0, 0.15);
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.15);
 }
 
 
@@ -1327,11 +1319,11 @@ onUnmounted(() => {
   gap: 0.4rem;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: hsl(var(--foreground) / 0.4);
 }
 
 .related-video-card__channel:hover {
-  color: #ff4d00;
+  color: hsl(var(--primary));
 }
 
 .video-aside__header {

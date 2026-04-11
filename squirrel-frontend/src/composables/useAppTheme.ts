@@ -10,13 +10,13 @@ import {
 } from '@/lib/theme'
 
 const themeMode = ref<AppThemeMode>('system')
-const systemTheme = ref<EffectiveTheme>('light')
+const systemTheme = ref<'light' | 'dark'>('light')
 const isReady = ref(false)
 
 let mediaQuery: MediaQueryList | null = null
 let mediaQueryHandler: ((event: MediaQueryListEvent) => void) | null = null
 
-function getSystemTheme(): EffectiveTheme {
+function getSystemTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') {
     return 'light'
   }

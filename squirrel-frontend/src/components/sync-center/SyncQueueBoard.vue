@@ -4,7 +4,7 @@
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <p class="board-kicker">排队队列</p>
-          <div class="h-px flex-1 bg-white/5"></div>
+          <div class="h-px flex-1 bg-border/50"></div>
           <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
         </div>
       </div>
@@ -26,11 +26,11 @@
           v-for="(item, index) in items"
           :key="item.run_id || item.subscription_id"
           type="button"
-          class="queue-row animate-scan"
+          class="queue-row animate-scan h-auto min-h-[3.5rem]"
           @click="emit('open-run', item)"
         >
-          <div class="queue-row__main">
-            <div class="queue-row__identity">
+          <div class="queue-row__main w-full">
+            <div class="queue-row__identity w-full">
               <SubscriptionAvatar
                 :src="item.subscription_avatar"
                 :name="item.subscription_name"
@@ -39,16 +39,18 @@
 
               <div class="min-w-0 flex-1">
                 <div class="queue-row__title">
-                  <h3 class="truncate text-sm font-bold text-white/90">{{ item.subscription_name }}</h3>
+                  <h3 class="truncate text-sm font-bold text-foreground">{{ item.subscription_name }}</h3>
                 </div>
-                <p class="queue-row__meta font-mono inline-flex items-center gap-1.5 mt-1">
+                <p class="queue-row__meta font-mono flex flex-wrap items-center gap-1.5 mt-1">
                   <SiteIcon
                     v-if="item.site"
                     :icon-url="getSiteIconUrl(item)"
                     :label="item.site"
                     size="xs"
                   />
-                  {{ getSyncModeLabel(item.sync_mode) }} · {{ getQueueTimeLabel(item) }}
+                  <span>{{ getSyncModeLabel(item.sync_mode) }}</span>
+                  <span class="opacity-30 sm:inline hidden">·</span>
+                  <span>{{ getQueueTimeLabel(item) }}</span>
                 </p>
               </div>
             </div>
@@ -152,7 +154,7 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.8);
+  color: hsl(var(--foreground) / 0.8);
 }
 
 .board-count {
@@ -169,6 +171,12 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   gap: 0.5rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.board-list::-webkit-scrollbar {
+  display: none;
 }
 
 .queue-row {
@@ -189,7 +197,7 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   content: "";
   position: absolute;
   inset: 0;
-  background: white;
+  background: hsl(var(--foreground));
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -197,7 +205,7 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
 
 .queue-row:hover {
   transform: translateX(6px);
-  background: rgba(255, 255, 255, 0.02);
+  background: hsl(var(--foreground) / 0.02);
 }
 
 .queue-row:hover::before {
@@ -233,7 +241,7 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   margin-top: 0.25rem;
   font-size: 9px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.25);
+  color: hsl(var(--muted-foreground) / 0.4);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -247,7 +255,7 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   font-size: 7px;
   font-weight: 900;
   letter-spacing: 0.2em;
-  color: rgba(255, 255, 255, 0.4);
+  color: hsl(var(--muted-foreground) / 0.6);
 }
 
 .lane-card-enter-active,

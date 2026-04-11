@@ -78,12 +78,12 @@ const handleValueChange = (value) => {
   text-transform: uppercase;
   font-size: 0.65rem;
   letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.3);
+  color: hsl(var(--muted-foreground) / 0.6);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .filter-trigger-minimal:hover .filter-trigger-content {
-  color: rgba(255, 255, 255, 0.9);
+  color: hsl(var(--foreground) / 0.9);
 }
 
 .filter-label {
@@ -91,7 +91,7 @@ const handleValueChange = (value) => {
 }
 
 .filter-value {
-  color: #ff4d00;
+  color: hsl(var(--primary));
   font-weight: 800;
 }
 
@@ -101,21 +101,22 @@ const handleValueChange = (value) => {
 }
 
 :deep(.filter-content-minimal) {
-  background-color: rgba(5, 5, 5, 0.98) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 4px !important;
-  padding: 0 !important;
+  background-color: hsl(var(--popover) / 0.95) !important;
+  border: 1px solid hsl(var(--border) / 0.4) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 0.25rem 0 !important;
   min-width: 190px !important;
-  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9) !important;
-  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-popover) !important;
+  backdrop-filter: blur(12px);
 }
 
 /* 选项样式强制覆盖 */
 :deep(.filter-item-minimal) {
-  border-radius: 0 !important;
-  margin: 0 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.02) !important;
-  color: rgba(255, 255, 255, 0.3) !important;
+  border-radius: var(--radius-sm) !important;
+  margin: 0.125rem 0.25rem !important;
+  border-bottom: none !important;
+  color: hsl(var(--muted-foreground)) !important;
+  transition: all 0.2s ease;
 }
 
 :deep(.filter-item-minimal:last-child) {
@@ -125,12 +126,14 @@ const handleValueChange = (value) => {
 /* 悬停状态 */
 :deep(.filter-item-minimal[data-highlighted]),
 :deep(.filter-item-minimal:hover) {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-  color: rgba(255, 255, 255, 0.8) !important;
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
 }
 
 /* 选中状态 */
 :deep(.filter-item-minimal[data-state="checked"]) {
-  color: #fff !important;
+  background-color: hsl(var(--primary) / 0.1) !important;
+  color: hsl(var(--foreground)) !important;
+  font-weight: 600;
 }
 </style>

@@ -1,14 +1,14 @@
 <template>
   <div class="sync-center-page tactical-terminal min-h-full selection:bg-primary/10">
-    <div class="toolbar-container py-8 relative z-10">
-      <div class="flex flex-col gap-6">
-        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+    <div class="toolbar-container py-4 md:py-8 relative z-10">
+      <div class="flex flex-col gap-4 md:gap-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/50 pb-4 gap-4">
           <SyncControlBar
             :summary="dashboardSummary"
             class="border-none pb-0 mb-0"
           />
 
-          <section class="pipeline-tabs">
+          <section class="pipeline-tabs self-start sm:self-auto">
             <Tabs :model-value="activePipeline" @update:model-value="handlePipelineChange">
               <TabsList class="pipeline-tabs__list">
                 <TabsTrigger value="feed" class="pipeline-tabs__trigger font-mono">列表拉取</TabsTrigger>
@@ -20,9 +20,9 @@
 
         <div class="relative">
           <!-- 垂直导轨 -->
-          <div class="absolute inset-0 flex justify-between px-[33%] pointer-events-none" aria-hidden="true">
-            <div class="w-px h-full bg-gradient-to-b from-transparent via-white/5 to-transparent shadow-[0_0_15px_rgba(255,255,255,0.05)]"></div>
-            <div class="w-px h-full bg-gradient-to-b from-transparent via-white/5 to-transparent shadow-[0_0_15px_rgba(255,255,255,0.05)]"></div>
+          <div class="absolute inset-0 hidden xl:flex justify-between px-[33%] pointer-events-none" aria-hidden="true">
+            <div class="w-px h-full bg-gradient-to-b from-transparent via-foreground/5 to-transparent shadow-[0_0_15px_hsl(var(--foreground)/0.05)]"></div>
+            <div class="w-px h-full bg-gradient-to-b from-transparent via-foreground/5 to-transparent shadow-[0_0_15px_hsl(var(--foreground)/0.05)]"></div>
           </div>
 
           <section class="flow-shell relative z-10">
@@ -462,7 +462,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .tactical-terminal {
-  background-color: #050505;
+  background-color: hsl(var(--background));
   position: relative;
   overflow: hidden;
 }
@@ -482,8 +482,8 @@ onBeforeUnmount(() => {
 
 .pipeline-tabs__list {
   height: 2.2rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid hsl(var(--border) / 0.5);
+  background: hsl(var(--secondary) / 0.5);
   padding: 0.2rem;
   border-radius: 0;
 }
@@ -495,13 +495,13 @@ onBeforeUnmount(() => {
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.15em;
-  color: rgba(255, 255, 255, 0.2);
+  color: hsl(var(--muted-foreground) / 0.4);
   transition: all 0.2s ease;
 }
 
 :deep(.pipeline-tabs__trigger[data-state='active']) {
-  background: var(--cyber-orange);
-  color: #fff;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 .flow-shell {

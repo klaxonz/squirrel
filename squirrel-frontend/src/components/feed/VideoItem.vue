@@ -315,17 +315,17 @@ onUnmounted(() => {
   position: relative;
   aspect-ratio: 16/9;
   overflow: hidden;
-  background: #000;
+  background: hsl(var(--secondary));
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid hsl(var(--border) / 0.5);
   transition: all 0.3s ease;
 }
 
 .video-terminal-item:hover .video-viewer-frame {
-  border-color: rgba(255, 77, 0, 0.4);
+  border-color: hsl(var(--primary) / 0.4);
   box-shadow: 
-    0 0 30px rgba(255, 77, 0, 0.15),
-    inset 0 0 15px rgba(255, 77, 0, 0.05);
+    0 0 30px hsl(var(--primary) / 0.15),
+    inset 0 0 15px hsl(var(--primary) / 0.05);
 }
 
 .video-terminal-image {
@@ -342,7 +342,7 @@ onUnmounted(() => {
 }
 
 .video-terminal-item:hover .video-terminal-image.image-loaded {
-  filter: contrast(1.1) brightness(1.1);
+  filter: contrast(1.1) brightness(1.05);
   transform: scale(1.02);
 }
 
@@ -352,8 +352,8 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 2px;
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+  background: hsl(var(--foreground) / 0.1);
+  box-shadow: 0 0 10px hsl(var(--foreground) / 0.2);
   z-index: 3;
   opacity: 0;
   pointer-events: none;
@@ -377,7 +377,7 @@ onUnmounted(() => {
   flex-direction: column;
   justify-content: space-between;
   z-index: 4;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.6) 100%);
+  background: linear-gradient(to bottom, hsl(var(--background) / 0.4) 0%, transparent 30%, transparent 70%, hsl(var(--background) / 0.6) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -390,7 +390,7 @@ onUnmounted(() => {
 .tech-tag {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.5rem;
-  color: #ff4d00;
+  color: hsl(var(--primary));
   letter-spacing: 0.1em;
   opacity: 0.8;
 }
@@ -398,9 +398,9 @@ onUnmounted(() => {
 .fav-dot {
   width: 6px;
   height: 6px;
-  background: #ff4d00;
+  background: hsl(var(--primary));
   border-radius: 50%;
-  box-shadow: 0 0 10px #ff4d00;
+  box-shadow: 0 0 10px hsl(var(--primary));
 }
 
 .video-duration-badge {
@@ -410,9 +410,9 @@ onUnmounted(() => {
   z-index: 6;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: hsl(var(--foreground));
+  background: hsl(var(--background) / 0.42);
+  border: 1px solid hsl(var(--border) / 0.5);
   border-radius: 3px;
   padding: 2px 6px;
   line-height: 1.2;
@@ -425,14 +425,14 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 2px;
-  background: rgba(255, 255, 255, 0.1);
+  background: hsl(var(--foreground) / 0.1);
   z-index: 5;
 }
 
 .tech-progress-fill {
   height: 100%;
-  background: #ff4d00;
-  box-shadow: 0 0 8px #ff4d00;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 8px hsl(var(--primary));
 }
 
 .video-terminal-info {
@@ -446,7 +446,7 @@ onUnmounted(() => {
   font-weight: 600;
   line-height: 1.4;
   height: 2.8em;
-  color: #fff;
+  color: hsl(var(--foreground));
   margin-bottom: 0.4rem;
   letter-spacing: 0.01em;
   display: -webkit-box;
@@ -462,7 +462,7 @@ onUnmounted(() => {
   gap: 0.6rem;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: hsl(var(--muted-foreground));
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -482,8 +482,8 @@ onUnmounted(() => {
 .meta-avatar-frame {
   display: flex;
   align-items: center;
-  background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border) / 0.5);
   padding: 1px;
   border-radius: 2px;
 }
@@ -509,13 +509,13 @@ onUnmounted(() => {
 }
 
 .meta-channel:hover {
-  color: #fff;
+  color: hsl(var(--foreground));
 }
 
 .video-terminal-fallback {
   position: absolute;
   inset: 0;
-  background: #0a0a0a;
+  background: hsl(var(--muted) / 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -541,7 +541,7 @@ onUnmounted(() => {
 .fallback-status {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
-  color: #ff4d00;
+  color: hsl(var(--primary));
   letter-spacing: 0.3em;
   font-weight: 800;
   opacity: 0.6;
@@ -550,7 +550,7 @@ onUnmounted(() => {
 .fallback-id {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.5rem;
-  color: rgba(255, 255, 255, 0.15);
+  color: hsl(var(--muted-foreground) / 0.4);
   letter-spacing: 0.1em;
 }
 </style>

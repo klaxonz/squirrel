@@ -20,6 +20,35 @@ type VideoLike = {
 
 type ApiResult<T> = { data?: T | null; error?: unknown | null }
 
+type SubtitleCandidate = {
+  id: string
+  language: string
+  lang?: string
+}
+
+const subtitleCandidatesByDomain: Array<{ pattern: RegExp; candidates: SubtitleCandidate[] }> = [
+  {
+    pattern: /bilibili\.com/i,
+    candidates: [
+      { id: 'bili-ai-zh', language: '简体中文(AI)', lang: 'ai-zh' },
+      { id: 'bili-zh-CN', language: '简体中文', lang: 'zh-CN' },
+      { id: 'bili-zh', language: '中文', lang: 'zh' },
+    ],
+  },
+  {
+    pattern: /(?:youtube\.com|youtu\.be)/i,
+    candidates: [
+      { id: 'yt-en', language: 'English', lang: 'en' },
+      { id: 'yt-en-US', language: 'English (US)', lang: 'en-US' },
+    ],
+  },
+]
+
+const getSubtitleCandidates = (url: string | undefined): SubtitleCandidate[] => {
+  if (!url) return []
+  return subtitleCandidatesByDomain.find(({ pattern }) => pattern.test(url))?.candidates || []
+}
+
 export default function useVideoDetail(initialVideo: VideoLike | null = null) {
   const video = ref<VideoLike | null>(initialVideo)
   const managedSubtitleObjectUrls = new Set<string>()
@@ -77,24 +106,40 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
     const snapshot = video.value
     if (!snapshot || String(snapshot.id) !== String(videoId)) return
 
-    const url = snapshot.url
-    if (!url || !/bilibili\.com/.test(url)) return
+    const candidates = getSubtitleCandidates(snapshot.url)
+    if (!candidates.length) return
 
-    const { data, error } = (await getVideoSubtitles(videoId, { lang: 'ai-zh', fmt: 'srt' })) as ApiResult<string>
-    if (error || typeof data !== 'string' || data.length === 0) return
-    if (seq !== detailRequestSeq || !video.value || String(video.value.id) !== String(videoId)) return
+    for (const candidate of candidates) {
+      const currentVideo = video.value
+      if (!currentVideo || String(currentVideo.id) !== String(videoId)) return
 
-    const blob = new Blob([data], { type: 'text/plain;charset=utf-8' })
-    const objectUrl = URL.createObjectURL(blob)
-    managedSubtitleObjectUrls.add(objectUrl)
-    const subtitle: VideoSubtitle = { id: 'bili-ai-zh', language: '简体中文(AI)', url: objectUrl }
+      const existingSubtitles = Array.isArray(currentVideo.subtitles) ? currentVideo.subtitles : []
+      if (existingSubtitles.some((subtitle) => subtitle.id === candidate.id || subtitle.language === candidate.language)) {
+        return
+      }
 
-    if (seq !== detailRequestSeq || !video.value || String(video.value.id) !== String(videoId)) {
-      managedSubtitleObjectUrls.delete(objectUrl)
-      URL.revokeObjectURL(objectUrl)
+      const { data, error } = (await getVideoSubtitles(videoId, { lang: candidate.lang, fmt: 'srt' })) as ApiResult<string>
+      if (error || typeof data !== 'string' || data.length === 0) continue
+      if (seq !== detailRequestSeq || !video.value || String(video.value.id) !== String(videoId)) return
+
+      const blob = new Blob([data], { type: 'text/plain;charset=utf-8' })
+      const objectUrl = URL.createObjectURL(blob)
+      managedSubtitleObjectUrls.add(objectUrl)
+      const subtitle: VideoSubtitle = {
+        id: candidate.id,
+        language: candidate.language,
+        url: objectUrl,
+      }
+
+      if (seq !== detailRequestSeq || !video.value || String(video.value.id) !== String(videoId)) {
+        managedSubtitleObjectUrls.delete(objectUrl)
+        URL.revokeObjectURL(objectUrl)
+        return
+      }
+
+      video.value.subtitles = [subtitle, ...existingSubtitles]
       return
     }
-    video.value.subtitles = [subtitle, ...(video.value.subtitles || [])]
   }
 
   onScopeDispose(() => {

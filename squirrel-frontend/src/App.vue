@@ -155,11 +155,15 @@ import { MOBILE_NAV_ITEMS } from '@/constants/sidebar'
 import { isMobile } from './composables/useMobile'
 import { useGlobalSearch } from './composables/useGlobalSearch'
 import { useSystemConfig } from './composables/useSystemConfig'
+import { useAppTheme } from './composables/useAppTheme'
 import { Logger } from '@/utils/logger'
 
 const route = useRoute()
 const emitter = mitt()
 provide('emitter', emitter)
+
+// Initialize theme
+useAppTheme()
 
 const APP_TITLE = 'Squirrel'
 const desktopBridge = typeof window === 'undefined' ? null : window.desktopApp
@@ -497,8 +501,8 @@ body {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(circle at top, rgba(91, 139, 255, 0.12), transparent 32%),
-    linear-gradient(180deg, #091019 0%, #050505 56%);
+    radial-gradient(circle at top, var(--app-bg-gradient-top), transparent 32%),
+    linear-gradient(180deg, var(--app-bg-gradient-bottom-start) 0%, var(--app-bg-gradient-bottom-end) 56%);
 }
 
 .app-auth-shell {
@@ -512,8 +516,8 @@ body {
   z-index: 80;
   flex: 0 0 auto;
   height: 32px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(8, 10, 15, 0.95);
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  background: hsl(var(--background) / 0.95);
   backdrop-filter: blur(12px);
 }
 
@@ -543,13 +547,13 @@ body {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.65rem;
   font-weight: 800;
-  color: #ff4d00;
+  color: hsl(var(--primary));
   opacity: 0.9;
   margin-right: 0.85rem;
   padding: 0.1rem 0.35rem;
-  border: 1px solid rgba(255, 77, 0, 0.25);
+  border: 1px solid hsl(var(--primary) / 0.25);
   border-radius: 3px;
-  background: rgba(255, 77, 0, 0.03);
+  background: hsl(var(--primary) / 0.03);
   letter-spacing: 0.02em;
 }
 
@@ -563,7 +567,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 0.5);
+  color: hsl(var(--muted-foreground));
   font-size: 0.725rem;
   font-weight: 500;
   letter-spacing: 0.01em;
@@ -591,17 +595,17 @@ body {
   background: transparent;
   border: none;
   border-radius: 0;
-  color: rgba(255, 255, 255, 0.45);
+  color: hsl(var(--muted-foreground));
   transition: all 0.2s ease;
 }
 
 .desktop-window-controls__button:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.9);
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
 
 .desktop-window-controls__button:active {
-  background: rgba(255, 255, 255, 0.12);
+  background: hsl(var(--accent) / 0.8);
 }
 
 .desktop-window-controls__button--close:hover {
@@ -636,7 +640,7 @@ h6 {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: #050505;
+  background: hsl(var(--background));
 }
 
 .app-root--desktop .app-shell {
@@ -661,13 +665,13 @@ h6 {
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem 2rem 1rem 2rem;
-  background: linear-gradient(to bottom, #050505 0%, rgba(5, 5, 5, 0.8) 60%, transparent 100%);
+  background: linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--background) / 0.8) 60%, transparent 100%);
   pointer-events: none;
 }
 
 .minimal-header--compact {
   padding: 0.5rem 1rem;
-  background: linear-gradient(to bottom, #050505 0%, rgba(5, 5, 5, 0.92) 72%, rgba(5, 5, 5, 0.55) 100%);
+  background: linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--background) / 0.92) 72%, hsl(var(--background) / 0.55) 100%);
 }
 
 .header-left-spacer {

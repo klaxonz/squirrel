@@ -4,7 +4,7 @@
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <p class="board-kicker">最近运行</p>
-          <div class="h-px flex-1 bg-white/5"></div>
+          <div class="h-px flex-1 bg-border/50"></div>
           <span class="board-count font-mono">{{ displayRuns.length.toString().padStart(2, '0') }}</span>
         </div>
       </div>
@@ -26,15 +26,15 @@
         v-for="(run, index) in displayRuns"
         :key="run.run_id"
         type="button"
-        class="recent-row animate-scan"
+        class="recent-row animate-scan h-auto min-h-[3.5rem]"
         :class="[
           selectedRunId === run.run_id ? 'recent-row--active' : '',
           freshRunIds.has(run.run_id) ? 'recent-row--fresh' : '',
         ]"
         @click="emit('open-run', run.run_id)"
       >
-        <div class="recent-row__main">
-          <div class="recent-row__identity">
+        <div class="recent-row__main flex-col sm:flex-row items-start sm:items-center">
+          <div class="recent-row__identity w-full sm:w-auto">
             <SubscriptionAvatar
               :src="run.subscription_avatar"
               :name="run.subscription_name"
@@ -43,21 +43,23 @@
 
             <div class="min-w-0 flex-1">
               <div class="recent-row__title">
-                <h3 class="truncate text-sm font-bold text-white/70">{{ run.subscription_name }}</h3>
+                <h3 class="truncate text-sm font-bold text-foreground/70">{{ run.subscription_name }}</h3>
               </div>
-              <div class="recent-row__meta font-mono inline-flex items-center gap-1.5 mt-1">
+              <div class="recent-row__meta font-mono flex flex-wrap items-center gap-1.5 mt-1">
                 <SiteIcon
                   v-if="run.site"
                   :icon-url="run.site_icon_url"
                   :label="run.site"
                   size="xs"
                 />
-                <span>{{ getSyncModeLabel(run.sync_mode) }} · {{ getMetaTimestamp(run) }}</span>
+                <span>{{ getSyncModeLabel(run.sync_mode) }}</span>
+                <span class="opacity-10 sm:inline hidden">·</span>
+                <span class="truncate">{{ getMetaTimestamp(run) }}</span>
               </div>
             </div>
           </div>
 
-          <div class="metric-inline">
+          <div class="metric-inline mt-3 sm:mt-0 w-full sm:w-auto justify-start sm:justify-end">
             <div class="metric-group">
               <span class="metric-label">发现</span>
               <span class="metric-value font-mono">{{ run.videos_found }}</span>
@@ -235,7 +237,7 @@ const getStatusChipClass = (status: string) => {
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.8);
+  color: hsl(var(--foreground) / 0.8);
 }
 
 .board-count {
@@ -252,6 +254,12 @@ const getStatusChipClass = (status: string) => {
   gap: 0.5rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.board-list::-webkit-scrollbar {
+  display: none;
 }
 
 .recent-row {
@@ -269,7 +277,7 @@ const getStatusChipClass = (status: string) => {
 
 .recent-row:hover {
   transform: translateX(6px);
-  background: rgba(255, 255, 255, 0.02);
+  background: hsl(var(--foreground) / 0.02);
 }
 
 .recent-row--active {
@@ -312,7 +320,7 @@ const getStatusChipClass = (status: string) => {
   margin-top: 0.2rem;
   font-size: 9px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.2);
+  color: hsl(var(--muted-foreground) / 0.4);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -334,14 +342,14 @@ const getStatusChipClass = (status: string) => {
 .metric-label {
   font-size: 7px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.15);
+  color: hsl(var(--muted-foreground) / 0.3);
   letter-spacing: 0.2em;
 }
 
 .metric-value {
   font-size: 14px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.4);
+  color: hsl(var(--foreground) / 0.6);
 }
 
 .lane-card-enter-active,

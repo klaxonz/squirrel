@@ -196,14 +196,14 @@ defineExpose({
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.05em;
-  color: rgba(255, 255, 255, 0.05);
+  color: hsl(var(--muted-foreground) / 0.1);
 }
 
 .empty-copy {
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.6rem;
   letter-spacing: 0.4em;
-  color: rgba(255, 255, 255, 0.15);
+  color: hsl(var(--muted-foreground) / 0.3);
   text-transform: uppercase;
 }
 

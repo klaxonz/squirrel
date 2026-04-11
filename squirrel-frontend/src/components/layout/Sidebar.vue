@@ -63,24 +63,23 @@ const handleLogout = async () => {
 <style scoped>
 .sidebar-minimal {
   width: var(--sidebar-width, 11rem);
-  background: #050505;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  background: hsl(var(--sidebar));
+  border-right: 1px solid hsl(var(--sidebar-border));
   display: flex;
   flex-direction: column;
 }
 
 .sidebar-header-minimal {
   padding: 2rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid hsl(var(--sidebar-border) / 0.5);
 }
 
 .sidebar-brand-minimal {
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.05em;
-  color: #fff;
+  color: hsl(var(--primary));
   text-decoration: none;
-  opacity: 0.9;
 }
 
 .section-header-neon {
@@ -94,7 +93,7 @@ const handleLogout = async () => {
   font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: rgba(255, 255, 255, 0.15);
+  color: hsl(var(--sidebar-foreground) / 0.4);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -102,7 +101,7 @@ const handleLogout = async () => {
 .section-line {
   height: 1px;
   flex: 1;
-  background: rgba(255, 255, 255, 0.03);
+  background: hsl(var(--sidebar-border) / 0.5);
 }
 
 .sidebar-nav-neon {
@@ -111,13 +110,13 @@ const handleLogout = async () => {
 
 .sidebar-footer-minimal {
   padding: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  border-top: 1px solid hsl(var(--sidebar-border) / 0.5);
 }
 
 .logout-btn-minimal {
-  --neon-primary: #ff4d00;
-  --neon-primary-glow: rgba(255, 77, 0, 0.8);
-  --neon-primary-bg: rgba(255, 77, 0, 0.05);
+  --neon-primary: hsl(var(--primary));
+  --neon-primary-glow: hsl(var(--primary) / 0.8);
+  --neon-primary-bg: hsl(var(--primary) / 0.05);
 
   position: relative;
   width: 100%;
@@ -125,7 +124,7 @@ const handleLogout = async () => {
   padding: 1.25rem 1rem;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.3);
+  color: hsl(var(--sidebar-foreground) / 0.5);
   text-decoration: none;
   transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
   cursor: pointer;
@@ -133,13 +132,13 @@ const handleLogout = async () => {
 }
 
 .logout-btn-minimal:hover {
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.02);
+  color: hsl(var(--sidebar-foreground));
+  background: hsl(var(--sidebar-accent));
 }
 
 .logout-btn-minimal:hover .menu-icon {
   transform: translateX(2px);
-  color: #fff;
+  color: hsl(var(--primary));
 }
 
 .logout-content {

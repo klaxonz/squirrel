@@ -119,7 +119,7 @@ watch(() => props.subscriptionId, () => {
   padding: 0;
   background: transparent;
   overflow: hidden;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
 }
 
 .channel-header__container {
@@ -137,7 +137,7 @@ watch(() => props.subscriptionId, () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to right, rgba(255, 77, 0, 0.02) 0%, transparent 50%);
+  background: linear-gradient(to right, hsl(var(--primary) / 0.02) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -192,7 +192,7 @@ watch(() => props.subscriptionId, () => {
   left: 0;
   width: 100%;
   height: 2px;
-  background: #ff4d00;
+  background: hsl(var(--primary));
   opacity: 0.3;
   animation: scan-avatar 3s linear infinite;
 }
@@ -235,7 +235,7 @@ watch(() => props.subscriptionId, () => {
   font-size: 1.15rem;
   line-height: 1.15;
   font-weight: 800;
-  color: #fff;
+  color: hsl(var(--foreground));
   letter-spacing: -0.02em;
   min-width: 0;
   overflow: hidden;
@@ -246,8 +246,8 @@ watch(() => props.subscriptionId, () => {
 .nsfw-tag {
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.55rem;
-  color: #ff4d00;
-  border: 1px solid #ff4d00;
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary));
   padding: 2px 6px;
   width: fit-content;
   flex-shrink: 0;
@@ -256,7 +256,7 @@ watch(() => props.subscriptionId, () => {
 .nsfw-tag--muted {
   border: none;
   padding: 0;
-  color: rgba(255, 77, 0, 0.7);
+  color: hsl(var(--primary) / 0.7);
 }
 
 .channel-stats-minimal {
@@ -278,7 +278,7 @@ watch(() => props.subscriptionId, () => {
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.58rem;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.2);
+  color: hsl(var(--muted-foreground) / 0.4);
   letter-spacing: 0.1em;
 }
 
@@ -286,13 +286,13 @@ watch(() => props.subscriptionId, () => {
   font-family: 'Courier New', Courier, monospace;
   font-size: 1.02rem;
   line-height: 1.05;
-  color: rgba(255, 255, 255, 0.6);
+  color: hsl(var(--foreground) / 0.6);
 }
 
 .unsubscribe-minimal {
   background: transparent;
   border: none;
-  color: rgba(255, 77, 0, 0.7);
+  color: hsl(var(--primary) / 0.7);
   font-size: 0.54rem;
   padding: 0;
   letter-spacing: 0.1em;
@@ -305,21 +305,21 @@ watch(() => props.subscriptionId, () => {
 }
 
 .unsubscribe-minimal--tag {
-  border: 1px solid #ff4d00;
-  color: #ff4d00;
+  border: 1px solid hsl(var(--primary));
+  color: hsl(var(--primary));
   padding: 2px 6px;
   margin-top: 0;
 }
 
 .unsubscribe-minimal:hover {
-  color: #ff4d00;
+  color: hsl(var(--primary));
 }
 
 .channel-desc-minimal {
   margin-top: 0.45rem;
   max-width: 600px;
   font-size: 0.66rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: hsl(var(--muted-foreground) / 0.6);
   line-height: 1.42;
 }
 

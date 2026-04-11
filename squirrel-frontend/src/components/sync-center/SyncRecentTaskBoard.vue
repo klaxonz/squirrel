@@ -4,7 +4,7 @@
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <p class="board-kicker">最近任务</p>
-          <div class="h-px flex-1 bg-white/5"></div>
+          <div class="h-px flex-1 bg-border/50"></div>
           <span class="board-count font-mono">{{ items.length.toString().padStart(2, '0') }}</span>
         </div>
       </div>
@@ -25,11 +25,11 @@
       <div
         v-for="(item, index) in items"
         :key="item.run_id || `${item.subscription_id}-${index}`"
-        class="recent-row animate-scan"
+        class="recent-row animate-scan h-auto min-h-[3.5rem]"
         :class="item.sync_status === 'failed' ? 'recent-row--failed' : ''"
       >
-        <div class="recent-row__main">
-          <div class="recent-row__identity">
+        <div class="recent-row__main flex-col sm:flex-row items-start sm:items-center">
+          <div class="recent-row__identity w-full sm:w-auto">
             <SubscriptionAvatar
               :src="item.subscription_avatar"
               :name="item.subscription_name"
@@ -38,9 +38,9 @@
 
             <div class="min-w-0 flex-1">
               <div class="recent-row__title">
-                <h3 class="truncate text-sm font-bold text-white/70">{{ item.subscription_name }}</h3>
+                <h3 class="truncate text-sm font-bold text-foreground/70">{{ item.subscription_name }}</h3>
               </div>
-              <div class="recent-row__meta recent-row__meta--with-icon font-mono">
+              <div class="recent-row__meta recent-row__meta--with-icon font-mono flex flex-wrap items-center gap-1.5 mt-1">
                 <SiteIcon
                   v-if="item.site"
                   :icon-url="item.site_icon_url"
@@ -48,12 +48,14 @@
                   size="xs"
                   class="recent-row__site-icon"
                 />
-                <span>{{ getSyncModeLabel(item.sync_mode) }} · {{ formatDate(item.updated_at || item.last_success_at) }}</span>
+                <span>{{ getSyncModeLabel(item.sync_mode) }}</span>
+                <span class="opacity-10 sm:inline hidden">·</span>
+                <span>{{ formatDate(item.updated_at || item.last_success_at) }}</span>
               </div>
             </div>
           </div>
 
-          <div class="metric-inline">
+          <div class="metric-inline mt-3 sm:mt-0 w-full sm:w-auto justify-start sm:justify-end">
             <div class="metric-group">
               <span class="metric-label">总数</span>
               <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
@@ -131,7 +133,7 @@ defineProps<{
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.8);
+  color: hsl(var(--foreground) / 0.8);
 }
 
 .board-count {
@@ -148,6 +150,12 @@ defineProps<{
   gap: 0.5rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.board-list::-webkit-scrollbar {
+  display: none;
 }
 
 .recent-row {
@@ -165,7 +173,7 @@ defineProps<{
 
 .recent-row:hover {
   transform: translateX(6px);
-  background: rgba(255, 255, 255, 0.02);
+  background: hsl(var(--foreground) / 0.02);
 }
 
 .recent-row--failed {
@@ -199,7 +207,7 @@ defineProps<{
   margin-top: 0.2rem;
   font-size: 9px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.2);
+  color: hsl(var(--muted-foreground) / 0.4);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -231,14 +239,14 @@ defineProps<{
 .metric-label {
   font-size: 6px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.15);
+  color: hsl(var(--muted-foreground) / 0.3);
   letter-spacing: 0.2em;
 }
 
 .metric-value {
   font-size: 12px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.4);
+  color: hsl(var(--foreground) / 0.6);
 }
 
 .lane-card-enter-active,

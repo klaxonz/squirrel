@@ -55,9 +55,9 @@ const props = defineProps({
   position: relative;
   aspect-ratio: 16/9;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03);
+  background: hsl(var(--foreground) / 0.03);
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid hsl(var(--foreground) / 0.05);
 }
 
 .shimmer {
@@ -66,7 +66,7 @@ const props = defineProps({
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.05),
+    hsl(var(--foreground) / 0.05),
     transparent
   );
   animation: shimmer 1.5s infinite;
@@ -84,19 +84,19 @@ const props = defineProps({
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.4) 100%);
+  background: linear-gradient(to bottom, hsl(var(--background) / 0.2) 0%, transparent 30%, transparent 70%, hsl(var(--background) / 0.4) 100%);
 }
 
 .skeleton-tag {
   height: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: hsl(var(--foreground) / 0.05);
   border-radius: 2px;
   width: 40px;
 }
 
 .skeleton-time {
   height: 12px;
-  background: rgba(255, 255, 255, 0.1);
+  background: hsl(var(--foreground) / 0.1);
   border-radius: 2px;
 }
 
@@ -106,7 +106,7 @@ const props = defineProps({
 
 .skeleton-title {
   height: 14px;
-  background: rgba(255, 255, 255, 0.07);
+  background: hsl(var(--foreground) / 0.07);
   border-radius: 2px;
 }
 
@@ -127,13 +127,13 @@ const props = defineProps({
 .skeleton-avatar {
   width: 14px;
   height: 14px;
-  background: rgba(255, 255, 255, 0.07);
+  background: hsl(var(--foreground) / 0.07);
   border-radius: 2px;
 }
 
 .skeleton-text {
   height: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: hsl(var(--foreground) / 0.05);
   border-radius: 2px;
 }
 </style>

@@ -6,6 +6,9 @@ const useVideoOperationsPath = new URL('../src/composables/useVideoOperations.ts
 const useVideoDetailPath = new URL('../src/composables/useVideoDetail.ts', import.meta.url)
 const usePlaybackOrchestratorPath = new URL('../src/composables/usePlaybackOrchestrator.ts', import.meta.url)
 const hlsPluginPath = new URL('../src/components/video-player/plugins/hls/HlsPlugin.ts', import.meta.url)
+const subtitlesPluginPath = new URL('../src/components/video-player/plugins/subtitles/SubtitlesPlugin.ts', import.meta.url)
+const videoPlayerPath = new URL('../src/components/video-player/VideoPlayer.vue', import.meta.url)
+const usePlayerPath = new URL('../src/components/video-player/runtime/usePlayer.ts', import.meta.url)
 
 test('video operations synthesize an mpd fallback when backend returns split audio and video streams', async () => {
   const source = await readFile(useVideoOperationsPath, 'utf8')
@@ -33,6 +36,16 @@ test('video detail revokes generated subtitle object urls when replacing the act
   assert.match(source, /managedSubtitleObjectUrls\.add\(objectUrl\)/)
 })
 
+test('video detail requests subtitles through per-site candidate lists instead of a bilibili-only hardcode', async () => {
+  const source = await readFile(useVideoDetailPath, 'utf8')
+
+  assert.match(source, /pattern: \/bilibili\\\.com\/i/)
+  assert.match(source, /pattern: \/\(\?:youtube\\\.com\|youtu\\\.be\)\/i/)
+  assert.match(source, /const candidates = getSubtitleCandidates\(snapshot\.url\)/)
+  assert.match(source, /getVideoSubtitles\(videoId, \{ lang: candidate\.lang, fmt: 'srt' \}\)/)
+  assert.doesNotMatch(source, /if \(!url \|\| !\/bilibili\\\.com\/\.test\(url\)\) return/)
+})
+
 test('playback orchestrator invalidates stale detail writes before seeding a new snapshot', async () => {
   const source = await readFile(usePlaybackOrchestratorPath, 'utf8')
 
@@ -50,4 +63,31 @@ test('hls plugin clears scheduled retry timers when sources change or the plugin
   assert.match(source, /this\.reloadTimer = setTimeout\(/)
   assert.match(source, /clearTimeout\(this\.retryTimer\)/)
   assert.match(source, /clearTimeout\(this\.reloadTimer\)/)
+})
+
+test('subtitle plugin clears active subtitle state when tracks disappear', async () => {
+  const source = await readFile(subtitlesPluginPath, 'utf8')
+
+  assert.match(source, /if \(tracks\.length === 0\) \{/)
+  assert.match(source, /this\.currentTrack = null/)
+  assert.match(source, /this\.cues = \[\]/)
+  assert.match(source, /this\.disable\(\)/)
+})
+
+test('player runtime keeps subtitle selection state aligned with incoming tracks', async () => {
+  const source = await readFile(usePlayerPath, 'utf8')
+
+  assert.match(source, /const nextTrack = tracks\.find\(\(track\) => track\.id === currentSubtitle\.value\?\.id\)/)
+  assert.match(source, /store\.setCurrentSubtitle\(nextTrack\)/)
+  assert.match(source, /store\.setSubtitlesEnabled\(!!nextTrack\)/)
+})
+
+test('video player exposes subtitle settings alongside quick toggle controls', async () => {
+  const source = await readFile(videoPlayerPath, 'utf8')
+
+  assert.match(source, /settingsView === 'subtitles'/)
+  assert.match(source, /{{ t\('subtitleSettings'\) }}/)
+  assert.match(source, /handleSubtitleSelect\(track\)/)
+  assert.match(source, /handleSubtitleDisable/)
+  assert.match(source, /const subtitleMenuLabel = computed\(\(\) => \{/)
 })

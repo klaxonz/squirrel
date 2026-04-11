@@ -133,19 +133,19 @@ watch(localSite, (value) => emit('update:site', value))
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: rgba(255, 255, 255, 0.2);
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
   transition: all 0.3s;
   padding: 0.5rem 0;
 }
 
 .tab-item-minimal:hover {
-  color: rgba(255, 255, 255, 0.6);
+  color: hsl(var(--foreground) / 0.6);
 }
 
 .tab-item-minimal.is-active {
-  color: #fff;
-  border-bottom: 1px solid #ff4d00;
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--primary));
 }
 
 .tab-label {
@@ -189,18 +189,18 @@ watch(localSite, (value) => emit('update:site', value))
   height: 1rem;
   opacity: 0.5;
   transition: all 0.3s;
-  color: rgba(255, 255, 255, 0.3);
+  color: hsl(var(--muted-foreground));
 }
 
 .refresh-minimal:hover .refresh-icon {
   opacity: 1;
-  color: #ff4d00;
+  color: hsl(var(--primary));
 }
 
 .is-spinning {
   animation: spin 1s linear infinite;
   opacity: 1;
-  color: #ff4d00;
+  color: hsl(var(--primary));
 }
 
 @keyframes spin {

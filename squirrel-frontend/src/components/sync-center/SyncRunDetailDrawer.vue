@@ -3,45 +3,45 @@
     <SheetContent side="right" class="w-full max-w-2xl border-l border-border/40 bg-background p-0 shadow-2xl">
       <div v-if="run" class="flex h-full flex-col overflow-hidden">
         <!-- Drawer Header -->
-        <div class="px-8 pt-10 pb-6">
-          <div class="flex items-start justify-between gap-6">
-            <div class="flex min-w-0 items-center gap-4">
+        <div class="px-4 sm:px-8 pt-8 sm:pt-10 pb-4 sm:pb-6">
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 sm:gap-6">
+            <div class="flex min-w-0 items-center gap-3 sm:gap-4">
               <img
                 :src="getAvatarSrc(run.subscription_avatar, `run-drawer-${run.run_id}`)"
                 :alt="run.subscription_name"
-                class="h-14 w-14 rounded-xl object-cover ring-1 ring-border/40 shadow-sm"
+                class="h-10 w-10 sm:h-14 sm:w-14 rounded-xl object-cover ring-1 ring-border/40 shadow-sm"
                 referrerpolicy="no-referrer"
                 @error="(e) => handleAvatarError(e, `run-drawer-${run?.run_id || 'unknown'}`)"
               >
-              <div class="min-w-0 space-y-1">
-                <h2 class="text-xl font-bold tracking-tight text-foreground/90 truncate max-w-[18rem]">
+              <div class="min-w-0 space-y-0.5 sm:space-y-1">
+                <h2 class="text-lg sm:text-xl font-bold tracking-tight text-foreground/90 truncate max-w-[14rem] sm:max-w-[18rem]">
                   {{ run.subscription_name }}
                 </h2>
                 <div class="flex items-center gap-2">
-                  <div :class="[getStatusToneClass(run.status), 'h-2 w-2 rounded-full']"></div>
-                  <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
+                  <div :class="[getStatusToneClass(run.status), 'h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full']"></div>
+                  <span class="inline-flex items-center gap-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
                     <span>{{ getStatusLabel(run.status) }}</span>
                   </span>
                 </div>
               </div>
             </div>
-            <Button variant="outline" size="sm" class="h-8 rounded-lg text-[11px] font-bold uppercase tracking-wider" as-child>
+            <Button variant="outline" size="sm" class="h-8 sm:self-start self-end rounded-lg text-[10px] sm:text-[11px] font-bold uppercase tracking-wider" as-child>
               <router-link :to="getSubscriptionLink(run.subscription_id)">去频道</router-link>
             </Button>
           </div>
         </div>
 
         <!-- Scrollable Content -->
-        <div class="flex-1 overflow-y-auto px-8 py-4 space-y-10 selection:bg-primary/10">
+        <div class="flex-1 overflow-y-auto px-4 sm:px-8 py-4 space-y-8 sm:space-y-10 selection:bg-primary/10">
           <!-- Quick Stats -->
-          <div class="grid grid-cols-2 gap-4">
-            <div class="rounded-xl border border-border/40 bg-muted/10 p-4 transition-colors hover:bg-muted/20">
-              <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">持续时间</p>
-              <p class="mt-2 text-lg font-bold tabular-nums text-foreground/80">{{ formatDurationMs(run.duration_ms) }}</p>
+          <div class="grid grid-cols-2 gap-3 sm:gap-4">
+            <div class="rounded-xl border border-border/40 bg-muted/10 p-3 sm:p-4 transition-colors hover:bg-muted/20">
+              <p class="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">持续时间</p>
+              <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold tabular-nums text-foreground/80">{{ formatDurationMs(run.duration_ms) }}</p>
             </div>
-            <div class="rounded-xl border border-border/40 bg-muted/10 p-4 transition-colors hover:bg-muted/20">
-              <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">已提取</p>
-              <p class="mt-2 text-lg font-bold tabular-nums text-foreground/80">{{ run.videos_extracted }} 项</p>
+            <div class="rounded-xl border border-border/40 bg-muted/10 p-3 sm:p-4 transition-colors hover:bg-muted/20">
+              <p class="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">已提取</p>
+              <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold tabular-nums text-foreground/80">{{ run.videos_extracted }} 项</p>
             </div>
           </div>
 

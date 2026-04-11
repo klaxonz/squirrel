@@ -48,7 +48,7 @@
                 </div>
 
                 <div class="settings-section-content p-6 rounded-[2rem] bg-card/40 border border-border/10 backdrop-blur-sm">
-                  <TransitionGroup name="staggered-reveal" tag="div" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <TransitionGroup name="staggered-reveal" tag="div" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <button
                       v-for="(option, index) in themeOptions"
                       :key="option.value"
@@ -320,10 +320,12 @@ import {
   Moon,
   Palette,
   PlayCircle,
+  Rocket,
   Settings2,
   ShieldAlert,
   ShieldCheck,
   Sun,
+  Zap,
 } from 'lucide-vue-next';
 import { revokeUserSessions, updateUserPassword } from '@/api'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -354,6 +356,8 @@ const themeOptions: Array<{ value: AppThemeMode; label: string; description: str
   { value: 'light', label: '浅色', description: '浅色主题', icon: Sun },
   { value: 'dark', label: '深色', description: '深色主题', icon: Moon },
   { value: 'system', label: '系统', description: '跟随系统', icon: Monitor },
+  { value: 'cyber', label: '赛博', description: '霓虹工业', icon: Zap },
+  { value: 'scifi', label: '科幻', description: '星际流体', icon: Rocket },
 ]
 
 const { themeMode, setThemeMode } = useAppTheme()

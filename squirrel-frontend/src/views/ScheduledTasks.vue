@@ -2,20 +2,20 @@
   <div class="scheduled-page tactical-terminal min-h-full selection:bg-primary/10">
     <div class="matrix-bg"></div>
     <!-- Header Area -->
-    <div class="px-8 pt-8 pb-6 border-b border-border/10 relative z-10">
+    <div class="px-8 pt-8 pb-6 border-b border-border/50 relative z-10">
       <div class="max-w-[1440px] mx-auto w-full space-y-8">
         <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div class="space-y-1">
-            <h1 class="text-xl font-bold tracking-tighter text-foreground/90 uppercase font-mono">任务调度</h1>
-            <p class="text-[10px] font-medium text-orange-500/60 uppercase tracking-[0.2em] font-mono">全局自动化执行流水线与任务负载监控</p>
+            <h1 class="text-xl font-bold tracking-tighter text-foreground uppercase font-mono">任务调度</h1>
+            <p class="text-[10px] font-medium text-primary/60 uppercase tracking-[0.2em] font-mono">全局自动化执行流水线与任务负载监控</p>
           </div>
           
           <div class="flex items-center gap-4">
             <!-- Scheduler Toggle -->
-            <div class="flex items-center gap-3 px-3 py-1 rounded border border-white/5 bg-black/40">
-              <div :class="['h-1.5 w-1.5 rounded-full', schedulerStatus?.running ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] animate-pulse' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]']"></div>
-              <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 font-mono">调度器: {{ schedulerStatus?.running ? '就绪' : '暂停' }}</span>
-              <div class="mx-1 h-3 w-px bg-white/5"></div>
+            <div class="flex items-center gap-3 px-3 py-1 rounded border border-border/50 bg-secondary/40">
+              <div :class="['h-1.5 w-1.5 rounded-full', schedulerStatus?.running ? 'bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)] animate-pulse' : 'bg-rose-500 dark:bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.4)]']"></div>
+              <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 font-mono">调度器: {{ schedulerStatus?.running ? '就绪' : '暂停' }}</span>
+              <div class="mx-1 h-3 w-px bg-border/50"></div>
               <Switch 
                 :checked="schedulerStatus?.running" 
                 @update:checked="toggleScheduler"
@@ -102,7 +102,7 @@
         </div>
 
         <div class="ml-auto flex items-center pr-1">
-          <Button variant="ghost" size="xs" class="h-7 w-7 p-0 text-muted-foreground/60 hover:text-foreground" :disabled="loading" @click="loadTasks">
+          <Button variant="ghost" size="xs" class="h-7 w-7 p-0 text-muted-foreground/70 dark:text-muted-foreground/80 hover:text-foreground hover:bg-muted/30" :disabled="loading" @click="loadTasks">
             <Search class="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -113,14 +113,14 @@
         <div class="flex-1 overflow-auto custom-scrollbar">
           <table class="w-full text-left border-collapse min-w-[1000px] text-[12px]">
             <thead>
-              <tr class="sticky top-0 z-10 bg-black/40 backdrop-blur-md border-b border-border/40">
-                <th class="pl-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">任务详情</th>
-                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40 w-32">当前状态</th>
-                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40 w-32">调度配置</th>
-                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">最后一次执行</th>
-                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40">下一次计划</th>
-                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40 w-44">负载与健康</th>
-                <th class="pr-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40 text-right w-16">操作</th>
+              <tr class="sticky top-0 z-10 bg-secondary/80 backdrop-blur-md border-b border-border/50">
+                <th class="pl-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">任务详情</th>
+                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 w-32">当前状态</th>
+                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 w-32">调度配置</th>
+                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">最后一次执行</th>
+                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">下一次计划</th>
+                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 w-44">负载与健康</th>
+                <th class="pr-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 text-right w-16">操作</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border/10">
@@ -132,7 +132,7 @@
                       <span class="px-1.5 py-0.5 rounded bg-muted/40 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40">{{ getTypeText(task.task_type) }}</span>
                     </div>
                     <p class="text-[10px] font-medium text-muted-foreground/30 line-clamp-1 max-w-[280px]">{{ task.description || '无详细描述' }}</p>
-                    <div v-if="task.last_error" class="mt-1 flex items-center gap-1.5 text-[9px] text-rose-500/50 font-semibold uppercase tracking-tight" :title="task.last_error">
+                    <div v-if="task.last_error" class="mt-1 flex items-center gap-1.5 text-[9px] text-rose-500/50 dark:text-rose-400/50 font-semibold uppercase tracking-tight" :title="task.last_error">
                       <AlertCircle class="h-2.5 w-2.5 shrink-0" />
                       <span class="truncate">{{ task.last_error }}</span>
                     </div>
@@ -168,8 +168,8 @@
                       <span class="text-foreground/30 tabular-nums">{{ task.success_count }} / {{ task.run_count }}</span>
                     </div>
                     <div class="h-0.5 w-full bg-muted/10 rounded-full overflow-hidden">
-                      <div 
-                        class="h-full bg-primary/30 transition-all duration-700 ease-out"
+                      <div
+                        class="h-full bg-primary/30 dark:bg-primary/40 transition-all duration-700 ease-out"
                         :style="{ width: `${calculateSuccessRate(task)}%` }"
                       ></div>
                     </div>
@@ -179,14 +179,14 @@
                 <td class="pr-6 py-4 text-right align-middle">
                   <DropdownMenu>
                     <DropdownMenuTrigger as-child>
-                      <Button variant="ghost" size="sm" class="h-8 w-8 p-0 text-muted-foreground/20 hover:text-foreground hover:bg-background rounded-lg transition-all">
+                      <Button variant="ghost" size="sm" class="h-8 w-8 p-0 text-muted-foreground/30 dark:text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 rounded-lg transition-all">
                         <MoreVertical class="h-3.5 w-3.5" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" class="w-40 border-border/40 bg-card/95 backdrop-blur-xl">
-                      <DropdownMenuLabel class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 px-3 py-2">配置选项</DropdownMenuLabel>
+                      <DropdownMenuLabel class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 dark:text-muted-foreground/60 px-3 py-2">配置选项</DropdownMenuLabel>
                       <DropdownMenuItem @click="executeTaskNow(task.id)" :disabled="loading" class="gap-2 px-3 py-1.5 cursor-pointer">
-                        <Play class="h-3 w-3 text-emerald-500/60" />
+                        <Play class="h-3 w-3 text-emerald-500/60 dark:text-emerald-400/60" />
                         <span class="text-[11px] font-bold uppercase tracking-tight">立即触发</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem @click="editTask(task)" class="gap-2 px-3 py-1.5 cursor-pointer">
@@ -195,18 +195,18 @@
                       </DropdownMenuItem>
                       <DropdownMenuSeparator class="bg-border/20" />
                       <DropdownMenuItem v-if="task.is_active" @click="disableTask(task.id)" class="gap-2 px-3 py-1.5 cursor-pointer">
-                        <Pause class="h-3 w-3 text-amber-500/60" />
+                        <Pause class="h-3 w-3 text-amber-500/60 dark:text-amber-400/60" />
                         <span class="text-[11px] font-bold uppercase tracking-tight">禁用调度</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem v-else @click="enableTask(task.id)" class="gap-2 px-3 py-1.5 cursor-pointer">
-                        <Zap class="h-3 w-3 text-primary/60" />
+                        <Zap class="h-3 w-3 text-primary/60 dark:text-primary/50" />
                         <span class="text-[11px] font-bold uppercase tracking-tight">恢复调度</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator class="bg-border/20" />
-                      <DropdownMenuItem 
-                        @click="deleteTask(task.id)" 
+                      <DropdownMenuItem
+                        @click="deleteTask(task.id)"
                         :disabled="task.task_type === 'system'"
-                        class="gap-2 px-3 py-1.5 text-rose-500/70 focus:text-rose-600 focus:bg-rose-500/5 cursor-pointer"
+                        class="gap-2 px-3 py-1.5 text-rose-500/70 dark:text-rose-400/70 focus:text-rose-600 dark:focus:text-rose-300 focus:bg-rose-500/5 dark:focus:bg-rose-400/5 cursor-pointer"
                       >
                         <Trash2 class="h-3 w-3" />
                         <span class="text-[11px] font-bold uppercase tracking-tight">移除任务</span>
@@ -225,22 +225,22 @@
             共 {{ statistics.total_tasks }} 个任务实例
           </p>
           <div class="flex items-center gap-1.5">
-            <Button 
-              variant="ghost" 
-              size="xs" 
-              class="h-8 px-4 text-[11px] font-bold rounded-lg border border-border/40" 
+            <Button
+              variant="ghost"
+              size="xs"
+              class="h-8 px-4 text-[11px] font-bold rounded-lg border border-border/40 text-muted-foreground/60 dark:text-muted-foreground/70 hover:text-foreground hover:bg-muted/30 disabled:opacity-40"
               :disabled="currentPage <= 1 || loading"
               @click="goToPage(currentPage - 1)"
             >
               上一页
             </Button>
-            <span class="text-[11px] font-bold text-muted-foreground/20 mx-4 uppercase tracking-[0.1em]">
+            <span class="text-[11px] font-bold text-muted-foreground/30 dark:text-muted-foreground/40 mx-4 uppercase tracking-[0.1em]">
               第 {{ currentPage }} / {{ totalPages }} 页
             </span>
-            <Button 
-              variant="ghost" 
-              size="xs" 
-              class="h-8 px-4 text-[11px] font-bold rounded-lg border border-border/40" 
+            <Button
+              variant="ghost"
+              size="xs"
+              class="h-8 px-4 text-[11px] font-bold rounded-lg border border-border/40 text-muted-foreground/60 dark:text-muted-foreground/70 hover:text-foreground hover:bg-muted/30 disabled:opacity-40"
               :disabled="currentPage >= totalPages || loading"
               @click="goToPage(currentPage + 1)"
             >
@@ -331,45 +331,45 @@ const editingTask = ref(null)
 
 // Signal Matrix Configuration
 const signals = computed(() => [
-  { 
-    key: 'total', 
-    label: '任务总数', 
-    value: statistics.value.total_tasks, 
-    icon: Layers, 
-    bg: 'bg-slate-500/10', 
-    color: 'text-slate-500' 
+  {
+    key: 'total',
+    label: '任务总数',
+    value: statistics.value.total_tasks,
+    icon: Layers,
+    bg: 'bg-slate-500/10 dark:bg-slate-400/10',
+    color: 'text-slate-500 dark:text-slate-600'
   },
-  { 
-    key: 'active', 
-    label: '活跃实例', 
-    value: statistics.value.active_tasks, 
-    icon: Zap, 
-    bg: 'bg-emerald-500/10', 
-    color: 'text-emerald-600' 
+  {
+    key: 'active',
+    label: '活跃实例',
+    value: statistics.value.active_tasks,
+    icon: Zap,
+    bg: 'bg-emerald-500/10 dark:bg-emerald-400/10',
+    color: 'text-emerald-600 dark:text-emerald-500'
   },
-  { 
-    key: 'running', 
-    label: '正在运行', 
-    value: statistics.value.running_tasks, 
-    icon: Timer, 
-    bg: 'bg-blue-500/10', 
-    color: 'text-blue-600' 
+  {
+    key: 'running',
+    label: '正在运行',
+    value: statistics.value.running_tasks,
+    icon: Timer,
+    bg: 'bg-blue-500/10 dark:bg-blue-400/10',
+    color: 'text-blue-600 dark:text-blue-500'
   },
-  { 
-    key: 'error', 
-    label: '异常告警', 
-    value: statistics.value.error_tasks, 
-    icon: AlertCircle, 
-    bg: 'bg-rose-500/10', 
-    color: 'text-rose-600' 
+  {
+    key: 'error',
+    label: '异常告警',
+    value: statistics.value.error_tasks,
+    icon: AlertCircle,
+    bg: 'bg-rose-500/10 dark:bg-rose-400/10',
+    color: 'text-rose-600 dark:text-rose-500'
   },
-  { 
-    key: 'today', 
-    label: '今日完成', 
-    value: statistics.value.today_executions, 
-    icon: CheckCircle2, 
-    bg: 'bg-emerald-500/10', 
-    color: 'text-emerald-600' 
+  {
+    key: 'today',
+    label: '今日完成',
+    value: statistics.value.today_executions,
+    icon: CheckCircle2,
+    bg: 'bg-emerald-500/10 dark:bg-emerald-400/10',
+    color: 'text-emerald-600 dark:text-emerald-500'
   },
 ])
 
@@ -511,11 +511,11 @@ const getUnitLabel = (unit) => {
 
 const getStatusDotColor = (status) => {
   switch (status) {
-    case 'enabled': return 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]'
+    case 'enabled': return 'bg-emerald-400 dark:bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.4)]'
     case 'running': return 'bg-primary shadow-[0_0_8px_rgba(59,130,246,0.4)] animate-pulse'
-    case 'disabled': return 'bg-slate-500/20 shadow-none'
-    case 'error': return 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]'
-    default: return 'bg-slate-500/10'
+    case 'disabled': return 'bg-slate-500/20 dark:bg-slate-400/20 shadow-none'
+    case 'error': return 'bg-rose-500 dark:bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.4)]'
+    default: return 'bg-slate-500/10 dark:bg-slate-400/10'
   }
 }
 
@@ -540,7 +540,7 @@ onMounted(loadData)
 
 <style scoped>
 .tactical-terminal {
-  background-color: #050505;
+  background-color: hsl(var(--background));
   position: relative;
   overflow: hidden;
 }
@@ -548,7 +548,7 @@ onMounted(loadData)
 .matrix-bg {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-image: radial-gradient(hsl(var(--foreground) / 0.03) 1px, transparent 1px);
   background-size: 20px 20px;
   pointer-events: none;
 }
@@ -557,7 +557,7 @@ onMounted(loadData)
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.4);
+  color: hsl(var(--muted-foreground) / 0.6);
   padding: 0.5rem 0.75rem;
   transition: all 0.2s ease;
   letter-spacing: 0.1em;
@@ -565,8 +565,8 @@ onMounted(loadData)
 }
 
 .tactical-btn:hover:not(:disabled) {
-  color: #ff4d00;
-  text-shadow: 0 0 10px rgba(255, 77, 0, 0.5);
+  color: hsl(var(--primary));
+  text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
 }
 
 .tactical-btn:disabled {

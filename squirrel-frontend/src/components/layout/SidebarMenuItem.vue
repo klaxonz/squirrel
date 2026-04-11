@@ -46,33 +46,33 @@ const formattedIndex = computed(() => {
 
 <style scoped>
 .menu-item-neon {
-  --neon-primary: #ff4d00;
-  --neon-primary-glow: rgba(255, 77, 0, 0.8);
-  --neon-primary-bg: rgba(255, 77, 0, 0.05);
+  --neon-primary: hsl(var(--primary));
+  --neon-primary-glow: hsl(var(--primary) / 0.8);
+  --neon-primary-bg: hsl(var(--primary) / 0.05);
 
   position: relative;
   display: flex;
   padding: 1.25rem 1rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: hsl(var(--sidebar-foreground) / 0.5);
   text-decoration: none;
   transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid hsl(var(--sidebar-border) / 0.3);
   overflow: hidden;
 }
 
 .menu-item-neon:hover {
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.02);
+  color: hsl(var(--sidebar-foreground));
+  background: hsl(var(--sidebar-accent));
 }
 
 .menu-item-neon:hover .menu-icon {
   transform: translateX(2px);
-  color: #fff;
+  color: var(--neon-primary);
 }
 
 .is-active {
-  color: #fff;
-  background: linear-gradient(90deg, var(--neon-primary-bg) 0%, transparent 100%);
+  color: hsl(var(--sidebar-accent-foreground));
+  background: hsl(var(--primary) / 0.08);
 }
 
 .menu-item-content {
@@ -97,8 +97,8 @@ const formattedIndex = computed(() => {
 }
 
 .is-active .menu-icon {
-  color: var(--neon-primary);
-  filter: drop-shadow(0 0 5px var(--neon-primary-glow));
+  color: hsl(var(--primary));
+  filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.4));
   animation: pulse 2s infinite ease-in-out;
 }
 
@@ -113,6 +113,10 @@ const formattedIndex = computed(() => {
   letter-spacing: 0.1em;
   opacity: 0.4;
   margin-bottom: -0.1rem;
+}
+
+.is-active .menu-label {
+  font-weight: 700;
 }
 
 .menu-label {

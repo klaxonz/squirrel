@@ -267,7 +267,7 @@ onUnmounted(() => {
 
 <style scoped>
 .history-page {
-  height: 100vh;
+  height: 100%;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
@@ -307,8 +307,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid hsl(var(--foreground) / 0.08);
+  color: hsl(var(--foreground) / 0.4);
   font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 0.55rem;
   font-weight: 500;
@@ -320,9 +320,9 @@ onUnmounted(() => {
 }
 
 .action-btn-minimal:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #fff;
-  background: rgba(255, 255, 255, 0.02);
+  border-color: hsl(var(--foreground) / 0.25);
+  color: hsl(var(--foreground));
+  background: hsl(var(--foreground) / 0.02);
 }
 
 .action-btn-minimal:disabled {
@@ -331,9 +331,9 @@ onUnmounted(() => {
 }
 
 .action-btn-minimal.is-danger:hover {
-  border-color: rgba(255, 77, 0, 0.4);
-  color: #ff4d00;
-  background: rgba(255, 77, 0, 0.05);
+  border-color: hsl(var(--primary) / 0.4);
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.05);
 }
 
 .animate-spin {

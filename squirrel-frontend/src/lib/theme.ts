@@ -1,10 +1,16 @@
 export const APP_THEME_STORAGE_KEY = 'squirrel-app-theme'
 
-export type AppThemeMode = 'light' | 'dark' | 'system'
-export type EffectiveTheme = 'light' | 'dark'
+export type AppThemeMode = 'light' | 'dark' | 'system' | 'cyber' | 'scifi'
+export type EffectiveTheme = 'light' | 'dark' | 'cyber' | 'scifi'
 
 export function isAppThemeMode(value: unknown): value is AppThemeMode {
-  return value === 'light' || value === 'dark' || value === 'system'
+  return (
+    value === 'light' ||
+    value === 'dark' ||
+    value === 'system' ||
+    value === 'cyber' ||
+    value === 'scifi'
+  )
 }
 
 export function resolveStoredThemeMode(value: unknown): AppThemeMode {
@@ -13,14 +19,18 @@ export function resolveStoredThemeMode(value: unknown): AppThemeMode {
 
 export function resolveEffectiveTheme(
   mode: AppThemeMode,
-  systemTheme: EffectiveTheme,
+  systemTheme: 'light' | 'dark',
 ): EffectiveTheme {
-  return mode === 'system' ? systemTheme : mode
+  if (mode === 'system') {
+    return systemTheme
+  }
+  return mode
 }
 
 export function shouldUseDarkTheme(
   mode: AppThemeMode,
-  systemTheme: EffectiveTheme,
+  systemTheme: 'light' | 'dark',
 ): boolean {
-  return resolveEffectiveTheme(mode, systemTheme) === 'dark'
+  const effective = resolveEffectiveTheme(mode, systemTheme)
+  return effective === 'dark' || effective === 'cyber' || effective === 'scifi'
 }

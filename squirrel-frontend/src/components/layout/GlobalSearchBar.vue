@@ -101,16 +101,16 @@ onUnmounted(() => {
   position: relative;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.02);
+  background: hsl(var(--secondary) / 0.5);
   padding: 0.4rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid hsl(var(--border) / 0.5);
   transition: all 0.3s ease;
 }
 
 .search-terminal-box:focus-within {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 77, 0, 0.3);
-  box-shadow: 0 0 20px rgba(255, 77, 0, 0.05);
+  background: hsl(var(--secondary));
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.05);
 }
 
 .search-prefix {
@@ -122,7 +122,7 @@ onUnmounted(() => {
 }
 
 .prefix-symbol {
-  color: #ff4d00;
+  color: hsl(var(--primary));
   font-family: 'Courier New', Courier, monospace;
   font-weight: 800;
   font-size: 0.8rem;
@@ -131,14 +131,14 @@ onUnmounted(() => {
 .prefix-index {
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.55rem;
-  color: rgba(255, 255, 255, 0.2);
+  color: hsl(var(--muted-foreground) / 0.4);
 }
 
 .search-input-minimal {
   flex: 1;
   background: transparent;
   border: none;
-  color: #fff;
+  color: hsl(var(--foreground));
   font-size: 0.75rem;
   font-family: 'Courier New', Courier, monospace;
   letter-spacing: 0.05em;
@@ -148,7 +148,7 @@ onUnmounted(() => {
 }
 
 .search-input-minimal::placeholder {
-  color: rgba(255, 255, 255, 0.1);
+  color: hsl(var(--muted-foreground) / 0.3);
   text-transform: uppercase;
 }
 
@@ -163,21 +163,21 @@ onUnmounted(() => {
 .char-count {
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.5rem;
-  color: #ff4d00;
+  color: hsl(var(--primary));
   opacity: 0.6;
 }
 
 .cmd-hint {
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: hsl(var(--muted-foreground) / 0.3);
+  border: 1px solid hsl(var(--border) / 0.5);
   padding: 1px 4px;
   border-radius: 2px;
 }
 
 .search-terminal-box:focus-within .cmd-hint {
-  color: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.15);
+  color: hsl(var(--muted-foreground) / 0.6);
+  border-color: hsl(var(--border));
 }
 </style>
