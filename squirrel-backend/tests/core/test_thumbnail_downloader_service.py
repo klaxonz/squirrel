@@ -2,6 +2,8 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 
+import httpx
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from core.extraction.services import thumbnail_downloader
@@ -116,6 +118,44 @@ def test_download_thumbnail_updates_local_index(monkeypatch, tmp_path):
     assert index_updates == [
         (42, 'batch_001', '42.jpg', True),
     ]
+
+
+def test_download_thumbnail_retries_transport_error(monkeypatch, tmp_path):
+    service = ThumbnailDownloaderService()
+    clients = [
+        SimpleNamespace(
+            get=lambda url, headers=None: (_ for _ in ()).throw(httpx.ConnectError('boom'))
+        ),
+        SimpleNamespace(
+            get=lambda url, headers=None: SimpleNamespace(
+                status_code=200,
+                headers={'content-type': 'image/png'},
+                content=b'image-bytes',
+            )
+        ),
+    ]
+
+    monkeypatch.setattr(service, '_should_download', lambda site_name: True)
+    monkeypatch.setattr(service, '_get_batch_dir', lambda video_id: str(tmp_path / 'batch_001'))
+    monkeypatch.setattr(service, '_get_extension', lambda remote_url: '.png')
+    monkeypatch.setattr(service, '_get_http_client', lambda: clients.pop(0))
+    monkeypatch.setattr(service, '_reset_http_client', lambda: None)
+    monkeypatch.setattr(service, '_build_retry_delay', lambda attempt: 0)
+    monkeypatch.setattr(
+        thumbnail_downloader.os.path,
+        'exists',
+        lambda path: False,
+    )
+
+    file_path = service.download_thumbnail(
+        video_id=77,
+        thumbnail_url='https://img.example.com/77.png',
+        site_name='pornhub',
+        source_url='https://www.pornhub.com/view_video.php?viewkey=demo',
+    )
+
+    assert file_path == str(tmp_path / 'batch_001' / '77.png')
+    assert clients == []
 
 
 def test_build_request_headers_uses_source_url_cookies_and_age_gate_defaults(monkeypatch):
