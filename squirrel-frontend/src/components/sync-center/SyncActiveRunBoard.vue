@@ -208,7 +208,6 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 .board-shell {
   background: transparent;
   border-radius: 0;
-  padding: 1.2rem;
   min-height: 0;
   border: none;
   display: flex;
@@ -222,6 +221,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   gap: 1rem;
   margin-bottom: 1rem;
   padding-left: 0.5rem;
+  color: hsl(var(--foreground) / 0.72);
 }
 
 .board-kicker {
@@ -229,7 +229,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   font-weight: 900;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--sci-fi-amber);
+  color: currentColor;
   opacity: 0.5;
 }
 
@@ -246,7 +246,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   font-size: 12px;
   font-weight: 900;
   font-family: 'JetBrains Mono', monospace;
-  color: var(--sci-fi-amber);
+  color: currentColor;
   opacity: 0.8;
 }
 

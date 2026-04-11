@@ -203,7 +203,6 @@ const getStatusChipClass = (status: string) => {
 .board-shell {
   background: transparent;
   border-radius: 0;
-  padding: 1.2rem;
   min-height: 0;
   border: none;
   display: flex;
@@ -217,6 +216,7 @@ const getStatusChipClass = (status: string) => {
   gap: 1rem;
   margin-bottom: 1rem;
   padding-left: 0.5rem;
+  color: hsl(var(--foreground) / 0.72);
 }
 
 .board-kicker {
@@ -224,7 +224,7 @@ const getStatusChipClass = (status: string) => {
   font-weight: 900;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--sci-fi-green);
+  color: currentColor;
   opacity: 0.5;
 }
 
@@ -241,7 +241,7 @@ const getStatusChipClass = (status: string) => {
   font-size: 12px;
   font-weight: 900;
   font-family: 'JetBrains Mono', monospace;
-  color: var(--sci-fi-green);
+  color: currentColor;
   opacity: 0.8;
 }
 
