@@ -108,8 +108,8 @@
             </div>
 
             <div class="sp-controls-right">
-              <div v-if="displayedQualities.length > 0 && currentQualityTagLabel" class="sp-quality-tag" @click.stop="toggleQualityMenu">
-                {{ currentQualityTagLabel }}
+              <div v-if="displayedQualities.length > 0" class="sp-quality-tag" @click.stop="toggleQualityMenu">
+                {{ qualityTagLabel }}
               </div>
               <button v-if="subtitleTracks.length > 0" class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
                 <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
@@ -330,8 +330,10 @@ const displayedQualities = computed(() => {
 const isInternalQualityLabel = (label: string | null | undefined) => /^level[_\s-]?\d+$/i.test(String(label || '').trim())
 const isAutoQualityLabel = (label: string | null | undefined) => ['auto', '自动', '自動'].includes(String(label || '').trim().toLowerCase())
 const isDisplayableQualityLabel = (label: string | null | undefined) => !isInternalQualityLabel(label) && !isAutoQualityLabel(label)
-const currentQualityTagLabel = computed(() => (
-  isDisplayableQualityLabel(currentQualityLabel.value) ? (currentQualityLabel.value || '') : ''
+const qualityTagLabel = computed(() => (
+  isDisplayableQualityLabel(currentQualityLabel.value)
+    ? (currentQualityLabel.value || '')
+    : (displayedQualities.value[0]?.label || t('quality'))
 ))
 const qualityMenuLabel = computed(() => isDisplayableQualityLabel(currentQualityLabel.value) ? (currentQualityLabel.value || '') : (displayedQualities.value[0]?.label || t('quality')))
 const codecMenuLabel = computed(() => (
