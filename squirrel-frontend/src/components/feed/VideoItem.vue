@@ -295,9 +295,14 @@ onUnmounted(() => {
 .video-terminal-item {
   position: relative;
   cursor: pointer;
-  padding: 1rem;
+  padding: 0.85rem;
+  border-radius: 8px;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   animation: item-appear 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.video-terminal-item:hover {
+  background: hsl(var(--foreground) / 0.04);
 }
 
 @keyframes item-appear {
@@ -317,14 +322,14 @@ onUnmounted(() => {
   overflow: hidden;
   background: hsl(var(--secondary));
   border-radius: 4px;
-  border: 1px solid hsl(var(--border) / 0.5);
+  border: 1px solid hsl(var(--border) / 0.6);
   transition: all 0.3s ease;
 }
 
 .video-terminal-item:hover .video-viewer-frame {
-  border-color: hsl(var(--primary) / 0.4);
+  border-color: hsl(var(--primary) / 0.5);
   box-shadow: 
-    0 0 30px hsl(var(--primary) / 0.15),
+    0 12px 30px -10px hsl(var(--primary) / 0.3),
     inset 0 0 15px hsl(var(--primary) / 0.05);
 }
 
@@ -332,7 +337,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: contrast(1.05) brightness(0.9);
+  filter: contrast(1.0) brightness(1.0);
   opacity: 0;
   transition: opacity 0.6s ease, transform 0.4s ease, filter 0.4s ease;
 }
@@ -342,8 +347,8 @@ onUnmounted(() => {
 }
 
 .video-terminal-item:hover .video-terminal-image.image-loaded {
-  filter: contrast(1.1) brightness(1.05);
-  transform: scale(1.02);
+  filter: contrast(1.05) brightness(1.1);
+  transform: scale(1.04);
 }
 
 .scanline {
@@ -352,15 +357,15 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 2px;
-  background: hsl(var(--foreground) / 0.1);
-  box-shadow: 0 0 10px hsl(var(--foreground) / 0.2);
+  background: hsl(var(--primary) / 0.3);
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
   z-index: 3;
   opacity: 0;
   pointer-events: none;
 }
 
 .video-terminal-item:hover .scanline {
-  animation: scan 2s linear infinite;
+  animation: scan 1.5s linear infinite;
   opacity: 1;
 }
 
@@ -377,7 +382,13 @@ onUnmounted(() => {
   flex-direction: column;
   justify-content: space-between;
   z-index: 4;
-  background: linear-gradient(to bottom, hsl(var(--background) / 0.4) 0%, transparent 30%, transparent 70%, hsl(var(--background) / 0.6) 100%);
+  background: linear-gradient(
+    to bottom, 
+    rgba(0, 0, 0, 0.45) 0%, 
+    transparent 35%, 
+    transparent 65%, 
+    rgba(0, 0, 0, 0.65) 100%
+  );
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -392,7 +403,7 @@ onUnmounted(() => {
   font-size: 0.5rem;
   color: hsl(var(--primary));
   letter-spacing: 0.1em;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 .fav-dot {
@@ -410,9 +421,10 @@ onUnmounted(() => {
   z-index: 6;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
-  color: hsl(var(--foreground));
-  background: hsl(var(--background) / 0.42);
-  border: 1px solid hsl(var(--border) / 0.5);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 3px;
   padding: 2px 6px;
   line-height: 1.2;
@@ -425,7 +437,7 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 2px;
-  background: hsl(var(--foreground) / 0.1);
+  background: rgba(255, 255, 255, 0.1);
   z-index: 5;
 }
 
@@ -439,6 +451,11 @@ onUnmounted(() => {
   margin-top: 0.75rem;
   z-index: 1;
   position: relative;
+  transition: transform 0.3s ease;
+}
+
+.video-terminal-item:hover .video-terminal-info {
+  transform: translateX(2px);
 }
 
 .video-terminal-title {
@@ -453,6 +470,11 @@ onUnmounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  transition: color 0.3s ease;
+}
+
+.video-terminal-item:hover .video-terminal-title {
+  color: hsl(var(--primary));
 }
 
 .video-terminal-meta {

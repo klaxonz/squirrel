@@ -1193,7 +1193,8 @@ onUnmounted(() => {
 }
 
 .related-video-card:hover .related-video-card__image {
-  transform: scale(1.08);
+  transform: scale(1.05);
+  filter: brightness(1.1) contrast(1.05);
 }
 
 .related-video-card__scanline {
@@ -1202,8 +1203,8 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 2px;
-  background: hsl(var(--primary) / 0.3);
-  box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
+  background: hsl(var(--primary) / 0.4);
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.6);
   opacity: 0;
   pointer-events: none;
   z-index: 5;
@@ -1227,13 +1228,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.4rem;
   padding: 0.15rem 0.4rem;
-  background: hsl(var(--background) / 0.65);
+  background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
   border-radius: 2px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
   color: hsl(var(--primary));
-  border: 1px solid hsl(var(--primary) / 0.2);
+  border: 1px solid hsl(var(--primary) / 0.3);
 }
 
 .related-video-card__status-dot {
@@ -1255,11 +1256,12 @@ onUnmounted(() => {
   right: 0.5rem;
   bottom: 0.5rem;
   padding: 0.15rem 0.35rem;
-  background: hsl(var(--background) / 0.8);
-  color: hsl(var(--foreground) / 0.85);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.65rem;
   border-radius: 2px;
+  backdrop-filter: blur(4px);
 }
 
 .related-video-card__title {
@@ -1288,11 +1290,12 @@ onUnmounted(() => {
   right: 0.35rem;
   bottom: 0.35rem;
   padding: 0.05rem 0.25rem;
-  background: hsl(var(--background) / 0.85);
-  color: hsl(var(--foreground) / 0.9);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.55rem;
   border-radius: 1px;
+  backdrop-filter: blur(4px);
 }
 
 .related-video-card__data-overlay {
@@ -1303,13 +1306,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.25rem;
   padding: 0.05rem 0.25rem;
-  background: hsl(var(--background) / 0.7);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   border-radius: 1px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.5rem;
   color: hsl(var(--primary));
-  border: 1px solid hsl(var(--primary) / 0.15);
+  border: 1px solid hsl(var(--primary) / 0.3);
 }
 
 
