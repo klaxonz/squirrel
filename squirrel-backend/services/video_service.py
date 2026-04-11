@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from time import perf_counter
 from typing import List, Tuple, Optional, Dict
+from urllib.parse import parse_qs, urlencode, urlparse
 from crawl.runtime_errors import RuntimeErrorCode
 from sqlalchemy import select, func, and_, case, exists, false
 from sqlalchemy.orm import selectinload, with_loader_criteria
@@ -42,6 +43,40 @@ VIDEO_URL_CACHE_TTL = 300
 
 def _elapsed_ms(start_time: float) -> float:
     return round((perf_counter() - start_time) * 1000, 3)
+
+
+def _unwrap_proxy_url(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return url
+
+    parsed = urlparse(url)
+    if parsed.path != '/api/video/proxy':
+        return url
+
+    query = parse_qs(parsed.query)
+    upstream_urls = query.get('url') or []
+    return upstream_urls[0] if upstream_urls else url
+
+
+def _append_direct_flag(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return url
+
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    query['direct'] = ['1']
+    return parsed._replace(query=urlencode(query, doseq=True)).geturl()
+
+
+def _finalize_video_url_dto(dto: VideoUrlDto, *, prefer_direct_urls: bool) -> VideoUrlDto:
+    finalized = dto.model_copy(deep=True)
+    if not prefer_direct_urls:
+        return finalized
+
+    finalized.video_url = _unwrap_proxy_url(finalized.video_url)
+    finalized.audio_url = _unwrap_proxy_url(finalized.audio_url)
+    finalized.mpd_url = _append_direct_flag(finalized.mpd_url)
+    return finalized
 
 
 def get_video_by_url(url: str) -> Video:
@@ -121,9 +156,11 @@ def get_random_video(
         return random_row[0] if random_row else None
 
 
-def get_video_url(video_id: int, force_refresh: bool = False) -> VideoUrlDto:
+def get_video_url(video_id: int, force_refresh: bool = False, client_type: Optional[str] = None) -> VideoUrlDto:
     video_domain = None
     video: Optional[Video] = None
+    normalized_client_type = str(client_type or '').strip().lower() or None
+    prefer_direct_urls = normalized_client_type == 'desktop'
     with get_session() as session:
         video = session.get(Video, video_id)
         if not video:
@@ -149,20 +186,27 @@ def get_video_url(video_id: int, force_refresh: bool = False) -> VideoUrlDto:
             if cached:
                 try:
                     payload = json.loads(cached)
-                    return VideoUrlDto.model_validate(payload)
+                    dto = VideoUrlDto.model_validate(payload)
+                    return _finalize_video_url_dto(dto, prefer_direct_urls=prefer_direct_urls)
                 except Exception:
                     pass
+
+    payload = {
+        'video_id': video.id,
+        'url': video.url,
+        'domain': video_domain,
+        'title': video.title,
+    }
+    if normalized_client_type:
+        payload['client_type'] = normalized_client_type
+    if prefer_direct_urls:
+        payload['direct_playback'] = True
 
     response = get_plugin_manager().gateway.invoke(
         'resolve_playback',
         site_name=site_slug,
         domain=video_domain,
-        payload={
-            'video_id': video.id,
-            'url': video.url,
-            'domain': video_domain,
-            'title': video.title,
-        },
+        payload=payload,
     )
     if not response.ok:
         message = response.error.message if response.error else f'No playback handler found for domain: {video_domain}'
@@ -187,7 +231,7 @@ def get_video_url(video_id: int, force_refresh: bool = False) -> VideoUrlDto:
         except Exception:
             pass
 
-    return dto
+    return _finalize_video_url_dto(dto, prefer_direct_urls=prefer_direct_urls)
 
 
 

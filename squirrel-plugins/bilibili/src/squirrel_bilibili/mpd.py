@@ -12,6 +12,7 @@ class BilibiliMpdBuilder:
     domain = 'bilibili.com'
 
     def build_mpd(self, video) -> str:
+        direct_playback = bool(getattr(video, 'direct_playback', False))
         dash_data = get_dash_data(video.url)
         duration = dash_data.get('duration')
         min_buffer_time = dash_data.get('minBufferTime')
@@ -47,8 +48,11 @@ class BilibiliMpdBuilder:
                 if not base:
                     continue
                 base_url = ET.SubElement(representation, "BaseURL")
-                proxied = f"/api/video/proxy?domain=bilibili.com&url=" + quote(base, safe='')
-                base_url.text = proxied
+                if direct_playback:
+                    base_url.text = base
+                else:
+                    proxied = f"/api/video/proxy?domain=bilibili.com&url=" + quote(base, safe='')
+                    base_url.text = proxied
 
                 segment_base = stream.get('SegmentBase')
                 if isinstance(segment_base, dict):
@@ -76,8 +80,11 @@ class BilibiliMpdBuilder:
                 if not base:
                     continue
                 base_url = ET.SubElement(representation, "BaseURL")
-                proxied = f"/api/video/proxy?domain=bilibili.com&url=" + quote(base, safe='')
-                base_url.text = proxied
+                if direct_playback:
+                    base_url.text = base
+                else:
+                    proxied = f"/api/video/proxy?domain=bilibili.com&url=" + quote(base, safe='')
+                    base_url.text = proxied
 
                 segment_base = audio_stream.get('SegmentBase')
                 if isinstance(segment_base, dict):

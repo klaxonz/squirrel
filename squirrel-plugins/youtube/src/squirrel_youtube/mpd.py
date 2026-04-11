@@ -340,7 +340,10 @@ def _probe_webm_ranges(url: str, max_tries: int = 3, chunk_sizes=(1024 * 1024, 4
     return None, None
 
 
-def _proxy(u: str, referer: str | None = None) -> str:
+def _proxy(u: str, referer: str | None = None, direct_playback: bool = False) -> str:
+    if direct_playback:
+        return u
+
     query = {
         'domain': 'youtube.com',
         'url': u,
@@ -490,6 +493,7 @@ def _build_youtubei_representations(video_id: str) -> list[dict]:
 
 
 def _build_mpd_from_representations(video, representations: list[dict], upstream_referer: str | None, duration_seconds) -> str:
+    direct_playback = bool(getattr(video, 'direct_playback', False))
     kept_by_itag = {rep['id']: rep for rep in representations}
 
     video_reps = []
@@ -550,7 +554,7 @@ def _build_mpd_from_representations(video, representations: list[dict], upstream
 
         if r.get('url'):
             base = ET.SubElement(rep_el, 'BaseURL')
-            base.text = _proxy(r['url'], referer=upstream_referer)
+            base.text = _proxy(r['url'], referer=upstream_referer, direct_playback=direct_playback)
 
         if r.get('initRange') or r.get('indexRange'):
             seg = ET.SubElement(rep_el, 'SegmentBase')

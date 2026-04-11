@@ -26,13 +26,14 @@ def _video_domain(url: str) -> str:
 @router.get("/api/video/url")
 def get_video_url(
         video_id: int = Query(None, description="视频ID"),
-        force_refresh: bool = Query(False, description="强制刷新播放链接（跳过服务端缓存）", alias="force_refresh")
+        force_refresh: bool = Query(False, description="强制刷新播放链接（跳过服务端缓存）", alias="force_refresh"),
+        client_type: str | None = Query(None, description="客户端类型（desktop 等）", alias="client_type"),
 ):
     try:
         if video_id is None:
             return response.param_error("参数错误 (VIDEO_ID_REQUIRED)")
 
-        video_urls = video_service.get_video_url(video_id, force_refresh=force_refresh)
+        video_urls = video_service.get_video_url(video_id, force_refresh=force_refresh, client_type=client_type)
         # 校验是否成功提取到可播放链接（支持 DASH 的 mpd_url 返回）
         has_video = getattr(video_urls, 'video_url', None)
         has_audio = getattr(video_urls, 'audio_url', None)
@@ -220,6 +221,7 @@ def get_video_subtitles(
 @router.get("/api/video/mpd")
 def get_video_mpd(
         video_id: int = Query(..., description="视频ID"),
+        direct: bool = Query(False, description="是否返回直链 MPD"),
 ):
     """
     根据不同站点生成 MPD（站点适配在 sites/* 中实现）
@@ -231,17 +233,22 @@ def get_video_mpd(
     if video is None:
         raise HTTPException(status_code=404, detail="Video not found")
 
+    direct_enabled = direct if isinstance(direct, bool) else False
     domain = _video_domain(video.url)
     try:
+        payload = {
+            'video_id': video.id,
+            'url': video.url,
+            'title': getattr(video, 'title', None),
+            'duration': getattr(video, 'duration', None),
+        }
+        if direct_enabled:
+            payload['direct_playback'] = True
+
         result = get_plugin_manager().gateway.invoke(
             'build_mpd',
             domain=domain,
-            payload={
-                'video_id': video.id,
-                'url': video.url,
-                'title': getattr(video, 'title', None),
-                'duration': getattr(video, 'duration', None),
-            },
+            payload=payload,
         )
         if not result.ok or not isinstance(result.data, dict):
             raise HTTPException(status_code=400, detail="MPD builder not available for this domain")

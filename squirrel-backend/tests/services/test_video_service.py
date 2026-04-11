@@ -187,6 +187,37 @@ def test_get_video_url_raises_extraction_error_when_plugin_parse_fails(monkeypat
         assert '无法获取 YouTube 视频播放信息' in str(exc)
 
 
+def test_get_video_url_returns_direct_links_for_desktop_client(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_video(engine)
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            assert payload['client_type'] == 'desktop'
+            assert payload['direct_playback'] is True
+            return PluginInvokeResponse(
+                request_id='video-1',
+                ok=True,
+                data={
+                    'video_url': '/api/video/proxy?domain=bilibili.com&url=https%3A%2F%2Fcdn.example.com%2Fvideo.m4s',
+                    'audio_url': '/api/video/proxy?domain=bilibili.com&url=https%3A%2F%2Fcdn.example.com%2Faudio.m4s',
+                    'mpd_url': '/api/video/mpd?video_id=1',
+                },
+            )
+
+    monkeypatch.setattr(
+        video_service,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+
+    result = video_service.get_video_url(video_id=1, client_type='desktop')
+
+    assert result.video_url == 'https://cdn.example.com/video.m4s'
+    assert result.audio_url == 'https://cdn.example.com/audio.m4s'
+    assert result.mpd_url == '/api/video/mpd?video_id=1&direct=1'
+
+
 def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
     engine = _setup_test_env(monkeypatch)
 

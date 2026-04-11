@@ -45,6 +45,10 @@ def build_video_ref(payload: Payload, *, include_duration: bool = False) -> Simp
     }
     if include_duration:
         data['duration'] = payload.get('duration')
+    if 'client_type' in payload:
+        data['client_type'] = payload.get('client_type')
+    if 'direct_playback' in payload:
+        data['direct_playback'] = bool(payload.get('direct_playback'))
     return SimpleNamespace(**data)
 
 

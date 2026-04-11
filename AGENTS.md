@@ -3,7 +3,7 @@
 本文件用于指导在本仓库工作的智能编码代理。
 
 ## 范围
-- 主要子项目：`squirrel-backend`、`squirrel-frontend`、`squirrel-sdk`、`squirrel-plugins`。
+- 主要子项目：`squirrel-backend`、`squirrel-frontend`、`squirrel-desktop`、`squirrel-sdk`、`squirrel-plugins`。
 
 ## 构建、Lint、测试
 ### 后端（Python / FastAPI）
@@ -26,6 +26,13 @@
 - 类型检查：`npm run typecheck`
 - 构建+类型检查：`npm run build:check`
 - 测试：当前仓库未配置前端测试。
+
+### 桌面端（Electron）
+- 安装依赖：`npm install`（在 `squirrel-desktop` 目录）。
+- 开发运行：`npm run dev`
+- 本地启动：`npm run start`
+- 桌面构建：`npm run build`
+- 安装包构建：`npm run dist`
 
 ### 插件（Python）
 - 每个插件位于 `squirrel-plugins/<site>/src/...`。
@@ -85,6 +92,11 @@
 - 颜色优先使用 CSS 变量（如 `--bg-tertiary`）。
 - 类型定义在 `src/types` 或共享类型文件中。
 
+### 桌面端（Electron）
+- 主进程与 preload 使用 ESM。
+- 保持桌面端为薄壳，优先加载现有 Web UI，不复制页面逻辑。
+- Node 与浏览器边界通过 preload 暴露，避免在渲染进程直接开启 Node 集成。
+
 ### 错误处理模式
 - 后端：日志记录上下文后再抛出或返回安全默认值。
 - SDK/插件：抛出 `PluginError` 子类以分类错误。
@@ -106,6 +118,10 @@
 1) `npm install`
 2) `npm run typecheck`
 3) `npm run build`
+
+### 桌面端快速流程
+1) `npm install`
+2) `npm run build`
 
 ### SDK 快速流程
 1) `pip install -e .`
@@ -134,4 +150,3 @@
 
 ## 结尾
 - 本文件保持约 150 行，便于快速浏览。
-

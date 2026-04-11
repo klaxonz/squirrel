@@ -229,3 +229,42 @@ def test_mpd_builder_does_not_emit_empty_initialization_node():
 
         assert '<Initialization />' not in xml
         assert '<Initialization' not in xml
+
+
+def test_youtube_mpd_builder_returns_direct_base_urls_when_requested(monkeypatch):
+    with _stub_mpd_dependencies(), _import_paths(YOUTUBE_SRC):
+        module = importlib.import_module('squirrel_youtube.mpd')
+
+        xml = module._build_mpd_from_representations(
+            SimpleNamespace(
+                id=123,
+                url='https://www.youtube.com/watch?v=demo',
+                duration=100,
+                direct_playback=True,
+            ),
+            [
+                {
+                    'id': '137',
+                    'bandwidth': 1000,
+                    'mime': 'video/mp4',
+                    'codecs': 'avc1.640028',
+                    'url': 'https://cdn.example.test/137',
+                    'width': 1920,
+                    'height': 1080,
+                    'fps': None,
+                    'audioSamplingRate': None,
+                    'audioChannels': None,
+                    'initRange': None,
+                    'indexRange': '701-984',
+                    'kind': 'video',
+                    'codecFamily': 'avc',
+                    'xml_lang': None,
+                    'label': '1080p',
+                }
+            ],
+            'https://www.youtube.com/watch?v=demo',
+            100,
+        )
+
+        assert 'https://cdn.example.test/137' in xml
+        assert '/api/video/proxy?domain=youtube.com' not in xml

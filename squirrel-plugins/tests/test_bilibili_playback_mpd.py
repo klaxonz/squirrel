@@ -240,3 +240,47 @@ def test_bilibili_mpd_builder_splits_video_adaptation_sets_by_codec_family(monke
         assert {'av1'} in codec_families
         assert {'hevc'} in codec_families
         assert all(len(families) == 1 for families in codec_families)
+
+
+def test_bilibili_mpd_builder_returns_direct_base_urls_when_requested(monkeypatch):
+    with _stub_bilibili_modules(), _import_paths(BILIBILI_SRC):
+        module = importlib.import_module('squirrel_bilibili.mpd')
+
+        monkeypatch.setattr(
+            module,
+            'get_dash_data',
+            lambda _url: {
+                'duration': 120,
+                'video': [
+                    {
+                        'id': 80,
+                        'codecid': 7,
+                        'codecs': 'avc1.640028',
+                        'width': 1920,
+                        'height': 1080,
+                        'bandwidth': 1800000,
+                        'baseUrl': 'https://cdn.example.test/video.m4s',
+                    },
+                ],
+                'audio': [
+                    {
+                        'id': 30216,
+                        'codecs': 'mp4a.40.2',
+                        'bandwidth': 192000,
+                        'baseUrl': 'https://cdn.example.test/audio.m4s',
+                    }
+                ],
+            },
+        )
+
+        xml = module.BilibiliMpdBuilder().build_mpd(
+            SimpleNamespace(
+                id=123,
+                url='https://www.bilibili.com/video/BV-demo',
+                direct_playback=True,
+            )
+        )
+
+        assert 'https://cdn.example.test/video.m4s' in xml
+        assert 'https://cdn.example.test/audio.m4s' in xml
+        assert '/api/video/proxy?domain=bilibili.com' not in xml

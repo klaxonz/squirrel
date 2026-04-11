@@ -27,9 +27,19 @@ export const getVideoCounts = async (params: Record<string, unknown> = {}) => {
   return get('/api/video/counts', params)
 }
 
-export const getVideoUrlInfo = async (videoId: string | number, { forceRefresh = false }: { forceRefresh?: boolean } = {}) => {
+export const getVideoUrlInfo = async (
+  videoId: string | number,
+  {
+    forceRefresh = false,
+    clientType,
+  }: {
+    forceRefresh?: boolean
+    clientType?: 'desktop'
+  } = {}
+) => {
   return get('/api/video/url', {
     video_id: videoId,
     ...(forceRefresh ? { force_refresh: true } : {}),
+    ...(clientType ? { client_type: clientType } : {}),
   })
 }

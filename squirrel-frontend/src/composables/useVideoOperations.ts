@@ -25,6 +25,35 @@ type VideoUrlInfo = {
   }>
 }
 
+type NavigatorWithClientHints = Navigator & {
+  userAgentData?: {
+    mobile?: boolean
+    platform?: string
+  }
+}
+
+type DesktopWindow = Window & {
+  desktopApp?: {
+    isDesktop?: boolean
+  }
+}
+
+const isDesktopPlaybackClient = () => {
+  const desktopWindow = typeof window === 'undefined' ? null : (window as DesktopWindow)
+  if (desktopWindow?.desktopApp?.isDesktop) return true
+  if (typeof navigator === 'undefined') return false
+
+  const nav = navigator as NavigatorWithClientHints
+  const userAgent = String(nav.userAgent || '')
+  const platform = String(nav.userAgentData?.platform || nav.platform || '')
+
+  if (/electron|tauri/i.test(userAgent)) return true
+  if (nav.userAgentData?.mobile === false && /(win|mac|linux|cros)/i.test(platform)) return true
+  if (/android|iphone|ipad|ipod|mobile/i.test(userAgent)) return false
+
+  return /(windows nt|macintosh|x11|linux x86_64|cros)/i.test(userAgent) || /(win|mac|linux|cros)/i.test(platform)
+}
+
 export default function useVideoOperations() {
   const extractErrorCode = (msg: unknown) => {
     if (!msg || typeof msg !== 'string') return null
@@ -39,7 +68,8 @@ export default function useVideoOperations() {
     try {
       // 统一通过后端获取播放链接（VideoUrlDto），后端会在 bilibili/YouTube 情况下返回 mpd_url 与可选清晰度
       Logger.debug('[getPlaybackSource] Fetching /api/video/url', { videoId, forceRefresh })
-      const { data, error } = (await getVideoUrlInfo(videoId, { forceRefresh })) as ApiResult<VideoUrlInfo>
+      const clientType = isDesktopPlaybackClient() ? 'desktop' : undefined
+      const { data, error } = (await getVideoUrlInfo(videoId, { forceRefresh, clientType })) as ApiResult<VideoUrlInfo>
 
       if (error) {
         const msg = error.data?.msg || error.message
