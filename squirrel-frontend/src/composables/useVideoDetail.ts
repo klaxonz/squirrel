@@ -8,6 +8,7 @@ type VideoSubtitle = {
   id: string
   language: string
   url: string
+  content?: string
 }
 
 type VideoLike = {
@@ -139,6 +140,7 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
         id: candidate.id,
         language: candidate.language,
         url: objectUrl,
+        content: data,
       }
 
       if (seq !== detailRequestSeq || !video.value || String(video.value.id) !== String(videoId)) {

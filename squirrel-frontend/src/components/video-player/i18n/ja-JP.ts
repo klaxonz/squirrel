@@ -51,6 +51,9 @@ const jaJP: LocaleConfig = {
     position: '位置',
     positionTop: '上',
     positionBottom: '下',
+    preset: 'プリセット',
+    opacity: '不透明度',
+    custom: 'カスタム',
     
     // 播放列表
     previousVideo: '前へ',

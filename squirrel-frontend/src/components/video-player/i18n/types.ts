@@ -52,6 +52,9 @@ export interface LocaleMessages {
   position: string
   positionTop: string
   positionBottom: string
+  preset: string
+  opacity: string
+  custom: string
   
   // 播放列表
   previousVideo: string

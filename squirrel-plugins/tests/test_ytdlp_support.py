@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+import tempfile
 import types
 from contextlib import contextmanager
 from pathlib import Path
@@ -50,6 +51,21 @@ def _load_ytdlp_support_module():
     return module
 
 
+@contextmanager
+def _stub_yt_dlp_module(youtube_dl_cls):
+    original = sys.modules.get('yt_dlp')
+    yt_dlp_module = types.ModuleType('yt_dlp')
+    yt_dlp_module.YoutubeDL = youtube_dl_cls
+    try:
+        sys.modules['yt_dlp'] = yt_dlp_module
+        yield yt_dlp_module
+    finally:
+        if original is None:
+            sys.modules.pop('yt_dlp', None)
+        else:
+            sys.modules['yt_dlp'] = original
+
+
 def test_ytdlp_support_prefers_bundled_bgutil_server_home():
     with _stub_crawl_module(), _import_paths(YOUTUBE_SRC):
         module = _load_ytdlp_support_module()
@@ -93,3 +109,39 @@ def test_apply_youtube_player_strategy_uses_bundled_pot_provider_for_authenticat
         assert opts['extractor_args']['youtubepot-bgutilscript']['server_home'] == [
             str(module.LOCAL_BGUTIL_SERVER_HOME)
         ]
+
+
+def test_extract_info_uses_temporary_cookiefile_copy():
+    calls: list[dict] = []
+
+    class _FakeYoutubeDL:
+        def __init__(self, opts):
+            self.opts = dict(opts)
+
+        def __enter__(self):
+            calls.append(self.opts)
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def extract_info(self, _url, download=False, process=True):
+            Path(self.opts['cookiefile']).write_text('mutated-by-ytdlp', encoding='utf-8')
+            return {'id': 'demo', 'download': download, 'process': process}
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        original_cookie_path = Path(temp_dir) / 'youtube.txt'
+        original_cookie_path.write_text('original-cookie', encoding='utf-8')
+
+        with _stub_crawl_module(), _stub_yt_dlp_module(_FakeYoutubeDL), _import_paths(YOUTUBE_SRC):
+            module = _load_ytdlp_support_module()
+            info = module.extract_info(
+                'https://www.youtube.com/watch?v=demo',
+                {'cookiefile': str(original_cookie_path)},
+                process=False,
+            )
+
+        assert info == {'id': 'demo', 'download': False, 'process': False}
+        assert len(calls) == 1
+        assert calls[0]['cookiefile'] != str(original_cookie_path)
+        assert original_cookie_path.read_text(encoding='utf-8') == 'original-cookie'

@@ -35,6 +35,35 @@ export interface SubtitlesPluginOptions {
 
 export type SubtitleParser = (content: string) => SubtitleCue[]
 
+export interface SubtitlePreset {
+  id: string
+  label: string
+  style: Partial<SubtitleStyle>
+}
+
+export const BUILT_IN_PRESETS: SubtitlePreset[] = [
+  {
+    id: 'default',
+    label: 'Default',
+    style: { fontSize: 'medium', color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.8)', backgroundOpacity: 0.8, position: 'bottom', textShadow: true },
+  },
+  {
+    id: 'high-contrast',
+    label: 'High Contrast',
+    style: { fontSize: 'large', color: '#ffff00', backgroundColor: '#000000', backgroundOpacity: 1, position: 'bottom', textShadow: false },
+  },
+  {
+    id: 'subtle',
+    label: 'Subtle',
+    style: { fontSize: 'small', color: 'rgba(255,255,255,0.8)', backgroundColor: 'rgba(0,0,0,0.5)', backgroundOpacity: 0.5, position: 'bottom', textShadow: false },
+  },
+  {
+    id: 'top-outline',
+    label: 'Top Outline',
+    style: { fontSize: 'medium', color: '#ffffff', backgroundColor: 'transparent', backgroundOpacity: 0, position: 'top', textShadow: true },
+  },
+]
+
 export class SubtitlesPlugin implements PlayerPlugin {
   readonly name = 'subtitles'
   readonly version = '1.0.0'
@@ -213,6 +242,22 @@ export class SubtitlesPlugin implements PlayerPlugin {
   }
 
   /**
+   * 清空当前渲染的字幕文本
+   */
+  private clearRenderedCue(): void {
+    if (!this.containerElement) return
+    this.containerElement.innerHTML = ''
+  }
+
+  /**
+   * 按当前播放时间立即刷新字幕
+   */
+  private refreshCurrentCue(): void {
+    const currentTime = this.context?.videoElement?.currentTime ?? this.context?.state.currentTime ?? 0
+    this.updateActiveCue(currentTime)
+  }
+
+  /**
    * HTML 转义
    */
   private escapeHtml(text: string): string {
@@ -230,6 +275,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
     this.currentTrack = track
     this.cues = []
     this.activeCueIndex = -1
+    this.clearRenderedCue()
 
     let content = track.content
 
@@ -249,6 +295,10 @@ export class SubtitlesPlugin implements PlayerPlugin {
     // 解析字幕
     const isVtt = content.trimStart().startsWith('WEBVTT')
     this.cues = isVtt ? this.parseVTT(content) : this.parseSRT(content)
+
+    if (this.enabled) {
+      this.refreshCurrentCue()
+    }
     
     this.context?.logger.debug(`[SubtitlesPlugin] Loaded ${this.cues.length} cues from ${track.label}`)
   }
@@ -359,7 +409,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
   /**
    * 设置可用字幕轨道
    */
-  setTracks(tracks: SubtitleTrack[]): void {
+  async setTracks(tracks: SubtitleTrack[]): Promise<void> {
     this.tracks = tracks
 
     if (tracks.length === 0) {
@@ -372,7 +422,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
 
     if (this.options.autoLoad) {
       const defaultTrack = tracks.find(t => t.default) || tracks[0]
-      void this.loadTrack(defaultTrack)
+      await this.loadTrack(defaultTrack)
       this.enable()
     }
   }
@@ -425,6 +475,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
     if (this.containerElement) {
       this.containerElement.style.display = ''
     }
+    this.refreshCurrentCue()
   }
 
   /**
@@ -469,6 +520,31 @@ export class SubtitlesPlugin implements PlayerPlugin {
    */
   getStyle(): SubtitleStyle {
     return { ...this.style }
+  }
+
+  /**
+   * 导出样式配置（供外部存储）
+   */
+  exportStyle(): SubtitleStyle {
+    return { ...this.style }
+  }
+
+  /**
+   * 导入样式配置（从外部存储恢复）
+   */
+  importStyle(style: Partial<SubtitleStyle>): void {
+    this.style = { ...this.style, ...style }
+    this.updateStyles()
+  }
+
+  /**
+   * 应用预设样式
+   */
+  applyPreset(presetId: string): void {
+    const preset = BUILT_IN_PRESETS.find(p => p.id === presetId)
+    if (preset) {
+      this.importStyle(preset.style)
+    }
   }
 
   onDestroy(): void {

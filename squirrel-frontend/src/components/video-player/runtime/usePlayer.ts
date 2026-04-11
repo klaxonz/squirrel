@@ -6,6 +6,7 @@ import { useTheme, type ThemeName, type UseThemeOptions } from '../themes'
 import { createPlayerRuntimeStore, type PlayerRuntimeStore } from './PlayerStore'
 import { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from '../core/createPlayerEngine'
 import { createDefaultPlayerPlugins } from '../core/defaultPlugins'
+import { BUILT_IN_PRESETS } from '../plugins/subtitles'
 import { useA11y } from './useA11y'
 import { useControlsLayout } from './useControlsLayout'
 import { useGestures } from './useGestures'
@@ -83,8 +84,12 @@ export interface PlayerReturn {
 
   subtitleTracks: Ref<SubtitleTrack[]>
   currentSubtitle: Ref<SubtitleTrack | null>
+  subtitleStyle: Ref<Record<string, any>>
+  subtitlePresets: typeof import('../plugins/subtitles').BUILT_IN_PRESETS
   setSubtitle: (track: SubtitleTrack | null) => void
-  setSubtitleTracks: (tracks: SubtitleTrack[]) => void
+  setSubtitleTracks: (tracks: SubtitleTrack[]) => Promise<void>
+  setSubtitleStyle: (style: Record<string, any>) => void
+  applySubtitlePreset: (presetId: string) => void
   toggleSubtitles: () => void
 
   loadSource: (source: MediaSource) => void
@@ -132,6 +137,23 @@ const calculateBufferedAheadPercent = (buffered: TimeRanges, duration: number, c
   return Math.min(100, Math.max(0, (currentTime / duration) * 100))
 }
 
+const SUBTITLE_STYLE_KEY = 'squirrel-player-subtitle-style'
+
+const loadSubtitleStyleFromStorage = (): Record<string, any> => {
+  try {
+    const raw = localStorage.getItem(SUBTITLE_STYLE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+const saveSubtitleStyleToStorage = (style: Record<string, any>): void => {
+  try {
+    localStorage.setItem(SUBTITLE_STYLE_KEY, JSON.stringify(style))
+  } catch {}
+}
+
 export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const {
     autoplay = false,
@@ -172,6 +194,8 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   const subtitleTracks = ref<SubtitleTrack[]>([])
   const currentSubtitle = ref<SubtitleTrack | null>(null)
+  const subtitleStyle = ref<Record<string, any>>(loadSubtitleStyleFromStorage())
+  const subtitlePresets = BUILT_IN_PRESETS
 
   const sourceType = ref<'native' | 'hls' | 'dash' | null>(null)
 
@@ -401,9 +425,21 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     engine.setSubtitle(track)
   }
 
-  const setSubtitleTracks = (tracks: SubtitleTrack[]): void => {
+  const setSubtitleStyle = (style: Record<string, any>): void => {
+    subtitleStyle.value = { ...subtitleStyle.value, ...style }
+    engine.setSubtitleStyle(subtitleStyle.value)
+    saveSubtitleStyleToStorage(subtitleStyle.value)
+  }
+
+  const applySubtitlePreset = (presetId: string): void => {
+    engine.applySubtitlePreset(presetId)
+    subtitleStyle.value = engine.getSubtitleStyle()
+    saveSubtitleStyleToStorage(subtitleStyle.value)
+  }
+
+  const setSubtitleTracks = async (tracks: SubtitleTrack[]): Promise<void> => {
     subtitleTracks.value = tracks
-    engine.setSubtitleTracks(tracks)
+    await engine.setSubtitleTracks(tracks)
 
     const nextTrack = tracks.find((track) => track.id === currentSubtitle.value?.id)
       || tracks.find((track) => track.default)
@@ -413,6 +449,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     currentSubtitle.value = nextTrack
     store.setCurrentSubtitle(nextTrack)
     store.setSubtitlesEnabled(!!nextTrack)
+    engine.setSubtitle(nextTrack)
   }
 
   const toggleSubtitles = (): void => {
@@ -485,6 +522,13 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
     await engine.init()
 
+    if (Object.keys(subtitleStyle.value).length > 0) {
+      engine.setSubtitleStyle(subtitleStyle.value)
+    }
+    if (subtitleTracks.value.length > 0) {
+      await setSubtitleTracks(subtitleTracks.value)
+    }
+
     updateStoreFromConfig(engine.getConfig())
     syncCodecFamilies()
     isReady.value = true
@@ -532,8 +576,12 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     togglePictureInPicture,
     subtitleTracks,
     currentSubtitle,
+    subtitleStyle,
+    subtitlePresets,
     setSubtitle,
     setSubtitleTracks,
+    setSubtitleStyle,
+    applySubtitlePreset,
     toggleSubtitles,
     loadSource,
     theme,

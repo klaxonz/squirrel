@@ -51,6 +51,9 @@ const zhCN: LocaleConfig = {
     position: '位置',
     positionTop: '顶部',
     positionBottom: '底部',
+    preset: '预设',
+    opacity: '透明度',
+    custom: '自定义',
     
     // 播放列表
     previousVideo: '上一个',

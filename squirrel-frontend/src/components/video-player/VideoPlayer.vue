@@ -170,7 +170,7 @@
               <span>{{ t('quality') }}</span>
               <span class="sp-menu-val">{{ qualityMenuLabel }}</span>
             </div>
-            <div v-if="subtitleTracks.length > 0" class="sp-menu-item" @click="settingsView = 'subtitles'">
+            <div v-if="subtitleTracks.length > 0" class="sp-menu-item" @click="settingsView = 'subtitleStyle'">
               <span>{{ t('subtitleSettings') }}</span>
               <span class="sp-menu-val">{{ subtitleMenuLabel }}</span>
             </div>
@@ -239,6 +239,133 @@
             </div>
           </div>
         </template>
+        <template v-else-if="settingsView === 'subtitleStyle'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitles'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('subtitleSettings') }}
+          </div>
+          <div class="sp-menu-list">
+            <!-- 预设 -->
+            <div class="sp-menu-item" @click="settingsView = 'subtitlePreset'">
+              <span>{{ t('preset') }}</span>
+              <span class="sp-menu-val">{{ currentPresetLabel }}</span>
+            </div>
+            <!-- 字体大小 -->
+            <div class="sp-menu-item" @click="settingsView = 'subtitleFontSize'">
+              <span>{{ t('fontSize') }}</span>
+              <span class="sp-menu-val">{{ subtitleStyleLabel('fontSize', subtitleStyle.fontSize || 'medium', fontSizeOptions) }}</span>
+            </div>
+            <!-- 字体颜色 -->
+            <div class="sp-menu-item" @click="settingsView = 'subtitleColor'">
+              <span>{{ t('fontColor') }}</span>
+              <span class="sp-subtitle-color-preview" :style="{ background: subtitleStyle.color || '#ffffff' }"></span>
+            </div>
+            <!-- 背景颜色 -->
+            <div class="sp-menu-item" @click="settingsView = 'subtitleBg'">
+              <span>{{ t('backgroundColor') }}</span>
+              <span class="sp-subtitle-color-preview" :style="{ background: subtitleStyle.backgroundColor || 'rgba(0,0,0,0.8)' }"></span>
+            </div>
+            <!-- 字幕位置 -->
+            <div class="sp-menu-item" @click="settingsView = 'subtitlePosition'">
+              <span>{{ t('position') }}</span>
+              <span class="sp-menu-val">{{ subtitleStyle.position === 'top' ? t('positionTop') : t('positionBottom') }}</span>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="settingsView === 'subtitleFontSize'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('fontSize') }}
+          </div>
+          <div class="sp-menu-list">
+            <div
+              v-for="opt in fontSizeOptions"
+              :key="opt.value"
+              class="sp-menu-item"
+              :class="{ 'is-active': (subtitleStyle.fontSize || 'medium') === opt.value }"
+              @click="handleSubtitleStyleChange('fontSize', opt.value)"
+            >
+              {{ opt.label }}
+            </div>
+          </div>
+        </template>
+        <template v-else-if="settingsView === 'subtitleColor'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('fontColor') }}
+          </div>
+          <div class="sp-subtitle-color-grid">
+            <div
+              v-for="c in subtitleColorOptions"
+              :key="c.value"
+              class="sp-subtitle-color-swatch"
+              :class="{ 'is-active': subtitleStyle.color === c.value }"
+              :style="{ background: c.value }"
+              :title="c.label"
+              @click="handleSubtitleStyleChange('color', c.value)"
+            ></div>
+          </div>
+        </template>
+        <template v-else-if="settingsView === 'subtitleBg'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('backgroundColor') }}
+          </div>
+          <div class="sp-subtitle-color-grid">
+            <div
+              v-for="c in subtitleBgOptions"
+              :key="c.value"
+              class="sp-subtitle-color-swatch"
+              :class="{ 'is-active': subtitleStyle.backgroundColor === c.value }"
+              :style="{ background: c.value }"
+              :title="c.label"
+              @click="handleSubtitleStyleChange('backgroundColor', c.value)"
+            ></div>
+          </div>
+          <div class="sp-subtitle-opacity-row">
+            <span class="sp-subtitle-opacity-label">{{ t('opacity') }}</span>
+            <div class="sp-subtitle-opacity-slider">
+              <div class="sp-opacity-rail" ref="opacityRailRef" @pointerdown="onOpacityPointerDown">
+                <div class="sp-opacity-fill" :style="{ width: `${(subtitleStyle.backgroundOpacity ?? 0.8) * 100}%` }"></div>
+                <div class="sp-opacity-thumb" :style="{ left: `${(subtitleStyle.backgroundOpacity ?? 0.8) * 100}%` }"></div>
+              </div>
+            </div>
+            <span class="sp-subtitle-opacity-val">{{ Math.round((subtitleStyle.backgroundOpacity ?? 0.8) * 100) }}%</span>
+          </div>
+        </template>
+        <template v-else-if="settingsView === 'subtitlePreset'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('preset') }}
+          </div>
+          <div class="sp-menu-list">
+            <div
+              v-for="preset in subtitlePresets"
+              :key="preset.id"
+              class="sp-menu-item"
+              :class="{ 'is-active': isPresetActive(preset) }"
+              @click="handlePresetSelect(preset.id)"
+            >
+              {{ preset.label }}
+            </div>
+          </div>
+        </template>
+        <template v-else-if="settingsView === 'subtitlePosition'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('position') }}
+          </div>
+          <div class="sp-menu-list">
+            <div
+              class="sp-menu-item"
+              :class="{ 'is-active': subtitleStyle.position === 'bottom' }"
+              @click="handleSubtitleStyleChange('position', 'bottom')"
+            >
+              {{ t('positionBottom') }}
+            </div>
+            <div
+              class="sp-menu-item"
+              :class="{ 'is-active': subtitleStyle.position === 'top' }"
+              @click="handleSubtitleStyleChange('position', 'top')"
+            >
+              {{ t('positionTop') }}
+            </div>
+          </div>
+        </template>
       </div>
     </transition>
   </div>
@@ -294,7 +421,7 @@ const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'fullscreenCha
 const {
   store, videoElement, containerElement, isPlaying, currentTime, duration, volume, isMuted, isFullscreen,
   play, pause, seek, setVolume, toggleMute, setPlaybackRate, toggleFullscreen,
-  subtitleTracks, currentSubtitle, setSubtitle, setSubtitleTracks, loadSource, theme, t,
+  subtitleTracks, currentSubtitle, subtitleStyle, subtitlePresets, setSubtitle, setSubtitleTracks, setSubtitleStyle, applySubtitlePreset, loadSource, theme, t,
   qualities, codecFamilies, selectedCodecFamily, currentCodecFamily,
   currentQualityLabel, currentQualityId, setQuality, setCodecFamily
 } = usePlayer({
@@ -312,6 +439,7 @@ const {
 const videoRef = ref<HTMLVideoElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
 const settingsPopupRef = ref<HTMLElement | null>(null)
+const opacityRailRef = ref<HTMLElement | null>(null)
 
 const showSettingsMenu = ref(false)
 const showQualityMenu = ref(false)
@@ -348,6 +476,32 @@ watch(volume, (newVol, oldVol) => {
 })
 
 const playbackRates = [0.5, 0.75, 1, 1.25, 1.5, 2]
+const fontSizeOptions = [
+  { value: 'small', label: '1' },
+  { value: 'medium', label: '2' },
+  { value: 'large', label: '3' },
+  { value: 'xlarge', label: '4' },
+]
+const subtitleColorOptions = [
+  { value: '#ffffff', label: 'White' },
+  { value: '#ffff00', label: 'Yellow' },
+  { value: '#00ff00', label: 'Green' },
+  { value: '#00ffff', label: 'Cyan' },
+  { value: '#ff55ff', label: 'Pink' },
+  { value: '#ff5500', label: 'Orange' },
+]
+const subtitleBgOptions = [
+  { value: 'rgba(0,0,0,0.8)', label: 'Black' },
+  { value: 'rgba(0,0,0,0.5)', label: 'Dark' },
+  { value: 'rgba(0,0,128,0.8)', label: 'Blue' },
+  { value: 'rgba(0,80,0,0.8)', label: 'Green' },
+  { value: 'rgba(80,0,0,0.8)', label: 'Red' },
+  { value: 'transparent', label: 'None' },
+]
+const subtitleStyleLabel = (key: string, value: string, options: any[]) => {
+  const opt = options.find((o) => o.value === value)
+  return opt ? opt.label : value
+}
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
 const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh')
 const visibleCodecFamily = computed(() => (
@@ -480,6 +634,40 @@ const handleCodecFamilySelect = (codecFamily: string) => { setCodecFamily(codecF
 const handleQualitySelect = (q: any) => { setQuality(q.id); closeMenus() }
 const handleSubtitleSelect = (track: SubtitleTrack) => { setSubtitle(track); closeMenus() }
 const handleSubtitleDisable = () => { setSubtitle(null); closeMenus() }
+const handleSubtitleStyleChange = (key: string, value: any) => { setSubtitleStyle({ [key]: value }) }
+const handlePresetSelect = (presetId: string) => { applySubtitlePreset(presetId); closeMenus() }
+const handleOpacityChange = (e: PointerEvent) => {
+  if (!opacityRailRef.value) return
+  const rect = opacityRailRef.value.getBoundingClientRect()
+  const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  setSubtitleStyle({ backgroundOpacity: Math.round(p * 10) / 10 })
+}
+const onOpacityPointerDown = (e: PointerEvent) => {
+  handleOpacityChange(e)
+  const onMove = (ev: PointerEvent) => handleOpacityChange(ev)
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+  }
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+}
+const isPresetActive = (preset: any) => {
+  const s = preset.style
+  const current = subtitleStyle.value
+  return (
+    (current.fontSize || 'medium') === (s.fontSize || 'medium') &&
+    (current.color || '#ffffff') === (s.color || '#ffffff') &&
+    (current.backgroundColor || 'rgba(0,0,0,0.8)') === (s.backgroundColor || 'rgba(0,0,0,0.8)') &&
+    (current.backgroundOpacity ?? 0.8) === (s.backgroundOpacity ?? 0.8) &&
+    (current.position || 'bottom') === (s.position || 'bottom') &&
+    (current.textShadow ?? true) === (s.textShadow ?? true)
+  )
+}
+const currentPresetLabel = computed(() => {
+  const active = subtitlePresets.find(p => isPresetActive(p))
+  return active ? active.label : t('custom')
+})
 const toggleWidescreen = () => emit('widescreenChange', !props.widescreen)
 const toggleAutoplayNext = () => store.setAutoplayNext(!store.autoplayNext)
 const toggleLoop = () => store.setLoop(!store.loop)
@@ -1128,6 +1316,105 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 }
 
 .sp-simple-switch.is-on::after { transform: translateX(14px); }
+
+/* 字幕颜色预览 */
+.sp-subtitle-color-preview {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+
+/* 字幕颜色网格 */
+.sp-subtitle-color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  padding: 8px 14px;
+}
+
+.sp-subtitle-color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  margin: 0 auto;
+}
+
+.sp-subtitle-color-swatch:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 6px rgba(255,255,255,0.3);
+}
+
+.sp-subtitle-color-swatch.is-active {
+  border-color: var(--sp-primary);
+  box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.5);
+}
+
+/* 字幕透明度滑块 */
+.sp-subtitle-opacity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+}
+
+.sp-subtitle-opacity-label {
+  font-size: 12px;
+  color: var(--sp-text-secondary);
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.sp-subtitle-opacity-slider {
+  flex: 1;
+}
+
+.sp-opacity-rail {
+  position: relative;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 1.5px;
+  cursor: pointer;
+}
+
+.sp-opacity-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--sp-primary);
+  border-radius: 1.5px;
+}
+
+.sp-opacity-thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 4px rgba(0,0,0,0.4);
+  cursor: grab;
+}
+
+.sp-opacity-thumb:active {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+.sp-subtitle-opacity-val {
+  font-size: 11px;
+  color: var(--sp-text-secondary);
+  font-family: var(--sp-font-mono);
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
 
 /* 加载动画 */
 .sp-loading {

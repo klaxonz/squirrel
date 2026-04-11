@@ -9,7 +9,7 @@ from typing import Tuple
 
 from yt_dlp import YoutubeDL
 
-from crawl import SubtitlesProvider, resolve_cookie_file_path
+from crawl import SubtitlesProvider
 from . import ytdlp_support as youtube_ytdlp_support
 
 logger = logging.getLogger(__name__)
@@ -23,24 +23,7 @@ class YoutubeSubtitlesProvider:
     def get_subtitles(self, video, lang: str, fmt: str = 'srt') -> Tuple[str, str]:
         if fmt.lower() != 'srt':
             raise ValueError('Only srt format is supported')
-
-        cookie_file = resolve_cookie_file_path(video.url)
-        original_cookie_content = None
-        if cookie_file:
-            try:
-                original_cookie_content = open(cookie_file, 'r', encoding='utf-8').read()
-            except Exception:
-                original_cookie_content = None
-
-        try:
-            return self._do_get_subtitles(video, lang)
-        finally:
-            if cookie_file and original_cookie_content is not None:
-                try:
-                    with open(cookie_file, 'w', encoding='utf-8') as f:
-                        f.write(original_cookie_content)
-                except Exception as exc:
-                    logger.warning('Failed to restore cookie file %s after yt-dlp: %s', cookie_file, exc)
+        return self._do_get_subtitles(video, lang)
 
     def _do_get_subtitles(self, video, lang: str) -> Tuple[str, str]:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -107,8 +90,9 @@ class YoutubeSubtitlesProvider:
             use_runtime_auth_strategy=use_runtime_auth_strategy,
         )
         try:
-            with YoutubeDL(ydl_opts) as ydl:
-                ydl.download([video.url])
+            with youtube_ytdlp_support.prepared_ytdlp_opts(ydl_opts) as prepared_opts:
+                with YoutubeDL(prepared_opts) as ydl:
+                    ydl.download([video.url])
         except Exception as exc:
             logger.warning('yt-dlp subtitle extraction failed for %s: %s', video.url, exc)
             retryable = use_runtime_auth_strategy and self._uses_authenticated_strategy(ydl_opts)

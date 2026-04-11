@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import types
 from contextlib import contextmanager
 from pathlib import Path
@@ -55,6 +56,12 @@ def _stub_youtube_support_module():
     support_module = types.ModuleType('squirrel_youtube.ytdlp_support')
     support_module.YOUTUBE_PLAYER_CLIENT = 'android'
     support_module.apply_youtube_player_strategy = lambda _url, _opts: None
+
+    @contextmanager
+    def _prepared_ytdlp_opts(opts):
+        yield opts
+
+    support_module.prepared_ytdlp_opts = _prepared_ytdlp_opts
 
     try:
         sys.modules['squirrel_youtube'] = package_module
@@ -164,3 +171,88 @@ def test_youtube_subtitles_retry_after_bot_challenge(monkeypatch):
     assert calls[0]['extractor_args']['youtube']['player_client'] == ['android']
     assert calls[1]['extractor_args']['youtube']['player_client'] == ['android']
     assert calls[2]['extractor_args']['youtube']['player_client'] == ['android']
+
+
+def test_youtube_subtitles_does_not_restore_cookie_file_contents():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        cookie_path = Path(temp_dir) / 'youtube.txt'
+        cookie_path.write_text('original-cookie', encoding='utf-8')
+
+        with _stub_crawl_module() as crawl_module, _stub_yt_dlp_module(object), _stub_youtube_support_module():
+            crawl_module.resolve_cookie_file_path = lambda _url: str(cookie_path)
+            module = _load_subtitles_module()
+            provider = module.YoutubeSubtitlesProvider()
+
+            def _mutate_cookie_file(video, lang):
+                cookie_path.write_text('updated-cookie', encoding='utf-8')
+                return 'subtitle body', f'{video.id}.{lang}.srt'
+
+            provider._do_get_subtitles = _mutate_cookie_file
+
+            content, filename = provider.get_subtitles(
+                SimpleNamespace(id='demo', url='https://www.youtube.com/watch?v=demo'),
+                'en',
+                'srt',
+            )
+            final_cookie_content = cookie_path.read_text(encoding='utf-8')
+
+    assert content == 'subtitle body'
+    assert filename == 'demo.en.srt'
+    assert final_cookie_content == 'updated-cookie'
+
+
+def test_youtube_subtitles_uses_temporary_cookiefile_copy():
+    calls = []
+
+    class _FakeYoutubeDL:
+        def __init__(self, opts):
+            self.opts = dict(opts)
+
+        def __enter__(self):
+            calls.append(self.opts)
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def download(self, _urls):
+            Path(self.opts['cookiefile']).write_text('mutated-by-ytdlp', encoding='utf-8')
+            outdir = Path(self.opts['outtmpl']).parent
+            (outdir / 'demo.en.srt').write_text('1\n00:00:00,000 --> 00:00:01,000\nhello\n', encoding='utf-8')
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        original_cookie_path = Path(temp_dir) / 'youtube.txt'
+        original_cookie_path.write_text('original-cookie', encoding='utf-8')
+
+        with _stub_crawl_module() as crawl_module, _stub_yt_dlp_module(_FakeYoutubeDL), _stub_youtube_support_module() as support_module:
+            crawl_module.resolve_cookie_file_path = lambda _url: str(original_cookie_path)
+
+            def _apply_youtube_player_strategy(_url, opts):
+                opts['cookiefile'] = str(original_cookie_path)
+                opts['extractor_args']['youtube']['player_client'] = ['tv']
+
+            @contextmanager
+            def _prepared_ytdlp_opts(opts):
+                temp_cookie_path = Path(temp_dir) / 'youtube-copy.txt'
+                temp_cookie_path.write_text(Path(opts['cookiefile']).read_text(encoding='utf-8'), encoding='utf-8')
+                prepared_opts = dict(opts)
+                prepared_opts['cookiefile'] = str(temp_cookie_path)
+                yield prepared_opts
+
+            module = _load_subtitles_module()
+            support_module.apply_youtube_player_strategy = _apply_youtube_player_strategy
+            support_module.prepared_ytdlp_opts = _prepared_ytdlp_opts
+            provider = module.YoutubeSubtitlesProvider()
+
+            content, filename = provider.get_subtitles(
+                SimpleNamespace(id='demo', url='https://www.youtube.com/watch?v=demo'),
+                'en',
+                'srt',
+            )
+            final_cookie_content = original_cookie_path.read_text(encoding='utf-8')
+
+    assert content == '1\n00:00:00,000 --> 00:00:01,000\nhello\n'
+    assert filename == 'demo.en.srt'
+    assert len(calls) == 1
+    assert calls[0]['cookiefile'] != str(original_cookie_path)
+    assert final_cookie_content == 'original-cookie'

@@ -51,6 +51,9 @@ const enUS: LocaleConfig = {
     position: 'Position',
     positionTop: 'Top',
     positionBottom: 'Bottom',
+    preset: 'Preset',
+    opacity: 'Opacity',
+    custom: 'Custom',
     
     // 播放列表
     previousVideo: 'Previous',

@@ -39,6 +39,7 @@ test('video detail revokes generated subtitle object urls when replacing the act
   assert.match(source, /URL\.revokeObjectURL\(url\)/)
   assert.match(source, /onScopeDispose\(\(\) => \{\s*revokeManagedSubtitleObjectUrls\(\)\s*\}\)/)
   assert.match(source, /managedSubtitleObjectUrls\.add\(objectUrl\)/)
+  assert.match(source, /content: data/)
 })
 
 test('video detail requests subtitles through per-site candidate lists instead of a bilibili-only hardcode', async () => {
@@ -80,12 +81,25 @@ test('subtitle plugin clears active subtitle state when tracks disappear', async
   assert.match(source, /this\.disable\(\)/)
 })
 
+test('subtitle plugin refreshes the current cue as soon as a track finishes loading or subtitles are re-enabled', async () => {
+  const source = await readFile(subtitlesPluginPath, 'utf8')
+
+  assert.match(source, /private clearRenderedCue\(\): void \{/)
+  assert.match(source, /private refreshCurrentCue\(\): void \{/)
+  assert.match(source, /const currentTime = this\.context\?\.videoElement\?\.currentTime \?\? this\.context\?\.state\.currentTime \?\? 0/)
+  assert.match(source, /this\.clearRenderedCue\(\)/)
+  assert.match(source, /if \(this\.enabled\) \{\s*this\.refreshCurrentCue\(\)\s*\}/)
+  assert.match(source, /enable\(\): void \{[\s\S]*this\.refreshCurrentCue\(\)/)
+})
+
 test('player runtime keeps subtitle selection state aligned with incoming tracks', async () => {
   const source = await readFile(usePlayerPath, 'utf8')
 
   assert.match(source, /const nextTrack = tracks\.find\(\(track\) => track\.id === currentSubtitle\.value\?\.id\)/)
   assert.match(source, /store\.setCurrentSubtitle\(nextTrack\)/)
   assert.match(source, /store\.setSubtitlesEnabled\(!!nextTrack\)/)
+  assert.match(source, /engine\.setSubtitle\(nextTrack\)/)
+  assert.match(source, /if \(subtitleTracks\.value\.length > 0\) \{\s*await setSubtitleTracks\(subtitleTracks\.value\)\s*\}/)
 })
 
 test('video player exposes subtitle settings alongside quick toggle controls', async () => {

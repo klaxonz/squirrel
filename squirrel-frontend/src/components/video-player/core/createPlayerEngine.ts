@@ -72,9 +72,12 @@ export type PlayerEngine = {
   getSource: () => MediaSource | null
   getSourceType: () => 'native' | 'hls' | 'dash' | null
 
-  setSubtitleTracks: (tracks: SubtitleTrack[]) => void
+  setSubtitleTracks: (tracks: SubtitleTrack[]) => Promise<void>
   setSubtitle: (track: SubtitleTrack | null) => void
   toggleSubtitles: () => void
+  getSubtitleStyle: () => Record<string, any>
+  setSubtitleStyle: (style: Record<string, any>) => void
+  applySubtitlePreset: (presetId: string) => void
 
   saveProgress: () => void
   loadProgress: (progressKey: string) => Promise<number | null>
@@ -953,11 +956,11 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
   }
 
-  const setSubtitleTracks = (tracks: SubtitleTrack[]): void => {
+  const setSubtitleTracks = async (tracks: SubtitleTrack[]): Promise<void> => {
     subtitleTracks = tracks
     const subtitlesPlugin = pluginManager.get<any>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.setTracks === 'function') {
-      subtitlesPlugin.setTracks(tracks)
+      await subtitlesPlugin.setTracks(tracks)
     }
   }
 
@@ -975,6 +978,28 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       } else if (!track && typeof subtitlesPlugin.disable === 'function') {
         subtitlesPlugin.disable()
       }
+    }
+  }
+
+  const getSubtitleStyle = (): Record<string, any> => {
+    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    if (subtitlesPlugin && typeof subtitlesPlugin.exportStyle === 'function') {
+      return subtitlesPlugin.exportStyle()
+    }
+    return {}
+  }
+
+  const applySubtitlePreset = (presetId: string): void => {
+    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    if (subtitlesPlugin && typeof subtitlesPlugin.applyPreset === 'function') {
+      subtitlesPlugin.applyPreset(presetId)
+    }
+  }
+
+  const setSubtitleStyle = (style: Record<string, any>): void => {
+    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    if (subtitlesPlugin && typeof subtitlesPlugin.importStyle === 'function') {
+      subtitlesPlugin.importStyle(style)
     }
   }
 
@@ -1088,6 +1113,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     setSubtitleTracks,
     setSubtitle,
     toggleSubtitles,
+    getSubtitleStyle,
+    setSubtitleStyle,
+    applySubtitlePreset,
 
     saveProgress,
     loadProgress,

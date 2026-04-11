@@ -8,7 +8,9 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -162,6 +164,26 @@ def apply_youtube_player_strategy(url: str, opts: dict) -> None:
     youtube_args['player_client'] = list(YOUTUBE_COOKIE_PLAYER_CLIENTS)
 
 
+@contextmanager
+def prepared_ytdlp_opts(opts: dict[str, Any]):
+    cookie_file = opts.get('cookiefile')
+    if not isinstance(cookie_file, str) or not cookie_file.strip():
+        yield opts
+        return
+
+    source_path = Path(cookie_file).expanduser()
+    if not source_path.is_file():
+        yield opts
+        return
+
+    with tempfile.TemporaryDirectory(prefix='squirrel-ytdlp-cookies-') as temp_dir:
+        temp_cookie_path = Path(temp_dir) / source_path.name
+        shutil.copyfile(source_path, temp_cookie_path)
+        prepared_opts = dict(opts)
+        prepared_opts['cookiefile'] = str(temp_cookie_path)
+        yield prepared_opts
+
+
 def _sanitize_player_response_value(value: Any):
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
@@ -189,8 +211,9 @@ def _sanitize_player_response_value(value: Any):
 def _extract_info_once(url: str, opts: dict[str, Any], *, process: bool = True) -> dict | None:
     from yt_dlp import YoutubeDL
 
-    with YoutubeDL(opts) as ydl:
-        return ydl.extract_info(url, download=False, process=process)
+    with prepared_ytdlp_opts(opts) as prepared_opts:
+        with YoutubeDL(prepared_opts) as ydl:
+            return ydl.extract_info(url, download=False, process=process)
 
 
 def _extract_info_with_hooks_once(url: str, opts: dict[str, Any], *, process: bool = True) -> dict | None:
@@ -227,8 +250,9 @@ def _extract_info_with_hooks_once(url: str, opts: dict[str, Any], *, process: bo
         YoutubeIE._extract_player_responses = patched_extract_player_responses
         YoutubeIE._real_extract = patched_real_extract
         try:
-            with YoutubeDL(opts) as ydl:
-                return ydl.extract_info(url, download=False, process=process)
+            with prepared_ytdlp_opts(opts) as prepared_opts:
+                with YoutubeDL(prepared_opts) as ydl:
+                    return ydl.extract_info(url, download=False, process=process)
         finally:
             YoutubeIE._extract_player_responses = original_extract_player_responses
             YoutubeIE._real_extract = original_real_extract
