@@ -663,7 +663,7 @@ onUnmounted(() => {
 
 .video-section {
   width: 100%;
-  background: hsl(var(--background));
+  background: #000;
   border-radius: 0;
   overflow: hidden;
   /* 移除之前的 padding 和 border，让视频更沉浸 */
@@ -673,7 +673,7 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: hsl(var(--background));
+  background: #000;
 }
 
 /* 优化取景框，使其成为轻量级叠加层而非容器 */
@@ -863,7 +863,7 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   margin: 0 auto;
-  background: transparent;
+  background: #000;
   border: none;
   border-radius: 0;
   overflow: hidden;
@@ -875,7 +875,7 @@ onUnmounted(() => {
   width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: transparent;
+  background: #000;
   border-radius: 0;
 }
 
@@ -910,7 +910,7 @@ onUnmounted(() => {
 .viewfinder-corner--bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; }
 
 .video-container :deep(.sp-player) {
-  background: hsl(var(--background));
+  background: #000;
   border-radius: 0;
   overflow: hidden;
 }
