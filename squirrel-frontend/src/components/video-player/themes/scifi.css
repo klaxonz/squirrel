@@ -5,7 +5,6 @@
 .sp-player.sp-theme-scifi,
 .sp-player[data-sp-theme="scifi"] {
   /* 背景 */
-  --sp-bg: #05080a;
   --sp-bg-elevated: #0a0e12;
   --sp-bg-overlay: rgba(5, 8, 10, 0.85);
   --sp-surface: rgba(10, 15, 20, 0.7);

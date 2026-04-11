@@ -5,7 +5,6 @@
 .sp-player.sp-theme-cyber,
 .sp-player[data-sp-theme="cyber"] {
   /* 背景 */
-  --sp-bg: #0a0a0a;
   --sp-bg-elevated: #121212;
   --sp-bg-overlay: rgba(0, 0, 0, 0.8);
   --sp-surface: rgba(20, 20, 20, 0.7);

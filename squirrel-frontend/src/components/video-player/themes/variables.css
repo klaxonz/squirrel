@@ -13,7 +13,7 @@
   --sp-primary-rgb: var(--sp-theme-primary-rgb, 255, 77, 0);
   
   /* 背景色 - Glassmorphic */
-  --sp-bg: #050505;
+  --sp-bg: #000;
   --sp-bg-elevated: rgba(18, 18, 18, 0.85);
   --sp-bg-overlay: rgba(0, 0, 0, 0.65);
   --sp-surface: rgba(30, 30, 30, 0.6);

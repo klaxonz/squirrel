@@ -1,5 +1,6 @@
 import { computed, onScopeDispose, ref } from 'vue'
 import { getVideoDetail, getVideoSubtitles } from '@/api'
+import { Logger } from '@/utils/logger'
 
 type VideoId = string | number
 
@@ -38,6 +39,7 @@ const subtitleCandidatesByDomain: Array<{ pattern: RegExp; candidates: SubtitleC
   {
     pattern: /(?:youtube\.com|youtu\.be)/i,
     candidates: [
+      { id: 'yt-default', language: 'Default' },
       { id: 'yt-en', language: 'English', lang: 'en' },
       { id: 'yt-en-US', language: 'English (US)', lang: 'en-US' },
     ],
@@ -119,7 +121,15 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
       }
 
       const { data, error } = (await getVideoSubtitles(videoId, { lang: candidate.lang, fmt: 'srt' })) as ApiResult<string>
-      if (error || typeof data !== 'string' || data.length === 0) continue
+      if (error || typeof data !== 'string' || data.length === 0) {
+        Logger.warn('[useVideoDetail] subtitle candidate fetch failed', {
+          videoId,
+          candidateId: candidate.id,
+          language: candidate.lang ?? 'default',
+          error,
+        })
+        continue
+      }
       if (seq !== detailRequestSeq || !video.value || String(video.value.id) !== String(videoId)) return
 
       const blob = new Blob([data], { type: 'text/plain;charset=utf-8' })

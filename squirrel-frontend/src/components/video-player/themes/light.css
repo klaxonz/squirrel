@@ -11,7 +11,6 @@
   --sp-theme-primary-rgb: 255, 85, 0;
   
   /* 背景 */
-  --sp-bg: rgba(248, 242, 234, 0.96);
   --sp-bg-elevated: rgba(252, 247, 240, 0.98);
   --sp-bg-overlay: rgba(246, 239, 230, 0.84);
   --sp-surface: rgba(252, 246, 239, 0.92);
@@ -37,9 +36,8 @@
   /* 控制栏 */
   --sp-controls-bg: linear-gradient(
     to top,
-    rgba(248, 242, 234, 0.94) 0%,
-    rgba(248, 242, 234, 0.78) 48%,
-    rgba(248, 242, 234, 0.44) 76%,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.4) 40%,
     transparent 100%
   );
   
