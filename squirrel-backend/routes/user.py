@@ -6,7 +6,16 @@ from common import response
 from models.user import User
 from pydantic import BaseModel, EmailStr, Field, SecretStr, model_validator
 from services import user_service, user_config_service
-from utils.jwt_helper import TOKEN_VERSION_CLAIM, clear_auth_cookie, create_access_token, get_current_user, set_auth_cookie
+from utils.jwt_helper import (
+    AUTH_COOKIE_NAME,
+    REMEMBER_ME_CLAIM,
+    TOKEN_VERSION_CLAIM,
+    clear_auth_cookie,
+    create_access_token,
+    get_current_user,
+    set_auth_cookie,
+    should_persist_auth_cookie,
+)
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -20,6 +29,7 @@ class UserRegisterRequest(BaseModel):
 class UserLoginRequest(BaseModel):
     email: EmailStr
     password: str
+    remember_me: bool = False
 
 
 class UserUpdateRequest(BaseModel):
@@ -75,15 +85,26 @@ def _serialize_user(user: User) -> dict:
     return user.to_dict(exclude={'token_version'})
 
 
-def _issue_auth_cookie(http_response: Response, http_request: Request, user: User) -> None:
+def _issue_auth_cookie(
+    http_response: Response,
+    http_request: Request,
+    user: User,
+    *,
+    remember_me: bool = False,
+) -> None:
     access_token = create_access_token(
         data={
             'sub': str(user.id),
             TOKEN_VERSION_CLAIM: int(getattr(user, 'token_version', 0) or 0),
+            REMEMBER_ME_CLAIM: bool(remember_me),
         },
         expires_delta=timedelta(days=30)
     )
-    set_auth_cookie(http_response, access_token, http_request)
+    set_auth_cookie(http_response, access_token, http_request, persistent=remember_me)
+
+
+def _should_remember_current_session(http_request: Request) -> bool:
+    return should_persist_auth_cookie(http_request.cookies.get(AUTH_COOKIE_NAME))
 
 
 @router.post("/register")
@@ -116,7 +137,7 @@ async def login(request: UserLoginRequest, http_request: Request, http_response:
 
     user, _account = result
     _ = _account
-    _issue_auth_cookie(http_response, http_request, user)
+    _issue_auth_cookie(http_response, http_request, user, remember_me=request.remember_me)
 
     return response.success(
         data=_serialize_user(user),
@@ -171,7 +192,12 @@ async def update_password(
             request.current_password.get_secret_value(),
             request.new_password.get_secret_value(),
         )
-        _issue_auth_cookie(http_response, http_request, updated_user)
+        _issue_auth_cookie(
+            http_response,
+            http_request,
+            updated_user,
+            remember_me=_should_remember_current_session(http_request),
+        )
         return response.success(
             data=_serialize_user(updated_user),
             msg='密码修改成功，旧会话已失效'
@@ -188,7 +214,12 @@ async def revoke_sessions(
 ):
     try:
         updated_user = user_service.rotate_token_version(current_user.id)
-        _issue_auth_cookie(http_response, http_request, updated_user)
+        _issue_auth_cookie(
+            http_response,
+            http_request,
+            updated_user,
+            remember_me=_should_remember_current_session(http_request),
+        )
         return response.success(
             data=_serialize_user(updated_user),
             msg='已撤销其他会话'

@@ -13,8 +13,9 @@ logger = logging.getLogger()
 
 ALGORITHM = "HS256"
 AUTH_COOKIE_NAME = 'squirrel_auth'
-AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
+PERSISTENT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 TOKEN_VERSION_CLAIM = 'tv'
+REMEMBER_ME_CLAIM = 'rm'
 
 
 def _get_secret_key() -> str:
@@ -55,17 +56,26 @@ def _should_use_secure_cookie(request: Request | None) -> bool:
     return request.url.scheme == 'https'
 
 
-def set_auth_cookie(response: Response, token: str, request: Request | None = None) -> None:
+def set_auth_cookie(
+    response: Response,
+    token: str,
+    request: Request | None = None,
+    *,
+    persistent: bool = False,
+) -> None:
     secure = _should_use_secure_cookie(request)
-    response.set_cookie(
+    cookie_options = dict(
         key=AUTH_COOKIE_NAME,
         value=token,
-        max_age=AUTH_COOKIE_MAX_AGE,
         httponly=True,
         secure=secure,
         samesite='lax',
         path='/',
     )
+    if persistent:
+        cookie_options['max_age'] = PERSISTENT_AUTH_COOKIE_MAX_AGE
+
+    response.set_cookie(**cookie_options)
 
 
 def clear_auth_cookie(response: Response, request: Request | None = None) -> None:
@@ -116,6 +126,21 @@ def validate_auth_token(token: str | None) -> tuple[dict, User]:
         return payload, user
     except (JWTError, TypeError, ValueError):
         raise credentials_exception
+
+
+def should_persist_auth_cookie(token: str | None) -> bool:
+    if not token:
+        return False
+
+    try:
+        payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
+    except (JWTError, TypeError, ValueError):
+        return False
+
+    if REMEMBER_ME_CLAIM not in payload:
+        return True
+
+    return bool(payload.get(REMEMBER_ME_CLAIM))
 
 
 def decode_token(token: str) -> dict:

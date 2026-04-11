@@ -50,6 +50,17 @@
             </button>
           </div>
 
+          <label class="auth-option-minimal" for="remember-me">
+            <input
+              id="remember-me"
+              v-model="form.rememberMe"
+              type="checkbox"
+              class="auth-option-minimal__input"
+            />
+            <span class="auth-option-minimal__box"></span>
+            <span class="auth-option-minimal__label">记住登录</span>
+          </label>
+
           <Button type="submit" class="auth-submit-minimal" :disabled="loading">
             {{ loading ? '验证中...' : '进入系统' }}
           </Button>
@@ -80,6 +91,7 @@ const errorMessage = ref('')
 const form = ref({
   email: '',
   password: '',
+  rememberMe: false,
 })
 
 const getErrorMessage = (error) => {
@@ -96,7 +108,11 @@ const handleSubmit = async () => {
   errorMessage.value = ''
 
   try {
-    const result = await login(form.value)
+    const result = await login({
+      email: form.value.email,
+      password: form.value.password,
+      remember_me: form.value.rememberMe,
+    })
     if (result.error) {
       errorMessage.value = getErrorMessage(result.error)
       return
