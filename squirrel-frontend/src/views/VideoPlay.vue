@@ -52,13 +52,14 @@
         <div ref="videoMetaRef" class="video-meta">
           <Transition name="fade-meta" mode="out-in">
             <div v-if="video" :key="video.id">
-              <!-- 标题 -->
+              <!-- 标题行 -->
               <h1 class="video-meta__title">
                 {{ video?.title }}
               </h1>
 
-              <div class="video-meta__header">
-                <!-- 频道信息与订阅按钮 -->
+              <!-- 频道信息 + 操作按钮 -->
+              <div class="video-meta__info-row">
+                <!-- 频道信息 -->
                 <div class="video-channel">
                   <div class="video-channel__primary">
                     <div class="video-channel__avatar-wrapper">
@@ -82,36 +83,37 @@
                         {{ video?.subscriptions?.[0]?.total_videos || 0 }} 视频
                       </div>
                     </div>
-                    <button
-                      v-if="video?.subscriptions?.[0]"
-                      class="video-action video-action--primary is-active"
-                      @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
-                    >
-                      <span class="video-action__label">订阅</span>
-                    </button>
                   </div>
                 </div>
+                <button
+                  v-if="video?.subscriptions?.[0]"
+                  class="subscribe-btn"
+                  @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
+                >
+                  <Icon icon="lucide:bell" class="subscribe-btn__icon" />
+                  <span class="subscribe-btn__label">订阅</span>
+                </button>
 
-                <!-- 操作按钮组 -->
+                <!-- 操作按钮 -->
                 <div class="video-meta__actions">
                   <template v-for="action in videoActions" :key="action.key">
                     <button
                       v-if="!action.href"
-                      class="video-action video-action--secondary"
-                      :class="{ 'is-active': action.active }"
+                      class="action-btn"
+                      :class="{ 'is-active': action.active, [`tone-${action.tone}`]: true }"
                       @click="handleVideoAction(action)"
                     >
-                      <Icon :icon="action.icon" class="video-action__icon" />
-                      <span class="video-action__label">{{ action.label }}</span>
+                      <Icon :icon="action.icon" class="action-btn__icon" />
+                      <span class="action-btn__label">{{ action.label }}</span>
                     </button>
                     <a
                       v-else
                       :href="action.href"
                       target="_blank"
-                      class="video-action video-action--secondary"
+                      class="action-btn"
                     >
-                      <Icon :icon="action.icon" class="video-action__icon" />
-                      <span class="video-action__label">{{ action.label }}</span>
+                      <Icon :icon="action.icon" class="action-btn__icon" />
+                      <span class="action-btn__label">{{ action.label }}</span>
                     </a>
                   </template>
                 </div>
@@ -807,41 +809,57 @@ onUnmounted(() => {
   max-height: 100%;
 }
 
-/* 宽屏模式下大幅压缩信息区域间距 */
+/* 宽屏模式下信息区域适配 */
 .video-page__container.is-widescreen .video-meta {
-  margin-top: 0.5rem;
-  padding: 0 1.5rem;
+  margin-top: 0.75rem;
 }
 
 .video-page__container.is-widescreen .video-meta__title {
-  font-size: 1.1rem;
-  margin-bottom: 0.25rem;
-  padding-bottom: 0;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
 }
 
-.video-page__container.is-widescreen .video-meta__header {
-  display: flex;
-  flex-direction: row; /* 强制横向排布 */
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.video-page__container.is-widescreen .video-channel {
-  padding: 0;
-  width: auto;
+.video-page__container.is-widescreen .video-meta__info-row {
+  gap: 0.375rem;
 }
 
 .video-page__container.is-widescreen .video-channel__avatar {
-  width: 2rem; /* 缩小头像 */
-  height: 2rem;
+  width: 2rem !important;
+  height: 2rem !important;
 }
 
-.video-page__container.is-widescreen .video-meta__actions {
-  width: auto;
-  padding-top: 0;
-  border-top: none;
-  justify-content: flex-end;
+.video-page__container.is-widescreen .video-channel__name {
+  font-size: 0.85rem;
+}
+
+.video-page__container.is-widescreen .video-channel__stats {
+  font-size: 0.65rem;
+}
+
+.video-page__container.is-widescreen .subscribe-btn {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.7rem;
+}
+
+.video-page__container.is-widescreen .subscribe-btn__icon {
+  width: 12px;
+  height: 12px;
+}
+
+.video-page__container.is-widescreen .video-meta__divider {
+  height: 20px;
+  margin: 0 0.125rem;
+}
+
+.video-page__container.is-widescreen .action-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.7rem;
+  gap: 0.2rem;
+}
+
+.video-page__container.is-widescreen .action-btn__icon {
+  width: 14px;
+  height: 14px;
 }
 
 .video-page__container.is-widescreen .video-aside {
@@ -878,121 +896,193 @@ onUnmounted(() => {
   gap: 0.25rem;
 }
 
-/* 视频元数据区域 - 恢复终端风格 */
+/* 视频元数据区域 */
 .video-meta {
   margin-top: 0.875rem;
-  padding: 0 12px;
 }
 
-@media (max-width: 640px) {
-  .video-meta {
-    padding: 0 6px;
-  }
-}
-
+/* 标题 */
 .video-meta__title {
-  width: 100%;
-  font-size: clamp(0.96rem, 0.9rem + 0.2rem, 1.1rem);
-  font-weight: 600;
+  font-size: clamp(1rem, 1rem + 0.3rem, 1.2rem);
+  font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.3;
+  line-height: 1.4;
   word-break: break-word;
-  padding-bottom: 0.4rem;
-  margin-bottom: 0.4rem;
   color: hsl(var(--foreground));
+  margin-bottom: 0.75rem;
 }
 
-.video-meta__header {
+/* 信息行：频道 + 操作按钮 */
+.video-meta__info-row {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.6rem;
-  padding-bottom: 0;
-  border-bottom: none;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-@media (min-width: 1200px) {
-  .video-meta__header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    column-gap: 1rem;
-  }
-}
-
+/* 频道信息 */
 .video-channel {
-  padding: 0.25rem 0;
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  width: 100%;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .video-channel__primary {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
+}
+
+.video-channel__avatar-wrapper {
+  flex-shrink: 0;
 }
 
 .video-channel__avatar {
-  width: 2.2rem;
-  height: 2.2rem;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
   border-radius: 50%;
+  border: 2px solid hsl(var(--border));
+}
+
+.video-channel__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
 }
 
 .video-channel__name {
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.video-channel__name:hover {
+  color: hsl(var(--primary));
 }
 
 .video-channel__stats {
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   color: hsl(var(--muted-foreground));
 }
 
-.video-meta__actions {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  justify-content: flex-start;
-  padding-top: 0.75rem;
-  border-top: 1px solid hsl(var(--border) / 0.6);
-}
-
-@media (min-width: 1200px) {
-  .video-meta__actions {
-    width: auto;
-    padding-top: 0;
-    border-top: none;
-    justify-content: flex-end;
-  }
-}
-
-.video-action {
+/* 订阅按钮 */
+.subscribe-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.24rem;
-  min-height: 1.52rem;
-  padding: 0 0.5rem;
-  border-radius: 4px;
-  background: transparent;
-  color: hsl(var(--foreground) / 0.45);
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-  font-size: 0.6rem;
-  transition: all 0.2s;
+  gap: 0.3rem;
+  padding: 0.4rem 0.875rem;
+  border-radius: 20px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.video-action:hover, .video-action.is-active {
+.subscribe-btn:hover {
+  background: hsl(var(--primary) / 0.9);
+}
+
+.subscribe-btn__icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* 操作按钮 - 靠右 */
+.video-meta__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+  flex-wrap: nowrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 20px;
+  background: hsl(var(--accent) / 0.1);
+  color: hsl(var(--foreground) / 0.7);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid hsl(var(--border) / 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.action-btn:hover {
+  background: hsl(var(--accent) / 0.2);
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.action-btn.is-active {
+  background: hsl(var(--primary) / 0.12);
   color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.08);
+  border-color: hsl(var(--primary) / 0.4);
 }
 
-.video-action__label::before { content: '['; opacity: 0.5; }
-.video-action__label::after { content: ']'; opacity: 0.5; }
+.action-btn__icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
+}
+
+.action-btn.is-active .action-btn__icon {
+  opacity: 1;
+}
+
+/* 特殊色调 */
+.action-btn.tone-like.is-active {
+  background: hsl(142 76% 36% / 0.12);
+  color: hsl(142 76% 36%);
+  border-color: hsl(142 76% 36% / 0.4);
+}
+
+.action-btn.tone-danger.is-active {
+  background: hsl(var(--destructive) / 0.12);
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.4);
+}
+
+.action-btn.tone-later.is-active {
+  background: hsl(var(--accent) / 0.12);
+  color: hsl(var(--accent));
+  border-color: hsl(var(--accent) / 0.4);
+}
+
+/* 响应式适配 */
+@media (max-width: 640px) {
+  .video-channel__avatar {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+  }
+
+  .video-channel__name {
+    font-size: 0.85rem;
+  }
+
+  .action-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.7rem;
+    gap: 0.25rem;
+  }
+
+  .action-btn__icon {
+    width: 14px;
+    height: 14px;
+  }
+}
 
 /* 过渡动画 */
 .fade-player-enter-active {
