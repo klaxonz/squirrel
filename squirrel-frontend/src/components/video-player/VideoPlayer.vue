@@ -260,8 +260,12 @@ import type { ThemeName } from './themes'
 import type { IconName } from './core/useIcons'
 import PlayerIcon from './PlayerIcon.vue'
 
-// 基础变量
+// 基础变量与主题
 import './themes/variables.css'
+import './themes/dark.css'
+import './themes/light.css'
+import './themes/cyber.css'
+import './themes/scifi.css'
 
 interface Props {
   source?: MediaSource | null
@@ -681,7 +685,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   backdrop-filter: blur(8px);
   padding: 8px 16px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--sp-border);
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
@@ -722,7 +726,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   padding: 4px 12px;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 77, 0, 0.25);
+  border: 1px solid rgba(var(--sp-primary-rgb), 0.25);
   border-radius: 4px;
 }
 
@@ -876,7 +880,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   padding: 3px 8px;
   background: rgba(10, 10, 10, 0.95);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 77, 0, 0.25);
+  border: 1px solid rgba(var(--sp-primary-rgb), 0.25);
   color: #fff;
   font-size: 10px;
   font-family: var(--sp-font-mono);
@@ -942,8 +946,8 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(255, 77, 0, 0.1);
-  border: 1px solid rgba(255, 77, 0, 0.15);
+  background: var(--sp-bg-hover);
+  border: 1px solid var(--sp-border);
   border-radius: 6px;
   transform: scale(0.85);
   opacity: 0;
@@ -1042,13 +1046,13 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   bottom: 52px;
   right: 12px;
   width: 220px;
-  background: rgba(10, 10, 10, 0.95);
+  background: var(--sp-menu-bg);
   backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 77, 0, 0.2);
+  border: 1px solid var(--sp-menu-border);
   border-radius: 8px;
   padding: 6px;
   z-index: 100;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.85);
+  box-shadow: var(--sp-menu-shadow);
   overflow: hidden;
 }
 
@@ -1056,7 +1060,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(255, 77, 0, 0.05) 50%);
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(var(--sp-primary-rgb), 0.05) 50%);
   background-size: 100% 4px;
   pointer-events: none;
   opacity: 0.2;
@@ -1067,7 +1071,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--sp-text-secondary);
   font-size: 12px;
   font-family: var(--sp-font-family);
   border-radius: 6px;
@@ -1079,28 +1083,34 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 }
 
 .sp-menu-item:hover {
-  background: rgba(255, 77, 0, 0.15);
-  color: #fff;
+  background: var(--sp-menu-item-hover-bg);
+  color: var(--sp-text-strong);
 }
 
 .sp-menu-item.is-active {
   color: var(--sp-primary);
-  background: rgba(var(--sp-primary-rgb), 0.1);
+  background: var(--sp-menu-item-active-bg);
+}
+
+.sp-menu-val {
+  font-size: 11px;
+  opacity: 0.6;
+  font-family: var(--sp-font-mono);
 }
 
 .sp-simple-switch {
   width: 30px;
   height: 16px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--sp-switch-bg);
   border-radius: 8px;
   position: relative;
   transition: background 0.3s;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--sp-border);
 }
 
 .sp-simple-switch.is-on { 
   background: var(--sp-primary);
-  border-color: rgba(255, 77, 0, 0.5);
+  border-color: rgba(var(--sp-primary-rgb), 0.5);
 }
 
 .sp-simple-switch::after {
@@ -1141,7 +1151,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
   position: absolute;
   inset: 0;
   border: 2px solid transparent;
-  border-top-color: rgba(255, 255, 255, 0.3);
+  border-top-color: var(--sp-text-disabled);
   border-radius: 50%;
 }
 
@@ -1150,7 +1160,7 @@ defineExpose({ play, pause, seek, toggleFullscreen })
 .sp-loader-segment:nth-child(3) { transform: rotate(240deg); }
 
 .sp-loading-text {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--sp-text-secondary);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   font-family: 'JetBrains Mono', monospace;

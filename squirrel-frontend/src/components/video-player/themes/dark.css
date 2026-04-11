@@ -4,6 +4,11 @@
 
 .sp-player.sp-theme-dark,
 .sp-player[data-sp-theme="dark"] {
+  /* 核心颜色 (Cyber Orange) */
+  --sp-theme-primary: #ff4d00;
+  --sp-theme-primary-hover: #ff6a26;
+  --sp-theme-primary-active: #cc3d00;
+  --sp-theme-primary-rgb: 255, 77, 0;
   
   /* 背景 */
   --sp-bg: #050505;

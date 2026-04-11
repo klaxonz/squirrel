@@ -14,7 +14,9 @@ export const themeFiles = {
   variables: () => import('./variables.css'),
   base: () => import('./base.css'),
   dark: () => import('./dark.css'),
-  light: () => import('./light.css')
+  light: () => import('./light.css'),
+  cyber: () => import('./cyber.css'),
+  scifi: () => import('./scifi.css')
 }
 
 export const presets = {

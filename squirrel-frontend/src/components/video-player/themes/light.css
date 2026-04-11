@@ -4,6 +4,11 @@
 
 .sp-player.sp-theme-light,
 .sp-player[data-sp-theme="light"] {
+  /* 核心颜色 (Warm Orange) */
+  --sp-theme-primary: #ff5500;
+  --sp-theme-primary-hover: #ff7733;
+  --sp-theme-primary-active: #cc4400;
+  --sp-theme-primary-rgb: 255, 85, 0;
   
   /* 背景 */
   --sp-bg: rgba(248, 242, 234, 0.96);

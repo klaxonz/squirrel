@@ -6,11 +6,11 @@
 .sp-player {
   /* ========== 颜色系统 ========== */
   
-  /* 主色调 - Cyber Orange */
-  --sp-primary: #ff4d00;
-  --sp-primary-hover: #ff6a26;
-  --sp-primary-active: #cc3d00;
-  --sp-primary-rgb: 255, 77, 0;
+  /* 主色调 - 使用主题感知的变量，默认值为 Cyber Orange */
+  --sp-primary: var(--sp-theme-primary, #ff4d00);
+  --sp-primary-hover: var(--sp-theme-primary-hover, #ff6a26);
+  --sp-primary-active: var(--sp-theme-primary-active, #cc3d00);
+  --sp-primary-rgb: var(--sp-theme-primary-rgb, 255, 77, 0);
   
   /* 背景色 - Glassmorphic */
   --sp-bg: #050505;
@@ -88,9 +88,9 @@
   --sp-menu-max-height: 420px;
   --sp-menu-item-height: 44px;
   --sp-menu-item-padding: 10px 16px;
-  --sp-menu-item-hover-bg: rgba(255, 77, 0, 0.15);
-  --sp-menu-item-active-bg: rgba(255, 77, 0, 0.25);
-  --sp-btn-toggled-bg: rgba(255, 77, 0, 0.2);
+  --sp-menu-item-hover-bg: var(--sp-bg-hover, rgba(255, 77, 0, 0.15));
+  --sp-menu-item-active-bg: var(--sp-bg-active, rgba(255, 77, 0, 0.25));
+  --sp-btn-toggled-bg: var(--sp-bg-active, rgba(255, 77, 0, 0.2));
   --sp-switch-bg: rgba(255, 255, 255, 0.15);
   --sp-switch-thumb: #fff;
   
